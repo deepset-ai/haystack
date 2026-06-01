@@ -161,7 +161,7 @@ class TestTool:
                 "outputs_to_string": {"handler": "test_tool.format_string"},
                 "inputs_from_state": {"location": "city"},
                 "outputs_to_state": {"documents": {"source": "docs", "handler": "test_tool.get_weather_report"}},
-                "system_prompt": None,
+                "system_prompt_instructions": None,
             },
         }
 
@@ -195,7 +195,7 @@ class TestTool:
             description="Get weather report",
             parameters=parameters,
             function=get_weather_report,
-            system_prompt="Always call weather before answering about the weather.",
+            system_prompt_instructions="Always call weather before answering about the weather.",
         )
         assert tool.system_prompt_contribution() == "Always call weather before answering about the weather."
 
@@ -203,7 +203,7 @@ class TestTool:
         tool = Tool(
             name="weather", description="Get weather report", parameters=parameters, function=get_weather_report
         )
-        assert tool.system_prompt is None
+        assert tool.system_prompt_instructions is None
         assert tool.system_prompt_contribution() is None
 
     def test_serialize_outputs_to_string(self):

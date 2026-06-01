@@ -177,7 +177,9 @@ class SkillToolset(Toolset):
             _, body = _parse_frontmatter((meta.path / SKILL_FILE_NAME).read_text(encoding="utf-8"))
 
             bundled = sorted(
-                str(p.relative_to(meta.path)) for p in meta.path.rglob("*") if p.is_file() and p.name != SKILL_FILE_NAME
+                p.relative_to(meta.path).as_posix()
+                for p in meta.path.rglob("*")
+                if p.is_file() and p.name != SKILL_FILE_NAME
             )
             if bundled:
                 manifest = "\n".join(f"- {path}" for path in bundled)

@@ -21,7 +21,8 @@ features:
   - |
     ``Tool`` and ``Toolset`` now support a ``system_prompt_contribution()`` method. When a tool or toolset
     is used with an ``Agent``, the text it returns is appended to the Agent's system prompt. ``Tool`` gains
-    an optional ``system_prompt`` field for this; ``Toolset`` subclasses can override the method to generate
-    instructions dynamically. When a ``Toolset`` provides a contribution, it takes precedence over the
-    ``system_prompt`` of its individual member tools, mirroring how an MCP server's ``instructions`` describe
-    its tools as a whole.
+    an optional ``system_prompt_instructions`` field for this; ``Toolset`` subclasses can override the method
+    to generate instructions dynamically. When a ``Toolset`` provides a contribution, it takes precedence over
+    the ``system_prompt_instructions`` of its individual member tools, mirroring how an MCP server's
+    ``instructions`` describe its tools as a whole. Note that a member tool's own ``system_prompt_instructions``
+    are therefore suppressed whenever its enclosing ``Toolset`` contributes.

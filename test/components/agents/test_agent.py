@@ -263,7 +263,7 @@ class TestAgent:
                             "outputs_to_string": None,
                             "inputs_from_state": None,
                             "outputs_to_state": None,
-                            "system_prompt": None,
+                            "system_prompt_instructions": None,
                         },
                     },
                     {
@@ -347,7 +347,7 @@ class TestAgent:
                                     "outputs_to_string": None,
                                     "inputs_from_state": None,
                                     "outputs_to_state": None,
-                                    "system_prompt": None,
+                                    "system_prompt_instructions": None,
                                 },
                             }
                         ]
@@ -418,7 +418,7 @@ class TestAgent:
                             "outputs_to_string": None,
                             "inputs_from_state": None,
                             "outputs_to_state": None,
-                            "system_prompt": None,
+                            "system_prompt_instructions": None,
                         },
                     },
                     {
@@ -509,7 +509,7 @@ class TestAgent:
                                     "outputs_to_string": None,
                                     "inputs_from_state": None,
                                     "outputs_to_state": None,
-                                    "system_prompt": None,
+                                    "system_prompt_instructions": None,
                                 },
                             }
                         ]
@@ -1272,7 +1272,7 @@ class TestAgentTracing:
         assert set(llm_tags) == {"haystack.agent.step.llm.input", "haystack.agent.step.llm.output"}
         assert (
             llm_tags["haystack.agent.step.llm.input"]
-            == '{"messages": [{"role": "user", "meta": {}, "name": null, "content": [{"text": "What\'s the weather in Paris?"}]}], "tools": [{"type": "haystack.tools.tool.Tool", "data": {"name": "weather_tool", "description": "Provides weather information for a given location.", "parameters": {"type": "object", "properties": {"location": {"type": "string"}}, "required": ["location"]}, "function": "test_agent.weather_function", "outputs_to_string": null, "inputs_from_state": null, "outputs_to_state": null, "system_prompt": null}}]}'  # noqa: E501
+            == '{"messages": [{"role": "user", "meta": {}, "name": null, "content": [{"text": "What\'s the weather in Paris?"}]}], "tools": [{"type": "haystack.tools.tool.Tool", "data": {"name": "weather_tool", "description": "Provides weather information for a given location.", "parameters": {"type": "object", "properties": {"location": {"type": "string"}}, "required": ["location"]}, "function": "test_agent.weather_function", "outputs_to_string": null, "inputs_from_state": null, "outputs_to_state": null, "system_prompt_instructions": null}}]}'  # noqa: E501
         )
         assert (
             llm_tags["haystack.agent.step.llm.output"]
@@ -1287,7 +1287,7 @@ class TestAgentTracing:
         _, run_tags = agent_spans[2]
         assert run_tags == {
             "haystack.agent.max_steps": 100,
-            "haystack.agent.tools": '[{"type": "haystack.tools.tool.Tool", "data": {"name": "weather_tool", "description": "Provides weather information for a given location.", "parameters": {"type": "object", "properties": {"location": {"type": "string"}}, "required": ["location"]}, "function": "test_agent.weather_function", "outputs_to_string": null, "inputs_from_state": null, "outputs_to_state": null, "system_prompt": null}}]',  # noqa: E501
+            "haystack.agent.tools": '[{"type": "haystack.tools.tool.Tool", "data": {"name": "weather_tool", "description": "Provides weather information for a given location.", "parameters": {"type": "object", "properties": {"location": {"type": "string"}}, "required": ["location"]}, "function": "test_agent.weather_function", "outputs_to_string": null, "inputs_from_state": null, "outputs_to_state": null, "system_prompt_instructions": null}}]',  # noqa: E501
             "haystack.agent.exit_conditions": '["text"]',
             "haystack.agent.state_schema": '{"messages": {"type": "list[haystack.dataclasses.chat_message.ChatMessage]", "handler": "haystack.components.agents.state.state_utils.merge_lists"}, "step_count": {"type": "int", "handler": "haystack.components.agents.state.state_utils.replace_values"}, "token_usage": {"type": "dict[str, typing.Any]", "handler": "haystack.components.agents.state.state_utils.replace_values"}, "tool_call_counts": {"type": "dict[str, int]", "handler": "haystack.components.agents.state.state_utils.replace_values"}}',  # noqa: E501
             "haystack.agent.input": '{"messages": [{"role": "user", "meta": {}, "name": null, "content": [{"text": "What\'s the weather in Paris?"}]}], "streaming_callback": null}',  # noqa: E501
@@ -1380,7 +1380,7 @@ class TestAgentTracing:
         assert set(llm_tags) == {"haystack.agent.step.llm.input", "haystack.agent.step.llm.output"}
         assert (
             llm_tags["haystack.agent.step.llm.input"]
-            == '{"messages": [{"role": "user", "meta": {}, "name": null, "content": [{"text": "What\'s the weather in Paris?"}]}], "tools": [{"type": "haystack.tools.tool.Tool", "data": {"name": "weather_tool", "description": "Provides weather information for a given location.", "parameters": {"type": "object", "properties": {"location": {"type": "string"}}, "required": ["location"]}, "function": "test_agent.weather_function", "outputs_to_string": null, "inputs_from_state": null, "outputs_to_state": null, "system_prompt": null}}]}'  # noqa: E501
+            == '{"messages": [{"role": "user", "meta": {}, "name": null, "content": [{"text": "What\'s the weather in Paris?"}]}], "tools": [{"type": "haystack.tools.tool.Tool", "data": {"name": "weather_tool", "description": "Provides weather information for a given location.", "parameters": {"type": "object", "properties": {"location": {"type": "string"}}, "required": ["location"]}, "function": "test_agent.weather_function", "outputs_to_string": null, "inputs_from_state": null, "outputs_to_state": null, "system_prompt_instructions": null}}]}'  # noqa: E501
         )
         assert (
             llm_tags["haystack.agent.step.llm.output"]
@@ -1393,7 +1393,7 @@ class TestAgentTracing:
         _, run_tags = agent_spans[2]
         assert run_tags == {
             "haystack.agent.max_steps": 100,
-            "haystack.agent.tools": '[{"type": "haystack.tools.tool.Tool", "data": {"name": "weather_tool", "description": "Provides weather information for a given location.", "parameters": {"type": "object", "properties": {"location": {"type": "string"}}, "required": ["location"]}, "function": "test_agent.weather_function", "outputs_to_string": null, "inputs_from_state": null, "outputs_to_state": null, "system_prompt": null}}]',  # noqa: E501
+            "haystack.agent.tools": '[{"type": "haystack.tools.tool.Tool", "data": {"name": "weather_tool", "description": "Provides weather information for a given location.", "parameters": {"type": "object", "properties": {"location": {"type": "string"}}, "required": ["location"]}, "function": "test_agent.weather_function", "outputs_to_string": null, "inputs_from_state": null, "outputs_to_state": null, "system_prompt_instructions": null}}]',  # noqa: E501
             "haystack.agent.exit_conditions": '["text"]',
             "haystack.agent.state_schema": '{"messages": {"type": "list[haystack.dataclasses.chat_message.ChatMessage]", "handler": "haystack.components.agents.state.state_utils.merge_lists"}, "step_count": {"type": "int", "handler": "haystack.components.agents.state.state_utils.replace_values"}, "token_usage": {"type": "dict[str, typing.Any]", "handler": "haystack.components.agents.state.state_utils.replace_values"}, "tool_call_counts": {"type": "dict[str, int]", "handler": "haystack.components.agents.state.state_utils.replace_values"}}',  # noqa: E501
             "haystack.agent.input": '{"messages": [{"role": "user", "meta": {}, "name": null, "content": [{"text": "What\'s the weather in Paris?"}]}], "streaming_callback": null}',  # noqa: E501
@@ -2255,7 +2255,7 @@ class TestSystemPromptContributions:
             description="d",
             parameters={"type": "object", "properties": {}},
             function=lambda: None,
-            system_prompt=system_prompt,
+            system_prompt_instructions=system_prompt,
         )
 
     def test_toolset_contribution_appended_to_system_prompt(self):
