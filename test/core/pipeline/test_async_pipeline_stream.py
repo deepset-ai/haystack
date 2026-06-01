@@ -162,7 +162,7 @@ async def test_stream_warns_on_sync_runtime_callback(caplog):
 
     with caplog.at_level(logging.WARNING):
         handle = pipeline.stream(data={"streamer": {"prompt": "hi", "streaming_callback": sync_callback}})
-    _ = [c async for c in handle]
+    [c async for c in handle]
 
     assert "sync streaming callback" in caplog.text
     assert seen == ["s0", "s1"]

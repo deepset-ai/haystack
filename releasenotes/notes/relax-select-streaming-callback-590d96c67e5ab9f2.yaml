@@ -2,9 +2,9 @@
 enhancements:
   - |
     Streaming-capable components (``OpenAIChatGenerator``, ``OpenAIResponsesGenerator``,
-    ``HuggingFaceAPIChatGenerator``, ``HuggingFaceLocalChatGenerator``, ``Agent``) now accept a **sync** streaming
-    callback in async contexts (``run_async``). A warning is logged because the callback runs synchronously on the
-    event loop and may block it, but the run proceeds. Async callbacks are still preferred for performance.
+    ``HuggingFaceAPIChatGenerator``, ``HuggingFaceLocalChatGenerator``, ``Agent``) now accept a synchronous streaming
+    callback in asynchronous contexts (``run_async``). A warning is logged because the callback runs synchronously on
+    the event loop and may block it, but the run proceeds. Async callbacks are still preferred for performance.
 
     .. code-block:: python
 
