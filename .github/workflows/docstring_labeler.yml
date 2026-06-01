@@ -35,7 +35,7 @@ jobs:
       - name: Get base docstrings
         id: base-docstrings
         run: |
-          CHECKSUM=$(python "${{ runner.temp }}/docstrings_checksum.py" --root "${{ github.workspace }}")
+          CHECKSUM=$(python .github/utils/docstrings_checksum.py --root "${{ github.workspace }}")
           echo "checksum=$CHECKSUM" >> "$GITHUB_OUTPUT"
 
       - name: Checkout HEAD commit
@@ -46,7 +46,7 @@ jobs:
       - name: Get HEAD docstrings
         id: head-docstrings
         run: |
-          CHECKSUM=$(python "${{ runner.temp }}/docstrings_checksum.py" --root "${{ github.workspace }}")
+          CHECKSUM=$(python .github/utils/docstrings_checksum.py --root "${{ github.workspace }}")
           echo "checksum=$CHECKSUM" >> "$GITHUB_OUTPUT"
 
       - name: Write result
