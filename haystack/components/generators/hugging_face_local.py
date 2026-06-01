@@ -260,6 +260,7 @@ class HuggingFaceLocalGenerator:
 
         if self.stop_words:
             # the output of the pipeline includes the stop word
-            replies = [reply.replace(stop_word, "").rstrip() for reply in replies for stop_word in self.stop_words]
+            for stop_word in self.stop_words:
+                replies = [reply.replace(stop_word, "").rstrip() for reply in replies]
 
         return {"replies": replies}
