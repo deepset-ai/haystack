@@ -6,6 +6,110 @@ slug: "/integrations-supabase"
 ---
 
 
+## haystack_integrations.components.downloaders.supabase.supabase_bucket_downloader
+
+### SupabaseBucketDownloader
+
+Downloads files from a Supabase Storage bucket and returns them as ByteStream objects.
+
+Files are downloaded in-memory and returned as `ByteStream` objects ready for further
+processing in indexing pipelines (e.g. passing to a `DocumentConverter`).
+
+Example usage:
+
+```python
+from haystack_integrations.components.downloaders.supabase import SupabaseBucketDownloader
+from haystack.utils import Secret
+
+downloader = SupabaseBucketDownloader(
+    supabase_url="https://<project-ref>.supabase.co",
+    supabase_key=Secret.from_env_var("SUPABASE_SERVICE_KEY"),
+    bucket_name="my-documents",
+)
+result = downloader.run(sources=["reports/report.pdf", "data/notes.txt"])
+streams = result["streams"]
+```
+
+#### __init__
+
+```python
+__init__(
+    *,
+    supabase_url: str,
+    supabase_key: Secret = Secret.from_env_var("SUPABASE_SERVICE_KEY"),
+    bucket_name: str,
+    file_extensions: list[str] | None = None
+) -> None
+```
+
+Creates a new SupabaseBucketDownloader instance.
+
+**Parameters:**
+
+- **supabase_url** (<code>str</code>) – The URL of your Supabase project, e.g. `https://<project-ref>.supabase.co`.
+- **supabase_key** (<code>Secret</code>) – The Supabase API key used to authenticate requests. Defaults to the
+  `SUPABASE_SERVICE_KEY` environment variable. Use the service role key for private buckets.
+- **bucket_name** (<code>str</code>) – The name of the Supabase Storage bucket to download files from.
+- **file_extensions** (<code>list\[str\] | None</code>) – Optional list of file extensions to filter downloads (e.g. `[".pdf", ".txt"]`).
+  If `None`, all files are downloaded. Extensions are matched case-insensitively.
+
+#### warm_up
+
+```python
+warm_up() -> None
+```
+
+Initializes the Supabase client.
+
+Called automatically on the first run(), or can be called explicitly in a pipeline.
+
+#### run
+
+```python
+run(sources: list[str]) -> dict[str, list[ByteStream]]
+```
+
+Downloads files from the Supabase Storage bucket.
+
+**Parameters:**
+
+- **sources** (<code>list\[str\]</code>) – List of file paths within the bucket to download,
+  e.g. `["folder/file.pdf", "notes.txt"]`.
+
+**Returns:**
+
+- <code>dict\[str, list\[ByteStream\]\]</code> – A dictionary with:
+- `streams`: list of `ByteStream` objects, one per successfully downloaded file.
+  Each `ByteStream` has `meta["file_path"]` and `meta["bucket_name"]` set.
+
+#### to_dict
+
+```python
+to_dict() -> dict[str, Any]
+```
+
+Serializes the component to a dictionary.
+
+**Returns:**
+
+- <code>dict\[str, Any\]</code> – Dictionary with serialized data.
+
+#### from_dict
+
+```python
+from_dict(data: dict[str, Any]) -> SupabaseBucketDownloader
+```
+
+Deserializes the component from a dictionary.
+
+**Parameters:**
+
+- **data** (<code>dict\[str, Any\]</code>) – Dictionary to deserialize from.
+
+**Returns:**
+
+- <code>SupabaseBucketDownloader</code> – Deserialized component.
+
 ## haystack_integrations.components.retrievers.supabase.embedding_retriever
 
 ### SupabasePgvectorEmbeddingRetriever
