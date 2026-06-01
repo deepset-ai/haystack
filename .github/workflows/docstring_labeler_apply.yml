@@ -19,6 +19,7 @@ jobs:
     permissions:
       contents: read
       pull-requests: write
+      actions: read
     steps:
       - name: Download result
         uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
