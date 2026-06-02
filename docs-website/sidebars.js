@@ -138,6 +138,7 @@ export default {
         'document-stores/pgvectordocumentstore',
         'document-stores/pinecone-document-store',
         'document-stores/qdrant-document-store',
+        'document-stores/supabasedocumentstore',
         'document-stores/valkeydocumentstore',
         'document-stores/vespadocumentstore',
         'document-stores/weaviatedocumentstore',
