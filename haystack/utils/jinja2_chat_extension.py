@@ -72,6 +72,16 @@ class ChatMessageExtension(Extension):
     {% endmessage %}
     ```
 
+    This extension also provides a `{% messages %}` placeholder tag that expands a list of `ChatMessage`
+    objects (bound to the `messages` template variable) into the prompt, so a runtime conversation can be
+    interleaved with literal `{% message %}` blocks:
+
+    ```
+    {% message role="system" %}You are a helpful assistant.{% endmessage %}
+    {% messages %}
+    {% message role="user" %}{{ query }}{% endmessage %}
+    ```
+
     ### How it works
     1. The `{% message %}` tag is used to define a chat message.
     2. The message can contain text and other structured content parts.
@@ -85,7 +95,7 @@ class ChatMessageExtension(Extension):
 
     SUPPORTED_ROLES = [role.value for role in ChatRole]
 
-    tags = {"message"}
+    tags = {"message", "messages"}
 
     def __init__(self, environment: Any) -> None:
         super().__init__(environment)
@@ -94,15 +104,52 @@ class ChatMessageExtension(Extension):
 
     def parse(self, parser: Any) -> nodes.Node | list[nodes.Node]:
         """
+        Dispatch parsing based on the tag that triggered the extension.
+
+        Handles both the single `{% message %}` tag and the `{% messages %}` placeholder tag.
+
+        :param parser: The Jinja2 parser instance
+        :return: A CallBlock node containing the parsed configuration
+        """
+        tag = next(parser.stream)
+        if tag.value == "messages":
+            return self._parse_messages_tag(parser, tag.lineno)
+        return self._parse_message_tag(parser, tag.lineno)
+
+    def _parse_messages_tag(self, parser: Any, lineno: int) -> nodes.Node:
+        """
+        Parse the `{% messages %}` placeholder tag.
+
+        This bodyless tag expands the list of `ChatMessage` objects bound to the `messages` template variable into
+        the same JSON-line format produced by `{% message %}` blocks, so runtime messages can be interleaved with
+        literal message blocks (for example a system message above and a user message below).
+
+        :param parser: The Jinja2 parser instance
+        :param lineno: The line number of the tag, used for error reporting.
+        :return: A CallBlock node that expands the `messages` variable.
+        :raises TemplateSyntaxError: If the tag is given any arguments.
+        """
+        if not parser.stream.current.test("block_end"):
+            raise TemplateSyntaxError(
+                "The 'messages' tag does not take any arguments. It expands the 'messages' template variable.", lineno
+            )
+        messages_expr = nodes.Name("messages", "load", lineno=lineno)
+        # Bodyless tag: empty body, no matching end tag required.
+        return nodes.CallBlock(
+            self.call_method(name="_build_messages_json", args=[messages_expr]), [], [], []
+        ).set_lineno(lineno)
+
+    def _parse_message_tag(self, parser: Any, lineno: int) -> nodes.Node | list[nodes.Node]:
+        """
         Parse the message tag and its attributes in the Jinja2 template.
 
         This method handles the parsing of role (mandatory), name (optional), meta (optional) and message body content.
 
         :param parser: The Jinja2 parser instance
+        :param lineno: The line number of the tag, used for error reporting.
         :return: A CallBlock node containing the parsed message configuration
         :raises TemplateSyntaxError: If an invalid role is provided
         """
-        lineno = next(parser.stream).lineno
 
         # Parse role attribute (mandatory)
         parser.stream.expect("name:role")
@@ -172,6 +219,31 @@ class ChatMessageExtension(Extension):
         chat_message = self._validate_build_chat_message(parts=parts, role=role, meta=meta, name=name)
 
         return json.dumps(chat_message.to_dict()) + "\n"
+
+    def _build_messages_json(self, messages: Any, caller: Callable[[], str]) -> str:  # noqa: ARG002
+        """
+        Expand a list of ChatMessage objects into newline-separated JSON, one message per line.
+
+        This method is called by Jinja2 when processing a `{% messages %}` tag. It produces the same JSON-line format
+        as `_build_chat_message_json`, so the messages are parsed back into ChatMessage objects by the
+        ChatPromptBuilder alongside any literal `{% message %}` blocks. The full `ChatMessage.to_dict()` payload is
+        serialized so that all content types (tool calls, tool call results, images, reasoning, name and meta) round
+        trip without loss.
+
+        :param messages: The list of ChatMessage objects bound to the `messages` template variable. A missing or
+            empty value expands to nothing.
+        :param caller: Callable that returns the (empty) rendered body. Unused.
+        :return: Newline-terminated JSON lines, one per message, or an empty string if there are no messages.
+        :raises ValueError: If `messages` is not a list of ChatMessage objects.
+        """
+        if not messages:
+            return ""
+        if not isinstance(messages, (list, tuple)) or not all(isinstance(m, ChatMessage) for m in messages):
+            raise ValueError(
+                "The 'messages' template variable must be a list of ChatMessage objects. "
+                f"Got: {type(messages).__name__}."
+            )
+        return "".join(json.dumps(message.to_dict()) + "\n" for message in messages)
 
     @staticmethod
     def _parse_content_parts(content: str) -> list[ChatMessageContentT]:

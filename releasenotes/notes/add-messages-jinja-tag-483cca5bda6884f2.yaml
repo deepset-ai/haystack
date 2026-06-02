@@ -1,0 +1,18 @@
+---
+features:
+  - |
+    Added a new ``{% messages %}`` tag to the Jinja2 string templates used by ``ChatPromptBuilder``.
+    The tag is a placeholder that expands the list of ``ChatMessage`` objects bound to the ``messages``
+    template variable into the prompt, so a runtime conversation can be interleaved with literal
+    ``{% message %}`` blocks. For example, you can wrap the runtime messages with a system message above
+    and a templated user message below:
+
+    .. code-block:: jinja
+
+        {% message role="system" %}You are a helpful assistant.{% endmessage %}
+        {% messages %}
+        {% message role="user" %}{{ query }}{% endmessage %}
+
+    All content types (tool calls, tool call results, images, reasoning, ``name`` and ``meta``) round trip
+    without loss. The tag takes no arguments and expects ``messages`` to be a list of ``ChatMessage`` objects;
+    a missing or empty value expands to nothing.

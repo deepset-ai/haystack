@@ -7,10 +7,11 @@ import json
 from unittest.mock import patch
 
 import pytest
-from jinja2 import TemplateSyntaxError
+from jinja2 import TemplateSyntaxError, meta
 from jinja2.sandbox import SandboxedEnvironment
 
 from haystack.dataclasses.chat_message import (
+    ChatMessage,
     FileContent,
     ImageContent,
     ReasoningContent,
@@ -602,6 +603,76 @@ But my favorite subject is Small Language Models.
         output = json.loads(rendered.strip())
 
         assert output["content"][0]["text"] == text_with_symbols
+
+
+class TestMessagesPlaceholderTag:
+    def _parse_lines(self, rendered: str) -> list[ChatMessage]:
+        return [ChatMessage.from_dict(json.loads(line)) for line in rendered.strip().split("\n") if line.strip()]
+
+    def test_expands_messages(self, jinja_env):
+        template = "{% messages %}"
+        messages = [ChatMessage.from_user("Hello"), ChatMessage.from_assistant("Hi there")]
+        rendered = jinja_env.from_string(template).render(messages=messages)
+        assert self._parse_lines(rendered) == messages
+
+    def test_empty_messages_expands_to_nothing(self, jinja_env):
+        template = "{% messages %}"
+        assert jinja_env.from_string(template).render(messages=[]).strip() == ""
+
+    def test_missing_messages_variable_expands_to_nothing(self, jinja_env):
+        # `messages` is falsy/Undefined when not provided -> emits nothing rather than raising
+        template = "{% messages %}"
+        assert jinja_env.from_string(template).render().strip() == ""
+
+    def test_interleaved_with_literal_message_blocks(self, jinja_env):
+        template = """
+        {% message role="system" %}You are helpful.{% endmessage %}
+        {% messages %}
+        {% message role="user" %}{{ query }}{% endmessage %}
+        """
+        runtime = [ChatMessage.from_user("first"), ChatMessage.from_assistant("second")]
+        rendered = jinja_env.from_string(template).render(messages=runtime, query="final question")
+        parsed = self._parse_lines(rendered)
+        assert [m.role.value for m in parsed] == ["system", "user", "assistant", "user"]
+        assert parsed[0].text == "You are helpful."
+        assert parsed[1].text == "first"
+        assert parsed[2].text == "second"
+        assert parsed[3].text == "final question"
+
+    def test_is_detected_as_template_variable(self):
+        # The `{% messages %}` tag must surface `messages` as an undeclared variable so that the
+        # ChatPromptBuilder (and Agent) can register and pass it.
+        env = SandboxedEnvironment(extensions=[ChatMessageExtension])
+        ast = env.parse("{% messages %}")
+        assert "messages" in meta.find_undeclared_variables(ast)
+
+    def test_round_trips_all_content_types(self, jinja_env, base64_image_string):
+        tool_call = ToolCall(tool_name="search", arguments={"query": "q"}, id="search_1")
+        messages = [
+            ChatMessage.from_system("system text", meta={"k": "v"}),
+            ChatMessage.from_user("user text", name="Bob"),
+            ChatMessage.from_user(
+                content_parts=["look", ImageContent(base64_image=base64_image_string, mime_type="image/png")]
+            ),
+            ChatMessage.from_assistant(
+                text="thinking then calling",
+                tool_calls=[tool_call],
+                reasoning=ReasoningContent(reasoning_text="let me think", extra={"a": 1}),
+            ),
+            ChatMessage.from_tool(tool_result="result", origin=tool_call, error=False),
+        ]
+        rendered = jinja_env.from_string("{% messages %}").render(messages=messages)
+        assert self._parse_lines(rendered) == messages
+
+    def test_no_arguments_allowed(self, jinja_env):
+        template = '{% messages role="user" %}'
+        with pytest.raises(TemplateSyntaxError, match="does not take any arguments"):
+            jinja_env.from_string(template).render(messages=[])
+
+    def test_non_message_list_raises_error(self, jinja_env):
+        template = "{% messages %}"
+        with pytest.raises(ValueError, match="must be a list of ChatMessage objects"):
+            jinja_env.from_string(template).render(messages=["not a message"])
 
 
 class TestSentinelTagInjectionPrevention:
