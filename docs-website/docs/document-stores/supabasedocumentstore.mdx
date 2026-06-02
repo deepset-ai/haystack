@@ -62,8 +62,8 @@ To learn more about the initialization parameters, see the [API docs](/reference
 
 ### Supported Retrievers
 
-- [`SupabasePgvectorEmbeddingRetriever`](../pipeline-components/retrievers/supabasepgvectorembeddingretriever.mdx): Fetches documents from the store based on a query embedding.
-- [`SupabasePgvectorKeywordRetriever`](../pipeline-components/retrievers/supabasepgvectorkeywordretriever.mdx): Fetches documents matching a keyword query using PostgreSQL's `ts_rank_cd` ranking.
+- [`SupabasePgvectorEmbeddingRetriever`](/reference/integrations-supabase#supabasepgvectorembeddingretriever): Fetches documents from the store based on a query embedding.
+- [`SupabasePgvectorKeywordRetriever`](/reference/integrations-supabase#supabasepgvectorkeywordretriever): Fetches documents matching a keyword query using PostgreSQL's `ts_rank_cd` ranking.
 
 ### Example: RAG pipeline
 
@@ -180,4 +180,4 @@ To learn more about the initialization parameters, see the [API docs](/reference
 
 ### Supported Retrievers
 
-- [`SupabaseGroongaBM25Retriever`](../pipeline-components/retrievers/supabasegroongabm25retriever.mdx): Retrieves documents using PGroonga full-text search. Works without embeddings and can be combined with `SupabasePgvectorEmbeddingRetriever` for hybrid search pipelines.
+- [`SupabaseGroongaBM25Retriever`](/reference/integrations-supabase#supabasegroongabm25retriever): Retrieves documents using PGroonga full-text search. Works without embeddings and can be combined with `SupabasePgvectorEmbeddingRetriever` for hybrid search pipelines.
