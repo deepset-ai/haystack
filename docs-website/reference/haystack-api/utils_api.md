@@ -917,6 +917,10 @@ For example, given a page_range=['1-3', '5', '8', '10-12'] the function will ret
 
 - <code>list\[int\]</code> – An expanded list of page integers
 
+**Raises:**
+
+- <code>ValueError</code> – If any element is not a valid integer or a range string in the format `'start-end'`.
+
 ### expit
 
 ```python
