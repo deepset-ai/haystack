@@ -82,6 +82,10 @@ class ChatMessageExtension(Extension):
     {% message role="user" %}{{ query }}{% endmessage %}
     ```
 
+    The `{% messages %}` tag also accepts an optional subscript to select a slice or a single message, for example
+    `{% messages[-1] %}` (last message), `{% messages[-1:] %}` (last message as a list) or `{% messages[:-1] %}`
+    (everything but the last message).
+
     ### How it works
     1. The `{% message %}` tag is used to define a chat message.
     2. The message can contain text and other structured content parts.
@@ -124,20 +128,29 @@ class ChatMessageExtension(Extension):
         the same JSON-line format produced by `{% message %}` blocks, so runtime messages can be interleaved with
         literal message blocks (for example a system message above and a user message below).
 
+        An optional subscript can select a slice or a single message, for example `{% messages[-1] %}` (last message),
+        `{% messages[-1:] %}` (last message as a list) or `{% messages[:-1] %}` (everything but the last message).
+
         :param parser: The Jinja2 parser instance
         :param lineno: The line number of the tag, used for error reporting.
-        :return: A CallBlock node that expands the `messages` variable.
-        :raises TemplateSyntaxError: If the tag is given any arguments.
+        :return: A CallBlock node that expands the (optionally subscripted) `messages` variable.
+        :raises TemplateSyntaxError: If the tag is given anything other than a subscript.
         """
+        node: nodes.Node = nodes.Name("messages", "load", lineno=lineno)
+        # Apply any trailing subscripts (`[...]`) directly onto the implicit `messages` name, so users can index or
+        # slice the runtime messages, e.g. `{% messages[-1:] %}`.
+        while parser.stream.current.type == "lbracket":
+            node = parser.parse_subscript(node)
         if not parser.stream.current.test("block_end"):
             raise TemplateSyntaxError(
-                "The 'messages' tag does not take any arguments. It expands the 'messages' template variable.", lineno
+                "The 'messages' tag only accepts an optional subscript on the messages list "
+                "(for example '{% messages[-1:] %}').",
+                lineno,
             )
-        messages_expr = nodes.Name("messages", "load", lineno=lineno)
         # Bodyless tag: empty body, no matching end tag required.
-        return nodes.CallBlock(
-            self.call_method(name="_build_messages_json", args=[messages_expr]), [], [], []
-        ).set_lineno(lineno)
+        return nodes.CallBlock(self.call_method(name="_build_messages_json", args=[node]), [], [], []).set_lineno(
+            lineno
+        )
 
     def _parse_message_tag(self, parser: Any, lineno: int) -> nodes.Node | list[nodes.Node]:
         """
@@ -220,7 +233,11 @@ class ChatMessageExtension(Extension):
 
         return json.dumps(chat_message.to_dict()) + "\n"
 
-    def _build_messages_json(self, messages: list[ChatMessage], caller: Callable[[], str]) -> str:  # noqa: ARG002
+    def _build_messages_json(
+        self,
+        messages: list[ChatMessage] | ChatMessage,
+        caller: Callable[[], str],  # noqa: ARG002
+    ) -> str:
         """
         Expand a list of ChatMessage objects into newline-separated JSON, one message per line.
 
@@ -231,17 +248,20 @@ class ChatMessageExtension(Extension):
         trip without loss.
 
         :param messages: The list of ChatMessage objects bound to the `messages` template variable. A missing or
-            empty value expands to nothing. The value is validated at render time because it comes from untrusted
-            template input.
+            empty value expands to nothing. A single ChatMessage is also accepted, since indexing the tag with an
+            integer (for example `{% messages[-1] %}`) yields one message rather than a list. The value is validated
+            at render time because it comes from untrusted template input.
         :param caller: Callable that returns the (empty) rendered body. Unused.
         :return: Newline-terminated JSON lines, one per message, or an empty string if there are no messages.
-        :raises ValueError: If `messages` is not a list of ChatMessage objects.
+        :raises ValueError: If `messages` is not a ChatMessage or a list of ChatMessage objects.
         """
+        if isinstance(messages, ChatMessage):
+            messages = [messages]
         if not messages:
             return ""
         if not isinstance(messages, (list, tuple)) or not all(isinstance(m, ChatMessage) for m in messages):
             raise ValueError(
-                "The 'messages' template variable must be a list of ChatMessage objects. "
+                "The 'messages' template variable must be a ChatMessage or a list of ChatMessage objects. "
                 f"Got: {type(messages).__name__}."
             )
         return "".join(json.dumps(message.to_dict()) + "\n" for message in messages)

@@ -1084,6 +1084,13 @@ Hello, my name is {{name}}!
         result = builder.run(messages=runtime)
         assert result["prompt"] == runtime
 
+    def test_messages_placeholder_with_subscript(self):
+        builder = ChatPromptBuilder(template="{% messages[-1:] %}")
+        assert builder.variables == ["messages"]
+        runtime = [ChatMessage.from_user("first"), ChatMessage.from_assistant("last")]
+        result = builder.run(messages=runtime)
+        assert result["prompt"] == [ChatMessage.from_assistant("last")]
+
     def test_messages_placeholder_interleaved_with_blocks(self):
         template = (
             '{% message role="system" %}You are helpful.{% endmessage %}'

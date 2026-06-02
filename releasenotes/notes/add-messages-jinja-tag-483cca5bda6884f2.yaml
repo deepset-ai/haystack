@@ -14,5 +14,9 @@ features:
         {% message role="user" %}{{ query }}{% endmessage %}
 
     All content types (tool calls, tool call results, images, reasoning, ``name`` and ``meta``) round trip
-    without loss. The tag takes no arguments and expects ``messages`` to be a list of ``ChatMessage`` objects;
-    a missing or empty value expands to nothing.
+    without loss. The tag expects ``messages`` to be a list of ``ChatMessage`` objects; a missing or empty value
+    expands to nothing.
+
+    The tag also accepts an optional subscript to select a slice or a single message, for example
+    ``{% messages[-1] %}`` (last message), ``{% messages[-1:] %}`` (last message as a list) or
+    ``{% messages[:-1] %}`` (everything but the last message).

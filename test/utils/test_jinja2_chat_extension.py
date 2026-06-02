@@ -664,6 +664,40 @@ class TestMessagesPlaceholderTag:
         rendered = jinja_env.from_string("{% messages %}").render(messages=messages)
         assert self._parse_lines(rendered) == messages
 
+    @pytest.fixture
+    def three_messages(self) -> list[ChatMessage]:
+        return [ChatMessage.from_user("a"), ChatMessage.from_assistant("b"), ChatMessage.from_user("c")]
+
+    def test_subscript_single_index(self, jinja_env, three_messages):
+        # An integer index yields a single ChatMessage, which is expanded as a one-message list.
+        rendered = jinja_env.from_string("{% messages[-1] %}").render(messages=three_messages)
+        assert self._parse_lines(rendered) == [three_messages[-1]]
+
+    def test_subscript_slice(self, jinja_env, three_messages):
+        rendered = jinja_env.from_string("{% messages[-1:] %}").render(messages=three_messages)
+        assert self._parse_lines(rendered) == three_messages[-1:]
+
+        rendered = jinja_env.from_string("{% messages[:-1] %}").render(messages=three_messages)
+        assert self._parse_lines(rendered) == three_messages[:-1]
+
+        rendered = jinja_env.from_string("{% messages[1:] %}").render(messages=three_messages)
+        assert self._parse_lines(rendered) == three_messages[1:]
+
+    def test_subscript_still_detected_as_template_variable(self):
+        env = SandboxedEnvironment(extensions=[ChatMessageExtension])
+        for template in ["{% messages[-1] %}", "{% messages[1:] %}"]:
+            assert "messages" in meta.find_undeclared_variables(env.parse(template))
+
+    def test_subscript_interleaved_with_blocks(self, jinja_env, three_messages):
+        template = (
+            '{% message role="system" %}sys{% endmessage %}'
+            "{% messages[-1:] %}"
+            '{% message role="user" %}{{ query }}{% endmessage %}'
+        )
+        rendered = jinja_env.from_string(template).render(messages=three_messages, query="q")
+        parsed = self._parse_lines(rendered)
+        assert [m.text for m in parsed] == ["sys", "c", "q"]
+
     def test_message_text_with_sentinel_tag_is_not_escaped(self, jinja_env):
         # The tag uses a CallBlock so output bypasses `finalize` sentinel-escaping; message text containing
         # the literal sentinel tag must round trip intact.
@@ -671,14 +705,14 @@ class TestMessagesPlaceholderTag:
         rendered = jinja_env.from_string("{% messages %}").render(messages=[message])
         assert self._parse_lines(rendered) == [message]
 
-    def test_no_arguments_allowed(self, jinja_env):
+    def test_only_subscript_allowed(self, jinja_env):
         template = '{% messages role="user" %}'
-        with pytest.raises(TemplateSyntaxError, match="does not take any arguments"):
+        with pytest.raises(TemplateSyntaxError, match="only accepts an optional subscript"):
             jinja_env.from_string(template).render(messages=[])
 
     def test_non_message_list_raises_error(self, jinja_env):
         template = "{% messages %}"
-        with pytest.raises(ValueError, match="must be a list of ChatMessage objects"):
+        with pytest.raises(ValueError, match="must be a ChatMessage or a list of ChatMessage objects"):
             jinja_env.from_string(template).render(messages=["not a message"])
 
 
