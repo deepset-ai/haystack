@@ -136,7 +136,7 @@ class ChatMessageExtension(Extension):
         :return: A CallBlock node that expands the (optionally subscripted) `messages` variable.
         :raises TemplateSyntaxError: If the tag is given anything other than a subscript.
         """
-        node: nodes.Node = nodes.Name("messages", "load", lineno=lineno)
+        node: nodes.Expr = nodes.Name("messages", "load", lineno=lineno)
         # Apply any trailing subscripts (`[...]`) directly onto the implicit `messages` name, so users can index or
         # slice the runtime messages, e.g. `{% messages[-1:] %}`.
         while parser.stream.current.type == "lbracket":
