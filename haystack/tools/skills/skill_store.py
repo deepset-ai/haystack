@@ -59,9 +59,9 @@ def _parse_frontmatter(text: str) -> tuple[dict[str, Any], str]:
 @runtime_checkable
 class SkillStore(Protocol):
     """
-    Abstract interface for a skill storage layer.
+    Protocol for a skill storage layer.
 
-    A ``SkillStore`` is responsible for discovering available skills and providing their content on demand.
+    A `SkillStore` is responsible for discovering available skills and providing their content on demand.
     Implement this class to back :class:`~haystack.tools.SkillToolset` with any storage system — a local
     directory, a database, a remote API, or an in-memory fixture.
 
@@ -123,10 +123,6 @@ class SkillStore(Protocol):
 
         :raises NotImplementedError: If the subclass does not implement this method.
         """
-        raise NotImplementedError(
-            f"'{type(self).__name__}' does not implement to_dict(). "
-            "Override to_dict() and from_dict() to enable serialization."
-        )
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "SkillStore":
@@ -140,10 +136,6 @@ class SkillStore(Protocol):
         :param data: Dictionary as produced by :meth:`to_dict`.
         :raises NotImplementedError: If the subclass does not implement this method.
         """
-        raise NotImplementedError(
-            f"'{cls.__name__}' does not implement from_dict(). "
-            "Override to_dict() and from_dict() to enable deserialization."
-        )
 
 
 class FileSystemSkillStore(SkillStore):
