@@ -20,3 +20,6 @@ features:
     The tag also accepts an optional subscript to select a slice or a single message, for example
     ``{% messages[-1] %}`` (last message), ``{% messages[-1:] %}`` (last message as a list) or
     ``{% messages[:-1] %}`` (everything but the last message).
+
+    Multiple ``{% messages %}`` tags can be used in a single template, so the runtime messages can be split,
+    reordered, or repeated across different positions.

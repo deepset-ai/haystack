@@ -698,6 +698,29 @@ class TestMessagesPlaceholderTag:
         parsed = self._parse_lines(rendered)
         assert [m.text for m in parsed] == ["sys", "c", "q"]
 
+    def test_multiple_placeholders_split_and_reorder(self, jinja_env):
+        # Each `{% messages %}` tag expands independently, so a template can split the runtime messages across
+        # several positions, interleave literal blocks, and even repeat a slice.
+        messages = [
+            ChatMessage.from_system("S"),
+            ChatMessage.from_user("u1"),
+            ChatMessage.from_assistant("a1"),
+            ChatMessage.from_user("u2"),
+        ]
+        template = (
+            '{% messages[0] %}{% message role="user" %}INJECTED{% endmessage %}{% messages[1:] %}{% messages[-1] %}'
+        )
+        rendered = jinja_env.from_string(template).render(messages=messages)
+        parsed = self._parse_lines(rendered)
+        assert [(m.role.value, m.text) for m in parsed] == [
+            ("system", "S"),
+            ("user", "INJECTED"),
+            ("user", "u1"),
+            ("assistant", "a1"),
+            ("user", "u2"),
+            ("user", "u2"),
+        ]
+
     def test_message_text_with_sentinel_tag_is_not_escaped(self, jinja_env):
         # The tag uses a CallBlock so output bypasses `finalize` sentinel-escaping; message text containing
         # the literal sentinel tag must round trip intact.
