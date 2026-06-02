@@ -24,6 +24,11 @@ jobs:
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           ref: main
+          # Persist the bot token so the branch/tag pushes below authenticate as
+          # HaystackBot (a ruleset-bypass actor) instead of the default
+          # github-actions[bot], which only has contents:read and is blocked by
+          # the release rulesets.
+          token: ${{ secrets.HAYSTACK_BOT_TOKEN }}
 
       - name: Define all versions
         id: versions
