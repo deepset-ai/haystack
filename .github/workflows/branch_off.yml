@@ -1,7 +1,6 @@
 name: Branch off
 
 on:
-  workflow_dispatch:
   workflow_call:
     outputs:
       bump_version_pr_url:
