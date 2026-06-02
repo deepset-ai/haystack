@@ -21,6 +21,9 @@ from haystack.core.pipeline.breakpoint import (
 )
 from haystack.dataclasses import ChatMessage
 from haystack.dataclasses.breakpoints import AgentBreakpoint, Breakpoint, PipelineSnapshot, PipelineState
+from haystack.utils import _deserialize_value_with_schema
+
+_EMPTY_OBJECT_PAYLOAD = {"serialization_schema": {"type": "object", "properties": {}}, "serialized_data": {}}
 
 
 def test_transform_json_structure_unwraps_sender_value():
@@ -239,6 +242,48 @@ class TestCreatePipelineSnapshot:
         assert any("Failed to serialize the inputs of the current pipeline state" in msg for msg in caplog.messages)
         assert any("Failed to serialize original input data for `pipeline.run`." in msg for msg in caplog.messages)
 
+    def test_create_pipeline_snapshot_non_serializable_inputs_snapshot_is_resumable(self, caplog):
+        """
+        Guards against the same non-resumable snapshot regression fixed at the agent level: when
+        top-level pipeline inputs/outputs contain non-serializable values, the snapshot fields
+        must still round-trip through ``_deserialize_value_with_schema`` instead of failing with
+        ``DeserializationError: ... Got: {}``. Serializable sibling components must stay intact.
+        """
+
+        class NonSerializable:
+            def to_dict(self):
+                raise TypeError("Cannot serialize")
+
+        with caplog.at_level(logging.WARNING):
+            snapshot = _create_pipeline_snapshot(
+                inputs={
+                    "comp1": {"input_value": [{"sender": None, "value": NonSerializable()}]},
+                    "comp2": {"input_value": [{"sender": None, "value": "keep me"}]},
+                },
+                component_inputs={},
+                break_point=Breakpoint(component_name="comp3"),
+                component_visits={"comp1": 1, "comp2": 1, "comp3": 0},
+                original_input_data={"comp1": {"input_value": NonSerializable()}},
+                ordered_component_names=["comp1", "comp2", "comp3"],
+                include_outputs_from=set(),
+                pipeline_outputs={"comp1": {"result": NonSerializable()}},
+            )
+
+        # No DeserializationError on any of the three pipeline-level payloads.
+        deserialized_inputs = _deserialize_value_with_schema(snapshot.pipeline_state.inputs)
+        deserialized_original_input_data = _deserialize_value_with_schema(snapshot.original_input_data)
+        deserialized_outputs = _deserialize_value_with_schema(snapshot.pipeline_state.pipeline_outputs)
+
+        # The non-serializable comp1 field is omitted while the serializable siblings are preserved.
+        assert "comp1" not in deserialized_inputs
+        assert deserialized_inputs["comp2"] == {"input_value": "keep me"}
+        assert deserialized_inputs["comp3"] == {}
+        # original_input_data and pipeline_outputs degrade to empty-but-valid payloads.
+        assert deserialized_original_input_data == {}
+        assert deserialized_outputs == {}
+        assert any("Failed to serialize the inputs of the current pipeline state" in msg for msg in caplog.messages)
+        assert any("Failed to serialize outputs of the current pipeline state" in msg for msg in caplog.messages)
+
 
 class TestCreateAgentSnapshot:
     def test_create_agent_snapshot_non_serializable_chat_generator(self, caplog):
@@ -257,8 +302,8 @@ class TestCreateAgentSnapshot:
                 component_inputs={"chat_generator": {"messages": NonSerializable()}, "tool_invoker": {"messages": []}},
             )
 
-        assert snapshot.component_inputs["chat_generator"] == {}
-        assert snapshot.component_inputs["tool_invoker"] != {}
+        assert snapshot.component_inputs["chat_generator"] == _EMPTY_OBJECT_PAYLOAD
+        assert snapshot.component_inputs["tool_invoker"] != _EMPTY_OBJECT_PAYLOAD
         assert "Failed to serialize the agent's chat_generator inputs" in caplog.text
 
     def test_create_agent_snapshot_non_serializable_tool_invoker(self, caplog):
@@ -277,8 +322,8 @@ class TestCreateAgentSnapshot:
                 component_inputs={"chat_generator": {"messages": []}, "tool_invoker": {"messages": NonSerializable()}},
             )
 
-        assert snapshot.component_inputs["tool_invoker"] == {}
-        assert snapshot.component_inputs["chat_generator"] != {}
+        assert snapshot.component_inputs["tool_invoker"] == _EMPTY_OBJECT_PAYLOAD
+        assert snapshot.component_inputs["chat_generator"] != _EMPTY_OBJECT_PAYLOAD
         assert "Failed to serialize the agent's tool_invoker inputs" in caplog.text
 
     def test_create_agent_snapshot_both_non_serializable(self, caplog):
@@ -300,12 +345,47 @@ class TestCreateAgentSnapshot:
                 },
             )
 
-        assert snapshot.component_inputs["chat_generator"] == {}
-        assert snapshot.component_inputs["tool_invoker"] == {}
+        assert snapshot.component_inputs["chat_generator"] == _EMPTY_OBJECT_PAYLOAD
+        assert snapshot.component_inputs["tool_invoker"] == _EMPTY_OBJECT_PAYLOAD
         assert "Failed to serialize the agent's chat_generator inputs" in caplog.text
         assert "Failed to serialize the agent's tool_invoker inputs" in caplog.text
         assert snapshot.component_visits == {"chat_generator": 1, "tool_invoker": 0}
         assert snapshot.break_point == agent_breakpoint
+
+    def test_create_agent_snapshot_all_fields_non_serializable_payload_is_deserializable(self, caplog):
+        """
+        When every field of a sub-component input fails to serialize, the resulting payload must still be a
+        structurally valid ``{"serialization_schema", "serialized_data"}`` pair so that
+        ``_deserialize_value_with_schema`` can load it back (rather than raising ``DeserializationError`` as it would
+        for a bare ``{}``). This guards against the snapshot being silently non-resumable in the all-fields-fail path.
+        """
+
+        class NonSerializable:
+            def to_dict(self):
+                raise TypeError("Cannot serialize")
+
+        agent_breakpoint = AgentBreakpoint(
+            agent_name="agent", break_point=Breakpoint(component_name="chat_generator", visit_count=1)
+        )
+
+        with caplog.at_level(logging.WARNING):
+            snapshot = _create_agent_snapshot(
+                component_visits={"chat_generator": 1, "tool_invoker": 0},
+                agent_breakpoint=agent_breakpoint,
+                component_inputs={
+                    "chat_generator": {"streaming_callback": NonSerializable()},
+                    "tool_invoker": {"streaming_callback": NonSerializable()},
+                },
+            )
+
+        for component_name in ("chat_generator", "tool_invoker"):
+            payload = snapshot.component_inputs[component_name]
+            assert "serialization_schema" in payload
+            assert "serialized_data" in payload
+            assert payload["serialization_schema"] == {"type": "object", "properties": {}}
+            assert payload["serialized_data"] == {}
+            # Round-trip: deserializer must accept the empty-but-valid payload without raising.
+            assert _deserialize_value_with_schema(payload) == {}
 
 
 def test_save_pipeline_snapshot_raises_on_failure(tmp_path, caplog, monkeypatch):

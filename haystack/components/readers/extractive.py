@@ -265,7 +265,7 @@ class ExtractiveReader:
         attention_mask: "torch.Tensor",
         answers_per_seq: int,
         encodings: list["Encoding"],
-    ) -> tuple[list[list[int]], list[list[int]], "torch.Tensor"]:
+    ) -> tuple[list[list[int]], list[list[int]], list["torch.Tensor"]]:
         """
         Turns start and end logits into probabilities for each answer span.
 
@@ -302,10 +302,12 @@ class ExtractiveReader:
 
         start_candidates_tokens_to_chars = []
         end_candidates_tokens_to_chars = []
+        valid_candidates_values: list[torch.Tensor] = []
         for i, (s_candidates, e_candidates, encoding) in enumerate(
             zip(start_candidates, end_candidates, encodings, strict=True)
         ):
-            # Those with probabilities > 0 are valid
+            # Those with probabilities > 0 are valid. topk may include masked candidates
+            # when answers_per_seq exceeds the number of valid spans, so filter all three lists together.
             valid = candidates_values[i] > 0
             s_char_spans = []
             e_char_spans = []
@@ -318,12 +320,13 @@ class ExtractiveReader:
                 e_char_spans.append(encoding.token_to_chars(end_token)[1])
             start_candidates_tokens_to_chars.append(s_char_spans)
             end_candidates_tokens_to_chars.append(e_char_spans)
+            valid_candidates_values.append(candidates_values[i][valid])
 
-        return start_candidates_tokens_to_chars, end_candidates_tokens_to_chars, candidates_values
+        return start_candidates_tokens_to_chars, end_candidates_tokens_to_chars, valid_candidates_values
 
     def _add_answer_page_number(self, answer: ExtractedAnswer) -> ExtractedAnswer:
         if answer.meta is None:
-            answer.meta = {}
+            answer = replace(answer, meta={})
 
         if answer.document_offset is None:
             return answer
@@ -351,7 +354,7 @@ class ExtractiveReader:
         *,
         start: list[list[int]],
         end: list[list[int]],
-        probabilities: "torch.Tensor",
+        probabilities: list["torch.Tensor"],
         flattened_documents: list[Document],
         queries: list[str],
         answers_per_seq: int,
@@ -389,6 +392,10 @@ class ExtractiveReader:
         nested_answers = []
         for query_id in range(query_ids[-1] + 1):
             current_answers = []
+            # `i // answers_per_seq` assumes every sequence contributes exactly `answers_per_seq`
+            # answers. That's not guaranteed (see _postprocess: invalid candidates are
+            # filtered out per sequence), but is fine here because `run` always passes a single
+            # query, so every entry in `query_ids` is 0 and the index lookup is correct for any i.
             while i < len(answers_without_query) and query_ids[i // answers_per_seq] == query_id:
                 current_answers.append(replace(answers_without_query[i], query=queries[query_id]))
                 i += 1

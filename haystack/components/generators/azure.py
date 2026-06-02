@@ -27,10 +27,8 @@ class AzureOpenAIGenerator(OpenAIGenerator):
     the component or when you run it. Any parameter that works with
     `openai.ChatCompletion.create` will work here too.
 
-
     For details on OpenAI API parameters, see
     [OpenAI documentation](https://platform.openai.com/docs/api-reference/chat).
-
 
     ### Usage example
     <!-- test-ignore -->

@@ -2,6 +2,8 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+from typing import Literal
+
 import pytest
 
 from haystack.document_stores.types import FilterPolicy, apply_filter_policy
@@ -168,7 +170,7 @@ def test_merge_comparison_filters_with_same_field():
 
 
 @pytest.mark.parametrize("logical_operator", ["AND", "OR", "NOT"])
-def test_merge_with_custom_logical_operator(logical_operator: str):
+def test_merge_with_custom_logical_operator(logical_operator: Literal["AND", "OR", "NOT"]) -> None:
     """
     Merging with a custom logical operator
 

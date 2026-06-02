@@ -38,6 +38,22 @@ extract_dl_doc_meta(dl_doc: DoclingDocument) -> dict[str, Any]
 
 Extract Docling document meta.
 
+#### to_dict
+
+```python
+to_dict() -> dict[str, Any]
+```
+
+Serialize to a dictionary.
+
+#### from_dict
+
+```python
+from_dict(data: dict[str, Any]) -> BaseMetaExtractor
+```
+
+Deserialize from a dictionary.
+
 ### MetaExtractor
 
 Bases: <code>BaseMetaExtractor</code>
@@ -70,7 +86,7 @@ Docling Haystack converter.
 __init__(
     converter: DocumentConverter | None = None,
     convert_kwargs: dict[str, Any] | None = None,
-    export_type: ExportType = ExportType.DOC_CHUNKS,
+    export_type: ExportType = ExportType.MARKDOWN,
     md_export_kwargs: dict[str, Any] | None = None,
     chunker: BaseChunker | None = None,
     meta_extractor: BaseMetaExtractor | None = None,
@@ -87,10 +103,10 @@ Create a Docling Haystack converter.
   system default is used.
 - **export_type** (<code>ExportType</code>) – The export mode to use:
 
-* `ExportType.MARKDOWN` captures each input document as a single
+* `ExportType.MARKDOWN` (default) captures each input document as a single
   markdown `Document`.
-* `ExportType.DOC_CHUNKS` (default) first chunks each input document
-  and then returns one `Document` per chunk.
+* `ExportType.DOC_CHUNKS` first chunks each input document and then returns
+  one `Document` per chunk.
 * `ExportType.JSON` serializes the full Docling document to a JSON string.
 
 - **md_export_kwargs** (<code>dict\[str, Any\] | None</code>) – Any parameters to pass to Markdown export (applicable in
@@ -99,6 +115,34 @@ Create a Docling Haystack converter.
   is used.
 - **meta_extractor** (<code>BaseMetaExtractor | None</code>) – The extractor instance to use for populating the output
   document metadata; if not set, a system default is used.
+
+#### to_dict
+
+```python
+to_dict() -> dict[str, Any]
+```
+
+Serialize this component to a dictionary.
+
+#### from_dict
+
+```python
+from_dict(data: dict[str, Any]) -> DoclingConverter
+```
+
+Deserialize this component from a dictionary.
+
+The `converter` and `chunker` parameters are not serializable and are always ignored during
+deserialization; the restored instance will use the default `DocumentConverter` and `HybridChunker`
+respectively.
+
+**Parameters:**
+
+- **data** (<code>dict\[str, Any\]</code>) – Dictionary with keys `type` and `init_parameters`, as produced by `to_dict`.
+
+**Returns:**
+
+- <code>DoclingConverter</code> – A new `DoclingConverter` instance.
 
 #### run
 

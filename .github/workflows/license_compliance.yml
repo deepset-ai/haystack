@@ -12,6 +12,9 @@ on:
 env:
   PYTHON_VERSION: "3.10"
 
+permissions:
+  contents: read
+
 jobs:
   license_check_direct:
     name: Direct dependencies only
@@ -29,7 +32,8 @@ jobs:
 
       - name: Get direct dependencies
         run: |
-          pip install toml
+          python -m pip install --upgrade pip
+          pip install toml --uploaded-prior-to=P1D
           python .github/utils/pyproject_to_requirements.py pyproject.toml > ${{ env.REQUIREMENTS_FILE }}
 
       - name: Check Licenses
@@ -58,6 +62,6 @@ jobs:
 
       - name: Notify Slack on failure
         if: failure()
-        uses: deepset-ai/notify-slack-action@3cda73b77a148f16f703274198e7771340cf862b # v1
+        uses: deepset-ai/notify-slack-action@a65def0c8bf91d6520286ab34280151c76a5a008 # v1.1.0
         with:
           slack-webhook-url: ${{ secrets.SLACK_WEBHOOK_URL_NOTIFICATIONS }}

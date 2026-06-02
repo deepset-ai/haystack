@@ -1,0 +1,23 @@
+---
+upgrade:
+  - |
+    ``LLM.run`` and ``LLM.run_async`` no longer accept ``messages`` and ``streaming_callback`` as positional
+    arguments — they must now be passed as keyword arguments. Update any direct calls accordingly:
+
+    .. code:: python
+
+      # Before
+      llm.run([message], my_callback)
+
+      # After
+      llm.run(messages=[message], streaming_callback=my_callback)
+
+enhancements:
+  - |
+    ``LLM`` now supports two usage modes:
+
+    1. **Template-variable mode**: provide a ``user_prompt`` with Jinja2 variables (e.g. ``{{ query }}``).
+       Those variables become pipeline inputs and ``messages`` is optional. The rendered ``user_prompt``
+       is always appended after any ``messages`` provided at runtime.
+    2. **Pass-through mode**: omit ``user_prompt`` or provide one with no template variables. ``messages``
+       becomes a required input, allowing a fully-constructed list of ``ChatMessage``s to be passed from upstream.

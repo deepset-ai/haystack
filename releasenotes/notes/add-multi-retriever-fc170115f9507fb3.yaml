@@ -1,0 +1,14 @@
+---
+features:
+  - |
+    Added two new retriever components: ``MultiRetriever`` and ``TextEmbeddingRetriever``.
+
+    ``MultiRetriever`` is marked as experimental and may change or be removed in future releases without prior deprecation notice.
+    An ``ExperimentalWarning`` is printed when initializing this component.
+
+    ``MultiRetriever`` combines multiple text retrievers into a single component.
+    All text retrievers are queried in parallel and their results are deduplicated before being returned.
+    Use the ``active_retrievers`` parameter to enable or disable specific retrievers at runtime.
+
+    ``TextEmbeddingRetriever`` wraps an embedding-based retriever together with a text embedder into a single
+    component that implements the ``TextRetriever`` protocol, making it compatible with ``MultiRetriever``.

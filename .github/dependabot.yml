@@ -4,3 +4,30 @@ updates:
     directory: '/'
     schedule:
       interval: 'daily'
+    cooldown:
+      default-days: 1
+
+  - package-ecosystem: 'pip'
+    directory: '/'
+    schedule:
+      interval: 'daily'
+    cooldown:
+      default-days: 1
+
+  - package-ecosystem: 'npm'
+    directory: '/docs-website'
+    schedule:
+      interval: 'daily'
+    cooldown:
+      default-days: 1
+
+  # Tracks the digest-pinned `COPY --from` image (ghcr.io/astral-sh/uv) in
+  # docker/Dockerfile.base. Note: the python:3.12-slim base/builder images are
+  # passed via build args from docker/docker-bake.hcl and the `docker run` image
+  # strings in workflows are not parsed by Dependabot; bump those manually.
+  - package-ecosystem: 'docker'
+    directory: '/docker'
+    schedule:
+      interval: 'daily'
+    cooldown:
+      default-days: 1
