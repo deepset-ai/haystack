@@ -261,12 +261,12 @@
 | haystack/utils/jinja2\_chat\_extension.py                                           |      119 |        1 |     99% |       294 |
 | haystack/utils/jinja2\_extensions.py                                                |       47 |        0 |    100% |           |
 | haystack/utils/jupyter.py                                                           |        9 |        3 |     67% |     15-17 |
-| haystack/utils/misc.py                                                              |       92 |       11 |     88% |49-52, 55, 62-63, 66, 123-126 |
+| haystack/utils/misc.py                                                              |       96 |        5 |     95% |52-53, 129-132 |
 | haystack/utils/requests\_utils.py                                                   |       33 |        0 |    100% |           |
 | haystack/utils/type\_serialization.py                                               |      111 |       12 |     89% |62, 64, 174-175, 186-189, 195, 211-214 |
 | haystack/utils/url\_validation.py                                                   |        4 |        0 |    100% |           |
 | haystack/version.py                                                                 |        5 |        2 |     60% |      9-10 |
-| **TOTAL**                                                                           | **17679** | **1221** | **93%** |           |
+| **TOTAL**                                                                           | **17683** | **1215** | **93%** |           |
 
 
 ## Setup coverage badge
