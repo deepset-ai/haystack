@@ -46,8 +46,8 @@ class TestDocumentJoiner:
         data = {"type": "haystack.components.joiners.document_joiner.DocumentJoiner", "init_parameters": {}}
         document_joiner = DocumentJoiner.from_dict(data)
         assert document_joiner.join_mode == JoinMode.CONCATENATE
-        assert document_joiner.weights == None
-        assert document_joiner.top_k == None
+        assert document_joiner.weights is None
+        assert document_joiner.top_k is None
         assert document_joiner.sort_by_score
 
     def test_from_dict_customs_parameters(self):
