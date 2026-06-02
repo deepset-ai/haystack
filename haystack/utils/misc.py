@@ -58,7 +58,7 @@ def expand_page_range(page_range: list[str | int]) -> list[int]:
 
         elif isinstance(page, str) and "-" in page:
             parts = page.split("-", maxsplit=1)
-            if len(parts) != 2 or not parts[0].isdigit() or not parts[1].isdigit():
+            if not parts[0].isdigit() or not parts[1].isdigit():
                 msg = "range must be a string in the format 'start-end'"
                 raise ValueError(f"Invalid page range: {page} - {msg}")
             start, end = parts
