@@ -1,6 +1,6 @@
 ---
 fixes:
   - |
-    Fixed a ``ValueError: too many values to unpack`` raised when a page range string
+    ``expand_page_range()`` now raises a ``ValueError: too many values to unpack`` when a page range string
     contained more than one hyphen (e.g. ``"10-20-30"``). The parser now validates the
     format and raises a clear ``ValueError`` with an explanatory message for invalid inputs.
