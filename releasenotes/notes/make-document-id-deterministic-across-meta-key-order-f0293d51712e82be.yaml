@@ -2,9 +2,16 @@
 upgrade:
   - |
     The hash used to auto-generate ``Document.id`` is now computed from a
-    canonical (key-sorted) serialization of ``meta``. Documents created with
-    non-empty ``meta`` will therefore get different IDs than they did before.
-    Documents with empty ``meta`` are unaffected.
+    canonical (key-sorted) JSON serialization of ``meta``. Documents with
+    empty ``meta`` are unaffected, but most other documents will get different
+    IDs than they did before:
+
+    * documents with non-empty ``meta`` (the serialization changes from
+      ``dict``'s repr to JSON);
+    * documents whose ``meta`` contains non-JSON-serializable values such as
+      ``datetime`` or custom classes (these are now serialized via ``str(...)``
+      rather than ``repr(...)``, e.g. ``"2024-01-01 00:00:00"`` instead of
+      ``"datetime.datetime(2024, 1, 1, 0, 0)"``).
 
     If you rely on auto-generated IDs to match documents already persisted in a
     ``DocumentStore``, you will need to re-ingest the affected documents (or
