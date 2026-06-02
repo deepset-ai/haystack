@@ -229,6 +229,135 @@ Deserializes the component from a dictionary.
 
 - <code>SupabasePgvectorEmbeddingRetriever</code> – Deserialized component.
 
+## haystack_integrations.components.retrievers.supabase.groonga_bm25_retriever
+
+### SupabaseGroongaBM25Retriever
+
+Retrieves documents from SupabaseGroongaDocumentStore using PGroonga full-text search.
+
+This retriever works without embeddings — it searches documents using plain text queries.
+It can be used alongside SupabasePgvectorEmbeddingRetriever in hybrid search pipelines.
+
+Note: async operations are not supported as the supabase-py sync client does not expose
+awaitable query methods. Use the sync run() method instead.
+
+Example usage:
+
+```python
+from haystack_integrations.document_stores.supabase import SupabaseGroongaDocumentStore
+from haystack_integrations.components.retrievers.supabase import SupabaseGroongaBM25Retriever
+from haystack.utils import Secret
+
+document_store = SupabaseGroongaDocumentStore(
+    supabase_url="https://<project>.supabase.co",
+    supabase_key=Secret.from_env_var("SUPABASE_SERVICE_KEY"),
+    table_name="haystack_fts_documents",
+)
+document_store.warm_up()
+
+retriever = SupabaseGroongaBM25Retriever(document_store=document_store, top_k=10)
+result = retriever.run(query="python programming")
+print(result["documents"])
+```
+
+#### __init__
+
+```python
+__init__(
+    *,
+    document_store: SupabaseGroongaDocumentStore,
+    filters: dict[str, Any] | None = None,
+    top_k: int = 10,
+    filter_policy: str | FilterPolicy = FilterPolicy.REPLACE
+) -> None
+```
+
+Initialize the SupabaseGroongaBM25Retriever.
+
+**Parameters:**
+
+- **document_store** (<code>SupabaseGroongaDocumentStore</code>) – An instance of SupabaseGroongaDocumentStore.
+- **filters** (<code>dict\[str, Any\] | None</code>) – Optional filters applied to retrieved Documents.
+- **top_k** (<code>int</code>) – Maximum number of Documents to return. Defaults to 10.
+- **filter_policy** (<code>str | FilterPolicy</code>) – Policy to determine how filters are applied.
+
+**Raises:**
+
+- <code>ValueError</code> – If document_store is not an instance of SupabaseGroongaDocumentStore.
+
+#### run
+
+```python
+run(
+    query: str, filters: dict[str, Any] | None = None, top_k: int | None = None
+) -> dict[str, list[Document]]
+```
+
+Runs the retriever on the given query.
+
+**Parameters:**
+
+- **query** (<code>str</code>) – The text query to search for.
+- **filters** (<code>dict\[str, Any\] | None</code>) – Optional runtime filters. Merged or replaced based on filter_policy.
+- **top_k** (<code>int | None</code>) – Optional override for maximum number of documents to return.
+
+**Returns:**
+
+- <code>dict\[str, list\[Document\]\]</code> – Dictionary with key "documents" containing list of matching Documents.
+
+#### run_async
+
+```python
+run_async(
+    query: str, filters: dict[str, Any] | None = None, top_k: int | None = None
+) -> dict[str, list[Document]]
+```
+
+Async version of run().
+
+Note: supabase-py's sync client does not support native async queries.
+This method runs the synchronous retrieval and returns the result.
+For fully async support, consider using acreate_client() from supabase-py
+and refactoring the document store accordingly.
+
+**Parameters:**
+
+- **query** (<code>str</code>) – The text query to search for.
+- **filters** (<code>dict\[str, Any\] | None</code>) – Optional runtime filters. Merged or replaced based on filter_policy.
+- **top_k** (<code>int | None</code>) – Optional override for maximum number of documents to return.
+
+**Returns:**
+
+- <code>dict\[str, list\[Document\]\]</code> – Dictionary with key "documents" containing list of matching Documents.
+
+#### to_dict
+
+```python
+to_dict() -> dict[str, Any]
+```
+
+Serializes the component to a dictionary.
+
+**Returns:**
+
+- <code>dict\[str, Any\]</code> – Dictionary with serialized data.
+
+#### from_dict
+
+```python
+from_dict(data: dict[str, Any]) -> SupabaseGroongaBM25Retriever
+```
+
+Deserializes the component from a dictionary.
+
+**Parameters:**
+
+- **data** (<code>dict\[str, Any\]</code>) – Dictionary to deserialize from.
+
+**Returns:**
+
+- <code>SupabaseGroongaBM25Retriever</code> – Deserialized component.
+
 ## haystack_integrations.components.retrievers.supabase.keyword_retriever
 
 ### SupabasePgvectorKeywordRetriever
@@ -442,3 +571,220 @@ Deserializes the component from a dictionary.
 **Returns:**
 
 - <code>SupabasePgvectorDocumentStore</code> – Deserialized component.
+
+## haystack_integrations.document_stores.supabase.groonga_document_store
+
+### SupabaseGroongaDocumentStore
+
+Bases: <code>DocumentStore</code>
+
+A Document Store for Supabase using PGroonga for full-text search.
+
+PGroonga is a PostgreSQL extension for fast, multilingual full-text search.
+Unlike vector search, this store works with plain text queries — no embeddings needed.
+
+Prerequisites:
+
+- A Supabase project with PGroonga extension enabled.
+- Enable PGroonga in your Supabase project by running:
+  `CREATE EXTENSION IF NOT EXISTS pgroonga;`
+
+Example usage:
+
+```python
+from haystack_integrations.document_stores.supabase import SupabaseGroongaDocumentStore
+from haystack.utils import Secret
+
+document_store = SupabaseGroongaDocumentStore(
+    supabase_url="https://<project>.supabase.co",
+    supabase_key=Secret.from_env_var("SUPABASE_SERVICE_KEY"),
+    table_name="haystack_fts_documents",
+)
+document_store.warm_up()
+```
+
+#### __init__
+
+```python
+__init__(
+    *,
+    supabase_url: str,
+    supabase_key: Secret = Secret.from_env_var(
+        "SUPABASE_SERVICE_KEY", strict=False
+    ),
+    table_name: str = "haystack_groonga_documents",
+    recreate_table: bool = False
+) -> None
+```
+
+Creates a new SupabaseGroongaDocumentStore instance.
+
+Note: Call warm_up() before using the store to initialize the client and table.
+
+**Parameters:**
+
+- **supabase_url** (<code>str</code>) – The URL of your Supabase project.
+  Format: `https://<project-ref>.supabase.co`
+- **supabase_key** (<code>Secret</code>) – The service role key for your Supabase project.
+  Defaults to reading from the `SUPABASE_SERVICE_KEY` environment variable.
+- **table_name** (<code>str</code>) – The name of the table to store documents in.
+  Defaults to `haystack_groonga_documents`.
+- **recreate_table** (<code>bool</code>) – Whether to drop and recreate the table on startup.
+  Defaults to `False`.
+
+#### warm_up
+
+```python
+warm_up() -> None
+```
+
+Initializes the Supabase client and sets up the table.
+
+Must be called before using the document store.
+
+#### count_documents
+
+```python
+count_documents() -> int
+```
+
+Returns the number of documents in the store.
+
+**Returns:**
+
+- <code>int</code> – Number of documents.
+
+#### filter_documents
+
+```python
+filter_documents(filters: dict[str, Any] | None = None) -> list[Document]
+```
+
+Returns documents matching the given filters.
+
+Supports the standard Haystack filter syntax with the following operators:
+
+- Comparison: `==`, `!=`, `>`, `>=`, `<`, `<=`, `in`, `not in`
+- Logical: `AND`, `OR`, `NOT` (`OR` and `NOT` support simple conditions
+  only — no nested logical operators inside them)
+
+**Known limitation:** For `!=` and `not in` on `meta.*` fields, documents
+where the field is absent are included in the result (matching Python `None != value`
+semantics). For `>` / `>=` / `<` / `<=`, documents where the field is absent
+are excluded (SQL `NULL` comparison semantics).
+
+**Parameters:**
+
+- **filters** (<code>dict\[str, Any\] | None</code>) – Optional Haystack filter dict.
+  Simple comparison: `{"field": "meta.language", "operator": "==", "value": "en"}`
+  Logical: `{"operator": "AND", "conditions": [...]}`
+
+**Returns:**
+
+- <code>list\[Document\]</code> – List of matching Document objects.
+
+**Raises:**
+
+- <code>FilterError</code> – If the filter structure is malformed or uses an unsupported operator.
+
+#### write_documents
+
+```python
+write_documents(
+    documents: list[Document], policy: DuplicatePolicy = DuplicatePolicy.FAIL
+) -> int
+```
+
+Writes documents to the store.
+
+**Parameters:**
+
+- **documents** (<code>list\[Document\]</code>) – List of Haystack Document objects to write.
+- **policy** (<code>DuplicatePolicy</code>) – How to handle duplicate documents. Defaults to DuplicatePolicy.FAIL.
+
+**Returns:**
+
+- <code>int</code> – Number of documents written.
+
+#### delete_by_filter
+
+```python
+delete_by_filter(filters: dict[str, Any]) -> int
+```
+
+Deletes documents matching the given filters.
+
+**Parameters:**
+
+- **filters** (<code>dict\[str, Any\]</code>) – Filters to select documents for deletion.
+
+**Returns:**
+
+- <code>int</code> – Number of documents deleted.
+
+#### update_by_filter
+
+```python
+update_by_filter(filters: dict[str, Any], meta: dict[str, Any]) -> int
+```
+
+Updates the metadata of documents matching the given filters.
+
+Provided meta fields are merged into the existing document metadata.
+
+**Parameters:**
+
+- **filters** (<code>dict\[str, Any\]</code>) – Filters to select documents to update.
+- **meta** (<code>dict\[str, Any\]</code>) – Metadata fields to set on matching documents.
+
+**Returns:**
+
+- <code>int</code> – Number of documents updated.
+
+#### delete_all_documents
+
+```python
+delete_all_documents() -> None
+```
+
+Deletes all documents from the store.
+
+#### delete_documents
+
+```python
+delete_documents(document_ids: list[str]) -> None
+```
+
+Deletes documents with the given IDs.
+
+**Parameters:**
+
+- **document_ids** (<code>list\[str\]</code>) – List of document IDs to delete.
+
+#### to_dict
+
+```python
+to_dict() -> dict[str, Any]
+```
+
+Serializes the component to a dictionary.
+
+**Returns:**
+
+- <code>dict\[str, Any\]</code> – Dictionary with serialized data.
+
+#### from_dict
+
+```python
+from_dict(data: dict[str, Any]) -> SupabaseGroongaDocumentStore
+```
+
+Deserializes the component from a dictionary.
+
+**Parameters:**
+
+- **data** (<code>dict\[str, Any\]</code>) – Dictionary to deserialize from.
+
+**Returns:**
+
+- <code>SupabaseGroongaDocumentStore</code> – Deserialized component.
