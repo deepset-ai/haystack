@@ -14,7 +14,7 @@ Extracts metadata from documents using a Large Language Model. The metadata is e
 |  |  |
 | --- | --- |
 | **Most common position in a pipeline** | After [PreProcessors](../preprocessors.mdx) in an indexing pipeline |
-| **Mandatory init variables** | `prompt`: The prompt to instruct the LLM on how to extract metadata from the document  <br /> <br />`chat_generator`: A Chat Generator instance which represents the LLM configured to return a JSON object |
+| **Mandatory init variables** | `prompt`: The prompt to instruct the LLM on how to extract metadata from the document. It must contain exactly one variable, called `document`.  <br /> <br />`chat_generator`: A Chat Generator instance which represents the LLM configured to return a JSON object |
 | **Mandatory run variables** | `documents`: A list of documents |
 | **Output variables** | `documents`: A list of documents |
 | **API reference** | [Extractors](/reference/extractors-api) |
@@ -27,7 +27,7 @@ Extracts metadata from documents using a Large Language Model. The metadata is e
 
 The `LLMMetadataExtractor` extraction relies on an LLM and a prompt to perform the metadata extraction. At initialization time, it expects an LLM, a Haystack Generator, and a prompt describing the metadata extraction process.
 
-The prompt should have a variable called `document` that will point to a single document in the list of documents. So, to access the content of the document, you can use `{{ document.content }}` in the prompt.
+The prompt must have exactly one variable, called `document`, that points to a single document in the list of documents. So, to access the content of the document, you can use `{{ document.content }}` in the prompt. The component raises a `ValueError` at initialization if the prompt has no variables, more than one variable, or a variable with a different name.
 
 At runtime, it expects a list of documents and will run the LLM on each document in the list, extracting metadata from the document. The metadata will be added to the document's metadata field.
 
