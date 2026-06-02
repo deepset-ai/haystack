@@ -80,6 +80,20 @@ class TestLLMMetadataExtractor:
                 prompt="prompt {{ wrong_variable }}", expected_keys=["key1", "key2"], chat_generator=chat_generator
             )
 
+    def test_init_no_prompt_variable(self, monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+        chat_generator = OpenAIChatGenerator()
+
+        with pytest.raises(ValueError, match="exactly one variable called 'document'.*no variables"):
+            _ = LLMMetadataExtractor(prompt="prompt without variables", chat_generator=chat_generator)
+
+    def test_init_too_many_prompt_variables(self, monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+        chat_generator = OpenAIChatGenerator()
+
+        with pytest.raises(ValueError, match="exactly one variable called 'document'"):
+            _ = LLMMetadataExtractor(prompt="prompt {{ document.content }} {{ extra }}", chat_generator=chat_generator)
+
     def test_init_fails_without_chat_generator(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
         with pytest.raises(TypeError):
