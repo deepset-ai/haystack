@@ -233,7 +233,7 @@ class FileSystemSkillStore(SkillStore):
 
     def to_dict(self) -> dict[str, Any]:
         """Serialize this store to a dictionary for use with :meth:`from_dict`."""
-        return {"type": generate_qualified_class_name(type(self)), "data": {"skills_dir": str(self.skills_dir)}}
+        return default_to_dict(self, skills_dir=str(self.skills_dir))
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "FileSystemSkillStore":
