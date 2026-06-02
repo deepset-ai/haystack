@@ -2,14 +2,13 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
+from typing import Any, Protocol, runtime_checkable
 
 import yaml
 
-from haystack.core.serialization import generate_qualified_class_name
+from haystack.core.serialization import default_from_dict, default_to_dict
 
 SKILL_FILE_NAME = "SKILL.md"
 
@@ -57,7 +56,8 @@ def _parse_frontmatter(text: str) -> tuple[dict[str, Any], str]:
     return loaded, body.lstrip("\n")
 
 
-class SkillStore(ABC):
+@runtime_checkable
+class SkillStore(Protocol):
     """
     Abstract interface for a skill storage layer.
 
@@ -70,7 +70,6 @@ class SkillStore(ABC):
     implementations may defer I/O until a skill is actually needed.
     """
 
-    @abstractmethod
     def list_skills(self) -> dict[str, SkillMeta]:
         """
         Discover and return all available skills.
@@ -80,7 +79,6 @@ class SkillStore(ABC):
         :returns: Mapping of skill name to its metadata.
         """
 
-    @abstractmethod
     def load_skill_body(self, name: str) -> str:
         """
         Return the markdown body of the named skill's instructions.
@@ -90,7 +88,6 @@ class SkillStore(ABC):
         :raises KeyError: If no skill with ``name`` exists.
         """
 
-    @abstractmethod
     def list_skill_files(self, name: str) -> list[str]:
         """
         Return the relative paths of any files bundled with the named skill.
@@ -100,7 +97,6 @@ class SkillStore(ABC):
         :raises KeyError: If no skill with ``name`` exists.
         """
 
-    @abstractmethod
     def read_skill_file(self, name: str, path: str) -> str:
         """
         Read a file bundled with the named skill.
