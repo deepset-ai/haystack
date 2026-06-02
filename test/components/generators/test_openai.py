@@ -329,3 +329,77 @@ class TestOpenAIGenerator:
             assert "replies" in response
             assert "Hello" in response["replies"][0]
             assert response["meta"][0]["finish_reason"] == "stop"
+
+
+class TestOpenAIGeneratorAsync:
+    @pytest.mark.asyncio
+    async def test_run_async(self, openai_mock_async_chat_completion):
+        component = OpenAIGenerator(api_key=Secret.from_token("test-api-key"))
+        response = await component.run_async("What's Natural Language Processing?")
+
+        assert isinstance(response, dict)
+        assert "replies" in response
+        assert isinstance(response["replies"], list)
+        assert len(response["replies"]) == 1
+        assert isinstance(response["replies"][0], str)
+        assert "meta" in response
+
+    @pytest.mark.asyncio
+    async def test_run_async_with_streaming(self, openai_mock_async_chat_completion_chunk):
+        streaming_callback_called = False
+
+        async def streaming_callback(chunk: StreamingChunk) -> None:
+            nonlocal streaming_callback_called
+            streaming_callback_called = True
+
+        component = OpenAIGenerator(api_key=Secret.from_token("test-api-key"), streaming_callback=streaming_callback)
+        response = await component.run_async("Come on, stream!")
+
+        assert streaming_callback_called
+        assert isinstance(response, dict)
+        assert "replies" in response
+        assert isinstance(response["replies"], list)
+        assert len(response["replies"]) == 1
+        assert "Hello" in response["replies"][0]
+
+    @pytest.mark.asyncio
+    async def test_run_async_with_system_prompt(self, openai_mock_async_chat_completion):
+        component = OpenAIGenerator(
+            api_key=Secret.from_token("test-api-key"), system_prompt="You are a helpful assistant."
+        )
+        response = await component.run_async("What is Python?")
+
+        assert isinstance(response, dict)
+        assert "replies" in response
+
+        _, kwargs = openai_mock_async_chat_completion.call_args
+        messages = kwargs["messages"]
+        assert messages[0]["role"] == "system"
+        assert messages[0]["content"] == "You are a helpful assistant."
+
+    @pytest.mark.asyncio
+    async def test_run_async_with_runtime_system_prompt(self, openai_mock_async_chat_completion):
+        component = OpenAIGenerator(api_key=Secret.from_token("test-api-key"))
+        response = await component.run_async("What is Python?", system_prompt="Be concise.")
+
+        assert isinstance(response, dict)
+        assert "replies" in response
+
+        _, kwargs = openai_mock_async_chat_completion.call_args
+        messages = kwargs["messages"]
+        assert messages[0]["role"] == "system"
+        assert messages[0]["content"] == "Be concise."
+
+    @pytest.mark.asyncio
+    async def test_run_async_with_params(self, openai_mock_async_chat_completion):
+        component = OpenAIGenerator(
+            api_key=Secret.from_token("test-api-key"),
+            generation_kwargs={"max_completion_tokens": 10, "temperature": 0.5},
+        )
+        response = await component.run_async("What's Natural Language Processing?")
+
+        _, kwargs = openai_mock_async_chat_completion.call_args
+        assert kwargs["max_completion_tokens"] == 10
+        assert kwargs["temperature"] == 0.5
+        assert isinstance(response, dict)
+        assert "replies" in response

@@ -5,7 +5,7 @@
 import os
 from typing import Any
 
-from openai import OpenAI, Stream
+from openai import AsyncOpenAI, AsyncStream, OpenAI, Stream
 from openai.types.chat import ChatCompletion, ChatCompletionChunk
 
 from haystack import component, default_from_dict, default_to_dict, logging
@@ -141,6 +141,14 @@ class OpenAIGenerator:
             max_retries=max_retries,
             http_client=init_http_client(self.http_client_kwargs, async_client=False),
         )
+        self.async_client = AsyncOpenAI(
+            api_key=api_key.resolve_value(),
+            organization=organization,
+            base_url=api_base_url,
+            timeout=timeout,
+            max_retries=max_retries,
+            http_client=init_http_client(self.http_client_kwargs, async_client=True),
+        )
 
     def _get_telemetry_data(self) -> dict[str, Any]:
         """
@@ -261,6 +269,89 @@ class OpenAIGenerator:
             ]
 
         # before returning, do post-processing of the completions
+        for response in completions:
+            _check_finish_reason(response.meta)
+
+        return {
+            "replies": [message.text or "" for message in completions],
+            "meta": [message.meta for message in completions],
+        }
+
+    @component.output_types(replies=list[str], meta=list[dict[str, Any]])
+    async def run_async(
+        self,
+        prompt: str,
+        system_prompt: str | None = None,
+        streaming_callback: StreamingCallbackT | None = None,
+        generation_kwargs: dict[str, Any] | None = None,
+    ) -> dict[str, list[str] | list[dict[str, Any]]]:
+        """
+        Asynchronously invoke the text generation inference based on the provided prompt and generation parameters.
+
+        This is the asynchronous version of the ``run`` method. It has the same parameters and return values
+        but can be used with ``await`` in async code or within an ``AsyncPipeline``.
+
+        :param prompt:
+            The string prompt to use for text generation.
+        :param system_prompt:
+            The system prompt to use for text generation. If this run time system prompt is omitted, the system
+            prompt, if defined at initialisation time, is used.
+        :param streaming_callback:
+            A callback coroutine that is called when a new token is received from the stream.
+            Must be an async function (coroutine).
+        :param generation_kwargs:
+            Additional keyword arguments for text generation. These parameters will potentially override the parameters
+            passed in the ``__init__`` method. For more details on the parameters supported by the OpenAI API, refer to
+            the OpenAI `documentation <https://platform.openai.com/docs/api-reference/chat/create>`_.
+        :returns:
+            A list of strings containing the generated responses and a list of dictionaries containing the metadata
+            for each response.
+        """
+        message = ChatMessage.from_user(prompt)
+        if system_prompt is not None:
+            messages = [ChatMessage.from_system(system_prompt), message]
+        elif self.system_prompt:
+            messages = [ChatMessage.from_system(self.system_prompt), message]
+        else:
+            messages = [message]
+
+        generation_kwargs = {**self.generation_kwargs, **(generation_kwargs or {})}
+
+        streaming_callback = select_streaming_callback(
+            init_callback=self.streaming_callback, runtime_callback=streaming_callback, requires_async=True
+        )
+
+        openai_formatted_messages = [message.to_openai_dict_format() for message in messages]
+
+        completion: AsyncStream[ChatCompletionChunk] | ChatCompletion = await self.async_client.chat.completions.create(
+            model=self.model,
+            messages=openai_formatted_messages,  # type: ignore
+            stream=streaming_callback is not None,
+            **generation_kwargs,
+        )
+
+        completions: list[ChatMessage] = []
+        if streaming_callback is not None:
+            num_responses = generation_kwargs.pop("n", 1)
+            if num_responses > 1:
+                raise ValueError("Cannot stream multiple responses, please set n=1.")
+
+            component_info = ComponentInfo.from_component(self)
+            chunks: list[StreamingChunk] = []
+            async for chunk in completion:  # type: ignore
+                chunk_delta: StreamingChunk = _convert_chat_completion_chunk_to_streaming_chunk(
+                    chunk=chunk, previous_chunks=chunks, component_info=component_info
+                )
+                chunks.append(chunk_delta)
+                await streaming_callback(chunk_delta)
+
+            completions = [_convert_streaming_chunks_to_chat_message(chunks=chunks)]
+        elif isinstance(completion, ChatCompletion):
+            completions = [
+                _convert_chat_completion_to_chat_message(completion=completion, choice=choice)
+                for choice in completion.choices
+            ]
+
         for response in completions:
             _check_finish_reason(response.meta)
 

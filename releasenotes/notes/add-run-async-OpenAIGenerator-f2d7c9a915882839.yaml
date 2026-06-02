@@ -1,0 +1,7 @@
+---
+features:
+  - |
+    Add ``run_async`` method to ``OpenAIGenerator``. This method uses the async OpenAI client
+    (``AsyncOpenAI``) internally and can be used with ``await`` in async code or inside an
+    ``AsyncPipeline``. It has the same parameters and return values as ``run``, with
+    ``streaming_callback`` expected to be a coroutine when streaming is used.
