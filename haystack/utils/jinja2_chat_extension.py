@@ -220,7 +220,7 @@ class ChatMessageExtension(Extension):
 
         return json.dumps(chat_message.to_dict()) + "\n"
 
-    def _build_messages_json(self, messages: Any, caller: Callable[[], str]) -> str:  # noqa: ARG002
+    def _build_messages_json(self, messages: list[ChatMessage], caller: Callable[[], str]) -> str:  # noqa: ARG002
         """
         Expand a list of ChatMessage objects into newline-separated JSON, one message per line.
 
@@ -231,7 +231,8 @@ class ChatMessageExtension(Extension):
         trip without loss.
 
         :param messages: The list of ChatMessage objects bound to the `messages` template variable. A missing or
-            empty value expands to nothing.
+            empty value expands to nothing. The value is validated at render time because it comes from untrusted
+            template input.
         :param caller: Callable that returns the (empty) rendered body. Unused.
         :return: Newline-terminated JSON lines, one per message, or an empty string if there are no messages.
         :raises ValueError: If `messages` is not a list of ChatMessage objects.

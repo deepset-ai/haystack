@@ -664,6 +664,13 @@ class TestMessagesPlaceholderTag:
         rendered = jinja_env.from_string("{% messages %}").render(messages=messages)
         assert self._parse_lines(rendered) == messages
 
+    def test_message_text_with_sentinel_tag_is_not_escaped(self, jinja_env):
+        # The tag uses a CallBlock so output bypasses `finalize` sentinel-escaping; message text containing
+        # the literal sentinel tag must round trip intact.
+        message = ChatMessage.from_user("see <haystack_content_part> here")
+        rendered = jinja_env.from_string("{% messages %}").render(messages=[message])
+        assert self._parse_lines(rendered) == [message]
+
     def test_no_arguments_allowed(self, jinja_env):
         template = '{% messages role="user" %}'
         with pytest.raises(TemplateSyntaxError, match="does not take any arguments"):
