@@ -1,0 +1,131 @@
+---
+title: "RagasEvaluator"
+id: ragasevaluator
+slug: "/ragasevaluator"
+description: "This component evaluates Haystack pipelines using LLM-based metrics. It supports metrics like context relevance, factual accuracy, response relevance, and more."
+---
+
+# RagasEvaluator
+
+This component evaluates Haystack pipelines using LLM-based metrics. It supports metrics like context relevance, factual accuracy, response relevance, and more.
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | On its own or in an evaluation pipeline. To be used after a separate pipeline has generated the inputs for the Evaluator. |
+| **Mandatory init variables** | `ragas_metrics`: A list of modern Ragas metrics from `ragas.metrics.collections`. Each metric must be fully configured (including its LLM) at construction time. |
+| **Mandatory run variables** | The expected inputs will change based on the metrics you are evaluating, but can include `query`, `response`, `documents`, `reference_contexts`, `multi_responses`, `reference`, and `rubrics`. |
+| **Output variables** | `result`: A dictionary mapping metric names to their `MetricResult`. |
+| **API reference** | [Ragas](/reference/integrations-ragas) |
+| **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/ragas |
+| **Package name** | `ragas-haystack` |
+
+</div>
+
+Ragas is an evaluation framework that provides a number of LLM-based evaluation metrics. You can use the `RagasEvaluator` component to evaluate a Haystack pipeline, such as a retrieval-augmented generative pipeline, against one of the metrics provided by Ragas.
+
+## Supported Metrics
+
+The `RagasEvaluator` supports the modern Ragas metrics API. You can pass any metric from `ragas.metrics.collections` (such as `Faithfulness`, `AnswerRelevancy`, `ContextPrecision`, etc.) as long as it is a `SimpleBaseMetric` instance. Each metric must be fully configured (including its LLM and embeddings) at construction time.
+
+For a complete guide on these metrics, visit the [Ragas documentation](https://docs.ragas.io/).
+
+## Parameters Overview
+
+To initialize a `RagasEvaluator`, you need to provide the following parameters:
+
+- `ragas_metrics`: A list of modern Ragas metrics from `ragas.metrics.collections`. Each metric must be fully configured (including its LLM) at construction time.
+
+## Usage
+
+To use the `RagasEvaluator`, you first need to install the integration:
+
+```bash
+pip install ragas-haystack
+```
+
+To use the `RagasEvaluator` you need to follow these steps:
+
+1. Initialize the `RagasEvaluator` while providing the fully configured metrics you want to use.
+2. Run the `RagasEvaluator`, either on its own or in a pipeline, by providing the expected inputs for the metrics you are using (e.g. `query`, `documents`, `response`, etc.).
+
+### Examples
+
+#### Evaluate Answer Relevancy
+
+To create an answer relevancy evaluation pipeline (note that the `OPENAI_API_KEY` environment variable must be set for this example to work):
+
+```python
+from haystack import Pipeline
+from haystack_integrations.components.evaluators.ragas import RagasEvaluator
+from openai import AsyncOpenAI
+from ragas.llms import llm_factory
+from ragas.embeddings import embedding_factory
+from ragas.metrics.collections import AnswerRelevancy
+
+client = AsyncOpenAI()
+llm = llm_factory("gpt-4o-mini", client=client)
+embeddings = embedding_factory("openai", model="text-embedding-3-small", client=client)
+
+pipeline = Pipeline()
+evaluator = RagasEvaluator(
+    ragas_metrics=[AnswerRelevancy(llm=llm, embeddings=embeddings)],
+)
+pipeline.add_component("evaluator", evaluator)
+```
+
+To run the evaluation pipeline, you should have the _expected inputs_ for the metric ready at hand. This metric expects a `query` and `response`, which should come from the results of the pipeline you want to evaluate.
+
+```python
+results = pipeline.run(
+    {
+        "evaluator": {
+            "query": "Where is the Pyramid of Giza?",
+            "response": "The Pyramid of Giza is located in Egypt.",
+        },
+    },
+)
+```
+
+#### Evaluate Context Precision and Faithfulness
+
+To create a pipeline that evaluates multiple metrics at once:
+
+```python
+from haystack import Pipeline
+from haystack_integrations.components.evaluators.ragas import RagasEvaluator
+from openai import AsyncOpenAI
+from ragas.llms import llm_factory
+from ragas.metrics.collections import ContextPrecision, Faithfulness
+
+client = AsyncOpenAI()
+llm = llm_factory("gpt-4o-mini", client=client)
+
+pipeline = Pipeline()
+evaluator = RagasEvaluator(
+    ragas_metrics=[ContextPrecision(llm=llm), Faithfulness(llm=llm)],
+)
+pipeline.add_component("evaluator", evaluator)
+```
+
+To run the evaluation pipeline, you should provide the combined inputs required by all metrics.
+
+```python
+results = pipeline.run(
+    {
+        "evaluator": {
+            "query": "Which is the most popular global sport?",
+            "documents": [
+                "The popularity of sports can be measured in various ways, including TV viewership, social media presence, number of participants, and economic impact. Football is undoubtedly the world's most popular sport with major events like the FIFA World Cup and sports personalities like Ronaldo and Messi, drawing a followership of more than 4 billion people."
+            ],
+            "response": "Football is the most popular sport with around 4 billion followers worldwide",
+            "reference": "Football is the most popular sport",
+        },
+    },
+)
+```
+
+## Additional References
+
+🧑‍🍳 Cookbook: [Evaluate a RAG pipeline using Ragas integration](https://haystack.deepset.ai/cookbook/rag_eval_ragas)
