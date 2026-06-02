@@ -584,6 +584,17 @@ class TestComponentTool:
         result = tool.invoke(messages=[{"role": "user", "content": [{"text": "A 4-day trip in the south of France"}]}])
         assert result["last_message"] == ChatMessage.from_assistant("Answer")
 
+    def test_convert_param_union_with_list_arm(self):
+        @component
+        class ComponentWithUnionMessages:
+            @component.output_types(reply=str)
+            def run(self, messages: list[ChatMessage] | str) -> dict:
+                return {"reply": "ok"}
+
+        tool = ComponentTool(component=ComponentWithUnionMessages())
+        result = tool._convert_param([{"role": "user", "content": "Hello"}], list[ChatMessage] | str)  # type: ignore[arg-type]
+        assert result == [ChatMessage.from_user("Hello")]
+
 
 def _agent_tool_messages(result: dict[str, Any]) -> list[ChatMessage]:
     return [message for message in result["agent"]["messages"] if message.is_from(ChatRole.TOOL)]
@@ -903,8 +914,10 @@ class TestComponentToolInAgent:
     def test_deepcopy_with_jinja_based_component(self):
         builder = PromptBuilder("{{query}}")
         tool = ComponentTool(component=builder)
+        assert tool.function is not None
         result = tool.function(query="Hello")
         tool_copy = _deepcopy_with_exceptions(tool)
+        assert tool_copy.function is not None
         result_from_copy = tool_copy.function(query="Hello")
         assert "prompt" in result_from_copy
         assert result_from_copy["prompt"] == result["prompt"]
@@ -933,3 +946,50 @@ class TestComponentToolInAgent:
             result = pipeline.run({"llm": {"messages": [ChatMessage.from_user(text="Hello")], "tools": [tool]}})
 
         assert result["llm"]["replies"][0].text == "A response from the model"
+
+
+@component
+class SyncOnlyComponent:
+    @component.output_types(reply=str)
+    def run(self, text: str) -> dict[str, str]:
+        return {"reply": f"sync:{text}"}
+
+
+@component
+class DualModeComponent:
+    @component.output_types(reply=str)
+    def run(self, text: str) -> dict[str, str]:
+        return {"reply": f"sync:{text}"}
+
+    @component.output_types(reply=str)
+    async def run_async(self, text: str) -> dict[str, str]:
+        return {"reply": f"async:{text}"}
+
+
+@pytest.fixture
+def sync_tool():
+    return ComponentTool(component=SyncOnlyComponent())
+
+
+@pytest.fixture
+def dual_tool():
+    return ComponentTool(component=DualModeComponent())
+
+
+class TestComponentToolAsync:
+    def test_async_function_is_wired_only_when_component_has_run_async(self, sync_tool, dual_tool):
+        assert sync_tool.function is not None
+        assert sync_tool.async_function is None
+        assert dual_tool.function is not None
+        assert dual_tool.async_function is not None
+
+    @pytest.mark.asyncio
+    async def test_invoke_async_uses_run_async_when_available(self, dual_tool):
+        assert await dual_tool.invoke_async(text="hi") == {"reply": "async:hi"}
+
+    @pytest.mark.asyncio
+    async def test_invoke_async_falls_back_to_run_for_sync_only_component(self, sync_tool):
+        assert await sync_tool.invoke_async(text="hi") == {"reply": "sync:hi"}
+
+    def test_invoke_uses_run_on_dual_mode_component(self, dual_tool):
+        assert dual_tool.invoke(text="hi") == {"reply": "sync:hi"}

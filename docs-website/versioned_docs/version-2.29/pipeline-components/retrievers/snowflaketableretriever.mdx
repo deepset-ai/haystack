@@ -38,27 +38,31 @@ pip install snowflake-haystack
 ### On its own
 
 ```python
-from haystack_integrations.components.retrievers.snowflake import SnowflakeTableRetriever
+from haystack.utils import Secret
+from haystack_integrations.components.retrievers.snowflake import (
+    SnowflakeTableRetriever,
+)
 
-snowflake = SnowflakeRetriever(
+snowflake = SnowflakeTableRetriever(
     user="<ACCOUNT-USER>",
     account="<ACCOUNT-IDENTIFIER>",
     api_key=Secret.from_env_var("SNOWFLAKE_API_KEY"),
     warehouse="<WAREHOUSE-NAME>",
 )
 
-snowflake.run(query="""select * from table limit 10;"""")
+snowflake.run(query="select * from table limit 10;")
 ```
 
 ### In a pipeline
 
-In the following pipeline example, the `PromptBuilder` is using the table received from the `SnowflakeTableRetriever` to create a prompt template and pass it on to an LLM:
+In the following pipeline example, the `ChatPromptBuilder` is using the table received from the `SnowflakeTableRetriever` to create a prompt and pass it on to an LLM:
 
 ```python
 from haystack import Pipeline
 from haystack.utils import Secret
-from haystack.components.builders import PromptBuilder
-from haystack.components.generators import OpenAIGenerator
+from haystack.components.builders import ChatPromptBuilder
+from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.dataclasses import ChatMessage
 from haystack_integrations.components.retrievers.snowflake import (
     SnowflakeTableRetriever,
 )
@@ -73,13 +77,16 @@ executor = SnowflakeTableRetriever(
 pipeline = Pipeline()
 pipeline.add_component(
     "builder",
-    PromptBuilder(template="Describe this table: {{ table }}"),
+    ChatPromptBuilder(
+        template=[ChatMessage.from_user("Describe this table: {{ table }}")],
+        required_variables="*",
+    ),
 )
 pipeline.add_component("snowflake", executor)
-pipeline.add_component("llm", OpenAIGenerator(model="gpt-4o"))
+pipeline.add_component("llm", OpenAIChatGenerator(model="gpt-4o"))
 
 pipeline.connect("snowflake.table", "builder.table")
-pipeline.connect("builder", "llm")
+pipeline.connect("builder.prompt", "llm.messages")
 
 pipeline.run(data={"query": "select employee, salary from table limit 10;"})
 ```

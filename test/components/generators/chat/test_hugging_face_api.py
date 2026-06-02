@@ -273,6 +273,7 @@ class TestHuggingFaceAPIChatGenerator:
             {
                 "type": "haystack.tools.tool.Tool",
                 "data": {
+                    "async_function": None,
                     "description": "description",
                     "function": "builtins.print",
                     "inputs_from_state": None,
@@ -346,6 +347,7 @@ class TestHuggingFaceAPIChatGenerator:
                                     "description": "description",
                                     "parameters": {"x": {"type": "string"}},
                                     "function": "builtins.print",
+                                    "async_function": None,
                                 },
                             }
                         ],
@@ -390,6 +392,20 @@ class TestHuggingFaceAPIChatGenerator:
         assert isinstance(response["replies"], list)
         assert len(response["replies"]) == 1
         assert [isinstance(reply, ChatMessage) for reply in response["replies"]]
+
+    def test_run_with_string_input(self, mock_check_valid_model, mock_chat_completion):
+        generator = HuggingFaceAPIChatGenerator(
+            api_type=HFGenerationAPIType.SERVERLESS_INFERENCE_API,
+            api_params={"model": "meta-llama/Llama-2-13b-chat-hf"},
+        )
+        response = generator.run("What's the capital of France?")
+
+        _, kwargs = mock_chat_completion.call_args
+        assert kwargs["messages"] == [{"role": "user", "content": "What's the capital of France?"}]
+
+        assert isinstance(response["replies"], list)
+        assert len(response["replies"]) == 1
+        assert isinstance(response["replies"][0], ChatMessage)
 
     def test_run_with_streaming_callback(self, mock_check_valid_model, mock_chat_completion, chat_messages):
         streaming_call_count = 0
@@ -925,6 +941,20 @@ class TestHuggingFaceAPIChatGenerator:
         assert len(response["replies"]) == 1
         assert [isinstance(reply, ChatMessage) for reply in response["replies"]]
 
+    async def test_run_async_with_string_input(self, mock_check_valid_model, mock_chat_completion_async):
+        generator = HuggingFaceAPIChatGenerator(
+            api_type=HFGenerationAPIType.SERVERLESS_INFERENCE_API,
+            api_params={"model": "meta-llama/Llama-2-13b-chat-hf"},
+        )
+        response = await generator.run_async("What's the capital of France?")
+
+        _, kwargs = mock_chat_completion_async.call_args
+        assert kwargs["messages"] == [{"role": "user", "content": "What's the capital of France?"}]
+
+        assert isinstance(response["replies"], list)
+        assert len(response["replies"]) == 1
+        assert isinstance(response["replies"][0], ChatMessage)
+
     @pytest.mark.asyncio
     async def test_run_async_with_streaming(self, mock_check_valid_model, mock_chat_completion_async, chat_messages):
         streaming_call_count = 0
@@ -1184,6 +1214,7 @@ class TestHuggingFaceAPIChatGenerator:
                                 "required": ["city"],
                             },
                             "function": "generators.chat.test_hugging_face_api.get_weather",
+                            "async_function": None,
                             "outputs_to_string": None,
                             "inputs_from_state": None,
                             "outputs_to_state": None,

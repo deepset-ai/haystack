@@ -154,7 +154,7 @@ doc_search.add_component("llm", llm)
 
 doc_search.connect("text_embedder.embedding", "retriever.query_embedding")
 doc_search.connect("retriever.documents", "prompt_builder.documents")
-doc_search.connect("prompt_builder.messages", "llm.messages")
+doc_search.connect("prompt_builder.prompt", "llm.messages")
 
 query = "How can I deploy Mistral models with Cloudflare?"
 

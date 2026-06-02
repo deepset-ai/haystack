@@ -31,6 +31,7 @@ from haystack.tools.tool import (
     _serialize_outputs_to_state,
     _serialize_outputs_to_string,
 )
+from haystack.utils.type_serialization import _is_union_type
 
 logger = logging.getLogger(__name__)
 
@@ -200,6 +201,29 @@ class ComponentTool(Tool):
             )
             return dict(component.run(**converted_kwargs))
 
+        async def async_component_invoker(**kwargs: Any) -> dict[str, Any]:
+            """
+            Asynchronous counterpart of `component_invoker`. Awaits the component's `run_async`.
+
+            :param kwargs: The keyword arguments to invoke the component with.
+            :returns: The result of the component invocation.
+            """
+            input_sockets = component.__haystack_input__._sockets_dict  # type: ignore[attr-defined]
+            converted_kwargs = {
+                param_name: self._convert_param(param_value, input_sockets[param_name].type)
+                for param_name, param_value in kwargs.items()
+            }
+            logger.debug(
+                "Invoking component {component_type} asynchronously with kwargs: {converted_kwargs}",
+                component_type=type(component),
+                converted_kwargs=converted_kwargs,
+            )
+            # We know run_async exists at this point b/c we only pass the async invoker if the component has
+            # __haystack_supports_async__ = True
+            return dict(await component.run_async(**converted_kwargs))  # type: ignore[attr-defined]
+
+        component_supports_async = getattr(component, "__haystack_supports_async__", False)
+
         # Generate a name for the tool if not provided
         if not name:
             class_name = component.__class__.__name__
@@ -217,12 +241,14 @@ class ComponentTool(Tool):
         self._component = component
         self._is_warmed_up = False
 
-        # Create the Tool instance with the component invoker as the function to be called and the schema
+        # Create the Tool instance with the component invoker as the function to be called and the schema.
+        # When the wrapped component exposes a `run_async`, also pass the async invoker.
         super().__init__(
             name=name,
             description=description,
             parameters=tool_schema,
             function=component_invoker,
+            async_function=async_component_invoker if component_supports_async else None,
             inputs_from_state=inputs_from_state,
             outputs_to_state=outputs_to_state,
             outputs_to_string=outputs_to_string,
@@ -364,6 +390,17 @@ class ComponentTool(Tool):
         """
         # We unwrap optional types so we can support types like messages: list[ChatMessage] | None
         unwrapped_param_type = _unwrap_optional(param_type)
+
+        # We handle union types (e.g. list[ChatMessage] | str) by extracting the list[T] arm that has
+        # from_dict, so the conversion below works the same as for plain list[T]. Other arms like str
+        # need no special handling and fall through to Pydantic or the plain return at the end.
+        if _is_union_type(unwrapped_param_type):
+            list_arms = [
+                a
+                for a in get_args(unwrapped_param_type)
+                if get_origin(a) is list and get_args(a) and hasattr(get_args(a)[0], "from_dict")
+            ]
+            unwrapped_param_type = list_arms[0] if list_arms else unwrapped_param_type
 
         # We support calling from_dict on target types that have it, even if they are wrapped in a list.
         # This allows us to support lists of dataclasses as well as single dataclass inputs.

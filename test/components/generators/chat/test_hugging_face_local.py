@@ -210,6 +210,7 @@ class TestHuggingFaceLocalChatGenerator:
                     "description": "useful to determine the weather in a given location",
                     "parameters": {"type": "object", "properties": {"city": {"type": "string"}}, "required": ["city"]},
                     "function": "generators.chat.test_hugging_face_local.get_weather",
+                    "async_function": None,
                 },
             }
         ]
@@ -402,6 +403,19 @@ class TestHuggingFaceLocalChatGenerator:
         chat_message = results["replies"][0]
         assert chat_message.is_from(ChatRole.ASSISTANT)
         assert chat_message.text == "Berlin is cool"
+
+    def test_run_with_string_input(self, model_info_mock, mock_pipeline_with_tokenizer):
+        generator = HuggingFaceLocalChatGenerator(model="meta-llama/Llama-2-13b-chat-hf")
+        generator.pipeline = mock_pipeline_with_tokenizer
+
+        results = generator.run("Who is the best American actor?")
+
+        assert mock_pipeline_with_tokenizer.tokenizer.apply_chat_template.call_args[0][0] == [
+            {"role": "user", "content": "Who is the best American actor?"}
+        ]
+        assert "replies" in results
+        assert isinstance(results["replies"][0], ChatMessage)
+        assert results["replies"][0].is_from(ChatRole.ASSISTANT)
 
     def test_run_with_custom_generation_parameters(self, model_info_mock, mock_pipeline_with_tokenizer, chat_messages):
         generator = HuggingFaceLocalChatGenerator(model="meta-llama/Llama-2-13b-chat-hf")
@@ -662,6 +676,20 @@ class TestHuggingFaceLocalChatGeneratorAsync:
         assert chat_message.text == "Berlin is cool"
         generator.shutdown()
 
+    async def test_run_async_with_string_input(self, model_info_mock, mock_pipeline_with_tokenizer):
+        generator = HuggingFaceLocalChatGenerator(model="meta-llama/Llama-2-13b-chat-hf")
+        generator.pipeline = mock_pipeline_with_tokenizer
+
+        results = await generator.run_async("Who is the best American actor?")
+
+        assert mock_pipeline_with_tokenizer.tokenizer.apply_chat_template.call_args[0][0] == [
+            {"role": "user", "content": "Who is the best American actor?"}
+        ]
+        assert "replies" in results
+        assert isinstance(results["replies"][0], ChatMessage)
+        assert results["replies"][0].is_from(ChatRole.ASSISTANT)
+        generator.shutdown()
+
     @pytest.mark.asyncio
     async def test_run_async_with_tools(self, model_info_mock, mock_pipeline_with_tokenizer, tools):
         """Test async functionality with tools"""
@@ -756,6 +784,7 @@ class TestHuggingFaceLocalChatGeneratorAsync:
                                 "required": ["city"],
                             },
                             "function": "generators.chat.test_hugging_face_local.get_weather",
+                            "async_function": None,
                             "outputs_to_string": None,
                             "inputs_from_state": None,
                             "outputs_to_state": None,
