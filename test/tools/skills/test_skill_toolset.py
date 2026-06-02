@@ -4,8 +4,37 @@
 
 import pytest
 
-from haystack.tools import SkillToolset
-from haystack.tools.skills.skill_toolset import _parse_frontmatter
+from haystack.core.serialization import generate_qualified_class_name
+from haystack.tools import FileSystemSkillStore, SkillMeta, SkillStore, SkillToolset
+from haystack.tools.skills.skill_store import _parse_frontmatter
+
+
+class _SerializableStore(SkillStore):
+    """Module-level custom store used to test round-trip serialization."""
+
+    def __init__(self, skills: dict[str, str]) -> None:
+        self._data = skills
+
+    def list_skills(self) -> dict[str, SkillMeta]:
+        return {name: SkillMeta(name=name, description=desc) for name, desc in self._data.items()}
+
+    def load_skill_body(self, name: str) -> str:
+        if name not in self._data:
+            raise KeyError(name)
+        return f"Instructions for {name}."
+
+    def list_skill_files(self, name: str) -> list[str]:
+        return []
+
+    def read_skill_file(self, name: str, path: str) -> str:
+        raise FileNotFoundError
+
+    def to_dict(self) -> dict:
+        return {"type": generate_qualified_class_name(type(self)), "data": {"skills": self._data}}
+
+    @classmethod
+    def from_dict(cls, data: dict) -> "_SerializableStore":
+        return cls(skills=data["data"]["skills"])
 
 
 def _write_skill(skills_dir, name, description=None, body="Instructions.", files=None):
@@ -39,6 +68,83 @@ class TestParseFrontmatter:
             _parse_frontmatter("---\n- just\n- a\n- list\n---\nbody")
 
 
+class TestFileSystemSkillStore:
+    def test_list_skills(self, tmp_path):
+        _write_skill(tmp_path, "pdf-forms", description="Fill PDF forms.")
+        _write_skill(tmp_path, "excel", description="Edit spreadsheets.")
+
+        store = FileSystemSkillStore(tmp_path)
+        skills = store.list_skills()
+
+        assert set(skills) == {"pdf-forms", "excel"}
+        assert skills["pdf-forms"].description == "Fill PDF forms."
+        assert skills["pdf-forms"].path == tmp_path / "pdf-forms"
+
+    def test_missing_directory_raises(self, tmp_path):
+        with pytest.raises(ValueError, match="does not exist"):
+            FileSystemSkillStore(tmp_path / "nope")
+
+    def test_missing_description_raises(self, tmp_path):
+        _write_skill(tmp_path, "broken", description=None)
+        with pytest.raises(ValueError, match="missing a 'description'"):
+            FileSystemSkillStore(tmp_path)
+
+    def test_load_skill_body(self, tmp_path):
+        _write_skill(tmp_path, "pdf-forms", description="d", body="Step 1. Do the thing.")
+        store = FileSystemSkillStore(tmp_path)
+        assert store.load_skill_body("pdf-forms") == "Step 1. Do the thing."
+
+    def test_load_skill_body_unknown_raises(self, tmp_path):
+        _write_skill(tmp_path, "pdf-forms", description="d")
+        store = FileSystemSkillStore(tmp_path)
+        with pytest.raises(KeyError):
+            store.load_skill_body("nope")
+
+    def test_list_skill_files(self, tmp_path):
+        _write_skill(tmp_path, "pdf-forms", description="d", files={"reference/forms.md": "details"})
+        store = FileSystemSkillStore(tmp_path)
+        assert store.list_skill_files("pdf-forms") == ["reference/forms.md"]
+
+    def test_list_skill_files_empty(self, tmp_path):
+        _write_skill(tmp_path, "pdf-forms", description="d")
+        store = FileSystemSkillStore(tmp_path)
+        assert store.list_skill_files("pdf-forms") == []
+
+    def test_list_skill_files_unknown_raises(self, tmp_path):
+        _write_skill(tmp_path, "pdf-forms", description="d")
+        store = FileSystemSkillStore(tmp_path)
+        with pytest.raises(KeyError):
+            store.list_skill_files("nope")
+
+    def test_read_skill_file(self, tmp_path):
+        _write_skill(tmp_path, "pdf-forms", description="d", files={"reference/forms.md": "form details"})
+        store = FileSystemSkillStore(tmp_path)
+        assert store.read_skill_file("pdf-forms", "reference/forms.md") == "form details"
+
+    def test_read_skill_file_blocks_traversal(self, tmp_path):
+        _write_skill(tmp_path, "pdf-forms", description="d")
+        (tmp_path / "secret.txt").write_text("top secret")
+        store = FileSystemSkillStore(tmp_path)
+        with pytest.raises(PermissionError, match="escapes"):
+            store.read_skill_file("pdf-forms", "../secret.txt")
+
+    def test_read_skill_file_missing_raises(self, tmp_path):
+        _write_skill(tmp_path, "pdf-forms", description="d")
+        store = FileSystemSkillStore(tmp_path)
+        with pytest.raises(FileNotFoundError, match="not found"):
+            store.read_skill_file("pdf-forms", "nope.md")
+
+    def test_read_skill_file_unknown_skill_raises(self, tmp_path):
+        _write_skill(tmp_path, "pdf-forms", description="d")
+        store = FileSystemSkillStore(tmp_path)
+        with pytest.raises(KeyError):
+            store.read_skill_file("nope", "anything.md")
+
+    def test_is_skill_store_subclass(self, tmp_path):
+        _write_skill(tmp_path, "pdf-forms", description="d")
+        assert isinstance(FileSystemSkillStore(tmp_path), SkillStore)
+
+
 class TestSkillToolset:
     def test_scans_skills(self, tmp_path):
         _write_skill(tmp_path, "pdf-forms", description="Use to fill PDF forms.")
@@ -49,6 +155,37 @@ class TestSkillToolset:
         assert set(toolset.skills) == {"pdf-forms", "excel"}
         assert toolset.skills["pdf-forms"].description == "Use to fill PDF forms."
         assert {t.name for t in toolset} == {"load_skill", "read_skill_file"}
+
+    def test_accepts_skill_store_instance(self, tmp_path):
+        _write_skill(tmp_path, "pdf-forms", description="Use to fill PDF forms.")
+        store = FileSystemSkillStore(tmp_path)
+        toolset = SkillToolset(store)
+        assert set(toolset.skills) == {"pdf-forms"}
+        assert toolset._store is store
+
+    def test_skills_dir_property_with_path(self, tmp_path):
+        _write_skill(tmp_path, "pdf-forms", description="d")
+        toolset = SkillToolset(tmp_path)
+        assert toolset.skills_dir == tmp_path
+
+    def test_skills_dir_property_with_custom_store(self, tmp_path):
+        _write_skill(tmp_path, "pdf-forms", description="d")
+
+        class _InMemoryStore(SkillStore):
+            def list_skills(self):
+                return {"pdf-forms": SkillMeta(name="pdf-forms", description="d")}
+
+            def load_skill_body(self, name):
+                return "body"
+
+            def list_skill_files(self, name):
+                return []
+
+            def read_skill_file(self, name, path):
+                raise FileNotFoundError
+
+        toolset = SkillToolset(_InMemoryStore())
+        assert toolset.skills_dir is None
 
     def test_missing_directory_raises(self, tmp_path):
         with pytest.raises(ValueError, match="does not exist"):
@@ -112,8 +249,67 @@ class TestSkillToolset:
         data = toolset.to_dict()
         assert data == {
             "type": "haystack.tools.skills.skill_toolset.SkillToolset",
-            "data": {"skills_dir": str(tmp_path)},
+            "data": {
+                "store": {
+                    "type": "haystack.tools.skills.skill_store.FileSystemSkillStore",
+                    "data": {"skills_dir": str(tmp_path)},
+                }
+            },
         }
 
         restored = SkillToolset.from_dict(data)
         assert set(restored.skills) == {"pdf-forms"}
+
+    def test_from_dict_legacy_format(self, tmp_path):
+        _write_skill(tmp_path, "pdf-forms", description="Use to fill PDF forms.")
+        legacy = {"type": "haystack.tools.skills.skill_toolset.SkillToolset", "data": {"skills_dir": str(tmp_path)}}
+        restored = SkillToolset.from_dict(legacy)
+        assert set(restored.skills) == {"pdf-forms"}
+
+    def test_to_dict_raises_for_non_serializable_store(self):
+        class _InMemoryStore(SkillStore):
+            def list_skills(self):
+                return {}
+
+            def load_skill_body(self, name):
+                raise KeyError(name)
+
+            def list_skill_files(self, name):
+                raise KeyError(name)
+
+            def read_skill_file(self, name, path):
+                raise KeyError(name)
+
+        with pytest.raises(NotImplementedError):
+            SkillToolset(_InMemoryStore()).to_dict()
+
+    def test_to_dict_and_from_dict_with_custom_serializable_store(self):
+        store = _SerializableStore(skills={"demo": "A demo skill."})
+        toolset = SkillToolset(store)
+
+        serialized = toolset.to_dict()
+        assert serialized["data"]["store"]["data"]["skills"] == {"demo": "A demo skill."}
+
+        restored = SkillToolset.from_dict(serialized)
+        assert set(restored.skills) == {"demo"}
+
+    def test_load_skill_via_custom_store(self, tmp_path):
+        class _InMemoryStore(SkillStore):
+            def list_skills(self):
+                return {"demo": SkillMeta(name="demo", description="A demo skill.")}
+
+            def load_skill_body(self, name):
+                if name != "demo":
+                    raise KeyError(name)
+                return "Do the demo thing."
+
+            def list_skill_files(self, name):
+                return []
+
+            def read_skill_file(self, name, path):
+                raise FileNotFoundError
+
+        toolset = SkillToolset(_InMemoryStore())
+        load_skill = next(t for t in toolset if t.name == "load_skill")
+        assert load_skill.invoke(name="demo") == "Do the demo thing."
+        assert "Unknown skill 'nope'" in load_skill.invoke(name="nope")

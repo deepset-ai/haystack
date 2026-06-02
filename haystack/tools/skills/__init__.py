@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from haystack.tools.skills.skill_toolset import SkillMeta, SkillToolset
+from haystack.tools.skills.skill_store import FileSystemSkillStore, SkillMeta, SkillStore
+from haystack.tools.skills.skill_toolset import SkillToolset
 
-__all__ = ["SkillMeta", "SkillToolset"]
+__all__ = ["FileSystemSkillStore", "SkillMeta", "SkillStore", "SkillToolset"]
