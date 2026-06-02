@@ -19,7 +19,7 @@ class TestOpenAITextEmbedder:
 
         assert embedder.client.api_key == "fake-api-key"
         assert embedder.model == "text-embedding-ada-002"
-        assert embedder.api_base_url == None
+        assert embedder.api_base_url is None
         assert embedder.organization is None
         assert embedder.prefix == ""
         assert embedder.suffix == ""
