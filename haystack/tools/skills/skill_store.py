@@ -238,4 +238,4 @@ class FileSystemSkillStore(SkillStore):
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "FileSystemSkillStore":
         """Deserialize a FileSystemSkillStore from its dictionary representation."""
-        return cls(skills_dir=data["data"]["skills_dir"])
+        return default_from_dict(cls, data)
