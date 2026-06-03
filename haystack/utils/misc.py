@@ -39,6 +39,8 @@ def expand_page_range(page_range: list[str | int]) -> list[int]:
     :param page_range: List of page numbers and ranges
     :returns:
         An expanded list of page integers
+    :raises ValueError:
+        If any element is not a valid integer or a range string in the format `'start-end'`.
 
     """
     expanded_page_range = []
@@ -55,7 +57,11 @@ def expand_page_range(page_range: list[str | int]) -> list[int]:
             expanded_page_range.append(int(page))
 
         elif isinstance(page, str) and "-" in page:
-            start, end = page.split("-")
+            parts = page.split("-", maxsplit=1)
+            if not parts[0].isdigit() or not parts[1].isdigit():
+                msg = "range must be a string in the format 'start-end'"
+                raise ValueError(f"Invalid page range: {page} - {msg}")
+            start, end = parts
             expanded_page_range.extend(range(int(start), int(end) + 1))
 
         else:

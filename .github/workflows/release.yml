@@ -13,8 +13,34 @@ concurrency:
   group: release
   cancel-in-progress: false
 
+permissions:
+  contents: read
+
 jobs:
+  authorize:
+    # Releasing acts as HaystackBot (a ruleset-bypass actor), so the ruleset
+    # cannot enforce *who* started the release. Gate on the triggering user's
+    # role instead: only maintainers/admins may run this workflow, even though
+    # workflow_dispatch itself is available to anyone with write access.
+    runs-on: ubuntu-slim
+    steps:
+      - name: Verify the triggering user may release
+        env:
+          GH_TOKEN: ${{ secrets.HAYSTACK_BOT_TOKEN }}
+          ACTOR: ${{ github.triggering_actor }}
+        run: |
+          ROLE=$(gh api "repos/${{ github.repository }}/collaborators/${ACTOR}/permission" --jq '.role_name')
+          echo "::notice::${ACTOR} has repository role '${ROLE}'"
+          case "$ROLE" in
+            admin|maintain)
+              echo "✅ ${ACTOR} is authorized to trigger a release." ;;
+            *)
+              echo "::error::${ACTOR} has role '${ROLE}'. A release can only be triggered by a user with the 'maintain' or 'admin' role."
+              exit 1 ;;
+          esac
+
   parse-validate-version:
+    needs: ["authorize"]
     runs-on: ubuntu-slim
     outputs:
       version: ${{ steps.parse-validate.outputs.version }}
