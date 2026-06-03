@@ -7,15 +7,7 @@ from typing import Annotated, Any
 
 from haystack.core.serialization import generate_qualified_class_name, import_class_by_name
 from haystack.tools.from_function import create_tool_from_function
-
-# Re-exported for backward compatibility with code that imports these from this module.
-from haystack.tools.skills.skill_store import (  # noqa: F401
-    SKILL_FILE_NAME,
-    FileSystemSkillStore,
-    SkillMeta,
-    SkillStore,
-    _parse_frontmatter,
-)
+from haystack.tools.skills.skill_store import FileSystemSkillStore, SkillMeta, SkillStore
 from haystack.tools.tool import Tool
 from haystack.tools.toolset import Toolset
 
@@ -35,35 +27,35 @@ class SkillToolset(Toolset):
 
     **Filesystem usage** — pass a directory path directly:
 
-    .. code-block:: python
+    ```python
+    from haystack.components.agents import Agent
+    from haystack.components.generators.chat import OpenAIChatGenerator
+    from haystack.dataclasses import ChatMessage
+    from haystack.tools import SkillToolset
 
-        from haystack.components.agents import Agent
-        from haystack.components.generators.chat import OpenAIChatGenerator
-        from haystack.dataclasses import ChatMessage
-        from haystack.tools import SkillToolset
-
-        skills = SkillToolset("skills/")
-        agent = Agent(chat_generator=OpenAIChatGenerator(), tools=skills)
-        result = agent.run(messages=[ChatMessage.from_user("Fill in this PDF form for me.")])
+    skills = SkillToolset("skills/")
+    agent = Agent(chat_generator=OpenAIChatGenerator(), tools=skills)
+    result = agent.run(messages=[ChatMessage.from_user("Fill in this PDF form for me.")])
+    ```
 
     **Custom store** — pass any :class:`~haystack.tools.SkillStore` implementation:
 
-    .. code-block:: python
+    ```python
+    from haystack.tools import SkillToolset
+    from haystack.tools.skills import FileSystemSkillStore
 
-        from haystack.tools import SkillToolset
-        from haystack.tools.skills import FileSystemSkillStore
-
-        store = FileSystemSkillStore("skills/")
-        skills = SkillToolset(store)
+    store = FileSystemSkillStore("skills/")
+    skills = SkillToolset(store)
+    ```
 
     Expected filesystem layout:
 
-    .. code-block::
-
-        skills/
-          pdf-forms/
-            SKILL.md            # frontmatter (name, description) + markdown instructions
-            reference/forms.md
+    ```
+    skills/
+      pdf-forms/
+        SKILL.md            # frontmatter (name, description) + markdown instructions
+        reference/forms.md
+    ```
     """
 
     def __init__(self, skills_dir: "SkillStore | str | Path") -> None:
@@ -83,11 +75,6 @@ class SkillToolset(Toolset):
 
         self._skills: dict[str, SkillMeta] = self._store.list_skills()
         super().__init__(tools=[self._create_load_skill_tool(), self._create_read_skill_file_tool()])
-
-    @property
-    def skills_dir(self) -> Path | None:
-        """The skills directory, if this toolset is backed by a :class:`FileSystemSkillStore`; ``None`` otherwise."""
-        return getattr(self._store, "skills_dir", None)
 
     @property
     def skills(self) -> dict[str, SkillMeta]:

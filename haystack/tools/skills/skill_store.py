@@ -142,12 +142,14 @@ class FileSystemSkillStore:
     """
     :class:`SkillStore` backed by a directory of skill sub-directories on the local filesystem.
 
-    Expected layout::
+    Expected layout:
 
-        skills/
-          pdf-forms/
-            SKILL.md            # frontmatter (name, description) + markdown instructions
-            reference/forms.md  # optional bundled file
+    ```
+    skills/
+      pdf-forms/
+        SKILL.md            # frontmatter (name, description) + markdown instructions
+        reference/forms.md  # optional bundled file
+    ```
 
     Only the frontmatter of each ``SKILL.md`` is read at construction time (cheap); bodies and bundled
     files are read lazily when the agent calls the corresponding tool.
