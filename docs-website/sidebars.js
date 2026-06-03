@@ -570,6 +570,8 @@ export default {
             'pipeline-components/retrievers/opensearchbm25retriever',
             'pipeline-components/retrievers/opensearchembeddingretriever',
             'pipeline-components/retrievers/opensearchhybridretriever',
+            'pipeline-components/retrievers/oracleembeddingretriever',
+            'pipeline-components/retrievers/oraclekeywordretriever',
             'pipeline-components/retrievers/pgvectorembeddingretriever',
             'pipeline-components/retrievers/pgvectorkeywordretriever',
             'pipeline-components/retrievers/pineconedenseretriever',
