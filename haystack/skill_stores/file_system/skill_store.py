@@ -8,10 +8,11 @@ from typing import Any
 import yaml
 
 from haystack.core.serialization import default_from_dict, default_to_dict
-from haystack.skill_stores.types.protocol import SKILL_FILE_NAME, SkillMeta
+from haystack.dataclasses.skill_meta import SkillMeta
+from haystack.skill_stores.types.protocol import SKILL_FILE_NAME
 
 
-def parse_frontmatter(text: str) -> tuple[dict[str, Any], str]:
+def _parse_frontmatter(text: str) -> tuple[dict[str, Any], str]:
     """
     Split a `SKILL.md` file into its YAML frontmatter and markdown body.
 
@@ -71,7 +72,7 @@ class FileSystemSkillStore:
         skills: dict[str, SkillMeta] = {}
         for skill_file in sorted(self.skills_dir.glob(f"*/{SKILL_FILE_NAME}")):
             skill_dir = skill_file.parent
-            frontmatter, _ = parse_frontmatter(skill_file.read_text(encoding="utf-8"))
+            frontmatter, _ = _parse_frontmatter(skill_file.read_text(encoding="utf-8"))
 
             name = frontmatter.get("name", skill_dir.name)
             description = frontmatter.get("description")
@@ -94,7 +95,7 @@ class FileSystemSkillStore:
             raise KeyError(name)
         if meta.path is None:
             raise ValueError(f"Skill '{name}' is missing its directory path in metadata.")
-        _, body = parse_frontmatter((meta.path / SKILL_FILE_NAME).read_text(encoding="utf-8"))
+        _, body = _parse_frontmatter((meta.path / SKILL_FILE_NAME).read_text(encoding="utf-8"))
         return body
 
     def list_skill_files(self, name: str) -> list[str]:

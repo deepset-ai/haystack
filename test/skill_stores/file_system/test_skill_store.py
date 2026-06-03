@@ -4,7 +4,7 @@
 
 import pytest
 
-from haystack.skill_stores.file_system.skill_store import FileSystemSkillStore, parse_frontmatter
+from haystack.skill_stores.file_system.skill_store import FileSystemSkillStore, _parse_frontmatter
 from haystack.skill_stores.types.protocol import SkillStore
 
 
@@ -25,18 +25,18 @@ def _write_skill(skills_dir, name, description=None, body="Instructions.", files
 
 class TestParseFrontmatter:
     def test_parses_frontmatter_and_body(self):
-        frontmatter, body = parse_frontmatter("---\nname: a\ndescription: d\n---\nThe body.")
+        frontmatter, body = _parse_frontmatter("---\nname: a\ndescription: d\n---\nThe body.")
         assert frontmatter == {"name": "a", "description": "d"}
         assert body == "The body."
 
     def test_no_frontmatter_returns_empty_mapping(self):
-        frontmatter, body = parse_frontmatter("Just a body, no frontmatter.")
+        frontmatter, body = _parse_frontmatter("Just a body, no frontmatter.")
         assert frontmatter == {}
         assert body == "Just a body, no frontmatter."
 
     def test_non_mapping_frontmatter_raises(self):
         with pytest.raises(ValueError):
-            parse_frontmatter("---\n- just\n- a\n- list\n---\nbody")
+            _parse_frontmatter("---\n- just\n- a\n- list\n---\nbody")
 
 
 class TestFileSystemSkillStore:

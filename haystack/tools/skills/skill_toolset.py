@@ -4,11 +4,13 @@
 
 from typing import Annotated, Any
 
-from haystack.core.serialization import default_from_dict, generate_qualified_class_name, import_class_by_name
-from haystack.skill_stores.types.protocol import SkillMeta, SkillStore
+from haystack.core.serialization import generate_qualified_class_name
+from haystack.dataclasses.skill_meta import SkillMeta
+from haystack.skill_stores.types.protocol import SkillStore
 from haystack.tools.from_function import create_tool_from_function
 from haystack.tools.tool import Tool
 from haystack.tools.toolset import Toolset
+from haystack.utils.deserialization import deserialize_component_inplace
 
 
 class SkillToolset(Toolset):
@@ -31,7 +33,7 @@ class SkillToolset(Toolset):
     from haystack.components.generators.chat import OpenAIChatGenerator
     from haystack.dataclasses import ChatMessage
     from haystack.tools import SkillToolset
-    from haystack.tools.skills import FileSystemSkillStore
+    from haystack.skill_stores import FileSystemSkillStore
 
     store = FileSystemSkillStore("skills/")
     skills = SkillToolset(store)
@@ -53,7 +55,7 @@ class SkillToolset(Toolset):
         """
         Initialize the SkillToolset.
 
-        :param store: A `haystack.tools.SkillStore` instance to back this toolset.
+        :param store: A `haystack.skill_stores.SkillStore` instance to back this toolset.
         """
         self._store = store
 
@@ -131,11 +133,7 @@ class SkillToolset(Toolset):
         """
         Serialize the toolset to a dictionary.
 
-        Delegates to the backing store's `haystack.tools.skills.SkillStore.to_dict` method.
-        Tools are rebuilt by re-scanning on deserialization — only the store descriptor is persisted.
-
         :returns: Dictionary representation of the toolset.
-        :raises NotImplementedError: If the backing store does not implement `to_dict()`.
         """
         return {"type": generate_qualified_class_name(type(self)), "data": {"store": self._store.to_dict()}}
 
@@ -148,11 +146,5 @@ class SkillToolset(Toolset):
         :returns: A new SkillToolset instance.
         """
         inner_data = data["data"]
-        store_data = inner_data["store"]
-        store_class = import_class_by_name(store_data["type"])
-        if not issubclass(store_class, SkillStore):
-            raise TypeError(
-                f"Expected a SkillStore subclass, got '{store_class.__name__}'. "
-                "Ensure the 'type' field in the store dictionary points to a SkillStore implementation."
-            )
-        return cls(store=default_from_dict(store_class, store_data))
+        deserialize_component_inplace(inner_data, key="store")
+        return cls(**inner_data)

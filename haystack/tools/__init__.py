@@ -11,7 +11,7 @@ from haystack.tools.from_function import create_tool_from_function, tool
 from haystack.tools.tool import Tool, _check_duplicate_tool_names
 from haystack.tools.toolset import Toolset
 from haystack.tools.searchable_toolset import SearchableToolset
-from haystack.tools.skills import FileSystemSkillStore, SkillMeta, SkillStore, SkillToolset
+from haystack.tools.skills import SkillToolset
 from haystack.tools.component_tool import ComponentTool
 from haystack.tools.pipeline_tool import PipelineTool
 from haystack.tools.serde_utils import deserialize_tools_or_toolset_inplace, serialize_tools_or_toolset
@@ -28,14 +28,11 @@ __all__ = [
     "ComponentTool",
     "create_tool_from_function",
     "deserialize_tools_or_toolset_inplace",
-    "FileSystemSkillStore",
     "flatten_tools_or_toolsets",
     "PipelineTool",
     "serialize_tools_or_toolset",
     "Tool",
     "SearchableToolset",
-    "SkillMeta",
-    "SkillStore",
     "SkillToolset",
     "ToolsType",
     "Toolset",

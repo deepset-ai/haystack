@@ -2,26 +2,11 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from dataclasses import dataclass, field
-from pathlib import Path
 from typing import Any, Protocol, runtime_checkable
 
+from haystack.dataclasses.skill_meta import SkillMeta
+
 SKILL_FILE_NAME = "SKILL.md"
-
-
-@dataclass
-class SkillMeta:
-    """
-    Metadata describing a single skill.
-
-    :param name: The skill's name, used by the agent to load it.
-    :param description: A short description of when to use the skill. Shown to the agent up front.
-    :param path: The skill's directory. Set by `FileSystemSkillStore`; Can be `None` for other stores.
-    """
-
-    name: str
-    description: str
-    path: Path | None = field(default=None)
 
 
 @runtime_checkable
@@ -46,6 +31,7 @@ class SkillStore(Protocol):
 
         :returns: Mapping of skill name to its metadata.
         """
+        ...
 
     def load_skill_body(self, name: str) -> str:
         """
@@ -55,6 +41,7 @@ class SkillStore(Protocol):
         :returns: The raw markdown body (frontmatter stripped).
         :raises KeyError: If no skill with `name` exists.
         """
+        ...
 
     def list_skill_files(self, name: str) -> list[str]:
         """
@@ -64,6 +51,7 @@ class SkillStore(Protocol):
         :returns: Sorted list of POSIX-style paths relative to the skill root. Empty when there are no extras.
         :raises KeyError: If no skill with `name` exists.
         """
+        ...
 
     def read_skill_file(self, name: str, path: str) -> str:
         """
@@ -76,31 +64,25 @@ class SkillStore(Protocol):
         :raises PermissionError: If `path` escapes the skill's root (path-traversal attempt).
         :raises FileNotFoundError: If the file does not exist within the skill.
         """
+        ...
 
     def to_dict(self) -> dict[str, Any]:
         """
         Serialize this store to a dictionary for use with `from_dict`.
 
-        The default implementation raises `NotImplementedError`. Override both this method
-        and `from_dict` to make your custom store serializable with
+        Override both this method and `from_dict` to make your custom store serializable with
         `haystack.tools.SkillToolset`.
-
-        The returned dictionary must include a `"type"` key holding the fully-qualified class name
-        (use `haystack.core.serialization.generate_qualified_class_name`) so that
-        `haystack.tools.SkillToolset.from_dict` can reconstruct the correct class.
-
-        :raises NotImplementedError: If the subclass does not implement this method.
         """
+        ...
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "SkillStore":
         """
         Deserialize a store from a dictionary produced by `to_dict`.
 
-        The default implementation raises `NotImplementedError`. Override both this method
-        and `to_dict` to make your custom store serializable with
+        Override both this method and `to_dict` to make your custom store serializable with
         `haystack.tools.SkillToolset`.
 
         :param data: Dictionary as produced by `to_dict`.
-        :raises NotImplementedError: If the subclass does not implement this method.
         """
+        ...

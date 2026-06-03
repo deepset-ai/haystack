@@ -4,10 +4,12 @@
 
 
 from haystack.core.serialization import generate_qualified_class_name
-from haystack.tools import FileSystemSkillStore, SkillMeta, SkillStore, SkillToolset
+from haystack.dataclasses.skill_meta import SkillMeta
+from haystack.skill_stores.file_system.skill_store import FileSystemSkillStore
+from haystack.tools import SkillToolset
 
 
-class _SerializableStore(SkillStore):
+class _SerializableStore:
     """Module-level custom store used to test round-trip serialization."""
 
     def __init__(self, skills: dict[str, str]) -> None:
@@ -32,7 +34,7 @@ class _SerializableStore(SkillStore):
 
     @classmethod
     def from_dict(cls, data: dict) -> "_SerializableStore":
-        return cls(skills=data["data"]["skills"])
+        return cls(skills=data["init_parameters"]["skills"])
 
 
 def _write_skill(skills_dir, name, description=None, body="Instructions.", files=None):
@@ -144,7 +146,7 @@ class TestSkillToolset:
         assert set(restored.skills) == {"demo"}
 
     def test_load_skill_via_custom_store(self, tmp_path):
-        class _InMemoryStore(SkillStore):
+        class _InMemoryStore:
             def list_skills(self):
                 return {"demo": SkillMeta(name="demo", description="A demo skill.")}
 
