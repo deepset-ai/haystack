@@ -97,7 +97,17 @@ class InputSocket:
         # alias for Iterable[int]. Since we're interested in getting the inner type `int`, we call `get_args`
         # twice: the first time to get `list[int]` out of `Variadic`, the second time to get `int` out of `list[int]`.
         if self.is_lazy_variadic or self.is_greedy:
-            self.type = get_args(get_args(self.type)[0])[0]
+            outer_args = get_args(self.type)
+            inner_type = outer_args[0]
+            inner_args = get_args(inner_type)
+            if not inner_args:
+                from haystack.core.errors import ComponentError
+
+                raise ComponentError(
+                    f"Variadic input '{self.name}' must have a type argument, e.g. Variadic[int]. "
+                    f"Got bare {inner_type!r} without a type argument."
+                )
+            self.type = inner_args[0]
 
 
 class InputSocketTypeDescriptor(TypedDict):
