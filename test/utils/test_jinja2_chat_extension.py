@@ -605,29 +605,29 @@ But my favorite subject is Small Language Models.
         assert output["content"][0]["text"] == text_with_symbols
 
 
-class TestMessagesPlaceholderTag:
+class TestInsertTag:
     def _parse_lines(self, rendered: str) -> list[ChatMessage]:
         return [ChatMessage.from_dict(json.loads(line)) for line in rendered.strip().split("\n") if line.strip()]
 
     def test_expands_messages(self, jinja_env):
-        template = "{% messages %}"
+        template = "{% insert messages %}"
         messages = [ChatMessage.from_user("Hello"), ChatMessage.from_assistant("Hi there")]
         rendered = jinja_env.from_string(template).render(messages=messages)
         assert self._parse_lines(rendered) == messages
 
     def test_empty_messages_expands_to_nothing(self, jinja_env):
-        template = "{% messages %}"
+        template = "{% insert messages %}"
         assert jinja_env.from_string(template).render(messages=[]).strip() == ""
 
-    def test_missing_messages_variable_expands_to_nothing(self, jinja_env):
-        # `messages` is falsy/Undefined when not provided -> emits nothing rather than raising
-        template = "{% messages %}"
+    def test_missing_variable_expands_to_nothing(self, jinja_env):
+        # The expression resolves to Undefined (falsy) when not provided -> emits nothing rather than raising
+        template = "{% insert messages %}"
         assert jinja_env.from_string(template).render().strip() == ""
 
     def test_interleaved_with_literal_message_blocks(self, jinja_env):
         template = """
         {% message role="system" %}You are helpful.{% endmessage %}
-        {% messages %}
+        {% insert messages %}
         {% message role="user" %}{{ query }}{% endmessage %}
         """
         runtime = [ChatMessage.from_user("first"), ChatMessage.from_assistant("second")]
@@ -640,11 +640,12 @@ class TestMessagesPlaceholderTag:
         assert parsed[3].text == "final question"
 
     def test_is_detected_as_template_variable(self):
-        # The `{% messages %}` tag must surface `messages` as an undeclared variable so that the
-        # ChatPromptBuilder (and Agent) can register and pass it.
+        # The `{% insert %}` expression must surface its variables as undeclared so that the
+        # ChatPromptBuilder (and Agent) can register and pass them.
         env = SandboxedEnvironment(extensions=[ChatMessageExtension])
-        ast = env.parse("{% messages %}")
-        assert "messages" in meta.find_undeclared_variables(ast)
+        assert "messages" in meta.find_undeclared_variables(env.parse("{% insert messages %}"))
+        assert "messages" in meta.find_undeclared_variables(env.parse("{% insert messages[-1] %}"))
+        assert {"previous", "current"} <= meta.find_undeclared_variables(env.parse("{% insert previous + current %}"))
 
     def test_round_trips_all_content_types(self, jinja_env, base64_image_string):
         tool_call = ToolCall(tool_name="search", arguments={"query": "q"}, id="search_1")
@@ -661,45 +662,51 @@ class TestMessagesPlaceholderTag:
             ),
             ChatMessage.from_tool(tool_result="result", origin=tool_call, error=False),
         ]
-        rendered = jinja_env.from_string("{% messages %}").render(messages=messages)
+        rendered = jinja_env.from_string("{% insert messages %}").render(messages=messages)
         assert self._parse_lines(rendered) == messages
 
     @pytest.fixture
     def three_messages(self) -> list[ChatMessage]:
         return [ChatMessage.from_user("a"), ChatMessage.from_assistant("b"), ChatMessage.from_user("c")]
 
-    def test_subscript_single_index(self, jinja_env, three_messages):
+    def test_single_index(self, jinja_env, three_messages):
         # An integer index yields a single ChatMessage, which is expanded as a one-message list.
-        rendered = jinja_env.from_string("{% messages[-1] %}").render(messages=three_messages)
+        rendered = jinja_env.from_string("{% insert messages[-1] %}").render(messages=three_messages)
         assert self._parse_lines(rendered) == [three_messages[-1]]
 
-    def test_subscript_slice(self, jinja_env, three_messages):
-        rendered = jinja_env.from_string("{% messages[-1:] %}").render(messages=three_messages)
+    def test_slice(self, jinja_env, three_messages):
+        rendered = jinja_env.from_string("{% insert messages[-1:] %}").render(messages=three_messages)
         assert self._parse_lines(rendered) == three_messages[-1:]
 
-        rendered = jinja_env.from_string("{% messages[:-1] %}").render(messages=three_messages)
+        rendered = jinja_env.from_string("{% insert messages[:-1] %}").render(messages=three_messages)
         assert self._parse_lines(rendered) == three_messages[:-1]
 
-        rendered = jinja_env.from_string("{% messages[1:] %}").render(messages=three_messages)
+        rendered = jinja_env.from_string("{% insert messages[1:] %}").render(messages=three_messages)
         assert self._parse_lines(rendered) == three_messages[1:]
 
-    def test_subscript_still_detected_as_template_variable(self):
-        env = SandboxedEnvironment(extensions=[ChatMessageExtension])
-        for template in ["{% messages[-1] %}", "{% messages[1:] %}"]:
-            assert "messages" in meta.find_undeclared_variables(env.parse(template))
+    def test_combine_multiple_variables(self, jinja_env):
+        # The expression can combine several variables, e.g. concatenating two message lists.
+        previous = [ChatMessage.from_user("p1"), ChatMessage.from_assistant("p2")]
+        current = [ChatMessage.from_user("c1")]
+        rendered = jinja_env.from_string("{% insert previous + current %}").render(previous=previous, current=current)
+        assert self._parse_lines(rendered) == previous + current
 
-    def test_subscript_interleaved_with_blocks(self, jinja_env, three_messages):
+    def test_custom_variable_name(self, jinja_env, three_messages):
+        rendered = jinja_env.from_string("{% insert chat_history %}").render(chat_history=three_messages)
+        assert self._parse_lines(rendered) == three_messages
+
+    def test_slice_interleaved_with_blocks(self, jinja_env, three_messages):
         template = (
             '{% message role="system" %}sys{% endmessage %}'
-            "{% messages[-1:] %}"
+            "{% insert messages[-1:] %}"
             '{% message role="user" %}{{ query }}{% endmessage %}'
         )
         rendered = jinja_env.from_string(template).render(messages=three_messages, query="q")
         parsed = self._parse_lines(rendered)
         assert [m.text for m in parsed] == ["sys", "c", "q"]
 
-    def test_multiple_placeholders_split_and_reorder(self, jinja_env):
-        # Each `{% messages %}` tag expands independently, so a template can split the runtime messages across
+    def test_multiple_inserts_split_and_reorder(self, jinja_env):
+        # Each `{% insert %}` tag expands independently, so a template can split the runtime messages across
         # several positions, interleave literal blocks, and even repeat a slice.
         messages = [
             ChatMessage.from_system("S"),
@@ -708,7 +715,10 @@ class TestMessagesPlaceholderTag:
             ChatMessage.from_user("u2"),
         ]
         template = (
-            '{% messages[0] %}{% message role="user" %}INJECTED{% endmessage %}{% messages[1:] %}{% messages[-1] %}'
+            "{% insert messages[0] %}"
+            '{% message role="user" %}INJECTED{% endmessage %}'
+            "{% insert messages[1:] %}"
+            "{% insert messages[-1] %}"
         )
         rendered = jinja_env.from_string(template).render(messages=messages)
         parsed = self._parse_lines(rendered)
@@ -725,17 +735,16 @@ class TestMessagesPlaceholderTag:
         # The tag uses a CallBlock so output bypasses `finalize` sentinel-escaping; message text containing
         # the literal sentinel tag must round trip intact.
         message = ChatMessage.from_user("see <haystack_content_part> here")
-        rendered = jinja_env.from_string("{% messages %}").render(messages=[message])
+        rendered = jinja_env.from_string("{% insert messages %}").render(messages=[message])
         assert self._parse_lines(rendered) == [message]
 
-    def test_only_subscript_allowed(self, jinja_env):
-        template = '{% messages role="user" %}'
-        with pytest.raises(TemplateSyntaxError, match="only accepts an optional subscript"):
-            jinja_env.from_string(template).render(messages=[])
+    def test_requires_an_expression(self, jinja_env):
+        with pytest.raises(TemplateSyntaxError, match="requires an expression"):
+            jinja_env.from_string("{% insert %}").render(messages=[])
 
-    def test_non_message_list_raises_error(self, jinja_env):
-        template = "{% messages %}"
-        with pytest.raises(ValueError, match="must be a ChatMessage or a list of ChatMessage objects"):
+    def test_non_message_value_raises_error(self, jinja_env):
+        template = "{% insert messages %}"
+        with pytest.raises(ValueError, match="must evaluate to a ChatMessage or a list of ChatMessage objects"):
             jinja_env.from_string(template).render(messages=["not a message"])
 
 

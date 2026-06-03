@@ -1077,24 +1077,24 @@ Hello, my name is {{name}}!
         images = [p for p in msg._content if isinstance(p, ImageContent)]
         assert len(images) == 0
 
-    def test_messages_placeholder(self):
-        builder = ChatPromptBuilder(template="{% messages %}")
+    def test_insert_placeholder(self):
+        builder = ChatPromptBuilder(template="{% insert messages %}")
         assert builder.variables == ["messages"]
         runtime = [ChatMessage.from_user("Hello"), ChatMessage.from_assistant("Hi")]
         result = builder.run(messages=runtime)
         assert result["prompt"] == runtime
 
-    def test_messages_placeholder_with_subscript(self):
-        builder = ChatPromptBuilder(template="{% messages[-1:] %}")
+    def test_insert_placeholder_with_subscript(self):
+        builder = ChatPromptBuilder(template="{% insert messages[-1:] %}")
         assert builder.variables == ["messages"]
         runtime = [ChatMessage.from_user("first"), ChatMessage.from_assistant("last")]
         result = builder.run(messages=runtime)
         assert result["prompt"] == [ChatMessage.from_assistant("last")]
 
-    def test_messages_placeholder_interleaved_with_blocks(self):
+    def test_insert_placeholder_interleaved_with_blocks(self):
         template = (
             '{% message role="system" %}You are helpful.{% endmessage %}'
-            "{% messages %}"
+            "{% insert messages %}"
             '{% message role="user" %}{{ query }}{% endmessage %}'
         )
         builder = ChatPromptBuilder(template=template)
