@@ -382,6 +382,7 @@ class TestHuggingFaceAPIDocumentEmbedder:
     )
     @pytest.mark.flaky(reruns=3, reruns_delay=10)
     @pytest.mark.skipif(sys.platform != "linux", reason="We only test on Linux to avoid overloading the HF server")
+    @pytest.mark.xfail(reason="hf-inference is temporarily returning 500s")
     def test_live_run_serverless(self):
         docs = [
             Document(content="I love cheese", meta={"topic": "Cuisine"}),
@@ -415,6 +416,7 @@ class TestHuggingFaceAPIDocumentEmbedder:
     )
     @pytest.mark.flaky(reruns=3, reruns_delay=10)
     @pytest.mark.skipif(sys.platform != "linux", reason="We only test on Linux to avoid overloading the HF server")
+    @pytest.mark.xfail(reason="hf-inference is temporarily returning 500s")
     async def test_live_run_serverless_async(self) -> None:
         docs = [
             Document(content="I love cheese", meta={"topic": "Cuisine"}),
