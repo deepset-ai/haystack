@@ -271,6 +271,16 @@ class TestDocumentJoiner:
         ]
         assert all(doc.id in expected_document_ids for doc in output["documents"])
 
+    def test_run_with_distribution_based_rank_fusion_join_mode_with_none_score(self):
+        # Documents with score=None (e.g. from a non-scoring source) must not crash DBSF;
+        # a missing score is treated as 0, consistent with how the statistics are computed.
+        joiner = DocumentJoiner(join_mode="distribution_based_rank_fusion")
+        documents_1 = [Document(content="a", score=0.6), Document(content="b", score=None)]
+        documents_2 = [Document(content="c", score=0.5), Document(content="d", score=0.3)]
+        output = joiner.run([documents_1, documents_2])
+        assert len(output["documents"]) == 4
+        assert all(doc.score is not None for doc in output["documents"])
+
     def test_run_with_top_k_in_run_method(self):
         joiner = DocumentJoiner()
         documents_1 = [Document(content="a"), Document(content="b"), Document(content="c")]

@@ -223,6 +223,7 @@ class TestHuggingFaceAPITextEmbedder:
         reason="Export an env var called HF_API_TOKEN containing the Hugging Face token to run this test.",
     )
     @pytest.mark.skipif(sys.platform != "linux", reason="We only test on Linux to avoid overloading the HF server")
+    @pytest.mark.xfail(reason="hf-inference is temporarily returning 500s")
     def test_live_run_serverless(self):
         embedder = HuggingFaceAPITextEmbedder(
             api_type=HFEmbeddingAPIType.SERVERLESS_INFERENCE_API,
@@ -240,6 +241,7 @@ class TestHuggingFaceAPITextEmbedder:
     @pytest.mark.flaky(reruns=3, reruns_delay=10)
     @pytest.mark.skipif(os.environ.get("HF_API_TOKEN", "") == "", reason="HF_API_TOKEN is not set")
     @pytest.mark.skipif(sys.platform != "linux", reason="We only test on Linux to avoid overloading the HF server")
+    @pytest.mark.xfail(reason="hf-inference is temporarily returning 500s")
     async def test_live_run_async_serverless(self):
         model_name = "sentence-transformers/all-MiniLM-L6-v2"
 
