@@ -53,7 +53,7 @@ class SkillToolset(Toolset):
         """
         Initialize the SkillToolset.
 
-        :param store: A :class:`~haystack.tools.SkillStore` instance to back this toolset.
+        :param store: A `haystack.tools.SkillStore` instance to back this toolset.
         """
         self._store = store
 
@@ -131,7 +131,7 @@ class SkillToolset(Toolset):
         """
         Serialize the toolset to a dictionary.
 
-        Delegates to the backing store's :meth:`~haystack.tools.skills.SkillStore.to_dict` method.
+        Delegates to the backing store's `haystack.tools.skills.SkillStore.to_dict` method.
         Tools are rebuilt by re-scanning on deserialization — only the store descriptor is persisted.
 
         :returns: Dictionary representation of the toolset.
@@ -144,7 +144,7 @@ class SkillToolset(Toolset):
         """
         Deserialize a toolset from a dictionary.
 
-        :param data: Dictionary representation of the toolset, as produced by :meth:`to_dict`.
+        :param data: Dictionary representation of the toolset, as produced by `to_dict`.
         :returns: A new SkillToolset instance.
         """
         inner_data = data["data"]
