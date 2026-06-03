@@ -1,0 +1,42 @@
+name: Apply docstrings label
+
+# Runs after "Detect docstrings edit" completes. This workflow holds the write
+# token but only consumes the data artifact produced by the untrusted run — it
+# never checks out PR code, so it is safe under the workflow_run trigger.
+on:
+  workflow_run:
+    workflows: ["Detect docstrings edit"]
+    types:
+      - completed
+
+permissions:
+  contents: read
+
+jobs:
+  label:
+    runs-on: ubuntu-slim
+    if: github.event.workflow_run.event == 'pull_request' && github.event.workflow_run.conclusion == 'success'
+    permissions:
+      contents: read
+      pull-requests: write
+      actions: read
+    steps:
+      - name: Download result
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: docstring-label-result
+          path: result
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Add label
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          SHOULD_LABEL=$(cat result/should_label)
+          PR_NUMBER=$(cat result/pr_number)
+          if [ "$SHOULD_LABEL" = "true" ]; then
+            gh pr edit "$PR_NUMBER" --repo "${{ github.repository }}" --add-label "type:documentation"
+          else
+            echo "Docstrings unchanged, nothing to label."
+          fi
