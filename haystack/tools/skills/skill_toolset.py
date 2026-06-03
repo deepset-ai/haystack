@@ -2,12 +2,11 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from pathlib import Path
 from typing import Annotated, Any
 
 from haystack.core.serialization import generate_qualified_class_name, import_class_by_name
 from haystack.tools.from_function import create_tool_from_function
-from haystack.tools.skills.skill_store import FileSystemSkillStore, SkillMeta, SkillStore
+from haystack.tools.skills.skill_store import SkillMeta, SkillStore
 from haystack.tools.tool import Tool
 from haystack.tools.toolset import Toolset
 
@@ -25,27 +24,19 @@ class SkillToolset(Toolset):
     - ``load_skill`` returns a skill's full instructions on demand, plus a manifest of its bundled files.
     - ``read_skill_file`` reads a bundled file on demand.
 
-    **Filesystem usage** — pass a directory path directly:
+    **Example usage:**
 
     ```python
     from haystack.components.agents import Agent
     from haystack.components.generators.chat import OpenAIChatGenerator
     from haystack.dataclasses import ChatMessage
     from haystack.tools import SkillToolset
-
-    skills = SkillToolset("skills/")
-    agent = Agent(chat_generator=OpenAIChatGenerator(), tools=skills)
-    result = agent.run(messages=[ChatMessage.from_user("Fill in this PDF form for me.")])
-    ```
-
-    **Custom store** — pass any :class:`~haystack.tools.SkillStore` implementation:
-
-    ```python
-    from haystack.tools import SkillToolset
     from haystack.tools.skills import FileSystemSkillStore
 
     store = FileSystemSkillStore("skills/")
     skills = SkillToolset(store)
+    agent = Agent(chat_generator=OpenAIChatGenerator(), tools=skills)
+    result = agent.run(messages=[ChatMessage.from_user("Fill in this PDF form for me.")])
     ```
 
     Expected filesystem layout:
@@ -58,20 +49,13 @@ class SkillToolset(Toolset):
     ```
     """
 
-    def __init__(self, skills_dir: "SkillStore | str | Path") -> None:
+    def __init__(self, store: SkillStore) -> None:
         """
         Initialize the SkillToolset.
 
-        :param skills_dir: Either a :class:`~haystack.tools.SkillStore` instance, or a ``str``/``Path``
-            pointing to a directory of skills. A plain path is automatically wrapped in a
-            :class:`~haystack.tools.skills.FileSystemSkillStore`.
-        :raises ValueError: If a plain path is given and the directory does not exist, a skill is missing a
-            required frontmatter field, or two skills share the same name.
+        :param store: A :class:`~haystack.tools.SkillStore` instance to back this toolset.
         """
-        if isinstance(skills_dir, SkillStore):
-            self._store = skills_dir
-        else:
-            self._store = FileSystemSkillStore(skills_dir)
+        self._store = store
 
         self._skills: dict[str, SkillMeta] = self._store.list_skills()
         super().__init__(tools=[self._create_load_skill_tool(), self._create_read_skill_file_tool()])
@@ -160,25 +144,15 @@ class SkillToolset(Toolset):
         """
         Deserialize a toolset from a dictionary.
 
-        Reads ``data["data"]["store"]``, resolves the store class via its ``"type"`` key, and calls
-        ``store_class.from_dict(store_data)`` to reconstruct the store.
-
-        Also accepts the legacy format where ``data["data"]`` contains a ``"skills_dir"`` key directly
-        (produced by the previous serialization implementation).
-
         :param data: Dictionary representation of the toolset, as produced by :meth:`to_dict`.
         :returns: A new SkillToolset instance.
-        :raises TypeError: If the resolved class is not a :class:`~haystack.tools.skills.SkillStore` subclass.
         """
-        inner = data["data"]
-        if "skills_dir" in inner:
-            # Legacy format: {"data": {"skills_dir": "..."}}
-            return cls(skills_dir=inner["skills_dir"])
-        store_data = inner["store"]
+        inner_data = data["data"]
+        store_data = inner_data["store"]
         store_class = import_class_by_name(store_data["type"])
         if not issubclass(store_class, SkillStore):
             raise TypeError(
                 f"Expected a SkillStore subclass, got '{store_class.__name__}'. "
                 "Ensure the 'type' field in the store dictionary points to a SkillStore implementation."
             )
-        return cls(skills_dir=store_class.from_dict(store_data))
+        return cls(store=store_class.from_dict(store_data))
