@@ -101,7 +101,6 @@ documents = [
     ),
 ]
 embedder = SentenceTransformersDocumentEmbedder()
-embedder.warm_up()
 documents_with_embeddings = embedder.run(documents)
 document_store.write_documents(
     documents_with_embeddings["documents"],
