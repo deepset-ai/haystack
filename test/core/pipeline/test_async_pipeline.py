@@ -10,6 +10,7 @@ import pytest
 
 from haystack import AsyncPipeline, Document, component
 from haystack.components.joiners import BranchJoiner
+from haystack.core.errors import PipelineRuntimeError
 
 
 def test_async_pipeline_reentrance(waiting_component, spying_tracer):
@@ -408,3 +409,49 @@ class TestRunComponentInIsolation:
         # Even though `first`'s output is consumed by `second`, include_outputs_from forces it to be surfaced.
         assert results == [{"first": {"value": 6}}]
         assert state["pipeline_outputs"] == {"first": {"value": 6}}
+
+
+class TestInFlightTaskCleanupOnError:
+    @pytest.mark.asyncio
+    async def test_sibling_tasks_cancelled_when_a_component_errors(self):
+        """When a component fails, the other in-flight tasks must be cancelled and not leak."""
+        slow_started = asyncio.Event()
+        slow_cancelled = False
+
+        @component
+        class Slow:
+            @component.output_types(value=str)
+            def run(self, text: str) -> dict[str, str]:
+                return {"value": text}
+
+            @component.output_types(value=str)
+            async def run_async(self, text: str) -> dict[str, str]:
+                nonlocal slow_cancelled
+                slow_started.set()
+                try:
+                    await asyncio.sleep(5)
+                except asyncio.CancelledError:
+                    slow_cancelled = True
+                    raise
+                return {"value": text}
+
+        @component
+        class Failing:
+            @component.output_types(value=str)
+            def run(self, text: str) -> dict[str, str]:
+                raise RuntimeError("boom")
+
+            @component.output_types(value=str)
+            async def run_async(self, text: str) -> dict[str, str]:
+                # Fail only once the sibling is actually running, so there is an in-flight task to clean up.
+                await slow_started.wait()
+                raise RuntimeError("boom")
+
+        pp = AsyncPipeline()
+        pp.add_component("slow", Slow())
+        pp.add_component("failing", Failing())
+
+        with pytest.raises(PipelineRuntimeError):
+            await pp.run_async({"slow": {"text": "x"}, "failing": {"text": "y"}}, concurrency_limit=2)
+
+        assert slow_cancelled is True

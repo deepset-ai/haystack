@@ -204,10 +204,36 @@ class AsyncPipeline(PipelineBase):
         done, _pending = await asyncio.wait(running_tasks.keys(), return_when=return_when)
         for finished in done:
             finished_component_name = running_tasks.pop(finished)
-            partial_result = finished.result()
+            try:
+                partial_result = finished.result()
+            except Exception:
+                # A component failed. Cancel and drain the remaining in-flight tasks so they don't keep running in
+                # the background (and leak) after the run is aborted, then re-raise the original error.
+                await AsyncPipeline._cancel_in_flight_tasks(running_tasks, scheduled_components)
+                raise
             scheduled_components.discard(finished_component_name)
             if partial_result:
                 yield {finished_component_name: _deepcopy_with_exceptions(partial_result)}
+
+    @staticmethod
+    async def _cancel_in_flight_tasks(running_tasks: dict[asyncio.Task, str], scheduled_components: set[str]) -> None:
+        """
+        Cancels all in-flight tasks and waits for the cancellations to settle.
+
+        Called when a component fails so that sibling tasks don't keep running in the background after the pipeline
+        run is aborted. Exceptions from the cancelled tasks are suppressed since we are already unwinding from the
+        original error.
+
+        :param running_tasks: Mapping of in-flight tasks to component names. Cleared in place.
+        :param scheduled_components: Set of scheduled-but-unfinished component names. Cleared in place.
+        """
+        for task in running_tasks:
+            task.cancel()
+        # return_exceptions=True so a failing or cancelled sibling doesn't mask the original error we re-raise.
+        await asyncio.gather(*running_tasks.keys(), return_exceptions=True)
+        for component_name in running_tasks.values():
+            scheduled_components.discard(component_name)
+        running_tasks.clear()
 
     async def _run_component_in_isolation(
         self,

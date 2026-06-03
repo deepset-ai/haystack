@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Fixed a task leak in ``AsyncPipeline`` when running components concurrently. Previously, if one component
+    raised an error while sibling components were still running, those in-flight tasks were neither awaited nor
+    cancelled and kept running in the background until the event loop was torn down. They are now cancelled and
+    drained before the original error is re-raised.
