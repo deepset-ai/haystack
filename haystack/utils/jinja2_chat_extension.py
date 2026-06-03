@@ -72,6 +72,20 @@ class ChatMessageExtension(Extension):
     {% endmessage %}
     ```
 
+    This extension also provides an `{% insert %}` placeholder tag that evaluates an expression to a `ChatMessage`
+    or a list of `ChatMessage` objects and expands it into the prompt, so a runtime conversation can be interleaved
+    with literal `{% message %}` blocks:
+
+    ```
+    {% message role="system" %}You are a helpful assistant.{% endmessage %}
+    {% insert messages %}
+    {% message role="user" %}{{ query }}{% endmessage %}
+    ```
+
+    The expression can be a plain variable (`{% insert messages %}`), a slice or index
+    (`{% insert messages[-1:] %}`, `{% insert messages[-1] %}`), or a combination of variables
+    (`{% insert previous + current %}`).
+
     ### How it works
     1. The `{% message %}` tag is used to define a chat message.
     2. The message can contain text and other structured content parts.
@@ -85,7 +99,7 @@ class ChatMessageExtension(Extension):
 
     SUPPORTED_ROLES = [role.value for role in ChatRole]
 
-    tags = {"message"}
+    tags = {"message", "insert"}
 
     def __init__(self, environment: Any) -> None:
         super().__init__(environment)
@@ -94,15 +108,58 @@ class ChatMessageExtension(Extension):
 
     def parse(self, parser: Any) -> nodes.Node | list[nodes.Node]:
         """
+        Dispatch parsing based on the tag that triggered the extension.
+
+        Handles both the single `{% message %}` block tag and the `{% insert %}` placeholder tag.
+
+        :param parser: The Jinja2 parser instance
+        :return: A CallBlock node containing the parsed configuration
+        """
+        tag = next(parser.stream)
+        if tag.value == "insert":
+            return self._parse_insert_tag(parser, tag.lineno)
+        return self._parse_message_tag(parser, tag.lineno)
+
+    def _parse_insert_tag(self, parser: Any, lineno: int) -> nodes.Node:
+        """
+        Parse the `{% insert %}` placeholder tag.
+
+        This bodyless tag evaluates an expression to a `ChatMessage` or a list of `ChatMessage` objects and expands
+        it into the same JSON-line format produced by `{% message %}` blocks, so messages provided at runtime can be
+        interleaved with literal message blocks (for example a system message above and a user message below).
+
+        The expression can be a plain variable (`{% insert messages %}`), a slice or index
+        (`{% insert messages[-1:] %}`, `{% insert messages[-1] %}`), or a combination of variables
+        (`{% insert previous + current %}`).
+
+        :param parser: The Jinja2 parser instance
+        :param lineno: The line number of the tag, used for error reporting.
+        :return: A CallBlock node that expands the evaluated expression.
+        :raises TemplateSyntaxError: If the tag is not given an expression.
+        """
+        if parser.stream.current.test("block_end"):
+            raise TemplateSyntaxError(
+                "The 'insert' tag requires an expression that evaluates to a ChatMessage or a list of ChatMessage "
+                "objects, for example '{% insert messages %}' or '{% insert messages[-1:] %}'.",
+                lineno,
+            )
+        expr = parser.parse_expression()
+        # Bodyless tag: empty body, no matching end tag required.
+        return nodes.CallBlock(
+            self.call_method(name="_build_inserted_messages_json", args=[expr]), [], [], []
+        ).set_lineno(lineno)
+
+    def _parse_message_tag(self, parser: Any, lineno: int) -> nodes.Node | list[nodes.Node]:
+        """
         Parse the message tag and its attributes in the Jinja2 template.
 
         This method handles the parsing of role (mandatory), name (optional), meta (optional) and message body content.
 
         :param parser: The Jinja2 parser instance
+        :param lineno: The line number of the tag, used for error reporting.
         :return: A CallBlock node containing the parsed message configuration
         :raises TemplateSyntaxError: If an invalid role is provided
         """
-        lineno = next(parser.stream).lineno
 
         # Parse role attribute (mandatory)
         parser.stream.expect("name:role")
@@ -172,6 +229,39 @@ class ChatMessageExtension(Extension):
         chat_message = self._validate_build_chat_message(parts=parts, role=role, meta=meta, name=name)
 
         return json.dumps(chat_message.to_dict()) + "\n"
+
+    def _build_inserted_messages_json(
+        self,
+        messages: list[ChatMessage] | ChatMessage,
+        caller: Callable[[], str],  # noqa: ARG002
+    ) -> str:
+        """
+        Expand a list of ChatMessage objects into newline-separated JSON, one message per line.
+
+        This method is called by Jinja2 when processing an `{% insert %}` tag. It produces the same JSON-line format
+        as `_build_chat_message_json`, so the messages are parsed back into ChatMessage objects by the
+        ChatPromptBuilder alongside any literal `{% message %}` blocks. The full `ChatMessage.to_dict()` payload is
+        serialized so that all content types (tool calls, tool call results, images, reasoning, name and meta) round
+        trip without loss.
+
+        :param messages: The value the `{% insert %}` expression evaluated to. A missing or empty value expands to
+            nothing. A single ChatMessage is also accepted, since indexing with an integer (for example
+            `{% insert messages[-1] %}`) yields one message rather than a list. The value is validated at render time
+            because it comes from untrusted template input.
+        :param caller: Callable that returns the (empty) rendered body. Unused.
+        :return: Newline-terminated JSON lines, one per message, or an empty string if there are no messages.
+        :raises ValueError: If the value is not a ChatMessage or a list of ChatMessage objects.
+        """
+        if isinstance(messages, ChatMessage):
+            messages = [messages]
+        if not messages:
+            return ""
+        if not isinstance(messages, (list, tuple)) or not all(isinstance(m, ChatMessage) for m in messages):
+            raise ValueError(
+                "The '{% insert %}' expression must evaluate to a ChatMessage or a list of ChatMessage objects. "
+                f"Got: {type(messages).__name__}."
+            )
+        return "".join(json.dumps(message.to_dict()) + "\n" for message in messages)
 
     @staticmethod
     def _parse_content_parts(content: str) -> list[ChatMessageContentT]:
