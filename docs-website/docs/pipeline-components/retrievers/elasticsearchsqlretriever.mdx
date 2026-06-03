@@ -1,0 +1,113 @@
+---
+title: ElasticsearchSQLRetriever
+id: elasticsearchsqlretriever
+slug: /elasticsearchsqlretriever
+description: Executes raw Elasticsearch SQL queries against an Elasticsearch Document Store and returns the raw JSON response.
+---
+
+# ElasticsearchSQLRetriever
+
+Executes raw Elasticsearch SQL queries against an Elasticsearch Document Store and returns the raw JSON response.
+
+|                                         |                                                                                                  |
+| --------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| **Most common position in a pipeline**  | Standalone, or anywhere you need to fetch metadata, aggregations, or other structured data        |
+| **Mandatory init variables**            | `document_store`: An instance of `ElasticsearchDocumentStore`                                     |
+| **Mandatory run variables**             | `query`: An Elasticsearch SQL query string                                                        |
+| **Output variables**                    | `result`: A dictionary with the raw JSON response from the Elasticsearch SQL API                  |
+| **API reference**                       | [Elasticsearch](https://docs.haystack.deepset.ai/reference/integrations-elasticsearch)            |
+| **GitHub link**                         | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/elasticsearch     |
+| **Package name**                        | `elasticsearch-haystack`                                                                          |
+
+## Overview
+
+`ElasticsearchSQLRetriever` lets you run [Elasticsearch SQL](https://www.elastic.co/guide/en/elasticsearch/reference/current/xpack-sql.html) queries directly against an `ElasticsearchDocumentStore`. Instead of matching a query against documents like the `ElasticsearchBM25Retriever` or `ElasticsearchEmbeddingRetriever`, it executes a SQL statement and returns the **raw JSON response** from the Elasticsearch SQL API.
+
+This is useful when you need structured access to your index at runtime, for example to fetch specific fields, filter on metadata, or compute aggregations such as counts and averages.
+
+Unlike the other Elasticsearch retrievers, this component does not return a list of `Document` objects. The output is a single `result` dictionary, where `result["result"]` holds the raw Elasticsearch response. For a typical query, the response contains:
+
+- `result["result"]["columns"]`: metadata describing each returned column.
+- `result["result"]["rows"]`: the data rows.
+
+The component accepts two optional parameters at initialization:
+
+- `raise_on_failure`: if `True` (the default), an exception is raised when the SQL API call fails. If `False`, the error is logged as a warning and an empty dictionary is returned.
+- `fetch_size`: the number of results to fetch per page. If not set, the default fetch size configured in Elasticsearch is used.
+
+## Installation
+
+Install Elasticsearch and then start an instance. Haystack supports Elasticsearch 8.
+
+If you have Docker set up, we recommend pulling the Docker image and running it.
+
+```bash
+docker pull docker.elastic.co/elasticsearch/elasticsearch:8.11.1
+docker run -p 9200:9200 -e "discovery.type=single-node" -e "ES_JAVA_OPTS=-Xms1024m -Xmx1024m" -e "xpack.security.enabled=false" elasticsearch:8.11.1
+```
+
+As an alternative, you can go to [Elasticsearch integration GitHub](https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/elasticsearch) and start a Docker container running Elasticsearch using the provided `docker-compose.yml`:
+
+```bash
+docker compose up
+```
+
+Once you have a running Elasticsearch instance, install the `elasticsearch-haystack` integration:
+
+```bash
+pip install elasticsearch-haystack
+```
+
+## Usage
+
+### On its own
+
+Write a few documents to an index, then run a SQL query against it. The example below selects the `content` field from the index and reads the returned columns and rows:
+
+```python
+from haystack import Document
+from haystack_integrations.components.retrievers.elasticsearch import (
+    ElasticsearchSQLRetriever,
+)
+from haystack_integrations.document_stores.elasticsearch import (
+    ElasticsearchDocumentStore,
+)
+from haystack.document_stores.types import DuplicatePolicy
+
+document_store = ElasticsearchDocumentStore(hosts="http://localhost:9200/", index="my_index")
+
+documents = [
+    Document(content="There are over 7,000 languages spoken around the world today."),
+    Document(
+        content="Elephants have been observed to behave in a way that indicates a high level of self-awareness, such as recognizing themselves in mirrors.",
+    ),
+    Document(
+        content="In certain parts of the world, like the Maldives, Puerto Rico, and San Diego, you can witness the phenomenon of bioluminescent waves.",
+    ),
+]
+
+# DuplicatePolicy.SKIP is optional, but useful to run the script multiple times without throwing errors
+document_store.write_documents(documents=documents, policy=DuplicatePolicy.SKIP)
+
+retriever = ElasticsearchSQLRetriever(document_store=document_store)
+output = retriever.run(query='SELECT content FROM "my_index" LIMIT 10')
+
+result = output["result"]
+print(result["columns"])  # column metadata, e.g. [{"name": "content", "type": "text"}]
+for row in result["rows"]:
+    print(row)
+```
+
+### Running an aggregation query
+
+Because the component returns the raw SQL response, you can use it for aggregations that the document-based retrievers don't support, such as counting documents:
+
+```python
+retriever = ElasticsearchSQLRetriever(document_store=document_store)
+output = retriever.run(query='SELECT COUNT(*) AS doc_count FROM "my_index"')
+
+result = output["result"]
+print(result["rows"])  # e.g. [[3]]
+```
+
+To avoid raising an exception on a malformed or failing query, initialize the component with `raise_on_failure=False`. In that case, a failed query logs a warning and returns an empty dictionary instead.
