@@ -1,0 +1,191 @@
+---
+title: "OracleDocumentStore"
+id: oracledocumentstore
+slug: "/oracledocumentstore"
+description: "Use Oracle AI Vector Search as a document store in Haystack, with vector similarity and keyword search powered by Oracle Database 23ai."
+---
+
+# OracleDocumentStore
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| API reference | [Oracle](/reference/integrations-oracle)                                                      |
+| GitHub link   | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/oracle |
+
+</div>
+
+`OracleDocumentStore` is a Document Store backed by [Oracle AI Vector Search](https://www.oracle.com/database/ai-vector-search/), available in Oracle Database 23ai and later.
+It stores documents alongside dense vector embeddings in a native `VECTOR` column, and supports both vector similarity search and keyword search via an automatically managed DBMS_SEARCH index.
+
+## Installation
+
+```shell
+pip install oracle-haystack
+```
+
+## Connection
+
+`OracleDocumentStore` connects to Oracle using the `OracleConnectionConfig` dataclass, which supports two connection modes:
+
+- **Thin mode** (default): connects directly over TCP. No Oracle Instant Client required.
+- **Thick mode**: activated automatically when `wallet_location` is provided. Used for Oracle Autonomous Database (ADB-S) connections.
+
+Set the connection parameters as environment variables:
+
+```shell
+export ORACLE_USER="haystack"
+export ORACLE_PASSWORD="secret"
+export ORACLE_DSN="localhost:1521/freepdb1"
+```
+
+## Initialization
+
+```python
+from haystack.utils import Secret
+from haystack_integrations.document_stores.oracle import (
+    OracleDocumentStore,
+    OracleConnectionConfig,
+)
+
+document_store = OracleDocumentStore(
+    connection_config=OracleConnectionConfig(
+        user=Secret.from_env_var("ORACLE_USER"),
+        password=Secret.from_env_var("ORACLE_PASSWORD"),
+        dsn=Secret.from_env_var("ORACLE_DSN"),
+    ),
+    embedding_dim=768,
+)
+```
+
+To learn more about the initialization parameters, see the [API docs](/reference/integrations-oracle#oracledocumentstore).
+
+### Connecting to Oracle Autonomous Database
+
+For Oracle Autonomous Database (ADB-S), provide a wallet for authentication. The store automatically activates thick mode when `wallet_location` is set:
+
+```python
+document_store = OracleDocumentStore(
+    connection_config=OracleConnectionConfig(
+        user=Secret.from_env_var("ORACLE_USER"),
+        password=Secret.from_env_var("ORACLE_PASSWORD"),
+        dsn=Secret.from_env_var("ORACLE_DSN"),
+        wallet_location="/path/to/wallet",
+        wallet_password=Secret.from_env_var("WALLET_PASSWORD"),
+    ),
+    embedding_dim=1536,
+)
+```
+
+### HNSW Vector Index
+
+By default, the store performs exact vector search. To enable approximate nearest-neighbor search (faster on large datasets), create an HNSW index:
+
+```python
+document_store = OracleDocumentStore(
+    connection_config=OracleConnectionConfig(
+        user=Secret.from_env_var("ORACLE_USER"),
+        password=Secret.from_env_var("ORACLE_PASSWORD"),
+        dsn=Secret.from_env_var("ORACLE_DSN"),
+    ),
+    embedding_dim=768,
+    distance_metric="COSINE",
+    create_index=True,  # creates the HNSW index on startup
+    hnsw_neighbors=32,
+    hnsw_ef_construction=200,
+    hnsw_accuracy=95,
+)
+```
+
+## Supported Retrievers
+
+- [`OracleEmbeddingRetriever`](/reference/integrations-oracle#oracleembeddingretriever): Retrieves documents from `OracleDocumentStore` based on vector similarity to a query embedding.
+- [`OracleKeywordRetriever`](/reference/integrations-oracle#oraclekeywordretriever): Retrieves documents matching a keyword query using Oracle's DBMS_SEARCH full-text index.
+
+## Example: RAG pipeline
+
+```python
+from haystack import Document, Pipeline
+from haystack.document_stores.types import DuplicatePolicy
+from haystack.components.embedders import (
+    SentenceTransformersDocumentEmbedder,
+    SentenceTransformersTextEmbedder,
+)
+from haystack.components.builders import ChatPromptBuilder
+from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.dataclasses import ChatMessage
+from haystack.utils import Secret
+
+from haystack_integrations.document_stores.oracle import (
+    OracleDocumentStore,
+    OracleConnectionConfig,
+)
+from haystack_integrations.components.retrievers.oracle import OracleEmbeddingRetriever
+
+document_store = OracleDocumentStore(
+    connection_config=OracleConnectionConfig(
+        user=Secret.from_env_var("ORACLE_USER"),
+        password=Secret.from_env_var("ORACLE_PASSWORD"),
+        dsn=Secret.from_env_var("ORACLE_DSN"),
+    ),
+    embedding_dim=768,
+)
+
+# Index documents
+documents = [
+    Document(content="There are over 7,000 languages spoken around the world today."),
+    Document(
+        content="Elephants have been observed to behave in a way that indicates a high level of self-awareness.",
+    ),
+    Document(
+        content="In certain places, you can witness the phenomenon of bioluminescent waves.",
+    ),
+]
+
+doc_embedder = SentenceTransformersDocumentEmbedder(
+    model="sentence-transformers/all-MiniLM-L6-v2",
+)
+doc_embedder.warm_up()
+embedded_docs = doc_embedder.run(documents)["documents"]
+document_store.write_documents(embedded_docs, policy=DuplicatePolicy.OVERWRITE)
+
+# Build a RAG pipeline
+template = [
+    ChatMessage.from_user(
+        """
+        Given the following context, answer the question.
+        Context: {% for doc in documents %}{{ doc.content }}{% endfor %}
+        Question: {{ query }}
+        """,
+    ),
+]
+
+pipeline = Pipeline()
+pipeline.add_component(
+    "embedder",
+    SentenceTransformersTextEmbedder(model="sentence-transformers/all-MiniLM-L6-v2"),
+)
+pipeline.add_component(
+    "retriever",
+    OracleEmbeddingRetriever(document_store=document_store, top_k=3),
+)
+pipeline.add_component("prompt_builder", ChatPromptBuilder(template=template))
+pipeline.add_component(
+    "llm",
+    OpenAIChatGenerator(api_key=Secret.from_env_var("OPENAI_API_KEY")),
+)
+
+pipeline.connect("embedder.embedding", "retriever.query_embedding")
+pipeline.connect("retriever.documents", "prompt_builder.documents")
+pipeline.connect("prompt_builder.prompt", "llm.messages")
+
+result = pipeline.run(
+    {
+        "embedder": {"text": "How many languages are there?"},
+        "prompt_builder": {"query": "How many languages are there?"},
+    },
+)
+
+print(result["llm"]["replies"][0].text)
+```

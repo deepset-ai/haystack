@@ -135,6 +135,7 @@ export default {
           href: 'https://haystack.deepset.ai/integrations/neo4j-document-store',
         },
         'document-stores/opensearch-document-store',
+        'document-stores/oracledocumentstore',
         'document-stores/pgvectordocumentstore',
         'document-stores/pinecone-document-store',
         'document-stores/qdrant-document-store',
