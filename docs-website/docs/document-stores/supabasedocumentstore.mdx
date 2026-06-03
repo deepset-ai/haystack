@@ -175,8 +175,8 @@ document_store.warm_up()
 `warm_up()` must be called before using the store. It initializes the Supabase client and creates the table and PGroonga index if they don't exist.
 :::
 
-To learn more about the initialization parameters, see the [API docs](/reference/integrations-supabase#supabasegroongadocumentstore).
+To learn more about the initialization parameters, see the [API docs](/reference/integrations-supabase).
 
 ### Supported Retrievers
 
-- [`SupabaseGroongaBM25Retriever`](/reference/integrations-supabase#supabasegroongabm25retriever): Retrieves documents using PGroonga full-text search. Works without embeddings and can be combined with `SupabasePgvectorEmbeddingRetriever` for hybrid search pipelines.
+- [`SupabaseGroongaBM25Retriever`](/reference/integrations-supabase): Retrieves documents using PGroonga full-text search. Works without embeddings and can be combined with `SupabasePgvectorEmbeddingRetriever` for hybrid search pipelines.
