@@ -5,8 +5,8 @@
 from typing import Annotated, Any
 
 from haystack.core.serialization import generate_qualified_class_name, import_class_by_name
+from haystack.skill_stores.types.protocol import SkillMeta, SkillStore
 from haystack.tools.from_function import create_tool_from_function
-from haystack.tools.skills.skill_store import SkillMeta, SkillStore
 from haystack.tools.tool import Tool
 from haystack.tools.toolset import Toolset
 
@@ -15,14 +15,14 @@ class SkillToolset(Toolset):
     """
     A Toolset that lets an Agent discover and read skills via progressive disclosure.
 
-    A skill is a directory (or equivalent storage unit) containing a ``SKILL.md`` file with YAML frontmatter
-    (``name`` and ``description``) and a markdown body of instructions. Skills may bundle additional files
+    A skill is a directory (or equivalent storage unit) containing a `SKILL.md` file with YAML frontmatter
+    (`name` and `description`) and a markdown body of instructions. Skills may bundle additional files
     (reference docs, examples, templates). This mirrors how Claude Code and Codex expose skills:
 
     - The name and description of every skill are injected into the Agent's system prompt
-      (via ``system_prompt_contribution``) so the model knows which skills exist.
-    - ``load_skill`` returns a skill's full instructions on demand, plus a manifest of its bundled files.
-    - ``read_skill_file`` reads a bundled file on demand.
+      (via `system_prompt_contribution`) so the model knows which skills exist.
+    - `load_skill` returns a skill's full instructions on demand, plus a manifest of its bundled files.
+    - `read_skill_file` reads a bundled file on demand.
 
     **Example usage:**
 
@@ -69,7 +69,7 @@ class SkillToolset(Toolset):
         """
         Render the skills catalog and usage instructions for injection into the Agent's system prompt.
 
-        :returns: The catalog text, or ``None`` if no skills were found.
+        :returns: The catalog text, or `None` if no skills were found.
         """
         if not self._skills:
             return None
@@ -89,7 +89,7 @@ class SkillToolset(Toolset):
         return "\n".join(lines)
 
     def _create_load_skill_tool(self) -> Tool:
-        """Create the ``load_skill`` tool, closed over this toolset's store."""
+        """Create the `load_skill` tool, closed over this toolset's store."""
 
         def load_skill(name: Annotated[str, "Exact name of the skill to load, from the Available Skills list."]) -> str:
             """Load a skill's full instructions. Call this before doing a task the skill covers."""
@@ -108,7 +108,7 @@ class SkillToolset(Toolset):
         return create_tool_from_function(function=load_skill, name="load_skill")
 
     def _create_read_skill_file_tool(self) -> Tool:
-        """Create the ``read_skill_file`` tool, closed over this toolset's store."""
+        """Create the `read_skill_file` tool, closed over this toolset's store."""
 
         def read_skill_file(
             name: Annotated[str, "Name of the skill that owns the file."],
@@ -135,7 +135,7 @@ class SkillToolset(Toolset):
         Tools are rebuilt by re-scanning on deserialization — only the store descriptor is persisted.
 
         :returns: Dictionary representation of the toolset.
-        :raises NotImplementedError: If the backing store does not implement ``to_dict()``.
+        :raises NotImplementedError: If the backing store does not implement `to_dict()`.
         """
         return {"type": generate_qualified_class_name(type(self)), "data": {"store": self._store.to_dict()}}
 
