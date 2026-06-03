@@ -554,6 +554,7 @@ export default {
             'pipeline-components/retrievers/chromaqueryretriever',
             'pipeline-components/retrievers/elasticsearchbm25retriever',
             'pipeline-components/retrievers/elasticsearchembeddingretriever',
+            'pipeline-components/retrievers/elasticsearchsqlretriever',
             'pipeline-components/retrievers/faissembeddingretriever',
             'pipeline-components/retrievers/falkordbcypherretriever',
             'pipeline-components/retrievers/falkordbembeddingretriever',
