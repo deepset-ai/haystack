@@ -2,9 +2,10 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+
 import pytest
 
-from haystack.core.serialization import generate_qualified_class_name
+from haystack.core.serialization import default_from_dict, default_to_dict, generate_qualified_class_name
 from haystack.tools import FileSystemSkillStore, SkillMeta, SkillStore, SkillToolset
 from haystack.tools.skills.skill_store import _parse_frontmatter
 
@@ -171,7 +172,7 @@ class TestSkillToolset:
     def test_skills_dir_property_with_custom_store(self, tmp_path):
         _write_skill(tmp_path, "pdf-forms", description="d")
 
-        class _InMemoryStore(SkillStore):
+        class _InMemoryStore:
             def list_skills(self):
                 return {"pdf-forms": SkillMeta(name="pdf-forms", description="d")}
 
@@ -183,6 +184,13 @@ class TestSkillToolset:
 
             def read_skill_file(self, name, path):
                 raise FileNotFoundError
+
+            def to_dict(self):
+                return default_to_dict(self)
+
+            @classmethod
+            def from_dict(cls, data):
+                return default_from_dict(cls, data)
 
         toolset = SkillToolset(_InMemoryStore())
         assert toolset.skills_dir is None
@@ -199,6 +207,7 @@ class TestSkillToolset:
     def test_system_prompt_contribution_lists_skills(self, tmp_path):
         _write_skill(tmp_path, "pdf-forms", description="Use to fill PDF forms.")
         contribution = SkillToolset(tmp_path).system_prompt_contribution()
+        assert contribution is not None
         assert "## Available Skills" in contribution
         assert "**pdf-forms**: Use to fill PDF forms." in contribution
         assert "load_skill" in contribution and "read_skill_file" in contribution
@@ -266,23 +275,6 @@ class TestSkillToolset:
         restored = SkillToolset.from_dict(legacy)
         assert set(restored.skills) == {"pdf-forms"}
 
-    def test_to_dict_raises_for_non_serializable_store(self):
-        class _InMemoryStore(SkillStore):
-            def list_skills(self):
-                return {}
-
-            def load_skill_body(self, name):
-                raise KeyError(name)
-
-            def list_skill_files(self, name):
-                raise KeyError(name)
-
-            def read_skill_file(self, name, path):
-                raise KeyError(name)
-
-        with pytest.raises(NotImplementedError):
-            SkillToolset(_InMemoryStore()).to_dict()
-
     def test_to_dict_and_from_dict_with_custom_serializable_store(self):
         store = _SerializableStore(skills={"demo": "A demo skill."})
         toolset = SkillToolset(store)
@@ -308,6 +300,13 @@ class TestSkillToolset:
 
             def read_skill_file(self, name, path):
                 raise FileNotFoundError
+
+            def to_dict(self):
+                raise NotImplementedError
+
+            @classmethod
+            def from_dict(cls, data):
+                raise NotImplementedError
 
         toolset = SkillToolset(_InMemoryStore())
         load_skill = next(t for t in toolset if t.name == "load_skill")

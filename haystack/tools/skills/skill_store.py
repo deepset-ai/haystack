@@ -138,7 +138,7 @@ class SkillStore(Protocol):
         """
 
 
-class FileSystemSkillStore(SkillStore):
+class FileSystemSkillStore:
     """
     :class:`SkillStore` backed by a directory of skill sub-directories on the local filesystem.
 
@@ -189,7 +189,8 @@ class FileSystemSkillStore(SkillStore):
         meta = self._skills.get(name)
         if meta is None:
             raise KeyError(name)
-        assert meta.path is not None  # guaranteed by _scan
+        if meta.path is None:
+            raise ValueError(f"Skill '{name}' is missing its directory path in metadata.")
         _, body = _parse_frontmatter((meta.path / SKILL_FILE_NAME).read_text(encoding="utf-8"))
         return body
 
@@ -198,7 +199,8 @@ class FileSystemSkillStore(SkillStore):
         meta = self._skills.get(name)
         if meta is None:
             raise KeyError(name)
-        assert meta.path is not None  # guaranteed by _scan
+        if meta.path is None:
+            raise ValueError(f"Skill '{name}' is missing its directory path in metadata.")
         return sorted(
             p.relative_to(meta.path).as_posix()
             for p in meta.path.rglob("*")
@@ -210,7 +212,8 @@ class FileSystemSkillStore(SkillStore):
         meta = self._skills.get(name)
         if meta is None:
             raise KeyError(name)
-        assert meta.path is not None  # guaranteed by _scan
+        if meta.path is None:
+            raise ValueError(f"Skill '{name}' is missing its directory path in metadata.")
         skill_dir = meta.path.resolve()
         target = (skill_dir / path).resolve()
         if skill_dir != target and skill_dir not in target.parents:
