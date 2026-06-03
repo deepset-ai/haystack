@@ -732,8 +732,11 @@ class TestInsertTag:
         ]
 
     def test_message_text_with_sentinel_tag_is_not_escaped(self, jinja_env):
-        # The tag uses a CallBlock so output bypasses `finalize` sentinel-escaping; message text containing
-        # the literal sentinel tag must round trip intact.
+        # The tag uses a CallBlock so its output bypasses `finalize` sentinel-escaping. This is safe here because
+        # `{% insert %}` serializes with ChatMessage.to_dict and the builder reparses with json.loads +
+        # ChatMessage.from_dict -- it never runs the content-part parser. So a user-injected `<haystack_content_part>`
+        # string in the message text stays plain text and can't be promoted to a structured part (image, tool call,
+        # ...); it just has to round trip intact.
         message = ChatMessage.from_user("see <haystack_content_part> here")
         rendered = jinja_env.from_string("{% insert messages %}").render(messages=[message])
         assert self._parse_lines(rendered) == [message]
