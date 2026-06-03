@@ -10,7 +10,6 @@ from typing import Any, Union
 from haystack import component, default_from_dict, default_to_dict, logging
 from haystack.components.generators.utils import _convert_streaming_chunks_to_chat_message, _normalize_messages
 from haystack.dataclasses import (
-    AsyncStreamingCallbackT,
     ChatMessage,
     ComponentInfo,
     ReasoningContent,
@@ -20,7 +19,7 @@ from haystack.dataclasses import (
     ToolCall,
     select_streaming_callback,
 )
-from haystack.dataclasses.streaming_chunk import FinishReason
+from haystack.dataclasses.streaming_chunk import FinishReason, _invoke_streaming_callback
 from haystack.lazy_imports import LazyImport
 from haystack.tools import (
     ToolsType,
@@ -668,10 +667,7 @@ class HuggingFaceAPIChatGenerator:
         return {"replies": [message]}
 
     async def _run_streaming_async(
-        self,
-        messages: list[dict[str, str]],
-        generation_kwargs: dict[str, Any],
-        streaming_callback: AsyncStreamingCallbackT,
+        self, messages: list[dict[str, str]], generation_kwargs: dict[str, Any], streaming_callback: StreamingCallbackT
     ) -> dict[str, list[ChatMessage]]:
         api_output: AsyncIterable[ChatCompletionStreamOutput] = await self._async_client.chat_completion(
             messages,
@@ -687,7 +683,7 @@ class HuggingFaceAPIChatGenerator:
                 chunk=chunk, previous_chunks=streaming_chunks, component_info=component_info
             )
             streaming_chunks.append(stream_chunk)
-            await streaming_callback(stream_chunk)
+            await _invoke_streaming_callback(streaming_callback, stream_chunk)
 
         message = _convert_streaming_chunks_to_chat_message(chunks=streaming_chunks)
         if message.meta.get("usage") is None:

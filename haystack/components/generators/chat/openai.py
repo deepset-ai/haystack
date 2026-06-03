@@ -29,7 +29,6 @@ from haystack.components.generators.utils import (
     _serialize_object,
 )
 from haystack.dataclasses import (
-    AsyncStreamingCallbackT,
     ChatMessage,
     ComponentInfo,
     FinishReason,
@@ -40,6 +39,7 @@ from haystack.dataclasses import (
     ToolCallDelta,
     select_streaming_callback,
 )
+from haystack.dataclasses.streaming_chunk import _invoke_streaming_callback
 from haystack.tools import (
     ToolsType,
     _check_duplicate_tool_names,
@@ -399,8 +399,8 @@ class OpenAIChatGenerator:
             A list of ChatMessage instances representing the input messages. If a string is provided, it is converted
             to a list containing a ChatMessage with user role.
         :param streaming_callback:
-            A callback function that is called when a new token is received from the stream.
-            Must be a coroutine.
+            A callback function that is called when a new token is received from the stream. Async callbacks are
+            preferred; a sync callback is accepted but will run synchronously on the event loop and may block it.
         :param generation_kwargs:
             Additional keyword arguments for text generation. These parameters will
             override the parameters passed during component initialization.
@@ -537,7 +537,7 @@ class OpenAIChatGenerator:
         return [_convert_streaming_chunks_to_chat_message(chunks=chunks)]
 
     async def _handle_async_stream_response(
-        self, chat_completion: AsyncStream, callback: AsyncStreamingCallbackT
+        self, chat_completion: AsyncStream, callback: StreamingCallbackT
     ) -> list[ChatMessage]:
         component_info = ComponentInfo.from_component(self)
         chunks: list[StreamingChunk] = []
@@ -548,7 +548,7 @@ class OpenAIChatGenerator:
                     chunk=chunk, previous_chunks=chunks, component_info=component_info
                 )
                 chunks.append(chunk_delta)
-                await callback(chunk_delta)
+                await _invoke_streaming_callback(callback, chunk_delta)
 
         except asyncio.CancelledError:
             await asyncio.shield(chat_completion.close())

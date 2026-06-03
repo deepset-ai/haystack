@@ -20,8 +20,9 @@ from haystack.core.pipeline.base import (
     _validate_component_output_keys,
 )
 from haystack.core.pipeline.utils import _deepcopy_with_exceptions
-from haystack.dataclasses import AsyncStreamingCallbackT, StreamingChunk, select_streaming_callback
+from haystack.dataclasses import AsyncStreamingCallbackT, StreamingCallbackT, StreamingChunk, select_streaming_callback
 from haystack.dataclasses.breakpoints import Breakpoint
+from haystack.dataclasses.streaming_chunk import _invoke_streaming_callback
 from haystack.telemetry import pipeline_running
 
 logger = logging.getLogger(__name__)
@@ -754,7 +755,8 @@ class AsyncPipeline(PipelineBase):
         For every async-capable component that exposes a `streaming_callback` input socket, a forwarder is injected at
         runtime that pushes chunks onto the handle's queue. If a `streaming_callback` is provided at component init or
         at runtime (inside `data`, e.g. `data={"llm": {"streaming_callback": cb}}`), it is also invoked for each chunk.
-        The callback must be async; sync callbacks are rejected with a `ValueError`.
+        Async callbacks are preferred; a sync callback is accepted but will run synchronously on the event loop and
+        may block it.
 
         Usage:
         ```python
@@ -839,11 +841,11 @@ class AsyncPipeline(PipelineBase):
 
         queue: asyncio.Queue[StreamingChunk | _EndOfStream] = asyncio.Queue()
 
-        def make_forwarder(user_callback: AsyncStreamingCallbackT | None) -> AsyncStreamingCallbackT:
+        def make_forwarder(user_callback: StreamingCallbackT | None) -> AsyncStreamingCallbackT:
             async def forwarder(chunk: StreamingChunk) -> None:
                 await queue.put(chunk)
                 if user_callback is not None:
-                    await user_callback(chunk)
+                    await _invoke_streaming_callback(user_callback, chunk)
 
             return forwarder
 

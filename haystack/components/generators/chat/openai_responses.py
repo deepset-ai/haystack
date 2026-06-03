@@ -15,7 +15,6 @@ from pydantic import BaseModel
 from haystack import component, default_from_dict, default_to_dict, logging
 from haystack.components.generators.utils import _normalize_messages, _serialize_object
 from haystack.dataclasses import (
-    AsyncStreamingCallbackT,
     ChatMessage,
     ComponentInfo,
     FileContent,
@@ -29,6 +28,7 @@ from haystack.dataclasses import (
     ToolCallDelta,
     select_streaming_callback,
 )
+from haystack.dataclasses.streaming_chunk import _invoke_streaming_callback
 from haystack.tools import (
     ToolsType,
     _check_duplicate_tool_names,
@@ -402,8 +402,8 @@ class OpenAIResponsesChatGenerator:
         :param messages:
             A list of ChatMessage instances representing the input messages.
         :param streaming_callback:
-            A callback function that is called when a new token is received from the stream.
-            Must be a coroutine.
+            A callback function that is called when a new token is received from the stream. Async callbacks are
+            preferred; a sync callback is accepted but will run synchronously on the event loop and may block it.
         :param generation_kwargs:
             Additional keyword arguments for text generation. These parameters will
             override the parameters passed during component initialization.
@@ -548,7 +548,7 @@ class OpenAIResponsesChatGenerator:
         return [chat_message]
 
     async def _handle_async_stream_response(
-        self, responses: AsyncStream, callback: AsyncStreamingCallbackT
+        self, responses: AsyncStream, callback: StreamingCallbackT
     ) -> list[ChatMessage]:
         component_info = ComponentInfo.from_component(self)
         chunks: list[StreamingChunk] = []
@@ -557,7 +557,7 @@ class OpenAIResponsesChatGenerator:
                 chunk=openai_chunk, previous_chunks=chunks, component_info=component_info
             )
             chunks.append(chunk_delta)
-            await callback(chunk_delta)
+            await _invoke_streaming_callback(callback, chunk_delta)
         chat_message = _convert_streaming_chunks_to_chat_message(chunks=chunks)
         return [chat_message]
 
