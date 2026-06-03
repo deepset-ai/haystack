@@ -1091,6 +1091,21 @@ Hello, my name is {{name}}!
         result = builder.run(messages=runtime)
         assert result["prompt"] == [ChatMessage.from_assistant("last")]
 
+    def test_insert_placeholder_custom_variable_name(self):
+        builder = ChatPromptBuilder(template="{% insert chat_history %}")
+        assert builder.variables == ["chat_history"]
+        runtime = [ChatMessage.from_user("Hello"), ChatMessage.from_assistant("Hi")]
+        result = builder.run(chat_history=runtime)
+        assert result["prompt"] == runtime
+
+    def test_insert_placeholder_combines_variables(self):
+        builder = ChatPromptBuilder(template="{% insert previous + current %}")
+        assert set(builder.variables) == {"previous", "current"}
+        previous = [ChatMessage.from_user("p1"), ChatMessage.from_assistant("p2")]
+        current = [ChatMessage.from_user("c1")]
+        result = builder.run(previous=previous, current=current)
+        assert result["prompt"] == previous + current
+
     def test_insert_placeholder_interleaved_with_blocks(self):
         template = (
             '{% message role="system" %}You are helpful.{% endmessage %}'
