@@ -28,7 +28,7 @@ class _SerializableStore(SkillStore):
         raise FileNotFoundError
 
     def to_dict(self) -> dict:
-        return {"type": generate_qualified_class_name(type(self)), "data": {"skills": self._data}}
+        return {"type": generate_qualified_class_name(type(self)), "init_parameters": {"skills": self._data}}
 
     @classmethod
     def from_dict(cls, data: dict) -> "_SerializableStore":
@@ -138,7 +138,7 @@ class TestSkillToolset:
         toolset = SkillToolset(store)
 
         serialized = toolset.to_dict()
-        assert serialized["data"]["store"]["data"]["skills"] == {"demo": "A demo skill."}
+        assert serialized["data"]["store"]["init_parameters"]["skills"] == {"demo": "A demo skill."}
 
         restored = SkillToolset.from_dict(serialized)
         assert set(restored.skills) == {"demo"}

@@ -4,7 +4,7 @@
 
 from typing import Annotated, Any
 
-from haystack.core.serialization import generate_qualified_class_name, import_class_by_name
+from haystack.core.serialization import default_from_dict, generate_qualified_class_name, import_class_by_name
 from haystack.skill_stores.types.protocol import SkillMeta, SkillStore
 from haystack.tools.from_function import create_tool_from_function
 from haystack.tools.tool import Tool
@@ -155,4 +155,4 @@ class SkillToolset(Toolset):
                 f"Expected a SkillStore subclass, got '{store_class.__name__}'. "
                 "Ensure the 'type' field in the store dictionary points to a SkillStore implementation."
             )
-        return cls(store=store_class.from_dict(store_data))
+        return cls(store=default_from_dict(store_class, store_data))
