@@ -65,7 +65,7 @@
             <a id="nextFileLink" class="nav" href="z_1fc24f5e5cfb4253_sentence_transformers_sparse_document_embedder_py.html">&#xbb; next</a>
             &nbsp; &nbsp; &nbsp;
             <a class="nav" href="https://coverage.readthedocs.io/en/7.14.1">coverage.py v7.14.1</a>,
-            created at 2026-06-03 05:49 +0000
+            created at 2026-06-03 05:56 +0000
         </p>
         <aside class="hidden">
             <button type="button" class="button_next_chunk" data-shortcut="j"></button>
@@ -327,7 +327,7 @@
     <p class="run"><span class="n"><a id="t245" href="#t245">245</a></span><span class="t">        <span class="nam">texts_to_embed</span> <span class="op">=</span> <span class="op">[</span><span class="op">]</span>&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t246" href="#t246">246</a></span><span class="t">        <span class="key">for</span> <span class="nam">doc</span> <span class="key">in</span> <span class="nam">documents</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t247" href="#t247">247</a></span><span class="t">            <span class="nam">meta_values_to_embed</span> <span class="op">=</span> <span class="op">[</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run run2"><span class="n"><a id="t248" href="#t248">248</a></span><span class="t">                <span class="nam">str</span><span class="op">(</span><span class="nam">doc</span><span class="op">.</span><span class="nam">meta</span><span class="op">[</span><span class="nam">key</span><span class="op">]</span><span class="op">)</span> <span class="key">for</span> <span class="nam">key</span> <span class="key">in</span> <span class="nam">self</span><span class="op">.</span><span class="nam">meta_fields_to_embed</span> <span class="key">if</span> <span class="nam">key</span> <span class="key">in</span> <span class="nam">doc</span><span class="op">.</span><span class="nam">meta</span> <span class="key">and</span> <span class="nam">doc</span><span class="op">.</span><span class="nam">meta</span><span class="op">[</span><span class="nam">key</span><span class="op">]</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run run2"><span class="n"><a id="t248" href="#t248">248</a></span><span class="t">                <span class="nam">str</span><span class="op">(</span><span class="nam">doc</span><span class="op">.</span><span class="nam">meta</span><span class="op">[</span><span class="nam">key</span><span class="op">]</span><span class="op">)</span> <span class="key">for</span> <span class="nam">key</span> <span class="key">in</span> <span class="nam">self</span><span class="op">.</span><span class="nam">meta_fields_to_embed</span> <span class="key">if</span> <span class="nam">key</span> <span class="key">in</span> <span class="nam">doc</span><span class="op">.</span><span class="nam">meta</span> <span class="key">and</span> <span class="nam">doc</span><span class="op">.</span><span class="nam">meta</span><span class="op">[</span><span class="nam">key</span><span class="op">]</span> <span class="key">is</span> <span class="key">not</span> <span class="key">None</span>&nbsp;</span><span class="r"></span></p>
     <p class="run run2"><span class="n"><a id="t249" href="#t249">249</a></span><span class="t">            <span class="op">]</span>&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t250" href="#t250">250</a></span><span class="t">            <span class="nam">text_to_embed</span> <span class="op">=</span> <span class="op">(</span>&nbsp;</span><span class="r"></span></p>
     <p class="run run2"><span class="n"><a id="t251" href="#t251">251</a></span><span class="t">                <span class="nam">self</span><span class="op">.</span><span class="nam">prefix</span> <span class="op">+</span> <span class="nam">self</span><span class="op">.</span><span class="nam">embedding_separator</span><span class="op">.</span><span class="nam">join</span><span class="op">(</span><span class="nam">meta_values_to_embed</span> <span class="op">+</span> <span class="op">[</span><span class="nam">doc</span><span class="op">.</span><span class="nam">content</span> <span class="key">or</span> <span class="str">""</span><span class="op">]</span><span class="op">)</span> <span class="op">+</span> <span class="nam">self</span><span class="op">.</span><span class="nam">suffix</span>&nbsp;</span><span class="r"></span></p>
@@ -358,7 +358,7 @@
             <a class="nav" href="z_1fc24f5e5cfb4253_sentence_transformers_sparse_document_embedder_py.html">&#xbb; next</a>
             &nbsp; &nbsp; &nbsp;
             <a class="nav" href="https://coverage.readthedocs.io/en/7.14.1">coverage.py v7.14.1</a>,
-            created at 2026-06-03 05:49 +0000
+            created at 2026-06-03 05:56 +0000
         </p>
     </div>
 </footer>
