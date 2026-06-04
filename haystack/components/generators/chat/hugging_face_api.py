@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import json
+import warnings
 from collections.abc import AsyncIterable, Iterable
 from datetime import datetime
 from typing import Any, Union
@@ -391,6 +392,14 @@ class HuggingFaceAPIChatGenerator:
             Support for tools in the Hugging Face API and TGI is not yet fully refined and you may experience
             unexpected behavior.
         """
+        warnings.warn(
+            "`HuggingFaceAPIChatGenerator` will be removed from Haystack in version 3.0, as it is moving to "
+            "the `huggingface-api-haystack` package. To continue using it, install that package with "
+            "`pip install huggingface-api-haystack` and update your import to "
+            "`from haystack_integrations.components.generators.huggingface_api import HuggingFaceAPIChatGenerator`.",
+            FutureWarning,
+            stacklevel=2,
+        )
 
         huggingface_hub_import.check()
 
