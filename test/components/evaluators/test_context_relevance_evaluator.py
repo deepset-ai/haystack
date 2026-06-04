@@ -233,9 +233,28 @@ class TestContextRelevanceEvaluator:
         ]
         results = component.run(questions=questions, contexts=contexts)
 
-        assert math.isnan(results["score"])
+        # Valid queries' scores are averaged; failed queries are excluded from the aggregate
+        assert results["score"] == 1.0
         assert results["results"][0] == {"relevant_statements": ["c", "d"], "score": 1}
         assert results["results"][1]["relevant_statements"] == []
+        assert math.isnan(results["results"][1]["score"])  # individual score preserved for transparency
+
+    def test_run_all_failed_returns_nan_score(self, monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+        component = ContextRelevanceEvaluator(raise_on_failure=False)
+
+        def chat_generator_run(self, *args, **kwargs):
+            raise Exception("OpenAI API request failed.")
+
+        monkeypatch.setattr("haystack.components.evaluators.llm_evaluator.OpenAIChatGenerator.run", chat_generator_run)
+
+        questions = ["Who created Python?", "What is the capital of France?"]
+        contexts = [["Python was created by Guido van Rossum."], ["Paris is the capital of France."]]
+        results = component.run(questions=questions, contexts=contexts)
+
+        # All queries failed: aggregate score should still be NaN (not a crash)
+        assert math.isnan(results["score"])
+        assert math.isnan(results["results"][0]["score"])
         assert math.isnan(results["results"][1]["score"])
 
     @pytest.mark.skipif(

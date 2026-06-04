@@ -284,16 +284,36 @@ class TestFaithfulnessEvaluator:
         ]
         results = component.run(questions=questions, contexts=contexts, predicted_answers=predicted_answers)
 
-        assert math.isnan(results["score"])
+        # Valid queries' scores are averaged; failed queries are excluded from the aggregate
+        assert results["score"] == 1.0
 
         assert results["individual_scores"][0] == 1.0
-        assert math.isnan(results["individual_scores"][1])
+        assert math.isnan(results["individual_scores"][1])  # individual score preserved as NaN for transparency
 
         assert results["results"][0] == {"statements": ["c", "d"], "statement_scores": [1, 1], "score": 1.0}
 
         assert results["results"][1]["statements"] == []
         assert results["results"][1]["statement_scores"] == []
         assert math.isnan(results["results"][1]["score"])
+
+    def test_run_all_failed_returns_nan_score(self, monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+        component = FaithfulnessEvaluator(raise_on_failure=False)
+
+        def chat_generator_run(self, *args, **kwargs):
+            raise Exception("OpenAI API request failed.")
+
+        monkeypatch.setattr("haystack.components.evaluators.llm_evaluator.OpenAIChatGenerator.run", chat_generator_run)
+
+        questions = ["Who created Python?", "What is the capital of France?"]
+        contexts = [["Python was created by Guido van Rossum."], ["Paris is the capital of France."]]
+        predicted_answers = ["Guido van Rossum.", "Paris."]
+        results = component.run(questions=questions, contexts=contexts, predicted_answers=predicted_answers)
+
+        # All queries failed: aggregate score should still be NaN (not a crash)
+        assert math.isnan(results["score"])
+        assert math.isnan(results["individual_scores"][0])
+        assert math.isnan(results["individual_scores"][1])
 
     @pytest.mark.skipif(
         not os.environ.get("OPENAI_API_KEY", None),

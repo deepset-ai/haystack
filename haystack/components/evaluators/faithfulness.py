@@ -4,13 +4,17 @@
 
 from typing import Any
 
+import math
+
 from numpy import mean as np_mean
 
-from haystack import component, default_from_dict, default_to_dict
+from haystack import component, default_from_dict, default_to_dict, logging
 from haystack.components.evaluators.llm_evaluator import LLMEvaluator
 from haystack.components.generators.chat.types import ChatGenerator
 from haystack.core.serialization import component_to_dict
 from haystack.utils import deserialize_chatgenerator_inplace
+
+logger = logging.getLogger(__name__)
 
 # Default examples to include in the prompt if the user does not provide any examples
 _DEFAULT_EXAMPLES = [
@@ -175,8 +179,16 @@ class FaithfulnessEvaluator(LLMEvaluator):
             else:
                 res["score"] = np_mean(res["statement_scores"])
 
-        # calculate average answer faithfulness score over all queries
-        result["score"] = np_mean([res["score"] for res in result["results"]])
+        # calculate average answer faithfulness score over all queries, excluding failed queries
+        valid_scores = [res["score"] for res in result["results"] if not math.isnan(res["score"])]
+        failed_count = len(result["results"]) - len(valid_scores)
+        if failed_count:
+            logger.warning(
+                "{failed_count} out of {total} queries failed and were excluded from the score.",
+                failed_count=failed_count,
+                total=len(result["results"]),
+            )
+        result["score"] = np_mean(valid_scores) if valid_scores else float("nan")
         result["individual_scores"] = [res["score"] for res in result["results"]]
 
         return result

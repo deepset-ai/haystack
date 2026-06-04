@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    `FaithfulnessEvaluator` and `ContextRelevanceEvaluator` no longer propagate `NaN` silently into
+    the aggregate `score` when one or more LLM calls fail with `raise_on_failure=False`. Failed
+    queries are now excluded from the mean calculation and a warning is logged indicating how many
+    queries were skipped. If every query fails, the aggregate score remains `NaN`. Individual scores
+    in `individual_scores` and `results` are preserved as `NaN` for per-query transparency.
