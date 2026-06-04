@@ -28,6 +28,35 @@ def test_from_file_path(tmp_path, request):
     assert b.meta == {"foo": "bar"}
 
 
+def test_from_file_path_symlink_disabled(tmp_path):
+    import os
+    test_bytes = b"Sensitive content"
+    target_path = tmp_path / "target.txt"
+    with open(target_path, "wb") as fd:
+        fd.write(test_bytes)
+
+    symlink_path = tmp_path / "symlink.txt"
+    os.symlink(target_path, symlink_path)
+
+    with pytest.raises(ValueError, match="is a symbolic link"):
+        ByteStream.from_file_path(symlink_path)
+
+
+def test_from_file_path_symlink_enabled(tmp_path):
+    import os
+    test_bytes = b"Sensitive content"
+    target_path = tmp_path / "target.txt"
+    with open(target_path, "wb") as fd:
+        fd.write(test_bytes)
+
+    symlink_path = tmp_path / "symlink.txt"
+    os.symlink(target_path, symlink_path)
+
+    b = ByteStream.from_file_path(symlink_path, follow_symlinks=True)
+    assert b.data == test_bytes
+
+
+
 @pytest.mark.parametrize(
     "file_path, expected_mime_types",
     [

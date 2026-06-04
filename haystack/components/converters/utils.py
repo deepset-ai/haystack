@@ -8,7 +8,9 @@ from typing import Any
 from haystack.dataclasses import ByteStream
 
 
-def get_bytestream_from_source(source: str | Path | ByteStream, guess_mime_type: bool = False) -> ByteStream:
+def get_bytestream_from_source(
+    source: str | Path | ByteStream, guess_mime_type: bool = False, follow_symlinks: bool = False
+) -> ByteStream:
     """
     Creates a ByteStream object from a source.
 
@@ -16,6 +18,8 @@ def get_bytestream_from_source(source: str | Path | ByteStream, guess_mime_type:
         A source to convert to a ByteStream. Can be a string (path to a file), a Path object, or a ByteStream.
     :param guess_mime_type:
         Whether to guess the mime type from the file.
+    :param follow_symlinks:
+        Whether to follow symbolic links. If False, an error is raised if the source path is a symlink.
     :return:
         A ByteStream object.
     """
@@ -23,7 +27,7 @@ def get_bytestream_from_source(source: str | Path | ByteStream, guess_mime_type:
     if isinstance(source, ByteStream):
         return source
     if isinstance(source, (str, Path)):
-        bs = ByteStream.from_file_path(Path(source), guess_mime_type=guess_mime_type)
+        bs = ByteStream.from_file_path(Path(source), guess_mime_type=guess_mime_type, follow_symlinks=follow_symlinks)
         bs.meta["file_path"] = str(source)
         return bs
     raise ValueError(f"Unsupported source type {type(source)}")

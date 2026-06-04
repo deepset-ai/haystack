@@ -41,6 +41,7 @@ class ByteStream:
         mime_type: str | None = None,
         meta: dict[str, Any] | None = None,
         guess_mime_type: bool = False,
+        follow_symlinks: bool = False,
     ) -> "ByteStream":
         """
         Create a ByteStream from the contents read from a file.
@@ -49,7 +50,14 @@ class ByteStream:
         :param mime_type: The mime type of the file.
         :param meta: Additional metadata to be stored with the ByteStream.
         :param guess_mime_type: Whether to guess the mime type from the file.
+        :param follow_symlinks: Whether to follow symbolic links. If False, an error is raised if the path is a symlink.
         """
+        if not follow_symlinks and filepath.is_symlink():
+            raise ValueError(
+                f"The file path {filepath} is a symbolic link. Following symbolic links is disabled by default for security reasons. "
+                "Set follow_symlinks=True to follow it."
+            )
+
         if not mime_type and guess_mime_type:
             mime_type = _guess_mime_type(filepath)
         with open(filepath, "rb") as fd:

@@ -61,6 +61,34 @@ def test_get_bytestream_from_string_path(tmp_path):
     assert bs.meta["file_path"].endswith("test.txt")
 
 
+def test_get_bytestream_from_source_symlink_disabled(tmp_path):
+    import os
+    bytes_ = b"hello world"
+    target = tmp_path / "target.txt"
+    target.write_bytes(bytes_)
+
+    symlink_path = tmp_path / "symlink.txt"
+    os.symlink(target, symlink_path)
+
+    with pytest.raises(ValueError, match="is a symbolic link"):
+        get_bytestream_from_source(symlink_path)
+
+
+def test_get_bytestream_from_source_symlink_enabled(tmp_path):
+    import os
+    bytes_ = b"hello world"
+    target = tmp_path / "target.txt"
+    target.write_bytes(bytes_)
+
+    symlink_path = tmp_path / "symlink.txt"
+    os.symlink(target, symlink_path)
+
+    bs = get_bytestream_from_source(symlink_path, follow_symlinks=True)
+    assert isinstance(bs, ByteStream)
+    assert bs.data == bytes_
+
+
+
 def test_get_bytestream_from_source_invalid_type():
     with pytest.raises(ValueError, match="Unsupported source type"):
         get_bytestream_from_source(123)
