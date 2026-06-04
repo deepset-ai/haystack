@@ -56,7 +56,7 @@ print(document_store.count_documents())
 When you create a `QdrantDocumentStore` instance, Haystack takes care of setting up the collection. In general, you cannot use a Qdrant collection created without Haystack with Haystack. If you want to migrate your existing collection, see the sample script at https://github.com/deepset-ai/haystack-core-integrations/blob/main/integrations/qdrant/src/haystack_integrations/document_stores/qdrant/migrate_to_sparse.py.
 :::
 
-You can also connect directly to [Qdrant Cloud](https://cloud.qdrant.io/login) directly. Once you have your API key and your cluster URL from the Qdrant dashboard, you can connect like this:
+You can also connect directly to [Qdrant Cloud](https://cloud.qdrant.io/login). Once you have your API key and your cluster URL from the Qdrant dashboard, you can connect like this:
 
 ```python
 from haystack.dataclasses.document import Document
@@ -66,7 +66,7 @@ from haystack.utils import Secret
 document_store = QdrantDocumentStore(
     url="https://XXXXXXXXX.us-east4-0.gcp.cloud.qdrant.io:6333",
     index="your_index_name",
-    embedding_dim=1024,  # based on the embedding model
+    embedding_dim=5,  # based on the embedding model
     recreate_index=True,  # enable only to recreate the index and not connect to the existing one
     api_key=Secret.from_token("YOUR_TOKEN"),
 )
