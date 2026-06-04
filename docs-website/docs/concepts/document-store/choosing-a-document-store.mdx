@@ -23,35 +23,35 @@ Document Stores are special objects in Haystack that abstract all the different 
 
 | Integration | Category | Engine Type | Open Source | Async Support | Retrievers |
 | --- | --- | --- | --- | --- | --- |
-| ArcadeDB | `ArcadeDBDocumentStore` | Multi-model Database | Multi-model database (graph, document, key-value) with HNSW vector search via HTTP/JSON API | Yes | No | Embedding |
-| <img src="/img/logos/document-stores/alloydb.svg" alt="" className="ds-logo" />AlloyDB | `AlloyDBDocumentStore` | Relational Database | Managed PostgreSQL-compatible database (Google Cloud) with pgvector extension | No | Yes | Embedding, Keyword |
-| Astra | `AstraDocumentStore` | Document / NoSQL Database | Cloud-native managed NoSQL (Apache Cassandra-based) with vector search via DataStax JSON API | No | No | Embedding |
-| Azure AI Search | `AzureAISearchDocumentStore` | Search Engine | Managed cloud search service (Microsoft Azure AI Search) with HNSW vector search | No | No | BM25, Embedding, Hybrid |
-| Chroma | `ChromaDocumentStore` | Vector Database | Purpose-built vector database | Yes | Yes | Embedding |
-| <img src="/img/logos/document-stores/elasticsearch.svg" alt="" className="ds-logo" />Elasticsearch | `ElasticsearchDocumentStore` | Search Engine | Distributed search & analytics engine with BM25 + vector (kNN) search | Partial | Yes | BM25, Embedding, SQL |
-| FAISS | `FAISSDocumentStore` | Vector Index Library | In-memory vector similarity search library (Meta/Facebook) with JSON file for metadata | Yes | No | Embedding |
-| FalkorDB | `FalkorDBDocumentStore` | Graph Database | OpenCypher graph database with ANN vector search | Yes (SSPL) | No | Embedding, Cypher |
-| <img src="/img/logos/document-stores/mongodb.svg" alt="" className="ds-logo" />MongoDB Atlas | `MongoDBAtlasDocumentStore` | Document / NoSQL Database | Cloud document database with Atlas Vector Search and full-text search | No | Yes | Embedding, Full-text |
-| Oracle | `OracleDocumentStore` | Relational Database | Oracle with native AI Vector Search, HNSW vector index and DBMS_SEARCH full-text keyword index | No | Yes | Embedding, Keyword |
-| <img src="/img/logos/document-stores/opensearch.svg" alt="" className="ds-logo" />OpenSearch | `OpenSearchDocumentStore` | Search Engine | Distributed search engine (AWS fork of Elasticsearch) with BM25 + kNN vector search | Yes | Yes | BM25, Embedding, Hybrid, Metadata, SQL |
-| <img src="/img/logos/document-stores/postgresql.svg" alt="" className="ds-logo" />PGVector | `PgvectorDocumentStore` | Relational Database | Relational database (PostgreSQL) with the `pgvector` extension for vector similarity search | Yes | Yes | Embedding, Keyword |
-| Pinecone | `PineconeDocumentStore` | Vector Database | Managed cloud vector database | No | Yes | Embedding |
-| <img src="/img/logos/document-stores/qdrant.svg" alt="" className="ds-logo" />Qdrant | `QdrantDocumentStore` | Vector Database | Purpose-built vector database with dense + sparse embedding support | Yes | Yes | Embedding, Sparse Embedding, Hybrid |
-| <img src="/img/logos/document-stores/supabase.svg" alt="" className="ds-logo" />Supabase | `SupabasePgvectorDocumentStore` | Relational Database | Managed cloud Supabase — a wrapper over PgvectorDocumentStore with Supabase-specific defaults | Yes | Yes | Embedding, Keyword |
-| <img src="/img/logos/document-stores/valkey.svg" alt="" className="ds-logo" />Valkey | `ValkeyDocumentStore` | In-memory Key-Value Store | In-memory key-value store (Redis fork) with HNSW vector search via `glide` client | Yes | Yes | Embedding |
-| <img src="/img/logos/document-stores/vespa.svg" alt="" className="ds-logo" />Vespa | `VespaDocumentStore` | Search Engine | Distributed search & serving engine with BM25 lexical + HNSW vector (ANN) search | Yes | No | BM25, Embedding |
-| Weaviate | `WeaviateDocumentStore` | Vector Database | Purpose-built vector database with hybrid search support | Yes | Yes | BM25, Embedding, Hybrid |
+| ArcadeDB | Multi-model Database | Multi-model database (graph, document, key-value) with HNSW vector search via HTTP/JSON API | Yes | No | Embedding |
+| <img src="/img/logos/document-stores/alloydb.svg" alt="" className="ds-logo" />AlloyDB | Relational Database | Managed PostgreSQL-compatible database (Google Cloud) with pgvector extension | No | Yes | Embedding, Keyword |
+| Astra | Document / NoSQL Database | Cloud-native managed NoSQL (Apache Cassandra-based) with vector search via DataStax JSON API | No | No | Embedding |
+| Azure AI Search | Search Engine | Managed cloud search service (Microsoft Azure AI Search) with HNSW vector search | No | No | BM25, Embedding, Hybrid |
+| Chroma | Vector Database | Purpose-built vector database | Yes | Yes | Embedding |
+| <img src="/img/logos/document-stores/elasticsearch.svg" alt="" className="ds-logo" />Elasticsearch | Search Engine | Distributed search & analytics engine with BM25 + vector (kNN) search | Partial | Yes | BM25, Embedding, SQL |
+| FAISS | Vector Index Library | In-memory vector similarity search library (Meta/Facebook) with JSON file for metadata | Yes | No | Embedding |
+| FalkorDB | Graph Database | OpenCypher graph database with ANN vector search | Yes (SSPL) | No | Embedding, Cypher |
+| <img src="/img/logos/document-stores/mongodb.svg" alt="" className="ds-logo" />MongoDB Atlas | Document / NoSQL Database | Cloud document database with Atlas Vector Search and full-text search | No | Yes | Embedding, Full-text |
+| Oracle | Relational Database | Oracle with native AI Vector Search, HNSW vector index and DBMS_SEARCH full-text keyword index | No | Yes | Embedding, Keyword |
+| <img src="/img/logos/document-stores/opensearch.svg" alt="" className="ds-logo" />OpenSearch | Search Engine | Distributed search engine (AWS fork of Elasticsearch) with BM25 + kNN vector search | Yes | Yes | BM25, Embedding, Hybrid, Metadata, SQL |
+| <img src="/img/logos/document-stores/postgresql.svg" alt="" className="ds-logo" />PGVector | Relational Database | Relational database (PostgreSQL) with the `pgvector` extension for vector similarity search | Yes | Yes | Embedding, Keyword |
+| Pinecone | Vector Database | Managed cloud vector database | No | Yes | Embedding |
+| <img src="/img/logos/document-stores/qdrant.svg" alt="" className="ds-logo" />Qdrant | Vector Database | Purpose-built vector database with dense + sparse embedding support | Yes | Yes | Embedding, Sparse Embedding, Hybrid |
+| <img src="/img/logos/document-stores/supabase.svg" alt="" className="ds-logo" />Supabase | Relational Database | Managed cloud Supabase — a wrapper over PgvectorDocumentStore with Supabase-specific defaults | Yes | Yes | Embedding, Keyword |
+| <img src="/img/logos/document-stores/valkey.svg" alt="" className="ds-logo" />Valkey | In-memory Key-Value Store | In-memory key-value store (Redis fork) with HNSW vector search via `glide` client | Yes | Yes | Embedding |
+| <img src="/img/logos/document-stores/vespa.svg" alt="" className="ds-logo" />Vespa | Search Engine | Distributed search & serving engine with BM25 lexical + HNSW vector (ANN) search | Yes | No | BM25, Embedding |
+| Weaviate | Vector Database | Purpose-built vector database with hybrid search support | Yes | Yes | BM25, Embedding, Hybrid |
 
 #### External integrations
 
 | Integration | Category | Engine Type | Open Source | Async Support | Retrievers |
 | --- | --- | --- | --- | --- | --- |
-| <img src="/img/logos/document-stores/couchbase.svg" alt="" className="ds-logo" />Couchbase | `CouchbaseDocumentStore` | Document / NoSQL Database | Distributed NoSQL document database with vector search via Search Service | Partial | Yes | Embedding, Full-text |
-| LanceDB | `LanceDBDocumentStore` | Vector Database | Embedded vector database built on the Lance columnar format, optimized for multimodal data | Yes | Yes | Embedding, Full-text, Hybrid |
-| <img src="/img/logos/document-stores/milvus.svg" alt="" className="ds-logo" />Milvus | `MilvusDocumentStore` | Vector Database | Open-source vector database built for scalable similarity search | Yes | No | Embedding |
-| Needle | `NeedleDocumentStore` | Search Engine | Managed RAG-as-a-service platform with built-in document storage and vector search | No | Yes | Embedding, Sparse Embedding, Hybrid |
-| <img src="/img/logos/document-stores/neo4j.svg" alt="" className="ds-logo" />Neo4j | `Neo4jDocumentStore` | Multi-model Database | Graph database with native vector index support for combined graph traversal and similarity search | Partial | No | Embedding |
-| <img src="/img/logos/document-stores/singlestore.svg" alt="" className="ds-logo" />SingleStore | `SingleStoreDocumentStore` | Relational Database | Distributed SQL database with native vector search and full-text search support | No | Yes | Embedding, Full-text, Keyword |
+| <img src="/img/logos/document-stores/couchbase.svg" alt="" className="ds-logo" />Couchbase | Document / NoSQL Database | Distributed NoSQL document database with vector search via Search Service | Partial | Yes | Embedding, Full-text |
+| LanceDB | Vector Database | Embedded vector database built on the Lance columnar format, optimized for multimodal data | Yes | Yes | Embedding, Full-text, Hybrid |
+| <img src="/img/logos/document-stores/milvus.svg" alt="" className="ds-logo" />Milvus | Vector Database | Open-source vector database built for scalable similarity search | Yes | No | Embedding |
+| Needle | Search Engine | Managed RAG-as-a-service platform with built-in document storage and vector search | No | Yes | Embedding, Sparse Embedding, Hybrid |
+| <img src="/img/logos/document-stores/neo4j.svg" alt="" className="ds-logo" />Neo4j | Multi-model Database | Graph database with native vector index support for combined graph traversal and similarity search | Partial | No | Embedding |
+| <img src="/img/logos/document-stores/singlestore.svg" alt="" className="ds-logo" />SingleStore | Relational Database | Distributed SQL database with native vector search and full-text search support | No | Yes | Embedding, Full-text, Keyword |
 
 ## Types of Document Stores
 
