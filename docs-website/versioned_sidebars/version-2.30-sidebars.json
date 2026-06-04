@@ -73,7 +73,8 @@
             "id": "concepts/data-classes"
           },
           "items": [
-            "concepts/data-classes/chatmessage"
+            "concepts/data-classes/chatmessage",
+            "concepts/data-classes/filecontent"
           ]
         },
         {
