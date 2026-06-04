@@ -30,6 +30,7 @@ A full-text Retriever that fetches documents from the SupabaseGroongaDocumentSto
 Unlike embedding-based retrievers, this Retriever works with plain text queries and requires no embeddings. It supports a wide range of languages out of the box through PGroonga's multilingual indexing capabilities.
 
 The Retriever can be combined with `SupabasePgvectorEmbeddingRetriever` and a [`DocumentJoiner`](../joiners/documentjoiner.mdx) for hybrid search pipelines that take advantage of both keyword and semantic retrieval.
+You can also use of the [Smart Pipeline Connections](https://docs.haystack.deepset.ai/docs/smart-pipeline-connections) and skip the `DocumentJoiner` if you want to combine the results of both retrievers in a RAG pipeline.
 
 In addition to `query`, the Retriever accepts optional parameters including `top_k` (the maximum number of Documents to retrieve) and `filters` to narrow the search space.
 
