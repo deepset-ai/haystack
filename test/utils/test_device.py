@@ -34,6 +34,9 @@ def test_device_creation():
     with pytest.raises(ValueError, match="Device id must be >= 0"):
         Device.gpu(-1)
 
+    with pytest.raises(ValueError, match="Device id must be an integer, got 0:1"):
+        Device.from_str("cuda:0:1")
+
 
 def test_device_map():
     device_map = DeviceMap({"layer1": Device.cpu(), "layer2": Device.gpu(1), "layer3": Device.disk()})

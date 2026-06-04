@@ -533,7 +533,7 @@ def _split_device_string(string: str) -> tuple[str, int | None]:
         The device type and device id, if any.
     """
     if ":" in string:
-        device_type, device_id_str = string.split(":")
+        device_type, device_id_str = string.split(":", maxsplit=1)
         try:
             device_id = int(device_id_str)
         except ValueError as e:
