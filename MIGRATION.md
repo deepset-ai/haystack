@@ -40,6 +40,8 @@ component = NewComponent(new_param="value")
 - **One entry per breaking change.** Don't bundle unrelated changes into a single entry.
 - **Include a working code example** for every rename, removal, or signature change.
 - **Link to the PR** when extra context would help (e.g. `See [#1234](https://github.com/deepset-ai/haystack/pull/1234)`).
+- **Components moved to external packages** don't need a full entry: add a row to the table in
+  [Components Moved to External Packages](#components-moved-to-external-packages) instead.
 
 ---
 
@@ -70,6 +72,26 @@ from haystack.dataclasses import Document
 
 doc = Document(content="col\n1\n2\n3")
 ```
+
+### Components Moved to External Packages
+
+**What changed:** Some components have been moved out of Haystack into dedicated integration packages,
+hosted in the [haystack-core-integrations](https://github.com/deepset-ai/haystack-core-integrations) repository.
+
+**Why:** Moving these components to separate packages allows testing more thoroughly in isolation and
+releasing fixes independently of the Haystack release cycle. This also makes Haystack development and CI leaner.
+
+**How to migrate:** Install the new package and update your imports as shown in the table below.
+
+```bash
+pip install <new-package>
+```
+
+| Old import (`haystack-ai<3.0.0`) | New package | New import |
+|---|---|---|
+| `from haystack.components.generators.chat import HuggingFaceAPIChatGenerator` | `huggingface-api-haystack` | `from haystack_integrations.components.generators.huggingface_api import HuggingFaceAPIChatGenerator` |
+| `from haystack.components.embedders import HuggingFaceAPITextEmbedder` | `huggingface-api-haystack` | `from haystack_integrations.components.embedders.huggingface_api import HuggingFaceAPITextEmbedder` |
+| `from haystack.components.embedders import HuggingFaceAPIDocumentEmbedder` | `huggingface-api-haystack` | `from haystack_integrations.components.embedders.huggingface_api import HuggingFaceAPIDocumentEmbedder` |
 
 ### ToolInvoker component removed
 
