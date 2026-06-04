@@ -1,0 +1,87 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="644" viewBox="0 0 1600 644">
+  <rect width="1600" height="644" fill="white"/>
+  <text x="800" y="30" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="22" font-weight="800" fill="#111827">DocumentStore Integrations in Haystack</text>
+  <text x="800" y="54" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="13" fill="#6B7280">* External integrations (community-maintained)</text>
+<rect x="28" y="74" width="501" height="268" rx="12" fill="#EFF6FF" stroke="#3B82F6" stroke-width="1.5"/>
+<rect x="28" y="74" width="501" height="48" rx="12" fill="#3B82F6"/>
+<rect x="28" y="110" width="501" height="12" fill="#3B82F6"/>
+<text x="278" y="104" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="16" font-weight="700" fill="white">Vector Databases</text>
+<circle cx="50" cy="138" r="3" fill="#3B82F6"/>
+<text x="62" y="143" font-family="system-ui, -apple-system, sans-serif" font-size="15" fill="#374151">Chroma</text>
+<circle cx="50" cy="170" r="3" fill="#3B82F6"/>
+<text x="62" y="175" font-family="system-ui, -apple-system, sans-serif" font-size="15" fill="#374151">Pinecone</text>
+<circle cx="50" cy="202" r="3" fill="#3B82F6"/>
+<text x="62" y="207" font-family="system-ui, -apple-system, sans-serif" font-size="15" fill="#374151">Qdrant</text>
+<circle cx="50" cy="234" r="3" fill="#3B82F6"/>
+<text x="62" y="239" font-family="system-ui, -apple-system, sans-serif" font-size="15" fill="#374151">Weaviate</text>
+<circle cx="50" cy="266" r="3" fill="#3B82F6"/>
+<text x="62" y="271" font-family="system-ui, -apple-system, sans-serif" font-size="15" fill="#374151">LanceDB *</text>
+<circle cx="50" cy="298" r="3" fill="#3B82F6"/>
+<text x="62" y="303" font-family="system-ui, -apple-system, sans-serif" font-size="15" fill="#374151">Milvus *</text>
+<rect x="549" y="74" width="501" height="268" rx="12" fill="#FFFBEB" stroke="#F59E0B" stroke-width="1.5"/>
+<rect x="549" y="74" width="501" height="48" rx="12" fill="#F59E0B"/>
+<rect x="549" y="110" width="501" height="12" fill="#F59E0B"/>
+<text x="799" y="104" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="16" font-weight="700" fill="white">Search Engines</text>
+<circle cx="571" cy="138" r="3" fill="#F59E0B"/>
+<text x="583" y="143" font-family="system-ui, -apple-system, sans-serif" font-size="15" fill="#374151">Azure AI Search</text>
+<circle cx="571" cy="170" r="3" fill="#F59E0B"/>
+<text x="583" y="175" font-family="system-ui, -apple-system, sans-serif" font-size="15" fill="#374151">Elasticsearch</text>
+<circle cx="571" cy="202" r="3" fill="#F59E0B"/>
+<text x="583" y="207" font-family="system-ui, -apple-system, sans-serif" font-size="15" fill="#374151">OpenSearch</text>
+<circle cx="571" cy="234" r="3" fill="#F59E0B"/>
+<text x="583" y="239" font-family="system-ui, -apple-system, sans-serif" font-size="15" fill="#374151">Needle *</text>
+<circle cx="571" cy="266" r="3" fill="#F59E0B"/>
+<text x="583" y="271" font-family="system-ui, -apple-system, sans-serif" font-size="15" fill="#374151">Vespa</text>
+<rect x="1070" y="74" width="501" height="268" rx="12" fill="#ECFDF5" stroke="#10B981" stroke-width="1.5"/>
+<rect x="1070" y="74" width="501" height="48" rx="12" fill="#10B981"/>
+<rect x="1070" y="110" width="501" height="12" fill="#10B981"/>
+<text x="1320" y="104" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="16" font-weight="700" fill="white">Relational Databases</text>
+<circle cx="1092" cy="138" r="3" fill="#10B981"/>
+<text x="1104" y="143" font-family="system-ui, -apple-system, sans-serif" font-size="15" fill="#374151">AlloyDB</text>
+<circle cx="1092" cy="170" r="3" fill="#10B981"/>
+<text x="1104" y="175" font-family="system-ui, -apple-system, sans-serif" font-size="15" fill="#374151">Oracle</text>
+<circle cx="1092" cy="202" r="3" fill="#10B981"/>
+<text x="1104" y="207" font-family="system-ui, -apple-system, sans-serif" font-size="15" fill="#374151">PGVector</text>
+<circle cx="1092" cy="234" r="3" fill="#10B981"/>
+<text x="1104" y="239" font-family="system-ui, -apple-system, sans-serif" font-size="15" fill="#374151">Supabase</text>
+<circle cx="1092" cy="266" r="3" fill="#10B981"/>
+<text x="1104" y="271" font-family="system-ui, -apple-system, sans-serif" font-size="15" fill="#374151">SingleStore *</text>
+<rect x="28" y="362" width="371" height="172" rx="12" fill="#F5F3FF" stroke="#8B5CF6" stroke-width="1.5"/>
+<rect x="28" y="362" width="371" height="48" rx="12" fill="#8B5CF6"/>
+<rect x="28" y="398" width="371" height="12" fill="#8B5CF6"/>
+<text x="213" y="392" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="16" font-weight="700" fill="white">Document / NoSQL</text>
+<circle cx="50" cy="426" r="3" fill="#8B5CF6"/>
+<text x="62" y="431" font-family="system-ui, -apple-system, sans-serif" font-size="15" fill="#374151">Astra</text>
+<circle cx="50" cy="458" r="3" fill="#8B5CF6"/>
+<text x="62" y="463" font-family="system-ui, -apple-system, sans-serif" font-size="15" fill="#374151">MongoDB Atlas</text>
+<circle cx="50" cy="490" r="3" fill="#8B5CF6"/>
+<text x="62" y="495" font-family="system-ui, -apple-system, sans-serif" font-size="15" fill="#374151">Couchbase *</text>
+<rect x="419" y="362" width="371" height="172" rx="12" fill="#FEF2F2" stroke="#EF4444" stroke-width="1.5"/>
+<rect x="419" y="362" width="371" height="48" rx="12" fill="#EF4444"/>
+<rect x="419" y="398" width="371" height="12" fill="#EF4444"/>
+<text x="604" y="392" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="16" font-weight="700" fill="white">In-memory Key-Value</text>
+<circle cx="441" cy="426" r="3" fill="#EF4444"/>
+<text x="453" y="431" font-family="system-ui, -apple-system, sans-serif" font-size="15" fill="#374151">Valkey</text>
+<rect x="810" y="362" width="371" height="172" rx="12" fill="#F0F9FF" stroke="#0EA5E9" stroke-width="1.5"/>
+<rect x="810" y="362" width="371" height="48" rx="12" fill="#0EA5E9"/>
+<rect x="810" y="398" width="371" height="12" fill="#0EA5E9"/>
+<text x="995" y="392" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="16" font-weight="700" fill="white">Vector Index Libraries</text>
+<circle cx="832" cy="426" r="3" fill="#0EA5E9"/>
+<text x="844" y="431" font-family="system-ui, -apple-system, sans-serif" font-size="15" fill="#374151">FAISS</text>
+<rect x="1201" y="362" width="371" height="172" rx="12" fill="#EEF2FF" stroke="#6366F1" stroke-width="1.5"/>
+<rect x="1201" y="362" width="371" height="48" rx="12" fill="#6366F1"/>
+<rect x="1201" y="398" width="371" height="12" fill="#6366F1"/>
+<text x="1386" y="392" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="16" font-weight="700" fill="white">Multi-model Databases</text>
+<circle cx="1223" cy="426" r="3" fill="#6366F1"/>
+<text x="1235" y="431" font-family="system-ui, -apple-system, sans-serif" font-size="15" fill="#374151">ArcadeDB</text>
+<circle cx="1223" cy="458" r="3" fill="#6366F1"/>
+<text x="1235" y="463" font-family="system-ui, -apple-system, sans-serif" font-size="15" fill="#374151">FalkorDB</text>
+<circle cx="1223" cy="490" r="3" fill="#6366F1"/>
+<text x="1235" y="495" font-family="system-ui, -apple-system, sans-serif" font-size="15" fill="#374151">Neo4j *</text>
+<rect x="28" y="554" width="1544" height="108" rx="12" fill="#F9FAFB" stroke="#6B7280" stroke-width="1.5"/>
+<rect x="28" y="554" width="1544" height="48" rx="12" fill="#6B7280"/>
+<rect x="28" y="590" width="1544" height="12" fill="#6B7280"/>
+<text x="800" y="584" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="16" font-weight="700" fill="white">In-memory Document Store</text>
+<circle cx="50" cy="618" r="3" fill="#6B7280"/>
+<text x="62" y="623" font-family="system-ui, -apple-system, sans-serif" font-size="15" fill="#374151">InMemoryDocumentStore (built-in)</text>
+</svg>
