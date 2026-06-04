@@ -73,7 +73,7 @@ Create a LiteLLMChatGenerator instance.
 
 ```python
 run(
-    messages: list[ChatMessage],
+    messages: list[ChatMessage] | str,
     streaming_callback: StreamingCallbackT | None = None,
     generation_kwargs: dict[str, Any] | None = None,
     *,
@@ -85,7 +85,8 @@ Invoke chat completion via LiteLLM.
 
 **Parameters:**
 
-- **messages** (<code>list\[ChatMessage\]</code>) – Input messages as ChatMessage instances.
+- **messages** (<code>list\[ChatMessage\] | str</code>) – Input messages as ChatMessage instances.
+  If a string is provided, it is converted to a list containing a ChatMessage with user role.
 - **streaming_callback** (<code>StreamingCallbackT | None</code>) – Override the streaming callback for this call.
 - **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Override generation parameters for this call.
 - **tools** (<code>ToolsType | None</code>) – Override tools for this call.
@@ -98,7 +99,7 @@ Invoke chat completion via LiteLLM.
 
 ```python
 run_async(
-    messages: list[ChatMessage],
+    messages: list[ChatMessage] | str,
     streaming_callback: StreamingCallbackT | None = None,
     generation_kwargs: dict[str, Any] | None = None,
     *,
@@ -106,7 +107,19 @@ run_async(
 ) -> dict[str, list[ChatMessage]]
 ```
 
-Async version of run().
+Async version of run(). Invoke chat completion via LiteLLM.
+
+**Parameters:**
+
+- **messages** (<code>list\[ChatMessage\] | str</code>) – Input messages as ChatMessage instances.
+  If a string is provided, it is converted to a list containing a ChatMessage with user role.
+- **streaming_callback** (<code>StreamingCallbackT | None</code>) – Override the streaming callback for this call.
+- **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Override generation parameters for this call.
+- **tools** (<code>ToolsType | None</code>) – Override tools for this call.
+
+**Returns:**
+
+- <code>dict\[str, list\[ChatMessage\]\]</code> – A dict with key `replies` containing ChatMessage instances.
 
 #### to_dict
 

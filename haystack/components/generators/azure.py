@@ -9,6 +9,7 @@ from openai.lib.azure import AzureADTokenProvider, AzureOpenAI
 
 from haystack import component, default_from_dict, default_to_dict
 from haystack.components.generators import OpenAIGenerator
+from haystack.components.generators.utils import _generators_deprecation_warning
 from haystack.dataclasses import StreamingCallbackT
 from haystack.utils import Secret, deserialize_callable, serialize_callable
 from haystack.utils.http_client import init_http_client
@@ -118,6 +119,8 @@ class AzureOpenAIGenerator(OpenAIGenerator):
         :param azure_ad_token_provider: A function that returns an Azure Active Directory token, will be invoked on
             every request.
         """
+        _generators_deprecation_warning("AzureOpenAIGenerator", "AzureOpenAIChatGenerator")
+
         # We intentionally do not call super().__init__ here because we only need to instantiate the client to interact
         # with the API.
 
