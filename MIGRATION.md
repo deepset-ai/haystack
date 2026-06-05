@@ -92,6 +92,7 @@ pip install <new-package>
 | `from haystack.components.generators.chat import HuggingFaceAPIChatGenerator` | `huggingface-api-haystack` | `from haystack_integrations.components.generators.huggingface_api import HuggingFaceAPIChatGenerator` |
 | `from haystack.components.embedders import HuggingFaceAPITextEmbedder` | `huggingface-api-haystack` | `from haystack_integrations.components.embedders.huggingface_api import HuggingFaceAPITextEmbedder` |
 | `from haystack.components.embedders import HuggingFaceAPIDocumentEmbedder` | `huggingface-api-haystack` | `from haystack_integrations.components.embedders.huggingface_api import HuggingFaceAPIDocumentEmbedder` |
+| `from haystack.components.rankers import HuggingFaceTEIRanker` | `huggingface-api-haystack` | `from haystack_integrations.components.rankers.huggingface_api import HuggingFaceTEIRanker` |
 
 ### ToolInvoker component removed
 
