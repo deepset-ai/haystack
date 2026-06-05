@@ -455,3 +455,49 @@ class TestInFlightTaskCleanupOnError:
             await pp.run_async({"slow": {"text": "x"}, "failing": {"text": "y"}}, concurrency_limit=2)
 
         assert slow_cancelled is True
+
+    @pytest.mark.asyncio
+    async def test_in_flight_tasks_cancelled_when_generator_iteration_is_abandoned(self):
+        """When the consumer stops iterating run_async_generator early, in-flight tasks must be cancelled."""
+        slow_started = asyncio.Event()
+        slow_cancelled = False
+
+        @component
+        class Fast:
+            @component.output_types(value=str)
+            def run(self, text: str) -> dict[str, str]:
+                return {"value": text}
+
+            @component.output_types(value=str)
+            async def run_async(self, text: str) -> dict[str, str]:
+                # Yield an output only once the sibling is actually running, so it is in flight when we abandon.
+                await slow_started.wait()
+                return {"value": text}
+
+        @component
+        class Slow:
+            @component.output_types(value=str)
+            def run(self, text: str) -> dict[str, str]:
+                return {"value": text}
+
+            @component.output_types(value=str)
+            async def run_async(self, text: str) -> dict[str, str]:
+                nonlocal slow_cancelled
+                slow_started.set()
+                try:
+                    await asyncio.sleep(5)
+                except asyncio.CancelledError:
+                    slow_cancelled = True
+                    raise
+                return {"value": text}
+
+        pp = AsyncPipeline()
+        pp.add_component("fast", Fast())
+        pp.add_component("slow", Slow())
+
+        generator = pp.run_async_generator({"fast": {"text": "x"}, "slow": {"text": "y"}}, concurrency_limit=2)
+        async for _partial in generator:
+            break  # abandon iteration after the first partial output
+        await generator.aclose()
+
+        assert slow_cancelled is True

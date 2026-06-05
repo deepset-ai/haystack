@@ -4,4 +4,6 @@ fixes:
     Fixed a task leak in ``AsyncPipeline`` when running components concurrently. Previously, if one component
     raised an error while sibling components were still running, those in-flight tasks were neither awaited nor
     cancelled and kept running in the background until the event loop was torn down. They are now cancelled and
-    drained before the original error is re-raised.
+    drained before the original error is re-raised. The same cleanup now also applies when iteration of
+    ``run_async_generator`` is stopped early (e.g. the consumer breaks out of the loop and closes the generator)
+    or the run is cancelled: any tasks still in flight are cancelled instead of leaking.
