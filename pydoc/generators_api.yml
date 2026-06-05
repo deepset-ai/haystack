@@ -5,7 +5,6 @@ loaders:
         "chat/azure",
         "chat/azure_responses",
         "chat/fallback",
-        "chat/hugging_face_api",
         "chat/hugging_face_local",
         "chat/llm",
         "chat/openai",

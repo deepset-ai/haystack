@@ -13,7 +13,6 @@ _import_structure = {
     "azure": ["AzureOpenAIChatGenerator"],
     "azure_responses": ["AzureOpenAIResponsesChatGenerator"],
     "hugging_face_local": ["HuggingFaceLocalChatGenerator"],
-    "hugging_face_api": ["HuggingFaceAPIChatGenerator"],
     "fallback": ["FallbackChatGenerator"],
     "llm": ["LLM"],
 }
