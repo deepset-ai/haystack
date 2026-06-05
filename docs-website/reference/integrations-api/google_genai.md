@@ -759,7 +759,7 @@ Deserializes the component from a dictionary.
 
 ```python
 run(
-    messages: list[ChatMessage],
+    messages: list[ChatMessage] | str,
     generation_kwargs: dict[str, Any] | None = None,
     safety_settings: list[dict[str, Any]] | None = None,
     streaming_callback: StreamingCallbackT | None = None,
@@ -771,7 +771,8 @@ Run the Google Gen AI chat generator on the given input data.
 
 **Parameters:**
 
-- **messages** (<code>list\[ChatMessage\]</code>) – A list of ChatMessage instances representing the input messages.
+- **messages** (<code>list\[ChatMessage\] | str</code>) – A list of ChatMessage instances representing the input messages.
+  If a string is provided, it is converted to a list containing a ChatMessage with user role.
 - **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Configuration for generation. If provided, it will override
   the default config. Supports `thinking_budget` for Gemini 2.5 series thinking configuration.
 - **safety_settings** (<code>list\[dict\[str, Any\]\] | None</code>) – Safety settings for content filtering. If provided, it will override the
@@ -796,7 +797,7 @@ Run the Google Gen AI chat generator on the given input data.
 
 ```python
 run_async(
-    messages: list[ChatMessage],
+    messages: list[ChatMessage] | str,
     generation_kwargs: dict[str, Any] | None = None,
     safety_settings: list[dict[str, Any]] | None = None,
     streaming_callback: StreamingCallbackT | None = None,
@@ -808,7 +809,8 @@ Async version of the run method. Run the Google Gen AI chat generator on the giv
 
 **Parameters:**
 
-- **messages** (<code>list\[ChatMessage\]</code>) – A list of ChatMessage instances representing the input messages.
+- **messages** (<code>list\[ChatMessage\] | str</code>) – A list of ChatMessage instances representing the input messages.
+  If a string is provided, it is converted to a list containing a ChatMessage with user role.
 - **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Configuration for generation. If provided, it will override
   the default config. Supports `thinking_budget` for Gemini 2.5 series thinking configuration.
   See https://ai.google.dev/gemini-api/docs/thinking for possible values.
