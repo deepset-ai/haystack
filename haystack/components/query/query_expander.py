@@ -189,7 +189,7 @@ class QueryExpander:
 
         :param query: The original query to expand.
         :param n_expansions: Number of additional queries to generate (not including the original).
-            If None, uses the value from initialization. Can be 0 to generate no additional queries.
+            If None, uses the value from initialization. Must be a positive integer.
         :return: Dictionary with "queries" key containing the list of expanded queries.
             If include_original_query=True, the original query will be included in addition
             to the n_expansions alternative queries.
@@ -257,7 +257,7 @@ class QueryExpander:
 
         :param query: The original query to expand.
         :param n_expansions: Number of additional queries to generate (not including the original).
-            If None, uses the value from initialization. Can be 0 to generate no additional queries.
+            If None, uses the value from initialization. Must be a positive integer.
         :return: Dictionary with "queries" key containing the list of expanded queries.
             If include_original_query=True, the original query will be included in addition
             to the n_expansions alternative queries.
