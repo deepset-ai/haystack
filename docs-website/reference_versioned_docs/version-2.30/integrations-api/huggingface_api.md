@@ -124,6 +124,11 @@ Creates a HuggingFaceAPIDocumentEmbedder component.
 - **concurrency_limit** (<code>int</code>) – The maximum number of requests that should be allowed to run concurrently.
   This parameter is only used in the `run_async` method.
 
+**Raises:**
+
+- <code>ValueError</code> – If the required `model` or `url` is missing from `api_params`, the `url` is invalid,
+  or the `api_type` is unknown.
+
 #### to_dict
 
 ```python
@@ -169,6 +174,11 @@ Embeds a list of documents.
 - <code>dict\[str, list\[Document\]\]</code> – A dictionary with the following keys:
 - `documents`: A list of documents with embeddings.
 
+**Raises:**
+
+- <code>TypeError</code> – If `documents` is not a list of Documents.
+- <code>ValueError</code> – If the embeddings returned by the API have an unexpected shape.
+
 #### run_async
 
 ```python
@@ -185,6 +195,11 @@ Embeds a list of documents asynchronously.
 
 - <code>dict\[str, list\[Document\]\]</code> – A dictionary with the following keys:
 - `documents`: A list of documents with embeddings.
+
+**Raises:**
+
+- <code>TypeError</code> – If `documents` is not a list of Documents.
+- <code>ValueError</code> – If the embeddings returned by the API have an unexpected shape.
 
 ## haystack_integrations.components.embedders.huggingface_api.text_embedder
 
@@ -281,6 +296,11 @@ Creates a HuggingFaceAPITextEmbedder component.
   if the backend uses Text Embeddings Inference.
   If `api_type` is `SERVERLESS_INFERENCE_API`, this parameter is ignored.
 
+**Raises:**
+
+- <code>ValueError</code> – If the required `model` or `url` is missing from `api_params`, the `url` is invalid,
+  or the `api_type` is unknown.
+
 #### to_dict
 
 ```python
@@ -326,6 +346,11 @@ Embeds a single string.
 - <code>dict\[str, Any\]</code> – A dictionary with the following keys:
 - `embedding`: The embedding of the input text.
 
+**Raises:**
+
+- <code>TypeError</code> – If `text` is not a string.
+- <code>ValueError</code> – If the embedding returned by the API has an unexpected shape.
+
 #### run_async
 
 ```python
@@ -342,6 +367,11 @@ Embeds a single string asynchronously.
 
 - <code>dict\[str, Any\]</code> – A dictionary with the following keys:
 - `embedding`: The embedding of the input text.
+
+**Raises:**
+
+- <code>TypeError</code> – If `text` is not a string.
+- <code>ValueError</code> – If the embedding returned by the API has an unexpected shape.
 
 ## haystack_integrations.components.generators.huggingface_api.chat.chat_generator
 
@@ -486,6 +516,11 @@ Initialize the HuggingFaceAPIChatGenerator instance.
   Support for tools in the Hugging Face API and TGI is not yet fully refined and you may experience
   unexpected behavior.
 
+**Raises:**
+
+- <code>ValueError</code> – If the required `model` or `url` is missing from `api_params`, the `url` is invalid, the `api_type`
+  is unknown, `tools` and `streaming_callback` are used together, or duplicate tool names are provided.
+
 #### warm_up
 
 ```python
@@ -546,6 +581,10 @@ Invoke the text generation inference based on the provided messages and generati
 - <code>dict\[str, list\[ChatMessage\]\]</code> – A dictionary with the following keys:
 - `replies`: A list containing the generated responses as ChatMessage objects.
 
+**Raises:**
+
+- <code>ValueError</code> – If `tools` and a streaming callback are used together, or if duplicate tool names are provided.
+
 #### run_async
 
 ```python
@@ -577,3 +616,181 @@ and return values but can be used with `await` in an async code.
 
 - <code>dict\[str, list\[ChatMessage\]\]</code> – A dictionary with the following keys:
 - `replies`: A list containing the generated responses as ChatMessage objects.
+
+**Raises:**
+
+- <code>ValueError</code> – If `tools` and a streaming callback are used together, or if duplicate tool names are provided.
+
+## haystack_integrations.components.rankers.huggingface_api.ranker
+
+### TruncationDirection
+
+Bases: <code>str</code>, <code>Enum</code>
+
+Defines the direction to truncate text when input length exceeds the model's limit.
+
+Attributes:
+LEFT: Truncate text from the left side (start of text).
+RIGHT: Truncate text from the right side (end of text).
+
+### HuggingFaceTEIRanker
+
+Ranks documents based on their semantic similarity to the query.
+
+It can be used with a Text Embeddings Inference (TEI) API endpoint:
+
+- [Self-hosted Text Embeddings Inference](https://github.com/huggingface/text-embeddings-inference)
+- [Hugging Face Inference Endpoints](https://huggingface.co/inference-endpoints)
+
+Usage example:
+
+```python
+from haystack import Document
+from haystack.utils import Secret
+
+from haystack_integrations.components.rankers.huggingface_api import HuggingFaceTEIRanker
+
+reranker = HuggingFaceTEIRanker(
+    url="http://localhost:8080",
+    top_k=5,
+    timeout=30,
+    token=Secret.from_token("my_api_token")
+)
+
+docs = [Document(content="The capital of France is Paris"), Document(content="The capital of Germany is Berlin")]
+
+result = reranker.run(query="What is the capital of France?", documents=docs)
+
+ranked_docs = result["documents"]
+print(ranked_docs)
+# >> {'documents': [Document(id=..., content: 'the capital of France is Paris', score: 0.9979767),
+# >>                Document(id=..., content: 'the capital of Germany is Berlin', score: 0.13982213)]}
+```
+
+#### __init__
+
+```python
+__init__(
+    *,
+    url: str,
+    top_k: int = 10,
+    raw_scores: bool = False,
+    timeout: int | None = 30,
+    max_retries: int = 3,
+    retry_status_codes: list[int] | None = None,
+    token: Secret | None = Secret.from_env_var(
+        ["HF_API_TOKEN", "HF_TOKEN"], strict=False
+    )
+) -> None
+```
+
+Initializes the TEI reranker component.
+
+**Parameters:**
+
+- **url** (<code>str</code>) – Base URL of the TEI reranking service (for example, "https://api.example.com").
+- **top_k** (<code>int</code>) – Maximum number of top documents to return.
+- **raw_scores** (<code>bool</code>) – If True, include raw relevance scores in the API payload.
+- **timeout** (<code>int | None</code>) – Request timeout in seconds.
+- **max_retries** (<code>int</code>) – Maximum number of retry attempts for failed requests.
+- **retry_status_codes** (<code>list\[int\] | None</code>) – List of HTTP status codes that will trigger a retry.
+  When None, HTTP 408, 418, 429 and 503 will be retried (default: None).
+- **token** (<code>Secret | None</code>) – The Hugging Face token to use as HTTP bearer authorization. Not always required
+  depending on your TEI server configuration.
+  Check your HF token in your [account settings](https://huggingface.co/settings/tokens).
+
+#### to_dict
+
+```python
+to_dict() -> dict[str, Any]
+```
+
+Serializes the component to a dictionary.
+
+**Returns:**
+
+- <code>dict\[str, Any\]</code> – Dictionary with serialized data.
+
+#### from_dict
+
+```python
+from_dict(data: dict[str, Any]) -> HuggingFaceTEIRanker
+```
+
+Deserializes the component from a dictionary.
+
+**Parameters:**
+
+- **data** (<code>dict\[str, Any\]</code>) – Dictionary to deserialize from.
+
+**Returns:**
+
+- <code>HuggingFaceTEIRanker</code> – Deserialized component.
+
+#### run
+
+```python
+run(
+    query: str,
+    documents: list[Document],
+    top_k: int | None = None,
+    truncation_direction: TruncationDirection | None = None,
+) -> dict[str, list[Document]]
+```
+
+Reranks the provided documents by relevance to the query using the TEI API.
+
+Before ranking, documents are deduplicated by their id, retaining only the document with the highest score
+if a score is present.
+
+**Parameters:**
+
+- **query** (<code>str</code>) – The user query string to guide reranking.
+- **documents** (<code>list\[Document\]</code>) – List of `Document` objects to rerank.
+- **top_k** (<code>int | None</code>) – Optional override for the maximum number of documents to return.
+- **truncation_direction** (<code>TruncationDirection | None</code>) – If set, enables text truncation in the specified direction.
+
+**Returns:**
+
+- <code>dict\[str, list\[Document\]\]</code> – A dictionary with the following keys:
+- `documents`: A list of reranked documents.
+
+**Raises:**
+
+- <code>RuntimeError</code> – - If the API request fails.
+- <code>RuntimeError</code> – - If the API returns an error response.
+- <code>TypeError</code> – - If the API response is not in the expected list format.
+
+#### run_async
+
+```python
+run_async(
+    query: str,
+    documents: list[Document],
+    top_k: int | None = None,
+    truncation_direction: TruncationDirection | None = None,
+) -> dict[str, list[Document]]
+```
+
+Asynchronously reranks the provided documents by relevance to the query using the TEI API.
+
+Before ranking, documents are deduplicated by their id, retaining only the document with the highest score
+if a score is present.
+
+**Parameters:**
+
+- **query** (<code>str</code>) – The user query string to guide reranking.
+- **documents** (<code>list\[Document\]</code>) – List of `Document` objects to rerank.
+- **top_k** (<code>int | None</code>) – Optional override for the maximum number of documents to return.
+- **truncation_direction** (<code>TruncationDirection | None</code>) – If set, enables text truncation in the specified direction.
+
+**Returns:**
+
+- <code>dict\[str, list\[Document\]\]</code> – A dictionary with the following keys:
+- `documents`: A list of reranked documents.
+
+**Raises:**
+
+- <code>httpx.RequestError</code> – - If the API request fails.
+- <code>RuntimeError</code> – - If the API returns an error response.
+- <code>TypeError</code> – - If the API response is not in the expected list format.
