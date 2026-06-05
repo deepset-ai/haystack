@@ -2,8 +2,6 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-import asyncio
-import contextvars
 import inspect
 import re
 from copy import deepcopy
@@ -39,6 +37,7 @@ from haystack.tools import (
     serialize_tools_or_toolset,
     warm_up_tools,
 )
+from haystack.utils.async_utils import _run_component_async
 from haystack.utils.callable_serialization import deserialize_callable, serialize_callable
 from haystack.utils.deserialization import deserialize_component_inplace
 
@@ -934,17 +933,9 @@ class Agent:
             }
             with tracing.tracer.trace("haystack.agent.step.llm", parent_span=step_span) as llm_span:
                 llm_span.set_content_tag("haystack.agent.step.llm.input", chat_generator_inputs)
-                if getattr(self.chat_generator, "__haystack_supports_async__", False):
-                    result = await self.chat_generator.run_async(**chat_generator_inputs)  # type: ignore[attr-defined]
-                else:
-                    # Sync-only generator: dispatch to the default executor so the event loop stays unblocked.
-                    # contextvars don't propagate to the executor by default, so we copy the current context
-                    # to preserve the active tracing span (and anything else stored in contextvars).
-                    loop = asyncio.get_running_loop()
-                    ctx = contextvars.copy_context()
-                    result = await loop.run_in_executor(
-                        None, lambda: ctx.run(lambda: self.chat_generator.run(**chat_generator_inputs))
-                    )
+                # For sync-only generators, _run_component_async dispatches to a thread via asyncio.to_thread,
+                # which copies the current contextvars context — preserving the active tracing span.
+                result = await _run_component_async(self.chat_generator, **chat_generator_inputs)
                 llm_span.set_content_tag("haystack.agent.step.llm.output", result)
             llm_messages = result["replies"]
             exe_context.state.set("messages", llm_messages)

@@ -2,13 +2,13 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-import asyncio
 from typing import Any
 
 from haystack import Document, component, default_from_dict, default_to_dict
 from haystack.components.embedders.types.protocol import TextEmbedder
 from haystack.components.retrievers.types import EmbeddingRetriever
 from haystack.core.serialization import component_to_dict
+from haystack.utils.async_utils import _run_component_async
 
 
 @component
@@ -125,22 +125,10 @@ class TextEmbeddingRetriever:
         if not self._is_warmed_up:
             self.warm_up()
 
-        loop = asyncio.get_running_loop()
-
-        if hasattr(self.text_embedder, "run_async") and callable(self.text_embedder.run_async):
-            embedding_result = await self.text_embedder.run_async(text=query)
-        else:
-            embedding_result = await loop.run_in_executor(None, lambda: self.text_embedder.run(text=query))
-
-        if hasattr(self.retriever, "run_async") and callable(self.retriever.run_async):
-            result = await self.retriever.run_async(
-                query_embedding=embedding_result["embedding"], filters=filters, top_k=top_k
-            )
-        else:
-            result = await loop.run_in_executor(
-                None,
-                lambda: self.retriever.run(query_embedding=embedding_result["embedding"], filters=filters, top_k=top_k),
-            )
+        embedding_result = await _run_component_async(self.text_embedder, text=query)
+        result = await _run_component_async(
+            self.retriever, query_embedding=embedding_result["embedding"], filters=filters, top_k=top_k
+        )
 
         docs: list[Document] = result["documents"]
         docs.sort(key=lambda x: x.score or 0.0, reverse=True)
