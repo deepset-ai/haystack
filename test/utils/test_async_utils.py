@@ -2,11 +2,20 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import contextvars
 import logging
 
 import pytest
 
 from haystack.utils.async_utils import _run_component_async
+
+_test_context_var: contextvars.ContextVar[str] = contextvars.ContextVar("_test_context_var", default="unset")
+
+
+class ComponentReadingContextVar:
+    def run(self, **kwargs):
+        # Read inside the executor thread — only visible if the calling context was copied.
+        return {"value": _test_context_var.get()}
 
 
 class ComponentWithRunAsync:
@@ -55,3 +64,13 @@ class TestRunComponentAsync:
             await _run_component_async(component)
         assert "does not implement 'run_async'" in caplog.text
         assert "ComponentWithoutRunAsync" in caplog.text
+
+    @pytest.mark.asyncio
+    async def test_contextvars_propagate_to_sync_run_in_thread(self):
+        # Regression test: contextvars set in the calling async context (e.g. the active tracing span) must be
+        # visible inside the sync `run` executed in a thread. `asyncio.to_thread` guarantees this by copying the
+        # current context; a plain `loop.run_in_executor` would not.
+        component = ComponentReadingContextVar()
+        _test_context_var.set("propagated")
+        result = await _run_component_async(component)
+        assert result == {"value": "propagated"}
