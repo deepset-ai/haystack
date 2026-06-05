@@ -4,13 +4,20 @@
 
 import logging
 import os
-from unittest.mock import Mock
+from unittest.mock import AsyncMock, Mock
 
 import pytest
 
 from haystack.components.generators.chat.openai import OpenAIChatGenerator
 from haystack.components.query.query_expander import DEFAULT_PROMPT_TEMPLATE, QueryExpander
 from haystack.dataclasses.chat_message import ChatMessage
+
+
+class SyncOnlyChatGenerator:
+    """A chat generator that only implements the synchronous `run` method (no `run_async`)."""
+
+    def __init__(self) -> None:
+        self.run = Mock()
 
 
 @pytest.fixture
@@ -398,3 +405,64 @@ class TestQueryExpanderIntegration:
 
             # Should be different from original
             assert query not in result["queries"]
+
+
+class TestQueryExpanderAsync:
+    @pytest.mark.asyncio
+    async def test_run_async_successful_expansion(self, mock_chat_generator):
+        mock_chat_generator.run_async = AsyncMock(
+            return_value={
+                "replies": [
+                    ChatMessage.from_assistant(
+                        '{"queries": ["alternative query 1", "alternative query 2", "alternative query 3"]}'
+                    )
+                ]
+            }
+        )
+
+        expander = QueryExpander(chat_generator=mock_chat_generator, n_expansions=3)
+        result = await expander.run_async("original query")
+
+        assert result["queries"] == [
+            "alternative query 1",
+            "alternative query 2",
+            "alternative query 3",
+            "original query",
+        ]
+        mock_chat_generator.run_async.assert_awaited_once()
+        mock_chat_generator.run.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_run_async_falls_back_to_sync_run(self):
+        mock_chat_generator = SyncOnlyChatGenerator()
+        mock_chat_generator.run.return_value = {
+            "replies": [
+                ChatMessage.from_assistant(
+                    '{"queries": ["alternative query 1", "alternative query 2", "alternative query 3"]}'
+                )
+            ]
+        }
+        assert not hasattr(mock_chat_generator, "run_async")
+
+        expander = QueryExpander(chat_generator=mock_chat_generator, n_expansions=3)
+        result = await expander.run_async("original query")
+
+        assert result["queries"] == [
+            "alternative query 1",
+            "alternative query 2",
+            "alternative query 3",
+            "original query",
+        ]
+        mock_chat_generator.run.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_run_async_without_including_original(self, mock_chat_generator):
+        mock_chat_generator.run_async = AsyncMock(
+            return_value={"replies": [ChatMessage.from_assistant('{"queries": ["alt1", "alt2"]}')]}
+        )
+
+        expander = QueryExpander(chat_generator=mock_chat_generator, include_original_query=False)
+        result = await expander.run_async("original")
+
+        assert result["queries"] == ["alt1", "alt2"]
+        mock_chat_generator.run_async.assert_awaited_once()

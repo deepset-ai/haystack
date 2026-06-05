@@ -4,9 +4,10 @@
 
 import base64
 import os
-from unittest.mock import patch
+from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
+from openai import AsyncOpenAI
 from openai.types import ImagesResponse
 from openai.types.image import Image
 
@@ -184,3 +185,57 @@ class TestOpenAIImageGenerator:
 
         decoded = base64.b64decode(image_str, validate=True)
         assert decoded.startswith(b"\x89PNG\r\n\x1a\n")
+
+
+def _make_async_image_response():
+    return ImagesResponse(created=1630000000, data=[Image(b64_json="test-b64-json", revised_prompt="test-prompt")])
+
+
+class TestOpenAIImageGeneratorAsync:
+    def test_async_client_none_before_warm_up(self, monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+        component = OpenAIImageGenerator()
+        assert component.async_client is None
+
+    def test_async_client_after_warm_up(self, monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+        component = OpenAIImageGenerator()
+        component.warm_up()
+        assert isinstance(component.async_client, AsyncOpenAI)
+        assert component.async_client.api_key == "test-api-key"
+        assert component.async_client.timeout == 30
+        assert component.async_client.max_retries == 5
+
+    @pytest.mark.asyncio
+    async def test_run_async(self):
+        generator = OpenAIImageGenerator(api_key=Secret.from_token("test-api-key"))
+        generator.warm_up()
+        generator.async_client = Mock()
+        generator.async_client.images.generate = AsyncMock(return_value=_make_async_image_response())
+
+        response = await generator.run_async("Show me a picture of a black cat.")
+
+        assert isinstance(response, dict)
+        assert "images" in response and "revised_prompt" in response
+        assert response["images"] == ["test-b64-json"]
+        assert response["revised_prompt"] == "test-prompt"
+        generator.async_client.images.generate.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_run_async_triggers_warm_up(self):
+        generator = OpenAIImageGenerator(api_key=Secret.from_token("test-api-key"))
+        assert generator.async_client is None
+
+        mock_async_client = Mock()
+        mock_async_client.images.generate = AsyncMock(return_value=_make_async_image_response())
+
+        def fake_warm_up():
+            generator.async_client = mock_async_client
+
+        with patch.object(generator, "warm_up", side_effect=fake_warm_up) as mock_warm_up:
+            response = await generator.run_async("Show me a picture of a black cat.")
+
+        mock_warm_up.assert_called_once()
+        assert response["images"] == ["test-b64-json"]
+        assert response["revised_prompt"] == "test-prompt"
+        mock_async_client.images.generate.assert_awaited_once()

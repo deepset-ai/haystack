@@ -11,6 +11,7 @@ from haystack import component, default_from_dict, default_to_dict
 from haystack.components.retrievers.types.protocol import TextRetriever
 from haystack.core.serialization import component_from_dict, component_to_dict, import_class_by_name
 from haystack.dataclasses import Document
+from haystack.utils.async_utils import _run_component_async
 from haystack.utils.experimental import _experimental
 from haystack.utils.misc import _deduplicate_documents, _reciprocal_rank_fusion
 
@@ -244,16 +245,11 @@ class MultiRetriever:
 
         retrievers_to_run = self._resolve_retrievers(active_retrievers)
 
-        loop = asyncio.get_running_loop()
-
         async def _run_one(name: str, retriever: TextRetriever) -> list[Document]:
             try:
-                if hasattr(retriever, "run_async") and callable(retriever.run_async):
-                    result = await retriever.run_async(query=query, filters=resolved_filters, top_k=resolved_top_k)
-                else:
-                    result = await loop.run_in_executor(
-                        None, lambda: retriever.run(query=query, filters=resolved_filters, top_k=resolved_top_k)
-                    )
+                result = await _run_component_async(
+                    retriever, query=query, filters=resolved_filters, top_k=resolved_top_k
+                )
                 return result.get("documents", [])
             except Exception as e:
                 raise RuntimeError(f"Retriever '{name}' failed: {e}") from e

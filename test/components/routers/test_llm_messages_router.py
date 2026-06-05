@@ -5,7 +5,7 @@
 import os
 import re
 from typing import Any
-from unittest.mock import Mock
+from unittest.mock import AsyncMock, Mock
 
 import pytest
 
@@ -16,6 +16,8 @@ from haystack.dataclasses import ChatMessage
 
 
 class MockChatGenerator:
+    """A chat generator that only implements the synchronous `run` method (no `run_async`)."""
+
     def __init__(self, return_text: str = "safe"):
         self.return_text = return_text
 
@@ -218,3 +220,72 @@ class TestLLMMessagesRouter:
         assert result["chat_generator_text"].lower() == "safe"
         assert "unsafe" not in result
         assert "unmatched" not in result
+
+
+class TestLLMMessagesRouterAsync:
+    @pytest.mark.asyncio
+    async def test_run_async_routes_matched(self):
+        chat_generator = MockChatGenerator(return_text="safe")
+        chat_generator.run_async = AsyncMock(return_value={"replies": [ChatMessage.from_assistant("safe")]})
+        chat_generator.run = Mock()
+        router = LLMMessagesRouter(
+            chat_generator=chat_generator, output_names=["safe", "unsafe"], output_patterns=["safe", "unsafe"]
+        )
+
+        messages = [ChatMessage.from_user("Hello")]
+        result = await router.run_async(messages)
+
+        assert result["chat_generator_text"] == "safe"
+        assert result["safe"] == messages
+        assert "unsafe" not in result
+        assert "unmatched" not in result
+        chat_generator.run_async.assert_awaited_once()
+        chat_generator.run.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_run_async_falls_back_to_sync_run(self):
+        chat_generator = Mock(spec=MockChatGenerator)
+        chat_generator.run.return_value = {"replies": [ChatMessage.from_assistant("safe")]}
+        assert not hasattr(chat_generator, "run_async")
+        router = LLMMessagesRouter(
+            chat_generator=chat_generator, output_names=["safe", "unsafe"], output_patterns=["safe", "unsafe"]
+        )
+
+        messages = [ChatMessage.from_user("Hello")]
+        result = await router.run_async(messages)
+
+        assert result["chat_generator_text"] == "safe"
+        assert result["safe"] == messages
+        assert "unsafe" not in result
+        assert "unmatched" not in result
+        chat_generator.run.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_run_async_unmatched_output(self):
+        chat_generator = MockChatGenerator()
+        chat_generator.run_async = AsyncMock(return_value={"replies": [ChatMessage.from_assistant("irrelevant")]})
+        router = LLMMessagesRouter(
+            chat_generator=chat_generator, output_names=["safe", "unsafe"], output_patterns=["safe", "unsafe"]
+        )
+
+        messages = [ChatMessage.from_user("Hello")]
+        result = await router.run_async(messages)
+
+        assert result["chat_generator_text"] == "irrelevant"
+        assert result["unmatched"] == messages
+        assert "safe" not in result
+        assert "unsafe" not in result
+
+    @pytest.mark.asyncio
+    async def test_run_async_input_errors(self):
+        chat_generator = MockChatGenerator()
+        chat_generator.run_async = AsyncMock(return_value={"replies": [ChatMessage.from_assistant("safe")]})
+        router = LLMMessagesRouter(
+            chat_generator=chat_generator, output_names=["safe", "unsafe"], output_patterns=["safe", "unsafe"]
+        )
+
+        with pytest.raises(ValueError):
+            await router.run_async([])
+
+        with pytest.raises(ValueError):
+            await router.run_async([ChatMessage.from_system("You are a helpful assistant.")])

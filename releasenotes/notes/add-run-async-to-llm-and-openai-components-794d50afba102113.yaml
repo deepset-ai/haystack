@@ -1,0 +1,19 @@
+---
+features:
+  - |
+    Added a ``run_async`` method to the following components so they can run natively in an ``AsyncPipeline``:
+
+    - ``LLMRanker``, ``QueryExpander``, ``LLMMessagesRouter`` and ``LLMDocumentContentExtractor`` now delegate to
+      their chat generator's ``run_async`` method when available. If the chat generator only implements a
+      synchronous ``run`` method, it is executed in a thread to avoid blocking the event loop.
+      ``LLMDocumentContentExtractor`` processes documents concurrently with ``asyncio``, bounded by ``max_workers``.
+    - ``RemoteWhisperTranscriber`` and ``OpenAIImageGenerator`` now use a native ``AsyncOpenAI`` client in their
+      ``run_async`` methods.
+enhancements:
+  - |
+    Components that delegate to sub-components in their ``run_async`` method (``LLMMetadataExtractor``,
+    ``EmbeddingBasedDocumentSplitter``, ``FallbackChatGenerator``, ``TextEmbeddingRetriever``, ``MultiRetriever``,
+    ``MultiQueryTextRetriever`` and ``MultiQueryEmbeddingRetriever``) now use a shared utility to run the
+    sub-component. If the sub-component only implements a synchronous ``run`` method, it is executed in a thread.
+    Notably, ``LLMMetadataExtractor`` and ``EmbeddingBasedDocumentSplitter`` previously fell back to their fully
+    synchronous ``run`` method in this case, which blocked the event loop for the duration of the call.

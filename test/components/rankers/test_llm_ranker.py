@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import os
-from unittest.mock import Mock
+from unittest.mock import AsyncMock, Mock
 
 import pytest
 from jinja2 import TemplateSyntaxError
@@ -12,6 +12,13 @@ from haystack import Document
 from haystack.components.generators.chat.openai import OpenAIChatGenerator
 from haystack.components.rankers.llm_ranker import DEFAULT_PROMPT_TEMPLATE, LLMRanker
 from haystack.dataclasses import ChatMessage
+
+
+class SyncOnlyChatGenerator:
+    """A chat generator that only implements the synchronous `run` method (no `run_async`)."""
+
+    def __init__(self) -> None:
+        self.run = Mock()
 
 
 @pytest.fixture
@@ -347,3 +354,96 @@ def test_live_run_ranks_rust_for_programming_language_query():
     result = ranker.run(query="Which document is about a programming language?", documents=documents)
 
     assert [document.id for document in result["documents"]] == ["doc-rust"]
+
+
+class TestLLMRankerAsync:
+    @pytest.mark.asyncio
+    async def test_run_async_successful_ranking(self):
+        documents = [
+            Document(id="1", content="first"),
+            Document(id="2", content="second"),
+            Document(id="3", content="third"),
+        ]
+        mock_chat_generator = Mock(spec=OpenAIChatGenerator)
+        mock_chat_generator.run_async = AsyncMock(
+            return_value={
+                "replies": [ChatMessage.from_assistant('{"documents": [{"index": 2}, {"index": 1}, {"index": 3}]}')]
+            }
+        )
+        ranker = LLMRanker(chat_generator=mock_chat_generator, top_k=2)
+
+        result = await ranker.run_async(query="test query", documents=documents)
+
+        assert [document.id for document in result["documents"]] == ["2", "1"]
+        mock_chat_generator.run_async.assert_awaited_once()
+        mock_chat_generator.run.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_run_async_falls_back_to_sync_run(self):
+        documents = [
+            Document(id="1", content="first"),
+            Document(id="2", content="second"),
+            Document(id="3", content="third"),
+        ]
+        mock_chat_generator = SyncOnlyChatGenerator()
+        mock_chat_generator.run.return_value = {
+            "replies": [ChatMessage.from_assistant('{"documents": [{"index": 2}, {"index": 1}, {"index": 3}]}')]
+        }
+        assert not hasattr(mock_chat_generator, "run_async")
+        ranker = LLMRanker(chat_generator=mock_chat_generator, top_k=2)
+
+        result = await ranker.run_async(query="test query", documents=documents)
+
+        assert [document.id for document in result["documents"]] == ["2", "1"]
+        mock_chat_generator.run.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_run_async_empty_documents(self):
+        mock_chat_generator = Mock(spec=OpenAIChatGenerator)
+        mock_chat_generator.run_async = AsyncMock()
+        ranker = LLMRanker(chat_generator=mock_chat_generator)
+
+        assert await ranker.run_async(query="test", documents=[]) == {"documents": []}
+        mock_chat_generator.run_async.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_run_async_generator_exception_falls_back(self):
+        documents = [Document(id="1", content="first"), Document(id="2", content="second")]
+        mock_chat_generator = Mock(spec=OpenAIChatGenerator)
+        mock_chat_generator.run_async = AsyncMock(side_effect=RuntimeError("generator failed"))
+        ranker = LLMRanker(chat_generator=mock_chat_generator, top_k=1, raise_on_failure=False)
+
+        result = await ranker.run_async(query="test query", documents=documents)
+
+        assert result == {"documents": documents}
+
+    @pytest.mark.asyncio
+    async def test_run_async_generator_exception_raises(self):
+        documents = [Document(id="1", content="first")]
+        mock_chat_generator = Mock(spec=OpenAIChatGenerator)
+        mock_chat_generator.run_async = AsyncMock(side_effect=RuntimeError("generator failed"))
+        ranker = LLMRanker(chat_generator=mock_chat_generator, raise_on_failure=True)
+
+        with pytest.raises(RuntimeError, match="generator failed"):
+            await ranker.run_async(query="test query", documents=documents)
+
+    @pytest.mark.asyncio
+    async def test_run_async_invalid_json_falls_back(self):
+        documents = [Document(id="1", content="first"), Document(id="2", content="second")]
+        mock_chat_generator = Mock(spec=OpenAIChatGenerator)
+        mock_chat_generator.run_async = AsyncMock(return_value={"replies": [ChatMessage.from_assistant("not-json")]})
+        ranker = LLMRanker(chat_generator=mock_chat_generator, top_k=1, raise_on_failure=False)
+
+        result = await ranker.run_async(query="test query", documents=documents)
+
+        assert result == {"documents": documents}
+
+    @pytest.mark.asyncio
+    async def test_run_async_invalid_json_raises(self):
+        documents = [Document(id="1", content="first")]
+        mock_chat_generator = Mock(spec=OpenAIChatGenerator)
+        mock_chat_generator.run_async = AsyncMock(return_value={"replies": [ChatMessage.from_assistant("not-json")]})
+        ranker = LLMRanker(chat_generator=mock_chat_generator, raise_on_failure=True)
+
+        with pytest.raises(ValueError):
+            await ranker.run_async(query="test query", documents=documents)

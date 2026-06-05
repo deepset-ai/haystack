@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import os
-from unittest.mock import Mock, patch
+from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 
@@ -507,3 +507,110 @@ class TestLLMDocumentContentExtractor:
         assert "date" in doc.meta, "Expected 'date' key in metadata"
         assert "document_type" in doc.meta, "Expected 'document_type' key in metadata"
         assert "title" in doc.meta, "Expected 'title' key in metadata"
+
+
+class FakeChatGeneratorWithoutRunAsync:
+    """Chat generator that only implements the synchronous `run` method (no `run_async`)."""
+
+    def __init__(self, return_value):
+        self._return_value = return_value
+        self.run = Mock(return_value=return_value)
+
+
+class TestLLMDocumentContentExtractorAsync:
+    @pytest.mark.asyncio
+    async def test_run_async_no_documents(self, monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+        chat_generator = OpenAIChatGenerator()
+        extractor = LLMDocumentContentExtractor(chat_generator=chat_generator)
+        result = await extractor.run_async(documents=[])
+        assert result["documents"] == []
+        assert result["failed_documents"] == []
+
+    @pytest.mark.asyncio
+    @patch.object(DocumentToImageContent, "run")
+    async def test_run_async_awaits_once_per_document(self, mock_doc_to_image_run):
+        mock_chat_generator = Mock(spec=OpenAIChatGenerator)
+        mock_chat_generator.run_async = AsyncMock(
+            return_value={
+                "replies": [ChatMessage.from_assistant(text='{"document_content": "Extracted content from the image"}')]
+            }
+        )
+        mock_doc_to_image_run.return_value = {
+            "image_contents": [
+                ImageContent.from_file_path("./test/test_files/images/apple.jpg"),
+                ImageContent.from_file_path("./test/test_files/images/apple.jpg"),
+                ImageContent.from_file_path("./test/test_files/images/apple.jpg"),
+            ]
+        }
+
+        extractor = LLMDocumentContentExtractor(chat_generator=mock_chat_generator)
+
+        docs = [Document(content="", meta={"file_path": f"/path/to/image_{i}.pdf"}) for i in range(3)]
+        result = await extractor.run_async(documents=docs)
+
+        assert len(result["documents"]) == 3
+        assert len(result["failed_documents"]) == 0
+        for processed_doc in result["documents"]:
+            assert processed_doc.content == "Extracted content from the image"
+            assert "extraction_error" not in processed_doc.meta
+        assert mock_chat_generator.run_async.await_count == 3
+
+    @pytest.mark.asyncio
+    @patch.object(DocumentToImageContent, "run")
+    async def test_run_async_with_llm_failure_raise_on_failure_false(self, mock_doc_to_image_run, caplog):
+        mock_chat_generator = Mock(spec=OpenAIChatGenerator)
+        mock_chat_generator.run_async = AsyncMock(side_effect=Exception("LLM API error"))
+        extractor = LLMDocumentContentExtractor(chat_generator=mock_chat_generator, raise_on_failure=False)
+
+        mock_doc_to_image_run.return_value = {
+            "image_contents": [ImageContent.from_file_path("./test/test_files/images/apple.jpg")]
+        }
+
+        docs = [Document(content="", meta={"file_path": "/path/to/image.pdf"})]
+        result = await extractor.run_async(documents=docs)
+
+        assert len(result["documents"]) == 0
+        assert len(result["failed_documents"]) == 1
+
+        failed_doc = result["failed_documents"][0]
+        assert failed_doc.id == docs[0].id
+        assert "extraction_error" in failed_doc.meta
+        assert "LLM failed with exception: LLM API error" in failed_doc.meta["extraction_error"]
+
+        assert "LLM" in caplog.text
+        assert "execution failed" in caplog.text
+
+    @pytest.mark.asyncio
+    @patch.object(DocumentToImageContent, "run")
+    async def test_run_async_with_llm_failure_raise_on_failure_true(self, mock_doc_to_image_run):
+        mock_chat_generator = Mock(spec=OpenAIChatGenerator)
+        mock_chat_generator.run_async = AsyncMock(side_effect=Exception("LLM API error"))
+        extractor = LLMDocumentContentExtractor(chat_generator=mock_chat_generator, raise_on_failure=True)
+        mock_doc_to_image_run.return_value = {
+            "image_contents": [ImageContent.from_file_path("./test/test_files/images/apple.jpg")]
+        }
+        with pytest.raises(Exception, match="LLM API error"):
+            await extractor.run_async(documents=[Document(content="", meta={"file_path": "/path/to/image.pdf"})])
+
+    @pytest.mark.asyncio
+    @patch.object(DocumentToImageContent, "run")
+    async def test_run_async_falls_back_to_sync_run_without_run_async(self, mock_doc_to_image_run):
+        chat_generator = FakeChatGeneratorWithoutRunAsync(
+            return_value={
+                "replies": [ChatMessage.from_assistant(text='{"document_content": "Extracted content from the image"}')]
+            }
+        )
+        mock_doc_to_image_run.return_value = {
+            "image_contents": [ImageContent.from_file_path("./test/test_files/images/apple.jpg")]
+        }
+
+        extractor = LLMDocumentContentExtractor(chat_generator=chat_generator)
+
+        docs = [Document(content="", meta={"file_path": "/path/to/image.pdf"})]
+        result = await extractor.run_async(documents=docs)
+
+        assert len(result["documents"]) == 1
+        assert len(result["failed_documents"]) == 0
+        assert result["documents"][0].content == "Extracted content from the image"
+        chat_generator.run.assert_called_once()
