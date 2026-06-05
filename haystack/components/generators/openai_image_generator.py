@@ -5,7 +5,7 @@
 import os
 from typing import Any, Literal
 
-from openai import OpenAI
+from openai import AsyncOpenAI, OpenAI
 from openai.types.image import Image
 
 from haystack import component, default_from_dict, default_to_dict, logging
@@ -85,6 +85,7 @@ class OpenAIImageGenerator:
         self.http_client_kwargs = http_client_kwargs
 
         self.client: OpenAI | None = None
+        self.async_client: AsyncOpenAI | None = None
 
     def warm_up(self) -> None:
         """
@@ -98,6 +99,15 @@ class OpenAIImageGenerator:
                 timeout=self.timeout,
                 max_retries=self.max_retries,
                 http_client=init_http_client(self.http_client_kwargs, async_client=False),
+            )
+        if self.async_client is None:
+            self.async_client = AsyncOpenAI(
+                api_key=self.api_key.resolve_value(),
+                organization=self.organization,
+                base_url=self.api_base_url,
+                timeout=self.timeout,
+                max_retries=self.max_retries,
+                http_client=init_http_client(self.http_client_kwargs, async_client=True),
             )
 
     @component.output_types(images=list[str], revised_prompt=str)
@@ -130,6 +140,50 @@ class OpenAIImageGenerator:
         size = size or self.size
         quality = quality or self.quality
         response = self.client.images.generate(model=self.model, prompt=prompt, size=size, quality=quality, n=1)
+        image_str = ""
+        revised_prompt = ""
+        if response.data is not None:
+            image: Image = response.data[0]
+            image_str = image.b64_json or ""
+            revised_prompt = image.revised_prompt or ""
+
+        return {"images": [image_str], "revised_prompt": revised_prompt}
+
+    @component.output_types(images=list[str], revised_prompt=str)
+    async def run_async(
+        self,
+        prompt: str,
+        size: Literal["1024x1024", "1024x1536", "1536x1024", "auto"] | None = None,
+        quality: Literal["auto", "high", "medium", "low"] | None = None,
+        response_format: Literal["b64_json"] | None = None,  # noqa: ARG002
+    ) -> dict[str, Any]:
+        """
+        Asynchronously invokes the image generation inference based on the provided prompt and generation parameters.
+
+        This is the asynchronous version of the `run` method. It has the same parameters and return values
+        but can be used with `await` in an async code.
+
+        :param prompt: The prompt to generate the image.
+        :param size: If provided, overrides the size provided during initialization.
+        :param quality: If provided, overrides the quality provided during initialization.
+        :param response_format: This parameter is ignored and only kept for backward compatibility.
+
+        :returns:
+            A dictionary containing the generated list of images as base64 encoded JSON strings and the revised prompt.
+            The revised prompt is the prompt that was used to generate the image, if there was any revision
+            to the prompt made by OpenAI.
+        """
+        if self.async_client is None:
+            self.warm_up()
+
+        # at this point the client is initialized, but mypy doesn't know that
+        assert self.async_client is not None
+
+        size = size or self.size
+        quality = quality or self.quality
+        response = await self.async_client.images.generate(
+            model=self.model, prompt=prompt, size=size, quality=quality, n=1
+        )
         image_str = ""
         revised_prompt = ""
         if response.data is not None:

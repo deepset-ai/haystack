@@ -3,8 +3,10 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import os
+from unittest.mock import AsyncMock, Mock
 
 import pytest
+from openai import AsyncOpenAI
 
 from haystack.components.audio.whisper_remote import RemoteWhisperTranscriber
 from haystack.dataclasses import ByteStream
@@ -183,6 +185,79 @@ class TestRemoteWhisperTranscriber:
         ]
 
         output = transcriber.run(sources=paths)
+
+        docs = output["documents"]
+        assert len(docs) == 3
+        assert docs[0].content.strip().lower() == "this is the content of the document."
+        assert test_files_path / "audio" / "this is the content of the document.wav" == docs[0].meta["file_path"]
+
+        assert docs[1].content.strip().lower() == "the context for this answer is here."
+        assert str(test_files_path / "audio" / "the context for this answer is here.wav") == docs[1].meta["file_path"]
+
+        assert docs[2].content.strip().lower() == "answer."
+
+
+class TestRemoteWhisperTranscriberAsync:
+    def test_init_async_client(self, monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "test_api_key")
+        transcriber = RemoteWhisperTranscriber()
+        assert isinstance(transcriber.async_client, AsyncOpenAI)
+        assert transcriber.async_client.api_key == "test_api_key"
+
+    @pytest.mark.asyncio
+    async def test_run_async_with_path(self, monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "test_api_key")
+        transcriber = RemoteWhisperTranscriber()
+
+        mock_client = Mock()
+        mock_client.audio.transcriptions.create = AsyncMock(
+            return_value=Mock(text="this is the content of the document.")
+        )
+        transcriber.async_client = mock_client
+
+        output = await transcriber.run_async(sources=["test/test_files/audio/this is the content of the document.wav"])
+
+        docs = output["documents"]
+        assert len(docs) == 1
+        assert docs[0].content == "this is the content of the document."
+        assert docs[0].meta["file_path"] == "test/test_files/audio/this is the content of the document.wav"
+        mock_client.audio.transcriptions.create.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_run_async_with_bytestream(self, monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "test_api_key")
+        transcriber = RemoteWhisperTranscriber()
+
+        mock_client = Mock()
+        mock_client.audio.transcriptions.create = AsyncMock(return_value=Mock(text="answer."))
+        transcriber.async_client = mock_client
+
+        source = ByteStream(data=b"fake audio bytes")
+        source.meta["file_path"] = "answer.wav"
+        output = await transcriber.run_async(sources=[source])
+
+        docs = output["documents"]
+        assert len(docs) == 1
+        assert docs[0].content == "answer."
+        assert docs[0].meta["file_path"] == "answer.wav"
+        mock_client.audio.transcriptions.create.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    @pytest.mark.skipif(
+        not os.environ.get("OPENAI_API_KEY", None),
+        reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
+    )
+    @pytest.mark.integration
+    async def test_whisper_remote_transcriber_async(self, test_files_path):
+        transcriber = RemoteWhisperTranscriber()
+
+        paths = [
+            test_files_path / "audio" / "this is the content of the document.wav",
+            str(test_files_path / "audio" / "the context for this answer is here.wav"),
+            ByteStream.from_file_path(test_files_path / "audio" / "answer.wav"),
+        ]
+
+        output = await transcriber.run_async(sources=paths)
 
         docs = output["documents"]
         assert len(docs) == 3
