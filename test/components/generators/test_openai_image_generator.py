@@ -4,9 +4,10 @@
 
 import base64
 import os
-from unittest.mock import patch
+from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
+from openai import AsyncOpenAI
 from openai.types import ImagesResponse
 from openai.types.image import Image
 
@@ -176,6 +177,75 @@ class TestOpenAIImageGenerator:
     def test_live_run(self):
         generator = OpenAIImageGenerator(model="gpt-image-1-mini", size="1024x1024", quality="low")
         response = generator.run("A nice cat")
+        assert isinstance(response, dict)
+        assert isinstance(response["revised_prompt"], str)
+
+        image_str = response["images"][0]
+        assert isinstance(image_str, str) and image_str
+
+        decoded = base64.b64decode(image_str, validate=True)
+        assert decoded.startswith(b"\x89PNG\r\n\x1a\n")
+
+
+class TestOpenAIImageGeneratorAsync:
+    def test_async_client_none_before_warm_up(self, monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+        component = OpenAIImageGenerator()
+        assert component.async_client is None
+
+    def test_async_client_after_warm_up(self, monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+        component = OpenAIImageGenerator()
+        component.warm_up()
+        assert isinstance(component.async_client, AsyncOpenAI)
+        assert component.async_client.api_key == "test-api-key"
+
+    @pytest.mark.asyncio
+    async def test_run_async(self):
+        generator = OpenAIImageGenerator(api_key=Secret.from_token("test-api-key"))
+        generator.warm_up()
+
+        image_response = ImagesResponse(
+            created=1630000000, data=[Image(b64_json="test-b64-json", revised_prompt="test-prompt")]
+        )
+        mock_async_client = Mock()
+        mock_async_client.images.generate = AsyncMock(return_value=image_response)
+        generator.async_client = mock_async_client
+
+        response = await generator.run_async("Show me a picture of a black cat.")
+        assert isinstance(response, dict)
+        assert "images" in response and "revised_prompt" in response
+        assert response["images"] == ["test-b64-json"]
+        assert response["revised_prompt"] == "test-prompt"
+        mock_async_client.images.generate.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_run_async_triggers_warm_up(self, monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+        generator = OpenAIImageGenerator()
+        assert generator.async_client is None
+
+        image_response = ImagesResponse(
+            created=1630000000, data=[Image(b64_json="test-b64-json", revised_prompt="test-prompt")]
+        )
+
+        with patch("openai.resources.images.AsyncImages.generate", new=AsyncMock(return_value=image_response)):
+            response = await generator.run_async("Show me a picture of a black cat.")
+
+        assert isinstance(generator.async_client, AsyncOpenAI)
+        assert response["images"] == ["test-b64-json"]
+        assert response["revised_prompt"] == "test-prompt"
+
+    @pytest.mark.asyncio
+    @pytest.mark.skipif(
+        not os.environ.get("OPENAI_API_KEY", None),
+        reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
+    )
+    @pytest.mark.integration
+    @pytest.mark.slow
+    async def test_live_run_async(self):
+        generator = OpenAIImageGenerator(model="gpt-image-1-mini", size="1024x1024", quality="low")
+        response = await generator.run_async("A nice cat")
         assert isinstance(response, dict)
         assert isinstance(response["revised_prompt"], str)
 
