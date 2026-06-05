@@ -166,6 +166,7 @@ export default {
             id: 'pipeline-components/audio'
           },
           items: [
+            'pipeline-components/audio/funasrtranscriber',
             'pipeline-components/audio/localwhispertranscriber',
             'pipeline-components/audio/remotewhispertranscriber',
             'pipeline-components/audio/external-integrations-audio',
