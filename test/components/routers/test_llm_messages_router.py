@@ -5,7 +5,7 @@
 import os
 import re
 from typing import Any
-from unittest.mock import Mock
+from unittest.mock import AsyncMock, Mock
 
 import pytest
 
@@ -213,6 +213,103 @@ class TestLLMMessagesRouter:
         messages = [ChatMessage.from_user("Hello")]
         result = router.run(messages)
         print(result)
+
+        assert result["safe"] == messages
+        assert result["chat_generator_text"].lower() == "safe"
+        assert "unsafe" not in result
+        assert "unmatched" not in result
+
+
+class TestLLMMessagesRouterAsync:
+    @pytest.mark.asyncio
+    async def test_run_async_matched_output(self):
+        chat_generator = Mock(spec=OpenAIChatGenerator)
+        chat_generator.run_async = AsyncMock(return_value={"replies": [ChatMessage.from_assistant("safe")]})
+        router = LLMMessagesRouter(
+            chat_generator=chat_generator, output_names=["safe", "unsafe"], output_patterns=["safe", "unsafe"]
+        )
+
+        messages = [ChatMessage.from_user("Hello")]
+        result = await router.run_async(messages)
+
+        assert result["chat_generator_text"] == "safe"
+        assert result["safe"] == messages
+        assert "unsafe" not in result
+        assert "unmatched" not in result
+        chat_generator.run_async.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_run_async_unmatched_output(self):
+        chat_generator = Mock(spec=OpenAIChatGenerator)
+        chat_generator.run_async = AsyncMock(return_value={"replies": [ChatMessage.from_assistant("irrelevant")]})
+        router = LLMMessagesRouter(
+            chat_generator=chat_generator, output_names=["safe", "unsafe"], output_patterns=["safe", "unsafe"]
+        )
+
+        messages = [ChatMessage.from_user("Hello")]
+        result = await router.run_async(messages)
+
+        assert result["chat_generator_text"] == "irrelevant"
+        assert result["unmatched"] == messages
+        assert "safe" not in result
+        assert "unsafe" not in result
+
+    @pytest.mark.asyncio
+    async def test_run_async_fallback_to_sync_run(self):
+        # MockChatGenerator defines only a synchronous `run`, so the utility falls back to it.
+        chat_generator = MockChatGenerator(return_text="safe")
+        assert not hasattr(chat_generator, "run_async")
+        router = LLMMessagesRouter(
+            chat_generator=chat_generator, output_names=["safe", "unsafe"], output_patterns=["safe", "unsafe"]
+        )
+
+        messages = [ChatMessage.from_user("Hello")]
+        result = await router.run_async(messages)
+
+        assert result["chat_generator_text"] == "safe"
+        assert result["safe"] == messages
+        assert "unsafe" not in result
+        assert "unmatched" not in result
+
+    @pytest.mark.asyncio
+    async def test_run_async_empty_messages_raises(self):
+        chat_generator = Mock(spec=OpenAIChatGenerator)
+        chat_generator.run_async = AsyncMock(return_value={"replies": [ChatMessage.from_assistant("safe")]})
+        router = LLMMessagesRouter(
+            chat_generator=chat_generator, output_names=["safe", "unsafe"], output_patterns=["safe", "unsafe"]
+        )
+
+        with pytest.raises(ValueError):
+            await router.run_async([])
+
+    @pytest.mark.asyncio
+    async def test_run_async_unsupported_role_raises(self):
+        chat_generator = Mock(spec=OpenAIChatGenerator)
+        chat_generator.run_async = AsyncMock(return_value={"replies": [ChatMessage.from_assistant("safe")]})
+        router = LLMMessagesRouter(
+            chat_generator=chat_generator, output_names=["safe", "unsafe"], output_patterns=["safe", "unsafe"]
+        )
+
+        with pytest.raises(ValueError):
+            await router.run_async([ChatMessage.from_system("You are a helpful assistant.")])
+
+    @pytest.mark.integration
+    @pytest.mark.skipif(
+        not os.environ.get("OPENAI_API_KEY", None),
+        reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
+    )
+    @pytest.mark.asyncio
+    async def test_live_run_async(self):
+        system_prompt = "Classify the messages into safe or unsafe. Respond with the label only, no other text."
+        router = LLMMessagesRouter(
+            chat_generator=OpenAIChatGenerator(model="gpt-4.1-nano"),
+            system_prompt=system_prompt,
+            output_names=["safe", "unsafe"],
+            output_patterns=[r"(?i)safe", r"(?i)unsafe"],
+        )
+
+        messages = [ChatMessage.from_user("Hello")]
+        result = await router.run_async(messages)
 
         assert result["safe"] == messages
         assert result["chat_generator_text"].lower() == "safe"
