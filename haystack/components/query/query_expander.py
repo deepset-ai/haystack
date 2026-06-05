@@ -12,6 +12,7 @@ from haystack.core.component import component
 from haystack.core.serialization import component_to_dict
 from haystack.dataclasses.chat_message import ChatMessage
 from haystack.utils import deserialize_chatgenerator_inplace
+from haystack.utils.async_utils import _run_component_async
 from haystack.utils.misc import _parse_dict_from_json
 
 logger = logging.getLogger(__name__)
@@ -211,6 +212,76 @@ class QueryExpander:
         try:
             prompt_result = self._prompt_builder.run(query=query.strip(), n_expansions=expansion_count)
             generator_result = self.chat_generator.run(messages=[ChatMessage.from_user(prompt_result["prompt"])])
+
+            if not generator_result.get("replies") or len(generator_result["replies"]) == 0:
+                logger.warning("ChatGenerator returned no replies for query: {query}", query=query)
+                return response
+
+            expanded_text = generator_result["replies"][0].text.strip()
+            expanded_queries = self._parse_expanded_queries(expanded_text)
+
+            # Limit the number of expanded queries to the requested amount
+            if len(expanded_queries) > expansion_count:
+                logger.warning(
+                    "Generated {generated_count} queries but only {requested_count} were requested. "
+                    "Truncating to the first {requested_count} queries. ",
+                    generated_count=len(expanded_queries),
+                    requested_count=expansion_count,
+                )
+                expanded_queries = expanded_queries[:expansion_count]
+
+            # Add original query if requested and remove duplicates
+            if self.include_original_query:
+                expanded_queries_lower = [q.lower() for q in expanded_queries]
+                if query.lower() not in expanded_queries_lower:
+                    expanded_queries.append(query)
+
+            response["queries"] = expanded_queries
+            return response
+
+        except Exception as e:
+            # Fallback: return original query to maintain pipeline functionality
+            logger.exception("Failed to expand query {query}: {error}", query=query, error=str(e))
+            return response
+
+    @component.output_types(queries=list[str])
+    async def run_async(self, query: str, n_expansions: int | None = None) -> dict[str, list[str]]:
+        """
+        Asynchronously expand the input query into multiple semantically similar queries.
+
+        The language of the original query is preserved in the expanded queries.
+
+        This is the asynchronous version of the `run` method. It has the same parameters and return values
+        but can be used with `await` in an async code. If the chat generator only implements a synchronous
+        `run` method, it is executed in a thread to avoid blocking the event loop.
+
+        :param query: The original query to expand.
+        :param n_expansions: Number of additional queries to generate (not including the original).
+            If None, uses the value from initialization. Can be 0 to generate no additional queries.
+        :return: Dictionary with "queries" key containing the list of expanded queries.
+            If include_original_query=True, the original query will be included in addition
+            to the n_expansions alternative queries.
+        :raises ValueError: If n_expansions is not positive (less than or equal to 0).
+        """
+
+        if not self._is_warmed_up:
+            self.warm_up()
+
+        response = {"queries": [query] if self.include_original_query else []}
+
+        if not query.strip():
+            logger.warning("Empty query provided to QueryExpander")
+            return response
+
+        expansion_count = n_expansions if n_expansions is not None else self.n_expansions
+        if expansion_count <= 0:
+            raise ValueError("n_expansions must be positive")
+
+        try:
+            prompt_result = self._prompt_builder.run(query=query.strip(), n_expansions=expansion_count)
+            generator_result = await _run_component_async(
+                self.chat_generator, messages=[ChatMessage.from_user(prompt_result["prompt"])]
+            )
 
             if not generator_result.get("replies") or len(generator_result["replies"]) == 0:
                 logger.warning("ChatGenerator returned no replies for query: {query}", query=query)
