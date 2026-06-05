@@ -5,7 +5,7 @@
 import asyncio
 import contextlib
 import contextvars
-from collections.abc import AsyncIterator, Mapping
+from collections.abc import AsyncGenerator, AsyncIterator, Mapping
 from typing import Any, ClassVar, cast
 
 from haystack import logging, tracing
@@ -378,7 +378,7 @@ class AsyncPipeline(PipelineBase):
 
     async def run_async_generator(  # noqa: PLR0915,C901
         self, data: dict[str, Any], include_outputs_from: set[str] | None = None, concurrency_limit: int = 4
-    ) -> AsyncIterator[dict[str, Any]]:
+    ) -> AsyncGenerator[dict[str, Any], None]:
         """
         Executes the pipeline step by step asynchronously, yielding partial outputs when any component finishes.
 
