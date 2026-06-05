@@ -189,7 +189,7 @@ class ContextRelevanceEvaluator(LLMEvaluator):
         valid_scores = [s for s in scores if not math.isnan(s)]
         skipped = len(scores) - len(valid_scores)
         if skipped:
-            logger.warning("%s query(s) failed and were excluded from the score.", skipped)
+            logger.warning("{skipped} query(s) failed and were excluded from the score.", skipped=skipped)
         result["score"] = mean(valid_scores) if valid_scores else float("nan")
         result["individual_scores"] = scores  # useful for the EvaluationRunResult
 
