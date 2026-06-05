@@ -1,9 +1,9 @@
 ---
 deprecations:
   - |
-    ``HuggingFaceAPIChatGenerator``, ``HuggingFaceAPITextEmbedder``, and ``HuggingFaceAPIDocumentEmbedder`` are
-    deprecated and will be removed from Haystack in version 3.0. They are moving to the
-    ``huggingface-api-haystack`` package. To continue using them, install the package with
+    ``HuggingFaceAPIChatGenerator``, ``HuggingFaceAPITextEmbedder``, ``HuggingFaceAPIDocumentEmbedder``, and
+    ``HuggingFaceTEIRanker`` are deprecated and will be removed from Haystack in version 3.0. They are moving to
+    the ``huggingface-api-haystack`` package. To continue using them, install the package with
     ``pip install huggingface-api-haystack`` and update your imports as follows:
 
     .. code-block:: python
@@ -11,3 +11,4 @@ deprecations:
         from haystack_integrations.components.generators.huggingface_api import HuggingFaceAPIChatGenerator
         from haystack_integrations.components.embedders.huggingface_api import HuggingFaceAPIDocumentEmbedder
         from haystack_integrations.components.embedders.huggingface_api import HuggingFaceAPITextEmbedder
+        from haystack_integrations.components.rankers.huggingface_api import HuggingFaceTEIRanker
