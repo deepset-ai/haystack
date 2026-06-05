@@ -17,7 +17,7 @@ Transcribe audio files to Haystack Documents using FunASR — a local, open-sour
 | **Mandatory run variables** | `sources`: A list of audio file paths (`str` or `Path`) or `ByteStream` objects |
 | **Output variables** | `documents`: A list of Haystack Documents, one per source, with transcript text in `content` |
 | **API reference** | [FunASR integration](/reference/integrations-funasr) |
-| **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/blob/main/integrations/funasr/src/haystack_integrations/components/converters/funasr/transcriber.py |
+| **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/blob/main/integrations/funasr/src/haystack_integrations/components/audio/funasr/transcriber.py |
 
 </div>
 
@@ -34,7 +34,7 @@ The component accepts audio file paths (`str` or `Path`) as well as `ByteStream`
 ### On its own
 
 ```python
-from haystack_integrations.components.converters.funasr import FunASRTranscriber
+from haystack_integrations.components.audio.funasr import FunASRTranscriber
 
 transcriber = FunASRTranscriber()
 transcriber.warm_up()
@@ -48,7 +48,7 @@ print(result["documents"][0].content)
 ```python
 from haystack import Pipeline
 from haystack.components.fetchers import LinkContentFetcher
-from haystack_integrations.components.converters.funasr import FunASRTranscriber
+from haystack_integrations.components.audio.funasr import FunASRTranscriber
 
 pipe = Pipeline()
 pipe.add_component("fetcher", LinkContentFetcher())
