@@ -10,6 +10,7 @@ from haystack import Document, component, default_from_dict, default_to_dict
 from haystack.components.embedders.types.protocol import TextEmbedder
 from haystack.components.retrievers.types import EmbeddingRetriever
 from haystack.core.serialization import component_to_dict
+from haystack.utils.async_utils import _run_component_async
 from haystack.utils.misc import _deduplicate_documents
 
 
@@ -178,21 +179,11 @@ class MultiQueryEmbeddingRetriever:
         :returns:
             List of retrieved documents or None if no results.
         """
-        loop = asyncio.get_running_loop()
-
-        if hasattr(self.query_embedder, "run_async") and callable(self.query_embedder.run_async):
-            embedding_result = await self.query_embedder.run_async(text=query)
-        else:
-            embedding_result = await loop.run_in_executor(None, lambda: self.query_embedder.run(text=query))
+        embedding_result = await _run_component_async(self.query_embedder, text=query)
 
         query_embedding = embedding_result["embedding"]
 
-        if hasattr(self.retriever, "run_async") and callable(self.retriever.run_async):
-            result = await self.retriever.run_async(query_embedding=query_embedding, **retriever_kwargs)
-        else:
-            result = await loop.run_in_executor(
-                None, lambda: self.retriever.run(query_embedding=query_embedding, **retriever_kwargs)
-            )
+        result = await _run_component_async(self.retriever, query_embedding=query_embedding, **retriever_kwargs)
 
         if result and "documents" in result:
             return result["documents"]

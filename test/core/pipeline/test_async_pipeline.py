@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import asyncio
+import contextvars
 import logging
 from dataclasses import replace
 
@@ -11,6 +12,8 @@ import pytest
 from haystack import AsyncPipeline, Document, component
 from haystack.components.joiners import BranchJoiner
 from haystack.core.errors import PipelineRuntimeError
+
+_test_context_var: contextvars.ContextVar[str] = contextvars.ContextVar("_test_context_var", default="unset")
 
 
 def test_async_pipeline_reentrance(waiting_component, spying_tracer):
@@ -501,3 +504,27 @@ class TestInFlightTaskCleanupOnError:
         await generator.aclose()
 
         assert slow_cancelled is True
+
+
+@pytest.mark.asyncio
+async def test_sync_component_run_in_thread_receives_contextvars():
+    """
+    Regression test: contextvars set in the calling async context (e.g. the active tracing span) must propagate
+    to sync-only components, which AsyncPipeline dispatches to a thread. `asyncio.to_thread` guarantees this by
+    copying the current context; a plain `loop.run_in_executor` would not.
+    """
+
+    @component
+    class SyncContextVarReader:
+        @component.output_types(value=str)
+        def run(self, text: str) -> dict[str, str]:
+            # Read inside the executor thread — only visible if the calling context was copied
+            return {"value": _test_context_var.get()}
+
+    pp = AsyncPipeline()
+    pp.add_component("reader", SyncContextVarReader())
+
+    _test_context_var.set("propagated")
+    result = await pp.run_async({"reader": {"text": "irrelevant"}})
+
+    assert result["reader"]["value"] == "propagated"

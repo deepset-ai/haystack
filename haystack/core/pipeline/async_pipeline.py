@@ -4,7 +4,6 @@
 
 import asyncio
 import contextlib
-import contextvars
 from collections.abc import AsyncGenerator, AsyncIterator, Mapping
 from typing import Any, ClassVar, cast
 
@@ -24,6 +23,7 @@ from haystack.dataclasses import AsyncStreamingCallbackT, StreamingCallbackT, St
 from haystack.dataclasses.breakpoints import Breakpoint
 from haystack.dataclasses.streaming_chunk import _invoke_streaming_callback
 from haystack.telemetry import pipeline_running
+from haystack.utils.async_utils import _run_component_async
 
 logger = logging.getLogger(__name__)
 
@@ -154,22 +154,12 @@ class AsyncPipeline(PipelineBase):
             span.set_content_tag(_COMPONENT_INPUT, component_inputs)
             logger.info("Running component {component_name}", component_name=component_name)
 
-            if getattr(instance, "__haystack_supports_async__", False):
-                try:
-                    outputs = await instance.run_async(**component_inputs_copy)  # type: ignore
-                except Exception as error:
-                    raise PipelineRuntimeError.from_exception(component_name, instance.__class__, error) from error
-            else:
-                loop = asyncio.get_running_loop()
-                # Important: contextvars (e.g. active tracing Span) don’t propagate to running loop's ThreadPoolExecutor
-                # We use ctx.run(...) to preserve context like the active tracing span
-                ctx = contextvars.copy_context()
-                try:
-                    outputs = await loop.run_in_executor(
-                        None, lambda: ctx.run(lambda: instance.run(**component_inputs_copy))
-                    )
-                except Exception as error:
-                    raise PipelineRuntimeError.from_exception(component_name, instance.__class__, error) from error
+            try:
+                # For sync-only components, _run_component_async dispatches to a thread via asyncio.to_thread,
+                # which copies the current contextvars context — preserving e.g. the active tracing span.
+                outputs = await _run_component_async(instance, **component_inputs_copy)
+            except Exception as error:
+                raise PipelineRuntimeError.from_exception(component_name, instance.__class__, error) from error
 
             component_visits[component_name] += 1
 
@@ -225,7 +215,7 @@ class AsyncPipeline(PipelineBase):
         are already unwinding.
 
         Note: cancellation is only effective for components that run natively async. Sync components are offloaded to
-        a thread via `loop.run_in_executor` and a running thread cannot be interrupted: cancelling its task abandons
+        a thread via `asyncio.to_thread` and a running thread cannot be interrupted: cancelling its task abandons
         the await, but the thread keeps running until the component's `run` returns. Its outputs are then discarded
         (the task never writes them to the pipeline state), so state stays consistent, but side effects (e.g. API
         calls) still complete and the thread can outlive this cleanup.
