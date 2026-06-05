@@ -7,3 +7,6 @@ fixes:
     drained before the original error is re-raised. The same cleanup now also applies when iteration of
     ``run_async_generator`` is stopped early (e.g. the consumer breaks out of the loop and closes the generator)
     or the run is cancelled: any tasks still in flight are cancelled instead of leaking.
+    Note that cancellation only interrupts components that run natively async. Sync components are offloaded to a
+    worker thread, which cannot be interrupted and runs to completion in the background; its outputs are discarded,
+    so pipeline state stays consistent, but the component's side effects still complete.

@@ -220,9 +220,15 @@ class AsyncPipeline(PipelineBase):
         """
         Cancels all in-flight tasks and waits for the cancellations to settle.
 
-        Called when a component fails so that sibling tasks don't keep running in the background after the pipeline
-        run is aborted. Exceptions from the cancelled tasks are suppressed since we are already unwinding from the
-        original error.
+        Called when a component fails or when the run is abandoned early so that sibling tasks don't keep running in
+        the background after the pipeline run is aborted. Exceptions from the cancelled tasks are suppressed since we
+        are already unwinding.
+
+        Note: cancellation is only effective for components that run natively async. Sync components are offloaded to
+        a thread via `loop.run_in_executor` and a running thread cannot be interrupted: cancelling its task abandons
+        the await, but the thread keeps running until the component's `run` returns. Its outputs are then discarded
+        (the task never writes them to the pipeline state), so state stays consistent, but side effects (e.g. API
+        calls) still complete and the thread can outlive this cleanup.
 
         :param running_tasks: Mapping of in-flight tasks to component names. Cleared in place.
         :param scheduled_components: Set of scheduled-but-unfinished component names. Cleared in place.
