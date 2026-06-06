@@ -420,6 +420,34 @@ class TestHuggingFaceLocalGenerator:
         results = generator.run(prompt="irrelevant")
         assert results == {"replies": ["Hello"]}
 
+    def test_run_stop_words_removal_with_multiple_stop_words(self):
+        """Regression for #11409: with N replies and M stop words, the cross-product comprehension
+        produced N*M replies (half still containing a stop word). The result must stay at N replies,
+        each with every stop word removed."""
+        generator = HuggingFaceLocalGenerator(
+            model="Qwen/Qwen3-0.6B", task="text-generation", stop_words=["STOP", "END"]
+        )
+        generator.pipeline = Mock(
+            return_value=[
+                {"generated_text": "Paris is the capital. STOP"},
+                {"generated_text": "France is in Europe. END"},
+            ]
+        )
+        generator.stopping_criteria_list = Mock()
+        results = generator.run(prompt="irrelevant")
+        assert results == {"replies": ["Paris is the capital.", "France is in Europe."]}
+
+    def test_run_stop_words_removal_all_stop_words_removed_from_each_reply(self):
+        """Every stop word is removed from every reply, not just the first matching one."""
+        generator = HuggingFaceLocalGenerator(
+            model="Qwen/Qwen3-0.6B", task="text-generation", stop_words=["STOP", "END"]
+        )
+        # Reply contains BOTH stop words
+        generator.pipeline = Mock(return_value=[{"generated_text": "Hello STOP world END"}])
+        generator.stopping_criteria_list = Mock()
+        results = generator.run(prompt="irrelevant")
+        assert results == {"replies": ["Hello  world"]}
+
     @pytest.mark.integration
     def test_stop_words_criteria_using_hf_tokenizer(self):
         """

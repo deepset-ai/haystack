@@ -259,7 +259,10 @@ class HuggingFaceLocalGenerator:
         replies = [o["generated_text"] for o in output if "generated_text" in o]
 
         if self.stop_words:
-            # the output of the pipeline includes the stop word
-            replies = [reply.replace(stop_word, "").rstrip() for reply in replies for stop_word in self.stop_words]
+            # The output of the pipeline includes the stop word. Strip each stop word from each
+            # reply in sequence — the previous double-loop comprehension was a cross-product that
+            # produced N*M replies (half still containing a stop word) instead of N. See #11409.
+            for stop_word in self.stop_words:
+                replies = [reply.replace(stop_word, "").rstrip() for reply in replies]
 
         return {"replies": replies}
