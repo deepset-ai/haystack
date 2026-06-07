@@ -155,6 +155,17 @@ class TestMemoryDocumentStore(
         with pytest.raises(DuplicateDocumentError):
             document_store.write_documents(docs)
 
+    def test_write_documents_warns_on_empty_content(
+        self, document_store: InMemoryDocumentStore, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        caplog.set_level(logging.WARNING)
+        docs = [Document(content=""), Document(content="   "), Document(content="valid content")]
+        count = document_store.write_documents(docs)
+        assert count == 3
+        assert "empty or whitespace-only content" in caplog.text
+        # Valid content document should not trigger a warning
+        assert "valid content" not in caplog.text
+
     def test_bm25_retrieval(self, document_store: InMemoryDocumentStore) -> None:
         # Tests if the bm25_retrieval method returns the correct document based on the input query.
         docs = [Document(content="Hello world"), Document(content="Haystack supports multiple languages")]

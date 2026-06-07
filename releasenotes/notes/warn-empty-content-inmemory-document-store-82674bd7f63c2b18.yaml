@@ -1,0 +1,8 @@
+---
+enhancements:
+  - |
+    InMemoryDocumentStore now logs a warning when documents with empty or
+    whitespace-only content are written. Previously, these documents were
+    silently stored and could pollute BM25 retrieval results with meaningless
+    scores.
+fixes: []

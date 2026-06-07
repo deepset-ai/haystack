@@ -468,6 +468,12 @@ class InMemoryDocumentStore:
 
             tokens = []
             if document.content is not None:
+                if not document.content.strip():
+                    logger.warning(
+                        "Document '{document_id}' has empty or whitespace-only content. "
+                        "This document will be stored but will not be retrieved by BM25 retrieval.",
+                        document_id=document.id,
+                    )
                 tokens = self._tokenize_bm25(document.content)
 
             self.storage[document.id] = document
