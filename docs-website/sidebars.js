@@ -564,6 +564,7 @@ export default {
             'pipeline-components/retrievers/filterretriever',
             'pipeline-components/retrievers/inmemorybm25retriever',
             'pipeline-components/retrievers/inmemoryembeddingretriever',
+            'pipeline-components/retrievers/cogneeretriever',
             'pipeline-components/retrievers/mem0memoryretriever',
             'pipeline-components/retrievers/mongodbatlasembeddingretriever',
             'pipeline-components/retrievers/mongodbatlasfulltextretriever',
@@ -663,6 +664,7 @@ export default {
           type: 'category',
           label: 'Writers',
           items: [
+            'pipeline-components/writers/cogneewriter',
             'pipeline-components/writers/documentwriter',
             'pipeline-components/writers/mem0memorywriter',
           ],
@@ -697,6 +699,14 @@ export default {
             'tools/ready-made-tools/mem0memorytools',
           ],
         },
+      ],
+    },
+    {
+      type: 'category',
+      label: 'Memory Stores',
+      items: [
+        'memory-stores/cogneememorystore',
+        'memory-stores/mem0memorystore',
       ],
     },
     {
