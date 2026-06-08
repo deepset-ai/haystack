@@ -81,7 +81,9 @@ __init__(
     progress_bar: bool = True,
     meta_fields_to_embed: list[str] | None = None,
     embedding_separator: str = "\n",
-    config: dict[str, Any] | None = None
+    config: dict[str, Any] | None = None,
+    timeout: float | None = None,
+    max_retries: int | None = None
 ) -> None
 ```
 
@@ -114,6 +116,8 @@ Creates an GoogleGenAIDocumentEmbedder component.
   Specifying task types in `config` does not take effect for `gemini-embedding-2`.
   See [Gemini documentation](https://ai.google.dev/gemini-api/docs/embeddings#task-types) for more
   information.
+- **timeout** (<code>float | None</code>) – The timeout in seconds for the underlying Google GenAI client network requests.
+- **max_retries** (<code>int | None</code>) – The maximum number of retries for the underlying Google GenAI client network requests.
 
 #### to_dict
 
@@ -260,7 +264,9 @@ __init__(
     model: str = "gemini-embedding-2",
     batch_size: int = 6,
     progress_bar: bool = True,
-    config: dict[str, Any] | None = None
+    config: dict[str, Any] | None = None,
+    timeout: float | None = None,
+    max_retries: int | None = None
 ) -> None
 ```
 
@@ -293,6 +299,36 @@ Creates an GoogleGenAIMultimodalDocumentEmbedder component.
   You can for example set the output dimensionality of the embedding: `{"output_dimensionality": 768}`.
   See [Google API documentation](https://googleapis.github.io/python-genai/genai.html#genai.types.EmbedContentConfig)
   for the available options.
+- **timeout** (<code>float | None</code>) – The timeout in seconds for the underlying Google GenAI client network requests.
+- **max_retries** (<code>int | None</code>) – The maximum number of retries for the underlying Google GenAI client network requests.
+
+#### to_dict
+
+```python
+to_dict() -> dict[str, Any]
+```
+
+Serializes the component to a dictionary.
+
+**Returns:**
+
+- <code>dict\[str, Any\]</code> – Dictionary with serialized data.
+
+#### from_dict
+
+```python
+from_dict(data: dict[str, Any]) -> GoogleGenAIMultimodalDocumentEmbedder
+```
+
+Deserializes the component from a dictionary.
+
+**Parameters:**
+
+- **data** (<code>dict\[str, Any\]</code>) – Dictionary to deserialize from.
+
+**Returns:**
+
+- <code>GoogleGenAIMultimodalDocumentEmbedder</code> – Deserialized component.
 
 #### run
 
@@ -405,7 +441,9 @@ __init__(
     model: str = "gemini-embedding-001",
     prefix: str = "",
     suffix: str = "",
-    config: dict[str, Any] | None = None
+    config: dict[str, Any] | None = None,
+    timeout: float | None = None,
+    max_retries: int | None = None
 ) -> None
 ```
 
@@ -434,6 +472,8 @@ Creates an GoogleGenAITextEmbedder component.
   Specifying task types in `config` does not take effect for `gemini-embedding-2`.
   See [Gemini documentation](https://ai.google.dev/gemini-api/docs/embeddings#task-types) for more
   information.
+- **timeout** (<code>float | None</code>) – The timeout in seconds for the underlying Google GenAI client network requests.
+- **max_retries** (<code>int | None</code>) – The maximum number of retries for the underlying Google GenAI client network requests.
 
 #### to_dict
 
