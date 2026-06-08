@@ -12,13 +12,22 @@ from unittest.mock import Mock
 import pytest
 
 from haystack import component, tracing
+from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.testing.test_utils import set_all_seeds
 from test.tracing.utils import SpyingTracer
 
 set_all_seeds(0)
 
+
 # Tracing is disable by default to avoid failures in CI
 tracing.disable_tracing()
+
+
+@pytest.fixture()
+def in_memory_doc_store():
+    store = InMemoryDocumentStore()
+    yield store
+    store.shutdown()
 
 
 @pytest.fixture()

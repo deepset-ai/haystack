@@ -9,8 +9,8 @@ import random
 import zlib
 from typing import Any
 
+import httpx
 import networkx
-import requests
 
 from haystack import logging
 from haystack.core.errors import PipelineDrawingError
@@ -169,6 +169,81 @@ def _validate_mermaid_params(params: dict[str, Any]) -> None:
             logger.warning("`fit` overrides `paper` and `landscape` for PDFs. Ignoring `paper` and `landscape`.")
 
 
+# Magic-byte signatures used to verify a Mermaid server response matches the requested output format.
+_PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
+_JPEG_SIGNATURE = b"\xff\xd8\xff"
+_PDF_SIGNATURE = b"%PDF-"
+_RIFF_SIGNATURE = b"RIFF"
+_WEBP_SIGNATURE = b"WEBP"
+_SVG_PREFIXES = (b"<?xml", b"<svg")
+
+
+def _validate_image_response(resp: httpx.Response, params: dict[str, Any]) -> None:
+    """
+    Validate that the Mermaid server response actually contains the expected image/SVG/PDF data.
+
+    `Pipeline.draw()` writes the raw response body to disk, so a misconfigured or malicious
+    `server_url` could otherwise cause arbitrary content (e.g. an HTML error page or a crafted
+    payload) to be written verbatim to the output path. As defense-in-depth we check both the
+    `Content-Type` header (which the server controls and could spoof) and the response body's
+    magic-byte signature (which is harder to forge while still producing a usable payload).
+
+    :param resp:
+        The HTTP response returned by the Mermaid server.
+    :param params:
+        Validated Mermaid parameters; used to determine the expected output format.
+    :raises PipelineDrawingError:
+        If the response is empty or does not match the expected format.
+    """
+    content = resp.content
+    if not content:
+        raise PipelineDrawingError("The Mermaid server returned an empty response; no image will be saved.")
+
+    output_format = params.get("format", "img")
+    img_type = params.get("type", "png")
+
+    # (human-readable label, expected Content-Type prefix, body signature check)
+    content_type_prefixes: tuple[str, ...]
+    if output_format == "svg":
+        expected_label = "SVG"
+        content_type_prefixes = ("image/svg+xml", "text/xml", "application/xml")
+        stripped = content.lstrip()[:512].lower()
+        body_ok = stripped.startswith(_SVG_PREFIXES) or _SVG_PREFIXES[1] in stripped
+    elif output_format == "pdf":
+        expected_label = "PDF"
+        content_type_prefixes = ("application/pdf",)
+        body_ok = content.startswith(_PDF_SIGNATURE)
+    elif img_type == "jpeg":
+        expected_label = "JPEG image"
+        content_type_prefixes = ("image/jpeg",)
+        body_ok = content.startswith(_JPEG_SIGNATURE)
+    elif img_type == "webp":
+        expected_label = "WebP image"
+        content_type_prefixes = ("image/webp",)
+        body_ok = content[0:4] == _RIFF_SIGNATURE and content[8:12] == _WEBP_SIGNATURE
+    else:  # png (default)
+        expected_label = "PNG image"
+        content_type_prefixes = ("image/png",)
+        body_ok = content.startswith(_PNG_SIGNATURE)
+
+    # The Content-Type header is server-controlled, so a mismatch is only a warning: the
+    # authoritative check is the body signature below.
+    content_type = resp.headers.get("content-type", "").split(";")[0].strip().lower()
+    if content_type and not content_type.startswith(content_type_prefixes):
+        logger.warning(
+            "The Mermaid server returned an unexpected Content-Type '{content_type}' (expected {expected}).",
+            content_type=content_type,
+            expected=expected_label,
+        )
+
+    if not body_ok:
+        raise PipelineDrawingError(
+            f"The Mermaid server response does not look like a valid {expected_label}. "
+            f"This can happen if 'server_url' points to a server that is not a Mermaid renderer. "
+            f"To avoid writing untrusted content to disk, no file will be saved."
+        )
+
+
 def _to_mermaid_image(
     graph: networkx.MultiDiGraph,
     server_url: str = "https://mermaid.ink",
@@ -234,7 +309,7 @@ def _to_mermaid_image(
 
     logger.debug("Rendering graph at {url}", url=url)
     try:
-        resp = requests.get(url, timeout=timeout)
+        resp = httpx.get(url, timeout=timeout)
         if resp.status_code >= 400:
             logger.warning(
                 "Failed to draw the pipeline: {server_url} returned status {status_code}",
@@ -252,6 +327,10 @@ def _to_mermaid_image(
         logger.info("Exact URL requested: {url}", url=url)
         logger.warning("No pipeline diagram will be saved.")
         raise PipelineDrawingError(f"There was an issue with {server_url}, see the stacktrace for details.") from exc
+
+    # Validate the response before it gets written to disk by the caller, so that a misconfigured
+    # or malicious server cannot cause arbitrary content to be saved to the output path.
+    _validate_image_response(resp, params)
 
     return resp.content
 

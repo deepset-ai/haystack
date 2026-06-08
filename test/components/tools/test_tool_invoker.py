@@ -10,7 +10,7 @@ from unittest.mock import patch
 
 import pytest
 
-from haystack import Pipeline
+from haystack import Document, Pipeline
 from haystack.components.agents.state import State
 from haystack.components.builders.prompt_builder import PromptBuilder
 from haystack.components.generators.chat.openai import OpenAIChatGenerator
@@ -215,6 +215,36 @@ class TestToolInvokerCore:
         state = State(schema={"location": {"type": str}}, data={"location": "Berlin"})
         args = invoker._inject_state_args(tool=weather_tool, llm_args={"location": "Paris"}, state=state)
         assert args == {"location": "Paris"}
+
+    def test_inject_state_args_injects_state_object_for_state_annotated_param(self, invoker):
+        def function_with_state(city: str, state: State) -> str:
+            return f"Weather in {city}"
+
+        state_tool = Tool(
+            name="state_tool",
+            description="A tool that receives the live State object.",
+            parameters={"type": "object", "properties": {"city": {"type": "string"}}, "required": ["city"]},
+            function=function_with_state,
+        )
+        state = State(schema={"city": {"type": str}}, data={"city": "Berlin"})
+        args = invoker._inject_state_args(tool=state_tool, llm_args={"city": "Paris"}, state=state)
+        assert args["city"] == "Paris"
+        assert args["state"] is state
+
+    def test_inject_state_args_injects_state_object_for_optional_state_annotated_param(self, invoker):
+        def function_with_optional_state(city: str, state: State | None = None) -> str:
+            return f"Weather in {city}"
+
+        state_tool = Tool(
+            name="state_tool",
+            description="A tool that receives an optional State object.",
+            parameters={"type": "object", "properties": {"city": {"type": "string"}}, "required": ["city"]},
+            function=function_with_optional_state,
+        )
+        state = State(schema={})
+        args = invoker._inject_state_args(tool=state_tool, llm_args={"city": "Paris"}, state=state)
+        assert args["city"] == "Paris"
+        assert args["state"] is state
 
 
 class TestToolInvokerSerde:
@@ -754,6 +784,55 @@ class TestToolInvokerRun:
         assert "tool_messages" in result_2
         assert len(result_2["tool_messages"]) == 3
 
+    def test_run_injects_state_object_into_tool(self):
+        received_state = {}
+
+        def function_with_state(city: str, state: State) -> str:
+            received_state["state"] = state
+            return f"Weather in {city}: sunny"
+
+        state_tool = Tool(
+            name="state_tool",
+            description="A tool that receives the live State object.",
+            parameters={"type": "object", "properties": {"city": {"type": "string"}}, "required": ["city"]},
+            function=function_with_state,
+        )
+        invoker = ToolInvoker(tools=[state_tool])
+        state = State(schema={"city": {"type": str}})
+
+        tool_call = ToolCall(tool_name="state_tool", arguments={"city": "Berlin"})
+        message = ChatMessage.from_assistant(tool_calls=[tool_call])
+        result = invoker.run(messages=[message], state=state)
+
+        assert len(result["tool_messages"]) == 1
+        assert not result["tool_messages"][0].tool_call_results[0].error
+        assert received_state["state"] is state
+
+    @pytest.mark.asyncio
+    async def test_run_async_injects_state_object_into_tool(self):
+        received_state = {}
+
+        def function_with_state(city: str, state: State) -> str:
+            received_state["state"] = state
+            return f"Weather in {city}: sunny"
+
+        state_tool = Tool(
+            name="state_tool",
+            description="A tool that receives the live State object.",
+            parameters={"type": "object", "properties": {"city": {"type": "string"}}, "required": ["city"]},
+            function=function_with_state,
+        )
+        invoker = ToolInvoker(tools=[state_tool])
+        state = State(schema={"city": {"type": str}})
+
+        tool_call = ToolCall(tool_name="state_tool", arguments={"city": "Berlin"})
+        message = ChatMessage.from_assistant(tool_calls=[tool_call])
+        result = await invoker.run_async(messages=[message], state=state)
+
+        assert len(result["tool_messages"]) == 1
+        assert not result["tool_messages"][0].tool_call_results[0].error
+        assert received_state["state"] is state
+
 
 class TestToolInvokerErrorHandling:
     def test_tool_not_found_error(self, invoker):
@@ -1061,6 +1140,30 @@ class TestToolInvokerUtilities:
             tool=weather_tool, result={"weather": "sunny", "temperature": 14, "unit": "celsius"}, state=state
         )
         assert state.data == {"all_weather_results": {"weather": "sunny", "temperature": 14, "unit": "celsius"}}
+
+    def test_merge_tool_outputs_source_key_absent_does_not_corrupt_list_state(self):
+        """
+        Simulates a PipelineTool wrapping a pipeline with a conditional branch that may not execute, resulting in the
+        source key being absent from the tool result. The test verifies that in this case, the existing list in state
+        is not corrupted by appending None.
+        """
+        tool = Tool(
+            name="retrieval",
+            description="mock",
+            parameters={"type": "object", "properties": {"query": {"type": "string"}}, "required": ["query"]},
+            function=lambda query: {},
+            outputs_to_state={"documents": {"source": "documents_output"}},
+        )
+        invoker = ToolInvoker(tools=[tool])
+        existing_doc = Document(content="from first call")
+        state = State(schema={"documents": {"type": list[Document]}})
+        state.set("documents", [existing_doc])
+
+        # Tool result where the source key is absent (document extraction branch did not execute)
+        invoker._merge_tool_outputs(tool=tool, result={"result": "no web results found"}, state=state)
+
+        assert state.data["documents"] == [existing_doc]
+        assert None not in state.data["documents"]
 
     def test_merge_tool_outputs_with_output_mapping_and_handler(self):
         handler = lambda _, new: f"{new}"  # noqa: E731

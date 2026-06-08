@@ -5,30 +5,31 @@ description: "Ragas integration for Haystack"
 slug: "/integrations-ragas"
 ---
 
-<a id="haystack_integrations.components.evaluators.ragas.evaluator"></a>
 
-## Module haystack\_integrations.components.evaluators.ragas.evaluator
-
-<a id="haystack_integrations.components.evaluators.ragas.evaluator.RagasEvaluator"></a>
+## haystack_integrations.components.evaluators.ragas.evaluator
 
 ### RagasEvaluator
 
-A component that uses the [Ragas framework](https://docs.ragas.io/) to evaluate
-inputs against specified Ragas metrics.
+A component that uses the Ragas framework to evaluate inputs against specified Ragas metrics.
+
+See the [Ragas framework](https://docs.ragas.io/) for more details.
+
+This component supports the modern Ragas metrics API (`ragas.metrics.collections`).
+Each metric must be a `SimpleBaseMetric` instance with its LLM configured at construction time.
 
 Usage example:
-```python
-from haystack.components.generators import OpenAIGenerator
-from haystack_integrations.components.evaluators.ragas import RagasEvaluator
-from ragas.metrics import ContextPrecision
-from ragas.llms import HaystackLLMWrapper
 
-llm = OpenAIGenerator(model="gpt-4o-mini")
-evaluator_llm = HaystackLLMWrapper(llm)
+```python
+from openai import AsyncOpenAI
+from ragas.llms import llm_factory
+from ragas.metrics.collections import Faithfulness
+from haystack_integrations.components.evaluators.ragas import RagasEvaluator
+
+client = AsyncOpenAI()
+llm = llm_factory("gpt-4o-mini", client=client)
 
 evaluator = RagasEvaluator(
-    ragas_metrics=[ContextPrecision()],
-    evaluator_llm=evaluator_llm
+    ragas_metrics=[Faithfulness(llm=llm)],
 )
 output = evaluator.run(
     query="Which is the most popular global sport?",
@@ -45,52 +46,116 @@ output = evaluator.run(
 output['result']
 ```
 
-<a id="haystack_integrations.components.evaluators.ragas.evaluator.RagasEvaluator.__init__"></a>
-
-#### RagasEvaluator.\_\_init\_\_
+#### __init__
 
 ```python
-def __init__(ragas_metrics: list[Metric],
-             evaluator_llm: BaseRagasLLM | None = None,
-             evaluator_embedding: BaseRagasEmbeddings | None = None)
+__init__(
+    ragas_metrics: list[SimpleBaseMetric], concurrency_limit: int = 4
+) -> None
 ```
 
 Constructs a new Ragas evaluator.
 
-**Arguments**:
+**Parameters:**
 
-- `ragas_metrics`: A list of evaluation metrics from the [Ragas](https://docs.ragas.io/) library.
-- `evaluator_llm`: A language model used by metrics that require LLMs for evaluation.
-- `evaluator_embedding`: An embedding model used by metrics that require embeddings for evaluation.
+- **ragas_metrics** (<code>list\[SimpleBaseMetric\]</code>) – A list of modern Ragas metrics from `ragas.metrics.collections`.
+  Each metric must be fully configured (including its LLM) at construction time.
+  Available metrics can be found in the
+  [Ragas documentation](https://docs.ragas.io/en/stable/concepts/metrics/available_metrics/).
+- **concurrency_limit** (<code>int</code>) – The maximum number of metric evaluations that should be allowed to run concurrently.
+  This parameter is only used in the `run_async` method.
 
-<a id="haystack_integrations.components.evaluators.ragas.evaluator.RagasEvaluator.run"></a>
-
-#### RagasEvaluator.run
+#### to_dict
 
 ```python
-@component.output_types(result=EvaluationResult)
-def run(query: str | None = None,
-        response: list[ChatMessage] | str | None = None,
-        documents: list[Document | str] | None = None,
-        reference_contexts: list[str] | None = None,
-        multi_responses: list[str] | None = None,
-        reference: str | None = None,
-        rubrics: dict[str, str] | None = None) -> dict[str, Any]
+to_dict() -> dict[str, Any]
 ```
 
-Evaluates the provided query against the documents and returns the evaluation result.
+Serialize this component to a dictionary.
 
-**Arguments**:
+**Returns:**
 
-- `query`: The input query from the user.
-- `response`: A list of ChatMessage responses (typically from a language model or agent).
-- `documents`: A list of Haystack Document or strings that were retrieved for the query.
-- `reference_contexts`: A list of reference contexts that should have been retrieved for the query.
-- `multi_responses`: List of multiple responses generated for the query.
-- `reference`: A string reference answer for the query.
-- `rubrics`: A dictionary of evaluation rubric, where keys represent the score
-and the values represent the corresponding evaluation criteria.
+- <code>dict\[str, Any\]</code> – Dictionary with serialized data.
 
-**Returns**:
+#### from_dict
 
-A dictionary containing the evaluation result.
+```python
+from_dict(data: dict[str, Any]) -> RagasEvaluator
+```
+
+Deserialize this component from a dictionary.
+
+Metrics are reconstructed from their stored class path and LLM/embedding
+configuration. Only the `openai` provider is supported for automatic
+deserialization; the API key is read from the `OPENAI_API_KEY` environment
+variable at load time.
+
+**Parameters:**
+
+- **data** (<code>dict\[str, Any\]</code>) – Dictionary to deserialize from.
+
+**Returns:**
+
+- <code>RagasEvaluator</code> – Deserialized component.
+
+#### run
+
+```python
+run(
+    query: str | None = None,
+    response: list[ChatMessage] | str | None = None,
+    documents: list[Document | str] | None = None,
+    reference_contexts: list[str] | None = None,
+    multi_responses: list[str] | None = None,
+    reference: str | None = None,
+    rubrics: dict[str, str] | None = None,
+) -> dict[str, dict[str, MetricResult]]
+```
+
+Evaluates the provided inputs against each metric and returns the results.
+
+**Parameters:**
+
+- **query** (<code>str | None</code>) – The input query from the user.
+- **response** (<code>list\[ChatMessage\] | str | None</code>) – A list of ChatMessage responses (typically from a language model or agent).
+- **documents** (<code>list\[Document | str\] | None</code>) – A list of Haystack Document or strings that were retrieved for the query.
+- **reference_contexts** (<code>list\[str\] | None</code>) – A list of reference contexts that should have been retrieved for the query.
+- **multi_responses** (<code>list\[str\] | None</code>) – List of multiple responses generated for the query.
+- **reference** (<code>str | None</code>) – A string reference answer for the query.
+- **rubrics** (<code>dict\[str, str\] | None</code>) – A dictionary of evaluation rubric, where keys represent the score
+  and the values represent the corresponding evaluation criteria.
+
+**Returns:**
+
+- <code>dict\[str, dict\[str, MetricResult\]\]</code> – A dictionary with key `result` mapping metric names to their `MetricResult`.
+
+#### run_async
+
+```python
+run_async(
+    query: str | None = None,
+    response: list[ChatMessage] | str | None = None,
+    documents: list[Document | str] | None = None,
+    reference_contexts: list[str] | None = None,
+    multi_responses: list[str] | None = None,
+    reference: str | None = None,
+    rubrics: dict[str, str] | None = None,
+) -> dict[str, dict[str, MetricResult]]
+```
+
+Asynchronously evaluates the provided inputs against each metric and returns the results.
+
+**Parameters:**
+
+- **query** (<code>str | None</code>) – The input query from the user.
+- **response** (<code>list\[ChatMessage\] | str | None</code>) – A list of ChatMessage responses (typically from a language model or agent).
+- **documents** (<code>list\[Document | str\] | None</code>) – A list of Haystack Document or strings that were retrieved for the query.
+- **reference_contexts** (<code>list\[str\] | None</code>) – A list of reference contexts that should have been retrieved for the query.
+- **multi_responses** (<code>list\[str\] | None</code>) – List of multiple responses generated for the query.
+- **reference** (<code>str | None</code>) – A string reference answer for the query.
+- **rubrics** (<code>dict\[str, str\] | None</code>) – A dictionary of evaluation rubric, where keys represent the score
+  and the values represent the corresponding evaluation criteria.
+
+**Returns:**
+
+- <code>dict\[str, dict\[str, MetricResult\]\]</code> – A dictionary with key `result` mapping metric names to their `MetricResult`.

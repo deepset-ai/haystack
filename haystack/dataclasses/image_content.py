@@ -142,6 +142,19 @@ class ImageContent:
         """
         return asdict(self)
 
+    def _to_trace_dict(self) -> dict[str, Any]:
+        """
+        Convert the ImageContent to a dictionary representation for tracing.
+
+        The base64_image is replaced with a placeholder string to avoid sending large payloads to the tracing backend.
+
+        :returns:
+            Serialized version of the object only for tracing purposes.
+        """
+        data = self.to_dict()
+        data["base64_image"] = f"Base64 string ({len(self.base64_image)} characters)"
+        return data
+
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "ImageContent":
         """

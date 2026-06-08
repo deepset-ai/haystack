@@ -651,16 +651,16 @@ class DeleteAllTest:
         assert document_store.count_documents() == 0
 
     @staticmethod
-    def _delete_all_supports_recreate(document_store: DocumentStore) -> tuple[bool, str | None]:
+    def _delete_all_supports_recreate(document_store: DocumentStore) -> str | None:
         """
-        Return (True, param_name) if delete_all_documents has recreate_index or recreate_collection, else (False, None).
+        Return the recreate parameter name if delete_all_documents supports it, else None.
         """
         sig = inspect.signature(document_store.delete_all_documents)  # type:ignore[attr-defined]
         if "recreate_index" in sig.parameters:
-            return True, "recreate_index"
+            return "recreate_index"
         if "recreate_collection" in sig.parameters:
-            return True, "recreate_collection"
-        return False, None
+            return "recreate_collection"
+        return None
 
     @staticmethod
     def test_delete_all_documents_without_recreate_index(document_store: DocumentStore):
@@ -669,8 +669,8 @@ class DeleteAllTest:
 
         Skipped if the store's delete_all_documents does not have recreate_index or recreate_collection.
         """
-        supports, param_name = DeleteAllTest._delete_all_supports_recreate(document_store)
-        if not supports:
+        param_name = DeleteAllTest._delete_all_supports_recreate(document_store)
+        if param_name is None:
             pytest.skip("delete_all_documents has no recreate_index or recreate_collection parameter")
 
         docs = [Document(id="1", content="A first document"), Document(id="2", content="Second document")]
@@ -691,8 +691,8 @@ class DeleteAllTest:
 
         Skipped if the store's delete_all_documents does not have recreate_index or recreate_collection.
         """
-        supports, param_name = DeleteAllTest._delete_all_supports_recreate(document_store)
-        if not supports:
+        param_name = DeleteAllTest._delete_all_supports_recreate(document_store)
+        if param_name is None:
             pytest.skip("delete_all_documents has no recreate_index or recreate_collection parameter")
 
         docs = [Document(id="1", content="A first document"), Document(id="2", content="Second document")]

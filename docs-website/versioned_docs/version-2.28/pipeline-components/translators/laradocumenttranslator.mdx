@@ -1,0 +1,111 @@
+---
+title: "LaraDocumentTranslator"
+id: laradocumenttranslator
+slug: "/laradocumenttranslator"
+description: "This component translates the text content of Haystack documents using the Lara translation API."
+---
+
+# LaraDocumentTranslator
+
+This component translates the text content of Haystack documents using the Lara translation API.
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | After any component that produces documents, such as a Retriever or a Converter |
+| **Mandatory init variables** | `access_key_id`: Lara API access key ID. Can be set with `LARA_ACCESS_KEY_ID` env var.  <br /> <br />`access_key_secret`: Lara API access key secret. Can be set with `LARA_ACCESS_KEY_SECRET` env var. |
+| **Mandatory run variables** | `documents`: A list of documents to be translated |
+| **Output variables** | `documents`: A list of translated documents |
+| **API reference** | [Lara](/reference/integrations-lara) |
+| **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/lara |
+
+</div>
+
+## Overview
+
+[Lara](https://developers.laratranslate.com/docs/introduction) is an adaptive translation AI by [translated](https://translated.com/) that combines the fluency and context handling of LLMs with low hallucination and latency. It adapts to domains at inference time using optional context, instructions, translation memories, and glossaries.
+
+`LaraDocumentTranslator` takes a list of Haystack documents, translates their text content via the Lara API, and returns new documents containing the translations. The original document ID is preserved in each translated document's metadata under the `original_document_id` key.
+
+Key features:
+
+- **Automatic language detection**: set `source_lang` to `None` and Lara auto-detects it.
+- **Translation styles**: choose `"faithful"`, `"fluid"`, or `"creative"` to control the tone.
+- **Context and instructions**: pass surrounding text or natural-language instructions to improve quality.
+- **Translation memories and glossaries**: supply memory or glossary IDs so Lara enforces consistent terminology.
+- **Reasoning (Lara Think)**: enable multi-step linguistic analysis for higher-quality output.
+
+## Usage
+### Installation
+
+To start using this integration with Haystack, install it with:
+
+```shell
+pip install lara-haystack
+```
+
+`LaraDocumentTranslator` needs Lara API credentials to work. It uses the `LARA_ACCESS_KEY_ID` and `LARA_ACCESS_KEY_SECRET` environment variables by default. Otherwise, you can pass them at initialization:
+
+```python
+from haystack.utils import Secret
+from haystack_integrations.components.translators.lara import LaraDocumentTranslator
+
+translator = LaraDocumentTranslator(
+    access_key_id=Secret.from_token("<your-access-key-id>"),
+    access_key_secret=Secret.from_token("<your-access-key-secret>"),
+    source_lang="en-US",
+    target_lang="de-DE",
+)
+```
+
+To get your Lara API credentials, sign up at [laratranslate.com](https://laratranslate.com/).
+### On its own
+
+Remember to set the `LARA_ACCESS_KEY_ID` and `LARA_ACCESS_KEY_SECRET` environment variables or pass them in directly.
+
+```python
+from haystack import Document
+from haystack.utils import Secret
+from haystack_integrations.components.translators.lara import LaraDocumentTranslator
+
+translator = LaraDocumentTranslator(
+    access_key_id=Secret.from_env_var("LARA_ACCESS_KEY_ID"),
+    access_key_secret=Secret.from_env_var("LARA_ACCESS_KEY_SECRET"),
+    source_lang="en-US",
+    target_lang="de-DE",
+)
+
+doc = Document(content="Hello, world!")
+result = translator.run(documents=[doc])
+print(result["documents"][0].content)
+# >> "Hallo, Welt!"
+```
+
+### In a pipeline
+
+Below is an example of the `LaraDocumentTranslator` in a pipeline that fetches a webpage, converts it to a document, and translates it from English to German.
+
+```python
+from haystack import Pipeline
+from haystack.components.converters import HTMLToDocument
+from haystack.components.fetchers import LinkContentFetcher
+from haystack_integrations.components.translators.lara import LaraDocumentTranslator
+
+fetcher = LinkContentFetcher()
+converter = HTMLToDocument()
+translator = LaraDocumentTranslator(source_lang="en-US", target_lang="de-DE")
+
+pipe = Pipeline()
+pipe.add_component("fetcher", fetcher)
+pipe.add_component("converter", converter)
+pipe.add_component("translator", translator)
+
+pipe.connect("fetcher", "converter")
+pipe.connect("converter", "translator")
+
+result = pipe.run(data={"fetcher": {"urls": ["https://haystack.deepset.ai/"]}})
+translated_docs = result["translator"]["documents"]
+for doc in translated_docs:
+    print(doc.content)
+```

@@ -218,7 +218,6 @@ Initialize a LangfuseSpan instance.
 **Parameters:**
 
 - **context_manager** (<code>AbstractContextManager</code>) – The context manager from Langfuse created with
-  `langfuse.get_client().start_as_current_span` or
   `langfuse.get_client().start_as_current_observation`.
 
 #### set_tag

@@ -22,6 +22,7 @@ class FileToFileContent:
     Converts files to FileContent objects to be included in ChatMessage objects.
 
     ### Usage example
+    <!-- test-ignore -->
     ```python
     from haystack.components.converters import FileToFileContent
 

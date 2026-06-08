@@ -5,6 +5,8 @@
 import json
 import mimetypes
 import tempfile
+from collections import defaultdict
+from dataclasses import replace
 from math import inf
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Literal, overload
@@ -37,6 +39,8 @@ def expand_page_range(page_range: list[str | int]) -> list[int]:
     :param page_range: List of page numbers and ranges
     :returns:
         An expanded list of page integers
+    :raises ValueError:
+        If any element is not a valid integer or a range string in the format `'start-end'`.
 
     """
     expanded_page_range = []
@@ -53,7 +57,11 @@ def expand_page_range(page_range: list[str | int]) -> list[int]:
             expanded_page_range.append(int(page))
 
         elif isinstance(page, str) and "-" in page:
-            start, end = page.split("-")
+            parts = page.split("-", maxsplit=1)
+            if not parts[0].isdigit() or not parts[1].isdigit():
+                msg = "range must be a string in the format 'start-end'"
+                raise ValueError(f"Invalid page range: {page} - {msg}")
+            start, end = parts
             expanded_page_range.extend(range(int(start), int(end) + 1))
 
         else:
@@ -143,6 +151,41 @@ def _deduplicate_documents(documents: list["Document"]) -> list["Document"]:
             highest_scoring_docs[doc.id] = doc
 
     return list(highest_scoring_docs.values())
+
+
+def _reciprocal_rank_fusion(
+    document_lists: list[list["Document"]], weights: list[float] | None = None
+) -> list["Document"]:
+    """
+    Merge multiple ranked lists of Documents using Reciprocal Rank Fusion, deduplicating across lists.
+
+    See the original paper: https://plg.uwaterloo.ca/~gvcormac/cormacksigir09-rrf.pdf
+
+    The constant k is set to 61 (60 was suggested by the original paper, plus 1 as python lists are 0-based and the
+    paper used 1-based ranking).
+
+    :param document_lists: A list of ranked document lists to fuse.
+    :param weights: Optional per-list weights. Defaults to equal weights.
+    :returns:
+        Deduplicated list of documents with updated RRF scores.
+    """
+    if not document_lists:
+        return []
+
+    k = 61
+    scores_map: dict = defaultdict(int)
+    documents_map: dict = {}
+    resolved_weights = weights if weights else [1 / len(document_lists)] * len(document_lists)
+
+    for documents, weight in zip(document_lists, resolved_weights, strict=True):
+        for rank, doc in enumerate(documents):
+            scores_map[doc.id] += (weight * len(document_lists)) / (k + rank)
+            documents_map[doc.id] = doc
+
+    for _id in scores_map:
+        scores_map[_id] /= len(document_lists) / k
+
+    return [replace(doc, score=scores_map[doc.id]) for doc in documents_map.values()]
 
 
 @overload

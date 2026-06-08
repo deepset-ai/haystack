@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import contextlib
 import os
 from unittest.mock import Mock, patch
 
@@ -298,14 +299,13 @@ class TestOpenAIDocumentEmbedder:
     @pytest.mark.integration
     @pytest.mark.asyncio
     async def test_run_async(self):
+        embedder = OpenAIDocumentEmbedder(
+            model="text-embedding-ada-002", meta_fields_to_embed=["topic"], embedding_separator=" | "
+        )
         docs = [
             Document(content="I love cheese", meta={"topic": "Cuisine"}),
             Document(content="A transformer is a deep learning architecture", meta={"topic": "ML"}),
         ]
-
-        model = "text-embedding-ada-002"
-
-        embedder = OpenAIDocumentEmbedder(model=model, meta_fields_to_embed=["topic"], embedding_separator=" | ")
 
         result = await embedder.run_async(documents=docs)
         documents_with_embeddings = result["documents"]
@@ -325,3 +325,7 @@ class TestOpenAIDocumentEmbedder:
         )
 
         assert result["meta"]["usage"] == {"prompt_tokens": 15, "total_tokens": 15}, "Usage information does not match"
+
+        # Close async client; suppress RuntimeError if the event loop is already closed
+        with contextlib.suppress(RuntimeError):
+            await embedder.async_client.close()

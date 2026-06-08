@@ -11,12 +11,15 @@ on:
 env:
   PYTHON_VERSION: "3.10"
 
+permissions:
+  contents: read
+
 jobs:
   promote:
     runs-on: ubuntu-slim
     steps:
       - name: Checkout this repo
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         # use VERSION.txt file from main branch
         with:
           ref: main
@@ -41,7 +44,7 @@ jobs:
           python ./.github/utils/promote_unstable_docs_docusaurus.py --version ${{ steps.version.outputs.version }}
 
       - name: Create Pull Request with Docusaurus docs updates
-        uses: peter-evans/create-pull-request@c0f553fe549906ede9cf27b5156039d195d2ece0 # v8.1.0
+        uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
         with:
           token: ${{ secrets.HAYSTACK_BOT_TOKEN }}
           commit-message: "Promote unstable docs for Haystack ${{ steps.version.outputs.version }}"

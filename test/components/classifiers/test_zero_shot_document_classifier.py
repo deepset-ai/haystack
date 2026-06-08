@@ -9,7 +9,6 @@ import pytest
 from haystack import Document, Pipeline
 from haystack.components.classifiers import TransformersZeroShotDocumentClassifier
 from haystack.components.retrievers import InMemoryBM25Retriever
-from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.utils import ComponentDevice, Secret
 
 
@@ -26,7 +25,10 @@ class TestTransformersZeroShotDocumentClassifier:
 
     def test_to_dict(self):
         component = TransformersZeroShotDocumentClassifier(
-            model="cross-encoder/nli-deberta-v3-xsmall", labels=["positive", "negative"]
+            model="cross-encoder/nli-deberta-v3-xsmall",
+            labels=["positive", "negative"],
+            multi_label=True,
+            classification_field="title",
         )
         component_dict = component.to_dict()
         assert component_dict == {
@@ -35,6 +37,8 @@ class TestTransformersZeroShotDocumentClassifier:
                 "model": "cross-encoder/nli-deberta-v3-xsmall",
                 "labels": ["positive", "negative"],
                 "token": {"env_vars": ["HF_API_TOKEN", "HF_TOKEN"], "strict": False, "type": "env_var"},
+                "multi_label": True,
+                "classification_field": "title",
                 "huggingface_pipeline_kwargs": {
                     "model": "cross-encoder/nli-deberta-v3-xsmall",
                     "device": ComponentDevice.resolve_device(None).to_hf(),
@@ -50,6 +54,8 @@ class TestTransformersZeroShotDocumentClassifier:
                 "model": "cross-encoder/nli-deberta-v3-xsmall",
                 "labels": ["positive", "negative"],
                 "token": {"env_vars": ["HF_API_TOKEN", "HF_TOKEN"], "strict": False, "type": "env_var"},
+                "multi_label": True,
+                "classification_field": "title",
                 "huggingface_pipeline_kwargs": {
                     "model": "cross-encoder/nli-deberta-v3-xsmall",
                     "device": ComponentDevice.resolve_device(None).to_hf(),
@@ -60,6 +66,8 @@ class TestTransformersZeroShotDocumentClassifier:
         component = TransformersZeroShotDocumentClassifier.from_dict(data)
         assert component.labels == ["positive", "negative"]
         assert component.pipeline is None
+        assert component.multi_label is True
+        assert component.classification_field == "title"
         assert component.token == Secret.from_dict(
             {"env_vars": ["HF_API_TOKEN", "HF_TOKEN"], "strict": False, "type": "env_var"}
         )
@@ -154,10 +162,9 @@ class TestTransformersZeroShotDocumentClassifier:
         assert "classification" not in positive_document.to_dict()
         assert "classification" not in negative_document.to_dict()
 
-    def test_serialization_and_deserialization_pipeline(self):
+    def test_serialization_and_deserialization_pipeline(self, in_memory_doc_store):
         pipeline = Pipeline()
-        document_store = InMemoryDocumentStore()
-        retriever = InMemoryBM25Retriever(document_store=document_store)
+        retriever = InMemoryBM25Retriever(document_store=in_memory_doc_store)
         document_classifier = TransformersZeroShotDocumentClassifier(
             model="cross-encoder/nli-deberta-v3-xsmall", labels=["positive", "negative"]
         )

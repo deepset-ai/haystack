@@ -1,0 +1,196 @@
+---
+title: "Hayhooks"
+id: hayhooks
+slug: "/hayhooks"
+description: "Hayhooks is a web application you can use to serve Haystack pipelines through HTTP endpoints. This page provides an overview of the main features of Hayhooks."
+---
+
+# Hayhooks
+
+Hayhooks is a web application you can use to serve Haystack pipelines through HTTP endpoints. This page provides an overview of the main features of Hayhooks.
+
+:::info[Hayhooks Documentation]
+
+For comprehensive documentation, including detailed configuration reference, advanced features,
+and examples, see the [official Hayhooks documentation](https://deepset-ai.github.io/hayhooks/).
+
+The source code is available in the [Hayhooks GitHub repository](https://github.com/deepset-ai/hayhooks).
+:::
+
+## Overview
+
+Hayhooks simplifies the deployment of Haystack pipelines as REST APIs. It allows you to:
+
+- Expose Haystack pipelines as HTTP endpoints, including OpenAI-compatible chat endpoints,
+- Customize logic while keeping minimal boilerplate,
+- Deploy pipelines quickly and efficiently.
+
+### Installation
+
+Install Hayhooks using pip:
+
+```shell
+pip install hayhooks
+```
+
+The `hayhooks` package ships both the server and the client component, and the client is capable of starting the server. From a shell, start the server with:
+
+```shell
+$ hayhooks run
+INFO:     Started server process [44782]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://localhost:1416 (Press CTRL+C to quit)
+```
+
+### Check Status
+
+From a different shell, you can query the status of the server with:
+
+```shell
+$ hayhooks status
+Hayhooks server is up and running.
+```
+
+## Configuration
+
+Hayhooks can be configured in three ways:
+
+1. Using an `.env` file in the project root.
+2. Passing environment variables when running the command.
+3. Using command-line arguments with `hayhooks run`.
+
+For a complete list of environment variables including server settings, CORS, SSL, logging, streaming, and Chainlit UI options, see the [Hayhooks environment variables reference](https://deepset-ai.github.io/hayhooks/reference/environment-variables/).
+
+## Running Hayhooks
+
+To start the server:
+
+```shell
+hayhooks run
+```
+
+This will launch Hayhooks at `HAYHOOKS_HOST:HAYHOOKS_PORT`.
+
+## Deploying a Pipeline
+
+### Steps
+
+1. Prepare a pipeline definition (`.yml` file) and a `pipeline_wrapper.py` file.
+2. Deploy the pipeline:
+
+   ```shell
+   hayhooks pipeline deploy-files -n my_pipeline my_pipeline_dir
+   ```
+3. Access the pipeline at `{pipeline_name}/run` endpoint.
+
+### Pipeline Wrapper
+
+A `PipelineWrapper` class is required to wrap the pipeline:
+
+```python
+from pathlib import Path
+from haystack import Pipeline
+from hayhooks import BasePipelineWrapper
+
+
+class PipelineWrapper(BasePipelineWrapper):
+    def setup(self) -> None:
+        pipeline_yaml = (Path(__file__).parent / "pipeline.yml").read_text()
+        self.pipeline = Pipeline.loads(pipeline_yaml)
+
+    def run_api(self, input_text: str) -> str:
+        result = self.pipeline.run({"input": {"text": input_text}})
+        return result["output"]["text"]
+```
+
+## File Uploads
+
+Hayhooks enables handling file uploads in your pipeline wrapper's `run_api` method by including `files: list[UploadFile] | None = None` as an argument.
+
+```python
+def run_api(self, files: list[UploadFile] | None = None) -> str:
+    if files and len(files) > 0:
+        filenames = [f.filename for f in files if f.filename is not None]
+        file_contents = [f.file.read() for f in files]
+        return f"Received files: {', '.join(filenames)}"
+    return "No files received"
+```
+
+Hayhooks automatically processes uploaded files and passes them to the `run_api` method when present. The HTTP request must be a `multipart/form-data` request. For more details on file uploads, including combining files with parameters, see the [official Hayhooks documentation](https://deepset-ai.github.io/hayhooks/features/file-upload-support/).
+
+## Running Pipelines from the CLI
+
+You can execute a pipeline through the command line using the `hayhooks pipeline run` command. Internally, this triggers the `run_api` method of the pipeline wrapper, passing parameters as a JSON payload.
+
+```shell
+hayhooks pipeline run <pipeline_name> --param 'question="Is this recipe vegan?"'
+```
+
+You can also upload files when running a pipeline:
+
+```shell
+hayhooks pipeline run <pipeline_name> --file file.pdf --param 'question="Is this recipe vegan?"'
+```
+
+For the full CLI reference, see the [Hayhooks CLI documentation](https://deepset-ai.github.io/hayhooks/features/cli-commands/).
+
+## MCP Support
+
+Hayhooks supports the [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) and can act as an MCP Server. It automatically lists your deployed pipelines and agents as MCP Tools using Server-Sent Events (SSE) as the transport method. Agents are deployed using the same `PipelineWrapper` mechanism as pipelines.
+
+To start the Hayhooks MCP server, run:
+
+```shell
+hayhooks mcp run
+```
+
+For each deployed pipeline, Hayhooks uses the pipeline wrapper name as the MCP Tool name and generates the tool schema from the `run_api` method arguments. For details on configuring MCP tools, see the [Hayhooks MCP documentation](https://deepset-ai.github.io/hayhooks/features/mcp-support/).
+
+## OpenAI Compatibility
+
+Hayhooks supports OpenAI-compatible endpoints through the `run_chat_completion` method.
+
+```python
+from hayhooks import BasePipelineWrapper, get_last_user_message
+
+
+class PipelineWrapper(BasePipelineWrapper):
+    def run_chat_completion(self, model: str, messages: list, body: dict):
+        question = get_last_user_message(messages)
+        return self.pipeline.run({"query": question})
+```
+
+This makes Hayhooks pipelines compatible with any tool that supports the OpenAI chat completion API, including streaming responses. For details, see the [Hayhooks OpenAI compatibility documentation](https://deepset-ai.github.io/hayhooks/features/openai-compatibility/).
+
+## Running Programmatically
+
+Hayhooks can be embedded in a FastAPI application:
+
+```python
+import uvicorn
+from hayhooks.settings import settings
+from fastapi import Request
+from hayhooks import create_app
+
+## Create the Hayhooks app
+hayhooks = create_app()
+
+
+## Add a custom route
+@hayhooks.get("/custom")
+async def custom_route():
+    return {"message": "Hi, this is a custom route!"}
+
+
+## Add a custom middleware
+@hayhooks.middleware("http")
+async def custom_middleware(request: Request, call_next):
+    response = await call_next(request)
+    response.headers["X-Custom-Header"] = "custom-header-value"
+    return response
+
+
+if __name__ == "__main__":
+    uvicorn.run("app:hayhooks", host=settings.host, port=settings.port)
+```

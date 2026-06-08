@@ -14,7 +14,6 @@ from haystack.components.generators.chat import OpenAIChatGenerator
 from haystack.components.writers import DocumentWriter
 from haystack.core.serialization import component_to_dict
 from haystack.dataclasses.chat_message import ChatMessage, ImageContent
-from haystack.document_stores.in_memory import InMemoryDocumentStore
 
 
 class TestLLMDocumentContentExtractor:
@@ -403,18 +402,17 @@ class TestLLMDocumentContentExtractor:
         not os.environ.get("OPENAI_API_KEY", None),
         reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
     )
-    def test_live_run(self):
+    def test_live_run(self, in_memory_doc_store):
         docs = [Document(content="", meta={"file_path": "./test/test_files/images/apple.jpg"})]
-        doc_store = InMemoryDocumentStore()
         extractor = LLMDocumentContentExtractor(chat_generator=OpenAIChatGenerator(model="gpt-4.1-nano"))
-        writer = DocumentWriter(document_store=doc_store)
+        writer = DocumentWriter(document_store=in_memory_doc_store)
         pipeline = Pipeline()
         pipeline.add_component("extractor", extractor)
         pipeline.add_component("doc_writer", writer)
         pipeline.connect("extractor.documents", "doc_writer.documents")
         pipeline.run(data={"documents": docs})
 
-        doc_store_docs = doc_store.filter_documents()
+        doc_store_docs = in_memory_doc_store.filter_documents()
         assert len(doc_store_docs) >= 1
         assert len(doc_store_docs[0].content) > 0
 
@@ -423,7 +421,7 @@ class TestLLMDocumentContentExtractor:
         not os.environ.get("OPENAI_API_KEY", None),
         reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
     )
-    def test_live_run_on_image_with_metadata(self):
+    def test_live_run_on_image_with_metadata(self, in_memory_doc_store):
         """
         Live test using image_metadata.png: single prompt; LLM can return JSON with document_content
         and metadata keys (author, date, document_type, topic) in one response.
@@ -469,7 +467,6 @@ class TestLLMDocumentContentExtractor:
 
         image_path = "./test/test_files/images/image_metadata.png"
         docs = [Document(content="", meta={"file_path": image_path})]
-        doc_store = InMemoryDocumentStore()
         extractor = LLMDocumentContentExtractor(
             prompt=prompt,
             chat_generator=OpenAIChatGenerator(
@@ -494,14 +491,14 @@ class TestLLMDocumentContentExtractor:
                 },
             ),
         )
-        writer = DocumentWriter(document_store=doc_store)
+        writer = DocumentWriter(document_store=in_memory_doc_store)
         pipeline = Pipeline()
         pipeline.add_component("extractor", extractor)
         pipeline.add_component("doc_writer", writer)
         pipeline.connect("extractor.documents", "doc_writer.documents")
         pipeline.run(data={"documents": docs})
 
-        doc_store_docs = doc_store.filter_documents()
+        doc_store_docs = in_memory_doc_store.filter_documents()
         assert len(doc_store_docs) >= 1
         doc = doc_store_docs[0]
         assert len(doc.content) > 0, "Expected non-empty content (image/document description)"

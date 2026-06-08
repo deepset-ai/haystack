@@ -12,7 +12,7 @@ import shutil
 import sys
 
 VERSION_VALIDATOR = re.compile(r"^[0-9]+\.[0-9]+$")
-
+MAX_STABLE_VERSIONS = 5
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -89,3 +89,29 @@ if __name__ == "__main__":
     config = config.replace(f"lastVersion: '{previous_stable}'", f"lastVersion: '{target_version}'")  # "2.19" -> "2.20"
     with open("docs-website/docusaurus.config.js", "w") as f:
         f.write(config)
+
+    # regenerate vercel.json redirects for inactive versions (those beyond the top MAX_STABLE_VERSIONS)
+    with open("docs-website/versions.json") as f:
+        updated_versions = json.load(f)
+    stable_versions = [v for v in updated_versions if not v.endswith("-unstable")]
+    inactive_versions = stable_versions[MAX_STABLE_VERSIONS:]
+    redirects = []
+    for v in inactive_versions:
+        redirects.append({"source": f"/docs/{v}/:slug*", "destination": "/docs/:slug*", "permanent": True})
+        redirects.append({"source": f"/reference/{v}/:slug*", "destination": "/reference/:slug*", "permanent": True})
+
+    with open("docs-website/vercel.json") as f:
+        vercel_config = json.load(f)
+
+    existing_redirects = vercel_config.get("redirects", [])
+    existing_sources = {r.get("source") for r in existing_redirects}
+
+    for r in redirects:
+        if r["source"] not in existing_sources:
+            existing_redirects.append(r)
+
+    vercel_config["redirects"] = existing_redirects
+    with open("docs-website/vercel.json", "w") as f:
+        json.dump(vercel_config, f, indent=2)
+        f.write("\n")
+    print(f"Updated vercel.json with {len(redirects)} redirect(s) for inactive versions: {inactive_versions}")

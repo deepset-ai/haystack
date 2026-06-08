@@ -66,8 +66,8 @@ class AnswerJoiner:
                 ChatMessage.from_user(query)]
 
     pipe = Pipeline()
-    pipe.add_component("llm_1", OpenAIChatGenerator()
-    pipe.add_component("llm_2", OpenAIChatGenerator()
+    pipe.add_component("llm_1", OpenAIChatGenerator())
+    pipe.add_component("llm_2", OpenAIChatGenerator())
     pipe.add_component("aba", AnswerBuilder())
     pipe.add_component("abb", AnswerBuilder())
     pipe.add_component("joiner", AnswerJoiner())

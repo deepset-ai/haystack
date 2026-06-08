@@ -40,7 +40,7 @@ class LocalWhisperTranscriber:
     [GitHub repository](https://github.com/openai/whisper).
 
     ### Usage example
-
+    <!-- test-ignore -->
     ```python
     from haystack.components.audio import LocalWhisperTranscriber
 

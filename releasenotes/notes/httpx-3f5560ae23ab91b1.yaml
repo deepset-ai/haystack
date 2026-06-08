@@ -1,0 +1,13 @@
+---
+enhancements:
+  - |
+    Standardize HTTP request handling in Haystack by adopting ``httpx`` for both synchronous and asynchronous requests,
+    replacing ``requests``. Error reporting for failed requests has also been improved: exceptions now include
+    additional details alongside the reason field.
+upgrade:
+  - |
+    As part of the migration from ``requests`` to ``httpx``, ``request_with_retry`` and ``async_request_with_retry``
+    (in ``haystack.utils.requests_utils``) no longer raise ``requests.exceptions.RequestException`` on failure;
+    they now raise ``httpx.HTTPError`` instead. This also affects ``HuggingFaceTEIRanker``, which relies on these
+    utilities. Users catching ``requests.exceptions.RequestException`` should update their code to catch
+    ``httpx.HTTPError``.

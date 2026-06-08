@@ -863,6 +863,95 @@ class InMemoryDocumentStore:
             self.executor, lambda: self.delete_documents(document_ids=document_ids)
         )
 
+    async def update_by_filter_async(self, filters: dict[str, Any], meta: dict[str, Any]) -> int:
+        """
+        Updates the metadata of all documents that match the provided filters.
+
+        :param filters: The filters to apply to select documents for updating.
+            For filter syntax, see filter_documents.
+        :param meta: The metadata fields to update. These will be merged with existing metadata.
+        :returns: The number of documents updated.
+        """
+        return await asyncio.get_running_loop().run_in_executor(
+            self.executor, lambda: self.update_by_filter(filters=filters, meta=meta)
+        )
+
+    async def count_documents_by_filter_async(self, filters: dict[str, Any]) -> int:
+        """
+        Returns the number of documents that match the provided filters.
+
+        :param filters: The filters to apply.
+            For a detailed specification of the filters, refer to the
+            [documentation](https://docs.haystack.deepset.ai/docs/metadata-filtering).
+        :returns: The number of documents that match the filters.
+        """
+        return await asyncio.get_running_loop().run_in_executor(
+            self.executor, lambda: self.count_documents_by_filter(filters=filters)
+        )
+
+    async def count_unique_metadata_by_filter_async(
+        self, filters: dict[str, Any], metadata_fields: list[str]
+    ) -> dict[str, int]:
+        """
+        Returns the number of unique values for each specified metadata field from documents matching the filters.
+
+        :param filters: The filters to apply.
+            For a detailed specification of the filters, refer to the
+            [documentation](https://docs.haystack.deepset.ai/docs/metadata-filtering).
+        :param metadata_fields: List of field names to count unique values for.
+            Field names can include or omit the "meta." prefix.
+        :returns: A dictionary mapping each metadata field name (without "meta." prefix)
+            to the count of its unique values among the filtered documents.
+        """
+        return await asyncio.get_running_loop().run_in_executor(
+            self.executor,
+            lambda: self.count_unique_metadata_by_filter(filters=filters, metadata_fields=metadata_fields),
+        )
+
+    async def get_metadata_fields_info_async(self) -> dict[str, dict[str, str]]:
+        """
+        Returns information about the metadata fields present in the stored documents.
+
+        Types are inferred from the stored values (keyword, int, float, boolean).
+
+        :returns: A dictionary mapping each metadata field name to a dict with a "type" key.
+        """
+        return await asyncio.get_running_loop().run_in_executor(self.executor, self.get_metadata_fields_info)
+
+    async def get_metadata_field_min_max_async(self, metadata_field: str) -> dict[str, Any]:
+        """
+        Returns the minimum and maximum values for the given metadata field across all documents.
+
+        :param metadata_field: The metadata field name. Can include or omit the "meta." prefix.
+        :returns: A dictionary with "min" and "max" keys. Returns `{"min": None, "max": None}`
+            if the field is missing or has no values.
+        """
+        return await asyncio.get_running_loop().run_in_executor(
+            self.executor, lambda: self.get_metadata_field_min_max(metadata_field=metadata_field)
+        )
+
+    async def get_metadata_field_unique_values_async(
+        self, metadata_field: str, search_term: str | None = None
+    ) -> tuple[list[str], int]:
+        """
+        Returns unique values for a metadata field, optionally filtered by a search term in content.
+
+        :param metadata_field: The metadata field name. Can include or omit the "meta." prefix.
+        :param search_term: If set, only documents whose content contains this term (case-insensitive)
+            are considered.
+        :returns: A tuple of (list of unique values, total count of unique values).
+        """
+        return await asyncio.get_running_loop().run_in_executor(
+            self.executor,
+            lambda: self.get_metadata_field_unique_values(metadata_field=metadata_field, search_term=search_term),
+        )
+
+    async def delete_all_documents_async(self) -> None:
+        """
+        Deletes all documents in the document store.
+        """
+        await asyncio.get_running_loop().run_in_executor(self.executor, self.delete_all_documents)
+
     async def bm25_retrieval_async(
         self, query: str, filters: dict[str, Any] | None = None, top_k: int = 10, scale_score: bool = False
     ) -> list[Document]:

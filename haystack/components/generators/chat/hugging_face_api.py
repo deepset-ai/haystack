@@ -8,7 +8,7 @@ from datetime import datetime
 from typing import Any, Union
 
 from haystack import component, default_from_dict, default_to_dict, logging
-from haystack.components.generators.utils import _convert_streaming_chunks_to_chat_message
+from haystack.components.generators.utils import _convert_streaming_chunks_to_chat_message, _normalize_messages
 from haystack.dataclasses import (
     AsyncStreamingCallbackT,
     ChatMessage,
@@ -180,7 +180,7 @@ def _map_hf_finish_reason_to_haystack(
     - "eos_token": the model generated its end of sequence token
     - "stop_sequence": the model generated a text included in `stop_sequences`
 
-    Additionally detects tool calls from delta.tool_calls or delta.tool_call_id.
+    Additionally, detects tool calls from delta.tool_calls or delta.tool_call_id.
 
     :param choice: The HuggingFace ChatCompletionStreamOutputChoice object.
     :returns: The corresponding Haystack FinishReason or None.
@@ -263,7 +263,7 @@ class HuggingFaceAPIChatGenerator:
     ### Usage examples
 
     #### With the serverless inference API (Inference Providers) - free tier available
-
+    <!-- test-ignore -->
     ```python
     from haystack.components.generators.chat import HuggingFaceAPIChatGenerator
     from haystack.dataclasses import ChatMessage
@@ -287,7 +287,7 @@ class HuggingFaceAPIChatGenerator:
     ```
 
     #### With the serverless inference API (Inference Providers) and text+image input
-
+    <!-- test-ignore -->
     ```python
     from haystack.components.generators.chat import HuggingFaceAPIChatGenerator
     from haystack.dataclasses import ChatMessage, ImageContent
@@ -314,7 +314,7 @@ class HuggingFaceAPIChatGenerator:
     ```
 
     #### With paid inference endpoints
-
+    <!-- test-ignore -->
     ```python
     from haystack.components.generators.chat import HuggingFaceAPIChatGenerator
     from haystack.dataclasses import ChatMessage
@@ -329,9 +329,10 @@ class HuggingFaceAPIChatGenerator:
 
     result = generator.run(messages)
     print(result)
+    ```
 
     #### With self-hosted text generation inference
-
+    <!-- test-ignore -->
     ```python
     from haystack.components.generators.chat import HuggingFaceAPIChatGenerator
     from haystack.dataclasses import ChatMessage
@@ -489,7 +490,7 @@ class HuggingFaceAPIChatGenerator:
     @component.output_types(replies=list[ChatMessage])
     def run(
         self,
-        messages: list[ChatMessage],
+        messages: list[ChatMessage] | str,
         generation_kwargs: dict[str, Any] | None = None,
         tools: ToolsType | None = None,
         streaming_callback: StreamingCallbackT | None = None,
@@ -498,7 +499,8 @@ class HuggingFaceAPIChatGenerator:
         Invoke the text generation inference based on the provided messages and generation parameters.
 
         :param messages:
-            A list of ChatMessage objects representing the input messages.
+            A list of ChatMessage objects representing the input messages. If a string is provided, it is converted
+            to a list containing a ChatMessage with user role.
         :param generation_kwargs:
             Additional keyword arguments for text generation.
         :param tools:
@@ -513,6 +515,8 @@ class HuggingFaceAPIChatGenerator:
         """
         if not self._is_warmed_up:
             self.warm_up()
+
+        messages = _normalize_messages(messages)
 
         # update generation kwargs by merging with the default ones
         generation_kwargs = {**self.generation_kwargs, **(generation_kwargs or {})}
@@ -540,7 +544,7 @@ class HuggingFaceAPIChatGenerator:
     @component.output_types(replies=list[ChatMessage])
     async def run_async(
         self,
-        messages: list[ChatMessage],
+        messages: list[ChatMessage] | str,
         generation_kwargs: dict[str, Any] | None = None,
         tools: ToolsType | None = None,
         streaming_callback: StreamingCallbackT | None = None,
@@ -552,7 +556,8 @@ class HuggingFaceAPIChatGenerator:
         and return values but can be used with `await` in an async code.
 
         :param messages:
-            A list of ChatMessage objects representing the input messages.
+            A list of ChatMessage objects representing the input messages. If a string is provided, it is converted
+            to a list containing a ChatMessage with user role.
         :param generation_kwargs:
             Additional keyword arguments for text generation.
         :param tools:
@@ -567,6 +572,8 @@ class HuggingFaceAPIChatGenerator:
         """
         if not self._is_warmed_up:
             self.warm_up()
+
+        messages = _normalize_messages(messages)
 
         # update generation kwargs by merging with the default ones
         generation_kwargs = {**self.generation_kwargs, **(generation_kwargs or {})}

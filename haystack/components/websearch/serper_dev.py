@@ -27,11 +27,14 @@ class SerperDevWebSearch:
     See the [Serper Dev website](https://serper.dev/) for more details.
 
     Usage example:
+    <!-- test-ignore -->
     ```python
     from haystack.components.websearch import SerperDevWebSearch
     from haystack.utils import Secret
 
-    websearch = SerperDevWebSearch(top_k=10, api_key=Secret.from_token("test-api-key"))
+    serper_dev_api = Secret.from_env_var("SERPERDEV_API_KEY")
+
+    websearch = SerperDevWebSearch(top_k=10, api_key=serper_dev_api)
     results = websearch.run(query="Who is the boyfriend of Olivia Wilde?")
 
     assert results["documents"]
@@ -42,7 +45,7 @@ class SerperDevWebSearch:
         top_k=10,
         allowed_domains=["example.com"],
         exclude_subdomains=True,  # Only results from example.com, not blog.example.com
-        api_key=Secret.from_token("test-api-key")
+        api_key=serper_dev_api
     )
     results_filtered = websearch_filtered.run(query="search query")
     ```
@@ -156,6 +159,11 @@ class SerperDevWebSearch:
         except httpx.ConnectTimeout as error:
             raise TimeoutError(f"Request to {self.__class__.__name__} timed out.") from error
 
+        except httpx.HTTPStatusError as e:
+            raise SerperDevError(
+                f"An error occurred while querying {self.__class__.__name__}. Error: {e}, Response: {e.response.text}"
+            ) from e
+
         except httpx.HTTPError as e:
             raise SerperDevError(f"An error occurred while querying {self.__class__.__name__}. Error: {e}") from e
 
@@ -190,6 +198,11 @@ class SerperDevWebSearch:
             response.raise_for_status()  # Will raise an HTTPError for bad responses
         except httpx.ConnectTimeout as error:
             raise TimeoutError(f"Request to {self.__class__.__name__} timed out.") from error
+
+        except httpx.HTTPStatusError as e:
+            raise SerperDevError(
+                f"An error occurred while querying {self.__class__.__name__}. Error: {e}, Response: {e.response.text}"
+            ) from e
 
         except httpx.HTTPError as e:
             raise SerperDevError(f"An error occurred while querying {self.__class__.__name__}. Error: {e}") from e

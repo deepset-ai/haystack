@@ -559,9 +559,9 @@ class ChatMessage:
         for part in self._content:
             serialized_part = _serialize_content_part(part)
             if isinstance(part, ImageContent):
-                serialized_part["image"]["base64_image"] = f"Base64 string ({len(part.base64_image)} characters)"
+                serialized_part["image"] = part._to_trace_dict()
             elif isinstance(part, FileContent):
-                serialized_part["file"]["base64_data"] = f"Base64 string ({len(part.base64_data)} characters)"
+                serialized_part["file"] = part._to_trace_dict()
             serialized["content"].append(serialized_part)
 
         return serialized

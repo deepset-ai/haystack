@@ -391,6 +391,20 @@ class TestHuggingFaceAPIChatGenerator:
         assert len(response["replies"]) == 1
         assert [isinstance(reply, ChatMessage) for reply in response["replies"]]
 
+    def test_run_with_string_input(self, mock_check_valid_model, mock_chat_completion):
+        generator = HuggingFaceAPIChatGenerator(
+            api_type=HFGenerationAPIType.SERVERLESS_INFERENCE_API,
+            api_params={"model": "meta-llama/Llama-2-13b-chat-hf"},
+        )
+        response = generator.run("What's the capital of France?")
+
+        _, kwargs = mock_chat_completion.call_args
+        assert kwargs["messages"] == [{"role": "user", "content": "What's the capital of France?"}]
+
+        assert isinstance(response["replies"], list)
+        assert len(response["replies"]) == 1
+        assert isinstance(response["replies"][0], ChatMessage)
+
     def test_run_with_streaming_callback(self, mock_check_valid_model, mock_chat_completion, chat_messages):
         streaming_call_count = 0
 
@@ -832,14 +846,14 @@ class TestHuggingFaceAPIChatGenerator:
         """
         We test the round trip: generate tool call, pass tool message, generate response.
 
-        The model used here (Qwen/Qwen3-Next-80B-A3B-Instruct) is not gated and kept in a warm state.
+        The model used here is not gated and kept in a warm state.
         """
 
         chat_messages = [ChatMessage.from_user("What's the weather like in Paris?")]
         generator = HuggingFaceAPIChatGenerator(
             api_type=HFGenerationAPIType.SERVERLESS_INFERENCE_API,
-            api_params={"model": "Qwen/Qwen3-Next-80B-A3B-Instruct", "provider": "together"},
-            generation_kwargs={"temperature": 0.5},
+            api_params={"model": "Qwen/Qwen3.5-9B", "provider": "together"},
+            generation_kwargs={"temperature": 0.5, "extra_body": {"chat_template_kwargs": {"enable_thinking": False}}},
         )
 
         results = generator.run(chat_messages, tools=tools)
@@ -879,8 +893,8 @@ class TestHuggingFaceAPIChatGenerator:
 
         generator = HuggingFaceAPIChatGenerator(
             api_type=HFGenerationAPIType.SERVERLESS_INFERENCE_API,
-            api_params={"model": "Qwen/Qwen3-VL-8B-Instruct", "provider": "together"},
-            generation_kwargs={"max_tokens": 20},
+            api_params={"model": "Qwen/Qwen3.5-9B", "provider": "together"},
+            generation_kwargs={"max_tokens": 20, "extra_body": {"chat_template_kwargs": {"enable_thinking": False}}},
         )
 
         response = generator.run(messages=messages)
@@ -924,6 +938,20 @@ class TestHuggingFaceAPIChatGenerator:
         assert isinstance(response["replies"], list)
         assert len(response["replies"]) == 1
         assert [isinstance(reply, ChatMessage) for reply in response["replies"]]
+
+    async def test_run_async_with_string_input(self, mock_check_valid_model, mock_chat_completion_async):
+        generator = HuggingFaceAPIChatGenerator(
+            api_type=HFGenerationAPIType.SERVERLESS_INFERENCE_API,
+            api_params={"model": "meta-llama/Llama-2-13b-chat-hf"},
+        )
+        response = await generator.run_async("What's the capital of France?")
+
+        _, kwargs = mock_chat_completion_async.call_args
+        assert kwargs["messages"] == [{"role": "user", "content": "What's the capital of France?"}]
+
+        assert isinstance(response["replies"], list)
+        assert len(response["replies"]) == 1
+        assert isinstance(response["replies"][0], ChatMessage)
 
     @pytest.mark.asyncio
     async def test_run_async_with_streaming(self, mock_check_valid_model, mock_chat_completion_async, chat_messages):

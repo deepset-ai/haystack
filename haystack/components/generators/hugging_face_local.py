@@ -5,6 +5,7 @@
 from typing import Any, Literal
 
 from haystack import component, default_from_dict, default_to_dict, logging
+from haystack.components.generators.utils import _generators_deprecation_warning
 from haystack.dataclasses import ComponentInfo, StreamingCallbackT, select_streaming_callback
 from haystack.lazy_imports import LazyImport
 from haystack.utils import ComponentDevice, Secret, deserialize_callable, serialize_callable
@@ -40,7 +41,7 @@ class HuggingFaceLocalGenerator:
     )
 
     print(generator.run("Who is the best American actor?"))
-    # {'replies': ['John Cusack']}
+    # >> {'replies': ['John Cusack']}
     ```
     """
 
@@ -87,6 +88,7 @@ class HuggingFaceLocalGenerator:
             In these cases, make sure your prompt has no stop words.
         :param streaming_callback: An optional callable for handling streaming responses.
         """
+        _generators_deprecation_warning("HuggingFaceLocalGenerator", "HuggingFaceLocalChatGenerator")
         transformers_import.check()
 
         self.token = token
@@ -249,7 +251,7 @@ class HuggingFaceLocalGenerator:
 
             # streamer parameter hooks into HF streaming, HFTokenStreamingHandler is an adapter to our streaming
             updated_generation_kwargs["streamer"] = HFTokenStreamingHandler(
-                tokenizer=self.pipeline.tokenizer,  # type: ignore[arg-type]
+                tokenizer=self.pipeline.tokenizer,
                 stream_handler=streaming_callback,
                 stop_words=self.stop_words,
                 component_info=ComponentInfo.from_component(self),

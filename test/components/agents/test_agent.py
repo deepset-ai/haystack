@@ -21,8 +21,10 @@ from haystack.components.agents.state import merge_lists
 from haystack.components.builders.chat_prompt_builder import ChatPromptBuilder
 from haystack.components.builders.prompt_builder import PromptBuilder
 from haystack.components.generators.chat.openai import OpenAIChatGenerator
+from haystack.components.joiners.branch import BranchJoiner
 from haystack.components.joiners.list_joiner import ListJoiner
 from haystack.components.retrievers.in_memory import InMemoryBM25Retriever
+from haystack.components.routers.conditional_router import ConditionalRouter
 from haystack.core.component.types import OutputSocket
 from haystack.dataclasses import ChatMessage, ToolCall
 from haystack.dataclasses.chat_message import ChatRole, TextContent
@@ -790,6 +792,53 @@ class TestAgent:
         assert isinstance(result["last_message"], ChatMessage)
         assert result["messages"][-1] == result["last_message"]
 
+    def test_check_exit_conditions_parallel_tool_calls(self, monkeypatch, weather_tool):
+        monkeypatch.setenv("OPENAI_API_KEY", "fake-key")
+        agent = Agent(chat_generator=OpenAIChatGenerator(), tools=[weather_tool], exit_conditions=["weather_tool"])
+
+        finish_call = ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"})
+        other_call = ToolCall(tool_name="search", arguments={"q": "weather Berlin"})
+
+        # Exit-condition call first
+        llm_first = [ChatMessage.from_assistant(tool_calls=[finish_call, other_call])]
+        # Exit-condition call second
+        llm_second = [ChatMessage.from_assistant(tool_calls=[other_call, finish_call])]
+        tool_messages_ok = [ChatMessage.from_tool(tool_result="ok", origin=finish_call, error=False)]
+
+        assert agent._check_exit_conditions(llm_first, tool_messages_ok) is True
+        assert agent._check_exit_conditions(llm_second, tool_messages_ok) is True
+
+    def test_check_exit_conditions_parallel_calls_with_errored_exit_tool(self, monkeypatch, weather_tool):
+        monkeypatch.setenv("OPENAI_API_KEY", "fake-key")
+        agent = Agent(chat_generator=OpenAIChatGenerator(), tools=[weather_tool], exit_conditions=["weather_tool"])
+
+        finish_call = ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"})
+        other_call = ToolCall(tool_name="search", arguments={"q": "weather Berlin"})
+
+        llm_messages = [ChatMessage.from_assistant(tool_calls=[other_call, finish_call])]
+        tool_messages_errored = [ChatMessage.from_tool(tool_result="boom", origin=finish_call, error=True)]
+
+        assert agent._check_exit_conditions(llm_messages, tool_messages_errored) is False
+
+    def test_check_exit_conditions_parallel_calls_error_only_on_non_exit_tool(
+        self, monkeypatch, weather_tool, component_tool
+    ):
+        monkeypatch.setenv("OPENAI_API_KEY", "fake-key")
+        agent = Agent(
+            chat_generator=OpenAIChatGenerator(), tools=[weather_tool, component_tool], exit_conditions=["weather_tool"]
+        )
+
+        finish_call = ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"})
+        other_call = ToolCall(tool_name="parrot", arguments={"parrot": "hi"})
+
+        llm_messages = [ChatMessage.from_assistant(tool_calls=[other_call, finish_call])]
+        tool_messages = [
+            ChatMessage.from_tool(tool_result="boom", origin=other_call, error=True),
+            ChatMessage.from_tool(tool_result="ok", origin=finish_call, error=False),
+        ]
+
+        assert agent._check_exit_conditions(llm_messages, tool_messages) is True
+
     def test_agent_with_no_tools(self, monkeypatch, caplog):
         monkeypatch.setenv("OPENAI_API_KEY", "fake-key")
         generator = OpenAIChatGenerator()
@@ -1517,17 +1566,10 @@ class TestPrompts:
         assert result["messages"][0].text == "You are an Haystack expert."
         assert result["messages"][1].text == "Hi"
 
-    def test_user_prompt_raises_when_no_messages_and_no_prompt(self, weather_tool):
-        agent = Agent(chat_generator=MockChatGenerator(), tools=[weather_tool])
-        with pytest.raises(
-            ValueError, match="No messages provided to the Agent and neither user_prompt nor system_prompt is set"
-        ):
-            agent.run()
-
     def test_user_prompt_only_variables_forwarded_to_builder(self, make_agent):
         agent = make_agent(user_prompt=_user_msg("Question: {{question}}"))
         # 'irrelevant_kwarg' is not a template variable — must not raise
-        result = agent.run(question="Will it snow?", irrelevant_kwarg="unused")
+        result = agent.run(messages=[], question="Will it snow?", irrelevant_kwarg="unused")
         assert "messages" in result
 
     def test_user_prompt_with_template_variables(self, make_agent):
@@ -1538,7 +1580,7 @@ class TestPrompts:
                 + " on {{date}}?"
             )
         )
-        result = agent.run(name="Alice", cities=["Berlin", "Paris", "Rome"], date="2024-01-15")
+        result = agent.run(messages=[], name="Alice", cities=["Berlin", "Paris", "Rome"], date="2024-01-15")
         user_messages = [m for m in result["messages"] if m.is_from(ChatRole.USER)]
         assert user_messages[0].text == "Hello ALICE, check weather for: Berlin, Paris, Rome on 2024-01-15?"
 
@@ -1549,7 +1591,7 @@ class TestPrompts:
 
     def test_runtime_user_prompt_overrides_init_prompt(self, make_agent):
         agent = make_agent(user_prompt=_user_msg("Default prompt for {{city}}."))
-        result = agent.run(user_prompt=_user_msg("Runtime prompt for {{city}}."), city="Berlin")
+        result = agent.run(messages=[], user_prompt=_user_msg("Runtime prompt for {{city}}."), city="Berlin")
         user_messages = [m for m in result["messages"] if m.is_from(ChatRole.USER)]
         assert user_messages[0].text == "Runtime prompt for Berlin."
 
@@ -1580,7 +1622,7 @@ class TestPrompts:
         assert agent._system_chat_prompt_builder is not None
         assert agent._user_chat_prompt_builder is not None
 
-        result = agent.run(project="Haystack", topic="pipelines")
+        result = agent.run(messages=[], project="Haystack", topic="pipelines")
         messages = result["messages"]
         assert messages[0].is_from(ChatRole.SYSTEM)
         assert messages[0].text == "You help users of Haystack."
@@ -1629,7 +1671,7 @@ class TestAgentUserPromptInPipeline:
     def test_rag_pipeline_user_prompt_init_only(self, make_rag_pipeline):
         pipeline = make_rag_pipeline()
         query = "Where is the Colosseum?"
-        result = pipeline.run(data={"retriever": {"query": query}, "agent": {"query": query}})
+        result = pipeline.run(data={"retriever": {"query": query}, "agent": {"query": query, "messages": []}})
         assert "agent" in result
         agent_output = result["agent"]
         assert "messages" in agent_output
@@ -1662,6 +1704,7 @@ class TestAgentUserPromptInPipeline:
                         "Answer: {{query}}"
                     ),
                     "query": query,
+                    "messages": [],
                 },
             }
         )
@@ -1794,3 +1837,58 @@ class TestAgentWaitsForBlockedPredecessor:
             }
         )
         assert "agent" in result
+
+
+class TestAgentNotTriggeredByInjectedInput:
+    """
+    Regression test for https://github.com/deepset-ai/haystack/issues/11109.
+
+    ConditionalRouter routes to `planning`, BranchJoiner never runs, so Agent.messages
+    gets no input. A `streaming_callback` injected via `pipeline.run` data must not
+    by itself trigger the Agent (would happen if `messages` were optional, since any
+    `sender=None` entry flips `has_user_input()` to True).
+    """
+
+    def test_agent_not_triggered_by_injected_streaming_callback(self, weather_tool):
+        @component
+        class Planner:
+            @component.output_types(messages=list[ChatMessage], last_role=str)
+            def run(self) -> dict:
+                return {"messages": [ChatMessage.from_assistant("?")], "last_role": "assistant"}
+
+        chat_generator = MockChatGenerator()
+        agent = Agent(chat_generator=chat_generator, tools=[weather_tool])
+        chat_generator.run = MagicMock(return_value={"replies": [ChatMessage.from_assistant("x")]})
+
+        router = ConditionalRouter(
+            routes=[
+                {
+                    "condition": "{{ last_role == 'tool' }}",
+                    "output": "{{ messages }}",
+                    "output_name": "processing",
+                    "output_type": list[ChatMessage],
+                },
+                {
+                    "condition": "{{ True }}",
+                    "output": "{{ messages }}",
+                    "output_name": "planning",
+                    "output_type": list[ChatMessage],
+                },
+            ],
+            unsafe=True,
+        )
+
+        pipeline = Pipeline()
+        pipeline.add_component("planner", Planner())
+        pipeline.add_component("router", router)
+        pipeline.add_component("branch_joiner", BranchJoiner(type_=list[ChatMessage]))
+        pipeline.add_component("agent", agent)
+        pipeline.connect("planner.messages", "router.messages")
+        pipeline.connect("planner.last_role", "router.last_role")
+        pipeline.connect("router.processing", "branch_joiner.value")
+        pipeline.connect("branch_joiner.value", "agent.messages")
+
+        result = pipeline.run(data={"agent": {"streaming_callback": sync_streaming_callback}})
+
+        assert "agent" not in result
+        chat_generator.run.assert_not_called()

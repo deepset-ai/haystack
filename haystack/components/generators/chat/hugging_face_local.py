@@ -14,6 +14,7 @@ from typing import Any, Literal, Union
 from packaging.version import Version
 
 from haystack import component, default_from_dict, default_to_dict, logging
+from haystack.components.generators.utils import _normalize_messages
 from haystack.dataclasses import ChatMessage, ComponentInfo, StreamingCallbackT, ToolCall
 from haystack.dataclasses.streaming_chunk import select_streaming_callback
 from haystack.lazy_imports import LazyImport
@@ -47,7 +48,7 @@ with LazyImport(message="Run 'pip install \"transformers[torch]\"'") as torch_an
     )
 
 
-PIPELINE_SUPPORTED_TASKS = ["text-generation", "text2text-generation"]
+PIPELINE_SUPPORTED_TASKS = ["text-generation", "text2text-generation", "image-text-to-text"]
 
 DEFAULT_TOOL_PATTERN = (
     r"(?:<tool_call>)?"
@@ -95,7 +96,7 @@ class HuggingFaceLocalChatGenerator:
     LLMs running locally may need powerful hardware.
 
     ### Usage example
-
+    <!-- test-ignore -->
     ```python
     from haystack.components.generators.chat import HuggingFaceLocalChatGenerator
     from haystack.dataclasses import ChatMessage
@@ -125,7 +126,7 @@ class HuggingFaceLocalChatGenerator:
     def __init__(
         self,
         model: str = "Qwen/Qwen3-0.6B",
-        task: Literal["text-generation", "text2text-generation"] | None = None,
+        task: Literal["text-generation", "text2text-generation", "image-text-to-text"] | None = None,
         device: ComponentDevice | None = None,
         token: Secret | None = Secret.from_env_var(["HF_API_TOKEN", "HF_TOKEN"], strict=False),
         chat_template: str | None = None,
@@ -151,6 +152,7 @@ class HuggingFaceLocalChatGenerator:
             - `text-generation`: Supported by decoder models, like GPT.
             - `text2text-generation`: Deprecated as of Transformers v5; use `text-generation` instead.
               Previously supported by encoder–decoder models such as T5.
+            - `image-text-to-text`: Supported by vision-language models.
             If the task is specified in `huggingface_pipeline_kwargs`, this parameter is ignored.
             If not specified, the component calls the Hugging Face API to infer the task from the model name.
         :param device: The device for loading the model. If `None`, automatically selects the default device.
@@ -349,7 +351,7 @@ class HuggingFaceLocalChatGenerator:
     @component.output_types(replies=list[ChatMessage])
     def run(
         self,
-        messages: list[ChatMessage],
+        messages: list[ChatMessage] | str,
         generation_kwargs: dict[str, Any] | None = None,
         streaming_callback: StreamingCallbackT | None = None,
         tools: ToolsType | None = None,
@@ -357,7 +359,8 @@ class HuggingFaceLocalChatGenerator:
         """
         Invoke text generation inference based on the provided messages and generation parameters.
 
-        :param messages: A list of ChatMessage objects representing the input messages.
+        :param messages: A list of ChatMessage objects representing the input messages. If a string is provided,
+            it is converted to a list containing a ChatMessage with user role.
         :param generation_kwargs: Additional keyword arguments for text generation.
         :param streaming_callback: An optional callable for handling streaming responses.
         :param tools: A list of Tool and/or Toolset objects, or a single Toolset for which the model can prepare calls.
@@ -367,6 +370,8 @@ class HuggingFaceLocalChatGenerator:
         """
         if self.pipeline is None:
             self.warm_up()
+
+        messages = _normalize_messages(messages)
 
         prepared_inputs = self._prepare_inputs(
             messages=messages, generation_kwargs=generation_kwargs, streaming_callback=streaming_callback, tools=tools
@@ -463,7 +468,7 @@ class HuggingFaceLocalChatGenerator:
     @component.output_types(replies=list[ChatMessage])
     async def run_async(
         self,
-        messages: list[ChatMessage],
+        messages: list[ChatMessage] | str,
         generation_kwargs: dict[str, Any] | None = None,
         streaming_callback: StreamingCallbackT | None = None,
         tools: ToolsType | None = None,
@@ -484,6 +489,8 @@ class HuggingFaceLocalChatGenerator:
         """
         if self.pipeline is None:
             self.warm_up()
+
+        messages = _normalize_messages(messages)
 
         prepared_inputs = self._prepare_inputs(
             messages=messages, generation_kwargs=generation_kwargs, streaming_callback=streaming_callback, tools=tools

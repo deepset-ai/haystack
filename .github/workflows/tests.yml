@@ -1,4 +1,3 @@
-# If you change this name also do it in ci_metrics.yml
 name: Tests
 
 # The workflow will always run, but the actual tests will only execute when:
@@ -17,8 +16,8 @@ on:
       - "v[0-9].*[0-9].x"
     # when we push, we do not need to satisfy Branch Protection rules, so we can ignore PRs that just change docs
     paths-ignore:
-      - 'docs/**'
-      - 'docs-website/**'
+      - "docs/**"
+      - "docs-website/**"
   pull_request:
     types:
       - opened
@@ -31,16 +30,18 @@ env:
   CORE_AZURE_CS_API_KEY: ${{ secrets.CORE_AZURE_CS_API_KEY }}
   AZURE_OPENAI_API_KEY: ${{ secrets.AZURE_OPENAI_API_KEY }}
   AZURE_OPENAI_ENDPOINT: ${{ secrets.AZURE_OPENAI_ENDPOINT }}
-  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   HF_API_TOKEN: ${{ secrets.HUGGINGFACE_API_KEY }}
   PYTHON_VERSION: "3.10"
   HATCH_VERSION: "1.16.5"
 
+permissions:
+  contents: read
+
 jobs:
   check-if-changed:
-  # This job checks if the relevant files have been changed.
-  # We check for changes in the check-if-changed job instead of using paths/paths-ignore at workflow level.
-  # This ensures the "Mark tests as completed" job always runs, which is required by Branch Protection rules.
+    # This job checks if the relevant files have been changed.
+    # We check for changes in the check-if-changed job instead of using paths/paths-ignore at workflow level.
+    # This ensures the "Mark tests as completed" job always runs, which is required by Branch Protection rules.
     name: Check if changed
     runs-on: ubuntu-slim
     permissions:
@@ -49,7 +50,7 @@ jobs:
     outputs:
       changes: ${{ steps.changes.outputs.changes }}
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
       - name: Check for changed code
         id: changes
         uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # v4.0.1
@@ -71,33 +72,37 @@ jobs:
       (needs.check-if-changed.outputs.changes == 'true')
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
 
       - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
         with:
           python-version: "${{ env.PYTHON_VERSION }}"
 
       - name: Install Hatch
-        run: pip install hatch==${{ env.HATCH_VERSION }}
+        run: |
+          python -m pip install --upgrade pip
+          pip install hatch==${{ env.HATCH_VERSION }} --uploaded-prior-to=P1D
 
       - name: Ruff - check format and linting
         run: hatch run fmt-check
 
       - name: Check presence of license header
-        run: docker run --rm -v "$(pwd):/github/workspace" ghcr.io/korandoru/hawkeye check
+        run: docker run --rm -v "$(pwd):/github/workspace" ghcr.io/korandoru/hawkeye:v6.5.1@sha256:0ebd72353053aa6d3f0cb44a6897786386347bd4636ffc9592f8e47c81ea2b9d check
 
   check-imports:
     needs: format
     runs-on: ubuntu-slim
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
 
       - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
         with:
           python-version: "${{ env.PYTHON_VERSION }}"
 
       - name: Install Hatch
-        run: pip install hatch==${{ env.HATCH_VERSION }}
+        run: |
+          python -m pip install --upgrade pip
+          pip install hatch==${{ env.HATCH_VERSION }} --uploaded-prior-to=P1D
 
       - name: Check imports
         run: hatch run python .github/utils/check_imports.py
@@ -106,6 +111,9 @@ jobs:
     name: Unit / ${{ matrix.os }}
     needs: format
     timeout-minutes: 30
+    permissions:
+      contents: write
+      pull-requests: write
     strategy:
       fail-fast: false
       matrix:
@@ -115,7 +123,7 @@ jobs:
           - macos-latest
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
 
       - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
         with:
@@ -125,41 +133,52 @@ jobs:
         id: hatch
         shell: bash
         run: |
-          pip install hatch==${{ env.HATCH_VERSION }}
+          python -m pip install --upgrade pip
+          pip install hatch==${{ env.HATCH_VERSION }} --uploaded-prior-to=P1D
           echo "env=$(hatch env find test)" >> "$GITHUB_OUTPUT"
 
       - name: Run
         run: hatch run test:unit
 
-      - uses: actions/cache/save@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5.0.4
+      - uses: actions/cache/save@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         id: cache
         if: matrix.os == 'macos-latest'
         with:
           path: ${{ steps.hatch.outputs.env }}
           key: ${{ runner.os }}-${{ github.sha }}
 
-      - name: Coveralls
-        # We upload only coverage for ubuntu as handling both os
-        # complicates the workflow too much for little to no gain
+      # On PR: posts coverage comment (directly on same-repo PRs; via artifact for fork PRs).
+      # On push to main: stores coverage baseline on the data branch.
+      # We only upload coverage for ubuntu-latest, as handling multiple OSes adds complexity for little gain.
+      - name: Coverage comment
+        id: coverage_comment
         if: matrix.os == 'ubuntu-latest'
-        uses: coverallsapp/github-action@5cbfd81b66ca5d10c19b062c04de0199c215fb6e # v2.3.7
-        continue-on-error: true
+        uses: py-cov-action/python-coverage-comment-action@63f52f4fbbffada6e8dee8ec432de7e01df9ba79 # v3.41
         with:
-          path-to-lcov: coverage.xml
+          GITHUB_TOKEN: ${{ github.token }}
+          MINIMUM_GREEN: 90
+          MINIMUM_ORANGE: 60
+
+      - name: Upload coverage comment to be posted
+        if: matrix.os == 'ubuntu-latest' && github.event_name == 'pull_request' && steps.coverage_comment.outputs.COMMENT_FILE_WRITTEN == 'true'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: python-coverage-comment-action
+          path: python-coverage-comment-action.txt
 
   mypy:
     needs: unit-tests
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         with:
           # With the default value of 1, there are corner cases where tj-actions/changed-files
           # fails with a `no merge base` error
           fetch-depth: 0
       - name: Get changed files
         id: files
-        uses: tj-actions/changed-files@22103cc46bda19c2b464ffe86db46df6922fd323 # v47.0.5
+        uses: tj-actions/changed-files@9426d40962ed5378910ee2e21d5f8c6fcbf2dd96 # v47.0.6
         with:
           files: |
             **/*.py
@@ -177,7 +196,8 @@ jobs:
         id: hatch
         if: steps.files.outputs.any_changed == 'true'
         run: |
-          pip install hatch==${{ env.HATCH_VERSION }}
+          python -m pip install --upgrade pip
+          pip install hatch==${{ env.HATCH_VERSION }} --uploaded-prior-to=P1D
           echo "env=$(hatch env find test)" >> "$GITHUB_OUTPUT"
 
       - name: Mypy
@@ -192,7 +212,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
 
       - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
         with:
@@ -202,9 +222,9 @@ jobs:
         id: hatch
         shell: bash
         run: |
-          pip install hatch==${{ env.HATCH_VERSION }}
+          python -m pip install --upgrade pip
+          pip install hatch==${{ env.HATCH_VERSION }} --uploaded-prior-to=P1D
           echo "env=$(hatch env find test)" >> "$GITHUB_OUTPUT"
-
 
       - name: Run
         run: hatch run test:integration-only-fast
@@ -218,7 +238,7 @@ jobs:
       HAYSTACK_MPS_ENABLED: false
 
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
 
       - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
         with:
@@ -228,15 +248,15 @@ jobs:
         id: hatch
         shell: bash
         run: |
-          pip install hatch==${{ env.HATCH_VERSION }}
+          python -m pip install --upgrade pip
+          pip install hatch==${{ env.HATCH_VERSION }} --uploaded-prior-to=P1D
           echo "env=$(hatch env find test)" >> "$GITHUB_OUTPUT"
 
-      - uses: actions/cache/restore@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5.0.4
+      - uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         id: cache
         with:
           path: ${{ steps.hatch.outputs.env }}
           key: ${{ runner.os }}-${{ github.sha }}
-
 
       - name: Run
         run: hatch run test:integration-only-fast
@@ -250,7 +270,7 @@ jobs:
       HAYSTACK_XPU_ENABLED: false
 
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
 
       - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
         with:
@@ -260,7 +280,8 @@ jobs:
         id: hatch
         shell: bash
         run: |
-          pip install hatch==${{ env.HATCH_VERSION }}
+          python -m pip install --upgrade pip
+          pip install hatch==${{ env.HATCH_VERSION }} --uploaded-prior-to=P1D
           echo "env=$(hatch env find test)" >> "$GITHUB_OUTPUT"
 
       - name: Run
@@ -276,7 +297,7 @@ jobs:
       - integration-tests-windows
     runs-on: ubuntu-slim
     steps:
-      - uses: deepset-ai/notify-slack-action@3cda73b77a148f16f703274198e7771340cf862b # v1
+      - uses: deepset-ai/notify-slack-action@a65def0c8bf91d6520286ab34280151c76a5a008 # v1.1.0
         with:
           slack-webhook-url: ${{ secrets.SLACK_WEBHOOK_URL_NOTIFICATIONS }}
 
@@ -293,15 +314,15 @@ jobs:
       - integration-tests-windows
 
     steps:
-    - name: Mark tests as completed
-      run: |
-        if [ "${{ needs.check-imports.result }}" = "failure" ] ||
-           [ "${{ needs.mypy.result }}" = "failure" ] ||
-           [ "${{ needs.integration-tests-linux.result }}" = "failure" ] ||
-           [ "${{ needs.integration-tests-macos.result }}" = "failure" ] ||
-           [ "${{ needs.integration-tests-windows.result }}" = "failure" ]; then
-          echo "Tests failed!"
-          exit 1
-        else
-          echo "Tests completed!"
-        fi
+      - name: Mark tests as completed
+        run: |
+          if [ "${{ needs.check-imports.result }}" = "failure" ] ||
+             [ "${{ needs.mypy.result }}" = "failure" ] ||
+             [ "${{ needs.integration-tests-linux.result }}" = "failure" ] ||
+             [ "${{ needs.integration-tests-macos.result }}" = "failure" ] ||
+             [ "${{ needs.integration-tests-windows.result }}" = "failure" ]; then
+            echo "Tests failed!"
+            exit 1
+          else
+            echo "Tests completed!"
+          fi

@@ -27,12 +27,15 @@ class MarkdownToDocument:
     Converts a Markdown file into a text Document.
 
     Usage example:
+
     ```python
     from haystack.components.converters import MarkdownToDocument
     from datetime import datetime
 
     converter = MarkdownToDocument()
-    results = converter.run(sources=["path/to/sample.md"], meta={"date_added": datetime.now().isoformat()})
+    results = converter.run(
+        sources=["test/test_files/markdown/sample.md"], meta={"date_added": datetime.now().isoformat()}
+    )
     documents = results["documents"]
     print(documents[0].content)
     # 'This is a text from the markdown file.'

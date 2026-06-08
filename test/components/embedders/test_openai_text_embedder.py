@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import contextlib
 import os
 
 import pytest
@@ -18,7 +19,7 @@ class TestOpenAITextEmbedder:
 
         assert embedder.client.api_key == "fake-api-key"
         assert embedder.model == "text-embedding-ada-002"
-        assert embedder.api_base_url == None
+        assert embedder.api_base_url is None
         assert embedder.organization is None
         assert embedder.prefix == ""
         assert embedder.suffix == ""
@@ -204,9 +205,7 @@ class TestOpenAITextEmbedder:
     @pytest.mark.skipif(os.environ.get("OPENAI_API_KEY", "") == "", reason="OPENAI_API_KEY is not set")
     @pytest.mark.integration
     async def test_run_async(self):
-        model = "text-embedding-ada-002"
-
-        embedder = OpenAITextEmbedder(model=model, prefix="prefix ", suffix=" suffix")
+        embedder = OpenAITextEmbedder(model="text-embedding-ada-002", prefix="prefix ", suffix=" suffix")
         result = await embedder.run_async(text="The food was delicious")
 
         assert len(result["embedding"]) == 1536
@@ -217,3 +216,7 @@ class TestOpenAITextEmbedder:
         )
 
         assert result["meta"]["usage"] == {"prompt_tokens": 6, "total_tokens": 6}, "Usage information does not match"
+
+        # Close async client; suppress RuntimeError if the event loop is already closed
+        with contextlib.suppress(RuntimeError):
+            await embedder.async_client.close()

@@ -7,7 +7,7 @@ description: "Extracts textual content from image-based documents using a vision
 
 # LLMDocumentContentExtractor
 
-Extracts textual content from image-based documents using a vision-enabled Large Language Model (LLM).
+Extracts textual content and metadata (if applicable) from image-based documents using a vision-enabled Large Language Model (LLM).
 
 <div className="key-value-table">
 
@@ -28,13 +28,19 @@ Extracts textual content from image-based documents using a vision-enabled Large
 
 The component works by:
 
-1. Converting each input document into an image using the `DocumentToImageContent` component,
-2. Using a predefined prompt to instruct the LLM on how to extract content,
+1. Converting each input document into an image using the `DocumentToImageContent` component.
+2. Using a predefined prompt to instruct the LLM on how to extract content and/or metadata.
 3. Processing the image through a vision-capable ChatGenerator to extract structured textual content.
 
 The prompt must not contain Jinja variables; it should only include instructions for the LLM. Image data and the prompt are passed together to the LLM as a Chat Message.
 
-Documents for which the LLM fails to extract content are returned in a separate `failed_documents` list with a `content_extraction_error` entry in their metadata for debugging or reprocessing.
+The extractor supports both plain-text and JSON responses from the LLM:
+
+- If the LLM returns a plain string, that text is written to the document's `content`.
+- If the LLM returns a JSON object with only the `document_content` key, that value is written to `content`.
+- If the LLM returns a JSON object with multiple keys, the value of `document_content` (if present) is written to `content`, and all other keys are merged into the document's metadata.
+
+Documents for which the LLM fails to extract content are returned in a separate `failed_documents` list with an `extraction_error` entry in their metadata for debugging or reprocessing.
 
 ## Usage
 
@@ -130,7 +136,7 @@ result = extractor.run(documents=documents)
 ## Check for failed documents
 for failed_doc in result["failed_documents"]:
     print(f"Failed to process: {failed_doc.meta['file_path']}")
-    print(f"Error: {failed_doc.meta['content_extraction_error']}")
+    print(f"Error: {failed_doc.meta['extraction_error']}")
 ```
 
 ### In a pipeline

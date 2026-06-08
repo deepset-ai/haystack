@@ -36,7 +36,7 @@ __init__(
     filters: dict[str, Any] | None = None,
     top_k: int = 10,
     filter_policy: str | FilterPolicy = FilterPolicy.REPLACE
-)
+) -> None
 ```
 
 Create a new instance of WeaviateBM25Retriever.
@@ -139,7 +139,7 @@ __init__(
     distance: float | None = None,
     certainty: float | None = None,
     filter_policy: str | FilterPolicy = FilterPolicy.REPLACE
-)
+) -> None
 ```
 
 Creates a new instance of WeaviateEmbeddingRetriever.
@@ -274,7 +274,7 @@ __init__(
     alpha: float = 0.7,
     max_vector_distance: float | None = None,
     filter_policy: str | FilterPolicy = FilterPolicy.REPLACE
-)
+) -> None
 ```
 
 Creates a new instance of WeaviateHybridRetriever.
@@ -458,11 +458,20 @@ Bases: <code>Enum</code>
 
 Supported auth credentials for WeaviateDocumentStore.
 
+#### from_class
+
+```python
+from_class(auth_class: type[AuthCredentials]) -> SupportedAuthTypes
+```
+
+Return the SupportedAuthTypes enum value corresponding to the given auth credentials class.
+
 ### AuthCredentials
 
 Bases: <code>ABC</code>
 
 Base class for all auth credentials supported by WeaviateDocumentStore.
+
 Can be used to deserialize from dict any of the supported auth credentials.
 
 #### to_dict
@@ -484,10 +493,16 @@ Converts a dictionary representation to an auth credentials object.
 #### resolve_value
 
 ```python
-resolve_value()
+resolve_value() -> (
+    WeaviateAuthApiKey
+    | WeaviateAuthBearerToken
+    | WeaviateAuthClientCredentials
+    | WeaviateAuthClientPassword
+)
 ```
 
 Resolves all the secrets in the auth credentials object and returns the corresponding Weaviate object.
+
 All subclasses must implement this method.
 
 ### AuthApiKey
@@ -495,45 +510,80 @@ All subclasses must implement this method.
 Bases: <code>AuthCredentials</code>
 
 AuthCredentials for API key authentication.
+
 By default it will load `api_key` from the environment variable `WEAVIATE_API_KEY`.
+
+#### resolve_value
+
+```python
+resolve_value() -> WeaviateAuthApiKey
+```
+
+Resolve the API key secret and return the corresponding Weaviate auth object.
 
 ### AuthBearerToken
 
 Bases: <code>AuthCredentials</code>
 
 AuthCredentials for Bearer token authentication.
+
 By default it will load `access_token` from the environment variable `WEAVIATE_ACCESS_TOKEN`,
 and `refresh_token` from the environment variable
 `WEAVIATE_REFRESH_TOKEN`.
 `WEAVIATE_REFRESH_TOKEN` environment variable is optional.
+
+#### resolve_value
+
+```python
+resolve_value() -> WeaviateAuthBearerToken
+```
+
+Resolve the bearer token secrets and return the corresponding Weaviate auth object.
 
 ### AuthClientCredentials
 
 Bases: <code>AuthCredentials</code>
 
 AuthCredentials for client credentials authentication.
+
 By default it will load `client_secret` from the environment variable `WEAVIATE_CLIENT_SECRET`, and
 `scope` from the environment variable `WEAVIATE_SCOPE`.
 `WEAVIATE_SCOPE` environment variable is optional, if set it can either be a string or a list of space
 separated strings. e.g "scope1" or "scope1 scope2".
+
+#### resolve_value
+
+```python
+resolve_value() -> WeaviateAuthClientCredentials
+```
+
+Resolve the client credentials secrets and return the corresponding Weaviate auth object.
 
 ### AuthClientPassword
 
 Bases: <code>AuthCredentials</code>
 
 AuthCredentials for username and password authentication.
+
 By default it will load `username` from the environment variable `WEAVIATE_USERNAME`,
 `password` from the environment variable `WEAVIATE_PASSWORD`, and
 `scope` from the environment variable `WEAVIATE_SCOPE`.
 `WEAVIATE_SCOPE` environment variable is optional, if set it can either be a string or a list of space
 separated strings. e.g "scope1" or "scope1 scope2".
 
+#### resolve_value
+
+```python
+resolve_value() -> WeaviateAuthClientPassword
+```
+
+Resolve the username and password secrets and return the corresponding Weaviate auth object.
+
 ## haystack_integrations.document_stores.weaviate.document_store
 
 ### WeaviateDocumentStore
 
-A WeaviateDocumentStore instance you
-can use with Weaviate Cloud Services or self-hosted instances.
+A WeaviateDocumentStore instance you can use with Weaviate Cloud Services or self-hosted instances.
 
 Usage example with Weaviate Cloud Services:
 
@@ -615,6 +665,38 @@ Create a new instance of WeaviateDocumentStore and connects to the Weaviate inst
 - **additional_config** (<code>AdditionalConfig | None</code>) – Additional and advanced configuration options for weaviate.
 - **grpc_port** (<code>int</code>) – The port to use for the gRPC connection.
 - **grpc_secure** (<code>bool</code>) – Whether to use a secure channel for the underlying gRPC API.
+
+#### client
+
+```python
+client: weaviate.WeaviateClient
+```
+
+Return the synchronous Weaviate client, creating and connecting it if necessary.
+
+#### async_client
+
+```python
+async_client: weaviate.WeaviateAsyncClient
+```
+
+Return the asynchronous Weaviate client, creating and connecting it if necessary.
+
+#### collection
+
+```python
+collection: Collection[dict[str, Any], None]
+```
+
+Return the synchronous Weaviate collection, initializing it via the client if necessary.
+
+#### async_collection
+
+```python
+async_collection: CollectionAsync[dict[str, Any], None]
+```
+
+Return the asynchronous Weaviate collection, initializing it via the async client if necessary.
 
 #### close
 
@@ -975,6 +1057,7 @@ write_documents(
 ```
 
 Writes documents to Weaviate using the specified policy.
+
 We recommend using a OVERWRITE policy as it's faster than other policies for Weaviate since it uses
 the batch API.
 We can't use the batch API for other policies as it doesn't return any information whether the document
@@ -1005,6 +1088,7 @@ write_documents_async(
 ```
 
 Asynchronously writes documents to Weaviate using the specified policy.
+
 We recommend using a OVERWRITE policy as it's faster than other policies for Weaviate since it uses
 the batch API.
 We can't use the batch API for other policies as it doesn't return any information whether the document

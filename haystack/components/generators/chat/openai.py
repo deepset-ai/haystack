@@ -23,7 +23,11 @@ from openai.types.chat.chat_completion_chunk import Choice as ChunkChoice
 from pydantic import BaseModel
 
 from haystack import component, default_from_dict, default_to_dict, logging
-from haystack.components.generators.utils import _convert_streaming_chunks_to_chat_message, _serialize_object
+from haystack.components.generators.utils import (
+    _convert_streaming_chunks_to_chat_message,
+    _normalize_messages,
+    _serialize_object,
+)
 from haystack.dataclasses import (
     AsyncStreamingCallbackT,
     ChatMessage,
@@ -68,7 +72,6 @@ class OpenAIChatGenerator:
     [OpenAI documentation](https://platform.openai.com/docs/api-reference/chat).
 
     ### Usage example
-
     ```python
     from haystack.components.generators.chat import OpenAIChatGenerator
     from haystack.dataclasses import ChatMessage
@@ -301,7 +304,7 @@ class OpenAIChatGenerator:
     @component.output_types(replies=list[ChatMessage])
     def run(
         self,
-        messages: list[ChatMessage],
+        messages: list[ChatMessage] | str,
         streaming_callback: StreamingCallbackT | None = None,
         generation_kwargs: dict[str, Any] | None = None,
         *,
@@ -312,7 +315,8 @@ class OpenAIChatGenerator:
         Invokes chat completion based on the provided messages and generation parameters.
 
         :param messages:
-            A list of ChatMessage instances representing the input messages.
+            A list of ChatMessage instances representing the input messages. If a string is provided, it is converted
+            to a list containing a ChatMessage with user role.
         :param streaming_callback:
             A callback function that is called when a new token is received from the stream.
         :param generation_kwargs:
@@ -333,6 +337,8 @@ class OpenAIChatGenerator:
         """
         if not self._is_warmed_up:
             self.warm_up()
+
+        messages = _normalize_messages(messages)
 
         if len(messages) == 0:
             return {"replies": []}
@@ -376,7 +382,7 @@ class OpenAIChatGenerator:
     @component.output_types(replies=list[ChatMessage])
     async def run_async(
         self,
-        messages: list[ChatMessage],
+        messages: list[ChatMessage] | str,
         streaming_callback: StreamingCallbackT | None = None,
         generation_kwargs: dict[str, Any] | None = None,
         *,
@@ -390,7 +396,8 @@ class OpenAIChatGenerator:
         but can be used with `await` in async code.
 
         :param messages:
-            A list of ChatMessage instances representing the input messages.
+            A list of ChatMessage instances representing the input messages. If a string is provided, it is converted
+            to a list containing a ChatMessage with user role.
         :param streaming_callback:
             A callback function that is called when a new token is received from the stream.
             Must be a coroutine.
@@ -411,6 +418,8 @@ class OpenAIChatGenerator:
         """
         if not self._is_warmed_up:
             self.warm_up()
+
+        messages = _normalize_messages(messages)
 
         # validate and select the streaming callback
         streaming_callback = select_streaming_callback(
@@ -486,7 +495,7 @@ class OpenAIChatGenerator:
                 function_spec = {**t.tool_spec}
                 if tools_strict:
                     function_spec["strict"] = True
-                    function_spec["parameters"]["additionalProperties"] = False
+                    function_spec["parameters"] = _make_schema_strict(function_spec["parameters"])
                 tool_definitions.append({"type": "function", "function": function_spec})
             openai_tools = {"tools": tool_definitions}
 
@@ -549,6 +558,39 @@ class OpenAIChatGenerator:
             raise  # Re-raise to propagate cancellation
 
         return [_convert_streaming_chunks_to_chat_message(chunks=chunks)]
+
+
+def _make_schema_strict(schema: dict[str, Any]) -> dict[str, Any]:
+    """
+    Recursively transform a JSON schema to be OpenAI strict-mode compliant.
+
+    Sets `additionalProperties: false` on all objects and ensures every defined
+    property is listed in `required`. Walks into nested properties, `$defs`,
+    array `items`, and `anyOf`/`oneOf`/`allOf` combinators.
+
+    See https://platform.openai.com/docs/guides/structured-outputs#supported-schemas
+    """
+    schema = {**schema}
+
+    schema_type = schema.get("type")
+
+    if schema_type == "object" or "properties" in schema:
+        schema["additionalProperties"] = False
+        if "properties" in schema:
+            schema["required"] = list(schema["properties"].keys())
+            schema["properties"] = {k: _make_schema_strict(v) for k, v in schema["properties"].items()}
+
+    if "items" in schema:
+        schema["items"] = _make_schema_strict(schema["items"])
+
+    if "$defs" in schema:
+        schema["$defs"] = {k: _make_schema_strict(v) for k, v in schema["$defs"].items()}
+
+    for combinator in ("anyOf", "oneOf", "allOf"):
+        if combinator in schema:
+            schema[combinator] = [_make_schema_strict(s) for s in schema[combinator]]
+
+    return schema
 
 
 def _check_finish_reason(meta: dict[str, Any]) -> None:

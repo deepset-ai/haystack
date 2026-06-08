@@ -99,18 +99,21 @@ class SentenceTransformersDiversityRanker:
     if a score is present.
 
     ### Usage example
+
     ```python
     from haystack import Document
     from haystack.components.rankers import SentenceTransformersDiversityRanker
 
-    ranker = SentenceTransformersDiversityRanker(model="sentence-transformers/all-MiniLM-L6-v2", similarity="cosine", strategy="greedy_diversity_order")
+    ranker = SentenceTransformersDiversityRanker(
+        model="sentence-transformers/all-MiniLM-L6-v2", similarity="cosine", strategy="greedy_diversity_order"
+    )
 
     docs = [Document(content="Paris"), Document(content="Berlin")]
     query = "What is the capital of germany?"
     output = ranker.run(query=query, documents=docs)
     docs = output["documents"]
     ```
-    """  # noqa: E501
+    """
 
     def __init__(  # noqa: PLR0913
         self,
@@ -262,7 +265,7 @@ class SentenceTransformersDiversityRanker:
         texts_to_embed = []
         for doc in documents:
             meta_values_to_embed = [
-                str(doc.meta[key]) for key in self.meta_fields_to_embed if key in doc.meta and doc.meta[key]
+                str(doc.meta[key]) for key in self.meta_fields_to_embed if key in doc.meta and doc.meta[key] is not None
             ]
             text_to_embed = (
                 self.document_prefix

@@ -7,7 +7,6 @@ from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
-import anyio
 import pytest
 
 from haystack import component
@@ -473,6 +472,40 @@ class TestAgentBreakpoints:
         assert "last_message" in result
         assert len(result["messages"]) > 0
 
+    def test_resume_from_tool_invoker_omits_non_serializable_runtime_callback(self, agent, tmp_path, monkeypatch):
+        monkeypatch.setenv(HAYSTACK_PIPELINE_SNAPSHOT_SAVE_ENABLED, "true")
+        debug_path = str(tmp_path / "debug_snapshots")
+        tool_bp = ToolBreakpoint(component_name="tool_invoker", tool_name="weather_tool", snapshot_file_path=debug_path)
+        agent_breakpoint = AgentBreakpoint(break_point=tool_bp, agent_name="test_agent")
+
+        try:
+            agent.run(
+                messages=[ChatMessage.from_user("What's the weather in Berlin?")],
+                break_point=agent_breakpoint,
+                streaming_callback=lambda chunk: None,
+            )
+        except BreakpointException:
+            pass
+
+        snapshot_files = list(Path(debug_path).glob("test_agent_tool_invoker_*.json"))
+        assert len(snapshot_files) > 0
+        latest_snapshot_file = str(max(snapshot_files, key=os.path.getctime))
+        agent_snapshot = load_pipeline_snapshot(latest_snapshot_file).agent_snapshot
+
+        assert agent_snapshot is not None
+        assert "streaming_callback" not in agent_snapshot.component_inputs["chat_generator"]["serialized_data"]
+        assert "streaming_callback" not in agent_snapshot.component_inputs["tool_invoker"]["serialized_data"]
+        assert "state" in agent_snapshot.component_inputs["tool_invoker"]["serialized_data"]
+
+        result = agent.run(
+            messages=[ChatMessage.from_user("This is actually ignored when resuming from snapshot.")],
+            snapshot=agent_snapshot,
+        )
+
+        assert "messages" in result
+        assert "last_message" in result
+        assert len(result["messages"]) == 4
+
     def test_resume_from_tool_invoker_and_new_breakpoint(self, weather_tool, tmp_path, monkeypatch):
         monkeypatch.setenv(HAYSTACK_PIPELINE_SNAPSHOT_SAVE_ENABLED, "true")
         agent = Agent(
@@ -709,7 +742,8 @@ class TestAsyncAgentBreakpoints:
         except BreakpointException:
             pass
 
-        snapshot_files = [path async for path in anyio.Path(debug_path).glob("test_agent_chat_generator_*.json")]
+        # we don't use anyio, because its worker threads outlive the test and leak
+        snapshot_files = list(Path(debug_path).glob("test_agent_chat_generator_*.json"))  # noqa: ASYNC230, ASYNC240
         assert len(snapshot_files) > 0
         latest_snapshot_file = str(max(snapshot_files, key=os.path.getctime))
 
@@ -735,7 +769,8 @@ class TestAsyncAgentBreakpoints:
         except BreakpointException:
             pass
 
-        snapshot_files = [path async for path in anyio.Path(debug_path).glob("test_agent_tool_invoker_*.json")]
+        # we don't use anyio, because its worker threads outlive the test and leak
+        snapshot_files = list(Path(debug_path).glob("test_agent_tool_invoker_*.json"))  # noqa: ASYNC230, ASYNC240
 
         assert len(snapshot_files) > 0
         latest_snapshot_file = str(max(snapshot_files, key=os.path.getctime))
@@ -777,7 +812,8 @@ class TestAsyncAgentBreakpoints:
         except BreakpointException:
             pass
 
-        snapshot_files = [path async for path in anyio.Path(debug_path).glob("test_agent_tool_invoker_*.json")]
+        # we don't use anyio, because its worker threads outlive the test and leak
+        snapshot_files = list(Path(debug_path).glob("test_agent_tool_invoker_*.json"))  # noqa: ASYNC230, ASYNC240
         assert len(snapshot_files) > 0
         first_snapshot_file = str(max(snapshot_files, key=os.path.getctime))
 
@@ -790,7 +826,8 @@ class TestAsyncAgentBreakpoints:
         except BreakpointException:
             pass
 
-        snapshot_files = [path async for path in anyio.Path(debug_path).glob("test_agent_tool_invoker_*.json")]
+        # we don't use anyio, because its worker threads outlive the test and leak
+        snapshot_files = list(Path(debug_path).glob("test_agent_tool_invoker_*.json"))  # noqa: ASYNC230, ASYNC240
         latest_snapshot_file = str(max(snapshot_files, key=os.path.getctime))
 
         # Resume again
@@ -845,7 +882,8 @@ class TestAsyncAgentBreakpoints:
         assert exc_info.value.pipeline_snapshot_file_path == "async_callback_id"
 
         # Verify no file was saved to disk
-        all_paths = [path async for path in anyio.Path(debug_path).glob("*.json")]
+        # we don't use anyio, because its worker threads outlive the test and leak
+        all_paths = list(Path(debug_path).glob("*.json"))  # noqa: ASYNC230, ASYNC240
         assert all_paths == []
 
     @pytest.mark.asyncio
@@ -880,7 +918,8 @@ class TestAsyncAgentBreakpoints:
         assert exc_info.value.pipeline_snapshot_file_path == "async_tool_callback_id"
 
         # Verify no file was saved to disk
-        all_paths = [path async for path in anyio.Path(debug_path).glob("*.json")]
+        # we don't use anyio, because its worker threads outlive the test and leak
+        all_paths = list(Path(debug_path).glob("*.json"))  # noqa: ASYNC230, ASYNC240
         assert all_paths == []
 
     @pytest.mark.asyncio

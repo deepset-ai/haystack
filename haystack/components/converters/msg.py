@@ -35,7 +35,7 @@ class MSGToDocument:
     from datetime import datetime
 
     converter = MSGToDocument()
-    results = converter.run(sources=["sample.msg"], meta={"date_added": datetime.now().isoformat()})
+    results = converter.run(sources=["test/test_files/msg/sample.msg"], meta={"date_added": datetime.now().isoformat()})
     documents = results["documents"]
     attachments = results["attachments"]
     print(documents[0].content)

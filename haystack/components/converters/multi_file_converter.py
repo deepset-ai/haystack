@@ -55,7 +55,7 @@ class MultiFileConverter:
     from haystack.super_components.converters import MultiFileConverter
 
     converter = MultiFileConverter()
-    converter.run(sources=["test.txt", "test.pdf"], meta={})
+    converter.run(sources=["test/test_files/txt/doc_1.txt", "test/test_files/pdf/sample_pdf_1.pdf"], meta={})
     ```
     """
 

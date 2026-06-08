@@ -14,6 +14,9 @@ env:
   HATCH_VERSION: "1.16.5"
   PYTHON_VERSION: "3.11"
 
+permissions:
+  contents: read
+
 jobs:
   sync:
     runs-on: ubuntu-slim
@@ -22,7 +25,7 @@ jobs:
 
     steps:
       - name: Checkout Haystack repo
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
 
       - name: Set up Python
         uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
@@ -30,7 +33,9 @@ jobs:
           python-version: "${{ env.PYTHON_VERSION }}"
 
       - name: Install Hatch
-        run: pip install hatch==${{ env.HATCH_VERSION }}
+        run: |
+          python -m pip install --upgrade pip
+          pip install hatch==${{ env.HATCH_VERSION }} --uploaded-prior-to=P1D
 
       - name: Generate API reference for Docusaurus
         run: hatch run docs
@@ -46,7 +51,7 @@ jobs:
           rsync -av --delete --exclude='.git/' "$SOURCE_PATH/" "$DEST_PATH/"
 
       - name: Create Pull Request
-        uses: peter-evans/create-pull-request@c0f553fe549906ede9cf27b5156039d195d2ece0 # v8.1.0
+        uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
         with:
           token: ${{ secrets.HAYSTACK_BOT_TOKEN }}
           commit-message: "Sync Haystack API reference on Docusaurus"

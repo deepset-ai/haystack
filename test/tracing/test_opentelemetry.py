@@ -56,8 +56,7 @@ class TestOpenTelemetryTracer:
         tracer = OpenTelemetryTracer(opentelemetry_tracer)
         with tracer.trace("test"):
             current_span = tracer.current_span()
-            assert tracer.current_span() is not None
-
+            assert current_span is not None
             current_span.set_tag("key1", "value1")
 
             raw_span = current_span.raw_span()

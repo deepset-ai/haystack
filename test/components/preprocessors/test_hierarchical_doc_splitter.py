@@ -7,7 +7,6 @@ import pytest
 from haystack import Document, Pipeline
 from haystack.components.preprocessors import HierarchicalDocumentSplitter
 from haystack.components.writers import DocumentWriter
-from haystack.document_stores.in_memory import InMemoryDocumentStore
 
 
 class TestHierarchicalDocumentSplitter:
@@ -89,11 +88,20 @@ class TestHierarchicalDocumentSplitter:
         assert len(docs[7].meta["__children_ids"]) == 0
         assert len(docs[8].meta["__children_ids"]) == 0
 
-    def test_to_dict_in_pipeline(self):
+    def test_run_does_not_mutate_input_document(self):
+        builder = HierarchicalDocumentSplitter(block_sizes={5, 2}, split_overlap=0, split_by="word")
+        doc = Document(content="one two three four five six seven eight", meta={"source": "test"})
+        builder.run([doc])
+
+        # the caller's Document should be untouched
+        assert doc.meta == {"source": "test"}
+        for key in ("__block_size", "__parent_id", "__children_ids", "__level"):
+            assert key not in doc.meta
+
+    def test_to_dict_in_pipeline(self, in_memory_doc_store):
         pipeline = Pipeline()
         hierarchical_doc_builder = HierarchicalDocumentSplitter(block_sizes={10, 5, 2})
-        doc_store = InMemoryDocumentStore()
-        doc_writer = DocumentWriter(document_store=doc_store)
+        doc_writer = DocumentWriter(document_store=in_memory_doc_store)
         pipeline.add_component(name="hierarchical_doc_splitter", instance=hierarchical_doc_builder)
         pipeline.add_component(name="doc_writer", instance=doc_writer)
         pipeline.connect("hierarchical_doc_splitter", "doc_writer")
@@ -146,13 +154,12 @@ class TestHierarchicalDocumentSplitter:
         assert Pipeline.from_dict(data)
 
     @pytest.mark.integration
-    def test_example_in_pipeline(self):
+    def test_example_in_pipeline(self, in_memory_doc_store):
         pipeline = Pipeline()
         hierarchical_doc_builder = HierarchicalDocumentSplitter(
             block_sizes={10, 5, 2}, split_overlap=0, split_by="word"
         )
-        doc_store = InMemoryDocumentStore()
-        doc_writer = DocumentWriter(document_store=doc_store)
+        doc_writer = DocumentWriter(document_store=in_memory_doc_store)
 
         pipeline.add_component(name="hierarchical_doc_splitter", instance=hierarchical_doc_builder)
         pipeline.add_component(name="doc_writer", instance=doc_writer)
@@ -163,15 +170,14 @@ class TestHierarchicalDocumentSplitter:
         docs = pipeline.run({"hierarchical_doc_splitter": {"documents": [doc]}})
 
         assert docs["doc_writer"]["documents_written"] == 9
-        assert len(doc_store.storage.values()) == 9
+        assert len(in_memory_doc_store.storage.values()) == 9
 
-    def test_serialization_deserialization_pipeline(self):
+    def test_serialization_deserialization_pipeline(self, in_memory_doc_store):
         pipeline = Pipeline()
         hierarchical_doc_builder = HierarchicalDocumentSplitter(
             block_sizes={10, 5, 2}, split_overlap=0, split_by="word"
         )
-        doc_store = InMemoryDocumentStore()
-        doc_writer = DocumentWriter(document_store=doc_store)
+        doc_writer = DocumentWriter(document_store=in_memory_doc_store)
 
         pipeline.add_component(name="hierarchical_doc_splitter", instance=hierarchical_doc_builder)
         pipeline.add_component(name="doc_writer", instance=doc_writer)
@@ -181,13 +187,12 @@ class TestHierarchicalDocumentSplitter:
         new_pipeline = Pipeline.from_dict(pipeline_dict)
         assert new_pipeline == pipeline
 
-    def test_split_by_sentence_assure_warm_up_was_called(self):
+    def test_split_by_sentence_assure_warm_up_was_called(self, in_memory_doc_store):
         pipeline = Pipeline()
         hierarchical_doc_builder = HierarchicalDocumentSplitter(
             block_sizes={10, 5, 2}, split_overlap=0, split_by="sentence"
         )
-        doc_store = InMemoryDocumentStore()
-        doc_writer = DocumentWriter(document_store=doc_store)
+        doc_writer = DocumentWriter(document_store=in_memory_doc_store)
 
         pipeline.add_component(name="hierarchical_doc_splitter", instance=hierarchical_doc_builder)
         pipeline.add_component(name="doc_writer", instance=doc_writer)
@@ -198,7 +203,7 @@ class TestHierarchicalDocumentSplitter:
         docs = pipeline.run({"hierarchical_doc_splitter": {"documents": [doc]}})
 
         assert docs["doc_writer"]["documents_written"] == 3
-        assert len(doc_store.storage.values()) == 3
+        assert len(in_memory_doc_store.storage.values()) == 3
 
     def test_hierarchical_splitter_multiple_block_sizes(self):
         # Test with three different block sizes

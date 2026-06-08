@@ -8,61 +8,60 @@ from haystack import Document, Pipeline
 from haystack.components.preprocessors import HierarchicalDocumentSplitter
 from haystack.components.retrievers import InMemoryBM25Retriever
 from haystack.components.retrievers.auto_merging_retriever import AutoMergingRetriever
-from haystack.document_stores.in_memory import InMemoryDocumentStore
 
 
 class TestAutoMergingRetriever:
-    def test_init_default(self):
-        retriever = AutoMergingRetriever(InMemoryDocumentStore())
+    def test_init_default(self, in_memory_doc_store):
+        retriever = AutoMergingRetriever(in_memory_doc_store)
         assert retriever.threshold == 0.5
 
-    def test_init_with_parameters(self):
-        retriever = AutoMergingRetriever(InMemoryDocumentStore(), threshold=0.7)
+    def test_init_with_parameters(self, in_memory_doc_store):
+        retriever = AutoMergingRetriever(in_memory_doc_store, threshold=0.7)
         assert retriever.threshold == 0.7
 
-    def test_init_with_invalid_threshold(self):
+    def test_init_with_invalid_threshold(self, in_memory_doc_store):
         with pytest.raises(ValueError):
-            AutoMergingRetriever(InMemoryDocumentStore(), threshold=-2)
+            AutoMergingRetriever(in_memory_doc_store, threshold=-2)
 
-    def test_run_missing_parent_id(self):
+    def test_run_missing_parent_id(self, in_memory_doc_store):
         docs = [Document(content="test", meta={"__level": 1, "__block_size": 10})]
-        retriever = AutoMergingRetriever(InMemoryDocumentStore())
+        retriever = AutoMergingRetriever(in_memory_doc_store)
         with pytest.raises(
             ValueError, match="The matched leaf documents do not have the required meta field '__parent_id'"
         ):
             retriever.run(documents=docs)
 
-    def test_run_missing_level(self):
+    def test_run_missing_level(self, in_memory_doc_store):
         docs = [Document(content="test", meta={"__parent_id": "parent1", "__block_size": 10})]
 
-        retriever = AutoMergingRetriever(InMemoryDocumentStore())
+        retriever = AutoMergingRetriever(in_memory_doc_store)
         with pytest.raises(
             ValueError, match="The matched leaf documents do not have the required meta field '__level'"
         ):
             retriever.run(documents=docs)
 
-    def test_run_missing_block_size(self):
+    def test_run_missing_block_size(self, in_memory_doc_store):
         docs = [Document(content="test", meta={"__parent_id": "parent1", "__level": 1})]
 
-        retriever = AutoMergingRetriever(InMemoryDocumentStore())
+        retriever = AutoMergingRetriever(in_memory_doc_store)
         with pytest.raises(
             ValueError, match="The matched leaf documents do not have the required meta field '__block_size'"
         ):
             retriever.run(documents=docs)
 
-    def test_run_mixed_valid_and_invalid_documents(self):
+    def test_run_mixed_valid_and_invalid_documents(self, in_memory_doc_store):
         docs = [
             Document(content="valid", meta={"__parent_id": "parent1", "__level": 1, "__block_size": 10}),
             Document(content="invalid", meta={"__level": 1, "__block_size": 10}),
         ]
-        retriever = AutoMergingRetriever(InMemoryDocumentStore())
+        retriever = AutoMergingRetriever(in_memory_doc_store)
         with pytest.raises(
             ValueError, match="The matched leaf documents do not have the required meta field '__parent_id'"
         ):
             retriever.run(documents=docs)
 
-    def test_to_dict(self):
-        retriever = AutoMergingRetriever(InMemoryDocumentStore(), threshold=0.7)
+    def test_to_dict(self, in_memory_doc_store):
+        retriever = AutoMergingRetriever(in_memory_doc_store, threshold=0.7)
         expected = retriever.to_dict()
         assert expected["type"] == "haystack.components.retrievers.auto_merging_retriever.AutoMergingRetriever"
         assert expected["init_parameters"]["threshold"] == 0.7
@@ -91,11 +90,10 @@ class TestAutoMergingRetriever:
         retriever = AutoMergingRetriever.from_dict(data)
         assert retriever.threshold == 0.7
 
-    def test_serialization_deserialization_pipeline(self):
+    def test_serialization_deserialization_pipeline(self, in_memory_doc_store):
         pipeline = Pipeline()
-        doc_store_parents = InMemoryDocumentStore()
-        bm_25_retriever = InMemoryBM25Retriever(doc_store_parents)
-        auto_merging_retriever = AutoMergingRetriever(doc_store_parents, threshold=0.5)
+        bm_25_retriever = InMemoryBM25Retriever(in_memory_doc_store)
+        auto_merging_retriever = AutoMergingRetriever(in_memory_doc_store, threshold=0.5)
 
         pipeline.add_component(name="bm_25_retriever", instance=bm_25_retriever)
         pipeline.add_component(name="auto_merging_retriever", instance=auto_merging_retriever)
@@ -105,9 +103,8 @@ class TestAutoMergingRetriever:
         new_pipeline = Pipeline.from_dict(pipeline_dict)
         assert new_pipeline == pipeline
 
-    def test_run_parent_not_found(self):
-        doc_store = InMemoryDocumentStore()
-        retriever = AutoMergingRetriever(doc_store, threshold=0.5)
+    def test_run_parent_not_found(self, in_memory_doc_store):
+        retriever = AutoMergingRetriever(in_memory_doc_store, threshold=0.5)
 
         # a leaf document with a non-existent parent_id
         leaf_doc = Document(
@@ -117,9 +114,8 @@ class TestAutoMergingRetriever:
         with pytest.raises(ValueError, match="Expected 1 parent document with id non_existent_parent, found 0"):
             retriever.run([leaf_doc])
 
-    def test_run_parent_without_children_metadata(self):
+    def test_run_parent_without_children_metadata(self, in_memory_doc_store):
         """Test case where a parent document exists but doesn't have the __children_ids metadata field"""
-        doc_store = InMemoryDocumentStore()
 
         # Create and store a parent document without __children_ids metadata
         parent_doc = Document(
@@ -130,9 +126,9 @@ class TestAutoMergingRetriever:
                 "__block_size": 10,
             },
         )
-        doc_store.write_documents([parent_doc])
+        in_memory_doc_store.write_documents([parent_doc])
 
-        retriever = AutoMergingRetriever(doc_store, threshold=0.5)
+        retriever = AutoMergingRetriever(in_memory_doc_store, threshold=0.5)
 
         # Create a leaf document that points to this parent
         leaf_doc = Document(content="leaf content", meta={"__parent_id": "parent1", "__level": 2, "__block_size": 5})
@@ -140,11 +136,11 @@ class TestAutoMergingRetriever:
         with pytest.raises(ValueError, match="Parent document with id parent1 does not have any children"):
             retriever.run([leaf_doc])
 
-    def test_run_empty_documents(self):
-        retriever = AutoMergingRetriever(InMemoryDocumentStore())
+    def test_run_empty_documents(self, in_memory_doc_store):
+        retriever = AutoMergingRetriever(in_memory_doc_store)
         assert retriever.run([]) == {"documents": []}
 
-    def test_run_return_parent_document(self):
+    def test_run_return_parent_document(self, in_memory_doc_store):
         text = "The sun rose early in the morning. It cast a warm glow over the trees. Birds began to sing."
 
         docs = [Document(content=text)]
@@ -152,11 +148,10 @@ class TestAutoMergingRetriever:
         docs = builder.run(docs)
 
         # store all non-leaf documents
-        doc_store_parents = InMemoryDocumentStore()
         for doc in docs["documents"]:
             if doc.meta["__children_ids"]:
-                doc_store_parents.write_documents([doc])
-        retriever = AutoMergingRetriever(doc_store_parents, threshold=0.5)
+                in_memory_doc_store.write_documents([doc])
+        retriever = AutoMergingRetriever(in_memory_doc_store, threshold=0.5)
 
         # assume we retrieved 2 leaf docs from the same parent, the parent document should be returned,
         # since it has 3 children and the threshold=0.5, and we retrieved 2 children (2/3 > 0.66(6))
@@ -166,42 +161,40 @@ class TestAutoMergingRetriever:
         assert docs["documents"][0].content == "warm glow over the trees. Birds began to sing."
         assert len(docs["documents"][0].meta["__children_ids"]) == 3
 
-    def test_run_return_leafs_document(self):
+    def test_run_return_leafs_document(self, in_memory_doc_store):
         docs = [Document(content="The monarch of the wild blue yonder rises from the eastern side of the horizon.")]
         builder = HierarchicalDocumentSplitter(block_sizes={10, 3}, split_overlap=0, split_by="word")
         docs = builder.run(docs)
 
-        doc_store_parents = InMemoryDocumentStore()
         for doc in docs["documents"]:
             if doc.meta["__level"] == 1:
-                doc_store_parents.write_documents([doc])
+                in_memory_doc_store.write_documents([doc])
 
         leaf_docs = [doc for doc in docs["documents"] if not doc.meta["__children_ids"]]
-        retriever = AutoMergingRetriever(doc_store_parents, threshold=0.6)
+        retriever = AutoMergingRetriever(in_memory_doc_store, threshold=0.6)
         result = retriever.run([leaf_docs[4]])
 
         assert len(result["documents"]) == 1
         assert result["documents"][0].content == "eastern side of "
         assert result["documents"][0].meta["__parent_id"] == docs["documents"][2].id
 
-    def test_run_return_leafs_document_different_parents(self):
+    def test_run_return_leafs_document_different_parents(self, in_memory_doc_store):
         docs = [Document(content="The monarch of the wild blue yonder rises from the eastern side of the horizon.")]
         builder = HierarchicalDocumentSplitter(block_sizes={10, 3}, split_overlap=0, split_by="word")
         docs = builder.run(docs)
 
-        doc_store_parents = InMemoryDocumentStore()
         for doc in docs["documents"]:
             if doc.meta["__level"] == 1:
-                doc_store_parents.write_documents([doc])
+                in_memory_doc_store.write_documents([doc])
 
         leaf_docs = [doc for doc in docs["documents"] if not doc.meta["__children_ids"]]
-        retriever = AutoMergingRetriever(doc_store_parents, threshold=0.6)
+        retriever = AutoMergingRetriever(in_memory_doc_store, threshold=0.6)
         result = retriever.run([leaf_docs[4], leaf_docs[3]])
 
         assert len(result["documents"]) == 2
         assert result["documents"][0].meta["__parent_id"] != result["documents"][1].meta["__parent_id"]
 
-    def test_run_go_up_hierarchy_multiple_levels(self):
+    def test_run_go_up_hierarchy_multiple_levels(self, in_memory_doc_store):
         """
         Test if the retriever can go up the hierarchy multiple levels to find the parent document.
 
@@ -216,11 +209,10 @@ class TestAutoMergingRetriever:
         docs = builder.run(docs)
 
         # store all non-leaf documents
-        doc_store_parents = InMemoryDocumentStore()
         for doc in docs["documents"]:
             if doc.meta["__children_ids"]:
-                doc_store_parents.write_documents([doc])
-        retriever = AutoMergingRetriever(doc_store_parents, threshold=0.4)
+                in_memory_doc_store.write_documents([doc])
+        retriever = AutoMergingRetriever(in_memory_doc_store, threshold=0.4)
 
         # simulate a scenario where we have 4 leaf-documents that matched some initial query
         retrieved_leaf_docs = [d for d in docs["documents"] if d.content in {"The ", "sun ", "rose ", "early "}]
@@ -230,7 +222,7 @@ class TestAutoMergingRetriever:
         assert len(result["documents"]) == 1
         assert result["documents"][0].content == "The sun rose early in the "
 
-    def test_run_go_up_hierarchy_multiple_levels_hit_root_document(self):
+    def test_run_go_up_hierarchy_multiple_levels_hit_root_document(self, in_memory_doc_store):
         """
         Test case where we go up hierarchy until the root document, so the root document is returned.
 
@@ -243,11 +235,10 @@ class TestAutoMergingRetriever:
         docs = builder.run(docs)
 
         # store all non-leaf documents
-        doc_store_parents = InMemoryDocumentStore()
         for doc in docs["documents"]:
             if doc.meta["__children_ids"]:
-                doc_store_parents.write_documents([doc])
-        retriever = AutoMergingRetriever(doc_store_parents, threshold=0.1)  # set a low threshold to hit root document
+                in_memory_doc_store.write_documents([doc])
+        retriever = AutoMergingRetriever(in_memory_doc_store, threshold=0.1)  # set a low threshold to hit root document
 
         # simulate a scenario where we have 4 leaf-documents that matched some initial query
         retrieved_leaf_docs = [

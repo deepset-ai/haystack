@@ -27,14 +27,18 @@ class CSVToDocument:
     It can attach metadata to the resulting documents.
 
     ### Usage example
-
     ```python
     from haystack.components.converters.csv import CSVToDocument
+    from datetime import datetime
+
     converter = CSVToDocument()
-    results = converter.run(sources=["sample.csv"], meta={"date_added": datetime.now().isoformat()})
+    results = converter.run(
+        sources=["test/test_files/csv/sample_1.csv"], meta={"date_added": datetime.now().isoformat()}
+    )
     documents = results["documents"]
+
     print(documents[0].content)
-    # 'col1,col2\\nrow1,row1\\nrow2,row2\\n'
+    # >>  'col1,col2\\nrow1,row1\\nrow2,row2\\n'
     ```
     """
 

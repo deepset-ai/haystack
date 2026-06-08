@@ -1,0 +1,7 @@
+---
+enhancements:
+  - |
+    Add ``_to_trace_dict`` method to ``ImageContent`` and ``FileContent`` dataclasses.
+    When tracing is enabled, the large base64-encoded binary fields (``base64_image`` and ``base64_data``)
+    are replaced with placeholder strings (e.g. ``"Base64 string (N characters)"``),
+    consistent with the behavior of ``ByteStream._to_trace_dict``.

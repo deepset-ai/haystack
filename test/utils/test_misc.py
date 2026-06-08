@@ -8,7 +8,13 @@ from unittest.mock import patch
 import pytest
 
 from haystack import Document
-from haystack.utils.misc import _deduplicate_documents, _normalize_metadata_field_name, _parse_dict_from_json
+from haystack.utils.misc import (
+    _deduplicate_documents,
+    _normalize_metadata_field_name,
+    _parse_dict_from_json,
+    _reciprocal_rank_fusion,
+    expand_page_range,
+)
 
 
 class TestNormalizeMetadataFieldName:
@@ -48,6 +54,56 @@ class TestDeduplicateDocuments:
 
         assert len(result) == 1
         assert result[0].content == "first"
+
+
+class TestReciprocalRankFusion:
+    def test_empty_input_returns_empty(self):
+        assert _reciprocal_rank_fusion([]) == []
+
+    def test_single_list_assigns_scores(self):
+        docs = [Document(id="a"), Document(id="b"), Document(id="c")]
+        result = _reciprocal_rank_fusion([docs])
+        assert len(result) == 3
+        assert all(doc.score is not None for doc in result)
+
+    def test_scores_decrease_with_rank(self):
+        docs = [Document(id="a"), Document(id="b"), Document(id="c")]
+        result = _reciprocal_rank_fusion([docs])
+        by_id = {doc.id: doc.score for doc in result}
+        assert by_id["a"] > by_id["b"] > by_id["c"]
+
+    def test_deduplicates_across_lists(self):
+        docs_a = [Document(id="a"), Document(id="b")]
+        docs_b = [Document(id="b"), Document(id="c")]
+        result = _reciprocal_rank_fusion([docs_a, docs_b])
+        assert len(result) == 3
+        assert {doc.id for doc in result} == {"a", "b", "c"}
+
+    def test_higher_ranked_doc_gets_higher_score(self):
+        docs_a = [Document(id="a"), Document(id="b"), Document(id="c")]
+        docs_b = [Document(id="c"), Document(id="a"), Document(id="d")]
+        result = _reciprocal_rank_fusion([docs_a, docs_b])
+        by_id = {doc.id: doc.score for doc in result}
+        # "a" is ranked 1st and 2nd; "c" is ranked 3rd and 1st — "a" should win
+        assert by_id["a"] > by_id["c"]
+
+    def test_equal_weights_by_default(self):
+        docs_a = [Document(id="x")]
+        docs_b = [Document(id="x")]
+        result_default = _reciprocal_rank_fusion([docs_a, docs_b])
+        result_explicit = _reciprocal_rank_fusion([docs_a, docs_b], weights=[0.5, 0.5])
+        assert result_default[0].score == pytest.approx(result_explicit[0].score)
+
+    def test_weights_influence_scores(self):
+        docs_a = [Document(id="a"), Document(id="b")]
+        docs_b = [Document(id="b"), Document(id="a")]
+        result_equal = _reciprocal_rank_fusion([docs_a, docs_b])
+        result_weighted = _reciprocal_rank_fusion([docs_a, docs_b], weights=[0.9, 0.1])
+        equal_by_id = {doc.id: doc.score for doc in result_equal}
+        weighted_by_id = {doc.id: doc.score for doc in result_weighted}
+        # with equal weights both docs score the same; with heavy weight on list_a, "a" should outscore "b"
+        assert equal_by_id["a"] == pytest.approx(equal_by_id["b"])
+        assert weighted_by_id["a"] > weighted_by_id["b"]
 
 
 class TestJsonParsing:
@@ -113,3 +169,29 @@ class TestJsonParsing:
         assert "Missing expected keys in JSON: {missing_keys}" in args[0]
         assert kwargs["missing_keys"] == ["key2"]
         assert kwargs["keys"] == ["key1"]
+
+
+class TestExpandPageRange:
+    def test_single_page_integers(self):
+        assert expand_page_range([1, 3, 5]) == [1, 3, 5]
+
+    def test_single_page_strings(self):
+        assert expand_page_range(["1", "3", "5"]) == [1, 3, 5]
+
+    def test_range_strings_expanded(self):
+        assert expand_page_range(["1-3", "5", "8", "10-12"]) == [1, 2, 3, 5, 8, 10, 11, 12]
+
+    def test_mixed_integers_and_range_strings(self):
+        assert expand_page_range([1, "3-5", 7]) == [1, 3, 4, 5, 7]
+
+    def test_empty_input_raises_value_error(self):
+        with pytest.raises(ValueError, match="No valid page numbers"):
+            expand_page_range([])
+
+    def test_invalid_string_raises_value_error(self):
+        with pytest.raises(ValueError, match="Invalid page range"):
+            expand_page_range(["abc"])
+
+    def test_malformed_range_with_multiple_hyphens_raises_value_error(self):
+        with pytest.raises(ValueError, match="Invalid page range"):
+            expand_page_range(["1-3", "5-10-15"])

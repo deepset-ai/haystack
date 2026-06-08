@@ -1,0 +1,7 @@
+---
+enhancements:
+  - |
+    Add async variants of metadata methods to ``InMemoryDocumentStore``:
+    ``get_metadata_fields_info_async()``, ``get_metadata_field_min_max_async()``, and
+    ``get_metadata_field_unique_values_async()``. These rely on the store's thread-pool executor,
+    consistent with the existing async method pattern.

@@ -58,20 +58,20 @@ class TestMultiQueryTextRetriever:
         doc_writer.run(documents=sample_documents)
         return document_store
 
-    def test_init_with_default_parameters(self):
-        in_memory_retriever = InMemoryBM25Retriever(document_store=InMemoryDocumentStore())
+    def test_init_with_default_parameters(self, in_memory_doc_store):
+        in_memory_retriever = InMemoryBM25Retriever(document_store=in_memory_doc_store)
         retriever = MultiQueryTextRetriever(retriever=in_memory_retriever)
         assert retriever.retriever == in_memory_retriever
         assert retriever.max_workers == 3
 
-    def test_init_with_custom_parameters(self):
-        in_memory_retriever = InMemoryBM25Retriever(document_store=InMemoryDocumentStore())
+    def test_init_with_custom_parameters(self, in_memory_doc_store):
+        in_memory_retriever = InMemoryBM25Retriever(document_store=in_memory_doc_store)
         retriever = MultiQueryTextRetriever(retriever=in_memory_retriever, max_workers=2)
         assert retriever.retriever == in_memory_retriever
         assert retriever.max_workers == 2
 
-    def test_to_dict(self):
-        in_memory_retriever = InMemoryBM25Retriever(document_store=InMemoryDocumentStore())
+    def test_to_dict(self, in_memory_doc_store):
+        in_memory_retriever = InMemoryBM25Retriever(document_store=in_memory_doc_store)
         multi_retriever = MultiQueryTextRetriever(retriever=in_memory_retriever, max_workers=2)
         result = multi_retriever.to_dict()
         assert result == {

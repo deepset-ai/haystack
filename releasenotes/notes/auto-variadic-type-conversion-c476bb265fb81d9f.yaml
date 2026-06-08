@@ -1,0 +1,10 @@
+---
+enhancements:
+  - |
+    Pipelines now support auto-variadic connections with type conversion.
+    When multiple senders are connected to a single list-typed input socket, the senders no longer need to all produce
+    the exact same type since compatible conversions are applied per edge.
+    Supported scenarios include ``T + T -> list[T]``, ``T + list[T] -> list[T]``, ``str + ChatMessage -> list[str]``,
+    ``str + ChatMessage -> list[ChatMessage]``, and all other ``str <-> ChatMessage`` conversion variants.
+    This enables pipeline patterns like joining a plain query string with a list of ``ChatMessage`` objects into a
+    single ``list[ChatMessage]`` input without any extra components.

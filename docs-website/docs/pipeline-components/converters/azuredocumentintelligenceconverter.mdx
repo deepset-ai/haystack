@@ -1,0 +1,109 @@
+---
+title: "AzureDocumentIntelligenceConverter"
+id: azuredocumentintelligenceconverter
+slug: "/azuredocumentintelligenceconverter"
+description: "`AzureDocumentIntelligenceConverter` converts files to Documents using Azure's Document Intelligence service with GitHub Flavored Markdown output for better LLM/RAG integration. It supports PDF, JPEG, PNG, BMP, TIFF, DOCX, XLSX, PPTX, and HTML."
+---
+
+# AzureDocumentIntelligenceConverter
+
+`AzureDocumentIntelligenceConverter` converts files to Documents using Azure's Document Intelligence service with GitHub Flavored Markdown output for better LLM/RAG integration. It supports the following file formats: PDF (both searchable and image-only), JPEG, PNG, BMP, TIFF, DOCX, XLSX, PPTX, and HTML.
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | Before [PreProcessors](../preprocessors.mdx), or right at the beginning of an indexing pipeline |
+| **Mandatory init variables** | `endpoint`: The endpoint URL of your Azure Document Intelligence resource <br /> <br />`api_key`: The API key for Azure authentication. Can be set with `AZURE_DI_API_KEY` environment variable. |
+| **Mandatory run variables** | `sources`: A list of file paths or ByteStream objects |
+| **Output variables** | `documents`: A list of documents <br /> <br />`raw_azure_response`: A list of raw responses from Azure |
+| **API reference** | [Azure Document Intelligence](https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/azure_doc_intelligence) |
+| **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/azure_doc_intelligence |
+| **Package name** | `azure-doc-intelligence-haystack` |
+
+</div>
+
+## Overview
+
+`AzureDocumentIntelligenceConverter` takes a list of file paths or [`ByteStream`](../../concepts/data-classes.mdx#bytestream) objects as input and uses Azure's Document Intelligence service to convert the files to a list of documents. Optionally, metadata can be attached to the documents through the `meta` input parameter. You need an active Azure account and a Document Intelligence or Cognitive Services resource to use this integration. Follow the steps described in the Azure [documentation](https://learn.microsoft.com/en-us/azure/ai-services/document-intelligence/quickstarts/get-started-sdks-rest-api) to set up your resource.
+
+The component uses an `AZURE_DI_API_KEY` environment variable by default. Otherwise, you can pass an `api_key` at initialization — see code examples below.
+
+This component uses the `azure-ai-documentintelligence` package (v1.0.0+) and outputs GitHub Flavored Markdown, preserving document structure such as headings, tables, and lists. Tables are rendered as inline markdown tables rather than being extracted as separate documents.
+
+When you initialize the component, you can optionally set the `model_id`, which refers to the model you want to use. Available options include:
+- `"prebuilt-document"`: General document analysis (default)
+- `"prebuilt-read"`: Fast OCR for text extraction
+- `"prebuilt-layout"`: Enhanced layout analysis with better table and structure detection
+- Custom model IDs from your Azure resource
+
+Refer to the [Azure documentation](https://learn.microsoft.com/en-us/azure/ai-services/document-intelligence/choose-model-feature) for a full list of available models.
+
+:::info
+This component replaces the legacy [`AzureOCRDocumentConverter`](azureocrdocumentconverter.mdx), which uses the older `azure-ai-formrecognizer` package. The `AzureDocumentIntelligenceConverter` uses the newer `azure-ai-documentintelligence` SDK and produces Markdown output instead of plain text, making it better suited for LLM and RAG applications.
+:::
+
+:::note
+This component returns Markdown content. Avoid piping it through `DocumentCleaner()` with its default settings because `remove_extra_whitespaces=True` and `remove_empty_lines=True` can collapse line breaks and flatten headings, tables, and lists. Connect the converter directly to your next component, or disable those options if you need custom cleanup.
+:::
+
+## Usage
+
+You need to install the `azure-doc-intelligence-haystack` integration to use the `AzureDocumentIntelligenceConverter`:
+
+```shell
+pip install azure-doc-intelligence-haystack
+```
+
+### On its own
+
+```python
+from pathlib import Path
+
+from haystack_integrations.components.converters.azure_doc_intelligence import (
+    AzureDocumentIntelligenceConverter,
+)
+from haystack.utils import Secret
+
+converter = AzureDocumentIntelligenceConverter(
+    endpoint="https://YOUR_RESOURCE.cognitiveservices.azure.com/",
+    api_key=Secret.from_env_var("AZURE_DI_API_KEY"),
+)
+
+result = converter.run(sources=[Path("my_file.pdf")])
+documents = result["documents"]
+```
+
+### In a pipeline
+
+```python
+from haystack import Pipeline
+from haystack.document_stores.in_memory import InMemoryDocumentStore
+from haystack.components.preprocessors import DocumentSplitter
+from haystack.components.writers import DocumentWriter
+from haystack.utils import Secret
+from haystack_integrations.components.converters.azure_doc_intelligence import (
+    AzureDocumentIntelligenceConverter,
+)
+
+document_store = InMemoryDocumentStore()
+
+pipeline = Pipeline()
+pipeline.add_component(
+    "converter",
+    AzureDocumentIntelligenceConverter(
+        endpoint="https://YOUR_RESOURCE.cognitiveservices.azure.com/",
+        api_key=Secret.from_env_var("AZURE_DI_API_KEY"),
+    ),
+)
+pipeline.add_component(
+    "splitter",
+    DocumentSplitter(split_by="sentence", split_length=5),
+)
+pipeline.add_component("writer", DocumentWriter(document_store=document_store))
+pipeline.connect("converter", "splitter")
+pipeline.connect("splitter", "writer")
+
+file_names = ["my_file.pdf"]
+pipeline.run({"converter": {"sources": file_names}})
+```

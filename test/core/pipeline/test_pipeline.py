@@ -23,6 +23,60 @@ class MockChatGenerator:
 
 
 @component
+class StringProducer:
+    def __init__(self, value: str = "Hello"):
+        self.value = value
+
+    @component.output_types(text=str)
+    def run(self) -> dict[str, str]:
+        return {"text": self.value}
+
+
+@component
+class ListStrProducer:
+    def __init__(self, values: list[str] | None = None):
+        self.values = values or ["Hello", "Hi"]
+
+    @component.output_types(texts=list[str])
+    def run(self) -> dict[str, list[str]]:
+        return {"texts": self.values}
+
+
+@component
+class ListStrAcceptor:
+    @component.output_types(result=list[str])
+    def run(self, texts: list[str]) -> dict[str, list[str]]:
+        return {"result": texts}
+
+
+@component
+class ChatMessageProducer:
+    def __init__(self, value: str = "Hello"):
+        self.value = value
+
+    @component.output_types(message=ChatMessage)
+    def run(self) -> dict[str, ChatMessage]:
+        return {"message": ChatMessage.from_user(self.value)}
+
+
+@component
+class ListChatMessageProducer:
+    def __init__(self, values: list[str] | None = None):
+        self.values = values or ["Hello", "Hi"]
+
+    @component.output_types(messages=list[ChatMessage])
+    def run(self) -> dict[str, list[ChatMessage]]:
+        return {"messages": [ChatMessage.from_user(v) for v in self.values]}
+
+
+@component
+class ListChatMessageAcceptor:
+    @component.output_types(result=list[ChatMessage])
+    def run(self, messages: list[ChatMessage]) -> dict[str, list[ChatMessage]]:
+        return {"result": messages}
+
+
+@component
 class WrongOutput:
     @component.output_types(output=str)
     def run(self, value: str) -> dict[str, str]:
@@ -356,3 +410,91 @@ class TestPipeline:
             ChatMessage.from_user("Hello, world!"),
             ChatMessage.from_assistant("Hello, world!"),
         ]
+
+    def test_run_auto_variadic_str_to_list_str(self):
+        """Two str producers connected to a list[str] input are auto-joined and flattened at runtime."""
+        p = Pipeline()
+        p.add_component("producer1", StringProducer("hello"))
+        p.add_component("producer2", StringProducer("world"))
+        p.add_component("receiver", ListStrAcceptor())
+        p.connect("producer1.text", "receiver.texts")
+        p.connect("producer2.text", "receiver.texts")
+        result = p.run({})
+        assert result["receiver"]["result"] == ["hello", "world"]
+
+    def test_run_auto_variadic_str_and_list_str_to_list_str(self):
+        """A str producer and a list[str] producer connected to a list[str] input are auto-joined at runtime."""
+        p = Pipeline()
+        p.add_component("str_producer", StringProducer("hello"))
+        p.add_component("list_producer", ListStrProducer(["world", "!"]))
+        p.add_component("receiver", ListStrAcceptor())
+        p.connect("str_producer.text", "receiver.texts")
+        p.connect("list_producer.texts", "receiver.texts")
+        result = p.run({})
+        assert result["receiver"]["result"] == ["world", "!", "hello"]
+
+    def test_run_auto_variadic_chat_message_to_list_str(self):
+        """Two ChatMessage producers connected to a list[str] input are converted and auto-joined at runtime."""
+        p = Pipeline()
+        p.add_component("producer1", ChatMessageProducer("hello"))
+        p.add_component("producer2", ChatMessageProducer("world"))
+        p.add_component("receiver", ListStrAcceptor())
+        p.connect("producer1.message", "receiver.texts")
+        p.connect("producer2.message", "receiver.texts")
+        result = p.run({})
+        assert result["receiver"]["result"] == ["hello", "world"]
+
+    def test_run_auto_variadic_str_and_chat_message_to_list_str(self):
+        """A str producer and a ChatMessage producer connected to a list[str] input are auto-joined at runtime."""
+        p = Pipeline()
+        p.add_component("str_producer", StringProducer("hello"))
+        p.add_component("chat_producer", ChatMessageProducer("world"))
+        p.add_component("receiver", ListStrAcceptor())
+        p.connect("str_producer.text", "receiver.texts")
+        p.connect("chat_producer.message", "receiver.texts")
+        result = p.run({})
+        assert result["receiver"]["result"] == ["world", "hello"]
+
+    def test_run_auto_variadic_chat_message_to_list_chat_message(self):
+        """Two ChatMessage producers connected to a list[ChatMessage] input are auto-joined at runtime."""
+        p = Pipeline()
+        p.add_component("producer1", ChatMessageProducer("hello"))
+        p.add_component("producer2", ChatMessageProducer("world"))
+        p.add_component("receiver", ListChatMessageAcceptor())
+        p.connect("producer1.message", "receiver.messages")
+        p.connect("producer2.message", "receiver.messages")
+        result = p.run({})
+        assert [m.text for m in result["receiver"]["result"]] == ["hello", "world"]
+
+    def test_run_auto_variadic_str_to_list_chat_message(self):
+        """Two str producers connected to a list[ChatMessage] input are converted and auto-joined at runtime."""
+        p = Pipeline()
+        p.add_component("producer1", StringProducer("hello"))
+        p.add_component("producer2", StringProducer("world"))
+        p.add_component("receiver", ListChatMessageAcceptor())
+        p.connect("producer1.text", "receiver.messages")
+        p.connect("producer2.text", "receiver.messages")
+        result = p.run({})
+        assert [m.text for m in result["receiver"]["result"]] == ["hello", "world"]
+
+    def test_run_auto_variadic_str_and_chat_message_to_list_chat_message(self):
+        """A str and a ChatMessage producer connected to a list[ChatMessage] input are auto-joined at runtime."""
+        p = Pipeline()
+        p.add_component("str_producer", StringProducer("hello"))
+        p.add_component("chat_producer", ChatMessageProducer("world"))
+        p.add_component("receiver", ListChatMessageAcceptor())
+        p.connect("str_producer.text", "receiver.messages")
+        p.connect("chat_producer.message", "receiver.messages")
+        result = p.run({})
+        assert [m.text for m in result["receiver"]["result"]] == ["world", "hello"]
+
+    def test_run_auto_variadic_chat_message_and_list_chat_message_to_list_chat_message(self):
+        """A ChatMessage and a list[ChatMessage] producer connected to list[ChatMessage] are auto-joined at runtime."""
+        p = Pipeline()
+        p.add_component("chat_producer", ChatMessageProducer("hello"))
+        p.add_component("list_producer", ListChatMessageProducer(["world", "!"]))
+        p.add_component("receiver", ListChatMessageAcceptor())
+        p.connect("chat_producer.message", "receiver.messages")
+        p.connect("list_producer.messages", "receiver.messages")
+        result = p.run({})
+        assert [m.text for m in result["receiver"]["result"]] == ["hello", "world", "!"]

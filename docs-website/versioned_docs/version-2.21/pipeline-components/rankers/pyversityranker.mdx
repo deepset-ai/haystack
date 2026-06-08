@@ -153,7 +153,7 @@ for doc in result["ranker"]["documents"]:
     print(f"{doc.score:.4f}  {doc.content}")
 ```
 
-:::note Embeddings required
+:::note[Embeddings required]
 
 `PyversityRanker` requires documents to have both `score` and `embedding` set. When using a dense retriever, make sure to pass `return_embedding=True`. Documents missing either field are skipped with a warning.
 

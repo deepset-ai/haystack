@@ -21,6 +21,7 @@ class SentenceTransformersTextEmbedder:
     You can use it to embed user query and send it to an embedding retriever.
 
     Usage example:
+    <!-- test-ignore -->
     ```python
     from haystack.components.embedders import SentenceTransformersTextEmbedder
 

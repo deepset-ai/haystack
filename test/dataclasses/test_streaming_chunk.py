@@ -15,6 +15,7 @@ from haystack.dataclasses import (
     ToolCallDelta,
     ToolCallResult,
 )
+from haystack.dataclasses.streaming_chunk import FinishReason
 
 
 @component
@@ -22,8 +23,8 @@ class ExampleComponent:
     def __init__(self):
         self.name = "test_component"
 
-    def run(self) -> str:
-        return "Test content"
+    def run(self) -> dict[str, str]:
+        return {"test": "Test content"}
 
 
 def test_create_chunk_with_content_and_metadata():
@@ -143,7 +144,7 @@ def test_create_chunk_with_finish_reason_and_meta():
 
 def test_finish_reason_standard_values():
     """Test all standard finish_reason values including the new Haystack-specific ones."""
-    standard_values = ["stop", "length", "tool_calls", "content_filter", "tool_call_results"]
+    standard_values: list[FinishReason] = ["stop", "length", "tool_calls", "content_filter", "tool_call_results"]
 
     for value in standard_values:
         chunk = StreamingChunk(content="Test content", finish_reason=value)
@@ -271,8 +272,10 @@ def test_from_dict_tool_call_result():
     assert chunk.content == ""
     assert chunk.meta == {"key": "value"}
     assert chunk.index == 0
+    assert chunk.component_info is not None
     assert chunk.component_info.type == "test_streaming_chunk.ExampleComponent"
     assert chunk.component_info.name == "test_component"
+    assert chunk.tool_call_result is not None
     assert chunk.tool_call_result.result == "output"
     assert chunk.tool_call_result.error is False
     assert chunk.tool_call_result.origin.id == "123"
@@ -298,8 +301,10 @@ def test_from_dict_tool_calls():
     assert chunk.content == ""
     assert chunk.meta == {"key": "value"}
     assert chunk.index == 0
+    assert chunk.component_info is not None
     assert chunk.component_info.type == "test_streaming_chunk.ExampleComponent"
     assert chunk.component_info.name == "test_component"
+    assert chunk.tool_calls is not None
     assert chunk.tool_calls[0].tool_name == "test_tool"
     assert chunk.tool_calls[0].index == 0
     assert chunk.finish_reason == "tool_calls"
@@ -325,8 +330,10 @@ def test_from_dict_reasoning():
     assert chunk.content == ""
     assert chunk.meta == {"key": "value"}
     assert chunk.index == 0
+    assert chunk.component_info is not None
     assert chunk.component_info.type == "test_streaming_chunk.ExampleComponent"
     assert chunk.component_info.name == "test_component"
+    assert chunk.reasoning is not None
     assert chunk.reasoning.reasoning_text == "thinking"
     assert chunk.reasoning.extra["step"] == 1
     assert chunk.finish_reason == "stop"

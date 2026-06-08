@@ -24,7 +24,7 @@ description: "`LlamaCppGenerator` provides an interface to generate text using a
 
 ## Overview
 
-[Llama.cpp](https://github.com/ggerganov/llama.cpp) is a library written in C/C++ for efficient inference of Large Language Models. It leverages the efficient quantized GGUF format, dramatically reducing memory requirements and accelerating inference. This means it is possible to run LLMs efficiently on standard machines (even without GPUs).
+[Llama.cpp](https://github.com/ggml-org/llama.cpp) is a library written in C/C++ for efficient inference of Large Language Models. It leverages the efficient quantized GGUF format, dramatically reducing memory requirements and accelerating inference. This means it is possible to run LLMs efficiently on standard machines (even without GPUs).
 
 `Llama.cpp` uses the quantized binary file of the LLM in GGUF format that can be downloaded from [Hugging Face](https://huggingface.co/models?library=gguf).  `LlamaCppGenerator` supports models running on `Llama.cpp`  by taking the path to the locally saved GGUF file as `model` parameter at initialization.
 

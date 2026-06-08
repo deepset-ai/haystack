@@ -23,16 +23,16 @@ def _is_valid_type(obj: Any) -> bool:
     :return: True if the object is a valid type annotation, False otherwise
 
     Example usage:
-        >>> _is_valid_type(str)
-        True
-        >>> _is_valid_type(list[int])
-        True
-        >>> _is_valid_type(Union[str, int])
-        True
-        >>> _is_valid_type(str | int)
-        True
-        >>> _is_valid_type(42)
-        False
+        # >> _is_valid_type(str)
+        # >> True
+        # >> _is_valid_type(list[int])
+        # >> True
+        # >> _is_valid_type(Union[str, int])
+        # >> True
+        # >> _is_valid_type(str | int)
+        # >> True
+        # >> _is_valid_type(42)
+        # >> False
     """
     # Handle Union types (including Optional)
     if (origin := get_origin(obj)) and _is_union_type(origin):

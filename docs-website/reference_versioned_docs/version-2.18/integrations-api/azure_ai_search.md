@@ -11,6 +11,7 @@ slug: "/integrations-azure_ai_search"
 ### AzureAISearchEmbeddingRetriever
 
 Retrieves documents from the AzureAISearchDocumentStore using a vector similarity metric.
+
 Must be connected to the AzureAISearchDocumentStore to run.
 
 #### __init__
@@ -23,7 +24,7 @@ __init__(
     top_k: int = 10,
     filter_policy: str | FilterPolicy = FilterPolicy.REPLACE,
     **kwargs: Any
-)
+) -> None
 ```
 
 Create the AzureAISearchEmbeddingRetriever component.
@@ -100,6 +101,8 @@ Retrieve documents from the AzureAISearchDocumentStore.
 
 ### AzureAISearchDocumentStore
 
+Document store using [Azure AI Search](https://azure.microsoft.com/products/ai-services/ai-search/) as the backend.
+
 #### __init__
 
 ```python
@@ -116,12 +119,12 @@ __init__(
     metadata_fields: dict[str, SearchField | type] | None = None,
     vector_search_configuration: VectorSearch | None = None,
     include_search_metadata: bool = False,
+    azure_token_credential: TokenCredential | None = None,
     **index_creation_kwargs: Any
-)
+) -> None
 ```
 
-A document store using [Azure AI Search](https://azure.microsoft.com/products/ai-services/ai-search/)
-as the backend.
+Creates a new instance of AzureAISearchDocumentStore.
 
 **Parameters:**
 
@@ -155,6 +158,8 @@ metadata_fields={
   in the returned documents. When set to True, the `meta` field of the returned
   documents will contain the @search.score, @search.reranker_score, @search.highlights,
   @search.captions, and other fields returned by Azure AI Search.
+- **azure_token_credential** (<code>TokenCredential | None</code>) – An Azure `TokenCredential` instance used to authenticate requests.
+  When provided, this takes priority over `api_key`.
 - **index_creation_kwargs** (<code>Any</code>) – Optional keyword parameters to be passed to `SearchIndex` class
   during index creation. Some of the supported parameters:
   \- `semantic_search`: Defines semantic configuration of the search index. This parameter is needed
@@ -164,6 +169,14 @@ metadata_fields={
   cannot be modified on existing indexes.
 
 For more information on parameters, see the [official Azure AI Search documentation](https://learn.microsoft.com/en-us/azure/search/).
+
+#### client
+
+```python
+client: SearchClient
+```
+
+Return the Azure SearchClient, creating the index if it does not exist.
 
 #### to_dict
 
@@ -393,6 +406,22 @@ first searches for matching documents, then updates them using merge operations.
 
 - <code>int</code> – The number of documents updated.
 
+#### get_documents_by_id
+
+```python
+get_documents_by_id(document_ids: list[str]) -> list[Document]
+```
+
+Retrieves documents by their IDs.
+
+**Parameters:**
+
+- **document_ids** (<code>list\[str\]</code>) – IDs of the documents to retrieve.
+
+**Returns:**
+
+- <code>list\[Document\]</code> – List of documents with the given IDs.
+
 #### search_documents
 
 ```python
@@ -400,6 +429,7 @@ search_documents(search_text: str = '*', top_k: int = 10) -> list[Document]
 ```
 
 Returns all documents that match the provided search_text.
+
 If search_text is None, returns all documents.
 
 **Parameters:**
@@ -418,6 +448,7 @@ filter_documents(filters: dict[str, Any] | None = None) -> list[Document]
 ```
 
 Returns the documents that match the provided filters.
+
 Filters should be given as a dictionary supporting filtering by metadata. For details on
 filters, see the [metadata filtering documentation](https://docs.haystack.deepset.ai/docs/metadata-filtering).
 

@@ -125,14 +125,19 @@ class DOCXToDocument:
     This component does not preserve page breaks in the original document.
 
     Usage example:
+
     ```python
     from haystack.components.converters.docx import DOCXToDocument, DOCXTableFormat, DOCXLinkFormat
+    from datetime import datetime
 
     converter = DOCXToDocument(table_format=DOCXTableFormat.CSV, link_format=DOCXLinkFormat.MARKDOWN)
-    results = converter.run(sources=["sample.docx"], meta={"date_added": datetime.now().isoformat()})
+    results = converter.run(
+        sources=["test/test_files/docx/sample_docx.docx"], meta={"date_added": datetime.now().isoformat()}
+    )
     documents = results["documents"]
+
     print(documents[0].content)
-    # 'This is a text from the DOCX file.'
+    # >> 'This is a text from the DOCX file.'
     ```
     """
 

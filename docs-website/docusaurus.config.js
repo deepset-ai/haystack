@@ -33,11 +33,14 @@ const config = {
   onDuplicateRoutes: 'throw',
 
   future: {
-    experimental_faster: true,
+    faster: true,
     v4: true,
   },
 
   markdown: {
+    mdx1Compat: {
+      comments: true,
+    },
     hooks: {
       onBrokenMarkdownLinks: 'throw',
     },
@@ -76,12 +79,12 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
           beforeDefaultRemarkPlugins: [require('./src/remark/versionedReferenceLinks')],
           versions: {
             current: {
-              label: '2.27-unstable',
+              label: '2.31-unstable',
               path: 'next',
               banner: 'unreleased',
             },
           },
-          lastVersion: '2.26',
+          lastVersion: '2.30',
         },
         theme: {
           customCss: require.resolve('./src/css/custom.css'),
@@ -129,12 +132,12 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
         exclude: ['**/_templates/**'],
         versions: {
           current: {
-            label: '2.27-unstable',
+            label: '2.31-unstable',
             path: 'next',
             banner: 'unreleased',
           },
         },
-        lastVersion: '2.26',
+        lastVersion: '2.30',
       },
     ],
     [
@@ -197,6 +200,10 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
           {
             from: '/docs/dynamicpromptbuilder',
             to: '/docs/promptbuilder',
+          },
+          {
+            from: '/docs/generators-vs-chat-generators',
+            to: '/docs/choosing-the-right-generator#generators-vs-chatgenerators',
           },
         ],
       },

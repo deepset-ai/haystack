@@ -19,12 +19,11 @@ class AzureOpenAITextEmbedder(OpenAITextEmbedder):
     Embeds strings using OpenAI models deployed on Azure.
 
     ### Usage example
-
+    <!-- test-ignore -->
     ```python
     from haystack.components.embedders import AzureOpenAITextEmbedder
 
     text_to_embed = "I love pizza!"
-
     text_embedder = AzureOpenAITextEmbedder()
 
     print(text_embedder.run(text_to_embed))

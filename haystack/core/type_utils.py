@@ -64,7 +64,7 @@ def _type_name(type_: Any) -> str:
     return f"{name}"
 
 
-def _safe_get_origin(_type: type | UnionType) -> type | None:
+def _safe_get_origin(_type: type | UnionType) -> Any:
     """
     Safely retrieves the origin type of a generic alias or returns the type itself if it's a built-in.
 

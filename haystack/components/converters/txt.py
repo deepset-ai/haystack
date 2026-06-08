@@ -28,10 +28,11 @@ class TextFileToDocument:
     from haystack.components.converters.txt import TextFileToDocument
 
     converter = TextFileToDocument()
-    results = converter.run(sources=["sample.txt"])
+    results = converter.run(sources=["test/test_files/txt/doc_1.txt"])
     documents = results["documents"]
+
     print(documents[0].content)
-    # 'This is the content from the txt file.'
+    # >> 'This is the content from the txt file.'
     ```
     """
 

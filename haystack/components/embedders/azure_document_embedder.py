@@ -21,13 +21,12 @@ class AzureOpenAIDocumentEmbedder(OpenAIDocumentEmbedder):
     Calculates document embeddings using OpenAI models deployed on Azure.
 
     ### Usage example
-
+    <!-- test-ignore -->
     ```python
     from haystack import Document
     from haystack.components.embedders import AzureOpenAIDocumentEmbedder
 
     doc = Document(content="I love pizza!")
-
     document_embedder = AzureOpenAIDocumentEmbedder()
 
     result = document_embedder.run([doc])

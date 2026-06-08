@@ -48,7 +48,8 @@ def document_store(documents):
     """Create and populate a test document store."""
     store = InMemoryDocumentStore()
     store.write_documents(documents, policy=DuplicatePolicy.OVERWRITE)
-    return store
+    yield store
+    store.shutdown()
 
 
 @pytest.fixture

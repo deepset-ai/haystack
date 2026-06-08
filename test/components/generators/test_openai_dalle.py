@@ -2,6 +2,8 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import base64
+import os
 from unittest.mock import patch
 
 import pytest
@@ -15,7 +17,9 @@ from haystack.utils import Secret
 @pytest.fixture
 def mock_image_response():
     with patch("openai.resources.images.Images.generate") as mock_image_generate:
-        image_response = ImagesResponse(created=1630000000, data=[Image(url="test-url", revised_prompt="test-prompt")])
+        image_response = ImagesResponse(
+            created=1630000000, data=[Image(b64_json="test-b64-json", revised_prompt="test-prompt")]
+        )
         mock_image_generate.return_value = image_response
         yield mock_image_generate
 
@@ -23,10 +27,9 @@ def mock_image_response():
 class TestDALLEImageGenerator:
     def test_init_default(self, monkeypatch):
         component = DALLEImageGenerator()
-        assert component.model == "dall-e-3"
-        assert component.quality == "standard"
+        assert component.model == "gpt-image-2"
+        assert component.quality == "auto"
         assert component.size == "1024x1024"
-        assert component.response_format == "url"
         assert component.api_key == Secret.from_env_var("OPENAI_API_KEY")
         assert component.api_base_url is None
         assert component.organization is None
@@ -36,20 +39,18 @@ class TestDALLEImageGenerator:
 
     def test_init_with_params(self, monkeypatch):
         component = DALLEImageGenerator(
-            model="dall-e-2",
-            quality="hd",
-            size="256x256",
-            response_format="b64_json",
+            model="gpt-image-1",
+            quality="high",
+            size="1024x1536",
             api_key=Secret.from_env_var("EXAMPLE_API_KEY"),
             api_base_url="https://api.openai.com",
             organization="test-org",
             timeout=60,
             max_retries=10,
         )
-        assert component.model == "dall-e-2"
-        assert component.quality == "hd"
-        assert component.size == "256x256"
-        assert component.response_format == "b64_json"
+        assert component.model == "gpt-image-1"
+        assert component.quality == "high"
+        assert component.size == "1024x1536"
         assert component.api_key == Secret.from_env_var("EXAMPLE_API_KEY")
         assert component.api_base_url == "https://api.openai.com"
         assert component.organization == "test-org"
@@ -62,6 +63,15 @@ class TestDALLEImageGenerator:
         """
         component = DALLEImageGenerator(max_retries=0)
         assert component.max_retries == 0
+
+    def test_init_invalid_quality_falls_back_to_auto(self, caplog):
+        component = DALLEImageGenerator(quality="hd")  # type: ignore[arg-type]
+        assert component.quality == "auto"
+        assert "Invalid quality" in caplog.text
+
+    def test_init_non_default_response_format_warns(self, caplog):
+        DALLEImageGenerator(response_format="url")  # type: ignore[arg-type]
+        assert "response_format is ignored" in caplog.text
 
     def test_warm_up(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
@@ -77,10 +87,9 @@ class TestDALLEImageGenerator:
         assert data == {
             "type": "haystack.components.generators.openai_dalle.DALLEImageGenerator",
             "init_parameters": {
-                "model": "dall-e-3",
-                "quality": "standard",
+                "model": "gpt-image-2",
+                "quality": "auto",
                 "size": "1024x1024",
-                "response_format": "url",
                 "api_key": {"type": "env_var", "env_vars": ["OPENAI_API_KEY"], "strict": True},
                 "api_base_url": None,
                 "organization": None,
@@ -90,10 +99,9 @@ class TestDALLEImageGenerator:
 
     def test_to_dict_with_params(self):
         generator = DALLEImageGenerator(
-            model="dall-e-2",
-            quality="hd",
-            size="256x256",
-            response_format="b64_json",
+            model="gpt-image-1",
+            quality="high",
+            size="1024x1536",
             api_key=Secret.from_env_var("EXAMPLE_API_KEY"),
             api_base_url="https://api.openai.com",
             organization="test-org",
@@ -105,10 +113,9 @@ class TestDALLEImageGenerator:
         assert data == {
             "type": "haystack.components.generators.openai_dalle.DALLEImageGenerator",
             "init_parameters": {
-                "model": "dall-e-2",
-                "quality": "hd",
-                "size": "256x256",
-                "response_format": "b64_json",
+                "model": "gpt-image-1",
+                "quality": "high",
+                "size": "1024x1536",
                 "api_key": {"type": "env_var", "env_vars": ["EXAMPLE_API_KEY"], "strict": True},
                 "api_base_url": "https://api.openai.com",
                 "organization": "test-org",
@@ -120,10 +127,9 @@ class TestDALLEImageGenerator:
         data = {
             "type": "haystack.components.generators.openai_dalle.DALLEImageGenerator",
             "init_parameters": {
-                "model": "dall-e-3",
-                "quality": "standard",
+                "model": "gpt-image-2",
+                "quality": "auto",
                 "size": "1024x1024",
-                "response_format": "url",
                 "api_key": {"type": "env_var", "env_vars": ["OPENAI_API_KEY"], "strict": True},
                 "api_base_url": None,
                 "organization": None,
@@ -131,20 +137,18 @@ class TestDALLEImageGenerator:
             },
         }
         generator = DALLEImageGenerator.from_dict(data)
-        assert generator.model == "dall-e-3"
-        assert generator.quality == "standard"
+        assert generator.model == "gpt-image-2"
+        assert generator.quality == "auto"
         assert generator.size == "1024x1024"
-        assert generator.response_format == "url"
         assert generator.api_key.to_dict() == {"type": "env_var", "env_vars": ["OPENAI_API_KEY"], "strict": True}
         assert generator.http_client_kwargs is None
 
     def test_from_dict_default_params(self):
         data = {"type": "haystack.components.generators.openai_dalle.DALLEImageGenerator", "init_parameters": {}}
         generator = DALLEImageGenerator.from_dict(data)
-        assert generator.model == "dall-e-3"
-        assert generator.quality == "standard"
+        assert generator.model == "gpt-image-2"
+        assert generator.quality == "auto"
         assert generator.size == "1024x1024"
-        assert generator.response_format == "url"
         assert generator.api_key.to_dict() == {"type": "env_var", "env_vars": ["OPENAI_API_KEY"], "strict": True}
         assert generator.api_base_url is None
         assert generator.organization is None
@@ -157,5 +161,23 @@ class TestDALLEImageGenerator:
         response = generator.run("Show me a picture of a black cat.")
         assert isinstance(response, dict)
         assert "images" in response and "revised_prompt" in response
-        assert response["images"] == ["test-url"]
+        assert response["images"] == ["test-b64-json"]
         assert response["revised_prompt"] == "test-prompt"
+
+    @pytest.mark.skipif(
+        not os.environ.get("OPENAI_API_KEY", None),
+        reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
+    )
+    @pytest.mark.integration
+    @pytest.mark.slow
+    def test_live_run(self):
+        generator = DALLEImageGenerator(model="gpt-image-1-mini", size="1024x1024", quality="low")
+        response = generator.run("A nice cat")
+        assert isinstance(response, dict)
+        assert isinstance(response["revised_prompt"], str)
+
+        image_str = response["images"][0]
+        assert isinstance(image_str, str) and image_str
+
+        decoded = base64.b64decode(image_str, validate=True)
+        assert decoded.startswith(b"\x89PNG\r\n\x1a\n")
