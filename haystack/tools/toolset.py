@@ -132,8 +132,6 @@ class Toolset:
 
         :returns: An iterator yielding Tool instances
         """
-        # TODO Should we be calling warm_up() in here as we go like in SearchableToolset?
-        #      I guess a test could be passing individual MCPTool(s) in here to see if they work properly.
         return iter(self.tools)
 
     def __contains__(self, item: str | Tool) -> bool:
