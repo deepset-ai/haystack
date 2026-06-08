@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import warnings
 from typing import Any
 
 from haystack import component, default_from_dict, default_to_dict, logging
@@ -109,6 +110,15 @@ class HuggingFaceAPITextEmbedder:
             if the backend uses Text Embeddings Inference.
             If `api_type` is `SERVERLESS_INFERENCE_API`, this parameter is ignored.
         """
+        warnings.warn(
+            "`HuggingFaceAPITextEmbedder` will be removed from Haystack in version 3.0, as it is moving to "
+            "the `huggingface-api-haystack` package. To continue using it, install that package with "
+            "`pip install huggingface-api-haystack` and update your import to "
+            "`from haystack_integrations.components.embedders.huggingface_api import HuggingFaceAPITextEmbedder`.",
+            FutureWarning,
+            stacklevel=2,
+        )
+
         huggingface_hub_import.check()
 
         if isinstance(api_type, str):

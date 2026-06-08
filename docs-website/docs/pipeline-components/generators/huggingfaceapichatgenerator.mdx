@@ -17,9 +17,9 @@ This generator enables chat completion using various Hugging Face APIs.
 | **Mandatory init variables** | `api_type`: The type of Hugging Face API to use  <br /> <br />`api_params`: A dictionary with one of the following keys:  <br /> <br />- `model`: Hugging Face model ID. Required when `api_type` is `SERVERLESS_INFERENCE_API`.**OR** - `url`: URL of the inference endpoint. Required when `api_type` is `INFERENCE_ENDPOINTS` or `TEXT_EMBEDDINGS_INFERENCE`.`token`: The Hugging Face API token. Can be set with `HF_API_TOKEN` or `HF_TOKEN` env var. |
 | **Mandatory run variables** | `messages`: A list of [`ChatMessage`](../../concepts/data-classes/chatmessage.mdx) objects representing the chat or a plain string |
 | **Output variables** | `replies`: A list of replies of the LLM to the input chat |
-| **API reference** | [Generators](/reference/generators-api) |
-| **GitHub link** | https://github.com/deepset-ai/haystack/blob/main/haystack/components/generators/chat/hugging_face_api.py |
-| **Package name** | `haystack-ai` |
+| **API reference** | [Hugging Face API](/reference/integrations-huggingface-api) |
+| **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/huggingface_api |
+| **Package name** | `huggingface-api-haystack` |
 
 </div>
 
@@ -49,6 +49,12 @@ This Generator supports [streaming](guides-to-generators/choosing-the-right-gene
 
 ## Usage
 
+Install the `huggingface-api-haystack` package to use the `HuggingFaceAPIChatGenerator`:
+
+```shell
+pip install huggingface-api-haystack
+```
+
 ### On its own
 
 #### Using Serverless Inference API (Inference Providers) - Free Tier Available
@@ -59,10 +65,14 @@ To use this API, you need a [free Hugging Face token](https://huggingface.co/set
 The Generator expects the `model` in `api_params`. It's also recommended to specify a `provider` for better performance and reliability.
 
 ```python
-from haystack.components.generators.chat import HuggingFaceAPIChatGenerator
+from haystack_integrations.components.generators.huggingface_api import (
+    HuggingFaceAPIChatGenerator,
+)
 from haystack.dataclasses import ChatMessage
 from haystack.utils import Secret
-from haystack.utils.hf import HFGenerationAPIType
+from haystack_integrations.components.common.huggingface_api.utils import (
+    HFGenerationAPIType,
+)
 
 messages = [
     ChatMessage.from_system("\\nYou are a helpful, respectful and honest assistant"),
@@ -93,7 +103,9 @@ Additionally, in this case, you need to provide your Hugging Face token.
 The Generator expects the `url` of your endpoint in `api_params`.
 
 ```python
-from haystack.components.generators.chat import HuggingFaceAPIChatGenerator
+from haystack_integrations.components.generators.huggingface_api import (
+    HuggingFaceAPIChatGenerator,
+)
 from haystack.dataclasses import ChatMessage
 from haystack.utils import Secret
 
@@ -117,10 +129,14 @@ print(result)
 You can also use this component with multimodal models that support both text and image input:
 
 ```python
-from haystack.components.generators.chat import HuggingFaceAPIChatGenerator
+from haystack_integrations.components.generators.huggingface_api import (
+    HuggingFaceAPIChatGenerator,
+)
 from haystack.dataclasses import ChatMessage, ImageContent
 from haystack.utils import Secret
-from haystack.utils.hf import HFGenerationAPIType
+from haystack_integrations.components.common.huggingface_api.utils import (
+    HFGenerationAPIType,
+)
 
 # Create an image from file path, URL, or base64
 image = ImageContent.from_file_path("path/to/your/image.jpg")
@@ -163,7 +179,9 @@ For more information, refer to the [official TGI repository](https://github.com/
 The Generator expects the `url` of your TGI instance in `api_params`.
 
 ```python
-from haystack.components.generators.chat import HuggingFaceAPIChatGenerator
+from haystack_integrations.components.generators.huggingface_api import (
+    HuggingFaceAPIChatGenerator,
+)
 from haystack.dataclasses import ChatMessage
 
 messages = [
@@ -184,11 +202,15 @@ print(result)
 
 ```python
 from haystack.components.builders import ChatPromptBuilder
-from haystack.components.generators.chat import HuggingFaceAPIChatGenerator
+from haystack_integrations.components.generators.huggingface_api import (
+    HuggingFaceAPIChatGenerator,
+)
 from haystack.dataclasses import ChatMessage
 from haystack import Pipeline
 from haystack.utils import Secret
-from haystack.utils.hf import HFGenerationAPIType
+from haystack_integrations.components.common.huggingface_api.utils import (
+    HFGenerationAPIType,
+)
 
 # no parameter init, we don't use any runtime template variables
 prompt_builder = ChatPromptBuilder()
