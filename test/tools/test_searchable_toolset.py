@@ -308,10 +308,10 @@ class TestSearchableToolsetIteration:
 
     def test_iter_automatically_warms_up(self, large_catalog):
         toolset = SearchableToolset(catalog=large_catalog)
-        assert not toolset._warmed_up
+        assert not toolset._is_warmed_up
 
         list(toolset)
-        assert toolset._warmed_up
+        assert toolset._is_warmed_up
 
     def test_contains_bootstrap_tool(self, large_catalog):
         """Test __contains__ for bootstrap tool."""
@@ -358,7 +358,6 @@ class TestSearchableToolsetSerialization:
         assert len(data["data"]["catalog"]) == len(large_catalog)
 
     def test_to_dict_with_toolset(self, large_catalog):
-
         toolset = Toolset(tools=large_catalog)
 
         searchable_toolset = SearchableToolset(catalog=toolset)
@@ -368,8 +367,19 @@ class TestSearchableToolsetSerialization:
         assert "data" in data
         assert data["data"]["top_k"] == 3
         assert data["data"]["search_threshold"] == 8
-        assert len(data["data"]["catalog"]) == 1
-        assert data["data"]["catalog"][0]["type"] == "haystack.tools.toolset.Toolset"
+        # A single Toolset catalog serializes as that toolset, not wrapped in a list.
+        assert isinstance(data["data"]["catalog"], dict)
+        assert data["data"]["catalog"]["type"] == "haystack.tools.toolset.Toolset"
+
+    def test_serde_roundtrip_with_toolset_catalog(self, large_catalog):
+        """A single Toolset catalog round-trips back to a Toolset, not a list."""
+        searchable_toolset = SearchableToolset(catalog=Toolset(tools=large_catalog))
+
+        restored = SearchableToolset.from_dict(searchable_toolset.to_dict())
+
+        assert isinstance(restored._raw_catalog, Toolset)
+        restored.warm_up()
+        assert len(restored._catalog) == len(large_catalog)
 
     def test_from_dict(self, large_catalog):
         """Test deserialization from dict."""
@@ -509,6 +519,16 @@ class TestSearchableToolsetWarmUp:
         toolset = SearchableToolset(catalog=large_catalog)
 
         assert toolset._bootstrap_tool is None
+
+    def test_warm_up_raises_on_duplicate_tool_names(self):
+        """Test that warm_up raises when the flattened catalog has duplicate tool names."""
+        params = {"type": "object", "properties": {}}
+        tool1 = Tool(name="dup", description="first", parameters=params, function=lambda: 1)
+        tool2 = Tool(name="dup", description="second", parameters=params, function=lambda: 2)
+        toolset = SearchableToolset(catalog=[tool1, tool2])
+
+        with pytest.raises(ValueError, match="Duplicate tool names found"):
+            toolset.warm_up()
 
 
 class TestSearchableToolsetEdgeCases:
