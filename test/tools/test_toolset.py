@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Any
+from typing import Annotated, Any
 
 import pytest
 
@@ -13,24 +13,8 @@ from haystack.components.agents.tool_calling import _run_tool
 from haystack.core.serialization import generate_qualified_class_name
 from haystack.dataclasses import ChatMessage
 from haystack.dataclasses.chat_message import ToolCall
-from haystack.tools import Tool, Toolset
+from haystack.tools import Tool, Toolset, tool
 from haystack.tools.errors import ToolInvocationError
-
-
-# Common functions for tests
-def add_numbers(a: int, b: int) -> int:
-    """Add two numbers."""
-    return a + b
-
-
-def multiply_numbers(a: int, b: int) -> int:
-    """Multiply two numbers."""
-    return a * b
-
-
-def subtract_numbers(a: int, b: int) -> int:
-    """Subtract b from a."""
-    return a - b
 
 
 @component
@@ -71,38 +55,11 @@ class CustomToolset(Toolset):
         return cls(tools=tools, custom_attr=custom_attr)
 
 
-class CalculatorToolset(Toolset):
-    """A toolset for calculator operations."""
+class DynamicToolset(Toolset):
+    """A custom Toolset that recreates its tools dynamically on deserialization instead of serializing them."""
 
     def __init__(self):
-        super().__init__([])
-        self._create_tools()
-
-    def _create_tools(self):
-        add_tool = Tool(
-            name="add",
-            description="Add two numbers",
-            parameters={
-                "type": "object",
-                "properties": {"a": {"type": "integer"}, "b": {"type": "integer"}},
-                "required": ["a", "b"],
-            },
-            function=add_numbers,
-        )
-
-        multiply_tool = Tool(
-            name="multiply",
-            description="Multiply two numbers",
-            parameters={
-                "type": "object",
-                "properties": {"a": {"type": "integer"}, "b": {"type": "integer"}},
-                "required": ["a", "b"],
-            },
-            function=multiply_numbers,
-        )
-
-        self.add(add_tool)
-        self.add(multiply_tool)
+        super().__init__([add])
 
     def to_dict(self):
         return {
@@ -156,6 +113,40 @@ def faulty_tool():
     )
 
 
+# Defined at module level (not inside the fixtures) so the underlying functions are importable and serializable.
+@tool
+def add(a: Annotated[int, "first number"], b: Annotated[int, "second number"]) -> int:
+    """Add two numbers."""
+    return a + b
+
+
+@tool
+def multiply(a: Annotated[int, "first number"], b: Annotated[int, "second number"]) -> int:
+    """Multiply two numbers."""
+    return a * b
+
+
+@tool
+def subtract(a: Annotated[int, "first number"], b: Annotated[int, "second number"]) -> int:
+    """Subtract b from a."""
+    return a - b
+
+
+@pytest.fixture
+def add_tool():
+    return add
+
+
+@pytest.fixture
+def multiply_tool():
+    return multiply
+
+
+@pytest.fixture
+def subtract_tool():
+    return subtract
+
+
 class WarmUpCountingTool(Tool):
     """A Tool that records how many times warm_up() was called."""
 
@@ -187,30 +178,8 @@ class WarmUpCountingToolset(Toolset):
 
 
 class TestToolset:
-    def test_toolset_with_multiple_tools(self):
+    def test_toolset_with_multiple_tools(self, add_tool, multiply_tool):
         """Test that a Toolset with multiple tools works properly."""
-        add_tool = Tool(
-            name="add",
-            description="Add two numbers",
-            parameters={
-                "type": "object",
-                "properties": {"a": {"type": "integer"}, "b": {"type": "integer"}},
-                "required": ["a", "b"],
-            },
-            function=add_numbers,
-        )
-
-        multiply_tool = Tool(
-            name="multiply",
-            description="Multiply two numbers",
-            parameters={
-                "type": "object",
-                "properties": {"a": {"type": "integer"}, "b": {"type": "integer"}},
-                "required": ["a", "b"],
-            },
-            function=multiply_numbers,
-        )
-
         toolset = Toolset([add_tool, multiply_tool])
 
         assert len(toolset) == 2
@@ -230,21 +199,10 @@ class TestToolset:
         assert "5" in tool_results
         assert "20" in tool_results
 
-    def test_toolset_adding(self):
+    def test_toolset_adding(self, add_tool):
         """Test that tools can be added to a Toolset."""
         toolset = Toolset()
         assert len(toolset) == 0
-
-        add_tool = Tool(
-            name="add",
-            description="Add two numbers",
-            parameters={
-                "type": "object",
-                "properties": {"a": {"type": "integer"}, "b": {"type": "integer"}},
-                "required": ["a", "b"],
-            },
-            function=add_numbers,
-        )
 
         toolset.add(add_tool)
         assert len(toolset) == 1
@@ -257,41 +215,8 @@ class TestToolset:
         assert len(tool_messages) == 1
         assert tool_messages[0].tool_call_results[0].result == "5"
 
-    def test_toolset_addition(self):
+    def test_toolset_addition(self, add_tool, multiply_tool, subtract_tool):
         """Test that toolsets can be combined."""
-        add_tool = Tool(
-            name="add",
-            description="Add two numbers",
-            parameters={
-                "type": "object",
-                "properties": {"a": {"type": "integer"}, "b": {"type": "integer"}},
-                "required": ["a", "b"],
-            },
-            function=add_numbers,
-        )
-
-        multiply_tool = Tool(
-            name="multiply",
-            description="Multiply two numbers",
-            parameters={
-                "type": "object",
-                "properties": {"a": {"type": "integer"}, "b": {"type": "integer"}},
-                "required": ["a", "b"],
-            },
-            function=multiply_numbers,
-        )
-
-        subtract_tool = Tool(
-            name="subtract",
-            description="Subtract two numbers",
-            parameters={
-                "type": "object",
-                "properties": {"a": {"type": "integer"}, "b": {"type": "integer"}},
-                "required": ["a", "b"],
-            },
-            function=subtract_numbers,
-        )
-
         toolset1 = Toolset([add_tool])
         toolset2 = Toolset([multiply_tool])
 
@@ -320,30 +245,8 @@ class TestToolset:
         assert "50" in tool_results
         assert "5" in tool_results
 
-    def test_toolset_contains(self):
+    def test_toolset_contains(self, add_tool, multiply_tool):
         """Test that the __contains__ method works correctly."""
-        add_tool = Tool(
-            name="add",
-            description="Add two numbers",
-            parameters={
-                "type": "object",
-                "properties": {"a": {"type": "integer"}, "b": {"type": "integer"}},
-                "required": ["a", "b"],
-            },
-            function=add_numbers,
-        )
-
-        multiply_tool = Tool(
-            name="multiply",
-            description="Multiply two numbers",
-            parameters={
-                "type": "object",
-                "properties": {"a": {"type": "integer"}, "b": {"type": "integer"}},
-                "required": ["a", "b"],
-            },
-            function=multiply_numbers,
-        )
-
         toolset = Toolset([add_tool])
 
         # Test with a tool instance
@@ -355,41 +258,8 @@ class TestToolset:
         assert "multiply" not in toolset
         assert "non_existent_tool" not in toolset
 
-    def test_toolset_add_various_types(self):
+    def test_toolset_add_various_types(self, add_tool, multiply_tool, subtract_tool):
         """Test that the __add__ method works with various object types."""
-        add_tool = Tool(
-            name="add",
-            description="Add two numbers",
-            parameters={
-                "type": "object",
-                "properties": {"a": {"type": "integer"}, "b": {"type": "integer"}},
-                "required": ["a", "b"],
-            },
-            function=add_numbers,
-        )
-
-        multiply_tool = Tool(
-            name="multiply",
-            description="Multiply two numbers",
-            parameters={
-                "type": "object",
-                "properties": {"a": {"type": "integer"}, "b": {"type": "integer"}},
-                "required": ["a", "b"],
-            },
-            function=multiply_numbers,
-        )
-
-        subtract_tool = Tool(
-            name="subtract",
-            description="Subtract two numbers",
-            parameters={
-                "type": "object",
-                "properties": {"a": {"type": "integer"}, "b": {"type": "integer"}},
-                "required": ["a", "b"],
-            },
-            function=subtract_numbers,
-        )
-
         # Test adding a single tool
         toolset1 = Toolset([add_tool])
         result1 = toolset1 + multiply_tool
@@ -418,19 +288,8 @@ class TestToolset:
         with pytest.raises(TypeError):
             toolset1 + 123  # type: ignore[operator]
 
-    def test_toolset_serialization(self):
+    def test_toolset_serialization(self, add_tool):
         """Test that a Toolset can be serialized and deserialized."""
-        add_tool = Tool(
-            name="add",
-            description="Add two numbers",
-            parameters={
-                "type": "object",
-                "properties": {"a": {"type": "integer"}, "b": {"type": "integer"}},
-                "required": ["a", "b"],
-            },
-            function=add_numbers,
-        )
-
         toolset = Toolset([add_tool])
 
         serialized = toolset.to_dict()
@@ -439,7 +298,7 @@ class TestToolset:
 
         assert len(deserialized) == 1
         assert deserialized[0].name == "add"
-        assert deserialized[0].description == "Add two numbers"
+        assert deserialized[0].description == "Add two numbers."
 
         tool_call = ToolCall(tool_name="add", arguments={"a": 2, "b": 3})
         message = ChatMessage.from_assistant(tool_calls=[tool_call])
@@ -448,19 +307,8 @@ class TestToolset:
         assert len(tool_messages) == 1
         assert tool_messages[0].tool_call_results[0].result == "5"
 
-    def test_custom_toolset_serialization(self):
+    def test_custom_toolset_serialization(self, add_tool):
         """Test serialization and deserialization of a custom Toolset subclass."""
-        add_tool = Tool(
-            name="add",
-            description="Add two numbers",
-            parameters={
-                "type": "object",
-                "properties": {"a": {"type": "integer"}, "b": {"type": "integer"}},
-                "required": ["a", "b"],
-            },
-            function=add_numbers,
-        )
-
         custom_attr_value = "custom_value"
         custom_toolset = CustomToolset(tools=[add_tool], custom_attr=custom_attr_value)
 
@@ -483,39 +331,17 @@ class TestToolset:
         assert len(tool_messages) == 1
         assert tool_messages[0].tool_call_results[0].result == "5"
 
-    def test_toolset_duplicate_tool_names(self):
+    def test_toolset_duplicate_tool_names(self, add_tool):
         """Test that a Toolset raises an error for duplicate tool names."""
-        add_tool1 = Tool(
-            name="add",
-            description="Add two numbers (first)",
-            parameters={
-                "type": "object",
-                "properties": {"a": {"type": "integer"}, "b": {"type": "integer"}},
-                "required": ["a", "b"],
-            },
-            function=add_numbers,
-        )
+        with pytest.raises(ValueError, match="Duplicate tool names found"):
+            Toolset([add_tool, add_tool])
 
-        add_tool2 = Tool(
-            name="add",
-            description="Add two numbers (second)",
-            parameters={
-                "type": "object",
-                "properties": {"a": {"type": "integer"}, "b": {"type": "integer"}},
-                "required": ["a", "b"],
-            },
-            function=add_numbers,
-        )
+        toolset = Toolset([add_tool])
 
         with pytest.raises(ValueError, match="Duplicate tool names found"):
-            Toolset([add_tool1, add_tool2])
+            toolset.add(add_tool)
 
-        toolset = Toolset([add_tool1])
-
-        with pytest.raises(ValueError, match="Duplicate tool names found"):
-            toolset.add(add_tool2)
-
-        toolset2 = Toolset([add_tool2])
+        toolset2 = Toolset([add_tool])
         with pytest.raises(ValueError, match="Duplicate tool names found"):
             _ = toolset + toolset2
 
@@ -526,41 +352,19 @@ class TestToolsetIntegration:
     def test_custom_toolset_serde_in_agent(self):
         """Test serialization and deserialization of a custom toolset within an Agent."""
 
-        agent = Agent(chat_generator=MockChatGenerator(), tools=CalculatorToolset())
+        agent = Agent(chat_generator=MockChatGenerator(), tools=DynamicToolset())
 
         agent_dict = agent.to_dict()
 
         tools_dict = agent_dict["init_parameters"]["tools"]
-        assert tools_dict["type"] == "test_toolset.CalculatorToolset"
+        assert tools_dict["type"] == "test_toolset.DynamicToolset"
         assert len(tools_dict["data"]) == 0
 
         new_agent = Agent.from_dict(agent_dict)
-        assert isinstance(new_agent.tools, CalculatorToolset)
+        assert isinstance(new_agent.tools, DynamicToolset)
 
-    def test_regular_toolset_serde_in_agent(self):
+    def test_regular_toolset_serde_in_agent(self, add_tool, multiply_tool):
         """Test serialization and deserialization of regular Toolsets within an Agent."""
-
-        add_tool = Tool(
-            name="add",
-            description="Add two numbers",
-            parameters={
-                "type": "object",
-                "properties": {"a": {"type": "integer"}, "b": {"type": "integer"}},
-                "required": ["a", "b"],
-            },
-            function=add_numbers,
-        )
-
-        multiply_tool = Tool(
-            name="multiply",
-            description="Multiply two numbers",
-            parameters={
-                "type": "object",
-                "properties": {"a": {"type": "integer"}, "b": {"type": "integer"}},
-                "required": ["a", "b"],
-            },
-            function=multiply_numbers,
-        )
 
         toolset = Toolset([add_tool, multiply_tool])
 
@@ -624,19 +428,8 @@ class TestToolsetWithAgent:
 class TestToolsetList:
     """Tests for list[Toolset] functionality."""
 
-    def test_agent_serde_with_list_of_toolsets(self, weather_tool):
+    def test_agent_serde_with_list_of_toolsets(self, weather_tool, add_tool):
         """Test serialization and deserialization of Agent with a list of Toolsets."""
-        add_tool = Tool(
-            name="add",
-            description="Add two numbers",
-            parameters={
-                "type": "object",
-                "properties": {"a": {"type": "integer"}, "b": {"type": "integer"}},
-                "required": ["a", "b"],
-            },
-            function=add_numbers,
-        )
-
         toolset1 = Toolset([weather_tool])
         toolset2 = Toolset([add_tool])
 
@@ -657,30 +450,8 @@ class TestToolsetList:
         assert len(deserialized_agent.tools) == 2
         assert all(isinstance(ts, Toolset) for ts in deserialized_agent.tools)
 
-    def test_pipeline_with_list_of_toolsets(self):
+    def test_pipeline_with_list_of_toolsets(self, add_tool, multiply_tool):
         """Test that a Pipeline can serialize/deserialize an Agent with a list of Toolsets."""
-        add_tool = Tool(
-            name="add",
-            description="Add two numbers",
-            parameters={
-                "type": "object",
-                "properties": {"a": {"type": "integer"}, "b": {"type": "integer"}},
-                "required": ["a", "b"],
-            },
-            function=add_numbers,
-        )
-
-        multiply_tool = Tool(
-            name="multiply",
-            description="Multiply two numbers",
-            parameters={
-                "type": "object",
-                "properties": {"a": {"type": "integer"}, "b": {"type": "integer"}},
-                "required": ["a", "b"],
-            },
-            function=multiply_numbers,
-        )
-
         toolset1 = Toolset([add_tool])
         toolset2 = Toolset([multiply_tool])
 
@@ -700,30 +471,8 @@ class TestToolsetList:
         new_pipeline = Pipeline.from_dict(pipeline_dict)
         assert new_pipeline.to_dict() == pipeline_dict
 
-    def test_list_of_toolsets_runtime_override(self, weather_tool):
+    def test_list_of_toolsets_runtime_override(self, weather_tool, add_tool, multiply_tool):
         """Test that list of Toolsets can be passed as runtime override to Agent.run()."""
-        add_tool = Tool(
-            name="add",
-            description="Add two numbers",
-            parameters={
-                "type": "object",
-                "properties": {"a": {"type": "integer"}, "b": {"type": "integer"}},
-                "required": ["a", "b"],
-            },
-            function=add_numbers,
-        )
-
-        multiply_tool = Tool(
-            name="multiply",
-            description="Multiply two numbers",
-            parameters={
-                "type": "object",
-                "properties": {"a": {"type": "integer"}, "b": {"type": "integer"}},
-                "required": ["a", "b"],
-            },
-            function=multiply_numbers,
-        )
-
         toolset1 = Toolset([weather_tool])
         toolset2 = Toolset([add_tool])
         toolset3 = Toolset([multiply_tool])
