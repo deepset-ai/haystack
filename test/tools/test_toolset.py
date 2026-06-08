@@ -45,10 +45,7 @@ class DynamicToolset(Toolset):
         super().__init__([add])
 
     def to_dict(self):
-        return {
-            "type": generate_qualified_class_name(type(self)),
-            "data": {},  # no data to serialize as we define the tools dynamically
-        }
+        return {"type": generate_qualified_class_name(type(self)), "data": {}}
 
     @classmethod
     def from_dict(cls, data):
@@ -180,7 +177,7 @@ class TestToolset:
         assert "5" in tool_results
         assert "20" in tool_results
 
-    def test_toolset_adding(self, add_tool):
+    def test_toolset_add(self, add_tool):
         """Test that tools can be added to a Toolset."""
         toolset = Toolset()
         assert len(toolset) == 0
@@ -195,15 +192,28 @@ class TestToolset:
         assert len(tool_messages) == 1
         assert tool_messages[0].tool_call_results[0].result == "5"
 
+    def test_toolset_contains(self, add_tool, multiply_tool):
+        """Test that the __contains__ method works correctly."""
+        toolset = Toolset([add_tool])
+        # Test with a tool instance
+        assert add_tool in toolset
+        assert multiply_tool not in toolset
+        # Test with a tool name
+        assert "add" in toolset
+        assert "multiply" not in toolset
+        assert "non_existent_tool" not in toolset
+
     def test_toolset_addition(self, add_tool, multiply_tool, subtract_tool):
         """Test that toolsets can be combined."""
         combined_toolset = Toolset([add_tool]) + Toolset([multiply_tool])
         assert len(combined_toolset) == 2
+        assert isinstance(combined_toolset, Toolset)
 
         combined_toolset = combined_toolset + subtract_tool
         assert len(combined_toolset) == 3
+        assert isinstance(combined_toolset, Toolset)
 
-        tool_names = [tool.name for tool in combined_toolset]
+        tool_names = [t.name for t in combined_toolset]
         assert "add" in tool_names
         assert "multiply" in tool_names
         assert "subtract" in tool_names
@@ -219,19 +229,6 @@ class TestToolset:
         assert "15" in tool_results
         assert "50" in tool_results
         assert "5" in tool_results
-
-    def test_toolset_contains(self, add_tool, multiply_tool):
-        """Test that the __contains__ method works correctly."""
-        toolset = Toolset([add_tool])
-
-        # Test with a tool instance
-        assert add_tool in toolset
-        assert multiply_tool not in toolset
-
-        # Test with a tool name
-        assert "add" in toolset
-        assert "multiply" not in toolset
-        assert "non_existent_tool" not in toolset
 
     def test_toolset_add_various_types(self, add_tool, multiply_tool, subtract_tool):
         """Test that the __add__ method works with various object types."""
