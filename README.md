@@ -71,12 +71,12 @@
 | haystack/components/embedders/types/protocol.py                                     |        6 |        0 |    100% |           |
 | haystack/components/evaluators/\_\_init\_\_.py                                      |        5 |        0 |    100% |           |
 | haystack/components/evaluators/answer\_exact\_match.py                              |       15 |        0 |    100% |           |
-| haystack/components/evaluators/context\_relevance.py                                |       36 |        0 |    100% |           |
+| haystack/components/evaluators/context\_relevance.py                                |       43 |        0 |    100% |           |
 | haystack/components/evaluators/document\_map.py                                     |       46 |        4 |     91% |73, 76-80, 126 |
 | haystack/components/evaluators/document\_mrr.py                                     |       42 |        4 |     90% |71, 74-78, 122 |
 | haystack/components/evaluators/document\_ndcg.py                                    |       43 |        0 |    100% |           |
 | haystack/components/evaluators/document\_recall.py                                  |       69 |        3 |     96% |106, 109-113 |
-| haystack/components/evaluators/faithfulness.py                                      |       36 |        0 |    100% |           |
+| haystack/components/evaluators/faithfulness.py                                      |       43 |        0 |    100% |           |
 | haystack/components/evaluators/llm\_evaluator.py                                    |      109 |        2 |     98% |  216, 232 |
 | haystack/components/evaluators/sas\_evaluator.py                                    |       57 |       25 |     56% |111-125, 153-188 |
 | haystack/components/extractors/\_\_init\_\_.py                                      |        5 |        0 |    100% |           |
@@ -266,7 +266,7 @@
 | haystack/utils/type\_serialization.py                                               |      111 |       12 |     89% |62, 64, 174-175, 186-189, 195, 211-214 |
 | haystack/utils/url\_validation.py                                                   |        4 |        0 |    100% |           |
 | haystack/version.py                                                                 |        5 |        2 |     60% |      9-10 |
-| **TOTAL**                                                                           | **17702** | **1215** | **93%** |           |
+| **TOTAL**                                                                           | **17716** | **1215** | **93%** |           |
 
 
 ## Setup coverage badge
