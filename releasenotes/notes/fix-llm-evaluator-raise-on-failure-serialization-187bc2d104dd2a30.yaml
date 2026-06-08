@@ -1,0 +1,5 @@
+---
+bug_fixes:
+  - |
+    Fixed ``LLMEvaluator.to_dict`` not serializing the ``raise_on_failure`` parameter,
+    causing it to silently reset to ``True`` after a pipeline round-trip.
