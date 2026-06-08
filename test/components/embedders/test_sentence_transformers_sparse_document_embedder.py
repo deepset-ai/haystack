@@ -308,6 +308,22 @@ class TestSentenceTransformersDocumentEmbedder:
             show_progress_bar=True,
         )
 
+    def test_embed_metadata_preserves_falsy_values(self):
+        embedder = SentenceTransformersSparseDocumentEmbedder(
+            model="model",
+            meta_fields_to_embed=["rating", "is_available", "missing", "none_value"],
+            embedding_separator="\n",
+        )
+        embedder.embedding_backend = MagicMock()
+        embedder.embedding_backend.embed.return_value = [SparseEmbedding(indices=[0], values=[0.1])]
+        documents = [Document(content="document", meta={"rating": 0, "is_available": False, "none_value": None})]
+
+        embedder.run(documents=documents)
+
+        embedder.embedding_backend.embed.assert_called_once_with(
+            data=["0\nFalse\ndocument"], batch_size=32, show_progress_bar=True
+        )
+
     def test_prefix_suffix(self):
         embedder = SentenceTransformersSparseDocumentEmbedder(
             model="model",

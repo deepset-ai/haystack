@@ -5,6 +5,7 @@
 from typing import Any, Literal
 
 from haystack import component, default_from_dict, default_to_dict, logging
+from haystack.components.generators.utils import _generators_deprecation_warning
 from haystack.dataclasses import ComponentInfo, StreamingCallbackT, select_streaming_callback
 from haystack.lazy_imports import LazyImport
 from haystack.utils import ComponentDevice, Secret, deserialize_callable, serialize_callable
@@ -87,6 +88,7 @@ class HuggingFaceLocalGenerator:
             In these cases, make sure your prompt has no stop words.
         :param streaming_callback: An optional callable for handling streaming responses.
         """
+        _generators_deprecation_warning("HuggingFaceLocalGenerator", "HuggingFaceLocalChatGenerator")
         transformers_import.check()
 
         self.token = token

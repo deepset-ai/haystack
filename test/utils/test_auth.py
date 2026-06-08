@@ -53,7 +53,7 @@ def test_env_var_secret():
 
     secret = Secret.from_env_var("TEST_ENV_VAR2", strict=False)
     assert secret._strict is False
-    assert secret.resolve_value() == None
+    assert secret.resolve_value() is None
 
     secret = Secret.from_env_var(["TEST_ENV_VAR2", "TEST_ENV_VAR1"], strict=True)
     assert secret._env_vars == ("TEST_ENV_VAR2", "TEST_ENV_VAR1")

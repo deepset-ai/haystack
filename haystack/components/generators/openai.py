@@ -14,7 +14,10 @@ from haystack.components.generators.chat.openai import (
     _convert_chat_completion_chunk_to_streaming_chunk,
     _convert_chat_completion_to_chat_message,
 )
-from haystack.components.generators.utils import _convert_streaming_chunks_to_chat_message
+from haystack.components.generators.utils import (
+    _convert_streaming_chunks_to_chat_message,
+    _generators_deprecation_warning,
+)
 from haystack.dataclasses import (
     ChatMessage,
     ComponentInfo,
@@ -118,6 +121,8 @@ class OpenAIGenerator:
             A dictionary of keyword arguments to configure a custom `httpx.Client`or `httpx.AsyncClient`.
             For more information, see the [HTTPX documentation](https://www.python-httpx.org/api/#client).
         """
+        _generators_deprecation_warning("OpenAIGenerator", "OpenAIChatGenerator")
+
         self.api_key = api_key
         self.model = model
         self.generation_kwargs = generation_kwargs or {}
