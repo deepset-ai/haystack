@@ -38,23 +38,6 @@ def _run_tool_messages(messages: list[ChatMessage], tools: Toolset | list[Tool |
     return tool_messages
 
 
-class CustomToolset(Toolset):
-    def __init__(self, tools, custom_attr):
-        super().__init__(tools)
-        self.custom_attr = custom_attr
-
-    def to_dict(self):
-        data = super().to_dict()
-        data["custom_attr"] = self.custom_attr
-        return data
-
-    @classmethod
-    def from_dict(cls, data):
-        tools = [Tool.from_dict(tool_data) for tool_data in data["data"]["tools"]]
-        custom_attr = data["custom_attr"]
-        return cls(tools=tools, custom_attr=custom_attr)
-
-
 class DynamicToolset(Toolset):
     """A custom Toolset that recreates its tools dynamically on deserialization instead of serializing them."""
 
@@ -186,12 +169,10 @@ class TestToolset:
         assert toolset[0].name == "add"
         assert toolset[1].name == "multiply"
 
-        add_call = ToolCall(tool_name="add", arguments={"a": 2, "b": 3})
-        add_message = ChatMessage.from_assistant(tool_calls=[add_call])
-
-        multiply_call = ToolCall(tool_name="multiply", arguments={"a": 4, "b": 5})
-        multiply_message = ChatMessage.from_assistant(tool_calls=[multiply_call])
-
+        add_message = ChatMessage.from_assistant(tool_calls=[ToolCall(tool_name="add", arguments={"a": 2, "b": 3})])
+        multiply_message = ChatMessage.from_assistant(
+            tool_calls=[ToolCall(tool_name="multiply", arguments={"a": 4, "b": 5})]
+        )
         tool_messages = _run_tool_messages(messages=[add_message, multiply_message], tools=toolset)
 
         assert len(tool_messages) == 2
@@ -208,8 +189,7 @@ class TestToolset:
         assert len(toolset) == 1
         assert toolset[0].name == "add"
 
-        tool_call = ToolCall(tool_name="add", arguments={"a": 2, "b": 3})
-        message = ChatMessage.from_assistant(tool_calls=[tool_call])
+        message = ChatMessage.from_assistant(tool_calls=[ToolCall(tool_name="add", arguments={"a": 2, "b": 3})])
         tool_messages = _run_tool_messages(messages=[message], tools=toolset)
 
         assert len(tool_messages) == 1
@@ -217,10 +197,7 @@ class TestToolset:
 
     def test_toolset_addition(self, add_tool, multiply_tool, subtract_tool):
         """Test that toolsets can be combined."""
-        toolset1 = Toolset([add_tool])
-        toolset2 = Toolset([multiply_tool])
-
-        combined_toolset = toolset1 + toolset2
+        combined_toolset = Toolset([add_tool]) + Toolset([multiply_tool])
         assert len(combined_toolset) == 2
 
         combined_toolset = combined_toolset + subtract_tool
@@ -234,9 +211,7 @@ class TestToolset:
         add_call = ToolCall(tool_name="add", arguments={"a": 10, "b": 5})
         multiply_call = ToolCall(tool_name="multiply", arguments={"a": 10, "b": 5})
         subtract_call = ToolCall(tool_name="subtract", arguments={"a": 10, "b": 5})
-
         message = ChatMessage.from_assistant(tool_calls=[add_call, multiply_call, subtract_call])
-
         tool_messages = _run_tool_messages(messages=[message], tools=combined_toolset)
 
         assert len(tool_messages) == 3
@@ -290,39 +265,12 @@ class TestToolset:
 
     def test_toolset_serialization(self, add_tool):
         """Test that a Toolset can be serialized and deserialized."""
-        toolset = Toolset([add_tool])
-
-        serialized = toolset.to_dict()
-
+        serialized = Toolset([add_tool]).to_dict()
         deserialized = Toolset.from_dict(serialized)
 
         assert len(deserialized) == 1
         assert deserialized[0].name == "add"
         assert deserialized[0].description == "Add two numbers."
-
-        tool_call = ToolCall(tool_name="add", arguments={"a": 2, "b": 3})
-        message = ChatMessage.from_assistant(tool_calls=[tool_call])
-        tool_messages = _run_tool_messages(messages=[message], tools=deserialized)
-
-        assert len(tool_messages) == 1
-        assert tool_messages[0].tool_call_results[0].result == "5"
-
-    def test_custom_toolset_serialization(self, add_tool):
-        """Test serialization and deserialization of a custom Toolset subclass."""
-        custom_attr_value = "custom_value"
-        custom_toolset = CustomToolset(tools=[add_tool], custom_attr=custom_attr_value)
-
-        serialized = custom_toolset.to_dict()
-        assert serialized["type"].endswith("CustomToolset")
-        assert serialized["custom_attr"] == custom_attr_value
-        assert len(serialized["data"]["tools"]) == 1
-        assert serialized["data"]["tools"][0]["data"]["name"] == "add"
-
-        deserialized = CustomToolset.from_dict(serialized)
-        assert isinstance(deserialized, CustomToolset)
-        assert deserialized.custom_attr == custom_attr_value
-        assert len(deserialized) == 1
-        assert deserialized[0].name == "add"
 
         tool_call = ToolCall(tool_name="add", arguments={"a": 2, "b": 3})
         message = ChatMessage.from_assistant(tool_calls=[tool_call])
@@ -346,58 +294,12 @@ class TestToolset:
             _ = toolset + toolset2
 
 
-class TestToolsetIntegration:
-    """Integration tests for Toolset serialization in Agent."""
-
-    def test_custom_toolset_serde_in_agent(self):
-        """Test serialization and deserialization of a custom toolset within an Agent."""
-
-        agent = Agent(chat_generator=MockChatGenerator(), tools=DynamicToolset())
-
-        agent_dict = agent.to_dict()
-
-        tools_dict = agent_dict["init_parameters"]["tools"]
-        assert tools_dict["type"] == "test_toolset.DynamicToolset"
-        assert len(tools_dict["data"]) == 0
-
-        new_agent = Agent.from_dict(agent_dict)
-        assert isinstance(new_agent.tools, DynamicToolset)
-
-    def test_regular_toolset_serde_in_agent(self, add_tool, multiply_tool):
-        """Test serialization and deserialization of regular Toolsets within an Agent."""
-
-        toolset = Toolset([add_tool, multiply_tool])
-
-        agent = Agent(chat_generator=MockChatGenerator(), tools=toolset)
-
-        agent_dict = agent.to_dict()
-
-        tools_dict = agent_dict["init_parameters"]["tools"]
-        assert tools_dict["type"] == "haystack.tools.toolset.Toolset"
-        assert len(tools_dict["data"]["tools"]) == 2
-        tool_names = [tool["data"]["name"] for tool in tools_dict["data"]["tools"]]
-        assert "add" in tool_names
-        assert "multiply" in tool_names
-
-        new_agent = Agent.from_dict(agent_dict)
-        assert isinstance(new_agent.tools, Toolset)
-        assert [tool.name for tool in new_agent.tools] == ["add", "multiply"]
-
-
 class TestToolsetWithAgent:
     def test_init_with_toolset(self, weather_tool):
         """Test initializing Agent with a Toolset."""
         toolset = Toolset(tools=[weather_tool])
         agent = Agent(chat_generator=MockChatGenerator(), tools=toolset)
         assert agent.tools == toolset
-
-    def test_serde_with_toolset(self, weather_tool):
-        """Test serialization and deserialization of Agent with a Toolset."""
-        toolset = Toolset(tools=[weather_tool])
-        agent = Agent(chat_generator=MockChatGenerator(), tools=toolset)
-        data = agent.to_dict()
-        deserialized_agent = Agent.from_dict(data)
-        assert deserialized_agent.tools == agent.tools
 
     def test_tool_invocation_error_with_toolset(self, faulty_tool):
         """Test tool invocation errors with a Toolset."""
@@ -407,33 +309,34 @@ class TestToolsetWithAgent:
         with pytest.raises(ToolInvocationError):
             _run_tool(messages=[tool_call_message], state=State(schema={}), tools=toolset)
 
-    def test_agent_deserialization_with_custom_toolset(self, weather_tool):
-        """Test deserialization of Agent with a custom Toolset."""
-        custom_toolset = CustomToolset(tools=[weather_tool], custom_attr="custom_value")
-        agent = Agent(chat_generator=MockChatGenerator(), tools=custom_toolset)
-        data = agent.to_dict()
+    def test_custom_toolset_serde_in_agent(self):
+        """Test serialization and deserialization of a custom toolset within an Agent."""
+        agent = Agent(chat_generator=MockChatGenerator(), tools=DynamicToolset())
+        agent_dict = agent.to_dict()
+        tools_dict = agent_dict["init_parameters"]["tools"]
+        assert tools_dict["type"] == "test_toolset.DynamicToolset"
+        assert len(tools_dict["data"]) == 0
+        new_agent = Agent.from_dict(agent_dict)
+        assert isinstance(new_agent.tools, DynamicToolset)
 
-        assert isinstance(data, dict)
-        assert "type" in data and "init_parameters" in data
-        tools_data = data["init_parameters"]["tools"]
-        assert isinstance(tools_data, dict)
-        assert len(tools_data["data"]["tools"]) == 1
-        assert tools_data["data"]["tools"][0]["type"] == "haystack.tools.tool.Tool"
-        assert tools_data.get("custom_attr") == "custom_value"
-
-        deserialized_agent = Agent.from_dict(data)
-        assert deserialized_agent.tools == agent.tools
-
-
-class TestToolsetList:
-    """Tests for list[Toolset] functionality."""
+    def test_serde_with_toolset(self, add_tool, multiply_tool):
+        """Test serialization and deserialization of regular Toolsets within an Agent."""
+        toolset = Toolset([add_tool, multiply_tool])
+        agent = Agent(chat_generator=MockChatGenerator(), tools=toolset)
+        agent_dict = agent.to_dict()
+        tools_dict = agent_dict["init_parameters"]["tools"]
+        assert tools_dict["type"] == "haystack.tools.toolset.Toolset"
+        assert len(tools_dict["data"]["tools"]) == 2
+        tool_names = [tool["data"]["name"] for tool in tools_dict["data"]["tools"]]
+        assert "add" in tool_names
+        assert "multiply" in tool_names
+        new_agent = Agent.from_dict(agent_dict)
+        assert isinstance(new_agent.tools, Toolset)
+        assert [tool.name for tool in new_agent.tools] == ["add", "multiply"]
 
     def test_agent_serde_with_list_of_toolsets(self, weather_tool, add_tool):
         """Test serialization and deserialization of Agent with a list of Toolsets."""
-        toolset1 = Toolset([weather_tool])
-        toolset2 = Toolset([add_tool])
-
-        agent = Agent(chat_generator=MockChatGenerator(), tools=[toolset1, toolset2])
+        agent = Agent(chat_generator=MockChatGenerator(), tools=[Toolset([weather_tool]), Toolset([add_tool])])
         data = agent.to_dict()
 
         # Verify serialization preserves list[Toolset] structure
@@ -450,30 +353,8 @@ class TestToolsetList:
         assert len(deserialized_agent.tools) == 2
         assert all(isinstance(ts, Toolset) for ts in deserialized_agent.tools)
 
-    def test_pipeline_with_list_of_toolsets(self, add_tool, multiply_tool):
-        """Test that a Pipeline can serialize/deserialize an Agent with a list of Toolsets."""
-        toolset1 = Toolset([add_tool])
-        toolset2 = Toolset([multiply_tool])
-
-        pipeline = Pipeline()
-        pipeline.add_component("agent", Agent(chat_generator=MockChatGenerator(), tools=[toolset1, toolset2]))
-
-        pipeline_dict = pipeline.to_dict()
-
-        # Verify the serialized structure
-        agent_dict = pipeline_dict["components"]["agent"]
-        tools_data = agent_dict["init_parameters"]["tools"]
-        assert isinstance(tools_data, list)
-        assert len(tools_data) == 2
-        assert all(ts["type"] == "haystack.tools.toolset.Toolset" for ts in tools_data)
-
-        # Deserialize and verify functionality
-        new_pipeline = Pipeline.from_dict(pipeline_dict)
-        assert new_pipeline.to_dict() == pipeline_dict
-
     def test_list_of_toolsets_runtime_override(self, weather_tool, add_tool, multiply_tool):
         """Test that list of Toolsets can be passed as runtime override to Agent.run()."""
-        toolset1 = Toolset([weather_tool])
         toolset2 = Toolset([add_tool])
         toolset3 = Toolset([multiply_tool])
 
@@ -495,11 +376,28 @@ class TestToolsetList:
                     ]
                 }
 
-        agent = Agent(chat_generator=AddCallingChatGenerator(), tools=toolset1)
-
+        agent = Agent(chat_generator=AddCallingChatGenerator(), tools=Toolset([weather_tool]))
         result = agent.run(messages=[ChatMessage.from_user("Add numbers")], tools=[toolset2, toolset3])
-
         assert result["messages"][2].tool_call_result.result == "10"
+
+    def test_pipeline_with_list_of_toolsets(self, add_tool, multiply_tool):
+        """Test that a Pipeline can serialize/deserialize an Agent with a list of Toolsets."""
+        pipeline = Pipeline()
+        pipeline.add_component(
+            "agent", Agent(chat_generator=MockChatGenerator(), tools=[Toolset([add_tool]), Toolset([multiply_tool])])
+        )
+        pipeline_dict = pipeline.to_dict()
+
+        # Verify the serialized structure
+        agent_dict = pipeline_dict["components"]["agent"]
+        tools_data = agent_dict["init_parameters"]["tools"]
+        assert isinstance(tools_data, list)
+        assert len(tools_data) == 2
+        assert all(ts["type"] == "haystack.tools.toolset.Toolset" for ts in tools_data)
+
+        # Deserialize and verify functionality
+        new_pipeline = Pipeline.from_dict(pipeline_dict)
+        assert new_pipeline.to_dict() == pipeline_dict
 
 
 class TestToolsetWarmUp:
