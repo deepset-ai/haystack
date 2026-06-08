@@ -2,6 +2,6 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from haystack.tools.skills.skill_toolset import SkillToolset
+from .protocol import SkillStore
 
-__all__ = ["SkillToolset"]
+__all__ = ["SkillStore"]
