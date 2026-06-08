@@ -72,7 +72,6 @@ def faulty_tool():
     )
 
 
-# Defined at module level (not inside the fixtures) so the underlying functions are importable and serializable.
 @tool
 def add(a: Annotated[int, "first number"], b: Annotated[int, "second number"]) -> int:
     """Add two numbers."""
