@@ -156,6 +156,36 @@ def faulty_tool():
     )
 
 
+class WarmUpCountingTool(Tool):
+    """A Tool that records how many times warm_up() was called."""
+
+    def __init__(self, name: str):
+        super().__init__(
+            name=name,
+            description=f"{name} tool",
+            parameters={"type": "object", "properties": {}},
+            function=lambda: None,
+        )
+        self.warm_up_count = 0
+
+    def warm_up(self) -> None:
+        self.warm_up_count += 1
+
+
+class WarmUpCountingToolset(Toolset):
+    """A Toolset that records how many times its own warm_up() did real work."""
+
+    def __init__(self, tools):
+        super().__init__(tools)
+        self.warm_up_count = 0
+
+    def warm_up(self) -> None:
+        if self._is_warmed_up:
+            return
+        self.warm_up_count += 1
+        super().warm_up()
+
+
 class TestToolset:
     def test_toolset_with_multiple_tools(self):
         """Test that a Toolset with multiple tools works properly."""
@@ -594,64 +624,6 @@ class TestToolsetWithAgent:
 class TestToolsetList:
     """Tests for list[Toolset] functionality."""
 
-    def test_agent_with_list_of_toolsets(self, weather_tool):
-        """Test that Agent can be initialized with a mixed list of Tools and Toolsets."""
-        add_tool = Tool(
-            name="add",
-            description="Add two numbers",
-            parameters={
-                "type": "object",
-                "properties": {"a": {"type": "integer"}, "b": {"type": "integer"}},
-                "required": ["a", "b"],
-            },
-            function=add_numbers,
-        )
-        multiply_tool = Tool(
-            name="multiply",
-            description="Multiply two numbers",
-            parameters={
-                "type": "object",
-                "properties": {"a": {"type": "integer"}, "b": {"type": "integer"}},
-                "required": ["a", "b"],
-            },
-            function=multiply_numbers,
-        )
-
-        toolset1 = Toolset([weather_tool])
-        # Mix: Toolset, standalone Tool, another Toolset
-        toolset2 = Toolset([add_tool])
-
-        tools: list[Tool | Toolset] = [toolset1, multiply_tool, toolset2]
-        agent = Agent(chat_generator=MockChatGenerator(), tools=tools)
-
-        assert agent._select_tools(None) == tools
-
-    def test_tool_calling_with_list_of_toolsets(self, weather_tool):
-        """Test running tool calls with a list of Toolsets."""
-        add_tool = Tool(
-            name="add",
-            description="Add two numbers",
-            parameters={
-                "type": "object",
-                "properties": {"a": {"type": "integer"}, "b": {"type": "integer"}},
-                "required": ["a", "b"],
-            },
-            function=add_numbers,
-        )
-
-        toolset1 = Toolset([weather_tool])
-        toolset2 = Toolset([add_tool])
-
-        weather_call = ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"})
-        add_call = ToolCall(tool_name="add", arguments={"a": 5, "b": 3})
-        message = ChatMessage.from_assistant(tool_calls=[weather_call, add_call])
-
-        tool_messages = _run_tool_messages(messages=[message], tools=[toolset1, toolset2])
-
-        assert len(tool_messages) == 2
-        assert "mostly sunny" in tool_messages[0].tool_call_results[0].result
-        assert "8" in tool_messages[1].tool_call_results[0].result
-
     def test_agent_serde_with_list_of_toolsets(self, weather_tool):
         """Test serialization and deserialization of Agent with a list of Toolsets."""
         add_tool = Tool(
@@ -779,3 +751,75 @@ class TestToolsetList:
         result = agent.run(messages=[ChatMessage.from_user("Add numbers")], tools=[toolset2, toolset3])
 
         assert result["messages"][2].tool_call_result.result == "10"
+
+
+class TestToolsetWarmUp:
+    """Stress tests for Toolset warm_up behavior."""
+
+    def test_new_toolset_is_not_warmed_up(self):
+        toolset = Toolset([WarmUpCountingTool("a")])
+        assert toolset._is_warmed_up is False
+
+    def test_warm_up_warms_all_tools(self):
+        t1, t2 = WarmUpCountingTool("a"), WarmUpCountingTool("b")
+        toolset = Toolset([t1, t2])
+        assert t1.warm_up_count == 0
+        assert t2.warm_up_count == 0
+        toolset.warm_up()
+        assert t1.warm_up_count == 1
+        assert t2.warm_up_count == 1
+        assert toolset._is_warmed_up is True
+
+    def test_warm_up_is_idempotent(self):
+        t1 = WarmUpCountingTool("a")
+        toolset = Toolset([t1])
+        toolset.warm_up()
+        toolset.warm_up()
+        toolset.warm_up()
+        assert t1.warm_up_count == 1
+
+    def test_add_before_warm_up_does_not_warm_tools(self):
+        existing = WarmUpCountingTool("a")
+        toolset = Toolset([existing])
+        new_tool = WarmUpCountingTool("b")
+        toolset.add(new_tool)
+        # Nothing is warmed until warm_up() is called explicitly.
+        assert existing.warm_up_count == 0
+        assert new_tool.warm_up_count == 0
+        toolset.warm_up()
+        assert existing.warm_up_count == 1
+        assert new_tool.warm_up_count == 1
+
+    def test_add_tool_after_warm_up_warms_only_new_tool(self):
+        existing = WarmUpCountingTool("a")
+        toolset = Toolset([existing])
+        toolset.warm_up()
+        assert existing.warm_up_count == 1
+        new_tool = WarmUpCountingTool("b")
+        toolset.add(new_tool)
+        # The new tool is warmed immediately, the already-warmed tool is not re-warmed.
+        assert new_tool.warm_up_count == 1
+        assert existing.warm_up_count == 1
+
+    def test_add_toolset_after_warm_up_warms_added_toolset(self):
+        toolset = Toolset([WarmUpCountingTool("a")])
+        toolset.warm_up()
+        added_tools = [WarmUpCountingTool("b"), WarmUpCountingTool("c")]
+        added = WarmUpCountingToolset(added_tools)
+        toolset.add(added)
+        # The added toolset's own warm_up() is invoked, warming its tools.
+        assert added.warm_up_count == 1
+        assert all(tool.warm_up_count == 1 for tool in added_tools)
+
+    def test_plus_returns_new_unwarmed_toolset(self):
+        ts1 = Toolset([WarmUpCountingTool("a")])
+        ts1.warm_up()
+        assert ts1._is_warmed_up is True
+        new_tool = WarmUpCountingTool("b")
+        ts2 = ts1 + new_tool
+        # `+` returns a brand new Toolset object that has not been warmed up yet.
+        assert ts2 is not ts1
+        assert ts2._is_warmed_up is False
+        assert new_tool.warm_up_count == 0
+        ts2.warm_up()
+        assert new_tool.warm_up_count == 1

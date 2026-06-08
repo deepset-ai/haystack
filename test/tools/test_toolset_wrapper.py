@@ -6,6 +6,7 @@ import pytest
 
 from haystack.components.agents import Agent
 from haystack.core.component.component import component
+from haystack.core.serialization import generate_qualified_class_name
 from haystack.tools import Tool, Toolset
 from haystack.tools.toolset import _ToolsetWrapper
 
@@ -68,6 +69,59 @@ def subtract_tool():
     )
 
 
+class WarmUpCountingTool(Tool):
+    """A Tool that records how many times warm_up() was called."""
+
+    def __init__(self, name: str):
+        super().__init__(
+            name=name,
+            description=f"{name} tool",
+            parameters={"type": "object", "properties": {}},
+            function=lambda: None,
+        )
+        self.warm_up_count = 0
+
+    def warm_up(self) -> None:
+        self.warm_up_count += 1
+
+
+class WarmUpCountingToolset(Toolset):
+    """A Toolset that records how many times its own warm_up() did real work."""
+
+    def __init__(self, tools):
+        super().__init__(tools)
+        self.warm_up_count = 0
+
+    def warm_up(self) -> None:
+        if self._is_warmed_up:
+            return
+        self.warm_up_count += 1
+        super().warm_up()
+
+
+class RebuildingToolset(Toolset):
+    """A toolset that rebuilds its tools on from_dict() instead of serializing them (like a dynamic toolset)."""
+
+    def __init__(self):
+        super().__init__(
+            [
+                Tool(
+                    name="rebuilt",
+                    description="A rebuilt tool",
+                    parameters={"type": "object", "properties": {}},
+                    function=add_numbers,
+                )
+            ]
+        )
+
+    def to_dict(self):
+        return {"type": generate_qualified_class_name(type(self)), "data": {}}
+
+    @classmethod
+    def from_dict(cls, data):
+        return cls()
+
+
 class TestToolsetWrapper:
     """Tests for the _ToolsetWrapper class"""
 
@@ -117,3 +171,80 @@ class TestToolsetWrapper:
         toolset_with_dup = Toolset([add_tool])
         with pytest.raises(ValueError, match="Duplicate tool names found"):
             _ = result + toolset_with_dup
+
+
+class TestToolsetWrapperWarmUp:
+    """Tests for warm_up behavior of _ToolsetWrapper."""
+
+    def test_new_wrapper_is_not_warmed_up(self):
+        wrapper = Toolset([WarmUpCountingTool("a")]) + Toolset([WarmUpCountingTool("b")])
+        assert wrapper._is_warmed_up is False
+
+    def test_warm_up_delegates_to_each_toolset(self):
+        ts1 = WarmUpCountingToolset([WarmUpCountingTool("a")])
+        ts2 = WarmUpCountingToolset([WarmUpCountingTool("b")])
+        wrapper = ts1 + ts2
+
+        wrapper.warm_up()
+
+        assert ts1.warm_up_count == 1
+        assert ts2.warm_up_count == 1
+        assert wrapper._is_warmed_up is True
+
+    def test_warm_up_is_idempotent(self):
+        ts1 = WarmUpCountingToolset([WarmUpCountingTool("a")])
+        ts2 = WarmUpCountingToolset([WarmUpCountingTool("b")])
+        wrapper = ts1 + ts2
+
+        wrapper.warm_up()
+        wrapper.warm_up()
+        wrapper.warm_up()
+
+        assert ts1.warm_up_count == 1
+        assert ts2.warm_up_count == 1
+
+
+class TestToolsetWrapperSerialization:
+    """Tests for to_dict/from_dict of _ToolsetWrapper."""
+
+    def test_to_dict(self, add_tool, multiply_tool):
+        wrapper = Toolset([add_tool]) + Toolset([multiply_tool])
+
+        data = wrapper.to_dict()
+
+        assert data["type"] == "haystack.tools.toolset._ToolsetWrapper"
+        assert len(data["data"]["toolsets"]) == 2
+        assert all(ts["type"] == "haystack.tools.toolset.Toolset" for ts in data["data"]["toolsets"])
+
+    def test_from_dict_round_trip(self, add_tool, multiply_tool):
+        wrapper = Toolset([add_tool]) + Toolset([multiply_tool])
+
+        restored = _ToolsetWrapper.from_dict(wrapper.to_dict())
+
+        assert isinstance(restored, _ToolsetWrapper)
+        assert len(restored) == 2
+        assert len(restored.toolsets) == 2
+        assert "add" in restored
+        assert "multiply" in restored
+
+    def test_to_dict_preserves_subclass_serialization(self, add_tool):
+        # RebuildingToolset has a custom to_dict that serializes no tools (they are rebuilt on from_dict).
+        wrapper = RebuildingToolset() + Toolset([add_tool])
+
+        data = wrapper.to_dict()
+
+        # Each wrapped toolset is serialized via its own to_dict, so the custom one is preserved.
+        assert data["data"]["toolsets"][0]["type"].endswith("RebuildingToolset")
+        assert data["data"]["toolsets"][0]["data"] == {}
+
+        restored = _ToolsetWrapper.from_dict(data)
+        assert isinstance(restored.toolsets[0], RebuildingToolset)
+        assert "rebuilt" in restored
+        assert "add" in restored
+
+    def test_from_dict_rejects_non_toolset(self, add_tool):
+        data = Toolset([add_tool]).to_dict()
+        data["data"] = {"toolsets": [{"type": "haystack.tools.tool.Tool", "data": {}}]}
+
+        with pytest.raises(TypeError, match="is not a subclass of Toolset"):
+            _ToolsetWrapper.from_dict(data)
