@@ -101,7 +101,7 @@
 | haystack/components/generators/chat/types/\_\_init\_\_.py                           |        2 |        0 |    100% |           |
 | haystack/components/generators/chat/types/protocol.py                               |        4 |        0 |    100% |           |
 | haystack/components/generators/hugging\_face\_api.py                                |       88 |        3 |     97% |166-167, 265 |
-| haystack/components/generators/hugging\_face\_local.py                              |       89 |        7 |     92% |130-132, 195, 244-250 |
+| haystack/components/generators/hugging\_face\_local.py                              |       90 |        7 |     92% |130-132, 195, 244-250 |
 | haystack/components/generators/openai.py                                            |       69 |        4 |     94% |154, 220, 222, 248 |
 | haystack/components/generators/openai\_dalle.py                                     |       49 |        0 |    100% |           |
 | haystack/components/generators/utils.py                                             |       88 |        9 |     90% |41, 55, 101, 134-135, 167, 177, 179, 181 |
@@ -266,7 +266,7 @@
 | haystack/utils/type\_serialization.py                                               |      111 |       12 |     89% |62, 64, 174-175, 186-189, 195, 211-214 |
 | haystack/utils/url\_validation.py                                                   |        4 |        0 |    100% |           |
 | haystack/version.py                                                                 |        5 |        2 |     60% |      9-10 |
-| **TOTAL**                                                                           | **17701** | **1215** | **93%** |           |
+| **TOTAL**                                                                           | **17702** | **1215** | **93%** |           |
 
 
 ## Setup coverage badge
