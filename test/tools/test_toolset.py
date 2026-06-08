@@ -10,27 +10,12 @@ from haystack import Pipeline, component
 from haystack.components.agents import Agent
 from haystack.components.agents.state import State
 from haystack.components.agents.tool_calling import _run_tool
+from haystack.components.generators.chat import OpenAIChatGenerator
 from haystack.core.serialization import generate_qualified_class_name
 from haystack.dataclasses import ChatMessage
 from haystack.dataclasses.chat_message import ToolCall
 from haystack.tools import Tool, Toolset, tool
 from haystack.tools.errors import ToolInvocationError
-
-
-@component
-class MockChatGenerator:
-    def to_dict(self):
-        return {"type": "test_toolset.MockChatGenerator", "init_parameters": {}}
-
-    @classmethod
-    def from_dict(cls, data):
-        return cls()
-
-    @component.output_types(replies=list[ChatMessage])
-    def run(
-        self, messages: list[ChatMessage], tools: list[Tool] | Toolset | None = None, **kwargs: Any
-    ) -> dict[str, list[ChatMessage]]:
-        return {"replies": [ChatMessage.from_assistant("done")]}
 
 
 def _run_tool_messages(messages: list[ChatMessage], tools: Toolset | list[Tool | Toolset]) -> list[ChatMessage]:
@@ -266,10 +251,11 @@ class TestToolset:
 
 
 class TestToolsetWithAgent:
-    def test_init_with_toolset(self, weather_tool):
+    def test_init_with_toolset(self, weather_tool, monkeypatch):
         """Test initializing Agent with a Toolset."""
+        monkeypatch.setenv("OPENAI_API_KEY", "test")
         toolset = Toolset(tools=[weather_tool])
-        agent = Agent(chat_generator=MockChatGenerator(), tools=toolset)
+        agent = Agent(chat_generator=OpenAIChatGenerator(), tools=toolset)
         assert agent.tools == toolset
 
     def test_tool_invocation_error_with_toolset(self, faulty_tool):
@@ -280,9 +266,10 @@ class TestToolsetWithAgent:
         with pytest.raises(ToolInvocationError):
             _run_tool(messages=[tool_call_message], state=State(schema={}), tools=toolset)
 
-    def test_custom_toolset_serde_in_agent(self):
+    def test_custom_toolset_serde_in_agent(self, monkeypatch):
         """Test serialization and deserialization of a custom toolset within an Agent."""
-        agent = Agent(chat_generator=MockChatGenerator(), tools=DynamicToolset())
+        monkeypatch.setenv("OPENAI_API_KEY", "test")
+        agent = Agent(chat_generator=OpenAIChatGenerator(), tools=DynamicToolset())
         agent_dict = agent.to_dict()
         tools_dict = agent_dict["init_parameters"]["tools"]
         assert tools_dict["type"] == "test_toolset.DynamicToolset"
@@ -290,10 +277,11 @@ class TestToolsetWithAgent:
         new_agent = Agent.from_dict(agent_dict)
         assert isinstance(new_agent.tools, DynamicToolset)
 
-    def test_serde_with_toolset(self, add_tool, multiply_tool):
+    def test_serde_with_toolset(self, add_tool, multiply_tool, monkeypatch):
         """Test serialization and deserialization of regular Toolsets within an Agent."""
+        monkeypatch.setenv("OPENAI_API_KEY", "test")
         toolset = Toolset([add_tool, multiply_tool])
-        agent = Agent(chat_generator=MockChatGenerator(), tools=toolset)
+        agent = Agent(chat_generator=OpenAIChatGenerator(), tools=toolset)
         agent_dict = agent.to_dict()
         tools_dict = agent_dict["init_parameters"]["tools"]
         assert tools_dict["type"] == "haystack.tools.toolset.Toolset"
@@ -305,9 +293,10 @@ class TestToolsetWithAgent:
         assert isinstance(new_agent.tools, Toolset)
         assert [tool.name for tool in new_agent.tools] == ["add", "multiply"]
 
-    def test_agent_serde_with_list_of_toolsets(self, weather_tool, add_tool):
+    def test_agent_serde_with_list_of_toolsets(self, weather_tool, add_tool, monkeypatch):
         """Test serialization and deserialization of Agent with a list of Toolsets."""
-        agent = Agent(chat_generator=MockChatGenerator(), tools=[Toolset([weather_tool]), Toolset([add_tool])])
+        monkeypatch.setenv("OPENAI_API_KEY", "test")
+        agent = Agent(chat_generator=OpenAIChatGenerator(), tools=[Toolset([weather_tool]), Toolset([add_tool])])
         data = agent.to_dict()
 
         # Verify serialization preserves list[Toolset] structure
@@ -351,11 +340,12 @@ class TestToolsetWithAgent:
         result = agent.run(messages=[ChatMessage.from_user("Add numbers")], tools=[toolset2, toolset3])
         assert result["messages"][2].tool_call_result.result == "10"
 
-    def test_pipeline_with_list_of_toolsets(self, add_tool, multiply_tool):
+    def test_pipeline_with_list_of_toolsets(self, add_tool, multiply_tool, monkeypatch):
         """Test that a Pipeline can serialize/deserialize an Agent with a list of Toolsets."""
+        monkeypatch.setenv("OPENAI_API_KEY", "test")
         pipeline = Pipeline()
         pipeline.add_component(
-            "agent", Agent(chat_generator=MockChatGenerator(), tools=[Toolset([add_tool]), Toolset([multiply_tool])])
+            "agent", Agent(chat_generator=OpenAIChatGenerator(), tools=[Toolset([add_tool]), Toolset([multiply_tool])])
         )
         pipeline_dict = pipeline.to_dict()
 
