@@ -150,6 +150,7 @@ class SearchableToolset(Toolset):
         self._catalog = flatten_tools_or_toolsets(self._raw_catalog)
 
         if self._is_passthrough():
+            # TODO I don't know why this is needed in passthrough mode but not in searchable mode.
             for tool in self._catalog:
                 tool.warm_up()
         else:
@@ -218,6 +219,7 @@ class SearchableToolset(Toolset):
             tool_names = []
             for doc in results:
                 tool = tool_by_name[doc.meta["tool_name"]]
+                # TODO Why do we need to warm up twice?
                 tool.warm_up()
                 self._discovered_tools[tool.name] = tool
                 tool_names.append(tool.name)

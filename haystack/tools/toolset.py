@@ -169,6 +169,8 @@ class Toolset:
 
         :returns: An iterator yielding Tool instances
         """
+        # TODO Should we be calling warm_up() in here as we go like in SearchableToolset?
+        #      I guess a test could be passing individual MCPTool(s) in here to see if they work properly.
         return iter(self.tools)
 
     def __contains__(self, item: str | Tool) -> bool:
@@ -188,6 +190,7 @@ class Toolset:
             return item in self.tools
         return False
 
+    # TODO Why aren't these warm up methods idempotent?
     def warm_up(self) -> None:
         """
         Prepare the Toolset for use.
@@ -338,6 +341,7 @@ class _ToolsetWrapper(Toolset):
         """Check if a tool is in any of the toolsets."""
         return any(item in toolset for toolset in self.toolsets)
 
+    # TODO Why aren't these methods idempotent?
     def warm_up(self) -> None:
         """Warm up all toolsets."""
         for toolset in self.toolsets:
