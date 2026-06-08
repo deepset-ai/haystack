@@ -23,36 +23,50 @@ class SearchableToolset(Toolset):
     """
     Dynamic tool discovery from large catalogs using BM25 search.
 
-    This Toolset enables LLMs to discover and use tools from large catalogs through
-    BM25-based search. Instead of exposing all tools at once (which can overwhelm the
-    LLM context), it provides a `search_tools` bootstrap tool that allows the LLM to
-    find and load specific tools as needed.
+    This Toolset enables LLMs to discover and use tools from large catalogs through BM25-based search.
+    Instead of exposing all tools at once (which can overwhelm the LLM context), it provides a `search_tools` bootstrap
+    tool that allows the LLM to find and load specific tools as needed.
 
-    For very small catalogs (below `search_threshold`), acts as a simple passthrough
-    exposing all tools directly without any discovery mechanism.
+    For very small catalogs (below `search_threshold`), acts as a simple passthrough exposing all tools directly
+    without any discovery mechanism.
 
     ### Usage Example
 
     ```python
+    from typing import Annotated
+
     from haystack.components.agents import Agent
     from haystack.components.generators.chat import OpenAIChatGenerator
     from haystack.dataclasses import ChatMessage
-    from haystack.tools import Tool, SearchableToolset
+    from haystack.tools import SearchableToolset, tool
 
-    # Create a catalog of tools
-    catalog = [
-        Tool(name="get_weather", description="Get weather for a city",
-             parameters={}, function=lambda: None),
-        Tool(name="search_web", description="Search the web",
-             parameters={}, function=lambda: None),
-        # ... 100s more tools
-    ]
-    toolset = SearchableToolset(catalog=catalog)
+    @tool
+    def get_weather(city: Annotated[str, "The city to get the weather for"]) -> str:
+        '''Get the current weather for a city.'''
+        return f"The weather in {city} is 22°C and sunny."
 
-    agent = Agent(chat_generator=OpenAIChatGenerator(), tools=toolset)
+    @tool
+    def search_web(query: Annotated[str, "The query to search the web for"]) -> str:
+        '''Search the web for a query.'''
+        return f"Top result for '{query}': ..."
+
+    @tool
+    def convert_currency(
+        amount: Annotated[float, "The amount to convert"],
+        to_currency: Annotated[str, "The currency to convert to, e.g. 'EUR'"],
+    ) -> str:
+        '''Convert an amount in USD to another currency.'''
+        return f"{amount} USD is {amount * 0.9} {to_currency}"
+
+    # search_threshold=2 means a catalog of 2+ tools activates discovery: the agent only sees the
+    # `search_tools` tool and must search to load the others (set it higher for larger catalogs).
+    toolset = SearchableToolset(catalog=[get_weather, search_web, convert_currency], search_threshold=2)
+
+    agent = Agent(chat_generator=OpenAIChatGenerator(model="gpt-5.4-nano"), tools=toolset)
 
     # The agent is initially provided only with the search_tools tool and will use it to find relevant tools.
     result = agent.run(messages=[ChatMessage.from_user("What's the weather in Milan?")])
+    print(result["last_message"].text)
     ```
     """
 
