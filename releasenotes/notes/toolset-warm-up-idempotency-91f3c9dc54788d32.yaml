@@ -1,17 +1,17 @@
 ---
 enhancements:
   - |
-    `Toolset.warm_up()` is now idempotent: warming up a toolset more than once
-    no longer re-warms its tools. Calling `Toolset.add()` after the toolset has
+    ``Toolset.warm_up()`` is now idempotent: warming up a toolset more than once
+    no longer re-warms its tools. Calling ``Toolset.add()`` after the toolset has
     been warmed up now warms up the newly added tool (or toolset) immediately, so
-    it is ready to use without an extra `warm_up()` call.
+    it is ready to use without an extra ``warm_up()`` call.
   - |
-    `Agent` now warms up tools and toolsets passed at runtime via
-    `Agent.run(tools=...)` / `Agent.run_async(tools=...)`, not only the tools
+    ``Agent`` now warms up tools and toolsets passed at runtime via
+    ``Agent.run(tools=...)`` / ``Agent.run_async(tools=...)``, not only the tools
     provided at initialization.
 fixes:
   - |
-    Combining two toolsets with `+` produces an internal `_ToolsetWrapper` that
-    can now be serialized and deserialized correctly. `to_dict()`/`from_dict()`
-    preserve each wrapped toolset (via its own `to_dict()`), and the wrapper's
-    `warm_up()` is now idempotent.
+    Combining two toolsets with ``+`` produces an internal ``_ToolsetWrapper`` that
+    can now be serialized and deserialized correctly. ``to_dict()``/``from_dict()``
+    preserve each wrapped toolset (via its own ``to_dict()``), and the wrapper's
+    ``warm_up()`` is now idempotent.
