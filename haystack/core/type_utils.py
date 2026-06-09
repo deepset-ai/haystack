@@ -208,11 +208,14 @@ def _get_conversion_strategy(sender: Any, receiver: Any) -> ConversionStrategyTy
         if _contains_type(sender, str) and _contains_type(inner, ChatMessage):
             return ConversionStrategy.WRAP_STR_TO_CHAT_MESSAGE
 
-    # Unwrap: List[T] -> T - for str and ChatMessage only
+    # Unwrap: list[T] -> T, restricted to str / ChatMessage to avoid silent drop of list[1:].
     if _safe_get_origin(sender) is list and (args := get_args(sender)):
         inner = args[0]
-        # Guard against multi-level unwrap (e.g. list[list[str]] -> list[str])
-        if _safe_get_origin(receiver) is not list and _strict_types_are_compatible(inner, receiver):
+        if (
+            _safe_get_origin(receiver) is not list
+            and inner in (str, ChatMessage)
+            and _strict_types_are_compatible(inner, receiver)
+        ):
             return ConversionStrategy.UNWRAP
         # Unwrap + conversion
         # Check that all possible types in the sender list can be converted to the receiver type
@@ -261,8 +264,14 @@ def _chat_message_to_str(value: Any) -> str:
 
 
 def _get_first_item(value: list[Any]) -> Any:
+    """Returns the only element of a one-element list. Raises on empty or multi-element input."""
     if not value:
         raise ValueError("Cannot get first item of an empty list. ")
+    if len(value) > 1:
+        raise ValueError(
+            f"Cannot unwrap a list of {len(value)} items to a single value: "
+            "a list-to-scalar connection only accepts one-element lists; otherwise items would be silently dropped."
+        )
     return value[0]
 
 
