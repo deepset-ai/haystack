@@ -25,10 +25,15 @@ from test.tracing.utils import SpyingTracer
 
 @pytest.fixture(autouse=True)
 def reset_logging_config() -> None:
-    old_handlers = logging.root.handlers.copy()
+    old_root_handlers = logging.root.handlers.copy()
+    # `configure_logging` now scopes its handler to the `haystack` logger (issue #8681), so we must
+    # reset that logger too -- otherwise the Haystack handler leaks across tests.
+    haystack_logger = logging.getLogger("haystack")
+    old_haystack_handlers = haystack_logger.handlers.copy()
     yield
     # Reset the logging configuration after each test to avoid impacting other tests
-    logging.root.handlers = old_handlers
+    logging.root.handlers = old_root_handlers
+    haystack_logger.handlers = old_haystack_handlers
 
 
 @pytest.fixture()
@@ -61,7 +66,7 @@ class TestStructuredLoggingConsoleRendering:
     def test_log_filtering_when_using_debug(self, capfd: CaptureFixture) -> None:
         haystack_logging.configure_logging(use_json=False)
 
-        logger = logging.getLogger(__name__)
+        logger = logging.getLogger("haystack.test.test_logging")
         logger.setLevel(logging.INFO)
         logger.debug("Hello, structured logging!", extra={"key1": "value1", "key2": "value2"})
 
@@ -72,7 +77,7 @@ class TestStructuredLoggingConsoleRendering:
     def test_log_filtering_when_using_debug_and_log_level_is_debug(self, capfd: CaptureFixture) -> None:
         haystack_logging.configure_logging(use_json=False)
 
-        logger = logging.getLogger(__name__)
+        logger = logging.getLogger("haystack.test.test_logging")
         logger.setLevel(logging.DEBUG)
 
         logger.debug("Hello, structured logging!", extra={"key1": "value1", "key2": "value2"})
@@ -89,7 +94,7 @@ class TestStructuredLoggingConsoleRendering:
 
         haystack_logging.configure_logging(use_json=False)
 
-        logger = logging.getLogger(__name__)
+        logger = logging.getLogger("haystack.test.test_logging")
         logger.warning("Hello, structured logging!", extra={"key1": "value1", "key2": "value2"})
 
         # Use `capfd` to capture the output of the final structlog rendering result
@@ -105,7 +110,7 @@ class TestStructuredLoggingConsoleRendering:
 
         haystack_logging.configure_logging()
 
-        logger = logging.getLogger(__name__)
+        logger = logging.getLogger("haystack.test.test_logging")
         logger.warning("Hello, structured logging!", extra={"key1": "value1", "key2": "value2"})
 
         # Use `capfd` to capture the output of the final structlog rendering result
@@ -121,7 +126,7 @@ class TestStructuredLoggingConsoleRendering:
 
         haystack_logging.configure_logging()
 
-        logger = logging.getLogger(__name__)
+        logger = logging.getLogger("haystack.test.test_logging")
         logger.warning("Hello, structured logging!", extra={"key1": "value1", "key2": "value2"})
 
         # Use `capfd` to capture the output of the final structlog rendering result
@@ -137,7 +142,7 @@ class TestStructuredLoggingConsoleRendering:
 
         haystack_logging.configure_logging()
 
-        logger = logging.getLogger(__name__)
+        logger = logging.getLogger("haystack.test.test_logging")
         logger.warning("Hello, structured logging!", extra={"key1": "value1", "key2": "value2"})
 
         # Use `capfd` to capture the output of the final structlog rendering result
@@ -149,7 +154,7 @@ class TestStructuredLoggingConsoleRendering:
     def test_console_rendered_structured_log(self, capfd: CaptureFixture) -> None:
         haystack_logging.configure_logging()
 
-        logger = logging.getLogger(__name__)
+        logger = logging.getLogger("haystack.test.test_logging")
         logger.warning("Hello, structured logging!", extra={"key1": "value1", "key2": "value2"})
 
         # Use `capfd` to capture the output of the final structlog rendering result
@@ -170,7 +175,7 @@ class TestStructuredLoggingConsoleRendering:
     def test_logging_exceptions(self, capfd: CaptureFixture) -> None:
         haystack_logging.configure_logging()
 
-        logger = logging.getLogger(__name__)
+        logger = logging.getLogger("haystack.test.test_logging")
 
         def function_that_raises_and_adds_to_stack_trace():
             raise ValueError("This is an error")
@@ -188,7 +193,7 @@ class TestStructuredLoggingConsoleRendering:
     def test_logging_of_contextvars(self, capfd: CaptureFixture, set_context_var_key: str) -> None:
         haystack_logging.configure_logging()
 
-        logger = logging.getLogger(__name__)
+        logger = logging.getLogger("haystack.test.test_logging")
         logger.warning("Hello, structured logging!", extra={"key1": "value1", "key2": "value2"})
 
         # Use `capfd` to capture the output of the final structlog rendering result
@@ -202,7 +207,7 @@ class TestStructuredLoggingJSONRendering:
         monkeypatch.setattr(sys.stderr, "isatty", lambda: False)
         haystack_logging.configure_logging()
 
-        logger = logging.getLogger(__name__)
+        logger = logging.getLogger("haystack.test.test_logging")
         logger.warning("Hello, structured logging!", extra={"key1": "value1", "key2": "value2"})
 
         # Use `capfd` to capture the output of the final structlog rendering result
@@ -216,13 +221,13 @@ class TestStructuredLoggingJSONRendering:
             "level": "warning",
             "timestamp": ANY,
             "lineno": ANY,
-            "module": "test.test_logging",
+            "module": "haystack.test.test_logging",
         }
 
     def test_logging_as_json(self, capfd: CaptureFixture) -> None:
         haystack_logging.configure_logging(use_json=True)
 
-        logger = logging.getLogger(__name__)
+        logger = logging.getLogger("haystack.test.test_logging")
         logger.warning("Hello, structured logging!", extra={"key1": "value1", "key2": "value2"})
 
         # Use `capfd` to capture the output of the final structlog rendering result
@@ -236,14 +241,14 @@ class TestStructuredLoggingJSONRendering:
             "level": "warning",
             "timestamp": ANY,
             "lineno": ANY,
-            "module": "test.test_logging",
+            "module": "haystack.test.test_logging",
         }
 
     def test_logging_as_json_enabling_via_env(self, capfd: CaptureFixture, monkeypatch: MonkeyPatch) -> None:
         monkeypatch.setenv("HAYSTACK_LOGGING_USE_JSON", "true")
         haystack_logging.configure_logging()
 
-        logger = logging.getLogger(__name__)
+        logger = logging.getLogger("haystack.test.test_logging")
         logger.warning("Hello, structured logging!", extra={"key1": "value1", "key2": "value2"})
 
         # Use `capfd` to capture the output of the final structlog rendering result
@@ -257,7 +262,7 @@ class TestStructuredLoggingJSONRendering:
             "level": "warning",
             "timestamp": ANY,
             "lineno": ANY,
-            "module": "test.test_logging",
+            "module": "haystack.test.test_logging",
         }
 
     def test_logging_of_contextvars(
@@ -266,7 +271,7 @@ class TestStructuredLoggingJSONRendering:
         monkeypatch.setenv("HAYSTACK_LOGGING_USE_JSON", "true")
         haystack_logging.configure_logging()
 
-        logger = logging.getLogger(__name__)
+        logger = logging.getLogger("haystack.test.test_logging")
         logger.warning("Hello, structured logging!", extra={"key1": "value1", "key2": "value2"})
 
         # Use `capfd` to capture the output of the final structlog rendering result
@@ -281,13 +286,13 @@ class TestStructuredLoggingJSONRendering:
             "level": "warning",
             "timestamp": ANY,
             "lineno": ANY,
-            "module": "test.test_logging",
+            "module": "haystack.test.test_logging",
         }
 
     def test_logging_exceptions_json(self, capfd: CaptureFixture) -> None:
         haystack_logging.configure_logging(use_json=True)
 
-        logger = logging.getLogger(__name__)
+        logger = logging.getLogger("haystack.test.test_logging")
 
         def function_that_raises_and_adds_to_stack_trace():
             my_local_variable = "my_local_variable"  # noqa: F841
@@ -306,7 +311,7 @@ class TestStructuredLoggingJSONRendering:
             "level": "error",
             "timestamp": ANY,
             "lineno": ANY,
-            "module": "test.test_logging",
+            "module": "haystack.test.test_logging",
             "exception": [
                 {
                     "exc_notes": [],
@@ -340,7 +345,7 @@ class TestLogTraceCorrelation:
         haystack_logging.configure_logging(use_json=False)
 
         with spying_tracer.trace("test-operation"):
-            logger = logging.getLogger(__name__)
+            logger = logging.getLogger("haystack.test.test_logging")
             logger.warning("Hello, structured logging!", extra={"key1": "value1", "key2": "value2"})
 
         output = capfd.readouterr().err
@@ -350,7 +355,7 @@ class TestLogTraceCorrelation:
         haystack_logging.configure_logging(use_json=True)
 
         with spying_tracer.trace("test-operation") as span:
-            logger = logging.getLogger(__name__)
+            logger = logging.getLogger("haystack.test.test_logging")
             logger.warning("Hello, structured logging!", extra={"key1": "value1", "key2": "value2"})
 
         output = capfd.readouterr().err
@@ -365,13 +370,13 @@ class TestLogTraceCorrelation:
             "trace_id": span.trace_id,
             "span_id": span.span_id,
             "lineno": ANY,
-            "module": "test.test_logging",
+            "module": "haystack.test.test_logging",
         }
 
     def test_trace_log_correlation_no_span(self, spying_tracer: SpyingTracer, capfd: CaptureFixture) -> None:
         haystack_logging.configure_logging(use_json=True)
 
-        logger = logging.getLogger(__name__)
+        logger = logging.getLogger("haystack.test.test_logging")
 
         logger.warning("Hello, structured logging!", extra={"key1": "value1", "key2": "value2"})
 
@@ -385,13 +390,13 @@ class TestLogTraceCorrelation:
             "level": "warning",
             "timestamp": ANY,
             "lineno": ANY,
-            "module": "test.test_logging",
+            "module": "haystack.test.test_logging",
         }
 
     def test_trace_log_correlation_no_tracer(self, capfd: CaptureFixture) -> None:
         haystack_logging.configure_logging(use_json=True)
 
-        logger = logging.getLogger(__name__)
+        logger = logging.getLogger("haystack.test.test_logging")
 
         logger.warning("Hello, structured logging!", extra={"key1": "value1", "key2": "value2"})
 
@@ -405,7 +410,7 @@ class TestLogTraceCorrelation:
             "level": "warning",
             "timestamp": ANY,
             "lineno": ANY,
-            "module": "test.test_logging",
+            "module": "haystack.test.test_logging",
         }
 
 
@@ -416,12 +421,12 @@ class TestCompositeLogger:
         monkeypatch.setenv("HAYSTACK_LOGGING_IGNORE_STRUCTLOG", "true")
         haystack_logging.configure_logging()
 
-        logger = logging.getLogger(__name__)
+        logger = logging.getLogger("haystack.test.test_logging")
         logger.warning("Hello, structured logging!", extra={"key1": "value1", "key2": "value2"})
 
         # the pytest fixture caplog only captures logs being rendered from the stdlib logging module
         assert caplog.messages == ["Hello, structured logging!"]
-        assert caplog.records[0].name == "test.test_logging"
+        assert caplog.records[0].name == "haystack.test.test_logging"
 
         # Nothing should be captured by capfd since structlog is not configured
         assert capfd.readouterr().err == ""
@@ -429,11 +434,11 @@ class TestCompositeLogger:
     def test_correct_stack_level_with_consoler_rendering(self, capfd: CaptureFixture) -> None:
         haystack_logging.configure_logging(use_json=False)
 
-        logger = haystack_logging.getLogger(__name__)
+        logger = haystack_logging.getLogger("haystack.test.test_logging")
         logger.warning("Hello, structured logging!", extra={"key1": "value1", "key2": "value2"})
 
         output = capfd.readouterr().err
-        assert "test.test_logging" in output
+        assert "haystack.test.test_logging" in output
 
     @pytest.mark.parametrize(
         "method, expected_level",
@@ -450,7 +455,7 @@ class TestCompositeLogger:
     def test_various_levels(self, capfd: LogCaptureFixture, method: str, expected_level: str) -> None:
         haystack_logging.configure_logging(use_json=True)
 
-        logger = haystack_logging.getLogger(__name__)
+        logger = haystack_logging.getLogger("haystack.test.test_logging")
 
         logger.setLevel(logging.DEBUG)
 
@@ -467,13 +472,13 @@ class TestCompositeLogger:
             "level": expected_level,
             "timestamp": ANY,
             "lineno": ANY,
-            "module": "test.test_logging",
+            "module": "haystack.test.test_logging",
         }
 
     def test_log(self, capfd: LogCaptureFixture) -> None:
         haystack_logging.configure_logging(use_json=True)
 
-        logger = haystack_logging.getLogger(__name__)
+        logger = haystack_logging.getLogger("haystack.test.test_logging")
         logger.setLevel(logging.DEBUG)
 
         logger.log(logging.DEBUG, "Hello, structured '{key}'!", key="logging", key1="value1", key2="value2")
@@ -489,13 +494,13 @@ class TestCompositeLogger:
             "level": "debug",
             "timestamp": ANY,
             "lineno": ANY,
-            "module": "test.test_logging",
+            "module": "haystack.test.test_logging",
         }
 
     def test_log_json_content(self, capfd: LogCaptureFixture) -> None:
         haystack_logging.configure_logging(use_json=True)
 
-        logger = haystack_logging.getLogger(__name__)
+        logger = haystack_logging.getLogger("haystack.test.test_logging")
         logger.setLevel(logging.DEBUG)
 
         logger.log(logging.DEBUG, 'Hello, structured: {"key": "value"}', key="logging", key1="value1", key2="value2")
@@ -511,13 +516,13 @@ class TestCompositeLogger:
             "level": "debug",
             "timestamp": ANY,
             "lineno": ANY,
-            "module": "test.test_logging",
+            "module": "haystack.test.test_logging",
         }
 
     def test_log_with_string_cast(self, capfd: LogCaptureFixture) -> None:
         haystack_logging.configure_logging(use_json=True)
 
-        logger = haystack_logging.getLogger(__name__)
+        logger = haystack_logging.getLogger("haystack.test.test_logging")
         logger.setLevel(logging.DEBUG)
 
         logger.log(logging.DEBUG, "Hello, structured '{key}'!", key=LogCaptureFixture, key1="value1", key2="value2")
@@ -533,7 +538,7 @@ class TestCompositeLogger:
             "level": "debug",
             "timestamp": ANY,
             "lineno": ANY,
-            "module": "test.test_logging",
+            "module": "haystack.test.test_logging",
         }
 
     @pytest.mark.parametrize(
@@ -551,7 +556,7 @@ class TestCompositeLogger:
     def test_haystack_logger_with_positional_args(self, method: str, expected_level: str) -> None:
         haystack_logging.configure_logging(use_json=True)
 
-        logger = haystack_logging.getLogger(__name__)
+        logger = haystack_logging.getLogger("haystack.test.test_logging")
         logger.setLevel(logging.DEBUG)
 
         with pytest.raises(TypeError):
@@ -572,7 +577,7 @@ class TestCompositeLogger:
     def test_haystack_logger_with_old_interpolation(self, method: str, expected_level: str) -> None:
         haystack_logging.configure_logging(use_json=True)
 
-        logger = haystack_logging.getLogger(__name__)
+        logger = haystack_logging.getLogger("haystack.test.test_logging")
         logger.setLevel(logging.DEBUG)
 
         # does not raise - hence we need to check this separately
@@ -600,3 +605,37 @@ class TestCompositeLogger:
                         f"{path} doesn't use the Haystack logger. Please use the Haystack logger instead of the "
                         f"standard library logger and add plenty of keyword arguments."
                     )
+
+
+def _is_haystack_logging_handler(handler: logging.Handler) -> bool:
+    return isinstance(handler, logging.StreamHandler) and getattr(handler, "name", None) == "HaystackLoggingHandler"
+
+
+class TestLoggingScopedToHaystackLogger:
+    def test_configure_logging_does_not_hijack_root_logger(self) -> None:
+        """``configure_logging`` must scope its handler to the ``haystack`` logger, not the root logger.
+
+        Regression test for https://github.com/deepset-ai/haystack/issues/8681: previously the handler was
+        attached to the root logger and its ``handlers`` list was wholesale-replaced, which silently overrode
+        a downstream ``logging.basicConfig()`` call made by the host application.
+        """
+        haystack_logging.configure_logging(use_json=False)
+
+        # A host application configures the root logger AFTER Haystack does. This must keep working.
+        logging.basicConfig(level=logging.CRITICAL)
+
+        root_logger = logging.getLogger()
+        haystack_logger = logging.getLogger("haystack")
+
+        # The root logger must not carry the Haystack handler ...
+        assert not any(_is_haystack_logging_handler(h) for h in root_logger.handlers), (
+            "configure_logging() attached the Haystack handler to the ROOT logger, hijacking the "
+            "application's own logging configuration (issue #8681)."
+        )
+        # ... and the application's own basicConfig handler must survive on the root logger.
+        assert root_logger.handlers, "logging.basicConfig() was silently overridden on the root logger."
+
+        # The Haystack logger hierarchy must carry the Haystack handler instead.
+        assert any(_is_haystack_logging_handler(h) for h in haystack_logger.handlers), (
+            "configure_logging() did not attach the Haystack handler to the 'haystack' logger."
+        )

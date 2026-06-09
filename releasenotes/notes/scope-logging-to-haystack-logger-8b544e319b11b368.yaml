@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    `configure_logging()` no longer attaches its handler to (and replaces the handlers of) the root logger.
+    The Haystack logging handler is now scoped to the `haystack` logger hierarchy, so importing Haystack no
+    longer hijacks the host application's logging configuration. A downstream `logging.basicConfig()` call is
+    now respected instead of being silently overridden.
