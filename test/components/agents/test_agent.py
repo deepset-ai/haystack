@@ -1331,6 +1331,33 @@ class TestAgentTracing:
         tracing.tracer.is_content_tracing_enabled = False
         tracing.disable_tracing()
 
+    def test_agent_tracing_span_run_reflects_runtime_tools(self, caplog, monkeypatch, weather_tool, component_tool):
+        """The `haystack.agent.tools` span tag should reflect the tools selected for the run, not just init tools."""
+        chat_generator = MockChatGeneratorWithoutRunAsync()
+        agent = Agent(chat_generator=chat_generator, tools=[weather_tool, component_tool])
+
+        tracing.tracer.is_content_tracing_enabled = True
+        tracing.enable_tracing(LoggingTracer())
+        caplog.set_level(logging.DEBUG)
+
+        # Override at runtime to only use weather_tool, even though the agent was configured with both.
+        _ = agent.run([ChatMessage.from_user("What's the weather in Paris?")], tools=[weather_tool.name])
+
+        spans: list[tuple[str, dict[str, Any]]] = []
+        for record in caplog.records:
+            if hasattr(record, "operation_name"):
+                spans.append((record.operation_name, {}))
+            elif hasattr(record, "tag_name") and spans:
+                spans[-1][1][record.tag_name] = record.tag_value
+
+        run_tags = next(tags for op, tags in spans if op == "haystack.agent.run")
+        serialized_tools = run_tags["haystack.agent.tools"]
+        assert "weather_tool" in serialized_tools
+        assert "parrot" not in serialized_tools
+
+        tracing.tracer.is_content_tracing_enabled = False
+        tracing.disable_tracing()
+
     def test_agent_tracing_span_run_with_tool_call(self, caplog, monkeypatch, weather_tool):
         @component
         class ToolCallingChatGenerator:

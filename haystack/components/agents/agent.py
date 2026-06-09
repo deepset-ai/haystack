@@ -578,19 +578,22 @@ class Agent:
 
         return default_from_dict(cls, data)
 
-    def _create_agent_span(self) -> Any:
+    def _create_agent_span(self, tools: ToolsType) -> Any:
         """
         Create a span for the agent run.
 
         If the agent is running as part of a pipeline, this span will be nested
         under the current active span (the pipeline's component span).
+
+        :param tools: The tools selected for this run (init-time tools or the runtime override
+            resolved by `_initialize_fresh_execution`), so the span reflects the tools actually used.
         """
         parent_span = tracing.tracer.current_span()
         return tracing.tracer.trace(
             "haystack.agent.run",
             tags={
                 "haystack.agent.max_steps": self.max_agent_steps,
-                "haystack.agent.tools": self.tools,
+                "haystack.agent.tools": tools,
                 "haystack.agent.exit_conditions": self.exit_conditions,
                 "haystack.agent.state_schema": _schema_to_dict(self.state_schema),
             },
@@ -782,7 +785,7 @@ class Agent:
             **kwargs,
         )
 
-        with self._create_agent_span() as span:
+        with self._create_agent_span(exe_context.tools) as span:
             span.set_content_tag("haystack.agent.input", agent_inputs)
             while exe_context.counter < self.max_agent_steps:
                 if not self._run_step(exe_context, span):
@@ -857,7 +860,7 @@ class Agent:
             **kwargs,
         )
 
-        with self._create_agent_span() as span:
+        with self._create_agent_span(exe_context.tools) as span:
             span.set_content_tag("haystack.agent.input", agent_inputs)
             while exe_context.counter < self.max_agent_steps:
                 if not await self._run_step_async(exe_context, span):

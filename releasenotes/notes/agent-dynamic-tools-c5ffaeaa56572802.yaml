@@ -12,6 +12,10 @@ fixes:
     Initializing an ``Agent`` no longer warms up a ``SearchableToolset``. Previously construction could iterate the
     tools, and ``SearchableToolset`` warms itself up when iterated, so it was warmed up too early. Its warm-up now
     happens only via ``Agent.warm_up()`` or at run time.
+  - |
+    The ``haystack.agent.run`` tracing span's ``haystack.agent.tools`` tag now reflects the tools actually used for
+    the run. Previously it always reported the init-time tools, so it was inconsistent with the run when tools were
+    overridden at runtime via ``run(tools=...)`` / ``run_async(tools=...)``.
 upgrade:
   - |
     ``Agent`` no longer validates ``exit_conditions`` against tool names at initialization. Exit conditions are now
