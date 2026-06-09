@@ -192,3 +192,39 @@ class TestToolsetWrapperSerialization:
 
         with pytest.raises(TypeError, match="is not a subclass of Toolset"):
             _ToolsetWrapper.from_dict(data)
+
+
+class TestToolsetWrapperToolSelection:
+    """Tests for get_selectable_tools(), the name filter, and reset() on _ToolsetWrapper."""
+
+    def test_get_selectable_tools_aggregates_all_toolsets(self, add_tool, multiply_tool, subtract_tool):
+        wrapper = Toolset([add_tool]) + Toolset([multiply_tool, subtract_tool])
+        assert {tool.name for tool in wrapper.get_selectable_tools()} == {"add", "multiply", "subtract"}
+
+    def test_get_selectable_tools_ignores_active_filter(self, add_tool, multiply_tool):
+        wrapper = Toolset([add_tool]) + Toolset([multiply_tool])
+        wrapper._selected_tool_names = {"add"}
+        # Iteration is filtered, but get_selectable_tools still returns the full set.
+        assert [tool.name for tool in wrapper] == ["add"]
+        assert {tool.name for tool in wrapper.get_selectable_tools()} == {"add", "multiply"}
+
+    def test_filter_restricts_iteration_and_len(self, add_tool, multiply_tool, subtract_tool):
+        wrapper = Toolset([add_tool, multiply_tool]) + Toolset([subtract_tool])
+        wrapper._selected_tool_names = {"add", "subtract"}
+        assert [tool.name for tool in wrapper] == ["add", "subtract"]
+        assert len(wrapper) == 2
+
+    def test_reset_clears_own_and_child_filters(self, add_tool, multiply_tool):
+        ts1 = Toolset([add_tool])
+        ts2 = Toolset([multiply_tool])
+        wrapper = ts1 + ts2
+        wrapper._selected_tool_names = {"add"}
+        ts1._selected_tool_names = {"add"}
+        ts2._selected_tool_names = set()
+
+        wrapper.reset()
+
+        assert wrapper._selected_tool_names is None
+        assert ts1._selected_tool_names is None
+        assert ts2._selected_tool_names is None
+        assert {tool.name for tool in wrapper} == {"add", "multiply"}

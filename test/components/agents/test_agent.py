@@ -16,7 +16,7 @@ from openai import Stream
 from openai.types.chat import ChatCompletionChunk, chat_completion_chunk
 
 from haystack import Document, Pipeline, component, tracing
-from haystack.components.agents.agent import Agent, _accumulate_usage
+from haystack.components.agents.agent import Agent, _accumulate_usage, _select_tools_by_name
 from haystack.components.agents.state import merge_lists, replace_values
 from haystack.components.agents.tool_calling import _run_tool
 from haystack.components.builders.chat_prompt_builder import ChatPromptBuilder
@@ -1575,17 +1575,43 @@ class TestAgentTracing:
         assert agent_span.parent_span == agent_component_span
 
 
-class TestAgentToolSelection:
-    def test_tool_selection_by_name(self, weather_tool: Tool, component_tool: Tool):
-        chat_generator = MockChatGenerator()
-        agent = Agent(
-            chat_generator=chat_generator,
-            tools=[weather_tool, component_tool],
-            system_prompt="This is a system prompt.",
-        )
-        result = agent._select_tools([weather_tool.name])
+class TestSelectToolsByName:
+    """Tests for the _select_tools_by_name helper (runtime tool-name selection)."""
+
+    def test_selects_standalone_tools_by_name(self, weather_tool: Tool, component_tool: Tool):
+        result = _select_tools_by_name([weather_tool, component_tool], [weather_tool.name])
         assert result == [weather_tool]
 
+    def test_raises_on_invalid_name(self, weather_tool: Tool, component_tool: Tool):
+        with pytest.raises(
+            ValueError, match="The following tool names are not valid: {'invalid_tool_name'}. Valid tool names are: ."
+        ):
+            _select_tools_by_name([weather_tool, component_tool], ["invalid_tool_name"])
+
+    def test_raises_when_no_tools_configured(self, weather_tool: Tool):
+        with pytest.raises(ValueError, match="No tools were configured for the Agent at initialization."):
+            _select_tools_by_name([], [weather_tool.name])
+
+    def test_keeps_toolset_live_with_selection_registered(self, weather_tool: Tool, component_tool: Tool):
+        """A Toolset exposing a requested name is kept live (not flattened) with the selection registered on it."""
+        toolset = Toolset([weather_tool, component_tool])
+
+        result = _select_tools_by_name([toolset], [weather_tool.name])
+
+        assert result == [toolset]
+        assert toolset._selected_tool_names == {weather_tool.name}
+
+    def test_mixed_standalone_tools_and_toolsets(self, weather_tool: Tool, component_tool: Tool):
+        toolset = Toolset([weather_tool])
+
+        result = _select_tools_by_name([component_tool, toolset], [weather_tool.name, component_tool.name])
+
+        assert component_tool in result
+        assert toolset in result
+        assert toolset._selected_tool_names == {weather_tool.name}
+
+
+class TestAgentToolSelection:
     def test_tool_selection_new_tool(self, weather_tool: Tool, component_tool: Tool):
         chat_generator = MockChatGenerator()
         agent = Agent(chat_generator=chat_generator, tools=[weather_tool], system_prompt="This is a system prompt.")
@@ -1601,24 +1627,6 @@ class TestAgentToolSelection:
         )
         result = agent._select_tools(None)
         assert result == [weather_tool, component_tool]
-
-    def test_tool_selection_invalid_tool_name(self, weather_tool: Tool, component_tool: Tool):
-        chat_generator = MockChatGenerator()
-        agent = Agent(
-            chat_generator=chat_generator,
-            tools=[weather_tool, component_tool],
-            system_prompt="This is a system prompt.",
-        )
-        with pytest.raises(
-            ValueError, match=("The following tool names are not valid: {'invalid_tool_name'}. Valid tool names are: .")
-        ):
-            agent._select_tools(["invalid_tool_name"])
-
-    def test_tool_selection_no_tools_configured(self, weather_tool: Tool, component_tool: Tool):
-        chat_generator = MockChatGenerator()
-        agent = Agent(chat_generator=chat_generator, tools=[], system_prompt="This is a system prompt.")
-        with pytest.raises(ValueError, match="No tools were configured for the Agent at initialization."):
-            agent._select_tools([weather_tool.name])
 
     def test_tool_selection_invalid_type(self, weather_tool: Tool, component_tool: Tool):
         chat_generator = MockChatGenerator()

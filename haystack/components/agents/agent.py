@@ -127,6 +127,67 @@ def _get_run_method_params(instance: "Agent") -> set[str]:
     return {name for name, p in sig.parameters.items() if p.kind != inspect.Parameter.VAR_KEYWORD}
 
 
+def _select_tools_by_name(configured_tools: ToolsType, names: list[str]) -> list[Tool | Toolset]:
+    """
+    Select configured tools by name for a single run.
+
+    Standalone Tools are kept when their name is requested. Toolsets that expose a requested name are kept live
+    (not flattened) with the requested names registered as their `_selected_tool_names`, so dynamic toolsets such as
+    SearchableToolset preserve their behavior (search/lazy-loading) over the selected subset. The registered
+    selection is cleared after the run (see `_reset_tools`).
+
+    :param configured_tools: The tools configured on the Agent.
+    :param names: The requested tool names.
+    :returns: The selected standalone Tools and/or live Toolsets.
+    :raises ValueError: If no tools were configured, or if any requested name is not a valid tool name.
+    """
+    if not configured_tools:
+        raise ValueError("No tools were configured for the Agent at initialization.")
+
+    requested_names = set(names)
+    items: list[Tool | Toolset] = (
+        [configured_tools] if isinstance(configured_tools, Toolset) else list(configured_tools)
+    )
+
+    # Resolve selectable names per item. For Toolsets we use get_selectable_tools() so dynamic toolsets
+    # (e.g. SearchableToolset) offer their full catalog by name, not just the tools exposed by iteration.
+    selectable_per_item: list[tuple[Tool | Toolset, set[str]]] = []
+    valid_tool_names: set[str] = set()
+    for item in items:
+        item_names = {tool.name for tool in item.get_selectable_tools()} if isinstance(item, Toolset) else {item.name}
+        selectable_per_item.append((item, item_names))
+        valid_tool_names |= item_names
+
+    invalid_tool_names = requested_names - valid_tool_names
+    if invalid_tool_names:
+        raise ValueError(
+            f"The following tool names are not valid: {invalid_tool_names}. Valid tool names are: {valid_tool_names}."
+        )
+
+    selected: list[Tool | Toolset] = []
+    for item, item_names in selectable_per_item:
+        matched = requested_names & item_names
+        if not matched:
+            continue
+        if isinstance(item, Toolset):
+            item._selected_tool_names = matched
+        selected.append(item)
+    return selected
+
+
+def _reset_tools(tools: ToolsType) -> None:
+    """
+    Reset any per-run state on the Toolsets within `tools` (e.g. name selection, discovered tools).
+
+    Runtime tool-name selection registers state on the matched Toolsets; this is called after each run so it does
+    not leak into later runs.
+    """
+    items = [tools] if isinstance(tools, Toolset) else tools
+    for item in items:
+        if isinstance(item, Toolset):
+            item.reset()
+
+
 def _validate_prompt_message_blocks(user_prompt: str | None, system_prompt: str | None) -> None:
     """
     Validate explicit Jinja2 message blocks in Agent prompts.
@@ -703,18 +764,7 @@ class Agent:
             return self.tools
 
         if isinstance(tools, list) and all(isinstance(t, str) for t in tools):
-            if not self.tools:
-                raise ValueError("No tools were configured for the Agent at initialization.")
-            available_tools = flatten_tools_or_toolsets(self.tools)
-            selected_tool_names = cast(list[str], tools)  # mypy thinks this could still be list[Tool] or Toolset
-            valid_tool_names = {tool.name for tool in available_tools}
-            invalid_tool_names = {name for name in selected_tool_names if name not in valid_tool_names}
-            if invalid_tool_names:
-                raise ValueError(
-                    f"The following tool names are not valid: {invalid_tool_names}. "
-                    f"Valid tool names are: {valid_tool_names}."
-                )
-            return [tool for tool in available_tools if tool.name in selected_tool_names]
+            return _select_tools_by_name(self.tools, cast(list[str], tools))
 
         if isinstance(tools, Toolset):
             # Per-run tools are not covered by the Agent's own warm_up(), so warm them up here.
@@ -785,18 +835,21 @@ class Agent:
             **kwargs,
         )
 
-        with self._create_agent_span(exe_context.tools) as span:
-            span.set_content_tag("haystack.agent.input", agent_inputs)
-            while exe_context.counter < self.max_agent_steps:
-                if not self._run_step(exe_context, span):
-                    break
-            if exe_context.counter >= self.max_agent_steps:
-                logger.warning(
-                    "Agent reached maximum agent steps of {max_agent_steps}, stopping.",
-                    max_agent_steps=self.max_agent_steps,
-                )
-            span.set_content_tag("haystack.agent.output", exe_context.state.data)
-            span.set_tag("haystack.agent.steps_taken", exe_context.counter)
+        try:
+            with self._create_agent_span(exe_context.tools) as span:
+                span.set_content_tag("haystack.agent.input", agent_inputs)
+                while exe_context.counter < self.max_agent_steps:
+                    if not self._run_step(exe_context, span):
+                        break
+                if exe_context.counter >= self.max_agent_steps:
+                    logger.warning(
+                        "Agent reached maximum agent steps of {max_agent_steps}, stopping.",
+                        max_agent_steps=self.max_agent_steps,
+                    )
+                span.set_content_tag("haystack.agent.output", exe_context.state.data)
+                span.set_tag("haystack.agent.steps_taken", exe_context.counter)
+        finally:
+            _reset_tools(exe_context.tools)
 
         result = {**exe_context.state.data}
         if msgs := result.get("messages"):
@@ -860,18 +913,21 @@ class Agent:
             **kwargs,
         )
 
-        with self._create_agent_span(exe_context.tools) as span:
-            span.set_content_tag("haystack.agent.input", agent_inputs)
-            while exe_context.counter < self.max_agent_steps:
-                if not await self._run_step_async(exe_context, span):
-                    break
-            if exe_context.counter >= self.max_agent_steps:
-                logger.warning(
-                    "Agent reached maximum agent steps of {max_agent_steps}, stopping.",
-                    max_agent_steps=self.max_agent_steps,
-                )
-            span.set_content_tag("haystack.agent.output", exe_context.state.data)
-            span.set_tag("haystack.agent.steps_taken", exe_context.counter)
+        try:
+            with self._create_agent_span(exe_context.tools) as span:
+                span.set_content_tag("haystack.agent.input", agent_inputs)
+                while exe_context.counter < self.max_agent_steps:
+                    if not await self._run_step_async(exe_context, span):
+                        break
+                if exe_context.counter >= self.max_agent_steps:
+                    logger.warning(
+                        "Agent reached maximum agent steps of {max_agent_steps}, stopping.",
+                        max_agent_steps=self.max_agent_steps,
+                    )
+                span.set_content_tag("haystack.agent.output", exe_context.state.data)
+                span.set_tag("haystack.agent.steps_taken", exe_context.counter)
+        finally:
+            _reset_tools(exe_context.tools)
 
         result = {**exe_context.state.data}
         if msgs := result.get("messages"):

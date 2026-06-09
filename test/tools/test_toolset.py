@@ -431,3 +431,56 @@ class TestToolsetWarmUp:
         assert new_tool.warm_up_count == 0
         ts2.warm_up()
         assert new_tool.warm_up_count == 1
+
+
+class TestToolsetToolSelection:
+    """Tests for get_selectable_tools(), the name filter, and reset()."""
+
+    def test_no_filter_yields_all_tools(self, add_tool, multiply_tool):
+        toolset = Toolset([add_tool, multiply_tool])
+        assert toolset._selected_tool_names is None
+        assert [tool.name for tool in toolset] == ["add", "multiply"]
+        assert len(toolset) == 2
+
+    def test_get_selectable_tools_returns_all_tools(self, add_tool, multiply_tool):
+        toolset = Toolset([add_tool, multiply_tool])
+        assert toolset.get_selectable_tools() == [add_tool, multiply_tool]
+
+    def test_get_selectable_tools_ignores_active_filter(self, add_tool, multiply_tool):
+        toolset = Toolset([add_tool, multiply_tool])
+        toolset._selected_tool_names = {"add"}
+        # Iteration is filtered, but get_selectable_tools still returns the full set.
+        assert [tool.name for tool in toolset] == ["add"]
+        assert {tool.name for tool in toolset.get_selectable_tools()} == {"add", "multiply"}
+
+    def test_filter_restricts_iteration(self, add_tool, multiply_tool, subtract_tool):
+        toolset = Toolset([add_tool, multiply_tool, subtract_tool])
+        toolset._selected_tool_names = {"add", "subtract"}
+        assert [tool.name for tool in toolset] == ["add", "subtract"]
+
+    def test_filter_restricts_len(self, add_tool, multiply_tool, subtract_tool):
+        toolset = Toolset([add_tool, multiply_tool, subtract_tool])
+        toolset._selected_tool_names = {"add"}
+        assert len(toolset) == 1
+
+    def test_filter_restricts_getitem(self, add_tool, multiply_tool, subtract_tool):
+        toolset = Toolset([add_tool, multiply_tool, subtract_tool])
+        toolset._selected_tool_names = {"subtract"}
+        assert toolset[0].name == "subtract"
+
+    def test_filter_restricts_contains(self, add_tool, multiply_tool):
+        toolset = Toolset([add_tool, multiply_tool])
+        toolset._selected_tool_names = {"add"}
+        assert "add" in toolset
+        assert "multiply" not in toolset
+        assert add_tool in toolset
+        assert multiply_tool not in toolset
+
+    def test_reset_clears_filter(self, add_tool, multiply_tool):
+        toolset = Toolset([add_tool, multiply_tool])
+        toolset._selected_tool_names = {"add"}
+
+        toolset.reset()
+
+        assert toolset._selected_tool_names is None
+        assert [tool.name for tool in toolset] == ["add", "multiply"]

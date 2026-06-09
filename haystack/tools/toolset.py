@@ -47,8 +47,8 @@ class Toolset:
     ```
 
     2. Base class for dynamic tool loading:
-       By subclassing Toolset, you can create implementations that dynamically load tools
-       from external sources like OpenAPI URLs, MCP servers, or other resources.
+       By subclassing Toolset, you can create implementations that dynamically load tools from external sources like
+       OpenAPI URLs, MCP servers, or other resources.
 
        Example:
     ```python
@@ -94,15 +94,14 @@ class Toolset:
     agent = Agent(chat_generator=OpenAIChatGenerator(), tools=calculator_toolset)
     ```
 
-    Toolset implements the collection interface (__iter__, __contains__, __len__, __getitem__),
-    making it behave like a list of Tools. This makes it compatible with components that expect
-    iterable tools, such as Agent or Haystack chat generators.
+    Toolset implements the collection interface (__iter__, __contains__, __len__, __getitem__), making it behave like
+    a list of Tools. This makes it compatible with components that expect iterable tools, such as Agent or Haystack
+    chat generators.
 
     When implementing a custom Toolset subclass for dynamic tool loading:
     - Perform the dynamic loading in the __init__ method
     - Override to_dict() and from_dict() methods if your tools are defined dynamically
-    - Serialize endpoint descriptors rather than tool instances if your tools
-      are loaded from external sources
+    - Serialize endpoint descriptors rather than tool instances if your tools are loaded from external sources
     """
 
     # Use field() with default_factory to initialize the list
@@ -124,15 +123,44 @@ class Toolset:
         # Tracks whether warm_up() has already run so subsequent calls become a no-op.
         self._is_warmed_up = False
 
+        # Optional per-run name filter. When set, iteration only yields tools whose name is in this set.
+        # When set, iteration only yields tools whose name is in this set. None means no filtering.
+        # Cleared by reset().
+        self._selected_tool_names: set[str] | None = None
+
     def __iter__(self) -> Iterator[Tool]:
         """
         Return an iterator over the Tools in this Toolset.
 
-        This allows the Toolset to be used wherever a list of Tools is expected.
+        This allows the Toolset to be used wherever a list of Tools is expected. If a name filter is active,
+        only the tools whose names are in it are yielded.
 
         :returns: An iterator yielding Tool instances
         """
-        return iter(self.tools)
+        for tool in self.tools:
+            if self._selected_tool_names is None or tool.name in self._selected_tool_names:
+                yield tool
+
+    def get_selectable_tools(self) -> list[Tool]:
+        """
+        Return the full set of tools that can be selected by name, ignoring any active name filter.
+
+        This differs from iteration, which yields only the tools currently exposed (and respects the name filter).
+        Override this when a Toolset's iteration does not surface every selectable tool, so name-based selection
+        can still target the full set.
+
+        :returns: The list of tools available for name-based selection.
+        """
+        return list(self.tools)
+
+    def reset(self) -> None:
+        """
+        Reset transient state on this Toolset, returning it to its default, unfiltered state.
+
+        Call this to undo a name filter (or other transient state) once it is no longer needed, so it does not
+        carry over to subsequent use. Subclasses can override to reset additional state (calling `super().reset()`).
+        """
+        self._selected_tool_names = None
 
     def __contains__(self, item: str | Tool) -> bool:
         """
@@ -146,9 +174,9 @@ class Toolset:
         :returns: True if contained, False otherwise
         """
         if isinstance(item, str):
-            return any(tool.name == item for tool in self.tools)
+            return any(tool.name == item for tool in self)
         if isinstance(item, Tool):
-            return item in self.tools
+            return any(tool is item or tool == item for tool in self)
         return False
 
     def warm_up(self) -> None:
@@ -281,20 +309,20 @@ class Toolset:
 
     def __len__(self) -> int:
         """
-        Return the number of Tools in this Toolset.
+        Return the number of Tools in this Toolset (respecting any active name filter).
 
         :returns: Number of Tools
         """
-        return len(self.tools)
+        return sum(1 for _ in self)
 
     def __getitem__(self, index: int) -> Tool:
         """
-        Get a Tool by index.
+        Get a Tool by index (respecting any active name filter).
 
         :param index: Index of the Tool to get
         :returns: The Tool at the specified index
         """
-        return self.tools[index]
+        return list(self)[index]
 
 
 class _ToolsetWrapper(Toolset):
@@ -312,9 +340,21 @@ class _ToolsetWrapper(Toolset):
         self._is_warmed_up = False
 
     def __iter__(self) -> Iterator[Tool]:
-        """Iterate over all tools from all toolsets."""
+        """Iterate over all tools from all toolsets, honoring any active name filter."""
         for toolset in self.toolsets:
-            yield from toolset
+            for tool in toolset:
+                if self._selected_tool_names is None or tool.name in self._selected_tool_names:
+                    yield tool
+
+    def get_selectable_tools(self) -> list[Tool]:
+        """Return every selectable tool across all wrapped toolsets, ignoring any active filter."""
+        return [tool for toolset in self.toolsets for tool in toolset.get_selectable_tools()]
+
+    def reset(self) -> None:
+        """Reset this wrapper's filter and reset each wrapped toolset."""
+        super().reset()
+        for toolset in self.toolsets:
+            toolset.reset()
 
     def __contains__(self, item: Any) -> bool:
         """Check if a tool is in any of the toolsets."""
@@ -371,8 +411,8 @@ class _ToolsetWrapper(Toolset):
         return cls(toolsets=toolsets)
 
     def __len__(self) -> int:
-        """Return total number of tools across all toolsets."""
-        return sum(len(toolset) for toolset in self.toolsets)
+        """Return total number of tools across all toolsets (respecting any active name filter)."""
+        return sum(1 for _ in self)
 
     def __getitem__(self, index: int) -> Tool:
         """Get a tool by index across all toolsets."""

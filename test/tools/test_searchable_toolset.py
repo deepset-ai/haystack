@@ -9,10 +9,11 @@ from typing import Annotated, Any
 
 import pytest
 
+from haystack import component
 from haystack.components.agents import Agent
 from haystack.components.generators.chat import OpenAIChatGenerator
-from haystack.dataclasses import ChatMessage
-from haystack.tools import SearchableToolset, Tool, Toolset
+from haystack.dataclasses import ChatMessage, ToolCall
+from haystack.tools import SearchableToolset, Tool, Toolset, flatten_tools_or_toolsets
 from haystack.tools.from_function import create_tool_from_function
 
 
@@ -789,6 +790,118 @@ class TestSearchableToolsetCustomSearchTool:
         assert "get_weather" in result
 
 
+class TestSearchableToolsetAgentToolSelection:
+    """Deterministic Agent tests for runtime tool-name selection and lazy tool_call_counts."""
+
+    def test_get_selectable_tools_exposes_full_catalog(self, large_catalog):
+        """get_selectable_tools() exposes the whole catalog, unlike iteration (search tool + discovered only)."""
+        toolset = SearchableToolset(catalog=large_catalog, search_threshold=3)
+        toolset.warm_up()
+
+        # Iteration only exposes the bootstrap search tool before anything is discovered.
+        assert [tool.name for tool in toolset] == ["search_tools"]
+        # The catalog, however, is fully available for name-based selection.
+        assert {tool.name for tool in toolset.get_selectable_tools()} == {tool.name for tool in large_catalog}
+
+    def test_runtime_tool_names_register_selection_and_preserve_search(self, large_catalog, monkeypatch):
+        """Selecting catalog tool names registers a selection on the live SearchableToolset and keeps search active."""
+        monkeypatch.setenv("OPENAI_API_KEY", "fake-key")
+        toolset = SearchableToolset(catalog=large_catalog, search_threshold=3)  # 8 tools -> search mode
+        agent = Agent(chat_generator=OpenAIChatGenerator(), tools=toolset)
+
+        selected = agent._select_tools(["get_weather", "add_numbers"])
+
+        # The live toolset is kept (not flattened into static tools), with the selection registered.
+        assert selected == [toolset]
+        assert toolset._selected_tool_names == {"get_weather", "add_numbers"}
+        # Search is preserved (not dismantled): the bootstrap tool is still the only thing exposed up front.
+        assert [tool.name for tool in toolset] == ["search_tools"]
+        # And search only discovers tools within the selected subset.
+        assert toolset._bootstrap_tool is not None
+        toolset._bootstrap_tool.invoke(tool_keywords="weather add stock multiply")
+        assert set(toolset._discovered_tools) <= {"get_weather", "add_numbers"}
+
+    def test_runtime_tool_names_passthrough_exposes_selected(self, large_catalog, monkeypatch):
+        """In passthrough mode, selecting names exposes exactly those catalog tools directly."""
+        monkeypatch.setenv("OPENAI_API_KEY", "fake-key")
+        toolset = SearchableToolset(catalog=large_catalog, search_threshold=20)  # 8 < 20 -> passthrough
+        agent = Agent(chat_generator=OpenAIChatGenerator(), tools=toolset)
+
+        selected = agent._select_tools(["get_weather", "add_numbers"])
+
+        assert selected == [toolset]
+        assert {tool.name for tool in flatten_tools_or_toolsets(selected)} == {"get_weather", "add_numbers"}
+
+    def test_agent_run_with_runtime_tool_names(self, large_catalog):
+        """An Agent with a SearchableToolset runs with specific catalog tools selected by name, then clears them."""
+        toolset = SearchableToolset(catalog=large_catalog, search_threshold=20)  # passthrough exposes the selection
+
+        @component
+        class WeatherCallingGenerator:
+            invoked = False
+
+            @component.output_types(replies=list[ChatMessage])
+            def run(self, messages, tools=None, **kwargs):
+                # In passthrough mode the selected catalog tool is exposed directly.
+                assert [tool.name for tool in tools] == ["get_weather"]
+                if self.invoked:
+                    return {"replies": [ChatMessage.from_assistant("done")]}
+                self.invoked = True
+                return {
+                    "replies": [
+                        ChatMessage.from_assistant(
+                            tool_calls=[ToolCall(tool_name="get_weather", arguments={"city": "Berlin"})]
+                        )
+                    ]
+                }
+
+        agent = Agent(chat_generator=WeatherCallingGenerator(), tools=toolset, max_agent_steps=5)
+        result = agent.run(messages=[ChatMessage.from_user("What's the weather in Berlin?")], tools=["get_weather"])
+
+        assert result["tool_call_counts"]["get_weather"] == 1
+        # The per-run selection is cleared after the run, so it does not leak into later runs.
+        assert toolset._selected_tool_names is None
+
+    def test_discovered_tool_call_counts_added_lazily(self, large_catalog):
+        """tool_call_counts seeds only the search tool up front; a discovered+called tool is added lazily."""
+        toolset = SearchableToolset(catalog=large_catalog, search_threshold=3, top_k=5)
+
+        @component
+        class SearchThenWeatherGenerator:
+            step = 0
+
+            @component.output_types(replies=list[ChatMessage])
+            def run(self, messages, tools=None, **kwargs):
+                self.step += 1
+                if self.step == 1:
+                    return {
+                        "replies": [
+                            ChatMessage.from_assistant(
+                                tool_calls=[ToolCall(tool_name="search_tools", arguments={"tool_keywords": "weather"})]
+                            )
+                        ]
+                    }
+                if self.step == 2:
+                    return {
+                        "replies": [
+                            ChatMessage.from_assistant(
+                                tool_calls=[ToolCall(tool_name="get_weather", arguments={"city": "Berlin"})]
+                            )
+                        ]
+                    }
+                return {"replies": [ChatMessage.from_assistant("done")]}
+
+        agent = Agent(chat_generator=SearchThenWeatherGenerator(), tools=toolset, max_agent_steps=6)
+        result = agent.run(messages=[ChatMessage.from_user("What's the weather in Berlin?")])
+
+        counts = result["tool_call_counts"]
+        # search_tools is seeded at init; get_weather is only counted after being discovered and called.
+        assert counts["search_tools"] == 1
+        assert counts["get_weather"] == 1
+        # After the run, reset() clears the toolset's discovered tools.
+        assert toolset._discovered_tools == {}
+
+
 @pytest.mark.skipif(not os.environ.get("OPENAI_API_KEY"), reason="OPENAI_API_KEY not set")
 @pytest.mark.integration
 class TestSearchableToolsetAgentIntegration:
@@ -802,11 +915,13 @@ class TestSearchableToolsetAgentIntegration:
         assert len(agent.tools) == 1
         result = agent.run(messages=[ChatMessage.from_user("What's the weather in Milan?")])
 
-        assert len(agent.tools) > 1
+        # Discovered tools are cleared after the run (reset), so only the search tool remains exposed.
+        assert len(agent.tools) == 1
         assert "messages" in result
         messages = result["messages"]
         assert len(messages) > 1
 
+        # Discovery happened during the run: the agent searched and then called the discovered tool.
         tool_calls = [tool_call for msg in messages if msg.tool_calls for tool_call in msg.tool_calls]
         assert len(tool_calls) > 1
         assert any(tool_call.tool_name == "search_tools" for tool_call in tool_calls)

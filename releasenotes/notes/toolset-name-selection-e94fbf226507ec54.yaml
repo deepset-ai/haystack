@@ -1,0 +1,16 @@
+---
+fixes:
+  - |
+    Runtime tool-name selection via ``Agent.run(tools=["tool_a", "tool_b"])`` now resolves correctly when a
+    ``SearchableToolset`` (or any Toolset) is configured. Previously the tools were flattened into a static list,
+    which dismantled the toolset — disabling its search and lazy-loading. The Toolset is now kept live with the
+    selection applied, so it keeps working over the selected subset.
+enhancements:
+  - |
+    ``Toolset`` gained two methods: ``get_selectable_tools()`` returns every tool available for name-based selection
+    (ignoring any active selection), and ``reset()`` clears a Toolset's per-run state. Subclasses can override these
+    when their iteration does not surface every selectable tool, or to reset additional state.
+upgrade:
+  - |
+    ``SearchableToolset`` now clears its discovered tools at the end of each ``Agent`` run (via ``Toolset.reset()``).
+    Discovered tools no longer persist across runs, so each run starts fresh.
