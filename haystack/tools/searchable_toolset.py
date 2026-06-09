@@ -224,6 +224,11 @@ class SearchableToolset(Toolset):
             # discovered tools.
             # The return message here just confirms what was found; actual tool availability comes through the dynamic
             # iteration mechanism. This way we also save tokens by not returning the full tool definitions.
+            #
+            # NOTE: The Agent can run tool calls in a step concurrently (ThreadPoolExecutor), so multiple search_tools
+            # calls can mutate self._discovered_tools from different threads at once. This is currently safe only
+            # because CPython's GIL makes individual dict assignments atomic; on a free-threaded (no-GIL) build these
+            # unguarded writes could corrupt the dict.
             tool_names = []
             for doc in results:
                 tool = tool_by_name[doc.meta["tool_name"]]

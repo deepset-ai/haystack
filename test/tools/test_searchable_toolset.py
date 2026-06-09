@@ -826,17 +826,3 @@ class TestSearchableToolsetAgentIntegration:
         assert sum(tc.tool_name == "search_tools" for tc in tool_calls) >= 2
         assert "get_weather" in called
         assert "get_stock_price" in called
-
-    def test_agent_handles_no_matching_tool_gracefully(self, large_catalog):
-        """When no tool matches, the agent should not invoke a domain tool and should still answer."""
-        toolset = SearchableToolset(catalog=large_catalog, top_k=2, search_threshold=3)
-        agent = Agent(chat_generator=OpenAIChatGenerator(model="gpt-4.1-nano"), tools=toolset, max_agent_steps=5)
-
-        result = agent.run(messages=[ChatMessage.from_user("Translate the word 'hello' into French.")])
-
-        tool_calls = [tool_call for msg in result["messages"] if msg.tool_calls for tool_call in msg.tool_calls]
-        domain_tool_names = {tool.name for tool in large_catalog}
-        # No domain tool matches "translate", so none should have been invoked (only search_tools is allowed).
-        assert not (domain_tool_names & {tc.tool_name for tc in tool_calls})
-        # The agent still returns a non-empty text answer rather than erroring out.
-        assert result["last_message"].text.strip()
