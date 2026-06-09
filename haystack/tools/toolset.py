@@ -4,7 +4,7 @@
 
 from collections.abc import Iterator
 from dataclasses import dataclass, field
-from typing import Any, Union
+from typing import Any
 
 from haystack.core.serialization import generate_qualified_class_name, import_class_by_name
 from haystack.tools.tool import Tool, _check_duplicate_tool_names
@@ -23,48 +23,24 @@ class Toolset:
 
        Example:
     ```python
-    from haystack.tools import Tool, Toolset
+    from typing import Annotated
+    from haystack.tools import tool, Toolset
     from haystack.components.agents import Agent
     from haystack.components.generators.chat import OpenAIChatGenerator
 
-    # Define math functions
-    def add_numbers(a: int, b: int) -> int:
+    # Create tools with the @tool decorator (the recommended way)
+    @tool
+    def add(a: Annotated[int, "first number"], b: Annotated[int, "second number"]) -> int:
+        '''Add two numbers.'''
         return a + b
 
-    def subtract_numbers(a: int, b: int) -> int:
+    @tool
+    def subtract(a: Annotated[int, "first number"], b: Annotated[int, "second number"]) -> int:
+        '''Subtract b from a.'''
         return a - b
 
-    # Create tools with proper schemas
-    add_tool = Tool(
-        name="add",
-        description="Add two numbers",
-        parameters={
-            "type": "object",
-            "properties": {
-                "a": {"type": "integer"},
-                "b": {"type": "integer"}
-            },
-            "required": ["a", "b"]
-        },
-        function=add_numbers
-    )
-
-    subtract_tool = Tool(
-        name="subtract",
-        description="Subtract b from a",
-        parameters={
-            "type": "object",
-            "properties": {
-                "a": {"type": "integer"},
-                "b": {"type": "integer"}
-            },
-            "required": ["a", "b"]
-        },
-        function=subtract_numbers
-    )
-
     # Create a toolset with the math tools
-    math_toolset = Toolset([add_tool, subtract_tool])
+    math_toolset = Toolset([add, subtract])
 
     # Use the toolset with an Agent
     agent = Agent(chat_generator=OpenAIChatGenerator(), tools=math_toolset)
@@ -76,8 +52,9 @@ class Toolset:
 
        Example:
     ```python
+    from typing import Annotated
     from haystack.core.serialization import generate_qualified_class_name
-    from haystack.tools import Tool, Toolset
+    from haystack.tools import tool, Toolset
     from haystack.components.agents import Agent
     from haystack.components.generators.chat import OpenAIChatGenerator
 
@@ -85,39 +62,22 @@ class Toolset:
         '''A toolset for calculator operations.'''
 
         def __init__(self) -> None:
-            tools = self._create_tools()
-            super().__init__(tools)
+            super().__init__(self._create_tools())
 
         def _create_tools(self):
-            # These Tool instances are obviously defined statically and for illustration purposes only.
+            # These tools are defined statically for illustration purposes only.
             # In a real-world scenario, you would dynamically load tools from an external source here.
-            tools = []
-            add_tool = Tool(
-                name="add",
-                description="Add two numbers",
-                parameters={
-                    "type": "object",
-                    "properties": {"a": {"type": "integer"}, "b": {"type": "integer"}},
-                    "required": ["a", "b"],
-                },
-                function=lambda a, b: a + b,
-            )
+            @tool
+            def add(a: Annotated[int, "first number"], b: Annotated[int, "second number"]) -> int:
+                '''Add two numbers.'''
+                return a + b
 
-            multiply_tool = Tool(
-                name="multiply",
-                description="Multiply two numbers",
-                parameters={
-                    "type": "object",
-                    "properties": {"a": {"type": "integer"}, "b": {"type": "integer"}},
-                    "required": ["a", "b"],
-                },
-                function=lambda a, b: a * b,
-            )
+            @tool
+            def multiply(a: Annotated[int, "first number"], b: Annotated[int, "second number"]) -> int:
+                '''Multiply two numbers.'''
+                return a * b
 
-            tools.append(add_tool)
-            tools.append(multiply_tool)
-
-            return tools
+            return [add, multiply]
 
         def to_dict(self):
             return {
@@ -160,6 +120,9 @@ class Toolset:
 
         # Check for duplicate tool names in the initial set
         _check_duplicate_tool_names(self.tools)
+
+        # Tracks whether warm_up() has already run so subsequent calls become a no-op.
+        self._is_warmed_up = False
 
     def __iter__(self) -> Iterator[Tool]:
         """
@@ -211,28 +174,45 @@ class Toolset:
                 self.mcp_connection = establish_connection(self.server_url)
         ```
 
-        This method should be idempotent, as it may be called multiple times.
+        This method is idempotent: it only warms up the tools the first time it is called.
+        Subclasses overriding it should preserve this contract (for example by guarding on
+        `self._is_warmed_up`).
         """
+        if self._is_warmed_up:
+            return
         for tool in self.tools:
             if hasattr(tool, "warm_up"):
                 tool.warm_up()
+        self._is_warmed_up = True
 
-    def add(self, tool: Union[Tool, "Toolset"]) -> None:
+    def add(self, tool: "Tool | Toolset") -> None:
         """
         Add a new Tool or merge another Toolset.
+
+        If this Toolset has already been warmed up, the newly added Tool (or the tools of the
+        added Toolset) are warmed up immediately so they are ready to use without requiring a
+        second `warm_up()` call on the whole Toolset.
+
+        Note: adding a Toolset flattens it into its individual tools, so this is only recommended
+        for Toolsets that don't manage shared resources in their `warm_up()` (or `__init__`).
+        For example, combining with an `MCPToolset`, which owns a shared connection, is not
+        recommended: the connection's lifecycle would no longer be managed by the original
+        Toolset. In those cases combine Toolsets with `+` (which preserves each Toolset as a
+        unit via `_ToolsetWrapper`) instead.
 
         :param tool: A Tool instance or another Toolset to add
         :raises ValueError: If adding the tool would result in duplicate tool names
         :raises TypeError: If the provided object is not a Tool or Toolset
         """
-        new_tools = []
-
-        if isinstance(tool, Tool):
-            new_tools = [tool]
-        elif isinstance(tool, Toolset):
-            new_tools = list(tool)
-        else:
+        if not isinstance(tool, (Tool, Toolset)):
             raise TypeError(f"Expected Tool or Toolset, got {type(tool).__name__}")
+
+        # Warm up the source before flattening so that lazily-loaded toolsets (e.g. MCPToolset)
+        # expose their tools, and so newly added tools are ready to use right away.
+        if self._is_warmed_up and hasattr(tool, "warm_up"):
+            tool.warm_up()
+
+        new_tools = [tool] if isinstance(tool, Tool) else list(tool)
 
         # Check for duplicates before adding
         combined_tools = self.tools + new_tools
@@ -282,7 +262,7 @@ class Toolset:
 
         return cls(tools=tools)
 
-    def __add__(self, other: Union[Tool, "Toolset", list[Tool]]) -> "Toolset":
+    def __add__(self, other: "Tool | Toolset | list[Tool]") -> "Toolset":
         """
         Concatenate this Toolset with another Tool, Toolset, or list of Tools.
 
@@ -328,6 +308,8 @@ class _ToolsetWrapper(Toolset):
     def __init__(self, toolsets: list[Toolset]) -> None:
         super().__init__([tool for toolset in toolsets for tool in toolset])
         self.toolsets = toolsets
+        # Tracks whether warm_up() has already run so subsequent calls become a no-op.
+        self._is_warmed_up = False
 
     def __iter__(self) -> Iterator[Tool]:
         """Iterate over all tools from all toolsets."""
@@ -339,9 +321,54 @@ class _ToolsetWrapper(Toolset):
         return any(item in toolset for toolset in self.toolsets)
 
     def warm_up(self) -> None:
-        """Warm up all toolsets."""
+        """
+        Warm up all wrapped toolsets.
+
+        This method is idempotent: it only warms up the wrapped toolsets the first time it is
+        called. The individual toolsets are themselves expected to have idempotent `warm_up()`
+        methods.
+        """
+        if self._is_warmed_up:
+            return
         for toolset in self.toolsets:
             toolset.warm_up()
+        self._is_warmed_up = True
+
+    def to_dict(self) -> dict[str, Any]:
+        """
+        Serialize the wrapper to a dictionary.
+
+        Each wrapped toolset is serialized via its own `to_dict()`, so any subclass that
+        overrides serialization (e.g. a toolset that serializes a connection/endpoint
+        descriptor) is preserved.
+
+        :returns: A dictionary representation of the wrapper.
+        """
+        return {
+            "type": generate_qualified_class_name(type(self)),
+            "data": {"toolsets": [toolset.to_dict() for toolset in self.toolsets]},
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "_ToolsetWrapper":
+        """
+        Deserialize a wrapper from a dictionary.
+
+        :param data: Dictionary representation of the wrapper.
+        :returns: A new `_ToolsetWrapper` instance.
+        :raises TypeError: If any serialized entry is not a subclass of Toolset.
+        """
+        inner_data = data["data"]
+        toolsets_data = inner_data.get("toolsets", [])
+
+        toolsets = []
+        for toolset_data in toolsets_data:
+            toolset_class = import_class_by_name(toolset_data["type"])
+            if not issubclass(toolset_class, Toolset):
+                raise TypeError(f"Class '{toolset_class}' is not a subclass of Toolset")
+            toolsets.append(toolset_class.from_dict(toolset_data))
+
+        return cls(toolsets=toolsets)
 
     def __len__(self) -> int:
         """Return total number of tools across all toolsets."""
@@ -363,4 +390,4 @@ class _ToolsetWrapper(Toolset):
             return _ToolsetWrapper(self.toolsets + [Toolset([other])])
         if isinstance(other, list) and all(isinstance(item, Tool) for item in other):
             return _ToolsetWrapper(self.toolsets + [Toolset(other)])
-        raise TypeError(f"Cannot add {type(other).__name__} to ToolsetWrapper")
+        raise TypeError(f"Cannot add {type(other).__name__} to _ToolsetWrapper")

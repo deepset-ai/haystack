@@ -1,0 +1,136 @@
+---
+title: "CogneeWriter"
+id: cogneewriter
+slug: "/cogneewriter"
+description: "Writes ChatMessage objects to a CogneeMemoryStore as long-term memories."
+---
+
+# CogneeWriter
+
+Writes `ChatMessage` objects to a `CogneeMemoryStore` as long-term memories.
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | After an [`Agent`](../agents-1/agent.mdx) or Chat Generator in memory-augmented pipelines |
+| **Mandatory init variables** | `memory_store`: A `CogneeMemoryStore` instance |
+| **Optional init variables** | `session_id`: When set, writes target the session-cache tier; when `None`, writes go to the permanent knowledge graph |
+| **Mandatory run variables** | `messages`: A list of `ChatMessage` objects |
+| **Optional run variables** | `user_id`: Cognee user ID to scope the write; pass `None` to use Cognee's default user |
+| **Output variables** | `messages_written`: The list of `ChatMessage` objects that were written (passed through unchanged) |
+| **API reference** | [Cognee](/reference/integrations-cognee#cogneewriter) |
+| **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/cognee |
+| **Package name** | `cognee-haystack` |
+
+</div>
+
+## Overview
+
+`CogneeWriter` persists a list of `ChatMessage` objects into a `CogneeMemoryStore`. Use it in a Haystack Pipeline to store conversation facts or user preferences after an Agent turn.
+
+Messages are passed through unchanged to the pipeline output (`messages_written`), making this component easy to chain after an Agent or generator without breaking the pipeline flow.
+
+The `session_id` init parameter controls which Cognee memory tier is targeted:
+
+- Omit `session_id` (or set it to `None`) to write to the **permanent knowledge graph** — Cognee runs LLM extraction during ingestion, producing rich graph-completion-ready nodes.
+- Set `session_id` to write to the **session cache** — fast writes with no LLM extraction, scoped to that session. Session content can later be promoted to the permanent graph via `CogneeMemoryStore.improve()`.
+
+The writer's `session_id` overrides the store's `session_id` per call, so a single store can back multiple writers targeting different memory tiers.
+
+## Installation
+
+Install the Cognee integration:
+
+```bash
+pip install cognee-haystack
+```
+
+Set your LLM API key (used by Cognee for graph extraction):
+
+```bash
+export LLM_API_KEY="your-llm-api-key"
+```
+
+Optionally, set a separate embedding API key (defaults to `LLM_API_KEY` when unset):
+
+```bash
+export EMBEDDING_API_KEY="your-embedding-api-key"
+```
+
+## Usage
+
+### On its own
+
+```python
+from haystack.dataclasses import ChatMessage
+
+from haystack_integrations.components.writers.cognee import CogneeWriter
+from haystack_integrations.memory_stores.cognee import CogneeMemoryStore
+
+store = CogneeMemoryStore()
+writer = CogneeWriter(memory_store=store)
+
+result = writer.run(
+    messages=[ChatMessage.from_user("Alice prefers concise Python examples.")],
+    user_id="a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+)
+print(result["messages_written"])
+```
+
+To write to the session cache instead of the permanent graph, pass a `session_id`:
+
+```python
+session_writer = CogneeWriter(memory_store=store, session_id="alice_session_1")
+session_writer.run(
+    messages=[ChatMessage.from_user("Alice is currently debugging a vector store issue.")],
+    user_id="a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+)
+```
+
+### In a Pipeline
+
+This example connects an Agent's full `messages` output to `CogneeWriter`, so Cognee stores the conversation turn in the permanent graph.
+
+```python
+from haystack import Pipeline
+from haystack.components.agents import Agent
+from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.dataclasses import ChatMessage
+
+from haystack_integrations.components.writers.cognee import CogneeWriter
+from haystack_integrations.memory_stores.cognee import CogneeMemoryStore
+
+store = CogneeMemoryStore(dataset_name="my_agent_memory")
+
+pipeline = Pipeline()
+pipeline.add_component(
+    "agent",
+    Agent(
+        chat_generator=OpenAIChatGenerator(model="gpt-4o-mini"),
+        system_prompt=(
+            "Answer the user and preserve durable user facts or preferences for future conversations."
+        ),
+    ),
+)
+pipeline.add_component("writer", CogneeWriter(memory_store=store))
+
+pipeline.connect("agent.messages", "writer.messages")
+
+result = pipeline.run(
+    {
+        "agent": {
+            "messages": [
+                ChatMessage.from_user(
+                    "My name is Alice and I prefer concise Python examples.",
+                ),
+            ],
+        },
+        "writer": {
+            "user_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+        },
+    },
+)
+
+print(result["writer"]["messages_written"])
+```

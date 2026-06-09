@@ -1311,7 +1311,7 @@ Deserializes the component from a dictionary.
 
 ```python
 run(
-    messages: list[ChatMessage],
+    messages: list[ChatMessage] | str,
     streaming_callback: StreamingCallbackT | None = None,
     generation_kwargs: dict[str, Any] | None = None,
     tools: ToolsType | None = None,
@@ -1324,7 +1324,8 @@ Supports both standard and streaming responses depending on whether a streaming 
 
 **Parameters:**
 
-- **messages** (<code>list\[ChatMessage\]</code>) – A list of `ChatMessage` objects forming the chat history.
+- **messages** (<code>list\[ChatMessage\] | str</code>) – A list of `ChatMessage` objects forming the chat history.
+  If a string is provided, it is converted to a list containing a ChatMessage with user role.
 - **streaming_callback** (<code>StreamingCallbackT | None</code>) – Optional callback for handling streaming outputs.
 - **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Optional dictionary of generation parameters. Some common parameters are:
 - `maxTokens`: Maximum number of tokens to generate.
@@ -1347,7 +1348,7 @@ Supports both standard and streaming responses depending on whether a streaming 
 
 ```python
 run_async(
-    messages: list[ChatMessage],
+    messages: list[ChatMessage] | str,
     streaming_callback: StreamingCallbackT | None = None,
     generation_kwargs: dict[str, Any] | None = None,
     tools: ToolsType | None = None,
@@ -1360,7 +1361,8 @@ Designed for use cases where non-blocking or concurrent execution is desired.
 
 **Parameters:**
 
-- **messages** (<code>list\[ChatMessage\]</code>) – A list of `ChatMessage` objects forming the chat history.
+- **messages** (<code>list\[ChatMessage\] | str</code>) – A list of `ChatMessage` objects forming the chat history.
+  If a string is provided, it is converted to a list containing a ChatMessage with user role.
 - **streaming_callback** (<code>StreamingCallbackT | None</code>) – Optional async-compatible callback for handling streaming outputs.
 - **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Optional dictionary of generation parameters. Some common parameters are:
 - `maxTokens`: Maximum number of tokens to generate.

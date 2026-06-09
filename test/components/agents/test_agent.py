@@ -2143,17 +2143,13 @@ class TestAgentWarmUp:
 
         mcp_toolset = MockMCPToolset()
         agent = Agent(chat_generator=MockChatGenerator(), tools=mcp_toolset)
-
         assert mcp_toolset.tools == [placeholder_tool]
-
         agent.warm_up()
-
         assert mcp_toolset.tools == [actual_tool]
 
     def test_run_warms_lazy_toolset_before_tool_selection(self):
         """
-        Agent.run() must warm up lazy toolsets before passing tools to the ChatGenerator and before executing
-        tool calls.
+        Agent.run() must warm up lazy toolsets before passing tools to the ChatGenerator and before executing tool calls
         """
         placeholder_tool = Tool(
             name="mcp_not_connected_placeholder_123",
@@ -2201,6 +2197,53 @@ class TestAgentWarmUp:
         assert mcp_toolset.tools == [actual_tool]
         assert result["messages"][2].tool_call_result.result == "2024-12-01T12:00:00Z"
         assert result["last_message"].text == "done"
+
+    def test_run_warms_up_per_run_toolset(self):
+        """Per-run tools passed to run() are not covered by Agent.warm_up() and must be warmed up at run time."""
+        init_tool = self._make_tracking_tool("init_tool")
+        agent = Agent(chat_generator=MockChatGenerator(), tools=Toolset([init_tool]))
+        agent.warm_up()
+
+        per_run_tool = self._make_tracking_tool("per_run_tool")
+        per_run_toolset = self._make_tracking_toolset([per_run_tool])
+        assert not per_run_toolset.was_warmed_up
+        assert not per_run_tool.was_warmed_up
+
+        agent.run(messages=[ChatMessage.from_user("hi")], tools=per_run_toolset)
+
+        assert per_run_toolset.was_warmed_up
+        assert per_run_tool.was_warmed_up
+
+    def test_run_warms_up_per_run_list_of_tools_and_toolsets(self):
+        """A per-run list of Tools and Toolsets must be warmed up at run time."""
+        init_tool = self._make_tracking_tool("init_tool")
+        agent = Agent(chat_generator=MockChatGenerator(), tools=[init_tool])
+        agent.warm_up()
+
+        per_run_tool = self._make_tracking_tool("per_run_tool")
+        toolset_tool = self._make_tracking_tool("toolset_tool")
+        per_run_toolset = self._make_tracking_toolset([toolset_tool])
+
+        agent.run(messages=[ChatMessage.from_user("hi")], tools=[per_run_tool, per_run_toolset])
+
+        assert per_run_tool.was_warmed_up
+        assert per_run_toolset.was_warmed_up
+        assert toolset_tool.was_warmed_up
+
+    @pytest.mark.asyncio
+    async def test_run_async_warms_up_per_run_toolset(self):
+        """The async run path must also warm up per-run tools."""
+        init_tool = self._make_tracking_tool("init_tool")
+        agent = Agent(chat_generator=MockChatGenerator(), tools=Toolset([init_tool]))
+        agent.warm_up()
+
+        per_run_tool = self._make_tracking_tool("per_run_tool")
+        per_run_toolset = self._make_tracking_toolset([per_run_tool])
+
+        await agent.run_async(messages=[ChatMessage.from_user("hi")], tools=per_run_toolset)
+
+        assert per_run_toolset.was_warmed_up
+        assert per_run_tool.was_warmed_up
 
 
 class TestAgentNotTriggeredByInjectedInput:

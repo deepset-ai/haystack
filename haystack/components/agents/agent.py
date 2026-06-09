@@ -714,10 +714,17 @@ class Agent:
             return [tool for tool in available_tools if tool.name in selected_tool_names]
 
         if isinstance(tools, Toolset):
+            # Per-run tools are not covered by the Agent's own warm_up(), so warm them up here.
+            # warm_up() is expected to be idempotent, so re-warming on every run is cheap.
+            warm_up_tools(tools)
             return tools
 
         if isinstance(tools, list):
-            return cast(list[Tool | Toolset], tools)  # mypy can't narrow the Union type from isinstance check
+            selected = cast(list[Tool | Toolset], tools)  # mypy can't narrow the Union type from isinstance check
+            # Per-run tools are not covered by the Agent's own warm_up(), so warm them up here.
+            # warm_up() is expected to be idempotent, so re-warming on every run is cheap.
+            warm_up_tools(selected)
+            return selected
 
         raise TypeError(
             "tools must be a list of Tool and/or Toolset objects, a Toolset, or a list of tool names (strings)."
