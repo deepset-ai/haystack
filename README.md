@@ -90,7 +90,7 @@
 | haystack/components/generators/\_\_init\_\_.py                                      |        5 |        0 |    100% |           |
 | haystack/components/generators/azure.py                                             |       50 |        4 |     92% |133, 136, 212, 215 |
 | haystack/components/generators/chat/\_\_init\_\_.py                                 |        5 |        0 |    100% |           |
-| haystack/components/generators/chat/azure.py                                        |       68 |        4 |     94% |198, 201, 312, 315 |
+| haystack/components/generators/chat/azure.py                                        |       70 |        3 |     96% |214, 327, 330 |
 | haystack/components/generators/chat/azure\_responses.py                             |       46 |        2 |     96% |  224, 271 |
 | haystack/components/generators/chat/fallback.py                                     |       89 |        4 |     96% |93, 245-250 |
 | haystack/components/generators/chat/hugging\_face\_api.py                           |      233 |        7 |     97% |190, 429-430, 496, 594, 647, 718 |
@@ -266,7 +266,7 @@
 | haystack/utils/type\_serialization.py                                               |      111 |       12 |     89% |62, 64, 174-175, 186-189, 195, 211-214 |
 | haystack/utils/url\_validation.py                                                   |        4 |        0 |    100% |           |
 | haystack/version.py                                                                 |        5 |        2 |     60% |      9-10 |
-| **TOTAL**                                                                           | **17716** | **1215** | **93%** |           |
+| **TOTAL**                                                                           | **17718** | **1214** | **93%** |           |
 
 
 ## Setup coverage badge
