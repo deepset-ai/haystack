@@ -281,6 +281,7 @@ class TestSearchableToolsetBM25Mode:
 
         toolset = SearchableToolset(catalog=catalog, search_threshold=3, top_k=1)
         toolset.warm_up()
+        assert toolset._bootstrap_tool is not None
         toolset._selected_tool_names = {"target_weather"}
 
         result = toolset._bootstrap_tool.invoke(tool_keywords="weather")
