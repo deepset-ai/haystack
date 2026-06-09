@@ -497,6 +497,16 @@ class TestSearchableToolsetWithToolset:
 class TestSearchableToolsetWarmUp:
     """Tests for warm_up behavior."""
 
+    def test_not_warmed_up_after_agent_init(self, large_catalog, monkeypatch):
+        """Initializing an Agent with a SearchableToolset must not warm it up (no premature flatten/connect)."""
+        monkeypatch.setenv("OPENAI_API_KEY", "fake-key")
+        toolset = SearchableToolset(catalog=large_catalog)
+        assert toolset._is_warmed_up is False
+
+        Agent(chat_generator=OpenAIChatGenerator(), tools=toolset)
+
+        assert toolset._is_warmed_up is False
+
     def test_warm_up_idempotent(self, large_catalog):
         """Test that warm_up can be called multiple times safely."""
         toolset = SearchableToolset(catalog=large_catalog)
