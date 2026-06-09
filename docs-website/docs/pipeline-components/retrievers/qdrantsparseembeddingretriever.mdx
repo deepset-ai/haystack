@@ -100,8 +100,8 @@ from haystack_integrations.components.retrievers.qdrant import (
 from haystack_integrations.document_stores.qdrant import QdrantDocumentStore
 from haystack.document_stores.types import DuplicatePolicy
 from haystack_integrations.components.embedders.fastembed import (
-    FastembedDocumentEmbedder,
-    FastembedTextEmbedder,
+    FastembedSparseDocumentEmbedder,
+    FastembedSparseTextEmbedder,
 )
 
 document_store = QdrantDocumentStore(

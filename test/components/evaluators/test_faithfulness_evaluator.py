@@ -253,7 +253,7 @@ class TestFaithfulnessEvaluator:
         with pytest.raises(ValueError, match="LLM evaluator expected input parameter"):
             component.run()
 
-    def test_run_returns_nan_raise_on_failure_false(self, monkeypatch):
+    def test_run_returns_nan_raise_on_failure_false(self, monkeypatch, caplog):
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
         component = FaithfulnessEvaluator(raise_on_failure=False)
 
@@ -282,9 +282,10 @@ class TestFaithfulnessEvaluator:
             "Football is the most popular sport with around 4 billion followers worldwide.",
             "Guido van Rossum.",
         ]
-        results = component.run(questions=questions, contexts=contexts, predicted_answers=predicted_answers)
+        with caplog.at_level("WARNING", logger="haystack.components.evaluators.faithfulness"):
+            results = component.run(questions=questions, contexts=contexts, predicted_answers=predicted_answers)
 
-        assert math.isnan(results["score"])
+        assert results["score"] == 1.0
 
         assert results["individual_scores"][0] == 1.0
         assert math.isnan(results["individual_scores"][1])
@@ -294,6 +295,8 @@ class TestFaithfulnessEvaluator:
         assert results["results"][1]["statements"] == []
         assert results["results"][1]["statement_scores"] == []
         assert math.isnan(results["results"][1]["score"])
+
+        assert "1 query(s) failed and were excluded from the score." in caplog.text
 
     @pytest.mark.skipif(
         not os.environ.get("OPENAI_API_KEY", None),

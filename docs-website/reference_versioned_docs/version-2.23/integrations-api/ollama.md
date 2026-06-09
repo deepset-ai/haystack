@@ -319,7 +319,7 @@ Deserializes the component from a dictionary.
 
 ```python
 run(
-    messages: list[ChatMessage],
+    messages: list[ChatMessage] | str,
     generation_kwargs: dict[str, Any] | None = None,
     tools: ToolsType | None = None,
     *,
@@ -331,7 +331,8 @@ Runs an Ollama Model on a given chat history.
 
 **Parameters:**
 
-- **messages** (<code>list\[ChatMessage\]</code>) – A list of ChatMessage instances representing the input messages.
+- **messages** (<code>list\[ChatMessage\] | str</code>) – A list of ChatMessage instances representing the input messages. If a string is provided, it is converted
+  to a list containing a ChatMessage with user role.
 - **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Per-call overrides for Ollama inference options.
   These are merged on top of the instance-level `generation_kwargs`.
   Optional arguments to pass to the Ollama generation endpoint, such as temperature, top_p, etc. See the
@@ -351,7 +352,7 @@ Runs an Ollama Model on a given chat history.
 
 ```python
 run_async(
-    messages: list[ChatMessage],
+    messages: list[ChatMessage] | str,
     generation_kwargs: dict[str, Any] | None = None,
     tools: ToolsType | None = None,
     *,
@@ -363,7 +364,8 @@ Async version of run. Runs an Ollama Model on a given chat history.
 
 **Parameters:**
 
-- **messages** (<code>list\[ChatMessage\]</code>) – A list of ChatMessage instances representing the input messages.
+- **messages** (<code>list\[ChatMessage\] | str</code>) – A list of ChatMessage instances representing the input messages. If a string is provided, it is converted
+  to a list containing a ChatMessage with user role.
 - **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Per-call overrides for Ollama inference options.
   These are merged on top of the instance-level `generation_kwargs`.
 - **tools** (<code>ToolsType | None</code>) – A list of Tool and/or Toolset objects, or a single Toolset for which the model can prepare calls.

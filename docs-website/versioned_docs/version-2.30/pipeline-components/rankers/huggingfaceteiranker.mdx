@@ -17,9 +17,9 @@ Use this component to rank documents based on their similarity to the query usin
 | **Mandatory init variables** | `url`: Base URL of the TEI reranking service (for example, "https://api.example.com"). |
 | **Mandatory run variables** | `query`: A query string  <br /> <br />`documents`: A list of document objects |
 | **Output variables** | `documents`: A grouped list of documents |
-| **API reference** | [Rankers](/reference/rankers-api) |
-| **GitHub link** | https://github.com/deepset-ai/haystack/blob/main/haystack/components/rankers/hugging_face_tei.py |
-| **Package name** | `haystack-ai` |
+| **API reference** | [Hugging Face API](/reference/integrations-huggingface-api) |
+| **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/huggingface_api |
+| **Package name** | `huggingface-api-haystack` |
 
 </div>
 
@@ -38,6 +38,12 @@ Depending on your TEI server configuration, you may also require a Hugging Face 
 
 ## Usage
 
+Install the `huggingface-api-haystack` package to use the `HuggingFaceTEIRanker`:
+
+```shell
+pip install huggingface-api-haystack
+```
+
 ### On its own
 
 You can use `HuggingFaceTEIRanker` outside of a pipeline to order documents based on your query.
@@ -46,7 +52,7 @@ This example uses the `HuggingFaceTEIRanker` to rank two simple documents. To ru
 
 ```python
 from haystack import Document
-from haystack.components.rankers import HuggingFaceTEIRanker
+from haystack_integrations.components.rankers.huggingface_api import HuggingFaceTEIRanker
 from haystack.utils import Secret
 
 reranker = HuggingFaceTEIRanker(
@@ -76,7 +82,9 @@ Below is an example of a pipeline that retrieves documents from an `InMemoryDocu
 from haystack import Document, Pipeline
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.components.retrievers.in_memory import InMemoryBM25Retriever
-from haystack.components.rankers import HuggingFaceTEIRanker
+from haystack_integrations.components.rankers.huggingface_api import (
+    HuggingFaceTEIRanker,
+)
 
 docs = [
     Document(content="Paris is in France"),
