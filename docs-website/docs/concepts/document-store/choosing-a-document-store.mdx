@@ -124,7 +124,7 @@ The tables below list every available integration alongside the key properties y
 - Good choice when the database is already in use and adding a separate vector store is undesirable
 - Vector search performance may trail behind purpose-built databases
 
-**Best for** applications already using MongoDB or Cassandra that want to add RAG capabilities without introducing a new infrastructure component.
+**Best for** applications already that want to add RAG capabilities without introducing a new infrastructure component.
 
 - Astra ([AstraDocumentStore](../../document-stores/astradocumentstore.mdx))
 - [MongoDB Atlas](../../document-stores/mongodbatlasdocumentstore.mdx)
@@ -134,7 +134,7 @@ The tables below list every available integration alongside the key properties y
 
 - In-memory architecture delivers extremely low read/write latency
 - Vector search (HNSW) layered on top of an existing caching infrastructure
-- Ideal when the stack already includes Redis or Valkey as a cache or session store
+- Ideal when the stack already includes Valkey as a cache or session store
 - Data is ephemeral by default; persistence requires explicit configuration
 - Less suited for large corpora where memory cost becomes significant
 
