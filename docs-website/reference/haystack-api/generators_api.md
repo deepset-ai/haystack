@@ -246,8 +246,8 @@ for the full list.
 
 ```python
 __init__(
-    azure_endpoint: str | None = None,
-    api_version: str | None = "2024-12-01-preview",
+    azure_endpoint: str | Secret | None = None,
+    api_version: str | Secret | None = "2024-12-01-preview",
     azure_deployment: str | None = "gpt-4.1-mini",
     api_key: Secret | None = Secret.from_env_var(
         "AZURE_OPENAI_API_KEY", strict=False
@@ -275,8 +275,15 @@ Initialize the Azure OpenAI Chat Generator component.
 
 **Parameters:**
 
-- **azure_endpoint** (<code>str | None</code>) – The endpoint of the deployed model, for example `"https://example-resource.azure.openai.com/"`.
-- **api_version** (<code>str | None</code>) – The version of the API to use. Defaults to 2024-12-01-preview.
+- **azure_endpoint** (<code>str | Secret | None</code>) – The endpoint of the deployed model, for example `"https://example-resource.azure.openai.com/"`.
+  Can also be a [Secret](https://docs.haystack.deepset.ai/docs/secret-management), for example
+  `Secret.from_env_var("AZURE_OPENAI_ENDPOINT")`, to resolve the value from an environment variable at
+  runtime. This is useful to switch endpoints between environments (e.g. dev and prod) without changing the
+  serialized pipeline.
+- **api_version** (<code>str | Secret | None</code>) – The version of the API to use. Defaults to 2024-12-01-preview.
+  Can also be a [Secret](https://docs.haystack.deepset.ai/docs/secret-management), for example
+  `Secret.from_env_var("AZURE_OPENAI_API_VERSION")`, to resolve the value from an environment variable at
+  runtime.
 - **azure_deployment** (<code>str | None</code>) – The deployment of the model, usually the model name.
 - **api_key** (<code>Secret | None</code>) – The API key to use for authentication.
 - **azure_ad_token** (<code>Secret | None</code>) – [Azure Active Directory token](https://www.microsoft.com/en-us/security/business/identity-access/microsoft-entra-id).
