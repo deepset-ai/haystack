@@ -453,6 +453,28 @@ class TestToolsetToolSelection:
         assert [tool.name for tool in toolset] == ["add"]
         assert {tool.name for tool in toolset.get_selectable_tools()} == {"add", "multiply"}
 
+    def test_get_selectable_tools_warms_up_lazy_toolset(self, add_tool, multiply_tool):
+        """get_selectable_tools() warms up a lazy toolset so its lazily loaded tools are available for selection."""
+
+        class LazyToolset(Toolset):
+            def __init__(self):
+                super().__init__([])  # no tools until warm_up
+
+            def warm_up(self):
+                if self._is_warmed_up:
+                    return
+                self.tools = [add_tool, multiply_tool]
+                self._is_warmed_up = True
+
+        toolset = LazyToolset()
+        assert toolset._is_warmed_up is False
+        assert toolset.tools == []  # not loaded yet
+
+        selectable = toolset.get_selectable_tools()
+
+        assert toolset._is_warmed_up is True  # get_selectable_tools triggered warm_up
+        assert [tool.name for tool in selectable] == ["add", "multiply"]
+
     def test_filter_restricts_iteration(self, add_tool, multiply_tool, subtract_tool):
         toolset = Toolset([add_tool, multiply_tool, subtract_tool])
         toolset._selected_tool_names = {"add", "subtract"}
