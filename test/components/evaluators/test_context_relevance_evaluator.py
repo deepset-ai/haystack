@@ -206,7 +206,7 @@ class TestContextRelevanceEvaluator:
         with pytest.raises(ValueError, match="LLM evaluator expected input parameter"):
             component.run()
 
-    def test_run_returns_nan_raise_on_failure_false(self, monkeypatch):
+    def test_run_returns_nan_raise_on_failure_false(self, monkeypatch, caplog):
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
         component = ContextRelevanceEvaluator(raise_on_failure=False)
 
@@ -231,12 +231,15 @@ class TestContextRelevanceEvaluator:
                 "programmers write clear, logical code for both small and large-scale software projects."
             ],
         ]
-        results = component.run(questions=questions, contexts=contexts)
+        with caplog.at_level("WARNING", logger="haystack.components.evaluators.context_relevance"):
+            results = component.run(questions=questions, contexts=contexts)
 
-        assert math.isnan(results["score"])
+        assert results["score"] == 1
         assert results["results"][0] == {"relevant_statements": ["c", "d"], "score": 1}
         assert results["results"][1]["relevant_statements"] == []
         assert math.isnan(results["results"][1]["score"])
+
+        assert "1 query(s) failed and were excluded from the score." in caplog.text
 
     @pytest.mark.skipif(
         not os.environ.get("OPENAI_API_KEY", None),
