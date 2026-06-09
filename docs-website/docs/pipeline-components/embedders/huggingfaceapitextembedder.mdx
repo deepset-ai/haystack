@@ -17,9 +17,9 @@ Use this component to embed strings using various Hugging Face APIs.
 | **Mandatory init variables** | `api_type`: The type of Hugging Face API to use  <br /> <br />`api_params`: A dictionary with one of the following keys:  <br /> <br />- `model`: Hugging Face model ID. Required when `api_type` is `SERVERLESS_INFERENCE_API`.**OR** - `url`: URL of the inference endpoint. Required when `api_type` is `INFERENCE_ENDPOINTS` or `TEXT_EMBEDDINGS_INFERENCE`.  <br /> <br />`token`: The Hugging Face API token. Can be set with `HF_API_TOKEN` or `HF_TOKEN` env var. |
 | **Mandatory run variables** | `text`: A string |
 | **Output variables** | `embedding`: A list of float numbers |
-| **API reference** | [Embedders](/reference/embedders-api) |
-| **GitHub link** | https://github.com/deepset-ai/haystack/blob/main/haystack/components/embedders/hugging_face_api_text_embedder.py |
-| **Package name** | `haystack-ai` |
+| **API reference** | [Hugging Face API](/reference/integrations-huggingface-api) |
+| **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/huggingface_api |
+| **Package name** | `huggingface-api-haystack` |
 
 </div>
 
@@ -43,8 +43,14 @@ The token is needed:
 
 ## Usage
 
+Install the `huggingface-api-haystack` package to use the `HuggingFaceAPITextEmbedder`:
+
+```shell
+pip install huggingface-api-haystack
+```
+
 Similarly to other text Embedders, this component allows adding prefixes (and postfixes) to include instructions.
-For more fine-grained details, refer to the component’s [API reference](/reference/embedders-api#huggingfaceapitextembedder).
+For more fine-grained details, refer to the component’s [API reference](/reference/integrations-huggingface-api#huggingfaceapitextembedder).
 
 ### On its own
 
@@ -56,7 +62,9 @@ To use this API, you need a [free Hugging Face token](https://huggingface.co/set
 The Embedder expects the `model` in `api_params`.
 
 ```python
-from haystack.components.embedders import HuggingFaceAPITextEmbedder
+from haystack_integrations.components.embedders.huggingface_api import (
+    HuggingFaceAPITextEmbedder,
+)
 from haystack.utils import Secret
 
 text_embedder = HuggingFaceAPITextEmbedder(
@@ -80,7 +88,9 @@ Additionally, in this case, you need to provide your Hugging Face token.
 The Embedder expects the `url` of your endpoint in `api_params`.
 
 ```python
-from haystack.components.embedders import HuggingFaceAPITextEmbedder
+from haystack_integrations.components.embedders.huggingface_api import (
+    HuggingFaceAPITextEmbedder,
+)
 from haystack.utils import Secret
 
 text_embedder = HuggingFaceAPITextEmbedder(
@@ -115,7 +125,9 @@ For more information, refer to the [official TEI repository](https://github.com/
 The Embedder expects the `url` of your TEI instance in `api_params`.
 
 ```python
-from haystack.components.embedders import HuggingFaceAPITextEmbedder
+from haystack_integrations.components.embedders.huggingface_api import (
+    HuggingFaceAPITextEmbedder,
+)
 from haystack.utils import Secret
 
 text_embedder = HuggingFaceAPITextEmbedder(
@@ -134,7 +146,7 @@ print(text_embedder.run("I love pizza!"))
 from haystack import Document
 from haystack import Pipeline
 from haystack.document_stores.in_memory import InMemoryDocumentStore
-from haystack.components.embedders import (
+from haystack_integrations.components.embedders.huggingface_api import (
     HuggingFaceAPITextEmbedder,
     HuggingFaceAPIDocumentEmbedder,
 )
