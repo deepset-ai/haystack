@@ -27,11 +27,12 @@ class RouteConditionException(Exception):
     """Exception raised when there is an error parsing or evaluating the condition expression in ConditionalRouter."""
 
 
-class Route(TypedDict):
+class Route(TypedDict, total=False):
     condition: str
     output: str | list[str]
     output_name: str | list[str]
     output_type: type | list[type]
+    output_passthrough: bool
 
 
 @component
@@ -46,6 +47,10 @@ class ConditionalRouter:
     - `output_type`: The type of the output data (for example, `str`, `list[int]`).
     - `output_name`: The name you want to use to publish `output`. This name is used to connect
     the router to other components in the pipeline.
+
+    An optional field `output_passthrough` can be set to `True` to treat `output` as a variable name
+    instead of a Jinja2 template, passing the variable value directly. This is useful for routing
+    complex non-basic types (dataclasses, Pydantic models, etc.) without Jinja2 processing.
 
     ### Usage example
 
@@ -116,6 +121,42 @@ class ConditionalRouter:
     print(result)
     # >> {'router': {'few_items': 'Processing few items'}}
     ```
+
+    ### Passthrough routing for non-basic types
+
+    When routing complex custom types, set `output_passthrough: True` in a route to skip Jinja2 processing
+    and pass the variable value directly:
+
+    ```python
+    from haystack.components.routers import ConditionalRouter
+    from dataclasses import dataclass
+
+    @dataclass
+    class Document:
+        content: str
+
+    routes = [
+        {
+            "condition": "{{is_important}}",
+            "output": "document",        # variable name, not a Jinja2 template
+            "output_name": "important_docs",
+            "output_type": Document,
+            "output_passthrough": True,  # skip Jinja2, pass variable directly
+        },
+        {
+            "condition": "{{not is_important}}",
+            "output": "document",
+            "output_name": "regular_docs",
+            "output_type": Document,
+            "output_passthrough": True,
+        },
+    ]
+
+    router = ConditionalRouter(routes)
+    doc = Document(content="Important info")
+    result = router.run(is_important=True, document=doc)
+    assert result == {"important_docs": doc}
+    ```
     """
 
     def __init__(
@@ -132,10 +173,14 @@ class ConditionalRouter:
         :param routes: A list of dictionaries, each defining a route.
             Each route has these four elements:
             - `condition`: A Jinja2 string expression that determines if the route is selected.
-            - `output`: A Jinja2 expression defining the route's output value.
+            - `output`: A Jinja2 expression defining the route's output value, or a plain variable name
+              if `output_passthrough` is `True`.
             - `output_type`: The type of the output data (for example, `str`, `list[int]`).
             - `output_name`: The name you want to use to publish `output`. This name is used to connect
             the router to other components in the pipeline.
+            - `output_passthrough` (optional): If `True`, treats `output` as a plain variable name and
+              passes the value directly from the input kwargs, skipping all Jinja2 processing. Useful
+              for routing complex non-basic types without template transformation.
         :param custom_filters: A dictionary of custom Jinja2 filters used in the condition expressions.
             For example, passing `{"my_filter": my_filter_fcn}` where:
             - `my_filter` is the name of the custom filter.
@@ -214,11 +259,17 @@ class ConditionalRouter:
         output_types: dict[str, type | list[type]] = {}
 
         for route in routes:
-            # extract inputs
-            route_input_names = self._extract_variables(
-                self._env,
-                [route["condition"]] + (route["output"] if isinstance(route["output"], list) else [route["output"]]),
-            )
+            output_passthrough = route.get("output_passthrough", False)
+            outputs = route["output"] if isinstance(route["output"], list) else [route["output"]]
+
+            if output_passthrough:
+                # For passthrough routes, output values are plain variable names — treat them as inputs
+                route_input_names = self._extract_variables(self._env, [route["condition"]])
+                route_input_names.update(outputs)
+            else:
+                # For normal routes, extract variables from both condition and output templates
+                route_input_names = self._extract_variables(self._env, [route["condition"]] + outputs)
+
             input_types.update(route_input_names)
 
             # extract outputs
@@ -323,8 +374,9 @@ class ConditionalRouter:
             If there is an error parsing or evaluating the `condition` expression in the routes.
         :raises ValueError:
             If type validation is enabled and route type doesn't match actual value type.
+        :raises KeyError:
+            If `output_passthrough` is `True` and the variable named in `output` is not found in kwargs.
         """
-        # Create a Jinja native environment to evaluate the condition templates as Python expressions
         for route in self.routes:
             try:
                 t = self._env.from_string(route["condition"])
@@ -342,20 +394,30 @@ class ConditionalRouter:
                 output_names = (
                     route["output_name"] if isinstance(route["output_name"], list) else [route["output_name"]]
                 )
+                output_passthrough = route.get("output_passthrough", False)
 
                 result = {}
                 for output, output_type, output_name in zip(outputs, output_types, output_names, strict=True):
-                    # Evaluate output template
-                    t_output = self._env.from_string(output)
-                    output_value = t_output.render(**kwargs)
+                    if output_passthrough:
+                        # output is a plain variable name — retrieve directly from kwargs, no Jinja2 processing
+                        if output not in kwargs:
+                            raise KeyError(
+                                f"Variable '{output}' not found in inputs for passthrough route '{output_name}'. "
+                                f"Ensure '{output}' is passed as an input to the router."
+                            )
+                        output_value = kwargs[output]
+                    else:
+                        # Standard Jinja2 template evaluation
+                        t_output = self._env.from_string(output)
+                        output_value = t_output.render(**kwargs)
 
-                    # We suppress the exception in case the output is already a string, otherwise
-                    # we try to evaluate it and would fail.
-                    # This must be done cause the output could be different literal structures.
-                    # This doesn't support any user types.
-                    with contextlib.suppress(Exception):
-                        if not self._unsafe:
-                            output_value = ast.literal_eval(output_value)
+                        # We suppress the exception in case the output is already a string, otherwise
+                        # we try to evaluate it and would fail.
+                        # This must be done cause the output could be different literal structures.
+                        # This doesn't support any user types.
+                        with contextlib.suppress(Exception):
+                            if not self._unsafe:
+                                output_value = ast.literal_eval(output_value)
 
                     # Validate output type if needed
                     if self._validate_output_type and not self._output_matches_type(output_value, output_type):
@@ -366,8 +428,8 @@ class ConditionalRouter:
                 return result
 
             except Exception as e:
-                # If this was a type‐validation failure, let it propagate as a ValueError
-                if isinstance(e, ValueError):
+                # If this was a type-validation failure or missing passthrough variable, let it propagate
+                if isinstance(e, (ValueError, KeyError)):
                     raise
                 msg = f"Error evaluating condition for route '{route}': {e}"
                 raise RouteConditionException(msg) from e
@@ -402,7 +464,7 @@ class ConditionalRouter:
             if not len(outputs) == len(output_types) == len(output_names):
                 raise ValueError(f"Route output, output_type and output_name must have same length: {route}")
 
-            # Validate templates
+            # Condition is always a Jinja2 template — validate it
             if not self._validate_template(self._env, route["condition"]):
                 condition_value = route["condition"]
                 if not isinstance(condition_value, str):
@@ -413,15 +475,18 @@ class ConditionalRouter:
                     )
                 raise ValueError(f"Invalid template for condition: {condition_value}")
 
-            for output in outputs:
-                if not self._validate_template(self._env, output):
-                    if not isinstance(output, str):
-                        raise ValueError(
-                            f"Invalid template for output: {output!r} (type: {type(output).__name__}). "
-                            f"Output must be a string representing a valid Jinja2 template. "
-                            f"For example, use {str(output)!r} instead of {output!r}."
-                        )
-                    raise ValueError(f"Invalid template for output: {output}")
+            # Only validate output as Jinja2 template when output_passthrough is False (default)
+            output_passthrough = route.get("output_passthrough", False)
+            if not output_passthrough:
+                for output in outputs:
+                    if not self._validate_template(self._env, output):
+                        if not isinstance(output, str):
+                            raise ValueError(
+                                f"Invalid template for output: {output!r} (type: {type(output).__name__}). "
+                                f"Output must be a string representing a valid Jinja2 template. "
+                                f"For example, use {str(output)!r} instead of {output!r}."
+                            )
+                        raise ValueError(f"Invalid template for output: {output}")
 
     @staticmethod
     def _extract_variables(env: Environment, templates: list[str]) -> set[str]:

@@ -730,3 +730,92 @@ class TestRouter:
         templates = [condition, "{{query}}"]
         extracted_variables = ConditionalRouter._extract_variables(env=NativeEnvironment(), templates=templates)
         assert extracted_variables == {"control", "query"}
+def test_conditional_router_passthrough_with_custom_type():
+    """Test passthrough routing for custom types without Jinja2."""
+    from dataclasses import dataclass
+
+    @dataclass
+    class CustomDocument:
+        content: str
+        metadata: dict
+
+    routes = [
+        {
+            "condition": "{{is_important}}",
+            "output": "document",  # variable name, not template
+            "output_name": "important",
+            "output_type": CustomDocument,
+            "output_passthrough": True,  # NEW FEATURE
+        },
+        {
+            "condition": "{{not is_important}}",
+            "output": "document",
+            "output_name": "regular",
+            "output_type": CustomDocument,
+            "output_passthrough": True,
+        },
+    ]
+
+    router = ConditionalRouter(routes)
+    
+    # Test 1: Route with is_important=True
+    doc = CustomDocument(content="Important", metadata={"priority": "high"})
+    result = router.run(is_important=True, document=doc)
+    assert "important" in result
+    assert result["important"] == doc
+    assert result["important"].content == "Important"
+
+    # Test 2: Route with is_important=False
+    result = router.run(is_important=False, document=doc)
+    assert "regular" in result
+    assert result["regular"] == doc
+
+
+def test_conditional_router_passthrough_missing_variable():
+    """Test that passthrough routing raises error for missing variables."""
+    routes = [
+        {
+            "condition": "{{True}}",
+            "output": "missing_var",
+            "output_name": "out",
+            "output_type": str,
+            "output_passthrough": True,
+        },
+    ]
+
+    router = ConditionalRouter(routes)
+    
+    # Should raise KeyError because 'missing_var' not provided
+    with pytest.raises(KeyError):
+        router.run(other_var="value")
+
+
+def test_conditional_router_passthrough_mixed():
+    """Test mixing Jinja2 and passthrough routes in same router."""
+    routes = [
+        {
+            "condition": "{{mode == 'direct'}}",
+            "output": "data",
+            "output_name": "direct_route",
+            "output_type": list,
+            "output_passthrough": True,  # passthrough
+        },
+        {
+            "condition": "{{mode == 'transform'}}",
+            "output": "{{data | reverse | list}}",
+            "output_name": "transformed_route",
+            "output_type": list,
+            # output_passthrough defaults to False
+        },
+    ]
+
+    router = ConditionalRouter(routes)
+    test_list = [1, 2, 3]
+
+    # Direct route
+    result = router.run(mode="direct", data=test_list)
+    assert result["direct_route"] == test_list
+
+    # Transformed route (Jinja2 processed)
+    result = router.run(mode="transform", data=test_list)
+    assert result["transformed_route"] == [3, 2, 1]
