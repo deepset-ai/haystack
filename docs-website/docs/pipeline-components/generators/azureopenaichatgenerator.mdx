@@ -43,7 +43,7 @@ client = AzureOpenAIChatGenerator(
 We recommend using environment variables instead of initialization parameters.
 :::
 
-You can also resolve `azure_endpoint` and `api_version` from environment variables at runtime by passing a `Secret` instead of a plain string. This is useful when you want to switch between environments (for example, dev and prod) without changing your pipeline definition – you only update the environment variables:
+To switch `azure_endpoint` and `api_version` between environments without editing your pipeline, pass a Secret that resolves them from environment variables at runtime:
 
 ```python
 from haystack.components.generators.chat import AzureOpenAIChatGenerator
