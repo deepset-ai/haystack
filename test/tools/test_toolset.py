@@ -325,7 +325,8 @@ class TestToolsetWithAgent:
             def run(
                 self, messages: list[ChatMessage], tools: list[Tool | Toolset] | None = None, **kwargs: Any
             ) -> dict[str, list[ChatMessage]]:
-                assert tools == [toolset2, toolset3]
+                # The Agent flattens toolsets before passing them to the chat generator.
+                assert tools == [add_tool, multiply_tool]
                 if self.tool_invoked:
                     return {"replies": [ChatMessage.from_assistant("done")]}
                 self.tool_invoked = True
