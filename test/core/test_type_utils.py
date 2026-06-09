@@ -1119,7 +1119,7 @@ class TestConversion:
         # so callers must use the base types directly. Pins the behavior change vs the prior
         # `_strict_types_are_compatible` gate which accepted subclasses.
         class MyStr(str):
-            pass
+            __slots__ = ()
 
         assert _types_are_compatible(sender=list[MyStr], receiver=str) == (False, None)
 
