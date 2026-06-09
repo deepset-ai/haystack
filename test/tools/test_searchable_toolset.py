@@ -265,6 +265,31 @@ class TestSearchableToolsetBM25Mode:
         # Should find exactly 1 tool
         assert "Found and loaded 1 tool(s):" in result
 
+    def test_search_with_selection_scopes_retrieval(self):
+        """With a name selection, search is scoped to the selected tools so a small top_k still finds them."""
+
+        def fn(x):
+            return x
+
+        params = {"type": "object", "properties": {"x": {"type": "string"}}, "required": ["x"]}
+        # Several decoys match "weather" strongly; the target matches it too but less strongly.
+        catalog = [
+            Tool(name=f"decoy_{i}", description="weather weather weather forecast", parameters=params, function=fn)
+            for i in range(5)
+        ]
+        catalog.append(Tool(name="target_weather", description="weather report", parameters=params, function=fn))
+
+        toolset = SearchableToolset(catalog=catalog, search_threshold=3, top_k=1)
+        toolset.warm_up()
+        toolset._selected_tool_names = {"target_weather"}
+
+        result = toolset._bootstrap_tool.invoke(tool_keywords="weather")
+
+        # Even with top_k=1 and several stronger-matching decoys, the scoped search still finds the selected tool
+        # (the old approach retrieved top_k across the whole catalog and then dropped non-selected results).
+        assert "target_weather" in result
+        assert set(toolset._discovered_tools) == {"target_weather"}
+
     def test_search_tools_no_results(self, large_catalog):
         """Test search_tools with no matching results."""
         toolset = SearchableToolset(catalog=large_catalog)

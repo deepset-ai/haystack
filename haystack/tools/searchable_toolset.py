@@ -231,8 +231,15 @@ class SearchableToolset(Toolset):
                     "names/descriptions (e.g. 'route weather search')."
                 )
 
+            # Scope the search to the selected subset if active so that top_k applies within the selected tools
+            filters = None
+            if self._selected_tool_names is not None:
+                filters = {"field": "meta.tool_name", "operator": "in", "value": list(self._selected_tool_names)}
+
             # at this point, the toolset has been warmed up, so self._document_store is not None
-            results = self._document_store.bm25_retrieval(query=tool_keywords, top_k=num_results)  # type: ignore[union-attr]
+            results = self._document_store.bm25_retrieval(  # type: ignore[union-attr]
+                query=tool_keywords, top_k=num_results, filters=filters
+            )
 
             if not results:
                 return "No tools found matching these keywords. Try different keywords."
@@ -250,14 +257,8 @@ class SearchableToolset(Toolset):
             tool_names = []
             for doc in results:
                 tool = tool_by_name[doc.meta["tool_name"]]
-                # Honor an active name filter so search only discovers tools within the selected subset.
-                if not self._is_selected(tool.name):
-                    continue
                 self._discovered_tools[tool.name] = tool
                 tool_names.append(tool.name)
-
-            if not tool_names:
-                return "No tools found matching these keywords. Try different keywords."
 
             return f"Found and loaded {len(tool_names)} tool(s): {', '.join(tool_names)}. Use them directly as tools."
 
