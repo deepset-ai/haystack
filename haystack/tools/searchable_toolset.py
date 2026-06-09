@@ -62,7 +62,7 @@ class SearchableToolset(Toolset):
     # `search_tools` tool and must search to load the others (set it higher for larger catalogs).
     toolset = SearchableToolset(catalog=[get_weather, search_web, convert_currency], search_threshold=2)
 
-    agent = Agent(chat_generator=OpenAIChatGenerator(model="gpt-5.4-nano"), tools=toolset)
+    agent = Agent(chat_generator=OpenAIChatGenerator(), tools=toolset)
 
     # The agent is initially provided only with the search_tools tool and will use it to find relevant tools.
     result = agent.run(messages=[ChatMessage.from_user("What's the weather in Milan?")])
