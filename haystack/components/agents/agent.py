@@ -409,8 +409,8 @@ class Agent:
 
         # --- Attributes ---
         self.chat_generator = chat_generator
-        # Use an explicit None check rather than `tools or []`: truthiness-testing a Toolset calls __len__,
-        # which for a SearchableToolset would iterate and prematurely warm it up at init.
+        # We use an explicit None check for tools b/c testing for truthiness calls __len__, which for SearchableToolset
+        # would iterate and prematurely warm it up at init.
         self.tools = tools if tools is not None else []
         self.system_prompt = system_prompt
         self.user_prompt = user_prompt

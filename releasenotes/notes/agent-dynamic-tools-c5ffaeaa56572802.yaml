@@ -8,13 +8,20 @@ fixes:
     ``Agent`` now correctly executes tools supplied only at runtime via ``run(tools=...)`` / ``run_async(tools=...)``
     when no tools were provided at initialization. Previously the run stopped after the first LLM call because the
     step guard checked the init-time tools instead of the tools resolved for the run.
+  - |
+    Initializing an ``Agent`` no longer warms up a ``SearchableToolset``. Previously construction could iterate the
+    tools, and ``SearchableToolset`` warms itself up when iterated, so it was warmed up too early. Its warm-up now
+    happens only via ``Agent.warm_up()`` or at run time.
 upgrade:
   - |
-    ``Agent`` no longer validates ``exit_conditions`` against tool names at initialization, and no longer flattens
-    tools at init (which could prematurely warm up a ``SearchableToolset``). Exit conditions are now evaluated at
-    runtime, so a condition naming a tool that is loaded later — e.g. a tool passed at runtime or one discovered by
-    ``SearchableToolset`` — works as expected. Consequently, an unknown exit-condition name no longer raises a
-    ``ValueError`` at construction.
+    ``Agent`` no longer validates ``exit_conditions`` against tool names at initialization. Exit conditions are now
+    evaluated at runtime, so a condition naming a tool that is loaded later — e.g. a tool passed at runtime or one
+    discovered by ``SearchableToolset`` — works as expected. Consequently, an unknown exit-condition name no longer
+    raises a ``ValueError`` at construction.
+  - |
+    Tool support is now validated against the tools resolved for each run, not only the tools provided at
+    initialization. Passing tools at runtime via ``run(tools=...)`` to a chat generator that does not support tools
+    now raises a ``TypeError`` instead of silently ignoring them.
 other:
   - |
     The warning logged when an ``Agent`` is created without tools has been removed, since tools can be provided at
