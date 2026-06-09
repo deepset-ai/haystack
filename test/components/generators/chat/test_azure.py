@@ -198,6 +198,39 @@ class TestAzureOpenAIChatGenerator:
         assert str(deserialized.client._azure_endpoint) == "https://test-resource.azure.openai.com/"
         assert deserialized.client._api_version == "2024-08-01-preview"
 
+    def test_from_dict_with_secret_azure_endpoint_and_api_version(self, monkeypatch):
+        """from_dict deserializes Secret azure_endpoint/api_version dicts and resolves them for the client."""
+        monkeypatch.setenv("AZURE_OPENAI_API_KEY", "test-api-key")
+        monkeypatch.setenv("AZURE_OPENAI_ENDPOINT", "https://test-resource.azure.openai.com/")
+        monkeypatch.setenv("AZURE_OPENAI_API_VERSION", "2024-08-01-preview")
+        data = {
+            "type": "haystack.components.generators.chat.azure.AzureOpenAIChatGenerator",
+            "init_parameters": {
+                "api_key": {"env_vars": ["AZURE_OPENAI_API_KEY"], "strict": False, "type": "env_var"},
+                "azure_ad_token": {"env_vars": ["AZURE_OPENAI_AD_TOKEN"], "strict": False, "type": "env_var"},
+                "azure_endpoint": {"env_vars": ["AZURE_OPENAI_ENDPOINT"], "strict": True, "type": "env_var"},
+                "api_version": {"env_vars": ["AZURE_OPENAI_API_VERSION"], "strict": True, "type": "env_var"},
+                "azure_deployment": "gpt-4.1-mini",
+                "organization": None,
+                "streaming_callback": None,
+                "generation_kwargs": {},
+                "timeout": 30.0,
+                "max_retries": 5,
+                "default_headers": {},
+                "tools": None,
+                "tools_strict": False,
+                "azure_ad_token_provider": None,
+                "http_client_kwargs": None,
+            },
+        }
+        generator = AzureOpenAIChatGenerator.from_dict(data)
+        # The Secret dicts are deserialized back into Secret objects
+        assert generator.azure_endpoint == Secret.from_env_var("AZURE_OPENAI_ENDPOINT")
+        assert generator.api_version == Secret.from_env_var("AZURE_OPENAI_API_VERSION")
+        # And they are resolved to the string values the client expects
+        assert str(generator.client._azure_endpoint) == "https://test-resource.azure.openai.com/"
+        assert generator.client._api_version == "2024-08-01-preview"
+
     def test_to_dict_default(self, monkeypatch):
         monkeypatch.setenv("AZURE_OPENAI_API_KEY", "test-api-key")
         component = AzureOpenAIChatGenerator(azure_endpoint="some-non-existing-endpoint")

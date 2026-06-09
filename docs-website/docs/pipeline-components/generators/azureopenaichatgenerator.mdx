@@ -43,6 +43,18 @@ client = AzureOpenAIChatGenerator(
 We recommend using environment variables instead of initialization parameters.
 :::
 
+You can also resolve `azure_endpoint` and `api_version` from environment variables at runtime by passing a `Secret` instead of a plain string. This is useful when you want to switch between environments (for example, dev and prod) without changing your pipeline definition – you only update the environment variables:
+
+```python
+from haystack.components.generators.chat import AzureOpenAIChatGenerator
+from haystack.utils import Secret
+
+client = AzureOpenAIChatGenerator(
+    azure_endpoint=Secret.from_env_var("AZURE_OPENAI_ENDPOINT"),
+    api_version=Secret.from_env_var("AZURE_OPENAI_API_VERSION"),
+)
+```
+
 Then, the component needs a list of `ChatMessage` objects to operate. `ChatMessage` is a data class that contains a message, a role (who generated the message, such as `user`, `assistant`, `system`, `function`), and optional metadata. If a string is passed, it is converted into a list containing a single `ChatMessage` with the `user` role. See the [usage](#usage) section for an example.
 
 You can pass any chat completion parameters that are valid for the `openai.ChatCompletion.create` method directly to `AzureOpenAIChatGenerator` using the `generation_kwargs` parameter, both at initialization and to `run()` method. For more details on the supported parameters, refer to the [Azure documentation](https://learn.microsoft.com/en-us/azure/ai-services/openai/reference).
