@@ -149,8 +149,13 @@ class Toolset:
         Override this when a Toolset's iteration does not surface every selectable tool, so name-based selection
         can still target the full set.
 
+        Warms up the Toolset first if needed, so lazily loaded tools (those a Toolset fetches in `warm_up()`)
+        are available for selection.
+
         :returns: The list of tools available for name-based selection.
         """
+        if not self._is_warmed_up:
+            self.warm_up()
         return list(self.tools)
 
     def reset(self) -> None:
