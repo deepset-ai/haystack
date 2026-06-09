@@ -137,6 +137,67 @@ class TestAzureOpenAIChatGenerator:
         assert component.azure_ad_token_provider is not None
         assert component.max_retries == 0
 
+    def test_init_with_secret_azure_endpoint_and_api_version(self, monkeypatch):
+        """`azure_endpoint` and `api_version` accept a Secret that is resolved from an environment variable."""
+        monkeypatch.setenv("AZURE_OPENAI_API_KEY", "test-api-key")
+        monkeypatch.setenv("AZURE_OPENAI_ENDPOINT", "https://test-resource.azure.openai.com/")
+        monkeypatch.setenv("AZURE_OPENAI_API_VERSION", "2024-08-01-preview")
+        component = AzureOpenAIChatGenerator(
+            azure_endpoint=Secret.from_env_var("AZURE_OPENAI_ENDPOINT"),
+            api_version=Secret.from_env_var("AZURE_OPENAI_API_VERSION"),
+        )
+        # The Secret objects are kept on the instance so they can be serialized
+        assert component.azure_endpoint == Secret.from_env_var("AZURE_OPENAI_ENDPOINT")
+        assert component.api_version == Secret.from_env_var("AZURE_OPENAI_API_VERSION")
+        # The clients receive the resolved string values
+        assert str(component.client._azure_endpoint) == "https://test-resource.azure.openai.com/"
+        assert component.client._api_version == "2024-08-01-preview"
+        assert str(component.async_client._azure_endpoint) == "https://test-resource.azure.openai.com/"
+        assert component.async_client._api_version == "2024-08-01-preview"
+
+    def test_init_fail_with_unset_secret_azure_endpoint(self, monkeypatch):
+        """A Secret azure_endpoint that resolves to nothing raises the same error as a missing endpoint."""
+        monkeypatch.setenv("AZURE_OPENAI_API_KEY", "test-api-key")
+        monkeypatch.delenv("AZURE_OPENAI_ENDPOINT", raising=False)
+        with pytest.raises(ValueError, match="Azure endpoint"):
+            AzureOpenAIChatGenerator(azure_endpoint=Secret.from_env_var("AZURE_OPENAI_ENDPOINT", strict=False))
+
+    def test_to_dict_with_secret_azure_endpoint_and_api_version(self, monkeypatch):
+        """Secret `azure_endpoint` and `api_version` are serialized as Secret dictionaries."""
+        monkeypatch.setenv("AZURE_OPENAI_API_KEY", "test-api-key")
+        monkeypatch.setenv("AZURE_OPENAI_ENDPOINT", "https://test-resource.azure.openai.com/")
+        monkeypatch.setenv("AZURE_OPENAI_API_VERSION", "2024-08-01-preview")
+        component = AzureOpenAIChatGenerator(
+            azure_endpoint=Secret.from_env_var("AZURE_OPENAI_ENDPOINT"),
+            api_version=Secret.from_env_var("AZURE_OPENAI_API_VERSION"),
+        )
+        init_params = component.to_dict()["init_parameters"]
+        assert init_params["azure_endpoint"] == {
+            "type": "env_var",
+            "env_vars": ["AZURE_OPENAI_ENDPOINT"],
+            "strict": True,
+        }
+        assert init_params["api_version"] == {
+            "type": "env_var",
+            "env_vars": ["AZURE_OPENAI_API_VERSION"],
+            "strict": True,
+        }
+
+    def test_secret_azure_endpoint_and_api_version_roundtrip(self, monkeypatch):
+        """Serializing and deserializing a component with Secret endpoint/version restores the Secrets."""
+        monkeypatch.setenv("AZURE_OPENAI_API_KEY", "test-api-key")
+        monkeypatch.setenv("AZURE_OPENAI_ENDPOINT", "https://test-resource.azure.openai.com/")
+        monkeypatch.setenv("AZURE_OPENAI_API_VERSION", "2024-08-01-preview")
+        component = AzureOpenAIChatGenerator(
+            azure_endpoint=Secret.from_env_var("AZURE_OPENAI_ENDPOINT"),
+            api_version=Secret.from_env_var("AZURE_OPENAI_API_VERSION"),
+        )
+        deserialized = AzureOpenAIChatGenerator.from_dict(component.to_dict())
+        assert deserialized.azure_endpoint == Secret.from_env_var("AZURE_OPENAI_ENDPOINT")
+        assert deserialized.api_version == Secret.from_env_var("AZURE_OPENAI_API_VERSION")
+        assert str(deserialized.client._azure_endpoint) == "https://test-resource.azure.openai.com/"
+        assert deserialized.client._api_version == "2024-08-01-preview"
+
     def test_to_dict_default(self, monkeypatch):
         monkeypatch.setenv("AZURE_OPENAI_API_KEY", "test-api-key")
         component = AzureOpenAIChatGenerator(azure_endpoint="some-non-existing-endpoint")
