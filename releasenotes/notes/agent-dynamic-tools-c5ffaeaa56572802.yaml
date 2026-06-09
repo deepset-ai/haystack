@@ -22,7 +22,3 @@ upgrade:
     Tool support is now validated against the tools resolved for each run, not only the tools provided at
     initialization. Passing tools at runtime via ``run(tools=...)`` to a chat generator that does not support tools
     now raises a ``TypeError`` instead of silently ignoring them.
-other:
-  - |
-    The warning logged when an ``Agent`` is created without tools has been removed, since tools can be provided at
-    runtime via ``run(tools=...)``.
