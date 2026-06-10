@@ -13,7 +13,7 @@ from lazy_imports import LazyImporter
 # decorator and pass it via `extra_objects`, keeping `"tool"` out of `import_structure`.
 #
 # Guidance for adding future exports:
-#   - Symbols defined in `tool.py` (e.g. `Tool``) CANNOT be lazy: doing so would require `"tool"` as a key, which
+#   - Symbols defined in `tool.py` (e.g. `Tool`) CANNOT be lazy: doing so would require `"tool"` as a key, which
 #     re-introduces the collision with the `tool` decorator. Import them eagerly here and add them to `extra_objects`.
 #   - Symbols from `from_function.py` (e.g. `create_tool_from_function`) could be lazy, but since we already eagerly
 #     import this module for the `tool` decorator, we keep its exports eager in `extra_objects` too rather than
