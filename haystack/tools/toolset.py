@@ -124,8 +124,7 @@ class Toolset:
         self._is_warmed_up = False
 
         # Optional per-run name filter. When set, iteration only yields tools whose name is in this set.
-        # When set, iteration only yields tools whose name is in this set. None means no filtering.
-        # Cleared by reset().
+        # None means no filtering. Cleared by reset().
         self._selected_tool_names: set[str] | None = None
 
     def __iter__(self) -> Iterator[Tool]:
