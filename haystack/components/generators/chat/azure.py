@@ -111,8 +111,8 @@ class AzureOpenAIChatGenerator(OpenAIChatGenerator):
     # ruff: noqa: PLR0913
     def __init__(
         self,
-        azure_endpoint: str | None = None,
-        api_version: str | None = "2024-12-01-preview",
+        azure_endpoint: str | Secret | None = None,
+        api_version: str | Secret | None = "2024-12-01-preview",
         azure_deployment: str | None = "gpt-4.1-mini",
         api_key: Secret | None = Secret.from_env_var("AZURE_OPENAI_API_KEY", strict=False),
         azure_ad_token: Secret | None = Secret.from_env_var("AZURE_OPENAI_AD_TOKEN", strict=False),
@@ -132,7 +132,14 @@ class AzureOpenAIChatGenerator(OpenAIChatGenerator):
         Initialize the Azure OpenAI Chat Generator component.
 
         :param azure_endpoint: The endpoint of the deployed model, for example `"https://example-resource.azure.openai.com/"`.
+            Can also be a [Secret](https://docs.haystack.deepset.ai/docs/secret-management), for example
+            `Secret.from_env_var("AZURE_OPENAI_ENDPOINT")`, to resolve the value from an environment variable at
+            runtime. This is useful to switch endpoints between environments (e.g. dev and prod) without changing the
+            serialized pipeline.
         :param api_version: The version of the API to use. Defaults to 2024-12-01-preview.
+            Can also be a [Secret](https://docs.haystack.deepset.ai/docs/secret-management), for example
+            `Secret.from_env_var("AZURE_OPENAI_API_VERSION")`, to resolve the value from an environment variable at
+            runtime.
         :param azure_deployment: The deployment of the model, usually the model name.
         :param api_key: The API key to use for authentication.
         :param azure_ad_token: [Azure Active Directory token](https://www.microsoft.com/en-us/security/business/identity-access/microsoft-entra-id).
@@ -194,8 +201,14 @@ class AzureOpenAIChatGenerator(OpenAIChatGenerator):
         # None init parameters. This way we accommodate the use case where env var AZURE_OPENAI_ENDPOINT is set instead
         # of passing it as a parameter.
         azure_endpoint = azure_endpoint or os.environ.get("AZURE_OPENAI_ENDPOINT")
-        if not azure_endpoint:
+        # `azure_endpoint` and `api_version` accept either a plain string or a `Secret`. We keep the original value
+        # on the instance for serialization and resolve it to a string only when building the client.
+        resolved_azure_endpoint = (
+            azure_endpoint.resolve_value() if isinstance(azure_endpoint, Secret) else azure_endpoint
+        )
+        if not resolved_azure_endpoint:
             raise ValueError("Please provide an Azure endpoint or set the environment variable AZURE_OPENAI_ENDPOINT.")
+        resolved_api_version = api_version.resolve_value() if isinstance(api_version, Secret) else api_version
 
         if api_key is None and azure_ad_token is None:
             raise ValueError("Please provide an API key or an Azure Active Directory token.")
@@ -221,8 +234,8 @@ class AzureOpenAIChatGenerator(OpenAIChatGenerator):
         self.tools_strict = tools_strict
 
         client_args: dict[str, Any] = {
-            "api_version": api_version,
-            "azure_endpoint": azure_endpoint,
+            "api_version": resolved_api_version,
+            "azure_endpoint": resolved_azure_endpoint,
             "azure_deployment": azure_deployment,
             "api_key": api_key.resolve_value() if api_key is not None else None,
             "azure_ad_token": azure_ad_token.resolve_value() if azure_ad_token is not None else None,
@@ -279,10 +292,12 @@ class AzureOpenAIChatGenerator(OpenAIChatGenerator):
             generation_kwargs["response_format"] = json_schema
         return default_to_dict(
             self,
-            azure_endpoint=self.azure_endpoint,
+            azure_endpoint=self.azure_endpoint.to_dict()
+            if isinstance(self.azure_endpoint, Secret)
+            else self.azure_endpoint,
             azure_deployment=self.azure_deployment,
             organization=self.organization,
-            api_version=self.api_version,
+            api_version=self.api_version.to_dict() if isinstance(self.api_version, Secret) else self.api_version,
             streaming_callback=callback_name,
             generation_kwargs=generation_kwargs,
             timeout=self.timeout,
