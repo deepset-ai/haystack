@@ -10,25 +10,15 @@ from typing import Any, TypeVar
 from haystack import logging
 from haystack.core.component.component import _hook_component_init
 from haystack.core.errors import DeserializationError, SerializationError
-from haystack.core.serialization_security import (
-    _check_builtin_is_type,
-    _check_module_allowed,
-    allow_deserialization_module,
-)
+from haystack.core.serialization_security import _check_builtin_is_type, _check_module_allowed
+
+# `allow_deserialization_module` is re-exported here to enable all serialization-specific imports
+# from haystack.core.serialization.
+# The redundant `as` alias marks it as an intentional re-export so ruff does not flag it (F401).
+from haystack.core.serialization_security import allow_deserialization_module as allow_deserialization_module
 from haystack.utils.auth import Secret
 from haystack.utils.device import ComponentDevice
 from haystack.utils.type_serialization import thread_safe_import
-
-__all__ = [
-    "DeserializationCallbacks",
-    "allow_deserialization_module",
-    "component_from_dict",
-    "component_to_dict",
-    "default_from_dict",
-    "default_to_dict",
-    "generate_qualified_class_name",
-    "import_class_by_name",
-]
 
 logger = logging.getLogger(__name__)
 
