@@ -1,0 +1,8 @@
+---
+enhancements:
+  - |
+    The ``haystack.tools`` package now imports its heavier modules lazily. Importing the package no
+    longer eagerly pulls in ``ComponentTool``, ``PipelineTool``, and ``SearchableToolset`` (and their
+    transitive dependencies such as ``Pipeline`` and ``InMemoryDocumentStore``); these are resolved on
+    first access instead. This reduces import time when those tools are not used. All public names
+    remain importable from ``haystack.tools`` exactly as before.
