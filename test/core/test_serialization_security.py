@@ -12,8 +12,14 @@ import pytest
 from haystack import component as component_module
 from haystack.core.errors import DeserializationError
 from haystack.core.pipeline import Pipeline
-from haystack.core.serialization import allow_deserialization_module, import_class_by_name
+from haystack.core.serialization import (
+    allow_deserialization_module,
+    default_from_dict,
+    generate_qualified_class_name,
+    import_class_by_name,
+)
 from haystack.core.serialization_security import (
+    _DENIED_BUILTIN_NAMES,
     DESERIALIZATION_ALLOWLIST_ENV_VAR,
     _check_module_allowed,
     _current_context,
@@ -25,6 +31,7 @@ from haystack.core.serialization_security import (
 )
 from haystack.marshal import YamlMarshaller
 from haystack.utils import deserialize_callable
+from haystack.utils.type_serialization import deserialize_type
 
 
 @pytest.fixture(autouse=True)
@@ -201,6 +208,37 @@ class TestImportClassByNameAllowlist:
             cls = import_class_by_name("subprocess.Popen")
             assert cls is subprocess.Popen
 
+    # `type` is excluded: it is a valid class in this path (covered by test_allows_builtin_type),
+    # even though it is denied as a *callable*. Every other denied builtin is a function, not a type.
+    @pytest.mark.parametrize("name", sorted(_DENIED_BUILTIN_NAMES - {"type"}))
+    def test_rejects_dangerous_builtin(self, name):
+        # `builtins` passes the module allowlist, so a class reference must resolve to an actual
+        # type — otherwise a nested `{"type": "builtins.compile"}` payload would resolve a function.
+        with pytest.raises(DeserializationError, match="not a type"):
+            import_class_by_name(f"builtins.{name}")
+
+    def test_allows_builtin_type(self):
+        # Builtin types must still import as classes. `type` is a valid class here even though it
+        # is blocked as a *callable* by deserialize_callable.
+        assert import_class_by_name("builtins.dict") is dict
+        assert import_class_by_name("builtins.type") is type
+
+
+class TestDefaultFromDictNestedBuiltins:
+    def test_nested_dangerous_builtin_rejected(self):
+        """A nested `{"type": "builtins.<dangerous>"}` payload must be rejected via the same gate."""
+
+        class Container:
+            def __init__(self, **kwargs):
+                self.kwargs = kwargs
+
+        data = {
+            "type": generate_qualified_class_name(Container),
+            "init_parameters": {"payload": {"type": "builtins.compile", "init_parameters": {}}},
+        }
+        with pytest.raises(DeserializationError, match="not a type"):
+            default_from_dict(Container, data)
+
 
 class TestDeserializeCallableAllowlist:
     """
@@ -218,10 +256,49 @@ class TestDeserializeCallableAllowlist:
             assert fn is json.dumps
 
     def test_rejects_when_no_prefix_matches(self):
-        # No prefix of `subprocess.Popen` matches the default allowlist (or `unrelated`).
+        # No prefix of `subprocess.Popen` matches the default allowlist (or `unrelated`). This also
+        # covers the plain default-allowlist case, since the context only ever appends patterns.
         with _deserialization_context(allowed_modules=["unrelated"]):
             with pytest.raises(DeserializationError, match="not on the trusted-module allowlist"):
                 deserialize_callable("subprocess.Popen")
+
+
+class TestDeniedBuiltins:
+    """
+    `builtins` is on the default allowlist so harmless members (`builtins.print`, builtin types)
+    round-trip, but the module-granular allowlist is too coarse to stop dangerous builtin callables
+    like `eval`/`exec`. Those are blocked in the callable-resolution path regardless of the
+    allowlist (parametrized over the canonical denied set so additions are covered automatically).
+    """
+
+    @pytest.mark.parametrize("name", _DENIED_BUILTIN_NAMES)
+    def test_dangerous_builtin_callable_rejected(self, name):
+        with pytest.raises(DeserializationError, match="blocked because it can be used"):
+            deserialize_callable(f"builtins.{name}")
+
+    def test_harmless_builtin_callable_still_resolves(self):
+        # `serialize_callable(print)` emits "builtins.print"; harmless builtins must keep
+        # round-tripping (only the denied set is blocked).
+        assert deserialize_callable("builtins.print") is print
+        assert deserialize_callable("builtins.len") is len
+        assert deserialize_callable("builtins.sorted") is sorted
+
+    def test_alias_to_dangerous_builtin_rejected(self):
+        # `io.open is builtins.open`, so the identity-based check catches it once `io` is allowed.
+        with _deserialization_context(allowed_modules=["io"]):
+            with pytest.raises(DeserializationError, match="blocked because it can be used"):
+                deserialize_callable("io.open")
+
+    def test_type_blocked_as_callable_but_allowed_as_type(self):
+        # `type` is a class-creation gadget as a callable, but a legitimate type annotation.
+        with pytest.raises(DeserializationError, match="blocked because it can be used"):
+            deserialize_callable("builtins.type")
+        assert deserialize_type("type") is type
+
+    def test_unsafe_mode_bypasses_the_block(self):
+        # `unsafe=True` disables all deserialization safety checks by design.
+        with _deserialization_context(unsafe=True):
+            assert deserialize_callable("builtins.eval") is eval
 
 
 @pytest.fixture

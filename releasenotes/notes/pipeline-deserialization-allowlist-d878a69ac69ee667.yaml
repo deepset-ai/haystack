@@ -36,6 +36,12 @@ security:
     ``default_from_dict`` now refuses to recurse into nested ``{"type": "..."}`` dictionaries
     keyed by parameter names that the parent class does not actually accept — blocking attempts
     to smuggle untrusted classes into unused parameter slots.
+  - |
+    Dangerous builtins such as ``eval``, ``exec``, ``compile``, ``__import__``, ``open``, and
+    ``getattr`` can no longer be resolved during deserialization, even though ``builtins`` is on
+    the default allowlist. Attempting to deserialize one as a callable, a type annotation, or a
+    nested ``{"type": ...}`` class reference raises a ``DeserializationError``. The block can be
+    bypassed with ``unsafe=True`` when the source of the serialized data is fully trusted.
 features:
   - |
     ``Pipeline.load`` / ``Pipeline.loads`` / ``Pipeline.from_dict`` now accept two new keyword

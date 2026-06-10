@@ -15,6 +15,7 @@ Three ways to extend the allowlist:
 The two-mode loading API (`unsafe=True`) bypasses the allowlist entirely.
 """
 
+import builtins
 import contextvars
 import fnmatch
 import os
@@ -36,6 +37,40 @@ DEFAULT_ALLOWED_MODULES: tuple[str, ...] = (
     "collections",
 )
 DESERIALIZATION_ALLOWLIST_ENV_VAR = "HAYSTACK_DESERIALIZATION_ALLOWLIST"
+
+# `builtins` is on the default allowlist because deserialization legitimately needs builtin *types*
+# (e.g. `builtins.str`, used in serialized type annotations and as nested `{"type": ...}` class
+# references) and harmless builtin callables that Haystack's own serializer emits (e.g.
+# `serialize_callable(print)` -> `"builtins.print"`). The module-granular allowlist is too coarse
+# to separate those from dangerous members, so the two builtin-resolving contexts are gated
+# differently:
+#   - Type / class contexts (`deserialize_type`, `import_class_by_name`) require the resolved
+#     builtin to be a `type` (see :func:`_check_builtin_is_type`). That lets every builtin type
+#     through while rejecting every builtin *function*, with no denylist to maintain.
+#   - The callable context (`deserialize_callable`) genuinely returns functions, so it instead
+#     rejects the dangerous builtin *callables* named below (see :func:`_check_not_denied_builtin`).
+_DENIED_BUILTIN_NAMES: frozenset[str] = frozenset(
+    {
+        "eval",  # arbitrary code execution
+        "exec",  # arbitrary code execution
+        "compile",  # arbitrary code compilation
+        "__import__",  # dynamic import of any module (gateway to os/subprocess/...)
+        "open",  # filesystem read/write
+        "getattr",  # attribute-traversal gadget (classic sandbox escape)
+        "setattr",  # arbitrary attribute mutation
+        "delattr",  # arbitrary attribute deletion
+        "globals",  # access to module namespaces
+        "locals",  # access to local namespaces
+        "vars",  # access to object/module namespaces
+        "breakpoint",  # runs the PYTHONBREAKPOINT hook
+        "__build_class__",  # dynamic class creation
+        "type",  # dynamic class creation via type(name, bases, dict)
+    }
+)
+
+# Resolve names to objects once so callers can match by identity, which also catches aliases that
+# reach the same builtin via a different import path (e.g. `io.open is builtins.open`).
+_DENIED_BUILTIN_OBJECTS: frozenset = frozenset([getattr(builtins, name) for name in _DENIED_BUILTIN_NAMES])
 
 
 @dataclass(frozen=True)
@@ -124,6 +159,67 @@ def _check_module_allowed(module_name: str) -> None:
         f"('{module_name}') or the {DESERIALIZATION_ALLOWLIST_ENV_VAR} environment variable,\n"
         f"  - or bypass the allowlist entirely: Pipeline.load(..., unsafe=True)."
     )
+
+
+def _is_denied_builtin(resolved: object) -> bool:
+    """
+    Return whether `resolved` is one of the builtins denied for callable deserialization.
+
+    Matches by identity (not membership) so an unhashable resolved object never raises.
+    """
+    return any(resolved is denied for denied in _DENIED_BUILTIN_OBJECTS)
+
+
+def _check_not_denied_builtin(resolved: object, handle: str) -> None:
+    """
+    Reject `resolved` if it is a builtin callable that is unsafe to resolve from serialized data.
+
+    Used by the callable-resolution path (`deserialize_callable`). Raises
+    :class:`DeserializationError` for the primitives in :data:`_DENIED_BUILTIN_NAMES`, which can
+    execute code, import modules, touch the filesystem, or escape via attribute/namespace access.
+    The block applies even though `builtins` is on the allowlist, because the allowlist is
+    module-granular. It is intentionally bypassed in `unsafe=True` mode, which disables all
+    deserialization safety checks by design.
+
+    :param resolved:
+        The object resolved from the serialized handle.
+    :param handle:
+        The original serialized handle, used only for the error message.
+    """
+    if _get_context().unsafe:
+        return
+    if _is_denied_builtin(resolved):
+        name = getattr(resolved, "__name__", str(resolved))
+        raise DeserializationError(
+            f"Refusing to deserialize '{handle}': it resolves to the builtin '{name}', which is "
+            f"blocked because it can be used to execute code, import modules, access the "
+            f"filesystem, or escape via attribute access. If you trust the source of this data, "
+            f"load it with unsafe=True to bypass deserialization safety checks."
+        )
+
+
+def _check_builtin_is_type(resolved: object, handle: str) -> None:
+    """
+    Reject a `builtins` member resolved in a type/class context that is not a `type`.
+
+    Used by `deserialize_type` and `import_class_by_name`, which resolve type annotations and class
+    references — always classes. Requiring the resolved `builtins` member to be a `type` lets every
+    builtin type through (e.g. `str`, `memoryview`) while rejecting every builtin *function* (e.g.
+    `eval`, `exec`, `getattr`), with no denylist to maintain. Bypassed in `unsafe=True` mode.
+
+    :param resolved:
+        The object resolved from the serialized handle.
+    :param handle:
+        The original serialized handle, used only for the error message.
+    """
+    if _get_context().unsafe:
+        return
+    if not isinstance(resolved, type):
+        raise DeserializationError(
+            f"Refusing to deserialize '{handle}': it resolves to a builtin that is not a type and "
+            f"cannot be used as a type annotation or class reference. If you trust the source of "
+            f"this data, load it with unsafe=True to bypass deserialization safety checks."
+        )
 
 
 @contextmanager
