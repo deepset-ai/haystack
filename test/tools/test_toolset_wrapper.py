@@ -195,7 +195,7 @@ class TestToolsetWrapperSerialization:
 
 
 class TestToolsetWrapperToolSelection:
-    """Tests for get_selectable_tools(), the name filter, and reset() on _ToolsetWrapper."""
+    """Tests for get_selectable_tools(), the name filter, and spawn() on _ToolsetWrapper."""
 
     def test_get_selectable_tools_aggregates_all_toolsets(self, add_tool, multiply_tool, subtract_tool):
         wrapper = Toolset([add_tool]) + Toolset([multiply_tool, subtract_tool])
@@ -214,16 +214,18 @@ class TestToolsetWrapperToolSelection:
         assert [tool.name for tool in wrapper] == ["add", "subtract"]
         assert len(wrapper) == 2
 
-    def test_reset_clears_own_and_child_filters(self, add_tool, multiply_tool):
+    def test_spawn_isolates_own_and_child_state(self, add_tool, multiply_tool):
         ts1 = Toolset([add_tool])
         ts2 = Toolset([multiply_tool])
         wrapper = ts1 + ts2
-        wrapper._selected_tool_names = {"add"}
-        ts1._selected_tool_names = {"add"}
-        ts2._selected_tool_names = set()
 
-        wrapper.reset()
+        spawned = wrapper.spawn()
 
+        # The spawn and its wrapped toolsets are independent copies.
+        assert spawned is not wrapper
+        spawned._selected_tool_names = {"add"}
+        assert {tool.name for tool in spawned} == {"add"}
+        # The configured wrapper and its children are untouched.
         assert wrapper._selected_tool_names is None
         assert ts1._selected_tool_names is None
         assert ts2._selected_tool_names is None

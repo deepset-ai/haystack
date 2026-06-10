@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import copy
 from collections.abc import Iterator
 from typing import TYPE_CHECKING, Annotated, Any
 
@@ -196,10 +197,26 @@ class SearchableToolset(Toolset):
         """
         self._discovered_tools.clear()
 
-    def reset(self) -> None:
-        """Reset per-run state: clear the name selection (via the base class) and any discovered tools."""
-        super().reset()
-        self.clear()
+    def spawn(self) -> "SearchableToolset":
+        """
+        Return an isolated copy for a single run.
+
+        The copy shares the read-only catalog and BM25 index but gets fresh discovered tools and name selection,
+        plus a bootstrap search tool bound to the copy. This way concurrent runs sharing the same configured
+        SearchableToolset don't share discovered tools or collide on the active selection.
+
+        :returns: A run-scoped copy of this SearchableToolset.
+        """
+        if not self._is_warmed_up:
+            self.warm_up()
+        new = copy.copy(self)
+        new._discovered_tools = {}
+        new._selected_tool_names = None
+        # Rebuild the bootstrap tool so its closure is bound to the copy's discovered tools / selection
+        # rather than the original's. The document store and catalog are read-only and stay shared.
+        if not self._passthrough:
+            new._bootstrap_tool = new._create_search_tool()
+        return new
 
     def _create_search_tool(self) -> Tool:
         """Create the search_tools bootstrap tool."""

@@ -4,14 +4,16 @@ fixes:
     Runtime tool-name selection via ``Agent.run(tools=["tool_a", "tool_b"])`` now resolves correctly when a
     ``SearchableToolset`` is configured. Previously the ``SearchableToolset`` was flattened into a single-item
     list (just its search tool), which broke its search and lazy-loading behavior.
+  - |
+    A ``Toolset`` is no longer mutated in place during an ``Agent`` run. Each run now operates on an isolated
+    per-run copy of the configured ``Toolset`` (via the new ``Toolset.spawn()`` method). This makes concurrent
+    runs that share the same ``Toolset`` instance safe: per-run state such as the active tool-name selection, and
+    a ``SearchableToolset``'s discovered tools, can no longer leak or collide across runs.
 enhancements:
   - |
     ``Toolset`` gained two methods: ``get_selectable_tools()`` returns every tool available for name-based
     selection (ignoring any active selection restriction, e.g. the one used by ``SearchableToolset``), and
-    ``reset()`` clears a Toolset's per-run state. Subclasses can override ``reset()`` to reset additional state.
+    ``spawn()`` returns an isolated, run-scoped copy of the Toolset. Subclasses with additional run-scoped state
+    can override ``spawn()``.
   - |
     ``SearchableToolset`` now exposes its full catalog of tools via ``SearchableToolset.get_selectable_tools()``.
-upgrade:
-  - |
-    ``SearchableToolset`` now clears its discovered tools at the end of each ``Agent`` run (via
-    ``SearchableToolset.reset()``). Discovered tools no longer persist across runs, so each run starts fresh.

@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import copy
 from collections.abc import Iterator
 from dataclasses import dataclass, field
 from typing import Any
@@ -124,7 +125,7 @@ class Toolset:
         self._is_warmed_up = False
 
         # Optional per-run name filter. When set, iteration only yields tools whose name is in this set.
-        # None means no filtering. Cleared by reset().
+        # None means no filtering. Set on a per-run spawn(), so it never leaks across runs.
         self._selected_tool_names: set[str] | None = None
 
     def __iter__(self) -> Iterator[Tool]:
@@ -157,14 +158,22 @@ class Toolset:
             self.warm_up()
         return list(self.tools)
 
-    def reset(self) -> None:
+    def spawn(self) -> "Toolset":
         """
-        Reset transient state on this Toolset, returning it to its default, unfiltered state.
+        Return an isolated copy of this Toolset for a single run.
 
-        Call this to undo a name filter (or other transient state) once it is no longer needed, so it does not
-        carry over to subsequent use. Subclasses can override to reset additional state (calling `super().reset()`).
+        The copy shares this Toolset's read-only state (its tools and any warmed-up resources) but gets fresh
+        run-scoped state, so concurrent runs that share the same configured Toolset don't corrupt each other (for
+        example, one run's name selection leaking into another). Warms up first if needed so the copy shares the
+        warmed state. Subclasses with additional run-scoped state should override this.
+
+        :returns: A run-scoped copy of this Toolset.
         """
-        self._selected_tool_names = None
+        if not self._is_warmed_up:
+            self.warm_up()
+        new = copy.copy(self)
+        new._selected_tool_names = None
+        return new
 
     def __contains__(self, item: str | Tool) -> bool:
         """
@@ -354,11 +363,9 @@ class _ToolsetWrapper(Toolset):
         """Return every selectable tool across all wrapped toolsets, ignoring any active filter."""
         return [tool for toolset in self.toolsets for tool in toolset.get_selectable_tools()]
 
-    def reset(self) -> None:
-        """Reset this wrapper's filter and reset each wrapped toolset."""
-        super().reset()
-        for toolset in self.toolsets:
-            toolset.reset()
+    def spawn(self) -> "_ToolsetWrapper":
+        """Return an isolated copy with each wrapped toolset spawned."""
+        return _ToolsetWrapper([toolset.spawn() for toolset in self.toolsets])
 
     def __contains__(self, item: Any) -> bool:
         """Check if a tool is in any of the toolsets."""

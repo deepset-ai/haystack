@@ -829,23 +829,54 @@ class TestSearchableToolsetAgentToolSelection:
         # The catalog, however, is fully available for name-based selection.
         assert {tool.name for tool in toolset.get_selectable_tools()} == {tool.name for tool in large_catalog}
 
-    def test_runtime_tool_names_register_selection_and_preserve_search(self, large_catalog, monkeypatch):
-        """Selecting catalog tool names registers a selection on the live SearchableToolset and keeps search active."""
+    def test_runtime_tool_names_select_isolated_spawn_and_preserve_search(self, large_catalog, monkeypatch):
+        """Selecting catalog tool names returns an isolated spawn carrying the selection and keeping search active."""
         monkeypatch.setenv("OPENAI_API_KEY", "fake-key")
         toolset = SearchableToolset(catalog=large_catalog, search_threshold=3)  # 8 tools -> search mode
         agent = Agent(chat_generator=OpenAIChatGenerator(), tools=toolset)
 
         selected = agent._select_tools(["get_weather", "add_numbers"])
 
-        # The live toolset is kept (not flattened into static tools), with the selection registered.
-        assert selected == [toolset]
-        assert toolset._selected_tool_names == {"get_weather", "add_numbers"}
-        # Search is preserved (not dismantled): the bootstrap tool is still the only thing exposed up front.
-        assert [tool.name for tool in toolset] == ["search_tools"]
+        # An isolated spawn is returned with the selection; the configured toolset is not mutated.
+        assert len(selected) == 1
+        spawned = selected[0]
+        assert isinstance(spawned, SearchableToolset)
+        assert spawned is not toolset
+        assert spawned._selected_tool_names == {"get_weather", "add_numbers"}
+        assert toolset._selected_tool_names is None
+        # Search is preserved on the spawn (not dismantled): only the bootstrap tool is exposed up front.
+        assert [tool.name for tool in spawned] == ["search_tools"]
         # And search only discovers tools within the selected subset.
-        assert toolset._bootstrap_tool is not None
-        toolset._bootstrap_tool.invoke(tool_keywords="weather add stock multiply")
-        assert set(toolset._discovered_tools) <= {"get_weather", "add_numbers"}
+        assert spawned._bootstrap_tool is not None
+        spawned._bootstrap_tool.invoke(tool_keywords="weather add stock multiply")
+        assert set(spawned._discovered_tools) <= {"get_weather", "add_numbers"}
+        # The configured toolset's discovered tools are untouched.
+        assert toolset._discovered_tools == {}
+
+    def test_spawns_have_independent_discovered_tools_and_selection(self, large_catalog):
+        """Two spawns of one SearchableToolset don't share discovered tools or collide on the active selection."""
+        toolset = SearchableToolset(catalog=large_catalog, search_threshold=3)
+        toolset.warm_up()
+
+        spawn_a = toolset.spawn()
+        spawn_b = toolset.spawn()
+
+        assert spawn_a is not spawn_b
+        assert spawn_a is not toolset
+        # Bootstrap tools are rebound per spawn (not shared with the original or each other).
+        assert spawn_a._bootstrap_tool is not None
+        assert spawn_a._bootstrap_tool is not spawn_b._bootstrap_tool
+
+        spawn_a._selected_tool_names = {"get_weather"}
+        spawn_a._bootstrap_tool.invoke(tool_keywords="weather add stock multiply")
+
+        # Discovery on spawn_a does not leak into spawn_b or the configured toolset.
+        assert set(spawn_a._discovered_tools) <= {"get_weather"}
+        assert spawn_b._discovered_tools == {}
+        assert toolset._discovered_tools == {}
+        # The selection is likewise isolated.
+        assert spawn_b._selected_tool_names is None
+        assert toolset._selected_tool_names is None
 
     def test_runtime_tool_names_passthrough_exposes_selected(self, large_catalog, monkeypatch):
         """In passthrough mode, selecting names exposes exactly those catalog tools directly."""
@@ -859,7 +890,7 @@ class TestSearchableToolsetAgentToolSelection:
         assert {tool.name for tool in flatten_tools_or_toolsets(selected)} == {"get_weather", "add_numbers"}
 
     def test_agent_run_with_runtime_tool_names(self, large_catalog):
-        """An Agent with a SearchableToolset runs with specific catalog tools selected by name, then clears them."""
+        """An Agent with a SearchableToolset runs with specific catalog tools selected by name on an isolated spawn."""
         toolset = SearchableToolset(catalog=large_catalog, search_threshold=20)  # passthrough exposes the selection
 
         @component
@@ -885,7 +916,7 @@ class TestSearchableToolsetAgentToolSelection:
         result = agent.run(messages=[ChatMessage.from_user("What's the weather in Berlin?")], tools=["get_weather"])
 
         assert result["tool_call_counts"]["get_weather"] == 1
-        # The per-run selection is cleared after the run, so it does not leak into later runs.
+        # The Agent runs against an isolated spawn, so the configured toolset's selection never gets set.
         assert toolset._selected_tool_names is None
 
     def test_discovered_tool_call_counts_added_lazily(self, large_catalog):
@@ -924,7 +955,7 @@ class TestSearchableToolsetAgentToolSelection:
         # search_tools is seeded at init; get_weather is only counted after being discovered and called.
         assert counts["search_tools"] == 1
         assert counts["get_weather"] == 1
-        # After the run, reset() clears the toolset's discovered tools.
+        # The Agent discovers tools on an isolated spawn, so the configured toolset's discovered tools stay empty.
         assert toolset._discovered_tools == {}
 
 

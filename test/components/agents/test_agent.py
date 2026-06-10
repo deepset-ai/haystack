@@ -1592,23 +1592,36 @@ class TestSelectToolsByName:
         with pytest.raises(ValueError, match="No tools were configured for the Agent at initialization."):
             _select_tools_by_name([], [weather_tool.name])
 
-    def test_keeps_toolset_live_with_selection_registered(self, weather_tool: Tool, component_tool: Tool):
-        """A Toolset exposing a requested name is kept live (not flattened) with the selection registered on it."""
+    def test_returns_isolated_spawn_with_selection(self, weather_tool: Tool, component_tool: Tool):
+        """A Toolset exposing a requested name is replaced by an isolated spawn carrying the selection.
+
+        The shared, configured Toolset is not mutated.
+        """
         toolset = Toolset([weather_tool, component_tool])
 
         result = _select_tools_by_name([toolset], [weather_tool.name])
 
-        assert result == [toolset]
-        assert toolset._selected_tool_names == {weather_tool.name}
+        assert len(result) == 1
+        spawned = result[0]
+        assert isinstance(spawned, Toolset)
+        assert spawned is not toolset  # an isolated per-run copy
+        assert spawned._selected_tool_names == {weather_tool.name}
+        assert [tool.name for tool in spawned] == [weather_tool.name]
+        # The configured toolset is untouched.
+        assert toolset._selected_tool_names is None
 
     def test_mixed_standalone_tools_and_toolsets(self, weather_tool: Tool, component_tool: Tool):
         toolset = Toolset([weather_tool])
 
         result = _select_tools_by_name([component_tool, toolset], [weather_tool.name, component_tool.name])
 
+        # The standalone tool is passed through; the toolset is replaced by an isolated spawn with the selection.
         assert component_tool in result
-        assert toolset in result
-        assert toolset._selected_tool_names == {weather_tool.name}
+        spawns = [t for t in result if isinstance(t, Toolset)]
+        assert len(spawns) == 1
+        assert spawns[0] is not toolset
+        assert spawns[0]._selected_tool_names == {weather_tool.name}
+        assert toolset._selected_tool_names is None
 
 
 class TestAgentToolSelection:
