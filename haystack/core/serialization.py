@@ -310,8 +310,14 @@ def default_from_dict(cls: type[T], data: dict[str, Any]) -> T:
                 # Reject before importing if the parent class does not accept this parameter.
                 # This blocks YAML that smuggles untrusted classes into unused parameter slots.
                 if valid_init_param_names is not None and key not in valid_init_param_names:
+                    known_params = (
+                        f"Valid parameters are: {', '.join(repr(n) for n in sorted(valid_init_param_names))}."
+                        if valid_init_param_names
+                        else f"'{cls.__name__}' accepts no init parameters."
+                    )
                     raise DeserializationError(
-                        f"Refusing to deserialize unknown parameter '{key}' for '{cls.__name__}'."
+                        f"Refusing to deserialize unknown parameter '{key}' for '{cls.__name__}'. {known_params} "
+                        f"Correct the parameter name or remove it from the serialized data."
                     )
                 try:
                     imported_class = import_class_by_name(type_value)

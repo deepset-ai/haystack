@@ -602,5 +602,10 @@ def test_default_from_dict_rejects_unknown_nested_parameter():
             "name": "test",
         },
     }
-    with pytest.raises(DeserializationError, match=r"Refusing to deserialize unknown parameter 'payload'"):
+    with pytest.raises(DeserializationError) as exc_info:
         default_from_dict(CustomComponentWithDocumentStore, data)
+    message = str(exc_info.value)
+    assert "Refusing to deserialize unknown parameter 'payload'" in message
+    # The message lists the accepted parameters (sorted) and tells the user how to fix it.
+    assert "Valid parameters are: 'document_store', 'name'." in message
+    assert "Correct the parameter name or remove it from the serialized data." in message
