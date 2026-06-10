@@ -1,0 +1,4 @@
+---
+features:
+  - |
+    Added asynchronous support (`run_async`) to the `LLMEvaluator` component, allowing concurrent evaluation loops inside async applications like FastMCP or FastAPI without blocking the main event loop.

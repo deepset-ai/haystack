@@ -458,3 +458,119 @@ class TestLLMEvaluator:
             ValueError
         ):  # json_utils/LLMEvaluator might raise JSONDecodeError which inherits from ValueError or wrapped
             component.run(predicted_answers=["answer"])
+
+
+class TestLLMEvaluatorAsync:
+    @pytest.mark.asyncio
+    async def test_run_async_returns_parsed_result(self, monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+        component = LLMEvaluator(
+            instructions="test-instruction",
+            inputs=[("questions", list[str]), ("predicted_answers", list[str])],
+            outputs=["score"],
+            examples=[
+                {
+                    "inputs": {
+                        "questions": "What is the value of any non-zero number raised to the power of zero?",
+                        "predicted_answers": "Zero",
+                    },
+                    "outputs": {"score": 0},
+                }
+            ],
+        )
+
+        async def chat_generator_run_async(self, *args, **kwargs):
+            return {"replies": [ChatMessage.from_assistant('{"score": 1}')]}
+
+        monkeypatch.setattr(
+            "haystack.components.evaluators.llm_evaluator.OpenAIChatGenerator.run_async", chat_generator_run_async
+        )
+
+        results = await component.run_async(
+            questions=["What is the perimeter of a circle called?"], predicted_answers=["Circumference"]
+        )
+        assert results == {"results": [{"score": 1}], "meta": None}
+
+    @pytest.mark.asyncio
+    async def test_run_async_raises_on_unsupported_generator(self, monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+
+        class SyncOnlyGenerator:
+            def run(self, messages):
+                return {"replies": [ChatMessage.from_assistant('{"score": 0}')]}
+
+        component = LLMEvaluator(
+            instructions="test-instruction",
+            inputs=[("questions", list[str]), ("predicted_answers", list[str])],
+            outputs=["score"],
+            examples=[
+                {
+                    "inputs": {
+                        "questions": "What is the top sport?",
+                        "predicted_answers": "Football is the most popular sport.",
+                    },
+                    "outputs": {"score": 1},
+                }
+            ],
+            chat_generator=SyncOnlyGenerator(),
+        )
+
+        with pytest.raises(TypeError, match="does not support async execution"):
+            await component.run_async(questions=["question"], predicted_answers=["answer"])
+
+    @pytest.mark.asyncio
+    async def test_run_async_raise_on_failure_false(self, monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+        component = LLMEvaluator(
+            instructions="test-instruction",
+            inputs=[("questions", list[str]), ("predicted_answers", list[str])],
+            outputs=["score"],
+            examples=[
+                {
+                    "inputs": {
+                        "questions": "What is the value of any non-zero number raised to the power of zero?",
+                        "predicted_answers": "One",
+                    },
+                    "outputs": {"score": 1},
+                }
+            ],
+            raise_on_failure=False,
+        )
+
+        async def chat_generator_run_async(self, *args, **kwargs):
+            raise Exception("API error")
+
+        monkeypatch.setattr(
+            "haystack.components.evaluators.llm_evaluator.OpenAIChatGenerator.run_async", chat_generator_run_async
+        )
+
+        result = await component.run_async(questions=["question"], predicted_answers=["answer"])
+        assert result["results"] == [None]
+
+    @pytest.mark.asyncio
+    async def test_run_async_raise_on_failure_true(self, monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+        component = LLMEvaluator(
+            instructions="test-instruction",
+            inputs=[("questions", list[str]), ("predicted_answers", list[str])],
+            outputs=["score"],
+            examples=[
+                {
+                    "inputs": {
+                        "questions": "What is the smallest unit of data in a computer?",
+                        "predicted_answers": "Bit",
+                    },
+                    "outputs": {"score": 1},
+                }
+            ],
+        )
+
+        async def chat_generator_run_async(self, *args, **kwargs):
+            raise Exception("API error")
+
+        monkeypatch.setattr(
+            "haystack.components.evaluators.llm_evaluator.OpenAIChatGenerator.run_async", chat_generator_run_async
+        )
+
+        with pytest.raises(ValueError):
+            await component.run_async(questions=["question"], predicted_answers=["answer"])
