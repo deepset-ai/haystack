@@ -5,8 +5,6 @@ upgrade:
     ``TransformersTextRouter``, and ``TransformersZeroShotTextRouter``
     have been moved out of Haystack into the ``transformers-haystack`` integration package.
     Install the new package with ``pip install transformers-haystack`` and update your imports.
-    Note that some components were renamed in the new package: ``HuggingFaceLocalChatGenerator`` is now
-    ``TransformersChatGenerator`` and ``ExtractiveReader`` is now ``TransformersExtractiveReader``.
 
     Before:
 

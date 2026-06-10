@@ -92,7 +92,7 @@ dependencies = [
   "pandas",                                           # AzureOCRDocumentConverter, CSVDocumentCleaner, CSVDocumentSplitter,
                                                       # EvaluationRunResult, XLSXToDocument, and pipeline tests
 
-  "transformers[torch, sentencepiece]>=4.57",         # NamedEntityExtractor, SASEvaluator, TopPSampler, and torch utilities
+  "transformers[torch, sentencepiece]>=4.57",         # NamedEntityExtractor, SASEvaluator, and TopPSampler
   "sentence-transformers>=5.0.0",                     # Sentence Transformers Embedders, Rankers, and SASEvaluator
   "langdetect",                                       # TextLanguageRouter and DocumentLanguageClassifier
   "openai-whisper>=20231106",                         # LocalWhisperTranscriber

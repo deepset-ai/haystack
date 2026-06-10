@@ -99,9 +99,6 @@ pip install <new-package>
 | `from haystack.components.routers import TransformersTextRouter` | `transformers-haystack` | `from haystack_integrations.components.routers.transformers import TransformersTextRouter` |
 | `from haystack.components.routers import TransformersZeroShotTextRouter` | `transformers-haystack` | `from haystack_integrations.components.routers.transformers import TransformersZeroShotTextRouter` |
 
-Note: some components were renamed when moved to `transformers-haystack`. `HuggingFaceLocalChatGenerator`
-is now `TransformersChatGenerator` and `ExtractiveReader` is now `TransformersExtractiveReader`.
-
 ### `TransformersSimilarityRanker` removed
 
 **What changed:** The `TransformersSimilarityRanker` component has been removed. It was not moved to an
