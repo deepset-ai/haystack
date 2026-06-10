@@ -1115,9 +1115,7 @@ class TestConversion:
         assert _types_are_compatible(sender=list[Document], receiver=Document | None) == (False, None)
         assert _types_are_compatible(sender=list[Document], receiver=Union[Document, int]) == (False, None)
 
-        # subclasses of str / ChatMessage are intentionally NOT allowed: the gate is identity-based,
-        # so callers must use the base types directly. Pins the behavior change vs the prior
-        # `_strict_types_are_compatible` gate which accepted subclasses.
+        # subclasses of str / ChatMessage are intentionally NOT allowed
         class MyStr(str):
             __slots__ = ()
 
@@ -1141,6 +1139,11 @@ class TestConversion:
         assert _types_are_compatible(sender=List[ChatMessage], receiver=str) == (
             True,
             ConversionStrategy.UNWRAP_CHAT_MESSAGE_TO_STR,
+        )
+        assert _types_are_compatible(sender=list[str], receiver=Optional[str]) == (True, ConversionStrategy.UNWRAP)
+        assert _types_are_compatible(sender=list[ChatMessage], receiver=Optional[ChatMessage]) == (
+            True,
+            ConversionStrategy.UNWRAP,
         )
 
     def test_convert_value_unwrap_raises_on_multi_element_list(self):

@@ -1,26 +1,14 @@
 ---
-upgrade:
-  - |
-    ``Pipeline.connect()`` no longer accepts ``list[T] -> T`` connections for inner types other
-    than ``str`` and ``ChatMessage``. Previously, any ``list[T] -> T`` connection (e.g.
-    ``list[Document] -> Document``) was silently accepted and at runtime only the first list
-    element was forwarded to the downstream component, dropping the rest. Such connections now
-    raise ``PipelineConnectError`` at ``connect()`` time. If you were relying on the previous
-    silent-unwrap behavior, change either the producer's output socket type or the consumer's
-    input socket type so the wiring no longer requires an unwrap, or perform the
-    list-to-single-item selection explicitly in a component before the consumer.
-
-    As a defense-in-depth measure, the runtime ``UNWRAP`` conversion (still allowed for
-    ``list[str] -> str`` and ``list[ChatMessage] -> ChatMessage``) now raises ``ValueError``
-    (wrapped in ``PipelineRuntimeError``) when given a multi-element list. The supported case
-    has always been a one-element list; multi-element inputs used to be silently truncated to
-    the first element. This also affects e.g. a generator using ``n>1`` whose ``replies`` are
-    wired into a single-``str`` or single-``ChatMessage`` consumer — that pipeline now raises
-    instead of silently using ``replies[0]``.
 fixes:
   - |
     Fixed a silent data-loss bug in ``Pipeline.connect()`` where any ``list[T] -> T`` connection
-    was accepted without warning and only the first list element was forwarded at runtime,
-    dropping the rest. This regressed in #10629; the restriction to ``str`` / ``ChatMessage``
-    has been restored. The fix also rejects multi-element inputs at runtime so any future
-    regression of the connect-time gate cannot silently drop data again.
+    was accepted without warning (e.g. ``list[Document] -> Document``) and only the first list
+    element was forwarded at runtime, dropping the rest. The conversion is now restricted to
+    inner types ``str`` and ``ChatMessage``, matching the original intent; any other
+    ``list[T] -> T`` wiring now raises ``PipelineConnectError`` at ``connect()`` time. As a
+    defense-in-depth measure, the runtime ``UNWRAP`` conversion also raises ``ValueError``
+    (wrapped in ``PipelineRuntimeError``) when given a multi-element list, so any future
+    regression of the connect-time gate cannot silently drop items. This also affects e.g. a
+    generator using ``n>1`` whose ``replies`` are wired into a single-``str`` or
+    single-``ChatMessage`` consumer — that pipeline now raises instead of silently using
+    ``replies[0]``.

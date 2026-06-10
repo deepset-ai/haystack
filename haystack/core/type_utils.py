@@ -211,6 +211,7 @@ def _get_conversion_strategy(sender: Any, receiver: Any) -> ConversionStrategyTy
     # Unwrap: list[T] -> T, restricted to str / ChatMessage to avoid silent drop of list[1:].
     if _safe_get_origin(sender) is list and (args := get_args(sender)):
         inner = args[0]
+        # Guard against multi-level unwrap (e.g. list[list[str]] -> list[str])
         if (
             _safe_get_origin(receiver) is not list
             and inner in (str, ChatMessage)
