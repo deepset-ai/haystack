@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import warnings
 from typing import Any
 
 from haystack import component, default_from_dict, default_to_dict
@@ -116,6 +117,15 @@ class TransformersZeroShotTextRouter:
         :param huggingface_pipeline_kwargs: A dictionary of keyword arguments for initializing the Hugging Face
             zero shot text classification.
         """
+        warnings.warn(
+            "`TransformersZeroShotTextRouter` will be removed from Haystack in version 3.0, as it is moving to the "
+            "`transformers-haystack` package. To continue using it, install that package with "
+            "`pip install transformers-haystack` and update your import to "
+            "`from haystack_integrations.components.routers.transformers import TransformersZeroShotTextRouter`.",
+            FutureWarning,
+            stacklevel=2,
+        )
+
         torch_and_transformers_import.check()
 
         self.token = token
