@@ -1004,3 +1004,8 @@ html[data-theme='dark'] .navbar-version-badge-dropdown:hover > a::after {
   margin-right: 5px;
   display: inline;
 }
+
+/* Allow a ClickableImage to expand to full content width */
+.img-full-width {
+  max-width: 100% !important;
+}
