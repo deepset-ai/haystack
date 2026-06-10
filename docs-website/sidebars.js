@@ -367,6 +367,7 @@ export default {
             'pipeline-components/extractors/namedentityextractor',
             'pipeline-components/extractors/presidioentityextractor',
             'pipeline-components/extractors/regextextextractor',
+            'pipeline-components/extractors/transformersnamedentityextractor',
           ],
         },
         {
@@ -437,6 +438,7 @@ export default {
             'pipeline-components/generators/stackitchatgenerator',
             'pipeline-components/generators/togetheraichatgenerator',
             'pipeline-components/generators/togetheraigenerator',
+            'pipeline-components/generators/transformerschatgenerator',
             'pipeline-components/generators/vertexaicodegenerator',
             'pipeline-components/generators/vertexaigeminichatgenerator',
             'pipeline-components/generators/vertexaigeminigenerator',
@@ -536,6 +538,7 @@ export default {
           },
           items: [
             'pipeline-components/readers/extractivereader',
+            'pipeline-components/readers/transformersextractivereader',
           ],
         },
         {

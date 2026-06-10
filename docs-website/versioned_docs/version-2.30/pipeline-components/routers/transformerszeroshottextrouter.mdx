@@ -17,9 +17,9 @@ Use this component to route text input to various output connections based on it
 | **Mandatory init variables** | `labels`: A list of labels for classification  <br /> <br />`token`: The Hugging Face API token. Can be set with `HF_API_TOKEN` or `HF_TOKEN` env var. |
 | **Mandatory run variables** | `text`: The text to be routed to one of the specified outputs based on which label it has been categorized into |
 | **Output variables** | `documents`: A dictionary with the label as key and the text as value |
-| **API reference** | [Routers](/reference/routers-api) |
-| **GitHub link** | https://github.com/deepset-ai/haystack/blob/main/haystack/components/routers/zero_shot_text_router.py |
-| **Package name** | `haystack-ai` |
+| **API reference** | [Transformers](/reference/integrations-transformers) |
+| **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/transformers |
+| **Package name** | `transformers-haystack` |
 
 </div>
 
@@ -31,9 +31,15 @@ Use this component to route text input to various output connections based on it
 
 To use `TransformersZeroShotTextRouter`, you need to provide the mandatory `labels` parameter – a list of strings of possible class labels to classify each sequence into.
 
-To see the full list of parameters, check out our [API reference](/reference/routers-api#transformerszeroshottextrouter).
+To see the full list of parameters, check out our [API reference](/reference/integrations-transformers#transformerszeroshottextrouter).
 
 ## Usage
+
+Install the `transformers-haystack` package to use the `TransformersZeroShotTextRouter`:
+
+```shell
+pip install transformers-haystack
+```
 
 ### On its own
 
@@ -53,7 +59,7 @@ Finally, the pipeline is executed with a sample text: "What is the capital of Ge
 from haystack import Document
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.core.pipeline import Pipeline
-from haystack.components.routers import TransformersZeroShotTextRouter
+from haystack_integrations.components.routers.transformers import TransformersZeroShotTextRouter
 from haystack.components.embedders import SentenceTransformersTextEmbedder, SentenceTransformersDocumentEmbedder
 from haystack.components.retrievers import InMemoryEmbeddingRetriever
 
