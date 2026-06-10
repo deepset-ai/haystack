@@ -30,7 +30,7 @@ _import_structure = {
     "pipeline_tool": ["PipelineTool"],
     "serde_utils": ["deserialize_tools_or_toolset_inplace", "serialize_tools_or_toolset"],
     "utils": ["flatten_tools_or_toolsets", "warm_up_tools"],
-    "types": ["ToolsType"],
+    "tool_types": ["ToolsType"],
 }
 
 if TYPE_CHECKING:
@@ -39,8 +39,8 @@ if TYPE_CHECKING:
     from haystack.tools.searchable_toolset import SearchableToolset as SearchableToolset
     from haystack.tools.serde_utils import deserialize_tools_or_toolset_inplace as deserialize_tools_or_toolset_inplace
     from haystack.tools.serde_utils import serialize_tools_or_toolset as serialize_tools_or_toolset
+    from haystack.tools.tool_types import ToolsType as ToolsType
     from haystack.tools.toolset import Toolset as Toolset
-    from haystack.tools.types import ToolsType as ToolsType
     from haystack.tools.utils import flatten_tools_or_toolsets as flatten_tools_or_toolsets
     from haystack.tools.utils import warm_up_tools as warm_up_tools
 else:
