@@ -2,38 +2,46 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-# NOTE: we do not use LazyImporter here because it creates conflicts between the tool module and the tool decorator
+import sys
+from typing import TYPE_CHECKING
 
-# ruff: noqa: I001 (ignore import order as we need to import Tool before ComponentTool and PipelineTool)
+from lazy_imports import LazyModule
+from lazy_imports.util import as_package
 
-from collections.abc import Sequence
+# The `tool` decorator (exported from `from_function`) shares its name with the `tool` submodule (`tool.py`).
+# This is why we cannot lazily import everything: importing the `tool` submodule makes Python bind it as the `tool`
+# attribute of this package, which would shadow the decorator.
+# We get around this by importing `tool` and `from_function` eagerly and passing the decorator as a plain attribute,
+# while the heavier modules are imported lazily.
 from haystack.tools.from_function import create_tool_from_function, tool
 from haystack.tools.tool import Tool, _check_duplicate_tool_names
-from haystack.tools.toolset import Toolset
-from haystack.tools.searchable_toolset import SearchableToolset
-from haystack.tools.component_tool import ComponentTool
-from haystack.tools.pipeline_tool import PipelineTool
-from haystack.tools.serde_utils import deserialize_tools_or_toolset_inplace, serialize_tools_or_toolset
-from haystack.tools.utils import flatten_tools_or_toolsets, warm_up_tools
 
-# Type alias for tools parameter - allows mixing Tools and Toolsets in a sequence
-# Accepts either:
-# - Sequence[Tool | Toolset]: Any sequence (list, tuple, etc.) containing Tools, Toolsets, or a mix of both
-# - Toolset: A single Toolset (not in a sequence)
-ToolsType = Sequence[Tool | Toolset] | Toolset
-
-__all__ = [
-    "_check_duplicate_tool_names",
-    "ComponentTool",
-    "create_tool_from_function",
-    "deserialize_tools_or_toolset_inplace",
-    "flatten_tools_or_toolsets",
-    "PipelineTool",
-    "serialize_tools_or_toolset",
-    "Tool",
-    "SearchableToolset",
-    "ToolsType",
-    "Toolset",
-    "tool",
-    "warm_up_tools",
-]
+if TYPE_CHECKING:
+    from haystack.tools.component_tool import ComponentTool as ComponentTool
+    from haystack.tools.pipeline_tool import PipelineTool as PipelineTool
+    from haystack.tools.searchable_toolset import SearchableToolset as SearchableToolset
+    from haystack.tools.serde_utils import deserialize_tools_or_toolset_inplace as deserialize_tools_or_toolset_inplace
+    from haystack.tools.serde_utils import serialize_tools_or_toolset as serialize_tools_or_toolset
+    from haystack.tools.toolset import Toolset as Toolset
+    from haystack.tools.types import ToolsType as ToolsType
+    from haystack.tools.utils import flatten_tools_or_toolsets as flatten_tools_or_toolsets
+    from haystack.tools.utils import warm_up_tools as warm_up_tools
+else:
+    sys.modules[__name__] = LazyModule(
+        "from haystack.tools.component_tool import ComponentTool",
+        "from haystack.tools.pipeline_tool import PipelineTool",
+        "from haystack.tools.searchable_toolset import SearchableToolset",
+        "from haystack.tools.serde_utils import deserialize_tools_or_toolset_inplace, serialize_tools_or_toolset",
+        "from haystack.tools.toolset import Toolset",
+        "from haystack.tools.types import ToolsType",
+        "from haystack.tools.utils import flatten_tools_or_toolsets, warm_up_tools",
+        # Eagerly imported above; passed as plain attributes so they survive the module replacement and keep the `tool`
+        # decorator from being shadowed by the `tool` submodule.
+        ("create_tool_from_function", create_tool_from_function),
+        ("tool", tool),
+        ("Tool", Tool),
+        ("_check_duplicate_tool_names", _check_duplicate_tool_names),
+        *as_package(__file__),
+        name=__name__,
+        doc=__doc__,
+    )
