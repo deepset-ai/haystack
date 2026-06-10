@@ -14,7 +14,7 @@ Use this component in extractive question answering pipelines based on a query a
 |  |  |
 | --- | --- |
 | **Most common position in a pipeline** | In query pipelines, after a component that returns a list of documents, such as a [Retriever](../retrievers.mdx) |
-| **Mandatory init variables** | `token`: The Hugging Face API token. Can be set with `HF_API_TOKEN` or `HF_TOKEN` env var. |
+| **Mandatory init variables** | None |
 | **Mandatory run variables** | `documents`: A list of documents  <br /> <br />`query`: A query string |
 | **Output variables** | `answers`: A list of [`ExtractedAnswer`](../../concepts/data-classes.mdx#extractedanswer)  objects |
 | **API reference** | [Transformers](/reference/integrations-transformers) |
@@ -46,6 +46,8 @@ Here are the models that we recommend for using with `TransformersExtractiveRead
 | [deepset/xlm-roberta-base-squad2](https://huggingface.co/deepset/xlm-roberta-base-squad2)                       | A base multilingual model with good speed and performance.          | Multilingual |
 
 You can also view other question answering models on [Hugging Face](https://huggingface.co/models?pipeline_tag=question-answering).
+
+Authentication with a Hugging Face API token is only required to access private or gated models. You can pass the token at initialization with `token`, or set the `HF_API_TOKEN` or `HF_TOKEN` environment variable.
 
 ## Usage
 

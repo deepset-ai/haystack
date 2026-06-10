@@ -31,6 +31,8 @@ This component extracts predefined entities out of a piece of text and writes th
 
 When the `TransformersNamedEntityExtractor` is initialized, you need to set a `model`. Optionally, you can set `pipeline_kwargs`, which are then passed on to the Hugging Face pipeline. You can additionally set the `device` that is used to run the component.
 
+Authentication with a Hugging Face API token is only required to access private or gated models. You can pass the token at initialization with `token`, or set the `HF_API_TOKEN` or `HF_TOKEN` environment variable.
+
 ## Usage
 
 Install the `transformers-haystack` package to use the `TransformersNamedEntityExtractor`:
