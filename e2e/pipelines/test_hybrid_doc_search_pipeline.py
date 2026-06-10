@@ -6,7 +6,7 @@
 from haystack import Document, Pipeline
 from haystack.components.embedders import SentenceTransformersDocumentEmbedder, SentenceTransformersTextEmbedder
 from haystack.components.joiners.document_joiner import DocumentJoiner
-from haystack.components.rankers import TransformersSimilarityRanker
+from haystack.components.rankers import SentenceTransformersSimilarityRanker
 from haystack.components.retrievers.in_memory import InMemoryBM25Retriever, InMemoryEmbeddingRetriever
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 
@@ -23,7 +23,7 @@ def test_hybrid_doc_search_pipeline(tmp_path, del_hf_env_vars):
         instance=InMemoryEmbeddingRetriever(document_store=document_store), name="embedding_retriever"
     )
     hybrid_pipeline.add_component(instance=DocumentJoiner(), name="joiner")
-    hybrid_pipeline.add_component(instance=TransformersSimilarityRanker(top_k=20), name="ranker")
+    hybrid_pipeline.add_component(instance=SentenceTransformersSimilarityRanker(top_k=20), name="ranker")
 
     hybrid_pipeline.connect("bm25_retriever", "joiner")
     hybrid_pipeline.connect("text_embedder", "embedding_retriever")

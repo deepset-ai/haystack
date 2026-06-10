@@ -1,0 +1,50 @@
+---
+upgrade:
+  - |
+    ``HuggingFaceLocalChatGenerator``, ``ExtractiveReader``, ``TransformersZeroShotDocumentClassifier``,
+    ``TransformersTextRouter``, and ``TransformersZeroShotTextRouter``
+    have been moved out of Haystack into the ``transformers-haystack`` integration package.
+    Install the new package with ``pip install transformers-haystack`` and update your imports.
+    Note that some components were renamed in the new package: ``HuggingFaceLocalChatGenerator`` is now
+    ``TransformersChatGenerator`` and ``ExtractiveReader`` is now ``TransformersExtractiveReader``.
+
+    Before:
+
+    .. code:: python
+
+      from haystack.components.classifiers import TransformersZeroShotDocumentClassifier
+      from haystack.components.generators.chat import HuggingFaceLocalChatGenerator
+      from haystack.components.readers import ExtractiveReader
+      from haystack.components.routers import TransformersTextRouter, TransformersZeroShotTextRouter
+
+    After:
+
+    .. code:: python
+
+      from haystack_integrations.components.classifiers.transformers import TransformersZeroShotDocumentClassifier
+      from haystack_integrations.components.generators.transformers import TransformersChatGenerator
+      from haystack_integrations.components.readers.transformers import TransformersExtractiveReader
+      from haystack_integrations.components.routers.transformers import (
+          TransformersTextRouter,
+          TransformersZeroShotTextRouter,
+      )
+  - |
+    The legacy ``TransformersSimilarityRanker`` component has been removed.
+    Use ``SentenceTransformersSimilarityRanker`` instead, which provides the same functionality
+    along with async support.
+
+    Before:
+
+    .. code:: python
+
+      from haystack.components.rankers import TransformersSimilarityRanker
+
+      ranker = TransformersSimilarityRanker(model="cross-encoder/ms-marco-MiniLM-L-6-v2")
+
+    After:
+
+    .. code:: python
+
+      from haystack.components.rankers import SentenceTransformersSimilarityRanker
+
+      ranker = SentenceTransformersSimilarityRanker(model="cross-encoder/ms-marco-MiniLM-L-6-v2")

@@ -93,6 +93,38 @@ pip install <new-package>
 | `from haystack.components.embedders import HuggingFaceAPITextEmbedder` | `huggingface-api-haystack` | `from haystack_integrations.components.embedders.huggingface_api import HuggingFaceAPITextEmbedder` |
 | `from haystack.components.embedders import HuggingFaceAPIDocumentEmbedder` | `huggingface-api-haystack` | `from haystack_integrations.components.embedders.huggingface_api import HuggingFaceAPIDocumentEmbedder` |
 | `from haystack.components.rankers import HuggingFaceTEIRanker` | `huggingface-api-haystack` | `from haystack_integrations.components.rankers.huggingface_api import HuggingFaceTEIRanker` |
+| `from haystack.components.classifiers import TransformersZeroShotDocumentClassifier` | `transformers-haystack` | `from haystack_integrations.components.classifiers.transformers import TransformersZeroShotDocumentClassifier` |
+| `from haystack.components.generators.chat import HuggingFaceLocalChatGenerator` | `transformers-haystack` | `from haystack_integrations.components.generators.transformers import TransformersChatGenerator` |
+| `from haystack.components.readers import ExtractiveReader` | `transformers-haystack` | `from haystack_integrations.components.readers.transformers import TransformersExtractiveReader` |
+| `from haystack.components.routers import TransformersTextRouter` | `transformers-haystack` | `from haystack_integrations.components.routers.transformers import TransformersTextRouter` |
+| `from haystack.components.routers import TransformersZeroShotTextRouter` | `transformers-haystack` | `from haystack_integrations.components.routers.transformers import TransformersZeroShotTextRouter` |
+
+Note: some components were renamed when moved to `transformers-haystack`. `HuggingFaceLocalChatGenerator`
+is now `TransformersChatGenerator` and `ExtractiveReader` is now `TransformersExtractiveReader`.
+
+### `TransformersSimilarityRanker` removed
+
+**What changed:** The `TransformersSimilarityRanker` component has been removed. It was not moved to an
+integration package.
+
+**Why:** The component was in legacy state and no longer received updates. `SentenceTransformersSimilarityRanker`
+provides the same functionality plus async support and the more capable sentence-transformers backend.
+
+**How to migrate:** Use `SentenceTransformersSimilarityRanker`, which accepts the same parameters.
+
+Before (v2.x):
+```python
+from haystack.components.rankers import TransformersSimilarityRanker
+
+ranker = TransformersSimilarityRanker(model="cross-encoder/ms-marco-MiniLM-L-6-v2")
+```
+
+After (v3.0):
+```python
+from haystack.components.rankers import SentenceTransformersSimilarityRanker
+
+ranker = SentenceTransformersSimilarityRanker(model="cross-encoder/ms-marco-MiniLM-L-6-v2")
+```
 
 ### ToolInvoker component removed
 
