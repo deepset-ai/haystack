@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Fixed configure_logging() modifying the root logger's handlers, which caused logging.basicConfig() to be
+    silently ignored in applications that imported Haystack. The handler is now scoped to the "haystack" logger
+    hierarchy only, following Python logging best practices for libraries.

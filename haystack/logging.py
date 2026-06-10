@@ -392,12 +392,12 @@ def configure_logging(use_json: bool | None = None) -> None:
     # Use OUR `ProcessorFormatter` to format all `logging` entries.
     handler.setFormatter(formatter)
 
-    root_logger = logging.getLogger()
+    haystack_logger = logging.getLogger("haystack")
     # avoid adding our handler twice
     old_handlers = [
         h
-        for h in root_logger.handlers
+        for h in haystack_logger.handlers
         if not (isinstance(h, logging.StreamHandler) and h.name == "HaystackLoggingHandler")
     ]
     new_handlers = [handler, *old_handlers]
-    root_logger.handlers = new_handlers
+    haystack_logger.handlers = new_handlers
