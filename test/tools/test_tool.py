@@ -175,7 +175,6 @@ class TestTool:
                 "outputs_to_string": {"handler": "test_tool.format_string"},
                 "inputs_from_state": {"location": "city"},
                 "outputs_to_state": {"documents": {"source": "docs", "handler": "test_tool.get_weather_report"}},
-                "system_prompt_instructions": None,
             },
         }
 
@@ -202,23 +201,6 @@ class TestTool:
         assert tool.outputs_to_string == {"handler": format_string}
         assert tool.inputs_from_state == {"location": "city"}
         assert tool.outputs_to_state == {"documents": {"source": "docs", "handler": get_weather_report}}
-
-    def test_system_prompt_contribution(self):
-        tool = Tool(
-            name="weather",
-            description="Get weather report",
-            parameters=parameters,
-            function=get_weather_report,
-            system_prompt_instructions="Always call weather before answering about the weather.",
-        )
-        assert tool.system_prompt_contribution() == "Always call weather before answering about the weather."
-
-    def test_system_prompt_contribution_defaults_to_none(self):
-        tool = Tool(
-            name="weather", description="Get weather report", parameters=parameters, function=get_weather_report
-        )
-        assert tool.system_prompt_instructions is None
-        assert tool.system_prompt_contribution() is None
 
     def test_serialize_outputs_to_string(self):
         config = {"handler": format_string, "source": "result", "raw_result": False}

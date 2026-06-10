@@ -21,8 +21,8 @@ class SkillToolset(Toolset):
     (`name` and `description`) and a markdown body of instructions. Skills may bundle additional files
     (reference docs, examples, templates). This mirrors how Claude Code and Codex expose skills:
 
-    - The name and description of every skill are injected into the Agent's system prompt
-      (via `system_prompt_contribution`) so the model knows which skills exist.
+    - On `warm_up`, the name and description of every discovered skill are baked into the `load_skill` tool
+      description so the model knows which skills exist without any system prompt injection.
     - `load_skill` returns a skill's full instructions on demand, plus a manifest of its bundled files.
     - `read_skill_file` reads a bundled file on demand.
 
@@ -33,7 +33,7 @@ class SkillToolset(Toolset):
     from haystack.components.generators.chat import OpenAIChatGenerator
     from haystack.dataclasses import ChatMessage
     from haystack.tools import SkillToolset
-    from haystack.skill_stores import FileSystemSkillStore
+    from haystack.skill_stores.file_system import FileSystemSkillStore
 
     store = FileSystemSkillStore("skills/")
     skills = SkillToolset(store)
@@ -55,46 +55,63 @@ class SkillToolset(Toolset):
         """
         Initialize the SkillToolset.
 
+        The skill catalog is not scanned here; it is discovered lazily in `warm_up()`, since the backing store
+        may perform I/O (e.g. reading a filesystem). The Agent warms up its tools before running, so the
+        catalog is populated by the time the toolset is used.
+
         :param store: A `haystack.skill_stores.SkillStore` instance to back this toolset.
         """
         self._store = store
+        self._skills: dict[str, SkillMeta] = {}
+        self._is_warmed_up = False
 
-        self._skills: dict[str, SkillMeta] = self._store.list_skills()
-        super().__init__(tools=[self._create_load_skill_tool(), self._create_read_skill_file_tool()])
+        self._load_skill_tool = self._create_load_skill_tool()
+        super().__init__(tools=[self._load_skill_tool, self._create_read_skill_file_tool()])
 
     @property
     def skills(self) -> dict[str, SkillMeta]:
-        """Mapping of skill name to its metadata."""
+        """Mapping of skill name to its metadata. Triggers `warm_up()` on first access if not already warmed up."""
+        if not self._is_warmed_up:
+            self.warm_up()
         return self._skills
 
-    def system_prompt_contribution(self) -> str | None:
+    def warm_up(self) -> None:
         """
-        Render the skills catalog and usage instructions for injection into the Agent's system prompt.
+        Scan the backing store for available skills and bake the catalog into the `load_skill` description.
 
-        :returns: The catalog text, or `None` if no skills were found.
+        Idempotent: repeated calls after the first are no-ops.
         """
-        if not self._skills:
-            return None
+        if self._is_warmed_up:
+            return
+        self._skills = self._store.list_skills()
+        self._load_skill_tool.description = self._load_skill_description()
+        self._is_warmed_up = True
 
+    def _load_skill_description(self) -> str:
+        """
+        Build the `load_skill` tool description, including the catalog of discovered skills.
+
+        The available skills (name + description) are baked into the description so the model can see which
+        skills exist and decide when to load one, without relying on any system prompt injection.
+
+        :returns: The tool description text.
+        """
         lines = [
-            "## Available Skills",
-            "Specialized instruction sets for specific task types. Load one before doing matching work.",
-            "",
+            "Load a skill's full instructions before doing a task it covers. Skills are specialized instruction "
+            "sets for specific task types; once loaded, follow them exactly (they override your general approach). "
+            "If a loaded skill references a bundled file, fetch it with `read_skill_file`."
         ]
-        lines += [f"- **{meta.name}**: {meta.description}" for meta in self._skills.values()]
-        lines += [
-            "",
-            "When a task matches a skill, call `load_skill` with its name BEFORE starting, then follow the loaded "
-            "instructions exactly (they override your general approach). Load skills only when relevant; if a skill "
-            "references a file, fetch it with `read_skill_file`. If no skill matches, proceed normally.",
-        ]
+        if self._skills:
+            lines += ["", "Available skills:"]
+            lines += [f"- {meta.name}: {meta.description}" for meta in self._skills.values()]
+        else:
+            lines += ["", "No skills are currently available."]
         return "\n".join(lines)
 
     def _create_load_skill_tool(self) -> Tool:
         """Create the `load_skill` tool, closed over this toolset's store."""
 
-        def load_skill(name: Annotated[str, "Exact name of the skill to load, from the Available Skills list."]) -> str:
-            """Load a skill's full instructions. Call this before doing a task the skill covers."""
+        def load_skill(name: Annotated[str, "Exact name of the skill to load, from the Available skills list."]) -> str:
             try:
                 body = self._store.load_skill_body(name)
                 bundled = self._store.list_skill_files(name)
@@ -107,7 +124,9 @@ class SkillToolset(Toolset):
                 body = f"{body}\n\n---\nBundled files (read with `read_skill_file`):\n{manifest}"
             return body
 
-        return create_tool_from_function(function=load_skill, name="load_skill")
+        return create_tool_from_function(
+            function=load_skill, name="load_skill", description=self._load_skill_description()
+        )
 
     def _create_read_skill_file_tool(self) -> Tool:
         """Create the `read_skill_file` tool, closed over this toolset's store."""

@@ -39,7 +39,6 @@ from haystack.tools import (
     serialize_tools_or_toolset,
     warm_up_tools,
 )
-from haystack.tools.toolset import _ToolsetWrapper
 from haystack.utils.callable_serialization import deserialize_callable, serialize_callable
 from haystack.utils.deserialization import deserialize_component_inplace
 
@@ -192,63 +191,6 @@ def _render_prompt_messages(
             f"Got a message with role {prompt_messages[0].role}."
         )
     return prompt_messages
-
-
-def _gather_system_prompt_contributions(item: Any, out: list[str]) -> None:
-    """
-    Recursively collect system prompt contributions from a tool, toolset, or collection thereof.
-
-    A `Toolset` that provides its own contribution takes precedence over its member tools, which are then
-    not contributed separately (mirroring how an MCP server's `instructions` describe its tools as a whole).
-    Composed toolsets (created via `toolset_a + toolset_b`) contribute each child toolset independently.
-
-    :param item: A `Tool`, `Toolset`, or list/tuple of them.
-    :param out: List that collected, non-empty contributions are appended to, in order.
-    """
-    if item is None:
-        return
-    if isinstance(item, _ToolsetWrapper):
-        for toolset in item.toolsets:
-            _gather_system_prompt_contributions(toolset, out)
-    elif isinstance(item, Toolset):
-        contribution = item.system_prompt_contribution()
-        if contribution:
-            out.append(contribution)
-        else:
-            for member_tool in item:
-                _gather_system_prompt_contributions(member_tool, out)
-    elif isinstance(item, Tool):
-        contribution = item.system_prompt_contribution()
-        if contribution:
-            out.append(contribution)
-    elif isinstance(item, (list, tuple)):
-        for sub_item in item:
-            _gather_system_prompt_contributions(sub_item, out)
-
-
-def _apply_system_prompt_contributions(messages: list[ChatMessage], tools: ToolsType | None) -> list[ChatMessage]:
-    """
-    Append tool/toolset system prompt contributions to the agent's system message.
-
-    If the first message is a system message (the rendered `system_prompt`, or a user-supplied system message),
-    the contributions are appended to it. Otherwise a new system message is prepended. Contributions are merged
-    into the already-rendered message text (never the Jinja2 template) so arbitrary content is safe.
-
-    :param messages: The messages the agent is about to run with.
-    :param tools: The tools selected for this run.
-    :returns: The messages with contributions applied (a new list; the input is not mutated).
-    """
-    contributions: list[str] = []
-    _gather_system_prompt_contributions(tools, contributions)
-    if not contributions:
-        return messages
-
-    extra = "\n\n".join(contributions)
-    if messages and messages[0].is_from(ChatRole.SYSTEM):
-        existing = messages[0].text or ""
-        combined = f"{existing}\n\n{extra}" if existing else extra
-        return [ChatMessage.from_system(combined), *messages[1:]]
-    return [ChatMessage.from_system(extra), *messages]
 
 
 @dataclass(kw_only=True)
@@ -710,10 +652,6 @@ class Agent:
             logger.warning("All messages provided to the Agent component are system messages. This is not recommended.")
 
         selected_tools = self._select_tools(tools)
-
-        # Append any system prompt instructions contributed by the selected tools/toolsets (e.g. a SkillToolset
-        # catalog) to the system message. Based on selected_tools so it respects per-run tool filtering.
-        messages = _apply_system_prompt_contributions(messages, selected_tools)
 
         state_kwargs: dict[str, Any] = {key: kwargs[key] for key in self.state_schema.keys() if key in kwargs}
         state = State(schema=self.state_schema, data=state_kwargs)

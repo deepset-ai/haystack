@@ -188,22 +188,6 @@ class Toolset:
             return item in self.tools
         return False
 
-    def system_prompt_contribution(self) -> str | None:
-        """
-        Return optional system prompt instructions for this Toolset.
-
-        When the Toolset is used with an `Agent`, the returned text is appended to the Agent's system prompt.
-        This is the Toolset-level analogue of an MCP server's `instructions`: it describes how to use the
-        Toolset's tools as a whole. The default implementation returns `None`; subclasses (for example
-        `SkillToolset`) override it to generate instructions dynamically.
-
-        When this returns a non-`None` value, it takes precedence over the `system_prompt_instructions` of the
-        Toolset's individual member tools, which are then not contributed separately.
-
-        :returns: The system prompt contribution, or `None` if the Toolset has nothing to contribute.
-        """
-        return None
-
     def warm_up(self) -> None:
         """
         Prepare the Toolset for use.

@@ -1,28 +1,25 @@
 ---
 features:
   - |
-    Added ``SkillToolset``, a ``Toolset`` that lets an ``Agent`` discover and read filesystem "skills"
-    through progressive disclosure, similar to how Claude Code and Codex expose skills. A skill is a
-    directory containing a ``SKILL.md`` file with YAML frontmatter (``name`` and ``description``) and a
-    markdown body of instructions, optionally bundling additional reference files. Point the toolset at a
-    skills directory and add it to an ``Agent``:
+    Added ``SkillToolset``, a ``Toolset`` that lets an ``Agent`` discover and read "skills" through
+    progressive disclosure, similar to how Claude Code and Codex expose skills. A skill is a directory
+    containing a ``SKILL.md`` file with YAML frontmatter (``name`` and ``description``) and a markdown body
+    of instructions, optionally bundling additional reference files. ``SkillToolset`` is backed by a
+    ``SkillStore``; use ``FileSystemSkillStore`` to load skills from a local directory and add the toolset
+    to an ``Agent``:
 
     .. code-block:: python
 
         from haystack.components.agents import Agent
         from haystack.components.generators.chat import OpenAIChatGenerator
         from haystack.tools import SkillToolset
+        from haystack.skill_stores.file_system import FileSystemSkillStore
 
-        agent = Agent(chat_generator=OpenAIChatGenerator(), tools=SkillToolset("skills/"))
+        skills = SkillToolset(FileSystemSkillStore("skills/"))
+        agent = Agent(chat_generator=OpenAIChatGenerator(), tools=skills)
 
-    The names and descriptions of all discovered skills are appended to the Agent's system prompt
-    automatically. The toolset exposes two tools: ``load_skill`` returns a skill's full instructions on
-    demand, and ``read_skill_file`` reads a file bundled with a skill (with path-traversal protection).
-  - |
-    ``Tool`` and ``Toolset`` now support a ``system_prompt_contribution()`` method. When a tool or toolset
-    is used with an ``Agent``, the text it returns is appended to the Agent's system prompt. ``Tool`` gains
-    an optional ``system_prompt_instructions`` field for this; ``Toolset`` subclasses can override the method
-    to generate instructions dynamically. When a ``Toolset`` provides a contribution, it takes precedence over
-    the ``system_prompt_instructions`` of its individual member tools, mirroring how an MCP server's
-    ``instructions`` describe its tools as a whole. Note that a member tool's own ``system_prompt_instructions``
-    are therefore suppressed whenever its enclosing ``Toolset`` contributes.
+    Skills are discovered when the toolset is warmed up (the ``Agent`` does this automatically before a run).
+    The names and descriptions of all discovered skills are baked into the ``load_skill`` tool description,
+    so the model can see which skills exist without any system prompt injection. The toolset exposes two
+    tools: ``load_skill`` returns a skill's full instructions on demand, and ``read_skill_file`` reads a
+    file bundled with a skill (with path-traversal protection).

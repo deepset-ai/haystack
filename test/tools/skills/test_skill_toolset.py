@@ -53,33 +53,57 @@ def _write_skill(skills_dir, name, description=None, body="Instructions.", files
 
 
 class TestSkillToolset:
-    def test_scans_skills(self, tmp_path):
+    def test_scans_skills_on_warm_up(self, tmp_path):
         _write_skill(tmp_path, "pdf-forms", description="Use to fill PDF forms.")
         _write_skill(tmp_path, "excel", description="Use to edit spreadsheets.")
 
         toolset = SkillToolset(FileSystemSkillStore(tmp_path))
 
+        # Tools exist immediately, but the catalog is only scanned on warm_up.
+        assert {t.name for t in toolset} == {"load_skill", "read_skill_file"}
+        assert toolset._is_warmed_up is False
+
+        toolset.warm_up()
+
+        assert toolset._is_warmed_up is True
         assert set(toolset.skills) == {"pdf-forms", "excel"}
         assert toolset.skills["pdf-forms"].description == "Use to fill PDF forms."
-        assert {t.name for t in toolset} == {"load_skill", "read_skill_file"}
+
+    def test_skills_property_warms_up_lazily(self, tmp_path):
+        _write_skill(tmp_path, "pdf-forms", description="Use to fill PDF forms.")
+        toolset = SkillToolset(FileSystemSkillStore(tmp_path))
+        # Accessing `skills` without an explicit warm_up triggers it.
+        assert set(toolset.skills) == {"pdf-forms"}
+        assert toolset._is_warmed_up is True
+
+    def test_warm_up_is_idempotent(self, tmp_path):
+        _write_skill(tmp_path, "pdf-forms", description="Use to fill PDF forms.")
+        toolset = SkillToolset(FileSystemSkillStore(tmp_path))
+        toolset.warm_up()
+        toolset.warm_up()
+        assert set(toolset.skills) == {"pdf-forms"}
 
     def test_accepts_skill_store_instance(self, tmp_path):
         _write_skill(tmp_path, "pdf-forms", description="Use to fill PDF forms.")
         store = FileSystemSkillStore(tmp_path)
         toolset = SkillToolset(store)
+        toolset.warm_up()
         assert set(toolset.skills) == {"pdf-forms"}
         assert toolset._store is store
 
-    def test_system_prompt_contribution_lists_skills(self, tmp_path):
+    def test_load_skill_description_lists_skills(self, tmp_path):
         _write_skill(tmp_path, "pdf-forms", description="Use to fill PDF forms.")
-        contribution = SkillToolset(FileSystemSkillStore(tmp_path)).system_prompt_contribution()
-        assert contribution is not None
-        assert "## Available Skills" in contribution
-        assert "**pdf-forms**: Use to fill PDF forms." in contribution
-        assert "load_skill" in contribution and "read_skill_file" in contribution
+        toolset = SkillToolset(FileSystemSkillStore(tmp_path))
+        toolset.warm_up()
+        load_skill = next(t for t in toolset if t.name == "load_skill")
+        assert "Available skills:" in load_skill.description
+        assert "- pdf-forms: Use to fill PDF forms." in load_skill.description
 
-    def test_system_prompt_contribution_none_when_empty(self, tmp_path):
-        assert SkillToolset(FileSystemSkillStore(tmp_path)).system_prompt_contribution() is None
+    def test_load_skill_description_when_empty(self, tmp_path):
+        toolset = SkillToolset(FileSystemSkillStore(tmp_path))
+        toolset.warm_up()
+        load_skill = next(t for t in toolset if t.name == "load_skill")
+        assert "No skills are currently available." in load_skill.description
 
     def test_load_skill_returns_body_and_manifest(self, tmp_path):
         _write_skill(
@@ -133,6 +157,7 @@ class TestSkillToolset:
         }
 
         restored = SkillToolset.from_dict(data)
+        restored.warm_up()
         assert set(restored.skills) == {"pdf-forms"}
 
     def test_to_dict_and_from_dict_with_custom_serializable_store(self):
@@ -143,6 +168,7 @@ class TestSkillToolset:
         assert serialized["data"]["store"]["init_parameters"]["skills"] == {"demo": "A demo skill."}
 
         restored = SkillToolset.from_dict(serialized)
+        restored.warm_up()
         assert set(restored.skills) == {"demo"}
 
     def test_load_skill_via_custom_store(self, tmp_path):
