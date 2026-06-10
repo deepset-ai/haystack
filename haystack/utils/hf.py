@@ -2,22 +2,10 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-import asyncio
-import copy
 from typing import Any
 
 from haystack import logging
-from haystack.dataclasses import (
-    ChatMessage,
-    ComponentInfo,
-    ImageContent,
-    ReasoningContent,
-    StreamingCallbackT,
-    StreamingChunk,
-    SyncStreamingCallbackT,
-    TextContent,
-)
-from haystack.dataclasses.streaming_chunk import _invoke_streaming_callback
+from haystack.dataclasses import ChatMessage, ImageContent, ReasoningContent, TextContent
 from haystack.lazy_imports import LazyImport
 from haystack.utils.auth import Secret
 from haystack.utils.device import ComponentDevice
@@ -66,40 +54,6 @@ def deserialize_hf_model_kwargs(kwargs: dict[str, Any]) -> None:
 
         if isinstance(v, dict):
             deserialize_hf_model_kwargs(v)
-
-
-def resolve_hf_device_map(device: ComponentDevice | None, model_kwargs: dict[str, Any] | None) -> dict[str, Any]:
-    """
-    Update `model_kwargs` to include the keyword argument `device_map`.
-
-    This method is useful you want to force loading a transformers model when using `AutoModel.from_pretrained` to
-    use `device_map`.
-
-    We handle the edge case where `device` and `device_map` is specified by ignoring the `device` parameter and printing
-    a warning.
-
-    :param device: The device on which the model is loaded. If `None`, the default device is automatically
-        selected.
-    :param model_kwargs: Additional HF keyword arguments passed to `AutoModel.from_pretrained`.
-        For details on what kwargs you can pass, see the model's documentation.
-    """
-    model_kwargs = copy.copy(model_kwargs) or {}
-    if model_kwargs.get("device_map"):
-        if device is not None:
-            logger.warning(
-                "The parameters `device` and `device_map` from `model_kwargs` are both provided. "
-                "Ignoring `device` and using `device_map`."
-            )
-        # Resolve device if device_map is provided in model_kwargs
-        device_map = model_kwargs["device_map"]
-    else:
-        device_map = ComponentDevice.resolve_device(device).to_hf()
-
-    # Set up device_map which allows quantized loading and multi device inference
-    # requires accelerate which is always installed when using `pip install transformers[torch]`
-    model_kwargs["device_map"] = device_map
-
-    return model_kwargs
 
 
 def resolve_hf_pipeline_kwargs(
@@ -211,145 +165,3 @@ def convert_message_to_hf_format(message: ChatMessage) -> dict[str, Any]:
         hf_msg["tool_calls"] = hf_tool_calls
 
     return hf_msg
-
-
-with LazyImport(message="Run 'pip install \"transformers[torch]\"'") as transformers_import:
-    from transformers import (
-        PreTrainedTokenizer,
-        PreTrainedTokenizerBase,
-        PreTrainedTokenizerFast,
-        StoppingCriteria,
-        TextStreamer,
-    )
-
-    torch_import.check()
-    transformers_import.check()
-
-    class StopWordsCriteria(StoppingCriteria):
-        """
-        Stops text generation in HuggingFace generators if any one of the stop words is generated.
-
-        Note: When a stop word is encountered, the generation of new text is stopped.
-        However, if the stop word is in the prompt itself, it can stop generating new text
-        prematurely after the first token. This is particularly important for LLMs designed
-        for dialogue generation. For these models, like for example mosaicml/mpt-7b-chat,
-        the output includes both the new text and the original prompt. Therefore, it's important
-        to make sure your prompt has no stop words.
-        """
-
-        def __init__(
-            self,
-            tokenizer: PreTrainedTokenizer | PreTrainedTokenizerFast,
-            stop_words: list[str],
-            device: str | torch.device = "cpu",
-        ) -> None:
-            """Creates an instance of StopWordsCriteria."""
-            super().__init__()
-            # check if tokenizer is a valid tokenizer
-            if not isinstance(tokenizer, (PreTrainedTokenizer, PreTrainedTokenizerFast)):
-                raise TypeError(
-                    f"Invalid tokenizer provided for StopWordsCriteria - {tokenizer}. "
-                    f"Please provide a valid tokenizer from the HuggingFace Transformers library."
-                )
-            if not tokenizer.pad_token:
-                if tokenizer.eos_token:
-                    tokenizer.pad_token = tokenizer.eos_token
-                else:
-                    tokenizer.add_special_tokens({"pad_token": "[PAD]"})
-            encoded_stop_words = tokenizer(stop_words, add_special_tokens=False, padding=True, return_tensors="pt")
-            self.stop_ids = encoded_stop_words.input_ids.to(device)
-
-        def __call__(self, input_ids: torch.LongTensor, scores: torch.FloatTensor, **kwargs: Any) -> bool:  # noqa: ARG002
-            """Check if any of the stop words are generated in the current text generation step."""
-            for stop_id in self.stop_ids:
-                found_stop_word = self.is_stop_word_found(input_ids, stop_id)
-                if found_stop_word:
-                    return True
-            return False
-
-        @staticmethod
-        def is_stop_word_found(generated_text_ids: torch.Tensor, stop_id: torch.Tensor) -> bool:
-            """
-            Performs phrase matching.
-
-            Checks if a sequence of stop tokens appears in a continuous or sequential order within the generated text.
-            """
-            generated_text_ids = generated_text_ids[-1]
-            len_generated_text_ids = generated_text_ids.size(0)
-            len_stop_id = stop_id.size(0)
-            return all(generated_text_ids[len_generated_text_ids - len_stop_id :].eq(stop_id))
-
-    class HFTokenStreamingHandler(TextStreamer):
-        """
-        Streaming handler for HuggingFaceLocalChatGenerator.
-
-        Note: This is a helper class for HuggingFaceLocalChatGenerator enabling streaming
-        of generated text via Haystack SyncStreamingCallbackT callbacks.
-
-        Do not use this class directly.
-        """
-
-        def __init__(
-            self,
-            tokenizer: PreTrainedTokenizerBase,
-            stream_handler: SyncStreamingCallbackT,
-            stop_words: list[str] | None = None,
-            component_info: ComponentInfo | None = None,
-        ) -> None:
-            """Creates an instance of HFTokenStreamingHandler."""
-            super().__init__(tokenizer=tokenizer, skip_prompt=True)
-            self.token_handler = stream_handler
-            self.stop_words = stop_words or []
-            self.component_info = component_info
-            self._call_counter = 0
-
-        def on_finalized_text(self, word: str, stream_end: bool = False) -> None:
-            """Callback function for handling the generated text."""
-            self._call_counter += 1
-            word_to_send = word + "\n" if stream_end else word
-            if word_to_send.strip() not in self.stop_words:
-                self.token_handler(
-                    StreamingChunk(
-                        content=word_to_send, index=0, start=self._call_counter == 1, component_info=self.component_info
-                    )
-                )
-
-    class AsyncHFTokenStreamingHandler(TextStreamer):
-        """
-        Async streaming handler for HuggingFaceLocalChatGenerator.
-
-        Note: This is a helper class for HuggingFaceLocalChatGenerator enabling async streaming of generated text
-        via Haystack StreamingCallbackT callbacks (async preferred; sync accepted but blocks the event loop).
-
-        Do not use this class directly.
-        """
-
-        def __init__(
-            self,
-            tokenizer: PreTrainedTokenizerBase,
-            stream_handler: StreamingCallbackT,
-            stop_words: list[str] | None = None,
-            component_info: ComponentInfo | None = None,
-        ) -> None:
-            """Creates an instance of AsyncHFTokenStreamingHandler."""
-            super().__init__(tokenizer=tokenizer, skip_prompt=True)
-            self.token_handler = stream_handler
-            self.stop_words = stop_words or []
-            self.component_info = component_info
-            self._queue: asyncio.Queue[StreamingChunk] = asyncio.Queue()
-
-        def on_finalized_text(self, word: str, stream_end: bool = False) -> None:
-            """Synchronous callback that puts chunks in a queue."""
-            word_to_send = word + "\n" if stream_end else word
-            if word_to_send.strip() not in self.stop_words:
-                self._queue.put_nowait(StreamingChunk(content=word_to_send, component_info=self.component_info))
-
-        async def process_queue(self) -> None:
-            """Process the queue of streaming chunks."""
-            while True:
-                try:
-                    chunk = await self._queue.get()
-                    await _invoke_streaming_callback(self.token_handler, chunk)
-                    self._queue.task_done()
-                except asyncio.CancelledError:
-                    break

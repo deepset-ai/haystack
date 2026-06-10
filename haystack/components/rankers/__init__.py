@@ -14,7 +14,6 @@ _import_structure = {
     "meta_field_grouping_ranker": ["MetaFieldGroupingRanker"],
     "sentence_transformers_diversity": ["SentenceTransformersDiversityRanker"],
     "sentence_transformers_similarity": ["SentenceTransformersSimilarityRanker"],
-    "transformers_similarity": ["TransformersSimilarityRanker"],
 }
 
 if TYPE_CHECKING:
@@ -28,7 +27,6 @@ if TYPE_CHECKING:
     from .sentence_transformers_similarity import (
         SentenceTransformersSimilarityRanker as SentenceTransformersSimilarityRanker,
     )
-    from .transformers_similarity import TransformersSimilarityRanker as TransformersSimilarityRanker
 
 else:
     sys.modules[__name__] = LazyImporter(name=__name__, module_file=__file__, import_structure=_import_structure)
