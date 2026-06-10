@@ -13,4 +13,6 @@ from haystack.tools.toolset import Toolset
 # - Toolset: A single Toolset (not in a sequence)
 ToolsType = Sequence[Tool | Toolset] | Toolset
 
+# `ToolsType` is this module's only public name; `__all__` keeps the imports above (Tool, Toolset, Sequence) from
+# leaking as exports on `import *`.
 __all__ = ["ToolsType"]
