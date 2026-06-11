@@ -133,6 +133,21 @@ class TestPipelineTool:
         assert tool.parameters == recreated_tool.parameters
         assert isinstance(recreated_tool._pipeline, Pipeline)
 
+    def test_from_dict_ignores_legacy_is_pipeline_async(self, sample_pipeline):
+        tool = PipelineTool(
+            pipeline=sample_pipeline,
+            input_mapping={"query": ["bm25_retriever.query"]},
+            output_mapping={"ranker.documents": "documents"},
+            name="test_tool",
+            description="A test tool",
+        )
+
+        tool_dict = tool.to_dict()
+        tool_dict["data"]["is_pipeline_async"] = True
+
+        recreated_tool = PipelineTool.from_dict(tool_dict)
+        assert isinstance(recreated_tool._pipeline, Pipeline)
+
     def test_auto_generated_tool_params(self, sample_pipeline):
         tool = PipelineTool(
             pipeline=sample_pipeline,
@@ -354,8 +369,6 @@ class TestPipelineTool:
 
 class TestPipelineToolAsync:
     def test_async_function_is_always_set(self, sample_pipeline):
-        # Every Pipeline exposes run_async, so SuperComponent.run_async always works and PipelineTool keeps the
-        # async_function (it no longer clears it for "sync" pipelines).
         tool = PipelineTool(
             pipeline=sample_pipeline,
             input_mapping={"query": ["bm25_retriever.query"]},

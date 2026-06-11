@@ -14,17 +14,8 @@ from haystack import Pipeline, component
 from test.tracing.utils import SpyingTracer
 
 
-@pytest.fixture
-def pipeline_class():
-    """
-    Returns the `Pipeline` class. Kept as a fixture so the feature files can build instances
-    via `pipeline_class(...)` without importing `Pipeline` directly.
-    """
-    return Pipeline
-
-
 @pytest.fixture(params=["sync", "async"])
-def run_mode(request):
+def pipeline_run_mode(request):
     """
     Parametrizes each scenario so it runs once through `Pipeline.run` (sync) and once through
     `Pipeline.run_async` (async), exercising both execution engines.
@@ -56,9 +47,9 @@ class _PipelineResult:
 
 @when("I run the Pipeline", target_fixture="pipeline_result")
 def run_pipeline(
-    pipeline_data: tuple[Pipeline, list[PipelineRunData]], spying_tracer: SpyingTracer, run_mode: str
+    pipeline_data: tuple[Pipeline, list[PipelineRunData]], spying_tracer: SpyingTracer, pipeline_run_mode: str
 ) -> list[tuple[_PipelineResult, PipelineRunData]] | Exception:
-    if run_mode == "async":
+    if pipeline_run_mode == "async":
         return run_async_pipeline(pipeline_data, spying_tracer)
     return run_sync_pipeline(pipeline_data, spying_tracer)
 

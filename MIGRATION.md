@@ -646,3 +646,31 @@ from haystack.components.generators import OpenAIImageGenerator
 generator = OpenAIImageGenerator(model="gpt-image-2")
 result = generator.run("A photo of a red apple")
 ```
+
+### `AsyncPipeline` merged into `Pipeline`
+
+**What changed:** The `AsyncPipeline` class has been removed. Its asynchronous methods (`run_async`, `run_async_generator`, `stream`) are now part of the single `Pipeline` class, alongside the synchronous `run`.
+
+**Why:** Two classes caused friction where sync and async met: `AsyncPipeline.run()` wrapped `asyncio.run()` and raised inside an already-running event loop (e.g. Jupyter, FastAPI), and a `SuperComponent` exposed `run_async` even for sync pipelines, where it always failed. A single `Pipeline` with native `run` and `run_async` fixes both.
+
+**How to migrate:**
+
+Before (v2.x):
+```python
+from haystack import AsyncPipeline
+
+pipeline = AsyncPipeline()
+result = await pipeline.run_async(data)
+```
+
+After (v3.0):
+```python
+from haystack import Pipeline
+
+pipeline = Pipeline()
+result = await pipeline.run_async(data)
+```
+
+Note that the two run paths are not yet fully symmetric: for the moment, only `run` supports breakpoints
+(`break_point` / `pipeline_snapshot`), and only `run_async` / `run_async_generator` support specifying a
+`concurrency_limit`.

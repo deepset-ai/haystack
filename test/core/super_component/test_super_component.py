@@ -267,6 +267,17 @@ class TestSuperComponent:
         assert "documents" in result
         assert result["documents"][0].content == "Paris is the capital of France."
 
+    def test_from_dict_ignores_legacy_is_pipeline_async(self, document_store):
+        pipeline = Pipeline()
+        pipeline.add_component("retriever", InMemoryBM25Retriever(document_store=document_store))
+        wrapper = SuperComponent(pipeline=pipeline, output_mapping={"retriever.documents": "documents"})
+
+        serialized = wrapper.to_dict()
+        serialized["init_parameters"]["is_pipeline_async"] = True
+
+        deserialized = SuperComponent.from_dict(serialized)
+        assert isinstance(deserialized.pipeline, Pipeline)
+
     def test_subclass_serialization(self, rag_pipeline):
         super_comp = SuperComponent(rag_pipeline)
         serialized = super_comp.to_dict()

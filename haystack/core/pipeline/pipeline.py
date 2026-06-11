@@ -118,8 +118,8 @@ class Pipeline(PipelineBase):
     """
     Orchestration engine that runs components according to the execution graph.
 
-    Supports both a synchronous run path (`run`, one component at a time) and an asynchronous run path
-    (`run_async`, `run_async_generator`, `stream`) that runs components concurrently when the execution graph permits.
+    Supports both a synchronous run path (`run`) and an asynchronous run path
+    (`run_async`, `run_async_generator`, `stream`).
     """
 
     @staticmethod

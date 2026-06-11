@@ -237,8 +237,8 @@ class PipelineTool(ComponentTool):
             The deserialized PipelineTool instance.
         """
         inner_data = data["data"]
-        # `is_pipeline_async` is a legacy key (kept only for backward compatibility with already-serialized
-        # PipelineTools). It is ignored: there is now a single `Pipeline` class.
+        # `is_pipeline_async` is a legacy key kept only for backward compatibility
+        inner_data.pop("is_pipeline_async", None)
         pipeline = Pipeline.from_dict(inner_data["pipeline"])
 
         if "outputs_to_state" in inner_data and inner_data["outputs_to_state"]:
@@ -248,6 +248,4 @@ class PipelineTool(ComponentTool):
             inner_data["outputs_to_string"] = _deserialize_outputs_to_string(inner_data["outputs_to_string"])
 
         merged_data = {**inner_data, "pipeline": pipeline}
-        # Remove is_pipeline_async as it's not a parameter of the constructor
-        merged_data.pop("is_pipeline_async", None)
         return cls(**merged_data)

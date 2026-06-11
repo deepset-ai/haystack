@@ -473,8 +473,7 @@ class SuperComponent(_SuperComponent):
         :returns:
             The deserialized SuperComponent.
         """
-        # `is_pipeline_async` is a legacy key (kept only for backward compatibility with already-serialized
-        # SuperComponents). It is popped and ignored: there is now a single `Pipeline` class.
+        # `is_pipeline_async` is a legacy key kept only for backward compatibility.
         data["init_parameters"].pop("is_pipeline_async", None)
         pipeline = Pipeline.from_dict(data["init_parameters"]["pipeline"])
         data["init_parameters"]["pipeline"] = pipeline
