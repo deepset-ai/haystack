@@ -5,7 +5,7 @@
 from typing import Annotated, Any
 
 from haystack.core.serialization import generate_qualified_class_name
-from haystack.dataclasses.skill_meta import SkillMeta
+from haystack.dataclasses.skill import SkillMeta
 from haystack.skill_stores.skill_store_types.protocol import SkillStore
 from haystack.tools.from_function import create_tool_from_function
 from haystack.tools.tool import Tool

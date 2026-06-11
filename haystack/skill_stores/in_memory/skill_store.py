@@ -5,8 +5,7 @@
 from typing import Any
 
 from haystack.core.serialization import default_to_dict
-from haystack.dataclasses.skill import Skill
-from haystack.dataclasses.skill_meta import SkillMeta
+from haystack.dataclasses.skill import Skill, SkillMeta
 
 
 class InMemorySkillStore:
@@ -86,7 +85,7 @@ class InMemorySkillStore:
 
         :returns: Mapping of skill name to its metadata.
         """
-        return {name: SkillMeta(name=skill.name, description=skill.description) for name, skill in self._skills.items()}
+        return {name: skill.meta for name, skill in self._skills.items()}
 
     def load_skill_body(self, name: str) -> str:
         """

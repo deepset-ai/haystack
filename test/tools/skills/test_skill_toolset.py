@@ -6,7 +6,7 @@
 import pytest
 
 from haystack.core.serialization import generate_qualified_class_name
-from haystack.dataclasses.skill_meta import SkillMeta
+from haystack.dataclasses.skill import SkillMeta
 from haystack.skill_stores.file_system.skill_store import FileSystemSkillStore
 from haystack.tools import SkillToolset
 from haystack.tools.errors import ToolInvocationError

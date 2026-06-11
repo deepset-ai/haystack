@@ -15,8 +15,7 @@ _import_structure = {
     "image_content": ["ImageContent"],
     "file_content": ["FileContent"],
     "document": ["Document"],
-    "skill": ["Skill"],
-    "skill_meta": ["SkillMeta"],
+    "skill": ["Skill", "SkillMeta"],
     "sparse_embedding": ["SparseEmbedding"],
     "state": ["State"],
     "streaming_chunk": [
@@ -49,7 +48,7 @@ if TYPE_CHECKING:
     from .file_content import FileContent as FileContent
     from .image_content import ImageContent as ImageContent
     from .skill import Skill as Skill
-    from .skill_meta import SkillMeta as SkillMeta
+    from .skill import SkillMeta as SkillMeta
     from .sparse_embedding import SparseEmbedding as SparseEmbedding
     from .streaming_chunk import AsyncStreamingCallbackT as AsyncStreamingCallbackT
     from .streaming_chunk import ComponentInfo as ComponentInfo

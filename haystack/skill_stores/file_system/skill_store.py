@@ -8,7 +8,7 @@ from typing import Any
 import yaml
 
 from haystack.core.serialization import default_from_dict, default_to_dict
-from haystack.dataclasses.skill_meta import SkillMeta
+from haystack.dataclasses.skill import SkillMeta
 
 SKILL_FILE_NAME = "SKILL.md"
 
