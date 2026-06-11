@@ -174,26 +174,8 @@ class ContextRelevanceEvaluator(LLMEvaluator):
                 - `results`: A list of dictionaries with `relevant_statements` and `score` for each input context.
         """
         result = super(ContextRelevanceEvaluator, self).run(**inputs)  # noqa: UP008
-
-        for idx, res in enumerate(result["results"]):
-            if res is None:
-                result["results"][idx] = {"relevant_statements": [], "score": float("nan")}
-                continue
-            if len(res["relevant_statements"]) > 0:
-                res["score"] = 1
-            else:
-                res["score"] = 0
-
-        # calculate average context relevance score over all queries
-        scores = [res["score"] for res in result["results"]]
-        valid_scores = [s for s in scores if not math.isnan(s)]
-        skipped = len(scores) - len(valid_scores)
-        if skipped:
-            logger.warning("{skipped} query(s) failed and were excluded from the score.", skipped=skipped)
-        result["score"] = mean(valid_scores) if valid_scores else float("nan")
-        result["individual_scores"] = scores  # useful for the EvaluationRunResult
-
-        return result
+        # Post-process the raw results to calculate relevance metrics and scores
+        return self._postprocess_results(result)
 
     @component.output_types(score=float, results=list[dict[str, Any]])
     async def run_async(self, **inputs: Any) -> dict[str, Any]:
@@ -210,7 +192,21 @@ class ContextRelevanceEvaluator(LLMEvaluator):
                 - `results`: A list of dictionaries with `relevant_statements` and `score` for each input context.
         """
         result = await super(ContextRelevanceEvaluator, self).run_async(**inputs)  # noqa: UP008
+        # Post-process the raw results to calculate relevance metrics and scores
+        return self._postprocess_results(result)
 
+    def _postprocess_results(self, result: dict[str, Any]) -> dict[str, Any]:
+        """
+        Post-processes raw LLM evaluator outputs to compute context relevance scores.
+
+        Calculates binary scores based on whether relevant statements were found,
+        averages the scores across all successful queries, and updates the result payload.
+
+        :param result:
+            The raw evaluation dictionary from the base LLM evaluator.
+        :returns:
+            The updated dictionary containing final scores and tracking metrics.
+        """
         for idx, res in enumerate(result["results"]):
             if res is None:
                 result["results"][idx] = {"relevant_statements": [], "score": float("nan")}
