@@ -283,7 +283,7 @@ class LLMEvaluator:
             messages = [ChatMessage.from_user(prompt["prompt"])]
             try:
                 if generator_has_async:
-                    result = await self._chat_generator.run_async(messages=messages)
+                    result = await self._chat_generator.run_async(messages=messages)  # type: ignore[attr-defined]
                 else:
                     logger.debug(
                         "{generator_type} does not implement 'run_async'."

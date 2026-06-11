@@ -1,4 +1,4 @@
 ---
 features:
   - |
-    Added asynchronous support (``run_async``) to the ``LLMEvaluator`` component, allowing concurrent evaluation loops inside async applications like FastMCP or FastAPI without blocking the main event loop.
+    Added native asynchronous support (``run_async``) to ``LLMEvaluator``, ``FaithfulnessEvaluator``, and ``ContextRelevanceEvaluator``. This allows concurrent evaluation loops inside async applications like FastMCP or FastAPI without blocking the main event loop, while automatically falling back to thread workers for synchronous chat generators.

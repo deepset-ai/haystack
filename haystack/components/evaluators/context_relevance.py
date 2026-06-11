@@ -195,6 +195,42 @@ class ContextRelevanceEvaluator(LLMEvaluator):
 
         return result
 
+    @component.output_types(score=float, results=list[dict[str, Any]])
+    async def run_async(self, **inputs: Any) -> dict[str, Any]:
+        """
+        Run the LLM evaluator asynchronously.
+
+        :param questions:
+            A list of questions.
+        :param contexts:
+            A list of lists of contexts. Each list of contexts corresponds to one question.
+        :returns:
+            A dictionary with the following outputs:
+                - `score`: Mean context relevance score over all the provided input questions.
+                - `results`: A list of dictionaries with `relevant_statements` and `score` for each input context.
+        """
+        result = await super(ContextRelevanceEvaluator, self).run_async(**inputs)  # noqa: UP008
+
+        for idx, res in enumerate(result["results"]):
+            if res is None:
+                result["results"][idx] = {"relevant_statements": [], "score": float("nan")}
+                continue
+            if len(res["relevant_statements"]) > 0:
+                res["score"] = 1
+            else:
+                res["score"] = 0
+
+        # calculate average context relevance score over all queries
+        scores = [res["score"] for res in result["results"]]
+        valid_scores = [s for s in scores if not math.isnan(s)]
+        skipped = len(scores) - len(valid_scores)
+        if skipped:
+            logger.warning("{skipped} query(s) failed and were excluded from the score.", skipped=skipped)
+        result["score"] = mean(valid_scores) if valid_scores else float("nan")
+        result["individual_scores"] = scores  # useful for the EvaluationRunResult
+
+        return result
+
     def to_dict(self) -> dict[str, Any]:
         """
         Serialize this component to a dictionary.
