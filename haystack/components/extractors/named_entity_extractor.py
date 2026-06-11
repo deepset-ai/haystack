@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import warnings
 from abc import ABC, abstractmethod
 from collections.abc import Iterator
 from contextlib import contextmanager
@@ -140,6 +141,15 @@ class NamedEntityExtractor:
         :param token:
             The API token to download private models from Hugging Face.
         """
+        warnings.warn(
+            "`NamedEntityExtractor` will be removed from Haystack in version 3.0, as it is moving to the "
+            "`transformers-haystack` package and being renamed to `TransformersNamedEntityExtractor`. "
+            "To continue using it, install that package with "
+            "`pip install transformers-haystack` and update your import to "
+            "`from haystack_integrations.components.extractors.transformers import TransformersNamedEntityExtractor`.",
+            FutureWarning,
+            stacklevel=2,
+        )
 
         if isinstance(backend, str):
             backend = NamedEntityExtractorBackend.from_str(backend)
