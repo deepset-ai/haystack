@@ -3,10 +3,13 @@
 # SPDX-License-Identifier: Apache-2.0
 
 
+import pytest
+
 from haystack.core.serialization import generate_qualified_class_name
 from haystack.dataclasses.skill_meta import SkillMeta
 from haystack.skill_stores.file_system.skill_store import FileSystemSkillStore
 from haystack.tools import SkillToolset
+from haystack.tools.errors import ToolInvocationError
 
 
 class _SerializableStore:
@@ -130,10 +133,12 @@ class TestSkillToolset:
         assert "Step 1. Do the thing." in result
         assert "reference/forms.md" in result
 
-    def test_load_skill_unknown(self, tmp_path):
+    def test_load_skill_unknown_raises(self, tmp_path):
         _write_skill(tmp_path, "pdf-forms", description="Use to fill PDF forms.")
         load_skill = _get_tool(SkillToolset(FileSystemSkillStore(tmp_path)), "load_skill")
-        assert "Unknown skill 'nope'" in load_skill.invoke(name="nope")
+        # The error propagates (wrapped by Tool.invoke) so the Agent can apply its tool-failure policy.
+        with pytest.raises(ToolInvocationError, match="Unknown skill 'nope'"):
+            load_skill.invoke(name="nope")
 
     def test_read_skill_file(self, tmp_path):
         _write_skill(tmp_path, "pdf-forms", description="d", files={"reference/forms.md": "form details"})
@@ -144,14 +149,15 @@ class TestSkillToolset:
         _write_skill(tmp_path, "pdf-forms", description="d")
         (tmp_path / "secret.txt").write_text("top secret")
         read = _get_tool(SkillToolset(FileSystemSkillStore(tmp_path)), "read_skill_file")
-        result = read.invoke(name="pdf-forms", path="../secret.txt")
-        assert "outside the skill directory" in result
-        assert "top secret" not in result
+        with pytest.raises(ToolInvocationError, match="outside the skill directory") as exc:
+            read.invoke(name="pdf-forms", path="../secret.txt")
+        assert "top secret" not in str(exc.value)
 
     def test_read_skill_file_missing(self, tmp_path):
         _write_skill(tmp_path, "pdf-forms", description="d")
         read = _get_tool(SkillToolset(FileSystemSkillStore(tmp_path)), "read_skill_file")
-        assert "not found" in read.invoke(name="pdf-forms", path="nope.md")
+        with pytest.raises(ToolInvocationError, match="not found"):
+            read.invoke(name="pdf-forms", path="nope.md")
 
     def test_to_dict_and_from_dict(self, tmp_path):
         _write_skill(tmp_path, "pdf-forms", description="Use to fill PDF forms.")
@@ -208,4 +214,6 @@ class TestSkillToolset:
 
         load_skill = _get_tool(SkillToolset(_InMemoryStore()), "load_skill")
         assert load_skill.invoke(name="demo") == "Do the demo thing."
-        assert "Unknown skill 'nope'" in load_skill.invoke(name="nope")
+        # An unknown skill raises (wrapped by Tool.invoke); the store decides the error message.
+        with pytest.raises(ToolInvocationError):
+            load_skill.invoke(name="nope")

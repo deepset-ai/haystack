@@ -19,14 +19,14 @@ class SkillToolset(Toolset):
 
     A skill is a directory (or equivalent storage unit) containing a `SKILL.md` file with YAML frontmatter
     (`name` and `description`) and a markdown body of instructions. Skills may bundle additional files
-    (reference docs, examples, templates). This mirrors how Claude Code and Codex expose skills:
+    (reference docs, examples, templates).
 
     - On `warm_up`, the name and description of every discovered skill are baked into the `load_skill` tool
       description so the model knows which skills exist without any system prompt injection.
     - `load_skill` returns a skill's full instructions on demand, plus a manifest of its bundled files.
     - `read_skill_file` reads a bundled file on demand.
 
-    **Example usage:**
+    ### Usage example
 
     ```python
     from haystack.components.agents import Agent
@@ -55,11 +55,12 @@ class SkillToolset(Toolset):
         """
         Initialize the SkillToolset.
 
-        Both tools (`load_skill` and `read_skill_file`) are created here, so the toolset behaves like a complete
-        collection (`len`, `in`, iteration) without any I/O. The store itself is not touched until `warm_up()`:
-        the skill catalog is discovered there and baked into the `load_skill` description. This lets stores that
-        perform I/O (a filesystem scan, a database connection) defer that work until warm-up, which the Agent
-        runs before using the toolset.
+        Constructing the toolset does not read any skills. The store is queried for the available skills on
+        `warm_up()`, so stores that do I/O (reading a directory, connecting to a database) stay cheap to
+        construct.
+
+        The `load_skill` and `read_skill_file` tools are created right away, so the toolset can be used as a
+        collection (length, membership checks, iteration) immediately.
 
         :param store: A `haystack.skill_stores.SkillStore` instance to back this toolset.
         """
@@ -118,13 +119,10 @@ class SkillToolset(Toolset):
         """Create the `load_skill` tool, closed over this toolset's store."""
 
         def load_skill(name: Annotated[str, "Exact name of the skill to load, from the Available skills list."]) -> str:
-            try:
-                body = self._store.load_skill_body(name)
-                bundled = self._store.list_skill_files(name)
-            except KeyError:
-                available = ", ".join(self._skills) or "none"
-                return f"Unknown skill '{name}'. Available skills: {available}."
-
+            # The store raises an actionable error (e.g. unknown skill) on failure. We let it propagate so the Agent
+            # applies its own tool-failure policy.
+            body = self._store.load_skill_body(name)
+            bundled = self._store.list_skill_files(name)
             if bundled:
                 manifest = "\n".join(f"- {path}" for path in bundled)
                 body = f"{body}\n\n---\nBundled files (read with `read_skill_file`):\n{manifest}"
@@ -142,17 +140,9 @@ class SkillToolset(Toolset):
             path: Annotated[str, "Path of the file relative to the skill directory, e.g. 'reference/forms.md'."],
         ) -> str:
             """Read a file bundled with a skill (reference docs, examples, templates)."""
-            try:
-                return self._store.read_skill_file(name, path)
-            except KeyError:
-                available = ", ".join(self._skills) or "none"
-                return f"Unknown skill '{name}'. Available skills: {available}."
-            # TODO Should we just capture all errors and send the string version back to the model?
-            #      Or actually the raise on tool failure is controlled within the Agent so we should really just
-            #      raise the error with a good error message and let the Agent handle the final raising or stringifying.
-            except (PermissionError, FileNotFoundError) as e:
-                # The store raises an actionable message (it lists the readable files); surface it to the model.
-                return str(e)
+            # The store raises an actionable error (e.g. unknown skill) on failure. We let it propagate so the Agent
+            # applies its own tool-failure policy.
+            return self._store.read_skill_file(name, path)
 
         return create_tool_from_function(function=read_skill_file, name="read_skill_file")
 

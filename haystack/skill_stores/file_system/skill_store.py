@@ -78,8 +78,8 @@ class FileSystemSkillStore:
         """
         Scan `skills_dir` and build the skill catalog by reading each skill's `SKILL.md` frontmatter.
 
-        Only the frontmatter (cheap) is read here; bodies and bundled files are read lazily when the corresponding
-        method is called. Idempotent: repeated calls after the first are no-ops.
+        Only the frontmatter is read here; bodies and bundled files are read lazily when the corresponding method is
+        called. Idempotent: repeated calls after the first are no-ops.
 
         :raises ValueError: If `skills_dir` does not exist, is not a directory, a skill is missing a required
             frontmatter field, or two skills share the same name.
@@ -117,7 +117,7 @@ class FileSystemSkillStore:
             return self._skill_dirs[name]
         except KeyError:
             available = ", ".join(self._skills) or "none"
-            # TODO Lets leave a dev comment for why we are raising from None
+            # We suppress the original error since we are replacing it with a more informative error message
             raise KeyError(f"Unknown skill '{name}'. Available skills: {available}.") from None
 
     def _readable_files_hint(self, name: str) -> str:
