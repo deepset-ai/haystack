@@ -4,7 +4,7 @@
 
 from typing import Any, Protocol
 
-from haystack.dataclasses.skill import SkillMeta
+from haystack.dataclasses.skill_info import SkillInfo
 
 
 class SkillStore(Protocol):
@@ -20,9 +20,12 @@ class SkillStore(Protocol):
 
     Implementations may defer all I/O (filesystem reads, database connections, ...) until a method is actually called,
     so a store can be constructed cheaply and only touch its backend on first use.
+
+    Skill content is text: instruction bodies and bundled files are returned as strings. Binary assets (images,
+    fonts, ...) are not supported.
     """
 
-    def list_skills(self) -> dict[str, SkillMeta]:
+    def list_skills(self) -> dict[str, SkillInfo]:
         """
         Discover and return all available skills.
 
@@ -52,13 +55,12 @@ class SkillStore(Protocol):
 
     def read_skill_file(self, name: str, path: str) -> str:
         """
-        Read a file bundled with the named skill.
+        Read a text file bundled with the named skill.
 
         :param name: Skill name as returned by `list_skills`.
         :param path: Path of the file relative to the skill root (e.g. `"reference/forms.md"`).
         :returns: The file's text content.
         :raises KeyError: If no skill with `name` exists.
-        :raises PermissionError: If `path` escapes the skill's root (path-traversal attempt).
         :raises FileNotFoundError: If the file does not exist within the skill.
         """
         ...

@@ -8,7 +8,7 @@ from typing import Any
 import yaml
 
 from haystack.core.serialization import default_from_dict, default_to_dict
-from haystack.dataclasses.skill import SkillMeta
+from haystack.dataclasses.skill_info import SkillInfo
 
 SKILL_FILE_NAME = "SKILL.md"
 
@@ -17,25 +17,30 @@ def _parse_frontmatter(text: str) -> tuple[dict[str, Any], str]:
     """
     Split a `SKILL.md` file into its YAML frontmatter and markdown body.
 
-    The frontmatter is the YAML block delimited by leading and trailing `---` lines. If no frontmatter is
-    present, an empty mapping and the original text are returned.
+    The frontmatter is the YAML block delimited by a leading and a trailing line containing exactly `---`.
+    If the first line is not `---`, no frontmatter is present and an empty mapping and the original text
+    are returned.
 
     :param text: The full contents of a `SKILL.md` file.
     :returns: A tuple of (frontmatter mapping, body).
-    :raises ValueError: If the frontmatter is present but is not a valid YAML mapping.
+    :raises ValueError: If the frontmatter is opened with `---` but never closed, is not valid YAML, or is
+        not a YAML mapping.
     """
-    stripped = text.lstrip()
-    if not stripped.startswith("---"):
+    lines = text.lstrip().split("\n")
+    if lines[0].rstrip() != "---":
         return {}, text
 
-    # Drop the leading '---' line, then split on the closing '---'.
-    after_open = stripped[len("---") :].lstrip("\n")
-    parts = after_open.split("\n---", 1)
-    if len(parts) != 2:
-        return {}, text
+    # Find the closing delimiter: the next line containing exactly '---'.
+    closing_index = next((i for i, line in enumerate(lines[1:], start=1) if line.rstrip() == "---"), None)
+    if closing_index is None:
+        raise ValueError("Skill frontmatter is opened with '---' but never closed with a matching '---' line.")
 
-    frontmatter_block, body = parts
-    loaded = yaml.safe_load(frontmatter_block) or {}
+    frontmatter_block = "\n".join(lines[1:closing_index])
+    body = "\n".join(lines[closing_index + 1 :])
+    try:
+        loaded = yaml.safe_load(frontmatter_block) or {}
+    except yaml.YAMLError as e:
+        raise ValueError(f"Skill frontmatter is not valid YAML: {e}") from e
     if not isinstance(loaded, dict):
         raise ValueError("Skill frontmatter must be a YAML mapping.")  # noqa: TRY004
     return loaded, body.lstrip("\n")
@@ -69,7 +74,7 @@ class FileSystemSkillStore:
         """
         self.skills_dir = Path(skills_dir)
         # Public metadata catalog returned by `list_skills`, populated on warm_up.
-        self._skills: dict[str, SkillMeta] = {}
+        self._skills: dict[str, SkillInfo] = {}
         # Private locator: maps each skill name to its directory, used to read content lazily.
         self._skill_dirs: dict[str, Path] = {}
         self._is_warmed_up = False
@@ -81,14 +86,19 @@ class FileSystemSkillStore:
         Only the frontmatter is read here; bodies and bundled files are read lazily when the corresponding method is
         called. Idempotent: repeated calls after the first are no-ops.
 
-        :raises ValueError: If `skills_dir` does not exist, is not a directory, a skill is missing a required
-            frontmatter field, or two skills share the same name.
+        :raises ValueError: If `skills_dir` does not exist, is not a directory, a skill's frontmatter is missing,
+            malformed, or missing a required field, or two skills share the same name.
         """
         if self._is_warmed_up:
             return
         if not self.skills_dir.is_dir():
             raise ValueError(f"Skills directory '{self.skills_dir}' does not exist or is not a directory.")
 
+        # Build into locals and swap at the end: if the scan fails halfway, no partial state is left behind (a retry
+        # after fixing the offending skill starts clean), and concurrent callers only ever observe either an empty or
+        # a complete catalog.
+        skills: dict[str, SkillInfo] = {}
+        skill_dirs: dict[str, Path] = {}
         for skill_file in sorted(self.skills_dir.glob(f"*/{SKILL_FILE_NAME}")):
             skill_dir = skill_file.parent
             frontmatter, _ = _parse_frontmatter(skill_file.read_text(encoding="utf-8"))
@@ -97,11 +107,14 @@ class FileSystemSkillStore:
             description = frontmatter.get("description")
             if not description:
                 raise ValueError(f"Skill '{name}' ({skill_file}) is missing a 'description' in its frontmatter.")
-            if name in self._skills:
+            if name in skills:
                 raise ValueError(f"Duplicate skill name '{name}' found in '{self.skills_dir}'.")
 
-            self._skills[name] = SkillMeta(name=name, description=description)
-            self._skill_dirs[name] = skill_dir
+            skills[name] = SkillInfo(name=name, description=description)
+            skill_dirs[name] = skill_dir
+
+        self._skills = skills
+        self._skill_dirs = skill_dirs
         self._is_warmed_up = True
 
     def _skill_dir(self, name: str) -> Path:
@@ -131,7 +144,7 @@ class FileSystemSkillStore:
         """
         return ", ".join(self.list_skill_files(name)) or "none"
 
-    def list_skills(self) -> dict[str, SkillMeta]:
+    def list_skills(self) -> dict[str, SkillInfo]:
         """
         Return all skills discovered on disk, warming up the store first if needed.
 
@@ -139,7 +152,8 @@ class FileSystemSkillStore:
         :raises ValueError: If the skills directory is invalid or a skill's frontmatter is malformed.
         """
         self.warm_up()
-        return self._skills
+        # We return a copy to prevent callers from mutating our internal state.
+        return dict(self._skills)
 
     def load_skill_body(self, name: str) -> str:
         """
@@ -169,7 +183,7 @@ class FileSystemSkillStore:
 
     def read_skill_file(self, name: str, path: str) -> str:
         """
-        Read a file bundled with the named skill, preventing path traversal outside the skill directory.
+        Read a text file bundled with the named skill, preventing path traversal outside the skill directory.
 
         :param name: Skill name as returned by `list_skills`.
         :param path: Path of the file relative to the skill directory (e.g. `"reference/forms.md"`).
@@ -179,6 +193,7 @@ class FileSystemSkillStore:
             message lists the readable files so the caller can retry with a valid path.
         :raises FileNotFoundError: If the file does not exist within the skill. The message lists the readable
             files so the caller can retry with a valid path.
+        :raises ValueError: If the file is not UTF-8 text (e.g. an image or other binary asset).
         """
         skill_dir = self._skill_dir(name).resolve()
         target = (skill_dir / path).resolve()
@@ -191,7 +206,10 @@ class FileSystemSkillStore:
             raise FileNotFoundError(
                 f"File '{path}' not found in skill '{name}'. Readable files: {self._readable_files_hint(name)}."
             )
-        return target.read_text(encoding="utf-8")
+        try:
+            return target.read_text(encoding="utf-8")
+        except UnicodeDecodeError as e:
+            raise ValueError(f"File '{path}' in skill '{name}' is not UTF-8 text. Only text files can be read.") from e
 
     def to_dict(self) -> dict[str, Any]:
         """

@@ -5,7 +5,7 @@
 from typing import Annotated, Any
 
 from haystack.core.serialization import generate_qualified_class_name
-from haystack.dataclasses.skill import SkillMeta
+from haystack.dataclasses.skill_info import SkillInfo
 from haystack.skill_stores.skill_store_types.protocol import SkillStore
 from haystack.tools.from_function import create_tool_from_function
 from haystack.tools.tool import Tool
@@ -49,6 +49,10 @@ class SkillToolset(Toolset):
         SKILL.md            # frontmatter (name, description) + markdown instructions
         reference/forms.md
     ```
+
+    The tool names `load_skill` and `read_skill_file` are fixed, so an `Agent` can use at most one
+    `SkillToolset`. To serve skills from multiple sources, back a single toolset with a custom store that
+    merges them.
     """
 
     def __init__(self, store: SkillStore) -> None:
@@ -62,10 +66,10 @@ class SkillToolset(Toolset):
         The `load_skill` and `read_skill_file` tools are created right away, so the toolset can be used as a
         collection (length, membership checks, iteration) immediately.
 
-        :param store: A `haystack.skill_stores.SkillStore` instance to back this toolset.
+        :param store: A `haystack.skill_stores.skill_store_types.SkillStore` instance to back this toolset.
         """
         self._store = store
-        self._skills: dict[str, SkillMeta] = {}
+        self._skills: dict[str, SkillInfo] = {}
         self._is_warmed_up = False
 
         # We create both tools now and dynamically update the `load_skill` description at warm-up with the discovered
@@ -74,7 +78,7 @@ class SkillToolset(Toolset):
         super().__init__(tools=[self._load_skill_tool, self._create_read_skill_file_tool()])
 
     @property
-    def skills(self) -> dict[str, SkillMeta]:
+    def skills(self) -> dict[str, SkillInfo]:
         """Mapping of skill name to its metadata. Triggers `warm_up()` on first access if not already warmed up."""
         if not self._is_warmed_up:
             self.warm_up()
@@ -90,9 +94,18 @@ class SkillToolset(Toolset):
         """
         if self._is_warmed_up:
             return
+        if hasattr(self._store, "warm_up"):
+            self._store.warm_up()
         self._skills = self._store.list_skills()
         self._load_skill_tool.description = self._load_skill_description()
         self._is_warmed_up = True
+
+    def add(self, tool: Tool | Toolset) -> None:
+        """Adding tools is not supported: a SkillToolset's tools are fixed and defined by its store."""
+        raise NotImplementedError(
+            "SkillToolset does not support adding tools. To combine it with other tools, pass it to the Agent "
+            "alongside them, e.g. tools=[skill_toolset, other_tool]."
+        )
 
     def _load_skill_description(self) -> str:
         """
@@ -125,7 +138,7 @@ class SkillToolset(Toolset):
             bundled = self._store.list_skill_files(name)
             if bundled:
                 manifest = "\n".join(f"- {path}" for path in bundled)
-                body = f"{body}\n\n---\nBundled files (read with `read_skill_file`):\n{manifest}"
+                body = f"{body}\n\nBundled files (read with `read_skill_file`):\n{manifest}"
             return body
 
         return create_tool_from_function(

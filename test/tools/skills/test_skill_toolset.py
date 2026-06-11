@@ -3,12 +3,15 @@
 # SPDX-License-Identifier: Apache-2.0
 
 
+import threading
+from concurrent.futures import ThreadPoolExecutor
+
 import pytest
 
 from haystack.core.serialization import generate_qualified_class_name
-from haystack.dataclasses.skill import SkillMeta
+from haystack.dataclasses.skill_info import SkillInfo
 from haystack.skill_stores.file_system.skill_store import FileSystemSkillStore
-from haystack.tools import SkillToolset
+from haystack.tools import SkillToolset, Tool
 from haystack.tools.errors import ToolInvocationError
 
 
@@ -18,8 +21,8 @@ class _SerializableStore:
     def __init__(self, skills: dict[str, str]) -> None:
         self._data = skills
 
-    def list_skills(self) -> dict[str, SkillMeta]:
-        return {name: SkillMeta(name=name, description=desc) for name, desc in self._data.items()}
+    def list_skills(self) -> dict[str, SkillInfo]:
+        return {name: SkillInfo(name=name, description=desc) for name, desc in self._data.items()}
 
     def load_skill_body(self, name: str) -> str:
         if name not in self._data:
@@ -101,6 +104,41 @@ class TestSkillToolset:
         toolset.warm_up()
         toolset.warm_up()
         assert set(toolset.skills) == {"pdf-forms"}
+
+    def test_warm_up_warms_up_the_store(self, tmp_path):
+        _write_skill(tmp_path, "pdf-forms", description="Use to fill PDF forms.")
+        store = FileSystemSkillStore(tmp_path)
+        toolset = SkillToolset(store)
+        toolset.warm_up()
+        assert store._is_warmed_up is True
+
+    def test_concurrent_warm_up(self, tmp_path):
+        # Concurrent first use (e.g. parallel requests hitting a shared Agent) must produce a complete,
+        # consistent catalog in every thread.
+        _write_skill(tmp_path, "pdf-forms", description="Use to fill PDF forms.")
+        _write_skill(tmp_path, "excel", description="Use to edit spreadsheets.")
+        toolset = SkillToolset(FileSystemSkillStore(tmp_path))
+
+        num_threads = 8
+        barrier = threading.Barrier(num_threads)
+
+        def warm_up_and_list():
+            barrier.wait()
+            toolset.warm_up()
+            return set(toolset.skills)
+
+        with ThreadPoolExecutor(max_workers=num_threads) as executor:
+            results = list(executor.map(lambda _: warm_up_and_list(), range(num_threads)))
+
+        assert all(result == {"pdf-forms", "excel"} for result in results)
+        assert "- pdf-forms: Use to fill PDF forms." in toolset._load_skill_tool.description
+
+    def test_add_is_not_supported(self, tmp_path):
+        _write_skill(tmp_path, "pdf-forms", description="Use to fill PDF forms.")
+        toolset = SkillToolset(FileSystemSkillStore(tmp_path))
+        extra = Tool(name="extra", description="d", parameters={"type": "object", "properties": {}}, function=len)
+        with pytest.raises(NotImplementedError, match="does not support adding tools"):
+            toolset.add(extra)
 
     def test_accepts_skill_store_instance(self, tmp_path):
         _write_skill(tmp_path, "pdf-forms", description="Use to fill PDF forms.")
@@ -192,7 +230,7 @@ class TestSkillToolset:
     def test_load_skill_via_custom_store(self, tmp_path):
         class _InMemoryStore:
             def list_skills(self):
-                return {"demo": SkillMeta(name="demo", description="A demo skill.")}
+                return {"demo": SkillInfo(name="demo", description="A demo skill.")}
 
             def load_skill_body(self, name):
                 if name != "demo":
