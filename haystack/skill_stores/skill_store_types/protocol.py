@@ -2,12 +2,11 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Any, Protocol, runtime_checkable
+from typing import Any, Protocol
 
 from haystack.dataclasses.skill_meta import SkillMeta
 
 
-@runtime_checkable
 class SkillStore(Protocol):
     """
     Protocol for a skill storage layer.

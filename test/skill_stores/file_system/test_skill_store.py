@@ -5,7 +5,6 @@
 import pytest
 
 from haystack.skill_stores.file_system.skill_store import FileSystemSkillStore, _parse_frontmatter
-from haystack.skill_stores.skill_store_types.protocol import SkillStore
 
 
 def _write_skill(skills_dir, name, description=None, body="Instructions.", files=None):
@@ -125,7 +124,3 @@ class TestFileSystemSkillStore:
         store = FileSystemSkillStore(tmp_path)
         with pytest.raises(KeyError):
             store.read_skill_file("nope", "anything.md")
-
-    def test_is_skill_store(self, tmp_path):
-        _write_skill(tmp_path, "pdf-forms", description="d")
-        assert isinstance(FileSystemSkillStore(tmp_path), SkillStore)
