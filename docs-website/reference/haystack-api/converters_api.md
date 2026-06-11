@@ -385,17 +385,13 @@ Converts files to FileContent objects to be included in ChatMessage objects.
 from haystack.components.converters import FileToFileContent
 
 converter = FileToFileContent()
-
-sources = ["document.pdf", "video.mp4"]
-
+sources = ["test/test_files/pdf/react_paper.pdf", "test/test_files/images/haystack-logo.png"]
 file_contents = converter.run(sources=sources)["file_contents"]
-print(file_contents)
 
-# [FileContent(base64_data='...',
-#              mime_type='application/pdf',
-#              filename='document.pdf',
-#              extra={}),
-#  ...]
+print(file_contents)
+# >> [FileContent(base64_data='...', mime_type='application/pdf', filename='react_paper.pdf', extra={}),
+# >>  FileContent(base64_data='...', mime_type='image/png', filename='haystack-logo.png', extra={})
+# >>]
 ```
 
 #### run
@@ -537,32 +533,33 @@ Documents are expected to have metadata containing:
 
 ### Usage example
 
-<!-- test-ignore -->
-
 ```python
 from haystack import Document
 from haystack.components.converters.image.document_to_image import DocumentToImageContent
 
 converter = DocumentToImageContent(
     file_path_meta_field="file_path",
-    root_path="/data/files",
+    root_path="test/test_files",
     detail="high",
     size=(800, 600)
 )
 
 documents = [
-    Document(content="Optional description of image.jpg", meta={"file_path": "image.jpg"}),
-    Document(content="Text content of page 1 of doc.pdf", meta={"file_path": "doc.pdf", "page_number": 1})
+    Document(content="Optional description of apple.jpg", meta={"file_path": "images/apple.jpg"}),
+    Document(
+        content="Optional description of sample_pdf_1.pdf",
+        meta={"file_path": "pdf/sample_pdf_1.pdf", "page_number": 1}
+    )
 ]
 
 result = converter.run(documents)
 image_contents = result["image_contents"]
 # [ImageContent(
-#    base64_image='/9j/4A...', mime_type='image/jpeg', detail='high', meta={'file_path': 'image.jpg'}
+#    base64_image='/9j/4A...', mime_type='image/jpeg', detail='high', meta={'file_path': 'images/apple.jpg'}
 #  ),
 #  ImageContent(
 #    base64_image='/9j/4A...', mime_type='image/jpeg', detail='high',
-#    meta={'page_number': 1, 'file_path': 'doc.pdf'}
+#    meta={'file_path': 'pdf/sample_pdf_1.pdf', 'page_number': 1})
 #  )]
 ```
 
