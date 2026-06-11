@@ -50,7 +50,7 @@ from haystack.testing.sample_components import (
 )
 from test.core.pipeline.features.conftest import FixedGenerator, PipelineRunData
 
-pytestmark = [pytest.mark.usefixtures("pipeline_class"), pytest.mark.integration]
+pytestmark = [pytest.mark.usefixtures("pipeline_class", "run_mode"), pytest.mark.integration]
 
 scenarios("pipeline_run.feature")
 
@@ -4673,7 +4673,7 @@ def pipeline_that_converts_files_with_three_joiners_and_a_loop(pipeline_class):
                     ("txt_converter", 1): {"sources": [sources[0]], "meta": None},
                     ("joiner", 1): {"documents": [[expected_txt_doc]], "top_k": None},
                     ("DocumentJoiner_1", 1): {"documents": [[expected_html_doc]], "top_k": None},
-                    # ANY because we can't know the order of documents for AsyncPipeline
+                    # ANY because we can't know the order of documents for the async run path
                     ("DocumentJoiner_2", 1): {"documents": ANY, "top_k": None},
                     ("splitter", 1): {"documents": [expected_txt_doc]},
                     ("page_splitter", 1): {"documents": [expected_html_doc]},

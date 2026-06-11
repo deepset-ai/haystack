@@ -7,7 +7,7 @@ from unittest.mock import patch
 
 import pytest
 
-from haystack import AsyncPipeline, Document, Pipeline, SuperComponent, component, super_component
+from haystack import Document, Pipeline, SuperComponent, component, super_component
 from haystack.components.builders import AnswerBuilder, PromptBuilder
 from haystack.components.joiners import DocumentJoiner
 from haystack.components.retrievers.in_memory import InMemoryBM25Retriever
@@ -80,7 +80,7 @@ def async_rag_pipeline(document_store):
         def run(self, prompt: str, **kwargs: Any) -> dict[str, list[str]]:
             return {"replies": ["This is a test response about capitals."]}
 
-    pipeline = AsyncPipeline()
+    pipeline = Pipeline()
     pipeline.add_component("retriever", InMemoryBM25Retriever(document_store=document_store))
     pipeline.add_component(
         "prompt_builder",
@@ -255,7 +255,6 @@ class TestSuperComponent:
         assert "type" in serialized
         assert "init_parameters" in serialized
         assert "pipeline" in serialized["init_parameters"]
-        assert serialized["init_parameters"]["is_pipeline_async"] is False
 
         # Test deserialization
         deserialized = SuperComponent.from_dict(serialized)
@@ -444,15 +443,14 @@ class TestSuperComponent:
             async def run_async(self):
                 return {"output": "Hello world"}
 
-        pipeline = AsyncPipeline()
+        pipeline = Pipeline()
         pipeline.add_component("hello", AsyncComponent())
 
         async_super_component = SuperComponent(pipeline=pipeline)
         serialized_super_component = async_super_component.to_dict()
-        assert serialized_super_component["init_parameters"]["is_pipeline_async"] is True
 
         deserialized_super_component = SuperComponent.from_dict(serialized_super_component)
-        assert isinstance(deserialized_super_component.pipeline, AsyncPipeline)
+        assert isinstance(deserialized_super_component.pipeline, Pipeline)
 
         result = await deserialized_super_component.run_async()
         assert result == {"output": "Hello world"}

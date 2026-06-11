@@ -6,17 +6,14 @@ import datetime
 import logging
 from unittest.mock import Mock, patch
 
-import pytest
-
-from haystack import AsyncPipeline, Pipeline, component
+from haystack import Pipeline, component
 from haystack.core.serialization import generate_qualified_class_name
 from haystack.telemetry._telemetry import pipeline_running
 from haystack.utils.auth import Secret, TokenSecret
 
 
-@pytest.mark.parametrize("pipeline_class", [Pipeline, AsyncPipeline])
 @patch("haystack.telemetry._telemetry.telemetry")
-def test_pipeline_running(telemetry, pipeline_class):
+def test_pipeline_running(telemetry):
     telemetry.send_event = Mock()
 
     @component
@@ -28,7 +25,7 @@ def test_pipeline_running(telemetry, pipeline_class):
         def run(self):
             pass
 
-    pipe = pipeline_class()
+    pipe = Pipeline()
     pipe.add_component("component", Component())
     pipeline_running(pipe)
 

@@ -7,7 +7,7 @@ from unittest.mock import ANY
 
 import pytest
 
-from haystack import AsyncPipeline, Document, Pipeline
+from haystack import Document, Pipeline
 from haystack.components.agents import Agent
 from haystack.components.embedders.openai_document_embedder import OpenAIDocumentEmbedder
 from haystack.components.embedders.openai_text_embedder import OpenAITextEmbedder
@@ -22,15 +22,6 @@ from haystack.tools import PipelineTool
 @pytest.fixture
 def sample_pipeline():
     pipeline = Pipeline()
-    pipeline.add_component("bm25_retriever", InMemoryBM25Retriever(document_store=InMemoryDocumentStore()))
-    pipeline.add_component("ranker", SentenceTransformersSimilarityRanker(model="fake-model"))
-    pipeline.connect("bm25_retriever", "ranker")
-    return pipeline
-
-
-@pytest.fixture
-def sample_async_pipeline():
-    pipeline = AsyncPipeline()
     pipeline.add_component("bm25_retriever", InMemoryBM25Retriever(document_store=InMemoryDocumentStore()))
     pipeline.add_component("ranker", SentenceTransformersSimilarityRanker(model="fake-model"))
     pipeline.connect("bm25_retriever", "ranker")
@@ -95,9 +86,7 @@ def sample_pipeline_dict():
 
 class TestPipelineTool:
     def test_init_invalid_pipeline(self):
-        with pytest.raises(
-            TypeError, match="The 'pipeline' parameter must be an instance of Pipeline or AsyncPipeline."
-        ):
+        with pytest.raises(TypeError, match="The 'pipeline' parameter must be an instance of Pipeline."):
             PipelineTool(pipeline="invalid_pipeline", name="test_tool", description="A test tool")  # type: ignore[arg-type]
 
     def test_to_dict(self, sample_pipeline, sample_pipeline_dict):
@@ -121,33 +110,6 @@ class TestPipelineTool:
                 "parameters": None,
                 "inputs_from_state": None,
                 "outputs_to_state": None,
-                "is_pipeline_async": False,
-                "outputs_to_string": None,
-            },
-        }
-
-    def test_to_dict_async_pipeline(self, sample_async_pipeline, sample_pipeline_dict):
-        tool = PipelineTool(
-            pipeline=sample_async_pipeline,
-            input_mapping={"query": ["bm25_retriever.query"]},
-            output_mapping={"ranker.documents": "documents"},
-            name="test_tool",
-            description="A test tool",
-        )
-
-        tool_dict = tool.to_dict()
-        assert tool_dict == {
-            "type": "haystack.tools.pipeline_tool.PipelineTool",
-            "data": {
-                "pipeline": sample_pipeline_dict,
-                "name": "test_tool",
-                "input_mapping": {"query": ["bm25_retriever.query"]},
-                "output_mapping": {"ranker.documents": "documents"},
-                "description": "A test tool",
-                "parameters": None,
-                "inputs_from_state": None,
-                "outputs_to_state": None,
-                "is_pipeline_async": True,
                 "outputs_to_string": None,
             },
         }
@@ -170,25 +132,6 @@ class TestPipelineTool:
         assert tool._output_mapping == recreated_tool._output_mapping
         assert tool.parameters == recreated_tool.parameters
         assert isinstance(recreated_tool._pipeline, Pipeline)
-
-    def test_from_dict_async_pipeline(self, sample_async_pipeline):
-        tool = PipelineTool(
-            pipeline=sample_async_pipeline,
-            input_mapping={"query": ["bm25_retriever.query"]},
-            output_mapping={"ranker.documents": "documents"},
-            name="test_tool",
-            description="A test tool",
-        )
-
-        tool_dict = tool.to_dict()
-        recreated_tool = PipelineTool.from_dict(tool_dict)
-
-        assert tool.name == recreated_tool.name
-        assert tool.description == recreated_tool.description
-        assert tool._input_mapping == recreated_tool._input_mapping
-        assert tool._output_mapping == recreated_tool._output_mapping
-        assert tool.parameters == recreated_tool.parameters
-        assert isinstance(recreated_tool._pipeline, AsyncPipeline)
 
     def test_auto_generated_tool_params(self, sample_pipeline):
         tool = PipelineTool(
@@ -320,7 +263,7 @@ class TestPipelineTool:
         in_memory_doc_store.write_documents(docs_with_embeddings)
 
         # Build a simple retrieval pipeline
-        retrieval_pipeline = AsyncPipeline()
+        retrieval_pipeline = Pipeline()
         retrieval_pipeline.add_component("embedder", OpenAITextEmbedder())
         retrieval_pipeline.add_component("retriever", InMemoryEmbeddingRetriever(document_store=in_memory_doc_store))
 
@@ -410,14 +353,11 @@ class TestPipelineTool:
 
 
 class TestPipelineToolAsync:
-    # SuperComponent always defines run_async, but PipelineTool clears it for sync pipelines so that
-    # invoke_async transparently falls back to running the sync pipeline in a thread.
-    @pytest.mark.parametrize(
-        "pipeline_fixture, expects_async_function", [("sample_pipeline", False), ("sample_async_pipeline", True)]
-    )
-    def test_async_function_is_set_only_for_async_pipelines(self, request, pipeline_fixture, expects_async_function):
+    def test_async_function_is_always_set(self, sample_pipeline):
+        # Every Pipeline exposes run_async, so SuperComponent.run_async always works and PipelineTool keeps the
+        # async_function (it no longer clears it for "sync" pipelines).
         tool = PipelineTool(
-            pipeline=request.getfixturevalue(pipeline_fixture),
+            pipeline=sample_pipeline,
             input_mapping={"query": ["bm25_retriever.query"]},
             output_mapping={"ranker.documents": "documents"},
             name="test_tool",
@@ -425,4 +365,4 @@ class TestPipelineToolAsync:
         )
 
         assert tool.function is not None
-        assert (tool.async_function is not None) is expects_async_function
+        assert tool.async_function is not None

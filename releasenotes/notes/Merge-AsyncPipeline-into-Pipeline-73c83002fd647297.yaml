@@ -1,0 +1,30 @@
+---
+upgrade:
+  - |
+    ``AsyncPipeline`` has been removed. Its asynchronous capabilities are now part of the single ``Pipeline``
+    class, which provides both a synchronous ``run`` method and the asynchronous ``run_async``,
+    ``run_async_generator``, and ``stream`` methods (mirroring how components expose ``run`` and ``run_async``).
+
+    To migrate, replace ``AsyncPipeline`` with ``Pipeline``:
+
+    .. code-block:: python
+
+        # Before
+        from haystack import AsyncPipeline
+        pipeline = AsyncPipeline()
+        result = await pipeline.run_async(data)
+
+        # After
+        from haystack import Pipeline
+        pipeline = Pipeline()
+        result = await pipeline.run_async(data)
+
+    Serialized pipelines, ``SuperComponent``s, and ``PipelineTool``s are loaded as ``Pipeline`` instances. The
+    ``is_pipeline_async`` serialization flag is no longer written; it is still accepted (and ignored) when
+    reading older serialized data.
+features:
+  - |
+    The ``Pipeline`` class now natively supports asynchronous execution through the ``run_async``,
+    ``run_async_generator``, and ``stream`` methods, in addition to the synchronous ``run`` method. A single
+    ``Pipeline`` can be used in both synchronous and asynchronous contexts, including from within a running
+    event loop.
