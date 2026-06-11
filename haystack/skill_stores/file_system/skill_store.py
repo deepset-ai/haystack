@@ -54,23 +54,41 @@ class FileSystemSkillStore:
         reference/forms.md  # optional bundled file
     ```
 
-    Only the frontmatter of each `SKILL.md` is read at construction time (cheap); bodies and bundled
-    files are read lazily when the agent calls the corresponding tool.
-
-    :param skills_dir: Root directory that contains one sub-directory per skill.
-    :raises ValueError: If `skills_dir` does not exist, is not a directory, a skill is missing a required
-        frontmatter field, or two skills share the same name.
+    The skill catalog is built by reading the frontmatter of each `SKILL.md` on `warm_up`; bodies and bundled files
+    are read lazily when the agent calls the corresponding tool.
     """
 
     def __init__(self, skills_dir: str | Path) -> None:
-        self.skills_dir = Path(skills_dir)
-        if not self.skills_dir.is_dir():
-            raise ValueError(f"Skills directory '{self.skills_dir}' does not exist or is not a directory.")
+        """
+        Initialize the store with the root directory to scan.
 
-        # Public metadata catalog returned by `list_skills`.
+        No filesystem access happens here; the directory is scanned lazily on first use (see `warm_up`), so the store
+        can be constructed cheaply.
+
+        :param skills_dir: Root directory that contains one sub-directory per skill.
+        """
+        self.skills_dir = Path(skills_dir)
+        # Public metadata catalog returned by `list_skills`, populated on warm_up.
         self._skills: dict[str, SkillMeta] = {}
         # Private locator: maps each skill name to its directory, used to read content lazily.
         self._skill_dirs: dict[str, Path] = {}
+        self._is_warmed_up = False
+
+    def warm_up(self) -> None:
+        """
+        Scan `skills_dir` and build the skill catalog by reading each skill's `SKILL.md` frontmatter.
+
+        Only the frontmatter (cheap) is read here; bodies and bundled files are read lazily when the corresponding
+        method is called. Idempotent: repeated calls after the first are no-ops.
+
+        :raises ValueError: If `skills_dir` does not exist, is not a directory, a skill is missing a required
+            frontmatter field, or two skills share the same name.
+        """
+        if self._is_warmed_up:
+            return
+        if not self.skills_dir.is_dir():
+            raise ValueError(f"Skills directory '{self.skills_dir}' does not exist or is not a directory.")
+
         for skill_file in sorted(self.skills_dir.glob(f"*/{SKILL_FILE_NAME}")):
             skill_dir = skill_file.parent
             frontmatter, _ = _parse_frontmatter(skill_file.read_text(encoding="utf-8"))
@@ -84,27 +102,43 @@ class FileSystemSkillStore:
 
             self._skills[name] = SkillMeta(name=name, description=description)
             self._skill_dirs[name] = skill_dir
+        self._is_warmed_up = True
 
     def _skill_dir(self, name: str) -> Path:
         """
-        Return the directory of the named skill.
+        Return the directory of the named skill, warming up the store first if needed.
 
         :param name: Skill name as returned by `list_skills`.
         :returns: The skill's directory.
         :raises KeyError: If no skill with `name` exists.
         """
+        self.warm_up()
         try:
             return self._skill_dirs[name]
         except KeyError:
             available = ", ".join(self._skills) or "none"
+            # TODO Lets leave a dev comment for why we are raising from None
             raise KeyError(f"Unknown skill '{name}'. Available skills: {available}.") from None
+
+    def _readable_files_hint(self, name: str) -> str:
+        """
+        Return a human-readable list of the files that can be read from the named skill.
+
+        Used to make `read_skill_file` errors actionable by telling the caller which paths are valid.
+
+        :param name: Skill name as returned by `list_skills`.
+        :returns: Comma-separated relative paths, or `"none"` if the skill bundles no readable files.
+        """
+        return ", ".join(self.list_skill_files(name)) or "none"
 
     def list_skills(self) -> dict[str, SkillMeta]:
         """
-        Return all skills discovered on disk.
+        Return all skills discovered on disk, warming up the store first if needed.
 
         :returns: Mapping of skill name to its metadata.
+        :raises ValueError: If the skills directory is invalid or a skill's frontmatter is malformed.
         """
+        self.warm_up()
         return self._skills
 
     def load_skill_body(self, name: str) -> str:
@@ -141,22 +175,38 @@ class FileSystemSkillStore:
         :param path: Path of the file relative to the skill directory (e.g. `"reference/forms.md"`).
         :returns: The file's text content.
         :raises KeyError: If no skill with `name` exists.
-        :raises PermissionError: If `path` escapes the skill's directory (path-traversal attempt).
-        :raises FileNotFoundError: If the file does not exist within the skill.
+        :raises PermissionError: If `path` resolves outside the skill's directory (path-traversal attempt). The
+            message lists the readable files so the caller can retry with a valid path.
+        :raises FileNotFoundError: If the file does not exist within the skill. The message lists the readable
+            files so the caller can retry with a valid path.
         """
         skill_dir = self._skill_dir(name).resolve()
         target = (skill_dir / path).resolve()
         if skill_dir != target and skill_dir not in target.parents:
-            raise PermissionError(f"path escapes the '{name}' skill directory")
+            raise PermissionError(
+                f"Cannot read '{path}' from skill '{name}': the path resolves outside the skill directory. "
+                f"Use a path relative to the skill root. Readable files: {self._readable_files_hint(name)}."
+            )
         if not target.is_file():
-            raise FileNotFoundError(f"File '{path}' not found in skill '{name}'")
+            raise FileNotFoundError(
+                f"File '{path}' not found in skill '{name}'. Readable files: {self._readable_files_hint(name)}."
+            )
         return target.read_text(encoding="utf-8")
 
     def to_dict(self) -> dict[str, Any]:
-        """Serialize this store to a dictionary for use with `from_dict`."""
+        """
+        Serialize this store to a dictionary for use with `from_dict`.
+
+        :returns: Dictionary representation of the store.
+        """
         return default_to_dict(self, skills_dir=str(self.skills_dir))
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "FileSystemSkillStore":
-        """Deserialize a FileSystemSkillStore from its dictionary representation."""
+        """
+        Deserialize a `FileSystemSkillStore` from its dictionary representation.
+
+        :param data: Dictionary representation of the store, as produced by `to_dict`.
+        :returns: A new `FileSystemSkillStore` instance.
+        """
         return default_from_dict(cls, data)

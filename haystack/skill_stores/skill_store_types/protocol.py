@@ -12,16 +12,15 @@ class SkillStore(Protocol):
     """
     Protocol for a skill storage layer.
 
-    A `SkillStore` is responsible for discovering available skills and providing their content on demand.
-    Implement this class to back a skill-using component with any storage system — a local directory, a
-    database, a remote API, or an in-memory fixture.
+    A `SkillStore` is responsible for discovering available skills and providing their content on demand. Implement
+    this class to back a skill-using component with any storage system — a local directory, a database, a  remote API,
+    or an in-memory fixture.
 
-    Skills are identified by their `name`, which must be unique within a store. The `name` is the lookup key
-    for every method below; implementations resolve it to their own internal locator (a directory, a row id, an
-    object key, ...).
+    Skills are identified by their `name`, which must be unique within a store. The `name` is the lookup key for every
+    method below; implementations resolve it to their own internal locator (a directory, a row id, an object key, ...).
 
-    Implementations may defer all I/O (filesystem reads, database connections, ...) until a method is actually
-    called, so a store can be constructed cheaply and only touch its backend on first use.
+    Implementations may defer all I/O (filesystem reads, database connections, ...) until a method is actually called,
+    so a store can be constructed cheaply and only touch its backend on first use.
     """
 
     def list_skills(self) -> dict[str, SkillMeta]:

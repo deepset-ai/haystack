@@ -145,7 +145,7 @@ class TestSkillToolset:
         (tmp_path / "secret.txt").write_text("top secret")
         read = _get_tool(SkillToolset(FileSystemSkillStore(tmp_path)), "read_skill_file")
         result = read.invoke(name="pdf-forms", path="../secret.txt")
-        assert "escapes" in result
+        assert "outside the skill directory" in result
         assert "top secret" not in result
 
     def test_read_skill_file_missing(self, tmp_path):

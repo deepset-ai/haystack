@@ -5,7 +5,7 @@
 import pytest
 
 from haystack.skill_stores.file_system.skill_store import FileSystemSkillStore, _parse_frontmatter
-from haystack.skill_stores.types.protocol import SkillStore
+from haystack.skill_stores.skill_store_types.protocol import SkillStore
 
 
 def _write_skill(skills_dir, name, description=None, body="Instructions.", files=None):
@@ -50,14 +50,26 @@ class TestFileSystemSkillStore:
         assert set(skills) == {"pdf-forms", "excel"}
         assert skills["pdf-forms"].description == "Fill PDF forms."
 
-    def test_missing_directory_raises(self, tmp_path):
+    def test_construction_is_lazy(self, tmp_path):
+        # Pointing at a non-existent directory is fine until the store is warmed up / used.
+        store = FileSystemSkillStore(tmp_path / "nope")
+        assert store._is_warmed_up is False
+
+    def test_missing_directory_raises_on_warm_up(self, tmp_path):
+        store = FileSystemSkillStore(tmp_path / "nope")
         with pytest.raises(ValueError, match="does not exist"):
-            FileSystemSkillStore(tmp_path / "nope")
+            store.warm_up()
+
+    def test_missing_directory_raises_on_first_use(self, tmp_path):
+        store = FileSystemSkillStore(tmp_path / "nope")
+        with pytest.raises(ValueError, match="does not exist"):
+            store.list_skills()
 
     def test_missing_description_raises(self, tmp_path):
         _write_skill(tmp_path, "broken", description=None)
+        store = FileSystemSkillStore(tmp_path)
         with pytest.raises(ValueError, match="missing a 'description'"):
-            FileSystemSkillStore(tmp_path)
+            store.warm_up()
 
     def test_load_skill_body(self, tmp_path):
         _write_skill(tmp_path, "pdf-forms", description="d", body="Step 1. Do the thing.")
@@ -92,17 +104,21 @@ class TestFileSystemSkillStore:
         assert store.read_skill_file("pdf-forms", "reference/forms.md") == "form details"
 
     def test_read_skill_file_blocks_traversal(self, tmp_path):
-        _write_skill(tmp_path, "pdf-forms", description="d")
+        _write_skill(tmp_path, "pdf-forms", description="d", files={"reference/forms.md": "details"})
         (tmp_path / "secret.txt").write_text("top secret")
         store = FileSystemSkillStore(tmp_path)
-        with pytest.raises(PermissionError, match="escapes"):
+        with pytest.raises(PermissionError, match="resolves outside the skill directory") as exc:
             store.read_skill_file("pdf-forms", "../secret.txt")
+        # The message lists valid paths to retry with, and never leaks the out-of-bounds content.
+        assert "reference/forms.md" in str(exc.value)
+        assert "top secret" not in str(exc.value)
 
     def test_read_skill_file_missing_raises(self, tmp_path):
-        _write_skill(tmp_path, "pdf-forms", description="d")
+        _write_skill(tmp_path, "pdf-forms", description="d", files={"reference/forms.md": "details"})
         store = FileSystemSkillStore(tmp_path)
-        with pytest.raises(FileNotFoundError, match="not found"):
+        with pytest.raises(FileNotFoundError, match="not found") as exc:
             store.read_skill_file("pdf-forms", "nope.md")
+        assert "reference/forms.md" in str(exc.value)
 
     def test_read_skill_file_unknown_skill_raises(self, tmp_path):
         _write_skill(tmp_path, "pdf-forms", description="d")

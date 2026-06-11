@@ -6,7 +6,7 @@ from typing import Annotated, Any
 
 from haystack.core.serialization import generate_qualified_class_name
 from haystack.dataclasses.skill_meta import SkillMeta
-from haystack.skill_stores.types.protocol import SkillStore
+from haystack.skill_stores.skill_store_types.protocol import SkillStore
 from haystack.tools.from_function import create_tool_from_function
 from haystack.tools.tool import Tool
 from haystack.tools.toolset import Toolset
@@ -67,8 +67,8 @@ class SkillToolset(Toolset):
         self._skills: dict[str, SkillMeta] = {}
         self._is_warmed_up = False
 
-        # The tool set is static; only `load_skill`'s description is dynamic (it embeds the discovered catalog,
-        # filled in at warm_up). Creating the tools here touches no store state.
+        # We create both tools now and dynamically update the `load_skill` description at warm-up with the discovered
+        # catalog
         self._load_skill_tool = self._create_load_skill_tool()
         super().__init__(tools=[self._load_skill_tool, self._create_read_skill_file_tool()])
 
@@ -97,8 +97,8 @@ class SkillToolset(Toolset):
         """
         Build the `load_skill` tool description, including the catalog of discovered skills.
 
-        The available skills (name + description) are baked into the description so the model can see which
-        skills exist and decide when to load one, without relying on any system prompt injection.
+        The available skills (name + description) are baked into the description so the model can see which skills
+        exist and decide when to load one, without relying on any system prompt injection.
 
         :returns: The tool description text.
         """
@@ -147,10 +147,12 @@ class SkillToolset(Toolset):
             except KeyError:
                 available = ", ".join(self._skills) or "none"
                 return f"Unknown skill '{name}'. Available skills: {available}."
-            except PermissionError:
-                return f"Refusing to read '{path}': path escapes the '{name}' skill directory."
-            except FileNotFoundError:
-                return f"File '{path}' not found in skill '{name}'."
+            # TODO Should we just capture all errors and send the string version back to the model?
+            #      Or actually the raise on tool failure is controlled within the Agent so we should really just
+            #      raise the error with a good error message and let the Agent handle the final raising or stringifying.
+            except (PermissionError, FileNotFoundError) as e:
+                # The store raises an actionable message (it lists the readable files); surface it to the model.
+                return str(e)
 
         return create_tool_from_function(function=read_skill_file, name="read_skill_file")
 
