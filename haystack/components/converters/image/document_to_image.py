@@ -49,7 +49,8 @@ class DocumentToImageContent:
     documents = [
         Document(content="Optional description of apple.jpg", meta={"file_path": "images/apple.jpg"}),
         Document(
-            content="Optional description of sample_pdf_1.pdf", meta={"file_path": "pdf/sample_pdf_1.pdf", "page_number": 1}
+            content="Optional description of sample_pdf_1.pdf",
+            meta={"file_path": "pdf/sample_pdf_1.pdf", "page_number": 1}
         )
     ]
 
