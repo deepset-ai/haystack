@@ -310,7 +310,7 @@ class HuggingFaceAPIChatGenerator:
     generator = HuggingFaceAPIChatGenerator(
         api_type=HFGenerationAPIType.SERVERLESS_INFERENCE_API,
         api_params={
-            "model": "Qwen/Qwen3-Coder-480B-A35B-Instruct",  # Vision Language Model
+            "model": "Qwen/Qwen3.5-9B", "provider": "together"  # Vision Language Model
             "provider": "hyperbolic"
         },
         token=Secret.from_env_var("HF_API_TOKEN")
