@@ -37,6 +37,12 @@ class _SerializableStore:
         return cls(skills=data["init_parameters"]["skills"])
 
 
+def _get_tool(toolset, name):
+    """Warm up the toolset and return its tool with the given name."""
+    toolset.warm_up()
+    return next(t for t in toolset if t.name == name)
+
+
 def _write_skill(skills_dir, name, description=None, body="Instructions.", files=None):
     skill_dir = skills_dir / name
     skill_dir.mkdir(parents=True)
@@ -53,14 +59,24 @@ def _write_skill(skills_dir, name, description=None, body="Instructions.", files
 
 
 class TestSkillToolset:
+    def test_tools_present_before_warm_up_without_io(self, tmp_path):
+        _write_skill(tmp_path, "pdf-forms", description="Use to fill PDF forms.")
+        toolset = SkillToolset(FileSystemSkillStore(tmp_path))
+
+        # The (static) tool set is available immediately, with no store access required.
+        assert toolset._is_warmed_up is False
+        assert len(toolset) == 2
+        assert {t.name for t in toolset} == {"load_skill", "read_skill_file"}
+        assert "load_skill" in toolset
+        assert toolset._is_warmed_up is False
+
     def test_scans_skills_on_warm_up(self, tmp_path):
         _write_skill(tmp_path, "pdf-forms", description="Use to fill PDF forms.")
         _write_skill(tmp_path, "excel", description="Use to edit spreadsheets.")
 
         toolset = SkillToolset(FileSystemSkillStore(tmp_path))
 
-        # Tools exist immediately, but the catalog is only scanned on warm_up.
-        assert {t.name for t in toolset} == {"load_skill", "read_skill_file"}
+        # The catalog is only scanned on warm_up.
         assert toolset._is_warmed_up is False
 
         toolset.warm_up()
@@ -93,16 +109,12 @@ class TestSkillToolset:
 
     def test_load_skill_description_lists_skills(self, tmp_path):
         _write_skill(tmp_path, "pdf-forms", description="Use to fill PDF forms.")
-        toolset = SkillToolset(FileSystemSkillStore(tmp_path))
-        toolset.warm_up()
-        load_skill = next(t for t in toolset if t.name == "load_skill")
+        load_skill = _get_tool(SkillToolset(FileSystemSkillStore(tmp_path)), "load_skill")
         assert "Available skills:" in load_skill.description
         assert "- pdf-forms: Use to fill PDF forms." in load_skill.description
 
     def test_load_skill_description_when_empty(self, tmp_path):
-        toolset = SkillToolset(FileSystemSkillStore(tmp_path))
-        toolset.warm_up()
-        load_skill = next(t for t in toolset if t.name == "load_skill")
+        load_skill = _get_tool(SkillToolset(FileSystemSkillStore(tmp_path)), "load_skill")
         assert "No skills are currently available." in load_skill.description
 
     def test_load_skill_returns_body_and_manifest(self, tmp_path):
@@ -113,32 +125,32 @@ class TestSkillToolset:
             body="Step 1. Do the thing.",
             files={"reference/forms.md": "details"},
         )
-        load_skill = next(t for t in SkillToolset(FileSystemSkillStore(tmp_path)) if t.name == "load_skill")
+        load_skill = _get_tool(SkillToolset(FileSystemSkillStore(tmp_path)), "load_skill")
         result = load_skill.invoke(name="pdf-forms")
         assert "Step 1. Do the thing." in result
         assert "reference/forms.md" in result
 
     def test_load_skill_unknown(self, tmp_path):
         _write_skill(tmp_path, "pdf-forms", description="Use to fill PDF forms.")
-        load_skill = next(t for t in SkillToolset(FileSystemSkillStore(tmp_path)) if t.name == "load_skill")
+        load_skill = _get_tool(SkillToolset(FileSystemSkillStore(tmp_path)), "load_skill")
         assert "Unknown skill 'nope'" in load_skill.invoke(name="nope")
 
     def test_read_skill_file(self, tmp_path):
         _write_skill(tmp_path, "pdf-forms", description="d", files={"reference/forms.md": "form details"})
-        read = next(t for t in SkillToolset(FileSystemSkillStore(tmp_path)) if t.name == "read_skill_file")
+        read = _get_tool(SkillToolset(FileSystemSkillStore(tmp_path)), "read_skill_file")
         assert read.invoke(name="pdf-forms", path="reference/forms.md") == "form details"
 
     def test_read_skill_file_blocks_traversal(self, tmp_path):
         _write_skill(tmp_path, "pdf-forms", description="d")
         (tmp_path / "secret.txt").write_text("top secret")
-        read = next(t for t in SkillToolset(FileSystemSkillStore(tmp_path)) if t.name == "read_skill_file")
+        read = _get_tool(SkillToolset(FileSystemSkillStore(tmp_path)), "read_skill_file")
         result = read.invoke(name="pdf-forms", path="../secret.txt")
         assert "escapes" in result
         assert "top secret" not in result
 
     def test_read_skill_file_missing(self, tmp_path):
         _write_skill(tmp_path, "pdf-forms", description="d")
-        read = next(t for t in SkillToolset(FileSystemSkillStore(tmp_path)) if t.name == "read_skill_file")
+        read = _get_tool(SkillToolset(FileSystemSkillStore(tmp_path)), "read_skill_file")
         assert "not found" in read.invoke(name="pdf-forms", path="nope.md")
 
     def test_to_dict_and_from_dict(self, tmp_path):
@@ -194,7 +206,6 @@ class TestSkillToolset:
             def from_dict(cls, data):
                 raise NotImplementedError
 
-        toolset = SkillToolset(_InMemoryStore())
-        load_skill = next(t for t in toolset if t.name == "load_skill")
+        load_skill = _get_tool(SkillToolset(_InMemoryStore()), "load_skill")
         assert load_skill.invoke(name="demo") == "Do the demo thing."
         assert "Unknown skill 'nope'" in load_skill.invoke(name="nope")

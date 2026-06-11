@@ -49,7 +49,6 @@ class TestFileSystemSkillStore:
 
         assert set(skills) == {"pdf-forms", "excel"}
         assert skills["pdf-forms"].description == "Fill PDF forms."
-        assert skills["pdf-forms"].path == tmp_path / "pdf-forms"
 
     def test_missing_directory_raises(self, tmp_path):
         with pytest.raises(ValueError, match="does not exist"):
@@ -68,7 +67,7 @@ class TestFileSystemSkillStore:
     def test_load_skill_body_unknown_raises(self, tmp_path):
         _write_skill(tmp_path, "pdf-forms", description="d")
         store = FileSystemSkillStore(tmp_path)
-        with pytest.raises(KeyError):
+        with pytest.raises(KeyError, match="Unknown skill 'nope'. Available skills: pdf-forms."):
             store.load_skill_body("nope")
 
     def test_list_skill_files(self, tmp_path):

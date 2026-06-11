@@ -6,8 +6,6 @@ from typing import Any, Protocol, runtime_checkable
 
 from haystack.dataclasses.skill_meta import SkillMeta
 
-SKILL_FILE_NAME = "SKILL.md"
-
 
 @runtime_checkable
 class SkillStore(Protocol):
@@ -15,19 +13,20 @@ class SkillStore(Protocol):
     Protocol for a skill storage layer.
 
     A `SkillStore` is responsible for discovering available skills and providing their content on demand.
-    Implement this class to back `haystack.tools.SkillToolset` with any storage system — a local
-    directory, a database, a remote API, or an in-memory fixture.
+    Implement this class to back a skill-using component with any storage system — a local directory, a
+    database, a remote API, or an in-memory fixture.
 
-    The three content methods (`load_skill_body`, `list_skill_files`,
-    `read_skill_file`) are called lazily at agent runtime, not at construction time, so
-    implementations may defer I/O until a skill is actually needed.
+    Skills are identified by their `name`, which must be unique within a store. The `name` is the lookup key
+    for every method below; implementations resolve it to their own internal locator (a directory, a row id, an
+    object key, ...).
+
+    Implementations may defer all I/O (filesystem reads, database connections, ...) until a method is actually
+    called, so a store can be constructed cheaply and only touch its backend on first use.
     """
 
     def list_skills(self) -> dict[str, SkillMeta]:
         """
         Discover and return all available skills.
-
-        Called once during `haystack.tools.SkillToolset` initialization to build the skills catalog.
 
         :returns: Mapping of skill name to its metadata.
         """
@@ -70,8 +69,7 @@ class SkillStore(Protocol):
         """
         Serialize this store to a dictionary for use with `from_dict`.
 
-        Override both this method and `from_dict` to make your custom store serializable with
-        `haystack.tools.SkillToolset`.
+        Implement both this method and `from_dict` to make your custom store serializable.
         """
         ...
 
@@ -80,8 +78,7 @@ class SkillStore(Protocol):
         """
         Deserialize a store from a dictionary produced by `to_dict`.
 
-        Override both this method and `to_dict` to make your custom store serializable with
-        `haystack.tools.SkillToolset`.
+        Implement both this method and `to_dict` to make your custom store serializable.
 
         :param data: Dictionary as produced by `to_dict`.
         """

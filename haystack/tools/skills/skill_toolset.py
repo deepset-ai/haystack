@@ -55,9 +55,11 @@ class SkillToolset(Toolset):
         """
         Initialize the SkillToolset.
 
-        The skill catalog is not scanned here; it is discovered lazily in `warm_up()`, since the backing store
-        may perform I/O (e.g. reading a filesystem). The Agent warms up its tools before running, so the
-        catalog is populated by the time the toolset is used.
+        Both tools (`load_skill` and `read_skill_file`) are created here, so the toolset behaves like a complete
+        collection (`len`, `in`, iteration) without any I/O. The store itself is not touched until `warm_up()`:
+        the skill catalog is discovered there and baked into the `load_skill` description. This lets stores that
+        perform I/O (a filesystem scan, a database connection) defer that work until warm-up, which the Agent
+        runs before using the toolset.
 
         :param store: A `haystack.skill_stores.SkillStore` instance to back this toolset.
         """
@@ -65,6 +67,8 @@ class SkillToolset(Toolset):
         self._skills: dict[str, SkillMeta] = {}
         self._is_warmed_up = False
 
+        # The tool set is static; only `load_skill`'s description is dynamic (it embeds the discovered catalog,
+        # filled in at warm_up). Creating the tools here touches no store state.
         self._load_skill_tool = self._create_load_skill_tool()
         super().__init__(tools=[self._load_skill_tool, self._create_read_skill_file_tool()])
 
@@ -77,9 +81,11 @@ class SkillToolset(Toolset):
 
     def warm_up(self) -> None:
         """
-        Scan the backing store for available skills and bake the catalog into the `load_skill` description.
+        Discover the available skills from the store and bake the catalog into the `load_skill` description.
 
-        Idempotent: repeated calls after the first are no-ops.
+        Only the description content is dynamic, so the (static) tools created in `__init__` are reused; this
+        refreshes `load_skill`'s description once the catalog is known. Idempotent: repeated calls after the
+        first are no-ops.
         """
         if self._is_warmed_up:
             return

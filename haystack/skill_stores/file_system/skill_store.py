@@ -9,7 +9,8 @@ import yaml
 
 from haystack.core.serialization import default_from_dict, default_to_dict
 from haystack.dataclasses.skill_meta import SkillMeta
-from haystack.skill_stores.types.protocol import SKILL_FILE_NAME
+
+SKILL_FILE_NAME = "SKILL.md"
 
 
 def _parse_frontmatter(text: str) -> tuple[dict[str, Any], str]:
@@ -63,13 +64,13 @@ class FileSystemSkillStore:
 
     def __init__(self, skills_dir: str | Path) -> None:
         self.skills_dir = Path(skills_dir)
-        self._skills = self._scan()
-
-    def _scan(self) -> dict[str, SkillMeta]:
         if not self.skills_dir.is_dir():
             raise ValueError(f"Skills directory '{self.skills_dir}' does not exist or is not a directory.")
 
-        skills: dict[str, SkillMeta] = {}
+        # Public metadata catalog returned by `list_skills`.
+        self._skills: dict[str, SkillMeta] = {}
+        # Private locator: maps each skill name to its directory, used to read content lazily.
+        self._skill_dirs: dict[str, Path] = {}
         for skill_file in sorted(self.skills_dir.glob(f"*/{SKILL_FILE_NAME}")):
             skill_dir = skill_file.parent
             frontmatter, _ = _parse_frontmatter(skill_file.read_text(encoding="utf-8"))
@@ -78,47 +79,72 @@ class FileSystemSkillStore:
             description = frontmatter.get("description")
             if not description:
                 raise ValueError(f"Skill '{name}' ({skill_file}) is missing a 'description' in its frontmatter.")
-            if name in skills:
+            if name in self._skills:
                 raise ValueError(f"Duplicate skill name '{name}' found in '{self.skills_dir}'.")
 
-            skills[name] = SkillMeta(name=name, description=description, path=skill_dir)
-        return skills
+            self._skills[name] = SkillMeta(name=name, description=description)
+            self._skill_dirs[name] = skill_dir
+
+    def _skill_dir(self, name: str) -> Path:
+        """
+        Return the directory of the named skill.
+
+        :param name: Skill name as returned by `list_skills`.
+        :returns: The skill's directory.
+        :raises KeyError: If no skill with `name` exists.
+        """
+        try:
+            return self._skill_dirs[name]
+        except KeyError:
+            available = ", ".join(self._skills) or "none"
+            raise KeyError(f"Unknown skill '{name}'. Available skills: {available}.") from None
 
     def list_skills(self) -> dict[str, SkillMeta]:
-        """Lists all skills available on disk"""
+        """
+        Return all skills discovered on disk.
+
+        :returns: Mapping of skill name to its metadata.
+        """
         return self._skills
 
     def load_skill_body(self, name: str) -> str:
-        """Loads the skill body from disk"""
-        meta = self._skills.get(name)
-        if meta is None:
-            raise KeyError(name)
-        if meta.path is None:
-            raise ValueError(f"Skill '{name}' is missing its directory path in metadata.")
-        _, body = _parse_frontmatter((meta.path / SKILL_FILE_NAME).read_text(encoding="utf-8"))
+        """
+        Read the markdown body of the named skill's `SKILL.md` (frontmatter stripped).
+
+        :param name: Skill name as returned by `list_skills`.
+        :returns: The skill's instruction body.
+        :raises KeyError: If no skill with `name` exists.
+        """
+        _, body = _parse_frontmatter((self._skill_dir(name) / SKILL_FILE_NAME).read_text(encoding="utf-8"))
         return body
 
     def list_skill_files(self, name: str) -> list[str]:
-        """List all files in a skill directory, excluding the SKILL.md file."""
-        meta = self._skills.get(name)
-        if meta is None:
-            raise KeyError(name)
-        if meta.path is None:
-            raise ValueError(f"Skill '{name}' is missing its directory path in metadata.")
+        """
+        Return the relative paths of all files bundled with the named skill, excluding its `SKILL.md`.
+
+        :param name: Skill name as returned by `list_skills`.
+        :returns: Sorted list of POSIX-style paths relative to the skill directory. Empty when there are none.
+        :raises KeyError: If no skill with `name` exists.
+        """
+        skill_dir = self._skill_dir(name)
         return sorted(
-            p.relative_to(meta.path).as_posix()
-            for p in meta.path.rglob("*")
+            p.relative_to(skill_dir).as_posix()
+            for p in skill_dir.rglob("*")
             if p.is_file() and p.name != SKILL_FILE_NAME
         )
 
     def read_skill_file(self, name: str, path: str) -> str:
-        """read_skill_file implementation that prevents path traversal outside the skill directory."""
-        meta = self._skills.get(name)
-        if meta is None:
-            raise KeyError(name)
-        if meta.path is None:
-            raise ValueError(f"Skill '{name}' is missing its directory path in metadata.")
-        skill_dir = meta.path.resolve()
+        """
+        Read a file bundled with the named skill, preventing path traversal outside the skill directory.
+
+        :param name: Skill name as returned by `list_skills`.
+        :param path: Path of the file relative to the skill directory (e.g. `"reference/forms.md"`).
+        :returns: The file's text content.
+        :raises KeyError: If no skill with `name` exists.
+        :raises PermissionError: If `path` escapes the skill's directory (path-traversal attempt).
+        :raises FileNotFoundError: If the file does not exist within the skill.
+        """
+        skill_dir = self._skill_dir(name).resolve()
         target = (skill_dir / path).resolve()
         if skill_dir != target and skill_dir not in target.parents:
             raise PermissionError(f"path escapes the '{name}' skill directory")
@@ -127,7 +153,7 @@ class FileSystemSkillStore:
         return target.read_text(encoding="utf-8")
 
     def to_dict(self) -> dict[str, Any]:
-        """Serialize this store to a dictionary for use with :meth:`from_dict`."""
+        """Serialize this store to a dictionary for use with `from_dict`."""
         return default_to_dict(self, skills_dir=str(self.skills_dir))
 
     @classmethod
