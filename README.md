@@ -12,7 +12,7 @@
 | haystack/components/agents/state/state.py                                           |       73 |        2 |     97% |    75, 79 |
 | haystack/components/agents/state/state\_utils.py                                    |       18 |        0 |    100% |           |
 | haystack/components/audio/\_\_init\_\_.py                                           |        5 |        0 |    100% |           |
-| haystack/components/audio/whisper\_local.py                                         |       66 |        6 |     91% |128, 164-167, 183 |
+| haystack/components/audio/whisper\_local.py                                         |       66 |        6 |     91% |132, 168-171, 187 |
 | haystack/components/audio/whisper\_remote.py                                        |       43 |       13 |     70% |96, 149-164 |
 | haystack/components/builders/\_\_init\_\_.py                                        |        5 |        0 |    100% |           |
 | haystack/components/builders/answer\_builder.py                                     |       70 |        1 |     99% |       245 |
@@ -83,17 +83,17 @@
 | haystack/components/extractors/image/\_\_init\_\_.py                                |        5 |        0 |    100% |           |
 | haystack/components/extractors/image/llm\_document\_content\_extractor.py           |      105 |        0 |    100% |           |
 | haystack/components/extractors/llm\_metadata\_extractor.py                          |      155 |       21 |     86% |290-301, 310-318, 336-339, 383, 425-429, 440 |
-| haystack/components/extractors/named\_entity\_extractor.py                          |      185 |       60 |     68% |25-26, 41, 169-172, 181-188, 207, 213, 272, 285, 388-400, 403-408, 423, 451-459, 463-475, 478-485, 495, 499, 506-513 |
+| haystack/components/extractors/named\_entity\_extractor.py                          |      185 |       60 |     68% |25-26, 41, 173-176, 185-192, 211, 217, 276, 289, 392-404, 407-412, 427, 455-463, 467-479, 482-489, 499, 503, 510-517 |
 | haystack/components/extractors/regex\_text\_extractor.py                            |       49 |        0 |    100% |           |
 | haystack/components/fetchers/\_\_init\_\_.py                                        |        5 |        0 |    100% |           |
 | haystack/components/fetchers/link\_content.py                                       |      188 |       26 |     86% |160-165, 222-224, 246, 255-262, 292-296, 385-392, 425, 458 |
 | haystack/components/generators/\_\_init\_\_.py                                      |        5 |        0 |    100% |           |
-| haystack/components/generators/azure.py                                             |       50 |        4 |     92% |133, 136, 212, 215 |
+| haystack/components/generators/azure.py                                             |       50 |        4 |     92% |131, 134, 210, 213 |
 | haystack/components/generators/chat/\_\_init\_\_.py                                 |        5 |        0 |    100% |           |
 | haystack/components/generators/chat/azure.py                                        |       70 |        3 |     96% |214, 327, 330 |
 | haystack/components/generators/chat/azure\_responses.py                             |       46 |        2 |     96% |  224, 271 |
 | haystack/components/generators/chat/fallback.py                                     |       89 |        4 |     96% |93, 245-250 |
-| haystack/components/generators/chat/hugging\_face\_api.py                           |      233 |        7 |     97% |190, 429-430, 496, 594, 647, 718 |
+| haystack/components/generators/chat/hugging\_face\_api.py                           |      233 |        7 |     97% |190, 434-435, 501, 599, 652, 723 |
 | haystack/components/generators/chat/hugging\_face\_local.py                         |      213 |       27 |     87% |72-74, 77, 85-87, 246, 289-291, 351, 382, 440, 469-474, 501, 554-557, 592-598, 614, 670-671 |
 | haystack/components/generators/chat/llm.py                                          |       33 |        1 |     97% |       120 |
 | haystack/components/generators/chat/openai.py                                       |      214 |        4 |     98% |431, 481, 652, 752 |
