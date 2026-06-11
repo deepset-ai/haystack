@@ -492,7 +492,7 @@ class TestLLMEvaluatorAsync:
         assert results == {"results": [{"score": 1}], "meta": None}
 
     @pytest.mark.asyncio
-    async def test_run_async_raises_on_unsupported_generator(self, monkeypatch):
+    async def test_run_async_fallback_to_thread_with_sync_generator(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
 
         class SyncOnlyGenerator:
@@ -515,8 +515,8 @@ class TestLLMEvaluatorAsync:
             chat_generator=SyncOnlyGenerator(),
         )
 
-        with pytest.raises(TypeError, match="does not support async execution"):
-            await component.run_async(questions=["question"], predicted_answers=["answer"])
+        results = await component.run_async(questions=["question"], predicted_answers=["answer"])
+        assert results == {"results": [{"score": 0}], "meta": None}
 
     @pytest.mark.asyncio
     async def test_run_async_raise_on_failure_false(self, monkeypatch):

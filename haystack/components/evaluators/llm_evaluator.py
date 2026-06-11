@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import asyncio
 import json
 from typing import Any
 
@@ -262,12 +263,6 @@ class LLMEvaluator:
             different lengths, or if the output is not a valid JSON or doesn't contain the expected keys.
         """
 
-        if not hasattr(self._chat_generator, "run_async"):
-            raise TypeError(
-                f"The chat generator {type(self._chat_generator).__name__} does not support async execution. "
-                "Use a chat generator that implements the `run_async` method."
-            )
-
         if not self._is_warmed_up:
             self.warm_up()
 
@@ -282,11 +277,20 @@ class LLMEvaluator:
         metadata = []
         errors = 0
 
+        generator_has_async = hasattr(self._chat_generator, "run_async")
         for input_names_to_values in async_tqdm(list_of_input_names_to_values, disable=not self.progress_bar):
             prompt = self.builder.run(**input_names_to_values)
             messages = [ChatMessage.from_user(prompt["prompt"])]
             try:
-                result = await self._chat_generator.run_async(messages=messages)
+                if generator_has_async:
+                    result = await self._chat_generator.run_async(messages=messages)
+                else:
+                    logger.debug(
+                        "{generator_type} does not implement 'run_async'."
+                        " Running the synchronous 'run' method in a thread to avoid blocking the event loop.",
+                        generator_type=type(self._chat_generator).__name__,
+                    )
+                    result = await asyncio.to_thread(self._chat_generator.run, messages=messages)
             except Exception as e:
                 if self.raise_on_failure:
                     raise ValueError(f"Error while generating response for prompt: {prompt}. Error: {e}") from e
