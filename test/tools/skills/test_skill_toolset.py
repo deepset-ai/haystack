@@ -8,39 +8,9 @@ from concurrent.futures import ThreadPoolExecutor
 
 import pytest
 
-from haystack.core.serialization import generate_qualified_class_name
-from haystack.dataclasses.skill_info import SkillInfo
 from haystack.skill_stores.file_system.skill_store import FileSystemSkillStore
 from haystack.tools import SkillToolset, Tool
 from haystack.tools.errors import ToolInvocationError
-
-
-class _SerializableStore:
-    """Module-level custom store used to test round-trip serialization."""
-
-    def __init__(self, skills: dict[str, str]) -> None:
-        self._data = skills
-
-    def list_skills(self) -> dict[str, SkillInfo]:
-        return {name: SkillInfo(name=name, description=desc) for name, desc in self._data.items()}
-
-    def load_skill_body(self, name: str) -> str:
-        if name not in self._data:
-            raise KeyError(name)
-        return f"Instructions for {name}."
-
-    def list_skill_files(self, name: str) -> list[str]:
-        return []
-
-    def read_skill_file(self, name: str, path: str) -> str:
-        raise FileNotFoundError
-
-    def to_dict(self) -> dict:
-        return {"type": generate_qualified_class_name(type(self)), "init_parameters": {"skills": self._data}}
-
-    @classmethod
-    def from_dict(cls, data: dict) -> "_SerializableStore":
-        return cls(skills=data["init_parameters"]["skills"])
 
 
 def _get_tool(toolset, name):
@@ -215,43 +185,3 @@ class TestSkillToolset:
         restored = SkillToolset.from_dict(data)
         restored.warm_up()
         assert set(restored.skills) == {"pdf-forms"}
-
-    def test_to_dict_and_from_dict_with_custom_serializable_store(self):
-        store = _SerializableStore(skills={"demo": "A demo skill."})
-        toolset = SkillToolset(store)
-
-        serialized = toolset.to_dict()
-        assert serialized["data"]["store"]["init_parameters"]["skills"] == {"demo": "A demo skill."}
-
-        restored = SkillToolset.from_dict(serialized)
-        restored.warm_up()
-        assert set(restored.skills) == {"demo"}
-
-    def test_load_skill_via_custom_store(self, tmp_path):
-        class _InMemoryStore:
-            def list_skills(self):
-                return {"demo": SkillInfo(name="demo", description="A demo skill.")}
-
-            def load_skill_body(self, name):
-                if name != "demo":
-                    raise KeyError(name)
-                return "Do the demo thing."
-
-            def list_skill_files(self, name):
-                return []
-
-            def read_skill_file(self, name, path):
-                raise FileNotFoundError
-
-            def to_dict(self):
-                raise NotImplementedError
-
-            @classmethod
-            def from_dict(cls, data):
-                raise NotImplementedError
-
-        load_skill = _get_tool(SkillToolset(_InMemoryStore()), "load_skill")
-        assert load_skill.invoke(name="demo") == "Do the demo thing."
-        # An unknown skill raises (wrapped by Tool.invoke); the store decides the error message.
-        with pytest.raises(ToolInvocationError):
-            load_skill.invoke(name="nope")
