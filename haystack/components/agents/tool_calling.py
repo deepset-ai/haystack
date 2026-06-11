@@ -15,7 +15,7 @@ from haystack import logging
 from haystack.components.agents.state.state import State
 from haystack.core.component.sockets import Sockets
 from haystack.dataclasses import ChatMessage, ToolCall
-from haystack.dataclasses.streaming_chunk import StreamingCallbackT, StreamingChunk
+from haystack.dataclasses.streaming_chunk import StreamingCallbackT, StreamingChunk, _invoke_streaming_callback
 from haystack.tools import ComponentTool, Tool, ToolsType, _check_duplicate_tool_names, flatten_tools_or_toolsets
 from haystack.tools.errors import ToolInvocationError
 from haystack.tools.parameters_schema_utils import _unwrap_optional
@@ -477,14 +477,15 @@ async def _run_tool_async(
             tool_messages.append(_build_tool_result_message(result, tool_call, tool, raise_on_failure=raise_on_failure))
 
         if streaming_callback is not None:
-            await streaming_callback(  # type: ignore[misc]
-                _create_tool_result_streaming_chunk(tool_messages, tool_call)
+            await _invoke_streaming_callback(
+                streaming_callback, _create_tool_result_streaming_chunk(tool_messages, tool_call)
             )
 
     # We emit a final empty chunk with finish_reason "tool_call_results" to signal the end of the tool results stream.
     if tool_messages and streaming_callback is not None:
-        await streaming_callback(  # type: ignore[misc]
-            StreamingChunk(content="", finish_reason="tool_call_results", meta={"finish_reason": "tool_call_results"})
+        await _invoke_streaming_callback(
+            streaming_callback,
+            StreamingChunk(content="", finish_reason="tool_call_results", meta={"finish_reason": "tool_call_results"}),
         )
 
     return tool_messages, state

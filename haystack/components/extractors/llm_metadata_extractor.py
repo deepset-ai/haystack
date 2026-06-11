@@ -20,6 +20,7 @@ from haystack.components.preprocessors import DocumentSplitter
 from haystack.core.serialization import component_to_dict
 from haystack.dataclasses import ChatMessage
 from haystack.utils import deserialize_chatgenerator_inplace, expand_page_range
+from haystack.utils.async_utils import _run_component_async
 from haystack.utils.misc import _parse_dict_from_json
 
 logger = logging.getLogger(__name__)
@@ -32,8 +33,8 @@ class LLMMetadataExtractor:
 
     The metadata is extracted by providing a prompt to an LLM that generates the metadata.
 
-    This component expects as input a list of documents and a prompt. The prompt should have a variable called
-    `document` that will point to a single document in the list of documents. So to access the content of the document,
+    This component expects as input a list of documents and a prompt. The prompt must have exactly one variable, called
+    `document`, that points to a single document in the list of documents. So to access the content of the document,
     you can use `{{ document.content }}` in the prompt.
 
     The component will run the LLM on each document in the list and extract metadata from the document. The metadata
@@ -162,7 +163,9 @@ class LLMMetadataExtractor:
         """
         Initializes the LLMMetadataExtractor.
 
-        :param prompt: The prompt to be used for the LLM.
+        :param prompt: The prompt to be used for the LLM. It must contain exactly one variable, called `document`,
+            which points to a single document in the list of documents. For example, to access the content of the
+            document, use `{{ document.content }}` in the prompt.
         :param chat_generator: a ChatGenerator instance which represents the LLM. In order for the component to work,
             the LLM should be configured to return a JSON object. For example, when using the OpenAIChatGenerator, you
             should pass `{"response_format": {"type": "json_object"}}` in the `generation_kwargs`.
@@ -182,9 +185,10 @@ class LLMMetadataExtractor:
         ast = SandboxedEnvironment().parse(prompt)
         template_variables = meta.find_undeclared_variables(ast)
         variables = list(template_variables)
-        if len(variables) > 1 or variables[0] != "document":
+        if variables != ["document"]:
             raise ValueError(
-                f"Prompt must have exactly one variable called 'document'. Found {','.join(variables)} in the prompt."
+                f"Prompt must have exactly one variable called 'document'. "
+                f"Found {','.join(variables) or 'no variables'} in the prompt."
             )
         self.builder = PromptBuilder(prompt, required_variables=variables)
         self.raise_on_failure = raise_on_failure
@@ -303,7 +307,7 @@ class LLMMetadataExtractor:
             return {"error": "Document has no content, skipping LLM call."}
 
         try:
-            result = await self._chat_generator.run_async(messages=[prompt])  # type: ignore[attr-defined]
+            result = await _run_component_async(self._chat_generator, messages=[prompt])
         except Exception as e:
             if self.raise_on_failure:
                 raise e
@@ -418,13 +422,6 @@ class LLMMetadataExtractor:
             "metadata_extraction_error" and "metadata_extraction_response" in their metadata. These documents can be
             re-run with the extractor to extract metadata.
         """
-        if not hasattr(self._chat_generator, "run_async"):
-            logger.warning(
-                "{chat_generator_type} does not implement method 'run_async'. Falling back to 'run'.",
-                chat_generator_type=type(self._chat_generator).__name__,
-            )
-            return self.run(documents, page_range)
-
         if len(documents) == 0:
             logger.warning("No documents provided. Skipping metadata extraction.")
             return {"documents": [], "failed_documents": []}

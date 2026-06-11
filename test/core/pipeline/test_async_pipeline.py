@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import asyncio
+import contextvars
 import logging
 from dataclasses import replace
 
@@ -10,6 +11,9 @@ import pytest
 
 from haystack import AsyncPipeline, Document, component
 from haystack.components.joiners import BranchJoiner
+from haystack.core.errors import PipelineRuntimeError
+
+_test_context_var: contextvars.ContextVar[str] = contextvars.ContextVar("_test_context_var", default="unset")
 
 
 def test_async_pipeline_reentrance(waiting_component, spying_tracer):
@@ -408,3 +412,119 @@ class TestRunComponentInIsolation:
         # Even though `first`'s output is consumed by `second`, include_outputs_from forces it to be surfaced.
         assert results == [{"first": {"value": 6}}]
         assert state["pipeline_outputs"] == {"first": {"value": 6}}
+
+
+class TestInFlightTaskCleanupOnError:
+    @pytest.mark.asyncio
+    async def test_sibling_tasks_cancelled_when_a_component_errors(self):
+        """When a component fails, the other in-flight tasks must be cancelled and not leak."""
+        slow_started = asyncio.Event()
+        slow_cancelled = False
+
+        @component
+        class Slow:
+            @component.output_types(value=str)
+            def run(self, text: str) -> dict[str, str]:
+                return {"value": text}
+
+            @component.output_types(value=str)
+            async def run_async(self, text: str) -> dict[str, str]:
+                nonlocal slow_cancelled
+                slow_started.set()
+                try:
+                    await asyncio.sleep(5)
+                except asyncio.CancelledError:
+                    slow_cancelled = True
+                    raise
+                return {"value": text}
+
+        @component
+        class Failing:
+            @component.output_types(value=str)
+            def run(self, text: str) -> dict[str, str]:
+                raise RuntimeError("boom")
+
+            @component.output_types(value=str)
+            async def run_async(self, text: str) -> dict[str, str]:
+                # Fail only once the sibling is actually running, so there is an in-flight task to clean up.
+                await slow_started.wait()
+                raise RuntimeError("boom")
+
+        pp = AsyncPipeline()
+        pp.add_component("slow", Slow())
+        pp.add_component("failing", Failing())
+
+        with pytest.raises(PipelineRuntimeError):
+            await pp.run_async({"slow": {"text": "x"}, "failing": {"text": "y"}}, concurrency_limit=2)
+
+        assert slow_cancelled is True
+
+    @pytest.mark.asyncio
+    async def test_in_flight_tasks_cancelled_when_generator_iteration_is_abandoned(self):
+        """When the consumer stops iterating run_async_generator early, in-flight tasks must be cancelled."""
+        slow_started = asyncio.Event()
+        slow_cancelled = False
+
+        @component
+        class Fast:
+            @component.output_types(value=str)
+            def run(self, text: str) -> dict[str, str]:
+                return {"value": text}
+
+            @component.output_types(value=str)
+            async def run_async(self, text: str) -> dict[str, str]:
+                # Yield an output only once the sibling is actually running, so it is in flight when we abandon.
+                await slow_started.wait()
+                return {"value": text}
+
+        @component
+        class Slow:
+            @component.output_types(value=str)
+            def run(self, text: str) -> dict[str, str]:
+                return {"value": text}
+
+            @component.output_types(value=str)
+            async def run_async(self, text: str) -> dict[str, str]:
+                nonlocal slow_cancelled
+                slow_started.set()
+                try:
+                    await asyncio.sleep(5)
+                except asyncio.CancelledError:
+                    slow_cancelled = True
+                    raise
+                return {"value": text}
+
+        pp = AsyncPipeline()
+        pp.add_component("fast", Fast())
+        pp.add_component("slow", Slow())
+
+        generator = pp.run_async_generator({"fast": {"text": "x"}, "slow": {"text": "y"}}, concurrency_limit=2)
+        async for _partial in generator:
+            break  # abandon iteration after the first partial output
+        await generator.aclose()
+
+        assert slow_cancelled is True
+
+
+@pytest.mark.asyncio
+async def test_sync_component_run_in_thread_receives_contextvars():
+    """
+    Regression test: contextvars set in the calling async context (e.g. the active tracing span) must propagate
+    to sync-only components, which AsyncPipeline dispatches to a thread. `asyncio.to_thread` guarantees this by
+    copying the current context; a plain `loop.run_in_executor` would not.
+    """
+
+    @component
+    class SyncContextVarReader:
+        @component.output_types(value=str)
+        def run(self, text: str) -> dict[str, str]:
+            # Read inside the executor thread — only visible if the calling context was copied
+            return {"value": _test_context_var.get()}
+
+    pp = AsyncPipeline()
+    pp.add_component("reader", SyncContextVarReader())
+
+    _test_context_var.set("propagated")
+    result = await pp.run_async({"reader": {"text": "irrelevant"}})
+
+    assert result["reader"]["value"] == "propagated"

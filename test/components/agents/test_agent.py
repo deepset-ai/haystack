@@ -617,23 +617,24 @@ class TestAgent:
         }
         assert deserialized_agent.streaming_callback is sync_streaming_callback
 
-    def test_exit_conditions_validation(self, weather_tool, component_tool, monkeypatch):
+    def test_exit_conditions(self, weather_tool, component_tool, monkeypatch):
         monkeypatch.setenv("FAKE_OPENAI_KEY", "fake-key")
         generator = OpenAIChatGenerator(api_key=Secret.from_env_var("FAKE_OPENAI_KEY"))
 
-        # Test invalid exit condition
-        with pytest.raises(ValueError, match="Invalid exit conditions provided:"):
-            Agent(chat_generator=generator, tools=[weather_tool, component_tool], exit_conditions=["invalid_tool"])
-
-        # Test default exit condition
+        # Default exit condition
         agent = Agent(chat_generator=generator, tools=[weather_tool, component_tool])
         assert agent.exit_conditions == ["text"]
 
-        # Test multiple valid exit conditions
+        # Multiple exit conditions are stored as-is
         agent = Agent(
             chat_generator=generator, tools=[weather_tool, component_tool], exit_conditions=["text", "weather_tool"]
         )
         assert agent.exit_conditions == ["text", "weather_tool"]
+
+        # Exit conditions are no longer validated against tool names at init: tool sets can be dynamic
+        # (e.g. SearchableToolset/MCPToolset) or provided at runtime, so unknown names pass through.
+        agent = Agent(chat_generator=generator, tools=[weather_tool], exit_conditions=["not_loaded_yet"])
+        assert agent.exit_conditions == ["not_loaded_yet"]
 
     def test_tool_concurrency_limit_validation(self, weather_tool, monkeypatch):
         monkeypatch.setenv("FAKE_OPENAI_KEY", "fake-key")
@@ -787,6 +788,34 @@ class TestAgent:
         assert isinstance(result["last_message"], ChatMessage)
         assert result["messages"][-1] == result["last_message"]
 
+    def test_exit_condition_on_tool_provided_at_runtime(self, monkeypatch, weather_tool):
+        """An exit condition naming a tool absent at init still triggers once that tool is provided at runtime."""
+        monkeypatch.setenv("OPENAI_API_KEY", "fake-key")
+
+        # weather_tool is NOT among the init tools, but it is named as an exit condition.
+        agent = Agent(
+            chat_generator=OpenAIChatGenerator(), tools=[], exit_conditions=["weather_tool"], max_agent_steps=5
+        )
+
+        # The model calls weather_tool, which is supplied only at runtime.
+        mock_messages = [
+            ChatMessage.from_assistant(
+                tool_calls=[ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"})]
+            )
+        ]
+        agent.chat_generator.run = MagicMock(return_value={"replies": mock_messages})
+
+        result = agent.run([ChatMessage.from_user("What's the weather in Berlin?")], tools=[weather_tool])
+
+        # The agent exits right after the exit-condition tool runs (single step), not at max_agent_steps.
+        assert result["step_count"] == 1
+        assert result["messages"][-2].tool_call.tool_name == "weather_tool"
+        assert (
+            result["messages"][-1].tool_call_result.result
+            == '{"weather": "mostly sunny", "temperature": 7, "unit": "celsius"}'
+        )
+        assert result["messages"][-1] == result["last_message"]
+
     def test_check_exit_conditions_parallel_tool_calls(self, monkeypatch, weather_tool):
         monkeypatch.setenv("OPENAI_API_KEY", "fake-key")
         agent = Agent(chat_generator=OpenAIChatGenerator(), tools=[weather_tool], exit_conditions=["weather_tool"])
@@ -834,16 +863,14 @@ class TestAgent:
 
         assert agent._check_exit_conditions(llm_messages, tool_messages) is True
 
-    def test_agent_with_no_tools(self, monkeypatch, caplog):
+    def test_agent_with_no_tools(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "fake-key")
         generator = OpenAIChatGenerator()
 
         # Mock messages where the exit condition appears in the second message
         mock_messages = [ChatMessage.from_assistant("Berlin")]
 
-        with caplog.at_level("WARNING"):
-            agent = Agent(chat_generator=generator, tools=[], max_agent_steps=3)
-            assert "No tools provided to the Agent." in caplog.text
+        agent = Agent(chat_generator=generator, tools=[], max_agent_steps=3)
 
         # Patch agent.chat_generator.run to return mock_messages
         agent.chat_generator.run = MagicMock(return_value={"replies": mock_messages})
@@ -1000,8 +1027,9 @@ class TestAgent:
         expected_messages = [
             ChatMessage(_role=ChatRole.USER, _content=[TextContent(text="Hello")], _name=None, _meta={})
         ]
+        # No tools were configured, so the Agent does not pass a `tools` argument to the chat generator.
         chat_generator.run_async.assert_called_once_with(
-            messages=expected_messages, generation_kwargs={"temperature": 0.0}, tools=[]
+            messages=expected_messages, generation_kwargs={"temperature": 0.0}
         )
 
     @pytest.mark.asyncio
@@ -1097,12 +1125,16 @@ class TestAgent:
             agent.run([ChatMessage.from_user("Hello")])
 
     @pytest.mark.asyncio
-    async def test_run_async_with_sync_streaming_callback_fails(self, weather_tool):
+    async def test_run_async_with_sync_streaming_callback_warns(self, weather_tool, caplog):
         chat_generator = MockChatGenerator()
         agent = Agent(chat_generator=chat_generator, tools=[weather_tool], streaming_callback=sync_streaming_callback)
 
-        with pytest.raises(ValueError, match="The init callback must be async compatible"):
-            await agent.run_async([ChatMessage.from_user("Hello")])
+        with caplog.at_level(logging.WARNING):
+            result = await agent.run_async([ChatMessage.from_user("Hello")])
+
+        assert "sync streaming callback" in caplog.text
+        assert "messages" in result
+        assert len(result["messages"]) == 2
 
     def test_reserved_state_schema_keys_raise(self, monkeypatch, weather_tool):
         monkeypatch.setenv("OPENAI_API_KEY", "fake-key")
@@ -1296,6 +1328,33 @@ class TestAgentTracing:
         }
 
         # Clean up
+        tracing.tracer.is_content_tracing_enabled = False
+        tracing.disable_tracing()
+
+    def test_agent_tracing_span_run_reflects_runtime_tools(self, caplog, monkeypatch, weather_tool, component_tool):
+        """The `haystack.agent.tools` span tag should reflect the tools selected for the run, not just init tools."""
+        chat_generator = MockChatGeneratorWithoutRunAsync()
+        agent = Agent(chat_generator=chat_generator, tools=[weather_tool, component_tool])
+
+        tracing.tracer.is_content_tracing_enabled = True
+        tracing.enable_tracing(LoggingTracer())
+        caplog.set_level(logging.DEBUG)
+
+        # Override at runtime to only use weather_tool, even though the agent was configured with both.
+        _ = agent.run([ChatMessage.from_user("What's the weather in Paris?")], tools=[weather_tool.name])
+
+        spans: list[tuple[str, dict[str, Any]]] = []
+        for record in caplog.records:
+            if hasattr(record, "operation_name"):
+                spans.append((record.operation_name, {}))
+            elif hasattr(record, "tag_name") and spans:
+                spans[-1][1][record.tag_name] = record.tag_value
+
+        run_tags = next(tags for op, tags in spans if op == "haystack.agent.run")
+        serialized_tools = run_tags["haystack.agent.tools"]
+        assert "weather_tool" in serialized_tools
+        assert "parrot" not in serialized_tools
+
         tracing.tracer.is_content_tracing_enabled = False
         tracing.disable_tracing()
 
@@ -2111,17 +2170,13 @@ class TestAgentWarmUp:
 
         mcp_toolset = MockMCPToolset()
         agent = Agent(chat_generator=MockChatGenerator(), tools=mcp_toolset)
-
         assert mcp_toolset.tools == [placeholder_tool]
-
         agent.warm_up()
-
         assert mcp_toolset.tools == [actual_tool]
 
     def test_run_warms_lazy_toolset_before_tool_selection(self):
         """
-        Agent.run() must warm up lazy toolsets before passing tools to the ChatGenerator and before executing
-        tool calls.
+        Agent.run() must warm up lazy toolsets before passing tools to the ChatGenerator and before executing tool calls
         """
         placeholder_tool = Tool(
             name="mcp_not_connected_placeholder_123",
@@ -2169,6 +2224,53 @@ class TestAgentWarmUp:
         assert mcp_toolset.tools == [actual_tool]
         assert result["messages"][2].tool_call_result.result == "2024-12-01T12:00:00Z"
         assert result["last_message"].text == "done"
+
+    def test_run_warms_up_per_run_toolset(self):
+        """Per-run tools passed to run() are not covered by Agent.warm_up() and must be warmed up at run time."""
+        init_tool = self._make_tracking_tool("init_tool")
+        agent = Agent(chat_generator=MockChatGenerator(), tools=Toolset([init_tool]))
+        agent.warm_up()
+
+        per_run_tool = self._make_tracking_tool("per_run_tool")
+        per_run_toolset = self._make_tracking_toolset([per_run_tool])
+        assert not per_run_toolset.was_warmed_up
+        assert not per_run_tool.was_warmed_up
+
+        agent.run(messages=[ChatMessage.from_user("hi")], tools=per_run_toolset)
+
+        assert per_run_toolset.was_warmed_up
+        assert per_run_tool.was_warmed_up
+
+    def test_run_warms_up_per_run_list_of_tools_and_toolsets(self):
+        """A per-run list of Tools and Toolsets must be warmed up at run time."""
+        init_tool = self._make_tracking_tool("init_tool")
+        agent = Agent(chat_generator=MockChatGenerator(), tools=[init_tool])
+        agent.warm_up()
+
+        per_run_tool = self._make_tracking_tool("per_run_tool")
+        toolset_tool = self._make_tracking_tool("toolset_tool")
+        per_run_toolset = self._make_tracking_toolset([toolset_tool])
+
+        agent.run(messages=[ChatMessage.from_user("hi")], tools=[per_run_tool, per_run_toolset])
+
+        assert per_run_tool.was_warmed_up
+        assert per_run_toolset.was_warmed_up
+        assert toolset_tool.was_warmed_up
+
+    @pytest.mark.asyncio
+    async def test_run_async_warms_up_per_run_toolset(self):
+        """The async run path must also warm up per-run tools."""
+        init_tool = self._make_tracking_tool("init_tool")
+        agent = Agent(chat_generator=MockChatGenerator(), tools=Toolset([init_tool]))
+        agent.warm_up()
+
+        per_run_tool = self._make_tracking_tool("per_run_tool")
+        per_run_toolset = self._make_tracking_toolset([per_run_tool])
+
+        await agent.run_async(messages=[ChatMessage.from_user("hi")], tools=per_run_toolset)
+
+        assert per_run_toolset.was_warmed_up
+        assert per_run_tool.was_warmed_up
 
 
 class TestAgentNotTriggeredByInjectedInput:

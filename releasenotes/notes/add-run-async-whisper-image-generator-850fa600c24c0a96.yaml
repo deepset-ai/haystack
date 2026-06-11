@@ -1,0 +1,6 @@
+---
+features:
+  - |
+    Added a ``run_async`` method to ``RemoteWhisperTranscriber`` and ``OpenAIImageGenerator`` so they can run
+    natively in an ``AsyncPipeline``. Both components now hold an ``AsyncOpenAI`` client alongside the existing
+    synchronous client and call the OpenAI API without blocking the event loop.

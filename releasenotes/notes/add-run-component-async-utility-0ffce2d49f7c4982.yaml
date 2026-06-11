@@ -1,0 +1,10 @@
+---
+enhancements:
+  - |
+    Components that delegate to sub-components in their ``run_async`` method (``LLMMetadataExtractor``,
+    ``EmbeddingBasedDocumentSplitter``, ``FallbackChatGenerator``, ``TextEmbeddingRetriever``, ``MultiRetriever``,
+    ``MultiQueryTextRetriever`` and ``MultiQueryEmbeddingRetriever``) now use a shared utility to run the
+    sub-component. If the sub-component only implements a synchronous ``run`` method, it is executed in a thread
+    to avoid blocking the event loop. Notably, ``LLMMetadataExtractor`` and ``EmbeddingBasedDocumentSplitter``
+    previously fell back to their fully synchronous ``run`` method in this case, which blocked the event loop for
+    the duration of the call.

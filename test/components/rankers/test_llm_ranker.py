@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import os
-from unittest.mock import Mock
+from unittest.mock import AsyncMock, Mock
 
 import pytest
 from jinja2 import TemplateSyntaxError
@@ -347,3 +347,93 @@ def test_live_run_ranks_rust_for_programming_language_query():
     result = ranker.run(query="Which document is about a programming language?", documents=documents)
 
     assert [document.id for document in result["documents"]] == ["doc-rust"]
+
+
+class FakeSyncOnlyChatGenerator:
+    """A chat generator exposing only a synchronous `run` (no `run_async`) for the fallback path."""
+
+    def __init__(self):
+        self.run = Mock()
+
+
+class TestLLMRankerAsync:
+    @pytest.mark.asyncio
+    async def test_run_async(self):
+        documents = [
+            Document(id="1", content="first"),
+            Document(id="2", content="second"),
+            Document(id="3", content="third"),
+        ]
+        mock_chat_generator = Mock(spec=OpenAIChatGenerator)
+        mock_chat_generator.run_async = AsyncMock(
+            return_value={
+                "replies": [ChatMessage.from_assistant('{"documents": [{"index": 2}, {"index": 1}, {"index": 3}]}')]
+            }
+        )
+        ranker = LLMRanker(chat_generator=mock_chat_generator, top_k=2)
+
+        result = await ranker.run_async(query="test query", documents=documents)
+
+        assert [document.id for document in result["documents"]] == ["2", "1"]
+        mock_chat_generator.run_async.assert_awaited_once()
+        mock_chat_generator.run.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_run_async_fallback_to_sync_run(self):
+        documents = [
+            Document(id="1", content="first"),
+            Document(id="2", content="second"),
+            Document(id="3", content="third"),
+        ]
+        fake_chat_generator = FakeSyncOnlyChatGenerator()
+        fake_chat_generator.run.return_value = {
+            "replies": [ChatMessage.from_assistant('{"documents": [{"index": 2}, {"index": 1}, {"index": 3}]}')]
+        }
+        assert not hasattr(fake_chat_generator, "run_async")
+        ranker = LLMRanker(chat_generator=fake_chat_generator, top_k=2)
+
+        result = await ranker.run_async(query="test query", documents=documents)
+
+        assert [document.id for document in result["documents"]] == ["2", "1"]
+        fake_chat_generator.run.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_run_async_generator_exception_falls_back(self):
+        documents = [Document(id="1", content="first"), Document(id="2", content="second")]
+        mock_chat_generator = Mock(spec=OpenAIChatGenerator)
+        mock_chat_generator.run_async = AsyncMock(side_effect=RuntimeError("generator failed"))
+        ranker = LLMRanker(chat_generator=mock_chat_generator, top_k=1, raise_on_failure=False)
+
+        result = await ranker.run_async(query="test query", documents=documents)
+
+        assert result == {"documents": documents}
+
+    @pytest.mark.asyncio
+    async def test_run_async_generator_exception_raises(self):
+        documents = [Document(id="1", content="first")]
+        mock_chat_generator = Mock(spec=OpenAIChatGenerator)
+        mock_chat_generator.run_async = AsyncMock(side_effect=RuntimeError("generator failed"))
+        ranker = LLMRanker(chat_generator=mock_chat_generator, raise_on_failure=True)
+
+        with pytest.raises(RuntimeError, match="generator failed"):
+            await ranker.run_async(query="test query", documents=documents)
+
+    @pytest.mark.integration
+    @pytest.mark.skipif(
+        not os.environ.get("OPENAI_API_KEY", None),
+        reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
+    )
+    @pytest.mark.asyncio
+    async def test_live_run_async_ranks_berlin_first_for_germany_query(self):
+        documents = [
+            Document(id="doc-berlin", content="Berlin is the capital of Germany."),
+            Document(id="doc-paris", content="Paris is the capital of France."),
+            Document(id="doc-rust", content="Rust is a systems programming language focused on safety."),
+        ]
+        ranker = LLMRanker(top_k=2)
+
+        result = await ranker.run_async(query="What is the capital of Germany?", documents=documents)
+
+        assert result["documents"]
+        assert result["documents"][0].id == "doc-berlin"
+        assert len(result["documents"]) <= 2

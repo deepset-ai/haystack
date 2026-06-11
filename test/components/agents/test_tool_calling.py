@@ -294,6 +294,31 @@ class TestRunTool:
                 messages=[ChatMessage.from_user(text="Hello!")], streaming_callback=print_streaming_chunk
             )
 
+    def test_run_tool_calls_across_list_of_toolsets(self, weather_tool):
+        """Tool calls should resolve against tools spread across a list of multiple Toolsets."""
+        add_tool = Tool(
+            name="add",
+            description="A tool that adds two numbers.",
+            parameters={
+                "type": "object",
+                "properties": {"num1": {"type": "integer"}, "num2": {"type": "integer"}},
+                "required": ["num1", "num2"],
+            },
+            function=add_function,
+        )
+        toolset1 = Toolset([weather_tool])
+        toolset2 = Toolset([add_tool])
+
+        weather_call = ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"})
+        add_call = ToolCall(tool_name="add", arguments={"num1": 5, "num2": 3})
+        message = ChatMessage.from_assistant(tool_calls=[weather_call, add_call])
+
+        tool_messages, _ = _run_tool(messages=[message], state=State(schema={}), tools=[toolset1, toolset2])
+
+        assert len(tool_messages) == 2
+        assert "mostly sunny" in tool_messages[0].tool_call_results[0].result
+        assert "8" in tool_messages[1].tool_call_results[0].result
+
     def test_run_no_messages(self, weather_tool):
         tool_messages, state = _run_tool(messages=[], state=State(schema={}), tools=[weather_tool])
         assert tool_messages == []

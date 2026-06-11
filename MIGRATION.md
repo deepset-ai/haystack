@@ -40,6 +40,8 @@ component = NewComponent(new_param="value")
 - **One entry per breaking change.** Don't bundle unrelated changes into a single entry.
 - **Include a working code example** for every rename, removal, or signature change.
 - **Link to the PR** when extra context would help (e.g. `See [#1234](https://github.com/deepset-ai/haystack/pull/1234)`).
+- **Components moved to external packages** don't need a full entry: add a row to the table in
+  [Components Moved to External Packages](#components-moved-to-external-packages) instead.
 
 ---
 
@@ -69,6 +71,56 @@ After (v3.0):
 from haystack.dataclasses import Document
 
 doc = Document(content="col\n1\n2\n3")
+```
+
+### Components Moved to External Packages
+
+**What changed:** Some components have been moved out of Haystack into dedicated integration packages,
+hosted in the [haystack-core-integrations](https://github.com/deepset-ai/haystack-core-integrations) repository.
+
+**Why:** Moving these components to separate packages allows testing more thoroughly in isolation and
+releasing fixes independently of the Haystack release cycle. This also makes Haystack development and CI leaner.
+
+**How to migrate:** Install the new package and update your imports as shown in the table below.
+
+```bash
+pip install <new-package>
+```
+
+| Old import (`haystack-ai<3.0.0`) | New package | New import |
+|---|---|---|
+| `from haystack.components.generators.chat import HuggingFaceAPIChatGenerator` | `huggingface-api-haystack` | `from haystack_integrations.components.generators.huggingface_api import HuggingFaceAPIChatGenerator` |
+| `from haystack.components.embedders import HuggingFaceAPITextEmbedder` | `huggingface-api-haystack` | `from haystack_integrations.components.embedders.huggingface_api import HuggingFaceAPITextEmbedder` |
+| `from haystack.components.embedders import HuggingFaceAPIDocumentEmbedder` | `huggingface-api-haystack` | `from haystack_integrations.components.embedders.huggingface_api import HuggingFaceAPIDocumentEmbedder` |
+| `from haystack.components.rankers import HuggingFaceTEIRanker` | `huggingface-api-haystack` | `from haystack_integrations.components.rankers.huggingface_api import HuggingFaceTEIRanker` |
+| `from haystack.components.classifiers import TransformersZeroShotDocumentClassifier` | `transformers-haystack` | `from haystack_integrations.components.classifiers.transformers import TransformersZeroShotDocumentClassifier` |
+| `from haystack.components.generators.chat import HuggingFaceLocalChatGenerator` | `transformers-haystack` | `from haystack_integrations.components.generators.transformers import TransformersChatGenerator` |
+| `from haystack.components.readers import ExtractiveReader` | `transformers-haystack` | `from haystack_integrations.components.readers.transformers import TransformersExtractiveReader` |
+| `from haystack.components.routers import TransformersTextRouter` | `transformers-haystack` | `from haystack_integrations.components.routers.transformers import TransformersTextRouter` |
+| `from haystack.components.routers import TransformersZeroShotTextRouter` | `transformers-haystack` | `from haystack_integrations.components.routers.transformers import TransformersZeroShotTextRouter` |
+
+### `TransformersSimilarityRanker` removed
+
+**What changed:** The `TransformersSimilarityRanker` component has been removed. It was not moved to an
+integration package.
+
+**Why:** The component was in legacy state and no longer received updates. `SentenceTransformersSimilarityRanker`
+provides the same functionality plus async support and the more capable sentence-transformers backend.
+
+**How to migrate:** Use `SentenceTransformersSimilarityRanker`, which accepts the same parameters.
+
+Before (v2.x):
+```python
+from haystack.components.rankers import TransformersSimilarityRanker
+
+ranker = TransformersSimilarityRanker(model="cross-encoder/ms-marco-MiniLM-L-6-v2")
+```
+
+After (v3.0):
+```python
+from haystack.components.rankers import SentenceTransformersSimilarityRanker
+
+ranker = SentenceTransformersSimilarityRanker(model="cross-encoder/ms-marco-MiniLM-L-6-v2")
 ```
 
 ### ToolInvoker component removed

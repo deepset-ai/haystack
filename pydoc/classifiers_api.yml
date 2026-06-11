@@ -1,6 +1,6 @@
 loaders:
   - search_path: [../haystack/components/classifiers]
-    modules: ["document_language_classifier", "zero_shot_document_classifier"]
+    modules: ["document_language_classifier"]
 processors:
   - type: filter
     documented_only: true

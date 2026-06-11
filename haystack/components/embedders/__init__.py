@@ -10,8 +10,6 @@ from lazy_imports import LazyImporter
 _import_structure = {
     "azure_document_embedder": ["AzureOpenAIDocumentEmbedder"],
     "azure_text_embedder": ["AzureOpenAITextEmbedder"],
-    "hugging_face_api_document_embedder": ["HuggingFaceAPIDocumentEmbedder"],
-    "hugging_face_api_text_embedder": ["HuggingFaceAPITextEmbedder"],
     "openai_document_embedder": ["OpenAIDocumentEmbedder"],
     "openai_text_embedder": ["OpenAITextEmbedder"],
     "sentence_transformers_document_embedder": ["SentenceTransformersDocumentEmbedder"],
@@ -23,8 +21,6 @@ _import_structure = {
 if TYPE_CHECKING:
     from .azure_document_embedder import AzureOpenAIDocumentEmbedder as AzureOpenAIDocumentEmbedder
     from .azure_text_embedder import AzureOpenAITextEmbedder as AzureOpenAITextEmbedder
-    from .hugging_face_api_document_embedder import HuggingFaceAPIDocumentEmbedder as HuggingFaceAPIDocumentEmbedder
-    from .hugging_face_api_text_embedder import HuggingFaceAPITextEmbedder as HuggingFaceAPITextEmbedder
     from .openai_document_embedder import OpenAIDocumentEmbedder as OpenAIDocumentEmbedder
     from .openai_text_embedder import OpenAITextEmbedder as OpenAITextEmbedder
     from .sentence_transformers_document_embedder import (

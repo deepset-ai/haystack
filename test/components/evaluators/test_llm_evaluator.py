@@ -198,6 +198,7 @@ class TestLLMEvaluator:
                 "instructions": "test-instruction",
                 "inputs": [["predicted_answers", "list[str]"]],
                 "outputs": ["score"],
+                "raise_on_failure": True,
                 "progress_bar": True,
                 "examples": [
                     {"inputs": {"predicted_answers": "Football is the most popular sport."}, "outputs": {"score": 0}}
@@ -213,6 +214,7 @@ class TestLLMEvaluator:
             instructions="test-instruction",
             inputs=[("predicted_answers", list[str])],
             outputs=["custom_score"],
+            raise_on_failure=False,
             examples=[
                 {
                     "inputs": {"predicted_answers": "Damn, this is straight outta hell!!!"},
@@ -232,6 +234,7 @@ class TestLLMEvaluator:
                 "instructions": "test-instruction",
                 "inputs": [["predicted_answers", "list[str]"]],
                 "outputs": ["custom_score"],
+                "raise_on_failure": False,
                 "progress_bar": True,
                 "examples": [
                     {

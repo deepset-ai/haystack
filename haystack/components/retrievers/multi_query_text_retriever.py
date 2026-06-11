@@ -9,6 +9,7 @@ from typing import Any
 from haystack import Document, component, default_from_dict, default_to_dict
 from haystack.components.retrievers.types import TextRetriever
 from haystack.core.serialization import component_to_dict
+from haystack.utils.async_utils import _run_component_async
 from haystack.utils.misc import _deduplicate_documents
 
 
@@ -156,12 +157,7 @@ class MultiQueryTextRetriever:
         :returns:
             List of retrieved documents or None if no results.
         """
-        loop = asyncio.get_running_loop()
-
-        if hasattr(self.retriever, "run_async") and callable(self.retriever.run_async):
-            result = await self.retriever.run_async(query=query, **retriever_kwargs)
-        else:
-            result = await loop.run_in_executor(None, lambda: self.retriever.run(query=query, **retriever_kwargs))
+        result = await _run_component_async(self.retriever, query=query, **retriever_kwargs)
 
         if result and "documents" in result:
             return result["documents"]

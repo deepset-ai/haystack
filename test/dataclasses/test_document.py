@@ -28,12 +28,12 @@ def test_document_str(doc, doc_str):
 def test_init():
     doc = Document()
     assert doc.id == "d4675c57fcfe114db0b95f1da46eea3c5d6f5729c17d01fb5251ae19830a3455"
-    assert doc.content == None
-    assert doc.blob == None
+    assert doc.content is None
+    assert doc.blob is None
     assert doc.meta == {}
-    assert doc.score == None
-    assert doc.embedding == None
-    assert doc.sparse_embedding == None
+    assert doc.score is None
+    assert doc.embedding is None
+    assert doc.sparse_embedding is None
 
 
 def test_init_with_wrong_parameters():
@@ -74,11 +74,11 @@ def test_init_with_legacy_fields():
     )
     assert doc.id == "18fc2c114825872321cf5009827ca162f54d3be50ab9e9ffa027824b6ec223af"
     assert doc.content == "test text"
-    assert doc.blob == None
+    assert doc.blob is None
     assert doc.meta == {}
     assert doc.score == 0.812
     assert doc.embedding == [0.1, 0.2, 0.3]
-    assert doc.sparse_embedding == None
+    assert doc.sparse_embedding is None
 
     assert doc.content_type == "text"  # this is a property now
 
@@ -100,7 +100,7 @@ def test_init_with_legacy_field():
     assert doc.meta == {"date": "10-10-2023", "type": "article"}
     assert doc.score == 0.812
     assert doc.embedding == [0.1, 0.2, 0.3]
-    assert doc.sparse_embedding == None
+    assert doc.sparse_embedding is None
 
     assert doc.content_type == "text"  # this is a property now
     assert not hasattr(doc, "id_hash_keys")

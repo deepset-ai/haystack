@@ -9,7 +9,7 @@ from unittest.mock import AsyncMock, Mock, patch
 import pytest
 
 from haystack import Document
-from haystack.components.embedders import HuggingFaceAPIDocumentEmbedder, SentenceTransformersDocumentEmbedder
+from haystack.components.embedders import OpenAIDocumentEmbedder, SentenceTransformersDocumentEmbedder
 from haystack.components.preprocessors import EmbeddingBasedDocumentSplitter
 from haystack.utils import ComponentDevice
 
@@ -403,16 +403,10 @@ class TestEmbeddingBasedDocumentSplitter:
         assert combined in original or original in combined
 
     @pytest.mark.asyncio
-    @pytest.mark.skipif(
-        not os.environ.get("TEI_URL", None),
-        reason="Export an env var called TEI_URL containing the TextEmbeddingInference url to run this test.",
-    )
-    @pytest.mark.slow
+    @pytest.mark.skipif(os.environ.get("OPENAI_API_KEY", "") == "", reason="OPENAI_API_KEY is not set")
     @pytest.mark.integration
     async def test_split_document_with_multiple_topics_async(self) -> None:
-        embedder = HuggingFaceAPIDocumentEmbedder(
-            api_type="text_embeddings_inference", api_params={"url": os.environ.get("TEI_URL")}
-        )
+        embedder = OpenAIDocumentEmbedder(model="text-embedding-3-small")
 
         splitter = EmbeddingBasedDocumentSplitter(
             document_embedder=embedder, sentences_per_group=2, percentile=0.9, min_length=30, max_length=300
@@ -467,16 +461,10 @@ class TestEmbeddingBasedDocumentSplitter:
         assert result["documents"][0].content == text
 
     @pytest.mark.asyncio
-    @pytest.mark.skipif(
-        not os.environ.get("TEI_URL", None),
-        reason="Export an env var called TEI_URL containing the TextEmbeddingInference url to run this test.",
-    )
-    @pytest.mark.slow
+    @pytest.mark.skipif(os.environ.get("OPENAI_API_KEY", "") == "", reason="OPENAI_API_KEY is not set")
     @pytest.mark.integration
     async def test_trailing_whitespace_is_preserved_async(self) -> None:
-        embedder = HuggingFaceAPIDocumentEmbedder(
-            api_type="text_embeddings_inference", api_params={"url": os.environ.get("TEI_URL")}
-        )
+        embedder = OpenAIDocumentEmbedder(model="text-embedding-3-small")
         splitter = EmbeddingBasedDocumentSplitter(document_embedder=embedder, sentences_per_group=1)
 
         # Normal trailing whitespace
@@ -524,16 +512,10 @@ class TestEmbeddingBasedDocumentSplitter:
         )  # noqa: E501
 
     @pytest.mark.asyncio
-    @pytest.mark.skipif(
-        not os.environ.get("TEI_URL", None),
-        reason="Export an env var called TEI_URL containing the TextEmbeddingInference url to run this test.",
-    )
+    @pytest.mark.skipif(os.environ.get("OPENAI_API_KEY", "") == "", reason="OPENAI_API_KEY is not set")
     @pytest.mark.integration
-    @pytest.mark.slow
     async def test_no_extra_whitespaces_between_sentences_async(self) -> None:
-        embedder = HuggingFaceAPIDocumentEmbedder(
-            api_type="text_embeddings_inference", api_params={"url": os.environ.get("TEI_URL")}
-        )
+        embedder = OpenAIDocumentEmbedder(model="text-embedding-3-small")
 
         splitter = EmbeddingBasedDocumentSplitter(
             document_embedder=embedder, sentences_per_group=1, percentile=0.9, min_length=10, max_length=500
@@ -600,21 +582,15 @@ The history of software is closely tied to the development of digital computers 
             assert "page_number" in split_doc.meta
 
     @pytest.mark.asyncio
-    @pytest.mark.skipif(
-        not os.environ.get("TEI_URL", None),
-        reason="Export an env var called TEI_URL containing the TextEmbeddingInference url to run this test.",
-    )
+    @pytest.mark.skipif(os.environ.get("OPENAI_API_KEY", "") == "", reason="OPENAI_API_KEY is not set")
     @pytest.mark.integration
-    @pytest.mark.slow
     async def test_split_large_splits_recursion_async(self) -> None:
         """
         Test that _split_large_splits() works correctly without infinite loops.
         This test uses a longer text that will trigger the recursive splitting logic.
         If the chunk cannot be split further, it is allowed to be larger than max_length.
         """
-        embedder = HuggingFaceAPIDocumentEmbedder(
-            api_type="text_embeddings_inference", api_params={"url": os.environ.get("TEI_URL")}
-        )
+        embedder = OpenAIDocumentEmbedder(model="text-embedding-3-small")
         semantic_chunker = EmbeddingBasedDocumentSplitter(
             document_embedder=embedder, sentences_per_group=5, percentile=0.95, min_length=50, max_length=1000
         )
@@ -729,20 +705,14 @@ Artificial intelligence is transforming education by enabling personalized learn
                 assert split_doc.meta["page_number"] == 4
 
     @pytest.mark.asyncio
-    @pytest.mark.skipif(
-        not os.environ.get("TEI_URL", None),
-        reason="Export an env var called TEI_URL containing the TextEmbeddingInference url to run this test.",
-    )
+    @pytest.mark.skipif(os.environ.get("OPENAI_API_KEY", "") == "", reason="OPENAI_API_KEY is not set")
     @pytest.mark.integration
-    @pytest.mark.slow
     async def test_split_large_splits_actually_splits_async(self) -> None:
         """
         Test that _split_large_splits() actually works and can split long texts into multiple chunks.
         This test uses a very long text that should be split into multiple chunks.
         """
-        embedder = HuggingFaceAPIDocumentEmbedder(
-            api_type="text_embeddings_inference", api_params={"url": os.environ.get("TEI_URL")}
-        )
+        embedder = OpenAIDocumentEmbedder(model="text-embedding-3-small")
         semantic_chunker = EmbeddingBasedDocumentSplitter(
             document_embedder=embedder,
             sentences_per_group=3,

@@ -4,6 +4,7 @@
 
 import asyncio
 import contextlib
+import logging
 from typing import Any
 
 import pytest
@@ -143,21 +144,28 @@ async def test_stream_runtime_callback_overrides_init():
     pipeline.add_component("streamer", StreamingEcho(prefix="s", n_chunks=2, streaming_callback=init_callback))
 
     handle = pipeline.stream(data={"streamer": {"prompt": "hi", "streaming_callback": runtime_callback}})
-    _ = [c async for c in handle]
+    [c async for c in handle]
 
     assert init_seen == []
     assert runtime_seen == ["s0", "s1"]
 
 
-def test_stream_rejects_sync_runtime_callback():
+@pytest.mark.asyncio
+async def test_stream_warns_on_sync_runtime_callback(caplog):
+    seen: list[str] = []
+
     def sync_callback(chunk: StreamingChunk) -> None:
-        pass
+        seen.append(chunk.content)
 
     pipeline = AsyncPipeline()
     pipeline.add_component("streamer", StreamingEcho(prefix="s", n_chunks=2))
 
-    with pytest.raises(ValueError, match="async"):
-        pipeline.stream(data={"streamer": {"prompt": "hi", "streaming_callback": sync_callback}})
+    with caplog.at_level(logging.WARNING):
+        handle = pipeline.stream(data={"streamer": {"prompt": "hi", "streaming_callback": sync_callback}})
+    [c async for c in handle]
+
+    assert "sync streaming callback" in caplog.text
+    assert seen == ["s0", "s1"]
 
 
 @pytest.mark.asyncio

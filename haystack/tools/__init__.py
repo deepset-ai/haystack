@@ -2,40 +2,58 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-# NOTE: we do not use LazyImporter here because it creates conflicts between the tool module and the tool decorator
+import sys
+from typing import TYPE_CHECKING
 
-# ruff: noqa: I001 (ignore import order as we need to import Tool before ComponentTool and PipelineTool)
+from lazy_imports import LazyImporter
 
-from collections.abc import Sequence
+# The `tool` decorator (from `from_function`) shares its name with the `tool` submodule (`tool.py`).
+# `LazyImporter` registers every key in `import_structure` as a submodule symbol, so adding `"tool"` as a key collides
+# with the `tool` decorator and raises a duplicate-symbol error at construction. We therefore eagerly import the
+# decorator and pass it via `extra_objects`, keeping `"tool"` out of `import_structure`.
+#
+# Guidance for adding future exports:
+#   - Symbols defined in `tool.py` (e.g. `Tool`) CANNOT be lazy: doing so would require `"tool"` as a key, which
+#     re-introduces the collision with the `tool` decorator. Import them eagerly here and add them to `extra_objects`.
+#   - Symbols from `from_function.py` (e.g. `create_tool_from_function`) could be lazy, but since we already eagerly
+#     import this module for the `tool` decorator, we keep its exports eager in `extra_objects` too rather than
+#     splitting them.
+#   - Symbols from any other submodule have no name collision and should be added lazily to `import_structure` (plus
+#     the `TYPE_CHECKING` block below) like the existing entries.
 from haystack.tools.from_function import create_tool_from_function, tool
 from haystack.tools.tool import Tool, _check_duplicate_tool_names
-from haystack.tools.toolset import Toolset
-from haystack.tools.searchable_toolset import SearchableToolset
-from haystack.tools.skills import SkillToolset
-from haystack.tools.component_tool import ComponentTool
-from haystack.tools.pipeline_tool import PipelineTool
-from haystack.tools.serde_utils import deserialize_tools_or_toolset_inplace, serialize_tools_or_toolset
-from haystack.tools.utils import flatten_tools_or_toolsets, warm_up_tools
 
-# Type alias for tools parameter - allows mixing Tools and Toolsets in a sequence
-# Accepts either:
-# - Sequence[Tool | Toolset]: Any sequence (list, tuple, etc.) containing Tools, Toolsets, or a mix of both
-# - Toolset: A single Toolset (not in a sequence)
-ToolsType = Sequence[Tool | Toolset] | Toolset
+_import_structure = {
+    "toolset": ["Toolset"],
+    "searchable_toolset": ["SearchableToolset"],
+    "skill_toolset": ["SkillToolset"],
+    "component_tool": ["ComponentTool"],
+    "pipeline_tool": ["PipelineTool"],
+    "serde_utils": ["deserialize_tools_or_toolset_inplace", "serialize_tools_or_toolset"],
+    "utils": ["flatten_tools_or_toolsets", "warm_up_tools"],
+    "tool_types": ["ToolsType"],
+}
 
-__all__ = [
-    "_check_duplicate_tool_names",
-    "ComponentTool",
-    "create_tool_from_function",
-    "deserialize_tools_or_toolset_inplace",
-    "flatten_tools_or_toolsets",
-    "PipelineTool",
-    "serialize_tools_or_toolset",
-    "Tool",
-    "SearchableToolset",
-    "SkillToolset",
-    "ToolsType",
-    "Toolset",
-    "tool",
-    "warm_up_tools",
-]
+if TYPE_CHECKING:
+    from haystack.tools.component_tool import ComponentTool as ComponentTool
+    from haystack.tools.pipeline_tool import PipelineTool as PipelineTool
+    from haystack.tools.searchable_toolset import SearchableToolset as SearchableToolset
+    from haystack.tools.serde_utils import deserialize_tools_or_toolset_inplace as deserialize_tools_or_toolset_inplace
+    from haystack.tools.serde_utils import serialize_tools_or_toolset as serialize_tools_or_toolset
+    from haystack.tools.skills import SkillToolset as SkillToolset
+    from haystack.tools.tool_types import ToolsType as ToolsType
+    from haystack.tools.toolset import Toolset as Toolset
+    from haystack.tools.utils import flatten_tools_or_toolsets as flatten_tools_or_toolsets
+    from haystack.tools.utils import warm_up_tools as warm_up_tools
+else:
+    sys.modules[__name__] = LazyImporter(
+        name=__name__,
+        module_file=__file__,
+        import_structure=_import_structure,
+        extra_objects={
+            "create_tool_from_function": create_tool_from_function,
+            "tool": tool,
+            "Tool": Tool,
+            "_check_duplicate_tool_names": _check_duplicate_tool_names,
+        },
+    )

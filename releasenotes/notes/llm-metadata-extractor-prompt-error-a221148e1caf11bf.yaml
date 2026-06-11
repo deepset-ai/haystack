@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    ``LLMMetadataExtractor`` now raises a clear ``ValueError`` when the ``prompt`` contains no
+    template variables. Previously this case raised an unhelpful ``IndexError: list index out of
+    range``. The error message now consistently explains that the prompt must contain exactly one
+    variable called ``document``.

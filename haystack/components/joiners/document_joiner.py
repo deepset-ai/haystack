@@ -225,7 +225,12 @@ class DocumentJoiner:
             # if all docs have the same score delta_score is 0, the docs are uninformative for the query
             rescaled_lists.append(
                 [
-                    replace(doc, score=(doc.score - min_score) / delta_score if delta_score != 0.0 else 0.0)
+                    replace(
+                        doc,
+                        score=((doc.score if doc.score is not None else 0) - min_score) / delta_score
+                        if delta_score != 0.0
+                        else 0.0,
+                    )
                     for doc in documents
                 ]
             )

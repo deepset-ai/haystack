@@ -6,7 +6,7 @@ import io
 from pathlib import Path
 from typing import Any
 
-from openai import OpenAI
+from openai import AsyncOpenAI, OpenAI
 
 from haystack import Document, component, default_from_dict, default_to_dict, logging
 from haystack.dataclasses import ByteStream
@@ -104,6 +104,12 @@ class RemoteWhisperTranscriber:
             base_url=api_base_url,
             http_client=init_http_client(self.http_client_kwargs, async_client=False),
         )
+        self.async_client = AsyncOpenAI(
+            api_key=api_key.resolve_value(),
+            organization=organization,
+            base_url=api_base_url,
+            http_client=init_http_client(self.http_client_kwargs, async_client=True),
+        )
 
     def to_dict(self) -> dict[str, Any]:
         """
@@ -158,6 +164,40 @@ class RemoteWhisperTranscriber:
             file.name = str(source.meta["file_path"]) if "file_path" in source.meta else "__fallback__.wav"
 
             content = self.client.audio.transcriptions.create(file=file, model=self.model, **self.whisper_params)
+            doc = Document(content=content.text, meta=source.meta)
+            documents.append(doc)
+
+        return {"documents": documents}
+
+    @component.output_types(documents=list[Document])
+    async def run_async(self, sources: list[str | Path | ByteStream]) -> dict[str, Any]:
+        """
+        Asynchronously transcribes the list of audio files into a list of documents.
+
+        This is the asynchronous version of the `run` method. It has the same parameters and return values
+        but can be used with `await` in an async code.
+
+        :param sources:
+            A list of file paths or `ByteStream` objects containing the audio files to transcribe.
+
+        :returns: A dictionary with the following keys:
+            - `documents`: A list of documents, one document for each file.
+                The content of each document is the transcribed text.
+        """
+        documents = []
+
+        for source in sources:
+            if not isinstance(source, ByteStream):
+                path = source
+                source = ByteStream.from_file_path(Path(source))
+                source.meta["file_path"] = path
+
+            file = io.BytesIO(source.data)
+            file.name = str(source.meta["file_path"]) if "file_path" in source.meta else "__fallback__.wav"
+
+            content = await self.async_client.audio.transcriptions.create(
+                file=file, model=self.model, **self.whisper_params
+            )
             doc = Document(content=content.text, meta=source.meta)
             documents.append(doc)
 
