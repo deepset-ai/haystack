@@ -26,7 +26,7 @@ from haystack.tools.tool import Tool, _check_duplicate_tool_names
 _import_structure = {
     "toolset": ["Toolset"],
     "searchable_toolset": ["SearchableToolset"],
-    "skill_toolset": ["SkillToolset"],
+    "skills": ["SkillToolset"],
     "component_tool": ["ComponentTool"],
     "pipeline_tool": ["PipelineTool"],
     "serde_utils": ["deserialize_tools_or_toolset_inplace", "serialize_tools_or_toolset"],
