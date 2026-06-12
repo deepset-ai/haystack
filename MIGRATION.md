@@ -700,3 +700,47 @@ from haystack.components.generators import OpenAIImageGenerator
 generator = OpenAIImageGenerator(model="gpt-image-2")
 result = generator.run("A photo of a red apple")
 ```
+
+### `AsyncPipeline` merged into `Pipeline`
+
+**What changed:** The `AsyncPipeline` class has been removed. Its asynchronous methods (`run_async`, `run_async_generator`, `stream`) are now part of the single `Pipeline` class, alongside the synchronous `run`.
+
+**Why:** Two classes caused friction where sync and async met: `AsyncPipeline.run()` wrapped `asyncio.run()` and raised inside an already-running event loop (e.g. Jupyter, FastAPI), and a `SuperComponent` exposed `run_async` even for sync pipelines, where it always failed. A single `Pipeline` with native `run` and `run_async` fixes both.
+
+**How to migrate:**
+
+Replace `AsyncPipeline` with `Pipeline`; the async methods are unchanged.
+
+Before (v2.x):
+```python
+from haystack import AsyncPipeline
+
+pipeline = AsyncPipeline()
+result = await pipeline.run_async(data)
+```
+
+After (v3.0):
+```python
+from haystack import Pipeline
+
+pipeline = Pipeline()
+result = await pipeline.run_async(data)
+```
+
+If you used the **synchronous** `AsyncPipeline.run()`, note it was a wrapper around the concurrent async engine, so `Pipeline.run()` is not a drop-in replacement. Choose by intent:
+
+```python
+# Keep concurrent execution from sync code:
+result = asyncio.run(pipeline.run_async(data, concurrency_limit=4))
+
+# Sequential execution is fine:
+result = pipeline.run(data)  # components run one at a time; no concurrency_limit
+```
+
+Unlike `AsyncPipeline.run()`, `Pipeline.run()` does not raise when called inside a running event loop: it runs and blocks the loop. In an async context, use `await pipeline.run_async(...)`.
+
+**Behavior to be aware of:**
+
+- `Pipeline.run` runs components sequentially and does not accept `concurrency_limit`; only `run_async` / `run_async_generator` run components concurrently.
+- Only `run` supports breakpoints (`break_point` / `pipeline_snapshot`).
+- Both run paths are traced under a single `haystack.pipeline.run` operation name, distinguished by a `haystack.pipeline.execution_mode` tag (`sync` or `async`); previously asynchronous runs used `haystack.async_pipeline.run`.

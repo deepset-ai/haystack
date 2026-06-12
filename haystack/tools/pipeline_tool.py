@@ -5,7 +5,7 @@
 from collections.abc import Callable
 from typing import Any
 
-from haystack import AsyncPipeline, Pipeline, SuperComponent, logging
+from haystack import Pipeline, SuperComponent, logging
 from haystack.core.serialization import generate_qualified_class_name
 from haystack.tools.component_tool import ComponentTool
 from haystack.tools.tool import (
@@ -100,7 +100,7 @@ class PipelineTool(ComponentTool):
 
     def __init__(
         self,
-        pipeline: Pipeline | AsyncPipeline,
+        pipeline: Pipeline,
         *,
         name: str,
         description: str,
@@ -187,11 +187,8 @@ class PipelineTool(ComponentTool):
             ```
         :raises ValueError: If the provided pipeline is not a valid Haystack Pipeline instance.
         """
-        if not isinstance(pipeline, (Pipeline, AsyncPipeline)):
-            raise TypeError(
-                "The 'pipeline' parameter must be an instance of Pipeline or AsyncPipeline."
-                f" Got {type(pipeline)} instead."
-            )
+        if not isinstance(pipeline, Pipeline):
+            raise TypeError(f"The 'pipeline' parameter must be an instance of Pipeline. Got {type(pipeline)} instead.")
 
         super().__init__(
             component=SuperComponent(pipeline=pipeline, input_mapping=input_mapping, output_mapping=output_mapping),
@@ -202,11 +199,6 @@ class PipelineTool(ComponentTool):
             inputs_from_state=inputs_from_state,
             outputs_to_state=outputs_to_state,
         )
-        # SuperComponent always defines `run_async` (so ComponentTool will return an `async_function`), but at runtime
-        # it will raise if the wrapped pipeline is not AsyncPipeline. So we clear async_function here when using
-        # a sync pipeline so `Tool.invoke_async` falls back to running the sync pipeline in a worker thread.
-        if not isinstance(pipeline, AsyncPipeline):
-            self.async_function = None
         self._unresolved_parameters = parameters
         self._pipeline = pipeline
         self._input_mapping = input_mapping
@@ -227,7 +219,6 @@ class PipelineTool(ComponentTool):
             "description": self.description,
             "parameters": self._unresolved_parameters,
             "inputs_from_state": self.inputs_from_state,
-            "is_pipeline_async": isinstance(self._pipeline, AsyncPipeline),
             "outputs_to_state": _serialize_outputs_to_state(self.outputs_to_state) if self.outputs_to_state else None,
             "outputs_to_string": _serialize_outputs_to_string(self.outputs_to_string)
             if self.outputs_to_string
@@ -246,9 +237,9 @@ class PipelineTool(ComponentTool):
             The deserialized PipelineTool instance.
         """
         inner_data = data["data"]
-        is_pipeline_async = inner_data.get("is_pipeline_async", False)
-        pipeline_class = AsyncPipeline if is_pipeline_async else Pipeline
-        pipeline = pipeline_class.from_dict(inner_data["pipeline"])
+        # `is_pipeline_async` is a legacy key kept only for backward compatibility
+        inner_data.pop("is_pipeline_async", None)
+        pipeline = Pipeline.from_dict(inner_data["pipeline"])
 
         if "outputs_to_state" in inner_data and inner_data["outputs_to_state"]:
             inner_data["outputs_to_state"] = _deserialize_outputs_to_state(inner_data["outputs_to_state"])
@@ -257,6 +248,4 @@ class PipelineTool(ComponentTool):
             inner_data["outputs_to_string"] = _deserialize_outputs_to_string(inner_data["outputs_to_string"])
 
         merged_data = {**inner_data, "pipeline": pipeline}
-        # Remove is_pipeline_async as it's not a parameter of the constructor
-        merged_data.pop("is_pipeline_async", None)
         return cls(**merged_data)
