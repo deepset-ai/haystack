@@ -362,7 +362,8 @@
             "pipeline-components/extractors/llmmetadataextractor",
             "pipeline-components/extractors/namedentityextractor",
             "pipeline-components/extractors/presidioentityextractor",
-            "pipeline-components/extractors/regextextextractor"
+            "pipeline-components/extractors/regextextextractor",
+            "pipeline-components/extractors/transformersnamedentityextractor"
           ]
         },
         {
@@ -433,6 +434,7 @@
             "pipeline-components/generators/stackitchatgenerator",
             "pipeline-components/generators/togetheraichatgenerator",
             "pipeline-components/generators/togetheraigenerator",
+            "pipeline-components/generators/transformerschatgenerator",
             "pipeline-components/generators/vertexaicodegenerator",
             "pipeline-components/generators/vertexaigeminichatgenerator",
             "pipeline-components/generators/vertexaigeminigenerator",
@@ -531,7 +533,8 @@
             "id": "pipeline-components/readers"
           },
           "items": [
-            "pipeline-components/readers/extractivereader"
+            "pipeline-components/readers/extractivereader",
+            "pipeline-components/readers/transformersextractivereader"
           ]
         },
         {

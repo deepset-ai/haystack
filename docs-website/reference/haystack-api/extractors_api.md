@@ -469,8 +469,6 @@ in the documents.
 
 Usage example:
 
-<!-- test-ignore -->
-
 ```python
 from haystack import Document
 from haystack.components.extractors.named_entity_extractor import NamedEntityExtractor
@@ -483,6 +481,10 @@ extractor = NamedEntityExtractor(backend="hugging_face", model="dslim/bert-base-
 results = extractor.run(documents=documents)["documents"]
 annotations = [NamedEntityExtractor.get_stored_annotations(doc) for doc in results]
 print(annotations)
+# >> [[NamedEntityAnnotation(entity='PER', start=4, end=10, score=np.float32(0.99054915))],
+# >> [NamedEntityAnnotation(entity='PER', start=11, end=16, score=np.float32(0.99641764)),
+# >>  NamedEntityAnnotation(entity='LOC', start=31, end=39, score=np.float32(0.996198)),
+# >>  NamedEntityAnnotation(entity='LOC', start=41, end=51, score=np.float32(0.9990196))]]
 ```
 
 #### __init__
