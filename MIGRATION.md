@@ -98,6 +98,7 @@ pip install <new-package>
 | `from haystack.components.readers import ExtractiveReader` | `transformers-haystack` | `from haystack_integrations.components.readers.transformers import TransformersExtractiveReader` |
 | `from haystack.components.routers import TransformersTextRouter` | `transformers-haystack` | `from haystack_integrations.components.routers.transformers import TransformersTextRouter` |
 | `from haystack.components.routers import TransformersZeroShotTextRouter` | `transformers-haystack` | `from haystack_integrations.components.routers.transformers import TransformersZeroShotTextRouter` |
+| `from haystack.components.websearch import SerperDevWebSearch` | `serperdev-haystack` | `from haystack_integrations.components.websearch.serperdev import SerperDevWebSearch` |
 
 ### `TransformersSimilarityRanker` removed
 
