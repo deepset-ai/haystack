@@ -737,8 +737,18 @@ class TestMemoryDocumentStoreNotShared(TestMemoryDocumentStore):
     def test_default_store_is_shared_and_registers_global_storage(self):
         index = "test_default_store_is_shared_and_registers_global_storage"
         store = InMemoryDocumentStore(index=index)
-        assert store._shared is True
-        assert index in in_memory_module._STORAGES
+        try:
+            assert store._shared is True
+            assert index in in_memory_module._STORAGES
+        finally:
+            store.shutdown()
+            for storage in (
+                in_memory_module._STORAGES,
+                in_memory_module._BM25_STATS_STORAGES,
+                in_memory_module._AVERAGE_DOC_LEN_STORAGES,
+                in_memory_module._FREQ_VOCAB_FOR_IDF_STORAGES,
+            ):
+                storage.pop(index, None)
 
     def test_shared_false_keeps_storage_instance_local(self):
         index = "test_shared_false_keeps_storage_instance_local"
