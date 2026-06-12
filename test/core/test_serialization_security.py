@@ -35,13 +35,14 @@ from haystack.utils.type_serialization import deserialize_type
 
 
 @pytest.fixture(autouse=True)
-def _reset_allowlist_state():
+def _reset_allowlist_state(monkeypatch):
     """
     Force a clean (safe-default, no extra patterns) state for every test in this module so we are
     testing the actual security model. The top-level test conftest extends the process-wide
     allowlist with test-only patterns (`test_*`, `pydantic`, ...); we must clear those here so
     "untrusted" really means untrusted.
     """
+    monkeypatch.delenv(DESERIALIZATION_ALLOWLIST_ENV_VAR, raising=False)
     snapshot = list(_extra_allowed_modules)
     _extra_allowed_modules.clear()
     token = _current_context.set(_DeserializationContext())
