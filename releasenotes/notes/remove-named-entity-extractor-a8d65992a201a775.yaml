@@ -40,5 +40,3 @@ upgrade:
       from haystack_integrations.components.extractors.spacy import SpacyNamedEntityExtractor
 
       extractor = SpacyNamedEntityExtractor(model="en_core_web_trf")
-
-    As a result, ``spacy`` is no longer a dependency of Haystack.
