@@ -218,7 +218,9 @@ class InMemoryDocumentStore:
         def _compute_tf(token: str, freq: dict[str, int], doc_len: int) -> float:
             """Per-token BM25L computation."""
             freq_term = freq.get(token, 0.0)
-            ctd = freq_term / (1 - b + b * doc_len / self._avg_doc_len)
+            norm_len = doc_len / self._avg_doc_len if self._avg_doc_len > 0 else 0.0
+            denom = 1 - b + b * norm_len
+            ctd = freq_term / denom if denom > 0 else 0.0
             return (1.0 + k) * (ctd + delta) / (k + ctd + delta)
 
         idf = _compute_idf(self._tokenize_bm25(query))
@@ -268,7 +270,7 @@ class InMemoryDocumentStore:
                 if idf[tok] < 0:
                     neg_idf_tokens.append(tok)
 
-            eps = epsilon * sum_idf / len(self._freq_vocab_for_idf)
+            eps = epsilon * sum_idf / len(self._freq_vocab_for_idf) if self._freq_vocab_for_idf else 0.0
             for tok in neg_idf_tokens:
                 idf[tok] = eps
             return {tok: idf.get(tok, 0.0) for tok in tokens}
@@ -276,8 +278,9 @@ class InMemoryDocumentStore:
         def _compute_tf(token: str, freq: dict[str, int], doc_len: int) -> float:
             """Per-token BM25Okapi computation."""
             freq_term = freq.get(token, 0.0)
-            freq_norm = freq_term + k * (1 - b + b * doc_len / self._avg_doc_len)
-            return freq_term * (1.0 + k) / freq_norm
+            norm_len = doc_len / self._avg_doc_len if self._avg_doc_len > 0 else 0.0
+            freq_norm = freq_term + k * (1 - b + b * norm_len)
+            return freq_term * (1.0 + k) / freq_norm if freq_norm > 0 else 0.0
 
         idf = _compute_idf(self._tokenize_bm25(query))
         bm25_attr = {doc.id: self._bm25_attr[doc.id] for doc in documents}
@@ -326,8 +329,10 @@ class InMemoryDocumentStore:
         def _compute_tf(token: str, freq: dict[str, int], doc_len: float) -> float:
             """Per-token normalized term frequency."""
             freq_term = freq.get(token, 0.0)
-            freq_damp = k * (1 - b + b * doc_len / self._avg_doc_len)
-            return freq_term * (1.0 + k) / (freq_term + freq_damp) + delta
+            norm_len = doc_len / self._avg_doc_len if self._avg_doc_len > 0 else 0.0
+            freq_damp = k * (1 - b + b * norm_len)
+            denom = freq_term + freq_damp
+            return (freq_term * (1.0 + k) / denom if denom > 0 else 0.0) + delta
 
         idf = _compute_idf(self._tokenize_bm25(query))
         bm25_attr = {doc.id: self._bm25_attr[doc.id] for doc in documents}

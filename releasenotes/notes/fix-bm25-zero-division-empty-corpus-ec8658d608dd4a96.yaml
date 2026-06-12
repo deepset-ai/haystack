@@ -1,0 +1,9 @@
+﻿---
+fixes:
+  - |
+    Fixed ``InMemoryDocumentStore.bm25_retrieval`` raising ``ZeroDivisionError`` when all
+    stored documents have empty (but not ``None``) content. With an empty BM25 vocabulary
+    and an average document length of zero, all three BM25 algorithms (``BM25Okapi``,
+    ``BM25L``, ``BM25Plus``) divided by zero while computing term frequencies (and, for
+    ``BM25Okapi``, the IDF epsilon). Retrieval now returns zero scores for such corpora
+    instead of crashing; scoring of corpora with at least one non-empty document is unchanged.
