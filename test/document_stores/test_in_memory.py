@@ -14,6 +14,7 @@ import pytest
 from haystack import Document
 from haystack.document_stores.errors import DocumentStoreError, DuplicateDocumentError
 from haystack.document_stores.in_memory import InMemoryDocumentStore
+from haystack.document_stores.in_memory import document_store as in_memory_module
 from haystack.testing.document_store import (
     CountDocumentsByFilterTest,
     CountUniqueMetadataByFilterTest,
@@ -90,6 +91,7 @@ class TestMemoryDocumentStore(
                 "bm25_parameters": {},
                 "embedding_similarity_function": "dot_product",
                 "index": in_memory_doc_store.index,
+                "shared": True,
                 "return_embedding": True,
             },
         }
@@ -112,6 +114,7 @@ class TestMemoryDocumentStore(
                 "bm25_parameters": {"key": "value"},
                 "embedding_similarity_function": "cosine",
                 "index": "my_cool_index",
+                "shared": True,
                 "return_embedding": True,
             },
         }
@@ -708,3 +711,45 @@ class TestMemoryDocumentStore(
         in_memory_doc_store.delete_documents(["d1"])
         # After removing "hello world" (2 tokens), only "foo bar baz" (3 tokens) remains
         assert in_memory_doc_store._avg_doc_len == pytest.approx(3.0)
+
+
+class TestMemoryDocumentStoreNotShared(TestMemoryDocumentStore):
+    """
+    Runs the full DocumentStore conformance suite against a non-shared (instance-local) store.
+
+    A store created with shared=False keeps its data on the instance instead of in the process-global storage,
+    so this re-runs every protocol test to confirm all operations behave identically through the instance-local
+    code path. It also holds the tests specific to the shared/non-shared storage behavior.
+    """
+
+    @pytest.fixture
+    def document_store(self):
+        store = InMemoryDocumentStore(bm25_algorithm="BM25L", shared=False)
+        yield store
+        store.shutdown()
+
+    @pytest.fixture
+    def cosine_document_store(self):
+        store = InMemoryDocumentStore(embedding_similarity_function="cosine", shared=False)
+        yield store
+        store.shutdown()
+
+    def test_default_store_is_shared_and_registers_global_storage(self):
+        index = "test_default_store_is_shared_and_registers_global_storage"
+        store = InMemoryDocumentStore(index=index)
+        assert store._shared is True
+        assert index in in_memory_module._STORAGES
+
+    def test_shared_false_keeps_storage_instance_local(self):
+        index = "test_shared_false_keeps_storage_instance_local"
+        store = InMemoryDocumentStore(index=index, shared=False)
+        assert store._shared is False
+
+        store.write_documents([Document(content="Hello world")])
+        assert store.count_documents() == 1
+        # Nothing is registered in the process-global storage.
+        assert index not in in_memory_module._STORAGES
+
+        # A second store with the same index does not see the first one's documents (no sharing).
+        other = InMemoryDocumentStore(index=index, shared=False)
+        assert other.count_documents() == 0

@@ -54,6 +54,7 @@ def sample_pipeline_dict():
                             "bm25_parameters": {},
                             "embedding_similarity_function": "dot_product",
                             "index": ANY,
+                            "shared": True,
                             "return_embedding": True,
                         },
                     },

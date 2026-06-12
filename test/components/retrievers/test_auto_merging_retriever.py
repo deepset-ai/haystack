@@ -82,6 +82,7 @@ class TestAutoMergingRetriever:
                         "bm25_parameters": {},
                         "embedding_similarity_function": "dot_product",
                         "index": "6b122bb4-211b-465e-804d-77c5857bf4c5",
+                        "shared": True,
                     },
                 },
                 "threshold": 0.7,
