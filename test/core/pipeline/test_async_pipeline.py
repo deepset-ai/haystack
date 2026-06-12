@@ -43,6 +43,12 @@ def test_run_in_sync_context(waiting_component):
     assert result == {"wait": {"waited_for": 0.001}}
 
 
+def test_run_async_with_invalid_concurrency_limit():
+    pp = Pipeline()
+    with pytest.raises(ValueError, match="concurrency_limit must be greater than or equal to 1"):
+        asyncio.run(pp.run_async({}, concurrency_limit=0))
+
+
 def test_component_with_empty_dict_as_output_appears_in_results():
     """Test that components that return an empty dict as output appear in results as an empty dict"""
 

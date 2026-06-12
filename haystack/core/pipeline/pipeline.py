@@ -848,7 +848,7 @@ class Pipeline(PipelineBase):
         :return: An async iterator containing partial (and final) outputs.
 
         :raises ValueError:
-            If invalid inputs are provided to the pipeline.
+            If invalid inputs are provided to the pipeline, or if `concurrency_limit` is less than 1.
         :raises PipelineMaxComponentRuns:
             If a component exceeds the maximum number of allowed executions within the pipeline.
         :raises PipelineRuntimeError:
@@ -856,6 +856,9 @@ class Pipeline(PipelineBase):
             it to get stuck and fail running.
             Or if a Component fails or returns output in an unsupported type.
         """
+        if concurrency_limit < 1:
+            raise ValueError("concurrency_limit must be greater than or equal to 1.")
+
         pipeline_running(self)  # telemetry
 
         # warm up the pipeline by running each component's warm_up method
@@ -885,7 +888,7 @@ class Pipeline(PipelineBase):
         cached_receivers = {name: self._find_receivers_from(name) for name in ordered_component_names}
 
         # Ephemeral concurrency state shared (and mutated in place) by the scheduling helpers below.
-        ready_sem = asyncio.Semaphore(max(1, concurrency_limit))
+        ready_sem = asyncio.Semaphore(concurrency_limit)
         running_tasks: dict[asyncio.Task, str] = {}
         # A set of component names that have been scheduled but not finished.
         scheduled_components: set[str] = set()
@@ -1148,7 +1151,7 @@ class Pipeline(PipelineBase):
             without outgoing connections.
 
         :raises ValueError:
-            If invalid inputs are provided to the pipeline.
+            If invalid inputs are provided to the pipeline, or if `concurrency_limit` is less than 1.
         :raises PipelineRuntimeError:
             If the Pipeline contains cycles with unsupported connections that would cause
             it to get stuck and fail running.
@@ -1243,7 +1246,7 @@ class Pipeline(PipelineBase):
 
         :raises ValueError:
             If `streaming_components` contains unknown component names or components that do not support streaming,
-            or if invalid inputs are provided to the pipeline.
+            or if invalid inputs are provided to the pipeline, or if `concurrency_limit` is less than 1.
         :raises PipelineRuntimeError:
             Surfaced during iteration. If the Pipeline contains cycles with unsupported connections that would cause
             it to get stuck and fail running, or if a Component fails or returns output in an unsupported type.
