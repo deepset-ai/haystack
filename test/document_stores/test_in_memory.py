@@ -12,6 +12,7 @@ from unittest.mock import patch
 import pytest
 
 from haystack import Document
+from haystack.dataclasses import ByteStream, SparseEmbedding
 from haystack.document_stores.errors import DocumentStoreError, DuplicateDocumentError
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.testing.document_store import (
@@ -144,6 +145,26 @@ class TestMemoryDocumentStore(
         assert document_store_loaded.count_documents() == 2
         assert list(document_store_loaded.storage.values()) == docs
         assert document_store_loaded.to_dict() == in_memory_doc_store.to_dict()
+
+    def test_save_to_disk_and_load_from_disk_with_blob_and_sparse_embedding(
+        self, in_memory_doc_store: InMemoryDocumentStore, tmp_dir: str
+    ) -> None:
+        doc = Document(
+            content="document with binary data",
+            blob=ByteStream(data=b"binary data", mime_type="image/png"),
+            sparse_embedding=SparseEmbedding(indices=[0, 5], values=[0.1, 0.9]),
+        )
+        in_memory_doc_store.write_documents([doc])
+        tmp_dir = tmp_dir + "/in_memory_doc_store.json"
+        in_memory_doc_store.save_to_disk(tmp_dir)
+        document_store_loaded = InMemoryDocumentStore.load_from_disk(tmp_dir)
+
+        loaded_doc = list(document_store_loaded.storage.values())[0]
+        assert isinstance(loaded_doc.blob, ByteStream)
+        assert isinstance(loaded_doc.sparse_embedding, SparseEmbedding)
+        assert loaded_doc == doc
+        # The loaded store must be saveable again
+        document_store_loaded.save_to_disk(tmp_dir)
 
     def test_invalid_bm25_algorithm(self):
         with pytest.raises(ValueError, match="BM25 algorithm 'invalid' is not supported"):

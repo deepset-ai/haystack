@@ -1,0 +1,8 @@
+﻿---
+fixes:
+  - |
+    Fixed ``InMemoryDocumentStore.load_from_disk`` reconstructing documents with the plain
+    ``Document`` constructor instead of ``Document.from_dict``. Documents containing a ``blob``
+    (``ByteStream``) or a ``sparse_embedding`` (``SparseEmbedding``) were loaded with those fields
+    as raw dictionaries, which later crashed ``repr()``, ``to_dict()``, equality comparison,
+    ``save_to_disk`` of the reloaded store, and any component accessing ``document.blob.data``.

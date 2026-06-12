@@ -403,7 +403,7 @@ class InMemoryDocumentStore:
             documents = data.pop("documents")
             cls_object = default_from_dict(cls, data)
             cls_object.write_documents(
-                documents=[Document(**doc) for doc in documents], policy=DuplicatePolicy.OVERWRITE
+                documents=[Document.from_dict(doc) for doc in documents], policy=DuplicatePolicy.OVERWRITE
             )
             return cls_object
 
