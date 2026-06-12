@@ -142,6 +142,7 @@ class TestHierarchicalDocumentSplitter:
                                 "bm25_parameters": {},
                                 "embedding_similarity_function": "dot_product",
                                 "index": "f32ad5bf-43cb-4035-9823-1de1ae9853c1",
+                                "shared": True,
                             },
                         },
                         "policy": "NONE",

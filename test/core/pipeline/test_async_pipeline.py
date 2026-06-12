@@ -543,7 +543,7 @@ async def test_run_async_raises_when_multi_element_list_is_unwrapped_at_runtime(
         def run(self, text: str) -> dict[str, str]:
             return {"out": text}
 
-    pipe = AsyncPipeline()
+    pipe = Pipeline()
     pipe.add_component("producer", MultiStrProducer())
     pipe.add_component("consumer", SingleStrConsumer())
     pipe.connect("producer.texts", "consumer.text")
