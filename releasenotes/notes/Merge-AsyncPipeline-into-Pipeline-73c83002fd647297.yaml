@@ -20,3 +20,6 @@ upgrade:
         result = await pipeline.run_async(data)
 
     Serialized pipelines, ``SuperComponent``s, and ``PipelineTool``s are loaded as ``Pipeline`` instances.
+
+    The tracing operation name for asynchronous runs changed from ``haystack.async_pipeline.run`` to
+    ``haystack.pipeline.run_async``.

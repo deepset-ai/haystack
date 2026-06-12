@@ -674,3 +674,5 @@ result = await pipeline.run_async(data)
 Note that the two run paths are not yet fully symmetric: for the moment, only `run` supports breakpoints
 (`break_point` / `pipeline_snapshot`), and only `run_async` / `run_async_generator` support specifying a
 `concurrency_limit`.
+
+The tracing operation name for asynchronous runs changed from `haystack.async_pipeline.run` to `haystack.pipeline.run_async`.
