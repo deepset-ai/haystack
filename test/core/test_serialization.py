@@ -108,9 +108,16 @@ def test_import_class_by_name():
 
 
 def test_import_class_by_name_no_valid_class():
-    data = "some.invalid.class"
+    # A name that passes the deserialization allowlist but cannot be resolved should raise ImportError.
+    data = "haystack.does.not.exist.Class"
     with pytest.raises(ImportError):
         import_class_by_name(data)
+
+
+def test_import_class_by_name_rejects_untrusted_module():
+    # A module outside the default allowlist is rejected before the import is attempted.
+    with pytest.raises(DeserializationError, match="not on the trusted-module allowlist"):
+        import_class_by_name("some.invalid.class")
 
 
 class CustomData:
@@ -557,10 +564,48 @@ def test_default_from_dict_with_invalid_class_name():
     data = {
         "type": generate_qualified_class_name(CustomComponentWithDocumentStore),
         "init_parameters": {
-            "document_store": {"type": "nonexistent.module.Class", "init_parameters": {}},
+            # Use a class name that passes the allowlist (haystack.*) but cannot be resolved.
+            "document_store": {"type": "haystack.does.not.exist.Class", "init_parameters": {}},
             "name": "test",
         },
     }
     # Verify the error message includes the parameter key and original error
-    with pytest.raises(ImportError, match=r"Failed to deserialize 'document_store':.*nonexistent\.module\.Class"):
+    with pytest.raises(
+        ImportError, match=r"Failed to deserialize 'document_store':.*haystack\.does\.not\.exist\.Class"
+    ):
         default_from_dict(CustomComponentWithDocumentStore, data)
+
+
+def test_default_from_dict_rejects_untrusted_nested_class():
+    """A nested class with a module outside the allowlist should be rejected."""
+    data = {
+        "type": generate_qualified_class_name(CustomComponentWithDocumentStore),
+        "init_parameters": {
+            "document_store": {"type": "nonexistent.module.Class", "init_parameters": {}},
+            "name": "test",
+        },
+    }
+    with pytest.raises(
+        DeserializationError, match=r"Failed to deserialize 'document_store':.*not on the trusted-module allowlist"
+    ):
+        default_from_dict(CustomComponentWithDocumentStore, data)
+
+
+def test_default_from_dict_rejects_unknown_nested_parameter():
+    """A nested ``{type: ...}`` dict on a parameter that the class does not accept must be rejected
+    before the smuggled type is imported (Option 3: type-aware deserialization)."""
+    data = {
+        "type": generate_qualified_class_name(CustomComponentWithDocumentStore),
+        "init_parameters": {
+            # `payload` is not an init parameter of CustomComponentWithDocumentStore.
+            "payload": {"type": "haystack.testing.factory.MyComponent", "init_parameters": {}},
+            "name": "test",
+        },
+    }
+    with pytest.raises(DeserializationError) as exc_info:
+        default_from_dict(CustomComponentWithDocumentStore, data)
+    message = str(exc_info.value)
+    assert "Refusing to deserialize unknown parameter 'payload'" in message
+    # The message lists the accepted parameters (sorted) and tells the user how to fix it.
+    assert "Valid parameters are: 'document_store', 'name'." in message
+    assert "Correct the parameter name or remove it from the serialized data." in message

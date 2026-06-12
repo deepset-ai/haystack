@@ -516,6 +516,60 @@ builder = PromptBuilder(
 builder.run(name="John")  # greeting renders as ""
 ```
 
+### Pipeline deserialization is gated by a module allowlist
+
+**What changed:** `Pipeline.load`, `Pipeline.loads`, and `Pipeline.from_dict` now refuse to import classes from modules outside a trusted-module allowlist and raise a `DeserializationError` instead. The default allowlist contains `haystack`, `haystack_integrations`, `haystack_experimental`, `builtins`, `typing`, and `collections`. Pipelines that reference custom components, callables, or types in other packages will fail to load until those modules are explicitly allowed.
+
+In addition, `default_from_dict` now rejects nested `{"type": "..."}` dictionaries whose key is not an `__init__` parameter of the parent class — this can surface pre-existing YAML bugs (typos, leftovers from removed parameters, stale snapshots).
+
+**Why:** Loading a pipeline from YAML used to dynamically import any class referenced in the file, which made a crafted YAML capable of causing arbitrary classes to be imported and instantiated. Gating imports through an allowlist closes that gap while leaving Haystack's own packages working out of the box.
+
+**How to migrate:**
+
+If your pipeline only references components from `haystack`, `haystack_integrations`, or `haystack_experimental`, no action is needed.
+
+Otherwise, extend the allowlist via one of the four mechanisms below.
+
+Before (v2.x), all modules implicitly trusted:
+```python
+from haystack import Pipeline
+
+# Worked for any class on the import path, including third-party packages.
+with open("pipeline.yaml") as fp:
+    pipeline = Pipeline.load(fp)
+```
+
+After (v3.0), pick one of the following options. The first two scope the trust to a single call; the others extend it process-wide.
+
+```python
+# 1. Per-call kwarg — recommended for application code that knows exactly which extra
+#    packages a given YAML needs.
+from haystack import Pipeline
+
+with open("pipeline.yaml") as fp:
+    pipeline_a = Pipeline.load(fp, allowed_modules=["mypkg.*", "anotherpkg.components.*"])
+
+# 2. Per-call bypass — equivalent to "I fully trust this YAML; skip the allowlist".
+#    Mirrors the `yaml.safe_load` / `yaml.unsafe_load` convention.
+with open("pipeline.yaml") as fp:
+    pipeline_b = Pipeline.load(fp, unsafe=True)
+
+# 3. Process-wide programmatic — call once at startup, e.g. in your application's
+#    entry point or a custom integration package's __init__.
+from haystack.core.serialization import allow_deserialization_module
+
+allow_deserialization_module("mypkg.*")
+with open("pipeline.yaml") as fp:
+    pipeline_c = Pipeline.load(fp)  # `mypkg.*` is now trusted for every load in this process.
+```
+
+```bash
+# 4. Environment variable — useful for ops/deployments where code shouldn't change.
+#    Comma-separated patterns; read at runtime on every deserialization call.
+export HAYSTACK_DESERIALIZATION_ALLOWLIST="mypkg.*,otherpkg.*"
+```
+
+Patterns are matched as prefixes by default (`"mypkg"` matches `mypkg` and any submodule), or as `fnmatch` globs if they contain `*`, `?`, or `[` somewhere other than a trailing `.*`.
 ### Generators removed
 
 **What changed:** `OpenAIGenerator`, `AzureOpenAIGenerator`, `HuggingFaceAPIGenerator`, and `HuggingFaceLocalGenerator` have been removed.
