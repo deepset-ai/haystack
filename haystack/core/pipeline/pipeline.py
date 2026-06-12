@@ -887,7 +887,7 @@ class Pipeline(PipelineBase):
         scheduled_components: set[str] = set()
 
         with tracing.tracer.trace(
-            "haystack.async_pipeline.run",
+            "haystack.pipeline.run_async",
             tags={
                 "haystack.pipeline.input_data": data,
                 "haystack.pipeline.output_data": pipeline_outputs,
