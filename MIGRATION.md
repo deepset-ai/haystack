@@ -675,4 +675,4 @@ Note that the two run paths are not yet fully symmetric: for the moment, only `r
 (`break_point` / `pipeline_snapshot`), and only `run_async` / `run_async_generator` support specifying a
 `concurrency_limit`.
 
-The tracing operation name for asynchronous runs changed from `haystack.async_pipeline.run` to `haystack.pipeline.run_async`.
+Both synchronous and asynchronous runs are traced under a single `haystack.pipeline.run` operation name, distinguished by a `haystack.pipeline.execution_mode` tag (`sync` or `async`); previously asynchronous runs used `haystack.async_pipeline.run`.

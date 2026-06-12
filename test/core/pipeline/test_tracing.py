@@ -48,6 +48,7 @@ class TestTracing:
                     "haystack.pipeline.output_data": {"hello2": {"output": "Hello, Hello, world!!"}},
                     "haystack.pipeline.metadata": {},
                     "haystack.pipeline.max_runs_per_component": 100,
+                    "haystack.pipeline.execution_mode": "sync",
                 },
                 parent_span=None,
                 trace_id=ANY,
@@ -114,6 +115,7 @@ class TestTracing:
                     "haystack.pipeline.max_runs_per_component": 100,
                     "haystack.pipeline.input_data": {"hello": {"word": "world"}},
                     "haystack.pipeline.output_data": {"hello2": {"output": "Hello, Hello, world!!"}},
+                    "haystack.pipeline.execution_mode": "sync",
                 },
                 trace_id=ANY,
                 span_id=ANY,
@@ -177,7 +179,10 @@ class TestTracing:
         else:
             result = pipe.run({"mutator": {"doc": Document(content="original")}})
 
+        pipeline_span = spying_tracer.spans[0]
         component_span = spying_tracer.spans[1]
 
+        assert pipeline_span.operation_name == "haystack.pipeline.run"
+        assert pipeline_span.tags["haystack.pipeline.execution_mode"] == ("async" if run_async else "sync")
         assert component_span.tags["haystack.component.input"]["doc"].content == "original"
         assert result["mutator"]["doc"].content == "mutated"

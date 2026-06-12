@@ -376,6 +376,7 @@ class Pipeline(PipelineBase):
                 "haystack.pipeline.output_data": pipeline_outputs,
                 "haystack.pipeline.metadata": self.metadata,
                 "haystack.pipeline.max_runs_per_component": self._max_runs_per_component,
+                "haystack.pipeline.execution_mode": "sync",
             },
         ) as span:
             inputs = self._convert_to_internal_format(pipeline_inputs=data)
@@ -887,12 +888,13 @@ class Pipeline(PipelineBase):
         scheduled_components: set[str] = set()
 
         with tracing.tracer.trace(
-            "haystack.pipeline.run_async",
+            "haystack.pipeline.run",
             tags={
                 "haystack.pipeline.input_data": data,
                 "haystack.pipeline.output_data": pipeline_outputs,
                 "haystack.pipeline.metadata": self.metadata,
                 "haystack.pipeline.max_runs_per_component": self._max_runs_per_component,
+                "haystack.pipeline.execution_mode": "async",
             },
         ) as parent_span:
             inputs = self._convert_to_internal_format(pipeline_inputs=data)

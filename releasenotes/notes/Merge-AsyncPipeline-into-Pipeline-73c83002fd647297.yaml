@@ -21,5 +21,6 @@ upgrade:
 
     Serialized pipelines, ``SuperComponent``s, and ``PipelineTool``s are loaded as ``Pipeline`` instances.
 
-    The tracing operation name for asynchronous runs changed from ``haystack.async_pipeline.run`` to
-    ``haystack.pipeline.run_async``.
+    Both synchronous and asynchronous runs are traced under a single ``haystack.pipeline.run`` operation
+    name, distinguished by a ``haystack.pipeline.execution_mode`` tag (``sync`` or ``async``). Previously,
+    asynchronous runs used the ``haystack.async_pipeline.run`` operation name.
