@@ -16,7 +16,6 @@ from haystack import Pipeline, SuperComponent, component
 from haystack.components.agents import Agent, State
 from haystack.components.builders import PromptBuilder
 from haystack.components.generators.chat import OpenAIChatGenerator
-from haystack.components.websearch import SearchApiWebSearch
 from haystack.core.pipeline.utils import _deepcopy_with_exceptions
 from haystack.dataclasses import ChatMessage, ChatRole, Document
 from haystack.tools import ComponentTool, ToolsType
@@ -803,12 +802,10 @@ class TestComponentToolInAgent:
         assert tool_message.is_from(ChatRole.TOOL)
 
     def test_serde(self, monkeypatch):
-        monkeypatch.setenv("SEARCHAPI_API_KEY", "test-key")
         monkeypatch.setenv("OPENAI_API_KEY", "test-key")
 
-        # Create the search component and tool
-        search = SearchApiWebSearch(top_k=3)
-        tool = ComponentTool(component=search, name="web_search", description="Search the web for current information")
+        # Create the component and tool
+        tool = ComponentTool(component=SimpleComponent(), name="hello_tool", description="A simple greeting tool")
 
         pipeline = Pipeline()
         pipeline.add_component("agent", Agent(chat_generator=OpenAIChatGenerator(), tools=[tool]))
@@ -820,10 +817,8 @@ class TestComponentToolInAgent:
 
         tool_dict = pipeline_dict["components"]["agent"]["init_parameters"]["tools"][0]
         assert tool_dict["type"] == "haystack.tools.component_tool.ComponentTool"
-        assert tool_dict["data"]["name"] == "web_search"
-        assert tool_dict["data"]["component"]["type"] == "haystack.components.websearch.searchapi.SearchApiWebSearch"
-        assert tool_dict["data"]["component"]["init_parameters"]["top_k"] == 3
-        assert tool_dict["data"]["component"]["init_parameters"]["api_key"]["type"] == "env_var"
+        assert tool_dict["data"]["name"] == "hello_tool"
+        assert tool_dict["data"]["component"]["type"] == "test_component_tool.SimpleComponent"
 
         # Test round-trip serialization
         pipeline_yaml = pipeline.dumps()

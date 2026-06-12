@@ -57,26 +57,27 @@ class ComponentTool(Tool):
 
     To use ComponentTool, you first need a Haystack component - either an existing one or a new one you create.
     You can create a ComponentTool from the component by passing the component to the ComponentTool constructor.
-    Below is an example of creating a ComponentTool from an existing SearchApiWebSearch component.
+    Below is an example of creating a ComponentTool from an existing SerperDevWebSearch component
+    from the `serperdev-haystack` integration package (`pip install serperdev-haystack`).
 
     ## Usage Example:
     <!-- test-ignore -->
     ```python
     from haystack import component
     from haystack.tools import ComponentTool
-    from haystack.components.websearch import SearchApiWebSearch
     from haystack.utils import Secret
     from haystack.components.agents import Agent
     from haystack.components.generators.chat import OpenAIChatGenerator
     from haystack.dataclasses import ChatMessage
+    from haystack_integrations.components.websearch.serperdev import SerperDevWebSearch
 
-    # Create a SearchApi search component
-    search = SearchApiWebSearch(api_key=Secret.from_env_var("SEARCHAPI_API_KEY"), top_k=3)
+    # Create a SerperDev search component
+    search = SerperDevWebSearch(api_key=Secret.from_env_var("SERPERDEV_API_KEY"), top_k=3)
 
     # Create a tool from the component
     tool = ComponentTool(
         component=search,
-        name="web_search",  # Optional: defaults to "search_api_web_search"
+        name="web_search",  # Optional: defaults to "serper_dev_web_search"
         description="Search the web for current information on any topic"  # Optional: defaults to component docstring
     )
 
