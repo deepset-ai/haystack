@@ -64,6 +64,22 @@ def test_pipeline_running(telemetry, pipeline_class):
         },
     )
 
+    # More than a day has passed but the seconds component of the timedelta is below the threshold:
+    # the event must still be sent (regression test for using timedelta.seconds instead of total_seconds())
+    pipe._last_telemetry_sent = datetime.datetime.now() - datetime.timedelta(days=1, seconds=5)
+
+    telemetry.send_event.reset_mock()
+    pipeline_running(pipe)
+    telemetry.send_event.assert_called_once_with(
+        "Pipeline run (2.x)",
+        {
+            "pipeline_id": str(id(pipe)),
+            "pipeline_type": expected_type,
+            "runs": 4,
+            "components": {"test.test_telemetry.Component": [{"name": "component", "key": "values"}]},
+        },
+    )
+
 
 @patch("haystack.telemetry._telemetry.telemetry")
 def test_pipeline_running_with_non_serializable_component(telemetry):
