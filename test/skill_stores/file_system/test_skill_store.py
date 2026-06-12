@@ -88,17 +88,13 @@ class TestFileSystemSkillStore:
 
         assert set(skills) == {"pdf-forms", "excel"}
         assert skills["pdf-forms"].description == "Fill PDF forms."
+        assert skills["excel"].description == "Edit spreadsheets."
 
     def test_list_skills_returns_a_copy(self, tmp_path):
         _write_skill(tmp_path, "pdf-forms", description="Fill PDF forms.")
         store = FileSystemSkillStore(tmp_path)
         store.list_skills().clear()
         assert set(store.list_skills()) == {"pdf-forms"}
-
-    def test_construction_is_lazy(self, tmp_path):
-        # Pointing at a non-existent directory is fine until the store is warmed up / used.
-        store = FileSystemSkillStore(tmp_path / "nope")
-        assert store._is_warmed_up is False
 
     def test_missing_directory_raises_on_warm_up(self, tmp_path):
         store = FileSystemSkillStore(tmp_path / "nope")
