@@ -17,9 +17,9 @@ Search engine using SerperDev API.
 | **Mandatory init variables** | `api_key`: The SearchAPI API key. Can be set with `SERPERDEV_API_KEY` env var. |
 | **Mandatory run variables** | `query`: A string with your query |
 | **Output variables** | `documents`: A list of documents  <br /> <br />`links`: A list of strings of resulting links |
-| **API reference** | [Websearch](/reference/websearch-api) |
-| **GitHub link** | https://github.com/deepset-ai/haystack/blob/main/haystack/components/websearch/serper_dev.py |
-| **Package name** | `haystack-ai` |
+| **API reference** | [SerperDev](/reference/integrations-serperdev) |
+| **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/serperdev |
+| **Package name** | `serperdev-haystack` |
 
 </div>
 
@@ -38,12 +38,18 @@ To use [Search API](https://www.searchapi.io/) as an alternative, see its respec
 
 ## Usage
 
+Install the `serperdev-haystack` package to use the `SerperDevWebSearch` component:
+
+```shell
+pip install serperdev-haystack
+```
+
 ### On its own
 
 This is an example of how `SerperDevWebSearch` looks up answers to our query on the web and converts the results into a list of documents with content snippets of the results, as well as URLs as strings.
 
 ```python
-from haystack.components.websearch import SerperDevWebSearch
+from haystack_integrations.components.websearch.serperdev import SerperDevWebSearch
 from haystack.utils import Secret
 
 web_search = SerperDevWebSearch(api_key=Secret.from_token("<your-api-key>"))
@@ -63,7 +69,7 @@ from haystack.components.builders.chat_prompt_builder import ChatPromptBuilder
 from haystack.components.fetchers import LinkContentFetcher
 from haystack.components.converters import HTMLToDocument
 from haystack.components.generators.chat import OpenAIChatGenerator
-from haystack.components.websearch import SerperDevWebSearch
+from haystack_integrations.components.websearch.serperdev import SerperDevWebSearch
 from haystack.dataclasses import ChatMessage
 from haystack.utils import Secret
 
@@ -181,7 +187,7 @@ components:
       exclude_subdomains: false
       search_params: {}
       top_k: 2
-    type: haystack.components.websearch.serper_dev.SerperDevWebSearch
+    type: haystack_integrations.components.websearch.serperdev.websearch.SerperDevWebSearch
 connection_type_validation: true
 connections:
 - receiver: fetcher.urls

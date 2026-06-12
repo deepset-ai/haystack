@@ -197,7 +197,7 @@ packages = ["haystack"]
 [tool.codespell]
 ignore-words-list = "ans,astroid,nd,ned,nin,ue,rouge,ist, Claus,SME"
 quiet-level = 3
-skip = "./test,./e2e"
+skip = "./test,./e2e,*.svg"
 
 [tool.pytest.ini_options]
 minversion = "6.0"
