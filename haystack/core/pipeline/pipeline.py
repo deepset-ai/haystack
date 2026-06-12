@@ -205,6 +205,9 @@ class Pipeline(PipelineBase):
         """
         Runs the Pipeline with given input data.
 
+        `run` executes synchronously and blocks the calling thread until the run completes. In an async context,
+        use `run_async` instead.
+
         Usage:
         ```python
         from haystack import Pipeline, Document

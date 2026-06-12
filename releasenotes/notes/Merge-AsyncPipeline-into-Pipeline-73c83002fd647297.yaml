@@ -21,6 +21,11 @@ upgrade:
 
     Serialized pipelines, ``SuperComponent``s, and ``PipelineTool``s are loaded as ``Pipeline`` instances.
 
+    ``Pipeline.run`` runs synchronously and blocks until completion; in an async context use
+    ``await pipeline.run_async(...)``. The former ``AsyncPipeline.run`` was a synchronous wrapper around the
+    concurrent engine, so to preserve that behavior use ``asyncio.run(pipeline.run_async(...))``. Note that
+    ``Pipeline.run`` executes components sequentially and does not accept ``concurrency_limit``.
+
     Both synchronous and asynchronous runs are traced under a single ``haystack.pipeline.run`` operation
     name, distinguished by a ``haystack.pipeline.execution_mode`` tag (``sync`` or ``async``). Previously,
     asynchronous runs used the ``haystack.async_pipeline.run`` operation name.
