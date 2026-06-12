@@ -164,7 +164,10 @@ class SearchableToolset(Toolset):
 
         # Build the BM25 search index only when the catalog is large enough to need discovery.
         if not self._passthrough:
-            self._document_store = InMemoryDocumentStore()
+            # shared=False keeps the BM25 index instance-local so it is freed with this toolset instead of
+            # accumulating in InMemoryDocumentStore's process-global storage (e.g. when a SearchableToolset is
+            # built per request in a served application).
+            self._document_store = InMemoryDocumentStore(shared=False)
             documents = [
                 Document(content=f"{tool.name} {tool.description}", meta={"tool_name": tool.name})
                 for tool in self._catalog
