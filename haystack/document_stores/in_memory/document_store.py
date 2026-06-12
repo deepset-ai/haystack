@@ -49,11 +49,8 @@ class BM25DocumentStats:
     doc_len: int
 
 
-# Process-global storage shared by InMemoryDocumentStore instances that are created with an explicit `index`.
-# Sharing an index lets multiple instances (including the separate instances a writer and retriever are
-# reconstructed into by `Pipeline.from_dict`) operate on the same data. Instances created without an explicit
-# index keep their data instance-local instead (see `__init__`), so it is freed with the instance rather than
-# accumulating here for the lifetime of the process.
+# Process-global storage, keyed by index, for stores created with shared=True. Lets instances sharing an index
+# operate on the same data. Non-shared stores keep their data instance-local instead (see `__init__`).
 _STORAGES: dict[str, dict[str, Document]] = {}
 _BM25_STATS_STORAGES: dict[str, dict[str, BM25DocumentStats]] = {}
 _AVERAGE_DOC_LEN_STORAGES: dict[str, float] = {}
