@@ -8,7 +8,7 @@ from unittest.mock import Mock
 
 import pytest
 
-from haystack import AsyncPipeline, Document, Pipeline
+from haystack import Document, Pipeline
 from haystack.components.extractors import LLMMetadataExtractor
 from haystack.components.generators.chat import OpenAIChatGenerator
 from haystack.components.writers import DocumentWriter
@@ -503,7 +503,7 @@ class TestLLMMetadataExtractor:
             ),
         )
         writer = DocumentWriter(document_store=in_memory_doc_store)
-        pipeline = AsyncPipeline()
+        pipeline = Pipeline()
         pipeline.add_component("extractor", extractor)
         pipeline.add_component("doc_writer", writer)
         pipeline.connect("extractor.documents", "doc_writer.documents")

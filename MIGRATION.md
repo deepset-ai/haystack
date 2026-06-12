@@ -517,6 +517,60 @@ builder = PromptBuilder(
 builder.run(name="John")  # greeting renders as ""
 ```
 
+### Pipeline deserialization is gated by a module allowlist
+
+**What changed:** `Pipeline.load`, `Pipeline.loads`, and `Pipeline.from_dict` now refuse to import classes from modules outside a trusted-module allowlist and raise a `DeserializationError` instead. The default allowlist contains `haystack`, `haystack_integrations`, `haystack_experimental`, `builtins`, `typing`, and `collections`. Pipelines that reference custom components, callables, or types in other packages will fail to load until those modules are explicitly allowed.
+
+In addition, `default_from_dict` now rejects nested `{"type": "..."}` dictionaries whose key is not an `__init__` parameter of the parent class — this can surface pre-existing YAML bugs (typos, leftovers from removed parameters, stale snapshots).
+
+**Why:** Loading a pipeline from YAML used to dynamically import any class referenced in the file, which made a crafted YAML capable of causing arbitrary classes to be imported and instantiated. Gating imports through an allowlist closes that gap while leaving Haystack's own packages working out of the box.
+
+**How to migrate:**
+
+If your pipeline only references components from `haystack`, `haystack_integrations`, or `haystack_experimental`, no action is needed.
+
+Otherwise, extend the allowlist via one of the four mechanisms below.
+
+Before (v2.x), all modules implicitly trusted:
+```python
+from haystack import Pipeline
+
+# Worked for any class on the import path, including third-party packages.
+with open("pipeline.yaml") as fp:
+    pipeline = Pipeline.load(fp)
+```
+
+After (v3.0), pick one of the following options. The first two scope the trust to a single call; the others extend it process-wide.
+
+```python
+# 1. Per-call kwarg — recommended for application code that knows exactly which extra
+#    packages a given YAML needs.
+from haystack import Pipeline
+
+with open("pipeline.yaml") as fp:
+    pipeline_a = Pipeline.load(fp, allowed_modules=["mypkg.*", "anotherpkg.components.*"])
+
+# 2. Per-call bypass — equivalent to "I fully trust this YAML; skip the allowlist".
+#    Mirrors the `yaml.safe_load` / `yaml.unsafe_load` convention.
+with open("pipeline.yaml") as fp:
+    pipeline_b = Pipeline.load(fp, unsafe=True)
+
+# 3. Process-wide programmatic — call once at startup, e.g. in your application's
+#    entry point or a custom integration package's __init__.
+from haystack.core.serialization import allow_deserialization_module
+
+allow_deserialization_module("mypkg.*")
+with open("pipeline.yaml") as fp:
+    pipeline_c = Pipeline.load(fp)  # `mypkg.*` is now trusted for every load in this process.
+```
+
+```bash
+# 4. Environment variable — useful for ops/deployments where code shouldn't change.
+#    Comma-separated patterns; read at runtime on every deserialization call.
+export HAYSTACK_DESERIALIZATION_ALLOWLIST="mypkg.*,otherpkg.*"
+```
+
+Patterns are matched as prefixes by default (`"mypkg"` matches `mypkg` and any submodule), or as `fnmatch` globs if they contain `*`, `?`, or `[` somewhere other than a trailing `.*`.
 ### Generators removed
 
 **What changed:** `OpenAIGenerator`, `AzureOpenAIGenerator`, `HuggingFaceAPIGenerator`, and `HuggingFaceLocalGenerator` have been removed.
@@ -647,3 +701,47 @@ from haystack.components.generators import OpenAIImageGenerator
 generator = OpenAIImageGenerator(model="gpt-image-2")
 result = generator.run("A photo of a red apple")
 ```
+
+### `AsyncPipeline` merged into `Pipeline`
+
+**What changed:** The `AsyncPipeline` class has been removed. Its asynchronous methods (`run_async`, `run_async_generator`, `stream`) are now part of the single `Pipeline` class, alongside the synchronous `run`.
+
+**Why:** Two classes caused friction where sync and async met: `AsyncPipeline.run()` wrapped `asyncio.run()` and raised inside an already-running event loop (e.g. Jupyter, FastAPI), and a `SuperComponent` exposed `run_async` even for sync pipelines, where it always failed. A single `Pipeline` with native `run` and `run_async` fixes both.
+
+**How to migrate:**
+
+Replace `AsyncPipeline` with `Pipeline`; the async methods are unchanged.
+
+Before (v2.x):
+```python
+from haystack import AsyncPipeline
+
+pipeline = AsyncPipeline()
+result = await pipeline.run_async(data)
+```
+
+After (v3.0):
+```python
+from haystack import Pipeline
+
+pipeline = Pipeline()
+result = await pipeline.run_async(data)
+```
+
+If you used the **synchronous** `AsyncPipeline.run()`, note it was a wrapper around the concurrent async engine, so `Pipeline.run()` is not a drop-in replacement. Choose by intent:
+
+```python
+# Keep concurrent execution from sync code:
+result = asyncio.run(pipeline.run_async(data, concurrency_limit=4))
+
+# Sequential execution is fine:
+result = pipeline.run(data)  # components run one at a time; no concurrency_limit
+```
+
+Unlike `AsyncPipeline.run()`, `Pipeline.run()` does not raise when called inside a running event loop: it runs and blocks the loop. In an async context, use `await pipeline.run_async(...)`.
+
+**Behavior to be aware of:**
+
+- `Pipeline.run` runs components sequentially and does not accept `concurrency_limit`; only `run_async` / `run_async_generator` run components concurrently.
+- Only `run` supports breakpoints (`break_point` / `pipeline_snapshot`).
+- Both run paths are traced under a single `haystack.pipeline.run` operation name, distinguished by a `haystack.pipeline.execution_mode` tag (`sync` or `async`); previously asynchronous runs used `haystack.async_pipeline.run`.

@@ -366,325 +366,6 @@ class TestPipelineBase:
         }
         assert res == expected
 
-    def test_from_dict(self):
-        data = {
-            "metadata": {"test": "test"},
-            "max_runs_per_component": 101,
-            "components": {
-                "add_two": {
-                    "type": "haystack.testing.sample_components.add_value.AddFixedValue",
-                    "init_parameters": {"add": 2},
-                },
-                "add_default": {
-                    "type": "haystack.testing.sample_components.add_value.AddFixedValue",
-                    "init_parameters": {"add": 1},
-                },
-                "double": {"type": "haystack.testing.sample_components.double.Double", "init_parameters": {}},
-            },
-            "connections": [
-                {"sender": "add_two.result", "receiver": "double.value"},
-                {"sender": "double.value", "receiver": "add_default.value"},
-            ],
-        }
-        pipe = PipelineBase.from_dict(data)
-
-        assert pipe.metadata == {"test": "test"}
-        assert pipe._max_runs_per_component == 101
-
-        # Components
-        assert len(pipe.graph.nodes) == 3
-        ## add_two
-        add_two = pipe.graph.nodes["add_two"]
-        assert add_two["instance"].add == 2
-        assert add_two["input_sockets"] == {
-            "value": InputSocket(name="value", type=int),
-            "add": InputSocket(name="add", type=int | None, default_value=None),
-        }
-        assert add_two["output_sockets"] == {"result": OutputSocket(name="result", type=int, receivers=["double"])}
-        assert add_two["visits"] == 0
-
-        ## add_default
-        add_default = pipe.graph.nodes["add_default"]
-        assert add_default["instance"].add == 1
-        assert add_default["input_sockets"] == {
-            "value": InputSocket(name="value", type=int, senders=["double"]),
-            "add": InputSocket(name="add", type=int | None, default_value=None),
-        }
-        assert add_default["output_sockets"] == {"result": OutputSocket(name="result", type=int)}
-        assert add_default["visits"] == 0
-
-        ## double
-        double = pipe.graph.nodes["double"]
-        assert double["instance"]
-        assert double["input_sockets"] == {"value": InputSocket(name="value", type=int, senders=["add_two"])}
-        assert double["output_sockets"] == {"value": OutputSocket(name="value", type=int, receivers=["add_default"])}
-        assert double["visits"] == 0
-
-        # Connections
-        connections = list(pipe.graph.edges(data=True))
-        assert len(connections) == 2
-        assert connections[0] == (
-            "add_two",
-            "double",
-            {
-                "conn_type": "int",
-                "conversion_strategy": None,
-                "from_socket": OutputSocket(name="result", type=int, receivers=["double"]),
-                "to_socket": InputSocket(name="value", type=int, senders=["add_two"]),
-                "mandatory": True,
-            },
-        )
-        assert connections[1] == (
-            "double",
-            "add_default",
-            {
-                "conn_type": "int",
-                "conversion_strategy": None,
-                "from_socket": OutputSocket(name="value", type=int, receivers=["add_default"]),
-                "to_socket": InputSocket(name="value", type=int, senders=["double"]),
-                "mandatory": True,
-            },
-        )
-
-    # TODO: Remove this, this should be a component test.
-    # The pipeline can't handle this in any case nor way.
-    def test_from_dict_with_callbacks(self):
-        data = {
-            "metadata": {"test": "test"},
-            "components": {
-                "add_two": {
-                    "type": "haystack.testing.sample_components.add_value.AddFixedValue",
-                    "init_parameters": {"add": 2},
-                },
-                "add_default": {
-                    "type": "haystack.testing.sample_components.add_value.AddFixedValue",
-                    "init_parameters": {"add": 1},
-                },
-                "double": {"type": "haystack.testing.sample_components.double.Double", "init_parameters": {}},
-                "greet": {
-                    "type": "haystack.testing.sample_components.greet.Greet",
-                    "init_parameters": {"message": "test"},
-                },
-            },
-            "connections": [
-                {"sender": "add_two.result", "receiver": "double.value"},
-                {"sender": "double.value", "receiver": "add_default.value"},
-            ],
-        }
-
-        components_seen_in_callback = []
-
-        def component_pre_init_callback(name, component_cls, init_params):
-            assert name in ["add_two", "add_default", "double", "greet"]
-            assert component_cls in [AddFixedValue, Double, Greet]
-
-            if name == "add_two":
-                assert init_params == {"add": 2}
-            elif name == "add_default":
-                assert init_params == {"add": 1}
-            elif name == "greet":
-                assert init_params == {"message": "test"}
-
-            components_seen_in_callback.append(name)
-
-        pipe = PipelineBase.from_dict(
-            data, callbacks=DeserializationCallbacks(component_pre_init=component_pre_init_callback)
-        )
-        assert components_seen_in_callback == ["add_two", "add_default", "double", "greet"]
-        add_two = pipe.graph.nodes["add_two"]["instance"]
-        assert add_two.add == 2
-        add_default = pipe.graph.nodes["add_default"]["instance"]
-        assert add_default.add == 1
-        greet = pipe.graph.nodes["greet"]["instance"]
-        assert greet.message == "test"
-        assert greet.log_level == "INFO"
-
-        def component_pre_init_callback_modify(name, component_cls, init_params):
-            assert name in ["add_two", "add_default", "double", "greet"]
-            assert component_cls in [AddFixedValue, Double, Greet]
-
-            if name == "add_two":
-                init_params["add"] = 3
-            elif name == "add_default":
-                init_params["add"] = 0
-            elif name == "greet":
-                init_params["message"] = "modified test"
-                init_params["log_level"] = "DEBUG"
-
-        pipe = PipelineBase.from_dict(
-            data, callbacks=DeserializationCallbacks(component_pre_init=component_pre_init_callback_modify)
-        )
-        add_two = pipe.graph.nodes["add_two"]["instance"]
-        assert add_two.add == 3
-        add_default = pipe.graph.nodes["add_default"]["instance"]
-        assert add_default.add == 0
-        greet = pipe.graph.nodes["greet"]["instance"]
-        assert greet.message == "modified test"
-        assert greet.log_level == "DEBUG"
-
-        # Test with a component that internally instantiates another component
-        def component_pre_init_callback_check_class(name, component_cls, init_params):
-            assert name == "fake_component_squared"
-            assert component_cls == FakeComponentSquared
-
-        pipe = PipelineBase()
-        pipe.add_component("fake_component_squared", FakeComponentSquared())
-        pipe = PipelineBase.from_dict(
-            pipe.to_dict(),
-            callbacks=DeserializationCallbacks(component_pre_init=component_pre_init_callback_check_class),
-        )
-        assert type(pipe.graph.nodes["fake_component_squared"]["instance"].inner) == FakeComponent
-
-    def test_from_dict_with_empty_dict(self):
-        assert PipelineBase() == PipelineBase.from_dict({})
-
-    def test_from_dict_with_components_instances(self):
-        add_two = AddFixedValue(add=2)
-        add_default = AddFixedValue()
-        components = {"add_two": add_two, "add_default": add_default}
-        data = {
-            "metadata": {"test": "test"},
-            "components": {
-                "add_two": {},
-                "add_default": {},
-                "double": {"type": "haystack.testing.sample_components.double.Double", "init_parameters": {}},
-            },
-            "connections": [
-                {"sender": "add_two.result", "receiver": "double.value"},
-                {"sender": "double.value", "receiver": "add_default.value"},
-            ],
-        }
-        pipe = PipelineBase.from_dict(data, components=components)
-        assert pipe.metadata == {"test": "test"}
-
-        # Components
-        assert len(pipe.graph.nodes) == 3
-        ## add_two
-        add_two_data = pipe.graph.nodes["add_two"]
-        assert add_two_data["instance"] is add_two
-        assert add_two_data["instance"].add == 2
-        assert add_two_data["input_sockets"] == {
-            "value": InputSocket(name="value", type=int),
-            "add": InputSocket(name="add", type=int | None, default_value=None),
-        }
-        assert add_two_data["output_sockets"] == {"result": OutputSocket(name="result", type=int, receivers=["double"])}
-        assert add_two_data["visits"] == 0
-
-        ## add_default
-        add_default_data = pipe.graph.nodes["add_default"]
-        assert add_default_data["instance"] is add_default
-        assert add_default_data["instance"].add == 1
-        assert add_default_data["input_sockets"] == {
-            "value": InputSocket(name="value", type=int, senders=["double"]),
-            "add": InputSocket(name="add", type=int | None, default_value=None),
-        }
-        assert add_default_data["output_sockets"] == {"result": OutputSocket(name="result", type=int, receivers=[])}
-        assert add_default_data["visits"] == 0
-
-        ## double
-        double = pipe.graph.nodes["double"]
-        assert double["instance"]
-        assert double["input_sockets"] == {"value": InputSocket(name="value", type=int, senders=["add_two"])}
-        assert double["output_sockets"] == {"value": OutputSocket(name="value", type=int, receivers=["add_default"])}
-        assert double["visits"] == 0
-
-        # Connections
-        connections = list(pipe.graph.edges(data=True))
-        assert len(connections) == 2
-        assert connections[0] == (
-            "add_two",
-            "double",
-            {
-                "conn_type": "int",
-                "conversion_strategy": None,
-                "from_socket": OutputSocket(name="result", type=int, receivers=["double"]),
-                "to_socket": InputSocket(name="value", type=int, senders=["add_two"]),
-                "mandatory": True,
-            },
-        )
-        assert connections[1] == (
-            "double",
-            "add_default",
-            {
-                "conn_type": "int",
-                "conversion_strategy": None,
-                "from_socket": OutputSocket(name="value", type=int, receivers=["add_default"]),
-                "to_socket": InputSocket(name="value", type=int, senders=["double"]),
-                "mandatory": True,
-            },
-        )
-
-    def test_from_dict_without_component_type(self):
-        data = {
-            "metadata": {"test": "test"},
-            "components": {"add_two": {"init_parameters": {"add": 2}}},
-            "connections": [],
-        }
-        with pytest.raises(PipelineError) as err:
-            PipelineBase.from_dict(data)
-
-        err.match("Missing 'type' in component 'add_two'")
-
-    def test_from_dict_without_registered_component_type(self):
-        data = {
-            "metadata": {"test": "test"},
-            "components": {"add_two": {"type": "foo.bar.baz", "init_parameters": {"add": 2}}},
-            "connections": [],
-        }
-        with pytest.raises(PipelineError) as err:
-            PipelineBase.from_dict(data)
-
-        err.match(r"Component .+ not imported.")
-
-    def test_from_dict_with_invalid_type(self):
-        data = {
-            "metadata": {"test": "test"},
-            "components": {"add_two": {"type": "", "init_parameters": {"add": 2}}},
-            "connections": [],
-        }
-        with pytest.raises(PipelineError) as err:
-            PipelineBase.from_dict(data)
-
-        err.match(
-            r"Component '' \(name: 'add_two'\) not imported. Please check that the package is installed and the "
-            r"component path is correct."
-        )
-
-    def test_from_dict_with_correct_import_but_invalid_type(self):
-        # Test case: Module imports but component not found in registry.
-        data_registry_error = {
-            "metadata": {"test": "test"},
-            "components": {"add_two": {"type": "haystack.testing.NonExistentComponent", "init_parameters": {"add": 2}}},
-            "connections": [],
-        }
-
-        # Patch thread_safe_import so it doesn't raise an ImportError.
-        with patch("haystack.utils.type_serialization.thread_safe_import") as mock_import:
-            mock_import.return_value = None
-            with pytest.raises(PipelineError) as err_info:
-                PipelineBase.from_dict(data_registry_error)
-            outer_message = str(err_info.value)
-            inner_message = str(err_info.value.__cause__)
-
-            assert "Component 'haystack.testing.NonExistentComponent' (name: 'add_two') not imported." in outer_message
-            assert "Successfully imported module 'haystack.testing' but couldn't find" in inner_message
-            assert "in the component registry." in inner_message
-            assert "registered under a different path." in inner_message
-
-    def test_from_dict_without_connection_sender(self):
-        data = {"metadata": {"test": "test"}, "components": {}, "connections": [{"receiver": "some.receiver"}]}
-        with pytest.raises(PipelineError) as err:
-            PipelineBase.from_dict(data)
-
-        err.match("Missing sender in connection: {'receiver': 'some.receiver'}")
-
-    def test_from_dict_without_connection_receiver(self):
-        data = {"metadata": {"test": "test"}, "components": {}, "connections": [{"sender": "some.sender"}]}
-        with pytest.raises(PipelineError) as err:
-            PipelineBase.from_dict(data)
-
-        err.match("Missing receiver in connection: {'sender': 'some.sender'}")
-
     def test_describe_input_only_no_inputs_components(self):
         A = component_class("A", input_types={}, output={"x": 0})
         B = component_class("B", input_types={}, output={"y": 0})
@@ -1743,6 +1424,369 @@ class TestPipelineBase:
         assert component_name == "branch_joiner"
         # Since branch_joiner and comp3 are in a cycle, their topological sort values are the same
         assert topological_sort == {"branch_joiner": 1, "comp3": 1, "comp1": 0}
+
+
+class TestPipelineBaseFromDict:
+    """Unit tests for ``PipelineBase.from_dict`` and its deserialization safety checks."""
+
+    def test_from_dict(self):
+        data = {
+            "metadata": {"test": "test"},
+            "max_runs_per_component": 101,
+            "components": {
+                "add_two": {
+                    "type": "haystack.testing.sample_components.add_value.AddFixedValue",
+                    "init_parameters": {"add": 2},
+                },
+                "add_default": {
+                    "type": "haystack.testing.sample_components.add_value.AddFixedValue",
+                    "init_parameters": {"add": 1},
+                },
+                "double": {"type": "haystack.testing.sample_components.double.Double", "init_parameters": {}},
+            },
+            "connections": [
+                {"sender": "add_two.result", "receiver": "double.value"},
+                {"sender": "double.value", "receiver": "add_default.value"},
+            ],
+        }
+        pipe = PipelineBase.from_dict(data)
+
+        assert pipe.metadata == {"test": "test"}
+        assert pipe._max_runs_per_component == 101
+
+        # Components
+        assert len(pipe.graph.nodes) == 3
+        ## add_two
+        add_two = pipe.graph.nodes["add_two"]
+        assert add_two["instance"].add == 2
+        assert add_two["input_sockets"] == {
+            "value": InputSocket(name="value", type=int),
+            "add": InputSocket(name="add", type=int | None, default_value=None),
+        }
+        assert add_two["output_sockets"] == {"result": OutputSocket(name="result", type=int, receivers=["double"])}
+        assert add_two["visits"] == 0
+
+        ## add_default
+        add_default = pipe.graph.nodes["add_default"]
+        assert add_default["instance"].add == 1
+        assert add_default["input_sockets"] == {
+            "value": InputSocket(name="value", type=int, senders=["double"]),
+            "add": InputSocket(name="add", type=int | None, default_value=None),
+        }
+        assert add_default["output_sockets"] == {"result": OutputSocket(name="result", type=int)}
+        assert add_default["visits"] == 0
+
+        ## double
+        double = pipe.graph.nodes["double"]
+        assert double["instance"]
+        assert double["input_sockets"] == {"value": InputSocket(name="value", type=int, senders=["add_two"])}
+        assert double["output_sockets"] == {"value": OutputSocket(name="value", type=int, receivers=["add_default"])}
+        assert double["visits"] == 0
+
+        # Connections
+        connections = list(pipe.graph.edges(data=True))
+        assert len(connections) == 2
+        assert connections[0] == (
+            "add_two",
+            "double",
+            {
+                "conn_type": "int",
+                "conversion_strategy": None,
+                "from_socket": OutputSocket(name="result", type=int, receivers=["double"]),
+                "to_socket": InputSocket(name="value", type=int, senders=["add_two"]),
+                "mandatory": True,
+            },
+        )
+        assert connections[1] == (
+            "double",
+            "add_default",
+            {
+                "conn_type": "int",
+                "conversion_strategy": None,
+                "from_socket": OutputSocket(name="value", type=int, receivers=["add_default"]),
+                "to_socket": InputSocket(name="value", type=int, senders=["double"]),
+                "mandatory": True,
+            },
+        )
+
+    # TODO: Remove this, this should be a component test.
+    # The pipeline can't handle this in any case nor way.
+    def test_from_dict_with_callbacks(self):
+        data = {
+            "metadata": {"test": "test"},
+            "components": {
+                "add_two": {
+                    "type": "haystack.testing.sample_components.add_value.AddFixedValue",
+                    "init_parameters": {"add": 2},
+                },
+                "add_default": {
+                    "type": "haystack.testing.sample_components.add_value.AddFixedValue",
+                    "init_parameters": {"add": 1},
+                },
+                "double": {"type": "haystack.testing.sample_components.double.Double", "init_parameters": {}},
+                "greet": {
+                    "type": "haystack.testing.sample_components.greet.Greet",
+                    "init_parameters": {"message": "test"},
+                },
+            },
+            "connections": [
+                {"sender": "add_two.result", "receiver": "double.value"},
+                {"sender": "double.value", "receiver": "add_default.value"},
+            ],
+        }
+
+        components_seen_in_callback = []
+
+        def component_pre_init_callback(name, component_cls, init_params):
+            assert name in ["add_two", "add_default", "double", "greet"]
+            assert component_cls in [AddFixedValue, Double, Greet]
+
+            if name == "add_two":
+                assert init_params == {"add": 2}
+            elif name == "add_default":
+                assert init_params == {"add": 1}
+            elif name == "greet":
+                assert init_params == {"message": "test"}
+
+            components_seen_in_callback.append(name)
+
+        pipe = PipelineBase.from_dict(
+            data, callbacks=DeserializationCallbacks(component_pre_init=component_pre_init_callback)
+        )
+        assert components_seen_in_callback == ["add_two", "add_default", "double", "greet"]
+        add_two = pipe.graph.nodes["add_two"]["instance"]
+        assert add_two.add == 2
+        add_default = pipe.graph.nodes["add_default"]["instance"]
+        assert add_default.add == 1
+        greet = pipe.graph.nodes["greet"]["instance"]
+        assert greet.message == "test"
+        assert greet.log_level == "INFO"
+
+        def component_pre_init_callback_modify(name, component_cls, init_params):
+            assert name in ["add_two", "add_default", "double", "greet"]
+            assert component_cls in [AddFixedValue, Double, Greet]
+
+            if name == "add_two":
+                init_params["add"] = 3
+            elif name == "add_default":
+                init_params["add"] = 0
+            elif name == "greet":
+                init_params["message"] = "modified test"
+                init_params["log_level"] = "DEBUG"
+
+        pipe = PipelineBase.from_dict(
+            data, callbacks=DeserializationCallbacks(component_pre_init=component_pre_init_callback_modify)
+        )
+        add_two = pipe.graph.nodes["add_two"]["instance"]
+        assert add_two.add == 3
+        add_default = pipe.graph.nodes["add_default"]["instance"]
+        assert add_default.add == 0
+        greet = pipe.graph.nodes["greet"]["instance"]
+        assert greet.message == "modified test"
+        assert greet.log_level == "DEBUG"
+
+        # Test with a component that internally instantiates another component
+        def component_pre_init_callback_check_class(name, component_cls, init_params):
+            assert name == "fake_component_squared"
+            assert component_cls == FakeComponentSquared
+
+        pipe = PipelineBase()
+        pipe.add_component("fake_component_squared", FakeComponentSquared())
+        pipe = PipelineBase.from_dict(
+            pipe.to_dict(),
+            callbacks=DeserializationCallbacks(component_pre_init=component_pre_init_callback_check_class),
+        )
+        assert type(pipe.graph.nodes["fake_component_squared"]["instance"].inner) == FakeComponent
+
+    def test_from_dict_with_empty_dict(self):
+        assert PipelineBase() == PipelineBase.from_dict({})
+
+    def test_from_dict_with_components_instances(self):
+        add_two = AddFixedValue(add=2)
+        add_default = AddFixedValue()
+        components = {"add_two": add_two, "add_default": add_default}
+        data = {
+            "metadata": {"test": "test"},
+            "components": {
+                "add_two": {},
+                "add_default": {},
+                "double": {"type": "haystack.testing.sample_components.double.Double", "init_parameters": {}},
+            },
+            "connections": [
+                {"sender": "add_two.result", "receiver": "double.value"},
+                {"sender": "double.value", "receiver": "add_default.value"},
+            ],
+        }
+        pipe = PipelineBase.from_dict(data, components=components)
+        assert pipe.metadata == {"test": "test"}
+
+        # Components
+        assert len(pipe.graph.nodes) == 3
+        ## add_two
+        add_two_data = pipe.graph.nodes["add_two"]
+        assert add_two_data["instance"] is add_two
+        assert add_two_data["instance"].add == 2
+        assert add_two_data["input_sockets"] == {
+            "value": InputSocket(name="value", type=int),
+            "add": InputSocket(name="add", type=int | None, default_value=None),
+        }
+        assert add_two_data["output_sockets"] == {"result": OutputSocket(name="result", type=int, receivers=["double"])}
+        assert add_two_data["visits"] == 0
+
+        ## add_default
+        add_default_data = pipe.graph.nodes["add_default"]
+        assert add_default_data["instance"] is add_default
+        assert add_default_data["instance"].add == 1
+        assert add_default_data["input_sockets"] == {
+            "value": InputSocket(name="value", type=int, senders=["double"]),
+            "add": InputSocket(name="add", type=int | None, default_value=None),
+        }
+        assert add_default_data["output_sockets"] == {"result": OutputSocket(name="result", type=int, receivers=[])}
+        assert add_default_data["visits"] == 0
+
+        ## double
+        double = pipe.graph.nodes["double"]
+        assert double["instance"]
+        assert double["input_sockets"] == {"value": InputSocket(name="value", type=int, senders=["add_two"])}
+        assert double["output_sockets"] == {"value": OutputSocket(name="value", type=int, receivers=["add_default"])}
+        assert double["visits"] == 0
+
+        # Connections
+        connections = list(pipe.graph.edges(data=True))
+        assert len(connections) == 2
+        assert connections[0] == (
+            "add_two",
+            "double",
+            {
+                "conn_type": "int",
+                "conversion_strategy": None,
+                "from_socket": OutputSocket(name="result", type=int, receivers=["double"]),
+                "to_socket": InputSocket(name="value", type=int, senders=["add_two"]),
+                "mandatory": True,
+            },
+        )
+        assert connections[1] == (
+            "double",
+            "add_default",
+            {
+                "conn_type": "int",
+                "conversion_strategy": None,
+                "from_socket": OutputSocket(name="value", type=int, receivers=["add_default"]),
+                "to_socket": InputSocket(name="value", type=int, senders=["double"]),
+                "mandatory": True,
+            },
+        )
+
+    def test_from_dict_without_component_type(self):
+        data = {
+            "metadata": {"test": "test"},
+            "components": {"add_two": {"init_parameters": {"add": 2}}},
+            "connections": [],
+        }
+        with pytest.raises(PipelineError) as err:
+            PipelineBase.from_dict(data)
+
+        err.match("Missing 'type' in component 'add_two'")
+
+    def test_from_dict_without_registered_component_type(self):
+        # A component type whose module passes the allowlist but cannot be imported should
+        # surface as a `PipelineError` ("not imported").
+        data = {
+            "metadata": {"test": "test"},
+            "components": {"add_two": {"type": "haystack.does.not.exist.Component", "init_parameters": {"add": 2}}},
+            "connections": [],
+        }
+        with pytest.raises(PipelineError) as err:
+            PipelineBase.from_dict(data)
+
+        err.match(r"Component .+ not imported.")
+
+    def test_from_dict_rejects_untrusted_component_module(self):
+        data = {
+            "metadata": {"test": "test"},
+            "components": {"add_two": {"type": "foo.bar.baz", "init_parameters": {"add": 2}}},
+            "connections": [],
+        }
+        with pytest.raises(DeserializationError, match="not on the trusted-module allowlist"):
+            PipelineBase.from_dict(data)
+
+    def test_from_dict_with_unsafe_bypasses_allowlist(self):
+        # `unsafe=True` bypasses the allowlist but the import itself still fails because the module
+        # is nonexistent — proving that the allowlist check (not the import) is what changes.
+        data = {
+            "metadata": {"test": "test"},
+            "components": {"add_two": {"type": "foo.bar.baz", "init_parameters": {"add": 2}}},
+            "connections": [],
+        }
+        # Sanity check: without ``unsafe=True`` we'd get the allowlist rejection.
+        with pytest.raises(DeserializationError):
+            PipelineBase.from_dict(data)
+        # With ``unsafe=True`` the allowlist is bypassed; we fall through to a normal import error.
+        with pytest.raises(PipelineError, match="not imported"):
+            PipelineBase.from_dict(data, unsafe=True)
+
+    def test_from_dict_with_allowed_modules_kwarg(self):
+        # Passing the third-party module via `allowed_modules` should make the allowlist check pass.
+        data = {
+            "metadata": {"test": "test"},
+            "components": {"add_two": {"type": "foo.bar.baz", "init_parameters": {"add": 2}}},
+            "connections": [],
+        }
+        # Without an extension, the allowlist rejects the module.
+        with pytest.raises(DeserializationError):
+            PipelineBase.from_dict(data)
+        # Passing the matching pattern lets us hit the actual import failure instead.
+        with pytest.raises(PipelineError, match="not imported"):
+            PipelineBase.from_dict(data, allowed_modules=["foo.*"])
+
+    def test_from_dict_with_invalid_type(self):
+        data = {
+            "metadata": {"test": "test"},
+            "components": {"add_two": {"type": "", "init_parameters": {"add": 2}}},
+            "connections": [],
+        }
+        with pytest.raises(PipelineError) as err:
+            PipelineBase.from_dict(data)
+
+        err.match(
+            r"Component '' \(name: 'add_two'\) not imported. Please check that the package is installed and the "
+            r"component path is correct."
+        )
+
+    def test_from_dict_with_correct_import_but_invalid_type(self):
+        # Test case: Module imports but component not found in registry.
+        data_registry_error = {
+            "metadata": {"test": "test"},
+            "components": {"add_two": {"type": "haystack.testing.NonExistentComponent", "init_parameters": {"add": 2}}},
+            "connections": [],
+        }
+
+        # Patch thread_safe_import so it doesn't raise an ImportError.
+        with patch("haystack.utils.type_serialization.thread_safe_import") as mock_import:
+            mock_import.return_value = None
+            with pytest.raises(PipelineError) as err_info:
+                PipelineBase.from_dict(data_registry_error)
+            outer_message = str(err_info.value)
+            inner_message = str(err_info.value.__cause__)
+
+            assert "Component 'haystack.testing.NonExistentComponent' (name: 'add_two') not imported." in outer_message
+            assert "Successfully imported module 'haystack.testing' but couldn't find" in inner_message
+            assert "in the component registry." in inner_message
+            assert "registered under a different path." in inner_message
+
+    def test_from_dict_without_connection_sender(self):
+        data = {"metadata": {"test": "test"}, "components": {}, "connections": [{"receiver": "some.receiver"}]}
+        with pytest.raises(PipelineError) as err:
+            PipelineBase.from_dict(data)
+
+        err.match("Missing sender in connection: {'receiver': 'some.receiver'}")
+
+    def test_from_dict_without_connection_receiver(self):
+        data = {"metadata": {"test": "test"}, "components": {}, "connections": [{"sender": "some.sender"}]}
+        with pytest.raises(PipelineError) as err:
+            PipelineBase.from_dict(data)
+
+        err.match("Missing receiver in connection: {'sender': 'some.sender'}")
 
 
 class TestPipelineConnect:

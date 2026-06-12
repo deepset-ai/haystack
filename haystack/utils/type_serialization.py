@@ -12,6 +12,7 @@ from types import GenericAlias, ModuleType, NoneType, UnionType
 from typing import Any, Union, get_args
 
 from haystack.core.errors import DeserializationError
+from haystack.core.serialization_security import _check_builtin_is_type, _check_module_allowed
 
 _import_lock = Lock()
 
@@ -147,12 +148,18 @@ def deserialize_type(type_str: str) -> Any:
     and then retrieve the type object from it. It also handles nested generic types like
     `list[dict[int, str]]`.
 
+    Every module path with a `.` prefix is checked against the deserialization
+    allowlist (see `haystack.core.serialization_security`) before being imported. Modules outside
+    the allowlist are rejected with a `DeserializationError`. Builtin and `typing`/`collections`
+    names without a module prefix bypass this check.
+
     :param type_str:
         The string representation of the type's full import path.
     :returns:
         The deserialized type object.
     :raises DeserializationError:
-        If the type cannot be deserialized due to missing module or type.
+        If the module is not on the deserialization allowlist, or if the type cannot be
+        deserialized due to a missing module or type.
     """
     # Handle PEP 604 union syntax at the top level (e.g., "str | int", "str | None")
     pep604_union_args = _parse_pep604_union_args(type_str)
@@ -181,6 +188,8 @@ def deserialize_type(type_str: str) -> Any:
         module_name = ".".join(parts[:-1])
         type_name = parts[-1]
 
+        _check_module_allowed(module_name)
+
         module = sys.modules.get(module_name)
         if module is None:
             try:
@@ -190,26 +199,35 @@ def deserialize_type(type_str: str) -> Any:
 
         # Get the class from the module
         if hasattr(module, type_name):
-            return getattr(module, type_name)
+            resolved = getattr(module, type_name)
+            # `builtins` is on the allowlist; a type annotation must resolve to an actual type. This
+            # lets builtin types through (e.g. `builtins.memoryview`) while rejecting builtin
+            # functions like `builtins.eval`.
+            if module_name == "builtins":
+                _check_builtin_is_type(resolved, type_str)
+            return resolved
 
         raise DeserializationError(f"Could not locate the type: {type_name} in the module: {module_name}")
 
     # No module prefix, check builtins and typing
-    # First check builtins
+    # Special cases for None / NoneType first: `getattr(builtins, "None")` returns the `None`
+    # singleton (not a type), so these must be handled before the builtins type gate below.
+    if type_str == "None":
+        return None
+    if type_str == "NoneType":
+        return NoneType
+
+    # Then check builtins
     if hasattr(builtins, type_str):
-        return getattr(builtins, type_str)
+        resolved = getattr(builtins, type_str)
+        # This bare-name path never consults the allowlist. A type annotation must resolve to an
+        # actual type, so builtin functions like `eval`/`exec` are rejected while types pass.
+        _check_builtin_is_type(resolved, type_str)
+        return resolved
 
     # Then check typing
     if hasattr(typing, type_str):
         return getattr(typing, type_str)
-
-    # Special case for NoneType
-    if type_str == "NoneType":
-        return NoneType
-
-    # Special case for None
-    if type_str == "None":
-        return None
 
     raise DeserializationError(f"Could not deserialize type: {type_str}")
 

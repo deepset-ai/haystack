@@ -1536,6 +1536,7 @@ class TestAgentTracing:
             "haystack.pipeline.output_data",
             "haystack.pipeline.metadata",
             "haystack.pipeline.max_runs_per_component",
+            "haystack.pipeline.execution_mode",
         }
 
         # Clean up

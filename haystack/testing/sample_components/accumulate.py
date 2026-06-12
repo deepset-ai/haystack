@@ -2,15 +2,13 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-import builtins
-import sys
 from collections.abc import Callable
-from importlib import import_module
 from typing import Any
 
 from haystack.core.component import component
 from haystack.core.errors import ComponentDeserializationError
 from haystack.core.serialization import default_to_dict
+from haystack.utils.callable_serialization import deserialize_callable, serialize_callable
 
 
 def _default_function(first: int, second: int) -> int:
@@ -42,15 +40,7 @@ class Accumulate:
 
     def to_dict(self) -> dict[str, Any]:
         """Converts the component to a dictionary"""
-        module = sys.modules.get(self.function.__module__)
-        if not module:
-            raise ValueError("Could not locate the import module.")
-        if module == builtins:
-            function_name = self.function.__name__
-        else:
-            function_name = f"{module.__name__}.{self.function.__name__}"
-
-        return default_to_dict(self, function=function_name)
+        return default_to_dict(self, function=serialize_callable(self.function))
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "Accumulate":
@@ -62,13 +52,10 @@ class Accumulate:
 
         init_params = data.get("init_parameters", {})
 
-        accumulator_function = None
-        if "function" in init_params:
-            parts = init_params["function"].split(".")
-            module_name = ".".join(parts[:-1])
-            function_name = parts[-1]
-            module = import_module(module_name)
-            accumulator_function = getattr(module, function_name)
+        # Resolve the function through `deserialize_callable` so it passes the deserialization
+        # allowlist instead of importing arbitrary handles directly.
+        function = init_params.get("function")
+        accumulator_function = deserialize_callable(function) if function else None
 
         return cls(function=accumulator_function)
 

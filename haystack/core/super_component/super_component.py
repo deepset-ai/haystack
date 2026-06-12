@@ -9,7 +9,6 @@ from typing import Any, TypeVar
 
 from haystack import logging
 from haystack.core.component.component import component
-from haystack.core.pipeline.async_pipeline import AsyncPipeline
 from haystack.core.pipeline.pipeline import Pipeline
 from haystack.core.pipeline.utils import parse_connect_string
 from haystack.core.serialization import default_from_dict, default_to_dict, generate_qualified_class_name
@@ -36,14 +35,14 @@ class InvalidMappingValueError(Exception):
 class _SuperComponent:
     def __init__(
         self,
-        pipeline: Pipeline | AsyncPipeline,
+        pipeline: Pipeline,
         input_mapping: dict[str, list[str]] | None = None,
         output_mapping: dict[str, str] | None = None,
     ) -> None:
         """
         Creates a SuperComponent with optional input and output mappings.
 
-        :param pipeline: The pipeline instance or async pipeline instance to be wrapped
+        :param pipeline: The pipeline instance to be wrapped
         :param input_mapping: A dictionary mapping component input names to pipeline input socket paths.
             If not provided, a default input mapping will be created based on all pipeline inputs.
             Example:
@@ -67,7 +66,7 @@ class _SuperComponent:
         if pipeline is None:
             raise ValueError("Pipeline must be provided to SuperComponent.")
 
-        self.pipeline: Pipeline | AsyncPipeline = pipeline
+        self.pipeline: Pipeline = pipeline
         self._warmed_up = False
 
         # Determine input types based on pipeline and mapping
@@ -141,12 +140,7 @@ class _SuperComponent:
         :param kwargs: Keyword arguments matching the SuperComponent's input names
         :returns:
             Dictionary containing the SuperComponent's output values
-        :raises TypeError:
-            If the pipeline is not an AsyncPipeline
         """
-        if not isinstance(self.pipeline, AsyncPipeline):
-            raise TypeError("Pipeline is not an AsyncPipeline. run_async is not supported.")
-
         filtered_inputs = {param: value for param, value in kwargs.items() if value != _delegate_default}
         pipeline_inputs = self._map_explicit_inputs(input_mapping=self.input_mapping, inputs=filtered_inputs)
         pipeline_outputs = await self.pipeline.run_async(data=pipeline_inputs)
@@ -384,13 +378,11 @@ class _SuperComponent:
         :return: Dictionary containing serialized SuperComponent data
         """
         serialized_pipeline = self.pipeline.to_dict()
-        is_pipeline_async = isinstance(self.pipeline, AsyncPipeline)
         serialized = default_to_dict(
             self,
             pipeline=serialized_pipeline,
             input_mapping=self._original_input_mapping,
             output_mapping=self._original_output_mapping,
-            is_pipeline_async=is_pipeline_async,
         )
         serialized["type"] = generate_qualified_class_name(SuperComponent)
         return serialized
@@ -481,9 +473,9 @@ class SuperComponent(_SuperComponent):
         :returns:
             The deserialized SuperComponent.
         """
-        is_pipeline_async = data["init_parameters"].pop("is_pipeline_async", False)
-        pipeline_class = AsyncPipeline if is_pipeline_async else Pipeline
-        pipeline = pipeline_class.from_dict(data["init_parameters"]["pipeline"])
+        # `is_pipeline_async` is a legacy key kept only for backward compatibility.
+        data["init_parameters"].pop("is_pipeline_async", None)
+        pipeline = Pipeline.from_dict(data["init_parameters"]["pipeline"])
         data["init_parameters"]["pipeline"] = pipeline
         return default_from_dict(cls, data)
 
@@ -568,7 +560,7 @@ def super_component(cls: type[T]) -> type[T]:
     3. Adds initialization logic to properly set up the SuperComponent
 
     The decorated class should define:
-    - pipeline: A Pipeline or AsyncPipeline instance in the __init__ method
+    - pipeline: A Pipeline instance in the __init__ method
     - input_mapping: Dictionary mapping component inputs to pipeline inputs (optional)
     - output_mapping: Dictionary mapping pipeline outputs to component outputs (optional)
     """
