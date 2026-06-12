@@ -12,6 +12,7 @@ from unittest.mock import Mock
 import pytest
 
 from haystack import component, tracing
+from haystack.core.serialization import allow_deserialization_module
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.testing.test_utils import set_all_seeds
 from test.tracing.utils import SpyingTracer
@@ -21,6 +22,21 @@ set_all_seeds(0)
 
 # Tracing is disable by default to avoid failures in CI
 tracing.disable_tracing()
+
+
+# Tests legitimately deserialize callables/components/types from a handful of modules that aren't
+# part of the default Haystack allowlist. We extend the allowlist explicitly.
+#
+# Tests that exercise the rejection path themselves install a clean context (and clear the
+# process-wide patterns); see `test/core/test_serialization_security.py`.
+for _pattern in (
+    "test_*",  # top-level `test_<name>` modules (pytest rootdir-level files)
+    "*.test_*",  # `<subdir>.test_<name>` modules (pytest treats sub-packages this way)
+    "test.*",  # modules inside the proper `test` package (with __init__.py)
+    "pydantic",  # pydantic models used in base-serialization tests
+    "httpx",  # used in callable-serialization tests
+):
+    allow_deserialization_module(_pattern)
 
 
 @pytest.fixture()

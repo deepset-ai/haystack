@@ -113,11 +113,15 @@ class TestMemoryEmbeddingRetriever:
             InMemoryEmbeddingRetriever.from_dict(data)
 
     def test_from_dict_nonexisting_docstore(self):
+        # Use a type whose module passes the deserialization allowlist (haystack.*) but cannot be
+        # resolved, so we still exercise the "import failed" code path rather than the allowlist gate.
         data = {
             "type": "haystack.components.retrievers.in_memory.embedding_retriever.InMemoryEmbeddingRetriever",
-            "init_parameters": {"document_store": {"type": "Nonexisting.Docstore", "init_parameters": {}}},
+            "init_parameters": {"document_store": {"type": "haystack.does.not.exist.Docstore", "init_parameters": {}}},
         }
-        with pytest.raises(ImportError, match=r"Failed to deserialize 'document_store':.*Nonexisting\.Docstore"):
+        with pytest.raises(
+            ImportError, match=r"Failed to deserialize 'document_store':.*haystack\.does\.not\.exist\.Docstore"
+        ):
             InMemoryEmbeddingRetriever.from_dict(data)
 
     def test_valid_run(self):
