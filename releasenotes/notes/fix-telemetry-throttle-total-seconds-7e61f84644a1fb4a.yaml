@@ -1,8 +1,0 @@
----
-fixes:
-  - |
-    Fixed the telemetry rate limiting check using ``timedelta.seconds`` instead of
-    ``timedelta.total_seconds()``. ``timedelta.seconds`` only reflects the seconds component
-    of the elapsed time (0-86399) and ignores full days, so a pipeline run happening slightly
-    more than a whole number of days after the previous telemetry event could be wrongly
-    throttled as if it had run within the last minute.
