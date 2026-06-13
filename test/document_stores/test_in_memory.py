@@ -173,6 +173,21 @@ class TestMemoryDocumentStore(
         assert len(results) == 0
         assert "No documents found for BM25 retrieval. Returning empty list." in caplog.text
 
+    @pytest.mark.parametrize("bm25_algorithm", ["BM25Okapi", "BM25L", "BM25Plus"])
+    def test_bm25_retrieval_with_tokenless_corpus(self, bm25_algorithm: str) -> None:
+        # Regression test for #11598: a corpus where every document has empty (but not None)
+        # content must not raise ZeroDivisionError at query time.
+        store = InMemoryDocumentStore(bm25_algorithm=bm25_algorithm)
+        store.write_documents([Document(content="", meta={"i": 1}), Document(content="", meta={"i": 2})])
+        results = store.bm25_retrieval(query="anything")
+        if bm25_algorithm == "BM25Okapi":
+            # Unscaled BM25Okapi keeps non-positive scores, so documents are returned with score 0.0.
+            assert len(results) == 2
+            assert all(doc.score == 0.0 for doc in results)
+        else:
+            # BM25L / BM25Plus filter out non-positive scores.
+            assert results == []
+
     def test_bm25_retrieval_empty_query(self, document_store: InMemoryDocumentStore) -> None:
         # Tests if the bm25_retrieval method returns a document when the query is an empty string.
         docs = [Document(content="Hello world"), Document(content="Haystack supports multiple languages")]
