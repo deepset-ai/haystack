@@ -65,6 +65,17 @@ def test_pipeline_running(telemetry, pipeline_class):
     )
 
 
+def test_send_telemetry_preserves_function_metadata():
+    """Regression test for #11568.
+
+    The `send_telemetry` decorator must use `functools.wraps`, so decorated functions keep
+    their original name, docstring, and annotations.
+    """
+    assert pipeline_running.__name__ == "pipeline_running"
+    assert pipeline_running.__doc__ is not None
+    assert "Collects telemetry data for a pipeline run" in pipeline_running.__doc__
+
+
 @patch("haystack.telemetry._telemetry.telemetry")
 def test_pipeline_running_with_non_serializable_component(telemetry):
     telemetry.send_event = Mock()

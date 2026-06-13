@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    The `send_telemetry` decorator now uses `functools.wraps`, so decorated telemetry
+    functions such as `pipeline_running` keep their original metadata (name, docstring, and
+    annotations). Previously this metadata was lost, which could make stack traces and
+    generated API documentation confusing.
