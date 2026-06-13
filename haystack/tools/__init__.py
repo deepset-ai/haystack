@@ -15,6 +15,11 @@ from haystack.tools.component_tool import ComponentTool
 from haystack.tools.pipeline_tool import PipelineTool
 from haystack.tools.serde_utils import deserialize_tools_or_toolset_inplace, serialize_tools_or_toolset
 from haystack.tools.utils import flatten_tools_or_toolsets, warm_up_tools
+from haystack.tools.document_store_tools import (
+    GetMetadataFieldRangeTool,
+    GetMetadataFieldValuesTool,
+    ListMetadataFieldsTool,
+)
 
 # Type alias for tools parameter - allows mixing Tools and Toolsets in a sequence
 # Accepts either:
@@ -28,6 +33,9 @@ __all__ = [
     "create_tool_from_function",
     "deserialize_tools_or_toolset_inplace",
     "flatten_tools_or_toolsets",
+    "GetMetadataFieldRangeTool",
+    "GetMetadataFieldValuesTool",
+    "ListMetadataFieldsTool",
     "PipelineTool",
     "serialize_tools_or_toolset",
     "Tool",

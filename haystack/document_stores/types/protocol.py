@@ -133,3 +133,32 @@ class DocumentStore(Protocol):
         :param document_ids: the object_ids to delete
         """
         ...
+
+    def get_metadata_fields_info(self) -> dict[str, Any]:
+        """
+        Returns information about all metadata fields present in the store and their types.
+
+        :returns: A dictionary mapping field names to their type information.
+        """
+        ...
+
+    def get_metadata_field_unique_values(
+        self, metadata_field: str, search_term: str | None = None
+    ) -> tuple[list, int]:
+        """
+        Returns the distinct values for a given metadata field.
+
+        :param metadata_field: The metadata field name to inspect.
+        :param search_term: Optional string to filter the returned values.
+        :returns: A tuple of (list of unique values, total count of unique values).
+        """
+        ...
+
+    def get_metadata_field_min_max(self, metadata_field: str) -> dict[str, Any]:
+        """
+        Returns the minimum and maximum values for a numeric metadata field.
+
+        :param metadata_field: The numeric metadata field name to inspect.
+        :returns: A dictionary with ``min`` and ``max`` keys.
+        """
+        ...
