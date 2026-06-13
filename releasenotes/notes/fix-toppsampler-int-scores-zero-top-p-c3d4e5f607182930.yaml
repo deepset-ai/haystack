@@ -1,0 +1,10 @@
+---
+fixes:
+  - |
+    `TopPSampler` now treats integer document scores like floats, so top-p filtering is no
+    longer silently skipped when scores come from external rankers or APIs as integers.
+    Booleans are still rejected as invalid scores.
+  - |
+    `TopPSampler.run(top_p=0.0)` is now respected instead of falling back to the value set in
+    the constructor. Passing `0.0` selects only the highest-scoring document, matching the
+    behavior of `TopPSampler(top_p=0.0)`.

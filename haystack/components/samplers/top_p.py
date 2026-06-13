@@ -80,7 +80,7 @@ class TopPSampler:
         if not documents:
             return {"documents": []}
 
-        top_p = top_p or self.top_p
+        top_p = top_p if top_p is not None else self.top_p
         if not 0 <= top_p <= 1:
             raise ValueError(f"top_p must be between 0 and 1. Got {top_p}.")
 
@@ -140,7 +140,9 @@ class TopPSampler:
         else:
             score = doc.score
 
-        if not isinstance(score, float):
+        # Accept both ``int`` and ``float`` scores (external rankers/APIs often emit ints),
+        # but reject ``bool`` since it is a subclass of ``int`` and is not a real score.
+        if isinstance(score, bool) or not isinstance(score, (int, float)):
             score = None
         return score
 

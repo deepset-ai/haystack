@@ -95,6 +95,31 @@ class TestTopPSampler:
         assert docs[0].content == "Sarajevo"
         assert "Top-p sampling with p=" in caplog.text
 
+    def test_run_integer_scores(self) -> None:
+        # Regression test for #11595: integer scores must participate in sampling
+        # rather than being treated as missing, which silently disabled filtering.
+        sampler = TopPSampler(top_p=0.5)
+        docs = [Document(content="a", score=10), Document(content="b", score=1)]
+        output = sampler.run(documents=docs)["documents"]
+        assert len(output) == 1
+        assert output[0].content == "a"
+
+    def test_run_rejects_boolean_scores(self, caplog: pytest.LogCaptureFixture) -> None:
+        # ``bool`` is a subclass of ``int`` but is not a valid score.
+        sampler = TopPSampler(top_p=0.95)
+        docs = [Document(content="a", score=True), Document(content="b", score=False)]
+        output = sampler.run(documents=docs)["documents"]
+        assert len(output) == 2
+        assert "missing scores" in caplog.text
+
+    def test_run_top_p_0_override(self, documents_with_score: list[Document]) -> None:
+        # Regression test for #11595: ``run(top_p=0.0)`` must not fall back to the
+        # constructor value just because ``0.0`` is falsy.
+        sampler = TopPSampler(top_p=1.0)
+        output = sampler.run(documents=documents_with_score, top_p=0.0)["documents"]
+        assert len(output) == 1
+        assert output[0].content == "Sarajevo"
+
     def test_run_returns_empty_list_no_documents(self) -> None:
         sampler = TopPSampler()
         output = sampler.run(documents=[])
