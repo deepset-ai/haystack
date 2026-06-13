@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    Fixed telemetry rate limiting to compare the real elapsed time using
+    `timedelta.total_seconds()` instead of `timedelta.seconds`. Previously, in long-lived
+    processes (for example notebook kernels), a pipeline run happening slightly more than a
+    whole number of days after the previous telemetry event was wrongly throttled, because
+    `timedelta.seconds` ignores the `days` component.

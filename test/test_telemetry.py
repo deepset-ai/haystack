@@ -66,6 +66,35 @@ def test_pipeline_running(telemetry, pipeline_class):
 
 
 @patch("haystack.telemetry._telemetry.telemetry")
+def test_pipeline_running_sends_event_after_day_multiple_gap(telemetry):
+    """Regression test for #11589.
+
+    The throttle must compare the real elapsed time. Using `timedelta.seconds` (which
+    ignores the `days` component) wrongly suppressed events that happened slightly more
+    than a whole number of days after the previous one.
+    """
+    telemetry.send_event = Mock()
+
+    @component
+    class Component:
+        @component.output_types(value=int)
+        def run(self):
+            pass
+
+    pipe = Pipeline()
+    pipe.add_component("component", Component())
+    pipeline_running(pipe)
+    telemetry.send_event.assert_called_once()
+
+    # Pretend more than a day has passed since the last event (1 day + 5 seconds).
+    pipe._last_telemetry_sent = pipe._last_telemetry_sent - datetime.timedelta(days=1, seconds=5)
+
+    telemetry.send_event.reset_mock()
+    pipeline_running(pipe)
+    telemetry.send_event.assert_called_once()
+
+
+@patch("haystack.telemetry._telemetry.telemetry")
 def test_pipeline_running_with_non_serializable_component(telemetry):
     telemetry.send_event = Mock()
 
