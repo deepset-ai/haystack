@@ -469,3 +469,53 @@ class TestSuperComponent:
 
         result = await deserialized_super_component.run_async()
         assert result == {"output": "Hello world"}
+
+
+@component
+class _CaptureValue:
+    """Captures whatever value reaches the inner pipeline, for both sync and async runs."""
+
+    def __init__(self) -> None:
+        self.captured: dict[str, Any] = {}
+
+    @component.output_types(seen=bool)
+    def run(self, value: Any = None) -> dict[str, bool]:
+        self.captured["value"] = value
+        return {"seen": True}
+
+    @component.output_types(seen=bool)
+    async def run_async(self, value: Any = None) -> dict[str, bool]:
+        self.captured["value"] = value
+        return {"seen": True}
+
+
+class TestSuperComponentDelegateDefaultFiltering:
+    """
+    Regression for the `_delegate_default` filter: must be `is not`, not `!=`, otherwise
+    numpy / pandas / torch inputs raise `ValueError: The truth value of ... is ambiguous`.
+    """
+
+    def test_run_accepts_numpy_ndarray_input(self):
+        np = pytest.importorskip("numpy")
+
+        inner = _CaptureValue()
+        pipe = Pipeline()
+        pipe.add_component("capture", inner)
+
+        result = SuperComponent(pipe).run(value=np.array([1, 2, 3]))
+
+        assert result == {"seen": True}
+        assert np.array_equal(inner.captured["value"], np.array([1, 2, 3]))
+
+    @pytest.mark.asyncio
+    async def test_run_async_accepts_numpy_ndarray_input(self):
+        np = pytest.importorskip("numpy")
+
+        inner = _CaptureValue()
+        pipe = AsyncPipeline()
+        pipe.add_component("capture", inner)
+
+        result = await SuperComponent(pipe).run_async(value=np.array([4, 5, 6]))
+
+        assert result == {"seen": True}
+        assert np.array_equal(inner.captured["value"], np.array([4, 5, 6]))
