@@ -516,3 +516,17 @@ def test_run_with_jq_schema_content_key_and_extra_meta_fields_literal(tmpdir):
         "and for his related discovery of nuclear reactions brought about by slow neutrons"
     )
     assert result["documents"][3].meta == {"id": "46", "firstname": "Enrico", "surname": "Fermi", "share": "1"}
+
+
+def test_run_with_content_key_skips_null_value(caplog):
+    # A null value for the content key must be skipped (like dict/list values) rather
+    # than producing a Document with content=None, which breaks downstream text components.
+    valid = ByteStream.from_string(json.dumps({"text": "hello", "title": "a"}))
+    null_content = ByteStream.from_string(json.dumps({"text": None, "title": "b"}))
+    converter = JSONConverter(content_key="text")
+
+    with caplog.at_level(logging.WARNING):
+        result = converter.run(sources=[valid, null_content])
+
+    assert [doc.content for doc in result["documents"]] == ["hello"]
+    assert "null value" in caplog.text

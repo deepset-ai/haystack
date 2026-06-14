@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    `JSONConverter` now skips records whose `content_key` value is `null` (with a
+    warning) instead of creating a `Document` with `content=None`. This matches the
+    existing handling of non-scalar (dict/list) values and prevents invalid
+    documents from breaking downstream text components.

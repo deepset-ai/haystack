@@ -226,6 +226,13 @@ class JSONConverter:
                     continue
 
                 text = obj[self._content_key]
+                if text is None:
+                    logger.warning(
+                        "Content key '{content_key}' has a null value in {obj}. Skipping it.",
+                        content_key=self._content_key,
+                        obj=obj,
+                    )
+                    continue
                 if isinstance(text, (dict, list)):
                     logger.warning("Expected a scalar value but got {obj}. Skipping it.", obj=obj)
                     continue
