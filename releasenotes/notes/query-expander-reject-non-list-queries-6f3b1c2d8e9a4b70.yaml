@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    `QueryExpander` now ignores malformed responses where `queries` is not a list, so a string response is no longer
+    split into single-character queries.
