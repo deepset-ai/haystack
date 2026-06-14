@@ -1,0 +1,5 @@
+---
+enhancements:
+  - |
+    Add ``run_async`` to ``DocumentLengthRouter``, enabling it to be used
+    in ``AsyncPipeline`` without blocking the event loop.

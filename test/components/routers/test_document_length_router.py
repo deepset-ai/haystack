@@ -2,6 +2,8 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import pytest
+
 from haystack.components.routers import DocumentLengthRouter
 from haystack.core.serialization import component_from_dict, component_to_dict
 from haystack.dataclasses import Document
@@ -60,3 +62,27 @@ class TestDocumentLengthRouter:
 
         assert isinstance(loaded_router, DocumentLengthRouter)
         assert loaded_router.threshold == 10
+
+
+class TestDocumentLengthRouterAsync:
+    @pytest.mark.asyncio
+    async def test_run_async_routes_correctly(self):
+        docs = [Document(content="Hi"), Document(content="Long document " * 20)]
+        router = DocumentLengthRouter(threshold=10)
+        result = await router.run_async(documents=docs)
+        assert result["short_documents"] == [docs[0]]
+        assert result["long_documents"] == [docs[1]]
+
+    @pytest.mark.asyncio
+    async def test_run_async_with_null_content(self):
+        docs = [Document(content=None), Document(content="Long document " * 20)]
+        router = DocumentLengthRouter(threshold=10)
+        result = await router.run_async(documents=docs)
+        assert result["short_documents"] == [docs[0]]
+        assert result["long_documents"] == [docs[1]]
+
+    @pytest.mark.asyncio
+    async def test_run_async_matches_sync(self):
+        docs = [Document(content="Short"), Document(content="Long " * 20)]
+        router = DocumentLengthRouter(threshold=10)
+        assert await router.run_async(documents=docs) == router.run(documents=docs)

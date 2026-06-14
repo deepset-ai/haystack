@@ -52,6 +52,23 @@ class DocumentLengthRouter:
         self.threshold = threshold
 
     @component.output_types(short_documents=list[Document], long_documents=list[Document])
+    async def run_async(self, documents: list[Document]) -> dict[str, list[Document]]:
+        """
+        Asynchronously categorize input documents into groups based on the length of the `content` field.
+
+        Delegates to the synchronous :meth:`run` since this component performs no I/O.
+
+        :param documents:
+            A list of documents to be categorized.
+
+        :returns: A dictionary with the following keys:
+            - `short_documents`: A list of documents where `content` is None or the length of `content` is less than or
+               equal to the threshold.
+            - `long_documents`: A list of documents where the length of `content` is greater than the threshold.
+        """
+        return self.run(documents=documents)
+
+    @component.output_types(short_documents=list[Document], long_documents=list[Document])
     def run(self, documents: list[Document]) -> dict[str, list[Document]]:
         """
         Categorize input documents into groups based on the length of the `content` field.
