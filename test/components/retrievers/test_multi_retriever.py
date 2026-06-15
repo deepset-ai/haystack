@@ -2,13 +2,14 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import os
 from typing import Any
 from unittest.mock import ANY
 
 import pytest
 
 from haystack import Document, component
-from haystack.components.embedders import SentenceTransformersDocumentEmbedder, SentenceTransformersTextEmbedder
+from haystack.components.embedders import OpenAIDocumentEmbedder, OpenAITextEmbedder
 from haystack.components.retrievers import (
     InMemoryBM25Retriever,
     InMemoryEmbeddingRetriever,
@@ -75,7 +76,7 @@ def sample_documents():
 def document_store_with_embeddings(sample_documents):
     """Create a document store populated with embedded documents."""
     document_store = InMemoryDocumentStore()
-    doc_embedder = SentenceTransformersDocumentEmbedder(model="sentence-transformers/all-MiniLM-L6-v2")
+    doc_embedder = OpenAIDocumentEmbedder()
     doc_writer = DocumentWriter(document_store=document_store, policy=DuplicatePolicy.SKIP)
     embedded_docs = doc_embedder.run(sample_documents)["documents"]
     doc_writer.run(documents=embedded_docs)
@@ -91,7 +92,7 @@ def bm25_retriever(document_store_with_embeddings):
 def embedding_retriever(document_store_with_embeddings):
     return TextEmbeddingRetriever(
         retriever=InMemoryEmbeddingRetriever(document_store=document_store_with_embeddings),
-        text_embedder=SentenceTransformersTextEmbedder(model="sentence-transformers/all-MiniLM-L6-v2"),
+        text_embedder=OpenAITextEmbedder(),
     )
 
 
@@ -312,21 +313,24 @@ class TestMultiRetriever:
         with pytest.raises(ImportError, match="Could not import class"):
             MultiRetriever.from_dict(data)
 
+    @pytest.mark.skipif(os.environ.get("OPENAI_API_KEY", "") == "", reason="OPENAI_API_KEY is not set")
     @pytest.mark.integration
-    def test_run_with_filters(self, del_hf_env_vars, bm25_retriever, embedding_retriever):
+    def test_run_with_filters(self, bm25_retriever, embedding_retriever):
         retriever = MultiRetriever(retrievers={"bm25": bm25_retriever, "embedding": embedding_retriever})
         result = retriever.run(query="energy", filters={"field": "meta.category", "operator": "==", "value": "solar"})
         assert len(result["documents"]) == 1
         assert result["documents"][0].meta["category"] == "solar"
 
+    @pytest.mark.skipif(os.environ.get("OPENAI_API_KEY", "") == "", reason="OPENAI_API_KEY is not set")
     @pytest.mark.integration
-    def test_run_with_top_k(self, del_hf_env_vars, bm25_retriever, embedding_retriever):
+    def test_run_with_top_k(self, bm25_retriever, embedding_retriever):
         retriever = MultiRetriever(retrievers={"bm25": bm25_retriever, "embedding": embedding_retriever})
         result = retriever.run(query="energy", top_k=2)
         assert len(result["documents"]) == 2
 
+    @pytest.mark.skipif(os.environ.get("OPENAI_API_KEY", "") == "", reason="OPENAI_API_KEY is not set")
     @pytest.mark.integration
-    def test_run_with_active_retrievers_integration(self, del_hf_env_vars, bm25_retriever, embedding_retriever):
+    def test_run_with_active_retrievers_integration(self, bm25_retriever, embedding_retriever):
         retriever = MultiRetriever(retrievers={"bm25": bm25_retriever, "embedding": embedding_retriever})
         result_bm25_active = retriever.run(query="energy", active_retrievers=["bm25"])
         result_bm25 = bm25_retriever.run(query="energy")
@@ -448,9 +452,10 @@ class TestMultiRetrieverAsync:
         assert len(result["documents"]) == 1
         assert result["documents"][0].id == "async1"
 
+    @pytest.mark.skipif(os.environ.get("OPENAI_API_KEY", "") == "", reason="OPENAI_API_KEY is not set")
     @pytest.mark.integration
     @pytest.mark.asyncio
-    async def test_run_async_with_filters(self, del_hf_env_vars, bm25_retriever, embedding_retriever):
+    async def test_run_async_with_filters(self, bm25_retriever, embedding_retriever):
         retriever = MultiRetriever(retrievers={"bm25": bm25_retriever, "embedding": embedding_retriever})
         result = await retriever.run_async(
             query="energy", filters={"field": "meta.category", "operator": "==", "value": "solar"}
@@ -458,18 +463,18 @@ class TestMultiRetrieverAsync:
         assert len(result["documents"]) == 1
         assert result["documents"][0].meta["category"] == "solar"
 
+    @pytest.mark.skipif(os.environ.get("OPENAI_API_KEY", "") == "", reason="OPENAI_API_KEY is not set")
     @pytest.mark.integration
     @pytest.mark.asyncio
-    async def test_run_async_with_top_k(self, del_hf_env_vars, bm25_retriever, embedding_retriever):
+    async def test_run_async_with_top_k(self, bm25_retriever, embedding_retriever):
         retriever = MultiRetriever(retrievers={"bm25": bm25_retriever, "embedding": embedding_retriever})
         result = await retriever.run_async(query="energy", top_k=2)
         assert len(result["documents"]) == 2
 
+    @pytest.mark.skipif(os.environ.get("OPENAI_API_KEY", "") == "", reason="OPENAI_API_KEY is not set")
     @pytest.mark.integration
     @pytest.mark.asyncio
-    async def test_run_async_with_active_retrievers_integration(
-        self, del_hf_env_vars, bm25_retriever, embedding_retriever
-    ):
+    async def test_run_async_with_active_retrievers_integration(self, bm25_retriever, embedding_retriever):
         retriever = MultiRetriever(retrievers={"bm25": bm25_retriever, "embedding": embedding_retriever})
         result_bm25_active = await retriever.run_async(query="energy", active_retrievers=["bm25"])
         result_bm25 = await bm25_retriever.run_async(query="energy")

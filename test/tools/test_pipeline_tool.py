@@ -7,23 +7,51 @@ from unittest.mock import ANY
 
 import pytest
 
-from haystack import Document, Pipeline
+from haystack import Document, Pipeline, component
 from haystack.components.agents import Agent
 from haystack.components.embedders.openai_document_embedder import OpenAIDocumentEmbedder
 from haystack.components.embedders.openai_text_embedder import OpenAITextEmbedder
 from haystack.components.generators.chat import OpenAIChatGenerator
-from haystack.components.rankers.sentence_transformers_similarity import SentenceTransformersSimilarityRanker
 from haystack.components.retrievers import InMemoryBM25Retriever, InMemoryEmbeddingRetriever
 from haystack.dataclasses import ChatMessage
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.tools import PipelineTool
 
 
+@component
+class MockSimilarityRanker:
+    """Mock ranker used to build a sample pipeline for tests."""
+
+    @component.output_types(documents=list[Document])
+    def run(
+        self,
+        documents: list[Document],
+        query: str,
+        top_k: int | None = None,
+        scale_score: bool | None = None,
+        score_threshold: float | None = None,
+    ):
+        """
+        Returns a list of documents ranked by their similarity to the given query.
+
+        :param documents: List of documents to rank.
+        :param query: The input query to compare the documents to.
+        :param top_k: The maximum number of documents to return.
+        :param scale_score: If `True`, scales the raw logit predictions using a Sigmoid activation function.
+            If `False`, disables scaling of the raw logit predictions.
+            If set, overrides the value set at initialization.
+        :param score_threshold: Use it to return documents only with a score above this threshold.
+            If set, overrides the value set at initialization.
+        """
+        ranked = documents[:top_k] if top_k is not None else documents
+        return {"documents": ranked}
+
+
 @pytest.fixture
 def sample_pipeline():
     pipeline = Pipeline()
     pipeline.add_component("bm25_retriever", InMemoryBM25Retriever(document_store=InMemoryDocumentStore()))
-    pipeline.add_component("ranker", SentenceTransformersSimilarityRanker(model="fake-model"))
+    pipeline.add_component("ranker", MockSimilarityRanker())
     pipeline.connect("bm25_retriever", "ranker")
     return pipeline
 
@@ -55,30 +83,7 @@ def sample_pipeline_dict():
                     "filter_policy": "replace",
                 },
             },
-            "ranker": {
-                "type": "haystack.components.rankers.sentence_transformers_similarity."
-                "SentenceTransformersSimilarityRanker",
-                "init_parameters": {
-                    "device": {"type": "single", "device": ANY},
-                    "model": "fake-model",
-                    "token": {"type": "env_var", "env_vars": ["HF_API_TOKEN", "HF_TOKEN"], "strict": False},
-                    "top_k": 10,
-                    "query_prefix": "",
-                    "query_suffix": "",
-                    "document_prefix": "",
-                    "document_suffix": "",
-                    "meta_fields_to_embed": [],
-                    "embedding_separator": "\n",
-                    "scale_score": True,
-                    "score_threshold": None,
-                    "trust_remote_code": False,
-                    "model_kwargs": None,
-                    "tokenizer_kwargs": None,
-                    "config_kwargs": None,
-                    "backend": "torch",
-                    "batch_size": 16,
-                },
-            },
+            "ranker": {"type": "test_pipeline_tool.MockSimilarityRanker", "init_parameters": {}},
         },
         "connections": [{"sender": "bm25_retriever.documents", "receiver": "ranker.documents"}],
         "connection_type_validation": True,

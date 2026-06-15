@@ -38,7 +38,7 @@ class EmbeddingBasedDocumentSplitter:
 
     ```python
     from haystack import Document
-    from haystack.components.embedders import SentenceTransformersDocumentEmbedder
+    from haystack.components.embedders import OpenAIDocumentEmbedder
     from haystack.components.preprocessors import EmbeddingBasedDocumentSplitter
 
     # Create a document with content that has a clear topic shift
@@ -48,7 +48,7 @@ class EmbeddingBasedDocumentSplitter:
     )
 
     # Initialize the embedder to calculate semantic similarities
-    embedder = SentenceTransformersDocumentEmbedder()
+    embedder = OpenAIDocumentEmbedder()
 
     # Configure the splitter with parameters that control splitting behavior
     splitter = EmbeddingBasedDocumentSplitter(
