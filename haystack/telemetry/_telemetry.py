@@ -149,7 +149,7 @@ def pipeline_running(pipeline: Union["Pipeline", "AsyncPipeline"]) -> tuple[str,
     pipeline._telemetry_runs += 1
     if (
         pipeline._last_telemetry_sent
-        and (datetime.datetime.now() - pipeline._last_telemetry_sent).seconds < MIN_SECONDS_BETWEEN_EVENTS
+        and (datetime.datetime.now() - pipeline._last_telemetry_sent).total_seconds() < MIN_SECONDS_BETWEEN_EVENTS
     ):
         return None
 
