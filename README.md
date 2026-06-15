@@ -168,7 +168,7 @@
 | haystack/components/validators/json\_schema.py                                      |       71 |        8 |     89% |23-24, 137, 139, 154, 242, 248, 252 |
 | haystack/components/websearch/\_\_init\_\_.py                                       |        5 |        0 |    100% |           |
 | haystack/components/websearch/searchapi.py                                          |       78 |        1 |     99% |        96 |
-| haystack/components/websearch/serper\_dev.py                                        |      104 |       21 |     80% |139-141, 223, 241-255, 265-268 |
+| haystack/components/websearch/serper\_dev.py                                        |      106 |       21 |     80% |149-151, 233, 251-265, 275-278 |
 | haystack/components/writers/\_\_init\_\_.py                                         |        5 |        0 |    100% |           |
 | haystack/components/writers/document\_writer.py                                     |       32 |        0 |    100% |           |
 | haystack/core/\_\_init\_\_.py                                                       |        2 |        0 |    100% |           |
@@ -255,7 +255,7 @@
 | haystack/utils/deserialization.py                                                   |       18 |        0 |    100% |           |
 | haystack/utils/device.py                                                            |      214 |       13 |     94% |237-239, 364, 447, 468, 484, 512-515, 539-540 |
 | haystack/utils/experimental.py                                                      |       14 |        0 |    100% |           |
-| haystack/utils/filters.py                                                           |      108 |        5 |     95% |19-21, 98, 102 |
+| haystack/utils/filters.py                                                           |      114 |        4 |     96% |19-21, 108 |
 | haystack/utils/hf.py                                                                |      198 |       25 |     87% |99, 233-254, 358, 363-366, 416-419 |
 | haystack/utils/http\_client.py                                                      |       14 |        0 |    100% |           |
 | haystack/utils/jinja2\_chat\_extension.py                                           |      119 |        1 |     99% |       294 |
@@ -266,7 +266,7 @@
 | haystack/utils/type\_serialization.py                                               |      111 |       12 |     89% |62, 64, 174-175, 186-189, 195, 211-214 |
 | haystack/utils/url\_validation.py                                                   |        4 |        0 |    100% |           |
 | haystack/version.py                                                                 |        5 |        2 |     60% |      9-10 |
-| **TOTAL**                                                                           | **17732** | **1214** | **93%** |           |
+| **TOTAL**                                                                           | **17740** | **1213** | **93%** |           |
 
 
 ## Setup coverage badge
