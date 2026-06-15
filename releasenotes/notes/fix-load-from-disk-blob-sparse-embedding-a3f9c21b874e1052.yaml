@@ -1,0 +1,12 @@
+---
+fixes:
+  - |
+    Fixed InMemoryDocumentStore.load_from_disk corrupting documents that contain a blob or
+    sparse_embedding field. save_to_disk serialises those fields as plain dicts via
+    ByteStream.to_dict() / SparseEmbedding.to_dict(), but load_from_disk was using the
+    Document(**doc) constructor which does not reverse that serialisation. Any downstream
+    access to document.blob.data or document.sparse_embedding.indices raised
+    AttributeError: 'dict' object has no attribute 'data', and a save -> load -> save
+    round-trip was impossible. The fix replaces Document(**doc) with Document.from_dict(doc),
+    which is the documented inverse of to_dict and correctly restores all nested dataclass
+    fields.
