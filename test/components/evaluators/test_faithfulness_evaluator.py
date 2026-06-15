@@ -380,3 +380,27 @@ class TestFaithfulnessEvaluatorAsync:
         assert results["individual_scores"][0] == 1.0
         assert math.isnan(results["individual_scores"][1])
         assert "1 query(s) failed and were excluded from the score." in caplog.text
+
+    @pytest.mark.asyncio
+    @pytest.mark.skipif(
+        not os.environ.get("OPENAI_API_KEY", None),
+        reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
+    )
+    @pytest.mark.integration
+    async def test_live_run_async(self):
+        questions = ["What is Python and who created it?"]
+        contexts = [["Python is a programming language created by Guido van Rossum."]]
+        predicted_answers = ["Python is a programming language created by George Lucas."]
+        evaluator = FaithfulnessEvaluator(chat_generator=OpenAIChatGenerator(model="gpt-4.1-nano"))
+        result = await evaluator.run_async(questions=questions, contexts=contexts, predicted_answers=predicted_answers)
+
+        required_fields = {"individual_scores", "results", "score"}
+        assert all(field in result for field in required_fields)
+        nested_required_fields = {"score", "statement_scores", "statements"}
+        assert all(field in result["results"][0] for field in nested_required_fields)
+
+        # assert that metadata is present in the result
+        assert "meta" in result
+        assert "prompt_tokens" in result["meta"][0]["usage"]
+        assert "completion_tokens" in result["meta"][0]["usage"]
+        assert "total_tokens" in result["meta"][0]["usage"]

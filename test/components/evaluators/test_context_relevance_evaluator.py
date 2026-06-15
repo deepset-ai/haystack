@@ -320,3 +320,26 @@ class TestContextRelevanceEvaluatorAsync:
         assert math.isnan(results["results"][1]["score"])
 
         assert "1 query(s) failed and were excluded from the score." in caplog.text
+
+    @pytest.mark.asyncio
+    @pytest.mark.skipif(
+        not os.environ.get("OPENAI_API_KEY", None),
+        reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
+    )
+    @pytest.mark.integration
+    async def test_live_run_async(self):
+        questions = ["Who created the Python language?"]
+        contexts = [["Python, created by Guido van Rossum, is a high-level general-purpose programming language."]]
+
+        evaluator = ContextRelevanceEvaluator(chat_generator=OpenAIChatGenerator(model="gpt-4.1-nano"))
+        result = await evaluator.run(questions=questions, contexts=contexts)
+
+        required_fields = {"results"}
+        assert all(field in result for field in required_fields)
+        nested_required_fields = {"score", "relevant_statements"}
+        assert all(field in result["results"][0] for field in nested_required_fields)
+
+        assert "meta" in result
+        assert "prompt_tokens" in result["meta"][0]["usage"]
+        assert "completion_tokens" in result["meta"][0]["usage"]
+        assert "total_tokens" in result["meta"][0]["usage"]
