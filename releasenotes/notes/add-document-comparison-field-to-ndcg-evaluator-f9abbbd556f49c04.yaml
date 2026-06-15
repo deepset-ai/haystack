@@ -1,0 +1,8 @@
+enhancements:
+  - |
+    Added ``document_comparison_field`` parameter to ``DocumentNDCGEvaluator``,
+    consistent with ``DocumentMAPEvaluator``, ``DocumentMRREvaluator``, and
+    ``DocumentRecallEvaluator``. Users can now match documents by ``"content"``,
+    ``"id"``, or any ``"meta.<key>"`` field when calculating NDCG scores,
+    resolving a known limitation referenced in
+    `#8412 <https://github.com/deepset-ai/haystack/issues/8412>`_.
