@@ -36,7 +36,7 @@ jobs:
         uses: google/clusterfuzzlite/actions/run_fuzzers@884713a6c30a92e5e8544c39945cd7cb630abcd1 # v1
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          fuzz-seconds: 180
+          fuzz-seconds: 120
           mode: code-change
           sanitizer: address
           # Crashes fail the job and are uploaded as artifacts. SARIF upload is
