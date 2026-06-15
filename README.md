@@ -83,7 +83,7 @@
 | haystack/components/extractors/image/\_\_init\_\_.py                                |        5 |        0 |    100% |           |
 | haystack/components/extractors/image/llm\_document\_content\_extractor.py           |      105 |        0 |    100% |           |
 | haystack/components/extractors/llm\_metadata\_extractor.py                          |      155 |       21 |     86% |290-301, 310-318, 336-339, 383, 425-429, 440 |
-| haystack/components/extractors/named\_entity\_extractor.py                          |      185 |       60 |     68% |25-26, 41, 173-176, 185-192, 211, 217, 276, 289, 392-404, 407-412, 427, 455-463, 467-479, 482-489, 499, 503, 510-517 |
+| haystack/components/extractors/named\_entity\_extractor.py                          |      185 |       60 |     68% |25-26, 41, 176-179, 188-195, 214, 220, 279, 292, 395-407, 410-415, 430, 458-466, 470-482, 485-492, 502, 506, 513-520 |
 | haystack/components/extractors/regex\_text\_extractor.py                            |       49 |        0 |    100% |           |
 | haystack/components/fetchers/\_\_init\_\_.py                                        |        5 |        0 |    100% |           |
 | haystack/components/fetchers/link\_content.py                                       |      188 |       26 |     86% |160-165, 222-224, 246, 255-262, 292-296, 385-392, 425, 458 |
