@@ -17,6 +17,16 @@ input; anything else (a crash, unbounded recursion, a hang, or an unexpected
 exception type) is reported by Atheris as a finding. The "expected" exception
 lists can be tightened over time to surface more subtle bugs.
 
+## Seed corpus
+
+`fuzz_document_from_dict` and `fuzz_filters` parse the raw fuzzer input as JSON,
+so the input domain *is* JSON text. A small seed corpus of valid inputs lives in
+[`corpus/<harness>/`](corpus) to bootstrap coverage past the JSON parse — without
+it a short run spends most of its budget producing inputs that don't parse. The
+ClusterFuzzLite build (`.clusterfuzzlite/build.sh`) zips each `corpus/<harness>/`
+into the `<harness>_seed_corpus.zip` the runner expects. Add a new valid input by
+dropping a `.json` file into the matching directory.
+
 ## Run locally
 
 ```sh
@@ -24,17 +34,17 @@ pip install atheris
 pip install -e .
 
 # Fuzz for a bit (Ctrl-C to stop); -atheris_runs limits the number of inputs.
+# Pass the seed corpus dir so libFuzzer starts from valid inputs.
 python test/fuzz/fuzz_pipeline_loads.py -atheris_runs=100000
-python test/fuzz/fuzz_document_from_dict.py -atheris_runs=100000
-python test/fuzz/fuzz_filters.py -atheris_runs=100000
+python test/fuzz/fuzz_document_from_dict.py test/fuzz/corpus/fuzz_document_from_dict -atheris_runs=100000
+python test/fuzz/fuzz_filters.py test/fuzz/corpus/fuzz_filters -atheris_runs=100000
 ```
 
-Pass a directory argument to use/grow a seed corpus, and a crashing input file
-to reproduce a finding:
+A directory argument is used as a seed corpus (and grown with new coverage); a
+crashing input file reproduces a finding:
 
 ```sh
-python test/fuzz/fuzz_pipeline_loads.py corpus/            # use corpus dir
-python test/fuzz/fuzz_pipeline_loads.py crash-<hash>       # reproduce a crash
+python test/fuzz/fuzz_filters.py crash-<hash>       # reproduce a crash
 ```
 
 > Note: Atheris builds a native extension and is not part of the dev

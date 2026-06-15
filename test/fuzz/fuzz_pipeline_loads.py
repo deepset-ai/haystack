@@ -14,8 +14,7 @@ import atheris
 
 with atheris.instrument_imports():
     from haystack import Pipeline
-    from haystack.core.errors import PipelineError
-    from haystack.errors import DeserializationError
+    from haystack.core.errors import DeserializationError, PipelineError
 
 # Exceptions that are a normal reaction to malformed input. Anything else — a crash,
 # unbounded recursion, a hang, or an unexpected exception type — is a genuine finding.

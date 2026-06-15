@@ -27,6 +27,9 @@ jobs:
         with:
           language: python
           sanitizer: address
+          # Needed so build_fuzzers can check out the PR base for `mode: code-change`
+          # diffing in the Run Fuzzers step below.
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Run Fuzzers
         id: run

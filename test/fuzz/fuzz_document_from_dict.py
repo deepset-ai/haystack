@@ -17,12 +17,13 @@ _EXPECTED = (ValueError, TypeError, KeyError)
 
 
 def TestOneInput(data: bytes) -> None:
-    """Decode fuzzer bytes into a JSON object and feed it to ``Document.from_dict``."""
-    fdp = atheris.FuzzedDataProvider(data)
-    raw = fdp.ConsumeUnicodeNoSurrogates(fdp.remaining_bytes())
+    """Parse fuzzer bytes as a JSON object and feed it to ``Document.from_dict``."""
+    # ``json.loads`` accepts ``bytes`` directly, so the raw fuzzer input *is* the JSON
+    # text. This keeps the input domain identical to the seed corpus (see corpus/) and
+    # lets libFuzzer mutate JSON directly instead of through a FuzzedDataProvider.
     try:
-        obj = json.loads(raw)
-    except (ValueError, RecursionError):
+        obj = json.loads(data)
+    except (ValueError, RecursionError, UnicodeDecodeError):
         return
     if not isinstance(obj, dict):
         return
