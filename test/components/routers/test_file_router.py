@@ -10,7 +10,7 @@ from unittest.mock import mock_open, patch
 
 import pytest
 
-from haystack import Pipeline
+from haystack import Pipeline, component
 from haystack.components.converters import PyPDFToDocument, TextFileToDocument
 from haystack.components.routers.file_type_router import FileTypeRouter
 from haystack.dataclasses import ByteStream
@@ -289,7 +289,7 @@ class TestFileTypeRouter:
         """
         Test that the component raises a ValueError for invalid regex patterns.
         """
-        with pytest.raises(ValueError, match="Invalid regex pattern"):
+        with pytest.raises(ValueError, match="Invalid MIME type or regex pattern"):
             FileTypeRouter(mime_types=["[Invalid-Regex"])
 
     def test_regex_mime_type_matching(self, test_files_path):
@@ -328,6 +328,123 @@ class TestFileTypeRouter:
 
         assert len(output.get("unclassified")) == 1, "Failed to handle unclassified file types"
         assert mp3_stream in output["unclassified"], "'sound.mp3' ByteStream should be unclassified but is not"
+
+    @pytest.mark.parametrize(
+        "literal_mime",
+        [
+            "image/svg+xml",
+            "application/ld+json",
+            "application/rss+xml",
+            "application/atom+xml",
+            "application/vnd.api+json",
+        ],
+    )
+    def test_literal_mime_with_plus_matches_self(self, literal_mime):
+        """`+`-containing IANA types match themselves (used to be compiled as regex and silently dropped)."""
+        router = FileTypeRouter(mime_types=[literal_mime])
+        bs = ByteStream(b"x", mime_type=literal_mime)
+        output = router.run(sources=[bs])
+
+        assert literal_mime in output
+        assert output[literal_mime] == [bs]
+        assert "unclassified" not in output
+
+    def test_literal_mime_with_plus_does_not_cross_contaminate(self):
+        """Streams that would fullmatch the buggy regex form of `image/svg+xml` must not be misrouted."""
+        router = FileTypeRouter(mime_types=["image/svg+xml"])
+        bs_no_plus = ByteStream(b"x", mime_type="image/svgxml")
+        bs_extra_g = ByteStream(b"x", mime_type="image/svggxml")
+        bs_real = ByteStream(b"x", mime_type="image/svg+xml")
+
+        output = router.run(sources=[bs_no_plus, bs_extra_g, bs_real])
+
+        assert output["image/svg+xml"] == [bs_real]
+        assert sorted(output["unclassified"], key=id) == sorted([bs_no_plus, bs_extra_g], key=id)
+
+    def test_literal_mime_with_dot_does_not_cross_contaminate(self):
+        """`.` in a literal MIME shouldn't act as a wildcard (e.g. `application/pdf` vs `applicationXpdf`)."""
+        router = FileTypeRouter(mime_types=["application/pdf"])
+        bs_real = ByteStream(b"x", mime_type="application/pdf")
+        bs_wildcard_collision = ByteStream(b"x", mime_type="applicationXpdf")
+
+        output = router.run(sources=[bs_real, bs_wildcard_collision])
+
+        assert output["application/pdf"] == [bs_real]
+        assert output["unclassified"] == [bs_wildcard_collision]
+
+    def test_long_realistic_literal_mime_matches(self):
+        """A long dotted-and-hyphenated IANA type (OOXML document) routes correctly as a literal."""
+        ooxml = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        router = FileTypeRouter(mime_types=[ooxml])
+        bs = ByteStream(b"x", mime_type=ooxml)
+
+        output = router.run(sources=[bs])
+
+        assert output[ooxml] == [bs]
+        assert "unclassified" not in output
+
+    def test_explicit_regex_pattern_still_works(self, test_files_path):
+        """Regex patterns (anything outside the literal IANA char set) keep their regex semantics."""
+        router = FileTypeRouter(mime_types=[r"audio/.*", r"text\/.*"])
+        file_paths = [
+            test_files_path / "txt" / "doc_1.txt",
+            test_files_path / "audio" / "the context for this answer is here.wav",
+            test_files_path / "pdf" / "sample_pdf_1.pdf",
+        ]
+
+        output = router.run(sources=file_paths)
+
+        assert len(output[r"audio/.*"]) == 1
+        assert len(output[r"text\/.*"]) == 1
+        assert len(output["unclassified"]) == 1
+
+    def test_to_dict_from_dict_preserves_literal_and_regex_mix(self):
+        """A literal + regex mix survives serde and still routes correctly."""
+        router = FileTypeRouter(mime_types=["image/svg+xml", r"audio/.*"])
+
+        loaded = FileTypeRouter.from_dict(router.to_dict())
+        assert loaded.mime_types == ["image/svg+xml", r"audio/.*"]
+
+        svg = ByteStream(b"<svg/>", mime_type="image/svg+xml")
+        wav = ByteStream(b"x", mime_type="audio/x-wav")
+        output = loaded.run(sources=[svg, wav])
+
+        assert output["image/svg+xml"] == [svg]
+        assert output[r"audio/.*"] == [wav]
+        assert "unclassified" not in output
+
+    def test_pipeline_output_socket_name_matches_literal_mime_with_plus(self):
+        """A downstream component wired to `router.image/svg+xml` actually receives the SVG stream."""
+
+        @component
+        class _Sink:
+            @component.output_types(received=list)
+            def run(self, value: list) -> dict:
+                return {"received": value}
+
+        pipe = Pipeline()
+        pipe.add_component(instance=FileTypeRouter(mime_types=["image/svg+xml"]), name="router")
+        pipe.add_component(instance=_Sink(), name="sink")
+        pipe.connect("router.image/svg+xml", "sink.value")
+
+        svg = ByteStream(b"<svg/>", mime_type="image/svg+xml")
+        output = pipe.run(data={"router": {"sources": [svg]}})
+
+        assert output["sink"]["received"] == [svg]
+
+    def test_additional_mimetypes_with_literal_plus(self, tmp_path):
+        """Custom `additional_mimetypes` registration still works for `+`-containing literal MIMEs."""
+        custom_mime = "application/x-custom+xml"
+        custom_extension = ".cxml"
+        test_file = tmp_path / f"test{custom_extension}"
+        test_file.touch()
+
+        router = FileTypeRouter(mime_types=[custom_mime], additional_mimetypes={custom_mime: custom_extension})
+        output = router.run(sources=[test_file])
+
+        assert custom_mime in output
+        assert test_file in output[custom_mime]
+        assert "unclassified" not in output
 
     def test_serde_in_pipeline(self):
         """
