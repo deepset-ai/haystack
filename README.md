@@ -125,7 +125,7 @@
 | haystack/components/preprocessors/sentence\_tokenizer.py                            |       83 |        5 |     94% |62-63, 70-75, 215 |
 | haystack/components/preprocessors/text\_cleaner.py                                  |       29 |        0 |    100% |           |
 | haystack/components/query/\_\_init\_\_.py                                           |        5 |        0 |    100% |           |
-| haystack/components/query/query\_expander.py                                        |       83 |        0 |    100% |           |
+| haystack/components/query/query\_expander.py                                        |       86 |        0 |    100% |           |
 | haystack/components/rankers/\_\_init\_\_.py                                         |        5 |        0 |    100% |           |
 | haystack/components/rankers/hugging\_face\_tei.py                                   |       80 |        5 |     94% |236-237, 281, 298-299 |
 | haystack/components/rankers/llm\_ranker.py                                          |      107 |        3 |     97% |291, 300, 304 |
@@ -266,7 +266,7 @@
 | haystack/utils/type\_serialization.py                                               |      111 |       12 |     89% |62, 64, 174-175, 186-189, 195, 211-214 |
 | haystack/utils/url\_validation.py                                                   |        4 |        0 |    100% |           |
 | haystack/version.py                                                                 |        5 |        2 |     60% |      9-10 |
-| **TOTAL**                                                                           | **17742** | **1213** | **93%** |           |
+| **TOTAL**                                                                           | **17745** | **1213** | **93%** |           |
 
 
 ## Setup coverage badge
