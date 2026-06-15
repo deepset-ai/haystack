@@ -332,7 +332,7 @@ class TestContextRelevanceEvaluatorAsync:
         contexts = [["Python, created by Guido van Rossum, is a high-level general-purpose programming language."]]
 
         evaluator = ContextRelevanceEvaluator(chat_generator=OpenAIChatGenerator(model="gpt-4.1-nano"))
-        result = await evaluator.run(questions=questions, contexts=contexts)
+        result = await evaluator.run_async(questions=questions, contexts=contexts)
 
         required_fields = {"results"}
         assert all(field in result for field in required_fields)
