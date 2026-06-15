@@ -1,4 +1,0 @@
----
-enhancements:
-  - |
-    The ``InMemoryDocumentStore`` now has three new operations ``delete_all_documents()``,  ``update_by_filter()`` and ``delete_by_filter()``

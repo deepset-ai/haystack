@@ -1,6 +1,0 @@
----
-fixes:
-  - |
-    Improved the warning message emitted when the pipeline appears to be blocked.
-    The message now lists all potentially affected components along with their types, and clarifies that some components may be intentionally inactive due to conditional branching.
-    Previously the error message only listed one of the potentially blocking components and sometimes erroneously identified the wrong component as the blocker.

@@ -1,5 +1,0 @@
----
-features:
-  - |
-    Added convenience class methods to the `ImageContent` dataclass to create `ImageContent` objects from
-    file paths and URLs.

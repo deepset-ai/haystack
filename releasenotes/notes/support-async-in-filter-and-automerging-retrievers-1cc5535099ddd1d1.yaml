@@ -1,3 +1,0 @@
-enhancements:
-  - |
-    The `FilterRetriever` and `AutoMergingRetriever` components now support asynchronous execution.

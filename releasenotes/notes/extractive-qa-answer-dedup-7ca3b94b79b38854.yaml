@@ -1,4 +1,0 @@
----
-features:
-  - |
-    Introduces answer deduplication on the Document level based on an overlap threshold.

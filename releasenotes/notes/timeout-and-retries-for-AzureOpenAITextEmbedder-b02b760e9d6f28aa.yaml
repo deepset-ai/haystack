@@ -1,4 +1,0 @@
----
-enhancements:
-  - |
-    Add `max_retries` and `timeout` parameters to the AzureOpenAITextEmbedder initializations.

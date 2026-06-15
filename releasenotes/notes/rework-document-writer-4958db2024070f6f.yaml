@@ -1,4 +1,0 @@
----
-features:
-  - Rework `DocumentWriter` to remove `DocumentStoreAwareMixin`.
-    Now we require a generic `DocumentStore` when initialisating the writer.

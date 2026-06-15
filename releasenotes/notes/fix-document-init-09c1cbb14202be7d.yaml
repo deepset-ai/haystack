@@ -1,4 +1,0 @@
----
-preview:
-  - |
-    Make Document's constructor fail when is passed fields that are not present in the dataclass. An exception is made for  "content_type" and "id_hash_keys": they are accepted in order to keep backward compatibility.

@@ -1,4 +1,0 @@
----
-preview:
-  - |
-    Remove "api_key" from serialization of AzureOCRDocumentConverter and SerperDevWebSearch.

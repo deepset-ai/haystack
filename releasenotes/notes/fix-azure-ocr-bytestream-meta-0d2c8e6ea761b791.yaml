@@ -1,4 +1,0 @@
----
-fixes:
-  - |
-    Meta handling of bytestreams in Azure OCR has been fixed.

@@ -1,5 +1,0 @@
----
-upgrade:
-  - |
-    The deprecated `State` class has been removed from the `haystack.dataclasses` module.
-    The `State` class is now part of the `haystack.components.agents` module.

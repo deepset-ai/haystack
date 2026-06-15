@@ -1,5 +1,0 @@
----
-features:
-  - |
-    Adds AzureOpenAIDocumentEmbedder and AzureOpenAITextEmbedder as new embedders. These embedders are very similar to
-    their OpenAI counterparts, but they use the Azure API instead of the OpenAI API.

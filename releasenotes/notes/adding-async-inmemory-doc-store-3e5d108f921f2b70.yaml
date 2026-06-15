@@ -1,4 +1,0 @@
----
-features:
-  - |
-    The `InMemoryDocumentStore` and the associated `InMemoryBM25Retriever` and `InMemoryEmbeddingRetriever` retrievers now support async mode.

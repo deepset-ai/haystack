@@ -1,4 +1,0 @@
----
-features:
-  - |
-    Adds support for single metadata dictionary input in `MarkdownToDocument``.

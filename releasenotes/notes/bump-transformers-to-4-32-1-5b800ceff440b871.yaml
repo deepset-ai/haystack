@@ -1,4 +1,0 @@
----
-enhancements:
-  - |
-    Upgrade transformers to the latest version 4.32.1 so that Haystack benefits from Llama and T5 bugfixes: https://github.com/huggingface/transformers/releases/tag/v4.32.1

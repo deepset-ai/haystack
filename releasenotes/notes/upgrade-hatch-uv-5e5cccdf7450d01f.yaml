@@ -1,4 +1,0 @@
----
-enhancements:
-  - |
-    Upgrade Hatch to 1.13.0 and adopt uv as installer, to speed up the CI.

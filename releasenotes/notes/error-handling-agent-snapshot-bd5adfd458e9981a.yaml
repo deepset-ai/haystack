@@ -1,7 +1,0 @@
----
-enhancements:
-  - |
-    Made ``_create_agent_snapshot`` robust towards serialization errors. If serializing
-    agent component inputs fails, a warning is logged and an empty dictionary is used
-    as a fallback, preventing the serialization error from masking the real pipeline
-    runtime error.

@@ -1,4 +1,0 @@
----
-fixes:
-  - |
-    Fix ComponentMeta ignoring keyword-only parameters in the `run` method. ComponentMeta.__call__ handles the creation of InputSockets for the component's inputs when the latter has not explicitly called _Component.set_input_types(). This logic was not correctly handling keyword-only parameters.

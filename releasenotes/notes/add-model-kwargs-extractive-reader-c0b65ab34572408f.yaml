@@ -1,5 +1,0 @@
----
-enhancements:
-  - |
-    Add new variable model_kwargs to the ExtractiveReader so we can pass different loading options supported by
-    HuggingFace.

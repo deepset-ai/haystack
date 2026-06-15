@@ -1,4 +1,0 @@
----
-deprecations:
-  - |
-    Deprecate GPTGenerator and GPTChatGenerator. Replace them with OpenAIGenerator and OpenAIChatGenerator.

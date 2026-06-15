@@ -1,6 +1,0 @@
----
-preview:
-  - |
-    rename `TextDocumentSplitter` to `DocumentSplitter`, to allow a better
-    distinction between Components that operate on text and those that operate
-    on Documents.

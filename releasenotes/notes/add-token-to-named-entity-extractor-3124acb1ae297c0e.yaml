@@ -1,4 +1,0 @@
----
-enhancements:
-  - |
-    Add `token` argument to `NamedEntityExtractor` to allow usage of private Hugging Face models.

@@ -1,5 +1,0 @@
----
-preview:
-  - |
-    Add Sentence Transformers Document Embedder.
-    It computes embeddings of Documents. The embedding of each Document is stored in the `embedding` field of the Document.

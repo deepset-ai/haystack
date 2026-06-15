@@ -1,4 +1,0 @@
----
-preview:
-  - |
-    Rename `Document`'s `text` field to `content` to enhance backward compatibility

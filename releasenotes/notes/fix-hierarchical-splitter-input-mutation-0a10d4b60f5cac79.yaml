@@ -1,8 +1,0 @@
----
-fixes:
-  - |
-    ``HierarchicalDocumentSplitter`` no longer mutates the metadata of the
-    input ``Document``. ``_add_meta_data`` now returns a new ``Document``
-    with a copied ``meta`` dict via ``dataclasses.replace`` instead of writing
-    ``__block_size``, ``__parent_id``, ``__children_ids`` and ``__level``
-    onto the caller's ``Document``.

@@ -1,4 +1,0 @@
----
-fixes:
-  - |
-    Fixed JSONConverter to properly skip converting JSON files that are not utf-8 encoded.

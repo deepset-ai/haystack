@@ -1,7 +1,0 @@
----
-upgrade:
-  - |
-    Any import from `canals` should be rewritten to import from `haystack.core`
-enhancements:
-  - |
-    Use the code formerly in `canals` from the `haystack.core` package across the whole codebase.

@@ -1,4 +1,0 @@
-preview:
-  - |
-    Add eval function for evaluation of components and Pipelines.
-    Adds EvaluationResult to store results of evaluation.

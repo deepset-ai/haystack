@@ -1,4 +1,0 @@
----
-enhancements:
-  - |
-    Adapts how ChatPromptBuilder creates ChatMessages. Messages are deep copied to ensure all meta fields are copied correctly.

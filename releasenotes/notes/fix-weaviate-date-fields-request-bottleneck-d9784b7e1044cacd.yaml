@@ -1,4 +1,0 @@
----
-fixes:
-  - |
-    Fixed a bottleneck in Weaviate document store which was slowing down the indexing.

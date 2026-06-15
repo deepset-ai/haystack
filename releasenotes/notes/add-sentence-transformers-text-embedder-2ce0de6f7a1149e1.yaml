@@ -1,5 +1,0 @@
----
-preview:
-  - |
-    Add Sentence Transformers Text Embedder.
-    It is a simple component that embeds strings into vectors.

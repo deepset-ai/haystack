@@ -1,4 +1,0 @@
----
-features:
-  - |
-    Add a run_async to the Agent, which calls the run_async of the underlying ChatGenerator if available.

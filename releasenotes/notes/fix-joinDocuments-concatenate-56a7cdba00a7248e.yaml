@@ -1,4 +1,0 @@
----
-enhancements:
-  - |
-    Make JoinDocuments return only the document with the highest score if there are duplicate documents in the list.

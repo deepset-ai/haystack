@@ -1,4 +1,0 @@
----
-preview:
-  - |
-    Change the default `DuplicatePolicy` for the `DocumentStore.write_documents()` protocol from `DuplicatePolicy.FAIL` to `DuplicatePolicy.NONE`.

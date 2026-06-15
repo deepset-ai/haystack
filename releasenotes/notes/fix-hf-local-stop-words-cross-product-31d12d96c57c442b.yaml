@@ -1,4 +1,0 @@
----
-fixes:
-  - |
-    Fixes ``HuggingFaceLocalGenerator`` so that when multiple ``stop_words`` are configured the generator returns exactly N replies instead of N×M replies. Previously the list comprehension created a cross-product, duplicating replies and leaving some stop words unstripped.

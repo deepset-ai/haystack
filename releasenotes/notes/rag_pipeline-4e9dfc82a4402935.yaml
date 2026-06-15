@@ -1,4 +1,0 @@
----
-features:
-  - |
-    Add a `build_rag_pipeline` utility function

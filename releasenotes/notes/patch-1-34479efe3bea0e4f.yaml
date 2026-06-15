@@ -1,5 +1,0 @@
----
-enhancements:
-  - |
-    Change `OpenAIDocumentEmbedder` to keep running if a batch fails embedding.
-    Now OpenAI returns an error we log that error and keep processing following batches.

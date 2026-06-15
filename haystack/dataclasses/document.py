@@ -109,7 +109,7 @@ class Document(metaclass=_BackwardCompatible):  # noqa: PLW1641
         """
         Creates a hash of the given content that acts as the document's ID.
         """
-        text = self.content or None
+        text = self.content # preserve distinction between "" and None
         dataframe = None  # this allows the ID creation to remain unchanged even if the dataframe field has been removed
         blob = self.blob.data if self.blob is not None else None
         mime_type = self.blob.mime_type if self.blob is not None else None

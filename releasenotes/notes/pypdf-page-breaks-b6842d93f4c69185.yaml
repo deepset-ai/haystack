@@ -1,7 +1,0 @@
----
-upgrade:
-  - |
-    Upgraded the default converter in PyPDFToDocument to insert page breaks "\f"
-    between each extracted page.
-    This allows for downstream components and applications to better be able to
-    keep track of the original PDF page a portion of text comes from.

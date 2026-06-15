@@ -1,4 +1,0 @@
----
-upgrade:
-  - |
-    Remove 'is_greedy' deprecated argument from `@component` decorator. Change the 'Variadic' input of your Component to 'GreedyVariadic' instead.

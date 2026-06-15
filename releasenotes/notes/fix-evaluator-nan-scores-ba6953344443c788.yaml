@@ -1,4 +1,0 @@
----
-fixes:
-  - |
-    Fixed ``FaithfulnessEvaluator`` and ``ContextRelevanceEvaluator`` to exclude failed queries (score ``nan``) from the aggregate mean score instead of silently returning ``nan``. A warning is now logged when one or more queries are skipped.

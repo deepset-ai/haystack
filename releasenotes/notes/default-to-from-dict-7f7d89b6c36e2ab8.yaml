@@ -1,4 +1,0 @@
----
-preview:
-  - Migrate all components to Canals==0.7.0
-  - Add serialization and deserialization methods for all Haystack components

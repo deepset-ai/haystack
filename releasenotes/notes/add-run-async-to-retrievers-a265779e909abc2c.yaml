@@ -1,7 +1,0 @@
----
-enhancements:
-  - |
-    Added ``run_async`` to ``TextEmbeddingRetriever``, ``MultiQueryEmbeddingRetriever``, and
-    ``MultiQueryTextRetriever``. These components now execute natively as coroutines in
-    ``AsyncPipeline``, delegating to each wrapped component's ``run_async`` when available and
-    falling back to a thread executor otherwise.

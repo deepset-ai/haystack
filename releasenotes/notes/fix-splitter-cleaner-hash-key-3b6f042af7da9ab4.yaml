@@ -1,4 +1,0 @@
----
-preview:
-  - |
-    Fixed a bug that caused TextDocumentSplitter and DocumentCleaner to ignore id_hash_keys and create Documents with duplicate ids if the documents differed only in their metadata.

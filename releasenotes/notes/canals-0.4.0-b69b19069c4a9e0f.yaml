@@ -1,4 +1,0 @@
----
-preview:
-  - "Migrate existing v2 components to Canals 0.4.0"
-  - "Fix TextFileToDocument using wrong Document class"

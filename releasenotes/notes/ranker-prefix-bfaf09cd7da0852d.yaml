@@ -1,4 +1,0 @@
----
-enhancements:
-  - |
-    Add query and document prefix options for the TransformerSimilarityRanker

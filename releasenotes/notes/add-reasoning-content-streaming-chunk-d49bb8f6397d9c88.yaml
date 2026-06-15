@@ -1,4 +1,0 @@
----
-features:
-  - |
-    Add a `reasoning` field to `StreamingChunk` that optionally takes in a `ReasoningContent` dataclass. This is to allow a structured way to pass reasoning contents to streaming chunks.

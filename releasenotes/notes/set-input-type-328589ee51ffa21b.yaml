@@ -1,4 +1,0 @@
----
-features:
-  - |
-    Add `component.set_input_type()` function to set a Component input name, type and default value.

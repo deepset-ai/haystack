@@ -1,4 +1,0 @@
----
-preview:
-  - |
-    Refactor OpenAIDocumentEmbedder to enrich documents with embeddings instead of recreating them.

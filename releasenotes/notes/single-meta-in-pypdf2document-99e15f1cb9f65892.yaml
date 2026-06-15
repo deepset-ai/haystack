@@ -1,5 +1,0 @@
-
----
-enhancements:
-  - |
-    Adds support for single metadata dictionary input in `PyPDFToDocument`.

@@ -1,5 +1,0 @@
----
-deprecations:
-  - |
-    ``deserialize_document_store_in_init_params_inplace`` is deprecated and will be removed in Haystack version 2.24.
-    It is no longer used internally and should not be used in new code. The deserialization of DocumentStores is handled automatically now by default_from_dict.

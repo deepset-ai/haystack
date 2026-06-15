@@ -1,4 +1,0 @@
-fixes:
-  - |
-    Reverts the change that made Agent messages optional as it caused issues with pipeline execution.
-    As a consequence, the LLM component now defaults to an empty messages list unless provided at runtime.

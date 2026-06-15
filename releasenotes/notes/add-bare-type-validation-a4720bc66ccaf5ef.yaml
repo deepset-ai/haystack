@@ -1,4 +1,0 @@
----
-features:
-  - |
-    Treat bare types (e.g., List, Dict) as generic types with Any arguments during type compatibility checks.

@@ -1,4 +1,0 @@
----
-features:
-  - |
-    Introduced asynchronous functionality and HTTP/2 support in the LinkContentFetcher component thus improving content fetching in several aspects.

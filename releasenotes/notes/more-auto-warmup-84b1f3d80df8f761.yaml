@@ -1,5 +1,0 @@
----
-enhancements:
-  - |
-    ``EmbeddingBasedDocumentSplitter`` and ``MultiQueryEmbeddingRetriever`` now automatically invoke ``warm_up()``
-    when ``run()`` is called if they have not been warmed up yet.

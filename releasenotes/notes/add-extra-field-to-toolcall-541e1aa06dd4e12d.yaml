@@ -1,4 +1,0 @@
----
-features:
-  - |
-    Add an `extra` field to `ToolCall` and `ToolCallDelta` to store provider-specific information.

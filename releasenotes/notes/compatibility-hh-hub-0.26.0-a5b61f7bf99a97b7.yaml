@@ -1,4 +1,0 @@
----
-fixes:
-  - |
-    Adjusted a test on `HuggingFaceAPIGenerator` to ensure compatibility with the `huggingface_hub==0.26.0`.

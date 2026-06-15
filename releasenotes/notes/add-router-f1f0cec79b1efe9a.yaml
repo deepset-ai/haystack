@@ -1,6 +1,0 @@
----
-preview:
-  - |
-    Add `ConditionalRouter` component to enhance the conditional pipeline routing capabilities.
-    The `ConditionalRouter` component orchestrates the flow of data by evaluating specified route conditions
-    to determine the appropriate route among a set of provided route alternatives.

@@ -1,5 +1,0 @@
----
-features:
-  - |
-    Users can now work with date and time in the ChatPromptBuilder.
-    In the same way as the PromptBuilder, the ChatPromptBuilder now supports arrow to work with datetime.

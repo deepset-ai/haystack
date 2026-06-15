@@ -1,4 +1,0 @@
----
-preview:
-  - |
-    Adds SimilarityRanker, a component that ranks a list of Documents based on their similarity to the query.

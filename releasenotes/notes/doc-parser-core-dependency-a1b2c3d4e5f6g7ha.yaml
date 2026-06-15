@@ -1,4 +1,0 @@
----
-enhancements:
-  - |
-    Made doc-parser a core dependency since ComponentTool that uses it is one of the core Tool components.

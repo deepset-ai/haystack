@@ -1,6 +1,0 @@
----
-features:
-  - |
-    Chat Messages with the user role can now include images using the new `ImageContent` dataclass.
-
-    We've added image support to `OpenAIChatGenerator`, and plan to support more model providers over time.

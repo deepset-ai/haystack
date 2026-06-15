@@ -1,9 +1,0 @@
----
-fixes:
-  - |
-    Fixed a crash in ``DocumentJoiner`` when using
-    ``join_mode="distribution_based_rank_fusion"`` with documents that have
-    ``score=None``. The score normalization now treats a missing score as
-    ``0`` (consistent with how the mean/standard-deviation are computed),
-    instead of raising ``TypeError: unsupported operand type(s) for -:
-    'NoneType' and 'float'``.

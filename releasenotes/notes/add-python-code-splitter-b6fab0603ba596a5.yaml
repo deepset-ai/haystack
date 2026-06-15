@@ -1,8 +1,0 @@
----
-features:
-  - |
-    Introduced the ``PythonCodeSplitter`` component, a syntax-aware splitter for Python source files:
-      - Parses sources with the ``ast`` module and merges units (module docstring, import blocks, top-level functions, class headers, methods, nested classes, and remaining statements) greedily into chunks of roughly ``max_effective_lines``.
-      - Keeps whole functions and methods together; falls back to a line-based secondary split (using ``DocumentSplitter``) with overlap only for functions whose effective length exceeds ``oversized_factor * max_effective_lines``.
-      - Optionally strips docstrings into chunk metadata via ``strip_docstrings=True``, and prepends the enclosing class signature to chunks whose members live in a later chunk via ``preserve_class_definition=True``.
-      - Emits per-chunk metadata including ``start_line``, ``end_line``, ``unit_kinds``, ``include_classes``, ``decorators``, ``docstrings``, ``source_id``, and ``split_id``.

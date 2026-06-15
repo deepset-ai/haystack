@@ -1,4 +1,0 @@
----
-enhancements:
-  - |
-    Depend on our own rank_bm25 fork.

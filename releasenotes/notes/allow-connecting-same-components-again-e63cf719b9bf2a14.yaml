@@ -1,5 +1,0 @@
----
-issues:
-  - |
-    Make `connect` idempotent, allowing connecting the same components more than once. Specially useful
-    in Jupiter notebooks. Fixes https://github.com/deepset-ai/haystack/issues/6359.

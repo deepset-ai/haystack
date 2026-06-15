@@ -1,3 +1,0 @@
-SPDX-FileCopyrightText: {{ props["inceptionYear"] }}-present {{ props["copyrightOwner"] }}
-
-SPDX-License-Identifier: Apache-2.0

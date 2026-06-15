@@ -1,4 +1,0 @@
----
-deprecations:
-  - |
-    The NLTKDocumentSplitter will deprecated and will be removed in the next release. The DocumentSplitter will instead support the functionality of the NLTKDocumentSplitter.

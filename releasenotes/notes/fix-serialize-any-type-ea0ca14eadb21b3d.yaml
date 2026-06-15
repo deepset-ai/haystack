@@ -1,4 +1,0 @@
----
-fixes:
-  - |
-    Fixes serialization of typing.Any when using serialize_type utility

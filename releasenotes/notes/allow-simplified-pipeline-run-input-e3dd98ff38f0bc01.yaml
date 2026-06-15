@@ -1,6 +1,0 @@
----
-preview:
-  - |
-    Adds option to run pipelines without specifying component inputs and their corresponding key/value pairs. Instead,
-    provide the input keys/values directly, and the pipeline's internal mechanisms will automatically determine the
-    appropriate components.

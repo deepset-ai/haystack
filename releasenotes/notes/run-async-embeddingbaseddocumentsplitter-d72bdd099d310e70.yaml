@@ -1,4 +1,0 @@
----
-enhancements:
-  - |
-    Enable async embedding-based splitting with a new ``run_async`` method on ``EmbeddingBasedDocumentSplitter``.

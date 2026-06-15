@@ -1,4 +1,0 @@
----
-upgrade:
-  - |
-    `Multiplexer` is removed and users should switch to `BranchJoiner` instead.

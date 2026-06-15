@@ -1,5 +1,0 @@
----
-preview:
-  - |
-    Add `DynamicPromptBuilder` to dynamically generate prompts from either a list of ChatMessage instances or a string
-    template, leveraging Jinja2 templating for flexible and efficient prompt construction.

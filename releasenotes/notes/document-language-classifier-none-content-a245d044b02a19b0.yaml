@@ -1,5 +1,0 @@
----
-fixes:
-  - |
-    Prevent DocumentLanguageClassifier from crashing when ``Document.content=None`` by
-    marking them as unmatched and logging a warning.

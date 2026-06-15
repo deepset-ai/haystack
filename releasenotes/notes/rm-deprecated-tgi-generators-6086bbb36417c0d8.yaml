@@ -1,5 +1,0 @@
----
-upgrade:
-  - |
-    Deprecated `HuggingFaceTGIGenerator` and `HuggingFaceTGIChatGenerator` have been removed.
-    Use `HuggingFaceAPIGenerator` and `HuggingFaceAPIChatGenerator` instead.

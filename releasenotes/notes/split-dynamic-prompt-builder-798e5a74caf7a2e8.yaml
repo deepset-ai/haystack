@@ -1,4 +1,0 @@
----
-enhancements:
-  - |
-    Split DynamicPromptBuilder into DynamicPromptBuilder and DynamicChatPromptBuilder

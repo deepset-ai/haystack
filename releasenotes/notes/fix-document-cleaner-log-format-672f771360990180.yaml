@@ -1,4 +1,0 @@
----
-fixes:
-  - |
-    Fix malformed log format string in ``DocumentCleaner``. The warning for documents with ``None`` content used ``%{document_id}`` instead of ``{document_id}``, preventing proper interpolation of the document ID.

@@ -1,4 +1,0 @@
----
-fixes:
-  - |
-    Prevent ``Document.from_dict()`` from mutating the input dictionary during deserialization.

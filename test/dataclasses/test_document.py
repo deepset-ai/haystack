@@ -395,3 +395,44 @@ def test_warn_on_inplace_mutation():
     doc = Document(content="test")
     with pytest.warns(Warning, match="dataclasses.replace"):
         doc.content = "other"
+
+def test_document_empty_string_and_none_content_have_different_ids():
+    """
+    Regression test: Document(content="") and Document(content=None)
+    must not produce the same ID. Previously, `self.content or None`
+    coerced "" to None before hashing, causing a collision.
+    """
+    d_empty = Document(content="")
+    d_none = Document(content=None)
+    assert d_empty.id != d_none.id, (
+        "Document with empty string content and Document with None content "
+        "must have different IDs to avoid silent data loss in document stores."
+    )
+
+
+def test_document_empty_string_id_is_stable():
+    """Document(content='') should always produce the same ID."""
+    d1 = Document(content="")
+    d2 = Document(content="")
+    assert d1.id == d2.id
+
+
+def test_document_none_content_id_is_stable():
+    """Document(content=None) should always produce the same ID."""
+    d1 = Document(content=None)
+    d2 = Document(content=None)
+    assert d1.id == d2.id
+
+
+def test_document_store_accepts_empty_and_none_content_documents():
+    """
+    Both Document(content='') and Document(content=None) should be
+    writable to the same store without DuplicateDocumentError.
+    """
+    from haystack.document_stores.in_memory import InMemoryDocumentStore
+    store = InMemoryDocumentStore()
+    store.write_documents([
+        Document(content=""),
+        Document(content=None),
+    ])
+    assert store.count_documents() == 2

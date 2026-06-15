@@ -1,5 +1,0 @@
----
-fixes:
-  - |
-    Preserve explicit `lambda_threshold=0.0` in `SentenceTransformersDiversityRanker`
-    instead of overriding it with `0.5` due to short-circuit evaluation.

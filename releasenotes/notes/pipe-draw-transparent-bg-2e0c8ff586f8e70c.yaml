@@ -1,4 +1,0 @@
----
-fixes:
-  - |
-    Restore transparent background for images generated with Pipeline.draw and Pipeline.show

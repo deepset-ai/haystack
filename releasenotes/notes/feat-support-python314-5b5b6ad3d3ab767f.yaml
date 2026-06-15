@@ -1,5 +1,0 @@
----
-enhancements:
-  - |
-    Add support for python 3.14 to Haystack. Haystack already mostly supported python 3.14.
-    Only minor changes were needed in regards to our type serialization and type checking when handling bare Union types.
