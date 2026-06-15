@@ -1,0 +1,6 @@
+# releasenotes/notes/fix-pipeline-load-docstring-typo-3b204cceadc71c0c.yaml
+fixes:
+  - |
+    Fixed a typo in the ``Pipeline.load()`` method docstring. The description
+    now correctly reads "from a string representation" instead of
+    "a string representation".
