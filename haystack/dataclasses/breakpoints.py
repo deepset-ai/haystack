@@ -259,6 +259,8 @@ class PipelineSnapshot:
             break_point=(
                 AgentBreakpoint.from_dict(data=data["break_point"])
                 if "agent_name" in data["break_point"]
+                else ToolBreakpoint.from_dict(data=data["break_point"])
+                if "tool_name" in data["break_point"]
                 else Breakpoint.from_dict(data=data["break_point"])
             ),
             agent_snapshot=AgentSnapshot.from_dict(data["agent_snapshot"]) if data.get("agent_snapshot") else None,

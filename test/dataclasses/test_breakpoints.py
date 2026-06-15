@@ -6,7 +6,14 @@ import warnings
 
 import pytest
 
-from haystack.dataclasses.breakpoints import AgentBreakpoint, AgentSnapshot, Breakpoint, PipelineSnapshot, PipelineState
+from haystack.dataclasses.breakpoints import (
+    AgentBreakpoint,
+    AgentSnapshot,
+    Breakpoint,
+    PipelineSnapshot,
+    PipelineState,
+    ToolBreakpoint,
+)
 
 
 def test_agent_snapshot_no_warning_on_init():
@@ -51,3 +58,16 @@ def test_pipeline_snapshot_warn_on_inplace_mutation():
     )
     with pytest.warns(Warning, match="dataclasses.replace"):
         snap.original_input_data = {"new": "data"}
+
+
+def test_pipeline_snapshot_roundtrip_with_tool_breakpoint():
+    state = PipelineState(inputs={}, component_visits={"comp": 1}, pipeline_outputs={})
+    bp = ToolBreakpoint(component_name="tool_invoker", tool_name="search")
+    snap = PipelineSnapshot(
+        original_input_data={}, ordered_component_names=["comp"], pipeline_state=state, break_point=bp
+    )
+
+    restored = PipelineSnapshot.from_dict(snap.to_dict())
+
+    assert isinstance(restored.break_point, ToolBreakpoint)
+    assert restored.break_point == bp

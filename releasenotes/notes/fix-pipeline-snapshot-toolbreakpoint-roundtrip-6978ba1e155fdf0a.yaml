@@ -1,0 +1,9 @@
+---
+fixes:
+  - |
+    Fixed `PipelineSnapshot.from_dict` raising a `TypeError` when the
+    snapshot's `break_point` is a top-level `ToolBreakpoint`. `to_dict` already
+    serializes the `tool_name` field, but `from_dict` only handled
+    `AgentBreakpoint` and `Breakpoint`, so deserializing a `ToolBreakpoint`
+    failed. `PipelineSnapshot.from_dict` now reconstructs `ToolBreakpoint`
+    correctly, matching the existing handling in `AgentBreakpoint.from_dict`.
