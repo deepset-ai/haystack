@@ -3,10 +3,23 @@ name: ClusterFuzzLite PR fuzzing
 # Short, code-change-scoped fuzzing run on PRs that touch fuzzed code or the
 # fuzzing setup. Catches regressions and crashes introduced by a change.
 # Continuous/batch fuzzing can be added later as a separate scheduled workflow.
+#
+# Scoped to the modules the harnesses actually exercise rather than all of
+# `haystack/**`, so the (build-heavy) job doesn't run on every library PR:
+#   - Pipeline.loads          -> core/pipeline, core/serialization, marshal
+#   - Document.from_dict       -> dataclasses
+#   - document_matches_filter  -> utils/filters
+# Deep, transitively-reached regressions are better caught by a scheduled batch
+# run; random YAML/JSON essentially never reaches haystack/components.
 on:
   pull_request:
     paths:
-      - "haystack/**"
+      - "haystack/core/pipeline/**"
+      - "haystack/core/serialization.py"
+      - "haystack/core/errors.py"
+      - "haystack/marshal/**"
+      - "haystack/dataclasses/**"
+      - "haystack/utils/filters.py"
       - "test/fuzz/**"
       - ".clusterfuzzlite/**"
       - ".github/workflows/cflite_pr.yml"
