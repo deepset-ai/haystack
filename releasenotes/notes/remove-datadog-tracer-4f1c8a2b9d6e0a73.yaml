@@ -1,0 +1,36 @@
+---
+upgrade:
+  - |
+    The ``DatadogTracer`` has been moved out of Haystack into the ``datadog-haystack`` integration package.
+    It is no longer auto-enabled when ``ddtrace`` is installed; instead, use the new ``DatadogConnector`` component
+    to enable Datadog tracing in your pipeline. Install the new package with ``pip install datadog-haystack``.
+
+    Before:
+
+    .. code:: python
+
+      import ddtrace
+      from haystack import tracing
+      from haystack.tracing.datadog import DatadogTracer
+
+      tracing.enable_tracing(DatadogTracer(ddtrace.tracer))
+
+    After:
+
+    .. code:: python
+
+      from haystack import Pipeline
+      from haystack_integrations.components.connectors.datadog import DatadogConnector
+
+      pipe = Pipeline()
+      pipe.add_component("tracer", DatadogConnector())
+
+    Alternatively, you can still enable the tracer manually:
+
+    .. code:: python
+
+      import ddtrace
+      from haystack import tracing
+      from haystack_integrations.tracing.datadog import DatadogTracer
+
+      tracing.enable_tracing(DatadogTracer(ddtrace.tracer))

@@ -6,7 +6,6 @@ import sys
 from collections.abc import Generator
 from unittest.mock import Mock
 
-import ddtrace
 import opentelemetry.trace
 import pytest
 from _pytest.monkeypatch import MonkeyPatch
@@ -15,7 +14,6 @@ from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import SimpleSpanProcessor
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
 
-from haystack.tracing.datadog import DatadogTracer
 from haystack.tracing.opentelemetry import OpenTelemetryTracer
 from haystack.tracing.tracer import (
     HAYSTACK_CONTENT_TRACING_ENABLED_ENV_VAR,
@@ -23,7 +21,6 @@ from haystack.tracing.tracer import (
     NullTracer,
     ProxyTracer,
     Tracer,
-    _auto_configured_datadog_tracer,
     _auto_configured_opentelemetry_tracer,
     auto_enable_tracing,
     disable_tracing,
@@ -130,13 +127,6 @@ class TestAutoEnableTracer:
         assert isinstance(activated_tracer, OpenTelemetryTracer)
         assert is_tracing_enabled()
 
-    def test_add_datadog_tracer(self) -> None:
-        auto_enable_tracing()
-
-        activated_tracer = tracer.actual_tracer
-        assert isinstance(activated_tracer, DatadogTracer)
-        assert is_tracing_enabled()
-
     def test__auto_configured_opentelemetry_tracer(self, configured_opentelemetry_tracing):
         tracer = _auto_configured_opentelemetry_tracer()
         assert isinstance(tracer, OpenTelemetryTracer)
@@ -144,15 +134,6 @@ class TestAutoEnableTracer:
     def test__auto_configured_opentelemetry_tracer_with_failing_import(self, monkeypatch):
         monkeypatch.delitem(sys.modules, "opentelemetry.trace", raising=False)
         tracer = _auto_configured_opentelemetry_tracer()
-        assert tracer is None
-
-    def test__auto_configured_datadog_tracer(self):
-        tracer = _auto_configured_datadog_tracer()
-        assert isinstance(tracer, DatadogTracer)
-
-    def test__auto_configured_datadog_tracer_with_failing_import(self, monkeypatch):
-        monkeypatch.setattr(ddtrace.tracer, "enabled", False)
-        tracer = _auto_configured_datadog_tracer()
         assert tracer is None
 
 
