@@ -145,6 +145,49 @@ class TestMemoryDocumentStore(
         assert list(document_store_loaded.storage.values()) == docs
         assert document_store_loaded.to_dict() == in_memory_doc_store.to_dict()
 
+    def test_save_to_disk_and_load_from_disk_with_blob_and_sparse_embedding(
+        self, in_memory_doc_store: InMemoryDocumentStore, tmp_dir: str
+    ) -> None:
+        """Regression test for #11593.
+
+        load_from_disk previously used ``Document(**doc)`` which does not
+        reverse the ``ByteStream.to_dict()`` / ``SparseEmbedding.to_dict()``
+        serialisation produced by ``save_to_disk``.  The loaded documents had
+        ``blob`` and ``sparse_embedding`` as plain dicts instead of the proper
+        dataclass instances, causing AttributeErrors on any downstream access.
+        """
+        from haystack.dataclasses import ByteStream, SparseEmbedding
+
+        doc = Document(
+            content="image document",
+            blob=ByteStream(data=b"\x89PNG fake image bytes", mime_type="image/png"),
+            sparse_embedding=SparseEmbedding(indices=[0, 5], values=[0.1, 0.9]),
+        )
+        in_memory_doc_store.write_documents([doc])
+        path = tmp_dir + "/store_blob.json"
+        in_memory_doc_store.save_to_disk(path)
+
+        loaded = InMemoryDocumentStore.load_from_disk(path)
+        loaded_docs = loaded.filter_documents()
+        assert len(loaded_docs) == 1
+        loaded_doc = loaded_docs[0]
+
+        assert isinstance(loaded_doc.blob, ByteStream), (
+            f"blob should be ByteStream after round-trip, got {type(loaded_doc.blob)}"
+        )
+        assert loaded_doc.blob.data == b"\x89PNG fake image bytes"
+        assert loaded_doc.blob.mime_type == "image/png"
+
+        assert isinstance(loaded_doc.sparse_embedding, SparseEmbedding), (
+            f"sparse_embedding should be SparseEmbedding after round-trip, got {type(loaded_doc.sparse_embedding)}"
+        )
+        assert loaded_doc.sparse_embedding.indices == [0, 5]
+        assert loaded_doc.sparse_embedding.values == [0.1, 0.9]
+
+        # Verify save → load → save round-trip works without AttributeError
+        second_path = tmp_dir + "/store_blob2.json"
+        loaded.save_to_disk(second_path)
+
     def test_invalid_bm25_algorithm(self):
         with pytest.raises(ValueError, match="BM25 algorithm 'invalid' is not supported"):
             InMemoryDocumentStore(bm25_algorithm="invalid")  # type: ignore[arg-type]
