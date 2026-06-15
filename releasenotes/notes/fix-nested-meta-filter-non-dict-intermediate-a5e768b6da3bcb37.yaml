@@ -1,8 +1,8 @@
 ---
 fixes:
   - |
-    Fixed a `TypeError` when filtering documents on a nested metadata field
-    (e.g. `meta.user.age`) where an intermediate value is not a dictionary
-    (for example `None` or a scalar). Such intermediate values are now treated
-    as a missing field (`None`) instead of raising, which previously crashed
-    `filter_documents` for stores like `InMemoryDocumentStore`.
+    Fixed a ``TypeError`` when filtering documents on a nested metadata field
+    (e.g. ``meta.user.age``) where an intermediate value is not a dictionary
+    (for example ``None`` or a scalar). Such intermediate values are now treated
+    as a missing field (``None``) instead of raising, which previously crashed
+    ``filter_documents`` for stores like ``InMemoryDocumentStore``.
