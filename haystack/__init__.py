@@ -18,8 +18,9 @@ from haystack.dataclasses import Answer, Document, ExtractedAnswer, GeneratedAns
 from haystack.version import __version__  # noqa: F401
 
 # Initialize the logging configuration
-# This is a no-op unless `structlog` is installed
-haystack.logging.configure_logging()
+# This is a no-op unless `structlog` is installed, and `force=False` makes it skip configuration if `structlog` has
+# already been configured by the host application (so importing Haystack does not overwrite their setup).
+haystack.logging.configure_logging(force=False)
 
 # Same for tracing (no op if `opentelemetry` or `ddtrace` is not installed)
 haystack.tracing.auto_enable_tracing()

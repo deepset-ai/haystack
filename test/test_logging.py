@@ -14,6 +14,8 @@ from unittest.mock import ANY
 
 import pytest
 import structlog
+import structlog._frames
+import structlog.stdlib
 from _pytest.capture import CaptureFixture
 from _pytest.logging import LogCaptureFixture
 from _pytest.monkeypatch import MonkeyPatch
@@ -61,6 +63,23 @@ def restore_named_loggers() -> Generator[Callable[[str], logging.Logger], None, 
         logger.handlers = handlers
         logger.propagate = propagate
         logger.setLevel(level)
+
+
+@pytest.fixture()
+def restore_structlog_config() -> Generator[None, None, None]:
+    """Snapshot the global structlog configuration and restore it after the test."""
+    was_configured = structlog.is_configured()
+    config = structlog.get_config()
+    yield
+    if was_configured:
+        structlog.configure(**config)
+    else:
+        structlog.reset_defaults()
+
+
+def _sentinel_processor(logger: object, method_name: str, event_dict: dict) -> dict:
+    """A no-op processor used to detect whether an existing structlog config was left untouched."""
+    return event_dict
 
 
 @pytest.fixture()
@@ -753,3 +772,112 @@ class TestDynamicLogLevel:
         structlog.get_logger("haystack.native_filtered_level").debug("debug below the configured level")
 
         assert "debug below the configured level" not in capfd.readouterr().err
+
+
+class TestStructlogConfigIsPreserved:
+    """
+    `structlog.configure` writes to a single process-global configuration. These tests pin down that merely importing
+    Haystack (which calls `configure_logging(force=False)`) does not overwrite a structlog configuration that the host
+    application already set up, while an explicit call still takes over.
+    """
+
+    def test_not_forced_skips_when_structlog_already_configured(self, restore_structlog_config: None) -> None:
+        # Stand-in for the host application configuring structlog before Haystack is imported/configured.
+        structlog.reset_defaults()
+        structlog.configure(processors=[_sentinel_processor])
+        haystack_logger = logging.getLogger("haystack")
+        haystack_logger.handlers = []
+
+        haystack_logging.configure_logging(force=False)
+
+        # The application's structlog configuration is left untouched ...
+        assert structlog.get_config()["processors"] == [_sentinel_processor]
+        # ... and we did not attach our handler on top of their setup.
+        assert not any(getattr(h, "name", None) == "HaystackLoggingHandler" for h in haystack_logger.handlers)
+
+    def test_forced_takes_over_existing_structlog_config(self, restore_structlog_config: None) -> None:
+        structlog.reset_defaults()
+        structlog.configure(processors=[_sentinel_processor])
+        haystack_logger = logging.getLogger("haystack")
+        haystack_logger.handlers = []
+
+        haystack_logging.configure_logging(use_json=True, force=True)
+
+        assert structlog.get_config()["processors"] != [_sentinel_processor]
+        assert any(getattr(h, "name", None) == "HaystackLoggingHandler" for h in haystack_logger.handlers)
+
+    def test_not_forced_still_configures_when_structlog_is_unconfigured(self, restore_structlog_config: None) -> None:
+        # This is the real import-time situation: nobody configured structlog yet, so we set up our nice defaults.
+        structlog.reset_defaults()
+        haystack_logger = logging.getLogger("haystack")
+        haystack_logger.handlers = []
+        assert not structlog.is_configured()
+
+        haystack_logging.configure_logging(force=False)
+
+        assert structlog.is_configured()
+        assert any(getattr(h, "name", None) == "HaystackLoggingHandler" for h in haystack_logger.handlers)
+
+
+class TestGetLoggerIsIdempotent:
+    """
+    `logging.getLogger(name)` returns a process-wide singleton. `haystack.logging.getLogger` patches that shared
+    object in place, so calling it more than once for the same name (different modules, re-imports, ...) must not wrap
+    the already-wrapped methods again. The user-visible symptom of re-wrapping is that the message is run through
+    `str.format` once per wrap, so a field value that itself contains `{...}` gets re-interpolated.
+    """
+
+    def test_repeated_get_logger_interpolates_the_message_exactly_once(self, capfd: CaptureFixture) -> None:
+        haystack_logging.configure_logging(use_json=True)
+
+        # Two modules grabbing the same logger name is the realistic trigger for re-wrapping.
+        haystack_logging.getLogger("haystack.idempotency_test")
+        logger = haystack_logging.getLogger("haystack.idempotency_test")
+        logger.setLevel(logging.INFO)
+
+        # `a`'s value contains a `{b}` placeholder. With a single interpolation it must be left as-is; a second
+        # interpolation would expand it using `b` and leak "SECRET" into the message.
+        logger.info("Hello {a}", a="{b}", b="SECRET")
+
+        parsed_output = json.loads(capfd.readouterr().err)
+        assert parsed_output["event"] == "Hello {b}"
+        assert "SECRET" not in parsed_output["event"]
+
+    def test_repeated_get_logger_does_not_rewrap_methods(self) -> None:
+        haystack_logging.getLogger("haystack.idempotency_identity_test")
+        # Capture the patched methods after the first call, before the second one runs.
+        patched = logging.getLogger("haystack.idempotency_identity_test")
+        debug_after_first = patched.debug
+        make_record_after_first = patched.makeRecord
+
+        haystack_logging.getLogger("haystack.idempotency_identity_test")
+
+        # The second call must leave the already-patched methods in place, not wrap a fresh layer on top.
+        assert patched.debug is debug_after_first
+        assert patched.makeRecord is make_record_after_first
+
+
+class TestFindCallerMatchesStructlog:
+    """
+    `_patch_structlog_call_information` mirrors structlog's `_FixedFindCallerLogger.findCaller`, only adding
+    `haystack.logging` to the ignored frames. structlog itself does not guard the frame lookup, so neither do we: any
+    error must propagate as-is instead of being swallowed and printed to stdout.
+    """
+
+    def test_find_caller_does_not_print_or_mask_errors(self, capsys: CaptureFixture, monkeypatch: MonkeyPatch) -> None:
+        # Force the frame lookup to fail. It is imported inside `_patch_structlog_call_information`, so we patch the
+        # module attribute before patching the logger.
+        def boom(*args: object, **kwargs: object) -> tuple:
+            raise RuntimeError("frame lookup failed")
+
+        monkeypatch.setattr(structlog._frames, "_find_first_app_frame_and_name", boom)
+
+        logger = structlog.stdlib._FixedFindCallerLogger("haystack.find_caller_test")
+        haystack_logging._patch_structlog_call_information(logger)
+
+        # The original error must propagate (not be masked by a NameError on an unbound `f`) ...
+        with pytest.raises(RuntimeError, match="frame lookup failed"):
+            logger.findCaller()
+
+        # ... and nothing must be written to stdout.
+        assert capsys.readouterr().out == ""

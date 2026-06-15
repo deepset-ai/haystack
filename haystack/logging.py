@@ -17,6 +17,10 @@ if typing.TYPE_CHECKING:
 HAYSTACK_LOGGING_USE_JSON_ENV_VAR = "HAYSTACK_LOGGING_USE_JSON"
 HAYSTACK_LOGGING_IGNORE_STRUCTLOG_ENV_VAR = "HAYSTACK_LOGGING_IGNORE_STRUCTLOG"
 
+# Attribute set on a logger once we have patched its methods. `logging.getLogger` returns a shared singleton, so we
+# use this marker to patch each logger only once and avoid wrapping the already-wrapped methods on repeated calls.
+_PATCHED_MARKER = "_haystack_patched"
+
 
 class PatchedLogger(typing.Protocol):
     """Class which enables using type checkers to find wrong logger usage."""
@@ -221,16 +225,13 @@ def _patch_structlog_call_information(logger: logging.Logger) -> None:
         if not isinstance(logger, _FixedFindCallerLogger):
             return
 
-        # completely copied from structlog. We only add `haystack.logging` to the list of ignored frames
+        # Copied from structlog's `_FixedFindCallerLogger.findCaller`, only adding `haystack.logging` to the list of
+        # ignored frames so our own logging wrappers don't show up as the caller. We deliberately do not forward
+        # `stacklevel` to `_find_first_app_frame_and_name`: that parameter only exists in structlog >= 25.5.0 and
+        # structlog is an optional dependency, so forwarding it would break logging on older versions.
         def findCaller(stack_info: bool = False, stacklevel: int = 1) -> tuple[str, int, str, str | None]:  # noqa: ARG001
-            try:
-                sinfo: str | None
-                # we need to exclude `haystack.logging` from the stack
-                f, name = _find_first_app_frame_and_name(["logging", "haystack.logging"])
-                sinfo = _format_stack(f) if stack_info else None
-            except Exception as error:
-                print(f"Error in findCaller: {error}")
-
+            f, _name = _find_first_app_frame_and_name(["logging", "haystack.logging"])
+            sinfo = _format_stack(f) if stack_info else None
             return f.f_code.co_filename, f.f_lineno, f.f_code.co_name, sinfo
 
         logger.findCaller = findCaller  # type: ignore
@@ -248,6 +249,11 @@ def getLogger(name: str) -> PatchedLogger:
         - it makes structure logging effective, not just an available feature
     """
     logger = logging.getLogger(name)
+    if getattr(logger, _PATCHED_MARKER, False):
+        # Already patched: `logging.getLogger` returned the same singleton, so re-patching would stack the wrappers
+        # and interpolate the message more than once.
+        return typing.cast(PatchedLogger, logger)
+
     logger.debug = patch_log_method_to_kwargs_only(logger.debug)  # type: ignore
     logger.info = patch_log_method_to_kwargs_only(logger.info)  # type: ignore
     logger.warn = patch_log_method_to_kwargs_only(logger.warn)  # type: ignore
@@ -262,6 +268,8 @@ def getLogger(name: str) -> PatchedLogger:
 
     # We also patch the `makeRecord` method to use keyword string interpolation
     logger.makeRecord = patch_make_records_to_use_kwarg_string_interpolation(logger.makeRecord)  # type: ignore
+
+    setattr(logger, _PATCHED_MARKER, True)
 
     return typing.cast(PatchedLogger, logger)
 
@@ -300,6 +308,7 @@ def configure_logging(
     use_json: bool | None = None,
     logger_name: str | Sequence[str] = ("haystack", "haystack_integrations", "haystack_experimental"),
     propagate: bool = True,
+    force: bool = True,
 ) -> None:
     """
     Configure logging for Haystack.
@@ -325,6 +334,11 @@ def configure_logging(
         capturing tools such as `pytest`'s `caplog`. Set it to `False` to make Haystack fully own the output of its
         own logs - this avoids duplicate log lines when the host application also configures the root logger. It has
         no effect when `logger_name=""` (the root logger has no ancestors).
+    :param force:
+        Whether to (re)configure logging even if `structlog` has already been configured by someone else. The default
+        (`True`) means an explicit call always takes over. Pass `False` to make this a no-op when `structlog` is
+        already configured - this is used by the import-time call in `haystack/__init__.py` so that merely importing
+        Haystack does not overwrite a `structlog` configuration set up by the host application.
     """
     import haystack.utils.jupyter  # to avoid circular imports
 
@@ -339,6 +353,11 @@ def configure_logging(
 
     if os.getenv(HAYSTACK_LOGGING_IGNORE_STRUCTLOG_ENV_VAR, "false").lower() == "true":
         # If the user wants to ignore structlog, we don't configure it and fall back to standard logging
+        return
+
+    # When not forcing, skip configuration if structlog is already configured (e.g. by the host application) so we
+    # leave its configuration and handlers untouched.
+    if not force and structlog.is_configured():
         return
 
     # We roughly follow the structlog documentation here:

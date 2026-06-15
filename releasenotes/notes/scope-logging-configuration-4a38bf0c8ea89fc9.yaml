@@ -14,9 +14,21 @@ fixes:
   - |
     Fixed the logger in ``haystack.utils.requests_utils`` being named after the module's file path instead of
     ``haystack.utils.requests_utils``, which kept its records outside the ``haystack`` logger namespace.
+  - |
+    Importing Haystack no longer overwrites a ``structlog`` configuration that the host application already set up.
+    The import-time call to ``configure_logging`` now skips configuration when ``structlog`` is already configured.
+  - |
+    ``haystack.logging.getLogger`` is now idempotent. Previously, calling it more than once for the same logger name
+    wrapped the already-wrapped logger methods again, which caused the log message to be run through ``str.format``
+    once per call. As a result a field value containing ``{...}`` could be re-interpolated and pull in the value of
+    another field. Each logger is now patched only once.
+  - |
+    The patched ``findCaller`` used to determine the source of a log entry no longer prints to stdout and no longer
+    masks errors with a misleading ``NameError``, matching structlog's own ``findCaller`` implementation.
 features:
   - |
-    ``haystack.logging.configure_logging`` gained two parameters: ``logger_name`` to choose which logger(s) the
-    formatting handler is attached to, and ``propagate`` to control whether Haystack's loggers propagate their
-    records to ancestor loggers. Set ``propagate=False`` to let Haystack fully own the output of its own logs and
-    avoid duplicate log lines when the host application also configures the root logger.
+    ``haystack.logging.configure_logging`` gained three parameters: ``logger_name`` to choose which logger(s) the
+    formatting handler is attached to, ``propagate`` to control whether Haystack's loggers propagate their records to
+    ancestor loggers, and ``force`` to control whether an existing ``structlog`` configuration is replaced. Set
+    ``propagate=False`` to let Haystack fully own the output of its own logs and avoid duplicate log lines when the
+    host application also configures the root logger.
