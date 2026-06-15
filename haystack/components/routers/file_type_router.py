@@ -20,6 +20,11 @@ from haystack.utils.misc import CUSTOM_MIMETYPES  # noqa: F401
 logger = logging.getLogger(__name__)
 
 
+# Strings matching this shape are treated as literal MIMEs (escaped before compile); anything else
+# is compiled as a regex, preserving the documented regex support.
+_LITERAL_MIME_RE = re.compile(r"\A[a-zA-Z0-9][a-zA-Z0-9.+_\-]*/[a-zA-Z0-9][a-zA-Z0-9.+_\-]*\Z")
+
+
 @component
 class FileTypeRouter:
     """
@@ -27,10 +32,11 @@ class FileTypeRouter:
 
     FileTypeRouter supports both exact MIME type matching and regex patterns.
 
-    For file paths, MIME types come from extensions, while byte streams use metadata.
-    You can use regex patterns in the `mime_types` parameter to set broad categories
-    (such as 'audio/*' or 'text/*') or specific types.
-    MIME types without regex patterns are treated as exact matches.
+    For file paths, MIME types come from extensions; byte streams use metadata.
+    Entries in `mime_types` are classified automatically: strings made up only of IANA-valid
+    characters (alphanumerics and `.`, `+`, `_`, `-` on each side of the `/`) are matched literally,
+    so `"image/svg+xml"` matches only `image/svg+xml`. Anything else (for example `"audio/.*"`) is
+    compiled as a regex.
 
     ### Usage example
 
@@ -38,10 +44,10 @@ class FileTypeRouter:
     from haystack.components.routers import FileTypeRouter
     from pathlib import Path
 
-    # For exact MIME type matching
-    router = FileTypeRouter(mime_types=["text/plain", "application/pdf"])
+    # Exact MIME matching — `+`-containing IANA types like image/svg+xml work correctly
+    router = FileTypeRouter(mime_types=["text/plain", "application/pdf", "image/svg+xml"])
 
-    # For flexible matching using regex, to handle all audio types
+    # Regex matching — catch every audio subtype
     router_with_regex = FileTypeRouter(mime_types=[r"audio/.*", r"text/plain"])
 
     sources = [Path("file.txt"), Path("document.pdf"), Path("song.mp3")]
@@ -86,10 +92,14 @@ class FileTypeRouter:
 
         self.mime_type_patterns = []
         for mime_type in mime_types:
-            try:
-                pattern = re.compile(mime_type)
-            except re.error as e:
-                raise ValueError(f"Invalid regex pattern '{mime_type}'.") from e
+            if _LITERAL_MIME_RE.fullmatch(mime_type):
+                # Escape so `.` and `+` in real MIME types match themselves, not regex wildcards.
+                pattern = re.compile(re.escape(mime_type))
+            else:
+                try:
+                    pattern = re.compile(mime_type)
+                except re.error as e:
+                    raise ValueError(f"Invalid MIME type or regex pattern '{mime_type}'.") from e
             self.mime_type_patterns.append(pattern)
 
         # the actual output type is list[Union[Path, ByteStream]],
@@ -189,9 +199,11 @@ class FileTypeRouter:
 
             matched = False
             if mime_type:
-                for pattern in self.mime_type_patterns:
+                # Bucket key is the user's original string — keeps it aligned with the output socket
+                # name; `pattern.pattern` would be the escaped form for literals.
+                for bucket_key, pattern in zip(self.mime_types, self.mime_type_patterns, strict=True):
                     if pattern.fullmatch(mime_type):
-                        mime_types[pattern.pattern].append(source)
+                        mime_types[bucket_key].append(source)
                         matched = True
                         break
             if not matched:
