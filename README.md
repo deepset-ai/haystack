@@ -227,7 +227,7 @@
 | haystack/marshal/yaml.py                                                            |       21 |        1 |     95% |        42 |
 | haystack/telemetry/\_\_init\_\_.py                                                  |        1 |        0 |    100% |           |
 | haystack/telemetry/\_environment.py                                                 |       25 |        0 |    100% |           |
-| haystack/telemetry/\_telemetry.py                                                   |       81 |       12 |     85% |69-75, 93-94, 113-114, 187 |
+| haystack/telemetry/\_telemetry.py                                                   |       83 |       12 |     86% |70-76, 94-95, 114-115, 188 |
 | haystack/tools/\_\_init\_\_.py                                                      |       11 |        0 |    100% |           |
 | haystack/tools/component\_tool.py                                                   |       94 |        5 |     95% |349-350, 393-395 |
 | haystack/tools/errors.py                                                            |        6 |        0 |    100% |           |
@@ -266,7 +266,7 @@
 | haystack/utils/type\_serialization.py                                               |      111 |       12 |     89% |62, 64, 174-175, 186-189, 195, 211-214 |
 | haystack/utils/url\_validation.py                                                   |        4 |        0 |    100% |           |
 | haystack/version.py                                                                 |        5 |        2 |     60% |      9-10 |
-| **TOTAL**                                                                           | **17740** | **1213** | **93%** |           |
+| **TOTAL**                                                                           | **17742** | **1213** | **93%** |           |
 
 
 ## Setup coverage badge
