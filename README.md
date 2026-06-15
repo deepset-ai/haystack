@@ -167,7 +167,7 @@
 | haystack/components/validators/\_\_init\_\_.py                                      |        5 |        0 |    100% |           |
 | haystack/components/validators/json\_schema.py                                      |       71 |        8 |     89% |23-24, 137, 139, 154, 242, 248, 252 |
 | haystack/components/websearch/\_\_init\_\_.py                                       |        5 |        0 |    100% |           |
-| haystack/components/websearch/searchapi.py                                          |       78 |        1 |     99% |        96 |
+| haystack/components/websearch/searchapi.py                                          |       80 |        1 |     99% |       105 |
 | haystack/components/websearch/serper\_dev.py                                        |      106 |       21 |     80% |149-151, 233, 251-265, 275-278 |
 | haystack/components/writers/\_\_init\_\_.py                                         |        5 |        0 |    100% |           |
 | haystack/components/writers/document\_writer.py                                     |       32 |        0 |    100% |           |
@@ -266,7 +266,7 @@
 | haystack/utils/type\_serialization.py                                               |      112 |       12 |     89% |62, 64, 178-179, 190-193, 199, 215-218 |
 | haystack/utils/url\_validation.py                                                   |        4 |        0 |    100% |           |
 | haystack/version.py                                                                 |        5 |        2 |     60% |      9-10 |
-| **TOTAL**                                                                           | **17798** | **1216** | **93%** |           |
+| **TOTAL**                                                                           | **17800** | **1216** | **93%** |           |
 
 
 ## Setup coverage badge
