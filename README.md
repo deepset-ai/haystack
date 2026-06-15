@@ -71,13 +71,13 @@
 | haystack/components/embedders/types/protocol.py                                     |        6 |        0 |    100% |           |
 | haystack/components/evaluators/\_\_init\_\_.py                                      |        5 |        0 |    100% |           |
 | haystack/components/evaluators/answer\_exact\_match.py                              |       15 |        0 |    100% |           |
-| haystack/components/evaluators/context\_relevance.py                                |       43 |        0 |    100% |           |
+| haystack/components/evaluators/context\_relevance.py                                |       49 |        0 |    100% |           |
 | haystack/components/evaluators/document\_map.py                                     |       46 |        4 |     91% |73, 76-80, 126 |
 | haystack/components/evaluators/document\_mrr.py                                     |       42 |        4 |     90% |71, 74-78, 122 |
 | haystack/components/evaluators/document\_ndcg.py                                    |       43 |        0 |    100% |           |
 | haystack/components/evaluators/document\_recall.py                                  |       69 |        3 |     96% |106, 109-113 |
-| haystack/components/evaluators/faithfulness.py                                      |       43 |        0 |    100% |           |
-| haystack/components/evaluators/llm\_evaluator.py                                    |      109 |        2 |     98% |  216, 232 |
+| haystack/components/evaluators/faithfulness.py                                      |       49 |        0 |    100% |           |
+| haystack/components/evaluators/llm\_evaluator.py                                    |      147 |        5 |     97% |218, 234, 306-307, 312 |
 | haystack/components/evaluators/sas\_evaluator.py                                    |       57 |       25 |     56% |111-125, 153-188 |
 | haystack/components/extractors/\_\_init\_\_.py                                      |        5 |        0 |    100% |           |
 | haystack/components/extractors/image/\_\_init\_\_.py                                |        5 |        0 |    100% |           |
@@ -178,7 +178,7 @@
 | haystack/core/component/types.py                                                    |       36 |        3 |     92% |     85-87 |
 | haystack/core/errors.py                                                             |       76 |        9 |     88% |60-67, 127, 146, 150, 161, 165, 178, 187 |
 | haystack/core/pipeline/\_\_init\_\_.py                                              |        3 |        0 |    100% |           |
-| haystack/core/pipeline/async\_pipeline.py                                           |      171 |       50 |     71% |91-92, 97, 258-301, 313, 370-376, 388-390, 394, 411-413, 417-420, 440-453, 463 |
+| haystack/core/pipeline/async\_pipeline.py                                           |      171 |       48 |     72% |91-92, 97, 258-301, 313, 370-376, 389, 394, 411-413, 417-420, 440-453, 463 |
 | haystack/core/pipeline/base.py                                                      |      562 |       53 |     91% |124, 240-241, 245, 362, 374, 564, 601-611, 776, 844, 1373, 1539, 1543, 1553-1559, 1576-1638 |
 | haystack/core/pipeline/breakpoint.py                                                |      175 |       14 |     92% |68, 73, 81, 102, 111, 119, 127, 150-155, 226 |
 | haystack/core/pipeline/component\_checks.py                                         |       64 |        0 |    100% |           |
@@ -266,7 +266,7 @@
 | haystack/utils/type\_serialization.py                                               |      112 |       12 |     89% |62, 64, 178-179, 190-193, 199, 215-218 |
 | haystack/utils/url\_validation.py                                                   |        4 |        0 |    100% |           |
 | haystack/version.py                                                                 |        5 |        2 |     60% |      9-10 |
-| **TOTAL**                                                                           | **17748** | **1215** | **93%** |           |
+| **TOTAL**                                                                           | **17798** | **1216** | **93%** |           |
 
 
 ## Setup coverage badge
