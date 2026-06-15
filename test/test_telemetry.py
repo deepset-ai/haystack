@@ -10,7 +10,7 @@ import pytest
 
 from haystack import AsyncPipeline, Pipeline, component
 from haystack.core.serialization import generate_qualified_class_name
-from haystack.telemetry._telemetry import pipeline_running
+from haystack.telemetry._telemetry import pipeline_running, tutorial_running
 from haystack.utils.auth import Secret, TokenSecret
 
 
@@ -114,3 +114,27 @@ def test_pipeline_running_with_non_dict_telemetry_data(caplog):
     with caplog.at_level(logging.DEBUG):
         pipeline_running(pipe)
         assert "TypeError: Telemetry data for component my_component must be a dictionary" in caplog.text
+
+
+def test_send_telemetry_preserves_function_metadata():
+    """
+    Regression test for https://github.com/deepset-ai/haystack/issues/11568.
+
+    The ``send_telemetry`` decorator must use ``functools.wraps`` so that decorated functions such as
+    ``pipeline_running`` and ``tutorial_running`` keep their own metadata (``__name__``, ``__doc__`` and
+    ``__annotations__``) instead of exposing the ``send_telemetry_wrapper`` wrapper's.
+    """
+    # ``__name__`` comes from the wrapped function, not the wrapper.
+    assert pipeline_running.__name__ == "pipeline_running"
+    assert tutorial_running.__name__ == "tutorial_running"
+
+    # ``__doc__`` is preserved.
+    assert pipeline_running.__doc__ is not None
+    assert "Collects telemetry data for a pipeline run" in pipeline_running.__doc__
+
+    # ``__annotations__`` are preserved, e.g. the wrapped functions' parameters.
+    assert "pipeline" in pipeline_running.__annotations__
+    assert "tutorial_id" in tutorial_running.__annotations__
+
+    # ``functools.wraps`` also exposes the undecorated function through ``__wrapped__``.
+    assert pipeline_running.__wrapped__.__name__ == "pipeline_running"
