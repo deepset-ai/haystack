@@ -395,3 +395,25 @@ def test_warn_on_inplace_mutation():
     doc = Document(content="test")
     with pytest.warns(Warning, match="dataclasses.replace"):
         doc.content = "other"
+
+def test_document_empty_string_and_none_content_have_different_ids():
+    """
+    Regression test: Document(content="") and Document(content=None)
+    must not produce the same ID. Previously, `self.content or None`
+    coerced "" to None before hashing, causing a collision.
+    """
+    d_empty = Document(content="")
+    d_none = Document(content=None)
+    assert d_empty.id != d_none.id
+
+
+def test_document_empty_string_id_is_stable():
+    d1 = Document(content="")
+    d2 = Document(content="")
+    assert d1.id == d2.id
+
+
+def test_document_none_content_id_is_stable():
+    d1 = Document(content=None)
+    d2 = Document(content=None)
+    assert d1.id == d2.id
