@@ -1,0 +1,22 @@
+---
+upgrade:
+  - |
+    ``haystack.logging.configure_logging`` now attaches its formatting handler to Haystack's own logger namespaces
+    (``haystack``, ``haystack_integrations`` and ``haystack_experimental``) instead of the root logger. This makes
+    Haystack a better-behaved library when it runs next to other services in the same process: the log records of the
+    host application and other libraries are no longer reformatted or duplicated by Haystack. To restore the previous
+    behavior of formatting every log record in the process, call ``configure_logging(logger_name="")``.
+fixes:
+  - |
+    ``haystack.logging.configure_logging`` no longer freezes the log level at import time. Previously the level was
+    captured once when the function ran (at ``import haystack``), so a log level set later by the application was
+    ignored for ``structlog``-native loggers. The effective level is now read on every log call.
+  - |
+    Fixed the logger in ``haystack.utils.requests_utils`` being named after the module's file path instead of
+    ``haystack.utils.requests_utils``, which kept its records outside the ``haystack`` logger namespace.
+features:
+  - |
+    ``haystack.logging.configure_logging`` gained two parameters: ``logger_name`` to choose which logger(s) the
+    formatting handler is attached to, and ``propagate`` to control whether Haystack's loggers propagate their
+    records to ancestor loggers. Set ``propagate=False`` to let Haystack fully own the output of its own logs and
+    avoid duplicate log lines when the host application also configures the root logger.

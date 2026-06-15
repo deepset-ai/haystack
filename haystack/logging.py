@@ -8,6 +8,7 @@ import logging
 import os
 import sys
 import typing
+from collections.abc import Sequence
 from typing import Any
 
 if typing.TYPE_CHECKING:
@@ -295,7 +296,11 @@ def correlate_logs_with_traces(_: "WrappedLogger", __: str, event_dict: "EventDi
     return event_dict
 
 
-def configure_logging(use_json: bool | None = None) -> None:
+def configure_logging(
+    use_json: bool | None = None,
+    logger_name: str | Sequence[str] = ("haystack", "haystack_integrations", "haystack_experimental"),
+    propagate: bool = True,
+) -> None:
     """
     Configure logging for Haystack.
 
@@ -306,6 +311,20 @@ def configure_logging(use_json: bool | None = None) -> None:
     - If `structlog` is installed, you can JSON format all logs. Enable this by
         - setting the `use_json` parameter to `True` when calling this function
         - setting the environment variable `HAYSTACK_LOGGING_USE_JSON` to `true`
+
+    :param use_json: Whether to format logs as JSON. If `None`, we try to guess based on the environment.
+    :param logger_name:
+        The name (or names) of the logger our formatting handler is attached to. Defaults to Haystack's own
+        namespaces (`"haystack"`, `"haystack_integrations"` and `"haystack_experimental"`), so that we only touch
+        Haystack's own loggers and leave the logging configuration of the host application and any other libraries
+        running in the same process untouched. Pass an empty string (`""`) to attach the handler to the root logger
+        instead - this restores the legacy behavior of formatting *every* log record in the process.
+    :param propagate:
+        Whether the configured loggers should propagate their records to ancestor loggers (ultimately the root
+        logger). The default (`True`) keeps records flowing to handlers configured by the host application and to
+        capturing tools such as `pytest`'s `caplog`. Set it to `False` to make Haystack fully own the output of its
+        own logs - this avoids duplicate log lines when the host application also configures the root logger. It has
+        no effect when `logger_name=""` (the root logger has no ancestors).
     """
     import haystack.utils.jupyter  # to avoid circular imports
 
@@ -352,11 +371,16 @@ def configure_logging(use_json: bool | None = None) -> None:
         shared_processors.append(correlate_logs_with_traces)
 
     structlog.configure(
-        processors=shared_processors + [structlog.stdlib.ProcessorFormatter.wrap_for_formatter],
+        # `filter_by_level` reads the effective level from the underlying stdlib logger on *every* call, so changes
+        # to the log level made after `configure_logging` runs (e.g. by the host application) are respected.
+        processors=[
+            structlog.stdlib.filter_by_level,
+            *shared_processors,
+            structlog.stdlib.ProcessorFormatter.wrap_for_formatter,
+        ],
         logger_factory=structlog.stdlib.LoggerFactory(ignore_frame_names=["haystack.logging"]),
         cache_logger_on_first_use=True,
-        # This is a filter that will filter out log entries that are below the log level of the root logger.
-        wrapper_class=structlog.make_filtering_bound_logger(min_level=logging.root.getEffectiveLevel()),
+        wrapper_class=structlog.stdlib.BoundLogger,
     )
 
     renderers: list[Processor]
@@ -392,12 +416,17 @@ def configure_logging(use_json: bool | None = None) -> None:
     # Use OUR `ProcessorFormatter` to format all `logging` entries.
     handler.setFormatter(formatter)
 
-    root_logger = logging.getLogger()
-    # avoid adding our handler twice
-    old_handlers = [
-        h
-        for h in root_logger.handlers
-        if not (isinstance(h, logging.StreamHandler) and h.name == "HaystackLoggingHandler")
-    ]
-    new_handlers = [handler, *old_handlers]
-    root_logger.handlers = new_handlers
+    # By default we attach to Haystack's own namespaces so that we only format Haystack's log records and leave the
+    # loggers of the host application and other libraries in the same process untouched. Pass `logger_name=""` to
+    # attach to the root logger instead (legacy behavior - formats every record in the process).
+    logger_names = [logger_name] if isinstance(logger_name, str) else list(logger_name)
+    for name in logger_names:
+        target_logger = logging.getLogger(name)
+        # avoid adding our handler twice
+        old_handlers = [
+            h
+            for h in target_logger.handlers
+            if not (isinstance(h, logging.StreamHandler) and h.name == "HaystackLoggingHandler")
+        ]
+        target_logger.handlers = [handler, *old_handlers]
+        target_logger.propagate = propagate
