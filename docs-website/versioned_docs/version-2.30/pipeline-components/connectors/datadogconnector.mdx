@@ -1,0 +1,191 @@
+---
+title: "DatadogConnector"
+id: datadogconnector
+slug: "/datadogconnector"
+description: "Learn how to work with Datadog in Haystack."
+---
+
+# DatadogConnector
+
+Learn how to work with Datadog in Haystack.
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | Anywhere, as it’s not connected to other components |
+| **Mandatory init variables** | None. Datadog is configured through standard `ddtrace` mechanisms (e.g. the `DD_SERVICE`, `DD_ENV`, and `DD_VERSION` environment variables, or running your application with `ddtrace-run`) |
+| **Output variables** | `name`: The name of the tracing component |
+| **API reference** | [datadog](/reference/integrations-datadog) |
+| **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/datadog |
+| **Package name** | `datadog-haystack` |
+
+</div>
+
+## Overview
+
+This integration allows you to trace and monitor your Haystack pipelines with [Datadog](https://www.datadoghq.com/).
+
+Information captured by the Haystack tracing tool, such as API calls, context data, and prompts, is sent to Datadog through [Datadog's tracing library `ddtrace`](https://ddtrace.readthedocs.io/en/stable/), where you can see the complete trace of your pipeline execution.
+
+To work with the integration, add the `DatadogConnector` to your pipeline without connecting it to any other component – it will simply run in your pipeline's background and enable Datadog tracing.
+
+You can optionally pass a `name` to identify this tracing component (it defaults to `datadog`).
+
+### Prerequisites
+
+These are the things that you need before working with the `DatadogConnector`:
+
+1. A way to receive traces, such as a running [Datadog Agent](https://docs.datadoghq.com/agent/). `ddtrace` sends traces to the Datadog Agent at `localhost:8126` by default.
+2. Set the `HAYSTACK_CONTENT_TRACING_ENABLED` environment variable to `true` – this will enable content tracing (inputs and outputs) in your pipelines.
+3. Configure `ddtrace` through the standard mechanisms, for example the `DD_SERVICE`, `DD_ENV`, and `DD_VERSION` environment variables, or by running your application with the `ddtrace-run` command. See the [ddtrace documentation](https://ddtrace.readthedocs.io/en/stable/) for more details.
+
+### Installation
+
+First, install the `datadog-haystack` package to use the `DatadogConnector`:
+
+```shell
+pip install datadog-haystack
+```
+
+<br />
+
+:::info[Usage Notice]
+
+To ensure proper tracing, always set environment variables before importing any Haystack components. This is crucial because Haystack initializes its internal tracing components during import. In the example below, we first set the environment variables and then import the relevant Haystack components.
+
+Alternatively, an even better practice is to set these environment variables in your shell before running the script. This approach keeps configuration separate from code and allows for easier management of different environments.
+:::
+
+## Usage
+
+In the example below, we are adding `DatadogConnector` to the pipeline as a _tracer_. Each pipeline run will produce a trace that includes the entire execution context, including prompts, completions, and metadata. You can then view the traces in your Datadog dashboard.
+
+```python
+import os
+
+os.environ["HAYSTACK_CONTENT_TRACING_ENABLED"] = "true"
+
+from haystack import Pipeline
+from haystack.components.builders import ChatPromptBuilder
+from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.dataclasses import ChatMessage
+
+from haystack_integrations.components.connectors.datadog import DatadogConnector
+
+pipe = Pipeline()
+pipe.add_component("tracer", DatadogConnector("Chat example"))
+pipe.add_component("prompt_builder", ChatPromptBuilder())
+pipe.add_component("llm", OpenAIChatGenerator())
+pipe.connect("prompt_builder.prompt", "llm.messages")
+
+messages = [
+    ChatMessage.from_system(
+        "Always respond in German even if some input data is in other languages.",
+    ),
+    ChatMessage.from_user("Tell me about {{location}}"),
+]
+
+response = pipe.run(
+    data={
+        "prompt_builder": {
+            "template_variables": {"location": "Berlin"},
+            "template": messages,
+        },
+    },
+)
+print(response["llm"]["replies"][0])
+```
+
+### With an Agent
+
+```python
+import os
+
+os.environ["HAYSTACK_CONTENT_TRACING_ENABLED"] = "true"
+
+from typing import Annotated
+
+from haystack.components.agents import Agent
+from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.dataclasses import ChatMessage
+from haystack.tools import tool
+from haystack import Pipeline
+
+from haystack_integrations.components.connectors.datadog import DatadogConnector
+
+
+@tool
+def get_weather(city: Annotated[str, "The city to get weather for"]) -> str:
+    """Get current weather information for a city."""
+    weather_data = {
+        "Berlin": "18°C, partly cloudy",
+        "New York": "22°C, sunny",
+        "Tokyo": "25°C, clear skies",
+    }
+    return weather_data.get(city, f"Weather information for {city} not available")
+
+
+@tool
+def calculate(
+    operation: Annotated[
+        str,
+        "Mathematical operation: add, subtract, multiply, divide",
+    ],
+    a: Annotated[float, "First number"],
+    b: Annotated[float, "Second number"],
+) -> str:
+    """Perform basic mathematical calculations."""
+    if operation == "add":
+        result = a + b
+    elif operation == "subtract":
+        result = a - b
+    elif operation == "multiply":
+        result = a * b
+    elif operation == "divide":
+        if b == 0:
+            return "Error: Division by zero"
+        result = a / b
+    else:
+        return f"Error: Unknown operation '{operation}'"
+
+    return f"The result of {a} {operation} {b} is {result}"
+
+
+# Create the chat generator
+chat_generator = OpenAIChatGenerator()
+
+# Create the agent with tools
+agent = Agent(
+    chat_generator=chat_generator,
+    tools=[get_weather, calculate],
+    system_prompt="You are a helpful assistant with access to weather and calculator tools. Use them when needed.",
+    exit_conditions=["text"],
+)
+
+# Create the DatadogConnector for tracing
+datadog_connector = DatadogConnector("Agent Example")
+
+# Build the pipeline
+pipe = Pipeline()
+pipe.add_component("tracer", datadog_connector)
+pipe.add_component("agent", agent)
+
+# Run the pipeline
+response = pipe.run(
+    data={
+        "agent": {
+            "messages": [
+                ChatMessage.from_user(
+                    "What's the weather in Berlin and calculate 15 + 27?",
+                ),
+            ],
+        },
+        "tracer": {},
+    },
+)
+
+# Display results
+print("Agent Response:")
+print(response["agent"]["last_message"].text)
+```
