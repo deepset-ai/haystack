@@ -107,6 +107,7 @@ export default {
       items: [
         'document-stores/inmemorydocumentstore',
         'document-stores/alloydbdocumentstore',
+        'document-stores/arangodocumentstore',
         'document-stores/arcadedbdocumentstore',
         'document-stores/astradocumentstore',
         'document-stores/azureaisearchdocumentstore',
@@ -213,6 +214,7 @@ export default {
             id: 'pipeline-components/connectors'
           },
           items: [
+            'pipeline-components/connectors/datadogconnector',
             'pipeline-components/connectors/githubfileeditor',
             'pipeline-components/connectors/githubissuecommenter',
             'pipeline-components/connectors/githubissueviewer',
@@ -420,6 +422,7 @@ export default {
             'pipeline-components/generators/huggingfaceapigenerator',
             'pipeline-components/generators/huggingfacelocalchatgenerator',
             'pipeline-components/generators/huggingfacelocalgenerator',
+            'pipeline-components/generators/litellmchatgenerator',
             'pipeline-components/generators/llamacppchatgenerator',
             'pipeline-components/generators/llamacppgenerator',
             'pipeline-components/generators/llamastackchatgenerator',
@@ -551,6 +554,7 @@ export default {
           items: [
             'pipeline-components/retrievers/alloydbembeddingretriever',
             'pipeline-components/retrievers/alloydbkeywordretriever',
+            'pipeline-components/retrievers/arangoembeddingretriever',
             'pipeline-components/retrievers/arcadedbembeddingretriever',
             'pipeline-components/retrievers/astraretriever',
             'pipeline-components/retrievers/automergingretriever',

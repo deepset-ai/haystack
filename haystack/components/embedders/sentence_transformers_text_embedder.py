@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import warnings
 from typing import Any, Literal
 
 from haystack import component, default_from_dict, default_to_dict
@@ -113,6 +114,15 @@ class SentenceTransformersTextEmbedder:
             The specific model version to use. It can be a branch name, a tag name, or a commit id,
             for a stored model on Hugging Face.
         """
+        warnings.warn(
+            "`SentenceTransformersTextEmbedder` will be removed from Haystack in version 3.0, as it is moving to "
+            "the `sentence-transformers-haystack` package. To continue using it, install that package with "
+            "`pip install sentence-transformers-haystack` and update your import to "
+            "`from haystack_integrations.components.embedders.sentence_transformers import "
+            "SentenceTransformersTextEmbedder`.",
+            FutureWarning,
+            stacklevel=2,
+        )
 
         self.model = model
         self.device = ComponentDevice.resolve_device(device)

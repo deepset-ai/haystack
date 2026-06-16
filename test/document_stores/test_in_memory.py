@@ -5,8 +5,9 @@
 import asyncio
 import gc
 import logging
+import math
 import tempfile
-from typing import cast
+from typing import Literal, cast
 from unittest.mock import patch
 
 import pytest
@@ -172,6 +173,23 @@ class TestMemoryDocumentStore(
         results = document_store.bm25_retrieval(query="How to test this?", top_k=2)
         assert len(results) == 0
         assert "No documents found for BM25 retrieval. Returning empty list." in caplog.text
+
+    @pytest.mark.parametrize("bm25_algorithm", ["BM25Okapi", "BM25L", "BM25Plus"])
+    def test_bm25_retrieval_with_tokenless_corpus(
+        self, bm25_algorithm: Literal["BM25Okapi", "BM25L", "BM25Plus"]
+    ) -> None:
+        # Regression test for #11598: a corpus where every document has empty (but not None)
+        # content must not raise ZeroDivisionError at query time.
+        store = InMemoryDocumentStore(bm25_algorithm=bm25_algorithm)
+        store.write_documents([Document(content="", meta={"i": 1}), Document(content="", meta={"i": 2})])
+        results = store.bm25_retrieval(query="anything")
+        if bm25_algorithm == "BM25Okapi":
+            # Unscaled BM25Okapi keeps non-positive scores, so documents are returned with score 0.0.
+            assert len(results) == 2
+            assert all(doc.score == 0.0 for doc in results)
+        else:
+            # BM25L / BM25Plus filter out non-positive scores.
+            assert results == []
 
     def test_bm25_retrieval_empty_query(self, document_store: InMemoryDocumentStore) -> None:
         # Tests if the bm25_retrieval method returns a document when the query is an empty string.
@@ -355,6 +373,18 @@ class TestMemoryDocumentStore(
         )
         assert len(results) == 1
         assert results[0].content == "Haystack supports multiple languages"
+
+    def test_embedding_retrieval_with_zero_vector_does_not_produce_nan(self):
+        # A zero embedding has no direction; normalizing it must not divide by zero and
+        # produce NaN cosine scores, which would silently corrupt ranking.
+        docstore = InMemoryDocumentStore(embedding_similarity_function="cosine")
+        docstore.write_documents(
+            [Document(content="zero", embedding=[0.0, 0.0, 0.0]), Document(content="normal", embedding=[1.0, 0.0, 0.0])]
+        )
+        results = docstore.embedding_retrieval(query_embedding=[1.0, 0.0, 0.0], scale_score=False)
+        scores = {doc.content: doc.score for doc in results}
+        assert all(score is not None and not math.isnan(score) for score in scores.values())
+        assert scores["zero"] == 0.0
 
     def test_embedding_retrieval_invalid_query(self, in_memory_doc_store):
         with pytest.raises(ValueError, match="query_embedding should be a non-empty list of floats"):

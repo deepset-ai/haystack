@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    ``DocumentSplitter`` now raises a clear ``ValueError`` at initialization when
+    ``split_overlap`` is greater than or equal to ``split_length``. Previously
+    this configuration was accepted and only failed later at run time with an
+    opaque error from the underlying windowing helper (the window step became
+    zero or negative).
