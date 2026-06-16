@@ -5,7 +5,7 @@
 from haystack import Pipeline
 from haystack.components.classifiers import DocumentLanguageClassifier
 from haystack.components.converters import TextFileToDocument
-from haystack.components.embedders import SentenceTransformersDocumentEmbedder
+from haystack.components.embedders import OpenAIDocumentEmbedder
 from haystack.components.preprocessors import DocumentCleaner, DocumentSplitter
 from haystack.components.routers import FileTypeRouter, MetadataRouter
 from haystack.components.writers import DocumentWriter
@@ -25,7 +25,7 @@ def test_preprocessing_pipeline(tmp_path, del_hf_env_vars):
     preprocessing_pipeline.add_component(instance=DocumentCleaner(), name="cleaner")
     preprocessing_pipeline.add_component(instance=DocumentSplitter(split_by="period", split_length=1), name="splitter")
     preprocessing_pipeline.add_component(
-        instance=SentenceTransformersDocumentEmbedder(model="sentence-transformers/all-MiniLM-L6-v2"), name="embedder"
+        instance=OpenAIDocumentEmbedder(model="text-embedding-3-small"), name="embedder"
     )
     preprocessing_pipeline.add_component(instance=DocumentWriter(document_store=document_store), name="writer")
     preprocessing_pipeline.connect("file_type_router.text/plain", "text_file_converter.sources")
@@ -82,3 +82,4 @@ def test_preprocessing_pipeline(tmp_path, del_hf_env_vars):
     ]
     assert expected_texts == [document.content for document in stored_documents]
     assert all(document.meta["language"] == "en" for document in stored_documents)
+    assert all(document.embedding is not None for document in stored_documents)

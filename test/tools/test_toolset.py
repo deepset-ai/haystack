@@ -431,3 +431,115 @@ class TestToolsetWarmUp:
         assert new_tool.warm_up_count == 0
         ts2.warm_up()
         assert new_tool.warm_up_count == 1
+
+
+class TestToolsetToolSelection:
+    """Tests for get_selectable_tools(), the name filter, and spawn()."""
+
+    def test_no_filter_yields_all_tools(self, add_tool, multiply_tool):
+        toolset = Toolset([add_tool, multiply_tool])
+        assert toolset._selected_tool_names is None
+        assert [tool.name for tool in toolset] == ["add", "multiply"]
+        assert len(toolset) == 2
+
+    def test_get_selectable_tools_returns_all_tools(self, add_tool, multiply_tool):
+        toolset = Toolset([add_tool, multiply_tool])
+        assert toolset.get_selectable_tools() == [add_tool, multiply_tool]
+
+    def test_get_selectable_tools_ignores_active_filter(self, add_tool, multiply_tool):
+        toolset = Toolset([add_tool, multiply_tool])
+        toolset._selected_tool_names = {"add"}
+        # Iteration is filtered, but get_selectable_tools still returns the full set.
+        assert [tool.name for tool in toolset] == ["add"]
+        assert {tool.name for tool in toolset.get_selectable_tools()} == {"add", "multiply"}
+
+    def test_get_selectable_tools_warms_up_lazy_toolset(self, add_tool, multiply_tool):
+        """get_selectable_tools() warms up a lazy toolset so its lazily loaded tools are available for selection."""
+
+        class LazyToolset(Toolset):
+            def __init__(self):
+                super().__init__([])  # no tools until warm_up
+
+            def warm_up(self):
+                if self._is_warmed_up:
+                    return
+                self.tools = [add_tool, multiply_tool]
+                self._is_warmed_up = True
+
+        toolset = LazyToolset()
+        assert toolset._is_warmed_up is False
+        assert toolset.tools == []  # not loaded yet
+
+        selectable = toolset.get_selectable_tools()
+
+        assert toolset._is_warmed_up is True  # get_selectable_tools triggered warm_up
+        assert [tool.name for tool in selectable] == ["add", "multiply"]
+
+    def test_filter_restricts_iteration(self, add_tool, multiply_tool, subtract_tool):
+        toolset = Toolset([add_tool, multiply_tool, subtract_tool])
+        toolset._selected_tool_names = {"add", "subtract"}
+        assert [tool.name for tool in toolset] == ["add", "subtract"]
+
+    def test_filter_restricts_len(self, add_tool, multiply_tool, subtract_tool):
+        toolset = Toolset([add_tool, multiply_tool, subtract_tool])
+        toolset._selected_tool_names = {"add"}
+        assert len(toolset) == 1
+
+    def test_filter_restricts_getitem(self, add_tool, multiply_tool, subtract_tool):
+        toolset = Toolset([add_tool, multiply_tool, subtract_tool])
+        toolset._selected_tool_names = {"subtract"}
+        assert toolset[0].name == "subtract"
+
+    def test_filter_restricts_contains(self, add_tool, multiply_tool):
+        toolset = Toolset([add_tool, multiply_tool])
+        toolset._selected_tool_names = {"add"}
+        assert "add" in toolset
+        assert "multiply" not in toolset
+        assert add_tool in toolset
+        assert multiply_tool not in toolset
+
+    def test_spawn_returns_isolated_copy(self, add_tool, multiply_tool):
+        toolset = Toolset([add_tool, multiply_tool])
+
+        spawned = toolset.spawn()
+
+        assert spawned is not toolset
+        assert spawned._selected_tool_names is None
+        # The copy shares the same (read-only) tools.
+        assert list(spawned.tools) == list(toolset.tools)
+
+    def test_spawn_selection_does_not_leak_to_original(self, add_tool, multiply_tool):
+        """A per-run selection set on a spawn must not affect the configured toolset or other spawns."""
+        toolset = Toolset([add_tool, multiply_tool])
+
+        spawn_a = toolset.spawn()
+        spawn_b = toolset.spawn()
+        spawn_a._selected_tool_names = {"add"}
+
+        # Each run sees only its own selection; the configured toolset stays unfiltered.
+        assert [tool.name for tool in spawn_a] == ["add"]
+        assert [tool.name for tool in spawn_b] == ["add", "multiply"]
+        assert [tool.name for tool in toolset] == ["add", "multiply"]
+        assert toolset._selected_tool_names is None
+
+    def test_spawn_warms_up_lazy_toolset(self, add_tool, multiply_tool):
+        """spawn() warms up a lazy toolset so the copy shares the warmed state."""
+
+        class LazyToolset(Toolset):
+            def __init__(self):
+                super().__init__([])
+
+            def warm_up(self):
+                if self._is_warmed_up:
+                    return
+                self.tools = [add_tool, multiply_tool]
+                self._is_warmed_up = True
+
+        toolset = LazyToolset()
+        assert toolset._is_warmed_up is False
+
+        spawned = toolset.spawn()
+
+        assert toolset._is_warmed_up is True  # spawn triggered warm_up
+        assert spawned._is_warmed_up is True
+        assert [tool.name for tool in spawned] == ["add", "multiply"]

@@ -23,7 +23,7 @@ class InMemoryEmbeddingRetriever:
     ### Usage example
     ```python
     from haystack import Document
-    from haystack.components.embedders import SentenceTransformersDocumentEmbedder, SentenceTransformersTextEmbedder
+    from haystack.components.embedders import OpenAIDocumentEmbedder, OpenAITextEmbedder
     from haystack.components.retrievers.in_memory import InMemoryEmbeddingRetriever
     from haystack.document_stores.in_memory import InMemoryDocumentStore
 
@@ -31,7 +31,7 @@ class InMemoryEmbeddingRetriever:
         Document(content="Python is a popular programming language"),
         Document(content="python ist eine beliebte Programmiersprache"),
     ]
-    doc_embedder = SentenceTransformersDocumentEmbedder()
+    doc_embedder = OpenAIDocumentEmbedder()
     docs_with_embeddings = doc_embedder.run(docs)["documents"]
 
     doc_store = InMemoryDocumentStore()
@@ -39,7 +39,7 @@ class InMemoryEmbeddingRetriever:
     retriever = InMemoryEmbeddingRetriever(doc_store)
 
     query="Programmiersprache"
-    text_embedder = SentenceTransformersTextEmbedder()
+    text_embedder = OpenAITextEmbedder()
     query_embedding = text_embedder.run(query)["embedding"]
 
     result = retriever.run(query_embedding=query_embedding)

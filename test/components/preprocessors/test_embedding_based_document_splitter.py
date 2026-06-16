@@ -9,9 +9,8 @@ from unittest.mock import AsyncMock, Mock, patch
 import pytest
 
 from haystack import Document
-from haystack.components.embedders import OpenAIDocumentEmbedder, SentenceTransformersDocumentEmbedder
+from haystack.components.embedders import OpenAIDocumentEmbedder
 from haystack.components.preprocessors import EmbeddingBasedDocumentSplitter
-from haystack.utils import ComponentDevice
 
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
@@ -359,18 +358,10 @@ class TestEmbeddingBasedDocumentSplitter:
         assert result["init_parameters"]["max_length"] == 1000
         assert "document_embedder" in result["init_parameters"]
 
+    @pytest.mark.skipif(os.environ.get("OPENAI_API_KEY", "") == "", reason="OPENAI_API_KEY is not set")
     @pytest.mark.integration
-    @pytest.mark.slow
-    def test_split_document_with_multiple_topics(self, del_hf_env_vars, monkeypatch):
-        import torch
-
-        # Force CPU usage to avoid MPS memory issues
-        monkeypatch.setenv("PYTORCH_ENABLE_MPS_FALLBACK", "1")
-        torch.backends.mps.is_available = lambda: False
-
-        embedder = SentenceTransformersDocumentEmbedder(
-            model="sentence-transformers/all-MiniLM-L6-v2", device=ComponentDevice.from_str("cpu")
-        )
+    def test_split_document_with_multiple_topics(self):
+        embedder = OpenAIDocumentEmbedder(model="text-embedding-3-small")
 
         splitter = EmbeddingBasedDocumentSplitter(
             document_embedder=embedder, sentences_per_group=2, percentile=0.9, min_length=30, max_length=300
@@ -438,10 +429,10 @@ class TestEmbeddingBasedDocumentSplitter:
         original = text
         assert combined in original or original in combined
 
-    @pytest.mark.slow
+    @pytest.mark.skipif(os.environ.get("OPENAI_API_KEY", "") == "", reason="OPENAI_API_KEY is not set")
     @pytest.mark.integration
-    def test_trailing_whitespace_is_preserved(self, del_hf_env_vars):
-        embedder = SentenceTransformersDocumentEmbedder(model="sentence-transformers/all-MiniLM-L6-v2")
+    def test_trailing_whitespace_is_preserved(self):
+        embedder = OpenAIDocumentEmbedder(model="text-embedding-3-small")
 
         splitter = EmbeddingBasedDocumentSplitter(document_embedder=embedder, sentences_per_group=1)
 
@@ -482,10 +473,10 @@ class TestEmbeddingBasedDocumentSplitter:
         result = await splitter.run_async(documents=[Document(content=text)])
         assert result["documents"][0].content == text
 
+    @pytest.mark.skipif(os.environ.get("OPENAI_API_KEY", "") == "", reason="OPENAI_API_KEY is not set")
     @pytest.mark.integration
-    @pytest.mark.slow
-    def test_no_extra_whitespaces_between_sentences(self, del_hf_env_vars):
-        embedder = SentenceTransformersDocumentEmbedder(model="sentence-transformers/all-MiniLM-L6-v2")
+    def test_no_extra_whitespaces_between_sentences(self):
+        embedder = OpenAIDocumentEmbedder(model="text-embedding-3-small")
 
         splitter = EmbeddingBasedDocumentSplitter(
             document_embedder=embedder, sentences_per_group=1, percentile=0.9, min_length=10, max_length=500
@@ -541,15 +532,15 @@ class TestEmbeddingBasedDocumentSplitter:
             == "Machine learning has revolutionized many industries. Neural networks can process vast amounts of data. Deep learning models achieve remarkable accuracy on complex tasks."  # noqa: E501
         )  # noqa: E501
 
+    @pytest.mark.skipif(os.environ.get("OPENAI_API_KEY", "") == "", reason="OPENAI_API_KEY is not set")
     @pytest.mark.integration
-    @pytest.mark.slow
-    def test_split_large_splits_recursion(self, del_hf_env_vars):
+    def test_split_large_splits_recursion(self):
         """
         Test that _split_large_splits() works correctly without infinite loops.
         This test uses a longer text that will trigger the recursive splitting logic.
         If the chunk cannot be split further, it is allowed to be larger than max_length.
         """
-        embedder = SentenceTransformersDocumentEmbedder(model="sentence-transformers/all-MiniLM-L6-v2", batch_size=32)
+        embedder = OpenAIDocumentEmbedder(model="text-embedding-3-small")
         semantic_chunker = EmbeddingBasedDocumentSplitter(
             document_embedder=embedder, sentences_per_group=5, percentile=0.95, min_length=50, max_length=1000
         )
@@ -622,14 +613,14 @@ The history of software is closely tied to the development of digital computers 
             assert split_doc.meta["split_id"] == i
             assert "page_number" in split_doc.meta
 
+    @pytest.mark.skipif(os.environ.get("OPENAI_API_KEY", "") == "", reason="OPENAI_API_KEY is not set")
     @pytest.mark.integration
-    @pytest.mark.slow
-    def test_split_large_splits_actually_splits(self, del_hf_env_vars):
+    def test_split_large_splits_actually_splits(self):
         """
         Test that _split_large_splits() actually works and can split long texts into multiple chunks.
         This test uses a very long text that should be split into multiple chunks.
         """
-        embedder = SentenceTransformersDocumentEmbedder(model="sentence-transformers/all-MiniLM-L6-v2", batch_size=32)
+        embedder = OpenAIDocumentEmbedder(model="text-embedding-3-small")
         semantic_chunker = EmbeddingBasedDocumentSplitter(
             document_embedder=embedder,
             sentences_per_group=3,

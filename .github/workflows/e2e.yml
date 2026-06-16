@@ -41,7 +41,7 @@ jobs:
           pip install hatch==${{ env.HATCH_VERSION }} --uploaded-prior-to=P1D
 
       - name: Run tests
-        run: hatch run e2e:test
+        run: hatch run test:e2e
 
       - name: Notify Slack on nightly failure
         if: failure() && github.event_name == 'schedule'

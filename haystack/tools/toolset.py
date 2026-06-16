@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import copy
 from collections.abc import Iterator
 from dataclasses import dataclass, field
 from typing import Any
@@ -47,8 +48,8 @@ class Toolset:
     ```
 
     2. Base class for dynamic tool loading:
-       By subclassing Toolset, you can create implementations that dynamically load tools
-       from external sources like OpenAPI URLs, MCP servers, or other resources.
+       By subclassing Toolset, you can create implementations that dynamically load tools from external sources like
+       OpenAPI URLs, MCP servers, or other resources.
 
        Example:
     ```python
@@ -94,15 +95,14 @@ class Toolset:
     agent = Agent(chat_generator=OpenAIChatGenerator(), tools=calculator_toolset)
     ```
 
-    Toolset implements the collection interface (__iter__, __contains__, __len__, __getitem__),
-    making it behave like a list of Tools. This makes it compatible with components that expect
-    iterable tools, such as Agent or Haystack chat generators.
+    Toolset implements the collection interface (__iter__, __contains__, __len__, __getitem__), making it behave like
+    a list of Tools. This makes it compatible with components that expect iterable tools, such as Agent or Haystack
+    chat generators.
 
     When implementing a custom Toolset subclass for dynamic tool loading:
     - Perform the dynamic loading in the __init__ method
     - Override to_dict() and from_dict() methods if your tools are defined dynamically
-    - Serialize endpoint descriptors rather than tool instances if your tools
-      are loaded from external sources
+    - Serialize endpoint descriptors rather than tool instances if your tools are loaded from external sources
     """
 
     # Use field() with default_factory to initialize the list
@@ -124,15 +124,56 @@ class Toolset:
         # Tracks whether warm_up() has already run so subsequent calls become a no-op.
         self._is_warmed_up = False
 
+        # Optional per-run name filter. When set, iteration only yields tools whose name is in this set.
+        # None means no filtering. Set on a per-run spawn(), so it never leaks across runs.
+        self._selected_tool_names: set[str] | None = None
+
     def __iter__(self) -> Iterator[Tool]:
         """
         Return an iterator over the Tools in this Toolset.
 
-        This allows the Toolset to be used wherever a list of Tools is expected.
+        This allows the Toolset to be used wherever a list of Tools is expected. If a name filter is active,
+        only the tools whose names are in it are yielded.
 
         :returns: An iterator yielding Tool instances
         """
-        return iter(self.tools)
+        for tool in self.tools:
+            if self._selected_tool_names is None or tool.name in self._selected_tool_names:
+                yield tool
+
+    def get_selectable_tools(self) -> list[Tool]:
+        """
+        Return the full set of tools that can be selected by name, ignoring any active name filter.
+
+        This differs from iteration, which yields only the tools currently exposed (and respects the name filter).
+        Override this when a Toolset's iteration does not surface every selectable tool, so name-based selection
+        can still target the full set.
+
+        Warms up the Toolset first if needed, so lazily loaded tools (those a Toolset fetches in `warm_up()`)
+        are available for selection.
+
+        :returns: The list of tools available for name-based selection.
+        """
+        if not self._is_warmed_up:
+            self.warm_up()
+        return list(self.tools)
+
+    def spawn(self) -> "Toolset":
+        """
+        Return an isolated copy of this Toolset for a single run.
+
+        The copy shares this Toolset's read-only state (its tools and any warmed-up resources) but gets fresh
+        run-scoped state, so concurrent runs that share the same configured Toolset don't corrupt each other (for
+        example, one run's name selection leaking into another). Warms up first if needed so the copy shares the
+        warmed state. Subclasses with additional run-scoped state should override this.
+
+        :returns: A run-scoped copy of this Toolset.
+        """
+        if not self._is_warmed_up:
+            self.warm_up()
+        new = copy.copy(self)
+        new._selected_tool_names = None
+        return new
 
     def __contains__(self, item: str | Tool) -> bool:
         """
@@ -146,9 +187,9 @@ class Toolset:
         :returns: True if contained, False otherwise
         """
         if isinstance(item, str):
-            return any(tool.name == item for tool in self.tools)
+            return any(tool.name == item for tool in self)
         if isinstance(item, Tool):
-            return item in self.tools
+            return any(tool is item or tool == item for tool in self)
         return False
 
     def warm_up(self) -> None:
@@ -281,20 +322,20 @@ class Toolset:
 
     def __len__(self) -> int:
         """
-        Return the number of Tools in this Toolset.
+        Return the number of Tools in this Toolset (respecting any active name filter).
 
         :returns: Number of Tools
         """
-        return len(self.tools)
+        return sum(1 for _ in self)
 
     def __getitem__(self, index: int) -> Tool:
         """
-        Get a Tool by index.
+        Get a Tool by index (respecting any active name filter).
 
         :param index: Index of the Tool to get
         :returns: The Tool at the specified index
         """
-        return self.tools[index]
+        return list(self)[index]
 
 
 class _ToolsetWrapper(Toolset):
@@ -312,9 +353,19 @@ class _ToolsetWrapper(Toolset):
         self._is_warmed_up = False
 
     def __iter__(self) -> Iterator[Tool]:
-        """Iterate over all tools from all toolsets."""
+        """Iterate over all tools from all toolsets, honoring any active name filter."""
         for toolset in self.toolsets:
-            yield from toolset
+            for tool in toolset:
+                if self._selected_tool_names is None or tool.name in self._selected_tool_names:
+                    yield tool
+
+    def get_selectable_tools(self) -> list[Tool]:
+        """Return every selectable tool across all wrapped toolsets, ignoring any active filter."""
+        return [tool for toolset in self.toolsets for tool in toolset.get_selectable_tools()]
+
+    def spawn(self) -> "_ToolsetWrapper":
+        """Return an isolated copy with each wrapped toolset spawned."""
+        return _ToolsetWrapper([toolset.spawn() for toolset in self.toolsets])
 
     def __contains__(self, item: Any) -> bool:
         """Check if a tool is in any of the toolsets."""
@@ -371,8 +422,8 @@ class _ToolsetWrapper(Toolset):
         return cls(toolsets=toolsets)
 
     def __len__(self) -> int:
-        """Return total number of tools across all toolsets."""
-        return sum(len(toolset) for toolset in self.toolsets)
+        """Return total number of tools across all toolsets (respecting any active name filter)."""
+        return sum(1 for _ in self)
 
     def __getitem__(self, index: int) -> Tool:
         """Get a tool by index across all toolsets."""

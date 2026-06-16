@@ -99,6 +99,15 @@ pip install <new-package>
 | `from haystack.components.routers import TransformersTextRouter` | `transformers-haystack` | `from haystack_integrations.components.routers.transformers import TransformersTextRouter` |
 | `from haystack.components.routers import TransformersZeroShotTextRouter` | `transformers-haystack` | `from haystack_integrations.components.routers.transformers import TransformersZeroShotTextRouter` |
 | `from haystack.components.websearch import SerperDevWebSearch` | `serperdev-haystack` | `from haystack_integrations.components.websearch.serperdev import SerperDevWebSearch` |
+| `from haystack.components.websearch import SearchApiWebSearch` | `searchapi-haystack` | `from haystack_integrations.components.websearch.searchapi import SearchApiWebSearch` || `from haystack.components.extractors import NamedEntityExtractor` (Hugging Face backend) | `transformers-haystack` | `from haystack_integrations.components.extractors.transformers import TransformersNamedEntityExtractor` |
+| `from haystack.components.extractors import NamedEntityExtractor` (spaCy backend) | `spacy-haystack` | `from haystack_integrations.components.extractors.spacy import SpacyNamedEntityExtractor` |
+| `from haystack.components.embedders import SentenceTransformersTextEmbedder` | `sentence-transformers-haystack` | `from haystack_integrations.components.embedders.sentence_transformers import SentenceTransformersTextEmbedder` |
+| `from haystack.components.embedders import SentenceTransformersDocumentEmbedder` | `sentence-transformers-haystack` | `from haystack_integrations.components.embedders.sentence_transformers import SentenceTransformersDocumentEmbedder` |
+| `from haystack.components.embedders import SentenceTransformersSparseTextEmbedder` | `sentence-transformers-haystack` | `from haystack_integrations.components.embedders.sentence_transformers import SentenceTransformersSparseTextEmbedder` |
+| `from haystack.components.embedders import SentenceTransformersSparseDocumentEmbedder` | `sentence-transformers-haystack` | `from haystack_integrations.components.embedders.sentence_transformers import SentenceTransformersSparseDocumentEmbedder` |
+| `from haystack.components.embedders.image import SentenceTransformersDocumentImageEmbedder` | `sentence-transformers-haystack` | `from haystack_integrations.components.embedders.sentence_transformers import SentenceTransformersDocumentImageEmbedder` |
+| `from haystack.components.rankers import SentenceTransformersSimilarityRanker` | `sentence-transformers-haystack` | `from haystack_integrations.components.rankers.sentence_transformers import SentenceTransformersSimilarityRanker` |
+| `from haystack.components.rankers import SentenceTransformersDiversityRanker` | `sentence-transformers-haystack` | `from haystack_integrations.components.rankers.sentence_transformers import SentenceTransformersDiversityRanker` |
 | `from haystack.tracing.datadog import DatadogTracer` | `datadog-haystack` | `from haystack_integrations.tracing.datadog import DatadogTracer` |
 
 ### `DatadogTracer` moved to the `datadog-haystack` integration

@@ -10,8 +10,7 @@ import numpy as np
 import pytest
 
 from haystack import Document, Pipeline, component
-from haystack.components.embedders import SentenceTransformersTextEmbedder
-from haystack.components.embedders.sentence_transformers_document_embedder import SentenceTransformersDocumentEmbedder
+from haystack.components.embedders import OpenAIDocumentEmbedder, OpenAITextEmbedder
 from haystack.components.generators.chat import OpenAIChatGenerator
 from haystack.components.query import QueryExpander
 from haystack.components.retrievers import InMemoryEmbeddingRetriever, MultiQueryEmbeddingRetriever
@@ -66,7 +65,7 @@ class TestMultiQueryEmbeddingRetriever:
     def document_store_with_embeddings(self, sample_documents):
         """Create a document store populated with embedded documents."""
         document_store = InMemoryDocumentStore()
-        doc_embedder = SentenceTransformersDocumentEmbedder(model="sentence-transformers/all-MiniLM-L6-v2")
+        doc_embedder = OpenAIDocumentEmbedder()
         doc_writer = DocumentWriter(document_store=document_store, policy=DuplicatePolicy.SKIP)
 
         embedded_docs = doc_embedder.run(sample_documents)["documents"]
@@ -147,7 +146,8 @@ class TestMultiQueryEmbeddingRetriever:
             },
         }
 
-    def test_from_dict(self):
+    def test_from_dict(self, monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "fake-api-key")
         data = {
             "type": "haystack.components.retrievers.multi_query_embedding_retriever.MultiQueryEmbeddingRetriever",  # noqa E501
             "init_parameters": {
@@ -174,24 +174,18 @@ class TestMultiQueryEmbeddingRetriever:
                     },
                 },
                 "query_embedder": {
-                    "type": "haystack.components.embedders.sentence_transformers_text_embedder.SentenceTransformersTextEmbedder",  # noqa E501
+                    "type": "haystack.components.embedders.openai_text_embedder.OpenAITextEmbedder",
                     "init_parameters": {
-                        "model": "sentence-transformers/all-MiniLM-L6-v2",
-                        "token": {"type": "env_var", "env_vars": ["HF_API_TOKEN", "HF_TOKEN"], "strict": False},
+                        "api_key": {"env_vars": ["OPENAI_API_KEY"], "strict": True, "type": "env_var"},
+                        "api_base_url": None,
+                        "dimensions": None,
+                        "model": "text-embedding-ada-002",
+                        "organization": None,
+                        "http_client_kwargs": None,
                         "prefix": "",
                         "suffix": "",
-                        "batch_size": 32,
-                        "progress_bar": True,
-                        "normalize_embeddings": False,
-                        "trust_remote_code": False,
-                        "local_files_only": False,
-                        "truncate_dim": None,
-                        "model_kwargs": None,
-                        "tokenizer_kwargs": None,
-                        "config_kwargs": None,
-                        "precision": "float32",
-                        "encode_kwargs": None,
-                        "backend": "torch",
+                        "timeout": None,
+                        "max_retries": None,
                     },
                 },
                 "max_workers": 2,
@@ -236,11 +230,11 @@ class TestMultiQueryEmbeddingRetriever:
         assert contents.count("Solar energy is renewable") == 1
         assert contents.count("Wind energy is clean") == 1
 
+    @pytest.mark.skipif(os.environ.get("OPENAI_API_KEY", "") == "", reason="OPENAI_API_KEY is not set")
     @pytest.mark.integration
-    @pytest.mark.slow
-    def test_run_with_filters(self, del_hf_env_vars, document_store_with_embeddings):
+    def test_run_with_filters(self, document_store_with_embeddings):
         in_memory_retriever = InMemoryEmbeddingRetriever(document_store=document_store_with_embeddings)
-        query_embedder = SentenceTransformersTextEmbedder(model="sentence-transformers/all-MiniLM-L6-v2")
+        query_embedder = OpenAITextEmbedder()
         multi_retriever = MultiQueryEmbeddingRetriever(retriever=in_memory_retriever, query_embedder=query_embedder)
         result = multi_retriever.run(["energy"], {"filters": {"field": "category", "operator": "==", "value": "solar"}})
         assert "documents" in result
@@ -251,13 +245,12 @@ class TestMultiQueryEmbeddingRetriever:
         reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
     )
     @pytest.mark.integration
-    @pytest.mark.slow
-    def test_pipeline_integration(self, del_hf_env_vars, document_store_with_embeddings):
+    def test_pipeline_integration(self, document_store_with_embeddings):
         expander = QueryExpander(
             chat_generator=OpenAIChatGenerator(model="gpt-4.1-nano"), n_expansions=3, include_original_query=True
         )
         in_memory_retriever = InMemoryEmbeddingRetriever(document_store=document_store_with_embeddings)
-        query_embedder = SentenceTransformersTextEmbedder(model="sentence-transformers/all-MiniLM-L6-v2")
+        query_embedder = OpenAITextEmbedder()
         multiquery_retriever = MultiQueryEmbeddingRetriever(
             retriever=in_memory_retriever, query_embedder=query_embedder, max_workers=3
         )

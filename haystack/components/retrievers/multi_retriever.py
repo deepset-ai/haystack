@@ -39,7 +39,7 @@ class MultiRetriever:
     from haystack.document_stores.types import DuplicatePolicy
     from haystack.components.retrievers import InMemoryBM25Retriever, InMemoryEmbeddingRetriever
     from haystack.components.retrievers import TextEmbeddingRetriever, MultiRetriever
-    from haystack.components.embedders import SentenceTransformersTextEmbedder, SentenceTransformersDocumentEmbedder
+    from haystack.components.embedders import OpenAITextEmbedder, OpenAIDocumentEmbedder
     from haystack.components.writers import DocumentWriter
 
     documents = [
@@ -50,7 +50,7 @@ class MultiRetriever:
 
     # Populate the document store
     doc_store = InMemoryDocumentStore()
-    doc_embedder = SentenceTransformersDocumentEmbedder(model="sentence-transformers/all-MiniLM-L6-v2")
+    doc_embedder = OpenAIDocumentEmbedder()
     doc_writer = DocumentWriter(document_store=doc_store, policy=DuplicatePolicy.SKIP)
     doc_writer.run(documents=doc_embedder.run(documents)["documents"])
 
@@ -60,7 +60,7 @@ class MultiRetriever:
             "bm25": InMemoryBM25Retriever(document_store=doc_store),
             "embedding": TextEmbeddingRetriever(
                 retriever=InMemoryEmbeddingRetriever(document_store=doc_store),
-                text_embedder=SentenceTransformersTextEmbedder(model="sentence-transformers/all-MiniLM-L6-v2"),
+                text_embedder=OpenAITextEmbedder(),
             ),
         },
         top_k=3,
