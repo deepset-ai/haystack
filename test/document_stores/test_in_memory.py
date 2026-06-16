@@ -366,7 +366,7 @@ class TestMemoryDocumentStore(
         )
         results = docstore.embedding_retrieval(query_embedding=[1.0, 0.0, 0.0], scale_score=False)
         scores = {doc.content: doc.score for doc in results}
-        assert all(not math.isnan(score) for score in scores.values())
+        assert all(score is not None and not math.isnan(score) for score in scores.values())
         assert scores["zero"] == 0.0
 
     def test_embedding_retrieval_invalid_query(self, in_memory_doc_store):
