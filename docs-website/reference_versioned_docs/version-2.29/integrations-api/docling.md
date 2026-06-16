@@ -116,6 +116,16 @@ Create a Docling Haystack converter.
 - **meta_extractor** (<code>BaseMetaExtractor | None</code>) – The extractor instance to use for populating the output
   document metadata; if not set, a system default is used.
 
+#### warm_up
+
+```python
+warm_up() -> None
+```
+
+Build the default `HybridChunker` for `ExportType.DOC_CHUNKS` if no `chunker` was passed at init time.
+
+Deferred to warm-up time because constructing the default chunker downloads a Hugging Face tokenizer.
+
 #### to_dict
 
 ```python
