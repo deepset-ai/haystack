@@ -681,7 +681,16 @@ class InMemoryDocumentStore:
             logger.info("No documents found for BM25 retrieval. Returning empty list.")
             return []
 
-        results = sorted(self.bm25_algorithm_inst(query, all_documents), key=lambda x: x[1], reverse=True)[:top_k]
+        # A tokenless corpus (every stored document has empty content) has no vocabulary and an
+        # average document length of zero, which would make all three BM25 algorithms divide by
+        # zero during scoring. Score every candidate as 0.0 instead; the non-positive-score
+        # handling below then keeps them for BM25Okapi (unscaled) and drops them otherwise.
+        if self._avg_doc_len == 0:
+            scored_documents = [(doc, 0.0) for doc in all_documents]
+        else:
+            scored_documents = self.bm25_algorithm_inst(query, all_documents)
+
+        results = sorted(scored_documents, key=lambda x: x[1], reverse=True)[:top_k]
 
         # BM25Okapi can return meaningful negative values, so they should not be filtered out when scale_score is False.
         # It's the only algorithm supported by rank_bm25 at the time of writing (2024) that can return negative scores.
@@ -801,9 +810,12 @@ class InMemoryDocumentStore:
             document_embeddings = np.expand_dims(a=document_embeddings, axis=0)
 
         if self.embedding_similarity_function == "cosine":
-            # cosine similarity is a normed dot product
-            query_embedding /= np.linalg.norm(x=query_embedding, axis=1, keepdims=True)
-            document_embeddings /= np.linalg.norm(x=document_embeddings, axis=1, keepdims=True)
+            # cosine similarity is a normed dot product; guard against zero-norm vectors
+            # (e.g. a zero embedding) which would otherwise divide by zero and yield NaN scores.
+            query_norm = np.linalg.norm(x=query_embedding, axis=1, keepdims=True)
+            document_norms = np.linalg.norm(x=document_embeddings, axis=1, keepdims=True)
+            query_embedding /= np.where(query_norm == 0.0, 1.0, query_norm)
+            document_embeddings /= np.where(document_norms == 0.0, 1.0, document_norms)
 
         try:
             scores = np.dot(a=query_embedding, b=document_embeddings.T)[0].tolist()
