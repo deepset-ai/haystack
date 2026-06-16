@@ -29,8 +29,8 @@ class MultiQueryEmbeddingRetriever:
     from haystack import Document
     from haystack.document_stores.in_memory import InMemoryDocumentStore
     from haystack.document_stores.types import DuplicatePolicy
-    from haystack.components.embedders import SentenceTransformersTextEmbedder
-    from haystack.components.embedders import SentenceTransformersDocumentEmbedder
+    from haystack.components.embedders import OpenAITextEmbedder
+    from haystack.components.embedders import OpenAIDocumentEmbedder
     from haystack.components.retrievers import InMemoryEmbeddingRetriever
     from haystack.components.writers import DocumentWriter
     from haystack.components.retrievers import MultiQueryEmbeddingRetriever
@@ -46,14 +46,14 @@ class MultiQueryEmbeddingRetriever:
 
     # Populate the document store
     doc_store = InMemoryDocumentStore()
-    doc_embedder = SentenceTransformersDocumentEmbedder(model="sentence-transformers/all-MiniLM-L6-v2")
+    doc_embedder = OpenAIDocumentEmbedder()
     doc_writer = DocumentWriter(document_store=doc_store, policy=DuplicatePolicy.SKIP)
     documents = doc_embedder.run(documents)["documents"]
     doc_writer.run(documents=documents)
 
     # Run the multi-query retriever
     in_memory_retriever = InMemoryEmbeddingRetriever(document_store=doc_store, top_k=1)
-    query_embedder = SentenceTransformersTextEmbedder(model="sentence-transformers/all-MiniLM-L6-v2")
+    query_embedder = OpenAITextEmbedder()
 
     multi_query_retriever = MultiQueryEmbeddingRetriever(
         retriever=in_memory_retriever,

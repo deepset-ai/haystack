@@ -12,8 +12,6 @@ _import_structure = {
     "lost_in_the_middle": ["LostInTheMiddleRanker"],
     "meta_field": ["MetaFieldRanker"],
     "meta_field_grouping_ranker": ["MetaFieldGroupingRanker"],
-    "sentence_transformers_diversity": ["SentenceTransformersDiversityRanker"],
-    "sentence_transformers_similarity": ["SentenceTransformersSimilarityRanker"],
 }
 
 if TYPE_CHECKING:
@@ -21,12 +19,6 @@ if TYPE_CHECKING:
     from .lost_in_the_middle import LostInTheMiddleRanker as LostInTheMiddleRanker
     from .meta_field import MetaFieldRanker as MetaFieldRanker
     from .meta_field_grouping_ranker import MetaFieldGroupingRanker as MetaFieldGroupingRanker
-    from .sentence_transformers_diversity import (
-        SentenceTransformersDiversityRanker as SentenceTransformersDiversityRanker,
-    )
-    from .sentence_transformers_similarity import (
-        SentenceTransformersSimilarityRanker as SentenceTransformersSimilarityRanker,
-    )
 
 else:
     sys.modules[__name__] = LazyImporter(name=__name__, module_file=__file__, import_structure=_import_structure)

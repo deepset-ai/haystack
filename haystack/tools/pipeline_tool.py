@@ -38,10 +38,7 @@ class PipelineTool(ComponentTool):
     from haystack import Document, Pipeline
     from haystack.dataclasses import ChatMessage
     from haystack.document_stores.in_memory import InMemoryDocumentStore
-    from haystack.components.embedders.sentence_transformers_text_embedder import SentenceTransformersTextEmbedder
-    from haystack.components.embedders.sentence_transformers_document_embedder import (
-        SentenceTransformersDocumentEmbedder
-    )
+    from haystack.components.embedders import OpenAITextEmbedder, OpenAIDocumentEmbedder
     from haystack.components.generators.chat import OpenAIChatGenerator
     from haystack.components.retrievers import InMemoryEmbeddingRetriever
     from haystack.components.agents import Agent
@@ -49,7 +46,7 @@ class PipelineTool(ComponentTool):
 
     # Initialize a document store and add some documents
     document_store = InMemoryDocumentStore()
-    document_embedder = SentenceTransformersDocumentEmbedder(model="sentence-transformers/all-MiniLM-L6-v2")
+    document_embedder = OpenAIDocumentEmbedder()
     documents = [
         Document(content="Nikola Tesla was a Serbian-American inventor and electrical engineer."),
         Document(
@@ -62,9 +59,7 @@ class PipelineTool(ComponentTool):
 
     # Build a simple retrieval pipeline
     retrieval_pipeline = Pipeline()
-    retrieval_pipeline.add_component(
-        "embedder", SentenceTransformersTextEmbedder(model="sentence-transformers/all-MiniLM-L6-v2")
-    )
+    retrieval_pipeline.add_component("embedder", OpenAITextEmbedder())
     retrieval_pipeline.add_component("retriever", InMemoryEmbeddingRetriever(document_store=document_store))
 
     retrieval_pipeline.connect("embedder.embedding", "retriever.query_embedding")
