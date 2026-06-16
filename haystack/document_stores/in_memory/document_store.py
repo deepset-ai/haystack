@@ -681,7 +681,16 @@ class InMemoryDocumentStore:
             logger.info("No documents found for BM25 retrieval. Returning empty list.")
             return []
 
-        results = sorted(self.bm25_algorithm_inst(query, all_documents), key=lambda x: x[1], reverse=True)[:top_k]
+        # A tokenless corpus (every stored document has empty content) has no vocabulary and an
+        # average document length of zero, which would make all three BM25 algorithms divide by
+        # zero during scoring. Score every candidate as 0.0 instead; the non-positive-score
+        # handling below then keeps them for BM25Okapi (unscaled) and drops them otherwise.
+        if self._avg_doc_len == 0:
+            scored_documents = [(doc, 0.0) for doc in all_documents]
+        else:
+            scored_documents = self.bm25_algorithm_inst(query, all_documents)
+
+        results = sorted(scored_documents, key=lambda x: x[1], reverse=True)[:top_k]
 
         # BM25Okapi can return meaningful negative values, so they should not be filtered out when scale_score is False.
         # It's the only algorithm supported by rank_bm25 at the time of writing (2024) that can return negative scores.
