@@ -751,7 +751,23 @@ export default {
       label: 'Development',
       items: [
         'development/logging',
-        'development/tracing',
+        {
+          type: 'category',
+          label: 'Tracing',
+          link: {
+            type: 'doc',
+            id: 'development/tracing'
+          },
+          items: [
+            'development/tracing/opentelemetry',
+            'development/tracing/mlflow',
+            'development/tracing/datadog',
+            'development/tracing/langfuse',
+            'development/tracing/weave',
+            'development/tracing/logging-tracer',
+            'development/tracing/custom-tracer',
+          ],
+        },
         'development/enabling-gpu-acceleration',
         'development/hayhooks',
         {

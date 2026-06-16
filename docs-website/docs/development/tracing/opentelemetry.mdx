@@ -1,0 +1,172 @@
+---
+title: "OpenTelemetry"
+id: tracing-opentelemetry
+slug: "/tracing-opentelemetry"
+description: "Learn how to trace your Haystack pipelines with OpenTelemetry."
+---
+
+import ClickableImage from "@site/src/components/ClickableImage";
+
+# OpenTelemetry
+
+Learn how to trace your Haystack pipelines with OpenTelemetry.
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Tracer class** | `OpenTelemetryTracer` |
+| **How to enable** | Auto-detected when the OpenTelemetry SDK is configured, or explicitly with `tracing.enable_tracing(OpenTelemetryTracer(tracer))` |
+| **Content tracing** | Optional. Set `HAYSTACK_CONTENT_TRACING_ENABLED` to `true` to trace component inputs and outputs |
+| **Package** | `opentelemetry-sdk`, `opentelemetry-exporter-otlp` |
+| **GitHub link** | https://github.com/deepset-ai/haystack/blob/main/haystack/tracing/opentelemetry.py |
+
+</div>
+
+## Overview
+
+[OpenTelemetry](https://opentelemetry.io/) is an open-source observability framework for collecting traces, metrics, and logs. Haystack provides out-of-the-box support for OpenTelemetry, so you can send traces of your pipeline runs to any OpenTelemetry-compatible backend.
+
+## Installation
+
+Install the [OpenTelemetry SDK](https://opentelemetry.io/docs/languages/python/):
+
+```shell
+pip install opentelemetry-sdk
+pip install opentelemetry-exporter-otlp
+```
+
+To add traces to even deeper levels of your pipelines, we recommend you check out [OpenTelemetry integrations](https://opentelemetry.io/ecosystem/registry/?s=python), such as:
+
+- [`urllib3` instrumentation](https://github.com/open-telemetry/opentelemetry-python-contrib/tree/main/instrumentation/opentelemetry-instrumentation-urllib3) for tracing HTTP requests in your pipeline,
+- [OpenAI instrumentation](https://github.com/traceloop/openllmetry/tree/main/packages/opentelemetry-instrumentation-openai) for tracing OpenAI requests.
+
+## Usage
+
+There are two options for how to hook Haystack to the OpenTelemetry SDK.
+
+### Automated instrumentation
+
+Run your Haystack applications using OpenTelemetry’s [automated instrumentation](https://opentelemetry.io/docs/languages/python/getting-started/#instrumentation). Haystack will automatically detect the configured tracing backend and use it to send traces.
+
+First, install the `OpenTelemetry` CLI:
+
+```shell
+pip install opentelemetry-distro
+```
+
+Then, run your Haystack application using the OpenTelemetry SDK:
+
+```shell
+opentelemetry-instrument \
+    --traces_exporter console \
+    --metrics_exporter console \
+    --logs_exporter console \
+    --service_name my-haystack-app \
+    <command to run your Haystack pipeline>
+```
+
+### Configuring the tracing backend in Python
+
+Alternatively, configure the tracing backend directly in your Python code:
+
+```python
+from haystack import tracing
+
+from opentelemetry import trace
+from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.export import BatchSpanProcessor
+from opentelemetry.sdk.resources import Resource
+from opentelemetry.semconv.resource import ResourceAttributes
+
+# Service name is required for most backends
+resource = Resource(
+    attributes={
+        ResourceAttributes.SERVICE_NAME: "haystack",  # Correct constant
+    },
+)
+
+tracer_provider = TracerProvider(resource=resource)
+processor = BatchSpanProcessor(
+    OTLPSpanExporter(endpoint="http://localhost:4318/v1/traces"),
+)
+tracer_provider.add_span_processor(processor)
+trace.set_tracer_provider(tracer_provider)
+
+# Tell Haystack to auto-detect the configured tracer
+import haystack.tracing
+
+haystack.tracing.auto_enable_tracing()
+
+# Explicitly tell Haystack to use your tracer
+from haystack.tracing import OpenTelemetryTracer
+
+tracer = tracer_provider.get_tracer("my_application")
+tracing.enable_tracing(OpenTelemetryTracer(tracer))
+```
+
+## Visualizing Traces During Development
+
+Use [Jaeger](https://www.jaegertracing.io/docs/1.6/getting-started/) as a lightweight tracing backend for local pipeline development. This allows you to experiment with tracing without the need for a complex tracing backend.
+<ClickableImage src="/img/dd906d7-Screenshot_2024-02-22_at_16.51.01.png" alt="Jaeger UI trace timeline displaying haystack pipeline execution with component spans showing duration and nesting of operations" />
+
+1. Run the Jaeger container. This creates a tracing backend as well as a UI to visualize the traces:
+
+   ```shell
+   docker run --rm -d --name jaeger \
+     -e COLLECTOR_ZIPKIN_HOST_PORT=:9411 \
+     -p 6831:6831/udp \
+     -p 6832:6832/udp \
+     -p 5778:5778 \
+     -p 16686:16686 \
+     -p 4317:4317 \
+     -p 4318:4318 \
+     -p 14250:14250 \
+     -p 14268:14268 \
+     -p 14269:14269 \
+     -p 9411:9411 \
+     jaegertracing/all-in-one:latest
+   ```
+2. Install the OpenTelemetry SDK:
+
+   ```shell
+   pip install opentelemetry-sdk
+   pip install opentelemetry-exporter-otlp
+   ```
+3. Configure `OpenTelemetry` to use the Jaeger backend:
+
+   ```python
+   from opentelemetry.sdk.resources import Resource
+   from opentelemetry.semconv.resource import ResourceAttributes
+
+   from opentelemetry import trace
+   from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
+   from opentelemetry.sdk.trace import TracerProvider
+   from opentelemetry.sdk.trace.export import BatchSpanProcessor
+
+   # Service name is required for most backends
+   resource = Resource(attributes={
+       ResourceAttributes.SERVICE_NAME: "haystack"
+   })
+
+   tracer_provider = TracerProvider(resource=resource)
+   processor = BatchSpanProcessor(OTLPSpanExporter(endpoint="http://localhost:4318/v1/traces"))
+   tracer_provider.add_span_processor(processor)
+   trace.set_tracer_provider(tracer_provider)
+   ```
+4. Tell Haystack to use OpenTelemetry for tracing:
+
+   ```python
+   import haystack.tracing
+
+   haystack.tracing.auto_enable_tracing()
+   ```
+5. Run your pipeline:
+
+   ```python
+   ...
+   pipeline.run(...)
+   ...
+   ```
+6. Inspect the traces in the UI provided by Jaeger at [http://localhost:16686](http://localhost:16686/search).

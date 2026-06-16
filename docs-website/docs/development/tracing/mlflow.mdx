@@ -1,0 +1,51 @@
+---
+title: "MLflow"
+id: tracing-mlflow
+slug: "/tracing-mlflow"
+description: "Learn how to trace your Haystack pipelines with MLflow."
+---
+
+# MLflow
+
+Learn how to trace your Haystack pipelines with MLflow.
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **How to enable** | `mlflow.haystack.autolog()` |
+| **Content tracing** | Captured automatically, including latencies, token usage, cost, and exceptions |
+| **Package** | `mlflow` |
+| **Integration guide** | https://haystack.deepset.ai/integrations/mlflow |
+
+</div>
+
+## Overview
+
+[MLflow](https://mlflow.org/) is an open-source platform for managing the end-to-end machine learning and AI lifecycle. MLflow provides native tracing support for Haystack, so you can capture traces from all your pipelines and components with a single line of code.
+
+## Installation
+
+Install MLflow:
+
+```shell
+pip install mlflow
+```
+
+## Usage
+
+Enable automatic tracing for all Haystack pipelines and components:
+
+```python
+import mlflow
+
+mlflow.haystack.autolog()
+# Optionally set an experiment name
+mlflow.set_experiment("Haystack")
+```
+
+This automatically captures traces from all Haystack pipelines and components, including latencies, token usage, cost, and any exceptions.
+
+:::info
+Check out the [MLflow Haystack integration guide](https://haystack.deepset.ai/integrations/mlflow) for a full walkthrough with examples.
+:::

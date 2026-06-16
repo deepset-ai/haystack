@@ -1,0 +1,82 @@
+---
+title: "Custom Tracer"
+id: tracing-custom-tracer
+slug: "/tracing-custom-tracer"
+description: "Learn how to connect Haystack to a custom tracing backend by implementing the Tracer interface."
+---
+
+# Custom Tracer
+
+Learn how to connect Haystack to a custom tracing backend by implementing the `Tracer` interface.
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Base classes** | `Tracer` and `Span` |
+| **How to enable** | Implement the `Tracer` interface, then `tracing.enable_tracing(your_tracer)` |
+| **Content tracing** | Optional. Set `HAYSTACK_CONTENT_TRACING_ENABLED` to `true` to trace component inputs and outputs |
+| **Package** | Built into Haystack |
+| **GitHub link** | https://github.com/deepset-ai/haystack/blob/main/haystack/tracing/tracer.py |
+
+</div>
+
+## Overview
+
+If your tracing backend isn't supported out of the box, you can connect it to Haystack by implementing the `Tracer` interface. This gives you full control over how spans are created and how tags are recorded.
+
+## Usage
+
+1. Implement the `Tracer` interface. The following code snippet provides an example using the OpenTelemetry package:
+
+   ```python
+   import contextlib
+   from typing import Optional, Dict, Any, Iterator
+
+   from opentelemetry import trace
+   from opentelemetry.trace import NonRecordingSpan
+
+   from haystack.tracing import Tracer, Span
+   from haystack.tracing import utils as tracing_utils
+   import opentelemetry.trace
+
+   class OpenTelemetrySpan(Span):
+      def __init__(self, span: opentelemetry.trace.Span) -> None:
+          self._span = span
+
+      def set_tag(self, key: str, value: Any) -> None:
+   			 # Tracing backends usually don't support any tag value
+   			 # `coerce_tag_value` forces the value to either be a Python
+   			 # primitive (int, float, boolean, str) or tries to dump it as string.
+          coerced_value = tracing_utils.coerce_tag_value(value)
+          self._span.set_attribute(key, coerced_value)
+
+   class OpenTelemetryTracer(Tracer):
+      def __init__(self, tracer: opentelemetry.trace.Tracer) -> None:
+          self._tracer = tracer
+
+      @contextlib.contextmanager
+      def trace(self, operation_name: str, tags: Optional[Dict[str, Any]] = None) -> Iterator[Span]:
+          with self._tracer.start_as_current_span(operation_name) as span:
+              span = OpenTelemetrySpan(span)
+              if tags:
+                  span.set_tags(tags)
+
+              yield span
+
+      def current_span(self) -> Optional[Span]:
+          current_span = trace.get_current_span()
+          if isinstance(current_span, NonRecordingSpan):
+              return None
+
+          return OpenTelemetrySpan(current_span)
+   ```
+
+2. Tell Haystack to use your custom tracer:
+
+   ```python
+   from haystack import tracing
+
+   haystack_tracer = OpenTelemetryTracer(tracer)
+   tracing.enable_tracing(haystack_tracer)
+   ```

@@ -1,0 +1,93 @@
+---
+title: "Weights & Biases Weave"
+id: tracing-weave
+slug: "/tracing-weave"
+description: "Learn how to trace your Haystack pipelines with Weights & Biases Weave."
+---
+
+# Weights & Biases Weave
+
+Learn how to trace your Haystack pipelines with Weights & Biases Weave.
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Tracer class** | `WeaveTracer` |
+| **How to enable** | Enable the tracer with `tracing.enable_tracing(WeaveTracer(project_name="..."))`, or add the `WeaveConnector` component to your pipeline |
+| **Content tracing** | Required. Set `HAYSTACK_CONTENT_TRACING_ENABLED` to `true` |
+| **Package** | `weave-haystack` |
+| **API reference** | [Weave](/reference/integrations-weave) |
+| **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/weave |
+
+</div>
+
+## Overview
+
+Trace and visualize your pipeline execution in [Weights & Biases](https://wandb.ai/site/). Information captured by the Haystack tracing tool, such as API calls, context data, and prompts, is sent to Weights & Biases, where you can see the complete trace of your pipeline execution.
+
+## Installation
+
+Install the `weave-haystack` package:
+
+```shell
+pip install weave-haystack
+```
+
+## Prerequisites
+
+1. A Weave account. You can sign up for free on the [Weights & Biases website](https://wandb.ai/site).
+2. Set the `WANDB_API_KEY` environment variable with your Weights & Biases API key. Once logged in, you can find your API key on [your home page](https://wandb.ai/home).
+3. Set the `HAYSTACK_CONTENT_TRACING_ENABLED` environment variable to `true`.
+
+## Usage
+
+Enable the `WeaveTracer` directly to trace any Haystack pipeline, without adding a component to it. The `project_name` is the name that will appear in your Weave project.
+
+```python
+import os
+
+os.environ["HAYSTACK_CONTENT_TRACING_ENABLED"] = "true"
+
+from haystack import Pipeline, tracing
+from haystack.components.builders import ChatPromptBuilder
+from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.dataclasses import ChatMessage
+
+from haystack_integrations.tracing.weave import WeaveTracer
+
+# Enable the Weave tracer
+tracing.enable_tracing(WeaveTracer(project_name="test_pipeline"))
+
+pipe = Pipeline()
+pipe.add_component("prompt_builder", ChatPromptBuilder())
+pipe.add_component("llm", OpenAIChatGenerator())
+pipe.connect("prompt_builder.prompt", "llm.messages")
+
+messages = [
+    ChatMessage.from_system(
+        "Always respond in German even if some input data is in other languages.",
+    ),
+    ChatMessage.from_user("Tell me about {{location}}"),
+]
+
+response = pipe.run(
+    data={
+        "prompt_builder": {
+            "template_variables": {"location": "Berlin"},
+            "template": messages,
+        },
+    },
+)
+print(response["llm"]["replies"][0])
+```
+
+You can then see the complete trace for your pipeline at `https://wandb.ai/<user_name>/projects` under the project name you specified.
+
+## Alternative: the WeaveConnector component
+
+If you prefer to manage tracing as part of your pipeline definition, you can add the `WeaveConnector` component instead. It enables the same Weave tracing as soon as it runs.
+
+:::info
+See the [`WeaveConnector` documentation page](../../pipeline-components/connectors/weaveconnector.mdx) for full usage examples.
+:::
