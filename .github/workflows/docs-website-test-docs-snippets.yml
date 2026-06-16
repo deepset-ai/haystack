@@ -40,6 +40,9 @@ jobs:
         with:
           python-version: "3.11"
 
+      - name: Install system dependencies
+        run: sudo apt-get install -y ffmpeg
+
       - name: Install Hatch
         run: |
           python -m pip install --upgrade pip
