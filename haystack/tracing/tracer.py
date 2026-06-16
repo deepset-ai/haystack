@@ -198,7 +198,7 @@ def auto_enable_tracing() -> None:
     if is_tracing_enabled():
         return  # tracing already enabled
 
-    tracer = _auto_configured_opentelemetry_tracer() or _auto_configured_datadog_tracer()
+    tracer = _auto_configured_opentelemetry_tracer()
     if tracer:
         enable_tracing(tracer)
         logger.info("Auto-enabled tracing for '{tracer}'", tracer=tracer.__class__.__name__)
@@ -220,21 +220,6 @@ def _auto_configured_opentelemetry_tracer() -> Tracer | None:
             from haystack.tracing.opentelemetry import OpenTelemetryTracer
 
             return OpenTelemetryTracer(opentelemetry.trace.get_tracer("haystack"))
-    except ImportError:
-        pass
-
-    return None
-
-
-def _auto_configured_datadog_tracer() -> Tracer | None:
-    # we implement this here and not in the `datadog` module to avoid import warnings when Datadog is not installed
-    try:
-        from ddtrace.trace import tracer
-
-        from haystack.tracing.datadog import DatadogTracer
-
-        if tracer.enabled:
-            return DatadogTracer(tracer=tracer)
     except ImportError:
         pass
 

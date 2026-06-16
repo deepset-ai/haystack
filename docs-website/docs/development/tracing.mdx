@@ -15,7 +15,7 @@ Traces document the flow of requests through your application and are vital for 
 
 ## Configuring a Tracing Backend
 
-Instrumented applications typically send traces to a trace collector or a tracing backend. Haystack provides out-of-the-box support for [OpenTelemetry](https://opentelemetry.io/) and [Datadog](https://app.datadoghq.eu/dashboard/lists). You can also quickly implement support for additional providers of your choosing.
+Instrumented applications typically send traces to a trace collector or a tracing backend. Haystack provides out-of-the-box support for [OpenTelemetry](https://opentelemetry.io/) and, through integrations, for backends such as [Datadog](https://www.datadoghq.com/), [Langfuse](https://langfuse.com/), and [MLflow](https://mlflow.org/). You can also quickly implement support for additional providers of your choosing.
 
 ### OpenTelemetry
 
@@ -202,7 +202,6 @@ To use your custom tracing backend with Haystack, follow these steps:
 Haystack automatically detects and enables tracing under the following circumstances:
 
 - If `opentelemetry-sdk` is installed and configured for OpenTelemetry.
-- If `ddtrace` is installed for Datadog.
 
 To disable this behavior, there are two options:
 

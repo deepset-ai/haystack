@@ -108,6 +108,54 @@ pip install <new-package>
 | `from haystack.components.embedders.image import SentenceTransformersDocumentImageEmbedder` | `sentence-transformers-haystack` | `from haystack_integrations.components.embedders.sentence_transformers import SentenceTransformersDocumentImageEmbedder` |
 | `from haystack.components.rankers import SentenceTransformersSimilarityRanker` | `sentence-transformers-haystack` | `from haystack_integrations.components.rankers.sentence_transformers import SentenceTransformersSimilarityRanker` |
 | `from haystack.components.rankers import SentenceTransformersDiversityRanker` | `sentence-transformers-haystack` | `from haystack_integrations.components.rankers.sentence_transformers import SentenceTransformersDiversityRanker` |
+| `from haystack.tracing.datadog import DatadogTracer` | `datadog-haystack` | `from haystack_integrations.tracing.datadog import DatadogTracer` |
+
+### `DatadogTracer` moved to the `datadog-haystack` integration
+
+**What changed:** The `DatadogTracer` has been moved out of Haystack into the `datadog-haystack` integration package.
+In addition, Haystack no longer automatically enables Datadog tracing when `ddtrace` is installed. You now enable it
+explicitly by adding the new `DatadogConnector` component to your pipeline.
+
+**Why:** Moving the tracer to a dedicated package keeps Haystack's dependencies leaner and lets the integration be
+released independently. Removing the implicit auto-enable makes tracing setup explicit and predictable.
+
+**How to migrate:**
+
+Install the integration:
+
+```bash
+pip install datadog-haystack
+```
+
+Before (v2.x), Datadog tracing was auto-enabled when `ddtrace` was installed, or set up manually:
+
+```python
+import ddtrace
+from haystack import tracing
+from haystack.tracing.datadog import DatadogTracer
+
+tracing.enable_tracing(DatadogTracer(ddtrace.tracer))
+```
+
+After (v3.0), add the `DatadogConnector` to your pipeline to enable tracing:
+
+```python
+from haystack import Pipeline
+from haystack_integrations.components.connectors.datadog import DatadogConnector
+
+pipe = Pipeline()
+pipe.add_component("tracer", DatadogConnector())
+```
+
+Alternatively, you can still enable the tracer manually using the new import path:
+
+```python
+import ddtrace
+from haystack import tracing
+from haystack_integrations.tracing.datadog import DatadogTracer
+
+tracing.enable_tracing(DatadogTracer(ddtrace.tracer))
+```
 
 ### `TransformersSimilarityRanker` removed
 
