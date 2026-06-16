@@ -30,7 +30,7 @@ class MockSimilarityRanker:
         top_k: int | None = None,
         scale_score: bool | None = None,
         score_threshold: float | None = None,
-    ):
+    ) -> dict[str, list[Document]]:
         """
         Returns a list of documents ranked by their similarity to the given query.
 
