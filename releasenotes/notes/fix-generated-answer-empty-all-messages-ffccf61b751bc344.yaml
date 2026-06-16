@@ -1,6 +1,6 @@
 ---
 fixes:
   - |
-    Fixed ``GeneratedAnswer.from_dict`` raising an `IndexError` when the serialized
+    Fixed ``GeneratedAnswer.from_dict`` raising an ``IndexError`` when the serialized
     `meta` contained an empty `all_messages` list. Deserialization now guards
     against the empty list (consistent with `to_dict`) and round-trips correctly.
