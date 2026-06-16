@@ -107,7 +107,7 @@ export default {
       items: [
         'document-stores/inmemorydocumentstore',
         'document-stores/alloydbdocumentstore',
-        'document-stores/arangodbdocumentstore',
+        'document-stores/arangodocumentstore',
         'document-stores/arcadedbdocumentstore',
         'document-stores/astradocumentstore',
         'document-stores/azureaisearchdocumentstore',

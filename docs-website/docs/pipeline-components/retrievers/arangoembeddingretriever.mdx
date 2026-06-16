@@ -14,7 +14,7 @@ An embedding-based Retriever compatible with the ArangoDB Document Store.
 |  |  |
 | --- | --- |
 | **Most common position in a pipeline** | 1. After a Text Embedder and before a [`PromptBuilder`](../builders/promptbuilder.mdx) in a RAG pipeline <br /><br /> 2. The last component in a semantic search pipeline |
-| **Mandatory init variables** | `document_store`: An instance of an [ArangoDBDocumentStore](../../document-stores/arangodbdocumentstore.mdx) |
+| **Mandatory init variables** | `document_store`: An instance of an [ArangoDocumentStore](../../document-stores/arangodocumentstore.mdx) |
 | **Mandatory run variables** | `query_embedding`: A vector representing the query (a list of floats) |
 | **Output variables** | `documents`: A list of documents |
 | **API reference** | [ArangoDB](/reference/integrations-arangodb) |
