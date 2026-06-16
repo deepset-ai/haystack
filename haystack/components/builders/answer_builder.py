@@ -208,7 +208,10 @@ class AnswerBuilder:
             if documents:
                 referenced_idxs = (
                     AnswerBuilder._extract_reference_idxs(
-                        extracted_reply, reference_pattern, expand_ranges=expand_reference_ranges
+                        extracted_reply,
+                        reference_pattern,
+                        expand_ranges=expand_reference_ranges,
+                        num_documents=len(documents),
                     )
                     if reference_pattern
                     else set()
@@ -274,7 +277,9 @@ class AnswerBuilder:
         return reference_pattern
 
     @staticmethod
-    def _extract_reference_idxs(reply: str, reference_pattern: str, expand_ranges: bool = False) -> set[int]:
+    def _extract_reference_idxs(
+        reply: str, reference_pattern: str, expand_ranges: bool = False, num_documents: int | None = None
+    ) -> set[int]:
         matches = re.findall(reference_pattern, reply)
         idxs: set[int] = set()
         for match in matches:
@@ -288,6 +293,10 @@ class AnswerBuilder:
                         start, end = int(start_str), int(end_str)
                         if start > end:
                             continue
+                        # Clamp the range end to the number of documents to avoid materializing a huge
+                        # set from an out-of-range citation like `[1-999999999]` in the Generator output.
+                        if num_documents is not None:
+                            end = min(end, num_documents)
                         idxs.update(range(start - 1, end))
                     else:
                         idxs.add(int(part) - 1)

@@ -440,15 +440,9 @@ class TestAnswerBuilder:
     def test_run_expands_reference_ranges_when_enabled(self):
         docs = [Document(content=f"doc {i}") for i in range(1, 11)]
         component = AnswerBuilder(
-            reference_pattern=r"\[(\d+)\]",
-            expand_reference_ranges=True,
-            return_only_referenced_documents=False,
+            reference_pattern=r"\[(\d+)\]", expand_reference_ranges=True, return_only_referenced_documents=False
         )
-        output = component.run(
-            query="test query",
-            replies=["Answer citing sources [6-10]."],
-            documents=docs,
-        )
+        output = component.run(query="test query", replies=["Answer citing sources [6-10]."], documents=docs)
         answer = output["answers"][0]
         referenced_docs = [doc for doc in answer.documents if doc.meta["referenced"]]
         assert [doc.meta["source_index"] for doc in referenced_docs] == [6, 7, 8, 9, 10]
@@ -456,15 +450,9 @@ class TestAnswerBuilder:
     def test_run_expands_comma_separated_reference_ranges(self):
         docs = [Document(content=f"doc {i}") for i in range(1, 11)]
         component = AnswerBuilder(
-            reference_pattern=r"\[(\d+)\]",
-            expand_reference_ranges=True,
-            return_only_referenced_documents=False,
+            reference_pattern=r"\[(\d+)\]", expand_reference_ranges=True, return_only_referenced_documents=False
         )
-        output = component.run(
-            query="test query",
-            replies=["Answer citing sources [1-3,7-9]."],
-            documents=docs,
-        )
+        output = component.run(query="test query", replies=["Answer citing sources [1-3,7-9]."], documents=docs)
         answer = output["answers"][0]
         referenced_docs = [doc for doc in answer.documents if doc.meta["referenced"]]
         assert [doc.meta["source_index"] for doc in referenced_docs] == [1, 2, 3, 7, 8, 9]
@@ -472,23 +460,22 @@ class TestAnswerBuilder:
     def test_run_ignores_invalid_reference_ranges(self):
         docs = [Document(content=f"doc {i}") for i in range(1, 5)]
         component = AnswerBuilder(
-            reference_pattern=r"\[(\d+)\]",
-            expand_reference_ranges=True,
-            return_only_referenced_documents=True,
+            reference_pattern=r"\[(\d+)\]", expand_reference_ranges=True, return_only_referenced_documents=True
         )
-        output = component.run(
-            query="test query",
-            replies=["Answer citing sources [3-1]."],
-            documents=docs,
-        )
+        output = component.run(query="test query", replies=["Answer citing sources [3-1]."], documents=docs)
         assert output["answers"][0].documents == []
+
+    def test_run_clamps_reference_range_to_number_of_documents(self):
+        docs = [Document(content=f"doc {i}") for i in range(1, 4)]
+        component = AnswerBuilder(
+            reference_pattern=r"\[(\d+)\]", expand_reference_ranges=True, return_only_referenced_documents=True
+        )
+        output = component.run(query="test query", replies=["Answer citing sources [1-100]."], documents=docs)
+        referenced_docs = output["answers"][0].documents
+        assert [doc.meta["source_index"] for doc in referenced_docs] == [1, 2, 3]
 
     def test_run_does_not_expand_reference_ranges_by_default(self):
         docs = [Document(content=f"doc {i}") for i in range(1, 11)]
         component = AnswerBuilder(reference_pattern=r"\[(\d+)\]", return_only_referenced_documents=True)
-        output = component.run(
-            query="test query",
-            replies=["Answer citing sources [6-10]."],
-            documents=docs,
-        )
+        output = component.run(query="test query", replies=["Answer citing sources [6-10]."], documents=docs)
         assert output["answers"][0].documents == []
