@@ -1,0 +1,12 @@
+loaders:
+  - search_path: [../haystack/skill_stores]
+    modules: ["skill_store_types/protocol", "file_system/skill_store"]
+processors:
+  - type: filter
+    documented_only: true
+    skip_empty_modules: true
+renderer:
+  title: Skill Stores
+  id: skill-stores-api
+  description: Storage layers that discover skills and serve their content on demand.
+  filename: skill_stores_api.md
