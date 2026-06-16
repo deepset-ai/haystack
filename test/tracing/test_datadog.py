@@ -33,6 +33,10 @@ def get_traces_from_console(capfd: CaptureFixture) -> list[dict]:
 
 
 class TestDatadogTracer:
+    def test_deprecation_warning(self, datadog_tracer: ddTracer) -> None:
+        with pytest.warns(FutureWarning, match="datadog-haystack"):
+            DatadogTracer(datadog_tracer)
+
     def test_opentelemetry_tracer(self, datadog_tracer: ddTracer, capfd: CaptureFixture) -> None:
         tracer = DatadogTracer(datadog_tracer)
 

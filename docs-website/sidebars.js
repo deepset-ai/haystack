@@ -214,6 +214,7 @@ export default {
             id: 'pipeline-components/connectors'
           },
           items: [
+            'pipeline-components/connectors/datadogconnector',
             'pipeline-components/connectors/githubfileeditor',
             'pipeline-components/connectors/githubissuecommenter',
             'pipeline-components/connectors/githubissueviewer',

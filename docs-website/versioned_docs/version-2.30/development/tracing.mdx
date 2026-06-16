@@ -88,32 +88,13 @@ To use OpenTelemetry as your tracing backend, follow these steps:
 
 ### Datadog
 
-To use Datadog as your tracing backend, follow these steps:
+The `DatadogConnector` component lets you trace your Haystack pipelines with [Datadog](https://www.datadoghq.com/).
 
-1. Install [Datadog’s tracing library ddtrace](https://ddtrace.readthedocs.io/en/stable/#).
+Simply install the integration with `pip install datadog-haystack`, then add the connector to your pipeline.
 
-   ```shell
-   pip install ddtrace
-   ```
-2. There are two options for how to hook Haystack to ddtrace.
-
-   - Run your Haystack application using the `ddtrace`:
-     ```shell
-     ddtrace <command to run your Haystack pipeline
-     ```
-
-   — or —
-
-   - Configure the Datadog tracing backend in your Python code:
-
-     ```python
-     from haystack.tracing import DatadogTracer
-     from haystack import tracing
-     import ddtrace
-
-     tracer = ddtrace.tracer
-     tracing.enable_tracing(DatadogTracer(tracer))
-     ```
+:::info
+Check out the [integration page](https://haystack.deepset.ai/integrations/datadog) for more details and example usage.
+:::
 
 ### Langfuse
 
