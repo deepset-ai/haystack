@@ -14,7 +14,7 @@ Learn how to work with Datadog in Haystack.
 |  |  |
 | --- | --- |
 | **Most common position in a pipeline** | Anywhere, as it’s not connected to other components |
-| **Mandatory init variables** | None. Datadog is configured through standard `ddtrace` mechanisms (e.g. the `DD_SERVICE`, `DD_ENV`, and `DD_VERSION` environment variables, or running your application with `ddtrace-run`) |
+| **Mandatory init variables** | None. The connection to the Datadog backend is created at initialization time |
 | **Output variables** | `name`: The name of the tracing component |
 | **API reference** | [datadog](/reference/integrations-datadog) |
 | **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/datadog |
@@ -24,11 +24,9 @@ Learn how to work with Datadog in Haystack.
 
 ## Overview
 
-This integration allows you to trace and monitor your Haystack pipelines with [Datadog](https://www.datadoghq.com/).
+`DatadogConnector` integrates tracing capabilities into Haystack pipelines using [Datadog](https://www.datadoghq.com/), through [Datadog's tracing library `ddtrace`](https://ddtrace.readthedocs.io/en/stable/). It captures detailed information about pipeline runs, like API calls, context data, prompts, and more, so you can see the complete trace of your pipeline execution in Datadog.
 
-Information captured by the Haystack tracing tool, such as API calls, context data, and prompts, is sent to Datadog through [Datadog's tracing library `ddtrace`](https://ddtrace.readthedocs.io/en/stable/), where you can see the complete trace of your pipeline execution.
-
-To work with the integration, add the `DatadogConnector` to your pipeline without connecting it to any other component – it will simply run in your pipeline's background and enable Datadog tracing.
+Datadog tracing is enabled as soon as the `DatadogConnector` is initialized, so you only need to add it to your pipeline – it does not need to be connected to other components or to run to take effect.
 
 You can optionally pass a `name` to identify this tracing component (it defaults to `datadog`).
 
@@ -188,4 +186,17 @@ response = pipe.run(
 # Display results
 print("Agent Response:")
 print(response["agent"]["last_message"].text)
+```
+
+### Configuring the tracing backend directly
+
+Instead of using the `DatadogConnector`, you can configure the Datadog tracing backend directly by enabling a `DatadogTracer`. Make sure to set the `HAYSTACK_CONTENT_TRACING_ENABLED` environment variable before importing any Haystack components.
+
+```python
+import ddtrace
+
+from haystack import tracing
+from haystack_integrations.tracing.datadog import DatadogTracer
+
+tracing.enable_tracing(DatadogTracer(ddtrace.tracer))
 ```
