@@ -801,9 +801,12 @@ class InMemoryDocumentStore:
             document_embeddings = np.expand_dims(a=document_embeddings, axis=0)
 
         if self.embedding_similarity_function == "cosine":
-            # cosine similarity is a normed dot product
-            query_embedding /= np.linalg.norm(x=query_embedding, axis=1, keepdims=True)
-            document_embeddings /= np.linalg.norm(x=document_embeddings, axis=1, keepdims=True)
+            # cosine similarity is a normed dot product; guard against zero-norm vectors
+            # (e.g. a zero embedding) which would otherwise divide by zero and yield NaN scores.
+            query_norm = np.linalg.norm(x=query_embedding, axis=1, keepdims=True)
+            document_norms = np.linalg.norm(x=document_embeddings, axis=1, keepdims=True)
+            query_embedding /= np.where(query_norm == 0.0, 1.0, query_norm)
+            document_embeddings /= np.where(document_norms == 0.0, 1.0, document_norms)
 
         try:
             scores = np.dot(a=query_embedding, b=document_embeddings.T)[0].tolist()

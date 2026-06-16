@@ -69,7 +69,8 @@ __init__(
     reference_pattern: str | None = None,
     last_message_only: bool = False,
     *,
-    return_only_referenced_documents: bool = True
+    return_only_referenced_documents: bool = True,
+    expand_reference_ranges: bool = False
 ) -> None
 ```
 
@@ -96,6 +97,9 @@ Creates an instance of the AnswerBuilder component.
   If True (default value), only the documents that were actually referenced in `replies` are returned.
   If False, all documents are returned.
   If `reference_pattern` is not provided, this parameter has no effect, and all documents are returned.
+- **expand_reference_ranges** (<code>bool</code>) – If True, reference ranges like `[6-10]` are expanded to documents 6 through 10.
+  Defaults to False for backwards compatibility.
+  When enabled with the default `reference_pattern`, a broader pattern is used automatically.
 
 #### run
 
@@ -107,6 +111,7 @@ run(
     documents: list[Document] | None = None,
     pattern: str | None = None,
     reference_pattern: str | None = None,
+    expand_reference_ranges: bool | None = None,
 ) -> dict[str, Any]
 ```
 
@@ -140,6 +145,8 @@ Turns the output of a Generator into `GeneratedAnswer` objects using regular exp
   If not specified, no parsing is done, and all documents are returned.
   References need to be specified as indices of the input documents and start at [1].
   Example: `\[(\d+)\]` finds "1" in a string "this is an answer[1]".
+- **expand_reference_ranges** (<code>bool | None</code>) – If True, reference ranges like `[6-10]` are expanded to documents 6 through 10.
+  If not specified, the value from the component initialization is used.
 
 **Returns:**
 
