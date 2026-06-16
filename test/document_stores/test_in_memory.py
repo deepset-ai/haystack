@@ -6,7 +6,7 @@ import asyncio
 import gc
 import logging
 import tempfile
-from typing import cast
+from typing import cast, Literal
 from unittest.mock import patch
 
 import pytest
@@ -174,7 +174,7 @@ class TestMemoryDocumentStore(
         assert "No documents found for BM25 retrieval. Returning empty list." in caplog.text
 
     @pytest.mark.parametrize("bm25_algorithm", ["BM25Okapi", "BM25L", "BM25Plus"])
-    def test_bm25_retrieval_with_tokenless_corpus(self, bm25_algorithm: str) -> None:
+    def test_bm25_retrieval_with_tokenless_corpus(self, bm25_algorithm: Literal["BM25Okapi", "BM25L", "BM25Plus"]) -> None:
         # Regression test for #11598: a corpus where every document has empty (but not None)
         # content must not raise ZeroDivisionError at query time.
         store = InMemoryDocumentStore(bm25_algorithm=bm25_algorithm)
