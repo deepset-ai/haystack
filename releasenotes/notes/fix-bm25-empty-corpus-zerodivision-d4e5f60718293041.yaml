@@ -1,10 +1,10 @@
 ---
 fixes:
   - |
-    Fixed a `ZeroDivisionError` in `InMemoryDocumentStore.bm25_retrieval` that occurred at query
-    time when every stored document had empty (but not `None`) content. Such a tokenless corpus
+    Fixed a ``ZeroDivisionError`` in ``InMemoryDocumentStore.bm25_retrieval`` that occurred at query
+    time when every stored document had empty (but not ``None``) content. Such a tokenless corpus
     has no vocabulary and an average document length of zero, which made all three BM25
-    algorithms divide by zero. Retrieval now scores every candidate as `0.0` in this case:
-    unscaled `BM25Okapi` returns the documents with score `0.0`, while `BM25L` and `BM25Plus`
+    algorithms divide by zero. Retrieval now scores every candidate as ``0.0`` in this case:
+    unscaled ``BM25Okapi`` returns the documents with score ``0.0``, while ``BM25L`` and ``BM25Plus``
     return an empty list (non-positive scores are filtered). Corpora with at least one non-empty
     document are unaffected.
