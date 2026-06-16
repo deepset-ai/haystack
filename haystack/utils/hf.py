@@ -11,9 +11,6 @@ from haystack.lazy_imports import LazyImport
 with LazyImport(message="Run 'pip install \"transformers[torch]\"'") as torch_import:
     import torch
 
-with LazyImport(message="Run 'pip install \"huggingface_hub>=0.27.0\"'") as huggingface_hub_import:
-    pass
-
 logger = logging.getLogger(__name__)
 
 
