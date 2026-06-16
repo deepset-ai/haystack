@@ -60,13 +60,13 @@
 | haystack/components/embedders/hugging\_face\_api\_document\_embedder.py             |      124 |        4 |     97% |184-185, 347, 375 |
 | haystack/components/embedders/hugging\_face\_api\_text\_embedder.py                 |       85 |        4 |     95% |147-148, 262, 264 |
 | haystack/components/embedders/image/\_\_init\_\_.py                                 |        5 |        0 |    100% |           |
-| haystack/components/embedders/image/sentence\_transformers\_doc\_image\_embedder.py |       78 |        1 |     99% |       237 |
+| haystack/components/embedders/image/sentence\_transformers\_doc\_image\_embedder.py |       80 |        1 |     99% |       248 |
 | haystack/components/embedders/openai\_document\_embedder.py                         |      126 |       42 |     67% |147, 185, 218, 238-239, 250-284, 331-350 |
 | haystack/components/embedders/openai\_text\_embedder.py                             |       54 |        6 |     89% |122, 188-189, 207-209 |
-| haystack/components/embedders/sentence\_transformers\_document\_embedder.py         |       64 |        2 |     97% |  153, 243 |
-| haystack/components/embedders/sentence\_transformers\_sparse\_document\_embedder.py |       60 |        2 |     97% |  130, 215 |
-| haystack/components/embedders/sentence\_transformers\_sparse\_text\_embedder.py     |       49 |        2 |     96% |  109, 191 |
-| haystack/components/embedders/sentence\_transformers\_text\_embedder.py             |       54 |        2 |     96% |  141, 229 |
+| haystack/components/embedders/sentence\_transformers\_document\_embedder.py         |       66 |        2 |     97% |  163, 253 |
+| haystack/components/embedders/sentence\_transformers\_sparse\_document\_embedder.py |       62 |        2 |     97% |  140, 225 |
+| haystack/components/embedders/sentence\_transformers\_sparse\_text\_embedder.py     |       51 |        2 |     96% |  119, 201 |
+| haystack/components/embedders/sentence\_transformers\_text\_embedder.py             |       56 |        2 |     96% |  151, 239 |
 | haystack/components/embedders/types/\_\_init\_\_.py                                 |        2 |        0 |    100% |           |
 | haystack/components/embedders/types/protocol.py                                     |        6 |        0 |    100% |           |
 | haystack/components/evaluators/\_\_init\_\_.py                                      |        5 |        0 |    100% |           |
@@ -132,8 +132,8 @@
 | haystack/components/rankers/lost\_in\_the\_middle.py                                |       43 |        5 |     88% |57, 83, 87, 104, 117 |
 | haystack/components/rankers/meta\_field.py                                          |      118 |        0 |    100% |           |
 | haystack/components/rankers/meta\_field\_grouping\_ranker.py                        |       33 |        0 |    100% |           |
-| haystack/components/rankers/sentence\_transformers\_diversity.py                    |      151 |        8 |     95% |243, 258, 389, 410, 422-425 |
-| haystack/components/rankers/sentence\_transformers\_similarity.py                   |       79 |        2 |     97% |  147, 250 |
+| haystack/components/rankers/sentence\_transformers\_diversity.py                    |      153 |        8 |     95% |254, 269, 400, 421, 433-436 |
+| haystack/components/rankers/sentence\_transformers\_similarity.py                   |       81 |        2 |     98% |  158, 261 |
 | haystack/components/rankers/transformers\_similarity.py                             |      109 |       10 |     91% |143, 148, 154, 175, 261, 272, 275, 296, 308-309 |
 | haystack/components/readers/\_\_init\_\_.py                                         |        5 |        0 |    100% |           |
 | haystack/components/readers/extractive.py                                           |      233 |        9 |     96% |143, 205, 230-235, 427, 484, 597, 642-643 |
@@ -266,7 +266,7 @@
 | haystack/utils/type\_serialization.py                                               |      112 |       12 |     89% |62, 64, 178-179, 190-193, 199, 215-218 |
 | haystack/utils/url\_validation.py                                                   |        4 |        0 |    100% |           |
 | haystack/version.py                                                                 |        5 |        2 |     60% |      9-10 |
-| **TOTAL**                                                                           | **17834** | **1219** | **93%** |           |
+| **TOTAL**                                                                           | **17848** | **1219** | **93%** |           |
 
 
 ## Setup coverage badge
