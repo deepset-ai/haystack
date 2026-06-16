@@ -5,6 +5,7 @@
 import asyncio
 import gc
 import logging
+import math
 import tempfile
 from typing import cast
 from unittest.mock import patch
@@ -355,6 +356,18 @@ class TestMemoryDocumentStore(
         )
         assert len(results) == 1
         assert results[0].content == "Haystack supports multiple languages"
+
+    def test_embedding_retrieval_with_zero_vector_does_not_produce_nan(self):
+        # A zero embedding has no direction; normalizing it must not divide by zero and
+        # produce NaN cosine scores, which would silently corrupt ranking.
+        docstore = InMemoryDocumentStore(embedding_similarity_function="cosine")
+        docstore.write_documents(
+            [Document(content="zero", embedding=[0.0, 0.0, 0.0]), Document(content="normal", embedding=[1.0, 0.0, 0.0])]
+        )
+        results = docstore.embedding_retrieval(query_embedding=[1.0, 0.0, 0.0], scale_score=False)
+        scores = {doc.content: doc.score for doc in results}
+        assert all(score is not None and not math.isnan(score) for score in scores.values())
+        assert scores["zero"] == 0.0
 
     def test_embedding_retrieval_invalid_query(self, in_memory_doc_store):
         with pytest.raises(ValueError, match="query_embedding should be a non-empty list of floats"):
