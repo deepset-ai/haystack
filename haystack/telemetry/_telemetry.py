@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import datetime
+import functools
 import logging
 import os
 import uuid
@@ -121,7 +122,7 @@ def send_telemetry(func: Callable[..., Any]) -> Callable[..., None]:
     The wrapped function is actually called only if telemetry is enabled.
     """
 
-    # FIXME? Somehow, functools.wraps makes `telemetry` out of scope. Let's take care of it later.
+    @functools.wraps(func)
     def send_telemetry_wrapper(*args: Any, **kwargs: Any) -> None:
         try:
             if telemetry:
@@ -148,7 +149,7 @@ def pipeline_running(pipeline: "Pipeline") -> tuple[str, dict[str, Any]] | None:
     pipeline._telemetry_runs += 1
     if (
         pipeline._last_telemetry_sent
-        and (datetime.datetime.now() - pipeline._last_telemetry_sent).seconds < MIN_SECONDS_BETWEEN_EVENTS
+        and (datetime.datetime.now() - pipeline._last_telemetry_sent).total_seconds() < MIN_SECONDS_BETWEEN_EVENTS
     ):
         return None
 
