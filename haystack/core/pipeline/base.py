@@ -361,7 +361,7 @@ class PipelineBase:  # noqa: PLW1641
         unsafe: bool = False,
     ) -> T:
         """
-        Creates a `Pipeline` object a string representation.
+        Creates a `Pipeline` object from a string representation.
 
         The string representation is read from the file-like object passed in the `fp` argument.
 

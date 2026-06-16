@@ -1,0 +1,19 @@
+---
+deprecations:
+  - |
+    ``SentenceTransformersTextEmbedder``, ``SentenceTransformersDocumentEmbedder``,
+    ``SentenceTransformersDocumentImageEmbedder``, ``SentenceTransformersSparseTextEmbedder``,
+    ``SentenceTransformersSparseDocumentEmbedder``, ``SentenceTransformersDiversityRanker``, and
+    ``SentenceTransformersSimilarityRanker`` are deprecated and will be removed from Haystack in version 3.0.
+    They are moving to the ``sentence-transformers-haystack`` package. To continue using them, install the package
+    with ``pip install sentence-transformers-haystack`` and update your imports as follows:
+
+    .. code-block:: python
+
+        from haystack_integrations.components.embedders.sentence_transformers import SentenceTransformersTextEmbedder
+        from haystack_integrations.components.embedders.sentence_transformers import SentenceTransformersDocumentEmbedder
+        from haystack_integrations.components.embedders.sentence_transformers import SentenceTransformersDocumentImageEmbedder
+        from haystack_integrations.components.embedders.sentence_transformers import SentenceTransformersSparseTextEmbedder
+        from haystack_integrations.components.embedders.sentence_transformers import SentenceTransformersSparseDocumentEmbedder
+        from haystack_integrations.components.rankers.sentence_transformers import SentenceTransformersDiversityRanker
+        from haystack_integrations.components.rankers.sentence_transformers import SentenceTransformersSimilarityRanker
