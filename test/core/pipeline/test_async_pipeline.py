@@ -9,6 +9,7 @@ from dataclasses import replace
 import pytest
 
 from haystack import AsyncPipeline, Document, component
+from haystack.core.errors import PipelineRuntimeError
 
 
 def test_async_pipeline_reentrance(waiting_component, spying_tracer):
@@ -280,3 +281,26 @@ def test_async_pipeline_does_not_corrupt_outputs():
 
     assert result["producer"]["doc"].content == "original"
     assert result["mutator"]["doc"].content == "mutated"
+
+
+@pytest.mark.asyncio
+async def test_run_async_raises_when_multi_element_list_is_unwrapped_at_runtime():
+    @component
+    class MultiStrProducer:
+        @component.output_types(texts=list[str])
+        def run(self) -> dict[str, list[str]]:
+            return {"texts": ["first", "second", "third"]}
+
+    @component
+    class SingleStrConsumer:
+        @component.output_types(out=str)
+        def run(self, text: str) -> dict[str, str]:
+            return {"out": text}
+
+    pipe = AsyncPipeline()
+    pipe.add_component("producer", MultiStrProducer())
+    pipe.add_component("consumer", SingleStrConsumer())
+    pipe.connect("producer.texts", "consumer.text")
+
+    with pytest.raises(PipelineRuntimeError, match="Cannot unwrap a list of 3 items"):
+        await pipe.run_async({})
