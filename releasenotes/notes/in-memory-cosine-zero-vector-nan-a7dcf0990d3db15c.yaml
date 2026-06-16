@@ -1,7 +1,7 @@
 ---
 fixes:
   - |
-    Fixed `InMemoryDocumentStore.embedding_retrieval` producing `NaN` cosine
+    Fixed ``InMemoryDocumentStore.embedding_retrieval`` producing ``NaN`` cosine
     similarity scores when a document (or the query) had a zero-norm embedding.
     Zero-norm vectors are now handled without dividing by zero, so such documents
-    receive a score of `0.0` instead of `NaN` (which silently corrupted ranking).
+    receive a score of ``0.0`` instead of ``NaN`` (which silently corrupted ranking).
