@@ -110,6 +110,13 @@ class TestSkillToolset:
         with pytest.raises(NotImplementedError, match="does not support adding tools"):
             toolset.add(extra)
 
+    def test_concat_is_not_supported(self, tmp_path):
+        _write_skill(tmp_path, "pdf-forms", description="Use to fill PDF forms.")
+        toolset = SkillToolset(FileSystemSkillStore(tmp_path))
+        extra = Tool(name="extra", description="d", parameters={"type": "object", "properties": {}}, function=len)
+        with pytest.raises(NotImplementedError, match="does not support concatenation"):
+            _ = toolset + extra
+
     def test_accepts_skill_store_instance(self, tmp_path):
         _write_skill(tmp_path, "pdf-forms", description="Use to fill PDF forms.")
         store = FileSystemSkillStore(tmp_path)
