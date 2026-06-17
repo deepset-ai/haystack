@@ -9,7 +9,7 @@ from typing import Any
 from haystack import Document, component, default_from_dict, default_to_dict
 from haystack.components.retrievers.types import TextRetriever
 from haystack.core.serialization import component_to_dict
-from haystack.utils.async_utils import _run_component_async
+from haystack.utils.async_utils import _execute_component_async
 from haystack.utils.misc import _deduplicate_documents
 
 
@@ -157,7 +157,7 @@ class MultiQueryTextRetriever:
         :returns:
             List of retrieved documents or None if no results.
         """
-        result = await _run_component_async(self.retriever, query=query, **retriever_kwargs)
+        result = await _execute_component_async(self.retriever, query=query, **retriever_kwargs)
 
         if result and "documents" in result:
             return result["documents"]

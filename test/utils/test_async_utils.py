@@ -7,7 +7,7 @@ import logging
 
 import pytest
 
-from haystack.utils.async_utils import _run_component_async
+from haystack.utils.async_utils import _execute_component_async
 
 _test_context_var: contextvars.ContextVar[str] = contextvars.ContextVar("_test_context_var", default="unset")
 
@@ -42,26 +42,26 @@ class TestRunComponentAsync:
     @pytest.mark.asyncio
     async def test_awaits_run_async_when_available(self):
         component = ComponentWithRunAsync()
-        result = await _run_component_async(component, foo="bar", count=1)
+        result = await _execute_component_async(component, foo="bar", count=1)
         assert result == {"path": "async", "kwargs": {"foo": "bar", "count": 1}}
 
     @pytest.mark.asyncio
     async def test_falls_back_to_sync_run_when_no_run_async(self):
         component = ComponentWithoutRunAsync()
-        result = await _run_component_async(component, foo="bar", count=2)
+        result = await _execute_component_async(component, foo="bar", count=2)
         assert result == {"path": "sync", "kwargs": {"foo": "bar", "count": 2}}
 
     @pytest.mark.asyncio
     async def test_falls_back_to_sync_run_when_run_async_not_callable(self):
         component = ComponentWithNonCallableRunAsync()
-        result = await _run_component_async(component, foo="baz")
+        result = await _execute_component_async(component, foo="baz")
         assert result == {"path": "sync", "kwargs": {"foo": "baz"}}
 
     @pytest.mark.asyncio
     async def test_emits_debug_log_on_sync_fallback(self, caplog):
         component = ComponentWithoutRunAsync()
         with caplog.at_level(logging.DEBUG):
-            await _run_component_async(component)
+            await _execute_component_async(component)
         assert "does not implement 'run_async'" in caplog.text
         assert "ComponentWithoutRunAsync" in caplog.text
 
@@ -72,5 +72,5 @@ class TestRunComponentAsync:
         # current context; a plain `loop.run_in_executor` would not.
         component = ComponentReadingContextVar()
         _test_context_var.set("propagated")
-        result = await _run_component_async(component)
+        result = await _execute_component_async(component)
         assert result == {"value": "propagated"}

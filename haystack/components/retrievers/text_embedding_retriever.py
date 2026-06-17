@@ -8,7 +8,7 @@ from haystack import Document, component, default_from_dict, default_to_dict
 from haystack.components.embedders.types.protocol import TextEmbedder
 from haystack.components.retrievers.types import EmbeddingRetriever
 from haystack.core.serialization import component_to_dict
-from haystack.utils.async_utils import _run_component_async
+from haystack.utils.async_utils import _execute_component_async
 
 
 @component
@@ -125,8 +125,8 @@ class TextEmbeddingRetriever:
         if not self._is_warmed_up:
             self.warm_up()
 
-        embedding_result = await _run_component_async(self.text_embedder, text=query)
-        result = await _run_component_async(
+        embedding_result = await _execute_component_async(self.text_embedder, text=query)
+        result = await _execute_component_async(
             self.retriever, query_embedding=embedding_result["embedding"], filters=filters, top_k=top_k
         )
 

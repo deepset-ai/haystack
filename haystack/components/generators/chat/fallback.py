@@ -11,7 +11,7 @@ from haystack.components.generators.chat.types import ChatGenerator
 from haystack.components.generators.utils import _normalize_messages
 from haystack.dataclasses import ChatMessage, StreamingCallbackT
 from haystack.tools import ToolsType
-from haystack.utils.async_utils import _run_component_async
+from haystack.utils.async_utils import _execute_component_async
 from haystack.utils.deserialization import deserialize_component_inplace
 
 logger = logging.getLogger(__name__)
@@ -118,7 +118,7 @@ class FallbackChatGenerator:
         tools: ToolsType | None,
         streaming_callback: StreamingCallbackT | None,
     ) -> dict[str, Any]:
-        return await _run_component_async(
+        return await _execute_component_async(
             gen,
             messages=messages,
             generation_kwargs=generation_kwargs,
