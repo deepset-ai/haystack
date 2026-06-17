@@ -114,8 +114,7 @@ class Document(metaclass=_BackwardCompatible):  # noqa: PLW1641
         dataframe = None  # this allows the ID creation to remain unchanged even if the dataframe field has been removed
         blob = self.blob.data if self.blob is not None else None
         mime_type = self.blob.mime_type if self.blob is not None else None
-        # Sort keys so meta order doesn't affect the hash. Keep "{}" for empty meta
-        # so existing IDs stay stable.
+        # Sort keys so meta order doesn't affect the ID. Keep "{}" for empty meta so existing IDs stay stable.
         meta = json.dumps(self.meta, sort_keys=True, default=str) if self.meta else "{}"
         embedding = self.embedding if self.embedding is not None else None
         sparse_embedding = self.sparse_embedding.to_dict() if self.sparse_embedding is not None else ""
