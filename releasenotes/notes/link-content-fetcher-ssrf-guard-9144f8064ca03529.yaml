@@ -1,0 +1,14 @@
+---
+security:
+  - |
+    `LinkContentFetcher` now blocks Server-Side Request Forgery (SSRF) by default. Before sending a request,
+    and on every redirect hop, it resolves the target host and rejects private, loopback, link-local,
+    unique-local, reserved, multicast, and cloud-metadata (`169.254.169.254`) addresses (IPv4 and IPv6),
+    as well as non-HTTP(S) schemes. This matters when the component is exposed to an LLM as a tool (via
+    `ComponentTool`), where model-controlled arguments choose the URLs to fetch. Set the new
+    `allow_private_addresses=True` constructor argument to restore the previous behavior when you
+    intentionally need to fetch internal hosts.
+enhancements:
+  - |
+    Added an `allow_private_addresses` argument to `LinkContentFetcher` (default `False`) to control whether
+    requests to private, loopback, link-local, or cloud-metadata addresses are permitted.

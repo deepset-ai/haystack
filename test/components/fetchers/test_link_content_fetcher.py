@@ -10,7 +10,12 @@ import pytest
 from haystack.components.fetchers.link_content import (
     DEFAULT_USER_AGENT,
     LinkContentFetcher,
+    UnsafeFetchURLError,
+    _assert_safe_url,
     _binary_content_handler,
+    _is_blocked_ip,
+    _ssrf_guard_request_hook,
+    _ssrf_guard_request_hook_async,
     _text_content_handler,
 )
 
@@ -433,3 +438,157 @@ class TestLinkContentFetcherAsyncIntegration:
         streams = (await fetcher.run_async([HTML_URL]))["streams"]
         assert len(streams) == 1
         assert "Haystack" in streams[0].data.decode("utf-8")
+
+
+class TestLinkContentFetcherSSRFGuard:
+    """
+    Tests for the Server-Side Request Forgery (SSRF) guard.
+
+    LinkContentFetcher can be exposed to an LLM as a tool (via ComponentTool), which lets model-controlled
+    arguments choose the fetched URLs. Without a guard, those URLs could target loopback, private-network,
+    link-local, or cloud-metadata addresses. These tests assert the request is blocked *before* any network
+    egress and that the existing error-handling and opt-out behavior is preserved.
+    """
+
+    @pytest.mark.parametrize(
+        "url",
+        [
+            "http://127.0.0.1/health",
+            "http://127.0.0.1:8080/health",
+            "http://localhost/admin",
+            "http://0.0.0.0/",
+            "http://10.0.0.5/internal",
+            "http://192.168.1.10/router",
+            "http://172.16.0.1/",
+            "http://169.254.169.254/latest/meta-data/",  # cloud metadata service
+            "http://[::1]/",
+            "http://[::ffff:127.0.0.1]/",  # IPv4-mapped loopback
+            "ftp://example.com/secret",  # disallowed scheme
+            "file:///etc/passwd",  # disallowed scheme
+        ],
+    )
+    def test_assert_safe_url_blocks_non_routable_targets(self, url):
+        """The guard rejects loopback / private / link-local / metadata / bad-scheme URLs."""
+        with pytest.raises(UnsafeFetchURLError):
+            _assert_safe_url(url)
+
+    @pytest.mark.parametrize(
+        "ip", ["127.0.0.1", "10.1.2.3", "192.168.0.1", "172.16.5.5", "169.254.169.254", "0.0.0.0", "::1", "fc00::1"]
+    )
+    def test_is_blocked_ip_true_for_non_routable(self, ip):
+        import ipaddress
+
+        assert _is_blocked_ip(ipaddress.ip_address(ip)) is True
+
+    @pytest.mark.parametrize("ip", ["93.184.216.34", "8.8.8.8", "2001:4860:4860::8888"])
+    def test_is_blocked_ip_false_for_public(self, ip):
+        import ipaddress
+
+        assert _is_blocked_ip(ipaddress.ip_address(ip)) is False
+
+    def test_run_blocks_localhost_and_raises(self):
+        """A model-provided localhost URL must be blocked before any network egress."""
+        sent = []
+
+        def handler(request: httpx.Request) -> httpx.Response:  # pragma: no cover - must never be reached
+            sent.append(str(request.url))
+            return httpx.Response(200, text="SECRET")
+
+        fetcher = LinkContentFetcher(retry_attempts=0)
+        # Preserve the SSRF event hooks but route any *actual* request to a recording mock transport,
+        # so a failure to block would be observable as a recorded request instead of real egress.
+        fetcher._client = httpx.Client(
+            transport=httpx.MockTransport(handler), follow_redirects=True, event_hooks=fetcher._client.event_hooks
+        )
+        with pytest.raises(UnsafeFetchURLError):
+            fetcher.run(urls=["http://127.0.0.1:80/health"])
+        assert sent == []  # the guard fired before the transport was reached
+
+    def test_run_blocks_host_resolving_to_metadata_ip(self):
+        """A public-looking host that resolves to the cloud metadata IP (DNS rebinding) is blocked."""
+        sent = []
+
+        def handler(request: httpx.Request) -> httpx.Response:  # pragma: no cover - must never be reached
+            sent.append(str(request.url))
+            return httpx.Response(200, text="SECRET")
+
+        with patch("haystack.components.fetchers.link_content.socket.getaddrinfo") as mock_gai:
+            mock_gai.return_value = [(2, 1, 6, "", ("169.254.169.254", 80))]
+            fetcher = LinkContentFetcher(retry_attempts=0)
+            fetcher._client = httpx.Client(
+                transport=httpx.MockTransport(handler), follow_redirects=True, event_hooks=fetcher._client.event_hooks
+            )
+            with pytest.raises(UnsafeFetchURLError):
+                fetcher.run(urls=["http://attacker-controlled.example/x"])
+            assert sent == []  # blocked before any connection attempt
+
+    def test_run_blocked_url_with_raise_on_failure_false_returns_empty(self):
+        """With raise_on_failure=False a blocked URL is skipped gracefully (empty stream), not raised."""
+        fetcher = LinkContentFetcher(raise_on_failure=False, retry_attempts=0)
+        result = fetcher.run(urls=["http://10.0.0.1/internal"])
+        assert len(result["streams"]) == 1
+        empty = b""
+        assert result["streams"][0].data == empty
+
+    def test_run_blocks_redirect_to_private_address(self):
+        """A public URL that redirects to a private/metadata address is blocked on the redirect hop."""
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            if request.url.host == "public.example":
+                return httpx.Response(302, headers={"Location": "http://169.254.169.254/latest/meta-data/"})
+            return httpx.Response(200, text="SECRET")  # pragma: no cover - must never be reached
+
+        fetcher = LinkContentFetcher(retry_attempts=0)
+        # Swap in a mock transport while preserving the SSRF event hooks installed on the client.
+        fetcher._client = httpx.Client(
+            transport=httpx.MockTransport(handler), follow_redirects=True, event_hooks=fetcher._client.event_hooks
+        )
+        with pytest.raises(UnsafeFetchURLError):
+            fetcher.run(urls=["http://public.example/start"])
+
+    def test_allow_private_addresses_opts_out_of_guard(self):
+        """allow_private_addresses=True disables the guard so internal hosts can be reached intentionally."""
+        fetcher = LinkContentFetcher(allow_private_addresses=True, retry_attempts=0)
+        assert fetcher.allow_private_addresses is True
+        # No SSRF "request" event hook should be installed on either client.
+        assert _ssrf_hook_count(fetcher._client) == 0
+        assert _ssrf_hook_count(fetcher._async_client) == 0
+
+        # With the guard disabled, a localhost request reaches httpx.Client.get (here mocked) instead of
+        # being blocked by UnsafeFetchURLError.
+        with patch.object(fetcher._client, "get") as mock_get:
+            mock_get.return_value = Mock(
+                status_code=200, text="ok", headers={"Content-Type": "text/plain"}, content=b"ok"
+            )
+            result = fetcher.run(urls=["http://127.0.0.1:8080/health"])
+            mock_get.assert_called_once()
+            assert len(result["streams"]) == 1
+
+    def test_default_installs_guard_hook(self):
+        """By default (allow_private_addresses=False) the SSRF guard is installed on both clients."""
+        fetcher = LinkContentFetcher()
+        assert fetcher.allow_private_addresses is False
+        assert _ssrf_hook_count(fetcher._client) == 1
+        assert _ssrf_hook_count(fetcher._async_client) == 1
+
+    def test_user_event_hooks_are_preserved(self):
+        """User-supplied request event hooks are kept and run after the SSRF guard."""
+        user_hook = Mock()
+        fetcher = LinkContentFetcher(client_kwargs={"event_hooks": {"request": [user_hook]}})
+        request_hooks = fetcher._client.event_hooks.get("request", [])
+        assert user_hook in request_hooks
+        # Guard runs first, user hook second.
+        assert len(request_hooks) == 2
+        assert request_hooks[-1] is user_hook
+
+    async def test_run_async_blocks_localhost(self):
+        """The async path also blocks localhost before any connection."""
+        fetcher = LinkContentFetcher(retry_attempts=0)
+        with pytest.raises(UnsafeFetchURLError):
+            await fetcher.run_async(urls=["http://127.0.0.1:80/health"])
+
+
+def _ssrf_hook_count(client) -> int:
+    """Count SSRF guard request hooks installed on an httpx client."""
+    guards = {_ssrf_guard_request_hook, _ssrf_guard_request_hook_async}
+    return sum(1 for hook in client.event_hooks.get("request", []) if hook in guards)

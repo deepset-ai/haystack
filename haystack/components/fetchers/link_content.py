@@ -3,12 +3,15 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import asyncio
+import ipaddress
+import socket
 from collections import defaultdict
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import replace
 from fnmatch import fnmatch
 from typing import Any, cast
+from urllib.parse import urlsplit
 
 import httpx
 from tenacity import RetryCallState, retry, retry_if_exception_type, stop_after_attempt, wait_exponential
@@ -51,6 +54,108 @@ def _merge_headers(*args: dict[str, str]) -> dict[str, str]:
             merged[kl] = v
 
     return {keymap[kl]: v for kl, v in merged.items()}
+
+
+class UnsafeFetchURLError(httpx.RequestError):
+    """
+    Raised when a URL is blocked by the Server-Side Request Forgery (SSRF) guard before a request is sent.
+
+    Inherits from ``httpx.RequestError`` so it integrates with the existing retry/error-handling flow:
+    ``raise_on_failure=False`` keeps logging and skipping the blocked URL, while ``raise_on_failure=True``
+    surfaces the error to the caller.
+    """
+
+
+# Schemes considered safe to fetch over the network. Other schemes (e.g. ``file://``, ``ftp://``, ``gopher://``)
+# can be abused to read local files or reach unexpected services and are rejected by the SSRF guard.
+_ALLOWED_URL_SCHEMES = frozenset({"http", "https"})
+
+
+def _is_blocked_ip(ip: ipaddress.IPv4Address | ipaddress.IPv6Address) -> bool:
+    """
+    Determine whether an IP address points to a private, local, or otherwise non-routable network.
+
+    This blocks loopback, private (RFC1918 / unique-local), link-local (including the
+    cloud metadata address ``169.254.169.254``), reserved, multicast, and unspecified
+    addresses for both IPv4 and IPv6. IPv4-mapped IPv6 addresses are unwrapped and
+    re-checked so that, for example, ``::ffff:127.0.0.1`` is also blocked.
+
+    :param ip: The IP address to inspect.
+    :returns: ``True`` if the address must not be fetched, ``False`` otherwise.
+    """
+    # Unwrap IPv4-mapped IPv6 addresses (e.g. ::ffff:169.254.169.254) and re-check the embedded IPv4 address.
+    mapped = getattr(ip, "ipv4_mapped", None)
+    if mapped is not None:
+        ip = mapped
+
+    return ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_reserved or ip.is_multicast or ip.is_unspecified
+
+
+def _assert_safe_url(url: str | httpx.URL) -> None:
+    """
+    Validate that a URL is safe to fetch, raising :class:`UnsafeFetchURLError` if it is not.
+
+    The check rejects unsupported schemes and any host that resolves (via DNS) to a
+    private, loopback, link-local, or otherwise non-routable address. It is applied to
+    the initial request URL and re-applied to every redirect hop, mitigating
+    Server-Side Request Forgery (SSRF) attempts that target internal services or the
+    cloud metadata endpoint, including DNS-rebinding and redirect-based bypasses.
+
+    :param url: The URL about to be requested.
+    :raises UnsafeFetchURLError: If the scheme is unsupported, the host is missing,
+        the host cannot be resolved, or it resolves to a blocked address.
+    """
+    parts = urlsplit(str(url))
+    scheme = parts.scheme.lower()
+    if scheme not in _ALLOWED_URL_SCHEMES:
+        raise UnsafeFetchURLError(
+            f"Blocked request to '{url}': URL scheme '{parts.scheme}' is not allowed. "
+            f"Only {sorted(_ALLOWED_URL_SCHEMES)} URLs can be fetched."
+        )
+
+    host = parts.hostname
+    if not host:
+        raise UnsafeFetchURLError(f"Blocked request to '{url}': the URL does not contain a host.")
+
+    # If the host is already an IP literal, validate it directly. Otherwise resolve all
+    # addresses it maps to and reject the request if any of them is non-routable.
+    try:
+        literal_ip = ipaddress.ip_address(host)
+        resolved_ips: list[ipaddress.IPv4Address | ipaddress.IPv6Address] = [literal_ip]
+    except ValueError:
+        try:
+            addr_infos = socket.getaddrinfo(host, parts.port, proto=socket.IPPROTO_TCP)
+        except socket.gaierror as exc:
+            raise UnsafeFetchURLError(f"Blocked request to '{url}': unable to resolve host '{host}'.") from exc
+        resolved_ips = [ipaddress.ip_address(info[4][0]) for info in addr_infos]
+
+    for ip in resolved_ips:
+        if _is_blocked_ip(ip):
+            raise UnsafeFetchURLError(
+                f"Blocked request to '{url}': host '{host}' resolves to non-routable address '{ip}'. "
+                "Fetching private, loopback, link-local, or cloud-metadata addresses is not allowed. "
+                "Set `allow_private_addresses=True` on LinkContentFetcher to permit this (use with caution)."
+            )
+
+
+def _ssrf_guard_request_hook(request: httpx.Request) -> None:
+    """
+    httpx "request" event hook (sync client) that blocks SSRF-unsafe URLs before the request is sent.
+
+    :param request: The outgoing httpx request (fired for the initial request and each redirect hop).
+    :raises UnsafeFetchURLError: If the request target is not safe to fetch.
+    """
+    _assert_safe_url(request.url)
+
+
+async def _ssrf_guard_request_hook_async(request: httpx.Request) -> None:
+    """
+    httpx "request" event hook (async client) that blocks SSRF-unsafe URLs before the request is sent.
+
+    :param request: The outgoing httpx request (fired for the initial request and each redirect hop).
+    :raises UnsafeFetchURLError: If the request target is not safe to fetch.
+    """
+    _assert_safe_url(request.url)
 
 
 def _text_content_handler(response: httpx.Response) -> ByteStream:
@@ -121,6 +226,7 @@ class LinkContentFetcher:
         http2: bool = False,
         client_kwargs: dict | None = None,
         request_headers: dict[str, str] | None = None,
+        allow_private_addresses: bool = False,
     ) -> None:
         """
         Initializes the component.
@@ -135,6 +241,11 @@ class LinkContentFetcher:
                      Requires the 'h2' package to be installed (via `pip install httpx[http2]`).
         :param client_kwargs: Additional keyword arguments to pass to the httpx client.
                      If `None`, default values are used.
+        :param allow_private_addresses: If `False` (the default), requests to hosts that resolve to private,
+            loopback, link-local, or cloud-metadata addresses are blocked before any connection is made,
+            and every redirect hop is re-validated. This mitigates Server-Side Request Forgery (SSRF) when
+            the URLs come from an untrusted source (for example, when the component is exposed to an LLM as
+            a tool). Set to `True` only if you explicitly trust the URLs and need to reach internal hosts.
         """
         self.raise_on_failure = raise_on_failure
         self.user_agents = user_agents or [DEFAULT_USER_AGENT]
@@ -144,6 +255,7 @@ class LinkContentFetcher:
         self.http2 = http2
         self.client_kwargs = client_kwargs or {}
         self.request_headers = request_headers or {}
+        self.allow_private_addresses = allow_private_addresses
 
         # Configure default client settings
         self.client_kwargs.setdefault("timeout", timeout)
@@ -165,10 +277,10 @@ class LinkContentFetcher:
                 self.http2 = False  # Update the setting to match actual capability
 
         # Initialize synchronous client
-        self._client = httpx.Client(**client_kwargs)
+        self._client = httpx.Client(**self._build_client_kwargs(client_kwargs, is_async=False))
 
         # Initialize asynchronous client
-        self._async_client = httpx.AsyncClient(**client_kwargs)
+        self._async_client = httpx.AsyncClient(**self._build_client_kwargs(client_kwargs, is_async=True))
 
         # register default content handlers that extract data from the response
         self.handlers: dict[str, Callable[[httpx.Response], ByteStream]] = defaultdict(lambda: _text_content_handler)
@@ -194,6 +306,30 @@ class LinkContentFetcher:
             return response
 
         self._get_response: Callable = get_response
+
+    def _build_client_kwargs(self, client_kwargs: dict[str, Any], is_async: bool) -> dict[str, Any]:
+        """
+        Return a copy of ``client_kwargs`` with the SSRF guard installed as a "request" event hook.
+
+        Unless ``allow_private_addresses`` is set, the guard validates the initial URL and every redirect
+        hop before the request leaves the process. httpx fires the "request" event hook for each
+        (redirected) request, so this covers both the sync and async clients without changing the fetch
+        logic. The sync client needs a regular callable while the async client needs a coroutine function,
+        hence the two variants. Any user-supplied "request" hooks are preserved and run after the guard.
+
+        :param client_kwargs: The base keyword arguments for the httpx client.
+        :param is_async: Whether the kwargs are for an ``httpx.AsyncClient`` (``True``) or ``httpx.Client``.
+        :returns: A new kwargs dict with the SSRF guard event hook merged in when enabled.
+        """
+        kwargs = {**client_kwargs}
+        if self.allow_private_addresses:
+            return kwargs
+
+        guard = _ssrf_guard_request_hook_async if is_async else _ssrf_guard_request_hook
+        event_hooks = dict(kwargs.get("event_hooks") or {})
+        request_hooks = list(event_hooks.get("request") or [])
+        kwargs["event_hooks"] = {**event_hooks, "request": [guard, *request_hooks]}
+        return kwargs
 
     def _get_headers(self) -> dict[str, str]:
         """
