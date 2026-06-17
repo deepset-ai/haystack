@@ -626,8 +626,6 @@ result = generator.run("A photo of a red apple")
 
 **How to migrate:**
 
-If you do not rely on the exact value of auto-generated IDs, no action is needed — IDs are now simply stable regardless of `meta` key order.
-
 If you rely on auto-generated IDs to match documents already persisted in a `DocumentStore` written by Haystack v2.x, re-ingest the affected documents so the new IDs are used consistently, or pass the previous `id` explicitly when constructing the `Document`.
 
 Before (v2.x):
@@ -649,11 +647,4 @@ from haystack.dataclasses import Document
 doc1 = Document(content="Berlin is the capital of Germany.", meta={"source": "wiki", "lang": "en"})
 doc2 = Document(content="Berlin is the capital of Germany.", meta={"lang": "en", "source": "wiki"})
 assert doc1.id == doc2.id
-
-# To keep an ID that already exists in a DocumentStore written by v2.x, pass it explicitly:
-doc = Document(
-    content="Berlin is the capital of Germany.",
-    meta={"source": "wiki", "lang": "en"},
-    id="<the id produced by Haystack v2.x>",
-)
 ```
