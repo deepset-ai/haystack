@@ -7,7 +7,7 @@
 | haystack/\_\_init\_\_.py                                                            |       12 |        0 |    100% |           |
 | haystack/components/\_\_init\_\_.py                                                 |        0 |        0 |    100% |           |
 | haystack/components/agents/\_\_init\_\_.py                                          |        5 |        0 |    100% |           |
-| haystack/components/agents/agent.py                                                 |      384 |       10 |     97% |462, 636, 689-690, 692, 838, 912, 1172-1173, 1179 |
+| haystack/components/agents/agent.py                                                 |      386 |       10 |     97% |462, 636, 689-690, 692, 838, 921, 1190-1191, 1197 |
 | haystack/components/agents/state/\_\_init\_\_.py                                    |        5 |        0 |    100% |           |
 | haystack/components/agents/state/state.py                                           |       73 |        2 |     97% |    75, 79 |
 | haystack/components/agents/state/state\_utils.py                                    |       18 |        0 |    100% |           |
@@ -163,7 +163,7 @@
 | haystack/components/samplers/\_\_init\_\_.py                                        |        5 |        0 |    100% |           |
 | haystack/components/samplers/top\_p.py                                              |       65 |        0 |    100% |           |
 | haystack/components/tools/\_\_init\_\_.py                                           |        5 |        0 |    100% |           |
-| haystack/components/tools/tool\_invoker.py                                          |      281 |        8 |     97% |274, 296-304, 768, 782, 799-800 |
+| haystack/components/tools/tool\_invoker.py                                          |      281 |        7 |     98% |274, 296-304, 782, 799-800 |
 | haystack/components/validators/\_\_init\_\_.py                                      |        5 |        0 |    100% |           |
 | haystack/components/validators/json\_schema.py                                      |       71 |        8 |     89% |23-24, 137, 139, 154, 242, 248, 252 |
 | haystack/components/websearch/\_\_init\_\_.py                                       |        5 |        0 |    100% |           |
@@ -266,7 +266,7 @@
 | haystack/utils/type\_serialization.py                                               |      112 |       12 |     89% |62, 64, 178-179, 190-193, 199, 215-218 |
 | haystack/utils/url\_validation.py                                                   |        4 |        0 |    100% |           |
 | haystack/version.py                                                                 |        5 |        2 |     60% |      9-10 |
-| **TOTAL**                                                                           | **17875** | **1222** | **93%** |           |
+| **TOTAL**                                                                           | **17877** | **1221** | **93%** |           |
 
 
 ## Setup coverage badge
