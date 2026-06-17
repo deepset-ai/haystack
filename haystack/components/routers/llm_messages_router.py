@@ -10,7 +10,7 @@ from haystack.components.generators.chat.types import ChatGenerator
 from haystack.core.serialization import component_to_dict
 from haystack.dataclasses import ChatMessage, ChatRole
 from haystack.utils import deserialize_chatgenerator_inplace
-from haystack.utils.async_utils import _run_component_async
+from haystack.utils.async_utils import _execute_component_async
 
 
 @component
@@ -176,7 +176,7 @@ class LLMMessagesRouter:
             messages_for_inference.append(ChatMessage.from_system(self._system_prompt))
         messages_for_inference.extend(messages)
 
-        generator_result = await _run_component_async(self._chat_generator, messages=messages_for_inference)
+        generator_result = await _execute_component_async(self._chat_generator, messages=messages_for_inference)
         chat_generator_text = generator_result["replies"][0].text
 
         output = {"chat_generator_text": chat_generator_text}
