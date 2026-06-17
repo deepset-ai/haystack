@@ -142,7 +142,7 @@ class FileSystemSkillStore:
         :param name: Skill name as returned by `list_skills`.
         :returns: Comma-separated relative paths, or `"none"` if the skill bundles no readable files.
         """
-        return ", ".join(self.list_skill_files(name)) or "none"
+        return ", ".join(self._list_skill_files(name)) or "none"
 
     def list_skills(self) -> dict[str, SkillInfo]:
         """
@@ -155,18 +155,20 @@ class FileSystemSkillStore:
         # We return a copy to prevent callers from mutating our internal state.
         return dict(self._skills)
 
-    def load_skill_body(self, name: str) -> str:
+    def load_skill(self, name: str) -> tuple[str, list[str]]:
         """
-        Read the markdown body of the named skill's `SKILL.md` (frontmatter stripped).
+        Read the named skill's instruction body and the manifest of its bundled files.
 
         :param name: Skill name as returned by `list_skills`.
-        :returns: The skill's instruction body.
+        :returns: A tuple of (markdown body of the skill's `SKILL.md` with frontmatter stripped, sorted list of
+            POSIX-style paths relative to the skill directory for any bundled files). The file list is empty when
+            the skill bundles no extras.
         :raises KeyError: If no skill with `name` exists.
         """
         _, body = _parse_frontmatter((self._skill_dir(name) / SKILL_FILE_NAME).read_text(encoding="utf-8"))
-        return body
+        return body, self._list_skill_files(name)
 
-    def list_skill_files(self, name: str) -> list[str]:
+    def _list_skill_files(self, name: str) -> list[str]:
         """
         Return the relative paths of all files bundled with the named skill, excluding its `SKILL.md`.
 

@@ -15,8 +15,8 @@ features:
         from haystack.tools import SkillToolset
         from haystack.skill_stores.file_system import FileSystemSkillStore
 
-        skills = SkillToolset(FileSystemSkillStore("skills/"))
-        agent = Agent(chat_generator=OpenAIChatGenerator(), tools=skills)
+        skills_toolset = SkillToolset(FileSystemSkillStore("skills/"))
+        agent = Agent(chat_generator=OpenAIChatGenerator(), tools=skills_toolset)
 
     Skills are discovered when the toolset is warmed up (the ``Agent`` does this automatically before a run).
     The names and descriptions of all discovered skills are baked into the ``load_skill`` tool description,

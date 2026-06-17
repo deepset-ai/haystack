@@ -33,22 +33,13 @@ class SkillStore(Protocol):
         """
         ...
 
-    def load_skill_body(self, name: str) -> str:
+    def load_skill(self, name: str) -> tuple[str, list[str]]:
         """
-        Return the markdown body of the named skill's instructions.
+        Return the named skill's instruction body and the manifest of its bundled files.
 
         :param name: Skill name as returned by `list_skills`.
-        :returns: The raw markdown body (frontmatter stripped).
-        :raises KeyError: If no skill with `name` exists.
-        """
-        ...
-
-    def list_skill_files(self, name: str) -> list[str]:
-        """
-        Return the relative paths of any files bundled with the named skill.
-
-        :param name: Skill name as returned by `list_skills`.
-        :returns: Sorted list of POSIX-style paths relative to the skill root. Empty when there are no extras.
+        :returns: A tuple of (markdown body with frontmatter stripped, sorted list of POSIX-style paths relative
+            to the skill root for any bundled files). The file list is empty when the skill bundles no extras.
         :raises KeyError: If no skill with `name` exists.
         """
         ...

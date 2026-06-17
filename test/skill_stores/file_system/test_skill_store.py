@@ -146,32 +146,27 @@ class TestFileSystemSkillStore:
         expected = {f"skill-{i}" for i in range(5)}
         assert all(result == expected for result in results)
 
-    def test_load_skill_body(self, tmp_path):
+    def test_load_skill(self, tmp_path):
+        _write_skill(
+            tmp_path,
+            "pdf-forms",
+            description="d",
+            body="Step 1. Do the thing.",
+            files={"reference/forms.md": "details"},
+        )
+        store = FileSystemSkillStore(tmp_path)
+        assert store.load_skill("pdf-forms") == ("Step 1. Do the thing.", ["reference/forms.md"])
+
+    def test_load_skill_no_bundled_files(self, tmp_path):
         _write_skill(tmp_path, "pdf-forms", description="d", body="Step 1. Do the thing.")
         store = FileSystemSkillStore(tmp_path)
-        assert store.load_skill_body("pdf-forms") == "Step 1. Do the thing."
+        assert store.load_skill("pdf-forms") == ("Step 1. Do the thing.", [])
 
-    def test_load_skill_body_unknown_raises(self, tmp_path):
+    def test_load_skill_unknown_raises(self, tmp_path):
         _write_skill(tmp_path, "pdf-forms", description="d")
         store = FileSystemSkillStore(tmp_path)
         with pytest.raises(KeyError, match="Unknown skill 'nope'. Available skills: pdf-forms."):
-            store.load_skill_body("nope")
-
-    def test_list_skill_files(self, tmp_path):
-        _write_skill(tmp_path, "pdf-forms", description="d", files={"reference/forms.md": "details"})
-        store = FileSystemSkillStore(tmp_path)
-        assert store.list_skill_files("pdf-forms") == ["reference/forms.md"]
-
-    def test_list_skill_files_empty(self, tmp_path):
-        _write_skill(tmp_path, "pdf-forms", description="d")
-        store = FileSystemSkillStore(tmp_path)
-        assert store.list_skill_files("pdf-forms") == []
-
-    def test_list_skill_files_unknown_raises(self, tmp_path):
-        _write_skill(tmp_path, "pdf-forms", description="d")
-        store = FileSystemSkillStore(tmp_path)
-        with pytest.raises(KeyError):
-            store.list_skill_files("nope")
+            store.load_skill("nope")
 
     def test_read_skill_file(self, tmp_path):
         _write_skill(tmp_path, "pdf-forms", description="d", files={"reference/forms.md": "form details"})

@@ -36,8 +36,8 @@ class SkillToolset(Toolset):
     from haystack.skill_stores.file_system import FileSystemSkillStore
 
     store = FileSystemSkillStore("skills/")
-    skills = SkillToolset(store)
-    agent = Agent(chat_generator=OpenAIChatGenerator(), tools=skills)
+    skills_toolset = SkillToolset(store)
+    agent = Agent(chat_generator=OpenAIChatGenerator(), tools=skills_toolset)
     result = agent.run(messages=[ChatMessage.from_user("Fill in this PDF form for me.")])
     ```
 
@@ -141,8 +141,7 @@ class SkillToolset(Toolset):
         def load_skill(name: Annotated[str, "Exact name of the skill to load, from the Available skills list."]) -> str:
             # The store raises an actionable error (e.g. unknown skill) on failure. We let it propagate so the Agent
             # applies its own tool-failure policy.
-            body = self._store.load_skill_body(name)
-            bundled = self._store.list_skill_files(name)
+            body, bundled = self._store.load_skill(name)
             if bundled:
                 manifest = "\n".join(f"- {path}" for path in bundled)
                 body = f"{body}\n\nBundled files (read with `read_skill_file`):\n{manifest}"
