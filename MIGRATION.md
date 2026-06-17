@@ -649,9 +649,7 @@ doc2 = Document(content="Berlin is the capital of Germany.", meta={"lang": "en",
 assert doc1.id == doc2.id
 ```
 
-It is possible to migrate an existing index without rerunning your indexing pipeline, for example to avoid recalculating embeddings. To do that, read every stored document, regenerate its `id`, write the updated documents, and only then delete the documents stored under their old IDs. Processing the documents in batches keeps the extra memory bounded, and deleting only after all new documents are written means the index is never left incomplete if the migration is interrupted.
-
-Note that the `DocumentStore` API has no pagination: `filter_documents()` returns all matching documents in a single call. If your index is too large to hold in memory at once, read it in chunks using your backend's native batched retrieval (for example a scroll/cursor API) and apply the same regenerate-write-then-delete steps to each chunk.
+It is possible to migrate an existing index without rerunning your indexing pipeline, for example to avoid recalculating embeddings. To do that, read stored documents, regenerate their IDs, write the updated documents, and delete the documents stored under their old IDs. 
 
 ```python
 from dataclasses import replace
@@ -659,23 +657,6 @@ from dataclasses import replace
 from haystack import Document
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.document_stores.types import DuplicatePolicy
-
-
-def migrate_document_ids(document_store, batch_size: int = 10_000) -> None:
-    documents = document_store.filter_documents()
-    ids_to_delete = []
-    for start in range(0, len(documents), batch_size):
-        batch = documents[start : start + batch_size]
-        migrated = [replace(doc, id="") for doc in batch]
-        document_store.write_documents(migrated, policy=DuplicatePolicy.OVERWRITE)
-        migrated_ids = {doc.id for doc in migrated}
-        # Documents with empty meta keep their ID and were overwritten in place;
-        # only the IDs that actually changed are stale and need deleting.
-        ids_to_delete.extend(doc.id for doc in batch if doc.id not in migrated_ids)
-    # Delete stale IDs only after all new documents have been written, so the
-    # index is never left incomplete if the migration is interrupted.
-    document_store.delete_documents(ids_to_delete)
-
 
 # Example DocumentStore with IDs generated with Haystack 2.x
 store = InMemoryDocumentStore()
@@ -695,5 +676,10 @@ store.write_documents(
     policy=DuplicatePolicy.OVERWRITE,
 )
 
-migrate_document_ids(store)
+# Exemplary steps to re-calculate IDs. Note that all documents are retrieved at once in this example but larger indices require pagination.
+old_documents = store.filter_documents()
+new_documents = [replace(doc, id="") for doc in old_documents]
+store.write_documents(new_documents, policy=DuplicatePolicy.OVERWRITE)
+new_ids = {doc.id for doc in new_documents}
+store.delete_documents([doc.id for doc in old_documents if doc.id not in new_ids])
 ```
