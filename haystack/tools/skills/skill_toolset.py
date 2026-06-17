@@ -6,7 +6,7 @@ from typing import Annotated, Any
 
 from haystack.core.serialization import generate_qualified_class_name
 from haystack.dataclasses.skill_info import SkillInfo
-from haystack.skill_stores.skill_store_types.protocol import SkillStore
+from haystack.skill_stores.types.protocol import SkillStore
 from haystack.tools.from_function import create_tool_from_function
 from haystack.tools.tool import Tool
 from haystack.tools.toolset import Toolset
@@ -66,7 +66,7 @@ class SkillToolset(Toolset):
         The `load_skill` and `read_skill_file` tools are created right away, so the toolset can be used as a
         collection (length, membership checks, iteration) immediately.
 
-        :param store: A `haystack.skill_stores.skill_store_types.SkillStore` instance to back this toolset.
+        :param store: A `haystack.skill_stores.types.SkillStore` instance to back this toolset.
         """
         self._store = store
         self._skills: dict[str, SkillInfo] = {}

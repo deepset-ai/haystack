@@ -1,6 +1,6 @@
 loaders:
   - search_path: [../haystack/skill_stores]
-    modules: ["skill_store_types/protocol", "file_system/skill_store"]
+    modules: ["types/protocol", "file_system/skill_store"]
 processors:
   - type: filter
     documented_only: true
