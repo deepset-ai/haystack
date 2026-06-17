@@ -861,8 +861,8 @@ class Pipeline(PipelineBase):
 
         pipeline_running(self)  # telemetry
 
-        # warm up the pipeline by running each component's warm_up method
-        self.warm_up()
+        # warm up the pipeline by running each component's warm_up_async (or warm_up) method
+        await self.warm_up_async()
 
         if include_outputs_from is None:
             include_outputs_from = set()

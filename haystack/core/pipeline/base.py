@@ -926,6 +926,48 @@ class PipelineBase:  # noqa: PLW1641
                 logger.info("Warming up component {node}...", node=node)
                 self.graph.nodes[node]["instance"].warm_up()
 
+    async def warm_up_async(self) -> None:
+        """
+        Make sure all nodes are warm, using the async warm-up path where available.
+
+        Each component is warmed up with `warm_up_async` if it has one, otherwise with its sync `warm_up`.
+        Both run on the event loop, never offloaded to a worker thread.
+        This ensures that if an async client is created during `warm-up` (residual scenario), it binds to the loop that
+        `run_async` will use.
+        """
+        for node in self.graph.nodes:
+            instance = self.graph.nodes[node]["instance"]
+            if hasattr(instance, "warm_up_async"):
+                logger.info("Warming up component {node}...", node=node)
+                await instance.warm_up_async()
+            elif hasattr(instance, "warm_up"):
+                logger.info("Warming up component {node}...", node=node)
+                instance.warm_up()
+
+    def close(self) -> None:
+        """
+        Release resources held by the pipeline's components by calling each component's `close` method.
+
+        Only the synchronous side of each component is released here; use `close_async` to release async clients.
+        """
+        for node in self.graph.nodes:
+            instance = self.graph.nodes[node]["instance"]
+            if hasattr(instance, "close"):
+                logger.info("Closing component {node}...", node=node)
+                instance.close()
+
+    async def close_async(self) -> None:
+        """
+        Release the async resources held by the pipeline's components by awaiting each component's `close_async`.
+
+        Only the async side of each component is released here; use `close` to release the synchronous side.
+        """
+        for node in self.graph.nodes:
+            instance = self.graph.nodes[node]["instance"]
+            if hasattr(instance, "close_async"):
+                logger.info("Closing component {node}...", node=node)
+                await instance.close_async()
+
     @staticmethod
     def _create_component_span(
         component_name: str, instance: Component, inputs: dict[str, Any], parent_span: tracing.Span | None = None

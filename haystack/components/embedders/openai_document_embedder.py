@@ -122,23 +122,57 @@ class OpenAIDocumentEmbedder:
         self.http_client_kwargs = http_client_kwargs
         self.raise_on_failure = raise_on_failure
 
-        if timeout is None:
-            timeout = float(os.environ.get("OPENAI_TIMEOUT", "30.0"))
-        if max_retries is None:
-            max_retries = int(os.environ.get("OPENAI_MAX_RETRIES", "5"))
+        # Clients are built lazily at warm-up so the component can be constructed and deserialized without the
+        # API key present; the async client is built on the serving loop. See warm_up / warm_up_async.
+        self.client: OpenAI | None = None
+        self.async_client: AsyncOpenAI | None = None
 
-        client_kwargs: dict[str, Any] = {
-            "api_key": api_key.resolve_value(),
-            "organization": organization,
-            "base_url": api_base_url,
+    def _client_kwargs(self) -> dict[str, Any]:
+        timeout = self.timeout if self.timeout is not None else float(os.environ.get("OPENAI_TIMEOUT", "30.0"))
+        max_retries = (
+            self.max_retries if self.max_retries is not None else int(os.environ.get("OPENAI_MAX_RETRIES", "5"))
+        )
+        return {
+            "api_key": self.api_key.resolve_value(),
+            "organization": self.organization,
+            "base_url": self.api_base_url,
             "timeout": timeout,
             "max_retries": max_retries,
         }
 
-        self.client = OpenAI(http_client=init_http_client(self.http_client_kwargs, async_client=False), **client_kwargs)
-        self.async_client = AsyncOpenAI(
-            http_client=init_http_client(self.http_client_kwargs, async_client=True), **client_kwargs
-        )
+    def warm_up(self) -> None:
+        """
+        Initializes the synchronous OpenAI client.
+        """
+        if self.client is None:
+            self.client = OpenAI(
+                http_client=init_http_client(self.http_client_kwargs, async_client=False), **self._client_kwargs()
+            )
+
+    async def warm_up_async(self) -> None:  # noqa: RUF029
+        """
+        Initializes the asynchronous OpenAI client on the serving event loop.
+        """
+        if self.async_client is None:
+            self.async_client = AsyncOpenAI(
+                http_client=init_http_client(self.http_client_kwargs, async_client=True), **self._client_kwargs()
+            )
+
+    def close(self) -> None:
+        """
+        Releases the synchronous OpenAI client.
+        """
+        if self.client is not None:
+            self.client.close()
+            self.client = None
+
+    async def close_async(self) -> None:
+        """
+        Releases the asynchronous OpenAI client.
+        """
+        if self.async_client is not None:
+            await self.async_client.close()
+            self.async_client = None
 
     def _get_telemetry_data(self) -> dict[str, Any]:
         """
@@ -218,6 +252,8 @@ class OpenAIDocumentEmbedder:
                 args["dimensions"] = self.dimensions
 
             try:
+                # this method is invoked after warm_up, so client is not None
+                assert self.client is not None
                 response = self.client.embeddings.create(**args)
             except APIError as exc:
                 ids = ", ".join(b[0] for b in batch)
@@ -261,6 +297,8 @@ class OpenAIDocumentEmbedder:
                 args["dimensions"] = self.dimensions
 
             try:
+                # this method is invoked after warm_up_async, so async_client is not None
+                assert self.async_client is not None
                 response = await self.async_client.embeddings.create(**args)
             except APIError as exc:
                 ids = ", ".join(b[0] for b in batch)
@@ -302,6 +340,9 @@ class OpenAIDocumentEmbedder:
                 "In case you want to embed a string, please use the OpenAITextEmbedder."
             )
 
+        if self.client is None:
+            self.warm_up()
+
         texts_to_embed = self._prepare_texts_to_embed(documents=documents)
 
         doc_ids_to_embeddings, meta = self._embed_batch(texts_to_embed=texts_to_embed, batch_size=self.batch_size)
@@ -333,6 +374,9 @@ class OpenAIDocumentEmbedder:
                 "OpenAIDocumentEmbedder expects a list of Documents as input. "
                 "In case you want to embed a string, please use the OpenAITextEmbedder."
             )
+
+        if self.async_client is None:
+            await self.warm_up_async()
 
         texts_to_embed = self._prepare_texts_to_embed(documents=documents)
 
