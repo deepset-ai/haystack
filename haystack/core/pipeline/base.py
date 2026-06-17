@@ -40,6 +40,7 @@ from haystack.core.serialization import (
     component_to_dict,
     generate_qualified_class_name,
 )
+from haystack.core.serialization_security import _check_module_allowed, _deserialization_context
 from haystack.core.type_utils import (
     ConversionStrategyType,
     _convert_value,
@@ -173,7 +174,13 @@ class PipelineBase:  # noqa: PLW1641
 
     @classmethod
     def from_dict(
-        cls: type[T], data: dict[str, Any], callbacks: DeserializationCallbacks | None = None, **kwargs: Any
+        cls: type[T],
+        data: dict[str, Any],
+        callbacks: DeserializationCallbacks | None = None,
+        *,
+        allowed_modules: list[str] | None = None,
+        unsafe: bool = False,
+        **kwargs: Any,
     ) -> T:
         """
         Deserializes the pipeline from a dictionary.
@@ -182,12 +189,28 @@ class PipelineBase:  # noqa: PLW1641
             Dictionary to deserialize from.
         :param callbacks:
             Callbacks to invoke during deserialization.
+        :param allowed_modules:
+            Additional module patterns whose classes may be imported during deserialization.
+            By default, only modules under `haystack`, `haystack_integrations`, `haystack_experimental`,
+            `builtins`, `typing`, and `collections` are trusted. See
+            `haystack.core.serialization.allow_deserialization_module` for the matching semantics.
+        :param unsafe:
+            If `True`, bypass the deserialization allowlist entirely. Only use this when you fully
+            trust the source of the serialized data — any class in any importable module can be
+            instantiated.
         :param kwargs:
             `components`: a dictionary of `{name: instance}` to reuse instances of components instead of creating new
             ones.
         :returns:
             Deserialized component.
         """
+        with _deserialization_context(allowed_modules=allowed_modules, unsafe=unsafe):
+            return cls._from_dict_impl(data, callbacks, **kwargs)
+
+    @classmethod
+    def _from_dict_impl(
+        cls: type[T], data: dict[str, Any], callbacks: DeserializationCallbacks | None = None, **kwargs: Any
+    ) -> T:
         data_copy = _deepcopy_with_exceptions(data)  # to prevent modification of original data
         metadata = data_copy.get("metadata", {})
         max_runs_per_component = data_copy.get("max_runs_per_component", 100)
@@ -206,28 +229,32 @@ class PipelineBase:  # noqa: PLW1641
                 if "type" not in component_data:
                     raise PipelineError(f"Missing 'type' in component '{name}'")
 
-                if component_data["type"] not in component.registry:
+                component_type = component_data["type"]
+                if isinstance(component_type, str) and "." in component_type:
+                    _check_module_allowed(component_type.rsplit(".", 1)[0])
+
+                if component_type not in component.registry:
                     try:
                         # Import the module first...
-                        module, _ = component_data["type"].rsplit(".", 1)
+                        module, _ = component_type.rsplit(".", 1)
                         logger.debug("Trying to import module {module_name}", module_name=module)
                         type_serialization.thread_safe_import(module)
                         # ...then try again
-                        if component_data["type"] not in component.registry:
+                        if component_type not in component.registry:
                             raise PipelineError(  # noqa: TRY301
                                 f"Successfully imported module '{module}' but couldn't find "
-                                f"'{component_data['type']}' in the component registry.\n"
+                                f"'{component_type}' in the component registry.\n"
                                 f"The component might be registered under a different path. "
                                 f"Here are the registered components:\n {list(component.registry.keys())}\n"
                             )
                     except (ImportError, PipelineError, ValueError) as e:
                         raise PipelineError(
-                            f"Component '{component_data['type']}' (name: '{name}') not imported. Please "
+                            f"Component '{component_type}' (name: '{name}') not imported. Please "
                             f"check that the package is installed and the component path is correct."
                         ) from e
 
                 # Create a new one
-                component_class = component.registry[component_data["type"]]
+                component_class = component.registry[component_type]
 
                 try:
                     instance = component_from_dict(component_class, component_data, name, callbacks)
@@ -287,6 +314,9 @@ class PipelineBase:  # noqa: PLW1641
         data: str | bytes | bytearray,
         marshaller: Marshaller = DEFAULT_MARSHALLER,
         callbacks: DeserializationCallbacks | None = None,
+        *,
+        allowed_modules: list[str] | None = None,
+        unsafe: bool = False,
     ) -> T:
         """
         Creates a `Pipeline` object from the string representation passed in the `data` argument.
@@ -297,6 +327,14 @@ class PipelineBase:  # noqa: PLW1641
             The Marshaller used to create the string representation. Defaults to `YamlMarshaller`.
         :param callbacks:
             Callbacks to invoke during deserialization.
+        :param allowed_modules:
+            Additional module patterns whose classes may be imported during deserialization.
+            By default, only modules under `haystack`, `haystack_integrations`, `haystack_experimental`,
+            `builtins`, `typing`, and `collections` are trusted.
+        :param unsafe:
+            If `True`, bypass the deserialization allowlist entirely. Only use this when you fully
+            trust the source of the serialized data — any class in any importable module can be
+            instantiated.
         :raises DeserializationError:
             If an error occurs during deserialization.
         :returns:
@@ -310,7 +348,7 @@ class PipelineBase:  # noqa: PLW1641
                 "caused by malformed or invalid syntax in the serialized representation."
             ) from e
 
-        return cls.from_dict(deserialized_data, callbacks)
+        return cls.from_dict(deserialized_data, callbacks, allowed_modules=allowed_modules, unsafe=unsafe)
 
     @classmethod
     def load(
@@ -318,9 +356,12 @@ class PipelineBase:  # noqa: PLW1641
         fp: TextIO,
         marshaller: Marshaller = DEFAULT_MARSHALLER,
         callbacks: DeserializationCallbacks | None = None,
+        *,
+        allowed_modules: list[str] | None = None,
+        unsafe: bool = False,
     ) -> T:
         """
-        Creates a `Pipeline` object a string representation.
+        Creates a `Pipeline` object from a string representation.
 
         The string representation is read from the file-like object passed in the `fp` argument.
 
@@ -331,12 +372,20 @@ class PipelineBase:  # noqa: PLW1641
             The Marshaller used to create the string representation. Defaults to `YamlMarshaller`.
         :param callbacks:
             Callbacks to invoke during deserialization.
+        :param allowed_modules:
+            Additional module patterns whose classes may be imported during deserialization.
+            By default, only modules under `haystack`, `haystack_integrations`, `haystack_experimental`,
+            `builtins`, `typing`, and `collections` are trusted.
+        :param unsafe:
+            If `True`, bypass the deserialization allowlist entirely. Only use this when you fully
+            trust the source of the serialized data — any class in any importable module can be
+            instantiated.
         :raises DeserializationError:
             If an error occurs during deserialization.
         :returns:
             A `Pipeline` object.
         """
-        return cls.loads(fp.read(), marshaller, callbacks)
+        return cls.loads(fp.read(), marshaller, callbacks, allowed_modules=allowed_modules, unsafe=unsafe)
 
     def add_component(self, name: str, instance: Component) -> None:
         """
@@ -445,10 +494,10 @@ class PipelineBase:  # noqa: PLW1641
         'component_name.connections_name'.
 
         If multiple senders are connected to the same list-typed receiver socket, the socket is
-        promoted to a lazy variadic socket so it can accept all incoming values. With `Pipeline`,
-        the resulting list is ordered alphabetically by sender component name, not by the order in
-        which `connect()` was called. With `AsyncPipeline`, no ordering is guaranteed, since
-        components in different branches may run in parallel.
+        promoted to a lazy variadic socket so it can accept all incoming values. With the synchronous
+        `run`, the resulting list is ordered alphabetically by sender component name, not by the order in
+        which `connect()` was called. With the asynchronous run path (`run_async`), no ordering is
+        guaranteed, since components in different branches may run in parallel.
 
         :param sender:
             The component that delivers the value. This can be either just a component name or can be
@@ -1192,11 +1241,11 @@ class PipelineBase:  # noqa: PLW1641
         if not can_component_run(comp, comp_inputs):
             return ComponentPriority.BLOCKED
         if is_any_greedy_socket_ready(comp, comp_inputs) and are_all_sockets_ready(comp, comp_inputs):
-            # This priority is explicitly used in AsyncPipeline + implicitly in _is_queue_stale
+            # This priority is explicitly used in the async run path + implicitly in _is_queue_stale
             # Implicit b/c it checks via ">" operator if there is a component with HIGHEST priority
             return ComponentPriority.HIGHEST
         if all_predecessors_executed(comp, comp_inputs):
-            # This priority is explicitly used in AsyncPipeline + in _is_queue_stale
+            # This priority is explicitly used in the async run path + in _is_queue_stale
             return ComponentPriority.READY
         # If we make it here it means the component can run but is waiting for more inputs, so we give it the lowest
         # priority. This way, components that are ready to run will be prioritized over ones assigned with this prio.

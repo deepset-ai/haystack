@@ -2,15 +2,17 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import copy
 from collections.abc import Iterator
 from typing import TYPE_CHECKING, Annotated, Any
 
-from haystack.core.serialization import generate_qualified_class_name, import_class_by_name
+from haystack.core.serialization import generate_qualified_class_name
 from haystack.dataclasses import Document
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.document_stores.types import DuplicatePolicy
 from haystack.tools.from_function import create_tool_from_function
-from haystack.tools.tool import Tool
+from haystack.tools.serde_utils import deserialize_tools_or_toolset_inplace, serialize_tools_or_toolset
+from haystack.tools.tool import Tool, _check_duplicate_tool_names
 from haystack.tools.toolset import Toolset
 from haystack.tools.utils import flatten_tools_or_toolsets, warm_up_tools
 
@@ -22,36 +24,50 @@ class SearchableToolset(Toolset):
     """
     Dynamic tool discovery from large catalogs using BM25 search.
 
-    This Toolset enables LLMs to discover and use tools from large catalogs through
-    BM25-based search. Instead of exposing all tools at once (which can overwhelm the
-    LLM context), it provides a `search_tools` bootstrap tool that allows the LLM to
-    find and load specific tools as needed.
+    This Toolset enables LLMs to discover and use tools from large catalogs through BM25-based search.
+    Instead of exposing all tools at once (which can overwhelm the LLM context), it provides a `search_tools` bootstrap
+    tool that allows the LLM to find and load specific tools as needed.
 
-    For very small catalogs (below `search_threshold`), acts as a simple passthrough
-    exposing all tools directly without any discovery mechanism.
+    For very small catalogs (below `search_threshold`), acts as a simple passthrough exposing all tools directly
+    without any discovery mechanism.
 
     ### Usage Example
 
     ```python
+    from typing import Annotated
+
     from haystack.components.agents import Agent
     from haystack.components.generators.chat import OpenAIChatGenerator
     from haystack.dataclasses import ChatMessage
-    from haystack.tools import Tool, SearchableToolset
+    from haystack.tools import SearchableToolset, tool
 
-    # Create a catalog of tools
-    catalog = [
-        Tool(name="get_weather", description="Get weather for a city",
-             parameters={}, function=lambda: None),
-        Tool(name="search_web", description="Search the web",
-             parameters={}, function=lambda: None),
-        # ... 100s more tools
-    ]
-    toolset = SearchableToolset(catalog=catalog)
+    @tool
+    def get_weather(city: Annotated[str, "The city to get the weather for"]) -> str:
+        '''Get the current weather for a city.'''
+        return f"The weather in {city} is 22°C and sunny."
+
+    @tool
+    def search_web(query: Annotated[str, "The query to search the web for"]) -> str:
+        '''Search the web for a query.'''
+        return f"Top result for '{query}': ..."
+
+    @tool
+    def convert_currency(
+        amount: Annotated[float, "The amount to convert"],
+        to_currency: Annotated[str, "The currency to convert to, e.g. 'EUR'"],
+    ) -> str:
+        '''Convert an amount in USD to another currency.'''
+        return f"{amount} USD is {amount * 0.9} {to_currency}"
+
+    # search_threshold=2 means a catalog of 2+ tools activates discovery: the agent only sees the
+    # `search_tools` tool and must search to load the others (set it higher for larger catalogs).
+    toolset = SearchableToolset(catalog=[get_weather, search_web, convert_currency], search_threshold=2)
 
     agent = Agent(chat_generator=OpenAIChatGenerator(), tools=toolset)
 
     # The agent is initially provided only with the search_tools tool and will use it to find relevant tools.
     result = agent.run(messages=[ChatMessage.from_user("What's the weather in Milan?")])
+    print(result["last_message"].text)
     ```
     """
 
@@ -72,12 +88,11 @@ class SearchableToolset(Toolset):
 
         :param catalog: Source of tools - a list of Tools, list of Toolsets, or a single Toolset.
         :param top_k: Default number of results for search_tools.
-        :param search_threshold: Minimum catalog size to activate search.
-            If catalog has fewer tools, acts as passthrough (all tools visible).
-            Default is 8.
+        :param search_threshold: Minimum catalog size to activate search. If catalog has fewer tools, acts as
+            passthrough (all tools visible). Default is 8.
         :param search_tool_name: Custom name for the bootstrap search tool. Default is "search_tools".
-        :param search_tool_description: Custom description for the bootstrap search tool.
-            If not provided, uses a default description.
+        :param search_tool_description: Custom description for the bootstrap search tool. If not provided, uses a
+            default description.
         :param search_tool_parameters_description: Custom descriptions for the bootstrap search tool's parameters.
             Keys must be a subset of `{"tool_keywords", "k"}`.
             Example: `{"tool_keywords": "Keywords to find tools, e.g. 'email send'"}`
@@ -98,8 +113,8 @@ class SearchableToolset(Toolset):
                     f"Valid keys are: {self._VALID_SEARCH_TOOL_PARAMS}"
                 )
 
-        # Store raw catalog; flattening is deferred to warm_up() so that lazy
-        # toolsets (e.g. MCPToolset with eager_connect=False) can connect first.
+        # Store raw catalog; flattening is deferred to warm_up() so that lazy toolsets
+        # (e.g. MCPToolset with eager_connect=False) can connect first.
         self._raw_catalog: "ToolsType" = catalog
         self._catalog: list[Tool] = []
 
@@ -113,7 +128,8 @@ class SearchableToolset(Toolset):
         self._discovered_tools: dict[str, Tool] = {}
         self._bootstrap_tool: Tool | None = None
         self._document_store: InMemoryDocumentStore | None = None
-        self._warmed_up = False
+        self._passthrough: bool | None = None
+        self._is_warmed_up = False
 
         # Initialize parent with empty tools list - we manage tools dynamically
         super().__init__(tools=[])
@@ -126,35 +142,33 @@ class SearchableToolset(Toolset):
         """Adding new tools after initialization is not supported for SearchableToolset."""
         raise NotImplementedError("SearchableToolset does not support adding new tools after initialization.")
 
-    def _is_passthrough(self) -> bool:
-        """
-        Internal method to check if operating in passthrough mode (small catalog). Must be called after warm_up().
-        """
-        return len(self._catalog) < self._search_threshold
-
     def warm_up(self) -> None:
         """
         Prepare the toolset for use.
 
-        Warms up child toolsets first (so lazy toolsets like MCPToolset can connect),
-        then flattens the catalog, indexes it, and creates the search_tools bootstrap tool.
-        In passthrough mode, it warms up all catalog tools directly.
-        Must be called before using the toolset with an Agent.
+        Warms up the catalog (so lazy toolsets like MCPToolset can connect) and flattens it. Above the passthrough
+        threshold, it also indexes the catalog and creates the search_tools bootstrap tool.
+
+        This method is idempotent: it only warms up the toolset the first time it is called.
+
+        :raises ValueError: If the flattened catalog contains tools with duplicate names.
         """
-        if self._warmed_up:
+        if self._is_warmed_up:
             return
 
-        # Warm up child toolsets first (triggers lazy connections like MCPToolset)
+        # Warm up the catalog first (triggers lazy connections like MCPToolset), then flatten — lazy toolsets will
+        # have their real tools available.
         warm_up_tools(self._raw_catalog)
-        # Now flatten — lazy toolsets will have their real tools available
         self._catalog = flatten_tools_or_toolsets(self._raw_catalog)
+        _check_duplicate_tool_names(self._catalog)
+        self._passthrough = len(self._catalog) < self._search_threshold
 
-        if self._is_passthrough():
-            for tool in self._catalog:
-                tool.warm_up()
-        else:
-            self._document_store = InMemoryDocumentStore()
-            self._tool_by_name = {tool.name: tool for tool in self._catalog}
+        # Build the BM25 search index only when the catalog is large enough to need discovery.
+        if not self._passthrough:
+            # shared=False keeps the BM25 index instance-local so it is freed with this toolset instead of
+            # accumulating in InMemoryDocumentStore's process-global storage (e.g. when a SearchableToolset is
+            # built per request in a served application).
+            self._document_store = InMemoryDocumentStore(shared=False)
             documents = [
                 Document(content=f"{tool.name} {tool.description}", meta={"tool_name": tool.name})
                 for tool in self._catalog
@@ -162,17 +176,50 @@ class SearchableToolset(Toolset):
             self._document_store.write_documents(documents, policy=DuplicatePolicy.OVERWRITE)
             self._bootstrap_tool = self._create_search_tool()
 
-        self._warmed_up = True
+        self._is_warmed_up = True
+
+    def get_selectable_tools(self) -> list[Tool]:
+        """
+        Return the full catalog of tools that can be selected by name.
+
+        Iteration only exposes the search tool plus already-discovered tools, but name-based selection can target
+        any tool in the catalog, so this returns the entire flattened catalog (warming up first if needed).
+
+        :returns: The flattened catalog of tools.
+        """
+        if not self._is_warmed_up:
+            self.warm_up()
+        return list(self._catalog)
 
     def clear(self) -> None:
         """
         Clear all discovered tools.
 
-        This method allows resetting the toolset's discovered tools between agent runs
-        when the same toolset instance is reused. This can be useful for long-running
-        applications to control memory usage or to start fresh searches.
+        This method allows resetting the toolset's discovered tools between agent runs when the same toolset instance
+        is reused. This can be useful for long-running applications to control memory usage or to start fresh searches.
         """
         self._discovered_tools.clear()
+
+    def spawn(self) -> "SearchableToolset":
+        """
+        Return an isolated copy for a single run.
+
+        The copy shares the read-only catalog and BM25 index but gets fresh discovered tools and name selection,
+        plus a bootstrap search tool bound to the copy. This way concurrent runs sharing the same configured
+        SearchableToolset don't share discovered tools or collide on the active selection.
+
+        :returns: A run-scoped copy of this SearchableToolset.
+        """
+        if not self._is_warmed_up:
+            self.warm_up()
+        new = copy.copy(self)
+        new._discovered_tools = {}
+        new._selected_tool_names = None
+        # Rebuild the bootstrap tool so its closure is bound to the copy's discovered tools / selection
+        # rather than the original's. The document store and catalog are read-only and stay shared.
+        if not self._passthrough:
+            new._bootstrap_tool = new._create_search_tool()
+        return new
 
     def _create_search_tool(self) -> Tool:
         """Create the search_tools bootstrap tool."""
@@ -191,9 +238,10 @@ class SearchableToolset(Toolset):
             ALWAYS use this tool FIRST when you need to invoke some tools but don't have the right one loaded yet.
 
             Provide space separated tool keywords likely to appear in tool names/descriptions
-            (e.g. 'route distance weather', 'search email'). Do NOT pass the user's request or task (e.g.
-            'things to do in X', 'user question'); matching is keyword-based. Returns loaded
-            tool names; they become available immediately.
+            (e.g. 'route distance weather', 'search email').
+            Do NOT pass the user's request or task (e.g. 'things to do in X', 'user question'); matching is
+            keyword-based.
+            Returns loaded tool names; they become available immediately.
             """
             num_results = k if k is not None else self._top_k
 
@@ -203,22 +251,32 @@ class SearchableToolset(Toolset):
                     "names/descriptions (e.g. 'route weather search')."
                 )
 
+            # Scope the search to the selected subset if active so that top_k applies within the selected tools
+            filters = None
+            if self._selected_tool_names is not None:
+                filters = {"field": "meta.tool_name", "operator": "in", "value": list(self._selected_tool_names)}
+
             # at this point, the toolset has been warmed up, so self._document_store is not None
-            results = self._document_store.bm25_retrieval(query=tool_keywords, top_k=num_results)  # type: ignore[union-attr]
+            results = self._document_store.bm25_retrieval(  # type: ignore[union-attr]
+                query=tool_keywords, top_k=num_results, filters=filters
+            )
 
             if not results:
                 return "No tools found matching these keywords. Try different keywords."
 
-            # Add found tools to _discovered_tools. These become available to the LLM
-            # on the next agent iteration when __iter__ is called again - the Agent
-            # re-iterates over the toolset each loop, picking up newly discovered tools.
-            # The return message here just confirms what was found; actual tool availability
-            # comes through the dynamic iteration mechanism. This way we also save tokens
-            # by not returning the full tool definitions.
+            # Add found tools to _discovered_tools. These become available to the LLM on the next agent iteration
+            # when __iter__ is called again - the Agent re-iterates over the toolset each loop, picking up newly
+            # discovered tools.
+            # The return message here just confirms what was found; actual tool availability comes through the dynamic
+            # iteration mechanism. This way we also save tokens by not returning the full tool definitions.
+            #
+            # NOTE: The Agent can run tool calls in a step concurrently (ThreadPoolExecutor), so multiple search_tools
+            # calls can mutate self._discovered_tools from different threads at once. This is currently safe only
+            # because CPython's GIL makes individual dict assignments atomic; on a free-threaded (no-GIL) build these
+            # unguarded writes could corrupt the dict.
             tool_names = []
             for doc in results:
                 tool = tool_by_name[doc.meta["tool_name"]]
-                tool.warm_up()
                 self._discovered_tools[tool.name] = tool
                 tool_names.append(tool.name)
 
@@ -236,22 +294,31 @@ class SearchableToolset(Toolset):
 
         return bootstrap_tool
 
+    def _is_selected(self, name: str) -> bool:
+        """Whether a catalog tool name is allowed by the active `_selected_tool_names` filter (None means all)."""
+        return self._selected_tool_names is None or name in self._selected_tool_names
+
     def __iter__(self) -> Iterator[Tool]:
         """
         Iterate over available tools.
 
-        In passthrough mode, yields all catalog tools.
-        Otherwise, yields bootstrap tool + discovered tools.
-        Automatically calls warm_up() if needed to ensure bootstrap tool is available.
+        In passthrough mode, yields all catalog tools. Otherwise, yields the bootstrap search tool plus the
+        already-discovered tools. If `_selected_tool_names` is set, catalog/discovered tools are restricted to that
+        set, but the bootstrap search tool is always exposed so search keeps working over the selected subset.
+        Automatically calls warm_up() if needed to ensure the bootstrap tool is available.
         """
-        if not self._warmed_up:
+        # Unlike base Toolset/MCPToolset, which expose a placeholder tool before warm_up, this toolset materializes
+        # everything (flattened catalog, bootstrap tool, passthrough decision) in warm_up.
+        # Without warming here, iterating before warm_up would yield nothing, so we warm up to make the toolset usable
+        # at all.
+        if not self._is_warmed_up:
             self.warm_up()
-        if self._is_passthrough():
-            yield from self._catalog
+        if self._passthrough:
+            yield from (tool for tool in self._catalog if self._is_selected(tool.name))
         else:
             if self._bootstrap_tool is not None:
                 yield self._bootstrap_tool
-            yield from self._discovered_tools.values()
+            yield from (tool for tool in self._discovered_tools.values() if self._is_selected(tool.name))
 
     def __len__(self) -> int:
         """Return the number of currently available tools."""
@@ -287,12 +354,8 @@ class SearchableToolset(Toolset):
 
         :returns: Dictionary representation of the toolset.
         """
-        catalog_items: list[Tool | Toolset] = (
-            [self._raw_catalog] if isinstance(self._raw_catalog, Toolset) else list(self._raw_catalog)
-        )
-
         data: dict[str, Any] = {
-            "catalog": [item.to_dict() for item in catalog_items],
+            "catalog": serialize_tools_or_toolset(self._raw_catalog),
             "top_k": self._top_k,
             "search_threshold": self._search_threshold,
             "search_tool_name": self._search_tool_name,
@@ -309,18 +372,10 @@ class SearchableToolset(Toolset):
 
         :param data: Dictionary representation of the toolset.
         :returns: New SearchableToolset instance.
+        :raises TypeError: If a serialized catalog entry is not a subclass of Tool or Toolset.
         """
         inner_data = data["data"]
-
-        # Deserialize catalog items (may be Tool or Toolset instances)
-        catalog_data = inner_data.get("catalog", [])
-        catalog: list[Tool | Toolset] = []
-        for item_data in catalog_data:
-            item_class = import_class_by_name(item_data["type"])
-            if not issubclass(item_class, (Tool, Toolset)):
-                raise TypeError(f"Class '{item_class}' is not a subclass of Tool or Toolset")
-            catalog.append(item_class.from_dict(item_data))
-
+        deserialize_tools_or_toolset_inplace(inner_data, key="catalog")
         optional_keys = (
             "top_k",
             "search_threshold",
@@ -328,4 +383,4 @@ class SearchableToolset(Toolset):
             "search_tool_description",
             "search_tool_parameters_description",
         )
-        return cls(catalog=catalog, **{k: inner_data[k] for k in optional_keys if k in inner_data})
+        return cls(catalog=inner_data["catalog"], **{k: inner_data[k] for k in optional_keys if k in inner_data})

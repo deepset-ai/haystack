@@ -78,6 +78,7 @@ export default {
           },
           items: [
             'concepts/data-classes/chatmessage',
+            'concepts/data-classes/filecontent',
           ],
         },
         {
@@ -106,6 +107,7 @@ export default {
       items: [
         'document-stores/inmemorydocumentstore',
         'document-stores/alloydbdocumentstore',
+        'document-stores/arangodocumentstore',
         'document-stores/arcadedbdocumentstore',
         'document-stores/astradocumentstore',
         'document-stores/azureaisearchdocumentstore',
@@ -135,9 +137,11 @@ export default {
           href: 'https://haystack.deepset.ai/integrations/neo4j-document-store',
         },
         'document-stores/opensearch-document-store',
+        'document-stores/oracledocumentstore',
         'document-stores/pgvectordocumentstore',
         'document-stores/pinecone-document-store',
         'document-stores/qdrant-document-store',
+        'document-stores/supabasedocumentstore',
         'document-stores/valkeydocumentstore',
         'document-stores/vespadocumentstore',
         'document-stores/weaviatedocumentstore',
@@ -164,6 +168,7 @@ export default {
             id: 'pipeline-components/audio'
           },
           items: [
+            'pipeline-components/audio/funasrtranscriber',
             'pipeline-components/audio/localwhispertranscriber',
             'pipeline-components/audio/remotewhispertranscriber',
             'pipeline-components/audio/external-integrations-audio',
@@ -209,6 +214,7 @@ export default {
             id: 'pipeline-components/connectors'
           },
           items: [
+            'pipeline-components/connectors/datadogconnector',
             'pipeline-components/connectors/githubfileeditor',
             'pipeline-components/connectors/githubissuecommenter',
             'pipeline-components/connectors/githubissueviewer',
@@ -363,6 +369,7 @@ export default {
             'pipeline-components/extractors/namedentityextractor',
             'pipeline-components/extractors/presidioentityextractor',
             'pipeline-components/extractors/regextextextractor',
+            'pipeline-components/extractors/transformersnamedentityextractor',
           ],
         },
         {
@@ -415,6 +422,7 @@ export default {
             'pipeline-components/generators/huggingfaceapigenerator',
             'pipeline-components/generators/huggingfacelocalchatgenerator',
             'pipeline-components/generators/huggingfacelocalgenerator',
+            'pipeline-components/generators/litellmchatgenerator',
             'pipeline-components/generators/llamacppchatgenerator',
             'pipeline-components/generators/llamacppgenerator',
             'pipeline-components/generators/llamastackchatgenerator',
@@ -433,6 +441,7 @@ export default {
             'pipeline-components/generators/stackitchatgenerator',
             'pipeline-components/generators/togetheraichatgenerator',
             'pipeline-components/generators/togetheraigenerator',
+            'pipeline-components/generators/transformerschatgenerator',
             'pipeline-components/generators/vertexaicodegenerator',
             'pipeline-components/generators/vertexaigeminichatgenerator',
             'pipeline-components/generators/vertexaigeminigenerator',
@@ -532,6 +541,7 @@ export default {
           },
           items: [
             'pipeline-components/readers/extractivereader',
+            'pipeline-components/readers/transformersextractivereader',
           ],
         },
         {
@@ -544,6 +554,7 @@ export default {
           items: [
             'pipeline-components/retrievers/alloydbembeddingretriever',
             'pipeline-components/retrievers/alloydbkeywordretriever',
+            'pipeline-components/retrievers/arangoembeddingretriever',
             'pipeline-components/retrievers/arcadedbembeddingretriever',
             'pipeline-components/retrievers/astraretriever',
             'pipeline-components/retrievers/automergingretriever',
@@ -561,6 +572,7 @@ export default {
             'pipeline-components/retrievers/filterretriever',
             'pipeline-components/retrievers/inmemorybm25retriever',
             'pipeline-components/retrievers/inmemoryembeddingretriever',
+            'pipeline-components/retrievers/cogneeretriever',
             'pipeline-components/retrievers/mem0memoryretriever',
             'pipeline-components/retrievers/mongodbatlasembeddingretriever',
             'pipeline-components/retrievers/mongodbatlasfulltextretriever',
@@ -570,6 +582,8 @@ export default {
             'pipeline-components/retrievers/opensearchbm25retriever',
             'pipeline-components/retrievers/opensearchembeddingretriever',
             'pipeline-components/retrievers/opensearchhybridretriever',
+            'pipeline-components/retrievers/oracleembeddingretriever',
+            'pipeline-components/retrievers/oraclekeywordretriever',
             'pipeline-components/retrievers/pgvectorembeddingretriever',
             'pipeline-components/retrievers/pgvectorkeywordretriever',
             'pipeline-components/retrievers/pineconedenseretriever',
@@ -578,6 +592,9 @@ export default {
             'pipeline-components/retrievers/qdrantsparseembeddingretriever',
             'pipeline-components/retrievers/sentencewindowretrieval',
             'pipeline-components/retrievers/snowflaketableretriever',
+            'pipeline-components/retrievers/supabasegroongabm25retriever',
+            'pipeline-components/retrievers/supabasepgvectorembeddingretriever',
+            'pipeline-components/retrievers/supabasepgvectorkeywordretriever',
             'pipeline-components/retrievers/textembeddingretriever',
             'pipeline-components/retrievers/valkeyembeddingretriever',
             'pipeline-components/retrievers/vespaembeddingretriever',
@@ -655,6 +672,7 @@ export default {
           type: 'category',
           label: 'Writers',
           items: [
+            'pipeline-components/writers/cogneewriter',
             'pipeline-components/writers/documentwriter',
             'pipeline-components/writers/mem0memorywriter',
           ],
@@ -689,6 +707,14 @@ export default {
             'tools/ready-made-tools/mem0memorytools',
           ],
         },
+      ],
+    },
+    {
+      type: 'category',
+      label: 'Memory Stores',
+      items: [
+        'memory-stores/cogneememorystore',
+        'memory-stores/mem0memorystore',
       ],
     },
     {

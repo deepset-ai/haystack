@@ -57,7 +57,7 @@ class DocumentJoiner:
 
     ```python
     from haystack import Pipeline, Document
-    from haystack.components.embedders import SentenceTransformersTextEmbedder, SentenceTransformersDocumentEmbedder
+    from haystack.components.embedders import OpenAITextEmbedder, OpenAIDocumentEmbedder
     from haystack.components.joiners import DocumentJoiner
     from haystack.components.retrievers import InMemoryBM25Retriever
     from haystack.components.retrievers import InMemoryEmbeddingRetriever
@@ -65,14 +65,14 @@ class DocumentJoiner:
 
     document_store = InMemoryDocumentStore()
     docs = [Document(content="Paris"), Document(content="Berlin"), Document(content="London")]
-    embedder = SentenceTransformersDocumentEmbedder(model="sentence-transformers/all-MiniLM-L6-v2")
+    embedder = OpenAIDocumentEmbedder()
     docs_embeddings = embedder.run(docs)
     document_store.write_documents(docs_embeddings['documents'])
 
     p = Pipeline()
     p.add_component(instance=InMemoryBM25Retriever(document_store=document_store), name="bm25_retriever")
     p.add_component(
-            instance=SentenceTransformersTextEmbedder(model="sentence-transformers/all-MiniLM-L6-v2"),
+            instance=OpenAITextEmbedder(),
             name="text_embedder",
         )
     p.add_component(instance=InMemoryEmbeddingRetriever(document_store=document_store), name="embedding_retriever")
@@ -225,7 +225,12 @@ class DocumentJoiner:
             # if all docs have the same score delta_score is 0, the docs are uninformative for the query
             rescaled_lists.append(
                 [
-                    replace(doc, score=(doc.score - min_score) / delta_score if delta_score != 0.0 else 0.0)
+                    replace(
+                        doc,
+                        score=((doc.score if doc.score is not None else 0) - min_score) / delta_score
+                        if delta_score != 0.0
+                        else 0.0,
+                    )
                     for doc in documents
                 ]
             )

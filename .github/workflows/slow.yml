@@ -49,7 +49,7 @@ jobs:
     outputs:
       changes: ${{ steps.changes.outputs.changes }}
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
       - name: Check for changed code
         id: changes
         uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # v4.0.1
@@ -58,44 +58,18 @@ jobs:
           filters: |
             changes:
               - "haystack/components/audio/whisper_local.py"
-              - "haystack/components/classifiers/zero_shot_document_classifier.py"
               - "haystack/components/converters/tika.py"
-              - "haystack/components/embedders/backends/sentence_transformers_backend.py"
-              - "haystack/components/embedders/backends/sentence_transformers_sparse_backend.py"
-              - "haystack/components/embedders/image/sentence_transformers_doc_image_embedder.py"
-              - "haystack/components/embedders/sentence_transformers_text_embedder.py"
-              - "haystack/components/embedders/sentence_transformers_sparse_document_embedder.py"
-              - "haystack/components/embedders/sentence_transformers_sparse_text_embedder.py"
               - "haystack/components/evaluators/sas_evaluator.py"
-              - "haystack/components/generators/chat/hugging_face_local.py"
               - "haystack/components/generators/openai_dalle.py"
               - "haystack/components/preprocessors/embedding_based_document_splitter.py"
-              - "haystack/components/rankers/sentence_transformers_diversity.py"
-              - "haystack/components/rankers/sentence_transformers_similarity.py"
-              - "haystack/components/rankers/transformers_similarity.py"
-              - "haystack/components/readers/extractive.py"
               - "haystack/components/retrievers/multi_query_embedding_retriever.py"
-              - "haystack/components/routers/transformers_text_router.py"
-              - "haystack/components/routers/zero_shot_text_router.py"
 
               - "test/components/audio/test_whisper_local.py"
-              - "test/components/classifiers/test_zero_shot_document_classifier.py"
               - "test/components/converters/test_tika_doc_converter.py"
-              - "test/components/embedders/image/test_sentence_transformers_doc_image_embedder.py"
-              - "test/components/embedders/test_sentence_transformers_text_embedder.py"
-              - "test/components/embedders/test_sentence_transformers_sparse_document_embedder.py"
-              - "test/components/embedders/test_sentence_transformers_sparse_text_embedder.py"
               - "test/components/evaluators/test_sas_evaluator.py"
-              - "test/components/generators/chat/test_hugging_face_local.py"
               - "test/components/generators/test_openai_dalle.py"
               - "test/components/preprocessors/test_embedding_based_document_splitter.py"
-              - "test/components/rankers/test_sentence_transformers_diversity.py"
-              - "test/components/rankers/test_sentence_transformers_similarity.py"
-              - "test/components/rankers/test_transformers_similarity.py"
-              - "test/components/readers/test_extractive.py"
               - "test/components/retrievers/test_multi_query_embedding_retriever.py"
-              - "test/components/routers/test_transformers_text_router.py"
-              - "test/components/routers/test_zero_shot_text_router.py"
 
   slow-integration-tests:
     name: Slow Tests / ${{ matrix.os }}
@@ -123,7 +97,7 @@ jobs:
             install_cmd: "echo 'No additional dependencies needed'"
 
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
 
       - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
         with:

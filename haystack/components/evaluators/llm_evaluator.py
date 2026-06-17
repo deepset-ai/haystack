@@ -2,10 +2,12 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import asyncio
 import json
 from typing import Any
 
 from tqdm import tqdm
+from tqdm.asyncio import tqdm as async_tqdm
 
 from haystack import component, default_from_dict, default_to_dict, logging
 from haystack.components.builders import PromptBuilder
@@ -240,6 +242,84 @@ class LLMEvaluator:
 
         return {"results": results, "meta": metadata or None}
 
+    @component.output_types(results=list[dict[str, Any]])
+    async def run_async(self, **inputs: Any) -> dict[str, Any]:
+        """
+        Run the LLM evaluator asynchronously
+
+        :param inputs:
+            The input values to evaluate. The keys are the input names and the values are lists of input values.
+        :returns:
+            A dictionary with a `results` entry that contains a list of results.
+            Each result is a dictionary containing the keys as defined in the `outputs` parameter of the LLMEvaluator
+            and the evaluation results as the values. If an exception occurs for a particular input value, the result
+            will be `None` for that entry.
+            If the API is "openai" and the response contains a "meta" key, the metadata from OpenAI will be included
+            in the output dictionary, under the key "meta".
+        :raises TypeError:
+            If the chat generator does not support async execution.
+        :raises ValueError:
+            Only in the case that  `raise_on_failure` is set to True and the received inputs are not lists or have
+            different lengths, or if the output is not a valid JSON or doesn't contain the expected keys.
+        """
+
+        if not self._is_warmed_up:
+            self.warm_up()
+
+        self.validate_input_parameters(dict(self.inputs), inputs)
+
+        # inputs is a dictionary with keys being input names and values being a list of input values
+        # We need to iterate through the lists in parallel for all keys of the dictionary
+        input_names, values = inputs.keys(), list(zip(*inputs.values(), strict=True))
+        list_of_input_names_to_values = [dict(zip(input_names, v, strict=True)) for v in values]
+
+        results: list[dict[str, Any] | None] = []
+        metadata = []
+        errors = 0
+
+        generator_has_async = hasattr(self._chat_generator, "run_async")
+        for input_names_to_values in async_tqdm(list_of_input_names_to_values, disable=not self.progress_bar):
+            prompt = self.builder.run(**input_names_to_values)
+            messages = [ChatMessage.from_user(prompt["prompt"])]
+            try:
+                if generator_has_async:
+                    result = await self._chat_generator.run_async(messages=messages)  # type: ignore[attr-defined]
+                else:
+                    logger.debug(
+                        "{generator_type} does not implement 'run_async'."
+                        " Running the synchronous 'run' method in a thread to avoid blocking the event loop.",
+                        generator_type=type(self._chat_generator).__name__,
+                    )
+                    result = await asyncio.to_thread(self._chat_generator.run, messages=messages)
+            except Exception as e:
+                if self.raise_on_failure:
+                    raise ValueError(f"Error while generating response for prompt: {prompt}. Error: {e}") from e
+                logger.warning("Error while generating response for prompt: {prompt}. Error: {e}", prompt=prompt, e=e)
+                results.append(None)
+                errors += 1
+                continue
+
+            parsed_result = _parse_dict_from_json(
+                result["replies"][0].text, expected_keys=self.outputs, raise_on_failure=self.raise_on_failure
+            )
+            if parsed_result is None:
+                results.append(None)
+                errors += 1
+            else:
+                results.append(parsed_result)
+
+            if result["replies"][0].meta:
+                metadata.append(result["replies"][0].meta)
+
+        if errors > 0:
+            logger.warning(
+                "LLM evaluator failed for {errors} out of {len(list_of_input_names_to_values)} inputs.",
+                errors=errors,
+                len=len(list_of_input_names_to_values),
+            )
+
+        return {"results": results, "meta": metadata or None}
+
     def prepare_template(self) -> str:
         """
         Prepare the prompt template.
@@ -302,6 +382,7 @@ class LLMEvaluator:
             examples=self.examples,
             chat_generator=component_to_dict(obj=self._chat_generator, name="chat_generator"),
             progress_bar=self.progress_bar,
+            raise_on_failure=self.raise_on_failure,
         )
 
     @classmethod

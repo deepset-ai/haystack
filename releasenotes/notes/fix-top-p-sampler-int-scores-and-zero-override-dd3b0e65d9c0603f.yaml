@@ -1,0 +1,11 @@
+﻿---
+fixes:
+  - |
+    Fixed two bugs in ``TopPSampler`` that silently disabled filtering:
+
+    * Documents with integer scores were treated as if they had no score at all, so the
+      sampler logged a warning and returned all documents unfiltered. Integer scores are
+      now handled like float scores (booleans are still rejected).
+    * Passing ``top_p=0.0`` to ``run()`` was silently replaced by the value set in the
+      constructor because of a falsy-value check. The override is now honored, returning
+      the single highest-scoring document, consistent with ``TopPSampler(top_p=0.0)``.

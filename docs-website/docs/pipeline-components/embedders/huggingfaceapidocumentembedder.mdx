@@ -17,9 +17,9 @@ Use this component to compute document embeddings using various Hugging Face API
 | **Mandatory init variables** | `api_type`: The type of Hugging Face API to use  <br /> <br />`api_params`: A dictionary with one of the following keys:  <br /> <br />- `model`: Hugging Face model ID. Required when `api_type` is `SERVERLESS_INFERENCE_API`.**OR** - `url`: URL of the inference endpoint. Required when `api_type` is `INFERENCE_ENDPOINTS` or `TEXT_EMBEDDINGS_INFERENCE`.  <br /> <br />`token`: The Hugging Face API token. Can be set with `HF_API_TOKEN` or `HF_TOKEN` env var. |
 | **Mandatory run variables** | `documents`: A list of documents to be embedded |
 | **Output variables** | `documents`: A list of documents to be embedded (enriched with embeddings) |
-| **API reference** | [Embedders](/reference/embedders-api) |
-| **GitHub link** | https://github.com/deepset-ai/haystack/blob/main/haystack/components/embedders/hugging_face_api_document_embedder.py |
-| **Package name** | `haystack-ai` |
+| **API reference** | [Hugging Face API](/reference/integrations-huggingface-api) |
+| **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/huggingface_api |
+| **Package name** | `huggingface-api-haystack` |
 
 </div>
 
@@ -43,8 +43,14 @@ The token is needed:
 
 ## Usage
 
+Install the `huggingface-api-haystack` package to use the `HuggingFaceAPIDocumentEmbedder`:
+
+```shell
+pip install huggingface-api-haystack
+```
+
 Similarly to other Document Embedders, this component allows adding prefixes (and postfixes) to include instruction and embedding metadata.
-For more fine-grained details, refer to the component’s [API reference](/reference/embedders-api#huggingfaceapidocumentembedder).
+For more fine-grained details, refer to the component’s [API reference](/reference/integrations-huggingface-api#huggingfaceapidocumentembedder).
 
 ### On its own
 
@@ -56,7 +62,9 @@ To use this API, you need a [free Hugging Face token](https://huggingface.co/set
 The Embedder expects the `model` in `api_params`.
 
 ```python
-from haystack.components.embedders import HuggingFaceAPIDocumentEmbedder
+from haystack_integrations.components.embedders.huggingface_api import (
+    HuggingFaceAPIDocumentEmbedder,
+)
 from haystack.utils import Secret
 from haystack.dataclasses import Document
 
@@ -84,7 +92,9 @@ Additionally, in this case, you need to provide your Hugging Face token.
 The Embedder expects the `url` of your endpoint in `api_params`.
 
 ```python
-from haystack.components.embedders import HuggingFaceAPIDocumentEmbedder
+from haystack_integrations.components.embedders.huggingface_api import (
+    HuggingFaceAPIDocumentEmbedder,
+)
 from haystack.utils import Secret
 from haystack.dataclasses import Document
 
@@ -123,7 +133,9 @@ For more information, refer to the [official TEI repository](https://github.com/
 The Embedder expects the `url` of your TEI instance in `api_params`.
 
 ```python
-from haystack.components.embedders import HuggingFaceAPIDocumentEmbedder
+from haystack_integrations.components.embedders.huggingface_api import (
+    HuggingFaceAPIDocumentEmbedder,
+)
 from haystack.dataclasses import Document
 
 doc = Document(content="I love pizza!")
@@ -145,38 +157,53 @@ print(result["documents"][0].embedding)
 from haystack import Document
 from haystack import Pipeline
 from haystack.document_stores.in_memory import InMemoryDocumentStore
-from haystack.components.embedders import HuggingFaceAPITextEmbedder, HuggingFaceAPIDocumentEmbedder
+from haystack_integrations.components.embedders.huggingface_api import (
+    HuggingFaceAPITextEmbedder,
+    HuggingFaceAPIDocumentEmbedder,
+)
 from haystack.components.writers import DocumentWriter
 from haystack.components.retrievers.in_memory import InMemoryEmbeddingRetriever
 
 document_store = InMemoryDocumentStore(embedding_similarity_function="cosine")
 
-documents = [Document(content="My name is Wolfgang and I live in Berlin"),
-             Document(content="I saw a black horse running"),
-             Document(content="Germany has many big cities")]
+documents = [
+    Document(content="My name is Wolfgang and I live in Berlin"),
+    Document(content="I saw a black horse running"),
+    Document(content="Germany has many big cities"),
+]
 
-document_embedder = HuggingFaceAPIDocumentEmbedder(api_type="serverless_inference_api",
-				                                           api_params={"model": "BAAI/bge-small-en-v1.5"})
+document_embedder = HuggingFaceAPIDocumentEmbedder(
+    api_type="serverless_inference_api",
+    api_params={"model": "BAAI/bge-small-en-v1.5"},
+)
 
 indexing_pipeline = Pipeline()
 indexing_pipeline.add_component("document_embedder", document_embedder)
-indexing_pipeline.add_component("doc_writer", DocumentWriter(document_store=document_store)
+indexing_pipeline.add_component(
+    "doc_writer",
+    DocumentWriter(document_store=document_store),
+)
 indexing_pipeline.connect("document_embedder", "doc_writer")
 indexing_pipeline.run({"document_embedder": {"documents": documents}})
 
-text_embedder = HuggingFaceAPITextEmbedder(api_type="serverless_inference_api",
-                                           api_params={"model": "BAAI/bge-small-en-v1.5"})
+text_embedder = HuggingFaceAPITextEmbedder(
+    api_type="serverless_inference_api",
+    api_params={"model": "BAAI/bge-small-en-v1.5"},
+)
 
 query_pipeline = Pipeline()
 query_pipeline.add_component("text_embedder", text_embedder)
-query_pipeline.add_component("retriever", InMemoryEmbeddingRetriever(document_store=document_store))
+query_pipeline.add_component(
+    "retriever",
+    InMemoryEmbeddingRetriever(document_store=document_store),
+)
 query_pipeline.connect("text_embedder.embedding", "retriever.query_embedding")
 
 query = "Who lives in Berlin?"
 
-result = query_pipeline.run({"text_embedder":{"text": query}})
+result = query_pipeline.run({"text_embedder": {"text": query}})
 
-print(result['retriever']['documents'][0])
+print(result["retriever"]["documents"][0])
 
 # Document(id=..., content: 'My name is Wolfgang and I live in Berlin', ...)
 ```

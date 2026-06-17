@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import os
 from typing import Any
 from unittest.mock import ANY
 
@@ -9,7 +10,7 @@ import numpy as np
 import pytest
 
 from haystack import Document, component
-from haystack.components.embedders import SentenceTransformersDocumentEmbedder, SentenceTransformersTextEmbedder
+from haystack.components.embedders import OpenAIDocumentEmbedder, OpenAITextEmbedder
 from haystack.components.retrievers import InMemoryEmbeddingRetriever, TextEmbeddingRetriever
 from haystack.components.writers import DocumentWriter
 from haystack.document_stores.in_memory import InMemoryDocumentStore
@@ -38,7 +39,7 @@ class TestTextEmbeddingRetriever:
     def document_store_with_embeddings(self, sample_documents):
         """Create a document store populated with embedded documents."""
         document_store = InMemoryDocumentStore()
-        doc_embedder = SentenceTransformersDocumentEmbedder(model="sentence-transformers/all-MiniLM-L6-v2")
+        doc_embedder = OpenAIDocumentEmbedder()
         doc_writer = DocumentWriter(document_store=document_store, policy=DuplicatePolicy.SKIP)
 
         embedded_docs = doc_embedder.run(sample_documents)["documents"]
@@ -100,6 +101,7 @@ class TestTextEmbeddingRetriever:
                                 "bm25_parameters": {},
                                 "embedding_similarity_function": "dot_product",
                                 "index": ANY,
+                                "shared": True,
                                 "return_embedding": True,
                             },
                         },
@@ -117,7 +119,8 @@ class TestTextEmbeddingRetriever:
             },
         }
 
-    def test_from_dict(self):
+    def test_from_dict(self, monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "fake-api-key")
         data = {
             "type": "haystack.components.retrievers.text_embedding_retriever.TextEmbeddingRetriever",
             "init_parameters": {
@@ -132,6 +135,7 @@ class TestTextEmbeddingRetriever:
                                 "bm25_parameters": {},
                                 "embedding_similarity_function": "dot_product",
                                 "index": "4bb5369d-779f-487b-9c16-3c40f503438b",
+                                "shared": True,
                                 "return_embedding": True,
                             },
                         },
@@ -143,24 +147,18 @@ class TestTextEmbeddingRetriever:
                     },
                 },
                 "text_embedder": {
-                    "type": "haystack.components.embedders.sentence_transformers_text_embedder.SentenceTransformersTextEmbedder",  # noqa E501
+                    "type": "haystack.components.embedders.openai_text_embedder.OpenAITextEmbedder",
                     "init_parameters": {
-                        "model": "sentence-transformers/all-MiniLM-L6-v2",
-                        "token": {"type": "env_var", "env_vars": ["HF_API_TOKEN", "HF_TOKEN"], "strict": False},
+                        "api_key": {"env_vars": ["OPENAI_API_KEY"], "strict": True, "type": "env_var"},
+                        "api_base_url": None,
+                        "dimensions": None,
+                        "model": "text-embedding-ada-002",
+                        "organization": None,
+                        "http_client_kwargs": None,
                         "prefix": "",
                         "suffix": "",
-                        "batch_size": 32,
-                        "progress_bar": True,
-                        "normalize_embeddings": False,
-                        "trust_remote_code": False,
-                        "local_files_only": False,
-                        "truncate_dim": None,
-                        "model_kwargs": None,
-                        "tokenizer_kwargs": None,
-                        "config_kwargs": None,
-                        "precision": "float32",
-                        "encode_kwargs": None,
-                        "backend": "torch",
+                        "timeout": None,
+                        "max_retries": None,
                     },
                 },
             },
@@ -168,25 +166,25 @@ class TestTextEmbeddingRetriever:
         result = TextEmbeddingRetriever.from_dict(data)
         assert isinstance(result, TextEmbeddingRetriever)
         assert isinstance(result.retriever, InMemoryEmbeddingRetriever)
-        assert isinstance(result.text_embedder, SentenceTransformersTextEmbedder)
+        assert isinstance(result.text_embedder, OpenAITextEmbedder)
 
+    @pytest.mark.skipif(os.environ.get("OPENAI_API_KEY", "") == "", reason="OPENAI_API_KEY is not set")
     @pytest.mark.integration
-    @pytest.mark.slow
-    def test_run_with_filters(self, del_hf_env_vars, document_store_with_embeddings):
+    def test_run_with_filters(self, document_store_with_embeddings):
         retriever = TextEmbeddingRetriever(
             retriever=InMemoryEmbeddingRetriever(document_store=document_store_with_embeddings),
-            text_embedder=SentenceTransformersTextEmbedder(model="sentence-transformers/all-MiniLM-L6-v2"),
+            text_embedder=OpenAITextEmbedder(),
         )
         result = retriever.run(query="energy", filters={"field": "meta.category", "operator": "==", "value": "solar"})
         assert "documents" in result
         assert all(doc.meta.get("category") == "solar" for doc in result["documents"])
 
+    @pytest.mark.skipif(os.environ.get("OPENAI_API_KEY", "") == "", reason="OPENAI_API_KEY is not set")
     @pytest.mark.integration
-    @pytest.mark.slow
-    def test_run_with_top_k(self, del_hf_env_vars, document_store_with_embeddings):
+    def test_run_with_top_k(self, document_store_with_embeddings):
         retriever = TextEmbeddingRetriever(
             retriever=InMemoryEmbeddingRetriever(document_store=document_store_with_embeddings),
-            text_embedder=SentenceTransformersTextEmbedder(model="sentence-transformers/all-MiniLM-L6-v2"),
+            text_embedder=OpenAITextEmbedder(),
         )
         result = retriever.run(query="energy", top_k=2)
         assert "documents" in result

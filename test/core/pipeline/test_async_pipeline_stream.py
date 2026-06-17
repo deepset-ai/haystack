@@ -9,7 +9,7 @@ from typing import Any
 
 import pytest
 
-from haystack import AsyncPipeline, component
+from haystack import Pipeline, component
 from haystack.core.errors import PipelineRuntimeError
 from haystack.dataclasses import AsyncStreamingCallbackT, StreamingChunk
 
@@ -89,7 +89,7 @@ class Passthrough:
 
 @pytest.mark.asyncio
 async def test_stream_yields_chunks_and_returns_result():
-    pipeline = AsyncPipeline()
+    pipeline = Pipeline()
     pipeline.add_component("streamer", StreamingEcho(prefix="s", n_chunks=3))
 
     handle = pipeline.stream(data={"streamer": {"prompt": "hi"}})
@@ -101,7 +101,7 @@ async def test_stream_yields_chunks_and_returns_result():
 
 @pytest.mark.asyncio
 async def test_stream_yields_chunks_with_flat_input():
-    pipeline = AsyncPipeline()
+    pipeline = Pipeline()
     pipeline.add_component("streamer", StreamingEcho(prefix="s", n_chunks=3))
 
     # flat input form (`{"prompt": ...}` instead of `{"streamer": {"prompt": ...}}`)
@@ -119,7 +119,7 @@ async def test_stream_composes_with_init_streaming_callback():
     async def init_callback(chunk: StreamingChunk) -> None:
         seen.append(chunk.content)
 
-    pipeline = AsyncPipeline()
+    pipeline = Pipeline()
     pipeline.add_component("streamer", StreamingEcho(prefix="s", n_chunks=2, streaming_callback=init_callback))
 
     handle = pipeline.stream(data={"streamer": {"prompt": "hi"}})
@@ -140,7 +140,7 @@ async def test_stream_runtime_callback_overrides_init():
     async def runtime_callback(chunk: StreamingChunk) -> None:
         runtime_seen.append(chunk.content)
 
-    pipeline = AsyncPipeline()
+    pipeline = Pipeline()
     pipeline.add_component("streamer", StreamingEcho(prefix="s", n_chunks=2, streaming_callback=init_callback))
 
     handle = pipeline.stream(data={"streamer": {"prompt": "hi", "streaming_callback": runtime_callback}})
@@ -157,7 +157,7 @@ async def test_stream_warns_on_sync_runtime_callback(caplog):
     def sync_callback(chunk: StreamingChunk) -> None:
         seen.append(chunk.content)
 
-    pipeline = AsyncPipeline()
+    pipeline = Pipeline()
     pipeline.add_component("streamer", StreamingEcho(prefix="s", n_chunks=2))
 
     with caplog.at_level(logging.WARNING):
@@ -170,7 +170,7 @@ async def test_stream_warns_on_sync_runtime_callback(caplog):
 
 @pytest.mark.asyncio
 async def test_stream_detects_streaming_callback_declared_via_set_input_type():
-    pipeline = AsyncPipeline()
+    pipeline = Pipeline()
     pipeline.add_component("streamer", DynamicStreamingEcho(prefix="d", n_chunks=3))
 
     handle = pipeline.stream(data={"streamer": {"prompt": "hi"}})
@@ -182,7 +182,7 @@ async def test_stream_detects_streaming_callback_declared_via_set_input_type():
 
 @pytest.mark.asyncio
 async def test_stream_streams_all_components_by_default():
-    pipeline = AsyncPipeline()
+    pipeline = Pipeline()
     pipeline.add_component("a", StreamingEcho(prefix="a", n_chunks=2))
     pipeline.add_component("b", StreamingEcho(prefix="b", n_chunks=2))
 
@@ -194,7 +194,7 @@ async def test_stream_streams_all_components_by_default():
 
 @pytest.mark.asyncio
 async def test_stream_filters_to_selected_components():
-    pipeline = AsyncPipeline()
+    pipeline = Pipeline()
     pipeline.add_component("a", StreamingEcho(prefix="a", n_chunks=2))
     pipeline.add_component("b", StreamingEcho(prefix="b", n_chunks=2))
 
@@ -207,7 +207,7 @@ async def test_stream_filters_to_selected_components():
 
 
 def test_stream_raises_for_unknown_component_in_filter():
-    pipeline = AsyncPipeline()
+    pipeline = Pipeline()
     pipeline.add_component("streamer", StreamingEcho())
 
     with pytest.raises(ValueError, match="Unknown components") as excinfo:
@@ -216,7 +216,7 @@ def test_stream_raises_for_unknown_component_in_filter():
 
 
 def test_stream_raises_for_non_streaming_component_in_filter():
-    pipeline = AsyncPipeline()
+    pipeline = Pipeline()
     pipeline.add_component("streamer", StreamingEcho())
     pipeline.add_component("passthrough", Passthrough())
 
@@ -229,7 +229,7 @@ def test_stream_raises_for_non_streaming_component_in_filter():
 
 @pytest.mark.asyncio
 async def test_stream_propagates_pipeline_exception_during_iteration():
-    pipeline = AsyncPipeline()
+    pipeline = Pipeline()
     pipeline.add_component("streamer", StreamingEcho(prefix="s", n_chunks=1, fail=True))
 
     handle = pipeline.stream(data={"streamer": {"prompt": "x"}})
@@ -256,7 +256,7 @@ async def test_failing_callback_does_not_drop_chunk():
     async def failing_callback(chunk: StreamingChunk) -> None:
         raise RuntimeError("callback boom")
 
-    pipeline = AsyncPipeline()
+    pipeline = Pipeline()
     pipeline.add_component("streamer", StreamingEcho(prefix="s", n_chunks=3, streaming_callback=failing_callback))
 
     handle = pipeline.stream(data={"streamer": {"prompt": "hi"}})
@@ -282,7 +282,7 @@ async def test_failing_callback_does_not_drop_chunk():
 
 @pytest.mark.asyncio
 async def test_result_reraises_original_failure():
-    pipeline = AsyncPipeline()
+    pipeline = Pipeline()
     pipeline.add_component("streamer", StreamingEcho(prefix="s", n_chunks=1, fail=True))
 
     handle = pipeline.stream(data={"streamer": {"prompt": "x"}})
@@ -299,7 +299,7 @@ async def test_result_reraises_original_failure():
 
 @pytest.mark.asyncio
 async def test_result_raises_when_pipeline_not_finished():
-    pipeline = AsyncPipeline()
+    pipeline = Pipeline()
     pipeline.add_component("streamer", StreamingEcho(prefix="s", n_chunks=5))
 
     handle = pipeline.stream(data={"streamer": {"prompt": "x"}})
@@ -313,7 +313,7 @@ async def test_result_raises_when_pipeline_not_finished():
 
 @pytest.mark.asyncio
 async def test_aclose_cancels_pipeline_and_result_reports_cancelled():
-    pipeline = AsyncPipeline()
+    pipeline = Pipeline()
     pipeline.add_component("streamer", StreamingEcho(prefix="s", n_chunks=100))
 
     handle = pipeline.stream(data={"streamer": {"prompt": "x"}})
@@ -326,7 +326,7 @@ async def test_aclose_cancels_pipeline_and_result_reports_cancelled():
 
 @pytest.mark.asyncio
 async def test_consumer_cancellation_cancels_pipeline():
-    pipeline = AsyncPipeline()
+    pipeline = Pipeline()
     # chunk_delay keeps the producer running so the consumer can be cancelled mid-stream
     pipeline.add_component("streamer", StreamingEcho(prefix="s", n_chunks=100, chunk_delay=0.01))
 
@@ -350,7 +350,7 @@ async def test_consumer_cancellation_cancels_pipeline():
 
 @pytest.mark.asyncio
 async def test_cancel_on_abandon_false_lets_pipeline_finish():
-    pipeline = AsyncPipeline()
+    pipeline = Pipeline()
     pipeline.add_component("streamer", StreamingEcho(prefix="s", n_chunks=3, chunk_delay=0.01))
 
     handle = pipeline.stream(data={"streamer": {"prompt": "x"}}, cancel_on_abandon=False)

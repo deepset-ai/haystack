@@ -11,7 +11,7 @@ from haystack import component, default_from_dict, default_to_dict
 from haystack.components.retrievers.types.protocol import TextRetriever
 from haystack.core.serialization import component_from_dict, component_to_dict, import_class_by_name
 from haystack.dataclasses import Document
-from haystack.utils.async_utils import _run_component_async
+from haystack.utils.async_utils import _execute_component_async
 from haystack.utils.experimental import _experimental
 from haystack.utils.misc import _deduplicate_documents, _reciprocal_rank_fusion
 
@@ -39,7 +39,7 @@ class MultiRetriever:
     from haystack.document_stores.types import DuplicatePolicy
     from haystack.components.retrievers import InMemoryBM25Retriever, InMemoryEmbeddingRetriever
     from haystack.components.retrievers import TextEmbeddingRetriever, MultiRetriever
-    from haystack.components.embedders import SentenceTransformersTextEmbedder, SentenceTransformersDocumentEmbedder
+    from haystack.components.embedders import OpenAITextEmbedder, OpenAIDocumentEmbedder
     from haystack.components.writers import DocumentWriter
 
     documents = [
@@ -50,7 +50,7 @@ class MultiRetriever:
 
     # Populate the document store
     doc_store = InMemoryDocumentStore()
-    doc_embedder = SentenceTransformersDocumentEmbedder(model="sentence-transformers/all-MiniLM-L6-v2")
+    doc_embedder = OpenAIDocumentEmbedder()
     doc_writer = DocumentWriter(document_store=doc_store, policy=DuplicatePolicy.SKIP)
     doc_writer.run(documents=doc_embedder.run(documents)["documents"])
 
@@ -60,7 +60,7 @@ class MultiRetriever:
             "bm25": InMemoryBM25Retriever(document_store=doc_store),
             "embedding": TextEmbeddingRetriever(
                 retriever=InMemoryEmbeddingRetriever(document_store=doc_store),
-                text_embedder=SentenceTransformersTextEmbedder(model="sentence-transformers/all-MiniLM-L6-v2"),
+                text_embedder=OpenAITextEmbedder(),
             ),
         },
         top_k=3,
@@ -247,7 +247,7 @@ class MultiRetriever:
 
         async def _run_one(name: str, retriever: TextRetriever) -> list[Document]:
             try:
-                result = await _run_component_async(
+                result = await _execute_component_async(
                     retriever, query=query, filters=resolved_filters, top_k=resolved_top_k
                 )
                 return result.get("documents", [])

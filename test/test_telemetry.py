@@ -6,17 +6,14 @@ import datetime
 import logging
 from unittest.mock import Mock, patch
 
-import pytest
-
-from haystack import AsyncPipeline, Pipeline, component
+from haystack import Pipeline, component
 from haystack.core.serialization import generate_qualified_class_name
-from haystack.telemetry._telemetry import pipeline_running
+from haystack.telemetry._telemetry import pipeline_running, tutorial_running
 from haystack.utils.auth import Secret, TokenSecret
 
 
-@pytest.mark.parametrize("pipeline_class", [Pipeline, AsyncPipeline])
 @patch("haystack.telemetry._telemetry.telemetry")
-def test_pipeline_running(telemetry, pipeline_class):
+def test_pipeline_running(telemetry):
     telemetry.send_event = Mock()
 
     @component
@@ -28,7 +25,7 @@ def test_pipeline_running(telemetry, pipeline_class):
         def run(self):
             pass
 
-    pipe = pipeline_class()
+    pipe = Pipeline()
     pipe.add_component("component", Component())
     pipeline_running(pipe)
 
@@ -60,6 +57,22 @@ def test_pipeline_running(telemetry, pipeline_class):
             "pipeline_id": str(id(pipe)),
             "pipeline_type": expected_type,
             "runs": 3,
+            "components": {"test.test_telemetry.Component": [{"name": "component", "key": "values"}]},
+        },
+    )
+
+    # More than a day has passed but the seconds component of the timedelta is below the threshold:
+    # the event must still be sent (regression test for using timedelta.seconds instead of total_seconds())
+    pipe._last_telemetry_sent = datetime.datetime.now() - datetime.timedelta(days=1, seconds=5)
+
+    telemetry.send_event.reset_mock()
+    pipeline_running(pipe)
+    telemetry.send_event.assert_called_once_with(
+        "Pipeline run (2.x)",
+        {
+            "pipeline_id": str(id(pipe)),
+            "pipeline_type": expected_type,
+            "runs": 4,
             "components": {"test.test_telemetry.Component": [{"name": "component", "key": "values"}]},
         },
     )
@@ -114,3 +127,27 @@ def test_pipeline_running_with_non_dict_telemetry_data(caplog):
     with caplog.at_level(logging.DEBUG):
         pipeline_running(pipe)
         assert "TypeError: Telemetry data for component my_component must be a dictionary" in caplog.text
+
+
+def test_send_telemetry_preserves_function_metadata():
+    """
+    Regression test for https://github.com/deepset-ai/haystack/issues/11568.
+
+    The ``send_telemetry`` decorator must use ``functools.wraps`` so that decorated functions such as
+    ``pipeline_running`` and ``tutorial_running`` keep their own metadata (``__name__``, ``__doc__`` and
+    ``__annotations__``) instead of exposing the ``send_telemetry_wrapper`` wrapper's.
+    """
+    # ``__name__`` comes from the wrapped function, not the wrapper.
+    assert pipeline_running.__name__ == "pipeline_running"
+    assert tutorial_running.__name__ == "tutorial_running"
+
+    # ``__doc__`` is preserved.
+    assert pipeline_running.__doc__ is not None
+    assert "Collects telemetry data for a pipeline run" in pipeline_running.__doc__
+
+    # ``__annotations__`` are preserved, e.g. the wrapped functions' parameters.
+    assert "pipeline" in pipeline_running.__annotations__
+    assert "tutorial_id" in tutorial_running.__annotations__
+
+    # ``functools.wraps`` also exposes the undecorated function through ``__wrapped__``.
+    assert pipeline_running.__wrapped__.__name__ == "pipeline_running"

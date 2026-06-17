@@ -32,12 +32,13 @@ from haystack.tools import (
     Tool,
     Toolset,
     ToolsType,
+    _check_duplicate_tool_names,
     deserialize_tools_or_toolset_inplace,
     flatten_tools_or_toolsets,
     serialize_tools_or_toolset,
     warm_up_tools,
 )
-from haystack.utils.async_utils import _run_component_async
+from haystack.utils.async_utils import _execute_component_async
 from haystack.utils.callable_serialization import deserialize_callable, serialize_callable
 from haystack.utils.deserialization import deserialize_component_inplace
 
@@ -126,6 +127,71 @@ def _get_run_method_params(instance: "Agent") -> set[str]:
     return {name for name, p in sig.parameters.items() if p.kind != inspect.Parameter.VAR_KEYWORD}
 
 
+def _select_tools_by_name(configured_tools: ToolsType, names: list[str]) -> list[Tool | Toolset]:
+    """
+    Select configured tools by name for a single run.
+
+    Standalone Tools are kept when their name is requested. A Toolset that exposes a requested name is replaced by a
+    per-run `spawn()` (an isolated copy) with the requested names registered as its `_selected_tool_names`, so
+    dynamic toolsets such as SearchableToolset preserve their behavior (search/lazy-loading) over the selected subset
+    without mutating the shared, configured Toolset.
+
+    :param configured_tools: The tools configured on the Agent.
+    :param names: The requested tool names.
+    :returns: The selected standalone Tools and/or spawned, selection-scoped Toolsets.
+    :raises ValueError: If no tools were configured, or if any requested name is not a valid tool name.
+    """
+    if not configured_tools:
+        raise ValueError("No tools were configured for the Agent at initialization.")
+
+    requested_names = set(names)
+    items: list[Tool | Toolset] = (
+        [configured_tools] if isinstance(configured_tools, Toolset) else list(configured_tools)
+    )
+
+    # Resolve selectable names per item. For Toolsets we use get_selectable_tools() so dynamic toolsets
+    # (e.g. SearchableToolset) offer their full catalog by name, not just the tools exposed by iteration.
+    selectable_per_item: list[tuple[Tool | Toolset, set[str]]] = []
+    valid_tool_names: set[str] = set()
+    for item in items:
+        item_names = {tool.name for tool in item.get_selectable_tools()} if isinstance(item, Toolset) else {item.name}
+        selectable_per_item.append((item, item_names))
+        valid_tool_names |= item_names
+
+    invalid_tool_names = requested_names - valid_tool_names
+    if invalid_tool_names:
+        raise ValueError(
+            f"The following tool names are not valid: {invalid_tool_names}. Valid tool names are: {valid_tool_names}."
+        )
+
+    selected: list[Tool | Toolset] = []
+    for item, item_names in selectable_per_item:
+        matched = requested_names & item_names
+        if not matched:
+            continue
+        if isinstance(item, Toolset):
+            # Apply the selection to a per-run copy so the shared, configured Toolset is never mutated.
+            spawned = item.spawn()
+            spawned._selected_tool_names = matched
+            selected.append(spawned)
+        else:
+            selected.append(item)
+    return selected
+
+
+def _spawn_tools(tools: ToolsType) -> ToolsType:
+    """
+    Return per-run copies of `tools`, replacing each Toolset with an isolated `spawn()` (Tools are passed through).
+
+    This isolates run-scoped Toolset state (e.g. a SearchableToolset's discovered tools and any active name
+    selection) so that concurrent runs sharing the same configured Toolset — such as parallel sub-agent tool calls
+    or concurrent requests against one Agent — don't corrupt each other.
+    """
+    if isinstance(tools, Toolset):
+        return tools.spawn()
+    return [item.spawn() if isinstance(item, Toolset) else item for item in tools]
+
+
 def _validate_prompt_message_blocks(user_prompt: str | None, system_prompt: str | None) -> None:
     """
     Validate explicit Jinja2 message blocks in Agent prompts.
@@ -198,8 +264,12 @@ class _ExecutionContext:
     Context for executing the agent.
 
     :param state: The current state of the agent, including messages and any additional data.
-    :param chat_generator_inputs: Runtime inputs to be passed to the chat generator.
-    :param tool_execution_inputs: Runtime inputs to be passed to tool execution.
+    :param tools: The tools selected for this run, kept unflattened (the original Toolset or list of
+        Tools/Toolsets). Storing the unflattened form lets each step re-flatten it and pick up tools a dynamic
+        toolset (e.g. SearchableToolset) discovers over time; flattening would freeze a snapshot. The chat
+        generator and tool execution receive a freshly flattened snapshot per step.
+    :param chat_generator_inputs: Runtime inputs to be passed to the chat generator (tools are injected per step).
+    :param tool_execution_inputs: Runtime inputs to be passed to tool execution (tools are injected per step).
     :param counter: A counter to track the number of steps taken in the agent's run.
     :param confirmation_strategy_context: Optional dictionary for passing request-scoped resources
         to confirmation strategies. In web/server environments, this enables passing per-request
@@ -209,6 +279,7 @@ class _ExecutionContext:
     """
 
     state: State
+    tools: ToolsType
     chat_generator_inputs: dict
     tool_execution_inputs: dict
     counter: int = 0
@@ -374,12 +445,13 @@ class Agent:
         :param tool_streaming_callback_passthrough: If True, pass the streaming callback to tools that accept it.
         :param confirmation_strategies: A dictionary mapping tool names to ConfirmationStrategy instances.
         :raises TypeError: If the chat_generator does not support tools parameter in its run method.
-        :raises ValueError: If the exit_conditions are not valid.
         :raises ValueError: If any `user_prompt` variable overlaps with the `state_schema` or `run` method parameters.
         """
         # --- Validation ---
         self._chat_generator_supports_tools: bool = "tools" in inspect.signature(chat_generator.run).parameters
-        if tools and not self._chat_generator_supports_tools:
+        # We use an explicit None check for tools b/c testing for truthiness calls __len__, which for SearchableToolset
+        # would iterate and prematurely warm it up at init.
+        if tools is not None and not self._chat_generator_supports_tools:
             raise TypeError(
                 f"{type(chat_generator).__name__} does not accept tools parameter in its run method. "
                 "The Agent component requires a chat generator that supports tools when tools are provided."
@@ -387,13 +459,6 @@ class Agent:
 
         if exit_conditions is None:
             exit_conditions = ["text"]
-        valid_exits = ["text"] + [tool.name for tool in flatten_tools_or_toolsets(tools)]
-        if not all(condition in valid_exits for condition in exit_conditions):
-            raise ValueError(
-                f"Invalid exit conditions provided: {exit_conditions}. "
-                f"Valid exit conditions must be a subset of {valid_exits}. "
-                "Ensure that each exit condition corresponds to either 'text' or a valid tool name."
-            )
 
         if state_schema is not None:
             reserved_used = sorted(set(state_schema) & _INTERNAL_STATE_KEYS.keys())
@@ -409,7 +474,9 @@ class Agent:
 
         # --- Attributes ---
         self.chat_generator = chat_generator
-        self.tools = tools or []
+        # We use an explicit None check for tools b/c testing for truthiness calls __len__, which for SearchableToolset
+        # would iterate and prematurely warm it up at init.
+        self.tools = tools if tools is not None else []
         self.system_prompt = system_prompt
         self.user_prompt = user_prompt
         self.required_variables = required_variables
@@ -455,13 +522,6 @@ class Agent:
                 template=_template_for_role(system_prompt, "system"), required_variables=[]
             )
         self._register_prompt_variables()
-
-        # --- No-tools warning ---
-        if not self.tools and type(self).__name__ == "Agent":
-            logger.warning(
-                "No tools provided to the Agent. The Agent will behave like a ChatGenerator and only return text "
-                "responses. To enable tool usage, pass tools directly to the Agent, not to the chat_generator."
-            )
 
     def _register_prompt_variables(self) -> None:
         """
@@ -583,19 +643,22 @@ class Agent:
 
         return default_from_dict(cls, data)
 
-    def _create_agent_span(self) -> Any:
+    def _create_agent_span(self, tools: ToolsType) -> Any:
         """
         Create a span for the agent run.
 
         If the agent is running as part of a pipeline, this span will be nested
         under the current active span (the pipeline's component span).
+
+        :param tools: The tools selected for this run (init-time tools or the runtime override
+            resolved by `_initialize_fresh_execution`), so the span reflects the tools actually used.
         """
         parent_span = tracing.tracer.current_span()
         return tracing.tracer.trace(
             "haystack.agent.run",
             tags={
                 "haystack.agent.max_steps": self.max_agent_steps,
-                "haystack.agent.tools": self.tools,
+                "haystack.agent.tools": tools,
                 "haystack.agent.exit_conditions": self.exit_conditions,
                 "haystack.agent.state_schema": _schema_to_dict(self.state_schema),
             },
@@ -651,27 +714,31 @@ class Agent:
             logger.warning("All messages provided to the Agent component are system messages. This is not recommended.")
 
         selected_tools = self._select_tools(tools)
+        flat_tools = flatten_tools_or_toolsets(selected_tools)
+        # Validate tool support once for the run (covers both init-time and runtime tools)
+        if flat_tools and not self._chat_generator_supports_tools:
+            raise TypeError(
+                f"{type(self.chat_generator).__name__} does not accept tools parameter in its run method. "
+                "The Agent component requires a chat generator that supports tools when tools are provided."
+            )
 
         state_kwargs: dict[str, Any] = {key: kwargs[key] for key in self.state_schema.keys() if key in kwargs}
         state = State(schema=self.state_schema, data=state_kwargs)
         state.set("messages", messages)
         state.set("step_count", 0)
         state.set("token_usage", {})
-        state.set("tool_call_counts", {tool.name: 0 for tool in flatten_tools_or_toolsets(selected_tools)})
+        state.set("tool_call_counts", {tool.name: 0 for tool in flat_tools})
 
         streaming_callback = select_streaming_callback(  # type: ignore[call-overload]
             init_callback=self.streaming_callback, runtime_callback=streaming_callback, requires_async=requires_async
         )
         generator_inputs: dict[str, Any] = {}
-        if self._chat_generator_supports_tools:
-            generator_inputs["tools"] = selected_tools
         if streaming_callback is not None:
             generator_inputs["streaming_callback"] = streaming_callback
         if generation_kwargs is not None:
             generator_inputs["generation_kwargs"] = generation_kwargs
 
         tool_execution_inputs: dict[str, Any] = {
-            "tools": selected_tools,
             "raise_on_failure": self.raise_on_tool_invocation_failure,
             "streaming_callback": streaming_callback,
             "max_workers": self.tool_concurrency_limit,
@@ -680,6 +747,7 @@ class Agent:
 
         return _ExecutionContext(
             state=state,
+            tools=selected_tools,
             chat_generator_inputs=generator_inputs,
             tool_execution_inputs=tool_execution_inputs,
             confirmation_strategy_context=confirmation_strategy_context,
@@ -696,28 +764,26 @@ class Agent:
             or if any provided tool name is not valid.
         :raises TypeError: If tools is not a list of Tool objects, a Toolset, or a list of tool names (strings).
         """
+        # Toolsets are spawned into per-run copies (see _spawn_tools / _select_tools_by_name) so concurrent runs
+        # sharing the same configured Toolset don't corrupt each other's run-scoped state.
         if tools is None:
-            return self.tools
+            return _spawn_tools(self.tools)
 
         if isinstance(tools, list) and all(isinstance(t, str) for t in tools):
-            if not self.tools:
-                raise ValueError("No tools were configured for the Agent at initialization.")
-            available_tools = flatten_tools_or_toolsets(self.tools)
-            selected_tool_names = cast(list[str], tools)  # mypy thinks this could still be list[Tool] or Toolset
-            valid_tool_names = {tool.name for tool in available_tools}
-            invalid_tool_names = {name for name in selected_tool_names if name not in valid_tool_names}
-            if invalid_tool_names:
-                raise ValueError(
-                    f"The following tool names are not valid: {invalid_tool_names}. "
-                    f"Valid tool names are: {valid_tool_names}."
-                )
-            return [tool for tool in available_tools if tool.name in selected_tool_names]
+            return _select_tools_by_name(self.tools, cast(list[str], tools))
 
         if isinstance(tools, Toolset):
-            return tools
+            # Per-run tools are not covered by the Agent's own warm_up(), so warm them up here.
+            # warm_up() is expected to be idempotent, so re-warming on every run is cheap.
+            warm_up_tools(tools)
+            return _spawn_tools(tools)
 
         if isinstance(tools, list):
-            return cast(list[Tool | Toolset], tools)  # mypy can't narrow the Union type from isinstance check
+            selected = cast(list[Tool | Toolset], tools)  # mypy can't narrow the Union type from isinstance check
+            # Per-run tools are not covered by the Agent's own warm_up(), so warm them up here.
+            # warm_up() is expected to be idempotent, so re-warming on every run is cheap.
+            warm_up_tools(selected)
+            return _spawn_tools(selected)
 
         raise TypeError(
             "tools must be a list of Tool and/or Toolset objects, a Toolset, or a list of tool names (strings)."
@@ -775,7 +841,7 @@ class Agent:
             **kwargs,
         )
 
-        with self._create_agent_span() as span:
+        with self._create_agent_span(exe_context.tools) as span:
             span.set_content_tag("haystack.agent.input", agent_inputs)
             while exe_context.counter < self.max_agent_steps:
                 if not self._run_step(exe_context, span):
@@ -850,7 +916,7 @@ class Agent:
             **kwargs,
         )
 
-        with self._create_agent_span() as span:
+        with self._create_agent_span(exe_context.tools) as span:
             span.set_content_tag("haystack.agent.input", agent_inputs)
             while exe_context.counter < self.max_agent_steps:
                 if not await self._run_step_async(exe_context, span):
@@ -873,10 +939,17 @@ class Agent:
         with tracing.tracer.trace(
             "haystack.agent.step", tags={"haystack.agent.step": exe_context.counter}, parent_span=agent_span
         ) as step_span:
+            # Re-flatten the tools every step so dynamic toolsets (e.g. SearchableToolset) surface tools discovered in
+            # earlier steps. Validate names here so duplicates fail before starting the step.
+            current_tools = flatten_tools_or_toolsets(exe_context.tools)
+            _check_duplicate_tool_names(current_tools)
+
             chat_generator_inputs = {
                 "messages": exe_context.state.data["messages"],
                 **exe_context.chat_generator_inputs,
             }
+            if current_tools:
+                chat_generator_inputs["tools"] = current_tools
             with tracing.tracer.trace("haystack.agent.step.llm", parent_span=step_span) as llm_span:
                 llm_span.set_content_tag("haystack.agent.step.llm.input", chat_generator_inputs)
                 result = self.chat_generator.run(**chat_generator_inputs)
@@ -885,7 +958,7 @@ class Agent:
             exe_context.state.set("messages", llm_messages)
             _record_llm_usage(exe_context.state, llm_messages)
 
-            if not any(msg.tool_call for msg in llm_messages) or not self.tools:
+            if not any(msg.tool_call for msg in llm_messages) or not current_tools:
                 exe_context.counter += 1
                 exe_context.state.set("step_count", exe_context.counter)
                 return False
@@ -895,7 +968,7 @@ class Agent:
                 messages_with_tool_calls=llm_messages,
                 state=exe_context.state,
                 confirmation_strategy_context=exe_context.confirmation_strategy_context,
-                tools=exe_context.tool_execution_inputs["tools"],
+                tools=current_tools,
                 streaming_callback=exe_context.tool_execution_inputs["streaming_callback"],
                 enable_streaming_passthrough=exe_context.tool_execution_inputs["enable_streaming_callback_passthrough"],
             )
@@ -905,6 +978,7 @@ class Agent:
                 "messages": modified_tool_call_messages,
                 "state": exe_context.state,
                 **exe_context.tool_execution_inputs,
+                "tools": current_tools,
             }
             with tracing.tracer.trace("haystack.agent.step.tool", parent_span=step_span) as tool_span:
                 tool_span.set_content_tag("haystack.agent.step.tool.input", tool_execution_inputs)
@@ -927,21 +1001,28 @@ class Agent:
         with tracing.tracer.trace(
             "haystack.agent.step", tags={"haystack.agent.step": exe_context.counter}, parent_span=agent_span
         ) as step_span:
+            # Re-flatten the tools every step so dynamic toolsets (e.g. SearchableToolset) surface tools discovered in
+            # earlier steps. Validate names here so duplicates fail before starting the step.
+            current_tools = flatten_tools_or_toolsets(exe_context.tools)
+            _check_duplicate_tool_names(current_tools)
+
             chat_generator_inputs = {
                 "messages": exe_context.state.data["messages"],
                 **exe_context.chat_generator_inputs,
             }
+            if current_tools:
+                chat_generator_inputs["tools"] = current_tools
             with tracing.tracer.trace("haystack.agent.step.llm", parent_span=step_span) as llm_span:
                 llm_span.set_content_tag("haystack.agent.step.llm.input", chat_generator_inputs)
                 # For sync-only generators, _run_component_async dispatches to a thread via asyncio.to_thread,
                 # which copies the current contextvars context — preserving the active tracing span.
-                result = await _run_component_async(self.chat_generator, **chat_generator_inputs)
+                result = await _execute_component_async(self.chat_generator, **chat_generator_inputs)
                 llm_span.set_content_tag("haystack.agent.step.llm.output", result)
             llm_messages = result["replies"]
             exe_context.state.set("messages", llm_messages)
             _record_llm_usage(exe_context.state, llm_messages)
 
-            if not any(msg.tool_call for msg in llm_messages) or not self.tools:
+            if not any(msg.tool_call for msg in llm_messages) or not current_tools:
                 exe_context.counter += 1
                 exe_context.state.set("step_count", exe_context.counter)
                 return False
@@ -949,7 +1030,7 @@ class Agent:
             modified_tool_call_messages, new_chat_history = await _process_confirmation_strategies_async(
                 confirmation_strategies=self._confirmation_strategies,
                 messages_with_tool_calls=llm_messages,
-                tools=exe_context.tool_execution_inputs["tools"],
+                tools=current_tools,
                 state=exe_context.state,
                 streaming_callback=exe_context.tool_execution_inputs["streaming_callback"],
                 enable_streaming_passthrough=exe_context.tool_execution_inputs["enable_streaming_callback_passthrough"],
@@ -961,6 +1042,7 @@ class Agent:
                 "messages": modified_tool_call_messages,
                 "state": exe_context.state,
                 **exe_context.tool_execution_inputs,
+                "tools": current_tools,
             }
             with tracing.tracer.trace("haystack.agent.step.tool", parent_span=step_span) as tool_span:
                 tool_span.set_content_tag("haystack.agent.step.tool.input", tool_execution_inputs)

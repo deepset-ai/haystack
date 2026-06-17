@@ -93,6 +93,93 @@ pip install <new-package>
 | `from haystack.components.embedders import HuggingFaceAPITextEmbedder` | `huggingface-api-haystack` | `from haystack_integrations.components.embedders.huggingface_api import HuggingFaceAPITextEmbedder` |
 | `from haystack.components.embedders import HuggingFaceAPIDocumentEmbedder` | `huggingface-api-haystack` | `from haystack_integrations.components.embedders.huggingface_api import HuggingFaceAPIDocumentEmbedder` |
 | `from haystack.components.rankers import HuggingFaceTEIRanker` | `huggingface-api-haystack` | `from haystack_integrations.components.rankers.huggingface_api import HuggingFaceTEIRanker` |
+| `from haystack.components.classifiers import TransformersZeroShotDocumentClassifier` | `transformers-haystack` | `from haystack_integrations.components.classifiers.transformers import TransformersZeroShotDocumentClassifier` |
+| `from haystack.components.generators.chat import HuggingFaceLocalChatGenerator` | `transformers-haystack` | `from haystack_integrations.components.generators.transformers import TransformersChatGenerator` |
+| `from haystack.components.readers import ExtractiveReader` | `transformers-haystack` | `from haystack_integrations.components.readers.transformers import TransformersExtractiveReader` |
+| `from haystack.components.routers import TransformersTextRouter` | `transformers-haystack` | `from haystack_integrations.components.routers.transformers import TransformersTextRouter` |
+| `from haystack.components.routers import TransformersZeroShotTextRouter` | `transformers-haystack` | `from haystack_integrations.components.routers.transformers import TransformersZeroShotTextRouter` |
+| `from haystack.components.websearch import SerperDevWebSearch` | `serperdev-haystack` | `from haystack_integrations.components.websearch.serperdev import SerperDevWebSearch` |
+| `from haystack.components.websearch import SearchApiWebSearch` | `searchapi-haystack` | `from haystack_integrations.components.websearch.searchapi import SearchApiWebSearch` || `from haystack.components.extractors import NamedEntityExtractor` (Hugging Face backend) | `transformers-haystack` | `from haystack_integrations.components.extractors.transformers import TransformersNamedEntityExtractor` |
+| `from haystack.components.extractors import NamedEntityExtractor` (spaCy backend) | `spacy-haystack` | `from haystack_integrations.components.extractors.spacy import SpacyNamedEntityExtractor` |
+| `from haystack.components.embedders import SentenceTransformersTextEmbedder` | `sentence-transformers-haystack` | `from haystack_integrations.components.embedders.sentence_transformers import SentenceTransformersTextEmbedder` |
+| `from haystack.components.embedders import SentenceTransformersDocumentEmbedder` | `sentence-transformers-haystack` | `from haystack_integrations.components.embedders.sentence_transformers import SentenceTransformersDocumentEmbedder` |
+| `from haystack.components.embedders import SentenceTransformersSparseTextEmbedder` | `sentence-transformers-haystack` | `from haystack_integrations.components.embedders.sentence_transformers import SentenceTransformersSparseTextEmbedder` |
+| `from haystack.components.embedders import SentenceTransformersSparseDocumentEmbedder` | `sentence-transformers-haystack` | `from haystack_integrations.components.embedders.sentence_transformers import SentenceTransformersSparseDocumentEmbedder` |
+| `from haystack.components.embedders.image import SentenceTransformersDocumentImageEmbedder` | `sentence-transformers-haystack` | `from haystack_integrations.components.embedders.sentence_transformers import SentenceTransformersDocumentImageEmbedder` |
+| `from haystack.components.rankers import SentenceTransformersSimilarityRanker` | `sentence-transformers-haystack` | `from haystack_integrations.components.rankers.sentence_transformers import SentenceTransformersSimilarityRanker` |
+| `from haystack.components.rankers import SentenceTransformersDiversityRanker` | `sentence-transformers-haystack` | `from haystack_integrations.components.rankers.sentence_transformers import SentenceTransformersDiversityRanker` |
+| `from haystack.tracing.datadog import DatadogTracer` | `datadog-haystack` | `from haystack_integrations.tracing.datadog import DatadogTracer` |
+
+### `DatadogTracer` moved to the `datadog-haystack` integration
+
+**What changed:** The `DatadogTracer` has been moved out of Haystack into the `datadog-haystack` integration package.
+In addition, Haystack no longer automatically enables Datadog tracing when `ddtrace` is installed. You now enable it
+explicitly by adding the new `DatadogConnector` component to your pipeline.
+
+**Why:** Moving the tracer to a dedicated package keeps Haystack's dependencies leaner and lets the integration be
+released independently. Removing the implicit auto-enable makes tracing setup explicit and predictable.
+
+**How to migrate:**
+
+Install the integration:
+
+```bash
+pip install datadog-haystack
+```
+
+Before (v2.x), Datadog tracing was auto-enabled when `ddtrace` was installed, or set up manually:
+
+```python
+import ddtrace
+from haystack import tracing
+from haystack.tracing.datadog import DatadogTracer
+
+tracing.enable_tracing(DatadogTracer(ddtrace.tracer))
+```
+
+After (v3.0), add the `DatadogConnector` to your pipeline to enable tracing:
+
+```python
+from haystack import Pipeline
+from haystack_integrations.components.connectors.datadog import DatadogConnector
+
+pipe = Pipeline()
+pipe.add_component("tracer", DatadogConnector())
+```
+
+Alternatively, you can still enable the tracer manually using the new import path:
+
+```python
+import ddtrace
+from haystack import tracing
+from haystack_integrations.tracing.datadog import DatadogTracer
+
+tracing.enable_tracing(DatadogTracer(ddtrace.tracer))
+```
+
+### `TransformersSimilarityRanker` removed
+
+**What changed:** The `TransformersSimilarityRanker` component has been removed. It was not moved to an
+integration package.
+
+**Why:** The component was in legacy state and no longer received updates. `SentenceTransformersSimilarityRanker`
+provides the same functionality plus async support and the more capable sentence-transformers backend.
+
+**How to migrate:** Use `SentenceTransformersSimilarityRanker`, which accepts the same parameters.
+
+Before (v2.x):
+```python
+from haystack.components.rankers import TransformersSimilarityRanker
+
+ranker = TransformersSimilarityRanker(model="cross-encoder/ms-marco-MiniLM-L-6-v2")
+```
+
+After (v3.0):
+```python
+from haystack.components.rankers import SentenceTransformersSimilarityRanker
+
+ranker = SentenceTransformersSimilarityRanker(model="cross-encoder/ms-marco-MiniLM-L-6-v2")
+```
 
 ### ToolInvoker component removed
 
@@ -487,6 +574,60 @@ builder = PromptBuilder(
 builder.run(name="John")  # greeting renders as ""
 ```
 
+### Pipeline deserialization is gated by a module allowlist
+
+**What changed:** `Pipeline.load`, `Pipeline.loads`, and `Pipeline.from_dict` now refuse to import classes from modules outside a trusted-module allowlist and raise a `DeserializationError` instead. The default allowlist contains `haystack`, `haystack_integrations`, `haystack_experimental`, `builtins`, `typing`, and `collections`. Pipelines that reference custom components, callables, or types in other packages will fail to load until those modules are explicitly allowed.
+
+In addition, `default_from_dict` now rejects nested `{"type": "..."}` dictionaries whose key is not an `__init__` parameter of the parent class — this can surface pre-existing YAML bugs (typos, leftovers from removed parameters, stale snapshots).
+
+**Why:** Loading a pipeline from YAML used to dynamically import any class referenced in the file, which made a crafted YAML capable of causing arbitrary classes to be imported and instantiated. Gating imports through an allowlist closes that gap while leaving Haystack's own packages working out of the box.
+
+**How to migrate:**
+
+If your pipeline only references components from `haystack`, `haystack_integrations`, or `haystack_experimental`, no action is needed.
+
+Otherwise, extend the allowlist via one of the four mechanisms below.
+
+Before (v2.x), all modules implicitly trusted:
+```python
+from haystack import Pipeline
+
+# Worked for any class on the import path, including third-party packages.
+with open("pipeline.yaml") as fp:
+    pipeline = Pipeline.load(fp)
+```
+
+After (v3.0), pick one of the following options. The first two scope the trust to a single call; the others extend it process-wide.
+
+```python
+# 1. Per-call kwarg — recommended for application code that knows exactly which extra
+#    packages a given YAML needs.
+from haystack import Pipeline
+
+with open("pipeline.yaml") as fp:
+    pipeline_a = Pipeline.load(fp, allowed_modules=["mypkg.*", "anotherpkg.components.*"])
+
+# 2. Per-call bypass — equivalent to "I fully trust this YAML; skip the allowlist".
+#    Mirrors the `yaml.safe_load` / `yaml.unsafe_load` convention.
+with open("pipeline.yaml") as fp:
+    pipeline_b = Pipeline.load(fp, unsafe=True)
+
+# 3. Process-wide programmatic — call once at startup, e.g. in your application's
+#    entry point or a custom integration package's __init__.
+from haystack.core.serialization import allow_deserialization_module
+
+allow_deserialization_module("mypkg.*")
+with open("pipeline.yaml") as fp:
+    pipeline_c = Pipeline.load(fp)  # `mypkg.*` is now trusted for every load in this process.
+```
+
+```bash
+# 4. Environment variable — useful for ops/deployments where code shouldn't change.
+#    Comma-separated patterns; read at runtime on every deserialization call.
+export HAYSTACK_DESERIALIZATION_ALLOWLIST="mypkg.*,otherpkg.*"
+```
+
+Patterns are matched as prefixes by default (`"mypkg"` matches `mypkg` and any submodule), or as `fnmatch` globs if they contain `*`, `?`, or `[` somewhere other than a trailing `.*`.
 ### Generators removed
 
 **What changed:** `OpenAIGenerator`, `AzureOpenAIGenerator`, `HuggingFaceAPIGenerator`, and `HuggingFaceLocalGenerator` have been removed.
@@ -618,6 +759,50 @@ generator = OpenAIImageGenerator(model="gpt-image-2")
 result = generator.run("A photo of a red apple")
 ```
 
+### `AsyncPipeline` merged into `Pipeline`
+
+**What changed:** The `AsyncPipeline` class has been removed. Its asynchronous methods (`run_async`, `run_async_generator`, `stream`) are now part of the single `Pipeline` class, alongside the synchronous `run`.
+
+**Why:** Two classes caused friction where sync and async met: `AsyncPipeline.run()` wrapped `asyncio.run()` and raised inside an already-running event loop (e.g. Jupyter, FastAPI), and a `SuperComponent` exposed `run_async` even for sync pipelines, where it always failed. A single `Pipeline` with native `run` and `run_async` fixes both.
+
+**How to migrate:**
+
+Replace `AsyncPipeline` with `Pipeline`; the async methods are unchanged.
+
+Before (v2.x):
+```python
+from haystack import AsyncPipeline
+
+pipeline = AsyncPipeline()
+result = await pipeline.run_async(data)
+```
+
+After (v3.0):
+```python
+from haystack import Pipeline
+
+pipeline = Pipeline()
+result = await pipeline.run_async(data)
+```
+
+If you used the **synchronous** `AsyncPipeline.run()`, note it was a wrapper around the concurrent async engine, so `Pipeline.run()` is not a drop-in replacement. Choose by intent:
+
+```python
+# Keep concurrent execution from sync code:
+result = asyncio.run(pipeline.run_async(data, concurrency_limit=4))
+
+# Sequential execution is fine:
+result = pipeline.run(data)  # components run one at a time; no concurrency_limit
+```
+
+Unlike `AsyncPipeline.run()`, `Pipeline.run()` does not raise when called inside a running event loop: it runs and blocks the loop. In an async context, use `await pipeline.run_async(...)`.
+
+**Behavior to be aware of:**
+
+- `Pipeline.run` runs components sequentially and does not accept `concurrency_limit`; only `run_async` / `run_async_generator` run components concurrently.
+- Only `run` supports breakpoints (`break_point` / `pipeline_snapshot`).
+- Both run paths are traced under a single `haystack.pipeline.run` operation name, distinguished by a `haystack.pipeline.execution_mode` tag (`sync` or `async`); previously asynchronous runs used `haystack.async_pipeline.run`.
+
 ### Auto-generated `Document.id` changes for documents with non-empty `meta`
 
 **What changed:** The hash used to auto-generate `Document.id` is now computed from a canonical (key-sorted) JSON serialization of `meta` instead of the dict's `repr`. Documents with empty `meta` keep the same IDs as before, but documents with non-empty `meta` get different IDs in v3.0. Non-JSON-serializable `meta` values (e.g. `datetime` or custom classes) are now serialized via `str(...)` rather than `repr(...)`, which also changes their IDs. See [#11446](https://github.com/deepset-ai/haystack/pull/11446).
@@ -636,7 +821,6 @@ from haystack.dataclasses import Document
 # these two documents could end up with different IDs.
 doc1 = Document(content="Berlin is the capital of Germany.", meta={"source": "wiki", "lang": "en"})
 doc2 = Document(content="Berlin is the capital of Germany.", meta={"lang": "en", "source": "wiki"})
-```
 
 After (v3.0):
 ```python
