@@ -816,6 +816,22 @@ class TestAgent:
         )
         assert result["messages"][-1] == result["last_message"]
 
+    def test_does_not_exit_on_empty_assistant_message(self, monkeypatch, weather_tool):
+        monkeypatch.setenv("OPENAI_API_KEY", "fake-key")
+        agent = Agent(chat_generator=OpenAIChatGenerator(), tools=[weather_tool], exit_conditions=["text"])
+
+        # The first reply simulates the LLM producing an invalid tool call that our code discards,leaving an assistant
+        # message with empty text and no tool calls. This must not be treated as a "text" exit condition, so the agent
+        # keeps looping and recovers on the second reply.
+        empty_reply = {"replies": [ChatMessage.from_assistant(text="")]}
+        recovered_reply = {"replies": [ChatMessage.from_assistant(text="The weather is sunny.")]}
+        agent.chat_generator.run = MagicMock(side_effect=[empty_reply, recovered_reply])
+
+        result = agent.run([ChatMessage.from_user("What's the weather?")])
+
+        assert agent.chat_generator.run.call_count == 2
+        assert result["last_message"].text == "The weather is sunny."
+
     def test_check_exit_conditions_parallel_tool_calls(self, monkeypatch, weather_tool):
         monkeypatch.setenv("OPENAI_API_KEY", "fake-key")
         agent = Agent(chat_generator=OpenAIChatGenerator(), tools=[weather_tool], exit_conditions=["weather_tool"])
@@ -1104,6 +1120,23 @@ class TestAgent:
         assert result["token_usage"]["prompt_tokens"] > 0
         assert result["token_usage"]["completion_tokens"] > 0
         assert result["token_usage"]["total_tokens"] > 0
+
+    @pytest.mark.asyncio
+    async def test_does_not_exit_on_empty_assistant_message_async(self, monkeypatch, weather_tool):
+        monkeypatch.setenv("OPENAI_API_KEY", "fake-key")
+        agent = Agent(chat_generator=OpenAIChatGenerator(), tools=[weather_tool], exit_conditions=["text"])
+
+        # The first reply simulates the LLM producing an invalid tool call that our code discards,leaving an assistant
+        # message with empty text and no tool calls. This must not be treated as a "text" exit condition, so the agent
+        # keeps looping and recovers on the second reply.
+        empty_reply = {"replies": [ChatMessage.from_assistant(text="")]}
+        recovered_reply = {"replies": [ChatMessage.from_assistant(text="The weather is sunny.")]}
+        agent.chat_generator.run_async = AsyncMock(side_effect=[empty_reply, recovered_reply])
+
+        result = await agent.run_async([ChatMessage.from_user("What's the weather?")])
+
+        assert agent.chat_generator.run_async.call_count == 2
+        assert result["last_message"].text == "The weather is sunny."
 
     @pytest.mark.asyncio
     async def test_run_async_with_async_streaming_callback(self, weather_tool):

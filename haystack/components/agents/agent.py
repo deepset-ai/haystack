@@ -958,7 +958,17 @@ class Agent:
             exe_context.state.set("messages", llm_messages)
             _record_llm_usage(exe_context.state, llm_messages)
 
-            if not any(msg.tool_call for msg in llm_messages) or not current_tools:
+            # Exit for `exit_conditions=["text"]` behavior: the agent stops when there is no tool invoker, or when
+            # the model returns a plain text response (no tool calls). We require the last message to be a non-empty
+            # assistant text message so that an invalid response (e.g. a message with no tool calls or text) won't
+            # trigger an exit.
+            last_message = llm_messages[-1] if llm_messages else None
+            if not current_tools or (
+                    last_message is not None
+                    and not any(msg.tool_call for msg in llm_messages)
+                    and last_message.is_from(ChatRole.ASSISTANT)
+                    and last_message.text
+            ):
                 exe_context.counter += 1
                 exe_context.state.set("step_count", exe_context.counter)
                 return False
@@ -1022,7 +1032,17 @@ class Agent:
             exe_context.state.set("messages", llm_messages)
             _record_llm_usage(exe_context.state, llm_messages)
 
-            if not any(msg.tool_call for msg in llm_messages) or not current_tools:
+            # Exit for `exit_conditions=["text"]` behavior: the agent stops when there is no tool invoker, or when
+            # the model returns a plain text response (no tool calls). We require the last message to be a non-empty
+            # assistant text message so that an invalid response (e.g. a message with no tool calls or text) won't
+            # trigger an exit.
+            last_message = llm_messages[-1] if llm_messages else None
+            if not current_tools or (
+                    last_message is not None
+                    and not any(msg.tool_call for msg in llm_messages)
+                    and last_message.is_from(ChatRole.ASSISTANT)
+                    and last_message.text
+            ):
                 exe_context.counter += 1
                 exe_context.state.set("step_count", exe_context.counter)
                 return False
