@@ -50,6 +50,19 @@ docs = converter.run(sources=Path("my_file.md"))
 
 ### With YAML frontmatter
 
+Given `equity_note.md`:
+
+```markdown
+---
+ticker: AAPL
+source: earnings_call
+date: 2026-06-12
+---
+
+# Thesis
+Revenue guidance improved.
+```
+
 ```python
 from haystack.components.converters import MarkdownToDocument
 
@@ -57,6 +70,7 @@ converter = MarkdownToDocument(extract_frontmatter=True)
 
 docs = converter.run(sources=["equity_note.md"])["documents"]
 print(docs[0].meta["ticker"])
+print(docs[0].content)
 ```
 
 ### In a pipeline

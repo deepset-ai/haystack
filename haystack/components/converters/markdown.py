@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import json
 import os
 import re
 from pathlib import Path
@@ -22,19 +23,7 @@ with LazyImport("Run 'pip install markdown-it-py mdit_plain'") as markdown_conve
 
 logger = logging.getLogger(__name__)
 
-_FRONTMATTER_PATTERN = re.compile(
-    r"\A---[ \t]*\r?\n(?P<frontmatter>.*?)(?:\r?\n)---[ \t]*(?:\r?\n|$)", re.DOTALL
-)
-
-
-class _FrontmatterLoader(yaml.SafeLoader):
-    """Safe YAML loader that keeps date-like scalars as strings for JSON-serializable metadata."""
-
-
-_FrontmatterLoader.yaml_implicit_resolvers = {
-    key: [(tag, regexp) for tag, regexp in resolvers if tag != "tag:yaml.org,2002:timestamp"]
-    for key, resolvers in yaml.SafeLoader.yaml_implicit_resolvers.items()
-}
+_FRONTMATTER_PATTERN = re.compile(r"\A---[ \t]*\r?\n(?P<frontmatter>.*?)(?:\r?\n)---[ \t]*(?:\r?\n|$)", re.DOTALL)
 
 
 @component
@@ -63,6 +52,7 @@ class MarkdownToDocument:
         table_to_single_line: bool = False,
         progress_bar: bool = True,
         store_full_path: bool = False,
+        *,
         extract_frontmatter: bool = False,
     ) -> None:
         """
@@ -157,10 +147,17 @@ class MarkdownToDocument:
 
         frontmatter_text = match.group("frontmatter")
         try:
-            frontmatter = yaml.load(frontmatter_text, Loader=_FrontmatterLoader) or {}
+            frontmatter = json.loads(json.dumps(yaml.safe_load(frontmatter_text), default=str)) or {}
         except yaml.YAMLError as error:
             logger.warning(
                 "Could not parse YAML frontmatter in {source}. Keeping it as content. Error: {error}",
+                source=source,
+                error=error,
+            )
+            return file_content, {}
+        except (TypeError, ValueError) as error:
+            logger.warning(
+                "Could not convert YAML frontmatter in {source}. Keeping it as content. Error: {error}",
                 source=source,
                 error=error,
             )

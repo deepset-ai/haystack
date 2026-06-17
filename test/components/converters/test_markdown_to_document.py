@@ -16,16 +16,13 @@ class TestMarkdownToDocument:
         converter = MarkdownToDocument()
         assert converter.table_to_single_line is False
         assert converter.progress_bar is True
+        assert converter.extract_frontmatter is False
 
     def test_init_params_custom(self):
         converter = MarkdownToDocument(table_to_single_line=True, progress_bar=False, store_full_path=False)
         assert converter.table_to_single_line is True
         assert converter.progress_bar is False
         assert converter.store_full_path is False
-
-    def test_init_extract_frontmatter_default(self):
-        converter = MarkdownToDocument(progress_bar=False)
-        assert converter.extract_frontmatter is False
 
     @pytest.mark.integration
     def test_run(self, test_files_path):
@@ -125,8 +122,7 @@ class TestMarkdownToDocument:
 
     def test_run_meta_overrides_frontmatter_metadata(self):
         bytestream = ByteStream(
-            data=b"---\nticker: AAPL\nsource: filing\n---\n# Thesis\n",
-            meta={"source": "bytestream"},
+            data=b"---\nticker: AAPL\nsource: filing\n---\n# Thesis\n", meta={"source": "bytestream"}
         )
 
         converter = MarkdownToDocument(progress_bar=False, extract_frontmatter=True)
@@ -135,6 +131,30 @@ class TestMarkdownToDocument:
 
         assert document.meta["ticker"] == "MSFT"
         assert document.meta["source"] == "filing"
+
+    def test_run_keeps_malformed_frontmatter_as_content_and_logs_warning(self, caplog):
+        bytestream = ByteStream(data=b"---\nticker: [AAPL\n---\n# Thesis\n")
+
+        converter = MarkdownToDocument(progress_bar=False, extract_frontmatter=True)
+        with caplog.at_level(logging.WARNING):
+            output = converter.run(sources=[bytestream])
+
+        document = output["documents"][0]
+        assert "ticker: [AAPL" in document.content
+        assert "ticker" not in document.meta
+        assert "Could not parse YAML frontmatter" in caplog.text
+
+    def test_run_keeps_unserializable_frontmatter_as_content_and_logs_warning(self, caplog):
+        bytestream = ByteStream(data=b"---\ncycle: &cycle\n  - *cycle\n---\n# Thesis\n")
+
+        converter = MarkdownToDocument(progress_bar=False, extract_frontmatter=True)
+        with caplog.at_level(logging.WARNING):
+            output = converter.run(sources=[bytestream])
+
+        document = output["documents"][0]
+        assert "cycle:" in document.content
+        assert "cycle" not in document.meta
+        assert "Could not convert YAML frontmatter" in caplog.text
 
     @pytest.mark.integration
     def test_run_wrong_file_type(self, test_files_path, caplog):
