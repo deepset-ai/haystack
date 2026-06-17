@@ -617,3 +617,43 @@ from haystack.components.generators import OpenAIImageGenerator
 generator = OpenAIImageGenerator(model="gpt-image-2")
 result = generator.run("A photo of a red apple")
 ```
+
+### Auto-generated `Document.id` changes for documents with non-empty `meta`
+
+**What changed:** The hash used to auto-generate `Document.id` is now computed from a canonical (key-sorted) JSON serialization of `meta` instead of the dict's `repr`. Documents with empty `meta` keep the same IDs as before, but documents with non-empty `meta` get different IDs in v3.0. Non-JSON-serializable `meta` values (e.g. `datetime` or custom classes) are now serialized via `str(...)` rather than `repr(...)`, which also changes their IDs. See [#11446](https://github.com/deepset-ai/haystack/pull/11446).
+
+**Why:** Previously the hash reflected the insertion order of keys in `meta`, so two documents with the same content and the same metadata could end up with different IDs depending on how the `meta` dict was constructed. This silently broke `DuplicatePolicy.SKIP` / `FAIL` and any cache or dedup table keyed on the document ID. Sorting the keys before hashing makes the ID order-independent.
+
+**How to migrate:**
+
+If you do not rely on the exact value of auto-generated IDs, no action is needed — IDs are now simply stable regardless of `meta` key order.
+
+If you rely on auto-generated IDs to match documents already persisted in a `DocumentStore` written by Haystack v2.x, re-ingest the affected documents so the new IDs are used consistently, or pass the previous `id` explicitly when constructing the `Document`.
+
+Before (v2.x):
+```python
+from haystack.dataclasses import Document
+
+# ID was derived from meta's dict repr, so it depended on key insertion order:
+# these two documents could end up with different IDs.
+doc1 = Document(content="Berlin is the capital of Germany.", meta={"source": "wiki", "lang": "en"})
+doc2 = Document(content="Berlin is the capital of Germany.", meta={"lang": "en", "source": "wiki"})
+```
+
+After (v3.0):
+```python
+from haystack.dataclasses import Document
+
+# Same content + meta now always yields the same ID, regardless of key order,
+# but that ID differs from the one v2.x produced for documents with non-empty meta.
+doc1 = Document(content="Berlin is the capital of Germany.", meta={"source": "wiki", "lang": "en"})
+doc2 = Document(content="Berlin is the capital of Germany.", meta={"lang": "en", "source": "wiki"})
+assert doc1.id == doc2.id
+
+# To keep an ID that already exists in a DocumentStore written by v2.x, pass it explicitly:
+doc = Document(
+    content="Berlin is the capital of Germany.",
+    meta={"source": "wiki", "lang": "en"},
+    id="<the id produced by Haystack v2.x>",
+)
+```
