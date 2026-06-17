@@ -233,7 +233,7 @@ class TestConversionToStreamingChunks:
             _content=[
                 ReasoningContent(
                     reasoning_text="",
-                    extra={"id": "rs_095b57053855eac100690491f54e308196878239be3ba6133c", "type": "reasoning"},
+                    extra={"id": "rs_095b57053855eac100690491f54e308196878239be3ba6133c", "summary": [], "type": "reasoning"},
                 ),
                 ToolCall(
                     tool_name="weather",
@@ -1437,3 +1437,58 @@ class TestResponseToChatMessage:
         )
         with pytest.raises(ValueError):
             _convert_chat_message_to_responses_api_format(message)
+
+    def test_convert_streaming_chunks_to_chat_message_preserves_encrypted_content(self):
+        """Test that encrypted_content in reasoning extra is preserved during streaming conversion."""
+        chunks = [
+            StreamingChunk(
+                content="",
+                meta={"received_at": ANY},
+                index=0,
+                start=True,
+                reasoning=ReasoningContent(
+                    reasoning_text="",
+                    extra={
+                        "id": "rs_095b57053855eac100690491f54e308196878239be3ba6133c",
+                        "type": "reasoning",
+                        "encrypted_content": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",  # Simulated encrypted reasoning
+                        "status": "in_progress",
+                    },
+                ),
+            ),
+            StreamingChunk(
+                content="",
+                meta={
+                    "received_at": ANY,
+                    "response": {
+                        "id": "resp_095b57053855eac100690491f4e22c8196ac124365e8c70424",
+                        "created_at": 1761907188.0,
+                        "model": "gpt-5-mini-2025-08-07",
+                        "object": "response",
+                        "output": [
+                            {
+                                "id": "rs_095b57053855eac100690491f54e308196878239be3ba6133c",
+                                "type": "reasoning",
+                                "encrypted_content": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+                                "status": "completed",
+                            }
+                        ],
+                    },
+                    "sequence_number": 16,
+                    "type": "response.completed",
+                },
+                finish_reason="stop",
+            ),
+        ]
+
+        message = _convert_streaming_chunks_to_chat_message(chunks)
+        
+        # Verify reasoning content exists and has the correct structure
+        assert message.reasoning is not None
+        assert message.reasoning.reasoning_text == ""
+        
+        # Verify encrypted_content is preserved along with id and type
+        assert message.reasoning.extra.get("id") == "rs_095b57053855eac100690491f54e308196878239be3ba6133c"
+        assert message.reasoning.extra.get("type") == "reasoning"
+        assert message.reasoning.extra.get("encrypted_content") == "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+        assert message.reasoning.extra.get("status") == "in_progress"
