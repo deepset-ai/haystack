@@ -156,6 +156,23 @@ class TestHTMLToDocument:
             assert "Could not read non_existing_file.html" in caplog.text
             assert results["documents"] == []
 
+    def test_run_empty_bytestream(self, caplog):
+        """
+        Test that an empty ByteStream is skipped without invoking extraction,
+        so no noisy lxml parse errors are emitted.
+        """
+        empty_stream = ByteStream(data=b"")
+        empty_stream.mime_type = "text/html"
+        converter = HTMLToDocument()
+
+        with patch("haystack.components.converters.html.extract") as mock_extract:
+            with caplog.at_level(logging.WARNING):
+                results = converter.run(sources=[empty_stream])
+
+        assert results["documents"] == []
+        mock_extract.assert_not_called()
+        assert "because it is empty" in caplog.text
+
     def test_mixed_sources_run(self, test_files_path):
         """
         Test if the component runs correctly if the input is a mix of paths and ByteStreams.
