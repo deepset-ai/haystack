@@ -649,7 +649,7 @@ doc2 = Document(content="Berlin is the capital of Germany.", meta={"lang": "en",
 assert doc1.id == doc2.id
 ```
 
-It is possible to migrate an existing index without rerunning your indexing pipeline, for example to avoid recalculating embeddings. To do that, read stored documents, regenerate their IDs, write the updated documents, and delete the documents stored under their old IDs. 
+It is possible to migrate an existing index without rerunning your indexing pipeline, for example to avoid recalculating embeddings. To do that, read stored documents, regenerate their IDs using Haystack 3.0, write the updated documents, and delete the documents stored under their old IDs. 
 
 ```python
 from dataclasses import replace
