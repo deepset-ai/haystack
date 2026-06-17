@@ -648,3 +648,51 @@ doc1 = Document(content="Berlin is the capital of Germany.", meta={"source": "wi
 doc2 = Document(content="Berlin is the capital of Germany.", meta={"lang": "en", "source": "wiki"})
 assert doc1.id == doc2.id
 ```
+
+To migrate an existing index in place — recomputing the stored IDs with the 3.0 hashing instead of re-ingesting from source — read every document back, regenerate its `id`, and overwrite it. The example below seeds an `InMemoryDocumentStore` with 2.x-style IDs and then migrates them:
+
+```python
+from dataclasses import replace
+
+from haystack import Document
+from haystack.document_stores.in_memory import InMemoryDocumentStore
+from haystack.document_stores.types import DuplicatePolicy
+
+
+def migrate_document_ids(document_store) -> None:
+    """Recompute every stored Document.id with 3.x hashing and rewrite the index."""
+    old_documents = document_store.filter_documents()
+    # Rebuilding each Document with id="" lets 3.x regenerate the id from its fields.
+    new_documents = [replace(doc, id="") for doc in old_documents]
+    document_store.delete_documents([doc.id for doc in old_documents])
+    document_store.write_documents(new_documents, policy=DuplicatePolicy.OVERWRITE)
+
+
+# Seed a store with the IDs Haystack 2.x generated for these documents (derived
+# from the repr of the meta dict). Your real store already contains such IDs.
+store = InMemoryDocumentStore()
+store.write_documents(
+    [
+        Document(
+            id="b51c3ee6b892f52bf28af01f5d823a254e438356ec335a20133ad940ef7b8cd7",
+            content="Berlin is the capital of Germany.",
+            meta={"source": "wiki", "lang": "en"},
+        ),
+        Document(
+            id="f022d8d89a99f89547215f8adcfed92f41518f2bb3e11d14e27987bd9d265ead",
+            content="Paris is the capital of France.",
+            meta={"source": "wiki", "lang": "en"},
+        ),
+    ],
+    policy=DuplicatePolicy.OVERWRITE,
+)
+
+before = {doc.content: doc.id for doc in store.filter_documents()}
+migrate_document_ids(store)
+after = {doc.content: doc.id for doc in store.filter_documents()}
+
+for content in before:
+    print(content)
+    print("  2.x id:", before[content])
+    print("  3.x id:", after[content])
+```
