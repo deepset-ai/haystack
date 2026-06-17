@@ -794,12 +794,11 @@ class TestAgent:
 
     def test_does_not_exit_on_empty_assistant_message(self, monkeypatch, weather_tool):
         monkeypatch.setenv("OPENAI_API_KEY", "fake-key")
-        generator = OpenAIChatGenerator()
-        agent = Agent(chat_generator=generator, tools=[weather_tool], exit_conditions=["text"])
+        agent = Agent(chat_generator=OpenAIChatGenerator(), tools=[weather_tool], exit_conditions=["text"])
 
-        # The first reply simulates the LLM producing an invalid tool call that our code discards,
-        # leaving an assistant message with empty text and no tool calls. This must not be treated as a
-        # "text" exit condition, so the agent keeps looping and recovers on the second reply.
+        # The first reply simulates the LLM producing an invalid tool call that our code discards,leaving an assistant
+        # message with empty text and no tool calls. This must not be treated as a "text" exit condition, so the agent
+        # keeps looping and recovers on the second reply.
         empty_reply = {"replies": [ChatMessage.from_assistant(text="")]}
         recovered_reply = {"replies": [ChatMessage.from_assistant(text="The weather is sunny.")]}
         agent.chat_generator.run = MagicMock(side_effect=[empty_reply, recovered_reply])
@@ -1097,12 +1096,11 @@ class TestAgent:
     @pytest.mark.asyncio
     async def test_does_not_exit_on_empty_assistant_message_async(self, monkeypatch, weather_tool):
         monkeypatch.setenv("OPENAI_API_KEY", "fake-key")
-        generator = OpenAIChatGenerator()
-        agent = Agent(chat_generator=generator, tools=[weather_tool], exit_conditions=["text"])
+        agent = Agent(chat_generator=OpenAIChatGenerator(), tools=[weather_tool], exit_conditions=["text"])
 
-        # The first reply simulates the LLM producing an invalid tool call that our code discards,
-        # leaving an assistant message with empty text and no tool calls. This must not be treated as a
-        # "text" exit condition, so the agent keeps looping and recovers on the second reply.
+        # The first reply simulates the LLM producing an invalid tool call that our code discards,leaving an assistant
+        # message with empty text and no tool calls. This must not be treated as a "text" exit condition, so the agent
+        # keeps looping and recovers on the second reply.
         empty_reply = {"replies": [ChatMessage.from_assistant(text="")]}
         recovered_reply = {"replies": [ChatMessage.from_assistant(text="The weather is sunny.")]}
         agent.chat_generator.run_async = AsyncMock(side_effect=[empty_reply, recovered_reply])
