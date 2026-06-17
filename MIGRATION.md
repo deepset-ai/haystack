@@ -649,7 +649,7 @@ doc2 = Document(content="Berlin is the capital of Germany.", meta={"lang": "en",
 assert doc1.id == doc2.id
 ```
 
-To migrate an existing index in place — recomputing the stored IDs with the 3.0 hashing instead of re-ingesting from source — read every document back, regenerate its `id`, and overwrite it. The example below seeds an `InMemoryDocumentStore` with 2.x-style IDs and then migrates them:
+It is possible to migrate an existing index without rerunning your indexing pipeline, for example to avoid recalculating embeddings. To achieve that, you need to read every stored document, regenerate its `id`, and overwrite it. 
 
 ```python
 from dataclasses import replace
@@ -660,16 +660,13 @@ from haystack.document_stores.types import DuplicatePolicy
 
 
 def migrate_document_ids(document_store) -> None:
-    """Recompute every stored Document.id with 3.x hashing and rewrite the index."""
     old_documents = document_store.filter_documents()
-    # Rebuilding each Document with id="" lets 3.x regenerate the id from its fields.
     new_documents = [replace(doc, id="") for doc in old_documents]
     document_store.delete_documents([doc.id for doc in old_documents])
     document_store.write_documents(new_documents, policy=DuplicatePolicy.OVERWRITE)
 
 
-# Seed a store with the IDs Haystack 2.x generated for these documents (derived
-# from the repr of the meta dict). Your real store already contains such IDs.
+# Example DocumentStore with IDs generated with Haystack 2.x
 store = InMemoryDocumentStore()
 store.write_documents(
     [
@@ -687,12 +684,5 @@ store.write_documents(
     policy=DuplicatePolicy.OVERWRITE,
 )
 
-before = {doc.content: doc.id for doc in store.filter_documents()}
 migrate_document_ids(store)
-after = {doc.content: doc.id for doc in store.filter_documents()}
-
-for content in before:
-    print(content)
-    print("  2.x id:", before[content])
-    print("  3.x id:", after[content])
 ```
