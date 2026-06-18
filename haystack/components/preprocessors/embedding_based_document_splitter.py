@@ -14,7 +14,7 @@ from haystack import Document, component, logging
 from haystack.components.embedders.types import DocumentEmbedder
 from haystack.components.preprocessors.sentence_tokenizer import Language, SentenceSplitter
 from haystack.core.serialization import component_to_dict, default_from_dict, default_to_dict
-from haystack.utils.async_utils import _run_component_async
+from haystack.utils.async_utils import _execute_component_async
 from haystack.utils.deserialization import deserialize_component_inplace
 
 logger = logging.getLogger(__name__)
@@ -344,7 +344,7 @@ class EmbeddingBasedDocumentSplitter:
         """
         # Create Document objects for each group
         group_docs = [Document(content=group) for group in sentence_groups]
-        result = await _run_component_async(self.document_embedder, documents=group_docs)
+        result = await _execute_component_async(self.document_embedder, documents=group_docs)
         embedded_docs = result["documents"]
         return [doc.embedding for doc in embedded_docs]
 

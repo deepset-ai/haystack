@@ -18,7 +18,7 @@ from haystack.core.serialization import component_to_dict
 from haystack.dataclasses import ImageContent, TextContent
 from haystack.dataclasses.chat_message import ChatMessage
 from haystack.utils import deserialize_chatgenerator_inplace
-from haystack.utils.async_utils import _run_component_async
+from haystack.utils.async_utils import _execute_component_async
 from haystack.utils.misc import _parse_dict_from_json
 
 logger = logging.getLogger(__name__)
@@ -308,7 +308,7 @@ class LLMDocumentContentExtractor:
         message = ChatMessage.from_user(content_parts=[TextContent(text=self.prompt), image_content])
 
         try:
-            result = await _run_component_async(self._chat_generator, messages=[message])
+            result = await _execute_component_async(self._chat_generator, messages=[message])
         except Exception as e:
             if self.raise_on_failure:
                 raise e

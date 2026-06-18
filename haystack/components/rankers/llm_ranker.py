@@ -11,7 +11,7 @@ from haystack.components.generators.chat.types import ChatGenerator
 from haystack.core.serialization import component_to_dict
 from haystack.dataclasses import ChatMessage
 from haystack.utils import deserialize_chatgenerator_inplace
-from haystack.utils.async_utils import _run_component_async
+from haystack.utils.async_utils import _execute_component_async
 from haystack.utils.misc import _deduplicate_documents, _parse_dict_from_json
 
 logger = logging.getLogger(__name__)
@@ -323,7 +323,7 @@ class LLMRanker:
         prompt = self._prompt_builder.run(query=query.strip(), documents=deduplicated_documents)
 
         try:
-            result = await _run_component_async(
+            result = await _execute_component_async(
                 self._chat_generator, messages=[ChatMessage.from_user(prompt["prompt"])]
             )
         except Exception as exc:

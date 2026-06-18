@@ -31,7 +31,7 @@ from haystack.dataclasses.breakpoints import Breakpoint, PipelineSnapshot
 from haystack.dataclasses.streaming_chunk import _invoke_streaming_callback
 from haystack.telemetry import pipeline_running
 from haystack.utils import _deserialize_value_with_schema
-from haystack.utils.async_utils import _run_component_async
+from haystack.utils.async_utils import _execute_component_async
 from haystack.utils.misc import _get_output_dir
 
 logger = logging.getLogger(__name__)
@@ -553,7 +553,7 @@ class Pipeline(PipelineBase):
             try:
                 # For sync-only components, _run_component_async dispatches to a thread via asyncio.to_thread,
                 # which copies the current contextvars context — preserving e.g. the active tracing span.
-                outputs = await _run_component_async(instance, **component_inputs_copy)
+                outputs = await _execute_component_async(instance, **component_inputs_copy)
             except Exception as error:
                 raise PipelineRuntimeError.from_exception(component_name, instance.__class__, error) from error
 
