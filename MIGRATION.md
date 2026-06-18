@@ -805,3 +805,68 @@ Unlike `AsyncPipeline.run()`, `Pipeline.run()` does not raise when called inside
 - `Pipeline.run` runs components sequentially and does not accept `concurrency_limit`; only `run_async` / `run_async_generator` run components concurrently.
 - Only `run` supports breakpoints (`break_point` / `pipeline_snapshot`).
 - Both run paths are traced under a single `haystack.pipeline.run` operation name, distinguished by a `haystack.pipeline.execution_mode` tag (`sync` or `async`); previously asynchronous runs used `haystack.async_pipeline.run`.
+
+### Auto-generated `Document.id` changes for documents with non-empty `meta`
+
+**What changed:** The hash used to auto-generate `Document.id` is now computed from a canonical (key-sorted) JSON serialization of `meta` instead of the dict's `repr`. Documents with empty `meta` keep the same IDs as before, but documents with non-empty `meta` get different IDs in v3.0. Non-JSON-serializable `meta` values (e.g. `datetime` or custom classes) are now serialized via `str(...)` rather than `repr(...)`, which also changes their IDs. See [#11446](https://github.com/deepset-ai/haystack/pull/11446).
+
+**Why:** Previously the hash reflected the insertion order of keys in `meta`, so two documents with the same content and the same metadata could end up with different IDs depending on how the `meta` dict was constructed. This silently broke `DuplicatePolicy.SKIP` / `FAIL` and any cache or dedup table keyed on the document ID. Sorting the keys before hashing makes the ID order-independent.
+
+**How to migrate:**
+
+If you rely on auto-generated IDs to match documents already persisted in a `DocumentStore` written by Haystack v2.x, re-ingest the affected documents so the new IDs are used consistently, or pass the previous `id` explicitly when constructing the `Document`.
+
+Before (v2.x):
+```python
+from haystack.dataclasses import Document
+
+# ID was derived from meta's dict repr, so it depended on key insertion order:
+# these two documents could end up with different IDs.
+doc1 = Document(content="Berlin is the capital of Germany.", meta={"source": "wiki", "lang": "en"})
+doc2 = Document(content="Berlin is the capital of Germany.", meta={"lang": "en", "source": "wiki"})
+
+After (v3.0):
+```python
+from haystack.dataclasses import Document
+
+# Same content + meta now always yields the same ID, regardless of key order,
+# but that ID differs from the one v2.x produced for documents with non-empty meta.
+doc1 = Document(content="Berlin is the capital of Germany.", meta={"source": "wiki", "lang": "en"})
+doc2 = Document(content="Berlin is the capital of Germany.", meta={"lang": "en", "source": "wiki"})
+assert doc1.id == doc2.id
+```
+
+It is possible to migrate an existing index without rerunning your indexing pipeline, for example to avoid recalculating embeddings. To do that, read stored documents, regenerate their IDs using Haystack 3.0, write the updated documents, and delete the documents stored under their old IDs. 
+
+```python
+from dataclasses import replace
+
+from haystack import Document
+from haystack.document_stores.in_memory import InMemoryDocumentStore
+from haystack.document_stores.types import DuplicatePolicy
+
+# Example DocumentStore with IDs generated with Haystack 2.x
+store = InMemoryDocumentStore()
+store.write_documents(
+    [
+        Document(
+            id="b51c3ee6b892f52bf28af01f5d823a254e438356ec335a20133ad940ef7b8cd7",
+            content="Berlin is the capital of Germany.",
+            meta={"source": "wiki", "lang": "en"},
+        ),
+        Document(
+            id="f022d8d89a99f89547215f8adcfed92f41518f2bb3e11d14e27987bd9d265ead",
+            content="Paris is the capital of France.",
+            meta={"source": "wiki", "lang": "en"},
+        ),
+    ],
+    policy=DuplicatePolicy.OVERWRITE,
+)
+
+# Exemplary steps to re-calculate IDs. Note that all documents are retrieved at once in this example but larger indices require pagination.
+old_documents = store.filter_documents()
+new_documents = [replace(doc, id="") for doc in old_documents]
+store.write_documents(new_documents, policy=DuplicatePolicy.OVERWRITE)
+new_ids = {doc.id for doc in new_documents}
+store.delete_documents([doc.id for doc in old_documents if doc.id not in new_ids])
+```

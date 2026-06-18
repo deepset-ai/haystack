@@ -20,7 +20,7 @@ from haystack.components.preprocessors import DocumentSplitter
 from haystack.core.serialization import component_to_dict
 from haystack.dataclasses import ChatMessage
 from haystack.utils import deserialize_chatgenerator_inplace, expand_page_range
-from haystack.utils.async_utils import _run_component_async
+from haystack.utils.async_utils import _execute_component_async
 from haystack.utils.misc import _parse_dict_from_json
 
 logger = logging.getLogger(__name__)
@@ -307,7 +307,7 @@ class LLMMetadataExtractor:
             return {"error": "Document has no content, skipping LLM call."}
 
         try:
-            result = await _run_component_async(self._chat_generator, messages=[prompt])
+            result = await _execute_component_async(self._chat_generator, messages=[prompt])
         except Exception as e:
             if self.raise_on_failure:
                 raise e

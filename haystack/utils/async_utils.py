@@ -10,7 +10,7 @@ from haystack import logging
 logger = logging.getLogger(__name__)
 
 
-async def _run_component_async(component_instance: Any, **kwargs: Any) -> dict[str, Any]:
+async def _execute_component_async(component_instance: Any, **kwargs: Any) -> dict[str, Any]:
     """
     Run a component asynchronously, preferring its `run_async` method when implemented.
 
