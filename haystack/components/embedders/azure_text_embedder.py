@@ -117,7 +117,6 @@ class AzureOpenAITextEmbedder(OpenAITextEmbedder):
         self.model = azure_deployment
         self.dimensions = dimensions
         self.organization = organization
-        # Store raw params as given; env-default resolution happens lazily in _client_kwargs() at warm-up.
         self.timeout = timeout
         self.max_retries = max_retries
         self.prefix = prefix

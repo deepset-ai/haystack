@@ -202,8 +202,7 @@ class AzureOpenAIChatGenerator(OpenAIChatGenerator):
         # of passing it as a parameter.
         azure_endpoint = azure_endpoint or os.environ.get("AZURE_OPENAI_ENDPOINT")
         # `azure_endpoint` accepts either a plain string or a `Secret`. We keep the original value on the instance for
-        # serialization and resolve it to a string only to validate that an endpoint was provided. The Azure client
-        # requires an endpoint, so this validation stays in __init__ (it is not secret/env-default resolution).
+        # serialization and resolve it to a string only to validate that an endpoint was provided.
         resolved_azure_endpoint = (
             azure_endpoint.resolve_value() if isinstance(azure_endpoint, Secret) else azure_endpoint
         )
@@ -224,7 +223,6 @@ class AzureOpenAIChatGenerator(OpenAIChatGenerator):
         self.azure_deployment = azure_deployment
         self.organization = organization
         self.model = azure_deployment or "gpt-4.1-mini"
-        # Store raw params as given; env-default resolution happens lazily in _client_kwargs() at warm-up.
         self.timeout = timeout
         self.max_retries = max_retries
         self.default_headers = default_headers or {}

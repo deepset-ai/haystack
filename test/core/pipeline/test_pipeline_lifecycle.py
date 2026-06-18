@@ -72,6 +72,7 @@ class BareComponent:
 
 
 def test_run_async_uses_warm_up_async():
+    """run_async warms components via warm_up_async (not the sync warm_up), on a running loop."""
     rec = LifecycleRecorder()
     pipe = Pipeline()
     pipe.add_component("rec", rec)
@@ -84,6 +85,10 @@ def test_run_async_uses_warm_up_async():
 
 
 def test_sync_warm_up_fallback_blocks_on_loop_thread():
+    """
+    If a component implements only the sync warm_up, run_async still warms it by calling that sync
+    warm_up directly on the event-loop thread, instead of offloading it to a worker thread.
+    """
     rec = SyncWarmUpRecorder()
     pipe = Pipeline()
     pipe.add_component("rec", rec)
@@ -96,6 +101,7 @@ def test_sync_warm_up_fallback_blocks_on_loop_thread():
 
 
 def test_sync_run_uses_sync_warm_up():
+    """The sync run path warms components via sync warm_up, never warm_up_async."""
     rec = LifecycleRecorder()
     pipe = Pipeline()
     pipe.add_component("rec", rec)
@@ -106,6 +112,7 @@ def test_sync_run_uses_sync_warm_up():
 
 
 def test_async_lifecycle_shares_one_loop():
+    """warm_up_async, run_async and close_async all run on the same event loop (correct async-client affinity)."""
     rec = LifecycleRecorder()
     pipe = Pipeline()
     pipe.add_component("rec", rec)
@@ -123,6 +130,7 @@ def test_async_lifecycle_shares_one_loop():
 
 
 def test_pipeline_close_calls_sync_close_only():
+    """Pipeline.close() calls each component's sync close, never close_async."""
     rec = LifecycleRecorder()
     pipe = Pipeline()
     pipe.add_component("rec", rec)
@@ -133,6 +141,7 @@ def test_pipeline_close_calls_sync_close_only():
 
 
 def test_pipeline_close_async_calls_async_close_only():
+    """Pipeline.close_async() calls each component's close_async only, never the sync close."""
     rec = LifecycleRecorder()
     pipe = Pipeline()
     pipe.add_component("rec", rec)
@@ -143,6 +152,7 @@ def test_pipeline_close_async_calls_async_close_only():
 
 
 def test_run_does_not_auto_close():
+    """Running a pipeline (sync or async) never auto-closes components; close is always explicit."""
     rec = LifecycleRecorder()
     pipe = Pipeline()
     pipe.add_component("rec", rec)
@@ -154,6 +164,10 @@ def test_run_does_not_auto_close():
 
 
 def test_lifecycle_methods_are_optional():
+    """
+    A component that implements none of the lifecycle methods works fine: the pipeline guards every
+    warm_up_async / close / close_async call with hasattr, so they are skipped instead of raising.
+    """
     pipe = Pipeline()
     pipe.add_component("bare", BareComponent())
     asyncio.run(pipe.warm_up_async())
