@@ -31,7 +31,7 @@
 | haystack/components/converters/csv.py                                               |       88 |        4 |     95% |161-162, 184-185 |
 | haystack/components/converters/docx.py                                              |      159 |        1 |     99% |       262 |
 | haystack/components/converters/file\_to\_file\_content.py                           |       32 |        0 |    100% |           |
-| haystack/components/converters/html.py                                              |       45 |        0 |    100% |           |
+| haystack/components/converters/html.py                                              |       48 |        0 |    100% |           |
 | haystack/components/converters/image/\_\_init\_\_.py                                |        5 |        0 |    100% |           |
 | haystack/components/converters/image/document\_to\_image.py                         |       43 |        0 |    100% |           |
 | haystack/components/converters/image/file\_to\_document.py                          |       27 |        1 |     96% |        93 |
@@ -266,7 +266,7 @@
 | haystack/utils/type\_serialization.py                                               |      112 |       12 |     89% |62, 64, 178-179, 190-193, 199, 215-218 |
 | haystack/utils/url\_validation.py                                                   |        4 |        0 |    100% |           |
 | haystack/version.py                                                                 |        5 |        2 |     60% |      9-10 |
-| **TOTAL**                                                                           | **17877** | **1221** | **93%** |           |
+| **TOTAL**                                                                           | **17880** | **1221** | **93%** |           |
 
 
 ## Setup coverage badge
