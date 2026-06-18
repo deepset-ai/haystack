@@ -38,7 +38,7 @@ from haystack.tools import (
     serialize_tools_or_toolset,
     warm_up_tools,
 )
-from haystack.utils.async_utils import _run_component_async
+from haystack.utils.async_utils import _execute_component_async
 from haystack.utils.callable_serialization import deserialize_callable, serialize_callable
 from haystack.utils.deserialization import deserialize_component_inplace
 
@@ -1034,7 +1034,7 @@ class Agent:
                 llm_span.set_content_tag("haystack.agent.step.llm.input", chat_generator_inputs)
                 # For sync-only generators, _run_component_async dispatches to a thread via asyncio.to_thread,
                 # which copies the current contextvars context — preserving the active tracing span.
-                result = await _run_component_async(self.chat_generator, **chat_generator_inputs)
+                result = await _execute_component_async(self.chat_generator, **chat_generator_inputs)
                 llm_span.set_content_tag("haystack.agent.step.llm.output", result)
             llm_messages = result["replies"]
             exe_context.state.set("messages", llm_messages)
