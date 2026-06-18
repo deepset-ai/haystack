@@ -4,7 +4,7 @@
 
 import os
 from typing import Any
-from unittest.mock import ANY
+from unittest.mock import ANY, AsyncMock, Mock
 
 import pytest
 
@@ -491,3 +491,58 @@ class TestMultiRetrieverExperimental:
     @pytest.mark.filterwarnings("always::haystack.utils.experimental.ExperimentalWarning")
     def test_experimental_attribute_is_set(self):
         assert getattr(MultiRetriever, "__experimental__", False) is True
+
+
+class TestComponentLifecycle:
+    def test_warm_up_delegates_to_all_retrievers(self):
+        a = Mock(spec=["run", "warm_up"])
+        b = Mock(spec=["run", "warm_up"])
+        retriever = MultiRetriever(retrievers={"a": a, "b": b})
+        retriever.warm_up()
+        a.warm_up.assert_called_once()
+        b.warm_up.assert_called_once()
+
+    async def test_warm_up_async_delegates_to_all_retrievers(self):
+        a = Mock(spec=["run", "warm_up_async"])
+        a.warm_up_async = AsyncMock()
+        b = Mock(spec=["run", "warm_up_async"])
+        b.warm_up_async = AsyncMock()
+        retriever = MultiRetriever(retrievers={"a": a, "b": b})
+        await retriever.warm_up_async()
+        a.warm_up_async.assert_awaited_once()
+        b.warm_up_async.assert_awaited_once()
+
+    async def test_warm_up_async_falls_back_to_sync_warm_up(self):
+        a = Mock(spec=["run", "warm_up"])
+        b = Mock(spec=["run", "warm_up"])
+        retriever = MultiRetriever(retrievers={"a": a, "b": b})
+        await retriever.warm_up_async()
+        a.warm_up.assert_called_once()
+        b.warm_up.assert_called_once()
+
+    def test_close_delegates_to_all_retrievers(self):
+        a = Mock(spec=["run", "close"])
+        b = Mock(spec=["run", "close"])
+        retriever = MultiRetriever(retrievers={"a": a, "b": b})
+        retriever.close()
+        a.close.assert_called_once()
+        b.close.assert_called_once()
+
+    async def test_close_async_delegates_to_all_retrievers(self):
+        a = Mock(spec=["run", "close_async"])
+        a.close_async = AsyncMock()
+        b = Mock(spec=["run", "close_async"])
+        b.close_async = AsyncMock()
+        retriever = MultiRetriever(retrievers={"a": a, "b": b})
+        await retriever.close_async()
+        a.close_async.assert_awaited_once()
+        b.close_async.assert_awaited_once()
+
+    async def test_lifecycle_is_safe_when_retrievers_lack_methods(self):
+        a = Mock(spec=["run"])
+        b = Mock(spec=["run"])
+        retriever = MultiRetriever(retrievers={"a": a, "b": b})
+        retriever.warm_up()
+        await retriever.warm_up_async()
+        retriever.close()
+        await retriever.close_async()

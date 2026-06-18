@@ -3,38 +3,25 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import os
-from unittest.mock import AsyncMock, Mock
+from unittest.mock import AsyncMock, MagicMock, Mock
 
 import pytest
-from openai import AsyncOpenAI
 
+import haystack.components.audio.whisper_remote as whisper_remote_module
 from haystack.components.audio.whisper_remote import RemoteWhisperTranscriber
 from haystack.dataclasses import ByteStream
 from haystack.utils import Secret
 
 
 class TestRemoteWhisperTranscriber:
-    def test_init_no_key(self, monkeypatch):
-        monkeypatch.delenv("OPENAI_API_KEY", raising=False)
-        with pytest.raises(ValueError, match="None of the .* environment variables are set"):
-            RemoteWhisperTranscriber()
-
-    def test_init_key_env_var(self, monkeypatch):
-        monkeypatch.setenv("OPENAI_API_KEY", "test_api_key")
-        t = RemoteWhisperTranscriber()
-        assert t.client.api_key == "test_api_key"
-
-    def test_init_key_module_env_and_global_var(self, monkeypatch):
-        monkeypatch.setenv("OPENAI_API_KEY", "test_api_key_2")
-        t = RemoteWhisperTranscriber()
-        assert t.client.api_key == "test_api_key_2"
-
     def test_init_default(self):
         transcriber = RemoteWhisperTranscriber(api_key=Secret.from_token("test_api_key"))
-        assert transcriber.client.api_key == "test_api_key"
+        assert transcriber.api_key == Secret.from_token("test_api_key")
         assert transcriber.model == "whisper-1"
         assert transcriber.organization is None
         assert transcriber.whisper_params == {"response_format": "json"}
+        assert transcriber.client is None
+        assert transcriber.async_client is None
 
     def test_init_custom_parameters(self):
         transcriber = RemoteWhisperTranscriber(
@@ -58,6 +45,8 @@ class TestRemoteWhisperTranscriber:
             "response_format": "json",
             "temperature": "0.5",
         }
+        assert transcriber.client is None
+        assert transcriber.async_client is None
 
     def test_to_dict_default_parameters(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test_api_key")
@@ -167,8 +156,10 @@ class TestRemoteWhisperTranscriber:
             },
         }
 
-        with pytest.raises(ValueError, match="None of the .* environment variables are set"):
-            RemoteWhisperTranscriber.from_dict(data)
+        transcriber = RemoteWhisperTranscriber.from_dict(data)
+        assert transcriber.model == "whisper-1"
+        assert transcriber.client is None
+        assert transcriber.async_client is None
 
     @pytest.mark.skipif(
         not os.environ.get("OPENAI_API_KEY", None),
@@ -198,12 +189,6 @@ class TestRemoteWhisperTranscriber:
 
 
 class TestRemoteWhisperTranscriberAsync:
-    def test_init_async_client(self, monkeypatch):
-        monkeypatch.setenv("OPENAI_API_KEY", "test_api_key")
-        transcriber = RemoteWhisperTranscriber()
-        assert isinstance(transcriber.async_client, AsyncOpenAI)
-        assert transcriber.async_client.api_key == "test_api_key"
-
     @pytest.mark.asyncio
     async def test_run_async_with_path(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test_api_key")
@@ -268,3 +253,73 @@ class TestRemoteWhisperTranscriberAsync:
         assert str(test_files_path / "audio" / "the context for this answer is here.wav") == docs[1].meta["file_path"]
 
         assert docs[2].content.strip().lower() == "answer."
+
+
+@pytest.fixture
+def mock_openai_clients(monkeypatch):
+    monkeypatch.setenv("OPENAI_API_KEY", "fake")
+    sync_cls = MagicMock(name="OpenAI")
+    async_cls = MagicMock(name="AsyncOpenAI")
+    async_cls.return_value.close = AsyncMock()
+    monkeypatch.setattr(whisper_remote_module, "OpenAI", sync_cls)
+    monkeypatch.setattr(whisper_remote_module, "AsyncOpenAI", async_cls)
+    return sync_cls, async_cls
+
+
+class TestComponentLifecycle:
+    def test_warm_up_resolves_key(self, monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "test_api_key")
+        transcriber = RemoteWhisperTranscriber()
+        transcriber.warm_up()
+        assert transcriber.client.api_key == "test_api_key"
+
+    def test_key_resolved_at_warm_up_not_init(self, monkeypatch):
+        monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+        transcriber = RemoteWhisperTranscriber()
+        with pytest.raises(ValueError, match="None of the .* environment variables are set"):
+            transcriber.warm_up()
+
+    def test_sync_lifecycle(self, mock_openai_clients):
+        sync_cls, _ = mock_openai_clients
+        transcriber = RemoteWhisperTranscriber()
+        assert transcriber.client is None
+        assert transcriber.async_client is None
+
+        transcriber.warm_up()
+        assert transcriber.client is sync_cls.return_value
+        assert transcriber.async_client is None
+
+        transcriber.close()
+        sync_cls.return_value.close.assert_called_once()
+        assert transcriber.client is None
+
+    async def test_async_lifecycle(self, mock_openai_clients):
+        _, async_cls = mock_openai_clients
+        transcriber = RemoteWhisperTranscriber()
+
+        await transcriber.warm_up_async()
+        assert transcriber.async_client is async_cls.return_value
+        assert transcriber.client is None
+
+        await transcriber.close_async()
+        async_cls.return_value.close.assert_awaited_once()
+        assert transcriber.async_client is None
+
+    async def test_close_is_safe_without_warm_up(self, mock_openai_clients):
+        transcriber = RemoteWhisperTranscriber()
+        transcriber.close()
+        await transcriber.close_async()
+        assert transcriber.client is None
+        assert transcriber.async_client is None
+
+    async def test_close_and_close_async_are_independent(self, mock_openai_clients):
+        transcriber = RemoteWhisperTranscriber()
+        transcriber.warm_up()
+        await transcriber.warm_up_async()
+
+        transcriber.close()
+        assert transcriber.client is None
+        assert transcriber.async_client is not None
+
+        await transcriber.close_async()
+        assert transcriber.async_client is None

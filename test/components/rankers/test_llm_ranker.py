@@ -437,3 +437,39 @@ class TestLLMRankerAsync:
         assert result["documents"]
         assert result["documents"][0].id == "doc-berlin"
         assert len(result["documents"]) <= 2
+
+
+class TestComponentLifecycle:
+    def test_warm_up_delegates_to_chat_generator(self, mock_chat_generator):
+        ranker = LLMRanker(chat_generator=mock_chat_generator)
+        ranker.warm_up()
+        mock_chat_generator.warm_up.assert_called_once()
+
+    async def test_warm_up_async_delegates_to_chat_generator(self, mock_chat_generator):
+        mock_chat_generator.warm_up_async = AsyncMock()
+        ranker = LLMRanker(chat_generator=mock_chat_generator)
+        await ranker.warm_up_async()
+        mock_chat_generator.warm_up_async.assert_awaited_once()
+
+    async def test_warm_up_async_falls_back_to_sync_warm_up(self):
+        chat_generator = Mock(spec=["run", "warm_up"])
+        ranker = LLMRanker(chat_generator=chat_generator)
+        await ranker.warm_up_async()
+        chat_generator.warm_up.assert_called_once()
+
+    def test_close_delegates_to_chat_generator(self, mock_chat_generator):
+        ranker = LLMRanker(chat_generator=mock_chat_generator)
+        ranker.close()
+        mock_chat_generator.close.assert_called_once()
+
+    async def test_close_async_delegates_to_chat_generator(self, mock_chat_generator):
+        mock_chat_generator.close_async = AsyncMock()
+        ranker = LLMRanker(chat_generator=mock_chat_generator)
+        await ranker.close_async()
+        mock_chat_generator.close_async.assert_awaited_once()
+
+    def test_lifecycle_is_safe_when_chat_generator_lacks_methods(self):
+        chat_generator = Mock(spec=["run"])
+        ranker = LLMRanker(chat_generator=chat_generator)
+        ranker.warm_up()
+        ranker.close()

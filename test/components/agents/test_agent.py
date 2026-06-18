@@ -960,7 +960,7 @@ class TestAgent:
         chat_generator.warm_up = MagicMock()
         agent = Agent(chat_generator=chat_generator, tools=[weather_tool], system_prompt="This is a system prompt.")
         agent.run([ChatMessage.from_user("What is the weather in Berlin?")])
-        assert agent._is_warmed_up is True
+        assert agent._tools_warmed_up is True
         assert chat_generator.warm_up.call_count == 1
 
     def test_run_no_messages(self, monkeypatch):
@@ -2293,6 +2293,56 @@ class TestAgentWarmUp:
 
         assert per_run_toolset.was_warmed_up
         assert per_run_tool.was_warmed_up
+
+
+class TestComponentLifecycle:
+    def test_warm_up_delegates_to_chat_generator(self):
+        chat_generator = MockChatGenerator()
+        chat_generator.warm_up = MagicMock()
+        agent = Agent(chat_generator=chat_generator, tools=[])
+        agent.warm_up()
+        chat_generator.warm_up.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_warm_up_async_delegates_to_chat_generator(self):
+        chat_generator = MockChatGenerator()
+        chat_generator.warm_up_async = AsyncMock()
+        chat_generator.warm_up = MagicMock()
+        agent = Agent(chat_generator=chat_generator, tools=[])
+        await agent.warm_up_async()
+        chat_generator.warm_up_async.assert_awaited_once()
+        chat_generator.warm_up.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_warm_up_async_falls_back_to_sync_warm_up(self):
+        chat_generator = MockChatGeneratorWithoutRunAsync()
+        chat_generator.warm_up = MagicMock()
+        agent = Agent(chat_generator=chat_generator, tools=[])
+        await agent.warm_up_async()
+        chat_generator.warm_up.assert_called_once()
+
+    def test_close_delegates_to_chat_generator(self):
+        chat_generator = MockChatGenerator()
+        chat_generator.close = MagicMock()
+        agent = Agent(chat_generator=chat_generator, tools=[])
+        agent.close()
+        chat_generator.close.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_close_async_delegates_to_chat_generator(self):
+        chat_generator = MockChatGenerator()
+        chat_generator.close_async = AsyncMock()
+        agent = Agent(chat_generator=chat_generator, tools=[])
+        await agent.close_async()
+        chat_generator.close_async.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_lifecycle_is_safe_when_chat_generator_lacks_methods(self):
+        agent = Agent(chat_generator=MockChatGeneratorWithoutRunAsync(), tools=[])
+        agent.warm_up()
+        await agent.warm_up_async()
+        agent.close()
+        await agent.close_async()
 
 
 class TestAgentNotTriggeredByInjectedInput:

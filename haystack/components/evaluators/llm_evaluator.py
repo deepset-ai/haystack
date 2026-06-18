@@ -111,16 +111,35 @@ class LLMEvaluator:
             generation_kwargs = {"response_format": {"type": "json_object"}, "seed": 42}
             self._chat_generator = OpenAIChatGenerator(generation_kwargs=generation_kwargs)
 
-        self._is_warmed_up = False
-
     def warm_up(self) -> None:
         """
-        Warm up the component by warming up the underlying chat generator.
+        Warm up the underlying chat generator.
         """
-        if not self._is_warmed_up:
-            if hasattr(self._chat_generator, "warm_up"):
-                self._chat_generator.warm_up()
-            self._is_warmed_up = True
+        if hasattr(self._chat_generator, "warm_up"):
+            self._chat_generator.warm_up()
+
+    async def warm_up_async(self) -> None:
+        """
+        Warm up the underlying chat generator on the serving event loop.
+        """
+        if hasattr(self._chat_generator, "warm_up_async"):
+            await self._chat_generator.warm_up_async()
+        elif hasattr(self._chat_generator, "warm_up"):
+            self._chat_generator.warm_up()
+
+    def close(self) -> None:
+        """
+        Release the underlying chat generator's resources.
+        """
+        if hasattr(self._chat_generator, "close"):
+            self._chat_generator.close()
+
+    async def close_async(self) -> None:
+        """
+        Release the underlying chat generator's async resources.
+        """
+        if hasattr(self._chat_generator, "close_async"):
+            await self._chat_generator.close_async()
 
     @staticmethod
     def validate_init_parameters(
@@ -195,8 +214,7 @@ class LLMEvaluator:
             Only in the case that  `raise_on_failure` is set to True and the received inputs are not lists or have
             different lengths, or if the output is not a valid JSON or doesn't contain the expected keys.
         """
-        if not self._is_warmed_up:
-            self.warm_up()
+        self.warm_up()
 
         self.validate_input_parameters(dict(self.inputs), inputs)
 
@@ -263,8 +281,7 @@ class LLMEvaluator:
             different lengths, or if the output is not a valid JSON or doesn't contain the expected keys.
         """
 
-        if not self._is_warmed_up:
-            self.warm_up()
+        await self.warm_up_async()
 
         self.validate_input_parameters(dict(self.inputs), inputs)
 

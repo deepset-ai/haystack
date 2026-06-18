@@ -117,33 +117,69 @@ class AzureOpenAITextEmbedder(OpenAITextEmbedder):
         self.model = azure_deployment
         self.dimensions = dimensions
         self.organization = organization
-        self.timeout = timeout if timeout is not None else float(os.environ.get("OPENAI_TIMEOUT", "30.0"))
-        self.max_retries = max_retries if max_retries is not None else int(os.environ.get("OPENAI_MAX_RETRIES", "5"))
+        # Store raw params as given; env-default resolution happens lazily in _client_kwargs() at warm-up.
+        self.timeout = timeout
+        self.max_retries = max_retries
         self.prefix = prefix
         self.suffix = suffix
         self.default_headers = default_headers or {}
         self.azure_ad_token_provider = azure_ad_token_provider
         self.http_client_kwargs = http_client_kwargs
 
-        client_kwargs: dict[str, Any] = {
-            "api_version": api_version,
-            "azure_endpoint": azure_endpoint,
-            "azure_deployment": azure_deployment,
-            "azure_ad_token_provider": azure_ad_token_provider,
-            "api_key": api_key.resolve_value() if api_key is not None else None,
-            "azure_ad_token": azure_ad_token.resolve_value() if azure_ad_token is not None else None,
-            "organization": organization,
-            "timeout": self.timeout,
-            "max_retries": self.max_retries,
+        self.client: AzureOpenAI | None = None
+        self.async_client: AsyncAzureOpenAI | None = None
+
+    def _client_kwargs(self) -> dict[str, Any]:
+        timeout = self.timeout if self.timeout is not None else float(os.environ.get("OPENAI_TIMEOUT", "30.0"))
+        max_retries = (
+            self.max_retries if self.max_retries is not None else int(os.environ.get("OPENAI_MAX_RETRIES", "5"))
+        )
+        return {
+            "api_version": self.api_version,
+            "azure_endpoint": self.azure_endpoint,
+            "azure_deployment": self.azure_deployment,
+            "azure_ad_token_provider": self.azure_ad_token_provider,
+            "api_key": self.api_key.resolve_value() if self.api_key is not None else None,
+            "azure_ad_token": self.azure_ad_token.resolve_value() if self.azure_ad_token is not None else None,
+            "organization": self.organization,
+            "timeout": timeout,
+            "max_retries": max_retries,
             "default_headers": self.default_headers,
         }
 
-        self.client = AzureOpenAI(
-            http_client=init_http_client(self.http_client_kwargs, async_client=False), **client_kwargs
-        )
-        self.async_client = AsyncAzureOpenAI(
-            http_client=init_http_client(self.http_client_kwargs, async_client=True), **client_kwargs
-        )
+    def warm_up(self) -> None:
+        """
+        Initializes the synchronous Azure OpenAI client.
+        """
+        if self.client is None:
+            self.client = AzureOpenAI(
+                http_client=init_http_client(self.http_client_kwargs, async_client=False), **self._client_kwargs()
+            )
+
+    async def warm_up_async(self) -> None:  # noqa: RUF029
+        """
+        Initializes the asynchronous Azure OpenAI client on the serving event loop.
+        """
+        if self.async_client is None:
+            self.async_client = AsyncAzureOpenAI(
+                http_client=init_http_client(self.http_client_kwargs, async_client=True), **self._client_kwargs()
+            )
+
+    def close(self) -> None:
+        """
+        Releases the synchronous Azure OpenAI client.
+        """
+        if self.client is not None:
+            self.client.close()
+            self.client = None
+
+    async def close_async(self) -> None:
+        """
+        Releases the asynchronous Azure OpenAI client.
+        """
+        if self.async_client is not None:
+            await self.async_client.close()
+            self.async_client = None
 
     def to_dict(self) -> dict[str, Any]:
         """

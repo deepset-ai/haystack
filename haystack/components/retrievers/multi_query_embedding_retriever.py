@@ -85,18 +85,40 @@ class MultiQueryEmbeddingRetriever:
         self.retriever = retriever
         self.query_embedder = query_embedder
         self.max_workers = max_workers
-        self._is_warmed_up = False
 
     def warm_up(self) -> None:
         """
-        Warm up the query embedder and the retriever if any has a warm_up method.
+        Warm up the query embedder and the retriever.
         """
-        if not self._is_warmed_up:
-            if hasattr(self.query_embedder, "warm_up") and callable(self.query_embedder.warm_up):
-                self.query_embedder.warm_up()
-            if hasattr(self.retriever, "warm_up") and callable(self.retriever.warm_up):
-                self.retriever.warm_up()
-            self._is_warmed_up = True
+        for inner in (self.query_embedder, self.retriever):
+            if hasattr(inner, "warm_up"):
+                inner.warm_up()
+
+    async def warm_up_async(self) -> None:
+        """
+        Warm up the query embedder and the retriever on the serving event loop.
+        """
+        for inner in (self.query_embedder, self.retriever):
+            if hasattr(inner, "warm_up_async"):
+                await inner.warm_up_async()
+            elif hasattr(inner, "warm_up"):
+                inner.warm_up()
+
+    def close(self) -> None:
+        """
+        Release the query embedder's and the retriever's resources.
+        """
+        for inner in (self.query_embedder, self.retriever):
+            if hasattr(inner, "close"):
+                inner.close()
+
+    async def close_async(self) -> None:
+        """
+        Release the query embedder's and the retriever's async resources.
+        """
+        for inner in (self.query_embedder, self.retriever):
+            if hasattr(inner, "close_async"):
+                await inner.close_async()
 
     @component.output_types(documents=list[Document])
     def run(self, queries: list[str], retriever_kwargs: dict[str, Any] | None = None) -> dict[str, list[Document]]:
@@ -112,8 +134,7 @@ class MultiQueryEmbeddingRetriever:
         docs: list[Document] = []
         retriever_kwargs = retriever_kwargs or {}
 
-        if not self._is_warmed_up:
-            self.warm_up()
+        self.warm_up()
 
         with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
             queries_results = executor.map(lambda query: self._run_on_thread(query, retriever_kwargs), queries)
@@ -145,8 +166,7 @@ class MultiQueryEmbeddingRetriever:
         """
         retriever_kwargs = retriever_kwargs or {}
 
-        if not self._is_warmed_up:
-            self.warm_up()
+        await self.warm_up_async()
 
         results = await asyncio.gather(*[self._run_one_async(q, retriever_kwargs) for q in queries])
         docs: list[Document] = [doc for result in results if result for doc in result]

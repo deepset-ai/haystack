@@ -169,16 +169,36 @@ class LLMDocumentContentExtractor:
         self._document_to_image_content = DocumentToImageContent(
             file_path_meta_field=file_path_meta_field, root_path=root_path, detail=detail, size=size
         )
-        self._is_warmed_up = False
 
     def warm_up(self) -> None:
         """
-        Warm up the ChatGenerator if it has a warm_up method.
+        Warm up the underlying chat generator.
         """
-        if not self._is_warmed_up:
-            if hasattr(self._chat_generator, "warm_up"):
-                self._chat_generator.warm_up()
-            self._is_warmed_up = True
+        if hasattr(self._chat_generator, "warm_up"):
+            self._chat_generator.warm_up()
+
+    async def warm_up_async(self) -> None:
+        """
+        Warm up the underlying chat generator on the serving event loop.
+        """
+        if hasattr(self._chat_generator, "warm_up_async"):
+            await self._chat_generator.warm_up_async()
+        elif hasattr(self._chat_generator, "warm_up"):
+            self._chat_generator.warm_up()
+
+    def close(self) -> None:
+        """
+        Release the underlying chat generator's resources.
+        """
+        if hasattr(self._chat_generator, "close"):
+            self._chat_generator.close()
+
+    async def close_async(self) -> None:
+        """
+        Release the underlying chat generator's async resources.
+        """
+        if hasattr(self._chat_generator, "close_async"):
+            await self._chat_generator.close_async()
 
     def to_dict(self) -> dict[str, Any]:
         """
@@ -340,8 +360,7 @@ class LLMDocumentContentExtractor:
         if not documents:
             return {"documents": [], "failed_documents": []}
 
-        if not self._is_warmed_up:
-            self.warm_up()
+        self.warm_up()
 
         image_contents = self._document_to_image_content.run(documents=documents)["image_contents"]
 
@@ -376,8 +395,7 @@ class LLMDocumentContentExtractor:
         if not documents:
             return {"documents": [], "failed_documents": []}
 
-        if not self._is_warmed_up:
-            self.warm_up()
+        await self.warm_up_async()
 
         image_contents = self._document_to_image_content.run(documents=documents)["image_contents"]
 

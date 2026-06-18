@@ -171,16 +171,28 @@ class LLMRanker:
             self._chat_generator = _default_openai_chat_generator()
         else:
             self._chat_generator = chat_generator
-        self._is_warmed_up = False
 
     def warm_up(self) -> None:
-        """
-        Warm up the underlying chat generator.
-        """
-        if not self._is_warmed_up:
-            if hasattr(self._chat_generator, "warm_up"):
-                self._chat_generator.warm_up()
-            self._is_warmed_up = True
+        """Warm up the underlying chat generator."""
+        if hasattr(self._chat_generator, "warm_up"):
+            self._chat_generator.warm_up()
+
+    async def warm_up_async(self) -> None:
+        """Warm up the underlying chat generator on the serving event loop."""
+        if hasattr(self._chat_generator, "warm_up_async"):
+            await self._chat_generator.warm_up_async()
+        elif hasattr(self._chat_generator, "warm_up"):
+            self._chat_generator.warm_up()
+
+    def close(self) -> None:
+        """Release the underlying chat generator's resources."""
+        if hasattr(self._chat_generator, "close"):
+            self._chat_generator.close()
+
+    async def close_async(self) -> None:
+        """Release the underlying chat generator's async resources."""
+        if hasattr(self._chat_generator, "close_async"):
+            await self._chat_generator.close_async()
 
     def to_dict(self) -> dict[str, Any]:
         """
@@ -242,8 +254,7 @@ class LLMRanker:
             logger.warning("Empty query provided to LLMRanker. Returning documents without reranking.")
             return {"documents": fallback_documents}
 
-        if not self._is_warmed_up:
-            self.warm_up()
+        self.warm_up()
 
         prompt = self._prompt_builder.run(query=query.strip(), documents=deduplicated_documents)
 
@@ -307,8 +318,7 @@ class LLMRanker:
             logger.warning("Empty query provided to LLMRanker. Returning documents without reranking.")
             return {"documents": fallback_documents}
 
-        if not self._is_warmed_up:
-            self.warm_up()
+        await self.warm_up_async()
 
         prompt = self._prompt_builder.run(query=query.strip(), documents=deduplicated_documents)
 

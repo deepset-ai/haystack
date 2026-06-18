@@ -98,18 +98,50 @@ class RemoteWhisperTranscriber:
             )
         whisper_params["response_format"] = "json"
         self.whisper_params = whisper_params
-        self.client = OpenAI(
-            api_key=api_key.resolve_value(),
-            organization=organization,
-            base_url=api_base_url,
-            http_client=init_http_client(self.http_client_kwargs, async_client=False),
-        )
-        self.async_client = AsyncOpenAI(
-            api_key=api_key.resolve_value(),
-            organization=organization,
-            base_url=api_base_url,
-            http_client=init_http_client(self.http_client_kwargs, async_client=True),
-        )
+
+        self.client: OpenAI | None = None
+        self.async_client: AsyncOpenAI | None = None
+
+    def _client_kwargs(self) -> dict[str, Any]:
+        return {
+            "api_key": self.api_key.resolve_value(),
+            "organization": self.organization,
+            "base_url": self.api_base_url,
+        }
+
+    def warm_up(self) -> None:
+        """
+        Initializes the synchronous OpenAI client.
+        """
+        if self.client is None:
+            self.client = OpenAI(
+                http_client=init_http_client(self.http_client_kwargs, async_client=False), **self._client_kwargs()
+            )
+
+    async def warm_up_async(self) -> None:  # noqa: RUF029
+        """
+        Initializes the asynchronous OpenAI client on the serving event loop.
+        """
+        if self.async_client is None:
+            self.async_client = AsyncOpenAI(
+                http_client=init_http_client(self.http_client_kwargs, async_client=True), **self._client_kwargs()
+            )
+
+    def close(self) -> None:
+        """
+        Releases the synchronous OpenAI client.
+        """
+        if self.client is not None:
+            self.client.close()
+            self.client = None
+
+    async def close_async(self) -> None:
+        """
+        Releases the asynchronous OpenAI client.
+        """
+        if self.async_client is not None:
+            await self.async_client.close()
+            self.async_client = None
 
     def to_dict(self) -> dict[str, Any]:
         """
@@ -152,6 +184,7 @@ class RemoteWhisperTranscriber:
             - `documents`: A list of documents, one document for each file.
                 The content of each document is the transcribed text.
         """
+        self.warm_up()
         documents = []
 
         for source in sources:
@@ -163,6 +196,7 @@ class RemoteWhisperTranscriber:
             file = io.BytesIO(source.data)
             file.name = str(source.meta["file_path"]) if "file_path" in source.meta else "__fallback__.wav"
 
+            assert self.client is not None  # mypy: client is built by warm_up above
             content = self.client.audio.transcriptions.create(file=file, model=self.model, **self.whisper_params)
             doc = Document(content=content.text, meta=source.meta)
             documents.append(doc)
@@ -184,6 +218,7 @@ class RemoteWhisperTranscriber:
             - `documents`: A list of documents, one document for each file.
                 The content of each document is the transcribed text.
         """
+        await self.warm_up_async()
         documents = []
 
         for source in sources:
@@ -195,6 +230,7 @@ class RemoteWhisperTranscriber:
             file = io.BytesIO(source.data)
             file.name = str(source.meta["file_path"]) if "file_path" in source.meta else "__fallback__.wav"
 
+            assert self.async_client is not None  # mypy: async_client is built by warm_up_async above
             content = await self.async_client.audio.transcriptions.create(
                 file=file, model=self.model, **self.whisper_params
             )

@@ -197,16 +197,40 @@ class LLMMetadataExtractor:
         self.expanded_range = expand_page_range(page_range) if page_range else None
         self.max_workers = max_workers
         self._chat_generator = chat_generator
-        self._is_warmed_up = False
 
     def warm_up(self) -> None:
         """
-        Warm up the LLM provider component.
+        Warm up the underlying chat generator and splitter.
         """
-        if not self._is_warmed_up:
-            if hasattr(self._chat_generator, "warm_up"):
-                self._chat_generator.warm_up()
-            self._is_warmed_up = True
+        for inner in (self._chat_generator, self.splitter):
+            if hasattr(inner, "warm_up"):
+                inner.warm_up()
+
+    async def warm_up_async(self) -> None:
+        """
+        Warm up the underlying chat generator and splitter on the serving event loop.
+        """
+        for inner in (self._chat_generator, self.splitter):
+            if hasattr(inner, "warm_up_async"):
+                await inner.warm_up_async()
+            elif hasattr(inner, "warm_up"):
+                inner.warm_up()
+
+    def close(self) -> None:
+        """
+        Release the underlying chat generator's and splitter's resources.
+        """
+        for inner in (self._chat_generator, self.splitter):
+            if hasattr(inner, "close"):
+                inner.close()
+
+    async def close_async(self) -> None:
+        """
+        Release the underlying chat generator's and splitter's async resources.
+        """
+        for inner in (self._chat_generator, self.splitter):
+            if hasattr(inner, "close_async"):
+                await inner.close_async()
 
     def to_dict(self) -> dict[str, Any]:
         """
@@ -376,8 +400,7 @@ class LLMMetadataExtractor:
             logger.warning("No documents provided. Skipping metadata extraction.")
             return {"documents": [], "failed_documents": []}
 
-        if not self._is_warmed_up:
-            self.warm_up()
+        self.warm_up()
 
         expanded_range = self.expanded_range
         if page_range:
@@ -426,8 +449,7 @@ class LLMMetadataExtractor:
             logger.warning("No documents provided. Skipping metadata extraction.")
             return {"documents": [], "failed_documents": []}
 
-        if not self._is_warmed_up:
-            self.warm_up()
+        await self.warm_up_async()
 
         expanded_range = self.expanded_range
         if page_range:

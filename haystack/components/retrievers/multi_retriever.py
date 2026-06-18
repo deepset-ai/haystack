@@ -108,7 +108,6 @@ class MultiRetriever:
         self.top_k = top_k
         self.max_workers = max_workers
         self.join_mode = join_mode
-        self._is_warmed_up = False
 
     def _merge_results(self, document_lists: list[list[Document]]) -> list[Document]:
         """
@@ -146,14 +145,37 @@ class MultiRetriever:
 
     def warm_up(self) -> None:
         """
-        Warm up the retrievers if any has a warm_up method.
+        Warm up the retrievers.
         """
-        if self._is_warmed_up:
-            return
         for retriever in self.retrievers.values():
-            if hasattr(retriever, "warm_up") and callable(retriever.warm_up):
+            if hasattr(retriever, "warm_up"):
                 retriever.warm_up()
-        self._is_warmed_up = True
+
+    async def warm_up_async(self) -> None:
+        """
+        Warm up the retrievers on the serving event loop.
+        """
+        for retriever in self.retrievers.values():
+            if hasattr(retriever, "warm_up_async"):
+                await retriever.warm_up_async()
+            elif hasattr(retriever, "warm_up"):
+                retriever.warm_up()
+
+    def close(self) -> None:
+        """
+        Release the retrievers' resources.
+        """
+        for retriever in self.retrievers.values():
+            if hasattr(retriever, "close"):
+                retriever.close()
+
+    async def close_async(self) -> None:
+        """
+        Release the retrievers' async resources.
+        """
+        for retriever in self.retrievers.values():
+            if hasattr(retriever, "close_async"):
+                await retriever.close_async()
 
     @component.output_types(documents=list[Document])
     def run(
@@ -183,8 +205,7 @@ class MultiRetriever:
         :raises ValueError:
             If any name in `active_retrievers` does not match a retriever name.
         """
-        if not self._is_warmed_up:
-            self.warm_up()
+        self.warm_up()
 
         resolved_top_k = top_k if top_k is not None else self.top_k
         resolved_filters = filters if filters is not None else self.filters
@@ -237,8 +258,7 @@ class MultiRetriever:
         :raises ValueError:
             If any name in `active_retrievers` does not match a retriever name.
         """
-        if not self._is_warmed_up:
-            self.warm_up()
+        await self.warm_up_async()
 
         resolved_top_k = top_k if top_k is not None else self.top_k
         resolved_filters = filters if filters is not None else self.filters

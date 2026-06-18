@@ -5,12 +5,13 @@
 import json
 import os
 from typing import Any
-from unittest.mock import MagicMock
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from openai import AsyncOpenAI, OpenAIError
 from pydantic import BaseModel
 
+import haystack.components.generators.chat.openai_responses as openai_responses_module
 from haystack import component
 from haystack.components.agents import Agent
 from haystack.components.generators.chat.openai_responses import OpenAIResponsesChatGenerator
@@ -112,20 +113,17 @@ class TestInitialization:
     def test_init_default(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
         component = OpenAIResponsesChatGenerator()
-        assert component.client.api_key == "test-api-key"
+        assert component.client is None
+        assert component.async_client is None
+        assert component.api_key == Secret.from_env_var("OPENAI_API_KEY")
         assert component.model == "gpt-5-mini"
         assert component.streaming_callback is None
         assert not component.generation_kwargs
-        assert component.client.timeout == 30
-        assert component.client.max_retries == 5
+        assert component.timeout is None
+        assert component.max_retries is None
         assert component.tools is None
         assert not component.tools_strict
         assert component.http_client_kwargs is None
-
-    def test_init_fail_wo_api_key(self, monkeypatch):
-        monkeypatch.delenv("OPENAI_API_KEY", raising=False)
-        with pytest.raises(ValueError):
-            OpenAIResponsesChatGenerator()
 
     def test_init_with_parameters(self, monkeypatch):
         tool = Tool(name="name", description="description", parameters={"x": {"type": "string"}}, function=lambda x: x)
@@ -144,12 +142,14 @@ class TestInitialization:
             tools_strict=True,
             http_client_kwargs={"proxy": "http://example.com:8080", "verify": False},
         )
-        assert component.client.api_key == "test-api-key"
+        assert component.client is None
+        assert component.async_client is None
+        assert component.api_key == Secret.from_token("test-api-key")
         assert component.model == "gpt-4o-mini"
         assert component.streaming_callback is print_streaming_chunk
         assert component.generation_kwargs == {"max_tokens": 10, "some_test_param": "test-params"}
-        assert component.client.timeout == 40.0
-        assert component.client.max_retries == 1
+        assert component.timeout == 40.0
+        assert component.max_retries == 1
         assert component.tools == [tool]
         assert component.tools_strict
         assert component.http_client_kwargs == {"proxy": "http://example.com:8080", "verify": False}
@@ -164,12 +164,14 @@ class TestInitialization:
             api_base_url="test-base-url",
             generation_kwargs={"max_tokens": 10, "some_test_param": "test-params"},
         )
-        assert component.client.api_key == "test-api-key"
+        assert component.client is None
+        assert component.async_client is None
+        assert component.api_key == Secret.from_token("test-api-key")
         assert component.model == "gpt-4o-mini"
         assert component.streaming_callback is print_streaming_chunk
         assert component.generation_kwargs == {"max_tokens": 10, "some_test_param": "test-params"}
-        assert component.client.timeout == 100.0
-        assert component.client.max_retries == 10
+        assert component.timeout is None
+        assert component.max_retries is None
 
     def test_init_with_toolset(self, tools, monkeypatch):
         """Test that the OpenAIChatGenerator can be initialized with a Toolset."""
@@ -310,11 +312,11 @@ class TestSerDe:
             Tool(name="name", description="description", parameters={"x": {"type": "string"}}, function=print)
         ]
         assert component.tools_strict
-        assert component.client.timeout == 100.0
-        assert component.client.max_retries == 10
+        assert component.timeout == 100.0
+        assert component.max_retries == 10
         assert component.http_client_kwargs == {"proxy": "http://example.com:8080", "verify": False}
 
-    def test_from_dict_fail_wo_env_var(self, monkeypatch):
+    def test_from_dict_wo_env_var_does_not_fail(self, monkeypatch):
         monkeypatch.delenv("OPENAI_API_KEY", raising=False)
         data = {
             "type": "haystack.components.generators.chat.openai_responses.OpenAIResponsesChatGenerator",
@@ -328,8 +330,10 @@ class TestSerDe:
                 "tools": None,
             },
         }
-        with pytest.raises(ValueError):
-            OpenAIResponsesChatGenerator.from_dict(data)
+        component = OpenAIResponsesChatGenerator.from_dict(data)
+        assert component.client is None
+        assert component.async_client is None
+        assert component.api_key == Secret.from_env_var("OPENAI_API_KEY")
 
     def test_from_dict_with_toolset(self, tools, monkeypatch):
         """Test that the OpenAIChatGenerator can be deserialized from a dictionary with a Toolset."""
@@ -345,68 +349,80 @@ class TestSerDe:
         assert all(isinstance(tool, Tool) for tool in deserialized_component.tools)
 
 
-class TestWarmUp:
-    def test_warm_up_with_tools(self, monkeypatch):
-        """Test that warm_up() calls warm_up on tools and is idempotent."""
-        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+@pytest.fixture
+def mock_openai_clients(monkeypatch):
+    monkeypatch.setenv("OPENAI_API_KEY", "fake")
+    sync_cls = MagicMock(name="OpenAI")
+    async_cls = MagicMock(name="AsyncOpenAI")
+    async_cls.return_value.close = AsyncMock()
+    monkeypatch.setattr(openai_responses_module, "OpenAI", sync_cls)
+    monkeypatch.setattr(openai_responses_module, "AsyncOpenAI", async_cls)
+    return sync_cls, async_cls
 
-        # Create a mock tool that tracks if warm_up() was called
+
+class TestComponentLifecycle:
+    def test_warm_up_uses_default_timeout_and_max_retries(self, monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "fake-api-key")
+        generator = OpenAIResponsesChatGenerator()
+        generator.warm_up()
+        assert generator.client.max_retries == 5
+        assert generator.client.timeout == 30.0
+
+    def test_warm_up_uses_timeout_and_max_retries_from_parameters(self):
+        generator = OpenAIResponsesChatGenerator(api_key=Secret.from_token("fake-api-key"), timeout=40.0, max_retries=1)
+        generator.warm_up()
+        assert generator.client.max_retries == 1
+        assert generator.client.timeout == 40.0
+
+    def test_warm_up_uses_timeout_and_max_retries_from_env_vars(self, monkeypatch):
+        monkeypatch.setenv("OPENAI_TIMEOUT", "100")
+        monkeypatch.setenv("OPENAI_MAX_RETRIES", "10")
+        generator = OpenAIResponsesChatGenerator(api_key=Secret.from_token("fake-api-key"))
+        generator.warm_up()
+        assert generator.client.max_retries == 10
+        assert generator.client.timeout == 100.0
+
+    def test_key_resolved_at_warm_up_not_init(self, monkeypatch):
+        monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+        generator = OpenAIResponsesChatGenerator()
+        with pytest.raises(ValueError, match="None of the .* environment variables are set"):
+            generator.warm_up()
+
+    def test_warm_up_warms_tools_once(self, monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "fake-api-key")
+        warm_up_calls = []
+
         class MockTool(Tool):
-            warm_up_call_count = 0  # Class variable to track calls
-
-            def __init__(self):
+            def __init__(self, tool_name):
                 super().__init__(
-                    name="mock_tool",
-                    description="A mock tool for testing",
-                    parameters={"x": {"type": "string"}},
+                    name=tool_name,
+                    description=f"Mock tool {tool_name}",
+                    parameters={"type": "object", "properties": {"x": {"type": "string"}}, "required": ["x"]},
                     function=lambda x: x,
                 )
 
             def warm_up(self):
-                MockTool.warm_up_call_count += 1
+                warm_up_calls.append(self.name)
 
-        # Reset the class variable before test
-        MockTool.warm_up_call_count = 0
-        mock_tool = MockTool()
+        generator = OpenAIResponsesChatGenerator(tools=[MockTool("tool1"), MockTool("tool2")])
+        assert not generator._tools_warmed_up
 
-        # Create OpenAIChatGenerator with the mock tool
-        component = OpenAIResponsesChatGenerator(tools=[mock_tool])
+        generator.warm_up()
+        assert sorted(warm_up_calls) == ["tool1", "tool2"]
+        assert generator._tools_warmed_up
 
-        # Verify initial state - warm_up not called yet
-        assert MockTool.warm_up_call_count == 0
-        assert not component._is_warmed_up
+        generator.warm_up()
+        assert sorted(warm_up_calls) == ["tool1", "tool2"]
 
-        # Call warm_up() on the generator
-        component.warm_up()
+    def test_warm_up_with_no_tools_does_not_raise(self, monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "fake-api-key")
+        generator = OpenAIResponsesChatGenerator()
+        generator.warm_up()
+        assert generator._tools_warmed_up
 
-        # Assert that the tool's warm_up() was called
-        assert MockTool.warm_up_call_count == 1
-        assert component._is_warmed_up
-
-        component.warm_up()
-
-        # The tool's warm_up should still only have been called once
-        assert MockTool.warm_up_call_count == 1
-        assert component._is_warmed_up
-
-    def test_warm_up_with_no_tools(self, monkeypatch):
-        """Test that warm_up() works when no tools are provided."""
-        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
-
-        component = OpenAIResponsesChatGenerator()
-
-        # Verify initial state
-        assert not component._is_warmed_up
-        assert component.tools is None
-
-        # Verify the component is warmed up
-        component.warm_up()
-        assert component._is_warmed_up
-
-    def test_warm_up_with_openai_tools(self, monkeypatch):
-        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
-
-        component = OpenAIResponsesChatGenerator(
+    def test_warm_up_with_openai_tools_does_not_raise(self, monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "fake-api-key")
+        generator = OpenAIResponsesChatGenerator(
             tools=[
                 {"type": "web_search_preview"},
                 {
@@ -418,49 +434,53 @@ class TestWarmUp:
                 },
             ]
         )
+        generator.warm_up()
+        assert generator._tools_warmed_up
 
-        # Make sure the component can still be warmed up even when using openai tools
-        assert not component._is_warmed_up
-        component.warm_up()
-        assert component._is_warmed_up
+    def test_sync_lifecycle(self, mock_openai_clients):
+        sync_cls, _ = mock_openai_clients
+        generator = OpenAIResponsesChatGenerator()
+        assert generator.client is None
+        assert generator.async_client is None
 
-    def test_warm_up_with_multiple_tools(self, monkeypatch):
-        """Test that warm_up() works with multiple tools."""
-        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+        generator.warm_up()
+        assert generator.client is sync_cls.return_value
+        assert generator.async_client is None
 
-        from haystack.tools import Tool
+        generator.close()
+        sync_cls.return_value.close.assert_called_once()
+        assert generator.client is None
 
-        # Track warm_up calls
-        warm_up_calls = []
+    async def test_async_lifecycle(self, mock_openai_clients):
+        _, async_cls = mock_openai_clients
+        generator = OpenAIResponsesChatGenerator()
 
-        class MockTool(Tool):
-            def __init__(self, tool_name):
-                super().__init__(
-                    name=tool_name,
-                    description=f"Mock tool {tool_name}",
-                    parameters={"type": "object", "properties": {"x": {"type": "string"}}, "required": ["x"]},
-                    function=lambda x: f"{tool_name} result: {x}",
-                )
+        await generator.warm_up_async()
+        assert generator.async_client is async_cls.return_value
+        assert generator.client is None
 
-            def warm_up(self):
-                warm_up_calls.append(self.name)
+        await generator.close_async()
+        async_cls.return_value.close.assert_awaited_once()
+        assert generator.async_client is None
 
-        mock_tool1 = MockTool("tool1")
-        mock_tool2 = MockTool("tool2")
+    async def test_close_is_safe_without_warm_up(self, mock_openai_clients):
+        generator = OpenAIResponsesChatGenerator()
+        generator.close()
+        await generator.close_async()
+        assert generator.client is None
+        assert generator.async_client is None
 
-        # Use a LIST of tools, not a Toolset
-        component = OpenAIResponsesChatGenerator(tools=[mock_tool1, mock_tool2])
+    async def test_close_and_close_async_are_independent(self, mock_openai_clients):
+        generator = OpenAIResponsesChatGenerator()
+        generator.warm_up()
+        await generator.warm_up_async()
 
-        # Assert that both tools' warm_up() were called
-        component.warm_up()
-        assert "tool1" in warm_up_calls
-        assert "tool2" in warm_up_calls
-        assert component._is_warmed_up
+        generator.close()
+        assert generator.client is None
+        assert generator.async_client is not None
 
-        # Verify idempotency
-        call_count = len(warm_up_calls)
-        component.warm_up()
-        assert len(warm_up_calls) == call_count
+        await generator.close_async()
+        assert generator.async_client is None
 
 
 class TestRun:
@@ -948,7 +968,7 @@ class TestIntegration:
 
 
 class TestOpenAIResponsesChatGeneratorAsync:
-    def test_init_should_also_create_async_client_with_same_args(self, monkeypatch):
+    async def test_warm_up_async_creates_async_client_with_expected_args(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
         component = OpenAIResponsesChatGenerator(
             api_key=Secret.from_token("test-api-key"),
@@ -957,6 +977,9 @@ class TestOpenAIResponsesChatGeneratorAsync:
             timeout=30,
             max_retries=5,
         )
+        assert component.async_client is None
+
+        await component.warm_up_async()
 
         assert isinstance(component.async_client, AsyncOpenAI)
         assert component.async_client.api_key == "test-api-key"

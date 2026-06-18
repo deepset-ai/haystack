@@ -134,7 +134,6 @@ class QueryExpander:
         else:
             self.chat_generator = chat_generator
 
-        self._is_warmed_up = False
         self.prompt_template = prompt_template or DEFAULT_PROMPT_TEMPLATE
 
         # Check if required variables are present in the template
@@ -196,8 +195,7 @@ class QueryExpander:
         :raises ValueError: If n_expansions is not positive (less than or equal to 0).
         """
 
-        if not self._is_warmed_up:
-            self.warm_up()
+        self.warm_up()
 
         response = {"queries": [query] if self.include_original_query else []}
 
@@ -264,8 +262,7 @@ class QueryExpander:
         :raises ValueError: If n_expansions is not positive (less than or equal to 0).
         """
 
-        if not self._is_warmed_up:
-            self.warm_up()
+        await self.warm_up_async()
 
         response = {"queries": [query] if self.include_original_query else []}
 
@@ -316,12 +313,33 @@ class QueryExpander:
 
     def warm_up(self) -> None:
         """
-        Warm up the LLM provider component.
+        Warm up the underlying chat generator.
         """
-        if not self._is_warmed_up:
-            if hasattr(self.chat_generator, "warm_up"):
-                self.chat_generator.warm_up()
-            self._is_warmed_up = True
+        if hasattr(self.chat_generator, "warm_up"):
+            self.chat_generator.warm_up()
+
+    async def warm_up_async(self) -> None:
+        """
+        Warm up the underlying chat generator on the serving event loop.
+        """
+        if hasattr(self.chat_generator, "warm_up_async"):
+            await self.chat_generator.warm_up_async()
+        elif hasattr(self.chat_generator, "warm_up"):
+            self.chat_generator.warm_up()
+
+    def close(self) -> None:
+        """
+        Release the underlying chat generator's resources.
+        """
+        if hasattr(self.chat_generator, "close"):
+            self.chat_generator.close()
+
+    async def close_async(self) -> None:
+        """
+        Release the underlying chat generator's async resources.
+        """
+        if hasattr(self.chat_generator, "close_async"):
+            await self.chat_generator.close_async()
 
     @staticmethod
     def _parse_expanded_queries(generator_response: str) -> list[str]:

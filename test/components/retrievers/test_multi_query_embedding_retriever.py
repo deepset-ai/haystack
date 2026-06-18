@@ -4,7 +4,7 @@
 
 import os
 from typing import Any
-from unittest.mock import ANY
+from unittest.mock import ANY, AsyncMock, Mock
 
 import numpy as np
 import pytest
@@ -280,3 +280,58 @@ class TestMultiQueryEmbeddingRetriever:
         # assert there are not duplicates
         ids = [doc.id for doc in results["multiquery_retriever"]["documents"]]
         assert len(ids) == len(set(ids))
+
+
+class TestComponentLifecycle:
+    def test_warm_up_delegates_to_inner_components(self):
+        query_embedder = Mock(spec=["run", "warm_up"])
+        retriever = Mock(spec=["run", "warm_up"])
+        component = MultiQueryEmbeddingRetriever(retriever=retriever, query_embedder=query_embedder)
+        component.warm_up()
+        query_embedder.warm_up.assert_called_once()
+        retriever.warm_up.assert_called_once()
+
+    async def test_warm_up_async_delegates_to_inner_components(self):
+        query_embedder = Mock(spec=["run", "warm_up_async"])
+        query_embedder.warm_up_async = AsyncMock()
+        retriever = Mock(spec=["run", "warm_up_async"])
+        retriever.warm_up_async = AsyncMock()
+        component = MultiQueryEmbeddingRetriever(retriever=retriever, query_embedder=query_embedder)
+        await component.warm_up_async()
+        query_embedder.warm_up_async.assert_awaited_once()
+        retriever.warm_up_async.assert_awaited_once()
+
+    async def test_warm_up_async_falls_back_to_sync_warm_up(self):
+        query_embedder = Mock(spec=["run", "warm_up"])
+        retriever = Mock(spec=["run", "warm_up"])
+        component = MultiQueryEmbeddingRetriever(retriever=retriever, query_embedder=query_embedder)
+        await component.warm_up_async()
+        query_embedder.warm_up.assert_called_once()
+        retriever.warm_up.assert_called_once()
+
+    def test_close_delegates_to_inner_components(self):
+        query_embedder = Mock(spec=["run", "close"])
+        retriever = Mock(spec=["run", "close"])
+        component = MultiQueryEmbeddingRetriever(retriever=retriever, query_embedder=query_embedder)
+        component.close()
+        query_embedder.close.assert_called_once()
+        retriever.close.assert_called_once()
+
+    async def test_close_async_delegates_to_inner_components(self):
+        query_embedder = Mock(spec=["run", "close_async"])
+        query_embedder.close_async = AsyncMock()
+        retriever = Mock(spec=["run", "close_async"])
+        retriever.close_async = AsyncMock()
+        component = MultiQueryEmbeddingRetriever(retriever=retriever, query_embedder=query_embedder)
+        await component.close_async()
+        query_embedder.close_async.assert_awaited_once()
+        retriever.close_async.assert_awaited_once()
+
+    async def test_lifecycle_is_safe_when_inner_components_lack_methods(self):
+        query_embedder = Mock(spec=["run"])
+        retriever = Mock(spec=["run"])
+        component = MultiQueryEmbeddingRetriever(retriever=retriever, query_embedder=query_embedder)
+        component.warm_up()
+        await component.warm_up_async()
+        component.close()
+        await component.close_async()

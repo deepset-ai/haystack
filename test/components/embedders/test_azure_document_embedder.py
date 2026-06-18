@@ -3,11 +3,12 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import os
-from unittest.mock import Mock, patch
+from unittest.mock import AsyncMock, MagicMock, Mock, patch
 
 import pytest
-from openai import APIError
+from openai import APIError, OpenAIError
 
+import haystack.components.embedders.azure_document_embedder as azure_document_embedder_module
 from haystack import Document
 from haystack.components.embedders import AzureOpenAIDocumentEmbedder
 from haystack.utils.auth import Secret
@@ -28,9 +29,13 @@ class TestAzureOpenAIDocumentEmbedder:
         assert embedder.progress_bar is True
         assert embedder.meta_fields_to_embed == []
         assert embedder.embedding_separator == "\n"
+        assert embedder.timeout is None
+        assert embedder.max_retries is None
         assert embedder.default_headers == {}
         assert embedder.azure_ad_token_provider is None
         assert embedder.http_client_kwargs is None
+        assert embedder.client is None
+        assert embedder.async_client is None
 
     def test_init_with_0_max_retries(self, monkeypatch):
         """Tests that the max_retries init param is set correctly if equal 0"""
@@ -51,6 +56,8 @@ class TestAzureOpenAIDocumentEmbedder:
         assert embedder.default_headers == {}
         assert embedder.azure_ad_token_provider is None
         assert embedder.max_retries == 0
+        assert embedder.client is None
+        assert embedder.async_client is None
 
     def test_to_dict(self, monkeypatch):
         monkeypatch.setenv("AZURE_OPENAI_API_KEY", "fake-api-key")
@@ -72,8 +79,8 @@ class TestAzureOpenAIDocumentEmbedder:
                 "progress_bar": True,
                 "meta_fields_to_embed": [],
                 "embedding_separator": "\n",
-                "max_retries": 5,
-                "timeout": 30.0,
+                "max_retries": None,
+                "timeout": None,
                 "default_headers": {},
                 "azure_ad_token_provider": None,
                 "http_client_kwargs": None,
@@ -208,6 +215,7 @@ class TestAzureOpenAIDocumentEmbedder:
             azure_deployment="text-embedding-ada-002",
             embedding_separator=" | ",
         )
+        embedder.warm_up()
 
         fake_texts_to_embed = {"1": "text1", "2": "text2"}
 
@@ -228,6 +236,7 @@ class TestAzureOpenAIDocumentEmbedder:
             azure_deployment="text-embedding-ada-002",
             raise_on_failure=True,
         )
+        embedder.warm_up()
         fake_texts_to_embed = {"1": "text1", "2": "text2"}
         with patch.object(
             embedder.client.embeddings,
@@ -276,3 +285,94 @@ class TestAzureOpenAIDocumentEmbedder:
         assert metadata["usage"]["prompt_tokens"] == 15
         assert metadata["usage"]["total_tokens"] == 15
         assert "ada" in metadata["model"]
+
+
+@pytest.fixture
+def mock_azure_clients(monkeypatch):
+    monkeypatch.setenv("AZURE_OPENAI_API_KEY", "fake")
+    sync_cls = MagicMock(name="AzureOpenAI")
+    async_cls = MagicMock(name="AsyncAzureOpenAI")
+    async_cls.return_value.close = AsyncMock()
+    monkeypatch.setattr(azure_document_embedder_module, "AzureOpenAI", sync_cls)
+    monkeypatch.setattr(azure_document_embedder_module, "AsyncAzureOpenAI", async_cls)
+    return sync_cls, async_cls
+
+
+class TestComponentLifecycle:
+    def test_warm_up_uses_default_timeout_and_max_retries(self, monkeypatch):
+        monkeypatch.setenv("AZURE_OPENAI_API_KEY", "fake-api-key")
+        embedder = AzureOpenAIDocumentEmbedder(azure_endpoint="https://example-resource.azure.openai.com/")
+        embedder.warm_up()
+        assert embedder.client.max_retries == 5
+        assert embedder.client.timeout == 30.0
+
+    def test_warm_up_uses_timeout_and_max_retries_from_parameters(self, monkeypatch):
+        monkeypatch.setenv("AZURE_OPENAI_API_KEY", "fake-api-key")
+        embedder = AzureOpenAIDocumentEmbedder(
+            azure_endpoint="https://example-resource.azure.openai.com/", timeout=40.0, max_retries=1
+        )
+        embedder.warm_up()
+        assert embedder.client.max_retries == 1
+        assert embedder.client.timeout == 40.0
+
+    def test_warm_up_uses_timeout_and_max_retries_from_env_vars(self, monkeypatch):
+        monkeypatch.setenv("AZURE_OPENAI_API_KEY", "fake-api-key")
+        monkeypatch.setenv("OPENAI_TIMEOUT", "100")
+        monkeypatch.setenv("OPENAI_MAX_RETRIES", "10")
+        embedder = AzureOpenAIDocumentEmbedder(azure_endpoint="https://example-resource.azure.openai.com/")
+        embedder.warm_up()
+        assert embedder.client.max_retries == 10
+        assert embedder.client.timeout == 100.0
+
+    def test_key_resolved_at_warm_up_not_init(self, monkeypatch):
+        monkeypatch.delenv("AZURE_OPENAI_API_KEY", raising=False)
+        monkeypatch.delenv("AZURE_OPENAI_AD_TOKEN", raising=False)
+        embedder = AzureOpenAIDocumentEmbedder(azure_endpoint="https://example-resource.azure.openai.com/")
+        assert embedder.client is None
+        with pytest.raises(OpenAIError):
+            embedder.warm_up()
+
+    def test_sync_lifecycle(self, mock_azure_clients):
+        sync_cls, _ = mock_azure_clients
+        embedder = AzureOpenAIDocumentEmbedder(azure_endpoint="https://example-resource.azure.openai.com/")
+        assert embedder.client is None
+        assert embedder.async_client is None
+
+        embedder.warm_up()
+        assert embedder.client is sync_cls.return_value
+        assert embedder.async_client is None
+
+        embedder.close()
+        sync_cls.return_value.close.assert_called_once()
+        assert embedder.client is None
+
+    async def test_async_lifecycle(self, mock_azure_clients):
+        _, async_cls = mock_azure_clients
+        embedder = AzureOpenAIDocumentEmbedder(azure_endpoint="https://example-resource.azure.openai.com/")
+
+        await embedder.warm_up_async()
+        assert embedder.async_client is async_cls.return_value
+        assert embedder.client is None
+
+        await embedder.close_async()
+        async_cls.return_value.close.assert_awaited_once()
+        assert embedder.async_client is None
+
+    async def test_close_is_safe_without_warm_up(self, mock_azure_clients):
+        embedder = AzureOpenAIDocumentEmbedder(azure_endpoint="https://example-resource.azure.openai.com/")
+        embedder.close()
+        await embedder.close_async()
+        assert embedder.client is None
+        assert embedder.async_client is None
+
+    async def test_close_and_close_async_are_independent(self, mock_azure_clients):
+        embedder = AzureOpenAIDocumentEmbedder(azure_endpoint="https://example-resource.azure.openai.com/")
+        embedder.warm_up()
+        await embedder.warm_up_async()
+
+        embedder.close()
+        assert embedder.client is None
+        assert embedder.async_client is not None
+
+        await embedder.close_async()
+        assert embedder.async_client is None

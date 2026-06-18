@@ -67,18 +67,40 @@ class TextEmbeddingRetriever:
         """
         self.retriever = retriever
         self.text_embedder = text_embedder
-        self._is_warmed_up = False
 
     def warm_up(self) -> None:
         """
-        Warm up the text embedder and the retriever if any has a warm_up method.
+        Warm up the text embedder and the retriever.
         """
-        if not self._is_warmed_up:
-            if hasattr(self.text_embedder, "warm_up") and callable(self.text_embedder.warm_up):
-                self.text_embedder.warm_up()
-            if hasattr(self.retriever, "warm_up") and callable(self.retriever.warm_up):
-                self.retriever.warm_up()
-            self._is_warmed_up = True
+        for inner in (self.text_embedder, self.retriever):
+            if hasattr(inner, "warm_up"):
+                inner.warm_up()
+
+    async def warm_up_async(self) -> None:
+        """
+        Warm up the text embedder and the retriever on the serving event loop.
+        """
+        for inner in (self.text_embedder, self.retriever):
+            if hasattr(inner, "warm_up_async"):
+                await inner.warm_up_async()
+            elif hasattr(inner, "warm_up"):
+                inner.warm_up()
+
+    def close(self) -> None:
+        """
+        Release the text embedder's and the retriever's resources.
+        """
+        for inner in (self.text_embedder, self.retriever):
+            if hasattr(inner, "close"):
+                inner.close()
+
+    async def close_async(self) -> None:
+        """
+        Release the text embedder's and the retriever's async resources.
+        """
+        for inner in (self.text_embedder, self.retriever):
+            if hasattr(inner, "close_async"):
+                await inner.close_async()
 
     @component.output_types(documents=list[Document])
     def run(
@@ -94,8 +116,7 @@ class TextEmbeddingRetriever:
             A dictionary containing:
                 - `documents`: List of retrieved documents sorted by relevance score.
         """
-        if not self._is_warmed_up:
-            self.warm_up()
+        self.warm_up()
 
         embedding_result = self.text_embedder.run(text=query)
         result = self.retriever.run(query_embedding=embedding_result["embedding"], filters=filters, top_k=top_k)
@@ -122,8 +143,7 @@ class TextEmbeddingRetriever:
             A dictionary containing:
                 - `documents`: List of retrieved documents sorted by relevance score.
         """
-        if not self._is_warmed_up:
-            self.warm_up()
+        await self.warm_up_async()
 
         embedding_result = await _run_component_async(self.text_embedder, text=query)
         result = await _run_component_async(

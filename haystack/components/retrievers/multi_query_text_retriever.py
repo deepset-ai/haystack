@@ -67,16 +67,36 @@ class MultiQueryTextRetriever:
         """
         self.retriever = retriever
         self.max_workers = max_workers
-        self._is_warmed_up = False
 
     def warm_up(self) -> None:
         """
-        Warm up the retriever if it has a warm_up method.
+        Warm up the retriever.
         """
-        if not self._is_warmed_up:
-            if hasattr(self.retriever, "warm_up") and callable(self.retriever.warm_up):
-                self.retriever.warm_up()
-            self._is_warmed_up = True
+        if hasattr(self.retriever, "warm_up"):
+            self.retriever.warm_up()
+
+    async def warm_up_async(self) -> None:
+        """
+        Warm up the retriever on the serving event loop.
+        """
+        if hasattr(self.retriever, "warm_up_async"):
+            await self.retriever.warm_up_async()
+        elif hasattr(self.retriever, "warm_up"):
+            self.retriever.warm_up()
+
+    def close(self) -> None:
+        """
+        Release the retriever's resources.
+        """
+        if hasattr(self.retriever, "close"):
+            self.retriever.close()
+
+    async def close_async(self) -> None:
+        """
+        Release the retriever's async resources.
+        """
+        if hasattr(self.retriever, "close_async"):
+            await self.retriever.close_async()
 
     @component.output_types(documents=list[Document])
     def run(self, queries: list[str], retriever_kwargs: dict[str, Any] | None = None) -> dict[str, list[Document]]:
@@ -92,8 +112,7 @@ class MultiQueryTextRetriever:
         docs: list[Document] = []
         retriever_kwargs = retriever_kwargs or {}
 
-        if not self._is_warmed_up:
-            self.warm_up()
+        self.warm_up()
 
         with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
             queries_results = executor.map(lambda query: self._run_on_thread(query, retriever_kwargs), queries)
@@ -125,8 +144,7 @@ class MultiQueryTextRetriever:
         """
         retriever_kwargs = retriever_kwargs or {}
 
-        if not self._is_warmed_up:
-            self.warm_up()
+        await self.warm_up_async()
 
         results = await asyncio.gather(*[self._run_one_async(q, retriever_kwargs) for q in queries])
         docs: list[Document] = [doc for result in results if result for doc in result]

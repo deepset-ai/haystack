@@ -195,40 +195,68 @@ class OpenAIResponsesChatGenerator:
         self.tools_strict = tools_strict
         self.http_client_kwargs = http_client_kwargs
 
-        if timeout is None:
-            timeout = float(os.environ.get("OPENAI_TIMEOUT", "30.0"))
-        if max_retries is None:
-            max_retries = int(os.environ.get("OPENAI_MAX_RETRIES", "5"))
+        self.client: OpenAI | None = None
+        self.async_client: AsyncOpenAI | None = None
+        self._tools_warmed_up = False
 
-        resolved_api_key = api_key.resolve_value() if isinstance(api_key, Secret) else api_key
-        client_kwargs: dict[str, Any] = {
+    def _client_kwargs(self) -> dict[str, Any]:
+        timeout = self.timeout if self.timeout is not None else float(os.environ.get("OPENAI_TIMEOUT", "30.0"))
+        max_retries = (
+            self.max_retries if self.max_retries is not None else int(os.environ.get("OPENAI_MAX_RETRIES", "5"))
+        )
+        resolved_api_key = self.api_key.resolve_value() if isinstance(self.api_key, Secret) else self.api_key
+        return {
             "api_key": resolved_api_key,
-            "organization": organization,
-            "base_url": api_base_url,
+            "organization": self.organization,
+            "base_url": self.api_base_url,
             "timeout": timeout,
             "max_retries": max_retries,
         }
 
-        self.client = OpenAI(http_client=init_http_client(self.http_client_kwargs, async_client=False), **client_kwargs)
-        self.async_client = AsyncOpenAI(
-            http_client=init_http_client(self.http_client_kwargs, async_client=True), **client_kwargs
-        )
-        self._is_warmed_up = False
-
-    def warm_up(self) -> None:
-        """
-        Warm up the OpenAI responses chat generator.
-
-        This will warm up the tools registered in the chat generator.
-        This method is idempotent and will only warm up the tools once.
-        """
-        if not self._is_warmed_up:
+    def _warm_up_tools(self) -> None:
+        if not self._tools_warmed_up:
             is_openai_tool = isinstance(self.tools, list) and isinstance(self.tools[0], dict)
             # We only warm up Haystack tools, not OpenAI/MCP tools
             # The type ignore is needed because mypy cannot infer the type correctly
             if not is_openai_tool:
                 warm_up_tools(self.tools)  # type: ignore[arg-type]
-            self._is_warmed_up = True
+            self._tools_warmed_up = True
+
+    def warm_up(self) -> None:
+        """
+        Warm up the tools and initialize the synchronous OpenAI client.
+        """
+        self._warm_up_tools()
+        if self.client is None:
+            self.client = OpenAI(
+                http_client=init_http_client(self.http_client_kwargs, async_client=False), **self._client_kwargs()
+            )
+
+    async def warm_up_async(self) -> None:  # noqa: RUF029
+        """
+        Warm up the tools and initialize the asynchronous OpenAI client on the serving event loop.
+        """
+        self._warm_up_tools()
+        if self.async_client is None:
+            self.async_client = AsyncOpenAI(
+                http_client=init_http_client(self.http_client_kwargs, async_client=True), **self._client_kwargs()
+            )
+
+    def close(self) -> None:
+        """
+        Releases the synchronous OpenAI client.
+        """
+        if self.client is not None:
+            self.client.close()
+            self.client = None
+
+    async def close_async(self) -> None:
+        """
+        Releases the asynchronous OpenAI client.
+        """
+        if self.async_client is not None:
+            await self.async_client.close()
+            self.async_client = None
 
     def _get_telemetry_data(self) -> dict[str, Any]:
         """
@@ -349,8 +377,7 @@ class OpenAIResponsesChatGenerator:
             A dictionary with the following key:
             - `replies`: A list containing the generated responses as ChatMessage instances.
         """
-        if not self._is_warmed_up:
-            self.warm_up()
+        self.warm_up()
 
         messages = _normalize_messages(messages)
 
@@ -370,6 +397,7 @@ class OpenAIResponsesChatGenerator:
             tools_strict=tools_strict,
         )
         openai_endpoint = api_args.pop("openai_endpoint")
+        assert self.client is not None  # mypy: client is built by warm_up above
         openai_endpoint_method = getattr(self.client.responses, openai_endpoint)
         responses = openai_endpoint_method(**api_args)
 
@@ -423,8 +451,7 @@ class OpenAIResponsesChatGenerator:
             A dictionary with the following key:
             - `replies`: A list containing the generated responses as ChatMessage instances.
         """
-        if not self._is_warmed_up:
-            self.warm_up()
+        await self.warm_up_async()
 
         messages = _normalize_messages(messages)
 
@@ -446,6 +473,7 @@ class OpenAIResponsesChatGenerator:
         )
 
         openai_endpoint = api_args.pop("openai_endpoint")
+        assert self.async_client is not None  # mypy: async_client is built by warm_up_async above
         openai_endpoint_method = getattr(self.async_client.responses, openai_endpoint)
         responses = await openai_endpoint_method(**api_args)
 

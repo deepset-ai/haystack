@@ -47,7 +47,6 @@ class TestLLMMessagesRouter:
         assert router._output_names == ["safe", "unsafe"]
         assert router._output_patterns == ["safe", "unsafe"]
         assert router._compiled_patterns == [re.compile(pattern) for pattern in ["safe", "unsafe"]]
-        assert router._is_warmed_up is False
 
     def test_init_errors(self):
         chat_generator = MockChatGenerator()
@@ -62,23 +61,6 @@ class TestLLMMessagesRouter:
             LLMMessagesRouter(
                 chat_generator=chat_generator, output_names=["name1", "name2"], output_patterns=["pattern1"]
             )
-
-    def test_warm_up_with_unwarmable_chat_generator(self):
-        chat_generator = MockChatGenerator()
-        router = LLMMessagesRouter(
-            chat_generator=chat_generator, output_names=["safe", "unsafe"], output_patterns=["safe", "unsafe"]
-        )
-        router.warm_up()
-        assert router._is_warmed_up is True
-
-    def test_warm_up_with_warmable_chat_generator(self):
-        chat_generator = Mock()
-        router = LLMMessagesRouter(
-            chat_generator=chat_generator, output_names=["safe", "unsafe"], output_patterns=["safe", "unsafe"]
-        )
-        router.warm_up()
-        assert router._is_warmed_up is True
-        assert router._chat_generator.warm_up.call_count == 1
 
     def test_run_input_errors(self):
         router = LLMMessagesRouter(
@@ -99,8 +81,6 @@ class TestLLMMessagesRouter:
         router.run([ChatMessage.from_user("Hello")])
 
     def test_run_no_warm_up_with_warmable_chat_generator(self):
-        """Warm up is run automatically if not done before."""
-
         def mock_run(messages):
             return {"replies": [ChatMessage.from_assistant("safe")]}
 
@@ -111,7 +91,6 @@ class TestLLMMessagesRouter:
         )
         router.run([ChatMessage.from_user("Hello")])
         assert chat_generator.warm_up.call_count == 1
-        assert router._is_warmed_up is True
 
     def test_run(self):
         router = LLMMessagesRouter(
@@ -315,3 +294,48 @@ class TestLLMMessagesRouterAsync:
         assert result["chat_generator_text"].lower() == "safe"
         assert "unsafe" not in result
         assert "unmatched" not in result
+
+
+class TestComponentLifecycle:
+    def _make_router(self, chat_generator):
+        return LLMMessagesRouter(
+            chat_generator=chat_generator, output_names=["safe", "unsafe"], output_patterns=["safe", "unsafe"]
+        )
+
+    def test_warm_up_delegates_to_chat_generator(self):
+        chat_generator = Mock()
+        router = self._make_router(chat_generator)
+        router.warm_up()
+        chat_generator.warm_up.assert_called_once()
+
+    async def test_warm_up_async_delegates_to_chat_generator(self):
+        chat_generator = Mock()
+        chat_generator.warm_up_async = AsyncMock()
+        router = self._make_router(chat_generator)
+        await router.warm_up_async()
+        chat_generator.warm_up_async.assert_awaited_once()
+
+    async def test_warm_up_async_falls_back_to_sync_warm_up(self):
+        chat_generator = Mock(spec=["run", "warm_up"])
+        router = self._make_router(chat_generator)
+        await router.warm_up_async()
+        chat_generator.warm_up.assert_called_once()
+
+    def test_close_delegates_to_chat_generator(self):
+        chat_generator = Mock()
+        router = self._make_router(chat_generator)
+        router.close()
+        chat_generator.close.assert_called_once()
+
+    async def test_close_async_delegates_to_chat_generator(self):
+        chat_generator = Mock()
+        chat_generator.close_async = AsyncMock()
+        router = self._make_router(chat_generator)
+        await router.close_async()
+        chat_generator.close_async.assert_awaited_once()
+
+    def test_lifecycle_is_safe_when_chat_generator_lacks_methods(self):
+        chat_generator = Mock(spec=["run"])
+        router = self._make_router(chat_generator)
+        router.warm_up()
+        router.close()

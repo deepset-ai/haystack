@@ -59,7 +59,6 @@ class FallbackChatGenerator:
             raise ValueError(msg)
 
         self.chat_generators = list(chat_generators)
-        self._is_warmed_up = False
 
     def to_dict(self) -> dict[str, Any]:
         """Serialize the component, including nested chat generators when they support serialization."""
@@ -84,19 +83,30 @@ class FallbackChatGenerator:
         return default_from_dict(cls, data)
 
     def warm_up(self) -> None:
-        """
-        Warm up all underlying chat generators.
-
-        This method calls warm_up() on each underlying generator that supports it.
-        """
-        if self._is_warmed_up:
-            return
-
+        """Warm up all underlying chat generators."""
         for gen in self.chat_generators:
-            if hasattr(gen, "warm_up") and callable(gen.warm_up):
+            if hasattr(gen, "warm_up"):
                 gen.warm_up()
 
-        self._is_warmed_up = True
+    async def warm_up_async(self) -> None:
+        """Warm up all underlying chat generators on the serving event loop."""
+        for gen in self.chat_generators:
+            if hasattr(gen, "warm_up_async"):
+                await gen.warm_up_async()
+            elif hasattr(gen, "warm_up"):
+                gen.warm_up()
+
+    def close(self) -> None:
+        """Release the underlying chat generators' resources."""
+        for gen in self.chat_generators:
+            if hasattr(gen, "close"):
+                gen.close()
+
+    async def close_async(self) -> None:
+        """Release the underlying chat generators' async resources."""
+        for gen in self.chat_generators:
+            if hasattr(gen, "close_async"):
+                await gen.close_async()
 
     def _run_single_sync(
         self,
@@ -147,8 +157,7 @@ class FallbackChatGenerator:
               total_attempts, failed_chat_generators, plus any metadata from the successful generator.
         :raises RuntimeError: If all chat generators fail.
         """
-        if not self._is_warmed_up:
-            self.warm_up()
+        self.warm_up()
 
         messages = _normalize_messages(messages)
 
@@ -205,8 +214,7 @@ class FallbackChatGenerator:
               total_attempts, failed_chat_generators, plus any metadata from the successful generator.
         :raises RuntimeError: If all chat generators fail.
         """
-        if not self._is_warmed_up:
-            self.warm_up()
+        await self.warm_up_async()
 
         messages = _normalize_messages(messages)
 

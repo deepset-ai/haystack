@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import re
+from unittest.mock import Mock
 
 import pytest
 from pytest import LogCaptureFixture
@@ -981,3 +982,39 @@ def test_recursive_splitter_generates_unique_ids_and_correct_meta():
     for idx, chunk in enumerate(chunks):
         assert chunk.meta["parent_id"] == source_doc.id
         assert chunk.meta["split_id"] == idx
+
+
+def test_warm_up_is_idempotent_sentence(monkeypatch):
+    splitter = RecursiveDocumentSplitter(separators=["sentence", " "])
+
+    calls = []
+    original = RecursiveDocumentSplitter._get_custom_sentence_tokenizer
+
+    def spy(params):
+        calls.append(params)
+        return original(params)
+
+    monkeypatch.setattr(RecursiveDocumentSplitter, "_get_custom_sentence_tokenizer", staticmethod(spy))
+
+    splitter.warm_up()
+    first_tokenizer = splitter.nltk_tokenizer
+    splitter.warm_up()
+
+    assert len(calls) == 1
+    assert splitter.nltk_tokenizer is first_tokenizer
+
+
+def test_warm_up_is_idempotent_token(monkeypatch):
+    import haystack.components.preprocessors.recursive_splitter as mod
+
+    sentinel = object()
+    get_encoding = Mock(return_value=sentinel)
+    monkeypatch.setattr(mod.tiktoken, "get_encoding", get_encoding)
+
+    splitter = RecursiveDocumentSplitter(split_unit="token", split_length=10)
+
+    splitter.warm_up()
+    splitter.warm_up()
+
+    assert get_encoding.call_count == 1
+    assert splitter.tiktoken_tokenizer is sentinel

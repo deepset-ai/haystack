@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from typing import Any
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
@@ -467,3 +467,33 @@ class TestSuperComponent:
 
         result = await deserialized_super_component.run_async()
         assert result == {"output": "Hello world"}
+
+
+class TestSuperComponentLifecycle:
+    def test_warm_up_delegates_to_pipeline(self, sample_super_component):
+        with patch.object(sample_super_component.pipeline, "warm_up") as mock_warm_up:
+            sample_super_component.warm_up()
+            mock_warm_up.assert_called_once()
+
+    def test_warm_up_is_idempotent(self, sample_super_component):
+        with patch.object(sample_super_component.pipeline, "warm_up") as mock_warm_up:
+            sample_super_component.warm_up()
+            sample_super_component.warm_up()
+            mock_warm_up.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_warm_up_async_delegates_to_pipeline(self, sample_super_component):
+        with patch.object(sample_super_component.pipeline, "warm_up_async", new=AsyncMock()) as mock_warm_up_async:
+            await sample_super_component.warm_up_async()
+            mock_warm_up_async.assert_awaited_once()
+
+    def test_close_delegates_to_pipeline(self, sample_super_component):
+        with patch.object(sample_super_component.pipeline, "close") as mock_close:
+            sample_super_component.close()
+            mock_close.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_close_async_delegates_to_pipeline(self, sample_super_component):
+        with patch.object(sample_super_component.pipeline, "close_async", new=AsyncMock()) as mock_close_async:
+            await sample_super_component.close_async()
+            mock_close_async.assert_awaited_once()

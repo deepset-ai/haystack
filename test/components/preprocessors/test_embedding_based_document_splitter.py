@@ -53,45 +53,10 @@ class TestEmbeddingBasedDocumentSplitter:
         with pytest.raises(ValueError, match="max_length must be greater than min_length"):
             EmbeddingBasedDocumentSplitter(document_embedder=mock_embedder, min_length=100, max_length=50)
 
-    def test_warm_up(self):
-        mock_embedder = Mock()
-        splitter = EmbeddingBasedDocumentSplitter(document_embedder=mock_embedder)
-
-        with patch(
-            "haystack.components.preprocessors.embedding_based_document_splitter.SentenceSplitter"
-        ) as mock_splitter_class:
-            mock_splitter = Mock()
-            mock_splitter_class.return_value = mock_splitter
-
-            splitter.warm_up()
-
-            assert splitter.sentence_splitter == mock_splitter
-            mock_splitter_class.assert_called_once()
-
-    def test_run_not_warmed_up(self):
-        mock_embedder = Mock()
-        splitter = EmbeddingBasedDocumentSplitter(document_embedder=mock_embedder)
-
-        with patch.object(splitter, "warm_up", wraps=splitter.warm_up) as mock_warm_up:
-            splitter.run(documents=[])
-            assert splitter._is_warmed_up
-            mock_warm_up.assert_called_once()
-
-    @pytest.mark.asyncio
-    async def test_run_not_warmed_up_async(self) -> None:
-        mock_embedder = AsyncMock()
-        splitter = EmbeddingBasedDocumentSplitter(document_embedder=mock_embedder)
-
-        with patch.object(splitter, "warm_up", wraps=splitter.warm_up) as mock_warm_up:
-            await splitter.run_async(documents=[])
-            assert splitter._is_warmed_up
-            mock_warm_up.assert_called_once()
-
     def test_run_invalid_input(self):
         mock_embedder = Mock()
         splitter = EmbeddingBasedDocumentSplitter(document_embedder=mock_embedder)
         splitter.sentence_splitter = Mock()
-        splitter._is_warmed_up = True
 
         with pytest.raises(TypeError, match="expects a List of Documents"):
             splitter.run(documents="not a list")
@@ -101,7 +66,6 @@ class TestEmbeddingBasedDocumentSplitter:
         mock_embedder = AsyncMock()
         splitter = EmbeddingBasedDocumentSplitter(document_embedder=mock_embedder)
         splitter.sentence_splitter = AsyncMock()
-        splitter._is_warmed_up = True
 
         with pytest.raises(TypeError, match="expects a List of Documents"):
             await splitter.run_async(documents="not a list")
@@ -110,7 +74,6 @@ class TestEmbeddingBasedDocumentSplitter:
         mock_embedder = Mock()
         splitter = EmbeddingBasedDocumentSplitter(document_embedder=mock_embedder)
         splitter.sentence_splitter = Mock()
-        splitter._is_warmed_up = True
 
         with pytest.raises(ValueError, match="content for document ID"):
             splitter.run(documents=[Document(content=None)])
@@ -120,7 +83,6 @@ class TestEmbeddingBasedDocumentSplitter:
         mock_embedder = AsyncMock()
         splitter = EmbeddingBasedDocumentSplitter(document_embedder=mock_embedder)
         splitter.sentence_splitter = AsyncMock()
-        splitter._is_warmed_up = True
 
         with pytest.raises(ValueError, match="content for document ID"):
             await splitter.run_async(documents=[Document(content=None)])
@@ -129,7 +91,6 @@ class TestEmbeddingBasedDocumentSplitter:
         mock_embedder = Mock()
         splitter = EmbeddingBasedDocumentSplitter(document_embedder=mock_embedder)
         splitter.sentence_splitter = Mock()
-        splitter._is_warmed_up = True
 
         result = splitter.run(documents=[Document(content="")])
         assert result["documents"] == []
@@ -139,7 +100,6 @@ class TestEmbeddingBasedDocumentSplitter:
         mock_embedder = AsyncMock()
         splitter = EmbeddingBasedDocumentSplitter(document_embedder=mock_embedder)
         splitter.sentence_splitter = AsyncMock()
-        splitter._is_warmed_up = True
 
         result = await splitter.run_async(documents=[Document(content="")])
         assert result["documents"] == []
@@ -777,3 +737,88 @@ Artificial intelligence is transforming education by enabling personalized learn
                 assert split_doc.meta["page_number"] == 3
             if i in [9, 10]:
                 assert split_doc.meta["page_number"] == 4
+
+
+class TestComponentLifecycle:
+    def test_warm_up_builds_splitter_and_delegates_to_embedder(self):
+        mock_embedder = Mock()
+        splitter = EmbeddingBasedDocumentSplitter(document_embedder=mock_embedder)
+
+        with patch(
+            "haystack.components.preprocessors.embedding_based_document_splitter.SentenceSplitter"
+        ) as mock_splitter_class:
+            splitter.warm_up()
+
+            assert splitter.sentence_splitter is mock_splitter_class.return_value
+            mock_splitter_class.assert_called_once()
+            mock_embedder.warm_up.assert_called_once()
+
+    def test_warm_up_builds_splitter_once(self):
+        mock_embedder = Mock()
+        splitter = EmbeddingBasedDocumentSplitter(document_embedder=mock_embedder)
+
+        with patch(
+            "haystack.components.preprocessors.embedding_based_document_splitter.SentenceSplitter"
+        ) as mock_splitter_class:
+            splitter.warm_up()
+            first_splitter = splitter.sentence_splitter
+            splitter.warm_up()
+
+            mock_splitter_class.assert_called_once()
+            assert splitter.sentence_splitter is first_splitter
+
+    @pytest.mark.asyncio
+    async def test_warm_up_async_delegates_to_embedder_async(self) -> None:
+        mock_embedder = Mock()
+        mock_embedder.warm_up_async = AsyncMock()
+        splitter = EmbeddingBasedDocumentSplitter(document_embedder=mock_embedder)
+
+        with patch("haystack.components.preprocessors.embedding_based_document_splitter.SentenceSplitter"):
+            await splitter.warm_up_async()
+
+        mock_embedder.warm_up_async.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_warm_up_async_falls_back_to_sync_warm_up(self) -> None:
+        mock_embedder = Mock(spec=["warm_up"])
+        splitter = EmbeddingBasedDocumentSplitter(document_embedder=mock_embedder)
+
+        with patch("haystack.components.preprocessors.embedding_based_document_splitter.SentenceSplitter"):
+            await splitter.warm_up_async()
+
+        mock_embedder.warm_up.assert_called_once()
+
+    def test_close_delegates_to_embedder(self):
+        mock_embedder = Mock()
+        splitter = EmbeddingBasedDocumentSplitter(document_embedder=mock_embedder)
+
+        splitter.close()
+
+        mock_embedder.close.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_close_async_delegates_to_embedder(self) -> None:
+        mock_embedder = Mock()
+        mock_embedder.close_async = AsyncMock()
+        splitter = EmbeddingBasedDocumentSplitter(document_embedder=mock_embedder)
+
+        await splitter.close_async()
+
+        mock_embedder.close_async.assert_awaited_once()
+
+    def test_lifecycle_is_safe_when_embedder_lacks_methods(self):
+        mock_embedder = Mock(spec=[])
+        splitter = EmbeddingBasedDocumentSplitter(document_embedder=mock_embedder)
+
+        with patch("haystack.components.preprocessors.embedding_based_document_splitter.SentenceSplitter"):
+            splitter.warm_up()
+        splitter.close()
+
+    @pytest.mark.asyncio
+    async def test_lifecycle_is_safe_when_embedder_lacks_methods_async(self) -> None:
+        mock_embedder = Mock(spec=[])
+        splitter = EmbeddingBasedDocumentSplitter(document_embedder=mock_embedder)
+
+        with patch("haystack.components.preprocessors.embedding_based_document_splitter.SentenceSplitter"):
+            await splitter.warm_up_async()
+        await splitter.close_async()

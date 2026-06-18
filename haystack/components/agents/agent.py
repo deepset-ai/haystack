@@ -487,7 +487,7 @@ class Agent:
         self.tool_concurrency_limit = tool_concurrency_limit
         self.tool_streaming_callback_passthrough = tool_streaming_callback_passthrough
         self._confirmation_strategies = confirmation_strategies or {}
-        self._is_warmed_up = False
+        self._tools_warmed_up = False
 
         # --- State schema ---
         # shallow copy is sufficient: we only add a top-level "messages" key, never mutate nested values
@@ -574,16 +574,36 @@ class Agent:
             else:
                 component.set_input_type(self, name=var_name, type=Any, default=None)
 
-    def warm_up(self) -> None:
-        """
-        Warm up the Agent.
-        """
-        if not self._is_warmed_up:
-            if hasattr(self.chat_generator, "warm_up"):
-                self.chat_generator.warm_up()
+    def _warm_up_tools(self) -> None:
+        """Warm up the configured tools once."""
+        if not self._tools_warmed_up:
             if self.tools:
                 warm_up_tools(self.tools)
-            self._is_warmed_up = True
+            self._tools_warmed_up = True
+
+    def warm_up(self) -> None:
+        """Warm up the tools and the underlying chat generator."""
+        self._warm_up_tools()
+        if hasattr(self.chat_generator, "warm_up"):
+            self.chat_generator.warm_up()
+
+    async def warm_up_async(self) -> None:
+        """Warm up the tools and the underlying chat generator on the serving event loop."""
+        self._warm_up_tools()
+        if hasattr(self.chat_generator, "warm_up_async"):
+            await self.chat_generator.warm_up_async()
+        elif hasattr(self.chat_generator, "warm_up"):
+            self.chat_generator.warm_up()
+
+    def close(self) -> None:
+        """Release the underlying chat generator's resources."""
+        if hasattr(self.chat_generator, "close"):
+            self.chat_generator.close()
+
+    async def close_async(self) -> None:
+        """Release the underlying chat generator's async resources."""
+        if hasattr(self.chat_generator, "close_async"):
+            await self.chat_generator.close_async()
 
     def to_dict(self) -> dict[str, Any]:
         """
@@ -828,8 +848,7 @@ class Agent:
             - Any additional keys defined in the `state_schema`.
         """
         agent_inputs = {"messages": messages, "streaming_callback": streaming_callback, **kwargs}
-        if not self._is_warmed_up:
-            self.warm_up()
+        self.warm_up()
 
         exe_context = self._initialize_fresh_execution(
             messages=messages,
@@ -903,8 +922,7 @@ class Agent:
             - Any additional keys defined in the `state_schema`.
         """
         agent_inputs = {"messages": messages, "streaming_callback": streaming_callback, **kwargs}
-        if not self._is_warmed_up:
-            self.warm_up()
+        await self.warm_up_async()
 
         exe_context = self._initialize_fresh_execution(
             messages=messages,

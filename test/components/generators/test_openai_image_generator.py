@@ -4,13 +4,14 @@
 
 import base64
 import os
-from unittest.mock import AsyncMock, Mock, patch
+from unittest.mock import AsyncMock, MagicMock, Mock, patch
 
 import pytest
 from openai import AsyncOpenAI
 from openai.types import ImagesResponse
 from openai.types.image import Image
 
+import haystack.components.generators.openai_image_generator as openai_image_generator_module
 from haystack.components.generators.openai_image_generator import OpenAIImageGenerator
 from haystack.utils import Secret
 
@@ -34,9 +35,11 @@ class TestOpenAIImageGenerator:
         assert component.api_key == Secret.from_env_var("OPENAI_API_KEY")
         assert component.api_base_url is None
         assert component.organization is None
-        assert pytest.approx(component.timeout) == 30.0
-        assert component.max_retries == 5
+        assert component.timeout is None
+        assert component.max_retries is None
         assert component.http_client_kwargs is None
+        assert component.client is None
+        assert component.async_client is None
 
     def test_init_with_params(self, monkeypatch):
         component = OpenAIImageGenerator(
@@ -57,11 +60,10 @@ class TestOpenAIImageGenerator:
         assert component.organization == "test-org"
         assert pytest.approx(component.timeout) == 60.0
         assert component.max_retries == 10
+        assert component.client is None
+        assert component.async_client is None
 
     def test_init_max_retries_0(self, monkeypatch):
-        """
-        Test that the max_retries parameter is taken into account even if it is 0.
-        """
         component = OpenAIImageGenerator(max_retries=0)
         assert component.max_retries == 0
 
@@ -73,14 +75,6 @@ class TestOpenAIImageGenerator:
     def test_init_non_default_response_format_warns(self, caplog):
         OpenAIImageGenerator(response_format="url")  # type: ignore[arg-type]
         assert "response_format is ignored" in caplog.text
-
-    def test_warm_up(self, monkeypatch):
-        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
-        component = OpenAIImageGenerator()
-        component.warm_up()
-        assert component.client.api_key == "test-api-key"
-        assert component.client.timeout == 30
-        assert component.client.max_retries == 5
 
     def test_to_dict(self):
         generator = OpenAIImageGenerator()
@@ -156,13 +150,14 @@ class TestOpenAIImageGenerator:
         assert generator.api_key.to_dict() == {"type": "env_var", "env_vars": ["OPENAI_API_KEY"], "strict": True}
         assert generator.api_base_url is None
         assert generator.organization is None
-        assert pytest.approx(generator.timeout) == 30.0
-        assert generator.max_retries == 5
+        assert generator.timeout is None
+        assert generator.max_retries is None
         assert generator.http_client_kwargs is None
 
     def test_run(self, mock_image_response):
         generator = OpenAIImageGenerator(api_key=Secret.from_token("test-api-key"))
         response = generator.run("Show me a picture of a black cat.")
+        assert generator.client is not None
         assert isinstance(response, dict)
         assert "images" in response and "revised_prompt" in response
         assert response["images"] == ["test-b64-json"]
@@ -193,17 +188,17 @@ class TestOpenAIImageGeneratorAsync:
         component = OpenAIImageGenerator()
         assert component.async_client is None
 
-    def test_async_client_after_warm_up(self, monkeypatch):
+    @pytest.mark.asyncio
+    async def test_async_client_after_warm_up_async(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
         component = OpenAIImageGenerator()
-        component.warm_up()
+        await component.warm_up_async()
         assert isinstance(component.async_client, AsyncOpenAI)
         assert component.async_client.api_key == "test-api-key"
 
     @pytest.mark.asyncio
     async def test_run_async(self):
         generator = OpenAIImageGenerator(api_key=Secret.from_token("test-api-key"))
-        generator.warm_up()
 
         image_response = ImagesResponse(
             created=1630000000, data=[Image(b64_json="test-b64-json", revised_prompt="test-prompt")]
@@ -254,3 +249,88 @@ class TestOpenAIImageGeneratorAsync:
 
         decoded = base64.b64decode(image_str, validate=True)
         assert decoded.startswith(b"\x89PNG\r\n\x1a\n")
+
+
+@pytest.fixture
+def mock_openai_clients(monkeypatch):
+    monkeypatch.setenv("OPENAI_API_KEY", "fake")
+    sync_cls = MagicMock(name="OpenAI")
+    async_cls = MagicMock(name="AsyncOpenAI")
+    async_cls.return_value.close = AsyncMock()
+    monkeypatch.setattr(openai_image_generator_module, "OpenAI", sync_cls)
+    monkeypatch.setattr(openai_image_generator_module, "AsyncOpenAI", async_cls)
+    return sync_cls, async_cls
+
+
+class TestComponentLifecycle:
+    def test_warm_up_uses_default_timeout_and_max_retries(self, monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "fake-api-key")
+        generator = OpenAIImageGenerator()
+        generator.warm_up()
+        assert generator.client.max_retries == 5
+        assert generator.client.timeout == 30.0
+
+    def test_warm_up_uses_timeout_and_max_retries_from_parameters(self):
+        generator = OpenAIImageGenerator(api_key=Secret.from_token("fake-api-key"), timeout=40.0, max_retries=1)
+        generator.warm_up()
+        assert generator.client.max_retries == 1
+        assert generator.client.timeout == 40.0
+
+    def test_warm_up_uses_timeout_and_max_retries_from_env_vars(self, monkeypatch):
+        monkeypatch.setenv("OPENAI_TIMEOUT", "100")
+        monkeypatch.setenv("OPENAI_MAX_RETRIES", "10")
+        generator = OpenAIImageGenerator(api_key=Secret.from_token("fake-api-key"))
+        generator.warm_up()
+        assert generator.client.max_retries == 10
+        assert generator.client.timeout == 100.0
+
+    def test_key_resolved_at_warm_up_not_init(self, monkeypatch):
+        monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+        generator = OpenAIImageGenerator()
+        with pytest.raises(ValueError, match="None of the .* environment variables are set"):
+            generator.warm_up()
+
+    def test_sync_lifecycle(self, mock_openai_clients):
+        sync_cls, _ = mock_openai_clients
+        generator = OpenAIImageGenerator()
+        assert generator.client is None
+        assert generator.async_client is None
+
+        generator.warm_up()
+        assert generator.client is sync_cls.return_value
+        assert generator.async_client is None
+
+        generator.close()
+        sync_cls.return_value.close.assert_called_once()
+        assert generator.client is None
+
+    async def test_async_lifecycle(self, mock_openai_clients):
+        _, async_cls = mock_openai_clients
+        generator = OpenAIImageGenerator()
+
+        await generator.warm_up_async()
+        assert generator.async_client is async_cls.return_value
+        assert generator.client is None
+
+        await generator.close_async()
+        async_cls.return_value.close.assert_awaited_once()
+        assert generator.async_client is None
+
+    async def test_close_is_safe_without_warm_up(self, mock_openai_clients):
+        generator = OpenAIImageGenerator()
+        generator.close()
+        await generator.close_async()
+        assert generator.client is None
+        assert generator.async_client is None
+
+    async def test_close_and_close_async_are_independent(self, mock_openai_clients):
+        generator = OpenAIImageGenerator()
+        generator.warm_up()
+        await generator.warm_up_async()
+
+        generator.close()
+        assert generator.client is None
+        assert generator.async_client is not None
+
+        await generator.close_async()
+        assert generator.async_client is None

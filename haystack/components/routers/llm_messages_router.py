@@ -84,20 +84,32 @@ class LLMMessagesRouter:
         self._output_patterns = output_patterns
 
         self._compiled_patterns = [re.compile(pattern) for pattern in output_patterns]
-        self._is_warmed_up = False
 
         component.set_output_types(
             self, **{"chat_generator_text": str, **dict.fromkeys(output_names + ["unmatched"], list[ChatMessage])}
         )
 
     def warm_up(self) -> None:
-        """
-        Warm up the underlying LLM.
-        """
-        if not self._is_warmed_up:
-            if hasattr(self._chat_generator, "warm_up"):
-                self._chat_generator.warm_up()
-            self._is_warmed_up = True
+        """Warm up the underlying chat generator."""
+        if hasattr(self._chat_generator, "warm_up"):
+            self._chat_generator.warm_up()
+
+    async def warm_up_async(self) -> None:
+        """Warm up the underlying chat generator on the serving event loop."""
+        if hasattr(self._chat_generator, "warm_up_async"):
+            await self._chat_generator.warm_up_async()
+        elif hasattr(self._chat_generator, "warm_up"):
+            self._chat_generator.warm_up()
+
+    def close(self) -> None:
+        """Release the underlying chat generator's resources."""
+        if hasattr(self._chat_generator, "close"):
+            self._chat_generator.close()
+
+    async def close_async(self) -> None:
+        """Release the underlying chat generator's async resources."""
+        if hasattr(self._chat_generator, "close_async"):
+            await self._chat_generator.close_async()
 
     def run(self, messages: list[ChatMessage]) -> dict[str, str | list[ChatMessage]]:
         """
@@ -121,8 +133,7 @@ class LLMMessagesRouter:
             )
             raise ValueError(msg)
 
-        if not self._is_warmed_up:
-            self.warm_up()
+        self.warm_up()
 
         messages_for_inference = []
         if self._system_prompt:
@@ -168,8 +179,7 @@ class LLMMessagesRouter:
             )
             raise ValueError(msg)
 
-        if not self._is_warmed_up:
-            self.warm_up()
+        await self.warm_up_async()
 
         messages_for_inference = []
         if self._system_prompt:

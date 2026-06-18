@@ -4,7 +4,7 @@
 
 import asyncio
 import os
-from unittest.mock import Mock
+from unittest.mock import AsyncMock, Mock
 
 import pytest
 
@@ -140,13 +140,6 @@ class TestLLMMetadataExtractor:
         assert extractor.expected_keys == ["key1", "key2"]
         assert extractor.prompt == "some prompt that was used with the LLM {{document.content}}"
         assert extractor._chat_generator.to_dict() == chat_generator.to_dict()
-
-    def test_warm_up_with_chat_generator(self, monkeypatch):
-        mock_chat_generator = Mock()
-        extractor = LLMMetadataExtractor(prompt="prompt {{document.content}}", chat_generator=mock_chat_generator)
-        mock_chat_generator.warm_up.assert_not_called()
-        extractor.warm_up()
-        mock_chat_generator.warm_up.assert_called_once()
 
     def test_extract_metadata(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
@@ -513,3 +506,58 @@ class TestLLMMetadataExtractor:
         assert len(doc_store_docs) == 2
         assert "entities" in doc_store_docs[0].meta
         assert "entities" in doc_store_docs[1].meta
+
+
+class TestComponentLifecycle:
+    def test_warm_up_delegates_to_inner_components(self):
+        mock_chat_generator = Mock(spec=["run", "warm_up"])
+        extractor = LLMMetadataExtractor(prompt="prompt {{document.content}}", chat_generator=mock_chat_generator)
+        extractor.splitter = Mock(spec=["run", "warm_up"])
+        extractor.warm_up()
+        mock_chat_generator.warm_up.assert_called_once()
+        extractor.splitter.warm_up.assert_called_once()
+
+    async def test_warm_up_async_delegates_to_inner_components(self):
+        mock_chat_generator = Mock(spec=["run", "warm_up", "warm_up_async"])
+        mock_chat_generator.warm_up_async = AsyncMock()
+        extractor = LLMMetadataExtractor(prompt="prompt {{document.content}}", chat_generator=mock_chat_generator)
+        extractor.splitter = Mock(spec=["run", "warm_up_async"])
+        extractor.splitter.warm_up_async = AsyncMock()
+        await extractor.warm_up_async()
+        mock_chat_generator.warm_up_async.assert_awaited_once()
+        extractor.splitter.warm_up_async.assert_awaited_once()
+
+    async def test_warm_up_async_falls_back_to_sync_warm_up(self):
+        mock_chat_generator = Mock(spec=["run", "warm_up"])
+        extractor = LLMMetadataExtractor(prompt="prompt {{document.content}}", chat_generator=mock_chat_generator)
+        extractor.splitter = Mock(spec=["run", "warm_up"])
+        await extractor.warm_up_async()
+        mock_chat_generator.warm_up.assert_called_once()
+        extractor.splitter.warm_up.assert_called_once()
+
+    def test_close_delegates_to_inner_components(self):
+        mock_chat_generator = Mock(spec=["run", "close"])
+        extractor = LLMMetadataExtractor(prompt="prompt {{document.content}}", chat_generator=mock_chat_generator)
+        extractor.splitter = Mock(spec=["run", "close"])
+        extractor.close()
+        mock_chat_generator.close.assert_called_once()
+        extractor.splitter.close.assert_called_once()
+
+    async def test_close_async_delegates_to_inner_components(self):
+        mock_chat_generator = Mock(spec=["run", "close_async"])
+        mock_chat_generator.close_async = AsyncMock()
+        extractor = LLMMetadataExtractor(prompt="prompt {{document.content}}", chat_generator=mock_chat_generator)
+        extractor.splitter = Mock(spec=["run", "close_async"])
+        extractor.splitter.close_async = AsyncMock()
+        await extractor.close_async()
+        mock_chat_generator.close_async.assert_awaited_once()
+        extractor.splitter.close_async.assert_awaited_once()
+
+    async def test_lifecycle_is_safe_when_inner_lacks_methods(self):
+        mock_chat_generator = Mock(spec=["run"])
+        extractor = LLMMetadataExtractor(prompt="prompt {{document.content}}", chat_generator=mock_chat_generator)
+        extractor.splitter = Mock(spec=["run"])
+        extractor.warm_up()
+        await extractor.warm_up_async()
+        extractor.close()
+        await extractor.close_async()

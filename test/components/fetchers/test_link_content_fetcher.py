@@ -57,8 +57,8 @@ class TestLinkContentFetcher:
             "video/*": _binary_content_handler,
         }
         assert hasattr(fetcher, "_get_response")
-        assert hasattr(fetcher, "_client")
-        assert isinstance(fetcher._client, httpx.Client)
+        assert fetcher._client is None
+        assert fetcher._async_client is None
 
     def test_init_with_params(self):
         """Test initialization with custom parameters"""
@@ -181,6 +181,106 @@ class TestLinkContentFetcher:
             assert sent_headers["X-Test"] == "1"
             assert sent_headers["Accept-Language"] == "fr-FR"
             assert sent_headers["User-Agent"] == "ua-sync-1"  # rotating UA wins
+
+
+class TestComponentLifecycle:
+    def test_clients_are_none_after_init(self):
+        fetcher = LinkContentFetcher()
+        assert fetcher._client is None
+        assert fetcher._async_client is None
+
+    def test_sync_lifecycle(self):
+        with patch("haystack.components.fetchers.link_content.httpx.Client") as ClientMock:
+            client_instance = ClientMock.return_value
+            fetcher = LinkContentFetcher()
+
+            fetcher.warm_up()
+            assert fetcher._client is client_instance
+            assert fetcher._async_client is None
+            ClientMock.assert_called_once()
+
+            fetcher.close()
+            client_instance.close.assert_called_once()
+            assert fetcher._client is None
+
+    def test_warm_up_is_idempotent(self):
+        with patch("haystack.components.fetchers.link_content.httpx.Client") as ClientMock:
+            fetcher = LinkContentFetcher()
+            fetcher.warm_up()
+            fetcher.warm_up()
+            ClientMock.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_async_lifecycle(self):
+        with patch("haystack.components.fetchers.link_content.httpx.AsyncClient") as AsyncClientMock:
+            async_client_instance = AsyncClientMock.return_value
+            async_client_instance.aclose = AsyncMock()
+            fetcher = LinkContentFetcher()
+
+            await fetcher.warm_up_async()
+            assert fetcher._async_client is async_client_instance
+            assert fetcher._client is None
+            AsyncClientMock.assert_called_once()
+
+            await fetcher.close_async()
+            async_client_instance.aclose.assert_awaited_once()
+            assert fetcher._async_client is None
+
+    @pytest.mark.asyncio
+    async def test_warm_up_async_is_idempotent(self):
+        with patch("haystack.components.fetchers.link_content.httpx.AsyncClient") as AsyncClientMock:
+            fetcher = LinkContentFetcher()
+            await fetcher.warm_up_async()
+            await fetcher.warm_up_async()
+            AsyncClientMock.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_close_is_safe_without_warm_up(self):
+        fetcher = LinkContentFetcher()
+        fetcher.close()
+        await fetcher.close_async()
+        assert fetcher._client is None
+        assert fetcher._async_client is None
+
+    @pytest.mark.asyncio
+    async def test_close_and_close_async_are_independent(self):
+        with (
+            patch("haystack.components.fetchers.link_content.httpx.Client") as ClientMock,
+            patch("haystack.components.fetchers.link_content.httpx.AsyncClient") as AsyncClientMock,
+        ):
+            client_instance = ClientMock.return_value
+            async_client_instance = AsyncClientMock.return_value
+            async_client_instance.aclose = AsyncMock()
+
+            fetcher = LinkContentFetcher()
+            fetcher.warm_up()
+            await fetcher.warm_up_async()
+
+            fetcher.close()
+            assert fetcher._client is None
+            assert fetcher._async_client is async_client_instance
+            async_client_instance.aclose.assert_not_awaited()
+
+            await fetcher.close_async()
+            assert fetcher._async_client is None
+            client_instance.close.assert_called_once()
+
+    def test_run_self_heals(self):
+        with patch("haystack.components.fetchers.link_content.httpx.Client.get") as mock_get:
+            mock_response = Mock(status_code=200, text="ok", headers={"Content-Type": "text/plain"})
+            mock_get.return_value = mock_response
+            fetcher = LinkContentFetcher()
+            fetcher.run(urls=["https://www.example.com"])
+            assert fetcher._client is not None
+
+    @pytest.mark.asyncio
+    async def test_run_async_self_heals(self):
+        with patch("haystack.components.fetchers.link_content.httpx.AsyncClient.get") as mock_get:
+            mock_response = Mock(status_code=200, text="ok", headers={"Content-Type": "text/plain"})
+            mock_get.return_value = mock_response
+            fetcher = LinkContentFetcher()
+            await fetcher.run_async(urls=["https://www.example.com"])
+            assert fetcher._async_client is not None
 
 
 @pytest.mark.flaky(reruns=3, reruns_delay=5)

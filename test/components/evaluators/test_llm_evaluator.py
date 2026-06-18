@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+from unittest.mock import AsyncMock, Mock
 
 import pytest
 
@@ -30,20 +31,20 @@ class TestLLMEvaluator:
         ]
 
         assert isinstance(component._chat_generator, OpenAIChatGenerator)
-        assert component._chat_generator.client.api_key == "test-api-key"
         assert component._chat_generator.generation_kwargs == {"response_format": {"type": "json_object"}, "seed": 42}
 
-    def test_init_fail_wo_openai_api_key(self, monkeypatch):
+    def test_key_resolved_at_warm_up_not_init(self, monkeypatch):
         monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+        component = LLMEvaluator(
+            instructions="test-instruction",
+            inputs=[("predicted_answers", list[str])],
+            outputs=["score"],
+            examples=[
+                {"inputs": {"predicted_answers": "Football is the most popular sport."}, "outputs": {"score": 0}}
+            ],
+        )
         with pytest.raises(ValueError, match="None of the .* environment variables are set"):
-            LLMEvaluator(
-                instructions="test-instruction",
-                inputs=[("predicted_answers", list[str])],
-                outputs=["score"],
-                examples=[
-                    {"inputs": {"predicted_answers": "Football is the most popular sport."}, "outputs": {"score": 0}}
-                ],
-            )
+            component.warm_up()
 
     def test_init_with_chat_generator(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
@@ -268,7 +269,6 @@ class TestLLMEvaluator:
 
         component = LLMEvaluator.from_dict(data)
         assert isinstance(component._chat_generator, OpenAIChatGenerator)
-        assert component._chat_generator.client.api_key == "test-api-key"
         assert component._chat_generator.generation_kwargs == {"response_format": {"type": "json_object"}, "seed": 42}
         assert component.instructions == "test-instruction"
         assert component.inputs == [("predicted_answers", list[str])]
@@ -574,3 +574,57 @@ class TestLLMEvaluatorAsync:
 
         with pytest.raises(ValueError):
             await component.run_async(questions=["question"], predicted_answers=["answer"])
+
+
+class TestComponentLifecycle:
+    @staticmethod
+    def _make_evaluator(chat_generator):
+        return LLMEvaluator(
+            instructions="test-instruction",
+            inputs=[("predicted_answers", list[str])],
+            outputs=["score"],
+            examples=[
+                {"inputs": {"predicted_answers": "Football is the most popular sport."}, "outputs": {"score": 0}}
+            ],
+            chat_generator=chat_generator,
+        )
+
+    def test_warm_up_delegates_to_chat_generator(self):
+        chat_generator = Mock(spec=["run", "warm_up"])
+        evaluator = self._make_evaluator(chat_generator)
+        evaluator.warm_up()
+        chat_generator.warm_up.assert_called_once()
+
+    async def test_warm_up_async_delegates_to_chat_generator(self):
+        chat_generator = Mock(spec=["run", "warm_up_async"])
+        chat_generator.warm_up_async = AsyncMock()
+        evaluator = self._make_evaluator(chat_generator)
+        await evaluator.warm_up_async()
+        chat_generator.warm_up_async.assert_awaited_once()
+
+    async def test_warm_up_async_falls_back_to_sync_warm_up(self):
+        chat_generator = Mock(spec=["run", "warm_up"])
+        evaluator = self._make_evaluator(chat_generator)
+        await evaluator.warm_up_async()
+        chat_generator.warm_up.assert_called_once()
+
+    def test_close_delegates_to_chat_generator(self):
+        chat_generator = Mock(spec=["run", "close"])
+        evaluator = self._make_evaluator(chat_generator)
+        evaluator.close()
+        chat_generator.close.assert_called_once()
+
+    async def test_close_async_delegates_to_chat_generator(self):
+        chat_generator = Mock(spec=["run", "close_async"])
+        chat_generator.close_async = AsyncMock()
+        evaluator = self._make_evaluator(chat_generator)
+        await evaluator.close_async()
+        chat_generator.close_async.assert_awaited_once()
+
+    async def test_lifecycle_is_safe_when_chat_generator_lacks_methods(self):
+        chat_generator = Mock(spec=["run"])
+        evaluator = self._make_evaluator(chat_generator)
+        evaluator.warm_up()
+        await evaluator.warm_up_async()
+        evaluator.close()
+        await evaluator.close_async()

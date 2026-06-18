@@ -105,6 +105,26 @@ class _SuperComponent:
             self.pipeline.warm_up()
             self._warmed_up = True
 
+    async def warm_up_async(self) -> None:
+        """
+        Warms up the SuperComponent by warming up the wrapped pipeline on the serving event loop.
+        """
+        if not self._warmed_up:
+            await self.pipeline.warm_up_async()
+            self._warmed_up = True
+
+    def close(self) -> None:
+        """
+        Releases the synchronous resources held by the wrapped pipeline's components.
+        """
+        self.pipeline.close()
+
+    async def close_async(self) -> None:
+        """
+        Releases the async resources held by the wrapped pipeline's components.
+        """
+        await self.pipeline.close_async()
+
     def run(self, **kwargs: Any) -> dict[str, Any]:
         """
         Runs the wrapped pipeline with the provided inputs.

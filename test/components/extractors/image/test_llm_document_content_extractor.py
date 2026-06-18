@@ -130,20 +130,6 @@ class TestLLMDocumentContentExtractor:
         assert extractor.max_workers == 4
         assert component_to_dict(extractor._chat_generator, "name") == component_to_dict(chat_generator, "name")
 
-    def test_warm_up_with_chat_generator(self, monkeypatch):
-        mock_chat_generator = Mock()
-        mock_chat_generator.warm_up = Mock()
-        extractor = LLMDocumentContentExtractor(chat_generator=mock_chat_generator)
-        mock_chat_generator.warm_up.assert_not_called()
-        extractor.warm_up()
-        mock_chat_generator.warm_up.assert_called_once()
-
-    def test_warm_up_without_warm_up_method(self, monkeypatch):
-        mock_chat_generator = Mock()
-        extractor = LLMDocumentContentExtractor(chat_generator=mock_chat_generator)
-        extractor.warm_up()
-        assert extractor._is_warmed_up is True
-
     def test_run_no_documents(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
         chat_generator = OpenAIChatGenerator()
@@ -658,3 +644,45 @@ class TestLLMDocumentContentExtractorAsync:
         assert len(result["failed_documents"]) == 0
         assert len(result["documents"]) == 1
         assert len(result["documents"][0].content) > 0
+
+
+class TestComponentLifecycle:
+    def test_warm_up_delegates_to_chat_generator(self):
+        mock_chat_generator = Mock(spec=["run", "warm_up"])
+        extractor = LLMDocumentContentExtractor(chat_generator=mock_chat_generator)
+        extractor.warm_up()
+        mock_chat_generator.warm_up.assert_called_once()
+
+    async def test_warm_up_async_delegates_to_chat_generator(self):
+        mock_chat_generator = Mock(spec=["run", "warm_up_async"])
+        mock_chat_generator.warm_up_async = AsyncMock()
+        extractor = LLMDocumentContentExtractor(chat_generator=mock_chat_generator)
+        await extractor.warm_up_async()
+        mock_chat_generator.warm_up_async.assert_awaited_once()
+
+    async def test_warm_up_async_falls_back_to_sync_warm_up(self):
+        mock_chat_generator = Mock(spec=["run", "warm_up"])
+        extractor = LLMDocumentContentExtractor(chat_generator=mock_chat_generator)
+        await extractor.warm_up_async()
+        mock_chat_generator.warm_up.assert_called_once()
+
+    def test_close_delegates_to_chat_generator(self):
+        mock_chat_generator = Mock(spec=["run", "close"])
+        extractor = LLMDocumentContentExtractor(chat_generator=mock_chat_generator)
+        extractor.close()
+        mock_chat_generator.close.assert_called_once()
+
+    async def test_close_async_delegates_to_chat_generator(self):
+        mock_chat_generator = Mock(spec=["run", "close_async"])
+        mock_chat_generator.close_async = AsyncMock()
+        extractor = LLMDocumentContentExtractor(chat_generator=mock_chat_generator)
+        await extractor.close_async()
+        mock_chat_generator.close_async.assert_awaited_once()
+
+    async def test_lifecycle_is_safe_when_chat_generator_lacks_methods(self):
+        mock_chat_generator = Mock(spec=["run"])
+        extractor = LLMDocumentContentExtractor(chat_generator=mock_chat_generator)
+        extractor.warm_up()
+        await extractor.warm_up_async()
+        extractor.close()
+        await extractor.close_async()

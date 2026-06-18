@@ -4,7 +4,7 @@
 
 import os
 from typing import Any
-from unittest.mock import ANY
+from unittest.mock import ANY, AsyncMock, Mock
 
 import numpy as np
 import pytest
@@ -189,3 +189,58 @@ class TestTextEmbeddingRetriever:
         result = retriever.run(query="energy", top_k=2)
         assert "documents" in result
         assert len(result["documents"]) <= 2
+
+
+class TestComponentLifecycle:
+    def test_warm_up_delegates_to_inner_components(self):
+        text_embedder = Mock(spec=["run", "warm_up"])
+        retriever = Mock(spec=["run", "warm_up"])
+        component = TextEmbeddingRetriever(retriever=retriever, text_embedder=text_embedder)
+        component.warm_up()
+        text_embedder.warm_up.assert_called_once()
+        retriever.warm_up.assert_called_once()
+
+    async def test_warm_up_async_delegates_to_inner_components(self):
+        text_embedder = Mock(spec=["run", "warm_up_async"])
+        text_embedder.warm_up_async = AsyncMock()
+        retriever = Mock(spec=["run", "warm_up_async"])
+        retriever.warm_up_async = AsyncMock()
+        component = TextEmbeddingRetriever(retriever=retriever, text_embedder=text_embedder)
+        await component.warm_up_async()
+        text_embedder.warm_up_async.assert_awaited_once()
+        retriever.warm_up_async.assert_awaited_once()
+
+    async def test_warm_up_async_falls_back_to_sync_warm_up(self):
+        text_embedder = Mock(spec=["run", "warm_up"])
+        retriever = Mock(spec=["run", "warm_up"])
+        component = TextEmbeddingRetriever(retriever=retriever, text_embedder=text_embedder)
+        await component.warm_up_async()
+        text_embedder.warm_up.assert_called_once()
+        retriever.warm_up.assert_called_once()
+
+    def test_close_delegates_to_inner_components(self):
+        text_embedder = Mock(spec=["run", "close"])
+        retriever = Mock(spec=["run", "close"])
+        component = TextEmbeddingRetriever(retriever=retriever, text_embedder=text_embedder)
+        component.close()
+        text_embedder.close.assert_called_once()
+        retriever.close.assert_called_once()
+
+    async def test_close_async_delegates_to_inner_components(self):
+        text_embedder = Mock(spec=["run", "close_async"])
+        text_embedder.close_async = AsyncMock()
+        retriever = Mock(spec=["run", "close_async"])
+        retriever.close_async = AsyncMock()
+        component = TextEmbeddingRetriever(retriever=retriever, text_embedder=text_embedder)
+        await component.close_async()
+        text_embedder.close_async.assert_awaited_once()
+        retriever.close_async.assert_awaited_once()
+
+    async def test_lifecycle_is_safe_when_inner_components_lack_methods(self):
+        text_embedder = Mock(spec=["run"])
+        retriever = Mock(spec=["run"])
+        component = TextEmbeddingRetriever(retriever=retriever, text_embedder=text_embedder)
+        component.warm_up()
+        await component.warm_up_async()
+        component.close()
+        await component.close_async()

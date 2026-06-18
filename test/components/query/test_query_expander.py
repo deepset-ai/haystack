@@ -18,13 +18,6 @@ def mock_chat_generator():
     return Mock(spec=OpenAIChatGenerator)
 
 
-@pytest.fixture
-def mock_chat_generator_with_warm_up():
-    mock_generator = Mock(spec=OpenAIChatGenerator)
-    mock_generator.warm_up = lambda: None
-    return mock_generator
-
-
 class TestQueryExpander:
     def test_init_default_generator(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test-key-12345")
@@ -42,20 +35,13 @@ class TestQueryExpander:
         assert expander.n_expansions == 3
         assert expander.chat_generator is mock_chat_generator
 
-    def test_run_warm_up(self, mock_chat_generator_with_warm_up):
-        expander = QueryExpander(chat_generator=mock_chat_generator_with_warm_up)
-        mock_chat_generator_with_warm_up.run.return_value = {"queries": ["test query"]}
+    def test_run_warms_up_chat_generator(self, mock_chat_generator):
+        expander = QueryExpander(chat_generator=mock_chat_generator)
+        mock_chat_generator.run.return_value = {"replies": [ChatMessage.from_assistant("1. test query")]}
 
-        expander.warm_up()
         expander.run("test query")
 
-        assert expander._is_warmed_up is True
-        assert expander.run("test query") == {"queries": ["test query"]}
-
-    def test_warm_up(self, mock_chat_generator):
-        expander = QueryExpander(chat_generator=mock_chat_generator)
-        expander.warm_up()
-        assert expander._is_warmed_up is True
+        mock_chat_generator.warm_up.assert_called()
 
     def test_init_negative_expansions_raises_error(self):
         with pytest.raises(ValueError, match="n_expansions must be positive"):
@@ -492,3 +478,39 @@ class TestQueryExpanderIntegration:
 
             # Should be different from original
             assert query not in result["queries"]
+
+
+class TestComponentLifecycle:
+    def test_warm_up_delegates_to_chat_generator(self, mock_chat_generator):
+        expander = QueryExpander(chat_generator=mock_chat_generator)
+        expander.warm_up()
+        mock_chat_generator.warm_up.assert_called_once()
+
+    async def test_warm_up_async_delegates_to_chat_generator(self, mock_chat_generator):
+        mock_chat_generator.warm_up_async = AsyncMock()
+        expander = QueryExpander(chat_generator=mock_chat_generator)
+        await expander.warm_up_async()
+        mock_chat_generator.warm_up_async.assert_awaited_once()
+
+    async def test_warm_up_async_falls_back_to_sync_warm_up(self):
+        chat_generator = Mock(spec=["run", "warm_up"])
+        expander = QueryExpander(chat_generator=chat_generator)
+        await expander.warm_up_async()
+        chat_generator.warm_up.assert_called_once()
+
+    def test_close_delegates_to_chat_generator(self, mock_chat_generator):
+        expander = QueryExpander(chat_generator=mock_chat_generator)
+        expander.close()
+        mock_chat_generator.close.assert_called_once()
+
+    async def test_close_async_delegates_to_chat_generator(self, mock_chat_generator):
+        mock_chat_generator.close_async = AsyncMock()
+        expander = QueryExpander(chat_generator=mock_chat_generator)
+        await expander.close_async()
+        mock_chat_generator.close_async.assert_awaited_once()
+
+    def test_lifecycle_is_safe_when_chat_generator_lacks_methods(self):
+        chat_generator = Mock(spec=["run"])
+        expander = QueryExpander(chat_generator=chat_generator)
+        expander.warm_up()
+        expander.close()

@@ -118,21 +118,53 @@ class EmbeddingBasedDocumentSplitter:
         self.use_split_rules = use_split_rules
         self.extend_abbreviations = extend_abbreviations
         self.sentence_splitter: SentenceSplitter | None = None
-        self._is_warmed_up = False
 
     def warm_up(self) -> None:
         """
-        Warm up the component by initializing the sentence splitter.
+        Warm up the component by initializing the sentence splitter and the document embedder.
         """
-        self.sentence_splitter = SentenceSplitter(
-            language=self.language,
-            use_split_rules=self.use_split_rules,
-            extend_abbreviations=self.extend_abbreviations,
-            keep_white_spaces=True,
-        )
+        if self.sentence_splitter is None:
+            self.sentence_splitter = SentenceSplitter(
+                language=self.language,
+                use_split_rules=self.use_split_rules,
+                extend_abbreviations=self.extend_abbreviations,
+                keep_white_spaces=True,
+            )
         if hasattr(self.document_embedder, "warm_up"):
             self.document_embedder.warm_up()
-        self._is_warmed_up = True
+
+    async def warm_up_async(self) -> None:
+        """
+        Warm up the component on the serving event loop.
+
+        Initializes the sentence splitter and warms up the document embedder using its async warm-up path when
+        available, falling back to the synchronous one otherwise.
+        """
+        if self.sentence_splitter is None:
+            self.sentence_splitter = SentenceSplitter(
+                language=self.language,
+                use_split_rules=self.use_split_rules,
+                extend_abbreviations=self.extend_abbreviations,
+                keep_white_spaces=True,
+            )
+        if hasattr(self.document_embedder, "warm_up_async"):
+            await self.document_embedder.warm_up_async()
+        elif hasattr(self.document_embedder, "warm_up"):
+            self.document_embedder.warm_up()
+
+    def close(self) -> None:
+        """
+        Release the document embedder's resources.
+        """
+        if hasattr(self.document_embedder, "close"):
+            self.document_embedder.close()
+
+    async def close_async(self) -> None:
+        """
+        Release the document embedder's async resources.
+        """
+        if hasattr(self.document_embedder, "close_async"):
+            await self.document_embedder.close_async()
 
     @component.output_types(documents=list[Document])
     def run(self, documents: list[Document]) -> dict[str, list[Document]]:
@@ -151,8 +183,7 @@ class EmbeddingBasedDocumentSplitter:
         :raises TypeError: If the input is not a list of Documents.
         :raises ValueError: If the document content is None or empty.
         """
-        if not self._is_warmed_up:
-            self.warm_up()
+        self.warm_up()
 
         if not isinstance(documents, list) or (documents and not isinstance(documents[0], Document)):
             raise TypeError("EmbeddingBasedDocumentSplitter expects a List of Documents as input.")
@@ -192,8 +223,7 @@ class EmbeddingBasedDocumentSplitter:
         :raises TypeError: If the input is not a list of Documents.
         :raises ValueError: If the document content is None or empty.
         """
-        if not self._is_warmed_up:
-            self.warm_up()
+        await self.warm_up_async()
 
         if not isinstance(documents, list) or (documents and not isinstance(documents[0], Document)):
             raise TypeError("EmbeddingBasedDocumentSplitter expects a List of Documents as input.")
