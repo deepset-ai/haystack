@@ -47,7 +47,7 @@
 | haystack/components/converters/pdfminer.py                                          |       68 |        0 |    100% |           |
 | haystack/components/converters/pptx.py                                              |       69 |        2 |     97% |     89-90 |
 | haystack/components/converters/pypdf.py                                             |       74 |        3 |     96% |   209-213 |
-| haystack/components/converters/tika.py                                              |       59 |        4 |     93% |36, 133-139 |
+| haystack/components/converters/tika.py                                              |       61 |        4 |     93% |37, 142-148 |
 | haystack/components/converters/txt.py                                               |       34 |        3 |     91% |     87-91 |
 | haystack/components/converters/utils.py                                             |       21 |        0 |    100% |           |
 | haystack/components/converters/xlsx.py                                              |      113 |        3 |     97% |83, 183, 185 |
@@ -266,7 +266,7 @@
 | haystack/utils/type\_serialization.py                                               |      112 |       12 |     89% |62, 64, 178-179, 190-193, 199, 215-218 |
 | haystack/utils/url\_validation.py                                                   |        4 |        0 |    100% |           |
 | haystack/version.py                                                                 |        5 |        2 |     60% |      9-10 |
-| **TOTAL**                                                                           | **17886** | **1221** | **93%** |           |
+| **TOTAL**                                                                           | **17888** | **1221** | **93%** |           |
 
 
 ## Setup coverage badge
