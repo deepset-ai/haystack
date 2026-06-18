@@ -10,7 +10,7 @@ from haystack import Document, component, default_from_dict, default_to_dict
 from haystack.components.embedders.types.protocol import TextEmbedder
 from haystack.components.retrievers.types import EmbeddingRetriever
 from haystack.core.serialization import component_to_dict
-from haystack.utils.async_utils import _run_component_async
+from haystack.utils.async_utils import _execute_component_async
 from haystack.utils.misc import _deduplicate_documents
 
 
@@ -29,8 +29,8 @@ class MultiQueryEmbeddingRetriever:
     from haystack import Document
     from haystack.document_stores.in_memory import InMemoryDocumentStore
     from haystack.document_stores.types import DuplicatePolicy
-    from haystack.components.embedders import SentenceTransformersTextEmbedder
-    from haystack.components.embedders import SentenceTransformersDocumentEmbedder
+    from haystack.components.embedders import OpenAITextEmbedder
+    from haystack.components.embedders import OpenAIDocumentEmbedder
     from haystack.components.retrievers import InMemoryEmbeddingRetriever
     from haystack.components.writers import DocumentWriter
     from haystack.components.retrievers import MultiQueryEmbeddingRetriever
@@ -46,14 +46,14 @@ class MultiQueryEmbeddingRetriever:
 
     # Populate the document store
     doc_store = InMemoryDocumentStore()
-    doc_embedder = SentenceTransformersDocumentEmbedder(model="sentence-transformers/all-MiniLM-L6-v2")
+    doc_embedder = OpenAIDocumentEmbedder()
     doc_writer = DocumentWriter(document_store=doc_store, policy=DuplicatePolicy.SKIP)
     documents = doc_embedder.run(documents)["documents"]
     doc_writer.run(documents=documents)
 
     # Run the multi-query retriever
     in_memory_retriever = InMemoryEmbeddingRetriever(document_store=doc_store, top_k=1)
-    query_embedder = SentenceTransformersTextEmbedder(model="sentence-transformers/all-MiniLM-L6-v2")
+    query_embedder = OpenAITextEmbedder()
 
     multi_query_retriever = MultiQueryEmbeddingRetriever(
         retriever=in_memory_retriever,
@@ -179,11 +179,11 @@ class MultiQueryEmbeddingRetriever:
         :returns:
             List of retrieved documents or None if no results.
         """
-        embedding_result = await _run_component_async(self.query_embedder, text=query)
+        embedding_result = await _execute_component_async(self.query_embedder, text=query)
 
         query_embedding = embedding_result["embedding"]
 
-        result = await _run_component_async(self.retriever, query_embedding=query_embedding, **retriever_kwargs)
+        result = await _execute_component_async(self.retriever, query_embedding=query_embedding, **retriever_kwargs)
 
         if result and "documents" in result:
             return result["documents"]

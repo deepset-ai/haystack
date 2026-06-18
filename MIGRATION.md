@@ -98,6 +98,64 @@ pip install <new-package>
 | `from haystack.components.readers import ExtractiveReader` | `transformers-haystack` | `from haystack_integrations.components.readers.transformers import TransformersExtractiveReader` |
 | `from haystack.components.routers import TransformersTextRouter` | `transformers-haystack` | `from haystack_integrations.components.routers.transformers import TransformersTextRouter` |
 | `from haystack.components.routers import TransformersZeroShotTextRouter` | `transformers-haystack` | `from haystack_integrations.components.routers.transformers import TransformersZeroShotTextRouter` |
+| `from haystack.components.websearch import SerperDevWebSearch` | `serperdev-haystack` | `from haystack_integrations.components.websearch.serperdev import SerperDevWebSearch` |
+| `from haystack.components.websearch import SearchApiWebSearch` | `searchapi-haystack` | `from haystack_integrations.components.websearch.searchapi import SearchApiWebSearch` || `from haystack.components.extractors import NamedEntityExtractor` (Hugging Face backend) | `transformers-haystack` | `from haystack_integrations.components.extractors.transformers import TransformersNamedEntityExtractor` |
+| `from haystack.components.extractors import NamedEntityExtractor` (spaCy backend) | `spacy-haystack` | `from haystack_integrations.components.extractors.spacy import SpacyNamedEntityExtractor` |
+| `from haystack.components.embedders import SentenceTransformersTextEmbedder` | `sentence-transformers-haystack` | `from haystack_integrations.components.embedders.sentence_transformers import SentenceTransformersTextEmbedder` |
+| `from haystack.components.embedders import SentenceTransformersDocumentEmbedder` | `sentence-transformers-haystack` | `from haystack_integrations.components.embedders.sentence_transformers import SentenceTransformersDocumentEmbedder` |
+| `from haystack.components.embedders import SentenceTransformersSparseTextEmbedder` | `sentence-transformers-haystack` | `from haystack_integrations.components.embedders.sentence_transformers import SentenceTransformersSparseTextEmbedder` |
+| `from haystack.components.embedders import SentenceTransformersSparseDocumentEmbedder` | `sentence-transformers-haystack` | `from haystack_integrations.components.embedders.sentence_transformers import SentenceTransformersSparseDocumentEmbedder` |
+| `from haystack.components.embedders.image import SentenceTransformersDocumentImageEmbedder` | `sentence-transformers-haystack` | `from haystack_integrations.components.embedders.sentence_transformers import SentenceTransformersDocumentImageEmbedder` |
+| `from haystack.components.rankers import SentenceTransformersSimilarityRanker` | `sentence-transformers-haystack` | `from haystack_integrations.components.rankers.sentence_transformers import SentenceTransformersSimilarityRanker` |
+| `from haystack.components.rankers import SentenceTransformersDiversityRanker` | `sentence-transformers-haystack` | `from haystack_integrations.components.rankers.sentence_transformers import SentenceTransformersDiversityRanker` |
+| `from haystack.tracing.datadog import DatadogTracer` | `datadog-haystack` | `from haystack_integrations.tracing.datadog import DatadogTracer` |
+
+### `DatadogTracer` moved to the `datadog-haystack` integration
+
+**What changed:** The `DatadogTracer` has been moved out of Haystack into the `datadog-haystack` integration package.
+In addition, Haystack no longer automatically enables Datadog tracing when `ddtrace` is installed. You now enable it
+explicitly by adding the new `DatadogConnector` component to your pipeline.
+
+**Why:** Moving the tracer to a dedicated package keeps Haystack's dependencies leaner and lets the integration be
+released independently. Removing the implicit auto-enable makes tracing setup explicit and predictable.
+
+**How to migrate:**
+
+Install the integration:
+
+```bash
+pip install datadog-haystack
+```
+
+Before (v2.x), Datadog tracing was auto-enabled when `ddtrace` was installed, or set up manually:
+
+```python
+import ddtrace
+from haystack import tracing
+from haystack.tracing.datadog import DatadogTracer
+
+tracing.enable_tracing(DatadogTracer(ddtrace.tracer))
+```
+
+After (v3.0), add the `DatadogConnector` to your pipeline to enable tracing:
+
+```python
+from haystack import Pipeline
+from haystack_integrations.components.connectors.datadog import DatadogConnector
+
+pipe = Pipeline()
+pipe.add_component("tracer", DatadogConnector())
+```
+
+Alternatively, you can still enable the tracer manually using the new import path:
+
+```python
+import ddtrace
+from haystack import tracing
+from haystack_integrations.tracing.datadog import DatadogTracer
+
+tracing.enable_tracing(DatadogTracer(ddtrace.tracer))
+```
 
 ### `TransformersSimilarityRanker` removed
 
@@ -699,4 +757,113 @@ from haystack.components.generators import OpenAIImageGenerator
 
 generator = OpenAIImageGenerator(model="gpt-image-2")
 result = generator.run("A photo of a red apple")
+```
+
+### `AsyncPipeline` merged into `Pipeline`
+
+**What changed:** The `AsyncPipeline` class has been removed. Its asynchronous methods (`run_async`, `run_async_generator`, `stream`) are now part of the single `Pipeline` class, alongside the synchronous `run`.
+
+**Why:** Two classes caused friction where sync and async met: `AsyncPipeline.run()` wrapped `asyncio.run()` and raised inside an already-running event loop (e.g. Jupyter, FastAPI), and a `SuperComponent` exposed `run_async` even for sync pipelines, where it always failed. A single `Pipeline` with native `run` and `run_async` fixes both.
+
+**How to migrate:**
+
+Replace `AsyncPipeline` with `Pipeline`; the async methods are unchanged.
+
+Before (v2.x):
+```python
+from haystack import AsyncPipeline
+
+pipeline = AsyncPipeline()
+result = await pipeline.run_async(data)
+```
+
+After (v3.0):
+```python
+from haystack import Pipeline
+
+pipeline = Pipeline()
+result = await pipeline.run_async(data)
+```
+
+If you used the **synchronous** `AsyncPipeline.run()`, note it was a wrapper around the concurrent async engine, so `Pipeline.run()` is not a drop-in replacement. Choose by intent:
+
+```python
+# Keep concurrent execution from sync code:
+result = asyncio.run(pipeline.run_async(data, concurrency_limit=4))
+
+# Sequential execution is fine:
+result = pipeline.run(data)  # components run one at a time; no concurrency_limit
+```
+
+Unlike `AsyncPipeline.run()`, `Pipeline.run()` does not raise when called inside a running event loop: it runs and blocks the loop. In an async context, use `await pipeline.run_async(...)`.
+
+**Behavior to be aware of:**
+
+- `Pipeline.run` runs components sequentially and does not accept `concurrency_limit`; only `run_async` / `run_async_generator` run components concurrently.
+- Only `run` supports breakpoints (`break_point` / `pipeline_snapshot`).
+- Both run paths are traced under a single `haystack.pipeline.run` operation name, distinguished by a `haystack.pipeline.execution_mode` tag (`sync` or `async`); previously asynchronous runs used `haystack.async_pipeline.run`.
+
+### Auto-generated `Document.id` changes for documents with non-empty `meta`
+
+**What changed:** The hash used to auto-generate `Document.id` is now computed from a canonical (key-sorted) JSON serialization of `meta` instead of the dict's `repr`. Documents with empty `meta` keep the same IDs as before, but documents with non-empty `meta` get different IDs in v3.0. Non-JSON-serializable `meta` values (e.g. `datetime` or custom classes) are now serialized via `str(...)` rather than `repr(...)`, which also changes their IDs. See [#11446](https://github.com/deepset-ai/haystack/pull/11446).
+
+**Why:** Previously the hash reflected the insertion order of keys in `meta`, so two documents with the same content and the same metadata could end up with different IDs depending on how the `meta` dict was constructed. This silently broke `DuplicatePolicy.SKIP` / `FAIL` and any cache or dedup table keyed on the document ID. Sorting the keys before hashing makes the ID order-independent.
+
+**How to migrate:**
+
+If you rely on auto-generated IDs to match documents already persisted in a `DocumentStore` written by Haystack v2.x, re-ingest the affected documents so the new IDs are used consistently, or pass the previous `id` explicitly when constructing the `Document`.
+
+Before (v2.x):
+```python
+from haystack.dataclasses import Document
+
+# ID was derived from meta's dict repr, so it depended on key insertion order:
+# these two documents could end up with different IDs.
+doc1 = Document(content="Berlin is the capital of Germany.", meta={"source": "wiki", "lang": "en"})
+doc2 = Document(content="Berlin is the capital of Germany.", meta={"lang": "en", "source": "wiki"})
+
+After (v3.0):
+```python
+from haystack.dataclasses import Document
+
+# Same content + meta now always yields the same ID, regardless of key order,
+# but that ID differs from the one v2.x produced for documents with non-empty meta.
+doc1 = Document(content="Berlin is the capital of Germany.", meta={"source": "wiki", "lang": "en"})
+doc2 = Document(content="Berlin is the capital of Germany.", meta={"lang": "en", "source": "wiki"})
+assert doc1.id == doc2.id
+```
+
+It is possible to migrate an existing index without rerunning your indexing pipeline, for example to avoid recalculating embeddings. To do that, read stored documents, regenerate their IDs using Haystack 3.0, write the updated documents, and delete the documents stored under their old IDs. 
+
+```python
+from dataclasses import replace
+
+from haystack import Document
+from haystack.document_stores.in_memory import InMemoryDocumentStore
+from haystack.document_stores.types import DuplicatePolicy
+
+# Example DocumentStore with IDs generated with Haystack 2.x
+store = InMemoryDocumentStore()
+store.write_documents(
+    [
+        Document(
+            id="b51c3ee6b892f52bf28af01f5d823a254e438356ec335a20133ad940ef7b8cd7",
+            content="Berlin is the capital of Germany.",
+            meta={"source": "wiki", "lang": "en"},
+        ),
+        Document(
+            id="f022d8d89a99f89547215f8adcfed92f41518f2bb3e11d14e27987bd9d265ead",
+            content="Paris is the capital of France.",
+            meta={"source": "wiki", "lang": "en"},
+        ),
+    ],
+    policy=DuplicatePolicy.OVERWRITE,
+)
+
+# Exemplary steps to re-calculate IDs. Note that all documents are retrieved at once in this example but larger indices require pagination.
+old_documents = store.filter_documents()
+new_documents = [replace(doc, id="") for doc in old_documents]
+store.write_documents(new_documents, policy=DuplicatePolicy.OVERWRITE)
+new_ids = {doc.id for doc in new_documents}
+store.delete_documents([doc.id for doc in old_documents if doc.id not in new_ids])
 ```

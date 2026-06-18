@@ -1,6 +1,6 @@
 loaders:
   - search_path: [../haystack/core/pipeline]
-    modules: ["async_pipeline", "pipeline"]
+    modules: ["pipeline"]
 processors:
   - type: filter
     documented_only: true

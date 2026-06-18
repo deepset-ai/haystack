@@ -27,17 +27,13 @@ class FileToFileContent:
     from haystack.components.converters import FileToFileContent
 
     converter = FileToFileContent()
-
-    sources = ["document.pdf", "video.mp4"]
-
+    sources = ["test/test_files/pdf/react_paper.pdf", "test/test_files/images/haystack-logo.png"]
     file_contents = converter.run(sources=sources)["file_contents"]
-    print(file_contents)
 
-    # [FileContent(base64_data='...',
-    #              mime_type='application/pdf',
-    #              filename='document.pdf',
-    #              extra={}),
-    #  ...]
+    print(file_contents)
+    # >> [FileContent(base64_data='...', mime_type='application/pdf', filename='react_paper.pdf', extra={}),
+    # >>  FileContent(base64_data='...', mime_type='image/png', filename='haystack-logo.png', extra={})
+    # >>]
     ```
     """
 

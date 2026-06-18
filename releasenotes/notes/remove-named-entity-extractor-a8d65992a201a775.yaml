@@ -1,0 +1,42 @@
+---
+upgrade:
+  - |
+    The ``NamedEntityExtractor`` component (along with the ``NamedEntityAnnotation`` and
+    ``NamedEntityExtractorBackend`` classes) has been removed from Haystack and moved into
+    dedicated integration packages, one per backend.
+
+    For the Hugging Face backend, install ``transformers-haystack`` and update your imports:
+
+    Before:
+
+    .. code:: python
+
+      from haystack.components.extractors import NamedEntityExtractor
+
+      extractor = NamedEntityExtractor(backend="hugging_face", model="dslim/bert-base-NER")
+
+    After:
+
+    .. code:: python
+
+      from haystack_integrations.components.extractors.transformers import TransformersNamedEntityExtractor
+
+      extractor = TransformersNamedEntityExtractor(model="dslim/bert-base-NER")
+
+    For the spaCy backend, install ``spacy-haystack`` and update your imports:
+
+    Before:
+
+    .. code:: python
+
+      from haystack.components.extractors import NamedEntityExtractor
+
+      extractor = NamedEntityExtractor(backend="spacy", model="en_core_web_trf")
+
+    After:
+
+    .. code:: python
+
+      from haystack_integrations.components.extractors.spacy import SpacyNamedEntityExtractor
+
+      extractor = SpacyNamedEntityExtractor(model="en_core_web_trf")

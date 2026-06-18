@@ -9,7 +9,7 @@ from dataclasses import replace
 
 import pytest
 
-from haystack import AsyncPipeline, Document, component
+from haystack import Document, Pipeline, component
 from haystack.components.joiners import BranchJoiner
 from haystack.core.errors import PipelineRuntimeError
 
@@ -17,7 +17,7 @@ _test_context_var: contextvars.ContextVar[str] = contextvars.ContextVar("_test_c
 
 
 def test_async_pipeline_reentrance(waiting_component, spying_tracer):
-    pp = AsyncPipeline()
+    pp = Pipeline()
     pp.add_component("wait", waiting_component())
 
     run_data = [{"wait_for": 0.001}, {"wait_for": 0.002}]
@@ -28,13 +28,14 @@ def test_async_pipeline_reentrance(waiting_component, spying_tracer):
         await asyncio.gather(*tasks)
 
     asyncio.run(run_all())
-    component_spans = [sp for sp in spying_tracer.spans if sp.operation_name == "haystack.component.run_async"]
+    component_spans = [sp for sp in spying_tracer.spans if sp.operation_name == "haystack.component.run"]
+    assert len(component_spans) == 2
     for span in component_spans:
         assert span.tags["haystack.component.visits"] == 1
 
 
 def test_run_in_sync_context(waiting_component):
-    pp = AsyncPipeline()
+    pp = Pipeline()
     pp.add_component("wait", waiting_component())
 
     result = pp.run({"wait_for": 0.001})
@@ -42,14 +43,10 @@ def test_run_in_sync_context(waiting_component):
     assert result == {"wait": {"waited_for": 0.001}}
 
 
-def test_run_in_async_context_raises_runtime_error():
-    pp = AsyncPipeline()
-
-    async def call_run():
-        pp.run({})
-
-    with pytest.raises(RuntimeError, match="Cannot call run\\(\\) from within an async context"):
-        asyncio.run(call_run())
+def test_run_async_with_invalid_concurrency_limit():
+    pp = Pipeline()
+    with pytest.raises(ValueError, match="concurrency_limit must be greater than or equal to 1"):
+        asyncio.run(pp.run_async({}, concurrency_limit=0))
 
 
 def test_component_with_empty_dict_as_output_appears_in_results():
@@ -98,7 +95,7 @@ def test_component_with_empty_dict_as_output_appears_in_results():
                 input_b = ""
             return {"combined": f"{input_a} | {input_b}"}
 
-    pp = AsyncPipeline()
+    pp = Pipeline()
     pp.add_component("producer_a", Producer("A"))
     pp.add_component("producer_b", Producer("B"))
     pp.add_component("empty_processor", EmptyProcessor())
@@ -107,9 +104,11 @@ def test_component_with_empty_dict_as_output_appears_in_results():
     pp.connect("producer_a.value", "combiner.input_a")
     pp.connect("producer_b.value", "combiner.input_b")
 
-    result = pp.run(
-        {"producer_a": {"text": "hello"}, "producer_b": {"text": "world"}, "empty_processor": {"sources": []}},
-        include_outputs_from={"producer_a", "empty_processor", "combiner"},
+    result = asyncio.run(
+        pp.run_async(
+            {"producer_a": {"text": "hello"}, "producer_b": {"text": "world"}, "empty_processor": {"sources": []}},
+            include_outputs_from={"producer_a", "empty_processor", "combiner"},
+        )
     )
 
     # Producer A should appear in results because it's in include_outputs_from
@@ -137,7 +136,7 @@ async def test__run_component_async_warns_on_extra_output_keys(caplog):
         def run(self, value: str) -> dict[str, str]:
             return {"output": value, "extra_key": "unexpected"}
 
-    pp = AsyncPipeline()
+    pp = Pipeline()
     pp.add_component("extra", ExtraKeyComponent())
 
     await pp._run_component_async(
@@ -162,7 +161,7 @@ async def test__run_component_async_no_warning_on_correct_output_keys(caplog):
         def run(self, value: str) -> dict[str, str]:
             return {"output": value}
 
-    pp = AsyncPipeline()
+    pp = Pipeline()
     pp.add_component("correct", CorrectComponent())
 
     await pp._run_component_async(
@@ -197,7 +196,7 @@ def test_async_pipeline_is_possibly_blocked_warning_message(caplog):
         def run(self, required_input: str, second_required_input: str) -> dict[str, str]:
             return {"output": "test"}
 
-    pp = AsyncPipeline()
+    pp = Pipeline()
     pp.add_component("first", MisconfiguredComponent())
     pp.add_component("second", SimpleComponentTwoInputs())
 
@@ -206,7 +205,7 @@ def test_async_pipeline_is_possibly_blocked_warning_message(caplog):
     pp.connect("first.output", "second.required_input")
     pp.connect("first.other_output", "second.second_required_input")
 
-    pp.run({"first": {"required_input": "test"}})
+    asyncio.run(pp.run_async({"first": {"required_input": "test"}}))
     assert "Cannot run pipeline - the pipeline appears to be blocked." in caplog.text
     assert " - 'second' (SimpleComponentTwoInputs)" in caplog.text
 
@@ -239,7 +238,7 @@ def test_async_pipeline_ensure_inputs_are_deep_copied():
         def run(self, document: Document) -> dict[str, Document]:
             return {"output": replace(document, content="modified")}
 
-    pp = AsyncPipeline()
+    pp = Pipeline()
     pp.add_component("first", SimpleComponent())
     pp.add_component("modifier", ModifyingComponent())
     # It's important that the following component has a name lower down the alphabetical order than "modifier",
@@ -250,7 +249,7 @@ def test_async_pipeline_ensure_inputs_are_deep_copied():
     pp.connect("first.output", "modifier.document")
     pp.connect("first.output", "second.document")
 
-    result = pp.run({"first": {"document": Document(content="original")}})
+    result = asyncio.run(pp.run_async({"first": {"document": Document(content="original")}}))
 
     assert result["modifier"]["output"].content == "modified"
     # Without deep copying the inputs, the second component would also see the modified document and produce
@@ -276,12 +275,12 @@ def test_async_pipeline_does_not_corrupt_outputs():
         def run(self, doc: Document) -> dict:
             return {"doc": replace(doc, content="mutated")}
 
-    pipe = AsyncPipeline()
+    pipe = Pipeline()
     pipe.add_component("producer", Producer())
     pipe.add_component("mutator", Mutator())
     pipe.connect("producer.doc", "mutator.doc")
 
-    result = pipe.run({}, include_outputs_from={"producer"})
+    result = asyncio.run(pipe.run_async({}, include_outputs_from={"producer"}))
 
     assert result["producer"]["doc"].content == "original"
     assert result["mutator"]["doc"].content == "mutated"
@@ -296,7 +295,7 @@ class _Doubler:
         return {"value": value * 2}
 
 
-def _build_isolation_state(pipeline: AsyncPipeline, data: dict) -> dict:
+def _build_isolation_state(pipeline: Pipeline, data: dict) -> dict:
     """
     Build the ephemeral run state that `_run_component_in_isolation` expects.
 
@@ -319,7 +318,7 @@ def _build_isolation_state(pipeline: AsyncPipeline, data: dict) -> dict:
 class TestRunComponentInIsolation:
     @pytest.mark.asyncio
     async def test_runs_component_and_yields_output(self):
-        pp = AsyncPipeline()
+        pp = Pipeline()
         pp.add_component("doubler", _Doubler())
         state = _build_isolation_state(pp, {"doubler": {"value": 3}})
 
@@ -333,7 +332,7 @@ class TestRunComponentInIsolation:
 
     @pytest.mark.asyncio
     async def test_runs_greedy_component_consuming_single_input(self):
-        pp = AsyncPipeline()
+        pp = Pipeline()
         pp.add_component("joiner", BranchJoiner(type_=int))
         state = _build_isolation_state(pp, {})
         # Two values are queued on the greedy variadic socket; greedy consumption keeps only the first.
@@ -346,7 +345,7 @@ class TestRunComponentInIsolation:
 
     @pytest.mark.asyncio
     async def test_drains_in_flight_tasks_before_running(self):
-        pp = AsyncPipeline()
+        pp = Pipeline()
         pp.add_component("doubler", _Doubler())
         state = _build_isolation_state(pp, {"doubler": {"value": 3}})
 
@@ -368,7 +367,7 @@ class TestRunComponentInIsolation:
 
     @pytest.mark.asyncio
     async def test_skips_when_component_already_scheduled(self):
-        pp = AsyncPipeline()
+        pp = Pipeline()
         pp.add_component("doubler", _Doubler())
         state = _build_isolation_state(pp, {"doubler": {"value": 3}})
         state["scheduled_components"].add("doubler")
@@ -383,7 +382,7 @@ class TestRunComponentInIsolation:
 
     @pytest.mark.asyncio
     async def test_distributes_outputs_downstream_and_prunes_consumed(self):
-        pp = AsyncPipeline()
+        pp = Pipeline()
         pp.add_component("first", _Doubler())
         pp.add_component("second", _Doubler())
         pp.connect("first.value", "second.value")
@@ -400,7 +399,7 @@ class TestRunComponentInIsolation:
 
     @pytest.mark.asyncio
     async def test_include_outputs_from_yields_even_when_consumed(self):
-        pp = AsyncPipeline()
+        pp = Pipeline()
         pp.add_component("first", _Doubler())
         pp.add_component("second", _Doubler())
         pp.connect("first.value", "second.value")
@@ -450,7 +449,7 @@ class TestInFlightTaskCleanupOnError:
                 await slow_started.wait()
                 raise RuntimeError("boom")
 
-        pp = AsyncPipeline()
+        pp = Pipeline()
         pp.add_component("slow", Slow())
         pp.add_component("failing", Failing())
 
@@ -494,7 +493,7 @@ class TestInFlightTaskCleanupOnError:
                     raise
                 return {"value": text}
 
-        pp = AsyncPipeline()
+        pp = Pipeline()
         pp.add_component("fast", Fast())
         pp.add_component("slow", Slow())
 
@@ -510,7 +509,7 @@ class TestInFlightTaskCleanupOnError:
 async def test_sync_component_run_in_thread_receives_contextvars():
     """
     Regression test: contextvars set in the calling async context (e.g. the active tracing span) must propagate
-    to sync-only components, which AsyncPipeline dispatches to a thread. `asyncio.to_thread` guarantees this by
+    to sync-only components, which the async run path dispatches to a thread. `asyncio.to_thread` guarantees this by
     copying the current context; a plain `loop.run_in_executor` would not.
     """
 
@@ -521,10 +520,33 @@ async def test_sync_component_run_in_thread_receives_contextvars():
             # Read inside the executor thread — only visible if the calling context was copied
             return {"value": _test_context_var.get()}
 
-    pp = AsyncPipeline()
+    pp = Pipeline()
     pp.add_component("reader", SyncContextVarReader())
 
     _test_context_var.set("propagated")
     result = await pp.run_async({"reader": {"text": "irrelevant"}})
 
     assert result["reader"]["value"] == "propagated"
+
+
+@pytest.mark.asyncio
+async def test_run_async_raises_when_multi_element_list_is_unwrapped_at_runtime():
+    @component
+    class MultiStrProducer:
+        @component.output_types(texts=list[str])
+        def run(self) -> dict[str, list[str]]:
+            return {"texts": ["first", "second", "third"]}
+
+    @component
+    class SingleStrConsumer:
+        @component.output_types(out=str)
+        def run(self, text: str) -> dict[str, str]:
+            return {"out": text}
+
+    pipe = Pipeline()
+    pipe.add_component("producer", MultiStrProducer())
+    pipe.add_component("consumer", SingleStrConsumer())
+    pipe.connect("producer.texts", "consumer.text")
+
+    with pytest.raises(PipelineRuntimeError, match="Cannot unwrap a list of 3 items"):
+        await pipe.run_async({})

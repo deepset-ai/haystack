@@ -6,7 +6,7 @@ from typing import Any
 
 import pytest
 
-from haystack import AsyncPipeline
+from haystack import Pipeline
 from haystack.components.retrievers.filter_retriever import FilterRetriever
 from haystack.dataclasses import Document
 from haystack.document_stores.in_memory import InMemoryDocumentStore
@@ -75,7 +75,7 @@ class TestFilterRetrieverAsync:
     async def test_run_with_pipeline(self, sample_document_store, sample_docs):
         retriever = FilterRetriever(sample_document_store, filters={"field": "lang", "operator": "==", "value": "de"})
 
-        pipeline = AsyncPipeline()
+        pipeline = Pipeline()
         pipeline.add_component("retriever", retriever)
         result: dict[str, Any] = await pipeline.run_async(data={"retriever": {}})
 

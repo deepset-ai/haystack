@@ -38,7 +38,7 @@ from haystack.tools import (
     serialize_tools_or_toolset,
     warm_up_tools,
 )
-from haystack.utils.async_utils import _run_component_async
+from haystack.utils.async_utils import _execute_component_async
 from haystack.utils.callable_serialization import deserialize_callable, serialize_callable
 from haystack.utils.deserialization import deserialize_component_inplace
 
@@ -125,6 +125,71 @@ def _get_run_method_params(instance: "Agent") -> set[str]:
     """Derive the parameter names of the Agent.run method via introspection."""
     sig = inspect.signature(instance.run)
     return {name for name, p in sig.parameters.items() if p.kind != inspect.Parameter.VAR_KEYWORD}
+
+
+def _select_tools_by_name(configured_tools: ToolsType, names: list[str]) -> list[Tool | Toolset]:
+    """
+    Select configured tools by name for a single run.
+
+    Standalone Tools are kept when their name is requested. A Toolset that exposes a requested name is replaced by a
+    per-run `spawn()` (an isolated copy) with the requested names registered as its `_selected_tool_names`, so
+    dynamic toolsets such as SearchableToolset preserve their behavior (search/lazy-loading) over the selected subset
+    without mutating the shared, configured Toolset.
+
+    :param configured_tools: The tools configured on the Agent.
+    :param names: The requested tool names.
+    :returns: The selected standalone Tools and/or spawned, selection-scoped Toolsets.
+    :raises ValueError: If no tools were configured, or if any requested name is not a valid tool name.
+    """
+    if not configured_tools:
+        raise ValueError("No tools were configured for the Agent at initialization.")
+
+    requested_names = set(names)
+    items: list[Tool | Toolset] = (
+        [configured_tools] if isinstance(configured_tools, Toolset) else list(configured_tools)
+    )
+
+    # Resolve selectable names per item. For Toolsets we use get_selectable_tools() so dynamic toolsets
+    # (e.g. SearchableToolset) offer their full catalog by name, not just the tools exposed by iteration.
+    selectable_per_item: list[tuple[Tool | Toolset, set[str]]] = []
+    valid_tool_names: set[str] = set()
+    for item in items:
+        item_names = {tool.name for tool in item.get_selectable_tools()} if isinstance(item, Toolset) else {item.name}
+        selectable_per_item.append((item, item_names))
+        valid_tool_names |= item_names
+
+    invalid_tool_names = requested_names - valid_tool_names
+    if invalid_tool_names:
+        raise ValueError(
+            f"The following tool names are not valid: {invalid_tool_names}. Valid tool names are: {valid_tool_names}."
+        )
+
+    selected: list[Tool | Toolset] = []
+    for item, item_names in selectable_per_item:
+        matched = requested_names & item_names
+        if not matched:
+            continue
+        if isinstance(item, Toolset):
+            # Apply the selection to a per-run copy so the shared, configured Toolset is never mutated.
+            spawned = item.spawn()
+            spawned._selected_tool_names = matched
+            selected.append(spawned)
+        else:
+            selected.append(item)
+    return selected
+
+
+def _spawn_tools(tools: ToolsType) -> ToolsType:
+    """
+    Return per-run copies of `tools`, replacing each Toolset with an isolated `spawn()` (Tools are passed through).
+
+    This isolates run-scoped Toolset state (e.g. a SearchableToolset's discovered tools and any active name
+    selection) so that concurrent runs sharing the same configured Toolset — such as parallel sub-agent tool calls
+    or concurrent requests against one Agent — don't corrupt each other.
+    """
+    if isinstance(tools, Toolset):
+        return tools.spawn()
+    return [item.spawn() if isinstance(item, Toolset) else item for item in tools]
 
 
 def _validate_prompt_message_blocks(user_prompt: str | None, system_prompt: str | None) -> None:
@@ -699,35 +764,26 @@ class Agent:
             or if any provided tool name is not valid.
         :raises TypeError: If tools is not a list of Tool objects, a Toolset, or a list of tool names (strings).
         """
+        # Toolsets are spawned into per-run copies (see _spawn_tools / _select_tools_by_name) so concurrent runs
+        # sharing the same configured Toolset don't corrupt each other's run-scoped state.
         if tools is None:
-            return self.tools
+            return _spawn_tools(self.tools)
 
         if isinstance(tools, list) and all(isinstance(t, str) for t in tools):
-            if not self.tools:
-                raise ValueError("No tools were configured for the Agent at initialization.")
-            available_tools = flatten_tools_or_toolsets(self.tools)
-            selected_tool_names = cast(list[str], tools)  # mypy thinks this could still be list[Tool] or Toolset
-            valid_tool_names = {tool.name for tool in available_tools}
-            invalid_tool_names = {name for name in selected_tool_names if name not in valid_tool_names}
-            if invalid_tool_names:
-                raise ValueError(
-                    f"The following tool names are not valid: {invalid_tool_names}. "
-                    f"Valid tool names are: {valid_tool_names}."
-                )
-            return [tool for tool in available_tools if tool.name in selected_tool_names]
+            return _select_tools_by_name(self.tools, cast(list[str], tools))
 
         if isinstance(tools, Toolset):
             # Per-run tools are not covered by the Agent's own warm_up(), so warm them up here.
             # warm_up() is expected to be idempotent, so re-warming on every run is cheap.
             warm_up_tools(tools)
-            return tools
+            return _spawn_tools(tools)
 
         if isinstance(tools, list):
             selected = cast(list[Tool | Toolset], tools)  # mypy can't narrow the Union type from isinstance check
             # Per-run tools are not covered by the Agent's own warm_up(), so warm them up here.
             # warm_up() is expected to be idempotent, so re-warming on every run is cheap.
             warm_up_tools(selected)
-            return selected
+            return _spawn_tools(selected)
 
         raise TypeError(
             "tools must be a list of Tool and/or Toolset objects, a Toolset, or a list of tool names (strings)."
@@ -960,7 +1016,7 @@ class Agent:
                 llm_span.set_content_tag("haystack.agent.step.llm.input", chat_generator_inputs)
                 # For sync-only generators, _run_component_async dispatches to a thread via asyncio.to_thread,
                 # which copies the current contextvars context — preserving the active tracing span.
-                result = await _run_component_async(self.chat_generator, **chat_generator_inputs)
+                result = await _execute_component_async(self.chat_generator, **chat_generator_inputs)
                 llm_span.set_content_tag("haystack.agent.step.llm.output", result)
             llm_messages = result["replies"]
             exe_context.state.set("messages", llm_messages)

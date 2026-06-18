@@ -193,6 +193,17 @@ class TestQueryExpander:
         queries = expander._parse_expanded_queries('{"not": "a list"}')
         assert queries == []
 
+    @pytest.mark.parametrize("queries_value", ['"single query"', '{"query": "value"}', "null"])
+    def test_parse_expanded_queries_rejects_non_list_queries_value(self, monkeypatch, caplog, queries_value):
+        monkeypatch.setenv("OPENAI_API_KEY", "test-key-12345")
+        expander = QueryExpander()
+
+        with caplog.at_level(logging.WARNING):
+            queries = expander._parse_expanded_queries(f'{{"queries": {queries_value}}}')
+
+        assert queries == []
+        assert "Expected 'queries' to be a list" in caplog.text
+
     def test_parse_expanded_queries_mixed_types(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test-key-12345")
         expander = QueryExpander()

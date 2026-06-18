@@ -361,7 +361,7 @@ class PipelineBase:  # noqa: PLW1641
         unsafe: bool = False,
     ) -> T:
         """
-        Creates a `Pipeline` object a string representation.
+        Creates a `Pipeline` object from a string representation.
 
         The string representation is read from the file-like object passed in the `fp` argument.
 
@@ -494,10 +494,10 @@ class PipelineBase:  # noqa: PLW1641
         'component_name.connections_name'.
 
         If multiple senders are connected to the same list-typed receiver socket, the socket is
-        promoted to a lazy variadic socket so it can accept all incoming values. With `Pipeline`,
-        the resulting list is ordered alphabetically by sender component name, not by the order in
-        which `connect()` was called. With `AsyncPipeline`, no ordering is guaranteed, since
-        components in different branches may run in parallel.
+        promoted to a lazy variadic socket so it can accept all incoming values. With the synchronous
+        `run`, the resulting list is ordered alphabetically by sender component name, not by the order in
+        which `connect()` was called. With the asynchronous run path (`run_async`), no ordering is
+        guaranteed, since components in different branches may run in parallel.
 
         :param sender:
             The component that delivers the value. This can be either just a component name or can be
@@ -1241,11 +1241,11 @@ class PipelineBase:  # noqa: PLW1641
         if not can_component_run(comp, comp_inputs):
             return ComponentPriority.BLOCKED
         if is_any_greedy_socket_ready(comp, comp_inputs) and are_all_sockets_ready(comp, comp_inputs):
-            # This priority is explicitly used in AsyncPipeline + implicitly in _is_queue_stale
+            # This priority is explicitly used in the async run path + implicitly in _is_queue_stale
             # Implicit b/c it checks via ">" operator if there is a component with HIGHEST priority
             return ComponentPriority.HIGHEST
         if all_predecessors_executed(comp, comp_inputs):
-            # This priority is explicitly used in AsyncPipeline + in _is_queue_stale
+            # This priority is explicitly used in the async run path + in _is_queue_stale
             return ComponentPriority.READY
         # If we make it here it means the component can run but is waiting for more inputs, so we give it the lowest
         # priority. This way, components that are ready to run will be prioritized over ones assigned with this prio.

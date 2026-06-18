@@ -6,11 +6,6 @@ loaders:
         "azure_text_embedder",
         "openai_document_embedder",
         "openai_text_embedder",
-        "sentence_transformers_document_embedder",
-        "sentence_transformers_text_embedder",
-        "sentence_transformers_sparse_document_embedder",
-        "sentence_transformers_sparse_text_embedder",
-        "image/sentence_transformers_doc_image_embedder",
       ]
 processors:
   - type: filter

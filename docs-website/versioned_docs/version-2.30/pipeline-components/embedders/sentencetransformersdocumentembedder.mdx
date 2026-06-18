@@ -18,9 +18,9 @@ The vectors computed by this component are necessary to perform embedding retrie
 | **Most common position in a pipeline** | Before a [`DocumentWriter`](../writers/documentwriter.mdx)  in an indexing pipeline                                                  |
 | **Mandatory run variables**            | `documents`: A list of documents                                                                                            |
 | **Output variables**                   | `documents`: A list of documents (enriched with embeddings)                                                                 |
-| **API reference**                      | [Embedders](/reference/embedders-api)                                                                                              |
-| **GitHub link**                        | https://github.com/deepset-ai/haystack/blob/main/haystack/components/embedders/sentence_transformers_document_embedder.py |
-| **Package name** | `haystack-ai` |
+| **API reference**                      | [Sentence Transformers](/reference/integrations-sentence-transformers)                                                                                              |
+| **GitHub link**                        | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/sentence_transformers |
+| **Package name** | `sentence-transformers-haystack` |
 
 </div>
 
@@ -71,7 +71,9 @@ You can do this easily by using the Document Embedder:
 
 ```python
 from haystack import Document
-from haystack.components.embedders import SentenceTransformersDocumentEmbedder
+from haystack_integrations.components.embedders.sentence_transformers import (
+    SentenceTransformersDocumentEmbedder,
+)
 
 doc = Document(content="some text", meta={"title": "relevant title", "page number": 18})
 
@@ -82,11 +84,19 @@ docs_w_embeddings = embedder.run(documents=[doc])["documents"]
 
 ## Usage
 
+Install the `sentence-transformers-haystack` package to use the `SentenceTransformersDocumentEmbedder`:
+
+```shell
+pip install sentence-transformers-haystack
+```
+
 ### On its own
 
 ```python
 from haystack import Document
-from haystack.components.embedders import SentenceTransformersDocumentEmbedder
+from haystack_integrations.components.embedders.sentence_transformers import (
+    SentenceTransformersDocumentEmbedder,
+)
 
 doc = Document(content="I love pizza!")
 doc_embedder = SentenceTransformersDocumentEmbedder()
@@ -103,7 +113,7 @@ print(result["documents"][0].embedding)
 from haystack import Document
 from haystack import Pipeline
 from haystack.document_stores.in_memory import InMemoryDocumentStore
-from haystack.components.embedders import (
+from haystack_integrations.components.embedders.sentence_transformers import (
     SentenceTransformersTextEmbedder,
     SentenceTransformersDocumentEmbedder,
 )

@@ -12,7 +12,7 @@ from haystack.core.component import component
 from haystack.core.serialization import component_to_dict
 from haystack.dataclasses.chat_message import ChatMessage
 from haystack.utils import deserialize_chatgenerator_inplace
-from haystack.utils.async_utils import _run_component_async
+from haystack.utils.async_utils import _execute_component_async
 from haystack.utils.misc import _parse_dict_from_json
 
 logger = logging.getLogger(__name__)
@@ -279,7 +279,7 @@ class QueryExpander:
 
         try:
             prompt_result = self._prompt_builder.run(query=query.strip(), n_expansions=expansion_count)
-            generator_result = await _run_component_async(
+            generator_result = await _execute_component_async(
                 self.chat_generator, messages=[ChatMessage.from_user(prompt_result["prompt"])]
             )
 
@@ -334,6 +334,13 @@ class QueryExpander:
         parsed = _parse_dict_from_json(generator_response, expected_keys=["queries"], raise_on_failure=False)
 
         if parsed is None:
+            return []
+
+        if not isinstance(parsed["queries"], list):
+            logger.warning(
+                "Expected 'queries' to be a list but got {type}. Returning no expanded queries.",
+                type=type(parsed["queries"]).__name__,
+            )
             return []
 
         queries = []
