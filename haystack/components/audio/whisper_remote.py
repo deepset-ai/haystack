@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import io
+import warnings
 from pathlib import Path
 from typing import Any
 
@@ -82,6 +83,14 @@ class RemoteWhisperTranscriber:
             uses log probability to automatically increase the
             temperature until certain thresholds are hit.
         """
+        warnings.warn(
+            "`RemoteWhisperTranscriber` will be removed from Haystack in version 3.0, as it is moving to "
+            "the `whisper-haystack` package. To continue using it, install that package with "
+            "`pip install whisper-haystack` and update your import to "
+            "`from haystack_integrations.components.audio.whisper import RemoteWhisperTranscriber`.",
+            FutureWarning,
+            stacklevel=2,
+        )
 
         self.organization = organization
         self.model = model

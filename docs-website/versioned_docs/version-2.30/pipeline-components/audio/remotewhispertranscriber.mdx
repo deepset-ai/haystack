@@ -17,13 +17,19 @@ Use `RemoteWhisperTranscriber` to transcribe audio files using OpenAI's Whisper 
 | **Mandatory init variables**           | `api_key`: An OpenAI API key. Can be set with an environment variable `OPENAI_API_KEY`.        |
 | **Mandatory run variables**            | `sources`: A list of paths or binary streams that you want to transcribe                       |
 | **Output variables**                   | `documents`: A list of documents                                                               |
-| **API reference**                      | [Audio](/reference/audio-api)                                                                         |
-| **GitHub link**                        | https://github.com/deepset-ai/haystack/blob/main/haystack/components/audio/whisper_remote.py |
-| **Package name** | `haystack-ai` |
+| **API reference**                      | [Whisper](/reference/integrations-whisper)                                                                         |
+| **GitHub link**                        | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/whisper |
+| **Package name** | `whisper-haystack` |
 
 </div>
 
 ## Overview
+
+The `RemoteWhisperTranscriber` is part of the `whisper-haystack` integration package. Install it with:
+
+```python
+pip install whisper-haystack
+```
 
 `RemoteWhisperTranscriber` works with OpenAI-compatible clients and isn't limited to just OpenAI as a provider. For example, [Groq](https://console.groq.com/docs/speech-text) offers a drop-in replacement that can be used as well. You can set the API key in one of two ways:
 
@@ -31,7 +37,7 @@ Use `RemoteWhisperTranscriber` to transcribe audio files using OpenAI's Whisper 
 2. By setting it in the `OPENAI_API_KEY` environment variable, which the system will use to access the key.
 
 ```python
-from haystack.components.audio import RemoteWhisperTranscriber
+from haystack_integrations.components.audio.whisper import RemoteWhisperTranscriber
 
 transcriber = RemoteWhisperTranscriber()
 ```
@@ -41,7 +47,7 @@ Additionally, the component requires the following parameters to work:
 - `model` specifies the Whisper model.
 - `api_base_url` specifies the OpenAI base URL and defaults to `"https://api.openai.com/v1"`. If you are using Whisper provider other than OpenAI set this parameter according to provider's documentation.
 
-See other optional parameters in our [API documentation](/reference/audio-api).
+See other optional parameters in our [API documentation](/reference/integrations-whisper).
 
 See the [Whisper API documentation](https://platform.openai.com/docs/guides/speech-to-text) and the official Whisper [GitHub repo](https://github.com/openai/whisper) for the supported audio formats and languages.
 
@@ -53,7 +59,7 @@ Here’s an example of how to use `RemoteWhisperTranscriber` to transcribe a loc
 
 ```python
 import requests
-from haystack.components.audio import RemoteWhisperTranscriber
+from haystack_integrations.components.audio.whisper import RemoteWhisperTranscriber
 
 response = requests.get(
     "https://ia903102.us.archive.org/19/items/100-Best--Speeches/EK_19690725_64kb.mp3",
@@ -72,7 +78,7 @@ print(transcription["documents"][0].content)
 The pipeline below fetches an audio file from a specified URL and transcribes it. It first retrieves the audio file using `LinkContentFetcher`, then transcribes the audio into text with `RemoteWhisperTranscriber`, and finally outputs the transcription text.
 
 ```python
-from haystack.components.audio import RemoteWhisperTranscriber
+from haystack_integrations.components.audio.whisper import RemoteWhisperTranscriber
 from haystack.components.fetchers import LinkContentFetcher
 from haystack import Pipeline
 
