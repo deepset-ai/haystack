@@ -199,6 +199,8 @@ class LLMDocumentContentExtractor:
         """
         if hasattr(self._chat_generator, "close_async"):
             await self._chat_generator.close_async()
+        elif hasattr(self._chat_generator, "close"):
+            self._chat_generator.close()
 
     def to_dict(self) -> dict[str, Any]:
         """

@@ -416,6 +416,13 @@ class TestComponentLifecycle:
         for gen in gens:
             gen.close_async.assert_awaited_once()
 
+    async def test_close_async_falls_back_to_sync_close(self):
+        gens = [Mock(spec=["run", "close"]) for _ in range(3)]
+        fallback = FallbackChatGenerator(chat_generators=gens)
+        await fallback.close_async()
+        for gen in gens:
+            gen.close.assert_called_once()
+
     def test_lifecycle_is_safe_when_generators_lack_methods(self):
         gens = [Mock(spec=["run"]) for _ in range(3)]
         fallback = FallbackChatGenerator(chat_generators=gens)

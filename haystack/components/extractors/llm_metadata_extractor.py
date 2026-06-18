@@ -231,6 +231,8 @@ class LLMMetadataExtractor:
         for inner in (self._chat_generator, self.splitter):
             if hasattr(inner, "close_async"):
                 await inner.close_async()
+            elif hasattr(inner, "close"):
+                inner.close()
 
     def to_dict(self) -> dict[str, Any]:
         """

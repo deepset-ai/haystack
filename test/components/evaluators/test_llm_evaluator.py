@@ -621,6 +621,12 @@ class TestComponentLifecycle:
         await evaluator.close_async()
         chat_generator.close_async.assert_awaited_once()
 
+    async def test_close_async_falls_back_to_sync_close(self):
+        chat_generator = Mock(spec=["run", "close"])
+        evaluator = self._make_evaluator(chat_generator)
+        await evaluator.close_async()
+        chat_generator.close.assert_called_once()
+
     async def test_lifecycle_is_safe_when_chat_generator_lacks_methods(self):
         chat_generator = Mock(spec=["run"])
         evaluator = self._make_evaluator(chat_generator)

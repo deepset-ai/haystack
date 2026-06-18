@@ -140,6 +140,8 @@ class LLMEvaluator:
         """
         if hasattr(self._chat_generator, "close_async"):
             await self._chat_generator.close_async()
+        elif hasattr(self._chat_generator, "close"):
+            self._chat_generator.close()
 
     @staticmethod
     def validate_init_parameters(

@@ -101,6 +101,8 @@ class TextEmbeddingRetriever:
         for inner in (self.text_embedder, self.retriever):
             if hasattr(inner, "close_async"):
                 await inner.close_async()
+            elif hasattr(inner, "close"):
+                inner.close()
 
     @component.output_types(documents=list[Document])
     def run(

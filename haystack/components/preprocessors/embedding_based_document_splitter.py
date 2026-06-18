@@ -165,6 +165,8 @@ class EmbeddingBasedDocumentSplitter:
         """
         if hasattr(self.document_embedder, "close_async"):
             await self.document_embedder.close_async()
+        elif hasattr(self.document_embedder, "close"):
+            self.document_embedder.close()
 
     @component.output_types(documents=list[Document])
     def run(self, documents: list[Document]) -> dict[str, list[Document]]:

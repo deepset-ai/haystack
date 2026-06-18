@@ -227,6 +227,12 @@ class TestComponentLifecycle:
         await component.close_async()
         retriever.close_async.assert_awaited_once()
 
+    async def test_close_async_falls_back_to_sync_close(self):
+        retriever = Mock(spec=["run", "close"])
+        component = MultiQueryTextRetriever(retriever=retriever)
+        await component.close_async()
+        retriever.close.assert_called_once()
+
     async def test_lifecycle_is_safe_when_retriever_lacks_methods(self):
         retriever = Mock(spec=["run"])
         component = MultiQueryTextRetriever(retriever=retriever)

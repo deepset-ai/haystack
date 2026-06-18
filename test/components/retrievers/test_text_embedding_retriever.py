@@ -236,6 +236,14 @@ class TestComponentLifecycle:
         text_embedder.close_async.assert_awaited_once()
         retriever.close_async.assert_awaited_once()
 
+    async def test_close_async_falls_back_to_sync_close(self):
+        text_embedder = Mock(spec=["run", "close"])
+        retriever = Mock(spec=["run", "close"])
+        component = TextEmbeddingRetriever(retriever=retriever, text_embedder=text_embedder)
+        await component.close_async()
+        text_embedder.close.assert_called_once()
+        retriever.close.assert_called_once()
+
     async def test_lifecycle_is_safe_when_inner_components_lack_methods(self):
         text_embedder = Mock(spec=["run"])
         retriever = Mock(spec=["run"])

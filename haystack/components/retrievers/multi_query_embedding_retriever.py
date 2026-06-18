@@ -119,6 +119,8 @@ class MultiQueryEmbeddingRetriever:
         for inner in (self.query_embedder, self.retriever):
             if hasattr(inner, "close_async"):
                 await inner.close_async()
+            elif hasattr(inner, "close"):
+                inner.close()
 
     @component.output_types(documents=list[Document])
     def run(self, queries: list[str], retriever_kwargs: dict[str, Any] | None = None) -> dict[str, list[Document]]:

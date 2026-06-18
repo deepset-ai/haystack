@@ -340,6 +340,8 @@ class QueryExpander:
         """
         if hasattr(self.chat_generator, "close_async"):
             await self.chat_generator.close_async()
+        elif hasattr(self.chat_generator, "close"):
+            self.chat_generator.close()
 
     @staticmethod
     def _parse_expanded_queries(generator_response: str) -> list[str]:

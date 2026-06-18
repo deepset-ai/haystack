@@ -107,6 +107,8 @@ class FallbackChatGenerator:
         for gen in self.chat_generators:
             if hasattr(gen, "close_async"):
                 await gen.close_async()
+            elif hasattr(gen, "close"):
+                gen.close()
 
     def _run_single_sync(
         self,

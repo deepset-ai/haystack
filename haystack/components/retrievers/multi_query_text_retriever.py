@@ -97,6 +97,8 @@ class MultiQueryTextRetriever:
         """
         if hasattr(self.retriever, "close_async"):
             await self.retriever.close_async()
+        elif hasattr(self.retriever, "close"):
+            self.retriever.close()
 
     @component.output_types(documents=list[Document])
     def run(self, queries: list[str], retriever_kwargs: dict[str, Any] | None = None) -> dict[str, list[Document]]:

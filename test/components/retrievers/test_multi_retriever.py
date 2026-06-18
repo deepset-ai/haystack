@@ -538,6 +538,14 @@ class TestComponentLifecycle:
         a.close_async.assert_awaited_once()
         b.close_async.assert_awaited_once()
 
+    async def test_close_async_falls_back_to_sync_close(self):
+        a = Mock(spec=["run", "close"])
+        b = Mock(spec=["run", "close"])
+        retriever = MultiRetriever(retrievers={"a": a, "b": b})
+        await retriever.close_async()
+        a.close.assert_called_once()
+        b.close.assert_called_once()
+
     async def test_lifecycle_is_safe_when_retrievers_lack_methods(self):
         a = Mock(spec=["run"])
         b = Mock(spec=["run"])

@@ -110,6 +110,8 @@ class LLMMessagesRouter:
         """Release the underlying chat generator's async resources."""
         if hasattr(self._chat_generator, "close_async"):
             await self._chat_generator.close_async()
+        elif hasattr(self._chat_generator, "close"):
+            self._chat_generator.close()
 
     def run(self, messages: list[ChatMessage]) -> dict[str, str | list[ChatMessage]]:
         """

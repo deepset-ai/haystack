@@ -59,6 +59,9 @@ class SyncWarmUpRecorder:
     async def run_async(self):
         return {"value": 1}
 
+    def close(self):
+        self.events.append(("close", threading.get_ident(), _running_loop()))
+
 
 @component
 class BareComponent:
@@ -149,6 +152,19 @@ def test_pipeline_close_async_calls_async_close_only():
     kinds = [event[0] for event in rec.events]
     assert "close_async" in kinds
     assert "close" not in kinds
+
+
+def test_close_async_falls_back_to_sync_close():
+    """close_async closes a component that has only sync close, on the event-loop thread."""
+    rec = SyncWarmUpRecorder()
+    pipe = Pipeline()
+    pipe.add_component("rec", rec)
+    asyncio.run(pipe.close_async())
+    assert len(rec.events) == 1
+    name, thread_id, loop = rec.events[0]
+    assert name == "close"
+    assert loop is not None
+    assert thread_id == threading.get_ident()
 
 
 def test_run_does_not_auto_close():

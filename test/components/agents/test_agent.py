@@ -2337,6 +2337,14 @@ class TestComponentLifecycle:
         chat_generator.close_async.assert_awaited_once()
 
     @pytest.mark.asyncio
+    async def test_close_async_falls_back_to_sync_close(self):
+        chat_generator = MockChatGenerator()
+        chat_generator.close = MagicMock()
+        agent = Agent(chat_generator=chat_generator, tools=[])
+        await agent.close_async()
+        chat_generator.close.assert_called_once()
+
+    @pytest.mark.asyncio
     async def test_lifecycle_is_safe_when_chat_generator_lacks_methods(self):
         agent = Agent(chat_generator=MockChatGeneratorWithoutRunAsync(), tools=[])
         agent.warm_up()

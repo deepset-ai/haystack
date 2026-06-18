@@ -327,6 +327,14 @@ class TestComponentLifecycle:
         query_embedder.close_async.assert_awaited_once()
         retriever.close_async.assert_awaited_once()
 
+    async def test_close_async_falls_back_to_sync_close(self):
+        query_embedder = Mock(spec=["run", "close"])
+        retriever = Mock(spec=["run", "close"])
+        component = MultiQueryEmbeddingRetriever(retriever=retriever, query_embedder=query_embedder)
+        await component.close_async()
+        query_embedder.close.assert_called_once()
+        retriever.close.assert_called_once()
+
     async def test_lifecycle_is_safe_when_inner_components_lack_methods(self):
         query_embedder = Mock(spec=["run"])
         retriever = Mock(spec=["run"])

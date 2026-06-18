@@ -806,6 +806,15 @@ class TestComponentLifecycle:
 
         mock_embedder.close_async.assert_awaited_once()
 
+    @pytest.mark.asyncio
+    async def test_close_async_falls_back_to_sync_close(self) -> None:
+        mock_embedder = Mock(spec=["close"])
+        splitter = EmbeddingBasedDocumentSplitter(document_embedder=mock_embedder)
+
+        await splitter.close_async()
+
+        mock_embedder.close.assert_called_once()
+
     def test_lifecycle_is_safe_when_embedder_lacks_methods(self):
         mock_embedder = Mock(spec=[])
         splitter = EmbeddingBasedDocumentSplitter(document_embedder=mock_embedder)

@@ -958,15 +958,18 @@ class PipelineBase:  # noqa: PLW1641
 
     async def close_async(self) -> None:
         """
-        Release the async resources held by the pipeline's components by awaiting each component's `close_async`.
+        Release resources held by the pipeline's components, using the async close path where available.
 
-        Only the async side of each component is released here; use `close` to release the synchronous side.
+        Each component is closed with `close_async` if it has one, otherwise with its sync `close`.
         """
         for node in self.graph.nodes:
             instance = self.graph.nodes[node]["instance"]
             if hasattr(instance, "close_async"):
                 logger.info("Closing component {node}...", node=node)
                 await instance.close_async()
+            elif hasattr(instance, "close"):
+                logger.info("Closing component {node}...", node=node)
+                instance.close()
 
     @staticmethod
     def _create_component_span(

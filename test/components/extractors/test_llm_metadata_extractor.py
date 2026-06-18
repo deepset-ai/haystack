@@ -553,6 +553,14 @@ class TestComponentLifecycle:
         mock_chat_generator.close_async.assert_awaited_once()
         extractor.splitter.close_async.assert_awaited_once()
 
+    async def test_close_async_falls_back_to_sync_close(self):
+        mock_chat_generator = Mock(spec=["run", "close"])
+        extractor = LLMMetadataExtractor(prompt="prompt {{document.content}}", chat_generator=mock_chat_generator)
+        extractor.splitter = Mock(spec=["run", "close"])
+        await extractor.close_async()
+        mock_chat_generator.close.assert_called_once()
+        extractor.splitter.close.assert_called_once()
+
     async def test_lifecycle_is_safe_when_inner_lacks_methods(self):
         mock_chat_generator = Mock(spec=["run"])
         extractor = LLMMetadataExtractor(prompt="prompt {{document.content}}", chat_generator=mock_chat_generator)

@@ -176,6 +176,8 @@ class MultiRetriever:
         for retriever in self.retrievers.values():
             if hasattr(retriever, "close_async"):
                 await retriever.close_async()
+            elif hasattr(retriever, "close"):
+                retriever.close()
 
     @component.output_types(documents=list[Document])
     def run(
