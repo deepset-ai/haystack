@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import pytest
+from datetime import datetime, timezone
 
 from haystack import Document
 from haystack.errors import FilterError
@@ -508,6 +509,18 @@ document_matches_filter_data = [
         Document(meta={"date": "2025-02-03T12:45:46.435816Z"}),
         True,
         id=">= operator with naive and aware ISO 8601 datetime Document value",
+    ),
+    pytest.param(
+        {"field": "meta.date", "operator": ">", "value": datetime(2023, 1, 1, tzinfo=timezone.utc)},
+        Document(meta={"date": "2024-01-01"}),
+        True,
+        id="> operator with aware datetime filter and string date Document",
+    ),
+    pytest.param(
+        {"field": "meta.date", "operator": "<", "value": datetime(2025, 1, 1)},
+        Document(meta={"date": "2024-01-01T12:00:00+00:00"}),
+        True,
+        id="< operator with naive datetime filter and aware string date Document",
     ),
 ]
 
