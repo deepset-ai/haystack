@@ -14,7 +14,6 @@ _import_structure = {
     "file_type_router": ["FileTypeRouter"],
     "llm_messages_router": ["LLMMessagesRouter"],
     "metadata_router": ["MetadataRouter"],
-    "text_language_router": ["TextLanguageRouter"],
 }
 
 if TYPE_CHECKING:
@@ -24,6 +23,5 @@ if TYPE_CHECKING:
     from .file_type_router import FileTypeRouter as FileTypeRouter
     from .llm_messages_router import LLMMessagesRouter as LLMMessagesRouter
     from .metadata_router import MetadataRouter as MetadataRouter
-    from .text_language_router import TextLanguageRouter as TextLanguageRouter
 else:
     sys.modules[__name__] = LazyImporter(name=__name__, module_file=__file__, import_structure=_import_structure)
