@@ -2,15 +2,23 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import base64
+import mimetypes
 from pathlib import Path
 from typing import Any
 
 import yaml
 
 from haystack.core.serialization import default_from_dict, default_to_dict
+from haystack.dataclasses.file_content import FileContent
+from haystack.dataclasses.image_content import IMAGE_MIME_TYPES, ImageContent
 from haystack.dataclasses.skill_info import SkillInfo
 
 SKILL_FILE_NAME = "SKILL.md"
+
+# Non-text, non-image MIME types that are returned as `FileContent` so a multimodal LLM can ingest them directly.
+# Scoped to PDF, which is what the major providers accept as a file input; everything else falls back to text.
+SUPPORTED_FILE_MIME_TYPES = {"application/pdf"}
 
 
 def _parse_frontmatter(text: str) -> tuple[dict[str, Any], str]:
@@ -183,19 +191,22 @@ class FileSystemSkillStore:
             if p.is_file() and p.name != SKILL_FILE_NAME
         )
 
-    def read_skill_file(self, name: str, path: str) -> str:
+    def read_skill_file(self, name: str, path: str) -> str | ImageContent | FileContent:
         """
-        Read a text file bundled with the named skill, preventing path traversal outside the skill directory.
+        Read a file bundled with the named skill, preventing path traversal outside the skill directory.
+
+        The return type depends on the file: text files are returned as a `str`, image files (PNG, JPEG, ...) as an
+        `ImageContent`, and PDFs as a `FileContent`, so a multimodal agent can pass them straight to the model.
 
         :param name: Skill name as returned by `list_skills`.
         :param path: Path of the file relative to the skill directory (e.g. `"reference/forms.md"`).
-        :returns: The file's text content.
+        :returns: The file's text content (`str`), an `ImageContent` for images, or a `FileContent` for PDFs.
         :raises KeyError: If no skill with `name` exists.
         :raises PermissionError: If `path` resolves outside the skill's directory (path-traversal attempt). The
             message lists the readable files so the caller can retry with a valid path.
         :raises FileNotFoundError: If the file does not exist within the skill. The message lists the readable
             files so the caller can retry with a valid path.
-        :raises ValueError: If the file is not UTF-8 text (e.g. an image or other binary asset).
+        :raises ValueError: If the file is binary but not a supported image or PDF (i.e. not UTF-8 text either).
         """
         skill_dir = self._skill_dir(name).resolve()
         target = (skill_dir / path).resolve()
@@ -208,10 +219,23 @@ class FileSystemSkillStore:
             raise FileNotFoundError(
                 f"File '{path}' not found in skill '{name}'. Readable files: {self._readable_files_hint(name)}."
             )
+
+        # Check file types (PDF) before images: IMAGE_MIME_TYPES includes "application/pdf" (ImageContent can
+        # rasterize PDFs), but a skill's bundled PDF should reach the model as a FileContent, not an image.
+        mime_type, _ = mimetypes.guess_type(target.as_posix())
+        if mime_type in SUPPORTED_FILE_MIME_TYPES:
+            encoded = base64.b64encode(target.read_bytes()).decode("utf-8")
+            return FileContent(base64_data=encoded, mime_type=mime_type, filename=target.name, validation=False)
+        if mime_type in IMAGE_MIME_TYPES:
+            encoded = base64.b64encode(target.read_bytes()).decode("utf-8")
+            return ImageContent(base64_image=encoded, mime_type=mime_type)
         try:
             return target.read_text(encoding="utf-8")
         except UnicodeDecodeError as e:
-            raise ValueError(f"File '{path}' in skill '{name}' is not UTF-8 text. Only text files can be read.") from e
+            raise ValueError(
+                f"File '{path}' in skill '{name}' is not a readable asset. Only UTF-8 text, images, and PDFs "
+                f"are supported."
+            ) from e
 
     def to_dict(self) -> dict[str, Any]:
         """

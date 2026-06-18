@@ -8,6 +8,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 import pytest
 
+from haystack.dataclasses import FileContent, ImageContent
 from haystack.skill_stores.file_system.skill_store import FileSystemSkillStore, _parse_frontmatter
 
 
@@ -193,12 +194,34 @@ class TestFileSystemSkillStore:
             store.read_skill_file("pdf-forms", "link.md")
         assert "top secret" not in str(exc.value)
 
-    def test_read_skill_file_binary_raises(self, tmp_path):
+    def test_read_skill_file_image_returns_image_content(self, tmp_path):
         skill_dir = _write_skill(tmp_path, "pdf-forms", description="d")
+        # The 8-byte PNG magic-number header followed by a non-UTF-8 byte (0xff): the type is resolved from the
+        # `.png` extension, and these bytes confirm a binary, non-text file is handled as an image.
         (skill_dir / "logo.png").write_bytes(b"\x89PNG\r\n\x1a\n\x00\xff\xfe")
         store = FileSystemSkillStore(tmp_path)
-        with pytest.raises(ValueError, match="Only text files can be read"):
-            store.read_skill_file("pdf-forms", "logo.png")
+        result = store.read_skill_file("pdf-forms", "logo.png")
+        assert isinstance(result, ImageContent)
+        assert result.mime_type == "image/png"
+
+    def test_read_skill_file_pdf_returns_file_content(self, tmp_path):
+        skill_dir = _write_skill(tmp_path, "pdf-forms", description="d")
+        # A minimal "%PDF-1.4" file header; the type is resolved from the `.pdf` extension.
+        (skill_dir / "guide.pdf").write_bytes(b"%PDF-1.4 fake pdf bytes")
+        store = FileSystemSkillStore(tmp_path)
+        result = store.read_skill_file("pdf-forms", "guide.pdf")
+        assert isinstance(result, FileContent)
+        assert result.mime_type == "application/pdf"
+        assert result.filename == "guide.pdf"
+
+    def test_read_skill_file_unsupported_binary_raises(self, tmp_path):
+        skill_dir = _write_skill(tmp_path, "pdf-forms", description="d")
+        # Raw non-UTF-8 bytes (0xff is never a valid UTF-8 lead byte) with an extension that maps to neither an
+        # image nor a PDF, so it falls through to the text branch and fails to decode -> ValueError.
+        (skill_dir / "data.bin").write_bytes(b"\x00\xff\xfe")
+        store = FileSystemSkillStore(tmp_path)
+        with pytest.raises(ValueError, match="not a readable asset"):
+            store.read_skill_file("pdf-forms", "data.bin")
 
     def test_read_skill_file_missing_raises(self, tmp_path):
         _write_skill(tmp_path, "pdf-forms", description="d", files={"reference/forms.md": "details"})

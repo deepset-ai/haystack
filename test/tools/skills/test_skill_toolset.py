@@ -8,6 +8,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 import pytest
 
+from haystack.dataclasses import FileContent, ImageContent
 from haystack.skill_stores.file_system.skill_store import FileSystemSkillStore
 from haystack.tools import SkillToolset, Tool
 from haystack.tools.errors import ToolInvocationError
@@ -159,6 +160,25 @@ class TestSkillToolset:
         _write_skill(tmp_path, "pdf-forms", description="d", files={"reference/forms.md": "form details"})
         read = _get_tool(SkillToolset(FileSystemSkillStore(tmp_path)), "read_skill_file")
         assert read.invoke(name="pdf-forms", path="reference/forms.md") == "form details"
+
+    def test_read_skill_file_returns_image_as_content_part(self, tmp_path):
+        skill_dir = _write_skill(tmp_path, "pdf-forms", description="d")
+        (skill_dir / "logo.png").write_bytes(b"\x89PNG\r\n\x1a\n\x00\xff\xfe")
+        read = _get_tool(SkillToolset(FileSystemSkillStore(tmp_path)), "read_skill_file")
+        # raw_result keeps the ImageContent intact (no string conversion) and the tool wraps it in a list so it
+        # rides back as a multimodal tool-result content part.
+        assert read.outputs_to_string == {"raw_result": True}
+        result = read.invoke(name="pdf-forms", path="logo.png")
+        assert isinstance(result, list)
+        assert isinstance(result[0], ImageContent)
+
+    def test_read_skill_file_returns_pdf_as_content_part(self, tmp_path):
+        skill_dir = _write_skill(tmp_path, "pdf-forms", description="d")
+        (skill_dir / "guide.pdf").write_bytes(b"%PDF-1.4 fake pdf bytes")
+        read = _get_tool(SkillToolset(FileSystemSkillStore(tmp_path)), "read_skill_file")
+        result = read.invoke(name="pdf-forms", path="guide.pdf")
+        assert isinstance(result, list)
+        assert isinstance(result[0], FileContent)
 
     def test_read_skill_file_blocks_traversal(self, tmp_path):
         _write_skill(tmp_path, "pdf-forms", description="d")

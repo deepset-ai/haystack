@@ -110,7 +110,7 @@ class ToolCall:
         return ToolCall(**data)
 
 
-ToolCallResultContentT = str | Sequence[TextContent | ImageContent]
+ToolCallResultContentT = str | Sequence[TextContent | ImageContent | FileContent]
 
 
 @_warn_on_inplace_mutation
@@ -136,8 +136,10 @@ class ToolCallResult:
         """
         serialized = asdict(self)
         if isinstance(self.result, list):
-            if not all(isinstance(part, (TextContent, ImageContent)) for part in self.result):
-                raise ValueError("ToolCallResult result must be a string or a list of TextContent or ImageContent")
+            if not all(isinstance(part, (TextContent, ImageContent, FileContent)) for part in self.result):
+                raise ValueError(
+                    "ToolCallResult result must be a string or a list of TextContent, ImageContent, or FileContent"
+                )
             serialized["result"] = [_serialize_content_part(part) for part in self.result]
         return serialized
 
