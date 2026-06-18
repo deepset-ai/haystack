@@ -2,8 +2,9 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-import pytest
 from datetime import datetime, timezone
+
+import pytest
 
 from haystack import Document
 from haystack.errors import FilterError
