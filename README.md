@@ -175,7 +175,7 @@
 | haystack/core/component/\_\_init\_\_.py                                             |        3 |        0 |    100% |           |
 | haystack/core/component/component.py                                                |      185 |        1 |     99% |       355 |
 | haystack/core/component/sockets.py                                                  |       41 |        6 |     85% |82, 117-124, 129-130 |
-| haystack/core/component/types.py                                                    |       36 |        3 |     92% |     85-87 |
+| haystack/core/component/types.py                                                    |       42 |        3 |     93% |     87-89 |
 | haystack/core/errors.py                                                             |       76 |        9 |     88% |60-67, 127, 146, 150, 161, 165, 178, 187 |
 | haystack/core/pipeline/\_\_init\_\_.py                                              |        3 |        0 |    100% |           |
 | haystack/core/pipeline/async\_pipeline.py                                           |      171 |       48 |     72% |91-92, 97, 258-301, 313, 370-376, 389, 394, 411-413, 417-420, 440-453, 463 |
@@ -266,7 +266,7 @@
 | haystack/utils/type\_serialization.py                                               |      112 |       12 |     89% |62, 64, 178-179, 190-193, 199, 215-218 |
 | haystack/utils/url\_validation.py                                                   |        4 |        0 |    100% |           |
 | haystack/version.py                                                                 |        5 |        2 |     60% |      9-10 |
-| **TOTAL**                                                                           | **17880** | **1221** | **93%** |           |
+| **TOTAL**                                                                           | **17886** | **1221** | **93%** |           |
 
 
 ## Setup coverage badge
