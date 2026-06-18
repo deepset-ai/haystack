@@ -46,7 +46,7 @@ __init__(
     filters: dict[str, Any] | None = None,
     top_k: int = 10,
     filter_policy: str | FilterPolicy = FilterPolicy.REPLACE
-)
+) -> None
 ```
 
 Create the MongoDBAtlasDocumentStore component.
@@ -127,8 +127,7 @@ run_async(
 ) -> dict[str, list[Document]]
 ```
 
-Asynchronously retrieve documents from the MongoDBAtlasDocumentStore, based on the provided embedding
-similarity.
+Asynchronously retrieve documents from MongoDBAtlasDocumentStore based on embedding similarity.
 
 **Parameters:**
 
@@ -180,7 +179,7 @@ __init__(
     filters: dict[str, Any] | None = None,
     top_k: int = 10,
     filter_policy: str | FilterPolicy = FilterPolicy.REPLACE
-)
+) -> None
 ```
 
 **Parameters:**
@@ -312,8 +311,7 @@ Asynchronously retrieve documents from the MongoDBAtlasDocumentStore by full-tex
 
 ### MongoDBAtlasDocumentStore
 
-A MongoDBAtlasDocumentStore implementation that uses the
-[MongoDB Atlas](https://www.mongodb.com/atlas/database) service that is easy to deploy, operate, and scale.
+A MongoDBAtlasDocumentStore backed by [MongoDB Atlas](https://www.mongodb.com/atlas/database).
 
 To connect to MongoDB Atlas, you need to provide a connection string in the format:
 `"mongodb+srv://{mongo_atlas_username}:{mongo_atlas_password}@{mongo_atlas_host}/?{mongo_atlas_params_string}"`.
@@ -361,7 +359,7 @@ __init__(
     full_text_search_index: str,
     embedding_field: str = "embedding",
     content_field: str = "content"
-)
+) -> None
 ```
 
 Creates a new MongoDBAtlasDocumentStore instance.
@@ -391,6 +389,22 @@ Creates a new MongoDBAtlasDocumentStore instance.
 **Raises:**
 
 - <code>ValueError</code> – If the collection name contains invalid characters.
+
+#### connection
+
+```python
+connection: AsyncMongoClient | MongoClient
+```
+
+Return the active MongoDB client connection.
+
+#### collection
+
+```python
+collection: AsyncCollection | Collection
+```
+
+Return the active MongoDB collection.
 
 #### to_dict
 
@@ -504,8 +518,7 @@ count_unique_metadata_by_filter_async(
 ) -> dict[str, int]
 ```
 
-Asynchronously applies a filter selecting documents and counts the unique values for each meta field of the
-matched documents.
+Asynchronously applies a filter selecting documents and counts unique metadata values for each meta field.
 
 **Parameters:**
 
@@ -613,8 +626,7 @@ get_metadata_field_unique_values_async(
 ) -> tuple[list[str], int]
 ```
 
-Asynchronously retrieves unique values for a field matching a search_term or all possible values if no search
-term is given.
+Asynchronously retrieves unique values for a metadata field, optionally filtered by a search term.
 
 **Parameters:**
 
