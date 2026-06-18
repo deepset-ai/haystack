@@ -1,0 +1,20 @@
+---
+upgrade:
+  - |
+    ``LocalWhisperTranscriber`` and ``RemoteWhisperTranscriber`` have been moved out of Haystack into the
+    ``whisper-haystack`` integration package. Install the new package with ``pip install whisper-haystack``
+    and update your imports.
+
+    Before:
+
+    .. code:: python
+
+      from haystack.components.audio import LocalWhisperTranscriber
+      from haystack.components.audio import RemoteWhisperTranscriber
+
+    After:
+
+    .. code:: python
+
+      from haystack_integrations.components.audio.whisper import LocalWhisperTranscriber
+      from haystack_integrations.components.audio.whisper import RemoteWhisperTranscriber
