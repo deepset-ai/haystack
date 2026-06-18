@@ -1,0 +1,16 @@
+---
+features:
+  - |
+    Components and pipelines now have a consistent resource lifecycle for acquiring and releasing resources such as
+    HTTP clients and connections. In addition to the existing ``warm_up``, components can now implement ``warm_up_async``
+    to acquire asynchronous resources, and ``close``/``close_async`` to release them.
+    ``Pipeline`` now implements the same lifecycle methods. In addition to the existing ``warm_up``, ``warm_up_async()``
+    runs async warm-up on the serving event loop (falling back to the synchronous ``warm_up``), while
+    ``close()``/``close_async()`` release synchronous and asynchronous resources respectively.
+    Closing is always explicit; pipelines are never closed automatically after a run.
+upgrade:
+  - |
+    Components in Haystack that use external resources now consistently create those resources during warm-up rather
+    than in ``__init__``. As a result, some components that previously raised errors during initialization (for example,
+    because of a missing API key) now raise them during ``warm_up`` instead.
+    Similar changes will be rolled out to components in Haystack Core Integrations in the future.
