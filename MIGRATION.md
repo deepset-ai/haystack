@@ -112,6 +112,7 @@ pip install <new-package>
 | `from haystack.components.rankers import SentenceTransformersSimilarityRanker` | `sentence-transformers-haystack` | `from haystack_integrations.components.rankers.sentence_transformers import SentenceTransformersSimilarityRanker` |
 | `from haystack.components.rankers import SentenceTransformersDiversityRanker` | `sentence-transformers-haystack` | `from haystack_integrations.components.rankers.sentence_transformers import SentenceTransformersDiversityRanker` |
 | `from haystack.tracing.datadog import DatadogTracer` | `datadog-haystack` | `from haystack_integrations.tracing.datadog import DatadogTracer` |
+| `from haystack.components.converters import TikaDocumentConverter` | `tika-haystack` | `from haystack_integrations.components.converters.tika import TikaDocumentConverter` |
 
 ### `DatadogTracer` moved to the `datadog-haystack` integration
 
@@ -836,7 +837,7 @@ doc2 = Document(content="Berlin is the capital of Germany.", meta={"lang": "en",
 assert doc1.id == doc2.id
 ```
 
-It is possible to migrate an existing index without rerunning your indexing pipeline, for example to avoid recalculating embeddings. To do that, read stored documents, regenerate their IDs using Haystack 3.0, write the updated documents, and delete the documents stored under their old IDs. 
+It is possible to migrate an existing index without rerunning your indexing pipeline, for example to avoid recalculating embeddings. To do that, read stored documents, regenerate their IDs using Haystack 3.0, write the updated documents, and delete the documents stored under their old IDs.
 
 ```python
 from dataclasses import replace

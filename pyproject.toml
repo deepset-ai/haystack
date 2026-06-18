@@ -106,7 +106,6 @@ dependencies = [
   "pdfminer.six",                     # PDFMinerToDocument
   "markdown-it-py",                   # MarkdownToDocument
   "mdit_plain",                       # MarkdownToDocument
-  "tika",                             # TikaDocumentConverter
   "azure-ai-formrecognizer>=3.2.0b2", # AzureOCRDocumentConverter
   "trafilatura",                      # HTMLToDocument
   "python-pptx",                      # PPTXToDocument
