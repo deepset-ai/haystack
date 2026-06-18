@@ -4,10 +4,12 @@
 
 import contextlib
 import os
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from openai.types import CreateEmbeddingResponse, Embedding
 
+import haystack.components.embedders.openai_text_embedder as openai_text_embedder_module
 from haystack.components.embedders.openai_text_embedder import OpenAITextEmbedder
 from haystack.utils.auth import Secret
 
@@ -17,14 +19,16 @@ class TestOpenAITextEmbedder:
         monkeypatch.setenv("OPENAI_API_KEY", "fake-api-key")
         embedder = OpenAITextEmbedder()
 
-        assert embedder.client.api_key == "fake-api-key"
+        assert embedder.api_key.resolve_value() == "fake-api-key"
         assert embedder.model == "text-embedding-ada-002"
         assert embedder.api_base_url is None
         assert embedder.organization is None
         assert embedder.prefix == ""
         assert embedder.suffix == ""
-        assert embedder.client.timeout == 30
-        assert embedder.client.max_retries == 5
+        assert embedder.timeout is None
+        assert embedder.max_retries is None
+        assert embedder.client is None
+        assert embedder.async_client is None
 
     def test_init_with_parameters(self, monkeypatch):
         monkeypatch.setenv("OPENAI_TIMEOUT", "100")
@@ -39,14 +43,16 @@ class TestOpenAITextEmbedder:
             timeout=40.0,
             max_retries=1,
         )
-        assert embedder.client.api_key == "fake-api-key"
+        assert embedder.api_key.resolve_value() == "fake-api-key"
         assert embedder.model == "model"
         assert embedder.api_base_url == "https://my-custom-base-url.com"
         assert embedder.organization == "fake-organization"
         assert embedder.prefix == "prefix"
         assert embedder.suffix == "suffix"
-        assert embedder.client.timeout == 40.0
-        assert embedder.client.max_retries == 1
+        assert embedder.timeout == 40.0
+        assert embedder.max_retries == 1
+        assert embedder.client is None
+        assert embedder.async_client is None
 
     def test_init_with_parameters_and_env_vars(self, monkeypatch):
         monkeypatch.setenv("OPENAI_TIMEOUT", "100")
@@ -59,19 +65,16 @@ class TestOpenAITextEmbedder:
             prefix="prefix",
             suffix="suffix",
         )
-        assert embedder.client.api_key == "fake-api-key"
+        assert embedder.api_key.resolve_value() == "fake-api-key"
         assert embedder.model == "model"
         assert embedder.api_base_url == "https://my-custom-base-url.com"
         assert embedder.organization == "fake-organization"
         assert embedder.prefix == "prefix"
         assert embedder.suffix == "suffix"
-        assert embedder.client.timeout == 100.0
-        assert embedder.client.max_retries == 10
-
-    def test_init_fail_wo_api_key(self, monkeypatch):
-        monkeypatch.delenv("OPENAI_API_KEY", raising=False)
-        with pytest.raises(ValueError, match="None of the .* environment variables are set"):
-            OpenAITextEmbedder()
+        assert embedder.timeout is None
+        assert embedder.max_retries is None
+        assert embedder.client is None
+        assert embedder.async_client is None
 
     def test_to_dict(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "fake-api-key")
@@ -138,7 +141,7 @@ class TestOpenAITextEmbedder:
             },
         }
         component = OpenAITextEmbedder.from_dict(data)
-        assert component.client.api_key == "fake-api-key"
+        assert component.api_key.resolve_value() == "fake-api-key"
         assert component.model == "text-embedding-ada-002"
         assert component.api_base_url == "https://my-custom-base-url.com"
         assert component.organization == "fake-organization"
@@ -219,4 +222,89 @@ class TestOpenAITextEmbedder:
 
         # Close async client; suppress RuntimeError if the event loop is already closed
         with contextlib.suppress(RuntimeError):
-            await embedder.async_client.close()
+            await embedder.close_async()
+
+
+@pytest.fixture
+def mock_openai_clients(monkeypatch):
+    monkeypatch.setenv("OPENAI_API_KEY", "fake")
+    sync_cls = MagicMock(name="OpenAI")
+    async_cls = MagicMock(name="AsyncOpenAI")
+    async_cls.return_value.close = AsyncMock()
+    monkeypatch.setattr(openai_text_embedder_module, "OpenAI", sync_cls)
+    monkeypatch.setattr(openai_text_embedder_module, "AsyncOpenAI", async_cls)
+    return sync_cls, async_cls
+
+
+class TestComponentLifecycle:
+    def test_warm_up_uses_default_timeout_and_max_retries(self, monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "fake-api-key")
+        embedder = OpenAITextEmbedder()
+        embedder.warm_up()
+        assert embedder.client.max_retries == 5
+        assert embedder.client.timeout == 30.0
+
+    def test_warm_up_uses_timeout_and_max_retries_from_parameters(self):
+        embedder = OpenAITextEmbedder(api_key=Secret.from_token("fake-api-key"), timeout=40.0, max_retries=1)
+        embedder.warm_up()
+        assert embedder.client.max_retries == 1
+        assert embedder.client.timeout == 40.0
+
+    def test_warm_up_uses_timeout_and_max_retries_from_env_vars(self, monkeypatch):
+        monkeypatch.setenv("OPENAI_TIMEOUT", "100")
+        monkeypatch.setenv("OPENAI_MAX_RETRIES", "10")
+        embedder = OpenAITextEmbedder(api_key=Secret.from_token("fake-api-key"))
+        embedder.warm_up()
+        assert embedder.client.max_retries == 10
+        assert embedder.client.timeout == 100.0
+
+    def test_key_resolved_at_warm_up_not_init(self, monkeypatch):
+        monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+        embedder = OpenAITextEmbedder()
+        with pytest.raises(ValueError, match="None of the .* environment variables are set"):
+            embedder.warm_up()
+
+    def test_sync_lifecycle(self, mock_openai_clients):
+        sync_cls, _ = mock_openai_clients
+        embedder = OpenAITextEmbedder()
+        assert embedder.client is None
+        assert embedder.async_client is None
+
+        embedder.warm_up()
+        assert embedder.client is sync_cls.return_value
+        assert embedder.async_client is None
+
+        embedder.close()
+        sync_cls.return_value.close.assert_called_once()
+        assert embedder.client is None
+
+    async def test_async_lifecycle(self, mock_openai_clients):
+        _, async_cls = mock_openai_clients
+        embedder = OpenAITextEmbedder()
+
+        await embedder.warm_up_async()
+        assert embedder.async_client is async_cls.return_value
+        assert embedder.client is None
+
+        await embedder.close_async()
+        async_cls.return_value.close.assert_awaited_once()
+        assert embedder.async_client is None
+
+    async def test_close_is_safe_without_warm_up(self, mock_openai_clients):
+        embedder = OpenAITextEmbedder()
+        embedder.close()
+        await embedder.close_async()
+        assert embedder.client is None
+        assert embedder.async_client is None
+
+    async def test_close_and_close_async_are_independent(self, mock_openai_clients):
+        embedder = OpenAITextEmbedder()
+        embedder.warm_up()
+        await embedder.warm_up_async()
+
+        embedder.close()
+        assert embedder.client is None
+        assert embedder.async_client is not None
+
+        await embedder.close_async()
+        assert embedder.async_client is None

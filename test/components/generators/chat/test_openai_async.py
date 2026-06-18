@@ -88,7 +88,7 @@ def tools():
 
 
 class TestOpenAIChatGeneratorAsync:
-    def test_init_should_also_create_async_client_with_same_args(self, monkeypatch):
+    async def test_warm_up_async_should_create_async_client_with_same_args(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
         component = OpenAIChatGenerator(
             api_key=Secret.from_token("test-api-key"),
@@ -97,6 +97,7 @@ class TestOpenAIChatGeneratorAsync:
             timeout=30,
             max_retries=5,
         )
+        await component.warm_up_async()
 
         assert isinstance(component.async_client, AsyncOpenAI)
         assert component.async_client.api_key == "test-api-key"
@@ -477,6 +478,7 @@ class TestOpenAIChatGeneratorAsync:
         wrapped_openai_async_stream.__aiter__.return_value = iter([chunk])
 
         component = OpenAIChatGenerator(api_key=Secret.from_token("test-api-key"))
+        await component.warm_up_async()
 
         # Patch the async client's create method
         with patch.object(

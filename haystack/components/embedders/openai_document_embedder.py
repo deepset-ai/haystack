@@ -122,8 +122,6 @@ class OpenAIDocumentEmbedder:
         self.http_client_kwargs = http_client_kwargs
         self.raise_on_failure = raise_on_failure
 
-        # Clients are built lazily at warm-up so the component can be constructed and deserialized without the
-        # API key present; the async client is built on the serving loop. See warm_up / warm_up_async.
         self.client: OpenAI | None = None
         self.async_client: AsyncOpenAI | None = None
 
@@ -340,8 +338,7 @@ class OpenAIDocumentEmbedder:
                 "In case you want to embed a string, please use the OpenAITextEmbedder."
             )
 
-        if self.client is None:
-            self.warm_up()
+        self.warm_up()
 
         texts_to_embed = self._prepare_texts_to_embed(documents=documents)
 
@@ -375,8 +372,7 @@ class OpenAIDocumentEmbedder:
                 "In case you want to embed a string, please use the OpenAITextEmbedder."
             )
 
-        if self.async_client is None:
-            await self.warm_up_async()
+        await self.warm_up_async()
 
         texts_to_embed = self._prepare_texts_to_embed(documents=documents)
 
