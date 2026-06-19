@@ -1,0 +1,28 @@
+---
+features:
+  - |
+    Added ``SkillToolset``, a ``Toolset`` that lets an ``Agent`` discover and read "skills" through
+    progressive disclosure, similar to how Claude Code and Codex expose skills. A skill is a directory
+    containing a ``SKILL.md`` file with YAML frontmatter (``name`` and ``description``) and a markdown body
+    of instructions, optionally bundling additional reference files. ``SkillToolset`` is backed by a
+    ``SkillStore``; use ``FileSystemSkillStore`` to load skills from a local directory and add the toolset
+    to an ``Agent``:
+
+    .. code-block:: python
+
+        from haystack.components.agents import Agent
+        from haystack.components.generators.chat import OpenAIChatGenerator
+        from haystack.tools import SkillToolset
+        from haystack.skill_stores.file_system import FileSystemSkillStore
+
+        skills_toolset = SkillToolset(FileSystemSkillStore("skills/"))
+        agent = Agent(chat_generator=OpenAIChatGenerator(), tools=skills_toolset)
+
+    Skills are discovered when the toolset is warmed up (the ``Agent`` does this automatically before a run).
+    The names and descriptions of all discovered skills are baked into the ``load_skill`` tool description,
+    so the model can see which skills exist without any system prompt injection. The toolset exposes two
+    tools: ``load_skill`` returns a skill's full instructions on demand, and ``read_skill_file`` reads a
+    text file bundled with a skill (with path-traversal protection).
+
+    Custom stores can back ``SkillToolset`` with any storage system (a database, a remote API, ...) by
+    implementing the ``SkillStore`` protocol.
