@@ -156,16 +156,16 @@ class TestMemoryDocumentStore(
             sparse_embedding=SparseEmbedding(indices=[0, 5], values=[0.1, 0.9]),
         )
         in_memory_doc_store.write_documents([doc])
-        tmp_dir = tmp_dir + "/in_memory_doc_store.json"
-        in_memory_doc_store.save_to_disk(tmp_dir)
-        document_store_loaded = InMemoryDocumentStore.load_from_disk(tmp_dir)
+        save_path = tmp_dir + "/in_memory_doc_store.json"
+        in_memory_doc_store.save_to_disk(save_path)
+        document_store_loaded = InMemoryDocumentStore.load_from_disk(save_path)
 
-        loaded_doc = list(document_store_loaded.storage.values())[0]
+        loaded_doc = document_store_loaded.filter_documents()[0]
         assert isinstance(loaded_doc.blob, ByteStream)
         assert isinstance(loaded_doc.sparse_embedding, SparseEmbedding)
         assert loaded_doc == doc
         # The loaded store must be saveable again
-        document_store_loaded.save_to_disk(tmp_dir)
+        document_store_loaded.save_to_disk(save_path)
 
     def test_invalid_bm25_algorithm(self):
         with pytest.raises(ValueError, match="BM25 algorithm 'invalid' is not supported"):
