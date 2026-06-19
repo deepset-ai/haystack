@@ -1,0 +1,6 @@
+---
+features:
+  - |
+    Added optional YAML frontmatter extraction to ``MarkdownToDocument``. When initialized with
+    ``extract_frontmatter=True``, YAML frontmatter at the beginning of a Markdown file is removed from
+    the converted content and added to ``Document.meta``.

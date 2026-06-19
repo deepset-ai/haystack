@@ -107,6 +107,7 @@ export default {
       items: [
         'document-stores/inmemorydocumentstore',
         'document-stores/alloydbdocumentstore',
+        'document-stores/arangodocumentstore',
         'document-stores/arcadedbdocumentstore',
         'document-stores/astradocumentstore',
         'document-stores/azureaisearchdocumentstore',
@@ -213,6 +214,7 @@ export default {
             id: 'pipeline-components/connectors'
           },
           items: [
+            'pipeline-components/connectors/datadogconnector',
             'pipeline-components/connectors/githubfileeditor',
             'pipeline-components/connectors/githubissuecommenter',
             'pipeline-components/connectors/githubissueviewer',
@@ -367,6 +369,7 @@ export default {
             'pipeline-components/extractors/namedentityextractor',
             'pipeline-components/extractors/presidioentityextractor',
             'pipeline-components/extractors/regextextextractor',
+            'pipeline-components/extractors/spacynamedentityextractor',
             'pipeline-components/extractors/transformersnamedentityextractor',
           ],
         },
@@ -420,6 +423,7 @@ export default {
             'pipeline-components/generators/huggingfaceapigenerator',
             'pipeline-components/generators/huggingfacelocalchatgenerator',
             'pipeline-components/generators/huggingfacelocalgenerator',
+            'pipeline-components/generators/litellmchatgenerator',
             'pipeline-components/generators/llamacppchatgenerator',
             'pipeline-components/generators/llamacppgenerator',
             'pipeline-components/generators/llamastackchatgenerator',
@@ -487,6 +491,7 @@ export default {
             'pipeline-components/preprocessors/documentsplitter',
             'pipeline-components/preprocessors/embeddingbaseddocumentsplitter',
             'pipeline-components/preprocessors/hierarchicaldocumentsplitter',
+            'pipeline-components/preprocessors/markdownheadersplitter',
             'pipeline-components/preprocessors/pythoncodesplitter',
             'pipeline-components/preprocessors/recursivesplitter',
             'pipeline-components/preprocessors/textcleaner',
@@ -551,6 +556,7 @@ export default {
           items: [
             'pipeline-components/retrievers/alloydbembeddingretriever',
             'pipeline-components/retrievers/alloydbkeywordretriever',
+            'pipeline-components/retrievers/arangoembeddingretriever',
             'pipeline-components/retrievers/arcadedbembeddingretriever',
             'pipeline-components/retrievers/astraretriever',
             'pipeline-components/retrievers/automergingretriever',
@@ -578,6 +584,7 @@ export default {
             'pipeline-components/retrievers/opensearchbm25retriever',
             'pipeline-components/retrievers/opensearchembeddingretriever',
             'pipeline-components/retrievers/opensearchhybridretriever',
+            'pipeline-components/retrievers/opensearchsqlretriever',
             'pipeline-components/retrievers/oracleembeddingretriever',
             'pipeline-components/retrievers/oraclekeywordretriever',
             'pipeline-components/retrievers/pgvectorembeddingretriever',

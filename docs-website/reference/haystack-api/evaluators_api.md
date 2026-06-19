@@ -182,6 +182,25 @@ Run the LLM evaluator.
   - `score`: Mean context relevance score over all the provided input questions.
   - `results`: A list of dictionaries with `relevant_statements` and `score` for each input context.
 
+#### run_async
+
+```python
+run_async(**inputs: Any) -> dict[str, Any]
+```
+
+Run the LLM evaluator asynchronously.
+
+**Parameters:**
+
+- **questions** – A list of questions.
+- **contexts** – A list of lists of contexts. Each list of contexts corresponds to one question.
+
+**Returns:**
+
+- <code>dict\[str, Any\]</code> – A dictionary with the following outputs:
+  - `score`: Mean context relevance score over all the provided input questions.
+  - `results`: A list of dictionaries with `relevant_statements` and `score` for each input context.
+
 #### to_dict
 
 ```python
@@ -703,6 +722,27 @@ Run the LLM evaluator.
   - `individual_scores`: A list of faithfulness scores for each input answer.
   - `results`: A list of dictionaries with `statements` and `statement_scores` for each input answer.
 
+#### run_async
+
+```python
+run_async(**inputs: Any) -> dict[str, Any]
+```
+
+Run the LLM evaluator asynchronously.
+
+**Parameters:**
+
+- **questions** – A list of questions.
+- **contexts** – A nested list of contexts that correspond to the questions.
+- **predicted_answers** – A list of predicted answers.
+
+**Returns:**
+
+- <code>dict\[str, Any\]</code> – A dictionary with the following outputs:
+  - `score`: Mean faithfulness score over all the provided input answers.
+  - `individual_scores`: A list of faithfulness scores for each input answer.
+  - `results`: A list of dictionaries with `statements` and `statement_scores` for each input answer.
+
 #### to_dict
 
 ```python
@@ -857,6 +897,33 @@ Run the LLM evaluator.
 
 **Raises:**
 
+- <code>ValueError</code> – Only in the case that `raise_on_failure` is set to True and the received inputs are not lists or have
+  different lengths, or if the output is not a valid JSON or doesn't contain the expected keys.
+
+#### run_async
+
+```python
+run_async(**inputs: Any) -> dict[str, Any]
+```
+
+Run the LLM evaluator asynchronously
+
+**Parameters:**
+
+- **inputs** (<code>Any</code>) – The input values to evaluate. The keys are the input names and the values are lists of input values.
+
+**Returns:**
+
+- <code>dict\[str, Any\]</code> – A dictionary with a `results` entry that contains a list of results.
+  Each result is a dictionary containing the keys as defined in the `outputs` parameter of the LLMEvaluator
+  and the evaluation results as the values. If an exception occurs for a particular input value, the result
+  will be `None` for that entry.
+  If the API is "openai" and the response contains a "meta" key, the metadata from OpenAI will be included
+  in the output dictionary, under the key "meta".
+
+**Raises:**
+
+- <code>TypeError</code> – If the chat generator does not support async execution.
 - <code>ValueError</code> – Only in the case that `raise_on_failure` is set to True and the received inputs are not lists or have
   different lengths, or if the output is not a valid JSON or doesn't contain the expected keys.
 

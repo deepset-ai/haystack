@@ -16,9 +16,9 @@ Use this component to embed a simple string (such as a query) into a sparse vect
 | **Most common position in a pipeline** | Before a sparse embedding [Retriever](../retrievers.mdx) in a query/RAG pipeline                                                |
 | **Mandatory run variables**            | `text`: A string                                                                                                               |
 | **Output variables**                   | `sparse_embedding`: A [`SparseEmbedding`](../../concepts/data-classes.mdx#sparseembedding) object                                           |
-| **API reference**                      | [Embedders](/reference/embedders-api)                                                                                                 |
-| **GitHub link**                        | https://github.com/deepset-ai/haystack/blob/main/haystack/components/embedders/sentence_transformers_sparse_text_embedder.py |
-| **Package name** | `haystack-ai` |
+| **API reference**                      | [Sentence Transformers](/reference/integrations-sentence-transformers)                                                                                                 |
+| **GitHub link**                        | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/sentence_transformers |
+| **Package name** | `sentence-transformers-haystack` |
 
 </div>
 
@@ -46,7 +46,9 @@ The component uses an `HF_API_TOKEN` or `HF_TOKEN` environment variable, or you 
 
 ```python
 from haystack.utils import Secret
-from haystack.components.embedders import SentenceTransformersSparseTextEmbedder
+from haystack_integrations.components.embedders.sentence_transformers import (
+    SentenceTransformersSparseTextEmbedder,
+)
 
 text_embedder = SentenceTransformersSparseTextEmbedder(
     token=Secret.from_token("<your-api-key>"),
@@ -90,10 +92,18 @@ If you create a Sparse Text Embedder and a Sparse Document Embedder based on the
 
 ## Usage
 
+Install the `sentence-transformers-haystack` package to use the `SentenceTransformersSparseTextEmbedder`:
+
+```shell
+pip install sentence-transformers-haystack
+```
+
 ### On its own
 
 ```python
-from haystack.components.embedders import SentenceTransformersSparseTextEmbedder
+from haystack_integrations.components.embedders.sentence_transformers import (
+    SentenceTransformersSparseTextEmbedder,
+)
 
 text_to_embed = "I love pizza!"
 
@@ -118,7 +128,7 @@ Then, try out this pipeline:
 
 ```python
 from haystack import Document, Pipeline
-from haystack.components.embedders import (
+from haystack_integrations.components.embedders.sentence_transformers import (
     SentenceTransformersSparseDocumentEmbedder,
     SentenceTransformersSparseTextEmbedder,
 )
