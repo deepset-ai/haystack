@@ -18,7 +18,7 @@ SKILL_FILE_NAME = "SKILL.md"
 
 # Non-text, non-image MIME types that are returned as `FileContent` so a multimodal LLM can ingest them directly.
 # Scoped to PDF, which is what the major providers accept as a file input; everything else falls back to text.
-SUPPORTED_FILE_MIME_TYPES = {"application/pdf"}
+_SUPPORTED_FILE_MIME_TYPES = {"application/pdf"}
 
 
 def _parse_frontmatter(text: str) -> tuple[dict[str, Any], str]:
@@ -223,12 +223,12 @@ class FileSystemSkillStore:
         # Check file types (PDF) before images: IMAGE_MIME_TYPES includes "application/pdf" (ImageContent can
         # rasterize PDFs), but a skill's bundled PDF should reach the model as a FileContent, not an image.
         mime_type, _ = mimetypes.guess_type(target.as_posix())
-        if mime_type in SUPPORTED_FILE_MIME_TYPES:
+        if mime_type in _SUPPORTED_FILE_MIME_TYPES:
             encoded = base64.b64encode(target.read_bytes()).decode("utf-8")
             return FileContent(base64_data=encoded, mime_type=mime_type, filename=target.name, validation=False)
         if mime_type in IMAGE_MIME_TYPES:
             encoded = base64.b64encode(target.read_bytes()).decode("utf-8")
-            return ImageContent(base64_image=encoded, mime_type=mime_type)
+            return ImageContent(base64_image=encoded, mime_type=mime_type, validation=False)
         try:
             return target.read_text(encoding="utf-8")
         except UnicodeDecodeError as e:
