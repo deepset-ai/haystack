@@ -130,10 +130,18 @@ class ConditionalRouter:
 
     ```python
     # Without output_passthrough — the object is silently converted to a string
-    routes = [{"condition": "{{True}}", "output": "{{query}}", "output_name": "out", "output_type": ParsedQuery}]
+    routes = [
+        {
+            "condition": "{{True}}",
+            "output": "{{query}}",
+            "output_name": "out",
+            "output_type": ParsedQuery,
+        }
+    ]
     router = ConditionalRouter(routes)
     result = router.run(query=ParsedQuery(text="hello", intent="search", entities=[]))
-    # result == {"out": "ParsedQuery(text='hello', intent='search', entities=[])"}  ← str, not ParsedQuery
+    # result["out"] == "ParsedQuery(text='hello', intent='search', entities=[])"
+    # ^^^ str, not ParsedQuery — the object was destroyed
     ```
 
     Set `output_passthrough: True` to skip Jinja2 entirely and pass the value directly from kwargs:
