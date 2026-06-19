@@ -125,38 +125,52 @@ class ConditionalRouter:
 
     ### Passthrough routing for non-basic types
 
-    When routing complex custom types, set `output_passthrough: True` in a route to skip Jinja2 processing
-    and pass the variable value directly:
+    Without `output_passthrough`, the router renders `output` as a Jinja2 template, which converts
+    the value to its string representation. Custom types cannot survive that round-trip:
+
+    ```python
+    # Without output_passthrough — the object is silently converted to a string
+    routes = [{"condition": "{{True}}", "output": "{{query}}", "output_name": "out", "output_type": ParsedQuery}]
+    router = ConditionalRouter(routes)
+    result = router.run(query=ParsedQuery(text="hello", intent="search", entities=[]))
+    # result == {"out": "ParsedQuery(text='hello', intent='search', entities=[])"}  ← str, not ParsedQuery
+    ```
+
+    Set `output_passthrough: True` to skip Jinja2 entirely and pass the value directly from kwargs:
 
     ```python
     from haystack.components.routers import ConditionalRouter
-    from dataclasses import dataclass
+    from dataclasses import dataclass, field
 
     @dataclass
-    class Document:
-        content: str
+    class ParsedQuery:
+        text: str
+        intent: str        # "search" | "chat"
+        entities: list[str] = field(default_factory=list)
 
     routes = [
         {
-            "condition": "{{is_important}}",
-            "output": "document",        # variable name, not a Jinja2 template
-            "output_name": "important_docs",
-            "output_type": Document,
-            "output_passthrough": True,  # skip Jinja2, pass variable directly
+            "condition": "{{query.intent == 'search'}}",
+            "output": "query",           # variable name, not a Jinja2 template
+            "output_name": "search_query",
+            "output_type": ParsedQuery,
+            "output_passthrough": True,
         },
         {
-            "condition": "{{not is_important}}",
-            "output": "document",
-            "output_name": "regular_docs",
-            "output_type": Document,
+            "condition": "{{query.intent == 'chat'}}",
+            "output": "query",
+            "output_name": "chat_query",
+            "output_type": ParsedQuery,
             "output_passthrough": True,
         },
     ]
 
     router = ConditionalRouter(routes)
-    doc = Document(content="Important info")
-    result = router.run(is_important=True, document=doc)
-    assert result == {"important_docs": doc}
+    query = ParsedQuery(text="What is Haystack?", intent="search", entities=["Haystack"])
+    result = router.run(query=query)
+
+    assert isinstance(result["search_query"], ParsedQuery)  # type preserved
+    assert result["search_query"] is query                  # same object, no copying
     ```
     """
 
