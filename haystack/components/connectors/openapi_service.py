@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import json
+import warnings
 from collections import defaultdict
 from copy import copy
 from typing import Any
@@ -211,6 +212,14 @@ class OpenAPIServiceConnector:
         :param ssl_verify: Decide if to use SSL verification to the requests or not,
         in case a string is passed, will be used as the CA.
         """
+        warnings.warn(
+            "`OpenAPIServiceConnector` will be removed from Haystack in version 3.0, as it is moving to "
+            "the `openapi-haystack` package. To continue using it, install that package with "
+            "`pip install openapi-haystack` and update your import to "
+            "`from haystack_integrations.components.connectors.openapi import OpenAPIServiceConnector`.",
+            FutureWarning,
+            stacklevel=2,
+        )
         openapi_imports.check()
         self.ssl_verify = ssl_verify
 

@@ -9,6 +9,18 @@ description: "`OpenAPIServiceConnector` is a component that acts as an interface
 
 `OpenAPIServiceConnector` is a component that acts as an interface between the Haystack ecosystem and OpenAPI services.
 
+:::warning[Deprecated]
+
+`OpenAPIServiceConnector` is deprecated and will be removed in Haystack 3.0. It has moved to the `openapi-haystack` Core Integration package. To continue using it, install the package with `pip install openapi-haystack` and update your import to `from haystack_integrations.components.connectors.openapi import OpenAPIServiceConnector`.
+
+:::
+
+:::tip[Consider using MCP instead]
+
+These OpenAPI components are a legacy way to connect Haystack to external APIs. For most use cases, we recommend the [`MCPTool`](../../tools/mcptool.mdx) instead: it is the modern, standardized way to give your pipelines and agents access to external tools and services.
+
+:::
+
 <div className="key-value-table">
 
 |  |  |
@@ -16,9 +28,9 @@ description: "`OpenAPIServiceConnector` is a component that acts as an interface
 | **Most common position in a pipeline** | Flexible |
 | **Mandatory run variables** | `messages`: A list of [`ChatMessage`](../../concepts/data-classes/chatmessage.mdx)  objects where the last message must be from the assistant and contain tool calls.  <br /> <br />`service_openapi_spec`: OpenAPI specification of the service being invoked. It can be YAML/JSON, and all ref values must be resolved.  <br /> <br />`service_credentials`: Authentication credentials for the service. We currently support two OpenAPI spec v3 security schemes:  <br /> <br />1. http – for Basic, Bearer, and other HTTP authentication schemes;  <br />2. apiKey – for API keys and cookie authentication. |
 | **Output variables** | `service_response`: A list of [`ChatMessage`](../../concepts/data-classes/chatmessage.mdx)  objects where each message corresponds to a tool call invocation.  <br />If a message contains multiple tool calls, there will be multiple responses. |
-| **API reference** | [Connectors](/reference/connectors-api) |
-| **GitHub link** | https://github.com/deepset-ai/haystack/blob/main/haystack/components/connectors/openapi_service.py |
-| **Package name** | `haystack-ai` |
+| **API reference** | [OpenAPI](/reference/integrations-openapi) |
+| **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/openapi |
+| **Package name** | `openapi-haystack` |
 
 </div>
 
@@ -26,10 +38,10 @@ description: "`OpenAPIServiceConnector` is a component that acts as an interface
 
 `OpenAPIServiceConnector` acts as a bridge between Haystack ecosystem and OpenAPI services. This component works by using information from a `ChatMessage` to dynamically invoke service methods. It handles parameter payload parsing from `ChatMessage`, service authentication, method invocation, and response formatting, making it easier to integrate OpenAPI services.
 
-To use `OpenAPIServiceConnector`, you need to install the optional `openapi3` dependency with:
+To use `OpenAPIServiceConnector`, you need to install the `openapi-haystack` package with:
 
 ```shell
-pip install openapi3
+pip install openapi-haystack
 ```
 
 `OpenAPIServiceConnector` component doesn’t have any init parameters.
@@ -59,11 +71,14 @@ import requests
 from typing import Any
 
 from haystack import Pipeline
-from haystack.components.connectors import OpenAPIServiceConnector
-from haystack.components.converters import OpenAPIServiceToFunctions, OutputAdapter
+from haystack.components.converters import OutputAdapter
 from haystack.components.generators.chat import OpenAIChatGenerator
 from haystack.dataclasses import ChatMessage
 from haystack.dataclasses.byte_stream import ByteStream
+from haystack_integrations.components.connectors.openapi import OpenAPIServiceConnector
+from haystack_integrations.components.converters.openapi import (
+    OpenAPIServiceToFunctions,
+)
 
 
 def prepare_fc_params(openai_functions_schema: dict[str, Any]) -> dict[str, Any]:

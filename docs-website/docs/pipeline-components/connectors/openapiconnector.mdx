@@ -9,6 +9,18 @@ description: "`OpenAPIConnector` is a component that acts as an interface betwee
 
 `OpenAPIConnector` is a component that acts as an interface between the Haystack ecosystem and OpenAPI services.
 
+:::warning[Deprecated]
+
+`OpenAPIConnector` is deprecated and will be removed in Haystack 3.0. It has moved to the `openapi-haystack` Core Integration package. To continue using it, install the package with `pip install openapi-haystack` and update your import to `from haystack_integrations.components.connectors.openapi import OpenAPIConnector`.
+
+:::
+
+:::tip[Consider using MCP instead]
+
+These OpenAPI components are a legacy way to connect Haystack to external APIs. For most use cases, we recommend the [`MCPTool`](../../tools/mcptool.mdx) instead: it is the modern, standardized way to give your pipelines and agents access to external tools and services.
+
+:::
+
 <div className="key-value-table">
 
 |  |  |
@@ -17,9 +29,9 @@ description: "`OpenAPIConnector` is a component that acts as an interface betwee
 | **Mandatory init variables**           | `openapi_spec`: The OpenAPI specification for the service. Can be a URL, file path, or raw string. |
 | **Mandatory run variables**            | `operation_id`: The operationId from the OpenAPI spec to invoke.                                   |
 | **Output variables**                   | `response`: A REST service response                                                                |
-| **API reference**                      | [Connectors](/reference/connectors-api)                                                                   |
-| **GitHub link**                        | https://github.com/deepset-ai/haystack/blob/main/haystack/components/connectors/openapi.py       |
-| **Package name** | `haystack-ai` |
+| **API reference**                      | [OpenAPI](/reference/integrations-openapi)                                                                   |
+| **GitHub link**                        | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/openapi       |
+| **Package name** | `openapi-haystack` |
 
 </div>
 
@@ -27,10 +39,10 @@ description: "`OpenAPIConnector` is a component that acts as an interface betwee
 
 The `OpenAPIConnector` is a component within the Haystack ecosystem that allows direct invocation of REST endpoints defined in an OpenAPI (formerly Swagger) specification. It acts as a bridge between Haystack pipelines and any REST API that follows the OpenAPI standard, enabling dynamic method calls, authentication, and parameter handling.
 
-To use the `OpenAPIConnector`, ensure that you have the `openapi-llm` dependency installed:
+To use the `OpenAPIConnector`, ensure that you have the `openapi-haystack` package installed:
 
 ```shell
-pip install openapi-llm
+pip install openapi-haystack
 ```
 
 Unlike [OpenAPIServiceConnector](openapiserviceconnector.mdx), which works with LLMs, `OpenAPIConnector` directly calls REST endpoints using explicit input arguments.
@@ -43,7 +55,7 @@ You can initialize and use the `OpenAPIConnector` on its own by passing an OpenA
 
 ```python
 from haystack.utils import Secret
-from haystack.components.connectors.openapi import OpenAPIConnector
+from haystack_integrations.components.connectors.openapi import OpenAPIConnector
 
 connector = OpenAPIConnector(
     openapi_spec="https://bit.ly/serperdev_openapi",
@@ -74,7 +86,7 @@ The `OpenAPIConnector` can be integrated into a Haystack pipeline to interact wi
 
 ```python
 from haystack import Pipeline
-from haystack.components.connectors.openapi import OpenAPIConnector
+from haystack_integrations.components.connectors.openapi import OpenAPIConnector
 from haystack.dataclasses.chat_message import ChatMessage
 from haystack.utils import Secret
 

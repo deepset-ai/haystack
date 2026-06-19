@@ -4,6 +4,7 @@
 
 import json
 import os
+import warnings
 from pathlib import Path
 from typing import Any
 
@@ -54,6 +55,14 @@ class OpenAPIServiceToFunctions:
         """
         Create an OpenAPIServiceToFunctions component.
         """
+        warnings.warn(
+            "`OpenAPIServiceToFunctions` will be removed from Haystack in version 3.0, as it is moving to "
+            "the `openapi-haystack` package. To continue using it, install that package with "
+            "`pip install openapi-haystack` and update your import to "
+            "`from haystack_integrations.components.converters.openapi import OpenAPIServiceToFunctions`.",
+            FutureWarning,
+            stacklevel=2,
+        )
         openapi_imports.check()
 
     @component.output_types(functions=list[dict[str, Any]], openapi_specs=list[dict[str, Any]])

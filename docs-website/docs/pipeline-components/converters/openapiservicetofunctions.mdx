@@ -9,6 +9,18 @@ description: "`OpenAPIServiceToFunctions` is a component that transforms OpenAPI
 
 `OpenAPIServiceToFunctions` is a component that transforms OpenAPI service specifications into a format compatible with LLM tool calling.
 
+:::warning[Deprecated]
+
+`OpenAPIServiceToFunctions` is deprecated and will be removed in Haystack 3.0. It has moved to the `openapi-haystack` Core Integration package. To continue using it, install the package with `pip install openapi-haystack` and update your import to `from haystack_integrations.components.converters.openapi import OpenAPIServiceToFunctions`.
+
+:::
+
+:::tip[Consider using MCP instead]
+
+These OpenAPI components are a legacy way to connect Haystack to external APIs. For most use cases, we recommend the [`MCPTool`](../../tools/mcptool.mdx) instead: it is the modern, standardized way to give your pipelines and agents access to external tools and services.
+
+:::
+
 <div className="key-value-table">
 
 |  |  |
@@ -16,9 +28,9 @@ description: "`OpenAPIServiceToFunctions` is a component that transforms OpenAPI
 | **Most common position in a pipeline** | Flexible |
 | **Mandatory run variables** | `sources`: A list of OpenAPI specification sources, which can be file paths or [`ByteStream`](../../concepts/data-classes.mdx#bytestream)  objects |
 | **Output variables** | `functions`: A list of JSON function definitions objects. For each path definition in OpenAPI specification, a corresponding function definition is generated.  <br /> <br />`openapi_specs`: A list of JSON/YAML objects with references resolved. Such OpenAPI spec (with references resolved) can, in turn, be used as input to OpenAPIServiceConnector. |
-| **API reference** | [Converters](/reference/converters-api) |
-| **GitHub link** | https://github.com/deepset-ai/haystack/blob/main/haystack/components/converters/openapi_functions.py |
-| **Package name** | `haystack-ai` |
+| **API reference** | [OpenAPI](/reference/integrations-openapi) |
+| **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/openapi |
+| **Package name** | `openapi-haystack` |
 
 </div>
 
@@ -28,10 +40,10 @@ description: "`OpenAPIServiceToFunctions` is a component that transforms OpenAPI
 
 `OpenAPIServiceToFunctions` is valuable when used together with [`OpenAPIServiceConnector`](../connectors/openapiserviceconnector.mdx) component. It converts OpenAPI specifications into function definitions, allowing `OpenAPIServiceConnector` to handle input parameters for the OpenAPI specification and facilitate their use in REST API calls through `OpenAPIServiceConnector`.
 
-To use `OpenAPIServiceToFunctions`, you need to install an optional `jsonref` dependency with:
+To use `OpenAPIServiceToFunctions`, you need to install the `openapi-haystack` package with:
 
 ```shell
-pip install jsonref
+pip install openapi-haystack
 ```
 
 `OpenAPIServiceToFunctions` component doesn’t have any init parameters.
@@ -57,11 +69,14 @@ import requests
 from typing import Any
 
 from haystack import Pipeline
-from haystack.components.connectors import OpenAPIServiceConnector
-from haystack.components.converters import OpenAPIServiceToFunctions, OutputAdapter
+from haystack.components.converters import OutputAdapter
 from haystack.components.generators.chat import OpenAIChatGenerator
 from haystack.dataclasses import ChatMessage
 from haystack.dataclasses.byte_stream import ByteStream
+from haystack_integrations.components.connectors.openapi import OpenAPIServiceConnector
+from haystack_integrations.components.converters.openapi import (
+    OpenAPIServiceToFunctions,
+)
 
 
 def prepare_fc_params(openai_functions_schema: dict[str, Any]) -> dict[str, Any]:
