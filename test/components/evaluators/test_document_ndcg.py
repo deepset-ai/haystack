@@ -332,3 +332,24 @@ def test_unsupported_comparison_field_raises():
         evaluator.run(
             ground_truth_documents=[[Document(content="France")]], retrieved_documents=[[Document(content="France")]]
         )
+
+
+def test_run_with_meta_missing_key_can_still_reach_perfect_ndcg():
+    """
+    Regression test for the IDCG/DCG inflation bug: ground truth documents that
+    cannot be matched (missing the configured meta key) must be excluded from
+    IDCG too, otherwise NDCG can never reach 1.0 even for a perfect retrieval.
+    """
+    evaluator = DocumentNDCGEvaluator(document_comparison_field="meta.file_id")
+    result = evaluator.run(
+        ground_truth_documents=[
+            [
+                Document(content="France", meta={"file_id": "f1"}),
+                Document(content="unmatchable", meta={}),  # no file_id -> cannot be matched
+            ]
+        ],
+        retrieved_documents=[[Document(content="France", meta={"file_id": "f1"})]],
+    )
+    # Perfect retrieval of the one matchable document should yield NDCG of exactly 1.0
+    assert result["individual_scores"] == [1.0]
+    assert result["score"] == 1.0

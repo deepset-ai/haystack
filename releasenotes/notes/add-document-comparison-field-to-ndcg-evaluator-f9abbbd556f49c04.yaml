@@ -1,8 +1,16 @@
+upgrade:
+  - |
+    ``DocumentNDCGEvaluator`` now matches documents by their ``content`` field
+    by default instead of their auto-generated ``id``. Previously, ground
+    truth and retrieved documents were matched only if they had identical
+    ``id`` values, which rarely happened in practice since IDs are generated
+    independently for each Document instance. As a result, NDCG scores
+    computed with this evaluator may change for existing pipelines. To keep
+    the previous ``id``-based matching behavior, pass
+    ``document_comparison_field="id"`` when constructing the evaluator.
 enhancements:
   - |
     Added ``document_comparison_field`` parameter to ``DocumentNDCGEvaluator``,
     consistent with ``DocumentMAPEvaluator``, ``DocumentMRREvaluator``, and
     ``DocumentRecallEvaluator``. Users can now match documents by ``"content"``,
-    ``"id"``, or any ``"meta.<key>"`` field when calculating NDCG scores,
-    resolving a known limitation where documents were previously matched by
-    hardcoded ``id`` comparison instead of configurable field comparison.
+    ``"id"``, or any ``"meta.<key>"`` field when calculating NDCG scores.
