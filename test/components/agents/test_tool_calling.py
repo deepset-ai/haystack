@@ -608,6 +608,82 @@ class TestRunTool:
         assert received_state["state"] is state
 
 
+def _make_retrieval_tool():
+    """A retrieval-like tool that both reads and writes the `documents` state key.
+
+    Each invocation returns a single Document labelled with the number of documents it observed in state,
+    so the result reveals whether it saw writes from earlier tool calls in the same step.
+    """
+
+    def retrieval_function(documents=None):
+        seen = len(documents) if documents else 0
+        return {"documents": [Document(content=f"doc-{seen}")]}
+
+    return Tool(
+        name="retrieval_tool",
+        description="Retrieves documents.",
+        parameters={"type": "object", "properties": {}},
+        function=retrieval_function,
+        inputs_from_state={"documents": "documents"},
+        outputs_to_state={"documents": {"source": "documents"}},
+    )
+
+
+class TestStateDependencyScheduling:
+    def test_read_write_same_key_runs_sequentially(self):
+        """Two calls to a tool that reads and writes the same key must serialize; the second sees the first's write."""
+        retrieval_tool = _make_retrieval_tool()
+        state = State(schema={"documents": {"type": list[Document]}})
+        message = ChatMessage.from_assistant(
+            tool_calls=[
+                ToolCall(id="1", tool_name="retrieval_tool", arguments={}),
+                ToolCall(id="2", tool_name="retrieval_tool", arguments={}),
+            ]
+        )
+
+        _run_tool(messages=[message], state=state, tools=[retrieval_tool])
+
+        assert [doc.content for doc in state.get("documents")] == ["doc-0", "doc-1"]
+
+    def test_reader_requested_before_writer_still_sees_write(self):
+        """A reader listed before a writer of the same key must still run after the writer (forced read-after-write)."""
+        seen = []
+
+        def reader_fn(val=None):
+            seen.append(val)
+            return {"ok": True}
+
+        def writer_fn():
+            return {"value": "written"}
+
+        reader_tool = Tool(
+            name="reader_tool",
+            description="Reads the value state key.",
+            parameters={"type": "object", "properties": {}},
+            function=reader_fn,
+            inputs_from_state={"value": "val"},
+        )
+        writer_tool = Tool(
+            name="writer_tool",
+            description="Writes the value state key.",
+            parameters={"type": "object", "properties": {}},
+            function=writer_fn,
+            outputs_to_state={"value": {"source": "value"}},
+        )
+        state = State(schema={"value": {"type": str}})
+        # Reader is listed *before* the writer; it must still observe the writer's output.
+        message = ChatMessage.from_assistant(
+            tool_calls=[
+                ToolCall(id="1", tool_name="reader_tool", arguments={}),
+                ToolCall(id="2", tool_name="writer_tool", arguments={}),
+            ]
+        )
+
+        _run_tool(messages=[message], state=state, tools=[reader_tool, writer_tool])
+
+        assert seen == ["written"]
+
+
 class TestRunToolErrorHandling:
     def test_tool_not_found_error(self, weather_tool):
         tool_call = ToolCall(tool_name="non_existent_tool", arguments={"location": "Berlin"})
@@ -972,3 +1048,19 @@ class TestRunToolAsync:
         await _run_tool_async(messages=[message], state=State(schema={}), tools=[slow_tool], max_workers=1)
 
         assert max_active == 1
+
+    @pytest.mark.asyncio
+    async def test_read_write_same_key_runs_sequentially(self):
+        """Two calls to a tool that reads and writes the same key must serialize; the second sees the first's write."""
+        retrieval_tool = _make_retrieval_tool()
+        state = State(schema={"documents": {"type": list[Document]}})
+        message = ChatMessage.from_assistant(
+            tool_calls=[
+                ToolCall(id="1", tool_name="retrieval_tool", arguments={}),
+                ToolCall(id="2", tool_name="retrieval_tool", arguments={}),
+            ]
+        )
+
+        await _run_tool_async(messages=[message], state=state, tools=[retrieval_tool])
+
+        assert [doc.content for doc in state.get("documents")] == ["doc-0", "doc-1"]
