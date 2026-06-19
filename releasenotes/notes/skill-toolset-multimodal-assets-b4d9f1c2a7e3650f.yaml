@@ -6,8 +6,3 @@ enhancements:
     inputs (for example ``OpenAIResponsesChatGenerator``) passes it straight to the model. Combine this with a
     tool's ``outputs_to_string={"raw_result": True}`` to keep the content parts intact instead of converting
     them to a string.
-  - |
-    ``SkillToolset``'s ``read_skill_file`` tool now returns a skill's bundled images as ``ImageContent`` and PDFs
-    as ``FileContent`` (text files are still returned as strings). An ``Agent`` backed by a multimodal chat
-    generator can now read a skill's visual assets — for example a reference screenshot or a showcase PDF —
-    directly, instead of failing on non-text files.
