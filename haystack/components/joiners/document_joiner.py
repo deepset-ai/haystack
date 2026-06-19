@@ -123,7 +123,13 @@ class DocumentJoiner:
         }
         self.join_mode_function = join_mode_functions[join_mode]
         self.join_mode = join_mode
-        self.weights = [float(i) / sum(weights) for i in weights] if weights else None
+        if weights:
+            weight_sum = sum(weights)
+            if weight_sum == 0:
+                raise ValueError("The provided `weights` must not sum to zero.")
+            self.weights: list[float] | None = [float(i) / weight_sum for i in weights]
+        else:
+            self.weights = None
         self.top_k = top_k
         self.sort_by_score = sort_by_score
 
