@@ -22,7 +22,10 @@ features:
     The names and descriptions of all discovered skills are baked into the ``load_skill`` tool description,
     so the model can see which skills exist without any system prompt injection. The toolset exposes two
     tools: ``load_skill`` returns a skill's full instructions on demand, and ``read_skill_file`` reads a
-    text file bundled with a skill (with path-traversal protection).
+    file bundled with a skill (with path-traversal protection). ``read_skill_file`` returns text files as
+    strings, images as ``ImageContent``, and PDFs as ``FileContent``, so an ``Agent`` backed by a
+    multimodal chat generator can read a skill's visual assets — for example a reference screenshot or a
+    showcase PDF — directly.
 
     Custom stores can back ``SkillToolset`` with any storage system (a database, a remote API, ...) by
     implementing the ``SkillStore`` protocol.
