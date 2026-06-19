@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import tempfile
+import warnings
 from pathlib import Path
 from typing import Any, Literal, get_args
 
@@ -40,12 +41,16 @@ class LocalWhisperTranscriber:
     [GitHub repository](https://github.com/openai/whisper).
 
     ### Usage example
-    <!-- test-ignore -->
+
     ```python
     from haystack.components.audio import LocalWhisperTranscriber
 
     whisper = LocalWhisperTranscriber(model="small")
     transcription = whisper.run(sources=["test/test_files/audio/answer.wav"])
+    print(transcription)
+
+    # >> {'documents': [Document(id=dae7051417caaf19304a4ef2ec845e981abe1efd4c8e6ee7ffb25867f165c411,
+    # >> content: ' Answer.', meta: {'audio_file': PosixPath('test/test_files/audio/answer.wav'), 'language': 'en'})]}
     ```
     """
 
@@ -66,6 +71,14 @@ class LocalWhisperTranscriber:
         :param device:
             The device for loading the model. If `None`, automatically selects the default device.
         """
+        warnings.warn(
+            "`LocalWhisperTranscriber` will be removed from Haystack in version 3.0, as it is moving to "
+            "the `whisper-haystack` package. To continue using it, install that package with "
+            "`pip install whisper-haystack` and update your import to "
+            "`from haystack_integrations.components.audio.whisper import LocalWhisperTranscriber`.",
+            FutureWarning,
+            stacklevel=2,
+        )
         whisper_import.check()
         if model not in get_args(WhisperLocalModel):
             raise ValueError(

@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import warnings
 from enum import Enum
 from typing import Any, Literal
 
@@ -173,6 +174,16 @@ class SentenceTransformersDiversityRanker:
             Refer to the [Sentence Transformers documentation](https://sbert.net/docs/sentence_transformer/usage/efficiency.html)
             for more information on acceleration and quantization options.
         """
+        warnings.warn(
+            "`SentenceTransformersDiversityRanker` will be removed from Haystack in version 3.0, as it is moving to "
+            "the `sentence-transformers-haystack` package. To continue using it, install that package with "
+            "`pip install sentence-transformers-haystack` and update your import to "
+            "`from haystack_integrations.components.rankers.sentence_transformers import "
+            "SentenceTransformersDiversityRanker`.",
+            FutureWarning,
+            stacklevel=2,
+        )
+
         torch_and_sentence_transformers_import.check()
 
         self.model_name_or_path = model
@@ -265,7 +276,7 @@ class SentenceTransformersDiversityRanker:
         texts_to_embed = []
         for doc in documents:
             meta_values_to_embed = [
-                str(doc.meta[key]) for key in self.meta_fields_to_embed if key in doc.meta and doc.meta[key]
+                str(doc.meta[key]) for key in self.meta_fields_to_embed if key in doc.meta and doc.meta[key] is not None
             ]
             text_to_embed = (
                 self.document_prefix

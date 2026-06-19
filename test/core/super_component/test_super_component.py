@@ -193,6 +193,7 @@ class TestSuperComponent:
         input_sockets = wrapper.__haystack_input__._sockets_dict  # type: ignore[attr-defined]
         assert set(input_sockets.keys()) == {
             "documents",
+            "expand_reference_ranges",
             "filters",
             "meta",
             "pattern",
@@ -219,6 +220,7 @@ class TestSuperComponent:
         input_sockets = wrapper.__haystack_input__._sockets_dict  # type: ignore[attr-defined]
         assert set(input_sockets.keys()) == {
             "documents",
+            "expand_reference_ranges",
             "filters",
             "meta",
             "pattern",

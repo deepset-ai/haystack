@@ -85,3 +85,17 @@ class TestSockets:
         assert "input_1" in io
         assert "input_2" in io
         assert "invalid" not in io
+
+
+def test_input_socket_variadic_without_type_arg_raises_component_error():
+    """Bare Variadic (no type argument) should raise ComponentError, not IndexError."""
+    from collections.abc import Iterable
+    from typing import Annotated
+
+    from haystack.core.component.types import HAYSTACK_VARIADIC_ANNOTATION
+    from haystack.core.errors import ComponentError
+
+    bare_variadic = Annotated[Iterable, HAYSTACK_VARIADIC_ANNOTATION]
+
+    with pytest.raises(ComponentError, match="must have a type argument"):
+        InputSocket("inputs", bare_variadic)

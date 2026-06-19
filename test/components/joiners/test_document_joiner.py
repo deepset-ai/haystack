@@ -26,6 +26,11 @@ class TestDocumentJoiner:
         assert joiner.top_k == 5
         assert not joiner.sort_by_score
 
+    def test_init_with_zero_sum_weights_raises(self):
+        # weights that sum to zero would divide by zero during normalization
+        with pytest.raises(ValueError, match="must not sum to zero"):
+            DocumentJoiner(join_mode="merge", weights=[0.0, 0.0, 0.0])
+
     def test_to_dict(self):
         joiner = DocumentJoiner()
         data = joiner.to_dict()
@@ -46,8 +51,8 @@ class TestDocumentJoiner:
         data = {"type": "haystack.components.joiners.document_joiner.DocumentJoiner", "init_parameters": {}}
         document_joiner = DocumentJoiner.from_dict(data)
         assert document_joiner.join_mode == JoinMode.CONCATENATE
-        assert document_joiner.weights == None
-        assert document_joiner.top_k == None
+        assert document_joiner.weights is None
+        assert document_joiner.top_k is None
         assert document_joiner.sort_by_score
 
     def test_from_dict_customs_parameters(self):
@@ -270,6 +275,16 @@ class TestDocumentJoiner:
             ]
         ]
         assert all(doc.id in expected_document_ids for doc in output["documents"])
+
+    def test_run_with_distribution_based_rank_fusion_join_mode_with_none_score(self):
+        # Documents with score=None (e.g. from a non-scoring source) must not crash DBSF;
+        # a missing score is treated as 0, consistent with how the statistics are computed.
+        joiner = DocumentJoiner(join_mode="distribution_based_rank_fusion")
+        documents_1 = [Document(content="a", score=0.6), Document(content="b", score=None)]
+        documents_2 = [Document(content="c", score=0.5), Document(content="d", score=0.3)]
+        output = joiner.run([documents_1, documents_2])
+        assert len(output["documents"]) == 4
+        assert all(doc.score is not None for doc in output["documents"])
 
     def test_run_with_top_k_in_run_method(self):
         joiner = DocumentJoiner()

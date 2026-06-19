@@ -155,6 +155,7 @@ For details on how to initialize and use a Retriever in a pipeline, see the docu
 | --- | --- |
 | [AlloyDBEmbeddingRetriever](retrievers/alloydbembeddingretriever.mdx)             | An embedding-based Retriever compatible with the AlloyDB Document Store.                                                        |
 | [AlloyDBKeywordRetriever](retrievers/alloydbkeywordretriever.mdx)                 | A keyword-based Retriever that fetches Documents matching a query from the AlloyDB Document Store.                              |
+| [ArangoEmbeddingRetriever](retrievers/arangoembeddingretriever.mdx)               | An embedding-based Retriever compatible with the ArangoDB Document Store.                                                       |
 | [ArcadeDBEmbeddingRetriever](retrievers/arcadedbembeddingretriever.mdx)            | An embedding-based Retriever compatible with the ArcadeDB Document Store.                                                       |
 | [AstraEmbeddingRetriever](retrievers/astraretriever.mdx)                          | An embedding-based Retriever compatible with the AstraDocumentStore.                                                            |
 | [AutoMergingRetriever](retrievers/automergingretriever.mdx)                         | Retrieves complete parent documents instead of fragmented chunks when multiple related pieces match a query.                    |
@@ -165,6 +166,7 @@ For details on how to initialize and use a Retriever in a pipeline, see the docu
 | [ChromaQueryTextRetriever](retrievers/chromaqueryretriever.mdx)                   | A Retriever compatible with the Chroma Document Store that uses the Chroma query API.                                           |
 | [ElasticsearchEmbeddingRetriever](retrievers/elasticsearchembeddingretriever.mdx) | An embedding-based Retriever compatible with the Elasticsearch Document Store.                                                  |
 | [ElasticsearchBM25Retriever](retrievers/elasticsearchbm25retriever.mdx)           | A keyword-based Retriever that fetches Documents matching a query from the Elasticsearch Document Store.                        |
+| [ElasticsearchSQLRetriever](retrievers/elasticsearchsqlretriever.mdx) | Executes raw Elasticsearch SQL queries against an Elasticsearch Document Store and returns the raw JSON response. |
 | [InMemoryBM25Retriever](retrievers/inmemorybm25retriever.mdx)                       | A keyword-based Retriever compatible with the InMemoryDocumentStore.                                                            |
 | [InMemoryEmbeddingRetriever](retrievers/inmemoryembeddingretriever.mdx)             | An embedding-based Retriever compatible with the InMemoryDocumentStore.                                                         |
 | [FilterRetriever](retrievers/filterretriever.mdx)                                 | A special Retriever to be used with any Document Store to get the Documents that match specific filters.                        |
@@ -176,6 +178,9 @@ For details on how to initialize and use a Retriever in a pipeline, see the docu
 | [OpenSearchBM25Retriever](retrievers/opensearchbm25retriever.mdx)                 | A keyword-based Retriever that fetches Documents matching a query from an OpenSearch Document Store.                            |
 | [OpenSearchEmbeddingRetriever](retrievers/opensearchembeddingretriever.mdx)       | An embedding-based Retriever compatible with the OpenSearch Document Store.                                                     |
 | [OpenSearchHybridRetriever](retrievers/opensearchhybridretriever.mdx)               | A SuperComponent that implements a Hybrid Retriever in a single component, relying on OpenSearch as the backend Document Store. |
+| [OpenSearchSQLRetriever](retrievers/opensearchsqlretriever.mdx) | Executes raw OpenSearch SQL queries against an OpenSearch Document Store and returns the raw JSON response. |
+| [OracleEmbeddingRetriever](retrievers/oracleembeddingretriever.mdx)               | An embedding-based Retriever compatible with the Oracle Document Store.                                                         |
+| [OracleKeywordRetriever](retrievers/oraclekeywordretriever.mdx)                   | A keyword-based Retriever that fetches Documents matching a query from the Oracle Document Store.                               |
 | [PgvectorEmbeddingRetriever](retrievers/pgvectorembeddingretriever.mdx)           | An embedding-based Retriever compatible with the Pgvector Document Store.                                                       |
 | [PgvectorKeywordRetriever](retrievers/pgvectorkeywordretriever.mdx)               | A keyword-based Retriever that fetches documents matching a query from the Pgvector Document Store.                             |
 | [PineconeEmbeddingRetriever](retrievers/pineconedenseretriever.mdx)               | An embedding-based Retriever compatible with the Pinecone Document Store.                                                       |
@@ -184,6 +189,9 @@ For details on how to initialize and use a Retriever in a pipeline, see the docu
 | [QdrantHybridRetriever](retrievers/qdranthybridretriever.mdx)                     | A Retriever based both on dense and sparse embeddings, compatible with the Qdrant Document Store.                               |
 | [SentenceWindowRetriever](retrievers/sentencewindowretrieval.mdx)                   | Retrieves neighboring sentences around relevant sentences to get the full context.                                              |
 | [SnowflakeTableRetriever](retrievers/snowflaketableretriever.mdx)                   | Connects to a Snowflake database to execute an SQL query.                                                                       |
+| [SupabaseGroongaBM25Retriever](retrievers/supabasegroongabm25retriever.mdx)         | A full-text Retriever that fetches documents from the SupabaseGroongaDocumentStore using PGroonga search.                       |
+| [SupabasePgvectorEmbeddingRetriever](retrievers/supabasepgvectorembeddingretriever.mdx) | An embedding-based Retriever compatible with the SupabasePgvectorDocumentStore.                                             |
+| [SupabasePgvectorKeywordRetriever](retrievers/supabasepgvectorkeywordretriever.mdx) | A keyword-based Retriever that fetches documents matching a query from the SupabasePgvectorDocumentStore.                       |
 | [TextEmbeddingRetriever](retrievers/textembeddingretriever.mdx)                   | Wraps an embedding-based retriever with a text embedder into a single component that accepts a text query.                      |
 | [VespaEmbeddingRetriever](retrievers/vespaembeddingretriever.mdx)                 | An embedding-based Retriever compatible with the Vespa Document Store.                                                           |
 | [VespaKeywordRetriever](retrievers/vespakeywordretriever.mdx)                     | A keyword-based Retriever that fetches Documents matching a query from the Vespa Document Store.                                |

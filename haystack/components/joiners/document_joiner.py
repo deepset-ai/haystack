@@ -123,7 +123,13 @@ class DocumentJoiner:
         }
         self.join_mode_function = join_mode_functions[join_mode]
         self.join_mode = join_mode
-        self.weights = [float(i) / sum(weights) for i in weights] if weights else None
+        if weights:
+            weight_sum = sum(weights)
+            if weight_sum == 0:
+                raise ValueError("The provided `weights` must not sum to zero.")
+            self.weights: list[float] | None = [float(i) / weight_sum for i in weights]
+        else:
+            self.weights = None
         self.top_k = top_k
         self.sort_by_score = sort_by_score
 
@@ -225,7 +231,12 @@ class DocumentJoiner:
             # if all docs have the same score delta_score is 0, the docs are uninformative for the query
             rescaled_lists.append(
                 [
-                    replace(doc, score=(doc.score - min_score) / delta_score if delta_score != 0.0 else 0.0)
+                    replace(
+                        doc,
+                        score=((doc.score if doc.score is not None else 0) - min_score) / delta_score
+                        if delta_score != 0.0
+                        else 0.0,
+                    )
                     for doc in documents
                 ]
             )

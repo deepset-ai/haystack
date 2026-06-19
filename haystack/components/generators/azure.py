@@ -9,6 +9,7 @@ from openai.lib.azure import AzureADTokenProvider, AzureOpenAI
 
 from haystack import component, default_from_dict, default_to_dict
 from haystack.components.generators import OpenAIGenerator
+from haystack.components.generators.utils import _generators_deprecation_warning
 from haystack.dataclasses import StreamingCallbackT
 from haystack.utils import Secret, deserialize_callable, serialize_callable
 from haystack.utils.http_client import init_http_client
@@ -27,25 +28,23 @@ class AzureOpenAIGenerator(OpenAIGenerator):
     the component or when you run it. Any parameter that works with
     `openai.ChatCompletion.create` will work here too.
 
-
     For details on OpenAI API parameters, see
     [OpenAI documentation](https://platform.openai.com/docs/api-reference/chat).
-
 
     ### Usage example
     <!-- test-ignore -->
     ```python
     from haystack.components.generators import AzureOpenAIGenerator
     from haystack.utils import Secret
-    client = AzureOpenAIGenerator(
-        azure_endpoint="<Your Azure endpoint e.g. `https://your-company.azure.openai.com/>",
-        api_key=Secret.from_token("<your-api-key>"),
-        azure_deployment="<this is a model name, e.g. gpt-4.1-mini>")
-    response = client.run("What's Natural Language Processing? Be brief.")
-    print(response)
-    ```
 
-    ```
+    client = AzureOpenAIGenerator(
+        azure_endpoint=Secret.from_env_var("AZURE_OPENAI_ENDPOINT").resolve_value(),
+        api_key=Secret.from_env_var("AZURE_OPENAI_API_KEY"),
+        azure_deployment="gpt-4.1-mini")
+
+    response = client.run("What's Natural Language Processing? Be brief.")
+
+    print(response)
     # >> {'replies': ['Natural Language Processing (NLP) is a branch of artificial intelligence that focuses on
     # >> the interaction between computers and human language. It involves enabling computers to understand, interpret,
     # >> and respond to natural human language in a way that is both meaningful and useful.'], 'meta': [{'model':
@@ -118,6 +117,8 @@ class AzureOpenAIGenerator(OpenAIGenerator):
         :param azure_ad_token_provider: A function that returns an Azure Active Directory token, will be invoked on
             every request.
         """
+        _generators_deprecation_warning("AzureOpenAIGenerator", "AzureOpenAIChatGenerator")
+
         # We intentionally do not call super().__init__ here because we only need to instantiate the client to interact
         # with the API.
 
