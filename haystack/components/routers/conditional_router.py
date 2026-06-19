@@ -10,6 +10,7 @@ from typing import Any, TypedDict, get_args, get_origin
 from jinja2 import Environment, TemplateSyntaxError
 from jinja2.nativetypes import NativeEnvironment
 from jinja2.sandbox import SandboxedEnvironment
+from typing_extensions import NotRequired
 
 from haystack import component, default_from_dict, default_to_dict, logging
 from haystack.utils import deserialize_callable, deserialize_type, serialize_callable, serialize_type
@@ -27,12 +28,12 @@ class RouteConditionException(Exception):
     """Exception raised when there is an error parsing or evaluating the condition expression in ConditionalRouter."""
 
 
-class Route(TypedDict, total=False):
+class Route(TypedDict):
     condition: str
     output: str | list[str]
     output_name: str | list[str]
     output_type: type | list[type]
-    output_passthrough: bool
+    output_passthrough: NotRequired[bool]
 
 
 @component
@@ -181,6 +182,8 @@ class ConditionalRouter:
             - `output_passthrough` (optional): If `True`, treats `output` as a plain variable name and
               passes the value directly from the input kwargs, skipping all Jinja2 processing. Useful
               for routing complex non-basic types without template transformation.
+              Note: if the variable named in `output` is also listed in `optional_variables`, a missing
+              value at runtime will route `None` downstream rather than raising a `ValueError`.
         :param custom_filters: A dictionary of custom Jinja2 filters used in the condition expressions.
             For example, passing `{"my_filter": my_filter_fcn}` where:
             - `my_filter` is the name of the custom filter.
@@ -373,9 +376,8 @@ class ConditionalRouter:
         :raises RouteConditionException:
             If there is an error parsing or evaluating the `condition` expression in the routes.
         :raises ValueError:
-            If type validation is enabled and route type doesn't match actual value type.
-        :raises KeyError:
-            If `output_passthrough` is `True` and the variable named in `output` is not found in kwargs.
+            If type validation is enabled and the route output doesn't match the declared type, or if
+            `output_passthrough` is `True` and the variable named in `output` is not found in kwargs.
         """
         for route in self.routes:
             try:
@@ -401,7 +403,7 @@ class ConditionalRouter:
                     if output_passthrough:
                         # output is a plain variable name — retrieve directly from kwargs, no Jinja2 processing
                         if output not in kwargs:
-                            raise KeyError(
+                            raise ValueError(  # noqa: TRY301
                                 f"Variable '{output}' not found in inputs for passthrough route '{output_name}'. "
                                 f"Ensure '{output}' is passed as an input to the router."
                             )
@@ -429,7 +431,7 @@ class ConditionalRouter:
 
             except Exception as e:
                 # If this was a type-validation failure or missing passthrough variable, let it propagate
-                if isinstance(e, (ValueError, KeyError)):
+                if isinstance(e, ValueError):
                     raise
                 msg = f"Error evaluating condition for route '{route}': {e}"
                 raise RouteConditionException(msg) from e

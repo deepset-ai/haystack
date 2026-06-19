@@ -730,92 +730,194 @@ class TestRouter:
         templates = [condition, "{{query}}"]
         extracted_variables = ConditionalRouter._extract_variables(env=NativeEnvironment(), templates=templates)
         assert extracted_variables == {"control", "query"}
-def test_conditional_router_passthrough_with_custom_type():
-    """Test passthrough routing for custom types without Jinja2."""
-    from dataclasses import dataclass
 
-    @dataclass
-    class CustomDocument:
-        content: str
-        metadata: dict
+    def test_conditional_router_passthrough_serialization_roundtrip(self):
+        """Test that output_passthrough survives to_dict/from_dict."""
+        routes = [
+            {
+                "condition": "{{flag}}",
+                "output": "value",
+                "output_name": "matched",
+                "output_type": str,
+                "output_passthrough": True,
+            },
+            {
+                "condition": "{{not flag}}",
+                "output": "value",
+                "output_name": "unmatched",
+                "output_type": str,
+                "output_passthrough": True,
+            },
+        ]
 
-    routes = [
-        {
-            "condition": "{{is_important}}",
-            "output": "document",  # variable name, not template
-            "output_name": "important",
-            "output_type": CustomDocument,
-            "output_passthrough": True,  # NEW FEATURE
-        },
-        {
-            "condition": "{{not is_important}}",
-            "output": "document",
-            "output_name": "regular",
-            "output_type": CustomDocument,
-            "output_passthrough": True,
-        },
-    ]
+        router = ConditionalRouter(routes)
+        reloaded = ConditionalRouter.from_dict(router.to_dict())
 
-    router = ConditionalRouter(routes)
-    
-    # Test 1: Route with is_important=True
-    doc = CustomDocument(content="Important", metadata={"priority": "high"})
-    result = router.run(is_important=True, document=doc)
-    assert "important" in result
-    assert result["important"] == doc
-    assert result["important"].content == "Important"
+        assert reloaded.routes == router.routes
+        assert reloaded.routes[0].get("output_passthrough") is True
+        assert reloaded.routes[1].get("output_passthrough") is True
 
-    # Test 2: Route with is_important=False
-    result = router.run(is_important=False, document=doc)
-    assert "regular" in result
-    assert result["regular"] == doc
+        assert reloaded.run(flag=True, value="hello") == {"matched": "hello"}
+        assert reloaded.run(flag=False, value="hello") == {"unmatched": "hello"}
 
+    def test_conditional_router_passthrough_with_custom_type(self):
+        """Test passthrough routing for custom types without Jinja2."""
+        from dataclasses import dataclass
 
-def test_conditional_router_passthrough_missing_variable():
-    """Test that passthrough routing raises error for missing variables."""
-    routes = [
-        {
-            "condition": "{{True}}",
-            "output": "missing_var",
-            "output_name": "out",
-            "output_type": str,
-            "output_passthrough": True,
-        },
-    ]
+        @dataclass
+        class CustomDocument:
+            content: str
+            metadata: dict
 
-    router = ConditionalRouter(routes)
-    
-    # Should raise KeyError because 'missing_var' not provided
-    with pytest.raises(KeyError):
-        router.run(other_var="value")
+        routes = [
+            {
+                "condition": "{{is_important}}",
+                "output": "document",
+                "output_name": "important",
+                "output_type": CustomDocument,
+                "output_passthrough": True,
+            },
+            {
+                "condition": "{{not is_important}}",
+                "output": "document",
+                "output_name": "regular",
+                "output_type": CustomDocument,
+                "output_passthrough": True,
+            },
+        ]
 
+        router = ConditionalRouter(routes)
+        doc = CustomDocument(content="Important", metadata={"priority": "high"})
 
-def test_conditional_router_passthrough_mixed():
-    """Test mixing Jinja2 and passthrough routes in same router."""
-    routes = [
-        {
-            "condition": "{{mode == 'direct'}}",
-            "output": "data",
-            "output_name": "direct_route",
-            "output_type": list,
-            "output_passthrough": True,  # passthrough
-        },
-        {
-            "condition": "{{mode == 'transform'}}",
-            "output": "{{data | reverse | list}}",
-            "output_name": "transformed_route",
-            "output_type": list,
-            # output_passthrough defaults to False
-        },
-    ]
+        result = router.run(is_important=True, document=doc)
+        assert "important" in result
+        assert result["important"] == doc
+        assert result["important"].content == "Important"
 
-    router = ConditionalRouter(routes)
-    test_list = [1, 2, 3]
+        result = router.run(is_important=False, document=doc)
+        assert "regular" in result
+        assert result["regular"] == doc
 
-    # Direct route
-    result = router.run(mode="direct", data=test_list)
-    assert result["direct_route"] == test_list
+    def test_conditional_router_passthrough_missing_variable(self):
+        """Test that passthrough routing raises ValueError when the named variable is not provided."""
+        routes = [
+            {
+                "condition": "{{True}}",
+                "output": "missing_var",
+                "output_name": "out",
+                "output_type": str,
+                "output_passthrough": True,
+            }
+        ]
 
-    # Transformed route (Jinja2 processed)
-    result = router.run(mode="transform", data=test_list)
-    assert result["transformed_route"] == [3, 2, 1]
+        router = ConditionalRouter(routes)
+
+        with pytest.raises(ValueError, match="Variable 'missing_var' not found in inputs"):
+            router.run(other_var="value")
+
+    def test_conditional_router_passthrough_mixed(self):
+        """Test mixing passthrough and Jinja2 routes in the same router."""
+        routes = [
+            {
+                "condition": "{{mode == 'direct'}}",
+                "output": "data",
+                "output_name": "direct_route",
+                "output_type": list,
+                "output_passthrough": True,
+            },
+            {
+                "condition": "{{mode == 'transform'}}",
+                "output": "{{data | reverse | list}}",
+                "output_name": "transformed_route",
+                "output_type": list,
+            },
+        ]
+
+        router = ConditionalRouter(routes)
+        test_list = [1, 2, 3]
+
+        result = router.run(mode="direct", data=test_list)
+        assert result["direct_route"] == test_list
+
+        result = router.run(mode="transform", data=test_list)
+        assert result["transformed_route"] == [3, 2, 1]
+
+    def test_conditional_router_passthrough_multi_output(self):
+        """Test output_passthrough with a list of output variable names."""
+        from dataclasses import dataclass
+
+        @dataclass
+        class Payload:
+            body: str
+
+        routes = [
+            {
+                "condition": "{{flag}}",
+                "output": ["label", "payload"],
+                "output_name": ["out_label", "out_payload"],
+                "output_type": [str, Payload],
+                "output_passthrough": True,
+            }
+        ]
+
+        router = ConditionalRouter(routes)
+        p = Payload(body="test")
+        result = router.run(flag=True, label="hello", payload=p)
+        assert result == {"out_label": "hello", "out_payload": p}
+        assert isinstance(result["out_payload"], Payload)
+
+    def test_conditional_router_passthrough_validate_output_type_mismatch(self):
+        """Test that validate_output_type catches a type mismatch on a passthrough route."""
+        routes = [
+            {
+                "condition": "{{True}}",
+                "output": "value",
+                "output_name": "out",
+                "output_type": int,
+                "output_passthrough": True,
+            }
+        ]
+
+        router = ConditionalRouter(routes, validate_output_type=True)
+
+        with pytest.raises(ValueError, match="type doesn't match"):
+            router.run(value="not_an_int")
+
+    def test_conditional_router_passthrough_optional_variable_routes_none(self):
+        """Test that a passthrough variable in optional_variables routes None when the pipeline omits it.
+
+        optional_variables registers the input with default=None. Inside a pipeline, missing optional
+        inputs are filled with their default before run() is called. We simulate that here by passing
+        maybe_value=None explicitly.
+        """
+        routes = [
+            {
+                "condition": "{{True}}",
+                "output": "maybe_value",
+                "output_name": "out",
+                "output_type": str,
+                "output_passthrough": True,
+            }
+        ]
+
+        router = ConditionalRouter(routes, optional_variables=["maybe_value"])
+        # Simulate pipeline behaviour: optional input not connected → filled with default None
+        result = router.run(maybe_value=None)
+        assert result == {"out": None}
+
+    def test_conditional_router_passthrough_skips_output_template_validation(self):
+        """Test that an invalid Jinja2 string in output is accepted when output_passthrough is True."""
+        routes = [
+            {
+                "condition": "{{True}}",
+                "output": "{{unclosed",  # would be rejected as a Jinja2 template
+                "output_name": "out",
+                "output_type": str,
+                "output_passthrough": True,
+            }
+        ]
+
+        # Construction must not raise even though the output string is not valid Jinja2
+        router = ConditionalRouter(routes)
+        result = router.run(**{"{{unclosed": "value"})
+        assert result == {"out": "value"}
