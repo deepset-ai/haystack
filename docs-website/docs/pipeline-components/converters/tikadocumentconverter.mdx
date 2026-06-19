@@ -16,9 +16,9 @@ An integration for converting files of different types (PDF, DOCX, HTML, and mor
 | **Most common position in a pipeline** | Before [PreProcessors](../preprocessors.mdx) , or right at the beginning of an indexing pipeline |
 | **Mandatory run variables**            | `sources`: File paths                                                                           |
 | **Output variables**                   | `documents`: A list of documents                                                                |
-| **API reference**                      | [Converters](/reference/converters-api)                                                                |
-| **GitHub link**                        | https://github.com/deepset-ai/haystack/blob/main/haystack/components/converters/tika.py       |
-| **Package name** | `haystack-ai` |
+| **API reference**                      | [Tika](/reference/integrations-tika)                                                                |
+| **GitHub link**                        | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/tika       |
+| **Package name** | `tika-haystack` |
 
 </div>
 
@@ -35,16 +35,16 @@ When you initialize the `TikaDocumentConverter` component, you can specify a cus
 
 ## Usage
 
-You need to install `tika` package to use the `TikaDocumentConverter` component:
+Install the `tika-haystack` package to use the `TikaDocumentConverter` component:
 
 ```shell
-pip install tika
+pip install tika-haystack
 ```
 
 ### On its own
 
 ```python
-from haystack.components.converters import TikaDocumentConverter
+from haystack_integrations.components.converters.tika import TikaDocumentConverter
 from pathlib import Path
 
 converter = TikaDocumentConverter()
@@ -57,7 +57,7 @@ converter.run(sources=[Path("my_file.pdf")])
 ```python
 from haystack import Pipeline
 from haystack.document_stores.in_memory import InMemoryDocumentStore
-from haystack.components.converters import TikaDocumentConverter
+from haystack_integrations.components.converters.tika import TikaDocumentConverter
 from haystack.components.preprocessors import DocumentCleaner
 from haystack.components.preprocessors import DocumentSplitter
 from haystack.components.writers import DocumentWriter

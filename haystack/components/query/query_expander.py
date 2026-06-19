@@ -265,6 +265,13 @@ class QueryExpander:
         if parsed is None:
             return []
 
+        if not isinstance(parsed["queries"], list):
+            logger.warning(
+                "Expected 'queries' to be a list but got {type}. Returning no expanded queries.",
+                type=type(parsed["queries"]).__name__,
+            )
+            return []
+
         queries = []
         for item in parsed["queries"]:
             if isinstance(item, str) and item.strip():

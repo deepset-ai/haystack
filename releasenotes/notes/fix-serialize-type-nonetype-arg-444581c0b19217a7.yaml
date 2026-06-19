@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    Fixed ``serialize_type`` dropping ``NoneType`` when it appears as a regular argument of a ``typing`` generic.
+    Types such as ``typing.Dict[str, None]``, ``typing.Tuple[int, None]``, ``typing.List[None]`` and unions with more
+    than two members like ``typing.Union[str, int, None]`` were serialized incorrectly (for example to
+    ``typing.Dict[str]``), which produced malformed type strings that could not be deserialized again.
+    ``typing.Optional[X]`` is still serialized as ``typing.Optional[X]`` without a redundant trailing ``None``.
