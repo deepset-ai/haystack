@@ -17,9 +17,9 @@ Use this component in pipelines to route a query based on its language.
 | **Mandatory init variables** | `languages`: A list of ISO language codes |
 | **Mandatory run variables** | `text`: A string |
 | **Output variables** | `unmatched`: A string  <br /> <br />`<language>`: A string (where `<language>` is defined during initialization). For example: `fr`: French language string. |
-| **API reference** | [Routers](/reference/routers-api) |
-| **GitHub link** | https://github.com/deepset-ai/haystack/blob/main/haystack/components/routers/text_language_router.py |
-| **Package name** | `haystack-ai` |
+| **API reference** | [Langdetect](/reference/integrations-langdetect) |
+| **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/langdetect |
+| **Package name** | `langdetect-haystack` |
 
 </div>
 
@@ -33,12 +33,18 @@ The components parameter `languages` must be a list of languages in ISO code, su
 
 ## Usage
 
+Install the `langdetect-haystack` package to use the `TextLanguageRouter` component:
+
+```shell
+pip install langdetect-haystack
+```
+
 ### On its own
 
 Below is an example where using the `TextLanguageRouter` to route only French texts to an output connection named `fr`. Other texts, such as the English text below, are routed to an output named `unmatched`.
 
 ```python
-from haystack.components.routers import TextLanguageRouter
+from haystack_integrations.components.routers.langdetect import TextLanguageRouter
 
 router = TextLanguageRouter(languages=["fr"])
 router.run(text="What's your query?")
@@ -50,7 +56,7 @@ Below is an example of a query pipeline that uses a `TextLanguageRouter` to forw
 
 ```python
 from haystack import Pipeline
-from haystack.components.routers import TextLanguageRouter
+from haystack_integrations.components.routers.langdetect import TextLanguageRouter
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.components.retrievers.in_memory import InMemoryBM25Retriever
 
