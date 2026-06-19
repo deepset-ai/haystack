@@ -4,6 +4,7 @@
 
 import io
 import os
+import warnings
 from html.parser import HTMLParser
 from pathlib import Path
 from typing import Any
@@ -87,6 +88,14 @@ class TikaDocumentConverter:
             If True, the full path of the file is stored in the metadata of the document.
             If False, only the file name is stored.
         """
+        warnings.warn(
+            "`TikaDocumentConverter` will be removed from Haystack in version 3.0, as it is moving to "
+            "the `tika-haystack` package. To continue using it, install that package with "
+            "`pip install tika-haystack` and update your import to "
+            "`from haystack_integrations.components.converters.tika import TikaDocumentConverter`.",
+            FutureWarning,
+            stacklevel=2,
+        )
         tika_import.check()
         self.tika_url = tika_url
         self.store_full_path = store_full_path

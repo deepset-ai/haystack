@@ -262,3 +262,84 @@ class TestContextRelevanceEvaluator:
         assert "prompt_tokens" in result["meta"][0]["usage"]
         assert "completion_tokens" in result["meta"][0]["usage"]
         assert "total_tokens" in result["meta"][0]["usage"]
+
+
+class TestContextRelevanceEvaluatorAsync:
+    @pytest.mark.asyncio
+    async def test_run_async_calculates_mean_score(self, monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+        component = ContextRelevanceEvaluator()
+
+        async def chat_generator_run_async(self, *args, **kwargs):
+            if "Football" in kwargs["messages"][0].text:
+                return {"replies": [ChatMessage.from_assistant('{"relevant_statements": ["a", "b"], "score": 1}')]}
+            return {"replies": [ChatMessage.from_assistant('{"relevant_statements": [], "score": 0}')]}
+
+        monkeypatch.setattr(
+            "haystack.components.evaluators.llm_evaluator.OpenAIChatGenerator.run_async", chat_generator_run_async
+        )
+
+        questions = ["Which is the most popular global sport?", "Who created the Python language?"]
+        contexts = [
+            ["Football is the world's most popular sport."],
+            ["Python is a cross-platform programming language."],
+        ]
+
+        results = await component.run_async(questions=questions, contexts=contexts)
+
+        assert results == {
+            "results": [{"score": 1, "relevant_statements": ["a", "b"]}, {"score": 0, "relevant_statements": []}],
+            "score": 0.5,
+            "meta": None,
+            "individual_scores": [1, 0],
+        }
+
+    @pytest.mark.asyncio
+    async def test_run_async_returns_nan_raise_on_failure_false(self, monkeypatch, caplog):
+        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+        component = ContextRelevanceEvaluator(raise_on_failure=False)
+
+        async def chat_generator_run_async(self, *args, **kwargs):
+            if "Python" in kwargs["messages"][0].text:
+                raise Exception("OpenAI API request failed.")
+            return {"replies": [ChatMessage.from_assistant('{"relevant_statements": ["c", "d"], "score": 1}')]}
+
+        monkeypatch.setattr(
+            "haystack.components.evaluators.llm_evaluator.OpenAIChatGenerator.run_async", chat_generator_run_async
+        )
+
+        questions = ["Which is the most popular global sport?", "Who created the Python language?"]
+        contexts = [["Football is popular."], ["Python was created by Guido van Rossum."]]
+
+        with caplog.at_level("WARNING", logger="haystack.components.evaluators.context_relevance"):
+            results = await component.run_async(questions=questions, contexts=contexts)
+
+        assert results["score"] == 1
+        assert results["results"][0] == {"relevant_statements": ["c", "d"], "score": 1}
+        assert results["results"][1]["relevant_statements"] == []
+        assert math.isnan(results["results"][1]["score"])
+
+        assert "1 query(s) failed and were excluded from the score." in caplog.text
+
+    @pytest.mark.asyncio
+    @pytest.mark.skipif(
+        not os.environ.get("OPENAI_API_KEY", None),
+        reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
+    )
+    @pytest.mark.integration
+    async def test_live_run_async(self):
+        questions = ["Who created the Python language?"]
+        contexts = [["Python, created by Guido van Rossum, is a high-level general-purpose programming language."]]
+
+        evaluator = ContextRelevanceEvaluator(chat_generator=OpenAIChatGenerator(model="gpt-4.1-nano"))
+        result = await evaluator.run_async(questions=questions, contexts=contexts)
+
+        required_fields = {"results"}
+        assert all(field in result for field in required_fields)
+        nested_required_fields = {"score", "relevant_statements"}
+        assert all(field in result["results"][0] for field in nested_required_fields)
+
+        assert "meta" in result
+        assert "prompt_tokens" in result["meta"][0]["usage"]
+        assert "completion_tokens" in result["meta"][0]["usage"]
+        assert "total_tokens" in result["meta"][0]["usage"]

@@ -28,6 +28,8 @@ The `MarkdownToDocument` component converts Markdown files into documents. You c
 
 When you initialize the component, you can optionally turn off progress bars by setting `progress_bar` to `False`. If you want to convert the contents of tables into a single line, you can enable that through the `table_to_single_line` parameter.
 
+If your Markdown files start with YAML frontmatter, set `extract_frontmatter=True` to move that data into `Document.meta` and remove it from the converted document content. Metadata passed through the `meta` input takes precedence over frontmatter keys.
+
 ## Usage
 
 You need to install `markdown-it-py` and `mdit_plain packages` to use the `MarkdownToDocument` component:
@@ -44,6 +46,31 @@ from haystack.components.converters import MarkdownToDocument
 converter = MarkdownToDocument()
 
 docs = converter.run(sources=Path("my_file.md"))
+```
+
+### With YAML frontmatter
+
+Given `equity_note.md`:
+
+```markdown
+---
+ticker: AAPL
+source: earnings_call
+date: 2026-06-12
+---
+
+# Thesis
+Revenue guidance improved.
+```
+
+```python
+from haystack.components.converters import MarkdownToDocument
+
+converter = MarkdownToDocument(extract_frontmatter=True)
+
+docs = converter.run(sources=["equity_note.md"])["documents"]
+print(docs[0].meta["ticker"])
+print(docs[0].content)
 ```
 
 ### In a pipeline
