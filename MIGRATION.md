@@ -99,7 +99,10 @@ pip install <new-package>
 | `from haystack.components.routers import TransformersTextRouter` | `transformers-haystack` | `from haystack_integrations.components.routers.transformers import TransformersTextRouter` |
 | `from haystack.components.routers import TransformersZeroShotTextRouter` | `transformers-haystack` | `from haystack_integrations.components.routers.transformers import TransformersZeroShotTextRouter` |
 | `from haystack.components.websearch import SerperDevWebSearch` | `serperdev-haystack` | `from haystack_integrations.components.websearch.serperdev import SerperDevWebSearch` |
-| `from haystack.components.websearch import SearchApiWebSearch` | `searchapi-haystack` | `from haystack_integrations.components.websearch.searchapi import SearchApiWebSearch` || `from haystack.components.extractors import NamedEntityExtractor` (Hugging Face backend) | `transformers-haystack` | `from haystack_integrations.components.extractors.transformers import TransformersNamedEntityExtractor` |
+| `from haystack.components.websearch import SearchApiWebSearch` | `searchapi-haystack` | `from haystack_integrations.components.websearch.searchapi import SearchApiWebSearch` |
+| `from haystack.components.classifiers import DocumentLanguageClassifier` | `langdetect-haystack` | `from haystack_integrations.components.classifiers.langdetect import DocumentLanguageClassifier` |
+| `from haystack.components.routers import TextLanguageRouter` | `langdetect-haystack` | `from haystack_integrations.components.routers.langdetect import TextLanguageRouter` |
+| `from haystack.components.extractors import NamedEntityExtractor` (Hugging Face backend) | `transformers-haystack` | `from haystack_integrations.components.extractors.transformers import TransformersNamedEntityExtractor` |
 | `from haystack.components.extractors import NamedEntityExtractor` (spaCy backend) | `spacy-haystack` | `from haystack_integrations.components.extractors.spacy import SpacyNamedEntityExtractor` |
 | `from haystack.components.embedders import SentenceTransformersTextEmbedder` | `sentence-transformers-haystack` | `from haystack_integrations.components.embedders.sentence_transformers import SentenceTransformersTextEmbedder` |
 | `from haystack.components.embedders import SentenceTransformersDocumentEmbedder` | `sentence-transformers-haystack` | `from haystack_integrations.components.embedders.sentence_transformers import SentenceTransformersDocumentEmbedder` |
@@ -109,6 +112,7 @@ pip install <new-package>
 | `from haystack.components.rankers import SentenceTransformersSimilarityRanker` | `sentence-transformers-haystack` | `from haystack_integrations.components.rankers.sentence_transformers import SentenceTransformersSimilarityRanker` |
 | `from haystack.components.rankers import SentenceTransformersDiversityRanker` | `sentence-transformers-haystack` | `from haystack_integrations.components.rankers.sentence_transformers import SentenceTransformersDiversityRanker` |
 | `from haystack.tracing.datadog import DatadogTracer` | `datadog-haystack` | `from haystack_integrations.tracing.datadog import DatadogTracer` |
+| `from haystack.components.converters import TikaDocumentConverter` | `tika-haystack` | `from haystack_integrations.components.converters.tika import TikaDocumentConverter` |
 
 ### `DatadogTracer` moved to the `datadog-haystack` integration
 
@@ -833,7 +837,7 @@ doc2 = Document(content="Berlin is the capital of Germany.", meta={"lang": "en",
 assert doc1.id == doc2.id
 ```
 
-It is possible to migrate an existing index without rerunning your indexing pipeline, for example to avoid recalculating embeddings. To do that, read stored documents, regenerate their IDs using Haystack 3.0, write the updated documents, and delete the documents stored under their old IDs. 
+It is possible to migrate an existing index without rerunning your indexing pipeline, for example to avoid recalculating embeddings. To do that, read stored documents, regenerate their IDs using Haystack 3.0, write the updated documents, and delete the documents stored under their old IDs.
 
 ```python
 from dataclasses import replace

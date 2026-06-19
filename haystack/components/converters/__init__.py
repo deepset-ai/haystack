@@ -22,7 +22,6 @@ _import_structure = {
     "pdfminer": ["PDFMinerToDocument"],
     "pptx": ["PPTXToDocument"],
     "pypdf": ["PyPDFToDocument"],
-    "tika": ["TikaDocumentConverter"],
     "txt": ["TextFileToDocument"],
     "xlsx": ["XLSXToDocument"],
 }
@@ -42,7 +41,6 @@ if TYPE_CHECKING:
     from .pdfminer import PDFMinerToDocument as PDFMinerToDocument
     from .pptx import PPTXToDocument as PPTXToDocument
     from .pypdf import PyPDFToDocument as PyPDFToDocument
-    from .tika import TikaDocumentConverter as TikaDocumentConverter
     from .txt import TextFileToDocument as TextFileToDocument
     from .xlsx import XLSXToDocument as XLSXToDocument
 
