@@ -25,14 +25,12 @@ logger = logging.getLogger(__name__)
 
 
 class _AllStateKeys:
-    """Sentinel representing "every state key", used for tools that receive the live State object."""
+    """Sentinel representing "every state key", used for tools that receive the full State object."""
 
     def __repr__(self) -> str:
         return "<all state keys>"
 
 
-# A tool annotated with a `State` parameter can read from and write to any key, so it acts as a full barrier
-# against every other state-touching tool call in the same step.
 _ALL_STATE_KEYS = _AllStateKeys()
 
 # A set of state keys, or the _ALL_STATE_KEYS sentinel meaning "every key".
@@ -249,9 +247,9 @@ def _state_param_mappings(tool: Tool, func_params: dict[str, Any]) -> dict[str, 
     """
     Resolve the `{state_key: param_name}` mapping a tool uses to pull inputs from State.
 
-    Tools may declare this explicitly via `inputs_from_state`; otherwise every parameter is treated as a potential
-    state key by name. This is the single source of truth shared by `_inject_state_args` (which reads the actual
-    values) and `_state_io_for_call` (which derives the read set for scheduling).
+    Tools may declare this explicitly via `inputs_from_state`; otherwise every parameter is treated as a potential state
+     key by name. This is the single source of truth shared by `_inject_state_args` (which reads the actual values) and
+     `_state_io_for_call` (which derives the read set for scheduling).
 
     :param tool: The tool whose state-input mapping to resolve.
     :param func_params: The tool's parameter names mapped to their annotations (from `_get_func_params`).
@@ -335,8 +333,8 @@ def _resolve_tool_calls(
     Walk all tool calls in `messages_with_tool_calls` and resolve each to its Tool.
 
     Argument preparation is deliberately *not* done here: args are prepared per execution batch (see
-    `_schedule_tool_calls`) so that a tool reading from State observes writes made by tools that ran earlier
-    in the same step.
+    `_schedule_tool_calls`) so that a tool reading from State observes writes made by tools that ran earlier in the same
+     step.
 
     :returns: (tool_calls, resolved_tools, error_messages)
         - tool_calls: ToolCall objects for each valid call, in call order
@@ -392,21 +390,22 @@ def _state_io_for_call(tool: Tool, llm_args: dict[str, Any]) -> tuple[_StateKeys
     Compute the State keys a tool call reads from and writes to.
 
     Mirrors the resolution logic in `_inject_state_args`:
-    - A tool with a `State`-annotated parameter can read/write any key, so both sets are the `_ALL_STATE_KEYS`
-      wildcard.
-    - Otherwise reads come from `inputs_from_state` (or parameter-name matching when it is not set), excluding
-      any parameter the LLM already supplied (LLM args take precedence and short-circuit the state lookup).
+    - A tool with a `State`-annotated parameter can read/write any key, so both sets are the `_ALL_STATE_KEYS` wildcard.
+    - Otherwise reads come from `inputs_from_state` (or parameter-name matching when it is not set), excluding any
+      parameter the LLM already supplied (LLM args take precedence and short-circuit the state lookup).
     - Writes are the keys in `outputs_to_state`.
 
     :returns: A `(reads, writes)` tuple of state-key sets (or the `_ALL_STATE_KEYS` wildcard).
     """
     func_params = _get_func_params(tool)
+    # Check if State is in func_params
     if any(_unwrap_optional(param_type) is State for param_type in func_params.values()):
         return _ALL_STATE_KEYS, _ALL_STATE_KEYS
 
+    # Calculate reads
     param_mappings = _state_param_mappings(tool, func_params)
     reads = {state_key for state_key, param_name in param_mappings.items() if param_name not in llm_args}
-
+    # Calculate writes
     outputs_to_state = getattr(tool, "outputs_to_state", None)
     writes = set(outputs_to_state.keys()) if isinstance(outputs_to_state, dict) else set()
 
@@ -417,18 +416,17 @@ def _schedule_tool_calls(tool_calls: list[ToolCall], tools: list[Tool]) -> list[
     """
     Group tool calls into ordered execution batches based on their State read/write sets.
 
-    Calls within a batch are mutually independent and run in parallel; batches run sequentially. The schedule
-    guarantees that a call reading a State key always runs in a later batch than any call (in the same step)
-    that writes that key — so read-after-write dependencies are honored regardless of the order the LLM
-    requested the calls in.
+    Calls within a batch are mutually independent and run in parallel; batches run sequentially. The schedule guarantees
+    that a call reading a State key always runs in a later batch than any call (in the same step) that writes that
+    key — so read-after-write dependencies are honored regardless of the order the LLM requested the calls in.
 
-    This is a layered topological sort (Kahn's algorithm): each round, every call whose dependencies have all
-    been scheduled forms the next parallel batch. Dependency cycles — e.g. a tool that both reads and writes the
-    same key, requested more than once — cannot be ordered by the read-after-write rule alone, so they are broken
-    deterministically by call order (the lowest-index remaining call runs next, on its own).
+    This is a layered topological sort: each round, every call whose dependencies have all been scheduled forms the
+    next parallel batch. Dependency cycles — e.g. a tool that both reads and writes the same key, requested more than
+    once — cannot be ordered by the read-after-write rule alone, so they are broken deterministically by call order
+    (the lowest-index remaining call runs next, on its own).
 
-    Pure write-write overlaps create no dependency: nobody reads the contended key, and outputs are merged into
-    State sequentially in call order afterward, so the result stays deterministic without serializing execution.
+    Pure write-write overlaps create no dependency: nobody reads the contended key, and outputs are merged into State
+    sequentially in call order afterward, so the result stays deterministic without serializing execution.
 
     :param tool_calls: The tool calls to schedule, in call order.
     :param tools: The resolved Tool for each entry in `tool_calls` (parallel list).

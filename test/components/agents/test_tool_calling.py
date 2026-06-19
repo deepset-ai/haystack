@@ -22,6 +22,7 @@ from haystack.components.agents.tool_calling import (
     _result_to_string,
     _run_tool,
     _run_tool_async,
+    _schedule_tool_calls,
     _validate_and_prepare_tools,
 )
 from haystack.components.builders.prompt_builder import PromptBuilder
@@ -629,61 +630,6 @@ def _make_retrieval_tool():
     )
 
 
-class TestStateDependencyScheduling:
-    def test_read_write_same_key_runs_sequentially(self):
-        """Two calls to a tool that reads and writes the same key must serialize; the second sees the first's write."""
-        retrieval_tool = _make_retrieval_tool()
-        state = State(schema={"documents": {"type": list[Document]}})
-        message = ChatMessage.from_assistant(
-            tool_calls=[
-                ToolCall(id="1", tool_name="retrieval_tool", arguments={}),
-                ToolCall(id="2", tool_name="retrieval_tool", arguments={}),
-            ]
-        )
-
-        _run_tool(messages=[message], state=state, tools=[retrieval_tool])
-
-        assert [doc.content for doc in state.get("documents")] == ["doc-0", "doc-1"]
-
-    def test_reader_requested_before_writer_still_sees_write(self):
-        """A reader listed before a writer of the same key must still run after the writer (forced read-after-write)."""
-        seen = []
-
-        def reader_fn(val=None):
-            seen.append(val)
-            return {"ok": True}
-
-        def writer_fn():
-            return {"value": "written"}
-
-        reader_tool = Tool(
-            name="reader_tool",
-            description="Reads the value state key.",
-            parameters={"type": "object", "properties": {}},
-            function=reader_fn,
-            inputs_from_state={"value": "val"},
-        )
-        writer_tool = Tool(
-            name="writer_tool",
-            description="Writes the value state key.",
-            parameters={"type": "object", "properties": {}},
-            function=writer_fn,
-            outputs_to_state={"value": {"source": "value"}},
-        )
-        state = State(schema={"value": {"type": str}})
-        # Reader is listed *before* the writer; it must still observe the writer's output.
-        message = ChatMessage.from_assistant(
-            tool_calls=[
-                ToolCall(id="1", tool_name="reader_tool", arguments={}),
-                ToolCall(id="2", tool_name="writer_tool", arguments={}),
-            ]
-        )
-
-        _run_tool(messages=[message], state=state, tools=[reader_tool, writer_tool])
-
-        assert seen == ["written"]
-
-
 class TestRunToolErrorHandling:
     def test_tool_not_found_error(self, weather_tool):
         tool_call = ToolCall(tool_name="non_existent_tool", arguments={"location": "Berlin"})
@@ -991,6 +937,152 @@ class TestUtilities:
             TextContent(text="weather: mostly sunny"),
             TextContent(text="temperature: 7 celsius"),
         ]
+
+
+def _reader_tool(state_key: str = "documents", seen: list | None = None):
+    """A tool that reads `state_key` from State into its `value` param (no writes).
+
+    If `seen` is provided, the value the tool received is appended to it, so behavioral tests can assert what the
+    reader observed.
+    """
+
+    def reader_fn(value=None):
+        if seen is not None:
+            seen.append(value)
+        return {"ok": True}
+
+    return Tool(
+        name="reader_tool",
+        description="Reads from state.",
+        parameters={"type": "object", "properties": {}},
+        function=reader_fn,
+        inputs_from_state={state_key: "value"},
+    )
+
+
+def _writer_tool(state_key: str = "documents", value: str = "written"):
+    """A tool that writes `value` to `state_key` in State (no reads)."""
+
+    def writer_fn():
+        return {"out": value}
+
+    return Tool(
+        name="writer_tool",
+        description="Writes to state.",
+        parameters={"type": "object", "properties": {}},
+        function=writer_fn,
+        outputs_to_state={state_key: {"source": "out"}},
+    )
+
+
+def _state_param_tool():
+    """A tool that receives the live State object, so it may read/write any key."""
+
+    def fn(state: State) -> str:
+        return "done"
+
+    return Tool(
+        name="state_tool",
+        description="Receives the live State.",
+        parameters={"type": "object", "properties": {}},
+        function=fn,
+    )
+
+
+class TestScheduleToolCalls:
+    def test_no_calls_returns_no_batches(self):
+        assert _schedule_tool_calls([], []) == []
+
+    def test_single_call_is_one_batch(self):
+        assert _schedule_tool_calls([ToolCall(tool_name="writer_tool", arguments={})], [_writer_tool()]) == [[0]]
+
+    def test_read_only_calls_run_in_one_batch(self):
+        # Two readers of the same key: no writer, so no dependency — they run together.
+        calls = [ToolCall(tool_name="reader_tool", arguments={}), ToolCall(tool_name="reader_tool", arguments={})]
+        tools = [_reader_tool(), _reader_tool()]
+        assert _schedule_tool_calls(calls, tools) == [[0, 1]]
+
+    def test_disjoint_keys_run_in_one_batch(self):
+        # A writer of "a" and a reader of "b" don't overlap, so they run in parallel.
+        calls = [ToolCall(tool_name="writer_tool", arguments={}), ToolCall(tool_name="reader_tool", arguments={})]
+        tools = [_writer_tool("a"), _reader_tool("b")]
+        assert _schedule_tool_calls(calls, tools) == [[0, 1]]
+
+    def test_writer_then_reader_serializes(self):
+        # Writer listed first, reader second: reader depends on writer -> two batches.
+        calls = [ToolCall(tool_name="writer_tool", arguments={}), ToolCall(tool_name="reader_tool", arguments={})]
+        tools = [_writer_tool("docs"), _reader_tool("docs")]
+        assert _schedule_tool_calls(calls, tools) == [[0], [1]]
+
+    def test_reader_before_writer_is_reordered(self):
+        # Reader listed first, writer second: the writer must still run first.
+        calls = [ToolCall(tool_name="reader_tool", arguments={}), ToolCall(tool_name="writer_tool", arguments={})]
+        tools = [_reader_tool("docs"), _writer_tool("docs")]
+        assert _schedule_tool_calls(calls, tools) == [[1], [0]]
+
+    def test_pure_write_write_runs_in_one_batch(self):
+        # Two writers of the same key, neither reads it: no read-after-write dependency, so they run together.
+        calls = [ToolCall(tool_name="writer_tool", arguments={}), ToolCall(tool_name="writer_tool", arguments={})]
+        tools = [_writer_tool("docs"), _writer_tool("docs")]
+        assert _schedule_tool_calls(calls, tools) == [[0, 1]]
+
+    def test_read_write_cycle_breaks_by_call_order(self):
+        # Two retrieval tools that both read and write "documents" form a cycle; broken by call order.
+        calls = [ToolCall(tool_name="retrieval_tool", arguments={}), ToolCall(tool_name="retrieval_tool", arguments={})]
+        tools = [_make_retrieval_tool(), _make_retrieval_tool()]
+        assert _schedule_tool_calls(calls, tools) == [[0], [1]]
+
+    def test_state_param_tool_is_a_barrier(self):
+        # A State-typed tool reads/writes every key, so it serializes everything around it even when the other
+        # calls touch disjoint keys ("a" and "b"): writer("b") must run before the state tool (which reads "b"),
+        # and reader("a") must run after it (the state tool may write "a").
+        calls = [
+            ToolCall(tool_name="reader_tool", arguments={}),
+            ToolCall(tool_name="state_tool", arguments={}),
+            ToolCall(tool_name="writer_tool", arguments={}),
+        ]
+        tools = [_reader_tool("a"), _state_param_tool(), _writer_tool("b")]
+        assert _schedule_tool_calls(calls, tools) == [[2], [1], [0]]
+
+    def test_llm_supplied_arg_is_not_a_state_read(self):
+        # The reader's `value` param is supplied by the LLM, so it is not read from state -> no dep on the writer.
+        calls = [
+            ToolCall(tool_name="reader_tool", arguments={"value": "provided"}),
+            ToolCall(tool_name="writer_tool", arguments={}),
+        ]
+        tools = [_reader_tool("docs"), _writer_tool("docs")]
+        assert _schedule_tool_calls(calls, tools) == [[0, 1]]
+
+
+class TestStateDependencyScheduling:
+    def test_read_write_same_key_runs_sequentially(self):
+        """Two calls to a tool that reads and writes the same key must serialize; the second sees the first's write."""
+        retrieval_tool = _make_retrieval_tool()
+        state = State(schema={"documents": {"type": list[Document]}})
+        message = ChatMessage.from_assistant(
+            tool_calls=[
+                ToolCall(id="1", tool_name="retrieval_tool", arguments={}),
+                ToolCall(id="2", tool_name="retrieval_tool", arguments={}),
+            ]
+        )
+        _run_tool(messages=[message], state=state, tools=[retrieval_tool])
+        assert [doc.content for doc in state.get("documents")] == ["doc-0", "doc-1"]
+
+    def test_reader_requested_before_writer_still_sees_write(self):
+        """A reader listed before a writer of the same key must still run after the writer (forced read-after-write)."""
+        seen = []
+        reader_tool = _reader_tool("value", seen=seen)
+        writer_tool = _writer_tool("value")
+        state = State(schema={"value": {"type": str}})
+        # Reader is listed *before* the writer; it must still observe the writer's output.
+        message = ChatMessage.from_assistant(
+            tool_calls=[
+                ToolCall(id="1", tool_name="reader_tool", arguments={}),
+                ToolCall(id="2", tool_name="writer_tool", arguments={}),
+            ]
+        )
+        _run_tool(messages=[message], state=state, tools=[reader_tool, writer_tool])
+        assert seen == ["written"]
 
 
 class TestRunToolAsync:
