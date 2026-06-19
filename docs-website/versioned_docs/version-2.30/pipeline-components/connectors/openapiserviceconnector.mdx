@@ -9,12 +9,6 @@ description: "`OpenAPIServiceConnector` is a component that acts as an interface
 
 `OpenAPIServiceConnector` is a component that acts as an interface between the Haystack ecosystem and OpenAPI services.
 
-:::warning[Deprecated]
-
-`OpenAPIServiceConnector` is deprecated and will be removed in Haystack 3.0. It has moved to the `openapi-haystack` Core Integration package. To continue using it, install the package with `pip install openapi-haystack` and update your import to `from haystack_integrations.components.connectors.openapi import OpenAPIServiceConnector`.
-
-:::
-
 :::tip[Consider using MCP instead]
 
 These OpenAPI components are a legacy way to connect Haystack to external APIs. For most use cases, we recommend the [`MCPTool`](../../tools/mcptool.mdx) instead: it is the modern, standardized way to give your pipelines and agents access to external tools and services.
