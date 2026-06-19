@@ -916,32 +916,32 @@ class PipelineBase:  # noqa: PLW1641
 
     def warm_up(self) -> None:
         """
-        Make sure all nodes are warm.
+        Make sure all components are warm.
 
-        It's the node's responsibility to make sure this method can be called at every `Pipeline.run()`
+        It's the component's responsibility to make sure this method can be called at every `Pipeline.run()`
         without re-initializing everything.
         """
-        for node in self.graph.nodes:
-            if hasattr(self.graph.nodes[node]["instance"], "warm_up"):
-                logger.info("Warming up component {node}...", node=node)
-                self.graph.nodes[node]["instance"].warm_up()
+        for component_name in self.graph.nodes:
+            if hasattr(self.graph.nodes[component_name]["instance"], "warm_up"):
+                logger.info("Warming up component {component_name}...", component_name=component_name)
+                self.graph.nodes[component_name]["instance"].warm_up()
 
     async def warm_up_async(self) -> None:
         """
-        Make sure all nodes are warm, using the async warm-up path where available.
+        Make sure all components are warm, using the async warm-up path where available.
 
         Each component is warmed up with `warm_up_async` if it has one, otherwise with its sync `warm_up`.
         Both run on the event loop, never offloaded to a worker thread.
         This ensures that if an async client is created during `warm-up` (residual scenario), it binds to the loop that
         `run_async` will use.
         """
-        for node in self.graph.nodes:
-            instance = self.graph.nodes[node]["instance"]
+        for component_name in self.graph.nodes:
+            instance = self.graph.nodes[component_name]["instance"]
             if hasattr(instance, "warm_up_async"):
-                logger.info("Warming up component {node}...", node=node)
+                logger.info("Warming up component {component_name}...", component_name=component_name)
                 await instance.warm_up_async()
             elif hasattr(instance, "warm_up"):
-                logger.info("Warming up component {node}...", node=node)
+                logger.info("Warming up component {component_name}...", component_name=component_name)
                 instance.warm_up()
 
     def close(self) -> None:
@@ -950,10 +950,10 @@ class PipelineBase:  # noqa: PLW1641
 
         Only the synchronous side of each component is released here; use `close_async` to release async clients.
         """
-        for node in self.graph.nodes:
-            instance = self.graph.nodes[node]["instance"]
+        for component_name in self.graph.nodes:
+            instance = self.graph.nodes[component_name]["instance"]
             if hasattr(instance, "close"):
-                logger.info("Closing component {node}...", node=node)
+                logger.info("Closing component {component_name}...", component_name=component_name)
                 instance.close()
 
     async def close_async(self) -> None:
@@ -962,13 +962,13 @@ class PipelineBase:  # noqa: PLW1641
 
         Each component is closed with `close_async` if it has one, otherwise with its sync `close`.
         """
-        for node in self.graph.nodes:
-            instance = self.graph.nodes[node]["instance"]
+        for component_name in self.graph.nodes:
+            instance = self.graph.nodes[component_name]["instance"]
             if hasattr(instance, "close_async"):
-                logger.info("Closing component {node}...", node=node)
+                logger.info("Closing component {component_name}...", component_name=component_name)
                 await instance.close_async()
             elif hasattr(instance, "close"):
-                logger.info("Closing component {node}...", node=node)
+                logger.info("Closing component {component_name}...", component_name=component_name)
                 instance.close()
 
     @staticmethod

@@ -833,7 +833,7 @@ doc2 = Document(content="Berlin is the capital of Germany.", meta={"lang": "en",
 assert doc1.id == doc2.id
 ```
 
-It is possible to migrate an existing index without rerunning your indexing pipeline, for example to avoid recalculating embeddings. To do that, read stored documents, regenerate their IDs using Haystack 3.0, write the updated documents, and delete the documents stored under their old IDs. 
+It is possible to migrate an existing index without rerunning your indexing pipeline, for example to avoid recalculating embeddings. To do that, read stored documents, regenerate their IDs using Haystack 3.0, write the updated documents, and delete the documents stored under their old IDs.
 
 ```python
 from dataclasses import replace
@@ -866,4 +866,27 @@ new_documents = [replace(doc, id="") for doc in old_documents]
 store.write_documents(new_documents, policy=DuplicatePolicy.OVERWRITE)
 new_ids = {doc.id for doc in new_documents}
 store.delete_documents([doc.id for doc in old_documents if doc.id not in new_ids])
+```
+
+### Components now resolve API keys at warm-up
+
+**What changed:** Components that use external services now create their resources (such as API clients) during `warm_up()` instead of in `__init__`. As a consequence, a missing API key (for example, an unset environment variable behind a `Secret.from_env_var` default) is now reported at warm-up or first run rather than at construction. This affects OpenAI and Azure OpenAI components.
+
+**Why:** Creating resources in `warm_up()` / `warm_up_async()` and releasing them in `close()` / `close_async()` gives components and pipelines a single, predictable resource lifecycle.
+
+**How to migrate:** If you relied on construction failing for a missing API key, expect the same error at `warm_up()` (or the first `run`) instead.
+
+Before (v2.x), with `OPENAI_API_KEY` unset:
+```python
+from haystack.components.embedders import OpenAITextEmbedder
+
+embedder = OpenAITextEmbedder()  # raised here
+```
+
+After (v3.0), with `OPENAI_API_KEY` unset:
+```python
+from haystack.components.embedders import OpenAITextEmbedder
+
+embedder = OpenAITextEmbedder()  # no error at construction
+embedder.warm_up()               # raised here
 ```

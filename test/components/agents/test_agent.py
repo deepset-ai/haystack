@@ -954,15 +954,6 @@ class TestAgent:
         run_tool_mock.assert_called_once()
         assert run_tool_mock.call_args.kwargs["tools"] == [weather_tool]
 
-    def test_run_not_warmed_up(self, weather_tool):
-        """Warmup is run automatically on first run"""
-        chat_generator = MockChatGeneratorWithoutRunAsync()
-        chat_generator.warm_up = MagicMock()
-        agent = Agent(chat_generator=chat_generator, tools=[weather_tool], system_prompt="This is a system prompt.")
-        agent.run([ChatMessage.from_user("What is the weather in Berlin?")])
-        assert agent._tools_warmed_up is True
-        assert chat_generator.warm_up.call_count == 1
-
     def test_run_no_messages(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "fake-key")
         chat_generator = OpenAIChatGenerator()
@@ -1884,7 +1875,6 @@ class TestAgentUserPromptInPipeline:
 
     @pytest.fixture
     def make_rag_pipeline(self, document_store_with_docs: InMemoryDocumentStore, make_agent):
-
         def _factory(user_prompt: str | None = None):
             agent = make_agent(
                 user_prompt=user_prompt
@@ -1990,7 +1980,6 @@ class TestAgentWaitsForBlockedPredecessor:
     """
 
     def test_agent_waits_for_messages_when_predecessor_is_blocked(self, weather_tool):
-
         @component
         class HistoryParser:
             @component.output_types(messages=list[ChatMessage])
@@ -2296,11 +2285,17 @@ class TestAgentWarmUp:
 
 
 class TestComponentLifecycle:
-    def test_warm_up_delegates_to_chat_generator(self):
+    def test_warm_up_delegates_to_chat_generator(self, weather_tool):
         chat_generator = MockChatGenerator()
         chat_generator.warm_up = MagicMock()
-        agent = Agent(chat_generator=chat_generator, tools=[])
+        agent = Agent(chat_generator=chat_generator, tools=[weather_tool], system_prompt="This is a system prompt.")
+
         agent.warm_up()
+        chat_generator.warm_up.assert_called_once()
+
+        chat_generator.warm_up.reset_mock()
+        agent.run([ChatMessage.from_user("What is the weather in Berlin?")])
+        assert agent._tools_warmed_up is True
         chat_generator.warm_up.assert_called_once()
 
     @pytest.mark.asyncio
