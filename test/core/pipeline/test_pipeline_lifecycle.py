@@ -90,7 +90,7 @@ class AsyncClientComponent:
     """Creates a loop-bound async client in warm_up_async and uses it in run_async."""
 
     def __init__(self):
-        self.client = None
+        self.client: LoopBoundAsyncClient | None = None
 
     async def warm_up_async(self):
         if self.client is None:
@@ -98,6 +98,7 @@ class AsyncClientComponent:
 
     @component.output_types(value=int)
     async def run_async(self):
+        assert self.client is not None
         await self.client.use()
         return {"value": 1}
 
