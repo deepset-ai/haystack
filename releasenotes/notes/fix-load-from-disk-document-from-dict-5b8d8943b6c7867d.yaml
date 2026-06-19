@@ -1,4 +1,4 @@
-﻿---
+---
 fixes:
   - |
     Fixed ``InMemoryDocumentStore.load_from_disk`` reconstructing documents with the plain

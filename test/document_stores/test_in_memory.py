@@ -164,7 +164,7 @@ class TestMemoryDocumentStore(
         assert isinstance(loaded_doc.blob, ByteStream)
         assert isinstance(loaded_doc.sparse_embedding, SparseEmbedding)
         assert loaded_doc == doc
-        # The loaded store must be saveable again
+        # The loaded store must be savable again
         document_store_loaded.save_to_disk(save_path)
 
     def test_invalid_bm25_algorithm(self):
