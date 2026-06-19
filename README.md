@@ -12,8 +12,8 @@
 | haystack/components/agents/state/state.py                                           |       73 |        2 |     97% |    75, 79 |
 | haystack/components/agents/state/state\_utils.py                                    |       18 |        0 |    100% |           |
 | haystack/components/audio/\_\_init\_\_.py                                           |        5 |        0 |    100% |           |
-| haystack/components/audio/whisper\_local.py                                         |       66 |        6 |     91% |132, 168-171, 187 |
-| haystack/components/audio/whisper\_remote.py                                        |       43 |       13 |     70% |96, 149-164 |
+| haystack/components/audio/whisper\_local.py                                         |       68 |        6 |     91% |141, 177-180, 196 |
+| haystack/components/audio/whisper\_remote.py                                        |       45 |       13 |     71% |105, 158-173 |
 | haystack/components/builders/\_\_init\_\_.py                                        |        5 |        0 |    100% |           |
 | haystack/components/builders/answer\_builder.py                                     |       99 |        4 |     96% |269, 277, 290, 302 |
 | haystack/components/builders/chat\_prompt\_builder.py                               |      110 |        2 |     98% |  176, 263 |
@@ -266,7 +266,7 @@
 | haystack/utils/type\_serialization.py                                               |      112 |       12 |     89% |62, 64, 178-179, 190-193, 199, 215-218 |
 | haystack/utils/url\_validation.py                                                   |        4 |        0 |    100% |           |
 | haystack/version.py                                                                 |        5 |        2 |     60% |      9-10 |
-| **TOTAL**                                                                           | **17897** | **1221** | **93%** |           |
+| **TOTAL**                                                                           | **17901** | **1221** | **93%** |           |
 
 
 ## Setup coverage badge
