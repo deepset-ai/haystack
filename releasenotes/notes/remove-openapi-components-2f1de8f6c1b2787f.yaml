@@ -2,8 +2,7 @@
 upgrade:
   - |
     The ``OpenAPIConnector``, ``OpenAPIServiceConnector`` and ``OpenAPIServiceToFunctions`` components have
-    been removed from Haystack and moved into the dedicated ``openapi-haystack`` integration package. The
-    now-empty ``haystack.components.connectors`` package has been removed as well.
+    been removed from Haystack and moved into the dedicated ``openapi-haystack`` integration package.
 
     Install the package and update your imports:
 
