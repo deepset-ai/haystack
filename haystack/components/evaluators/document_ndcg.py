@@ -1,4 +1,3 @@
-# haystack/components/evaluators/document_ndcg.py
 # SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
 #
 # SPDX-License-Identifier: Apache-2.0
@@ -12,26 +11,26 @@ from haystack import Document, component, default_to_dict
 @component
 class DocumentNDCGEvaluator:
     """
-        Evaluator that calculates the normalized discounted cumulative gain (NDCG) of retrieved documents.
+    Evaluator that calculates the normalized discounted cumulative gain (NDCG) of retrieved documents.
 
-        Each question can have multiple ground truth documents and multiple retrieved documents.
-        If the ground truth documents have relevance scores, the NDCG calculation uses these scores.
-        Otherwise, it assumes binary relevance of all ground truth documents.
+    Each question can have multiple ground truth documents and multiple retrieved documents.
+    If the ground truth documents have relevance scores, the NDCG calculation uses these scores.
+    Otherwise, it assumes binary relevance of all ground truth documents.
 
-        Usage example:
+    Usage example:
     ```python
-        from haystack import Document
-        from haystack.components.evaluators import DocumentNDCGEvaluator
+    from haystack import Document
+    from haystack.components.evaluators import DocumentNDCGEvaluator
 
-        evaluator = DocumentNDCGEvaluator()
-        result = evaluator.run(
-            ground_truth_documents=[[Document(content="France", score=1.0), Document(content="Paris", score=0.5)]],
-            retrieved_documents=[[Document(content="France"), Document(content="Germany"), Document(content="Paris")]],
-        )
-        print(result["individual_scores"])
-        # [0.8869]
-        print(result["score"])
-        # 0.8869
+    evaluator = DocumentNDCGEvaluator()
+    result = evaluator.run(
+        ground_truth_documents=[[Document(content="France", score=1.0), Document(content="Paris", score=0.5)]],
+        retrieved_documents=[[Document(content="France"), Document(content="Germany"), Document(content="Paris")]],
+    )
+    print(result["individual_scores"])
+    # [0.8869]
+    print(result["score"])
+    # 0.8869
     ```
     """
 
