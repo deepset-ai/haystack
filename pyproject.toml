@@ -94,7 +94,6 @@ dependencies = [
 
   "transformers[torch, sentencepiece]>=4.57",         # SASEvaluator and TopPSampler
   "sentence-transformers>=5.0.0",                     # SASEvaluator
-  "langdetect",                                       # TextLanguageRouter and DocumentLanguageClassifier
   "arrow>=1.3.0",                                     # Jinja2TimeExtension
   "pillow",                                           # ImageContent
   "pypdfium2",                                        # PDFToImageContent
