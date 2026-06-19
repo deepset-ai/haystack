@@ -115,6 +115,9 @@ pip install <new-package>
 | `from haystack.components.rankers import SentenceTransformersDiversityRanker` | `sentence-transformers-haystack` | `from haystack_integrations.components.rankers.sentence_transformers import SentenceTransformersDiversityRanker` |
 | `from haystack.tracing.datadog import DatadogTracer` | `datadog-haystack` | `from haystack_integrations.tracing.datadog import DatadogTracer` |
 | `from haystack.components.converters import TikaDocumentConverter` | `tika-haystack` | `from haystack_integrations.components.converters.tika import TikaDocumentConverter` |
+| `from haystack.components.connectors import OpenAPIConnector` | `openapi-haystack` | `from haystack_integrations.components.connectors.openapi import OpenAPIConnector` |
+| `from haystack.components.connectors import OpenAPIServiceConnector` | `openapi-haystack` | `from haystack_integrations.components.connectors.openapi import OpenAPIServiceConnector` |
+| `from haystack.components.converters import OpenAPIServiceToFunctions` | `openapi-haystack` | `from haystack_integrations.components.converters.openapi import OpenAPIServiceToFunctions` |
 
 ### `DatadogTracer` moved to the `datadog-haystack` integration
 

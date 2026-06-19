@@ -17,7 +17,6 @@ _import_structure = {
     "markdown": ["MarkdownToDocument"],
     "msg": ["MSGToDocument"],
     "multi_file_converter": ["MultiFileConverter"],
-    "openapi_functions": ["OpenAPIServiceToFunctions"],
     "output_adapter": ["OutputAdapter"],
     "pdfminer": ["PDFMinerToDocument"],
     "pptx": ["PPTXToDocument"],
@@ -36,7 +35,6 @@ if TYPE_CHECKING:
     from .markdown import MarkdownToDocument as MarkdownToDocument
     from .msg import MSGToDocument as MSGToDocument
     from .multi_file_converter import MultiFileConverter as MultiFileConverter
-    from .openapi_functions import OpenAPIServiceToFunctions as OpenAPIServiceToFunctions
     from .output_adapter import OutputAdapter as OutputAdapter
     from .pdfminer import PDFMinerToDocument as PDFMinerToDocument
     from .pptx import PPTXToDocument as PPTXToDocument

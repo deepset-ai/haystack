@@ -1,0 +1,26 @@
+---
+upgrade:
+  - |
+    The ``OpenAPIConnector``, ``OpenAPIServiceConnector`` and ``OpenAPIServiceToFunctions`` components have
+    been removed from Haystack and moved into the dedicated ``openapi-haystack`` integration package. The
+    now-empty ``haystack.components.connectors`` package has been removed as well.
+
+    Install the package and update your imports:
+
+    Before:
+
+    .. code:: python
+
+      from haystack.components.connectors import OpenAPIConnector, OpenAPIServiceConnector
+      from haystack.components.converters import OpenAPIServiceToFunctions
+
+    After:
+
+    .. code:: python
+
+      from haystack_integrations.components.connectors.openapi import OpenAPIConnector, OpenAPIServiceConnector
+      from haystack_integrations.components.converters.openapi import OpenAPIServiceToFunctions
+
+    These components are a legacy way to connect Haystack to external APIs. For most use cases, consider
+    using the ``MCPTool`` instead, which is the modern, standardized way to give pipelines and agents
+    access to external tools and services.

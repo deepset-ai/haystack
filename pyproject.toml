@@ -119,11 +119,6 @@ dependencies = [
   # Human in the Loop
   "rich",                 # Console rendering for HITL
 
-  # OpenAPI
-  "jsonref",              # OpenAPIServiceConnector, OpenAPIServiceToFunctions
-  "openapi3",
-  "openapi-llm>=0.4.1",   # OpenAPIConnector
-
   # Tracing
   "opentelemetry-sdk",
 
