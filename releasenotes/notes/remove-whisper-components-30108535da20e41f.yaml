@@ -18,3 +18,6 @@ upgrade:
 
       from haystack_integrations.components.audio.whisper import LocalWhisperTranscriber
       from haystack_integrations.components.audio.whisper import RemoteWhisperTranscriber
+
+    ``LocalWhisperTranscriber`` additionally requires the ``openai-whisper`` package (and ``ffmpeg``), which
+    you can install with ``pip install "openai-whisper>=20231106"``.
