@@ -1,0 +1,10 @@
+---
+deprecations:
+  - |
+    ``AzureOCRDocumentConverter`` is deprecated and will be removed from Haystack in version 3.0. It is moving
+    to the ``azure-form-recognizer-haystack`` package. To continue using it, install the package with
+    ``pip install azure-form-recognizer-haystack`` and update your import as follows:
+
+    .. code-block:: python
+
+        from haystack_integrations.components.converters.azure_form_recognizer import AzureOCRDocumentConverter

@@ -4,6 +4,7 @@
 
 import copy
 import os
+import warnings
 from collections import defaultdict
 from pathlib import Path
 from typing import Any, Literal, Union
@@ -98,6 +99,15 @@ class AzureOCRDocumentConverter:
             If True, the full path of the file is stored in the metadata of the document.
             If False, only the file name is stored.
         """
+        warnings.warn(
+            "`AzureOCRDocumentConverter` will be removed from Haystack in version 3.0, as it is moving to "
+            "the `azure-form-recognizer-haystack` package. To continue using it, install that package with "
+            "`pip install azure-form-recognizer-haystack` and update your import to "
+            "`from haystack_integrations.components.converters.azure_form_recognizer import "
+            "AzureOCRDocumentConverter`.",
+            FutureWarning,
+            stacklevel=2,
+        )
         azure_import.check()
         pandas_import.check()
 
