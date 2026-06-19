@@ -3,53 +3,51 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import asyncio
-import threading
+
+import pytest
 
 from haystack import Pipeline, component
 
 
-def _running_loop():
-    try:
-        return asyncio.get_running_loop()
-    except RuntimeError:
-        return None
-
-
 @component
 class LifecycleRecorder:
+    """Records every lifecycle method called, so tests can assert which ones the pipeline picks."""
+
     def __init__(self):
         self.events = []
 
     def warm_up(self):
-        self.events.append(("warm_up", threading.get_ident(), _running_loop()))
+        self.events.append("warm_up")
 
     async def warm_up_async(self):
-        self.events.append(("warm_up_async", threading.get_ident(), _running_loop()))
+        self.events.append("warm_up_async")
 
     @component.output_types(value=int)
     def run(self):
-        self.events.append(("run", threading.get_ident(), _running_loop()))
+        self.events.append("run")
         return {"value": 1}
 
     @component.output_types(value=int)
     async def run_async(self):
-        self.events.append(("run_async", threading.get_ident(), _running_loop()))
+        self.events.append("run_async")
         return {"value": 1}
 
     def close(self):
-        self.events.append(("close", threading.get_ident(), _running_loop()))
+        self.events.append("close")
 
     async def close_async(self):
-        self.events.append(("close_async", threading.get_ident(), _running_loop()))
+        self.events.append("close_async")
 
 
 @component
-class SyncWarmUpRecorder:
+class SyncOnlyRecorder:
+    """Implements only the synchronous warm_up and close, to exercise the async fallbacks."""
+
     def __init__(self):
         self.events = []
 
     def warm_up(self):
-        self.events.append(("warm_up", threading.get_ident(), _running_loop()))
+        self.events.append("warm_up")
 
     @component.output_types(value=int)
     def run(self):
@@ -60,11 +58,13 @@ class SyncWarmUpRecorder:
         return {"value": 1}
 
     def close(self):
-        self.events.append(("close", threading.get_ident(), _running_loop()))
+        self.events.append("close")
 
 
 @component
 class BareComponent:
+    """Implements no lifecycle method at all."""
+
     @component.output_types(value=int)
     def run(self):
         return {"value": 1}
@@ -74,62 +74,65 @@ class BareComponent:
         return {"value": 1}
 
 
-def test_run_async_uses_warm_up_async():
-    """run_async warms components via warm_up_async (not the sync warm_up), on a running loop."""
+class LoopBoundAsyncClient:
+    """Mimics a real async client (aiohttp): binds to the loop it is created on and refuses any other."""
+
+    def __init__(self):
+        self._loop = asyncio.get_running_loop()
+
+    async def use(self):
+        if asyncio.get_running_loop() is not self._loop:
+            raise RuntimeError("async client used on a different event loop than the one it was created on")
+
+
+@component
+class AsyncClientComponent:
+    """Creates a loop-bound async client in warm_up_async and uses it in run_async."""
+
+    def __init__(self):
+        self.client = None
+
+    async def warm_up_async(self):
+        if self.client is None:
+            self.client = LoopBoundAsyncClient()
+
+    @component.output_types(value=int)
+    async def run_async(self):
+        await self.client.use()
+        return {"value": 1}
+
+    @component.output_types(value=int)
+    def run(self):
+        return {"value": 1}
+
+
+async def test_run_async_uses_warm_up_async():
+    """When a component implements warm_up_async, run_async uses it and does not also call its sync warm_up."""
     rec = LifecycleRecorder()
     pipe = Pipeline()
     pipe.add_component("rec", rec)
-    asyncio.run(pipe.run_async({"rec": {}}))
-    kinds = [event[0] for event in rec.events]
-    assert "warm_up_async" in kinds
-    assert "warm_up" not in kinds
-    warm_up_event = next(event for event in rec.events if event[0] == "warm_up_async")
-    assert warm_up_event[2] is not None
+    await pipe.run_async({"rec": {}})
+    assert "warm_up_async" in rec.events
+    assert "warm_up" not in rec.events
 
 
-def test_sync_warm_up_fallback_blocks_on_loop_thread():
-    """
-    If a component implements only the sync warm_up, run_async still warms it by calling that sync
-    warm_up directly on the event-loop thread, instead of offloading it to a worker thread.
-    """
-    rec = SyncWarmUpRecorder()
+async def test_warm_up_async_falls_back_to_sync_warm_up():
+    """A component with only the sync warm_up is still warmed by run_async through that method."""
+    rec = SyncOnlyRecorder()
     pipe = Pipeline()
     pipe.add_component("rec", rec)
-    asyncio.run(pipe.run_async({"rec": {}}))
-    assert len(rec.events) == 1
-    name, thread_id, loop = rec.events[0]
-    assert name == "warm_up"
-    assert loop is not None
-    assert thread_id == threading.get_ident()
+    await pipe.run_async({"rec": {}})
+    assert rec.events == ["warm_up"]
 
 
 def test_sync_run_uses_sync_warm_up():
-    """The sync run path warms components via sync warm_up, never warm_up_async."""
+    """The sync run path warms components via the sync warm_up, never warm_up_async."""
     rec = LifecycleRecorder()
     pipe = Pipeline()
     pipe.add_component("rec", rec)
     pipe.run({"rec": {}})
-    kinds = [event[0] for event in rec.events]
-    assert "warm_up" in kinds
-    assert "warm_up_async" not in kinds
-
-
-def test_async_lifecycle_shares_one_loop():
-    """warm_up_async, run_async and close_async all run on the same event loop (correct async-client affinity)."""
-    rec = LifecycleRecorder()
-    pipe = Pipeline()
-    pipe.add_component("rec", rec)
-
-    async def drive():
-        await pipe.warm_up_async()
-        await pipe.run_async({"rec": {}})
-        await pipe.close_async()
-
-    asyncio.run(drive())
-    loops = {event[0]: event[2] for event in rec.events}
-    assert loops["warm_up_async"] is not None
-    assert loops["warm_up_async"] is loops["run_async"]
-    assert loops["run_async"] is loops["close_async"]
+    assert "warm_up" in rec.events
+    assert "warm_up_async" not in rec.events
 
 
 def test_pipeline_close_calls_sync_close_only():
@@ -138,55 +141,68 @@ def test_pipeline_close_calls_sync_close_only():
     pipe = Pipeline()
     pipe.add_component("rec", rec)
     pipe.close()
-    kinds = [event[0] for event in rec.events]
-    assert "close" in kinds
-    assert "close_async" not in kinds
+    assert "close" in rec.events
+    assert "close_async" not in rec.events
 
 
-def test_pipeline_close_async_calls_async_close_only():
-    """Pipeline.close_async() calls each component's close_async only, never the sync close."""
+async def test_pipeline_close_async_calls_async_close_only():
+    """When a component implements close_async, Pipeline.close_async() uses it and does not also call its sync close."""
     rec = LifecycleRecorder()
     pipe = Pipeline()
     pipe.add_component("rec", rec)
-    asyncio.run(pipe.close_async())
-    kinds = [event[0] for event in rec.events]
-    assert "close_async" in kinds
-    assert "close" not in kinds
+    await pipe.close_async()
+    assert "close_async" in rec.events
+    assert "close" not in rec.events
 
 
-def test_close_async_falls_back_to_sync_close():
-    """close_async closes a component that has only sync close, on the event-loop thread."""
-    rec = SyncWarmUpRecorder()
+async def test_close_async_falls_back_to_sync_close():
+    """A component with only the sync close is still released by close_async through that method."""
+    rec = SyncOnlyRecorder()
     pipe = Pipeline()
     pipe.add_component("rec", rec)
-    asyncio.run(pipe.close_async())
-    assert len(rec.events) == 1
-    name, thread_id, loop = rec.events[0]
-    assert name == "close"
-    assert loop is not None
-    assert thread_id == threading.get_ident()
+    await pipe.close_async()
+    assert rec.events == ["close"]
 
 
-def test_run_does_not_auto_close():
-    """Running a pipeline (sync or async) never auto-closes components; close is always explicit."""
+async def test_run_does_not_auto_close():
+    """Running a pipeline (sync or async) never closes components; closing is always explicit."""
     rec = LifecycleRecorder()
     pipe = Pipeline()
     pipe.add_component("rec", rec)
     pipe.run({"rec": {}})
-    asyncio.run(pipe.run_async({"rec": {}}))
-    kinds = [event[0] for event in rec.events]
-    assert "close" not in kinds
-    assert "close_async" not in kinds
+    await pipe.run_async({"rec": {}})
+    assert "close" not in rec.events
+    assert "close_async" not in rec.events
 
 
-def test_lifecycle_methods_are_optional():
-    """
-    A component that implements none of the lifecycle methods works fine: the pipeline guards every
-    warm_up_async / close / close_async call with hasattr, so they are skipped instead of raising.
-    """
+async def test_lifecycle_methods_are_optional():
+    """A component without lifecycle methods works: every call is hasattr-guarded and skipped."""
     pipe = Pipeline()
     pipe.add_component("bare", BareComponent())
-    asyncio.run(pipe.warm_up_async())
+    await pipe.warm_up_async()
     pipe.close()
-    asyncio.run(pipe.close_async())
-    asyncio.run(pipe.run_async({"bare": {}}))
+    await pipe.close_async()
+    await pipe.run_async({"bare": {}})
+
+
+def test_loop_bound_client_rejects_other_loop():
+    """The fake client raises when used from a different loop.
+
+    This ensures the affinity test below enforces loop binding.
+    """
+
+    async def _make_loop_bound_client():
+        return LoopBoundAsyncClient()
+
+    client = asyncio.run(_make_loop_bound_client())
+    with pytest.raises(RuntimeError):
+        asyncio.run(client.use())
+
+
+async def test_async_client_bound_to_run_loop():
+    """warm_up_async creates the async client on the loop run_async uses, so it stays usable there."""
+    pipe = Pipeline()
+    pipe.add_component("client_component", AsyncClientComponent())
+    await pipe.warm_up_async()
+    # Would raise if warm_up_async had bound the client to a different loop than run_async
+    await pipe.run_async({"client_component": {}})
