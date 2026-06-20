@@ -59,8 +59,10 @@ def _not_equal(value: Any, filter_value: Any) -> bool:
 def _prepare_ordering_comparison(value: Any, filter_value: Any) -> tuple[Any, Any]:
     """Normalize both values for ordering comparisons, parsing strings as dates."""
     if isinstance(value, str) or isinstance(filter_value, str):
-        value = _parse_date(value)
-        filter_value = _parse_date(filter_value)
+        if not isinstance(value, datetime):
+            value = _parse_date(value)
+        if not isinstance(filter_value, datetime):
+            filter_value = _parse_date(filter_value)
         value, filter_value = _ensure_both_dates_naive_or_aware(value, filter_value)
 
     if isinstance(filter_value, list):
