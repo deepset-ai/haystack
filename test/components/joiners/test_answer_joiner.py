@@ -100,3 +100,31 @@ class TestAnswerJoiner:
         unsupported_mode = "unsupported_mode"
         with pytest.raises(ValueError):
             AnswerJoiner(join_mode=unsupported_mode)
+
+    def test_sort_by_score(self):
+        joiner = AnswerJoiner(sort_by_score=True)
+        answers1 = [ExtractedAnswer(query="a", score=0.3, meta={}, document=Document(content="a"))]
+        answers2 = [ExtractedAnswer(query="b", score=0.9, meta={}, document=Document(content="b"))]
+        result = joiner.run([answers1, answers2])
+        scores = [answer.score for answer in result["answers"]]
+        assert scores == [0.9, 0.3]
+
+    def test_sort_by_score_with_none_score(self):
+        # The docstring promises that an answer with no score is handled as if its score is -infinity.
+        # ExtractedAnswer with score=None must not raise a TypeError during sorting and must be sorted last.
+        joiner = AnswerJoiner(sort_by_score=True)
+        answers1 = [ExtractedAnswer(query="a", score=0.5, meta={}, document=Document(content="a"))]
+        answers2 = [ExtractedAnswer(query="b", score=None, meta={}, document=Document(content="b"))]  # type: ignore[arg-type]
+        result = joiner.run([answers1, answers2])
+        assert [answer.data for answer in result["answers"]] == [None, None]
+        assert [answer.score for answer in result["answers"]] == [0.5, None]
+
+    def test_sort_by_score_with_answers_missing_score_attribute(self):
+        # GeneratedAnswer has no score attribute at all; it must be handled as -infinity and sorted last.
+        joiner = AnswerJoiner(sort_by_score=True)
+        answers1 = [GeneratedAnswer(query="a", data="a", meta={}, documents=[Document(content="a")])]
+        answers2 = [ExtractedAnswer(query="b", score=0.9, meta={}, document=Document(content="b"))]
+        result = joiner.run([answers1, answers2])
+        # The ExtractedAnswer (score 0.9) comes first, the GeneratedAnswer (no score) comes last.
+        assert isinstance(result["answers"][0], ExtractedAnswer)
+        assert isinstance(result["answers"][1], GeneratedAnswer)

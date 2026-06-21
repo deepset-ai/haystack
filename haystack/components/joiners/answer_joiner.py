@@ -130,7 +130,9 @@ class AnswerJoiner:
 
         if self.sort_by_score:
             output_answers = sorted(
-                output_answers, key=lambda answer: answer.score if hasattr(answer, "score") else -inf, reverse=True
+                output_answers,
+                key=lambda answer: score if (score := getattr(answer, "score", None)) is not None else -inf,
+                reverse=True,
             )
 
         top_k = top_k or self.top_k
