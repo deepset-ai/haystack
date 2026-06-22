@@ -4,6 +4,8 @@ loaders:
       [
         "azure_document_embedder",
         "azure_text_embedder",
+        "mock_document_embedder",
+        "mock_text_embedder",
         "openai_document_embedder",
         "openai_text_embedder",
       ]
