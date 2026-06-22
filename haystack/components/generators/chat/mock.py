@@ -29,7 +29,7 @@ logger = logging.getLogger(__name__)
 
 # A callable that derives a response from the input messages. It receives the (normalized) list of input
 # `ChatMessage` objects and returns either the text of the assistant reply or a full `ChatMessage`.
-ResponseFn = Callable[[list[ChatMessage]], "str | ChatMessage"]
+ResponseFn = Callable[[list[ChatMessage]], str | ChatMessage]
 
 
 @component
@@ -187,7 +187,7 @@ class MockChatGenerator:
         return None
 
     @staticmethod
-    def _coerce_to_message(result: Any) -> ChatMessage:
+    def _coerce_to_message(result: str | ChatMessage) -> ChatMessage:
         """Coerce the output of `response_fn` into an assistant `ChatMessage`."""
         if isinstance(result, str):
             return ChatMessage.from_assistant(result)
