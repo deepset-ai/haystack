@@ -12,9 +12,7 @@ from haystack.utils.jinja2_extensions import _extract_template_variables_and_ass
 
 logger = logging.getLogger(__name__)
 
-_PROMPT_VARIABLE_INPUT_TYPES: dict[str, type] = {
-    "documents": list[Document],
-}
+_PROMPT_VARIABLE_INPUT_TYPES: dict[str, type] = {"documents": list[Document]}
 
 
 @component
