@@ -1,0 +1,4 @@
+---
+fixes:
+  - |
+    Six retriever components (CogneeRetriever, FAISSEmbeddingRetriever, FalkorDBCypherRetriever, FalkorDBEmbeddingRetriever, MongoDBAtlasFullTextRetriever, ValkeyEmbeddingRetriever) were missing from the retriever index table in both current and versioned docs.
