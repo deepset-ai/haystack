@@ -47,7 +47,22 @@ class HierarchicalDocumentSplitter:
         :param block_sizes: Set of block sizes to split the document into. The blocks are split in descending order.
         :param split_overlap: The number of overlapping units for each split.
         :param split_by: The unit for splitting your documents.
+        :raises ValueError: If `block_sizes` is empty, if `split_overlap` is negative, or if `split_overlap` is
+            greater than or equal to the smallest value in `block_sizes`.
         """
+
+        if not block_sizes:
+            raise ValueError("block_sizes must not be empty. Provide at least one block size.")
+
+        if split_overlap < 0:
+            raise ValueError("split_overlap must be greater than or equal to 0.")
+
+        smallest_block_size = min(block_sizes)
+        if split_overlap >= smallest_block_size:
+            raise ValueError(
+                f"split_overlap ({split_overlap}) must be less than the smallest value in block_sizes "
+                f"({smallest_block_size}). Reduce split_overlap or increase the smallest block size."
+            )
 
         self.block_sizes = sorted(set(block_sizes), reverse=True)
         self.splitters: dict[int, DocumentSplitter] = {}
