@@ -59,7 +59,7 @@ class MockChatGenerator:
 
     ```python
     from haystack.components.generators.chat import MockChatGenerator
-    from haystack.dataclasses import ChatMessage
+    from haystack.dataclasses import ChatMessage, ToolCall
 
     # Fixed response
     generator = MockChatGenerator(responses="Hello, this is a mock response.")
