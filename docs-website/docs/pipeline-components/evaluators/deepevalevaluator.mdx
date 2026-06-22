@@ -79,7 +79,7 @@ from haystack_integrations.components.evaluators.deepeval import (
 pipeline = Pipeline()
 evaluator = DeepEvalEvaluator(
     metric=DeepEvalMetric.FAITHFULNESS,
-    metric_params={"model": "gpt-4"},
+    metric_params={"model": "gpt-4o-mini"},
 )
 pipeline.add_component("evaluator", evaluator)
 ```
