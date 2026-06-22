@@ -7,11 +7,9 @@ from typing import TYPE_CHECKING
 
 from lazy_imports import LazyImporter
 
-_import_structure = {"whisper_local": ["LocalWhisperTranscriber"], "whisper_remote": ["RemoteWhisperTranscriber"]}
+_import_structure = {"skill_store": ["FileSystemSkillStore"]}
 
 if TYPE_CHECKING:
-    from .whisper_local import LocalWhisperTranscriber as LocalWhisperTranscriber
-    from .whisper_remote import RemoteWhisperTranscriber as RemoteWhisperTranscriber
-
+    from .skill_store import FileSystemSkillStore as FileSystemSkillStore
 else:
     sys.modules[__name__] = LazyImporter(name=__name__, module_file=__file__, import_structure=_import_structure)

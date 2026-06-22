@@ -911,7 +911,7 @@ def _convert_chat_message_to_responses_api_format(message: ChatMessage) -> list[
         formatted_tool_results = []
         for result in tool_call_results:
             if result.origin.id is not None:
-                # Handle multimodal tool results (list of TextContent/ImageContent)
+                # Handle multimodal tool results (list of TextContent/ImageContent/FileContent)
                 if isinstance(result.result, list):
                     output_content = [convert_part(part) for part in result.result]
                 elif isinstance(result.result, str):

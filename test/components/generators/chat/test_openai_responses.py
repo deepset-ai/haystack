@@ -966,6 +966,33 @@ class TestIntegration:
 
         assert any(word in result["last_message"].text.lower() for word in ["apple", "fruit"])
 
+    def test_live_run_agent_with_file_in_tool_result(self, test_files_path):
+        def retrieve_document():
+            return [
+                TextContent("Here is the retrieved document."),
+                FileContent.from_file_path(test_files_path / "pdf" / "sample_pdf_3.pdf"),
+            ]
+
+        document_retriever_tool = create_tool_from_function(
+            name="retrieve_document",
+            description="Tool to retrieve a document",
+            function=retrieve_document,
+            outputs_to_string={"raw_result": True},
+        )
+
+        agent = Agent(
+            chat_generator=OpenAIResponsesChatGenerator(model="gpt-4.1-nano"),
+            system_prompt="You are an Agent that can retrieve documents and answer questions about them.",
+            tools=[document_retriever_tool],
+        )
+
+        user_message = ChatMessage.from_user(
+            "Retrieve the document and tell me if it is a paper about LLMs. Respond with 'yes' or 'no' only."
+        )
+        result = agent.run(messages=[user_message])
+
+        assert "no" in result["last_message"].text.lower()
+
 
 class TestOpenAIResponsesChatGeneratorAsync:
     async def test_warm_up_async_creates_async_client_with_expected_args(self, monkeypatch):
