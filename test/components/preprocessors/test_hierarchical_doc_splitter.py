@@ -22,6 +22,22 @@ class TestHierarchicalDocumentSplitter:
         assert builder.split_overlap == 25
         assert builder.split_by == "word"
 
+    def test_init_with_empty_block_sizes_raises(self):
+        with pytest.raises(ValueError, match="block_sizes must not be empty"):
+            HierarchicalDocumentSplitter(block_sizes=set())
+
+    def test_init_with_negative_split_overlap_raises(self):
+        with pytest.raises(ValueError, match="split_overlap must be greater than or equal to 0"):
+            HierarchicalDocumentSplitter(block_sizes={10, 5, 2}, split_overlap=-1)
+
+    def test_init_with_split_overlap_equal_to_smallest_block_size_raises(self):
+        with pytest.raises(ValueError, match="split_overlap .* must be less than the smallest value in block_sizes"):
+            HierarchicalDocumentSplitter(block_sizes={10, 5, 2}, split_overlap=2)
+
+    def test_init_with_split_overlap_greater_than_smallest_block_size_raises(self):
+        with pytest.raises(ValueError, match="split_overlap .* must be less than the smallest value in block_sizes"):
+            HierarchicalDocumentSplitter(block_sizes={10, 5, 2}, split_overlap=3)
+
     def test_to_dict(self):
         builder = HierarchicalDocumentSplitter(block_sizes={100, 200, 300}, split_overlap=25, split_by="word")
         expected = builder.to_dict()

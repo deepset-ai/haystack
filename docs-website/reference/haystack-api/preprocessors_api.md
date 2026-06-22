@@ -687,6 +687,11 @@ Initialize HierarchicalDocumentSplitter.
 - **split_overlap** (<code>int</code>) – The number of overlapping units for each split.
 - **split_by** (<code>Literal['word', 'sentence', 'page', 'passage']</code>) – The unit for splitting your documents.
 
+**Raises:**
+
+- <code>ValueError</code> – If `block_sizes` is empty, if `split_overlap` is negative, or if `split_overlap` is
+  greater than or equal to the smallest value in `block_sizes`.
+
 #### run
 
 ```python
