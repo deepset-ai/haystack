@@ -17,7 +17,6 @@ _import_structure = {
     "document": ["Document"],
     "skill_info": ["SkillInfo"],
     "sparse_embedding": ["SparseEmbedding"],
-    "state": ["State"],
     "streaming_chunk": [
         "AsyncStreamingCallbackT",
         "ComponentInfo",
