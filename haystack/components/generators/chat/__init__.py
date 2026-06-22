@@ -14,6 +14,7 @@ _import_structure = {
     "azure_responses": ["AzureOpenAIResponsesChatGenerator"],
     "fallback": ["FallbackChatGenerator"],
     "llm": ["LLM"],
+    "mock": ["MockChatGenerator"],
 }
 
 if TYPE_CHECKING:
@@ -21,6 +22,7 @@ if TYPE_CHECKING:
     from .azure_responses import AzureOpenAIResponsesChatGenerator as AzureOpenAIResponsesChatGenerator
     from .fallback import FallbackChatGenerator as FallbackChatGenerator
     from .llm import LLM as LLM
+    from .mock import MockChatGenerator as MockChatGenerator
     from .openai import OpenAIChatGenerator as OpenAIChatGenerator
     from .openai_responses import OpenAIResponsesChatGenerator as OpenAIResponsesChatGenerator
 
