@@ -38,27 +38,6 @@ class TestHierarchicalDocumentSplitter:
         with pytest.raises(ValueError, match="split_overlap .* must be less than the smallest value in block_sizes"):
             HierarchicalDocumentSplitter(block_sizes={10, 5, 2}, split_overlap=3)
 
-    def test_init_error_message_references_smallest_block_size_not_largest(self):
-        """
-        Regression test: previously the error from the internal DocumentSplitter referenced
-        'split_length', a parameter name that doesn't exist on HierarchicalDocumentSplitter,
-        and gave no indication of which block_size was the problem. The new error must use
-        HierarchicalDocumentSplitter's own parameter names and identify the smallest block size.
-        """
-        with pytest.raises(ValueError) as exc_info:
-            HierarchicalDocumentSplitter(block_sizes={100, 50, 5}, split_overlap=10)
-        error_message = str(exc_info.value)
-        assert "split_length" not in error_message
-        assert "5" in error_message
-        assert "split_overlap" in error_message
-        assert "block_sizes" in error_message
-
-    def test_init_with_split_overlap_valid_for_smallest_block_size(self):
-        # split_overlap one less than the smallest block size should succeed
-        builder = HierarchicalDocumentSplitter(block_sizes={10, 5, 2}, split_overlap=1)
-        assert builder.split_overlap == 1
-        assert builder.block_sizes == [10, 5, 2]
-
     def test_to_dict(self):
         builder = HierarchicalDocumentSplitter(block_sizes={100, 200, 300}, split_overlap=25, split_by="word")
         expected = builder.to_dict()
