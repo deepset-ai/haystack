@@ -44,6 +44,7 @@ class MockChatGenerator:
     The response is selected based on how the component is configured:
 
     - **Fixed response**: pass a single string or `ChatMessage`. The same reply is returned on every call.
+      Any `ChatMessage` passed as a response must have the `assistant` role.
     - **Cycling responses**: pass a list of strings and/or `ChatMessage` objects. Each call returns the next item,
       wrapping around to the start once the list is exhausted. This is useful to drive multi-step flows such as
       Agents, where the first call returns a tool call and a later call returns the final answer.
@@ -90,18 +91,19 @@ class MockChatGenerator:
 
         :param responses: The predefined response(s) to return. Accepts a single string or `ChatMessage` (returned on
             every call), or a non-empty list of strings and/or `ChatMessage` objects that are returned in order,
-            cycling back to the start once exhausted. Strings are wrapped into assistant `ChatMessage` objects.
-            Mutually exclusive with `response_fn`. If neither is provided, the component echoes the last message with
-            text content.
+            cycling back to the start once exhausted. Strings are wrapped into assistant `ChatMessage` objects, and any
+            `ChatMessage` passed must have the `assistant` role. Mutually exclusive with `response_fn`. If neither is
+            provided, the component echoes the last message with text content.
         :param response_fn: An optional callable that receives the input messages and returns the reply as a string or
-            `ChatMessage`. Use this for input-dependent responses. Mutually exclusive with `responses`. To support
-            serialization, pass a named function (lambdas and nested functions cannot be serialized).
+            an assistant `ChatMessage`. Use this for input-dependent responses. Mutually exclusive with `responses`. To
+            support serialization, pass a named function (lambdas and nested functions cannot be serialized).
         :param model: The model name reported in the response metadata. Purely cosmetic; no model is loaded.
         :param meta: Additional metadata merged into the `meta` of every returned `ChatMessage`. A per-response
             `ChatMessage`'s own metadata takes precedence over this value.
         :param streaming_callback: An optional callback invoked with `StreamingChunk` objects reconstructed from the
             predefined response. It lets the mock exercise streaming code paths without a real model.
-        :raises ValueError: If both `responses` and `response_fn` are provided, or if `responses` is an empty list.
+        :raises ValueError: If both `responses` and `response_fn` are provided, if `responses` is an empty list, or if
+            a `ChatMessage` response does not have the `assistant` role.
         """
         if responses is not None and response_fn is not None:
             raise ValueError("Pass either 'responses' or 'response_fn', not both.")
@@ -190,7 +192,7 @@ class MockChatGenerator:
 
     @staticmethod
     def _coerce_to_message(result: str | ChatMessage) -> ChatMessage:
-        """Coerce the output of `response_fn` into an assistant `ChatMessage`."""
+        """Turn the output of `response_fn` into a `ChatMessage`, wrapping strings and requiring the assistant role."""
         if isinstance(result, str):
             return ChatMessage.from_assistant(result)
         if isinstance(result, ChatMessage):
