@@ -964,10 +964,10 @@ class Agent:
             # trigger an exit.
             last_message = llm_messages[-1] if llm_messages else None
             if not current_tools or (
-                    last_message is not None
-                    and not any(msg.tool_call for msg in llm_messages)
-                    and last_message.is_from(ChatRole.ASSISTANT)
-                    and last_message.text
+                last_message is not None
+                and not any(msg.tool_call for msg in llm_messages)
+                and last_message.is_from(ChatRole.ASSISTANT)
+                and last_message.text
             ):
                 exe_context.counter += 1
                 exe_context.state.set("step_count", exe_context.counter)
@@ -1038,10 +1038,10 @@ class Agent:
             # trigger an exit.
             last_message = llm_messages[-1] if llm_messages else None
             if not current_tools or (
-                    last_message is not None
-                    and not any(msg.tool_call for msg in llm_messages)
-                    and last_message.is_from(ChatRole.ASSISTANT)
-                    and last_message.text
+                last_message is not None
+                and not any(msg.tool_call for msg in llm_messages)
+                and last_message.is_from(ChatRole.ASSISTANT)
+                and last_message.text
             ):
                 exe_context.counter += 1
                 exe_context.state.set("step_count", exe_context.counter)
