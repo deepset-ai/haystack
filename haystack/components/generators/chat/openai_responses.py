@@ -812,7 +812,8 @@ def _convert_streaming_chunks_to_chat_message(chunks: list[StreamingChunk]) -> C
     # function calls without reasoning ids are not supported by the API
     reasoning = None
     if reasoning_id:
-        # Preserve all extra fields from streaming chunks (e.g. encrypted_content) while ensuring id and type are present
+        # Preserve all extra fields from streaming chunks (e.g. encrypted_content) while ensuring id and
+        # type are present
         reasoning_extra = {}
         for chunk in chunks:
             if chunk.reasoning and chunk.reasoning.extra:
