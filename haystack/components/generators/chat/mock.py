@@ -14,6 +14,7 @@ from haystack import component, default_from_dict, default_to_dict, logging
 from haystack.components.generators.utils import _normalize_messages
 from haystack.dataclasses import (
     ChatMessage,
+    ChatRole,
     ComponentInfo,
     FinishReason,
     StreamingCallbackT,
@@ -137,6 +138,10 @@ class MockChatGenerator:
             if isinstance(item, str):
                 normalized.append(ChatMessage.from_assistant(item))
             elif isinstance(item, ChatMessage):
+                if item.role != ChatRole.ASSISTANT:
+                    raise ValueError(
+                        f"Each ChatMessage response must have the 'assistant' role, got '{item.role.value}'."
+                    )
                 normalized.append(item)
             else:
                 raise TypeError(f"Each response must be a string or ChatMessage, got {type(item)}.")
@@ -189,6 +194,8 @@ class MockChatGenerator:
         if isinstance(result, str):
             return ChatMessage.from_assistant(result)
         if isinstance(result, ChatMessage):
+            if result.role != ChatRole.ASSISTANT:
+                raise ValueError(f"'response_fn' must return an assistant ChatMessage, got '{result.role.value}'.")
             return result
         raise TypeError(f"'response_fn' must return a string or ChatMessage, got {type(result)}.")
 

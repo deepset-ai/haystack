@@ -33,6 +33,7 @@ class TestMockChatGenerator:
             (([],), {}, ValueError, "must not be an empty list"),
             ((123,), {}, TypeError, "must be a string, ChatMessage, or a sequence"),
             (([123],), {}, TypeError, "Each response must be a string or ChatMessage"),
+            ((ChatMessage.from_user("hi"),), {}, ValueError, "must have the 'assistant' role"),
         ],
     )
     def test_init_rejects_invalid_config(self, args, kwargs, exception, match):
@@ -74,10 +75,16 @@ class TestMockChatGenerator:
         result = MockChatGenerator(response_fn=fn).run([ChatMessage.from_user("hello")])
         assert result["replies"][0].text == expected
 
-    def test_response_fn_invalid_return_raises(self):
-        gen = MockChatGenerator(response_fn=lambda messages: 123)
-        with pytest.raises(TypeError, match="must return a string or ChatMessage"):
-            gen.run([ChatMessage.from_user("hi")])
+    @pytest.mark.parametrize(
+        ("fn", "exception", "match"),
+        [
+            (lambda messages: 123, TypeError, "must return a string or ChatMessage"),
+            (lambda messages: ChatMessage.from_user("nope"), ValueError, "must return an assistant ChatMessage"),
+        ],
+    )
+    def test_response_fn_invalid_return_raises(self, fn, exception, match):
+        with pytest.raises(exception, match=match):
+            MockChatGenerator(response_fn=fn).run([ChatMessage.from_user("hi")])
 
     def test_string_input_is_normalized(self):
         gen = MockChatGenerator(response_fn=_exclaim)
