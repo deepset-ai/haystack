@@ -28,7 +28,7 @@ from haystack.utils import deserialize_callable, serialize_callable
 logger = logging.getLogger(__name__)
 
 # A callable that derives a response from the input messages. It receives the (normalized) list of input
-# ``ChatMessage`` objects and returns either the text of the assistant reply or a full ``ChatMessage``.
+# `ChatMessage` objects and returns either the text of the assistant reply or a full `ChatMessage`.
 ResponseFn = Callable[[list[ChatMessage]], "str | ChatMessage"]
 
 
