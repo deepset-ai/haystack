@@ -629,7 +629,7 @@ def _convert_response_to_chat_message(responses: Response | ParsedResponse) -> C
     )
 
 
-def _convert_response_chunk_to_streaming_chunk(
+def _convert_response_chunk_to_streaming_chunk(  # noqa: PLR0911
     chunk: ResponseStreamEvent, previous_chunks: list[StreamingChunk], component_info: ComponentInfo | None = None
 ) -> StreamingChunk:
     """
@@ -666,6 +666,21 @@ def _convert_response_chunk_to_streaming_chunk(
                 index=chunk.output_index,
                 tool_calls=[tool_call],
                 start=True,
+                meta={"received_at": datetime.now().isoformat()},
+            )
+
+    elif chunk.type == "response.output_item.done":
+        # The done event carries the completed reasoning item, which includes encrypted_content
+        # when include=["reasoning.encrypted_content"] was requested. Without this handler the
+        # event falls through to the generic default and reasoning=None, so encrypted_content
+        # is never available for multi-turn conversations.
+        if chunk.item.type == "reasoning":
+            reasoning = ReasoningContent(reasoning_text="", extra=chunk.item.to_dict())
+            return StreamingChunk(
+                content="",
+                component_info=component_info,
+                index=chunk.output_index,
+                reasoning=reasoning,
                 meta={"received_at": datetime.now().isoformat()},
             )
 

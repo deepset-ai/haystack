@@ -97,18 +97,16 @@ def openai_responses_streaming_chunks_with_tool_call():
         ),
         StreamingChunk(
             content="",
-            meta={
-                "item": {
+            meta={"received_at": ANY},
+            index=0,
+            reasoning=ReasoningContent(
+                reasoning_text="",
+                extra={
                     "id": "rs_095b57053855eac100690491f54e308196878239be3ba6133c",
                     "summary": [],
                     "type": "reasoning",
                 },
-                "output_index": 0,
-                "sequence_number": 3,
-                "type": "response.output_item.done",
-                "received_at": ANY,
-            },
-            index=0,
+            ),
         ),
         StreamingChunk(
             content="",
@@ -613,18 +611,16 @@ class TestConversionToStreamingChunks:
             ),
             StreamingChunk(
                 content="",
-                meta={
-                    "received_at": ANY,
-                    "item": {
+                meta={"received_at": ANY},
+                index=0,
+                reasoning=ReasoningContent(
+                    reasoning_text="",
+                    extra={
                         "id": "rs_0a8811e62a95217b00690c5ff70a308195a8207d7eb43f1d5b",
                         "summary": [],
                         "type": "reasoning",
                     },
-                    "output_index": 0,
-                    "sequence_number": 3,
-                    "type": "response.output_item.done",
-                },
-                index=0,
+                ),
             ),
             StreamingChunk(
                 content="",
@@ -1079,18 +1075,16 @@ class TestConversionToStreamingChunks:
             ),
             StreamingChunk(
                 content="",
-                meta={
-                    "item": {
+                meta={"received_at": ANY},
+                index=0,
+                reasoning=ReasoningContent(
+                    reasoning_text="",
+                    extra={
                         "id": "rs_095b57053855eac100690491f54e308196878239be3ba6133c",
                         "summary": [],
                         "type": "reasoning",
                     },
-                    "output_index": 0,
-                    "sequence_number": 3,
-                    "type": "response.output_item.done",
-                    "received_at": ANY,
-                },
-                index=0,
+                ),
             ),
             StreamingChunk(
                 content="",
