@@ -313,8 +313,7 @@ class MockChatGenerator:
         :returns: A dictionary with a single key `replies` containing the predefined reply as a list of one
             `ChatMessage` (empty in echo mode when there is no message to echo).
         """
-        if not self._is_warmed_up:
-            self.warm_up()
+        self.warm_up()
 
         messages = _normalize_messages(messages)
         streaming_callback = select_streaming_callback(
