@@ -717,6 +717,22 @@ class TestLoggingScope:
         output = capfd.readouterr().err
         assert json.loads(output)["event"] == "formatted by haystack"
 
+    def test_switching_to_root_logger_does_not_duplicate_haystack_logs(self, capfd: CaptureFixture) -> None:
+        # Mirror what `import haystack` does: install the handler on the Haystack namespaces.
+        haystack_logging.configure_logging(use_json=True)
+        # Then opt into root formatting. The namespace handlers must be removed - otherwise a `haystack.*` record is
+        # emitted twice (once by the namespace handler, once by the root handler via propagation).
+        haystack_logging.configure_logging(use_json=True, logger_name="")
+
+        # The Haystack namespaces no longer carry our handler.
+        for name in ["haystack", "haystack_integrations", "haystack_experimental"]:
+            handlers = logging.getLogger(name).handlers
+            assert not any(getattr(h, "name", None) == "HaystackLoggingHandler" for h in handlers)
+
+        logging.getLogger("haystack.demo").warning("dup check")
+        emitted = [line for line in capfd.readouterr().err.splitlines() if "dup check" in line]
+        assert len(emitted) == 1
+
     def test_propagate_is_true_by_default(self, caplog: LogCaptureFixture) -> None:
         # The default keeps records flowing to ancestor loggers, so tooling that captures via the root logger (such as
         # pytest's `caplog`) keeps working.
@@ -781,7 +797,7 @@ class TestStructlogConfigIsPreserved:
     application already set up, while an explicit call still takes over.
     """
 
-    def test_not_forced_skips_when_structlog_already_configured(self, restore_structlog_config: None) -> None:
+    def test_not_forced_preserves_existing_structlog_config(self, restore_structlog_config: None) -> None:
         # Stand-in for the host application configuring structlog before Haystack is imported/configured.
         structlog.reset_defaults()
         structlog.configure(processors=[_sentinel_processor])
@@ -792,8 +808,9 @@ class TestStructlogConfigIsPreserved:
 
         # The application's structlog configuration is left untouched ...
         assert structlog.get_config()["processors"] == [_sentinel_processor]
-        # ... and we did not attach our handler on top of their setup.
-        assert not any(getattr(h, "name", None) == "HaystackLoggingHandler" for h in haystack_logger.handlers)
+        # ... but we still install our scoped handler so Haystack's own logs are formatted (independently of import
+        # ordering relative to the application's structlog setup).
+        assert any(getattr(h, "name", None) == "HaystackLoggingHandler" for h in haystack_logger.handlers)
 
     def test_forced_takes_over_existing_structlog_config(self, restore_structlog_config: None) -> None:
         structlog.reset_defaults()
@@ -806,8 +823,10 @@ class TestStructlogConfigIsPreserved:
         assert structlog.get_config()["processors"] != [_sentinel_processor]
         assert any(getattr(h, "name", None) == "HaystackLoggingHandler" for h in haystack_logger.handlers)
 
-    def test_not_forced_still_configures_when_structlog_is_unconfigured(self, restore_structlog_config: None) -> None:
-        # This is the real import-time situation: nobody configured structlog yet, so we set up our nice defaults.
+    def test_not_forced_installs_handler_without_configuring_structlog(self, restore_structlog_config: None) -> None:
+        # The real import-time situation: nobody configured structlog yet. We install our scoped handler so Haystack's
+        # own logs are formatted, but we must NOT touch the process-global structlog configuration (which would
+        # reformat the host application's own native structlog loggers).
         structlog.reset_defaults()
         haystack_logger = logging.getLogger("haystack")
         haystack_logger.handlers = []
@@ -815,8 +834,10 @@ class TestStructlogConfigIsPreserved:
 
         haystack_logging.configure_logging(force=False)
 
-        assert structlog.is_configured()
+        # Our scoped handler is installed ...
         assert any(getattr(h, "name", None) == "HaystackLoggingHandler" for h in haystack_logger.handlers)
+        # ... but the global structlog configuration is left untouched.
+        assert not structlog.is_configured()
 
 
 class TestGetLoggerIsIdempotent:

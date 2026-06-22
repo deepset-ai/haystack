@@ -21,6 +21,14 @@ HAYSTACK_LOGGING_IGNORE_STRUCTLOG_ENV_VAR = "HAYSTACK_LOGGING_IGNORE_STRUCTLOG"
 # use this marker to patch each logger only once and avoid wrapping the already-wrapped methods on repeated calls.
 _PATCHED_MARKER = "_haystack_patched"
 
+# Name of the formatting handler we install. We use it to find and remove our own handler across (re)configurations.
+_HANDLER_NAME = "HaystackLoggingHandler"
+
+
+def _is_haystack_logging_handler(handler: logging.Handler) -> bool:
+    """Return whether the given handler is the one installed by `configure_logging`."""
+    return isinstance(handler, logging.StreamHandler) and getattr(handler, "name", None) == _HANDLER_NAME
+
 
 class PatchedLogger(typing.Protocol):
     """Class which enables using type checkers to find wrong logger usage."""
@@ -335,10 +343,11 @@ def configure_logging(
         own logs - this avoids duplicate log lines when the host application also configures the root logger. It has
         no effect when `logger_name=""` (the root logger has no ancestors).
     :param force:
-        Whether to (re)configure logging even if `structlog` has already been configured by someone else. The default
-        (`True`) means an explicit call always takes over. Pass `False` to make this a no-op when `structlog` is
-        already configured - this is used by the import-time call in `haystack/__init__.py` so that merely importing
-        Haystack does not overwrite a `structlog` configuration set up by the host application.
+        Whether this call owns the process-global `structlog` configuration. The default (`True`) means an explicit
+        call configures `structlog` and takes over any configuration set up by someone else. Pass `False` (as the
+        import-time call in `haystack/__init__.py` does) to leave the global `structlog` configuration untouched and
+        only install our own scoped handler so Haystack's own logs are formatted. This keeps merely importing Haystack
+        from reconfiguring `structlog` for the host application's own native `structlog` loggers.
     """
     import haystack.utils.jupyter  # to avoid circular imports
 
@@ -353,11 +362,6 @@ def configure_logging(
 
     if os.getenv(HAYSTACK_LOGGING_IGNORE_STRUCTLOG_ENV_VAR, "false").lower() == "true":
         # If the user wants to ignore structlog, we don't configure it and fall back to standard logging
-        return
-
-    # When not forcing, skip configuration if structlog is already configured (e.g. by the host application) so we
-    # leave its configuration and handlers untouched.
-    if not force and structlog.is_configured():
         return
 
     # We roughly follow the structlog documentation here:
@@ -389,18 +393,23 @@ def configure_logging(
         # We only need that in sophisticated production setups where we want to correlate logs with traces
         shared_processors.append(correlate_logs_with_traces)
 
-    structlog.configure(
-        # `filter_by_level` reads the effective level from the underlying stdlib logger on *every* call, so changes
-        # to the log level made after `configure_logging` runs (e.g. by the host application) are respected.
-        processors=[
-            structlog.stdlib.filter_by_level,
-            *shared_processors,
-            structlog.stdlib.ProcessorFormatter.wrap_for_formatter,
-        ],
-        logger_factory=structlog.stdlib.LoggerFactory(ignore_frame_names=["haystack.logging"]),
-        cache_logger_on_first_use=True,
-        wrapper_class=structlog.stdlib.BoundLogger,
-    )
+    # `structlog.configure` writes to a single process-global configuration that affects *every* native structlog
+    # logger in the process, not just Haystack's. We therefore only touch it on an explicit (forced) call. The
+    # import-time auto-config (`force=False`) skips it and relies solely on the scoped handler installed below to
+    # format Haystack's own (stdlib) logs, leaving the host application's native structlog loggers untouched.
+    if force:
+        structlog.configure(
+            # `filter_by_level` reads the effective level from the underlying stdlib logger on *every* call, so
+            # changes to the log level made after `configure_logging` runs (e.g. by the host app) are respected.
+            processors=[
+                structlog.stdlib.filter_by_level,
+                *shared_processors,
+                structlog.stdlib.ProcessorFormatter.wrap_for_formatter,
+            ],
+            logger_factory=structlog.stdlib.LoggerFactory(ignore_frame_names=["haystack.logging"]),
+            cache_logger_on_first_use=True,
+            wrapper_class=structlog.stdlib.BoundLogger,
+        )
 
     renderers: list[Processor]
     if use_json:
@@ -431,7 +440,7 @@ def configure_logging(
     )
 
     handler = logging.StreamHandler()
-    handler.name = "HaystackLoggingHandler"
+    handler.name = _HANDLER_NAME
     # Use OUR `ProcessorFormatter` to format all `logging` entries.
     handler.setFormatter(formatter)
 
@@ -439,13 +448,18 @@ def configure_logging(
     # loggers of the host application and other libraries in the same process untouched. Pass `logger_name=""` to
     # attach to the root logger instead (legacy behavior - formats every record in the process).
     logger_names = [logger_name] if isinstance(logger_name, str) else list(logger_name)
+
+    # Remove our handler from every logger that currently carries it before re-installing. This keeps re-configuration
+    # idempotent and, crucially, prevents records from being emitted twice when the target changes (e.g. switching to
+    # the root logger via `logger_name=""` while a previous call left handlers on the namespace loggers).
+    existing_loggers = [logging.getLogger(), *logging.Logger.manager.loggerDict.values()]
+    for existing_logger in existing_loggers:
+        if isinstance(existing_logger, logging.Logger) and any(
+            _is_haystack_logging_handler(h) for h in existing_logger.handlers
+        ):
+            existing_logger.handlers = [h for h in existing_logger.handlers if not _is_haystack_logging_handler(h)]
+
     for name in logger_names:
         target_logger = logging.getLogger(name)
-        # avoid adding our handler twice
-        old_handlers = [
-            h
-            for h in target_logger.handlers
-            if not (isinstance(h, logging.StreamHandler) and h.name == "HaystackLoggingHandler")
-        ]
-        target_logger.handlers = [handler, *old_handlers]
+        target_logger.handlers = [handler, *target_logger.handlers]
         target_logger.propagate = propagate

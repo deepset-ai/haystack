@@ -6,6 +6,11 @@ upgrade:
     Haystack a better-behaved library when it runs next to other services in the same process: the log records of the
     host application and other libraries are no longer reformatted or duplicated by Haystack. To restore the previous
     behavior of formatting every log record in the process, call ``configure_logging(logger_name="")``.
+  - |
+    Importing Haystack no longer configures ``structlog`` process-wide. The import-time setup now only installs
+    Haystack's own scoped logging handler (so Haystack's logs are still formatted) and leaves the global ``structlog``
+    configuration untouched, so the host application's own native ``structlog`` loggers are no longer reformatted by
+    merely importing Haystack. ``structlog`` is configured only when you call ``configure_logging(force=True)``.
 fixes:
   - |
     ``haystack.logging.configure_logging`` no longer freezes the log level at import time. Previously the level was
@@ -14,9 +19,6 @@ fixes:
   - |
     Fixed the logger in ``haystack.utils.requests_utils`` being named after the module's file path instead of
     ``haystack.utils.requests_utils``, which kept its records outside the ``haystack`` logger namespace.
-  - |
-    Importing Haystack no longer overwrites a ``structlog`` configuration that the host application already set up.
-    The import-time call to ``configure_logging`` now skips configuration when ``structlog`` is already configured.
   - |
     ``haystack.logging.getLogger`` is now idempotent. Previously, calling it more than once for the same logger name
     wrapped the already-wrapped logger methods again, which caused the log message to be run through ``str.format``
@@ -29,6 +31,6 @@ features:
   - |
     ``haystack.logging.configure_logging`` gained three parameters: ``logger_name`` to choose which logger(s) the
     formatting handler is attached to, ``propagate`` to control whether Haystack's loggers propagate their records to
-    ancestor loggers, and ``force`` to control whether an existing ``structlog`` configuration is replaced. Set
-    ``propagate=False`` to let Haystack fully own the output of its own logs and avoid duplicate log lines when the
-    host application also configures the root logger.
+    ancestor loggers, and ``force`` to control whether the call configures the process-global ``structlog`` (taking
+    over any existing configuration). Set ``propagate=False`` to let Haystack fully own the output of its own logs and
+    avoid duplicate log lines when the host application also configures the root logger.
