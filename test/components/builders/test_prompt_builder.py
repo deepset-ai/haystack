@@ -12,8 +12,10 @@ from jinja2 import TemplateSyntaxError
 
 from haystack import component
 from haystack.components.builders.prompt_builder import PromptBuilder
+from haystack.components.retrievers.in_memory import InMemoryBM25Retriever
 from haystack.core.pipeline.pipeline import Pipeline
 from haystack.dataclasses.document import Document
+from haystack.document_stores.in_memory import InMemoryDocumentStore
 
 
 class TestPromptBuilder:
@@ -245,6 +247,27 @@ class TestPromptBuilder:
                 "prompt": "Here is the document: Hello world, I live in Berlin \n Query: Where does the speaker live?"
             }
         }
+
+    def test_multiple_retriever_connections_to_documents(self):
+        template = "{% for doc in documents %}{{ doc.content }} {% endfor %}"
+        prompt_builder = PromptBuilder(template=template, variables=["documents"])
+
+        store_1 = InMemoryDocumentStore()
+        store_2 = InMemoryDocumentStore()
+        store_1.write_documents([Document(content="Paris")])
+        store_2.write_documents([Document(content="Berlin")])
+
+        pipe = Pipeline()
+        pipe.add_component("retriever_1", InMemoryBM25Retriever(document_store=store_1))
+        pipe.add_component("retriever_2", InMemoryBM25Retriever(document_store=store_2))
+        pipe.add_component("prompt_builder", prompt_builder)
+        pipe.connect("retriever_1.documents", "prompt_builder.documents")
+        pipe.connect("retriever_2.documents", "prompt_builder.documents")
+
+        result = pipe.run({"retriever_1": {"query": "Paris"}, "retriever_2": {"query": "Berlin"}})
+
+        assert "Paris" in result["prompt_builder"]["prompt"]
+        assert "Berlin" in result["prompt_builder"]["prompt"]
 
     def test_example_in_pipeline_simple(self):
         default_template = "This is the default prompt:\n Query: {{query}}"

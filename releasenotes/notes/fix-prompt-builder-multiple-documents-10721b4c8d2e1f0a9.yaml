@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Fixed ``PromptBuilder`` rejecting a second connection to ``documents`` when wiring multiple retrievers
+    into a pipeline. The ``documents`` template variable is now typed as ``list[Document]`` so the pipeline
+    can aggregate multiple document lists before rendering the prompt.

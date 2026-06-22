@@ -6,11 +6,15 @@ from typing import Any, Literal
 
 from jinja2.sandbox import SandboxedEnvironment
 
-from haystack import component, default_to_dict, logging
+from haystack import Document, component, default_to_dict, logging
 from haystack.utils import Jinja2TimeExtension
 from haystack.utils.jinja2_extensions import _extract_template_variables_and_assignments
 
 logger = logging.getLogger(__name__)
+
+_PROMPT_VARIABLE_INPUT_TYPES: dict[str, type] = {
+    "documents": list[Document],
+}
 
 
 @component
@@ -195,10 +199,12 @@ class PromptBuilder:
 
         # setup inputs
         for var in self.variables:
+            input_type = _PROMPT_VARIABLE_INPUT_TYPES.get(var, Any)
             if self.required_variables == "*" or var in self.required_variables:
-                component.set_input_type(self, var, Any)
+                component.set_input_type(self, var, input_type)
             else:
-                component.set_input_type(self, var, Any, "")
+                default = [] if var == "documents" else ""
+                component.set_input_type(self, var, input_type, default)
 
     def to_dict(self) -> dict[str, Any]:
         """
