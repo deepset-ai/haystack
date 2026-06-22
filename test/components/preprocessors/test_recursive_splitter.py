@@ -733,6 +733,41 @@ def test_run_split_by_dot_and_overlap_1_word_unit():
     assert chunks[4].content == "This is sentence four."
 
 
+def test_run_split_by_dot_and_overlap_1_word_unit_split_idx_start():
+    """
+    Regression test: split_idx_start must be a character offset into the original text,
+    even when split_unit="word" and split_overlap > 0.
+
+    Previously, self.split_overlap (a word count) was subtracted directly from a character
+    counter, producing wrong offsets for every chunk after the first.
+    """
+    splitter = RecursiveDocumentSplitter(split_length=4, split_overlap=1, separators=["."], split_unit="word")
+    text = "This is sentence one. This is sentence two. This is sentence three. This is sentence four."
+    chunks = splitter.run([Document(content=text)])["documents"]
+    assert len(chunks) == 5
+    for chunk in chunks:
+        # split_idx_start must equal the character index of the chunk content in the original text
+        assert chunk.meta["split_idx_start"] == text.index(chunk.content), (
+            f"Wrong split_idx_start for chunk {chunk.content!r}: "
+            f"got {chunk.meta['split_idx_start']}, expected {text.index(chunk.content)}"
+        )
+
+
+def test_run_split_by_dot_and_overlap_2_word_unit_split_idx_start():
+    """
+    Regression test for split_idx_start correctness with word-unit overlap=2.
+    """
+    splitter = RecursiveDocumentSplitter(split_length=5, split_overlap=2, separators=["."], split_unit="word")
+    text = "One two three four five. Six seven eight nine ten. Eleven twelve thirteen."
+    chunks = splitter.run([Document(content=text)])["documents"]
+    assert len(chunks) == 4
+    for chunk in chunks:
+        assert chunk.meta["split_idx_start"] == text.index(chunk.content), (
+            f"Wrong split_idx_start for chunk {chunk.content!r}: "
+            f"got {chunk.meta['split_idx_start']}, expected {text.index(chunk.content)}"
+        )
+
+
 def test_run_trigger_dealing_with_remaining_word_larger_than_split_length():
     splitter = RecursiveDocumentSplitter(split_length=3, split_overlap=2, separators=["."], split_unit="word")
     text = """A simple sentence1. A bright sentence2. A clever sentence3"""

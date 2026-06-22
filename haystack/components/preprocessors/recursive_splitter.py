@@ -447,7 +447,19 @@ class RecursiveDocumentSplitter:
 
             # keep the new chunk doc and update the current position
             new_docs.append(new_doc)
-            current_position += len(chunk) - (self.split_overlap if split_nr < len(chunks) - 1 else 0)
+            # current_position is always a character index into the original document text.
+            # When split_overlap > 0, the tail of this chunk is re-prepended to the next chunk,
+            # so we must advance by (char length of chunk) minus (char length of the overlap suffix).
+            # self.split_overlap is in split_units (words/chars/tokens), NOT characters, so we cannot
+            # subtract it directly from a character offset.  Instead we ask _get_overlap() for the
+            # actual overlap string and use its character length, which is always correct regardless
+            # of split_unit.
+            if self.split_overlap > 0 and split_nr < len(chunks) - 1:
+                overlap_str, _ = self._get_overlap([doc.content for doc in new_docs])  # type: ignore[misc]
+                overlap_char_len = len(overlap_str)
+            else:
+                overlap_char_len = 0
+            current_position += len(chunk) - overlap_char_len
 
         return new_docs
 
