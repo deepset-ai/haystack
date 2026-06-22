@@ -203,9 +203,14 @@ def test_output_type_serialization_typing_generic_with_nonetype():
     assert serialize_type(Tuple[int, type(None)]) == "typing.Tuple[int, None]"
     assert serialize_type(List[type(None)]) == "typing.List[None]"
     # A Union with more than two members that includes None must keep None as well.
-    assert serialize_type(Union[str, int, None]) == "typing.Union[str, int, None]"
-    # Optional must still be serialized without a redundant trailing None.
-    assert serialize_type(Optional[str]) == "typing.Optional[str]"
+    # On Python 3.14+, typing.Union is implemented as types.UnionType, so serialization uses PEP 604 syntax.
+    if sys.version_info >= (3, 14):
+        assert serialize_type(Union[str, int, None]) == "str | int | None"
+        assert serialize_type(Optional[str]) == "str | None"
+    else:
+        assert serialize_type(Union[str, int, None]) == "typing.Union[str, int, None]"
+        # Optional must still be serialized without a redundant trailing None.
+        assert serialize_type(Optional[str]) == "typing.Optional[str]"
 
 
 def test_output_type_round_trip_typing_generic_with_nonetype():

@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import shutil
 import sys
 from pathlib import Path
 from unittest.mock import MagicMock, patch
@@ -16,6 +17,9 @@ from haystack.dataclasses import ByteStream, Document
 from haystack.utils.device import ComponentDevice, Device
 
 SAMPLES_PATH = Path(__file__).parent.parent.parent / "test_files"
+
+# LocalWhisperTranscriber loads non-wav audio via ffmpeg; skip live tests when it is not installed.
+_FFMPEG_AVAILABLE = shutil.which("ffmpeg") is not None
 
 
 class TestLocalWhisperTranscriber:
@@ -178,6 +182,7 @@ class TestLocalWhisperTranscriber:
     @pytest.mark.integration
     @pytest.mark.slow
     @pytest.mark.skipif(sys.platform in ["win32", "cygwin"], reason="ffmpeg not installed on Windows CI")
+    @pytest.mark.skipif(not _FFMPEG_AVAILABLE, reason="ffmpeg not installed")
     def test_whisper_local_transcriber(self, test_files_path):
         comp = LocalWhisperTranscriber(model="tiny", whisper_params={"language": "english"})
         output = comp.run(
@@ -208,6 +213,7 @@ class TestLocalWhisperTranscriber:
     @pytest.mark.integration
     @pytest.mark.slow
     @pytest.mark.skipif(sys.platform in ["win32", "cygwin"], reason="ffmpeg not installed on Windows CI")
+    @pytest.mark.skipif(not _FFMPEG_AVAILABLE, reason="ffmpeg not installed")
     def test_whisper_local_transcriber_pipeline_and_url_source(self):
         pipe = Pipeline()
         pipe.add_component("fetcher", LinkContentFetcher())
