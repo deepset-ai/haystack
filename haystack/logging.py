@@ -235,10 +235,9 @@ def _patch_structlog_call_information(logger: logging.Logger) -> None:
         if not isinstance(logger, _FixedFindCallerLogger):
             return
 
-        # Copied from structlog's `_FixedFindCallerLogger.findCaller`, only adding `haystack.logging` to the list of
-        # ignored frames so our own logging wrappers don't show up as the caller. We deliberately do not forward
-        # `stacklevel` to `_find_first_app_frame_and_name`: that parameter only exists in structlog >= 25.5.0 and
-        # structlog is an optional dependency, so forwarding it would break logging on older versions.
+        # Copied from structlog's `_FixedFindCallerLogger.findCaller`, adding `haystack.logging` to the ignored
+        # frames. We don't forward `stacklevel` to `_find_first_app_frame_and_name` (added in structlog 25.5.0):
+        # structlog is optional and may be older.
         def findCaller(stack_info: bool = False, stacklevel: int = 1) -> tuple[str, int, str, str | None]:  # noqa: ARG001
             f, _name = _find_first_app_frame_and_name(["logging", "haystack.logging"])
             sinfo = _format_stack(f) if stack_info else None
@@ -393,10 +392,9 @@ def configure_logging(
         # We only need that in sophisticated production setups where we want to correlate logs with traces
         shared_processors.append(correlate_logs_with_traces)
 
-    # `structlog.configure` writes to a single process-global configuration that affects *every* native structlog
-    # logger in the process, not just Haystack's. We therefore only touch it when explicitly asked to. The import-time
-    # auto-config (`configure_structlog=False`) skips it and relies solely on the scoped handler installed below to
-    # format Haystack's own (stdlib) logs, leaving the host application's native structlog loggers untouched.
+    # `structlog.configure` is process-global: it affects every native structlog logger, not just Haystack's. We only
+    # configure it when explicitly asked (`configure_structlog`); the import-time call skips it and relies on the
+    # scoped handler below to format Haystack's own logs, leaving the host app's structlog loggers untouched.
     if configure_structlog:
         structlog.configure(
             # `filter_by_level` reads the effective level from the underlying stdlib logger on *every* call, so
@@ -444,14 +442,11 @@ def configure_logging(
     # Use OUR `ProcessorFormatter` to format all `logging` entries.
     handler.setFormatter(formatter)
 
-    # By default we attach to Haystack's own namespaces so that we only format Haystack's log records and leave the
-    # loggers of the host application and other libraries in the same process untouched. Pass `logger_name=""` to
-    # attach to the root logger instead (legacy behavior - formats every record in the process).
+    # Attach the handler to the target logger(s) - Haystack's own namespaces by default (see `logger_name`).
     logger_names = [logger_name] if isinstance(logger_name, str) else list(logger_name)
 
-    # Remove our handler from every logger that currently carries it before re-installing. This keeps re-configuration
-    # idempotent and, crucially, prevents records from being emitted twice when the target changes (e.g. switching to
-    # the root logger via `logger_name=""` while a previous call left handlers on the namespace loggers).
+    # Remove our handler from every logger that carries it before re-installing: keeps re-configuration idempotent and
+    # prevents double emission when the target changes (e.g. switching to the root logger via `logger_name=""`).
     existing_loggers = [logging.getLogger(), *logging.Logger.manager.loggerDict.values()]
     for existing_logger in existing_loggers:
         if isinstance(existing_logger, logging.Logger) and any(

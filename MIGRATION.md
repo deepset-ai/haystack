@@ -873,3 +873,29 @@ store.write_documents(new_documents, policy=DuplicatePolicy.OVERWRITE)
 new_ids = {doc.id for doc in new_documents}
 store.delete_documents([doc.id for doc in old_documents if doc.id not in new_ids])
 ```
+
+### Haystack logging no longer reconfigures logging for the whole process
+
+**What changed:** Importing Haystack no longer attaches its formatting handler to the root logger, and no longer
+configures `structlog` process-wide. The handler is now scoped to Haystack's own logger namespaces (`haystack`,
+`haystack_integrations`, `haystack_experimental`), and the global `structlog` configuration is set only when you call
+`configure_logging()` explicitly. As a result, importing Haystack no longer reformats the logs of the host application
+or other libraries running in the same process.
+
+**Why:** Haystack should behave as a well-mannered library when it runs alongside other services in the same process,
+rather than taking over logging for the whole process.
+
+**How to migrate:** If you relied on Haystack formatting every log record in the process, opt back in explicitly.
+
+Before (v2.x):
+```python
+import haystack  # formatted every log record in the process and configured structlog globally
+```
+
+After (v3.0):
+```python
+from haystack import logging
+
+# Restore the old behavior: format every log record in the process (also configures structlog globally).
+logging.configure_logging(logger_name="")
+```
