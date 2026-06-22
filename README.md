@@ -24,8 +24,8 @@
 | haystack/components/classifiers/document\_language\_classifier.py                   |       39 |        0 |    100% |           |
 | haystack/components/classifiers/zero\_shot\_document\_classifier.py                 |       60 |        5 |     92% |150-152, 229, 232 |
 | haystack/components/connectors/\_\_init\_\_.py                                      |        5 |        0 |    100% |           |
-| haystack/components/connectors/openapi.py                                           |       24 |        0 |    100% |           |
-| haystack/components/connectors/openapi\_service.py                                  |      146 |       55 |     62% |51-140, 338, 365, 373 |
+| haystack/components/connectors/openapi.py                                           |       26 |        0 |    100% |           |
+| haystack/components/connectors/openapi\_service.py                                  |      148 |       55 |     63% |52-141, 347, 374, 382 |
 | haystack/components/converters/\_\_init\_\_.py                                      |        5 |        0 |    100% |           |
 | haystack/components/converters/azure.py                                             |      213 |       22 |     90% |127, 156-158, 205, 269-270, 276, 284, 291, 298-303, 311, 320, 356-357, 371, 412-418, 478 |
 | haystack/components/converters/csv.py                                               |       88 |        4 |     95% |161-162, 184-185 |
@@ -42,7 +42,7 @@
 | haystack/components/converters/markdown.py                                          |       69 |       10 |     86% |102, 115-117, 122-128, 146, 167-172 |
 | haystack/components/converters/msg.py                                               |       75 |        5 |     93% |91, 165-167, 179 |
 | haystack/components/converters/multi\_file\_converter.py                            |       50 |        0 |    100% |           |
-| haystack/components/converters/openapi\_functions.py                                |      117 |       25 |     79% |86-87, 100-103, 111-112, 139, 144, 159-160, 180-187, 192-195, 231-232, 250, 254-258 |
+| haystack/components/converters/openapi\_functions.py                                |      119 |       25 |     79% |95-96, 109-112, 120-121, 148, 153, 168-169, 189-196, 201-204, 240-241, 259, 263-267 |
 | haystack/components/converters/output\_adapter.py                                   |       65 |        1 |     98% |       129 |
 | haystack/components/converters/pdfminer.py                                          |       68 |        0 |    100% |           |
 | haystack/components/converters/pptx.py                                              |       69 |        2 |     97% |     89-90 |
@@ -266,7 +266,7 @@
 | haystack/utils/type\_serialization.py                                               |      112 |       12 |     89% |62, 64, 178-179, 190-193, 199, 215-218 |
 | haystack/utils/url\_validation.py                                                   |        4 |        0 |    100% |           |
 | haystack/version.py                                                                 |        5 |        2 |     60% |      9-10 |
-| **TOTAL**                                                                           | **17950** | **1221** | **93%** |           |
+| **TOTAL**                                                                           | **17956** | **1221** | **93%** |           |
 
 
 ## Setup coverage badge
