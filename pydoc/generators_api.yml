@@ -6,6 +6,7 @@ loaders:
         "chat/azure_responses",
         "chat/fallback",
         "chat/llm",
+        "chat/mock",
         "chat/openai",
         "chat/openai_responses",
         "openai_image_generator",
