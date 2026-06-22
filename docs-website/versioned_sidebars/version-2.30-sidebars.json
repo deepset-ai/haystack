@@ -365,6 +365,7 @@
             "pipeline-components/extractors/namedentityextractor",
             "pipeline-components/extractors/presidioentityextractor",
             "pipeline-components/extractors/regextextextractor",
+            "pipeline-components/extractors/spacynamedentityextractor",
             "pipeline-components/extractors/transformersnamedentityextractor"
           ]
         },
@@ -486,6 +487,7 @@
             "pipeline-components/preprocessors/documentsplitter",
             "pipeline-components/preprocessors/embeddingbaseddocumentsplitter",
             "pipeline-components/preprocessors/hierarchicaldocumentsplitter",
+            "pipeline-components/preprocessors/markdownheadersplitter",
             "pipeline-components/preprocessors/pythoncodesplitter",
             "pipeline-components/preprocessors/recursivesplitter",
             "pipeline-components/preprocessors/textcleaner",
@@ -578,6 +580,7 @@
             "pipeline-components/retrievers/opensearchbm25retriever",
             "pipeline-components/retrievers/opensearchembeddingretriever",
             "pipeline-components/retrievers/opensearchhybridretriever",
+            "pipeline-components/retrievers/opensearchsqlretriever",
             "pipeline-components/retrievers/oracleembeddingretriever",
             "pipeline-components/retrievers/oraclekeywordretriever",
             "pipeline-components/retrievers/pgvectorembeddingretriever",
