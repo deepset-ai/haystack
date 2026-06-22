@@ -1,6 +1,7 @@
 headerPath = "license-header.txt"
 
 excludes = [
+    ".clusterfuzzlite",
     "*.csv",
     "*.feature",
     "*.html",
