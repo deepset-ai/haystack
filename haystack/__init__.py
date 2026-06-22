@@ -18,10 +18,10 @@ from haystack.dataclasses import Answer, Document, ExtractedAnswer, GeneratedAns
 from haystack.version import __version__  # noqa: F401
 
 # Initialize the logging configuration.
-# This is a no-op unless `structlog` is installed. `force=False` means we only install our own scoped logging handler
-# (so Haystack's logs are formatted) without touching the process-global `structlog` configuration - importing
-# Haystack must not reconfigure `structlog` for the host application's own native `structlog` loggers.
-haystack.logging.configure_logging(force=False)
+# This is a no-op unless `structlog` is installed. `configure_structlog=False` means we only install our own scoped
+# logging handler (so Haystack's logs are formatted) without touching the process-global `structlog` configuration -
+# importing Haystack must not reconfigure `structlog` for the host application's own native `structlog` loggers.
+haystack.logging.configure_logging(configure_structlog=False)
 
 # Same for tracing (no op if `opentelemetry` or `ddtrace` is not installed)
 haystack.tracing.auto_enable_tracing()

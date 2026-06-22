@@ -11,6 +11,8 @@ import typing
 from collections.abc import Sequence
 from typing import Any
 
+import haystack.utils.jupyter
+
 if typing.TYPE_CHECKING:
     from structlog.typing import EventDict, Processor, WrappedLogger
 
@@ -316,7 +318,7 @@ def configure_logging(
     use_json: bool | None = None,
     logger_name: str | Sequence[str] = ("haystack", "haystack_integrations", "haystack_experimental"),
     propagate: bool = True,
-    force: bool = True,
+    configure_structlog: bool = True,
 ) -> None:
     """
     Configure logging for Haystack.
@@ -342,15 +344,13 @@ def configure_logging(
         capturing tools such as `pytest`'s `caplog`. Set it to `False` to make Haystack fully own the output of its
         own logs - this avoids duplicate log lines when the host application also configures the root logger. It has
         no effect when `logger_name=""` (the root logger has no ancestors).
-    :param force:
-        Whether this call owns the process-global `structlog` configuration. The default (`True`) means an explicit
-        call configures `structlog` and takes over any configuration set up by someone else. Pass `False` (as the
-        import-time call in `haystack/__init__.py` does) to leave the global `structlog` configuration untouched and
-        only install our own scoped handler so Haystack's own logs are formatted. This keeps merely importing Haystack
-        from reconfiguring `structlog` for the host application's own native `structlog` loggers.
+    :param configure_structlog:
+        Whether to configure the process-global `structlog` (thereby taking over any configuration set up by someone
+        else). The default (`True`) is what an explicit call should do. Pass `False` (as the import-time call in
+        `haystack/__init__.py` does) to leave the global `structlog` configuration untouched and only install our own
+        scoped handler so Haystack's own logs are formatted. This keeps merely importing Haystack from reconfiguring
+        `structlog` for the host application's own native `structlog` loggers.
     """
-    import haystack.utils.jupyter  # to avoid circular imports
-
     try:
         import structlog
         from structlog.processors import ExceptionRenderer
@@ -394,10 +394,10 @@ def configure_logging(
         shared_processors.append(correlate_logs_with_traces)
 
     # `structlog.configure` writes to a single process-global configuration that affects *every* native structlog
-    # logger in the process, not just Haystack's. We therefore only touch it on an explicit (forced) call. The
-    # import-time auto-config (`force=False`) skips it and relies solely on the scoped handler installed below to
+    # logger in the process, not just Haystack's. We therefore only touch it when explicitly asked to. The import-time
+    # auto-config (`configure_structlog=False`) skips it and relies solely on the scoped handler installed below to
     # format Haystack's own (stdlib) logs, leaving the host application's native structlog loggers untouched.
-    if force:
+    if configure_structlog:
         structlog.configure(
             # `filter_by_level` reads the effective level from the underlying stdlib logger on *every* call, so
             # changes to the log level made after `configure_logging` runs (e.g. by the host app) are respected.
