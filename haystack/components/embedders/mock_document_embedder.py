@@ -128,6 +128,9 @@ class MockDocumentEmbedder:
             init_params["embedding_fn"] = deserialize_callable(embedding_fn)
         return default_from_dict(cls, data)
 
+    def warm_up(self) -> None:
+        """No-op warm up, provided for interface compatibility with real Embedders."""
+
     def _prepare_text_to_embed(self, document: Document) -> str:
         """Concatenate the document content with the metadata fields to embed, mirroring real Document Embedders."""
         meta_values_to_embed = [

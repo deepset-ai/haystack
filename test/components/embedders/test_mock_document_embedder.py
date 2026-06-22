@@ -85,6 +85,11 @@ class TestMockDocumentEmbedder:
         async_embedding = (await embedder.run_async(documents))["documents"][0].embedding
         assert async_embedding == embedder.run(documents)["documents"][0].embedding
 
+    def test_warm_up_is_noop(self):
+        embedder = MockDocumentEmbedder(dimension=8)
+        embedder.warm_up()  # callable and harmless
+        assert len(embedder.run([Document(content="hello")])["documents"][0].embedding) == 8
+
     @pytest.mark.parametrize(
         "embedder",
         [

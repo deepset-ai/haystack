@@ -111,6 +111,9 @@ class MockTextEmbedder:
             init_params["embedding_fn"] = deserialize_callable(embedding_fn)
         return default_from_dict(cls, data)
 
+    def warm_up(self) -> None:
+        """No-op warm up, provided for interface compatibility with real Embedders."""
+
     def _embed(self, text: str) -> list[float]:
         """Produce the embedding for the prepared text according to the configured mode."""
         if self.embedding_fn is not None:

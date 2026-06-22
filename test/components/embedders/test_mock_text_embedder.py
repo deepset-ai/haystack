@@ -86,6 +86,11 @@ class TestMockTextEmbedder:
         embedder = MockTextEmbedder(dimension=8)
         assert (await embedder.run_async("hello"))["embedding"] == embedder.run("hello")["embedding"]
 
+    def test_warm_up_is_noop(self):
+        embedder = MockTextEmbedder(dimension=8)
+        embedder.warm_up()  # callable and harmless
+        assert len(embedder.run("hello")["embedding"]) == 8
+
     @pytest.mark.parametrize(
         "embedder",
         [
