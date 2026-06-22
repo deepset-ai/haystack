@@ -927,7 +927,13 @@ def _convert_chat_message_to_responses_api_format(message: ChatMessage) -> list[
     if reasonings:
         formatted_reasonings = []
         for reasoning in reasonings:
-            reasoning_item = {"summary": [], **(reasoning.extra)}
+            # Streaming events (e.g. response.reasoning_summary_text.delta) store event-level
+            # fields like item_id, output_index, summary_index, event_id, sequence_number into
+            # reasoning.extra. Those are not valid reasoning input item fields and the API
+            # rejects them with "Unknown parameter" when sent back in subsequent turns.
+            _valid_reasoning_fields = {"id", "type", "encrypted_content", "status"}
+            filtered_extra = {k: v for k, v in reasoning.extra.items() if k in _valid_reasoning_fields}
+            reasoning_item = {"summary": [], **filtered_extra}
             if reasoning.reasoning_text:
                 reasoning_item["summary"] = [{"text": reasoning.reasoning_text, "type": "summary_text"}]
             formatted_reasonings.append(reasoning_item)
