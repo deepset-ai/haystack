@@ -436,6 +436,35 @@ print(result["score"])
 # 0.8869
 ```
 
+#### __init__
+
+```python
+__init__(document_comparison_field: str = 'content') -> None
+```
+
+Create a DocumentNDCGEvaluator component.
+
+**Parameters:**
+
+- **document_comparison_field** (<code>str</code>) – The Document field to use for comparison. Possible options:
+- `"content"`: uses `doc.content`
+- `"id"`: uses `doc.id`
+- A `meta.` prefix followed by a key name: uses `doc.meta["<key>"]`
+  (e.g. `"meta.file_id"`, `"meta.page_number"`)
+  Nested keys are supported (e.g. `"meta.source.url"`).
+
+#### to_dict
+
+```python
+to_dict() -> dict[str, Any]
+```
+
+Serializes the component to a dictionary.
+
+**Returns:**
+
+- <code>dict\[str, Any\]</code> – Dictionary with serialized data.
+
 #### run
 
 ```python
@@ -478,7 +507,7 @@ Validate the input parameters.
 
 **Raises:**
 
-- <code>ValueError</code> – If the ground_truth_documents or the retrieved_documents are an empty a list.
+- <code>ValueError</code> – If the ground_truth_documents or the retrieved_documents are an empty list.
   If the length of ground_truth_documents and retrieved_documents differs.
   If any list of documents in ground_truth_documents contains a mix of documents with and without a score.
 
@@ -507,6 +536,10 @@ calculate_idcg(gt_docs: list[Document]) -> float
 ```
 
 Calculate the ideal discounted cumulative gain (IDCG) of the ground truth documents.
+
+Ground truth documents whose comparison value cannot be determined (e.g. missing meta key)
+are excluded, since they can never be matched in `calculate_dcg` either. Including them here
+would inflate the IDCG and make it impossible for NDCG to reach 1.0 for a perfect retrieval.
 
 **Parameters:**
 
