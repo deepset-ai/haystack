@@ -23,7 +23,6 @@ _import_structure = {
     "file_content": ["FileContent"],
     "document": ["Document"],
     "sparse_embedding": ["SparseEmbedding"],
-    "state": ["State"],
     "streaming_chunk": [
         "AsyncStreamingCallbackT",
         "ComponentInfo",

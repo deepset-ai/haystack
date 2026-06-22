@@ -365,6 +365,7 @@
             "pipeline-components/extractors/namedentityextractor",
             "pipeline-components/extractors/presidioentityextractor",
             "pipeline-components/extractors/regextextextractor",
+            "pipeline-components/extractors/spacynamedentityextractor",
             "pipeline-components/extractors/transformersnamedentityextractor"
           ]
         },
@@ -486,6 +487,7 @@
             "pipeline-components/preprocessors/documentsplitter",
             "pipeline-components/preprocessors/embeddingbaseddocumentsplitter",
             "pipeline-components/preprocessors/hierarchicaldocumentsplitter",
+            "pipeline-components/preprocessors/markdownheadersplitter",
             "pipeline-components/preprocessors/pythoncodesplitter",
             "pipeline-components/preprocessors/recursivesplitter",
             "pipeline-components/preprocessors/textcleaner",

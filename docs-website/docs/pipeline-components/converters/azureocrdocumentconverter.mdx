@@ -17,9 +17,9 @@ description: "`AzureOCRDocumentConverter` converts files to documents using Azur
 | **Mandatory init variables** | `endpoint`: The endpoint of your Azure resource  <br /> <br />`api_key`: The API key of your Azure resource. Can be set with `AZURE_AI_API_KEY` environment variable. |
 | **Mandatory run variables** | `sources`: A list of file paths |
 | **Output variables** | `documents`: A list of documents  <br /> <br />`raw_azure_response`: A list of raw responses from Azure |
-| **API reference** | [Converters](/reference/converters-api) |
-| **GitHub link** | https://github.com/deepset-ai/haystack/blob/main/haystack/components/converters/azure.py |
-| **Package name** | `haystack-ai` |
+| **API reference** | [Azure Form Recognizer](/reference/integrations-azure_form_recognizer) |
+| **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/azure_form_recognizer |
+| **Package name** | `azure-form-recognizer-haystack` |
 
 </div>
 
@@ -35,10 +35,10 @@ The `AzureOCRDocumentConverter` doesn’t extract the tables from a file as plai
 
 ## Usage
 
-You need to install `azure-ai-formrecognizer` package to use the `AzureOCRDocumentConverter`:
+The `AzureOCRDocumentConverter` is part of the `azure-form-recognizer-haystack` integration package. Install it with:
 
 ```shell
-pip install "azure-ai-formrecognizer>=3.2.0b2"
+pip install azure-form-recognizer-haystack
 ```
 
 ### On its own
@@ -46,7 +46,9 @@ pip install "azure-ai-formrecognizer>=3.2.0b2"
 ```python
 from pathlib import Path
 
-from haystack.components.converters import AzureOCRDocumentConverter
+from haystack_integrations.components.converters.azure_form_recognizer import (
+    AzureOCRDocumentConverter,
+)
 from haystack.utils import Secret
 
 converter = AzureOCRDocumentConverter(
@@ -62,7 +64,9 @@ converter.run(sources=[Path("my_file.pdf")])
 ```python
 from haystack import Pipeline
 from haystack.document_stores.in_memory import InMemoryDocumentStore
-from haystack.components.converters import AzureOCRDocumentConverter
+from haystack_integrations.components.converters.azure_form_recognizer import (
+    AzureOCRDocumentConverter,
+)
 from haystack.components.preprocessors import DocumentCleaner
 from haystack.components.preprocessors import DocumentSplitter
 from haystack.components.writers import DocumentWriter
