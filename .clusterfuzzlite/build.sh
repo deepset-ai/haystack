@@ -10,7 +10,11 @@ pip3 install .
 
 for harness in "$SRC"/haystack/test/fuzz/fuzz_*.py; do
   name=$(basename "$harness" .py)
-  compile_python_fuzzer "$harness"
+  # --collect-submodules numpy: PyInstaller's static analysis misses NumPy's
+  # dynamically-loaded submodules (e.g. numpy._core._exceptions), which makes
+  # the frozen binary crash on startup ("ModuleNotFoundError") and fails the
+  # ClusterFuzzLite bad-build check. Bundling all numpy submodules avoids that.
+  compile_python_fuzzer "$harness" --collect-submodules numpy
 
   # Ship a seed corpus if one exists for this harness. The runner unpacks
   # "<fuzzer>_seed_corpus.zip" next to the binary and seeds libFuzzer with it.
