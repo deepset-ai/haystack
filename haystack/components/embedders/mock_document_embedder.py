@@ -101,6 +101,7 @@ class MockDocumentEmbedder:
         self.meta_fields_to_embed = meta_fields_to_embed or []
         self.embedding_separator = embedding_separator
         self.progress_bar = progress_bar
+        self._is_warmed_up = False
 
     def to_dict(self) -> dict[str, Any]:
         """Serialize the component to a dictionary."""
@@ -130,6 +131,7 @@ class MockDocumentEmbedder:
 
     def warm_up(self) -> None:
         """No-op warm up, provided for interface compatibility with real Embedders."""
+        self._is_warmed_up = True
 
     def _prepare_text_to_embed(self, document: Document) -> str:
         """Concatenate the document content with the metadata fields to embed, mirroring real Document Embedders."""
@@ -161,6 +163,9 @@ class MockDocumentEmbedder:
             - `meta`: Metadata about the (mock) model.
         :raises TypeError: If `documents` is not a list of `Document` objects.
         """
+        if not self._is_warmed_up:
+            self.warm_up()
+
         if not isinstance(documents, list) or (documents and not isinstance(documents[0], Document)):
             raise TypeError(
                 "MockDocumentEmbedder expects a list of Documents as input. "

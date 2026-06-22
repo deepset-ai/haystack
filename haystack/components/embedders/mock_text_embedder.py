@@ -87,6 +87,7 @@ class MockTextEmbedder:
         self.meta = meta or {}
         self.prefix = prefix
         self.suffix = suffix
+        self._is_warmed_up = False
 
     def to_dict(self) -> dict[str, Any]:
         """Serialize the component to a dictionary."""
@@ -113,6 +114,7 @@ class MockTextEmbedder:
 
     def warm_up(self) -> None:
         """No-op warm up, provided for interface compatibility with real Embedders."""
+        self._is_warmed_up = True
 
     def _embed(self, text: str) -> list[float]:
         """Produce the embedding for the prepared text according to the configured mode."""
@@ -133,6 +135,9 @@ class MockTextEmbedder:
             - `meta`: Metadata about the (mock) model.
         :raises TypeError: If `text` is not a string.
         """
+        if not self._is_warmed_up:
+            self.warm_up()
+
         if not isinstance(text, str):
             raise TypeError(
                 "MockTextEmbedder expects a string as an input. "

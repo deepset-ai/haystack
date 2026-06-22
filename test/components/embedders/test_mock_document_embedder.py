@@ -85,10 +85,15 @@ class TestMockDocumentEmbedder:
         async_embedding = (await embedder.run_async(documents))["documents"][0].embedding
         assert async_embedding == embedder.run(documents)["documents"][0].embedding
 
-    def test_warm_up_is_noop(self):
+    def test_warm_up_sets_flag_and_run_auto_warms(self):
         embedder = MockDocumentEmbedder(dimension=8)
-        embedder.warm_up()  # callable and harmless
-        assert len(embedder.run([Document(content="hello")])["documents"][0].embedding) == 8
+        assert embedder._is_warmed_up is False
+        embedder.warm_up()
+        assert embedder._is_warmed_up is True
+        # run auto-warms a fresh instance
+        fresh = MockDocumentEmbedder(dimension=8)
+        assert len(fresh.run([Document(content="hello")])["documents"][0].embedding) == 8
+        assert fresh._is_warmed_up is True
 
     @pytest.mark.parametrize(
         "embedder",
