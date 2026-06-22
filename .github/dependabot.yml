@@ -31,3 +31,11 @@ updates:
       interval: 'daily'
     cooldown:
       default-days: 1
+
+  # Keeps the digest-pinned OSS-Fuzz base-builder in .clusterfuzzlite/Dockerfile fresh.
+  - package-ecosystem: 'docker'
+    directory: '/.clusterfuzzlite'
+    schedule:
+      interval: 'daily'
+    cooldown:
+      default-days: 1
