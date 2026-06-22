@@ -1,0 +1,5 @@
+# Project configuration for ClusterFuzzLite (and a starting point for OSS-Fuzz).
+# https://google.github.io/clusterfuzzlite/
+language: python
+sanitizers:
+  - address
