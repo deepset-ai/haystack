@@ -284,18 +284,23 @@ class MockChatGenerator:
     def run(
         self,
         messages: list[ChatMessage] | str,
-        generation_kwargs: dict[str, Any] | None = None,  # noqa: ARG002
-        tools: ToolsType | None = None,  # noqa: ARG002
         streaming_callback: StreamingCallbackT | None = None,
+        generation_kwargs: dict[str, Any] | None = None,  # noqa: ARG002
+        *,
+        tools: ToolsType | None = None,  # noqa: ARG002
+        tools_strict: bool | None = None,  # noqa: ARG002
     ) -> dict[str, list[ChatMessage]]:
         """
         Return a predefined reply for the given messages without calling any API.
 
+        The signature mirrors `OpenAIChatGenerator.run` so the mock can be used as a positional drop-in replacement.
+
         :param messages: The conversation history as a list of `ChatMessage` instances or a single string.
-        :param generation_kwargs: Accepted for interface compatibility and ignored.
-        :param tools: Accepted for interface compatibility and ignored.
         :param streaming_callback: An optional callback invoked with reconstructed `StreamingChunk` objects. Overrides
             the callback set at initialization.
+        :param generation_kwargs: Accepted for interface compatibility and ignored.
+        :param tools: Accepted for interface compatibility and ignored.
+        :param tools_strict: Accepted for interface compatibility and ignored.
         :returns: A dictionary with a single key `replies` containing the predefined reply as a list of one
             `ChatMessage` (empty in echo mode when there is no message to echo).
         """
@@ -321,18 +326,24 @@ class MockChatGenerator:
     async def run_async(
         self,
         messages: list[ChatMessage] | str,
-        generation_kwargs: dict[str, Any] | None = None,  # noqa: ARG002
-        tools: ToolsType | None = None,  # noqa: ARG002
         streaming_callback: StreamingCallbackT | None = None,
+        generation_kwargs: dict[str, Any] | None = None,  # noqa: ARG002
+        *,
+        tools: ToolsType | None = None,  # noqa: ARG002
+        tools_strict: bool | None = None,  # noqa: ARG002
     ) -> dict[str, list[ChatMessage]]:
         """
         Asynchronously return a predefined reply for the given messages without calling any API.
 
+        The signature mirrors `OpenAIChatGenerator.run_async` so the mock can be used as a positional drop-in
+        replacement.
+
         :param messages: The conversation history as a list of `ChatMessage` instances or a single string.
-        :param generation_kwargs: Accepted for interface compatibility and ignored.
-        :param tools: Accepted for interface compatibility and ignored.
         :param streaming_callback: An optional callback invoked with reconstructed `StreamingChunk` objects. Overrides
             the callback set at initialization.
+        :param generation_kwargs: Accepted for interface compatibility and ignored.
+        :param tools: Accepted for interface compatibility and ignored.
+        :param tools_strict: Accepted for interface compatibility and ignored.
         :returns: A dictionary with a single key `replies` containing the predefined reply as a list of one
             `ChatMessage` (empty in echo mode when there is no message to echo).
         """

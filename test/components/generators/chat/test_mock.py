@@ -2,6 +2,8 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import inspect
+
 import pytest
 
 from haystack import Pipeline
@@ -127,6 +129,25 @@ class TestMockChatGenerator:
         assert chunks[-1].finish_reason == "stop"
         # the returned reply matches the predefined response
         assert result["replies"][0].text == "hello there friend"
+
+    def test_run_signature_matches_openai_order(self):
+        # run()/run_async() must mirror OpenAIChatGenerator's parameter order so the mock is a positional drop-in.
+        expected = [
+            ("self", inspect.Parameter.POSITIONAL_OR_KEYWORD),
+            ("messages", inspect.Parameter.POSITIONAL_OR_KEYWORD),
+            ("streaming_callback", inspect.Parameter.POSITIONAL_OR_KEYWORD),
+            ("generation_kwargs", inspect.Parameter.POSITIONAL_OR_KEYWORD),
+            ("tools", inspect.Parameter.KEYWORD_ONLY),
+            ("tools_strict", inspect.Parameter.KEYWORD_ONLY),
+        ]
+        for method in ("run", "run_async"):
+            params = list(inspect.signature(getattr(MockChatGenerator, method)).parameters.values())
+            assert [(p.name, p.kind) for p in params] == expected
+
+        # passing the callback as the 2nd positional arg must be treated as streaming_callback, not generation_kwargs
+        chunks: list[StreamingChunk] = []
+        MockChatGenerator("hi").run([ChatMessage.from_user("x")], chunks.append)
+        assert chunks
 
     async def test_streaming_callback_async(self):
         chunks: list[StreamingChunk] = []
