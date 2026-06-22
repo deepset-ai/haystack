@@ -135,8 +135,7 @@ class MockTextEmbedder:
             - `meta`: Metadata about the (mock) model.
         :raises TypeError: If `text` is not a string.
         """
-        if not self._is_warmed_up:
-            self.warm_up()
+        self.warm_up()
 
         if not isinstance(text, str):
             raise TypeError(

@@ -163,8 +163,7 @@ class MockDocumentEmbedder:
             - `meta`: Metadata about the (mock) model.
         :raises TypeError: If `documents` is not a list of `Document` objects.
         """
-        if not self._is_warmed_up:
-            self.warm_up()
+        self.warm_up()
 
         if not isinstance(documents, list) or (documents and not isinstance(documents[0], Document)):
             raise TypeError(
