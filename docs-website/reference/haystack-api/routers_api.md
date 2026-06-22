@@ -33,6 +33,10 @@ Each dictionary in this list represents a single route. Each route has these fou
 - `output_name`: The name you want to use to publish `output`. This name is used to connect
   the router to other components in the pipeline.
 
+An optional field `output_passthrough` can be set to `True` to treat `output` as a variable name
+instead of a Jinja2 template, passing the variable value directly. This is useful for routing
+complex non-basic types (dataclasses, Pydantic models, etc.) without Jinja2 processing.
+
 ### Usage example
 
 ```python
@@ -102,6 +106,64 @@ print(result)
 # >> {'router': {'few_items': 'Processing few items'}}
 ```
 
+### Passthrough routing for non-basic types
+
+Without `output_passthrough`, the router renders `output` as a Jinja2 template, which converts
+the value to its string representation. Custom types cannot survive that round-trip:
+
+```python
+# Without output_passthrough — the object is silently converted to a string
+routes = [
+    {
+        "condition": "{{True}}",
+        "output": "{{query}}",
+        "output_name": "out",
+        "output_type": ParsedQuery,
+    }
+]
+router = ConditionalRouter(routes)
+result = router.run(query=ParsedQuery(text="hello", intent="search", entities=[]))
+# result["out"] == "ParsedQuery(text='hello', intent='search', entities=[])"
+# ^^^ str, not ParsedQuery — the object was destroyed
+```
+
+Set `output_passthrough: True` to skip Jinja2 entirely and pass the value directly from kwargs:
+
+```python
+from haystack.components.routers import ConditionalRouter
+from dataclasses import dataclass, field
+
+@dataclass
+class ParsedQuery:
+    text: str
+    intent: str        # "search" | "chat"
+    entities: list[str] = field(default_factory=list)
+
+routes = [
+    {
+        "condition": "{{query.intent == 'search'}}",
+        "output": "query",           # variable name, not a Jinja2 template
+        "output_name": "search_query",
+        "output_type": ParsedQuery,
+        "output_passthrough": True,
+    },
+    {
+        "condition": "{{query.intent == 'chat'}}",
+        "output": "query",
+        "output_name": "chat_query",
+        "output_type": ParsedQuery,
+        "output_passthrough": True,
+    },
+]
+
+router = ConditionalRouter(routes)
+query = ParsedQuery(text="What is Haystack?", intent="search", entities=["Haystack"])
+result = router.run(query=query)
+
+assert isinstance(result["search_query"], ParsedQuery)  # type preserved
+assert result["search_query"] is query                  # same object, no copying
+```
+
 #### __init__
 
 ```python
@@ -121,10 +183,16 @@ Initializes the `ConditionalRouter` with a list of routes detailing the conditio
 - **routes** (<code>list\[Route\]</code>) – A list of dictionaries, each defining a route.
   Each route has these four elements:
 - `condition`: A Jinja2 string expression that determines if the route is selected.
-- `output`: A Jinja2 expression defining the route's output value.
+- `output`: A Jinja2 expression defining the route's output value, or a plain variable name
+  if `output_passthrough` is `True`.
 - `output_type`: The type of the output data (for example, `str`, `list[int]`).
 - `output_name`: The name you want to use to publish `output`. This name is used to connect
   the router to other components in the pipeline.
+- `output_passthrough` (optional): If `True`, treats `output` as a plain variable name and
+  passes the value directly from the input kwargs, skipping all Jinja2 processing. Useful
+  for routing complex non-basic types without template transformation.
+  Note: if the variable named in `output` is also listed in `optional_variables`, a missing
+  value at runtime will route `None` downstream rather than raising a `ValueError`.
 - **custom_filters** (<code>dict\[str, Callable\] | None</code>) – A dictionary of custom Jinja2 filters used in the condition expressions.
   For example, passing `{"my_filter": my_filter_fcn}` where:
 - `my_filter` is the name of the custom filter.
@@ -233,7 +301,8 @@ order they are listed. The method directs the flow of data to the output specifi
 
 - <code>NoRouteSelectedException</code> – If no `condition' in the routes is `True\`.
 - <code>RouteConditionException</code> – If there is an error parsing or evaluating the `condition` expression in the routes.
-- <code>ValueError</code> – If type validation is enabled and route type doesn't match actual value type.
+- <code>ValueError</code> – If type validation is enabled and the route output doesn't match the declared type, or if
+  `output_passthrough` is `True` and the variable named in `output` is not found in kwargs.
 
 ## document_length_router
 

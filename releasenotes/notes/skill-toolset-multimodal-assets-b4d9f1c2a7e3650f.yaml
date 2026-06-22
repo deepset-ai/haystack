@@ -1,0 +1,8 @@
+---
+enhancements:
+  - |
+    ``ToolCallResult`` can now carry ``FileContent`` parts, in addition to ``TextContent`` and ``ImageContent``.
+    A ``Tool`` can return a file (such as a PDF) as its result so a multimodal chat generator that supports file
+    inputs (for example ``OpenAIResponsesChatGenerator``) passes it straight to the model. Combine this with a
+    tool's ``outputs_to_string={"raw_result": True}`` to keep the content parts intact instead of converting
+    them to a string.

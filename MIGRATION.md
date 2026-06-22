@@ -102,6 +102,8 @@ pip install <new-package>
 | `from haystack.components.websearch import SearchApiWebSearch` | `searchapi-haystack` | `from haystack_integrations.components.websearch.searchapi import SearchApiWebSearch` |
 | `from haystack.components.classifiers import DocumentLanguageClassifier` | `langdetect-haystack` | `from haystack_integrations.components.classifiers.langdetect import DocumentLanguageClassifier` |
 | `from haystack.components.routers import TextLanguageRouter` | `langdetect-haystack` | `from haystack_integrations.components.routers.langdetect import TextLanguageRouter` |
+| `from haystack.components.audio import LocalWhisperTranscriber` | `whisper-haystack` | `from haystack_integrations.components.audio.whisper import LocalWhisperTranscriber` |
+| `from haystack.components.audio import RemoteWhisperTranscriber` | `whisper-haystack` | `from haystack_integrations.components.audio.whisper import RemoteWhisperTranscriber` |
 | `from haystack.components.extractors import NamedEntityExtractor` (Hugging Face backend) | `transformers-haystack` | `from haystack_integrations.components.extractors.transformers import TransformersNamedEntityExtractor` |
 | `from haystack.components.extractors import NamedEntityExtractor` (spaCy backend) | `spacy-haystack` | `from haystack_integrations.components.extractors.spacy import SpacyNamedEntityExtractor` |
 | `from haystack.components.embedders import SentenceTransformersTextEmbedder` | `sentence-transformers-haystack` | `from haystack_integrations.components.embedders.sentence_transformers import SentenceTransformersTextEmbedder` |
@@ -114,6 +116,9 @@ pip install <new-package>
 | `from haystack.tracing.datadog import DatadogTracer` | `datadog-haystack` | `from haystack_integrations.tracing.datadog import DatadogTracer` |
 | `from haystack.components.converters import TikaDocumentConverter` | `tika-haystack` | `from haystack_integrations.components.converters.tika import TikaDocumentConverter` |
 | `from haystack.components.converters import AzureOCRDocumentConverter` | `azure-form-recognizer-haystack` | `from haystack_integrations.components.converters.azure_form_recognizer import AzureOCRDocumentConverter` |
+| `from haystack.components.connectors import OpenAPIConnector` | `openapi-haystack` | `from haystack_integrations.components.connectors.openapi import OpenAPIConnector` |
+| `from haystack.components.connectors import OpenAPIServiceConnector` | `openapi-haystack` | `from haystack_integrations.components.connectors.openapi import OpenAPIServiceConnector` |
+| `from haystack.components.converters import OpenAPIServiceToFunctions` | `openapi-haystack` | `from haystack_integrations.components.converters.openapi import OpenAPIServiceToFunctions` |
 
 ### `DatadogTracer` moved to the `datadog-haystack` integration
 

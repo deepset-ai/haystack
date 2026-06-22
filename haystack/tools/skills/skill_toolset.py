@@ -5,6 +5,8 @@
 from typing import Annotated, Any
 
 from haystack.core.serialization import generate_qualified_class_name
+from haystack.dataclasses.file_content import FileContent
+from haystack.dataclasses.image_content import ImageContent
 from haystack.dataclasses.skill_info import SkillInfo
 from haystack.skill_stores.types.protocol import SkillStore
 from haystack.tools.from_function import create_tool_from_function
@@ -157,13 +159,20 @@ class SkillToolset(Toolset):
         def read_skill_file(
             name: Annotated[str, "Name of the skill that owns the file."],
             path: Annotated[str, "Path of the file relative to the skill directory, e.g. 'reference/forms.md'."],
-        ) -> str:
-            """Read a file bundled with a skill (reference docs, examples, templates)."""
+        ) -> str | list[ImageContent | FileContent]:
+            """Read a file bundled with a skill (reference docs, examples, templates, images, PDFs)."""
             # The store raises an actionable error (e.g. unknown skill) on failure. We let it propagate so the Agent
             # applies its own tool-failure policy.
-            return self._store.read_skill_file(name, path)
+            content = self._store.read_skill_file(name, path)
+            # Text is returned as-is; images/PDFs are wrapped in a list so they ride back as multimodal tool-result
+            # content parts for the model to ingest directly.
+            return content if isinstance(content, str) else [content]
 
-        return create_tool_from_function(function=read_skill_file, name="read_skill_file")
+        # raw_result keeps ImageContent/FileContent intact instead of stringifying them, so they reach the model as
+        # image/file content parts. This requires a multimodal-capable generator (e.g. OpenAIResponsesChatGenerator).
+        return create_tool_from_function(
+            function=read_skill_file, name="read_skill_file", outputs_to_string={"raw_result": True}
+        )
 
     def to_dict(self) -> dict[str, Any]:
         """

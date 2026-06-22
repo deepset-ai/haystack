@@ -4,6 +4,8 @@
 
 from typing import Any, Protocol
 
+from haystack.dataclasses.file_content import FileContent
+from haystack.dataclasses.image_content import ImageContent
 from haystack.dataclasses.skill_info import SkillInfo
 
 
@@ -44,13 +46,16 @@ class SkillStore(Protocol):
         """
         ...
 
-    def read_skill_file(self, name: str, path: str) -> str:
+    def read_skill_file(self, name: str, path: str) -> str | ImageContent | FileContent:
         """
-        Read a text file bundled with the named skill.
+        Read a file bundled with the named skill.
+
+        Implementations should return text files as a `str`, image files as an `ImageContent`, and PDFs as a
+        `FileContent`, so a multimodal agent can pass binary assets straight to the model.
 
         :param name: Skill name as returned by `list_skills`.
         :param path: Path of the file relative to the skill root (e.g. `"reference/forms.md"`).
-        :returns: The file's text content.
+        :returns: The file's text content (`str`), an `ImageContent` for images, or a `FileContent` for PDFs.
         :raises KeyError: If no skill with `name` exists.
         :raises FileNotFoundError: If the file does not exist within the skill.
         """
