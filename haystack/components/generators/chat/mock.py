@@ -14,7 +14,6 @@ from haystack import component, default_from_dict, default_to_dict, logging
 from haystack.components.generators.utils import _normalize_messages
 from haystack.dataclasses import (
     ChatMessage,
-    ChatRole,
     ComponentInfo,
     FinishReason,
     StreamingCallbackT,
@@ -49,8 +48,8 @@ class MockChatGenerator:
       Agents, where the first call returns a tool call and a later call returns the final answer.
     - **Dynamic response**: pass a `response_fn` callable that receives the input messages and returns the reply.
       This is useful when the reply should depend on the input, for example to echo back part of the prompt.
-    - **Echo (default)**: with no configuration, the component echoes back the text of the last user message. This
-      makes it usable out of the box for quick prototyping.
+    - **Echo (default)**: with no configuration, the component echoes back the text of the last message that has
+      text content. This makes it usable out of the box for quick prototyping.
 
     Pass `ChatMessage` objects (rather than plain strings) to return tool calls or reasoning content, which is handy
     for exercising tool-calling pipelines without a real model.
@@ -91,7 +90,8 @@ class MockChatGenerator:
         :param responses: The predefined response(s) to return. Accepts a single string or `ChatMessage` (returned on
             every call), or a non-empty list of strings and/or `ChatMessage` objects that are returned in order,
             cycling back to the start once exhausted. Strings are wrapped into assistant `ChatMessage` objects.
-            Mutually exclusive with `response_fn`. If neither is provided, the component echoes the last user message.
+            Mutually exclusive with `response_fn`. If neither is provided, the component echoes the last message with
+            text content.
         :param response_fn: An optional callable that receives the input messages and returns the reply as a string or
             `ChatMessage`. Use this for input-dependent responses. Mutually exclusive with `responses`. To support
             serialization, pass a named function (lambdas and nested functions cannot be serialized).
@@ -177,10 +177,7 @@ class MockChatGenerator:
 
     @staticmethod
     def _echo_text(messages: list[ChatMessage]) -> str | None:
-        """Return the text of the last user message, or the last message with text, for echo mode."""
-        for message in reversed(messages):
-            if message.role == ChatRole.USER and message.text:
-                return message.text
+        """Return the text of the last message that has text content, for echo mode."""
         for message in reversed(messages):
             if message.text:
                 return message.text
