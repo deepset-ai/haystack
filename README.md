@@ -27,7 +27,7 @@
 | haystack/components/connectors/openapi.py                                           |       24 |        0 |    100% |           |
 | haystack/components/connectors/openapi\_service.py                                  |      146 |       55 |     62% |51-140, 338, 365, 373 |
 | haystack/components/converters/\_\_init\_\_.py                                      |        5 |        0 |    100% |           |
-| haystack/components/converters/azure.py                                             |      211 |       22 |     90% |117, 146-148, 195, 259-260, 266, 274, 281, 288-293, 301, 310, 346-347, 361, 402-408, 468 |
+| haystack/components/converters/azure.py                                             |      213 |       22 |     90% |127, 156-158, 205, 269-270, 276, 284, 291, 298-303, 311, 320, 356-357, 371, 412-418, 478 |
 | haystack/components/converters/csv.py                                               |       88 |        4 |     95% |161-162, 184-185 |
 | haystack/components/converters/docx.py                                              |      159 |        1 |     99% |       262 |
 | haystack/components/converters/file\_to\_file\_content.py                           |       32 |        0 |    100% |           |
@@ -266,7 +266,7 @@
 | haystack/utils/type\_serialization.py                                               |      112 |       12 |     89% |62, 64, 178-179, 190-193, 199, 215-218 |
 | haystack/utils/url\_validation.py                                                   |        4 |        0 |    100% |           |
 | haystack/version.py                                                                 |        5 |        2 |     60% |      9-10 |
-| **TOTAL**                                                                           | **17948** | **1221** | **93%** |           |
+| **TOTAL**                                                                           | **17950** | **1221** | **93%** |           |
 
 
 ## Setup coverage badge
