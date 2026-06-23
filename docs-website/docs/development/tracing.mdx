@@ -113,7 +113,9 @@ To use your custom tracing backend with Haystack, follow these steps:
           self._tracer = tracer
 
       @contextlib.contextmanager
-      def trace(self, operation_name: str, tags: Optional[Dict[str, Any]] = None) -> Iterator[Span]:
+      def trace(
+          self, operation_name: str, tags: Optional[Dict[str, Any]] = None, parent_span: Optional[Span] = None
+      ) -> Iterator[Span]:
           with self._tracer.start_as_current_span(operation_name) as span:
               span = OpenTelemetrySpan(span)
               if tags:
