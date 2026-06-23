@@ -28,7 +28,7 @@ Instrumented applications typically send traces to a trace collector or a tracin
 Haystack automatically detects and enables tracing under the following circumstances:
 
 - If `opentelemetry-sdk` is installed and configured for OpenTelemetry.
-- If `ddtrace` is installed for Datadog.
+- If `ddtrace` is installed for Datadog. Note that this auto-enabling is deprecated and will be removed in Haystack 3.0 – use the [`DatadogConnector`](tracing/datadog.mdx) to enable Datadog tracing instead.
 
 To disable this behavior, there are two options:
 
