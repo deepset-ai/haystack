@@ -151,7 +151,8 @@ class TestCore:
         with pytest.raises(ValueError):
             _validate_and_prepare_tools([weather_tool, weather_tool])
 
-    def test_inject_state_args_no_tool_inputs(self):
+    def test_inject_state_args_no_tool_inputs_does_not_match_by_name(self):
+        # Without an explicit `inputs_from_state`, a matching State key name must NOT be injected.
         weather_tool = Tool(
             name="weather_tool",
             description="Provides weather information for a given location.",
@@ -160,16 +161,17 @@ class TestCore:
         )
         state = State(schema={"location": {"type": str}}, data={"location": "Berlin"})
         args = _inject_state_args(tool=weather_tool, llm_args={}, state=state)
-        assert args == {"location": "Berlin"}
+        assert args == {}
 
-    def test_inject_state_args_no_tool_inputs_component_tool(self):
+    def test_inject_state_args_no_tool_inputs_component_tool_does_not_match_by_name(self):
+        # Without an explicit `inputs_from_state`, a matching State key name must NOT be injected.
         comp = PromptBuilder(template="Hello, {{name}}!")
         prompt_tool = ComponentTool(
             component=comp, name="prompt_tool", description="Creates a personalized greeting prompt."
         )
         state = State(schema={"name": {"type": str}}, data={"name": "James"})
         args = _inject_state_args(tool=prompt_tool, llm_args={}, state=state)
-        assert args == {"name": "James"}
+        assert args == {}
 
     def test_inject_state_args_with_tool_inputs(self):
         weather_tool = Tool(
