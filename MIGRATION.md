@@ -218,6 +218,11 @@ from haystack_integrations.tracing.opentelemetry import OpenTelemetryTracer
 tracing.enable_tracing(OpenTelemetryTracer(trace.get_tracer("my_application")))
 ```
 
+**Also removed:** `haystack.tracing.auto_enable_tracing` (it is no longer called on `import haystack`). Because
+Haystack no longer ships a built-in tracing backend, there is nothing to auto-enable. Enable tracing explicitly via
+a connector (such as `OpenTelemetryConnector`) or with `haystack.tracing.enable_tracing(...)`. The
+`HAYSTACK_AUTO_TRACE_ENABLED` environment variable no longer has any effect.
+
 ### `TransformersSimilarityRanker` removed
 
 **What changed:** The `TransformersSimilarityRanker` component has been removed. It was not moved to an

@@ -8,12 +8,7 @@ import os
 from collections.abc import Iterator
 from typing import Any
 
-from haystack import logging
-
-HAYSTACK_AUTO_TRACE_ENABLED_ENV_VAR = "HAYSTACK_AUTO_TRACE_ENABLED"
 HAYSTACK_CONTENT_TRACING_ENABLED_ENV_VAR = "HAYSTACK_CONTENT_TRACING_ENABLED"
-
-logger = logging.getLogger(__name__)
 
 
 class Span(abc.ABC):
@@ -180,27 +175,3 @@ def disable_tracing() -> None:
 def is_tracing_enabled() -> bool:
     """Return whether tracing is enabled."""
     return not isinstance(tracer.actual_tracer, NullTracer)
-
-
-def auto_enable_tracing() -> None:
-    """
-    Auto-enable a tracing backend.
-
-    Haystack no longer ships a built-in tracing backend. Tracing integrations (for example, the
-    ``opentelemetry-haystack``, ``datadog-haystack``, or ``langfuse-haystack`` packages) enable tracing explicitly,
-    usually through a connector component. This function is kept for backward compatibility and no longer
-    auto-configures a tracer.
-
-    This behavior can be disabled by setting the environment variable `HAYSTACK_AUTO_TRACE_ENABLED` to `false`.
-    """
-    if os.getenv(HAYSTACK_AUTO_TRACE_ENABLED_ENV_VAR, "true").lower() == "false":
-        logger.info(
-            "Tracing disabled via environment variable '{env_key}'", env_key=HAYSTACK_AUTO_TRACE_ENABLED_ENV_VAR
-        )
-        return
-
-    if is_tracing_enabled():
-        return  # tracing already enabled
-
-
-auto_enable_tracing()

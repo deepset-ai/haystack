@@ -8,7 +8,9 @@
 # - they offer minimal performance gains in this case.
 
 import haystack.logging
-import haystack.tracing
+
+# Imported so the `haystack.tracing` namespace is available after `import haystack`.
+import haystack.tracing  # noqa: F401
 from haystack.core.component import component
 from haystack.core.errors import ComponentError, DeserializationError
 from haystack.core.pipeline import Pipeline
@@ -20,9 +22,6 @@ from haystack.version import __version__  # noqa: F401
 # Initialize the logging configuration
 # This is a no-op unless `structlog` is installed
 haystack.logging.configure_logging()
-
-# Kept for backward compatibility; Haystack no longer ships a built-in tracing backend, so this is a no-op
-haystack.tracing.auto_enable_tracing()
 
 __all__ = [
     "Answer",

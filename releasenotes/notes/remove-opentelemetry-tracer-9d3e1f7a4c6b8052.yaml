@@ -36,3 +36,9 @@ upgrade:
       from haystack_integrations.tracing.opentelemetry import OpenTelemetryTracer
 
       tracing.enable_tracing(OpenTelemetryTracer(trace.get_tracer("my_application")))
+  - |
+    **Breaking change:** ``haystack.tracing.auto_enable_tracing`` has been removed (and is no longer called on
+    ``import haystack``). Since Haystack no longer ships a built-in tracing backend, there is nothing to
+    auto-enable. Enable tracing explicitly instead, for example by adding the ``OpenTelemetryConnector`` component
+    to your pipeline, or by calling ``haystack.tracing.enable_tracing(...)`` with your tracer. The
+    ``HAYSTACK_AUTO_TRACE_ENABLED`` environment variable no longer has any effect.

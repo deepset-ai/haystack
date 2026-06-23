@@ -12,7 +12,6 @@ from haystack.tracing.tracer import (
     NullTracer,
     ProxyTracer,
     Tracer,
-    auto_enable_tracing,
     disable_tracing,
     enable_tracing,
     is_tracing_enabled,
@@ -70,35 +69,6 @@ class TestConfigureTracer:
 
         disable_tracing()
         assert isinstance(tracer.actual_tracer, NullTracer)
-        assert is_tracing_enabled() is False
-
-
-class TestAutoEnableTracer:
-    def test_skip_auto_enable_tracer_if_already_configured(self) -> None:
-        my_tracker = Mock(spec=Tracer)  # anything else than `NullTracer` works for this test
-        enable_tracing(my_tracker)
-
-        auto_enable_tracing()
-
-        assert tracer.actual_tracer is my_tracker
-
-        disable_tracing()
-
-    def test_skip_auto_enable_if_tracing_disabled_via_env(self, monkeypatch: MonkeyPatch) -> None:
-        monkeypatch.setenv("HAYSTACK_AUTO_TRACE_ENABLED", "false")
-
-        old_tracer = tracer.actual_tracer
-
-        auto_enable_tracing()
-
-        assert tracer.actual_tracer is old_tracer
-
-    def test_auto_enable_tracing_does_not_configure_a_backend(self) -> None:
-        # Haystack no longer ships a built-in tracing backend, so `auto_enable_tracing` must not enable one.
-        disable_tracing()
-
-        auto_enable_tracing()
-
         assert is_tracing_enabled() is False
 
 
