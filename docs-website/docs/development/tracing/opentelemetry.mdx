@@ -82,27 +82,6 @@ tracing.enable_tracing(OpenTelemetryTracer(trace.get_tracer("my_application")))
 
 Each pipeline run then produces a trace that includes the entire execution context, including prompts, completions, and metadata. You can view the traces in your OpenTelemetry-compatible backend.
 
-### Using automated instrumentation
-
-Alternatively, run your Haystack application using OpenTelemetry’s [automated instrumentation](https://opentelemetry.io/docs/languages/python/getting-started/#instrumentation). Haystack will automatically detect the configured tracing backend and use it to send traces.
-
-First, install the `OpenTelemetry` CLI:
-
-```shell
-pip install opentelemetry-distro
-```
-
-Then, run your Haystack application using the OpenTelemetry SDK:
-
-```shell
-opentelemetry-instrument \
-    --traces_exporter console \
-    --metrics_exporter console \
-    --logs_exporter console \
-    --service_name my-haystack-app \
-    <command to run your Haystack pipeline>
-```
-
 ## Alternative: the OpenTelemetryConnector component
 
 If you prefer to manage tracing as part of your pipeline definition, you can add the `OpenTelemetryConnector` component instead. It enables the same OpenTelemetry tracing as soon as it is initialized.
@@ -133,12 +112,11 @@ Use [Jaeger](https://www.jaegertracing.io/docs/1.6/getting-started/) as a lightw
      -p 9411:9411 \
      jaegertracing/all-in-one:latest
    ```
-2. Install the OpenTelemetry SDK and the integration:
+2. Install the integration and the OTLP exporter:
 
    ```shell
-   pip install opentelemetry-sdk
-   pip install opentelemetry-exporter-otlp
    pip install opentelemetry-haystack
+   pip install opentelemetry-exporter-otlp
    ```
 3. Configure `OpenTelemetry` to use the Jaeger backend and enable the tracer:
 
