@@ -1368,6 +1368,37 @@ class TestResponseToChatMessage:
             {"content": "I need to use the functions.weather tool.", "role": "assistant"},
         ]
 
+    def test_convert_assistant_message_reasoning_strips_invalid_streaming_fields(self):
+        chat_message = ChatMessage(
+            _role=ChatRole.ASSISTANT,
+            _content=[
+                ReasoningContent(
+                    reasoning_text="Let me think.",
+                    extra={
+                        "id": "rs_abc",
+                        "type": "reasoning",
+                        "encrypted_content": "enc123",
+                        "status": "completed",
+                        "item_id": "some_item",
+                        "output_index": 0,
+                        "summary_index": 1,
+                        "event_id": "ev_xyz",
+                        "sequence_number": 42,
+                    },
+                )
+            ],
+        )
+        result = _convert_chat_message_to_responses_api_format(chat_message)
+        assert result == [
+            {
+                "id": "rs_abc",
+                "type": "reasoning",
+                "encrypted_content": "enc123",
+                "status": "completed",
+                "summary": [{"text": "Let me think.", "type": "summary_text"}],
+            }
+        ]
+
     def test_convert_tool_message(self):
         tool_call_result = ChatMessage(
             _role=ChatRole.TOOL,
