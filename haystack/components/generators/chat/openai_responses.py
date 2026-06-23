@@ -657,7 +657,7 @@ def _convert_response_to_chat_message(responses: Response | ParsedResponse) -> C
     )
 
 
-def _convert_response_chunk_to_streaming_chunk(
+def _convert_response_chunk_to_streaming_chunk(  # noqa: PLR0911
     chunk: ResponseStreamEvent, previous_chunks: list[StreamingChunk], component_info: ComponentInfo | None = None
 ) -> StreamingChunk:
     """
@@ -694,6 +694,21 @@ def _convert_response_chunk_to_streaming_chunk(
                 index=chunk.output_index,
                 tool_calls=[tool_call],
                 start=True,
+                meta={"received_at": datetime.now().isoformat()},
+            )
+
+    elif chunk.type == "response.output_item.done":
+        # The done event carries the completed reasoning item, which includes encrypted_content
+        # when include=["reasoning.encrypted_content"] was requested. Without this handler the
+        # event falls through to the generic default and reasoning=None, so encrypted_content
+        # is never available for multi-turn conversations.
+        if chunk.item.type == "reasoning":
+            reasoning = ReasoningContent(reasoning_text="", extra=chunk.item.to_dict())
+            return StreamingChunk(
+                content="",
+                component_info=component_info,
+                index=chunk.output_index,
+                reasoning=reasoning,
                 meta={"received_at": datetime.now().isoformat()},
             )
 
@@ -840,7 +855,16 @@ def _convert_streaming_chunks_to_chat_message(chunks: list[StreamingChunk]) -> C
     # function calls without reasoning ids are not supported by the API
     reasoning = None
     if reasoning_id:
-        reasoning = ReasoningContent(reasoning_text=reasoning_text, extra={"id": reasoning_id, "type": "reasoning"})
+        # Preserve all extra fields from streaming chunks (e.g. encrypted_content) while ensuring id and
+        # type are present
+        reasoning_extra = {}
+        for chunk in chunks:
+            if chunk.reasoning and chunk.reasoning.extra:
+                reasoning_extra.update(chunk.reasoning.extra)
+        # Ensure id and type are always set, but don't override if already present
+        reasoning_extra.setdefault("id", reasoning_id)
+        reasoning_extra.setdefault("type", "reasoning")
+        reasoning = ReasoningContent(reasoning_text=reasoning_text, extra=reasoning_extra)
 
     return ChatMessage.from_assistant(
         text=text or None, tool_calls=tool_calls, meta=final_response, reasoning=reasoning

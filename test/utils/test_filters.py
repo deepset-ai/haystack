@@ -46,6 +46,18 @@ document_matches_filter_data = [
         False,
         id="== operator with None filter value",
     ),
+    pytest.param(
+        {"field": "meta.user.age", "operator": "==", "value": 30},
+        Document(meta={"user": {"age": 30}}),
+        True,
+        id="== operator with nested meta field",
+    ),
+    pytest.param(
+        {"field": "meta.user.age", "operator": "==", "value": 30},
+        Document(meta={"user": None}),
+        False,
+        id="== operator with nested field on non-dict intermediate value",
+    ),
     # != operator params
     pytest.param(
         {"field": "meta.name", "operator": "!=", "value": "test"},

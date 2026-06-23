@@ -1060,6 +1060,8 @@ __init__(
     table_to_single_line: bool = False,
     progress_bar: bool = True,
     store_full_path: bool = False,
+    *,
+    extract_frontmatter: bool = False
 ) -> None
 ```
 
@@ -1071,6 +1073,8 @@ Create a MarkdownToDocument component.
 - **progress_bar** (<code>bool</code>) – If True shows a progress bar when running.
 - **store_full_path** (<code>bool</code>) – If True, the full path of the file is stored in the metadata of the document.
   If False, only the file name is stored.
+- **extract_frontmatter** (<code>bool</code>) – If True, YAML frontmatter at the beginning of the Markdown file is
+  removed from the document content and added to the document metadata.
 
 #### run
 
