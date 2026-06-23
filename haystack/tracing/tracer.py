@@ -184,10 +184,14 @@ def is_tracing_enabled() -> bool:
 
 def auto_enable_tracing() -> None:
     """
-    Auto-enable the right tracing backend.
+    Auto-enable a tracing backend.
+
+    Haystack no longer ships a built-in tracing backend. Tracing integrations (for example, the
+    ``opentelemetry-haystack``, ``datadog-haystack``, or ``langfuse-haystack`` packages) enable tracing explicitly,
+    usually through a connector component. This function is kept for backward compatibility and no longer
+    auto-configures a tracer.
 
     This behavior can be disabled by setting the environment variable `HAYSTACK_AUTO_TRACE_ENABLED` to `false`.
-    Note that it will only work correctly if tracing was configured _before_ Haystack is imported.
     """
     if os.getenv(HAYSTACK_AUTO_TRACE_ENABLED_ENV_VAR, "true").lower() == "false":
         logger.info(
@@ -197,33 +201,6 @@ def auto_enable_tracing() -> None:
 
     if is_tracing_enabled():
         return  # tracing already enabled
-
-    tracer = _auto_configured_opentelemetry_tracer()
-    if tracer:
-        enable_tracing(tracer)
-        logger.info("Auto-enabled tracing for '{tracer}'", tracer=tracer.__class__.__name__)
-
-
-def _auto_configured_opentelemetry_tracer() -> Tracer | None:
-    # we implement this here and not in the `opentelemetry` module to avoid import warnings when OpenTelemetry is not
-    # installed
-    try:
-        import opentelemetry.trace
-
-        # the safest way to check if tracing is enabled is to try to start a span and see if it's a no-op span
-        # alternatively we could of course check `opentelemetry.trace._TRACER_PROVIDER`
-        # but that's not part of the public API and could change in the future
-        with opentelemetry.trace.get_tracer("haystack").start_as_current_span("haystack.tracing.auto_enable") as span:
-            if isinstance(span, opentelemetry.trace.NonRecordingSpan):
-                return None
-
-            from haystack.tracing.opentelemetry import OpenTelemetryTracer
-
-            return OpenTelemetryTracer(opentelemetry.trace.get_tracer("haystack"))
-    except ImportError:
-        pass
-
-    return None
 
 
 auto_enable_tracing()

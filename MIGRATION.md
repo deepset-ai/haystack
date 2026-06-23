@@ -114,6 +114,8 @@ pip install <new-package>
 | `from haystack.components.rankers import SentenceTransformersSimilarityRanker` | `sentence-transformers-haystack` | `from haystack_integrations.components.rankers.sentence_transformers import SentenceTransformersSimilarityRanker` |
 | `from haystack.components.rankers import SentenceTransformersDiversityRanker` | `sentence-transformers-haystack` | `from haystack_integrations.components.rankers.sentence_transformers import SentenceTransformersDiversityRanker` |
 | `from haystack.tracing.datadog import DatadogTracer` | `datadog-haystack` | `from haystack_integrations.tracing.datadog import DatadogTracer` |
+| `from haystack.tracing.opentelemetry import OpenTelemetryTracer` | `opentelemetry-haystack` | `from haystack_integrations.tracing.opentelemetry import OpenTelemetryTracer` |
+| `from haystack.tracing import OpenTelemetryTracer` | `opentelemetry-haystack` | `from haystack_integrations.tracing.opentelemetry import OpenTelemetryTracer` |
 | `from haystack.components.converters import TikaDocumentConverter` | `tika-haystack` | `from haystack_integrations.components.converters.tika import TikaDocumentConverter` |
 | `from haystack.components.converters import AzureOCRDocumentConverter` | `azure-form-recognizer-haystack` | `from haystack_integrations.components.converters.azure_form_recognizer import AzureOCRDocumentConverter` |
 | `from haystack.components.connectors import OpenAPIConnector` | `openapi-haystack` | `from haystack_integrations.components.connectors.openapi import OpenAPIConnector` |
@@ -165,6 +167,55 @@ from haystack import tracing
 from haystack_integrations.tracing.datadog import DatadogTracer
 
 tracing.enable_tracing(DatadogTracer(ddtrace.tracer))
+```
+
+### `OpenTelemetryTracer` moved to the `opentelemetry-haystack` integration
+
+**What changed:** The `OpenTelemetryTracer` has been moved out of Haystack into the `opentelemetry-haystack`
+integration package, and the `opentelemetry-sdk` dependency is no longer installed with Haystack. In addition,
+Haystack no longer automatically enables OpenTelemetry tracing when `opentelemetry-sdk` is installed and configured.
+You now enable it explicitly by adding the new `OpenTelemetryConnector` component to your pipeline.
+
+**Why:** Moving the tracer to a dedicated package keeps Haystack's dependencies leaner and lets the integration be
+released independently. Removing the implicit auto-enable makes tracing setup explicit and predictable.
+
+**How to migrate:**
+
+Install the integration:
+
+```bash
+pip install opentelemetry-haystack
+```
+
+Before (v2.x), OpenTelemetry tracing was auto-enabled when `opentelemetry-sdk` was installed and configured, or set
+up manually:
+
+```python
+from opentelemetry import trace
+from haystack import tracing
+from haystack.tracing import OpenTelemetryTracer
+
+tracing.enable_tracing(OpenTelemetryTracer(trace.get_tracer("my_application")))
+```
+
+After (v3.0), add the `OpenTelemetryConnector` to your pipeline to enable tracing:
+
+```python
+from haystack import Pipeline
+from haystack_integrations.components.connectors.opentelemetry import OpenTelemetryConnector
+
+pipe = Pipeline()
+pipe.add_component("tracer", OpenTelemetryConnector())
+```
+
+Alternatively, you can still enable the tracer manually using the new import path:
+
+```python
+from opentelemetry import trace
+from haystack import tracing
+from haystack_integrations.tracing.opentelemetry import OpenTelemetryTracer
+
+tracing.enable_tracing(OpenTelemetryTracer(trace.get_tracer("my_application")))
 ```
 
 ### `TransformersSimilarityRanker` removed

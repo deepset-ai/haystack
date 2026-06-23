@@ -2,26 +2,16 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-import sys
-from collections.abc import Generator
 from unittest.mock import Mock
 
-import opentelemetry.trace
-import pytest
 from _pytest.monkeypatch import MonkeyPatch
-from opentelemetry.sdk.resources import SERVICE_NAME, Resource
-from opentelemetry.sdk.trace import TracerProvider
-from opentelemetry.sdk.trace.export import SimpleSpanProcessor
-from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
 
-from haystack.tracing.opentelemetry import OpenTelemetryTracer
 from haystack.tracing.tracer import (
     HAYSTACK_CONTENT_TRACING_ENABLED_ENV_VAR,
     NullSpan,
     NullTracer,
     ProxyTracer,
     Tracer,
-    _auto_configured_opentelemetry_tracer,
     auto_enable_tracing,
     disable_tracing,
     enable_tracing,
@@ -84,23 +74,6 @@ class TestConfigureTracer:
 
 
 class TestAutoEnableTracer:
-    @pytest.fixture()
-    def configured_opentelemetry_tracing(self) -> Generator[None]:
-        resource = Resource(attributes={SERVICE_NAME: "haystack-testing"})
-
-        traceProvider = TracerProvider(resource=resource)
-        processor = SimpleSpanProcessor(InMemorySpanExporter())
-        traceProvider.add_span_processor(processor)
-
-        # We can't unset `set_tracer_provider` here, because opentelemetry has a lock to only set it once
-        opentelemetry.trace._TRACER_PROVIDER = traceProvider
-
-        yield
-
-        # unfortunately, there's no cleaner way to reset the global tracer provider
-        opentelemetry.trace._TRACER_PROVIDER = None
-        disable_tracing()
-
     def test_skip_auto_enable_tracer_if_already_configured(self) -> None:
         my_tracker = Mock(spec=Tracer)  # anything else than `NullTracer` works for this test
         enable_tracing(my_tracker)
@@ -109,9 +82,9 @@ class TestAutoEnableTracer:
 
         assert tracer.actual_tracer is my_tracker
 
-    def test_skip_auto_enable_if_tracing_disabled_via_env(
-        self, monkeypatch: MonkeyPatch, configured_opentelemetry_tracing: None
-    ) -> None:
+        disable_tracing()
+
+    def test_skip_auto_enable_if_tracing_disabled_via_env(self, monkeypatch: MonkeyPatch) -> None:
         monkeypatch.setenv("HAYSTACK_AUTO_TRACE_ENABLED", "false")
 
         old_tracer = tracer.actual_tracer
@@ -120,21 +93,13 @@ class TestAutoEnableTracer:
 
         assert tracer.actual_tracer is old_tracer
 
-    def test_enable_opentelemetry_tracer(self, configured_opentelemetry_tracing: None) -> None:
+    def test_auto_enable_tracing_does_not_configure_a_backend(self) -> None:
+        # Haystack no longer ships a built-in tracing backend, so `auto_enable_tracing` must not enable one.
+        disable_tracing()
+
         auto_enable_tracing()
 
-        activated_tracer = tracer.actual_tracer
-        assert isinstance(activated_tracer, OpenTelemetryTracer)
-        assert is_tracing_enabled()
-
-    def test__auto_configured_opentelemetry_tracer(self, configured_opentelemetry_tracing):
-        tracer = _auto_configured_opentelemetry_tracer()
-        assert isinstance(tracer, OpenTelemetryTracer)
-
-    def test__auto_configured_opentelemetry_tracer_with_failing_import(self, monkeypatch):
-        monkeypatch.delitem(sys.modules, "opentelemetry.trace", raising=False)
-        tracer = _auto_configured_opentelemetry_tracer()
-        assert tracer is None
+        assert is_tracing_enabled() is False
 
 
 class TestTracingContent:

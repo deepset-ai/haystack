@@ -15,76 +15,17 @@ Traces document the flow of requests through your application and are vital for 
 
 ## Configuring a Tracing Backend
 
-Instrumented applications typically send traces to a trace collector or a tracing backend. Haystack provides out-of-the-box support for [OpenTelemetry](https://opentelemetry.io/) and, through integrations, for backends such as [Datadog](https://www.datadoghq.com/), [Langfuse](https://langfuse.com/), and [MLflow](https://mlflow.org/). You can also quickly implement support for additional providers of your choosing.
+Instrumented applications typically send traces to a trace collector or a tracing backend. Haystack supports tracing through integrations for backends such as [OpenTelemetry](https://opentelemetry.io/), [Datadog](https://www.datadoghq.com/), [Langfuse](https://langfuse.com/), and [MLflow](https://mlflow.org/). You can also quickly implement support for additional providers of your choosing.
 
 ### OpenTelemetry
 
-To use OpenTelemetry as your tracing backend, follow these steps:
+The `OpenTelemetryConnector` component lets you trace your Haystack pipelines with [OpenTelemetry](https://opentelemetry.io/).
 
-1. Install the [OpenTelemetry SDK](https://opentelemetry.io/docs/languages/python/):
+Simply install the integration with `pip install opentelemetry-haystack`, then add the connector to your pipeline.
 
-   ```shell
-   pip install opentelemetry-sdk
-   pip install opentelemetry-exporter-otlp
-   ```
-2. To add traces to even deeper levels of your pipelines, we recommend you check out [OpenTelemetry integrations](https://opentelemetry.io/ecosystem/registry/?s=python), such as:
-   - [`urllib3` instrumentation](https://github.com/open-telemetry/opentelemetry-python-contrib/tree/main/instrumentation/opentelemetry-instrumentation-urllib3) for tracing HTTP requests in your pipeline,
-   - [OpenAI instrumentation](https://github.com/traceloop/openllmetry/tree/main/packages/opentelemetry-instrumentation-openai) for tracing OpenAI requests.
-3. There are two options for how to hook Haystack to the OpenTelemetry SDK.
-
-   - Run your Haystack applications using OpenTelemetry’s [automated instrumentation](https://opentelemetry.io/docs/languages/python/getting-started/#instrumentation). Haystack will automatically detect the configured tracing backend and use it to send traces.
-
-     First, install the `OpenTelemetry` CLI:
-
-     ```shell
-     pip install opentelemetry-distro
-     ```
-
-     Then, run your Haystack application using the OpenTelemetry SDK:
-
-     ```shell
-     opentelemetry-instrument \
-         --traces_exporter console \
-         --metrics_exporter console \
-         --logs_exporter console \
-         --service_name my-haystack-app \
-         <command to run your Haystack pipeline>
-     ```
-
-   — or —
-
-   - Configure the tracing backend in your Python code:
-
-     ```python
-     from haystack import tracing
-
-     from opentelemetry import trace
-     from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
-     from opentelemetry.sdk.trace import TracerProvider
-     from opentelemetry.sdk.trace.export import BatchSpanProcessor
-     from opentelemetry.sdk.resources import Resource
-     from opentelemetry.semconv.resource import ResourceAttributes
-
-     # Service name is required for most backends
-     resource = Resource(attributes={
-         ResourceAttributes.SERVICE_NAME: "haystack"  # Correct constant
-     })
-
-     tracer_provider = TracerProvider(resource=resource)
-     processor = BatchSpanProcessor(OTLPSpanExporter(endpoint="http://localhost:4318/v1/traces"))
-     tracer_provider.add_span_processor(processor)
-     trace.set_tracer_provider(tracer_provider)
-
-     # Tell Haystack to auto-detect the configured tracer
-     import haystack.tracing
-     haystack.tracing.auto_enable_tracing()
-
-     # Explicitly tell Haystack to use your tracer
-     from haystack.tracing import OpenTelemetryTracer
-
-     tracer = tracer_provider.get_tracer("my_application")
-     tracing.enable_tracing(OpenTelemetryTracer(tracer))
-     ```
+:::info
+Check out the [integration page](https://haystack.deepset.ai/integrations/opentelemetry) for more details and example usage.
+:::
 
 ### Datadog
 
@@ -197,25 +138,17 @@ To use your custom tracing backend with Haystack, follow these steps:
    tracing.enable_tracing(haystack_tracer)
    ```
 
-## Disabling Auto Tracing
+## Disabling Tracing
 
-Haystack automatically detects and enables tracing under the following circumstances:
+Haystack does not enable any tracing backend on its own. Tracing is activated explicitly through a tracing integration, for example by adding a connector such as the `OpenTelemetryConnector` to your pipeline.
 
-- If `opentelemetry-sdk` is installed and configured for OpenTelemetry.
+To disable a tracer that you have enabled, call `disable_tracing` in Python:
 
-To disable this behavior, there are two options:
+```python
+from haystack.tracing import disable_tracing
 
-- Set the environment variable `HAYSTACK_AUTO_TRACE_ENABLED` to `false` when running your Haystack application
-
-— or —
-
-- Disable tracing in Python:
-
-  ```python
-  from haystack.tracing import disable_tracing
-
-  disable_tracing()
-  ```
+disable_tracing()
+```
 
 ## Content Tracing
 
@@ -286,12 +219,16 @@ Use [Jaeger](https://www.jaegertracing.io/docs/1.6/getting-started/) as a lightw
    tracer_provider.add_span_processor(processor)
    trace.set_tracer_provider(tracer_provider)
    ```
-4. Tell Haystack to use OpenTelemetry for tracing:
+4. Install the `opentelemetry-haystack` integration and add the `OpenTelemetryConnector` to your pipeline to enable tracing:
+
+   ```shell
+   pip install opentelemetry-haystack
+   ```
 
    ```python
-   import haystack.tracing
+   from haystack_integrations.components.connectors.opentelemetry import OpenTelemetryConnector
 
-   haystack.tracing.auto_enable_tracing()
+   pipeline.add_component("tracer", OpenTelemetryConnector())
    ```
 5. Run your pipeline:
 

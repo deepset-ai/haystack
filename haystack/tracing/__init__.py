@@ -13,4 +13,3 @@ from haystack.tracing.tracer import (  # noqa: I001 (otherwise we end up with pa
     is_tracing_enabled,
     tracer,
 )
-from haystack.tracing.opentelemetry import OpenTelemetryTracer

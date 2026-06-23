@@ -21,7 +21,7 @@ from haystack.version import __version__  # noqa: F401
 # This is a no-op unless `structlog` is installed
 haystack.logging.configure_logging()
 
-# Same for tracing (no op if `opentelemetry` or `ddtrace` is not installed)
+# Kept for backward compatibility; Haystack no longer ships a built-in tracing backend, so this is a no-op
 haystack.tracing.auto_enable_tracing()
 
 __all__ = [

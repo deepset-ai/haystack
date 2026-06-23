@@ -118,9 +118,6 @@ dependencies = [
   # Human in the Loop
   "rich",                 # Console rendering for HITL
 
-  # Tracing
-  "opentelemetry-sdk",
-
   # Structured logging
   "structlog",
 

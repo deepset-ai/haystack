@@ -1,0 +1,38 @@
+---
+upgrade:
+  - |
+    The ``OpenTelemetryTracer`` has been moved out of Haystack into the ``opentelemetry-haystack`` integration
+    package, and the ``opentelemetry-sdk`` dependency is no longer installed with Haystack. OpenTelemetry tracing
+    is no longer auto-enabled when ``opentelemetry-sdk`` is installed; instead, use the new ``OpenTelemetryConnector``
+    component to enable OpenTelemetry tracing in your pipeline. Install the new package with
+    ``pip install opentelemetry-haystack``.
+
+    Before:
+
+    .. code:: python
+
+      from opentelemetry import trace
+      from haystack import tracing
+      from haystack.tracing import OpenTelemetryTracer
+
+      tracing.enable_tracing(OpenTelemetryTracer(trace.get_tracer("my_application")))
+
+    After:
+
+    .. code:: python
+
+      from haystack import Pipeline
+      from haystack_integrations.components.connectors.opentelemetry import OpenTelemetryConnector
+
+      pipe = Pipeline()
+      pipe.add_component("tracer", OpenTelemetryConnector())
+
+    Alternatively, you can still enable the tracer manually:
+
+    .. code:: python
+
+      from opentelemetry import trace
+      from haystack import tracing
+      from haystack_integrations.tracing.opentelemetry import OpenTelemetryTracer
+
+      tracing.enable_tracing(OpenTelemetryTracer(trace.get_tracer("my_application")))
