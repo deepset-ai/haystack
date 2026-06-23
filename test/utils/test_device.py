@@ -57,7 +57,7 @@ def test_device_map():
     )
 
     with pytest.raises(TypeError, match="unexpected device"):
-        DeviceMap.from_hf({"layer1": 0.1})
+        DeviceMap.from_hf({"layer1": 0.1})  # type: ignore[dict-item]  # intentional invalid input to trigger TypeError
 
     assert device_map.first_device == Device.gpu(0)
     assert DeviceMap({}).first_device is None
