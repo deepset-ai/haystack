@@ -457,6 +457,75 @@ pipeline.run(data={"retriever": {"query": query}, "agent": {"messages": [], "que
 If the prompt itself must still be assembled per run, build `ChatMessage` objects before the `Agent` (e.g. with a `ChatPromptBuilder`) and pass them through the `messages` input.
 For a runtime system prompt, construct an `Agent` without `system_prompt` or `user_prompt` and include a system message at the start of `messages`.
 
+#### Tools must declare `inputs_from_state` to read from `State` by name
+
+**What changed:** A tool now reads a value from the Agent's `State` by name only when it declares an explicit `inputs_from_state` mapping. Previously, a tool without `inputs_from_state` had every parameter implicitly treated as a potential `State` key: any parameter whose name matched a `State` key (and that the LLM did not supply) was silently filled from `State`. This implicit name-matching has been removed. It applies to every tool type, since `ComponentTool`, `PipelineTool`, `MCPTool`, and others all derive from the base `Tool` class.
+
+**Why:** The implicit matching was hidden — nothing in a tool's definition signaled that it read from `State`, so a tool could start consuming `State` purely because of an incidental parameter-name collision. With many tools and a large state schema this made accidental overlaps likely, and renaming a parameter or adding a `State` key could silently change what a tool received. Requiring an explicit mapping makes a tool's `State` dependencies visible and intentional. Auto-injection of the full `State` object into a parameter annotated as `State` is unaffected — that is explicit at the signature level.
+
+**How to migrate:** Add an explicit `inputs_from_state` mapping (`{state_key: parameter_name}`) to any tool that should read from `State` by name.
+
+Before (v2.x), whenever the model called `weather_tool` *without* supplying a `location` argument, the parameter was filled from the `location` state key automatically, because the parameter name matched a key in the Agent's `state_schema`. (If the model did supply `location`, the LLM-provided value always took precedence and `State` was not consulted.)
+```python
+from haystack.components.agents import Agent
+from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.tools import Tool
+
+weather_tool = Tool(
+    name="weather_tool",
+    description="Provides weather information for a given location.",
+    parameters={"type": "object", "properties": {"location": {"type": "string"}}, "required": ["location"]},
+    function=weather_function,
+)
+
+agent = Agent(
+    chat_generator=OpenAIChatGenerator(model="gpt-5.4-nano"),
+    tools=[weather_tool],
+    # `location` lives in State, so it was silently injected into the tool's same-named parameter
+    # on any call where the model didn't already provide a `location` argument.
+    state_schema={"location": {"type": str}},
+)
+```
+
+After (v3.0), declare the mapping explicitly so the read from `State` is visible in the tool definition:
+```python
+from haystack.components.agents import Agent
+from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.tools import Tool
+
+weather_tool = Tool(
+    name="weather_tool",
+    description="Provides weather information for a given location.",
+    parameters={"type": "object", "properties": {"location": {"type": "string"}}, "required": ["location"]},
+    function=weather_function,
+    inputs_from_state={"location": "location"},
+)
+
+agent = Agent(
+    chat_generator=OpenAIChatGenerator(model="gpt-5.4-nano"),
+    tools=[weather_tool],
+    state_schema={"location": {"type": str}},
+)
+```
+
+Tools that take the full `State` object via a `State`-annotated parameter need no change:
+```python
+from typing import Annotated
+
+from haystack.components.agents import State
+from haystack.tools import Tool
+
+def weather_function(location: Annotated[str, "The name of the city"], state: State) -> str:
+    ...
+
+weather_tool = Tool(
+    name="weather_tool",
+    description="Provides weather information for a given location.",
+    parameters={"type": "object", "properties": {"location": {"type": "string"}}, "required": ["location"]},
+    function=weather_function,  # `state` is still injected automatically
+)
+```
+
 #### Reserved `state_schema` keys for built-in run metadata
 
 **What changed:** `Agent` now auto-populates three new outputs — `step_count`, `token_usage`, and `tool_call_counts` — and reserves those names in its `state_schema`. Passing any of them as a `state_schema` key now raises `ValueError`.
