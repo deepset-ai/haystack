@@ -593,10 +593,8 @@ def _convert_response_to_chat_message(responses: Response | ParsedResponse) -> C
             if output.content:
                 logger.warning(
                     "OpenAI returned a non-empty 'content' field on a reasoning item ({_id}). "
-                    "This field is currently undocumented and was never observed in practice. "
                     "The content is preserved in ReasoningContent.extra['content'] but is NOT "
-                    "reflected in ReasoningContent.reasoning_text. Please report this at "
-                    "https://github.com/deepset-ai/haystack/issues so we can update the mapping.",
+                    "reflected in ReasoningContent.reasoning_text.",
                     _id=output.id,
                 )
             reasoning_text = "\n".join([summary.text for summary in summaries if summaries])
