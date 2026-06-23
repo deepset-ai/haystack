@@ -26,6 +26,11 @@ class TestDocumentJoiner:
         assert joiner.top_k == 5
         assert not joiner.sort_by_score
 
+    def test_init_with_zero_sum_weights_raises(self):
+        # weights that sum to zero would divide by zero during normalization
+        with pytest.raises(ValueError, match="must not sum to zero"):
+            DocumentJoiner(join_mode="merge", weights=[0.0, 0.0, 0.0])
+
     def test_to_dict(self):
         joiner = DocumentJoiner()
         data = joiner.to_dict()

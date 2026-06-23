@@ -857,8 +857,17 @@ class Agent:
                     llm_messages = result["replies"]
                     exe_context.state.set("messages", llm_messages)
 
-                # Check if any of the LLM responses contain a tool call or if the LLM is not using tools
-                if not any(msg.tool_call for msg in llm_messages) or self._tool_invoker is None:
+                # Exit for `exit_conditions=["text"]` behavior: the agent stops when there is no tool invoker, or when
+                # the model returns a plain text response (no tool calls). We require the last message to be a non-empty
+                # assistant text message so that an invalid response (e.g. a message with no tool calls or text) won't
+                # trigger an exit.
+                last_message = llm_messages[-1] if llm_messages else None
+                if self._tool_invoker is None or (
+                    last_message is not None
+                    and not any(msg.tool_call for msg in llm_messages)
+                    and last_message.is_from(ChatRole.ASSISTANT)
+                    and last_message.text
+                ):
                     exe_context.counter += 1
                     break
 
@@ -1092,8 +1101,17 @@ class Agent:
                     llm_messages = result["replies"]
                     exe_context.state.set("messages", llm_messages)
 
-                # Check if any of the LLM responses contain a tool call or if the LLM is not using tools
-                if not any(msg.tool_call for msg in llm_messages) or self._tool_invoker is None:
+                # Exit for `exit_conditions=["text"]` behavior: the agent stops when there is no tool invoker, or when
+                # the model returns a plain text response (no tool calls). We require the last message to be a non-empty
+                # assistant text message so that an invalid response (e.g. a message with no tool calls or text) won't
+                # trigger an exit.
+                last_message = llm_messages[-1] if llm_messages else None
+                if self._tool_invoker is None or (
+                    last_message is not None
+                    and not any(msg.tool_call for msg in llm_messages)
+                    and last_message.is_from(ChatRole.ASSISTANT)
+                    and last_message.text
+                ):
                     exe_context.counter += 1
                     break
 

@@ -50,7 +50,7 @@ jobs:
       is_first_rc: ${{ steps.parse-validate.outputs.is_first_rc }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           fetch-depth: 0  # needed to fetch tags and branches
       - name: Parse and validate version
@@ -74,7 +74,7 @@ jobs:
       contents: write
     steps:
       - name: Checkout repository
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           fetch-depth: 0  # needed to fetch tags and branches
           # use this token so the created tag triggers workflows (does not happen with the default github.token)
@@ -111,7 +111,7 @@ jobs:
       VERSION: ${{ needs.parse-validate-version.outputs.version }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           fetch-depth: 0  # needed to fetch tags and branches
 
@@ -151,7 +151,7 @@ jobs:
       VERSION: ${{ needs.parse-validate-version.outputs.version }}
     steps:
       - name: Checkout dc-pipeline-templates
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           repository: deepset-ai/dc-pipeline-templates
           token: ${{ secrets.HAYSTACK_BOT_TOKEN }}
@@ -182,14 +182,14 @@ jobs:
       VERSION: ${{ needs.parse-validate-version.outputs.version }}
     steps:
       - name: Checkout haystack (for utils)
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           path: haystack
           sparse-checkout: .github/utils/update_haystack_dc_custom_nodes.py
           sparse-checkout-cone-mode: false
 
       - name: Checkout deepset-cloud-custom-nodes
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           repository: deepset-ai/deepset-cloud-custom-nodes
           token: ${{ secrets.HAYSTACK_BOT_TOKEN }}
@@ -222,7 +222,7 @@ jobs:
           body: |
             Bump haystack pin to `${{ env.VERSION }}` for platform testing.
 
-  bump-dc-pipeline-images:
+  bump-haystack-runtime:
     needs: ["parse-validate-version", "check-artifacts"]
     if: always() && needs.check-artifacts.result == 'success' && needs.parse-validate-version.outputs.is_rc == 'true'
     runs-on: ubuntu-slim
@@ -236,7 +236,7 @@ jobs:
           GH_TOKEN: ${{ secrets.HAYSTACK_BOT_TOKEN }}
         run: |
           gh workflow run update-package-version.yaml \
-            -R deepset-ai/dc-pipeline-images \
+            -R deepset-ai/haystack-runtime \
             -f haystack_version="${{ env.VERSION }}"
 
       - name: Wait for PR
@@ -246,7 +246,7 @@ jobs:
         run: |
           TRIGGER_TIME=$(date -u +%Y-%m-%dT%H:%M:%SZ)
           for i in $(seq 1 30); do
-            PR_URL=$(gh pr list -R deepset-ai/dc-pipeline-images \
+            PR_URL=$(gh pr list -R deepset-ai/haystack-runtime \
               --head "bump/hs${{ env.VERSION }}" \
               --json url,createdAt \
               --jq ".[] | select(.createdAt >= \"$TRIGGER_TIME\") | .url")
@@ -268,12 +268,12 @@ jobs:
       - "check-artifacts"
       - "bump-dc-pipeline-templates"
       - "bump-deepset-cloud-custom-nodes"
-      - "bump-dc-pipeline-images"
+      - "bump-haystack-runtime"
     if: always()
     runs-on: ubuntu-slim
     steps:
       - name: Checkout repository
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 
       - name: Prepare release notification
         env:
@@ -290,7 +290,7 @@ jobs:
           BUMP_VERSION_PR_URL: ${{ needs.branch-off.outputs.bump_version_pr_url }}
           DC_PIPELINE_TEMPLATES_PR_URL: ${{ needs.bump-dc-pipeline-templates.outputs.pr_url }}
           DC_CUSTOM_NODES_PR_URL: ${{ needs.bump-deepset-cloud-custom-nodes.outputs.pr_url }}
-          DC_PIPELINE_IMAGES_PR_URL: ${{ needs.bump-dc-pipeline-images.outputs.pr_url }}
+          DC_PIPELINE_IMAGES_PR_URL: ${{ needs.bump-haystack-runtime.outputs.pr_url }}
         run: .github/utils/prepare_release_notification.sh
 
       - name: Send release notification to Slack

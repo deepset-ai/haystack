@@ -16,9 +16,9 @@ Use this component to classify documents by language and add language informatio
 | **Most common position in a pipeline** | Before [`MetadataRouter`](../routers/metadatarouter.mdx)                                                                    |
 | **Mandatory run variables**            | `documents`:  A list of documents                                                                                  |
 | **Output variables**                   | `documents`:  A list of documents                                                                                  |
-| **API reference**                      | [Classifiers](/reference/classifiers-api)                                                                                 |
-| **GitHub link**                        | https://github.com/deepset-ai/haystack/blob/main/haystack/components/classifiers/document_language_classifier.py |
-| **Package name** | `haystack-ai` |
+| **API reference**                      | [Langdetect](/reference/integrations-langdetect)                                                                                 |
+| **GitHub link**                        | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/langdetect |
+| **Package name** | `langdetect-haystack` |
 
 </div>
 
@@ -34,10 +34,10 @@ For classifying and then routing plain text using the same logic, use the `TextL
 
 ## Usage
 
-Install the `langdetect`package to use the `DocumentLanguageClassifier`component:
+Install the `langdetect-haystack` package to use the `DocumentLanguageClassifier` component:
 
-```shell shell
-pip install langdetect
+```shell
+pip install langdetect-haystack
 ```
 
 ### On its own
@@ -45,7 +45,9 @@ pip install langdetect
 Below, we are using the `DocumentLanguageClassifier` to classify English and German documents:
 
 ```python
-from haystack.components.classifiers import DocumentLanguageClassifier
+from haystack_integrations.components.classifiers.langdetect import (
+    DocumentLanguageClassifier,
+)
 from haystack import Document
 
 documents = [
@@ -69,7 +71,9 @@ Below, we are using the `DocumentLanguageClassifier` in an indexing pipeline tha
 from haystack import Pipeline
 from haystack import Document
 from haystack.document_stores.in_memory import InMemoryDocumentStore
-from haystack.components.classifiers import DocumentLanguageClassifier
+from haystack_integrations.components.classifiers.langdetect import (
+    DocumentLanguageClassifier,
+)
 from haystack.components.embedders import SentenceTransformersDocumentEmbedder
 from haystack.components.writers import DocumentWriter
 from haystack.components.routers import MetadataRouter
