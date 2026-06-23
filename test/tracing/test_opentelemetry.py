@@ -30,6 +30,10 @@ def opentelemetry_tracer(span_exporter: InMemorySpanExporter) -> opentelemetry.t
 
 
 class TestOpenTelemetryTracer:
+    def test_deprecation_warning(self, opentelemetry_tracer: opentelemetry.trace.Tracer) -> None:
+        with pytest.warns(FutureWarning, match="opentelemetry-haystack"):
+            OpenTelemetryTracer(opentelemetry_tracer)
+
     def test_opentelemetry_tracer(
         self, opentelemetry_tracer: opentelemetry.trace.Tracer, span_exporter: InMemorySpanExporter
     ) -> None:
