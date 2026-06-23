@@ -475,11 +475,16 @@ class TestSuperComponentLifecycle:
             sample_super_component.warm_up()
             mock_warm_up.assert_called_once()
 
-    def test_warm_up_is_idempotent(self, sample_super_component):
-        with patch.object(sample_super_component.pipeline, "warm_up") as mock_warm_up:
-            sample_super_component.warm_up()
+    @pytest.mark.asyncio
+    async def test_sync_and_async_warm_up_are_independent(self, sample_super_component):
+        with (
+            patch.object(sample_super_component.pipeline, "warm_up") as mock_warm_up,
+            patch.object(sample_super_component.pipeline, "warm_up_async", new=AsyncMock()) as mock_warm_up_async,
+        ):
             sample_super_component.warm_up()
             mock_warm_up.assert_called_once()
+            await sample_super_component.warm_up_async()
+            mock_warm_up_async.assert_awaited_once()
 
     @pytest.mark.asyncio
     async def test_warm_up_async_delegates_to_pipeline(self, sample_super_component):
