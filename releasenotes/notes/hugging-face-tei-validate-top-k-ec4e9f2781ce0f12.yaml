@@ -1,0 +1,9 @@
+fixes:
+  - |
+    Added validation to ``HuggingFaceTEIRanker`` to raise a clear ``ValueError``
+    when ``top_k`` is zero or negative, both at initialization and when
+    overridden at ``run()``/``run_async()`` time. Previously, an invalid
+    ``top_k`` value was silently accepted and could produce empty or
+    unexpected ranking results. This brings ``HuggingFaceTEIRanker`` in
+    line with the other ranker components in Haystack, which already
+    perform this validation.

@@ -97,6 +97,9 @@ class HuggingFaceTEIRanker:
             stacklevel=2,
         )
 
+        if top_k <= 0:
+            raise ValueError(f"top_k must be > 0, but got {top_k}")
+
         self.url = url
         self.top_k = top_k
         self.timeout = timeout
@@ -207,6 +210,9 @@ class HuggingFaceTEIRanker:
         :raises TypeError:
             - If the API response is not in the expected list format.
         """
+        if top_k is not None and top_k <= 0:
+            raise ValueError(f"top_k must be > 0, but got {top_k}")
+
         # Return empty if no documents provided
         if not documents:
             return {"documents": []}
@@ -269,6 +275,9 @@ class HuggingFaceTEIRanker:
         :raises TypeError:
             - If the API response is not in the expected list format.
         """
+        if top_k is not None and top_k <= 0:
+            raise ValueError(f"top_k must be > 0, but got {top_k}")
+
         # Return empty if no documents provided
         if not documents:
             return {"documents": []}

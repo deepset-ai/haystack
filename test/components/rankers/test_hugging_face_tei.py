@@ -41,6 +41,16 @@ class TestHuggingFaceTEIRanker:
         assert ranker.max_retries == 5
         assert ranker.retry_status_codes == [500, 502, 503]
 
+    def test_init_with_zero_top_k_raises_error(self, del_hf_env_vars):
+        """Test that initializing with top_k=0 raises a ValueError"""
+        with pytest.raises(ValueError, match="top_k must be > 0, but got 0"):
+            HuggingFaceTEIRanker(url="https://api.my-tei-service.com", top_k=0)
+
+    def test_init_with_negative_top_k_raises_error(self, del_hf_env_vars):
+        """Test that initializing with a negative top_k raises a ValueError"""
+        with pytest.raises(ValueError, match="top_k must be > 0, but got -5"):
+            HuggingFaceTEIRanker(url="https://api.my-tei-service.com", top_k=-5)
+
     def test_to_dict(self, del_hf_env_vars):
         """Test serialization to dict with Secret token"""
         component = HuggingFaceTEIRanker(
@@ -206,6 +216,13 @@ class TestHuggingFaceTEIRanker:
         assert result["documents"][0].content == "Document 4"
         assert result["documents"][1].content == "Document 3"
 
+    def test_run_with_invalid_top_k_override_raises_error(self, del_hf_env_vars):
+        """Test that an invalid top_k override raises a ValueError in run()"""
+        ranker = HuggingFaceTEIRanker(url="https://api.my-tei-service.com")
+        docs = [Document(content="Document A")]
+        with pytest.raises(ValueError, match="top_k must be > 0, but got 0"):
+            ranker.run(query="test query", documents=docs, top_k=0)
+
     @patch("haystack.components.rankers.hugging_face_tei.request_with_retry")
     def test_run_deduplicates_documents(self, mock_request, del_hf_env_vars):
         """Test that duplicate documents are removed before sending to the API."""
@@ -307,6 +324,14 @@ class TestHuggingFaceTEIRanker:
         assert result["documents"][1].score == 0.85
         assert result["documents"][2].content == "Document A"
         assert result["documents"][2].score == 0.75
+
+    @pytest.mark.asyncio
+    async def test_run_async_with_invalid_top_k_override_raises_error(self, del_hf_env_vars):
+        """Test that an invalid top_k override raises a ValueError in run_async()"""
+        ranker = HuggingFaceTEIRanker(url="https://api.my-tei-service.com")
+        docs = [Document(content="Document A")]
+        with pytest.raises(ValueError, match="top_k must be > 0, but got 0"):
+            await ranker.run_async(query="test query", documents=docs, top_k=0)
 
     @pytest.mark.asyncio
     @patch("haystack.components.rankers.hugging_face_tei.async_request_with_retry")
