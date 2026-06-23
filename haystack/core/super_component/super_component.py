@@ -67,7 +67,6 @@ class _SuperComponent:
             raise ValueError("Pipeline must be provided to SuperComponent.")
 
         self.pipeline: Pipeline = pipeline
-        self._warmed_up = False
 
         # Determine input types based on pipeline and mapping
         pipeline_inputs = self.pipeline.inputs()
@@ -101,9 +100,25 @@ class _SuperComponent:
         """
         Warms up the SuperComponent by warming up the wrapped pipeline.
         """
-        if not self._warmed_up:
-            self.pipeline.warm_up()
-            self._warmed_up = True
+        self.pipeline.warm_up()
+
+    async def warm_up_async(self) -> None:
+        """
+        Warms up the SuperComponent by warming up the wrapped pipeline on the serving event loop.
+        """
+        await self.pipeline.warm_up_async()
+
+    def close(self) -> None:
+        """
+        Releases the synchronous resources held by the wrapped pipeline's components.
+        """
+        self.pipeline.close()
+
+    async def close_async(self) -> None:
+        """
+        Releases the async resources held by the wrapped pipeline's components.
+        """
+        await self.pipeline.close_async()
 
     def run(self, **kwargs: Any) -> dict[str, Any]:
         """
