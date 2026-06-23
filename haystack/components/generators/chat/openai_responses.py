@@ -931,7 +931,9 @@ def _convert_chat_message_to_responses_api_format(message: ChatMessage) -> list[
             # fields like item_id, output_index, summary_index, event_id, sequence_number into
             # reasoning.extra. Those are not valid reasoning input item fields and the API
             # rejects them with "Unknown parameter" when sent back in subsequent turns.
-            _valid_reasoning_fields = {"id", "type", "encrypted_content", "status"}
+            # Valid fields per ResponseReasoningItem schema: id, type, summary (handled separately),
+            # content, encrypted_content, status.
+            _valid_reasoning_fields = {"id", "type", "encrypted_content", "status", "content"}
             filtered_extra = {k: v for k, v in reasoning.extra.items() if k in _valid_reasoning_fields}
             reasoning_item = {"summary": [], **filtered_extra}
             if reasoning.reasoning_text:
