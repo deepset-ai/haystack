@@ -97,7 +97,7 @@
 | haystack/components/generators/chat/hugging\_face\_local.py                         |      213 |       27 |     87% |72-74, 77, 85-87, 246, 289-291, 351, 382, 440, 469-474, 501, 554-557, 592-598, 614, 670-671 |
 | haystack/components/generators/chat/llm.py                                          |       33 |        1 |     97% |       120 |
 | haystack/components/generators/chat/openai.py                                       |      214 |        4 |     98% |431, 481, 652, 752 |
-| haystack/components/generators/chat/openai\_responses.py                            |      328 |       39 |     88% |237, 268, 358, 438, 453, 490, 497-504, 512, 553-562, 578-579, 584, 597-613, 622, 767, 809-810, 823, 875, 897, 916 |
+| haystack/components/generators/chat/openai\_responses.py                            |      334 |       41 |     88% |237, 268, 358, 438, 453, 490, 497-504, 512, 553-562, 578-579, 584, 594, 604-620, 629, 686, 783, 825-826, 839, 891, 913, 932 |
 | haystack/components/generators/chat/types/\_\_init\_\_.py                           |        2 |        0 |    100% |           |
 | haystack/components/generators/chat/types/protocol.py                               |        4 |        0 |    100% |           |
 | haystack/components/generators/hugging\_face\_api.py                                |       88 |        3 |     97% |166-167, 265 |
@@ -266,7 +266,7 @@
 | haystack/utils/type\_serialization.py                                               |      112 |       12 |     89% |62, 64, 178-179, 190-193, 199, 215-218 |
 | haystack/utils/url\_validation.py                                                   |        4 |        0 |    100% |           |
 | haystack/version.py                                                                 |        5 |        2 |     60% |      9-10 |
-| **TOTAL**                                                                           | **17966** | **1220** | **93%** |           |
+| **TOTAL**                                                                           | **17972** | **1222** | **93%** |           |
 
 
 ## Setup coverage badge
