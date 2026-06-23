@@ -242,7 +242,7 @@
 | haystack/tracing/\_\_init\_\_.py                                                    |        2 |        0 |    100% |           |
 | haystack/tracing/datadog.py                                                         |       49 |        1 |     98% |       107 |
 | haystack/tracing/logging\_tracer.py                                                 |       33 |        0 |    100% |           |
-| haystack/tracing/opentelemetry.py                                                   |       36 |        1 |     97% |        72 |
+| haystack/tracing/opentelemetry.py                                                   |       38 |        1 |     97% |        84 |
 | haystack/tracing/tracer.py                                                          |       88 |        7 |     92% |33, 79, 99, 108, 223-226 |
 | haystack/tracing/utils.py                                                           |       26 |        0 |    100% |           |
 | haystack/utils/\_\_init\_\_.py                                                      |        5 |        0 |    100% |           |
@@ -266,7 +266,7 @@
 | haystack/utils/type\_serialization.py                                               |      112 |       12 |     89% |62, 64, 178-179, 190-193, 199, 215-218 |
 | haystack/utils/url\_validation.py                                                   |        4 |        0 |    100% |           |
 | haystack/version.py                                                                 |        5 |        2 |     60% |      9-10 |
-| **TOTAL**                                                                           | **17972** | **1222** | **93%** |           |
+| **TOTAL**                                                                           | **17974** | **1222** | **93%** |           |
 
 
 ## Setup coverage badge
