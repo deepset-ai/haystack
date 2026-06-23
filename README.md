@@ -106,7 +106,7 @@
 | haystack/components/generators/openai\_dalle.py                                     |       49 |        0 |    100% |           |
 | haystack/components/generators/utils.py                                             |       88 |        9 |     90% |41, 55, 101, 134-135, 167, 177, 179, 181 |
 | haystack/components/joiners/\_\_init\_\_.py                                         |        5 |        0 |    100% |           |
-| haystack/components/joiners/answer\_joiner.py                                       |       49 |        2 |     96% |  132, 138 |
+| haystack/components/joiners/answer\_joiner.py                                       |       49 |        1 |     98% |       140 |
 | haystack/components/joiners/branch.py                                               |       20 |        3 |     85% |105, 116-117 |
 | haystack/components/joiners/document\_joiner.py                                     |       97 |        0 |    100% |           |
 | haystack/components/joiners/list\_joiner.py                                         |       23 |        0 |    100% |           |
@@ -266,7 +266,7 @@
 | haystack/utils/type\_serialization.py                                               |      112 |       12 |     89% |62, 64, 178-179, 190-193, 199, 215-218 |
 | haystack/utils/url\_validation.py                                                   |        4 |        0 |    100% |           |
 | haystack/version.py                                                                 |        5 |        2 |     60% |      9-10 |
-| **TOTAL**                                                                           | **17966** | **1221** | **93%** |           |
+| **TOTAL**                                                                           | **17966** | **1220** | **93%** |           |
 
 
 ## Setup coverage badge
