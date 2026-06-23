@@ -21,21 +21,21 @@ upgrade:
 
     .. code:: python
 
-      from haystack import Pipeline
-      from haystack_integrations.components.connectors.opentelemetry import OpenTelemetryConnector
-
-      pipe = Pipeline()
-      pipe.add_component("tracer", OpenTelemetryConnector())
-
-    Alternatively, you can still enable the tracer manually:
-
-    .. code:: python
-
       from opentelemetry import trace
       from haystack import tracing
       from haystack_integrations.tracing.opentelemetry import OpenTelemetryTracer
 
       tracing.enable_tracing(OpenTelemetryTracer(trace.get_tracer("my_application")))
+
+    Alternatively, add the ``OpenTelemetryConnector`` to your pipeline to enable tracing:
+
+    .. code:: python
+
+      from haystack import Pipeline
+      from haystack_integrations.components.connectors.opentelemetry import OpenTelemetryConnector
+
+      pipe = Pipeline()
+      pipe.add_component("tracer", OpenTelemetryConnector())
   - |
     **Breaking change:** ``haystack.tracing.auto_enable_tracing`` has been removed (and is no longer called on
     ``import haystack``). Since Haystack no longer ships a built-in tracing backend, there is nothing to
