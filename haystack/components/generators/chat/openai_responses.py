@@ -684,6 +684,15 @@ def _convert_response_chunk_to_streaming_chunk(  # noqa: PLR0911
         # event falls through to the generic default and reasoning=None, so encrypted_content
         # is never available for multi-turn conversations.
         if chunk.item.type == "reasoning":
+            if chunk.item.content:
+                logger.warning(
+                    "OpenAI returned a non-empty 'content' field on a reasoning item ({_id}). "
+                    "This field is currently undocumented and was never observed in practice. "
+                    "The content is preserved in ReasoningContent.extra['content'] but is NOT "
+                    "reflected in ReasoningContent.reasoning_text. Please report this at "
+                    "https://github.com/deepset-ai/haystack/issues so we can update the mapping.",
+                    _id=chunk.item.id,
+                )
             reasoning = ReasoningContent(reasoning_text="", extra=chunk.item.to_dict())
             return StreamingChunk(
                 content="",
