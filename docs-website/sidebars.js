@@ -225,6 +225,7 @@ export default {
             'pipeline-components/connectors/langfuseconnector',
             'pipeline-components/connectors/openapiconnector',
             'pipeline-components/connectors/openapiserviceconnector',
+            'pipeline-components/connectors/opentelemetryconnector',
             'pipeline-components/connectors/weaveconnector',
             'pipeline-components/connectors/external-integrations-connectors',
           ],
