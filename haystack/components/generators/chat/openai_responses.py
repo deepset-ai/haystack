@@ -590,6 +590,13 @@ def _convert_response_to_chat_message(responses: Response | ParsedResponse) -> C
             extra = output.to_dict()
             # we dont need the summary in the extra
             extra.pop("summary")
+            if output.content:
+                logger.warning(
+                    "OpenAI returned a non-empty 'content' field on a reasoning item ({_id}). "
+                    "The content is preserved in ReasoningContent.extra['content'] but is NOT "
+                    "reflected in ReasoningContent.reasoning_text.",
+                    _id=output.id,
+                )
             reasoning_text = "\n".join([summary.text for summary in summaries if summaries])
             reasoning = ReasoningContent(reasoning_text=reasoning_text, extra=extra)
 
@@ -675,6 +682,15 @@ def _convert_response_chunk_to_streaming_chunk(  # noqa: PLR0911
         # event falls through to the generic default and reasoning=None, so encrypted_content
         # is never available for multi-turn conversations.
         if chunk.item.type == "reasoning":
+            if chunk.item.content:
+                logger.warning(
+                    "OpenAI returned a non-empty 'content' field on a reasoning item ({_id}). "
+                    "This field is currently undocumented and was never observed in practice. "
+                    "The content is preserved in ReasoningContent.extra['content'] but is NOT "
+                    "reflected in ReasoningContent.reasoning_text. Please report this at "
+                    "https://github.com/deepset-ai/haystack/issues so we can update the mapping.",
+                    _id=chunk.item.id,
+                )
             reasoning = ReasoningContent(reasoning_text="", extra=chunk.item.to_dict())
             return StreamingChunk(
                 content="",
@@ -927,7 +943,15 @@ def _convert_chat_message_to_responses_api_format(message: ChatMessage) -> list[
     if reasonings:
         formatted_reasonings = []
         for reasoning in reasonings:
-            reasoning_item = {"summary": [], **(reasoning.extra)}
+            # Streaming events (e.g. response.reasoning_summary_text.delta) store event-level
+            # fields like item_id, output_index, summary_index, event_id, sequence_number into
+            # reasoning.extra. Those are not valid reasoning input item fields and the API
+            # rejects them with "Unknown parameter" when sent back in subsequent turns.
+            # Valid fields per ResponseReasoningItem schema: id, type, summary (handled separately),
+            # content, encrypted_content, status.
+            _valid_reasoning_fields = {"id", "type", "encrypted_content", "status", "content"}
+            filtered_extra = {k: v for k, v in reasoning.extra.items() if k in _valid_reasoning_fields}
+            reasoning_item = {"summary": [], **filtered_extra}
             if reasoning.reasoning_text:
                 reasoning_item["summary"] = [{"text": reasoning.reasoning_text, "type": "summary_text"}]
             formatted_reasonings.append(reasoning_item)
