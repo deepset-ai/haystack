@@ -7,7 +7,7 @@ import logging
 import os
 from datetime import datetime
 from typing import Any
-from unittest.mock import ANY, MagicMock, patch
+from unittest.mock import ANY, AsyncMock, MagicMock, patch
 
 import pytest
 from openai import OpenAIError
@@ -29,6 +29,7 @@ from openai.types.chat.chat_completion_message_function_tool_call import Functio
 from openai.types.completion_usage import CompletionTokensDetails, CompletionUsage, PromptTokensDetails
 from pydantic import BaseModel
 
+import haystack.components.generators.chat.openai as openai_chat_module
 from haystack import component
 from haystack.components.generators.chat.openai import (
     OpenAIChatGenerator,
@@ -197,20 +198,17 @@ class TestOpenAIChatGenerator:
     def test_init_default(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
         component = OpenAIChatGenerator()
-        assert component.client.api_key == "test-api-key"
+        assert component.api_key.resolve_value() == "test-api-key"
         assert component.model == "gpt-5-mini"
         assert component.streaming_callback is None
         assert not component.generation_kwargs
-        assert component.client.timeout == 30
-        assert component.client.max_retries == 5
+        assert component.timeout is None
+        assert component.max_retries is None
         assert component.tools is None
         assert not component.tools_strict
         assert component.http_client_kwargs is None
-
-    def test_init_fail_wo_api_key(self, monkeypatch):
-        monkeypatch.delenv("OPENAI_API_KEY", raising=False)
-        with pytest.raises(ValueError):
-            OpenAIChatGenerator()
+        assert component.client is None
+        assert component.async_client is None
 
     def test_init_fail_with_duplicate_tool_names(self, monkeypatch, tools):
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
@@ -235,15 +233,17 @@ class TestOpenAIChatGenerator:
             tools_strict=True,
             http_client_kwargs={"proxy": "http://example.com:8080", "verify": False},
         )
-        assert component.client.api_key == "test-api-key"
+        assert component.api_key.resolve_value() == "test-api-key"
         assert component.model == "gpt-5-mini"
         assert component.streaming_callback is print_streaming_chunk
         assert component.generation_kwargs == {"max_completion_tokens": 10, "some_test_param": "test-params"}
-        assert component.client.timeout == 40.0
-        assert component.client.max_retries == 1
+        assert component.timeout == 40.0
+        assert component.max_retries == 1
         assert component.tools == [tool]
         assert component.tools_strict
         assert component.http_client_kwargs == {"proxy": "http://example.com:8080", "verify": False}
+        assert component.client is None
+        assert component.async_client is None
 
     def test_init_with_parameters_and_env_vars(self, monkeypatch):
         monkeypatch.setenv("OPENAI_TIMEOUT", "100")
@@ -254,12 +254,14 @@ class TestOpenAIChatGenerator:
             api_base_url="test-base-url",
             generation_kwargs={"max_completion_tokens": 10, "some_test_param": "test-params"},
         )
-        assert component.client.api_key == "test-api-key"
+        assert component.api_key.resolve_value() == "test-api-key"
         assert component.model == "gpt-5-mini"
         assert component.streaming_callback is print_streaming_chunk
         assert component.generation_kwargs == {"max_completion_tokens": 10, "some_test_param": "test-params"}
-        assert component.client.timeout == 100.0
-        assert component.client.max_retries == 10
+        assert component.timeout is None
+        assert component.max_retries is None
+        assert component.client is None
+        assert component.async_client is None
 
     def test_to_dict_default(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
@@ -420,11 +422,11 @@ class TestOpenAIChatGenerator:
             Tool(name="name", description="description", parameters={"x": {"type": "string"}}, function=print)
         ]
         assert component.tools_strict
-        assert component.client.timeout == 100.0
-        assert component.client.max_retries == 10
+        assert component.timeout == 100.0
+        assert component.max_retries == 10
         assert component.http_client_kwargs == {"proxy": "http://example.com:8080", "verify": False}
 
-    def test_from_dict_fail_wo_env_var(self, monkeypatch):
+    def test_from_dict_wo_env_var_does_not_fail(self, monkeypatch):
         monkeypatch.delenv("OPENAI_API_KEY", raising=False)
         data = {
             "type": "haystack.components.generators.chat.openai.OpenAIChatGenerator",
@@ -438,8 +440,9 @@ class TestOpenAIChatGenerator:
                 "tools": None,
             },
         }
-        with pytest.raises(ValueError):
-            OpenAIChatGenerator.from_dict(data)
+        component = OpenAIChatGenerator.from_dict(data)
+        assert component.client is None
+        assert component.async_client is None
 
     def test_run(self, chat_messages, openai_mock_chat_completion):
         component = OpenAIChatGenerator(api_key=Secret.from_token("test-api-key"))
@@ -574,6 +577,7 @@ class TestOpenAIChatGenerator:
         wrapped_openai_stream.__iter__.return_value = iter([chunk])
 
         component = OpenAIChatGenerator(api_key=Secret.from_token("test-api-key"))
+        component.warm_up()
 
         with patch.object(
             component.client.chat.completions, "create", return_value=wrapped_openai_stream
@@ -1218,112 +1222,6 @@ class TestOpenAIChatGenerator:
         assert len(deserialized.tools) == 2
         assert all(isinstance(ts, Toolset) for ts in deserialized.tools)
 
-    def test_warm_up_with_tools(self, monkeypatch):
-        """Test that warm_up() calls warm_up on tools and is idempotent."""
-        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
-
-        # Create a mock tool that tracks if warm_up() was called
-        class MockTool(Tool):
-            warm_up_call_count = 0  # Class variable to track calls
-
-            def __init__(self):
-                super().__init__(
-                    name="mock_tool",
-                    description="A mock tool for testing",
-                    parameters={"x": {"type": "string"}},
-                    function=lambda x: x,
-                )
-
-            def warm_up(self):
-                MockTool.warm_up_call_count += 1
-
-        # Reset the class variable before test
-        MockTool.warm_up_call_count = 0
-        mock_tool = MockTool()
-
-        # Create OpenAIChatGenerator with the mock tool
-        component = OpenAIChatGenerator(tools=[mock_tool])
-
-        # Verify initial state - warm_up not called yet
-        assert MockTool.warm_up_call_count == 0
-        assert not component._is_warmed_up
-
-        # Call warm_up() on the generator
-        component.warm_up()
-
-        # Assert that the tool's warm_up() was called
-        assert MockTool.warm_up_call_count == 1
-        assert component._is_warmed_up
-
-        # Call warm_up() again and verify it's idempotent (only warms up once)
-        component.warm_up()
-
-        # The tool's warm_up should still only have been called once
-        assert MockTool.warm_up_call_count == 1
-        assert component._is_warmed_up
-
-    def test_warm_up_with_no_tools(self, monkeypatch):
-        """Test that warm_up() works when no tools are provided."""
-        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
-
-        component = OpenAIChatGenerator()
-
-        # Verify initial state
-        assert not component._is_warmed_up
-        assert component.tools is None
-
-        # Call warm_up() - should not raise an error
-        component.warm_up()
-
-        # Verify the component is warmed up
-        assert component._is_warmed_up
-
-        # Call warm_up() again - should be idempotent
-        component.warm_up()
-        assert component._is_warmed_up
-
-    def test_warm_up_with_multiple_tools(self, monkeypatch):
-        """Test that warm_up() works with multiple tools."""
-        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
-
-        from haystack.tools import Tool
-
-        # Track warm_up calls
-        warm_up_calls = []
-
-        class MockTool(Tool):
-            def __init__(self, tool_name):
-                super().__init__(
-                    name=tool_name,
-                    description=f"Mock tool {tool_name}",
-                    parameters={"type": "object", "properties": {"x": {"type": "string"}}, "required": ["x"]},
-                    function=lambda x: f"{tool_name} result: {x}",
-                )
-
-            def warm_up(self):
-                warm_up_calls.append(self.name)
-
-        mock_tool1 = MockTool("tool1")
-        mock_tool2 = MockTool("tool2")
-
-        # Use a LIST of tools, not a Toolset
-        component = OpenAIChatGenerator(tools=[mock_tool1, mock_tool2])
-
-        # Call warm_up()
-        component.warm_up()
-
-        # Assert that both tools' warm_up() were called
-        assert "tool1" in warm_up_calls
-        assert "tool2" in warm_up_calls
-        assert component._is_warmed_up
-
-        # Track count
-        call_count = len(warm_up_calls)
-
-        # Verify idempotency
-        component.warm_up()
-        assert len(warm_up_calls) == call_count
-
 
 @pytest.fixture
 def chat_completion_chunks():
@@ -1759,6 +1657,123 @@ def streaming_chunks():
             },
         ),
     ]
+
+
+@pytest.fixture
+def mock_openai_clients(monkeypatch):
+    monkeypatch.setenv("OPENAI_API_KEY", "fake")
+    sync_cls = MagicMock(name="OpenAI")
+    async_cls = MagicMock(name="AsyncOpenAI")
+    async_cls.return_value.close = AsyncMock()
+    monkeypatch.setattr(openai_chat_module, "OpenAI", sync_cls)
+    monkeypatch.setattr(openai_chat_module, "AsyncOpenAI", async_cls)
+    return sync_cls, async_cls
+
+
+class TestComponentLifecycle:
+    def test_warm_up_uses_default_timeout_and_max_retries(self, monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "fake-api-key")
+        generator = OpenAIChatGenerator()
+        generator.warm_up()
+        assert generator.client.max_retries == 5
+        assert generator.client.timeout == 30.0
+
+    def test_warm_up_uses_timeout_and_max_retries_from_parameters(self):
+        generator = OpenAIChatGenerator(api_key=Secret.from_token("fake-api-key"), timeout=40.0, max_retries=1)
+        generator.warm_up()
+        assert generator.client.max_retries == 1
+        assert generator.client.timeout == 40.0
+
+    def test_warm_up_uses_timeout_and_max_retries_from_env_vars(self, monkeypatch):
+        monkeypatch.setenv("OPENAI_TIMEOUT", "100")
+        monkeypatch.setenv("OPENAI_MAX_RETRIES", "10")
+        generator = OpenAIChatGenerator(api_key=Secret.from_token("fake-api-key"))
+        generator.warm_up()
+        assert generator.client.max_retries == 10
+        assert generator.client.timeout == 100.0
+
+    def test_key_resolved_at_warm_up_not_init(self, monkeypatch):
+        monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+        generator = OpenAIChatGenerator()
+        with pytest.raises(ValueError, match="None of the .* environment variables are set"):
+            generator.warm_up()
+
+    def test_warm_up_warms_tools_once(self, monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "fake-api-key")
+        warm_up_calls = []
+
+        class MockTool(Tool):
+            def __init__(self, tool_name):
+                super().__init__(
+                    name=tool_name,
+                    description=f"Mock tool {tool_name}",
+                    parameters={"type": "object", "properties": {"x": {"type": "string"}}, "required": ["x"]},
+                    function=lambda x: x,
+                )
+
+            def warm_up(self):
+                warm_up_calls.append(self.name)
+
+        generator = OpenAIChatGenerator(tools=[MockTool("tool1"), MockTool("tool2")])
+        assert not generator._tools_warmed_up
+
+        generator.warm_up()
+        assert sorted(warm_up_calls) == ["tool1", "tool2"]
+        assert generator._tools_warmed_up
+
+        generator.warm_up()
+        assert sorted(warm_up_calls) == ["tool1", "tool2"]
+
+    def test_warm_up_with_no_tools_does_not_raise(self, monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "fake-api-key")
+        generator = OpenAIChatGenerator()
+        generator.warm_up()
+        assert generator._tools_warmed_up
+
+    def test_sync_lifecycle(self, mock_openai_clients):
+        sync_cls, _ = mock_openai_clients
+        generator = OpenAIChatGenerator()
+        assert generator.client is None
+        assert generator.async_client is None
+
+        generator.warm_up()
+        assert generator.client is sync_cls.return_value
+        assert generator.async_client is None
+
+        generator.close()
+        sync_cls.return_value.close.assert_called_once()
+        assert generator.client is None
+
+    async def test_async_lifecycle(self, mock_openai_clients):
+        _, async_cls = mock_openai_clients
+        generator = OpenAIChatGenerator()
+
+        await generator.warm_up_async()
+        assert generator.async_client is async_cls.return_value
+        assert generator.client is None
+
+        await generator.close_async()
+        async_cls.return_value.close.assert_awaited_once()
+        assert generator.async_client is None
+
+    async def test_close_is_safe_without_warm_up(self, mock_openai_clients):
+        generator = OpenAIChatGenerator()
+        generator.close()
+        await generator.close_async()
+        assert generator.client is None
+        assert generator.async_client is None
+
+    async def test_close_and_close_async_are_independent(self, mock_openai_clients):
+        generator = OpenAIChatGenerator()
+        generator.warm_up()
+        await generator.warm_up_async()
+
+        generator.close()
+        assert generator.client is None
+        assert generator.async_client is not None
+
+        await generator.close_async()
+        assert generator.async_client is None
 
 
 class TestChatCompletionChunkConversion:

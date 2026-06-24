@@ -1,0 +1,11 @@
+---
+deprecations:
+  - |
+    ``DocumentLanguageClassifier`` and ``TextLanguageRouter`` are deprecated and will be removed from
+    Haystack in version 3.0. They are moving to the ``langdetect-haystack`` package. To continue using them,
+    install the package with ``pip install langdetect-haystack`` and update your imports as follows:
+
+    .. code-block:: python
+
+        from haystack_integrations.components.classifiers.langdetect import DocumentLanguageClassifier
+        from haystack_integrations.components.routers.langdetect import TextLanguageRouter

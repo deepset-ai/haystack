@@ -29,6 +29,8 @@ Haystack pipelines in YAML are a serialization format for executable pipelines. 
 **Loading a pipeline from an untrusted source is unsafe by design.** This is not a hidden weakness but the expected consequence of a system that lets users bring their own code. The security responsibility lies with the operator: pipeline definitions must be treated as code, stored and transmitted with the same controls applied to source code, and never loaded from untrusted or user-controlled input without review.
 Reports that demonstrate, for example, `import_class_by_name()` can import arbitrary modules given a pipeline that an operator chose to load are out of scope.
 
+The same trust boundary applies to serialized snapshots, including `PipelineSnapshot` and `AgentSnapshot`. A snapshot is operator-controlled state that is intentionally human-readable and editable (for example, to inspect or modify a paused execution before resuming it). Resuming from a snapshot deserializes its contents without integrity verification, by design. Snapshots must therefore be stored and access-controlled as trusted artifacts, exactly as pipeline definitions are. Reports that rely on modifying a snapshot an operator chose to resume from are out of scope.
+
 However, if you find a way to achieve arbitrary code execution that does *not* rely on an operator loading an untrusted pipeline (for example, a memory-safety issue in the parser itself, or a class of pipelines that triggers unintended behaviour in the Haystack runtime), that finding is in scope.
 
 ### SSRF via URL-fetching Components (e.g. `LinkContentFetcher`)

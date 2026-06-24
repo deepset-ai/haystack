@@ -80,35 +80,59 @@ class OpenAIImageGenerator:
         self.api_base_url = api_base_url
         self.organization = organization
 
-        self.timeout = timeout if timeout is not None else float(os.environ.get("OPENAI_TIMEOUT", "30.0"))
-        self.max_retries = max_retries if max_retries is not None else int(os.environ.get("OPENAI_MAX_RETRIES", "5"))
+        self.timeout = timeout
+        self.max_retries = max_retries
         self.http_client_kwargs = http_client_kwargs
 
         self.client: OpenAI | None = None
         self.async_client: AsyncOpenAI | None = None
 
+    def _client_kwargs(self) -> dict[str, Any]:
+        timeout = self.timeout if self.timeout is not None else float(os.environ.get("OPENAI_TIMEOUT", "30.0"))
+        max_retries = (
+            self.max_retries if self.max_retries is not None else int(os.environ.get("OPENAI_MAX_RETRIES", "5"))
+        )
+        return {
+            "api_key": self.api_key.resolve_value(),
+            "organization": self.organization,
+            "base_url": self.api_base_url,
+            "timeout": timeout,
+            "max_retries": max_retries,
+        }
+
     def warm_up(self) -> None:
         """
-        Warm up the OpenAI client.
+        Initializes the synchronous OpenAI client.
         """
         if self.client is None:
             self.client = OpenAI(
-                api_key=self.api_key.resolve_value(),
-                organization=self.organization,
-                base_url=self.api_base_url,
-                timeout=self.timeout,
-                max_retries=self.max_retries,
-                http_client=init_http_client(self.http_client_kwargs, async_client=False),
+                http_client=init_http_client(self.http_client_kwargs, async_client=False), **self._client_kwargs()
             )
+
+    async def warm_up_async(self) -> None:  # noqa: RUF029
+        """
+        Initializes the asynchronous OpenAI client on the serving event loop.
+        """
         if self.async_client is None:
             self.async_client = AsyncOpenAI(
-                api_key=self.api_key.resolve_value(),
-                organization=self.organization,
-                base_url=self.api_base_url,
-                timeout=self.timeout,
-                max_retries=self.max_retries,
-                http_client=init_http_client(self.http_client_kwargs, async_client=True),
+                http_client=init_http_client(self.http_client_kwargs, async_client=True), **self._client_kwargs()
             )
+
+    def close(self) -> None:
+        """
+        Releases the synchronous OpenAI client.
+        """
+        if self.client is not None:
+            self.client.close()
+            self.client = None
+
+    async def close_async(self) -> None:
+        """
+        Releases the asynchronous OpenAI client.
+        """
+        if self.async_client is not None:
+            await self.async_client.close()
+            self.async_client = None
 
     @component.output_types(images=list[str], revised_prompt=str)
     def run(
@@ -131,8 +155,7 @@ class OpenAIImageGenerator:
             The revised prompt is the prompt that was used to generate the image, if there was any revision
             to the prompt made by OpenAI.
         """
-        if self.client is None:
-            self.warm_up()
+        self.warm_up()
 
         # at this point the client is initialized, but mypy doesn't know that
         assert self.client is not None
@@ -173,8 +196,7 @@ class OpenAIImageGenerator:
             The revised prompt is the prompt that was used to generate the image, if there was any revision
             to the prompt made by OpenAI.
         """
-        if self.async_client is None:
-            self.warm_up()
+        await self.warm_up_async()
 
         # at this point the client is initialized, but mypy doesn't know that
         assert self.async_client is not None

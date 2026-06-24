@@ -1,0 +1,10 @@
+---
+fixes:
+  - |
+    Fixed ``RecursiveDocumentSplitter`` producing incorrect ``split_idx_start`` metadata values
+    when ``split_unit="word"`` (or ``"token"``) is used together with ``split_overlap > 0``.
+    Previously, ``self.split_overlap`` (a word/token count) was subtracted directly from a
+    character-offset counter, causing every chunk after the first to report a wrong start
+    position in the original document. The fix uses the actual character length of the
+    overlap suffix, obtained from ``_get_overlap()``, so the offset is always correct
+    regardless of ``split_unit``.

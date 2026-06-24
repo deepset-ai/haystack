@@ -195,40 +195,68 @@ class OpenAIResponsesChatGenerator:
         self.tools_strict = tools_strict
         self.http_client_kwargs = http_client_kwargs
 
-        if timeout is None:
-            timeout = float(os.environ.get("OPENAI_TIMEOUT", "30.0"))
-        if max_retries is None:
-            max_retries = int(os.environ.get("OPENAI_MAX_RETRIES", "5"))
+        self.client: OpenAI | None = None
+        self.async_client: AsyncOpenAI | None = None
+        self._tools_warmed_up = False
 
-        resolved_api_key = api_key.resolve_value() if isinstance(api_key, Secret) else api_key
-        client_kwargs: dict[str, Any] = {
+    def _client_kwargs(self) -> dict[str, Any]:
+        timeout = self.timeout if self.timeout is not None else float(os.environ.get("OPENAI_TIMEOUT", "30.0"))
+        max_retries = (
+            self.max_retries if self.max_retries is not None else int(os.environ.get("OPENAI_MAX_RETRIES", "5"))
+        )
+        resolved_api_key = self.api_key.resolve_value() if isinstance(self.api_key, Secret) else self.api_key
+        return {
             "api_key": resolved_api_key,
-            "organization": organization,
-            "base_url": api_base_url,
+            "organization": self.organization,
+            "base_url": self.api_base_url,
             "timeout": timeout,
             "max_retries": max_retries,
         }
 
-        self.client = OpenAI(http_client=init_http_client(self.http_client_kwargs, async_client=False), **client_kwargs)
-        self.async_client = AsyncOpenAI(
-            http_client=init_http_client(self.http_client_kwargs, async_client=True), **client_kwargs
-        )
-        self._is_warmed_up = False
-
-    def warm_up(self) -> None:
-        """
-        Warm up the OpenAI responses chat generator.
-
-        This will warm up the tools registered in the chat generator.
-        This method is idempotent and will only warm up the tools once.
-        """
-        if not self._is_warmed_up:
+    def _warm_up_tools(self) -> None:
+        if not self._tools_warmed_up:
             is_openai_tool = isinstance(self.tools, list) and isinstance(self.tools[0], dict)
             # We only warm up Haystack tools, not OpenAI/MCP tools
             # The type ignore is needed because mypy cannot infer the type correctly
             if not is_openai_tool:
                 warm_up_tools(self.tools)  # type: ignore[arg-type]
-            self._is_warmed_up = True
+            self._tools_warmed_up = True
+
+    def warm_up(self) -> None:
+        """
+        Warm up the tools and initialize the synchronous OpenAI client.
+        """
+        self._warm_up_tools()
+        if self.client is None:
+            self.client = OpenAI(
+                http_client=init_http_client(self.http_client_kwargs, async_client=False), **self._client_kwargs()
+            )
+
+    async def warm_up_async(self) -> None:  # noqa: RUF029
+        """
+        Warm up the tools and initialize the asynchronous OpenAI client on the serving event loop.
+        """
+        self._warm_up_tools()
+        if self.async_client is None:
+            self.async_client = AsyncOpenAI(
+                http_client=init_http_client(self.http_client_kwargs, async_client=True), **self._client_kwargs()
+            )
+
+    def close(self) -> None:
+        """
+        Releases the synchronous OpenAI client.
+        """
+        if self.client is not None:
+            self.client.close()
+            self.client = None
+
+    async def close_async(self) -> None:
+        """
+        Releases the asynchronous OpenAI client.
+        """
+        if self.async_client is not None:
+            await self.async_client.close()
+            self.async_client = None
 
     def _get_telemetry_data(self) -> dict[str, Any]:
         """
@@ -349,8 +377,7 @@ class OpenAIResponsesChatGenerator:
             A dictionary with the following key:
             - `replies`: A list containing the generated responses as ChatMessage instances.
         """
-        if not self._is_warmed_up:
-            self.warm_up()
+        self.warm_up()
 
         messages = _normalize_messages(messages)
 
@@ -370,6 +397,7 @@ class OpenAIResponsesChatGenerator:
             tools_strict=tools_strict,
         )
         openai_endpoint = api_args.pop("openai_endpoint")
+        assert self.client is not None  # mypy: client is built by warm_up above
         openai_endpoint_method = getattr(self.client.responses, openai_endpoint)
         responses = openai_endpoint_method(**api_args)
 
@@ -423,8 +451,7 @@ class OpenAIResponsesChatGenerator:
             A dictionary with the following key:
             - `replies`: A list containing the generated responses as ChatMessage instances.
         """
-        if not self._is_warmed_up:
-            self.warm_up()
+        await self.warm_up_async()
 
         messages = _normalize_messages(messages)
 
@@ -446,6 +473,7 @@ class OpenAIResponsesChatGenerator:
         )
 
         openai_endpoint = api_args.pop("openai_endpoint")
+        assert self.async_client is not None  # mypy: async_client is built by warm_up_async above
         openai_endpoint_method = getattr(self.async_client.responses, openai_endpoint)
         responses = await openai_endpoint_method(**api_args)
 
@@ -590,6 +618,13 @@ def _convert_response_to_chat_message(responses: Response | ParsedResponse) -> C
             extra = output.to_dict()
             # we dont need the summary in the extra
             extra.pop("summary")
+            if output.content:
+                logger.warning(
+                    "OpenAI returned a non-empty 'content' field on a reasoning item ({_id}). "
+                    "The content is preserved in ReasoningContent.extra['content'] but is NOT "
+                    "reflected in ReasoningContent.reasoning_text.",
+                    _id=output.id,
+                )
             reasoning_text = "\n".join([summary.text for summary in summaries if summaries])
             reasoning = ReasoningContent(reasoning_text=reasoning_text, extra=extra)
 
@@ -629,7 +664,7 @@ def _convert_response_to_chat_message(responses: Response | ParsedResponse) -> C
     )
 
 
-def _convert_response_chunk_to_streaming_chunk(
+def _convert_response_chunk_to_streaming_chunk(  # noqa: PLR0911
     chunk: ResponseStreamEvent, previous_chunks: list[StreamingChunk], component_info: ComponentInfo | None = None
 ) -> StreamingChunk:
     """
@@ -666,6 +701,30 @@ def _convert_response_chunk_to_streaming_chunk(
                 index=chunk.output_index,
                 tool_calls=[tool_call],
                 start=True,
+                meta={"received_at": datetime.now().isoformat()},
+            )
+
+    elif chunk.type == "response.output_item.done":
+        # The done event carries the completed reasoning item, which includes encrypted_content
+        # when include=["reasoning.encrypted_content"] was requested. Without this handler the
+        # event falls through to the generic default and reasoning=None, so encrypted_content
+        # is never available for multi-turn conversations.
+        if chunk.item.type == "reasoning":
+            if chunk.item.content:
+                logger.warning(
+                    "OpenAI returned a non-empty 'content' field on a reasoning item ({_id}). "
+                    "This field is currently undocumented and was never observed in practice. "
+                    "The content is preserved in ReasoningContent.extra['content'] but is NOT "
+                    "reflected in ReasoningContent.reasoning_text. Please report this at "
+                    "https://github.com/deepset-ai/haystack/issues so we can update the mapping.",
+                    _id=chunk.item.id,
+                )
+            reasoning = ReasoningContent(reasoning_text="", extra=chunk.item.to_dict())
+            return StreamingChunk(
+                content="",
+                component_info=component_info,
+                index=chunk.output_index,
+                reasoning=reasoning,
                 meta={"received_at": datetime.now().isoformat()},
             )
 
@@ -812,7 +871,16 @@ def _convert_streaming_chunks_to_chat_message(chunks: list[StreamingChunk]) -> C
     # function calls without reasoning ids are not supported by the API
     reasoning = None
     if reasoning_id:
-        reasoning = ReasoningContent(reasoning_text=reasoning_text, extra={"id": reasoning_id, "type": "reasoning"})
+        # Preserve all extra fields from streaming chunks (e.g. encrypted_content) while ensuring id and
+        # type are present
+        reasoning_extra = {}
+        for chunk in chunks:
+            if chunk.reasoning and chunk.reasoning.extra:
+                reasoning_extra.update(chunk.reasoning.extra)
+        # Ensure id and type are always set, but don't override if already present
+        reasoning_extra.setdefault("id", reasoning_id)
+        reasoning_extra.setdefault("type", "reasoning")
+        reasoning = ReasoningContent(reasoning_text=reasoning_text, extra=reasoning_extra)
 
     return ChatMessage.from_assistant(
         text=text or None, tool_calls=tool_calls, meta=final_response, reasoning=reasoning
@@ -903,7 +971,15 @@ def _convert_chat_message_to_responses_api_format(message: ChatMessage) -> list[
     if reasonings:
         formatted_reasonings = []
         for reasoning in reasonings:
-            reasoning_item = {"summary": [], **(reasoning.extra)}
+            # Streaming events (e.g. response.reasoning_summary_text.delta) store event-level
+            # fields like item_id, output_index, summary_index, event_id, sequence_number into
+            # reasoning.extra. Those are not valid reasoning input item fields and the API
+            # rejects them with "Unknown parameter" when sent back in subsequent turns.
+            # Valid fields per ResponseReasoningItem schema: id, type, summary (handled separately),
+            # content, encrypted_content, status.
+            _valid_reasoning_fields = {"id", "type", "encrypted_content", "status", "content"}
+            filtered_extra = {k: v for k, v in reasoning.extra.items() if k in _valid_reasoning_fields}
+            reasoning_item = {"summary": [], **filtered_extra}
             if reasoning.reasoning_text:
                 reasoning_item["summary"] = [{"text": reasoning.reasoning_text, "type": "summary_text"}]
             formatted_reasonings.append(reasoning_item)

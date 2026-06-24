@@ -104,7 +104,6 @@ dependencies = [
   "pdfminer.six",                     # PDFMinerToDocument
   "markdown-it-py",                   # MarkdownToDocument
   "mdit_plain",                       # MarkdownToDocument
-  "azure-ai-formrecognizer>=3.2.0b2", # AzureOCRDocumentConverter
   "trafilatura",                      # HTMLToDocument
   "python-pptx",                      # PPTXToDocument
   "python-docx",                      # DocxToDocument
@@ -118,14 +117,6 @@ dependencies = [
 
   # Human in the Loop
   "rich",                 # Console rendering for HITL
-
-  # OpenAPI
-  "jsonref",              # OpenAPIServiceConnector, OpenAPIServiceToFunctions
-  "openapi3",
-  "openapi-llm>=0.4.1",   # OpenAPIConnector
-
-  # Tracing
-  "opentelemetry-sdk",
 
   # Structured logging
   "structlog",

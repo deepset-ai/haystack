@@ -487,7 +487,7 @@ class Agent:
         self.tool_concurrency_limit = tool_concurrency_limit
         self.tool_streaming_callback_passthrough = tool_streaming_callback_passthrough
         self._confirmation_strategies = confirmation_strategies or {}
-        self._is_warmed_up = False
+        self._tools_warmed_up = False
 
         # --- State schema ---
         # shallow copy is sufficient: we only add a top-level "messages" key, never mutate nested values
@@ -574,16 +574,38 @@ class Agent:
             else:
                 component.set_input_type(self, name=var_name, type=Any, default=None)
 
-    def warm_up(self) -> None:
-        """
-        Warm up the Agent.
-        """
-        if not self._is_warmed_up:
-            if hasattr(self.chat_generator, "warm_up"):
-                self.chat_generator.warm_up()
+    def _warm_up_tools(self) -> None:
+        """Warm up the configured tools once."""
+        if not self._tools_warmed_up:
             if self.tools:
                 warm_up_tools(self.tools)
-            self._is_warmed_up = True
+            self._tools_warmed_up = True
+
+    def warm_up(self) -> None:
+        """Warm up the tools and the underlying chat generator."""
+        self._warm_up_tools()
+        if hasattr(self.chat_generator, "warm_up"):
+            self.chat_generator.warm_up()
+
+    async def warm_up_async(self) -> None:
+        """Warm up the tools and the underlying chat generator on the serving event loop."""
+        self._warm_up_tools()
+        if hasattr(self.chat_generator, "warm_up_async"):
+            await self.chat_generator.warm_up_async()
+        elif hasattr(self.chat_generator, "warm_up"):
+            self.chat_generator.warm_up()
+
+    def close(self) -> None:
+        """Release the underlying chat generator's resources."""
+        if hasattr(self.chat_generator, "close"):
+            self.chat_generator.close()
+
+    async def close_async(self) -> None:
+        """Release the underlying chat generator's async resources."""
+        if hasattr(self.chat_generator, "close_async"):
+            await self.chat_generator.close_async()
+        elif hasattr(self.chat_generator, "close"):
+            self.chat_generator.close()
 
     def to_dict(self) -> dict[str, Any]:
         """
@@ -828,8 +850,7 @@ class Agent:
             - Any additional keys defined in the `state_schema`.
         """
         agent_inputs = {"messages": messages, "streaming_callback": streaming_callback, **kwargs}
-        if not self._is_warmed_up:
-            self.warm_up()
+        self.warm_up()
 
         exe_context = self._initialize_fresh_execution(
             messages=messages,
@@ -903,8 +924,7 @@ class Agent:
             - Any additional keys defined in the `state_schema`.
         """
         agent_inputs = {"messages": messages, "streaming_callback": streaming_callback, **kwargs}
-        if not self._is_warmed_up:
-            self.warm_up()
+        await self.warm_up_async()
 
         exe_context = self._initialize_fresh_execution(
             messages=messages,
@@ -958,7 +978,17 @@ class Agent:
             exe_context.state.set("messages", llm_messages)
             _record_llm_usage(exe_context.state, llm_messages)
 
-            if not any(msg.tool_call for msg in llm_messages) or not current_tools:
+            # Exit for `exit_conditions=["text"]` behavior: the agent stops when there is no tool invoker, or when
+            # the model returns a plain text response (no tool calls). We require the last message to be a non-empty
+            # assistant text message so that an invalid response (e.g. a message with no tool calls or text) won't
+            # trigger an exit.
+            last_message = llm_messages[-1] if llm_messages else None
+            if not current_tools or (
+                last_message is not None
+                and not any(msg.tool_call for msg in llm_messages)
+                and last_message.is_from(ChatRole.ASSISTANT)
+                and last_message.text
+            ):
                 exe_context.counter += 1
                 exe_context.state.set("step_count", exe_context.counter)
                 return False
@@ -1022,7 +1052,17 @@ class Agent:
             exe_context.state.set("messages", llm_messages)
             _record_llm_usage(exe_context.state, llm_messages)
 
-            if not any(msg.tool_call for msg in llm_messages) or not current_tools:
+            # Exit for `exit_conditions=["text"]` behavior: the agent stops when there is no tool invoker, or when
+            # the model returns a plain text response (no tool calls). We require the last message to be a non-empty
+            # assistant text message so that an invalid response (e.g. a message with no tool calls or text) won't
+            # trigger an exit.
+            last_message = llm_messages[-1] if llm_messages else None
+            if not current_tools or (
+                last_message is not None
+                and not any(msg.tool_call for msg in llm_messages)
+                and last_message.is_from(ChatRole.ASSISTANT)
+                and last_message.text
+            ):
                 exe_context.counter += 1
                 exe_context.state.set("step_count", exe_context.counter)
                 return False

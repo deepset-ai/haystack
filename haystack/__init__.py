@@ -8,7 +8,9 @@
 # - they offer minimal performance gains in this case.
 
 import haystack.logging
-import haystack.tracing
+
+# Imported so the `haystack.tracing` namespace is available after `import haystack`.
+import haystack.tracing  # noqa: F401
 from haystack.core.component import component
 from haystack.core.errors import ComponentError, DeserializationError
 from haystack.core.pipeline import Pipeline
@@ -22,9 +24,6 @@ from haystack.version import __version__  # noqa: F401
 # logging handler (so Haystack's logs are formatted) without touching the process-global `structlog` configuration -
 # importing Haystack must not reconfigure `structlog` for the host application's own native `structlog` loggers.
 haystack.logging.configure_logging(configure_structlog=False)
-
-# Same for tracing (no op if `opentelemetry` or `ddtrace` is not installed)
-haystack.tracing.auto_enable_tracing()
 
 __all__ = [
     "Answer",

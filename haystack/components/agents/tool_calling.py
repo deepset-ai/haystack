@@ -69,10 +69,8 @@ def _merge_tool_outputs_into_state(tool: Tool, result: Any, state: State) -> Non
     """
     if not isinstance(result, dict):
         return
-    if not hasattr(tool, "outputs_to_state") or not isinstance(tool.outputs_to_state, dict):
-        return
 
-    for state_key, config in tool.outputs_to_state.items():
+    for state_key, config in (tool.outputs_to_state or {}).items():
         source_key = config.get("source", None)
         if source_key and source_key not in result:
             continue
@@ -243,30 +241,12 @@ def _get_func_params(tool: Tool) -> dict[str, Any]:
     return {name: param.annotation for name, param in inspect.signature(target).parameters.items()}  # type: ignore[arg-type]
 
 
-def _state_param_mappings(tool: Tool, func_params: dict[str, Any]) -> dict[str, str]:
-    """
-    Resolve the `{state_key: param_name}` mapping a tool uses to pull inputs from State.
-
-    Tools may declare this explicitly via `inputs_from_state`; otherwise every parameter is treated as a potential state
-     key by name. This is the single source of truth shared by `_inject_state_args` (which reads the actual values) and
-     `_state_io_for_call` (which derives the read set for scheduling).
-
-    :param tool: The tool whose state-input mapping to resolve.
-    :param func_params: The tool's parameter names mapped to their annotations (from `_get_func_params`).
-    :returns: A mapping of state key to the tool parameter it feeds.
-    """
-    inputs_from_state = getattr(tool, "inputs_from_state", None)
-    if isinstance(inputs_from_state, dict):
-        return inputs_from_state
-    return {name: name for name in func_params}
-
-
 def _inject_state_args(tool: Tool, llm_args: dict[str, Any], state: State) -> dict[str, Any]:
     """
     Merge LLM-provided arguments with state-sourced arguments.
 
-    LLM args take precedence. State values are pulled in via `inputs_from_state` mappings or parameter-name matching,
-    then the live State object is injected for any param annotated as State.
+    LLM args take precedence. State values are pulled in only for the keys a tool explicitly declares via its
+    `inputs_from_state` mapping, then the live State object is injected for any param annotated as State.
 
     :param tool: The tool being invoked, used to determine parameter mappings and State injection.
     :param llm_args: The arguments provided by the LLM, which take precedence over state values.
@@ -277,10 +257,12 @@ def _inject_state_args(tool: Tool, llm_args: dict[str, Any], state: State) -> di
     final_args = dict(llm_args)
     func_params = _get_func_params(tool)
 
-    for state_key, param_name in _state_param_mappings(tool, func_params).items():
+    # A tool reads from State by name only via an explicit `inputs_from_state` mapping
+    for state_key, param_name in (tool.inputs_from_state or {}).items():
         if param_name not in final_args and state.has(state_key):
             final_args[param_name] = state.get(state_key)
 
+    # We also inject the full State object for any parameter annotated as State
     for param_name, param_type in func_params.items():
         if _unwrap_optional(param_type) is State:
             final_args[param_name] = state
@@ -391,8 +373,8 @@ def _state_io_for_call(tool: Tool, llm_args: dict[str, Any]) -> tuple[_StateKeys
 
     Mirrors the resolution logic in `_inject_state_args`:
     - A tool with a `State`-annotated parameter can read/write any key, so both sets are the `_ALL_STATE_KEYS` wildcard.
-    - Otherwise reads come from `inputs_from_state` (or parameter-name matching when it is not set), excluding any
-      parameter the LLM already supplied (LLM args take precedence and short-circuit the state lookup).
+    - Otherwise reads come from the tool's explicit `inputs_from_state` mapping, excluding any parameter the LLM already
+      supplied (LLM args take precedence and short-circuit the state lookup).
     - Writes are the keys in `outputs_to_state`.
 
     :returns: A `(reads, writes)` tuple of state-key sets (or the `_ALL_STATE_KEYS` wildcard).
@@ -403,11 +385,10 @@ def _state_io_for_call(tool: Tool, llm_args: dict[str, Any]) -> tuple[_StateKeys
         return _ALL_STATE_KEYS, _ALL_STATE_KEYS
 
     # Calculate reads
-    param_mappings = _state_param_mappings(tool, func_params)
+    param_mappings = tool.inputs_from_state or {}
     reads = {state_key for state_key, param_name in param_mappings.items() if param_name not in llm_args}
     # Calculate writes
-    outputs_to_state = getattr(tool, "outputs_to_state", None)
-    writes = set(outputs_to_state.keys()) if isinstance(outputs_to_state, dict) else set()
+    writes = set((tool.outputs_to_state or {}).keys())
 
     return reads, writes
 
