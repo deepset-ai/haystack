@@ -7,7 +7,7 @@ upgrade:
 
     ``text-embedding-3-small`` is roughly 5x cheaper per token than the previous
     generation ``text-embedding-ada-002`` and scores higher on the MTEB benchmark
-    (see OpenAI's `announcement <https://openai.com/index/new-embedding-models-and-api-updates/>`_).
+    (see OpenAI's [announcement](https://openai.com/index/new-embedding-models-and-api-updates)).
 
     To preserve previous behavior, pass ``model="text-embedding-ada-002"``
     explicitly (or, for the Azure variants,
