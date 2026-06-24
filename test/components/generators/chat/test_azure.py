@@ -114,7 +114,7 @@ class TestAzureOpenAIChatGenerator:
         assert component.tools == tools
         assert component.tools_strict
         assert component.azure_ad_token_provider is not None
-        assert component.max_retries == 5
+        assert component.max_retries == 2
 
     def test_init_with_0_max_retries(self, tools):
         """Tests that the max_retries init param is set correctly if equal 0"""
@@ -215,7 +215,7 @@ class TestAzureOpenAIChatGenerator:
                 "streaming_callback": None,
                 "generation_kwargs": {},
                 "timeout": 30.0,
-                "max_retries": 5,
+                "max_retries": 2,
                 "default_headers": {},
                 "tools": None,
                 "tools_strict": False,
@@ -247,7 +247,7 @@ class TestAzureOpenAIChatGenerator:
                 "streaming_callback": None,
                 "generation_kwargs": {},
                 "timeout": 30.0,
-                "max_retries": 5,
+                "max_retries": 2,
                 "default_headers": {},
                 "tools": None,
                 "tools_strict": False,
@@ -331,7 +331,7 @@ class TestAzureOpenAIChatGenerator:
                 "streaming_callback": None,
                 "generation_kwargs": {},
                 "timeout": 30.0,
-                "max_retries": 5,
+                "max_retries": 2,
                 "default_headers": {},
                 "tools": [
                     {
@@ -361,7 +361,7 @@ class TestAzureOpenAIChatGenerator:
         assert generator.streaming_callback is None
         assert generator.generation_kwargs == {}
         assert generator.timeout == 30.0
-        assert generator.max_retries == 5
+        assert generator.max_retries == 2
         assert generator.default_headers == {}
         assert generator.tools == [
             Tool(name="name", description="description", parameters={"x": {"type": "string"}}, function=print)
@@ -390,7 +390,7 @@ class TestAzureOpenAIChatGenerator:
                         "streaming_callback": None,
                         "generation_kwargs": {},
                         "timeout": 30.0,
-                        "max_retries": 5,
+                        "max_retries": 2,
                         "api_key": {"type": "env_var", "env_vars": ["AZURE_OPENAI_API_KEY"], "strict": False},
                         "azure_ad_token": {"type": "env_var", "env_vars": ["AZURE_OPENAI_AD_TOKEN"], "strict": False},
                         "default_headers": {},

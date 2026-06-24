@@ -72,7 +72,7 @@ class TestAzureOpenAIDocumentEmbedder:
                 "progress_bar": True,
                 "meta_fields_to_embed": [],
                 "embedding_separator": "\n",
-                "max_retries": 5,
+                "max_retries": 2,
                 "timeout": 30.0,
                 "default_headers": {},
                 "azure_ad_token_provider": None,
@@ -141,7 +141,7 @@ class TestAzureOpenAIDocumentEmbedder:
                 "progress_bar": True,
                 "meta_fields_to_embed": [],
                 "embedding_separator": "\n",
-                "max_retries": 5,
+                "max_retries": 2,
                 "timeout": 30.0,
                 "default_headers": {},
                 "azure_ad_token_provider": None,
@@ -153,7 +153,7 @@ class TestAzureOpenAIDocumentEmbedder:
         assert component.azure_deployment == "text-embedding-ada-002"
         assert component.azure_endpoint == "https://example-resource.azure.openai.com/"
         assert component.api_version == "2023-05-15"
-        assert component.max_retries == 5
+        assert component.max_retries == 2
         assert component.timeout == 30.0
         assert component.prefix == ""
         assert component.suffix == ""

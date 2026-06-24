@@ -269,7 +269,7 @@ class TestSerDe:
                 "streaming_callback": None,
                 "generation_kwargs": {},
                 "timeout": 30.0,
-                "max_retries": 5,
+                "max_retries": 2,
                 "tools": [
                     {
                         "type": "haystack.tools.tool.Tool",
@@ -296,7 +296,7 @@ class TestSerDe:
         assert generator.streaming_callback is None
         assert generator.generation_kwargs == {}
         assert generator.timeout == 30.0
-        assert generator.max_retries == 5
+        assert generator.max_retries == 2
         assert generator.tools == [
             Tool(name="name", description="description", parameters={"x": {"type": "string"}}, function=print)
         ]

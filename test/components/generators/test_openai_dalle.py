@@ -34,7 +34,7 @@ class TestDALLEImageGenerator:
         assert component.api_base_url is None
         assert component.organization is None
         assert pytest.approx(component.timeout) == 30.0
-        assert component.max_retries == 5
+        assert component.max_retries == 2
         assert component.http_client_kwargs is None
 
     def test_init_with_params(self, monkeypatch):
@@ -79,7 +79,7 @@ class TestDALLEImageGenerator:
         component.warm_up()
         assert component.client.api_key == "test-api-key"
         assert component.client.timeout == 30
-        assert component.client.max_retries == 5
+        assert component.client.max_retries == 2
 
     def test_to_dict(self):
         generator = DALLEImageGenerator()
@@ -153,7 +153,7 @@ class TestDALLEImageGenerator:
         assert generator.api_base_url is None
         assert generator.organization is None
         assert pytest.approx(generator.timeout) == 30.0
-        assert generator.max_retries == 5
+        assert generator.max_retries == 2
         assert generator.http_client_kwargs is None
 
     def test_run(self, mock_image_response):

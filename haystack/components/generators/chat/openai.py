@@ -184,7 +184,7 @@ class OpenAIChatGenerator:
             `OPENAI_TIMEOUT` environment variable, or 30 seconds.
         :param max_retries:
             Maximum number of retries to contact OpenAI after an internal error.
-            If not set, it defaults to either the `OPENAI_MAX_RETRIES` environment variable, or set to 5.
+            If not set, it defaults to either the `OPENAI_MAX_RETRIES` environment variable, or set to 2.
         :param tools:
             A list of Tool and/or Toolset objects, or a single Toolset for which the model can prepare calls.
         :param tools_strict:
@@ -212,7 +212,7 @@ class OpenAIChatGenerator:
         if timeout is None:
             timeout = float(os.environ.get("OPENAI_TIMEOUT", "30.0"))
         if max_retries is None:
-            max_retries = int(os.environ.get("OPENAI_MAX_RETRIES", "5"))
+            max_retries = int(os.environ.get("OPENAI_MAX_RETRIES", "2"))
 
         client_kwargs: dict[str, Any] = {
             "api_key": api_key.resolve_value(),

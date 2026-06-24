@@ -24,7 +24,7 @@ class TestOpenAITextEmbedder:
         assert embedder.prefix == ""
         assert embedder.suffix == ""
         assert embedder.client.timeout == 30
-        assert embedder.client.max_retries == 5
+        assert embedder.client.max_retries == 2
 
     def test_init_with_parameters(self, monkeypatch):
         monkeypatch.setenv("OPENAI_TIMEOUT", "100")

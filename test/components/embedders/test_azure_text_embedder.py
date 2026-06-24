@@ -56,7 +56,7 @@ class TestAzureOpenAITextEmbedder:
                 "organization": None,
                 "azure_endpoint": "https://example-resource.azure.openai.com/",
                 "api_version": "2023-05-15",
-                "max_retries": 5,
+                "max_retries": 2,
                 "timeout": 30.0,
                 "prefix": "",
                 "suffix": "",
@@ -114,7 +114,7 @@ class TestAzureOpenAITextEmbedder:
                 "organization": None,
                 "azure_endpoint": "https://example-resource.azure.openai.com/",
                 "api_version": "2023-05-15",
-                "max_retries": 5,
+                "max_retries": 2,
                 "timeout": 30.0,
                 "prefix": "",
                 "suffix": "",
@@ -127,7 +127,7 @@ class TestAzureOpenAITextEmbedder:
         assert component.model == "text-embedding-ada-002"
         assert component.azure_endpoint == "https://example-resource.azure.openai.com/"
         assert component.api_version == "2023-05-15"
-        assert component.max_retries == 5
+        assert component.max_retries == 2
         assert component.timeout == 30.0
         assert component.prefix == ""
         assert component.suffix == ""

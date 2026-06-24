@@ -101,7 +101,7 @@ class AzureOpenAIDocumentEmbedder(OpenAIDocumentEmbedder):
             If not set, defaults to either the
             `OPENAI_TIMEOUT` environment variable, or 30 seconds.
         :param max_retries: Maximum number of retries to contact AzureOpenAI after an internal error.
-            If not set, defaults to either the `OPENAI_MAX_RETRIES` environment variable or to 5 retries.
+            If not set, defaults to either the `OPENAI_MAX_RETRIES` environment variable or to 2 retries.
         :param default_headers: Default headers to send to the AzureOpenAI client.
         :param azure_ad_token_provider: A function that returns an Azure Active Directory token, will be invoked on
             every request.
@@ -138,7 +138,7 @@ class AzureOpenAIDocumentEmbedder(OpenAIDocumentEmbedder):
         self.meta_fields_to_embed = meta_fields_to_embed or []
         self.embedding_separator = embedding_separator
         self.timeout = timeout if timeout is not None else float(os.environ.get("OPENAI_TIMEOUT", "30.0"))
-        self.max_retries = max_retries if max_retries is not None else int(os.environ.get("OPENAI_MAX_RETRIES", "5"))
+        self.max_retries = max_retries if max_retries is not None else int(os.environ.get("OPENAI_MAX_RETRIES", "2"))
         self.default_headers = default_headers or {}
         self.azure_ad_token_provider = azure_ad_token_provider
         self.http_client_kwargs = http_client_kwargs

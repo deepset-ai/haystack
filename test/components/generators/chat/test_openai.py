@@ -202,7 +202,7 @@ class TestOpenAIChatGenerator:
         assert component.streaming_callback is None
         assert not component.generation_kwargs
         assert component.client.timeout == 30
-        assert component.client.max_retries == 5
+        assert component.client.max_retries == 2
         assert component.tools is None
         assert not component.tools_strict
         assert component.http_client_kwargs is None

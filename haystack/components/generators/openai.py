@@ -116,7 +116,7 @@ class OpenAIGenerator:
             or set to 30.
         :param max_retries:
             Maximum retries to establish contact with OpenAI if it returns an internal error, if not set it is inferred
-            from the `OPENAI_MAX_RETRIES` environment variable or set to 5.
+            from the `OPENAI_MAX_RETRIES` environment variable or set to 2.
         :param http_client_kwargs:
             A dictionary of keyword arguments to configure a custom `httpx.Client`or `httpx.AsyncClient`.
             For more information, see the [HTTPX documentation](https://www.python-httpx.org/api/#client).
@@ -136,7 +136,7 @@ class OpenAIGenerator:
         if timeout is None:
             timeout = float(os.environ.get("OPENAI_TIMEOUT", "30.0"))
         if max_retries is None:
-            max_retries = int(os.environ.get("OPENAI_MAX_RETRIES", "5"))
+            max_retries = int(os.environ.get("OPENAI_MAX_RETRIES", "2"))
 
         self.client = OpenAI(
             api_key=api_key.resolve_value(),

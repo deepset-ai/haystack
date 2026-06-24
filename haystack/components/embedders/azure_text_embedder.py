@@ -82,7 +82,7 @@ class AzureOpenAITextEmbedder(OpenAITextEmbedder):
             If not set, defaults to either the
             `OPENAI_TIMEOUT` environment variable, or 30 seconds.
         :param max_retries: Maximum number of retries to contact AzureOpenAI after an internal error.
-            If not set, defaults to either the `OPENAI_MAX_RETRIES` environment variable, or to 5 retries.
+            If not set, defaults to either the `OPENAI_MAX_RETRIES` environment variable, or to 2 retries.
         :param prefix:
             A string to add at the beginning of each text.
         :param suffix:
@@ -118,7 +118,7 @@ class AzureOpenAITextEmbedder(OpenAITextEmbedder):
         self.dimensions = dimensions
         self.organization = organization
         self.timeout = timeout if timeout is not None else float(os.environ.get("OPENAI_TIMEOUT", "30.0"))
-        self.max_retries = max_retries if max_retries is not None else int(os.environ.get("OPENAI_MAX_RETRIES", "5"))
+        self.max_retries = max_retries if max_retries is not None else int(os.environ.get("OPENAI_MAX_RETRIES", "2"))
         self.prefix = prefix
         self.suffix = suffix
         self.default_headers = default_headers or {}

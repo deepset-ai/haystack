@@ -167,7 +167,7 @@ class OpenAIResponsesChatGenerator:
             `OPENAI_TIMEOUT` environment variable, or 30 seconds.
         :param max_retries:
             Maximum number of retries to contact OpenAI after an internal error.
-            If not set, it defaults to either the `OPENAI_MAX_RETRIES` environment variable, or set to 5.
+            If not set, it defaults to either the `OPENAI_MAX_RETRIES` environment variable, or set to 2.
         :param tools:
             The tools that the model can use to prepare calls. This parameter can accept either a
             mixed list of Haystack `Tool` objects and Haystack `Toolset`. Or you can pass a dictionary of
@@ -198,7 +198,7 @@ class OpenAIResponsesChatGenerator:
         if timeout is None:
             timeout = float(os.environ.get("OPENAI_TIMEOUT", "30.0"))
         if max_retries is None:
-            max_retries = int(os.environ.get("OPENAI_MAX_RETRIES", "5"))
+            max_retries = int(os.environ.get("OPENAI_MAX_RETRIES", "2"))
 
         resolved_api_key = api_key.resolve_value() if isinstance(api_key, Secret) else api_key
         client_kwargs: dict[str, Any] = {

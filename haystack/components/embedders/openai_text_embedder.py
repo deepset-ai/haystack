@@ -81,7 +81,7 @@ class OpenAITextEmbedder:
             `OPENAI_TIMEOUT` environment variable, or 30 seconds.
         :param max_retries:
             Maximum number of retries to contact OpenAI after an internal error.
-            If not set, it defaults to either the `OPENAI_MAX_RETRIES` environment variable, or set to 5.
+            If not set, it defaults to either the `OPENAI_MAX_RETRIES` environment variable, or set to 2.
         :param http_client_kwargs:
             A dictionary of keyword arguments to configure a custom `httpx.Client`or `httpx.AsyncClient`.
             For more information, see the [HTTPX documentation](https://www.python-httpx.org/api/#client).
@@ -100,7 +100,7 @@ class OpenAITextEmbedder:
         if timeout is None:
             timeout = float(os.environ.get("OPENAI_TIMEOUT", "30.0"))
         if max_retries is None:
-            max_retries = int(os.environ.get("OPENAI_MAX_RETRIES", "5"))
+            max_retries = int(os.environ.get("OPENAI_MAX_RETRIES", "2"))
 
         client_kwargs: dict[str, Any] = {
             "api_key": api_key.resolve_value(),

@@ -27,7 +27,7 @@ class TestOpenAIDocumentEmbedder:
         assert embedder.progress_bar is True
         assert embedder.meta_fields_to_embed == []
         assert embedder.embedding_separator == "\n"
-        assert embedder.client.max_retries == 5
+        assert embedder.client.max_retries == 2
         assert embedder.client.timeout == 30.0
 
     def test_init_with_parameters(self, monkeypatch):

@@ -1,0 +1,15 @@
+---
+upgrade:
+  - |
+    The default value of ``max_retries`` for OpenAI and Azure OpenAI
+    generators, embedders, and ``DALLEImageGenerator`` has been lowered
+    from ``5`` to ``2`` to align with the upstream ``openai-python`` SDK.
+
+    When neither ``max_retries`` nor ``OPENAI_MAX_RETRIES`` is configured,
+    this changes the retry budget from up to six total request attempts
+    to up to three. This can reduce time spent retrying transient failures,
+    but workloads that depended on the previous retry behavior should
+    explicitly configure ``max_retries=5``.
+
+    Existing explicit constructor values and ``OPENAI_MAX_RETRIES``
+    environment-variable settings continue to take precedence.

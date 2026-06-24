@@ -25,7 +25,7 @@ class TestOpenAIGenerator:
         assert component.streaming_callback is None
         assert not component.generation_kwargs
         assert component.client.timeout == 30
-        assert component.client.max_retries == 5
+        assert component.client.max_retries == 2
 
     def test_init_fail_wo_api_key(self, monkeypatch):
         monkeypatch.delenv("OPENAI_API_KEY", raising=False)
@@ -49,6 +49,15 @@ class TestOpenAIGenerator:
         assert component.generation_kwargs == {"max_completion_tokens": 10, "some_test_param": "test-params"}
         assert component.client.timeout == 40.0
         assert component.client.max_retries == 1
+
+    def test_init_uses_max_retries_from_env(self, monkeypatch):
+        """OPENAI_MAX_RETRIES env var should override the default when no constructor value is passed."""
+        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+        monkeypatch.setenv("OPENAI_MAX_RETRIES", "7")
+
+        component = OpenAIGenerator()
+
+        assert component.client.max_retries == 7
 
     def test_to_dict_default(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")

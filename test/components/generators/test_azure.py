@@ -44,7 +44,7 @@ class TestAzureOpenAIGenerator:
         assert component.timeout == 30.0
         assert component.generation_kwargs == {"max_completion_tokens": 10, "some_test_param": "test-params"}
         assert component.azure_ad_token_provider is not None
-        assert component.max_retries == 5
+        assert component.max_retries == 2
 
     def test_init_with_0_max_retries(self):
         """Tests that the max_retries init param is set correctly if equal 0"""
@@ -65,6 +65,15 @@ class TestAzureOpenAIGenerator:
         assert component.azure_ad_token_provider is not None
         assert component.max_retries == 0
 
+    def test_init_uses_max_retries_from_env(self, monkeypatch):
+        """OPENAI_MAX_RETRIES env var should override the default when no constructor value is passed."""
+        monkeypatch.setenv("AZURE_OPENAI_API_KEY", "test-api-key")
+        monkeypatch.setenv("OPENAI_MAX_RETRIES", "7")
+
+        component = AzureOpenAIGenerator(azure_endpoint="some-non-existing-endpoint")
+
+        assert component.max_retries == 7
+
     def test_to_dict_default(self, monkeypatch):
         monkeypatch.setenv("AZURE_OPENAI_API_KEY", "test-api-key")
         component = AzureOpenAIGenerator(azure_endpoint="some-non-existing-endpoint")
@@ -81,7 +90,7 @@ class TestAzureOpenAIGenerator:
                 "organization": None,
                 "system_prompt": None,
                 "timeout": 30.0,
-                "max_retries": 5,
+                "max_retries": 2,
                 "http_client_kwargs": None,
                 "generation_kwargs": {},
                 "default_headers": {},
@@ -138,7 +147,7 @@ class TestAzureOpenAIGenerator:
                 "organization": None,
                 "system_prompt": None,
                 "timeout": 30.0,
-                "max_retries": 5,
+                "max_retries": 2,
                 "http_client_kwargs": None,
                 "generation_kwargs": {},
                 "default_headers": {},
