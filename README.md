@@ -154,7 +154,7 @@
 | haystack/components/routers/conditional\_router.py                                  |      172 |        8 |     95% |458-459, 495, 513, 555, 573, 583, 595 |
 | haystack/components/routers/document\_length\_router.py                             |       15 |        0 |    100% |           |
 | haystack/components/routers/document\_type\_router.py                               |       46 |        0 |    100% |           |
-| haystack/components/routers/file\_type\_router.py                                   |       72 |        6 |     92% |   181-186 |
+| haystack/components/routers/file\_type\_router.py                                   |       72 |        6 |     92% |   182-187 |
 | haystack/components/routers/llm\_messages\_router.py                                |       51 |        0 |    100% |           |
 | haystack/components/routers/metadata\_router.py                                     |       35 |        0 |    100% |           |
 | haystack/components/routers/text\_language\_router.py                               |       33 |        0 |    100% |           |
