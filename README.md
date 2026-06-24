@@ -79,6 +79,12 @@ Need a managed production setup for Haystack? The **Haystack Enterprise Platform
 
 👉 Learn more about [Haystack Enterprise Platform](https://www.deepset.ai/products-and-services/haystack-enterprise-platform?utm_campaign=developer-relations&utm_source=haystack&utm_medium=readme) or [try it free](https://www.deepset.ai/haystack-enterprise-platform-trial?utm_campaign=developer-relations&utm_source=haystack&utm_medium=readme)
 
+## Security
+
+- [`SECURITY.md`](SECURITY.md) — vulnerability reporting policy and what is in scope.
+- [`THREAT_MODEL.md`](THREAT_MODEL.md) — trust boundaries, the operator-obligations matrix, and STRIDE analysis per component class.
+- [`THREAT_MODEL_OWASP_MAPPING.md`](THREAT_MODEL_OWASP_MAPPING.md) — cross-reference against the OWASP Top 10 for LLM Applications (2025) for enterprise compliance reviews.
+
 ## Telemetry
 
 Haystack collects **anonymous** usage statistics of pipeline components. We receive an event every time these components are initialized. This way, we know which components are most relevant to our community.

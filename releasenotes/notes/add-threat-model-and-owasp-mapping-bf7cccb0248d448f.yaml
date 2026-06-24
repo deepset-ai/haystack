@@ -1,0 +1,19 @@
+---
+security:
+  - |
+    Added `THREAT_MODEL.md` and `THREAT_MODEL_OWASP_MAPPING.md` to the
+    repository root.
+
+    `THREAT_MODEL.md` documents the four trust zones Haystack operates in
+    (operator code, Haystack runtime, LLM, external services), provides an
+    operator-obligations matrix that disambiguates framework duty from
+    application duty, and runs a STRIDE analysis per component class.
+
+    `THREAT_MODEL_OWASP_MAPPING.md` cross-references the threat model
+    against the OWASP Top 10 for LLM Applications (2025), giving enterprise
+    reviewers a one-page coverage statement to accelerate compliance work.
+
+    These documents complement `SECURITY.md` (which defines vulnerability
+    reporting scope) by explaining *why* the scope is drawn where it is and
+    what application-layer controls operators must add to deploy Haystack
+    safely. No code changes.
