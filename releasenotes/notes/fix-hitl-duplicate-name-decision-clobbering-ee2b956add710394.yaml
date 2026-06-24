@@ -1,0 +1,9 @@
+---
+fixes:
+  - |
+    Fixed `human_in_the_loop`'s `_apply_tool_execution_decisions` silently applying the wrong
+    `ToolExecutionDecision` to a tool call when multiple tool calls shared the same tool name but lacked a
+    `tool_call_id`. Previously, the ambiguity check was skipped if *any* unrelated tool call in the same batch
+    happened to carry an id, allowing the wrong decision (and therefore the wrong arguments) to be silently
+    applied. The check now correctly raises a `ValueError` whenever a tool name collision affects an id-less
+    decision, regardless of other unrelated tool calls in the batch.
