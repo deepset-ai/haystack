@@ -514,8 +514,18 @@ def _apply_tool_execution_decisions(
     decision_by_name = {d.tool_name: d for d in tool_execution_decisions if d.tool_name}
 
     # Known limitation: If tool calls are missing IDs, we rely on tool names to match decisions to tool calls.
-    # This can lead to incorrect matches if there are multiple tool calls in the provided messages with duplicate names.
-    if not decision_by_id and len(decision_by_name) < len(tool_execution_decisions):
+    # This can lead to incorrect matches if there are multiple tool calls in the provided messages with duplicate
+    # names. `decision_by_name` is built from *all* decisions, so a name collision corrupts the name-based lookup
+    # for an id-less decision even if the colliding decision has an id (it's still the id-less one that depends on
+    # the now-ambiguous `decision_by_name` entry). So we check name duplicates across the whole batch, but only
+    # raise if at least one decision sharing that name is missing a tool_call_id.
+    name_occurrences: dict[str, int] = {}
+    for decision in tool_execution_decisions:
+        name_occurrences[decision.tool_name] = name_occurrences.get(decision.tool_name, 0) + 1
+
+    if any(
+        name_occurrences[decision.tool_name] > 1 for decision in tool_execution_decisions if not decision.tool_call_id
+    ):
         raise ValueError(
             "ToolExecutionDecisions are missing tool_call_id fields and there are multiple tool calls with the same "
             "name. When multiple tool calls with the same name are present, tool_call_id is required to correctly "
