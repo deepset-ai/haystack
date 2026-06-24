@@ -61,7 +61,7 @@ class TestMockTextEmbedder:
 
     def test_embedding_fn_invalid_return_raises(self):
         embedder = MockTextEmbedder(embedding_fn=lambda text: "not a vector")
-        with pytest.raises(TypeError, match="must return a sequence of numbers"):
+        with pytest.raises(TypeError, match="must be a sequence of numbers"):
             embedder.run("hello")
 
     def test_prefix_suffix_affect_embedding(self):

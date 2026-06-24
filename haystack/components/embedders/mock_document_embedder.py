@@ -13,7 +13,6 @@ from haystack.components.embedders.mock_utils import (
     _coerce_embedding,
     _deterministic_embedding,
     _estimate_usage,
-    _validate_embedding,
 )
 from haystack.utils import deserialize_callable, serialize_callable
 
@@ -91,7 +90,7 @@ class MockDocumentEmbedder:
         if dimension <= 0:
             raise ValueError("'dimension' must be a positive integer.")
 
-        self.embedding = _validate_embedding(embedding) if embedding is not None else None
+        self.embedding = _coerce_embedding(embedding, name="'embedding'") if embedding is not None else None
         self.embedding_fn = embedding_fn
         self.dimension = dimension
         self.model = model
@@ -147,7 +146,7 @@ class MockDocumentEmbedder:
     def _embed(self, text: str) -> list[float]:
         """Produce the embedding for the prepared text according to the configured mode."""
         if self.embedding_fn is not None:
-            return _coerce_embedding(self.embedding_fn(text))
+            return _coerce_embedding(self.embedding_fn(text), name="the return value of 'embedding_fn'")
         if self.embedding is not None:
             return list(self.embedding)
         return _deterministic_embedding(text, self.dimension)

@@ -39,20 +39,18 @@ def _deterministic_embedding(text: str, dimension: int) -> list[float]:
     return _l2_normalize(vector)
 
 
-def _coerce_embedding(result: object) -> list[float]:
-    """Validate and coerce the output of an `embedding_fn` into a list of floats."""
-    if not isinstance(result, (list, tuple)) or not all(isinstance(value, (int, float)) for value in result):
-        raise TypeError(f"'embedding_fn' must return a sequence of numbers, got {type(result)}.")
-    return [float(value) for value in result]
+def _coerce_embedding(value: object, *, name: str) -> list[float]:
+    """
+    Validate that `value` is a non-empty sequence of numbers and coerce it into a list of floats.
 
-
-def _validate_embedding(embedding: list[float]) -> list[float]:
-    """Validate that a user-provided fixed embedding is a non-empty sequence of numbers."""
-    if not isinstance(embedding, (list, tuple)) or not all(isinstance(value, (int, float)) for value in embedding):
-        raise TypeError(f"'embedding' must be a sequence of numbers, got {type(embedding)}.")
-    if len(embedding) == 0:
-        raise ValueError("'embedding' must not be empty.")
-    return [float(value) for value in embedding]
+    :param value: The value to validate, e.g. a user-provided fixed embedding or the output of an `embedding_fn`.
+    :param name: How to refer to `value` in error messages, e.g. ``"'embedding'"``.
+    """
+    if not isinstance(value, (list, tuple)) or not all(isinstance(item, (int, float)) for item in value):
+        raise TypeError(f"{name} must be a sequence of numbers, got {type(value)}.")
+    if len(value) == 0:
+        raise ValueError(f"{name} must not be empty.")
+    return [float(item) for item in value]
 
 
 def _estimate_usage(texts: list[str]) -> dict[str, int]:
