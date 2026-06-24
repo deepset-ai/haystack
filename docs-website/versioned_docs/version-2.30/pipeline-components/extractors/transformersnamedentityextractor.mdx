@@ -59,16 +59,16 @@ documents = [
     Document(content="New York State is home to the Empire State Building."),
 ]
 
-extractor.run(documents)
-print(documents)
+result = extractor.run(documents)
+print(result["documents"])
 ```
 
 Here is the example result:
 
 ```python
-[Document(id=aec840d1b6c85609f4f16c3e222a5a25fd8c4c53bd981a40c1268ab9c72cee10, content: 'My name is Clara and I live in Berkeley, California.', meta: {'named_entities': [NamedEntityAnnotation(entity='PER', start=11, end=16, score=0.99641764), NamedEntityAnnotation(entity='LOC', start=31, end=39, score=0.996198), NamedEntityAnnotation(entity='LOC', start=41, end=51, score=0.9990196)]}),
-Document(id=98f1dc5d0ccd9d9950cd191d1076db0f7af40c401dd7608f11c90cb3fc38c0c2, content: 'I'm Merlin, the happy pig!', meta: {'named_entities': [NamedEntityAnnotation(entity='PER', start=4, end=10, score=0.99054915)]}),
-Document(id=44948ea0eec018b33aceaaedde4616eb9e93ce075e0090ec1613fc145f84b4a9, content: 'New York State is home to the Empire State Building.', meta: {'named_entities': [NamedEntityAnnotation(entity='LOC', start=0, end=14, score=0.9989541), NamedEntityAnnotation(entity='LOC', start=30, end=51, score=0.95746297)]})]
+[Document(id=aec840d1b6c85609f4f16c3e222a5a25fd8c4c53bd981a40c1268ab9c72cee10, content: 'My name is Clara and I live in Berkeley, California.', meta: {'named_entities': [NamedEntityAnnotation(entity='PER', start=11, end=16, score=np.float32(0.99641764)), NamedEntityAnnotation(entity='LOC', start=31, end=39, score=np.float32(0.996198)), NamedEntityAnnotation(entity='LOC', start=41, end=51, score=np.float32(0.9990196))]}),
+Document(id=98f1dc5d0ccd9d9950cd191d1076db0f7af40c401dd7608f11c90cb3fc38c0c2, content: 'I'm Merlin, the happy pig!', meta: {'named_entities': [NamedEntityAnnotation(entity='PER', start=4, end=10, score=np.float32(0.99054915))]}),
+Document(id=44948ea0eec018b33aceaaedde4616eb9e93ce075e0090ec1613fc145f84b4a9, content: 'New York State is home to the Empire State Building.', meta: {'named_entities': [NamedEntityAnnotation(entity='LOC', start=0, end=14, score=np.float32(0.9989541)), NamedEntityAnnotation(entity='LOC', start=30, end=51, score=np.float32(0.9574631))]})]
 ```
 
 ### Get stored annotations
@@ -89,10 +89,11 @@ documents = [
     Document(content="New York State is home to the Empire State Building."),
 ]
 
-extractor.run(documents)
+result = extractor.run(documents)
 
 annotations = [
-    TransformersNamedEntityExtractor.get_stored_annotations(doc) for doc in documents
+    TransformersNamedEntityExtractor.get_stored_annotations(doc)
+    for doc in result["documents"]
 ]
 print(annotations)
 

@@ -150,6 +150,9 @@ class DocumentSplitter:
         if split_overlap < 0:
             raise ValueError("split_overlap must be greater than or equal to 0.")
 
+        if split_overlap >= split_length:
+            raise ValueError("split_overlap must be less than split_length.")
+
         if respect_sentence_boundary and split_by != "word":
             logger.warning(
                 "The 'respect_sentence_boundary' option is only supported for `split_by='word'`. "

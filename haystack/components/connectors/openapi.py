@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import warnings
 from typing import Any
 
 from haystack import component, default_from_dict, default_to_dict
@@ -61,6 +62,14 @@ class OpenAPIConnector:
         :param service_kwargs: Additional keyword arguments passed to OpenAPIClient.from_spec()
             For example, you can pass a custom config_factory or other configuration options.
         """
+        warnings.warn(
+            "`OpenAPIConnector` will be removed from Haystack in version 3.0, as it is moving to "
+            "the `openapi-haystack` package. To continue using it, install that package with "
+            "`pip install openapi-haystack` and update your import to "
+            "`from haystack_integrations.components.connectors.openapi import OpenAPIConnector`.",
+            FutureWarning,
+            stacklevel=2,
+        )
         openapi_llm_imports.check()
         self.openapi_spec = openapi_spec
         self.credentials = credentials

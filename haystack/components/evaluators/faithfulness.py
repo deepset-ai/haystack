@@ -149,7 +149,7 @@ class FaithfulnessEvaluator(LLMEvaluator):
             progress_bar=progress_bar,
         )
 
-    @component.output_types(individual_scores=list[int], score=float, results=list[dict[str, Any]])
+    @component.output_types(individual_scores=list[float], score=float, results=list[dict[str, Any]])
     def run(self, **inputs: Any) -> dict[str, Any]:
         """
         Run the LLM evaluator.
@@ -167,6 +167,42 @@ class FaithfulnessEvaluator(LLMEvaluator):
                 - `results`: A list of dictionaries with `statements` and `statement_scores` for each input answer.
         """
         result = super(FaithfulnessEvaluator, self).run(**inputs)  # noqa: UP008
+        # Post-process the raw results to calculate relevance metrics and scores
+        return self._postprocess_results(result)
+
+    @component.output_types(individual_scores=list[float], score=float, results=list[dict[str, Any]])
+    async def run_async(self, **inputs: Any) -> dict[str, Any]:
+        """
+        Run the LLM evaluator asynchronously.
+
+        :param questions:
+            A list of questions.
+        :param contexts:
+            A nested list of contexts that correspond to the questions.
+        :param predicted_answers:
+            A list of predicted answers.
+        :returns:
+            A dictionary with the following outputs:
+                - `score`: Mean faithfulness score over all the provided input answers.
+                - `individual_scores`: A list of faithfulness scores for each input answer.
+                - `results`: A list of dictionaries with `statements` and `statement_scores` for each input answer.
+        """
+        result = await super(FaithfulnessEvaluator, self).run_async(**inputs)  # noqa: UP008
+        # Post-process the raw results to calculate relevance metrics and scores
+        return self._postprocess_results(result)
+
+    def _postprocess_results(self, result: dict[str, Any]) -> dict[str, Any]:
+        """
+        Post-processes raw LLM evaluator outputs to compute faithfulness scores.
+
+        Calculates statement-level score averages, computes the overall mean faithfulness
+        score across successful queries, and updates the result payload.
+
+        :param result:
+            The raw evaluation dictionary from the base LLM evaluator.
+        :returns:
+            The updated dictionary containing final scores and tracking metrics.
+        """
 
         # calculate average statement faithfulness score per query
         for idx, res in enumerate(result["results"]):

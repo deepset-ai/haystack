@@ -195,8 +195,9 @@ def _comparison_condition(condition: dict[str, Any], document: Document | ByteSt
         parts = field.split(".")
         document_value = getattr(document, parts[0])
         for part in parts[1:]:
-            if part not in document_value:
-                # If a field is not found we treat it as None
+            if not isinstance(document_value, dict) or part not in document_value:
+                # If a field is not found (or an intermediate value is not a dict,
+                # e.g. None) we treat it as None
                 document_value = None
                 break
             document_value = document_value[part]

@@ -182,6 +182,25 @@ Run the LLM evaluator.
   - `score`: Mean context relevance score over all the provided input questions.
   - `results`: A list of dictionaries with `relevant_statements` and `score` for each input context.
 
+#### run_async
+
+```python
+run_async(**inputs: Any) -> dict[str, Any]
+```
+
+Run the LLM evaluator asynchronously.
+
+**Parameters:**
+
+- **questions** – A list of questions.
+- **contexts** – A list of lists of contexts. Each list of contexts corresponds to one question.
+
+**Returns:**
+
+- <code>dict\[str, Any\]</code> – A dictionary with the following outputs:
+  - `score`: Mean context relevance score over all the provided input questions.
+  - `results`: A list of dictionaries with `relevant_statements` and `score` for each input context.
+
 #### to_dict
 
 ```python
@@ -417,6 +436,35 @@ print(result["score"])
 # 0.8869
 ```
 
+#### __init__
+
+```python
+__init__(document_comparison_field: str = 'content') -> None
+```
+
+Create a DocumentNDCGEvaluator component.
+
+**Parameters:**
+
+- **document_comparison_field** (<code>str</code>) – The Document field to use for comparison. Possible options:
+- `"content"`: uses `doc.content`
+- `"id"`: uses `doc.id`
+- A `meta.` prefix followed by a key name: uses `doc.meta["<key>"]`
+  (e.g. `"meta.file_id"`, `"meta.page_number"`)
+  Nested keys are supported (e.g. `"meta.source.url"`).
+
+#### to_dict
+
+```python
+to_dict() -> dict[str, Any]
+```
+
+Serializes the component to a dictionary.
+
+**Returns:**
+
+- <code>dict\[str, Any\]</code> – Dictionary with serialized data.
+
 #### run
 
 ```python
@@ -459,7 +507,7 @@ Validate the input parameters.
 
 **Raises:**
 
-- <code>ValueError</code> – If the ground_truth_documents or the retrieved_documents are an empty a list.
+- <code>ValueError</code> – If the ground_truth_documents or the retrieved_documents are an empty list.
   If the length of ground_truth_documents and retrieved_documents differs.
   If any list of documents in ground_truth_documents contains a mix of documents with and without a score.
 
@@ -488,6 +536,10 @@ calculate_idcg(gt_docs: list[Document]) -> float
 ```
 
 Calculate the ideal discounted cumulative gain (IDCG) of the ground truth documents.
+
+Ground truth documents whose comparison value cannot be determined (e.g. missing meta key)
+are excluded, since they can never be matched in `calculate_dcg` either. Including them here
+would inflate the IDCG and make it impossible for NDCG to reach 1.0 for a perfect retrieval.
 
 **Parameters:**
 
@@ -703,6 +755,27 @@ Run the LLM evaluator.
   - `individual_scores`: A list of faithfulness scores for each input answer.
   - `results`: A list of dictionaries with `statements` and `statement_scores` for each input answer.
 
+#### run_async
+
+```python
+run_async(**inputs: Any) -> dict[str, Any]
+```
+
+Run the LLM evaluator asynchronously.
+
+**Parameters:**
+
+- **questions** – A list of questions.
+- **contexts** – A nested list of contexts that correspond to the questions.
+- **predicted_answers** – A list of predicted answers.
+
+**Returns:**
+
+- <code>dict\[str, Any\]</code> – A dictionary with the following outputs:
+  - `score`: Mean faithfulness score over all the provided input answers.
+  - `individual_scores`: A list of faithfulness scores for each input answer.
+  - `results`: A list of dictionaries with `statements` and `statement_scores` for each input answer.
+
 #### to_dict
 
 ```python
@@ -857,6 +930,33 @@ Run the LLM evaluator.
 
 **Raises:**
 
+- <code>ValueError</code> – Only in the case that `raise_on_failure` is set to True and the received inputs are not lists or have
+  different lengths, or if the output is not a valid JSON or doesn't contain the expected keys.
+
+#### run_async
+
+```python
+run_async(**inputs: Any) -> dict[str, Any]
+```
+
+Run the LLM evaluator asynchronously
+
+**Parameters:**
+
+- **inputs** (<code>Any</code>) – The input values to evaluate. The keys are the input names and the values are lists of input values.
+
+**Returns:**
+
+- <code>dict\[str, Any\]</code> – A dictionary with a `results` entry that contains a list of results.
+  Each result is a dictionary containing the keys as defined in the `outputs` parameter of the LLMEvaluator
+  and the evaluation results as the values. If an exception occurs for a particular input value, the result
+  will be `None` for that entry.
+  If the API is "openai" and the response contains a "meta" key, the metadata from OpenAI will be included
+  in the output dictionary, under the key "meta".
+
+**Raises:**
+
+- <code>TypeError</code> – If the chat generator does not support async execution.
 - <code>ValueError</code> – Only in the case that `raise_on_failure` is set to True and the received inputs are not lists or have
   different lengths, or if the output is not a valid JSON or doesn't contain the expected keys.
 

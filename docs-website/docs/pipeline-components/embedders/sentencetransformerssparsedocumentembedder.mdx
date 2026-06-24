@@ -16,9 +16,9 @@ Use this component to enrich a list of documents with their sparse embeddings us
 | **Most common position in a pipeline** | Before a [`DocumentWriter`](../writers/documentwriter.mdx) in an indexing pipeline                                                          |
 | **Mandatory run variables**            | `documents`: A list of documents                                                                                                   |
 | **Output variables**                   | `documents`: A list of documents (enriched with sparse embeddings)                                                                 |
-| **API reference**                      | [Embedders](/reference/embedders-api)                                                                                                     |
-| **GitHub link**                        | https://github.com/deepset-ai/haystack/blob/main/haystack/components/embedders/sentence_transformers_sparse_document_embedder.py |
-| **Package name** | `haystack-ai` |
+| **API reference**                      | [Sentence Transformers](/reference/integrations-sentence-transformers)                                                                                                     |
+| **GitHub link**                        | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/sentence_transformers |
+| **Package name** | `sentence-transformers-haystack` |
 
 </div>
 
@@ -46,7 +46,9 @@ The component uses an `HF_API_TOKEN` or `HF_TOKEN` environment variable, or you 
 
 ```python
 from haystack.utils import Secret
-from haystack.components.embedders import SentenceTransformersSparseDocumentEmbedder
+from haystack_integrations.components.embedders.sentence_transformers import (
+    SentenceTransformersSparseDocumentEmbedder,
+)
 
 document_embedder = SentenceTransformersSparseDocumentEmbedder(
     token=Secret.from_token("<your-api-key>"),
@@ -80,7 +82,9 @@ You can do this easily by using the Sparse Document Embedder:
 
 ```python
 from haystack import Document
-from haystack.components.embedders import SentenceTransformersSparseDocumentEmbedder
+from haystack_integrations.components.embedders.sentence_transformers import (
+    SentenceTransformersSparseDocumentEmbedder,
+)
 
 doc = Document(content="some text", meta={"title": "relevant title", "page number": 18})
 
@@ -91,11 +95,19 @@ docs_w_sparse_embeddings = embedder.run(documents=[doc])["documents"]
 
 ## Usage
 
+Install the `sentence-transformers-haystack` package to use the `SentenceTransformersSparseDocumentEmbedder`:
+
+```shell
+pip install sentence-transformers-haystack
+```
+
 ### On its own
 
 ```python
 from haystack import Document
-from haystack.components.embedders import SentenceTransformersSparseDocumentEmbedder
+from haystack_integrations.components.embedders.sentence_transformers import (
+    SentenceTransformersSparseDocumentEmbedder,
+)
 
 doc = Document(content="I love pizza!")
 doc_embedder = SentenceTransformersSparseDocumentEmbedder()
@@ -120,7 +132,7 @@ Then, try out this pipeline:
 
 ```python
 from haystack import Document, Pipeline
-from haystack.components.embedders import (
+from haystack_integrations.components.embedders.sentence_transformers import (
     SentenceTransformersSparseDocumentEmbedder,
     SentenceTransformersSparseTextEmbedder,
 )

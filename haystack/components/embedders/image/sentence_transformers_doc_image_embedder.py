@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import warnings
 from dataclasses import replace
 from typing import Any, Literal
 
@@ -132,6 +133,16 @@ class SentenceTransformersDocumentImageEmbedder:
             Refer to the [Sentence Transformers documentation](https://sbert.net/docs/sentence_transformer/usage/efficiency.html)
             for more information on acceleration and quantization options.
         """
+        warnings.warn(
+            "`SentenceTransformersDocumentImageEmbedder` will be removed from Haystack in version 3.0, as it is "
+            "moving to the `sentence-transformers-haystack` package. To continue using it, install that package with "
+            "`pip install sentence-transformers-haystack` and update your import to "
+            "`from haystack_integrations.components.embedders.sentence_transformers import "
+            "SentenceTransformersDocumentImageEmbedder`.",
+            FutureWarning,
+            stacklevel=2,
+        )
+
         pillow_import.check()
 
         self.file_path_meta_field = file_path_meta_field

@@ -174,7 +174,39 @@ class ContextRelevanceEvaluator(LLMEvaluator):
                 - `results`: A list of dictionaries with `relevant_statements` and `score` for each input context.
         """
         result = super(ContextRelevanceEvaluator, self).run(**inputs)  # noqa: UP008
+        # Post-process the raw results to calculate relevance metrics and scores
+        return self._postprocess_results(result)
 
+    @component.output_types(score=float, results=list[dict[str, Any]])
+    async def run_async(self, **inputs: Any) -> dict[str, Any]:
+        """
+        Run the LLM evaluator asynchronously.
+
+        :param questions:
+            A list of questions.
+        :param contexts:
+            A list of lists of contexts. Each list of contexts corresponds to one question.
+        :returns:
+            A dictionary with the following outputs:
+                - `score`: Mean context relevance score over all the provided input questions.
+                - `results`: A list of dictionaries with `relevant_statements` and `score` for each input context.
+        """
+        result = await super(ContextRelevanceEvaluator, self).run_async(**inputs)  # noqa: UP008
+        # Post-process the raw results to calculate relevance metrics and scores
+        return self._postprocess_results(result)
+
+    def _postprocess_results(self, result: dict[str, Any]) -> dict[str, Any]:
+        """
+        Post-processes raw LLM evaluator outputs to compute context relevance scores.
+
+        Calculates binary scores based on whether relevant statements were found,
+        averages the scores across all successful queries, and updates the result payload.
+
+        :param result:
+            The raw evaluation dictionary from the base LLM evaluator.
+        :returns:
+            The updated dictionary containing final scores and tracking metrics.
+        """
         for idx, res in enumerate(result["results"]):
             if res is None:
                 result["results"][idx] = {"relevant_statements": [], "score": float("nan")}

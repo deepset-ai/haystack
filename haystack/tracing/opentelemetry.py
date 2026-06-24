@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import contextlib
+import warnings
 from collections.abc import Iterator
 from typing import Any
 
@@ -47,6 +48,17 @@ class OpenTelemetrySpan(Span):
 class OpenTelemetryTracer(Tracer):
     def __init__(self, tracer: "opentelemetry.trace.Tracer") -> None:
         """Creates an instance of OpenTelemetryTracer."""
+        warnings.warn(
+            "`OpenTelemetryTracer` will be removed from Haystack in version 3.0, as it is moving to "
+            "the `opentelemetry-haystack` package. To continue using it, install that package with "
+            "`pip install opentelemetry-haystack` and either add the `OpenTelemetryConnector` component to your "
+            "pipeline or update your import to "
+            "`from haystack_integrations.tracing.opentelemetry import OpenTelemetryTracer`. Note that OpenTelemetry "
+            "tracing in Haystack 3.0 is no longer auto-enabled when `opentelemetry-sdk` is installed; use the "
+            "`OpenTelemetryConnector` to enable it.",
+            FutureWarning,
+            stacklevel=2,
+        )
         opentelemetry_import.check()
         self._tracer = tracer
 

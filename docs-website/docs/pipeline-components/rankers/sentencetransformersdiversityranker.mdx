@@ -17,9 +17,9 @@ This is a Diversity Ranker based on Sentence Transformers.
 | **Mandatory init variables** | `token`: The Hugging Face API token. Can be set with `HF_API_TOKEN` or `HF_TOKEN` env var. |
 | **Mandatory run variables** | `documents`: A list of documents  <br /> <br />`query`: A query string |
 | **Output variables** | `documents`: A list of documents |
-| **API reference** | [Rankers](/reference/rankers-api) |
-| **GitHub link** | https://github.com/deepset-ai/haystack/blob/main/haystack/components/rankers/sentence_transformers_diversity.py |
-| **Package name** | `haystack-ai` |
+| **API reference** | [Sentence Transformers](/reference/integrations-sentence-transformers) |
+| **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/sentence_transformers |
+| **Package name** | `sentence-transformers-haystack` |
 
 </div>
 
@@ -31,15 +31,23 @@ This Ranker’s default model is `sentence-transformers/all-MiniLM-L6-v2`.
 
 You can optionally set the `top_k` parameter, which specifies the maximum number of documents to return. If you don’t set this parameter, the component returns all documents it receives.
 
-Find the full list of optional initialization parameters in our [API reference](/reference/rankers-api#sentencetransformersdiversityranker).
+Find the full list of optional initialization parameters in our [API reference](/reference/integrations-sentence-transformers#sentencetransformersdiversityranker).
 
 ## Usage
+
+Install the `sentence-transformers-haystack` package to use the `SentenceTransformersDiversityRanker`:
+
+```shell
+pip install sentence-transformers-haystack
+```
 
 ### On its own
 
 ```python
 from haystack import Document
-from haystack.components.rankers import SentenceTransformersDiversityRanker
+from haystack_integrations.components.rankers.sentence_transformers import (
+    SentenceTransformersDiversityRanker,
+)
 
 ranker = SentenceTransformersDiversityRanker(
     model="sentence-transformers/all-MiniLM-L6-v2",
@@ -68,7 +76,9 @@ print(docs)
 from haystack import Document, Pipeline
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.components.retrievers.in_memory import InMemoryBM25Retriever
-from haystack.components.rankers import SentenceTransformersDiversityRanker
+from haystack_integrations.components.rankers.sentence_transformers import (
+    SentenceTransformersDiversityRanker,
+)
 
 docs = [
     Document(content="The iconic Eiffel Tower is a symbol of Paris"),

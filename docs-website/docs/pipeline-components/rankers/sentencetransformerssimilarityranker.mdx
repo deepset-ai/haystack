@@ -17,9 +17,9 @@ Use this component to rank documents based on their similarity to the query. The
 | **Mandatory init variables** | `token` (only for private models): The Hugging Face API token. Can be set with `HF_API_TOKEN` or `HF_TOKEN` env var. |
 | **Mandatory run variables** | `documents`: A list of documents  <br /> <br />`query`: A query string |
 | **Output variables** | `documents`: A list of documents |
-| **API reference** | [Rankers](/reference/rankers-api) |
-| **GitHub link** | https://github.com/deepset-ai/haystack/blob/main/haystack/components/rankers/sentence_transformers_similarity.py |
-| **Package name** | `haystack-ai` |
+| **API reference** | [Sentence Transformers](/reference/integrations-sentence-transformers) |
+| **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/sentence_transformers |
+| **Package name** | `sentence-transformers-haystack` |
 
 </div>
 
@@ -45,6 +45,12 @@ ranker = SentenceTransformersSimilarityRanker(token=Secret.from_token("<your-api
 
 ## Usage
 
+Install the `sentence-transformers-haystack` package to use the `SentenceTransformersSimilarityRanker`:
+
+```shell
+pip install sentence-transformers-haystack
+```
+
 ### On its own
 
 You can use `SentenceTransformersSimilarityRanker` outside of a pipeline to order documents based on your query.
@@ -53,7 +59,9 @@ This example uses the `SentenceTransformersSimilarityRanker` to rank two simple 
 
 ```python
 from haystack import Document
-from haystack.components.rankers import SentenceTransformersSimilarityRanker
+from haystack_integrations.components.rankers.sentence_transformers import (
+    SentenceTransformersSimilarityRanker,
+)
 
 ranker = SentenceTransformersSimilarityRanker()
 docs = [Document(content="Paris"), Document(content="Berlin")]
@@ -73,7 +81,9 @@ Below is an example of a pipeline that retrieves documents from an `InMemoryDocu
 from haystack import Document, Pipeline
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.components.retrievers.in_memory import InMemoryBM25Retriever
-from haystack.components.rankers import SentenceTransformersSimilarityRanker
+from haystack_integrations.components.rankers.sentence_transformers import (
+    SentenceTransformersSimilarityRanker,
+)
 
 docs = [
     Document(content="Paris is in France"),

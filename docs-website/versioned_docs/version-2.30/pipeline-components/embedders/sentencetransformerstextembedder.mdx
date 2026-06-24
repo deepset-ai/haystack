@@ -18,9 +18,9 @@ When you perform embedding retrieval, use this component first to transform your
 | **Most common position in a pipeline** | Before an embedding [Retriever](../retrievers.mdx)  in a query/RAG pipeline                                              |
 | **Mandatory run variables**            | `text`: A string                                                                                                        |
 | **Output variables**                   | `embedding`: A list of float numbers                                                                                    |
-| **API reference**                      | [Embedders](/reference/embedders-api)                                                                                          |
-| **GitHub link**                        | https://github.com/deepset-ai/haystack/blob/main/haystack/components/embedders/sentence_transformers_text_embedder.py |
-| **Package name** | `haystack-ai` |
+| **API reference**                      | [Sentence Transformers](/reference/integrations-sentence-transformers)                                                                                          |
+| **GitHub link**                        | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/sentence_transformers |
+| **Package name** | `sentence-transformers-haystack` |
 
 </div>
 
@@ -69,10 +69,18 @@ If you create a Text Embedder and a Document Embedder based on the same model, H
 
 ## Usage
 
+Install the `sentence-transformers-haystack` package to use the `SentenceTransformersTextEmbedder`:
+
+```shell
+pip install sentence-transformers-haystack
+```
+
 ### On its own
 
 ```python
-from haystack.components.embedders import SentenceTransformersTextEmbedder
+from haystack_integrations.components.embedders.sentence_transformers import (
+    SentenceTransformersTextEmbedder,
+)
 
 text_to_embed = "I love pizza!"
 
@@ -89,7 +97,7 @@ print(text_embedder.run(text_to_embed))
 from haystack import Document
 from haystack import Pipeline
 from haystack.document_stores.in_memory import InMemoryDocumentStore
-from haystack.components.embedders import (
+from haystack_integrations.components.embedders.sentence_transformers import (
     SentenceTransformersTextEmbedder,
     SentenceTransformersDocumentEmbedder,
 )

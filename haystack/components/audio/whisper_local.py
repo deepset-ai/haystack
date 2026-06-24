@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import tempfile
+import warnings
 from pathlib import Path
 from typing import Any, Literal, get_args
 
@@ -70,6 +71,14 @@ class LocalWhisperTranscriber:
         :param device:
             The device for loading the model. If `None`, automatically selects the default device.
         """
+        warnings.warn(
+            "`LocalWhisperTranscriber` will be removed from Haystack in version 3.0, as it is moving to "
+            "the `whisper-haystack` package. To continue using it, install that package with "
+            "`pip install whisper-haystack` and update your import to "
+            "`from haystack_integrations.components.audio.whisper import LocalWhisperTranscriber`.",
+            FutureWarning,
+            stacklevel=2,
+        )
         whisper_import.check()
         if model not in get_args(WhisperLocalModel):
             raise ValueError(

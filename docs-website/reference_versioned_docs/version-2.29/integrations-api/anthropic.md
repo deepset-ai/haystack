@@ -616,7 +616,7 @@ print(response)
 ```python
 __init__(
     api_key: Secret = Secret.from_env_var("ANTHROPIC_API_KEY"),
-    model: str = "claude-sonnet-4-20250514",
+    model: str = "claude-sonnet-4-5",
     streaming_callback: Callable[[StreamingChunk], None] | None = None,
     system_prompt: str | None = None,
     generation_kwargs: dict[str, Any] | None = None,

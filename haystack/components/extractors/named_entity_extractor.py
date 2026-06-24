@@ -142,11 +142,14 @@ class NamedEntityExtractor:
             The API token to download private models from Hugging Face.
         """
         warnings.warn(
-            "`NamedEntityExtractor` will be removed from Haystack in version 3.0, as it is moving to the "
-            "`transformers-haystack` package and being renamed to `TransformersNamedEntityExtractor`. "
-            "To continue using it, install that package with "
-            "`pip install transformers-haystack` and update your import to "
-            "`from haystack_integrations.components.extractors.transformers import TransformersNamedEntityExtractor`.",
+            "`NamedEntityExtractor` will be removed from Haystack in version 3.0, as it is moving to dedicated "
+            "Core Integrations packages depending on the backend. "
+            "For the Hugging Face backend, install `transformers-haystack` with `pip install transformers-haystack` "
+            "and update your import to "
+            "`from haystack_integrations.components.extractors.transformers import TransformersNamedEntityExtractor`. "
+            "For the spaCy backend, install `spacy-haystack` with `pip install spacy-haystack` "
+            "and update your import to "
+            "`from haystack_integrations.components.extractors.spacy import SpacyNamedEntityExtractor`.",
             FutureWarning,
             stacklevel=2,
         )
