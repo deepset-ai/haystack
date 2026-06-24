@@ -104,10 +104,9 @@ class TestRequestWithRetry:
                         "Service Unavailable", request=error_response.request, response=error_response
                     )
 
-            error_response.raise_for_status = raise_for_status  # type: ignore[method-assign]  # test monkeypatch
+            error_response.raise_for_status = raise_for_status  # type: ignore[method-assign]
 
             success_response = httpx.Response(status_code=200, request=httpx.Request("GET", "https://example.com"))
-            # Monkeypatch the method with a stub returning None; the ignore covers the related mypy errors
             success_response.raise_for_status = lambda: None  # type: ignore[method-assign, assignment, return-value]
 
             with patch("httpx.Client.request") as mock_request:
@@ -219,10 +218,9 @@ class TestAsyncRequestWithRetry:
                         "Service Unavailable", request=error_response.request, response=error_response
                     )
 
-            error_response.raise_for_status = raise_for_status  # type: ignore[method-assign]  # test monkeypatch
+            error_response.raise_for_status = raise_for_status  # type: ignore[method-assign]
 
             success_response = httpx.Response(status_code=200, request=httpx.Request("GET", "https://example.com"))
-            # Monkeypatch the method with a stub returning None; the ignore covers the related mypy errors
             success_response.raise_for_status = lambda: None  # type: ignore[method-assign, assignment, return-value]
 
             with patch("httpx.AsyncClient.request") as mock_request:

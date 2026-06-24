@@ -61,13 +61,13 @@ def test_convert_message_to_hf_format():
 
     tool_result = {"weather": "sunny", "temperature": "25"}
     message = ChatMessage.from_tool(
-        tool_result=tool_result,  # type: ignore[arg-type]  # test verifies dict result passes through
+        tool_result=tool_result,  # type: ignore[arg-type]
         origin=ToolCall(id="123", tool_name="weather", arguments={"city": "Paris"}),
     )
     assert convert_message_to_hf_format(message) == {"role": "tool", "content": tool_result, "tool_call_id": "123"}
 
     message = ChatMessage.from_tool(
-        tool_result=tool_result,  # type: ignore[arg-type]  # test verifies dict result passes through
+        tool_result=tool_result,  # type: ignore[arg-type]
         origin=ToolCall(tool_name="weather", arguments={"city": "Paris"}),
     )
     assert convert_message_to_hf_format(message) == {"role": "tool", "content": tool_result}
@@ -85,7 +85,7 @@ def test_convert_message_to_hf_invalid():
             ToolCallResult(
                 result="result!",
                 origin=ToolCall(id="123", tool_name="weather", arguments={"city": "Paris"}),
-                error=None,  # type: ignore[arg-type]  # intentionally invalid input
+                error=None,  # type: ignore[arg-type]
             ),
         ],
     )

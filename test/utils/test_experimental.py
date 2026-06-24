@@ -39,7 +39,7 @@ class TestExperimentalDecorator:
             def run(self, value: int) -> dict:
                 return {"value": value}
 
-        assert getattr(MyComponent, "__experimental__") is True  # noqa: B009  # dynamically added by decorator
+        assert getattr(MyComponent, "__experimental__") is True  # noqa: B009
 
     def test_passes_args_and_kwargs_to_init(self):
         @_experimental

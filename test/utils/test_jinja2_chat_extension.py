@@ -439,7 +439,7 @@ But my favorite subject is Small Language Models.
 
     def test_templatize_part_filter_with_invalid_type(self, jinja_env):
         with pytest.raises(TypeError, match="Unsupported type in ChatMessage content"):
-            templatize_part(jinja_env, 123)  # type: ignore[arg-type]  # intentionally invalid input
+            templatize_part(jinja_env, 123)  # type: ignore[arg-type]
 
     def test_empty_message_content_raises_error(self, jinja_env):
         error_message = "Message content in template is empty or contains only whitespace characters."

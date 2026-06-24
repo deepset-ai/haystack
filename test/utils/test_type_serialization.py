@@ -198,8 +198,6 @@ def test_output_type_deserialization_nested():
 def test_output_type_serialization_typing_generic_with_nonetype():
     # NoneType used as a regular argument of a typing generic (not the implicit None of Optional)
     # must be kept, otherwise the serialized type is malformed (e.g. "typing.Dict[str]") or loses information.
-    # `None` is used here as a regular type argument; at runtime `typing` normalizes it to `NoneType`,
-    # so `Dict[str, None]` is the same object as `Dict[str, type(None)]` while remaining a valid type for mypy.
     assert serialize_type(Dict[str, None]) == "typing.Dict[str, None]"
     assert serialize_type(Dict[None, str]) == "typing.Dict[None, str]"
     assert serialize_type(Tuple[int, type(None)]) == "typing.Tuple[int, None]"
@@ -212,7 +210,6 @@ def test_output_type_serialization_typing_generic_with_nonetype():
 
 def test_output_type_round_trip_typing_generic_with_nonetype():
     for type_ in [
-        # `None` here is normalized to `NoneType` at runtime, identical to `type(None)`, but valid for mypy.
         Dict[str, None],
         Dict[None, str],
         Tuple[int, type(None)],

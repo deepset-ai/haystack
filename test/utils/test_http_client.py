@@ -9,12 +9,11 @@ from haystack.utils.http_client import init_http_client
 
 
 def test_init_http_client():
-    # test without any params (relies on the implementation's default args, which the overloads do not expose)
-    http_client = init_http_client()  # type: ignore[call-overload]  # valid no-arg call; overloads omit defaults
+    # test without any params
+    http_client = init_http_client()  # type: ignore[call-overload]
     assert http_client is None
 
-    # test client is initialized with http_client_kwargs (async_client correctly defaults to False at runtime,
-    # but every overload requires it to be passed explicitly)
+    # test client is initialized with http_client_kwargs
     client_kwargs = {"base_url": "https://example.com"}
     http_client = init_http_client(http_client_kwargs=client_kwargs)  # type: ignore[call-overload]
     assert http_client is not None
@@ -23,8 +22,7 @@ def test_init_http_client():
 
 
 def test_init_http_client_async():
-    # test without any params (http_client_kwargs correctly defaults to None at runtime,
-    # but every overload requires it to be passed explicitly)
+    # test without any params
     http_async_client = init_http_client(async_client=True)  # type: ignore[call-overload]
     assert http_async_client is None
 
@@ -38,11 +36,11 @@ def test_init_http_client_async():
 def test_http_client_kwargs_type_validation():
     # test http_client_kwargs is not a dictionary
     with pytest.raises(TypeError, match="The parameter 'http_client_kwargs' must be a dictionary."):
-        init_http_client(http_client_kwargs="invalid")  # type: ignore[call-overload]  # intentionally invalid type
+        init_http_client(http_client_kwargs="invalid")  # type: ignore[call-overload]
 
 
 def test_http_client_kwargs_with_invalid_params():
-    # test http_client_kwargs with invalid keys (async_client defaults to False at runtime, but overloads require it)
+    # test http_client_kwargs with invalid keys
     with pytest.raises(TypeError, match="unexpected keyword argument"):
         init_http_client(http_client_kwargs={"invalid_key": "invalid"})  # type: ignore[call-overload]
 
