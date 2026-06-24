@@ -27,10 +27,11 @@ class FileTypeRouter:
 
     FileTypeRouter supports both exact MIME type matching and regex patterns.
 
-    For file paths, MIME types come from extensions, while byte streams use metadata.
-    You can use regex patterns in the `mime_types` parameter to set broad categories
-    (such as 'audio/*' or 'text/*') or specific types.
-    MIME types without regex patterns are treated as exact matches.
+    For file paths, MIME types come from extensions; byte streams use metadata.
+    Each entry in `mime_types` is matched against a source's MIME type by exact equality first,
+    falling back to regex `fullmatch` if equality misses. So `"image/svg+xml"` routes
+    `image/svg+xml` streams correctly via the equality check (without `+` being interpreted as a
+    regex quantifier), and patterns like `"audio/.*"` keep matching every audio subtype.
 
     ### Usage example
 
@@ -38,10 +39,10 @@ class FileTypeRouter:
     from haystack.components.routers import FileTypeRouter
     from pathlib import Path
 
-    # For exact MIME type matching
-    router = FileTypeRouter(mime_types=["text/plain", "application/pdf"])
+    # Exact MIME matching — `+`-containing IANA types like image/svg+xml work correctly
+    router = FileTypeRouter(mime_types=["text/plain", "application/pdf", "image/svg+xml"])
 
-    # For flexible matching using regex, to handle all audio types
+    # Regex matching — catch every audio subtype
     router_with_regex = FileTypeRouter(mime_types=[r"audio/.*", r"text/plain"])
 
     sources = [Path("file.txt"), Path("document.pdf"), Path("song.mp3")]
@@ -89,7 +90,7 @@ class FileTypeRouter:
             try:
                 pattern = re.compile(mime_type)
             except re.error as e:
-                raise ValueError(f"Invalid regex pattern '{mime_type}'.") from e
+                raise ValueError(f"Invalid MIME type or regex pattern '{mime_type}'.") from e
             self.mime_type_patterns.append(pattern)
 
         # the actual output type is list[Union[Path, ByteStream]],
@@ -189,9 +190,11 @@ class FileTypeRouter:
 
             matched = False
             if mime_type:
-                for pattern in self.mime_type_patterns:
-                    if pattern.fullmatch(mime_type):
-                        mime_types[pattern.pattern].append(source)
+                # Try exact equality first so MIMEs containing regex metacharacters (e.g. the `+` in
+                # `image/svg+xml`) match themselves before the regex fallback gets a chance to misread them.
+                for bucket_key, pattern in zip(self.mime_types, self.mime_type_patterns, strict=True):
+                    if mime_type == bucket_key or pattern.fullmatch(mime_type):
+                        mime_types[bucket_key].append(source)
                         matched = True
                         break
             if not matched:
