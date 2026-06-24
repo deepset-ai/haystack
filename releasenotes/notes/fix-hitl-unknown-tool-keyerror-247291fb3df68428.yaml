@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    Fixed `human_in_the_loop` confirmation strategies (`_run_confirmation_strategies` and
+    `_run_confirmation_strategies_async`) raising an unhandled `KeyError` when a tool call references a tool name
+    that isn't in the `tools` list (e.g. the chat model hallucinated it). The call now passes through unmodified to
+    `ToolInvoker`, which already raises a clean `ToolNotFoundException` (respecting `raise_on_failure`) for this
+    case.
