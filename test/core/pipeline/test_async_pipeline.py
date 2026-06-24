@@ -38,14 +38,15 @@ def test_run_in_sync_context(waiting_component):
     assert result == {"wait": {"waited_for": 0.001}}
 
 
-def test_run_in_async_context_raises_runtime_error():
+def test_run_in_async_context_succeeds(waiting_component):
     pp = AsyncPipeline()
+    pp.add_component("wait", waiting_component())
 
     async def call_run():
-        pp.run({})
+        return pp.run({"wait_for": 0.001})
 
-    with pytest.raises(RuntimeError, match="Cannot call run\\(\\) from within an async context"):
-        asyncio.run(call_run())
+    result = asyncio.run(call_run())
+    assert result == {"wait": {"waited_for": 0.001}}
 
 
 def test_component_with_empty_dict_as_output_appears_in_results():

@@ -703,7 +703,19 @@ class AsyncPipeline(PipelineBase):
                 )
             )
         else:
-            # Running loop present: do not create the coroutine and do not call asyncio.run()
-            raise RuntimeError(
-                "Cannot call run() from within an async context. Use 'await pipeline.run_async(...)' instead."
-            )
+            # Running loop present: use ThreadPoolExecutor to run the async pipeline
+            # without interfering with the current loop, while preserving contextvars.
+            from concurrent.futures import ThreadPoolExecutor
+
+            ctx = contextvars.copy_context()
+
+            def run_with_ctx():
+                return ctx.run(
+                    asyncio.run,
+                    self.run_async(
+                        data=data, include_outputs_from=include_outputs_from, concurrency_limit=concurrency_limit
+                    ),
+                )
+
+            with ThreadPoolExecutor(max_workers=1) as executor:
+                return executor.submit(run_with_ctx).result()
