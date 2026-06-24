@@ -410,7 +410,7 @@ and `aws_region_name`.
   Can be used to tune [retry behavior](https://docs.aws.amazon.com/boto3/latest/guide/retries.html)
   and other low-level settings like timeouts and connection management.
 - **kwargs** (<code>Any</code>) – Additional parameters to pass for model inference. For example, `input_type` and `truncate` for
-  Cohere models.
+  Cohere models, or `dimensions` and `normalize` for Amazon Titan Text Embeddings V2.
 
 **Raises:**
 
@@ -694,7 +694,7 @@ and `aws_region_name`.
   Can be used to tune [retry behavior](https://docs.aws.amazon.com/boto3/latest/guide/retries.html)
   and other low-level settings like timeouts and connection management.
 - **kwargs** (<code>Any</code>) – Additional parameters to pass for model inference. For example, `input_type` and `truncate` for
-  Cohere models.
+  Cohere models, or `dimensions` and `normalize` for Amazon Titan Text Embeddings V2.
 
 **Raises:**
 
