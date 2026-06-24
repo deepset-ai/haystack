@@ -1003,6 +1003,42 @@ new_ids = {doc.id for doc in new_documents}
 store.delete_documents([doc.id for doc in old_documents if doc.id not in new_ids])
 ```
 
+### Haystack logging no longer reconfigures logging for the whole process
+
+**What changed:** Importing Haystack no longer attaches its formatting handler to the root logger, and no longer
+configures `structlog` process-wide. The handler is now scoped to Haystack's own logger namespaces (`haystack`,
+`haystack_integrations`, `haystack_experimental`), and the global `structlog` configuration is set only when you call
+`configure_logging()` explicitly. As a result, importing Haystack no longer reformats the logs of the host application
+or other libraries running in the same process.
+
+**Why:** Haystack should behave as a well-mannered library when it runs alongside other services in the same process,
+rather than taking over logging for the whole process.
+
+**How to migrate:** If you relied on Haystack formatting every log record in the process, opt back in explicitly.
+
+Before (v2.x):
+```python
+import haystack  # formatted every log record in the process and configured structlog globally
+```
+
+After (v3.0):
+```python
+from haystack import logging
+
+# Restore the old behavior: format every log record in the process (also configures structlog globally).
+logging.configure_logging(logger_name="")
+```
+
+**Note on duplicate log lines:** Haystack's handler now sits on the `haystack.*` loggers, which still propagate to the
+root logger. If the host application also configures a handler on the root logger, Haystack's own logs can appear
+twice. To make Haystack fully own its output and stop the duplication, disable propagation:
+
+```python
+from haystack import logging
+
+logging.configure_logging(propagate=False)
+```
+
 ### Components now resolve API keys at warm-up
 
 **What changed:** Components that use external services now create their resources (such as API clients) during `warm_up()` instead of in `__init__`. As a consequence, a missing API key (for example, an unset environment variable behind a `Secret.from_env_var` default) is now reported at warm-up or first run rather than at construction. This affects OpenAI and Azure OpenAI components.
