@@ -200,11 +200,41 @@ class OpenAIDocumentEmbedder:
 
         return texts_to_embed
 
+    @staticmethod
+    def _dedupe_batch(batch: tuple[tuple[str, str], ...]) -> tuple[list[str], dict[str, list[str]]]:
+        """
+        Deduplicate a batch of (doc_id, text) pairs by text content.
+
+        :param batch:
+            Tuple of (doc_id, text) tuples for one API batch.
+        :returns:
+            A tuple of:
+            - The unique texts to send to the embedding API, in deterministic order.
+            - A mapping from each unique text to the list of doc_ids that produced it.
+        """
+        text_to_doc_ids: dict[str, list[str]] = {}
+        unique_texts: list[str] = []
+        for doc_id, text in batch:
+            if text in text_to_doc_ids:
+                text_to_doc_ids[text].append(doc_id)
+            else:
+                text_to_doc_ids[text] = [doc_id]
+                unique_texts.append(text)
+        return unique_texts, text_to_doc_ids
+
     def _embed_batch(
         self, texts_to_embed: dict[str, str], batch_size: int
     ) -> tuple[dict[str, list[float]], dict[str, Any]]:
         """
         Embed a list of texts in batches.
+
+        Within each batch, byte-identical prepared texts are deduplicated before being sent to the
+        OpenAI API; the returned embedding is then assigned to every document that produced that
+        prepared text. Duplicate documents each receive an independent copy of the embedding list, so
+        downstream mutation of one document's embedding cannot leak into another. Deduplication only
+        operates within a single API batch and only matches full prepared strings produced by
+        ``_prepare_texts_to_embed`` (``prefix`` + ``meta_fields_to_embed`` + ``content`` + ``suffix``),
+        not shared fragments.
         """
 
         doc_ids_to_embeddings: dict[str, list[float]] = {}
@@ -212,7 +242,8 @@ class OpenAIDocumentEmbedder:
         for batch in tqdm(
             batched(texts_to_embed.items(), batch_size), disable=not self.progress_bar, desc="Calculating embeddings"
         ):
-            args: dict[str, Any] = {"model": self.model, "input": [b[1] for b in batch], "encoding_format": "float"}
+            unique_texts, text_to_doc_ids = self._dedupe_batch(batch)
+            args: dict[str, Any] = {"model": self.model, "input": unique_texts, "encoding_format": "float"}
 
             if self.dimensions is not None:
                 args["dimensions"] = self.dimensions
@@ -220,15 +251,20 @@ class OpenAIDocumentEmbedder:
             try:
                 response = self.client.embeddings.create(**args)
             except APIError as exc:
-                ids = ", ".join(b[0] for b in batch)
+                ids = ", ".join(doc_id for ids in text_to_doc_ids.values() for doc_id in ids)
                 msg = "Failed embedding of documents {ids} caused by {exc}"
                 logger.exception(msg, ids=ids, exc=exc)
                 if self.raise_on_failure:
                     raise exc
                 continue
 
-            embeddings = [el.embedding for el in response.data]
-            doc_ids_to_embeddings.update(dict(zip((b[0] for b in batch), embeddings, strict=True)))
+            for text, embedding_obj in zip(unique_texts, response.data, strict=True):
+                doc_ids = text_to_doc_ids[text]
+                # First doc_id keeps the original list; any further duplicates get a shallow copy so
+                # callers cannot leak in-place mutations between Documents that shared a prepared text.
+                doc_ids_to_embeddings[doc_ids[0]] = embedding_obj.embedding
+                for doc_id in doc_ids[1:]:
+                    doc_ids_to_embeddings[doc_id] = list(embedding_obj.embedding)
 
             if "model" not in meta:
                 meta["model"] = response.model
@@ -255,7 +291,8 @@ class OpenAIDocumentEmbedder:
             batches = async_tqdm(batches, desc="Calculating embeddings")
 
         for batch in batches:
-            args: dict[str, Any] = {"model": self.model, "input": [b[1] for b in batch]}
+            unique_texts, text_to_doc_ids = self._dedupe_batch(batch)
+            args: dict[str, Any] = {"model": self.model, "input": unique_texts}
 
             if self.dimensions is not None:
                 args["dimensions"] = self.dimensions
@@ -263,15 +300,18 @@ class OpenAIDocumentEmbedder:
             try:
                 response = await self.async_client.embeddings.create(**args)
             except APIError as exc:
-                ids = ", ".join(b[0] for b in batch)
+                ids = ", ".join(doc_id for ids in text_to_doc_ids.values() for doc_id in ids)
                 msg = "Failed embedding of documents {ids} caused by {exc}"
                 logger.exception(msg, ids=ids, exc=exc)
                 if self.raise_on_failure:
                     raise exc
                 continue
 
-            embeddings = [el.embedding for el in response.data]
-            doc_ids_to_embeddings.update(dict(zip((b[0] for b in batch), embeddings, strict=True)))
+            for text, embedding_obj in zip(unique_texts, response.data, strict=True):
+                doc_ids = text_to_doc_ids[text]
+                doc_ids_to_embeddings[doc_ids[0]] = embedding_obj.embedding
+                for doc_id in doc_ids[1:]:
+                    doc_ids_to_embeddings[doc_id] = list(embedding_obj.embedding)
 
             if "model" not in meta:
                 meta["model"] = response.model

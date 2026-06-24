@@ -264,6 +264,133 @@ class TestOpenAIDocumentEmbedder:
             with pytest.raises(APIError, match="Mocked error"):
                 embedder._embed_batch(texts_to_embed=fake_texts_to_embed, batch_size=2)
 
+    def test_dedupe_batch_preserves_order_and_groups_duplicates(self):
+        batch = (("a", "hello"), ("b", "world"), ("c", "hello"), ("d", "world"), ("e", "unique"))
+        unique_texts, text_to_doc_ids = OpenAIDocumentEmbedder._dedupe_batch(batch)
+        assert unique_texts == ["hello", "world", "unique"]
+        assert text_to_doc_ids == {"hello": ["a", "c"], "world": ["b", "d"], "unique": ["e"]}
+
+    def test_embed_batch_deduplicates_identical_texts(self):
+        embedder = OpenAIDocumentEmbedder(api_key=Secret.from_token("fake_api_key"))
+        # Three documents, two share the same text.
+        fake_texts_to_embed = {"id_1": "shared text", "id_2": "unique text", "id_3": "shared text"}
+
+        from openai.types.create_embedding_response import Usage
+
+        mock_response = Mock()
+        mock_response.data = [Mock(embedding=[0.1, 0.2]), Mock(embedding=[0.3, 0.4])]
+        mock_response.model = "text-embedding-ada-002"
+        mock_response.usage = Usage(prompt_tokens=5, total_tokens=5)
+
+        with patch.object(embedder.client.embeddings, "create", return_value=mock_response) as mock_create:
+            doc_ids_to_embeddings, meta = embedder._embed_batch(
+                texts_to_embed=fake_texts_to_embed, batch_size=10
+            )
+
+        # Only unique texts were sent to the API.
+        sent_input = mock_create.call_args.kwargs["input"]
+        assert sent_input == ["shared text", "unique text"]
+        assert mock_create.call_count == 1
+
+        # Both documents with the shared text get the same embedding.
+        assert doc_ids_to_embeddings["id_1"] == [0.1, 0.2]
+        assert doc_ids_to_embeddings["id_3"] == [0.1, 0.2]
+        assert doc_ids_to_embeddings["id_2"] == [0.3, 0.4]
+        assert meta["model"] == "text-embedding-ada-002"
+
+    @pytest.mark.asyncio
+    async def test_embed_batch_async_deduplicates_identical_texts(self):
+        from unittest.mock import AsyncMock
+
+        from openai.types.create_embedding_response import Usage
+
+        embedder = OpenAIDocumentEmbedder(api_key=Secret.from_token("fake_api_key"))
+        fake_texts_to_embed = {"id_1": "shared text", "id_2": "unique text", "id_3": "shared text"}
+
+        mock_response = Mock()
+        mock_response.data = [Mock(embedding=[0.1, 0.2]), Mock(embedding=[0.3, 0.4])]
+        mock_response.model = "text-embedding-ada-002"
+        mock_response.usage = Usage(prompt_tokens=5, total_tokens=5)
+
+        embedder.async_client.embeddings.create = AsyncMock(return_value=mock_response)
+        doc_ids_to_embeddings, meta = await embedder._embed_batch_async(
+            texts_to_embed=fake_texts_to_embed, batch_size=10
+        )
+
+        sent_input = embedder.async_client.embeddings.create.call_args.kwargs["input"]
+        assert sent_input == ["shared text", "unique text"]
+        assert embedder.async_client.embeddings.create.call_count == 1
+        assert doc_ids_to_embeddings["id_1"] == [0.1, 0.2]
+        assert doc_ids_to_embeddings["id_3"] == [0.1, 0.2]
+        assert doc_ids_to_embeddings["id_2"] == [0.3, 0.4]
+        assert meta["model"] == "text-embedding-ada-002"
+
+        with contextlib.suppress(RuntimeError):
+            await embedder.async_client.close()
+
+    def test_embed_batch_dedupe_does_not_alias_embeddings(self):
+        """Documents that shared a prepared text must NOT share the same embedding list object.
+
+        Otherwise a downstream consumer that mutates one Document's embedding in place (for example
+        an L2 normalizer or a dimension-truncation step) would silently corrupt every duplicate.
+        """
+        from openai.types.create_embedding_response import Usage
+
+        embedder = OpenAIDocumentEmbedder(api_key=Secret.from_token("fake_api_key"))
+        fake_texts_to_embed = {"id_1": "shared", "id_2": "shared", "id_3": "shared"}
+
+        mock_response = Mock()
+        mock_response.data = [Mock(embedding=[0.1, 0.2])]
+        mock_response.model = "text-embedding-ada-002"
+        mock_response.usage = Usage(prompt_tokens=1, total_tokens=1)
+
+        with patch.object(embedder.client.embeddings, "create", return_value=mock_response):
+            doc_ids_to_embeddings, _ = embedder._embed_batch(
+                texts_to_embed=fake_texts_to_embed, batch_size=10
+            )
+
+        assert doc_ids_to_embeddings["id_1"] == [0.1, 0.2]
+        assert doc_ids_to_embeddings["id_2"] == [0.1, 0.2]
+        assert doc_ids_to_embeddings["id_3"] == [0.1, 0.2]
+        # The three lists must be distinct objects so per-document mutation is isolated.
+        assert doc_ids_to_embeddings["id_1"] is not doc_ids_to_embeddings["id_2"]
+        assert doc_ids_to_embeddings["id_1"] is not doc_ids_to_embeddings["id_3"]
+        assert doc_ids_to_embeddings["id_2"] is not doc_ids_to_embeddings["id_3"]
+
+        doc_ids_to_embeddings["id_1"].append(99.0)
+        assert doc_ids_to_embeddings["id_2"] == [0.1, 0.2]
+        assert doc_ids_to_embeddings["id_3"] == [0.1, 0.2]
+
+    def test_embed_batch_no_duplicates_within_batch(self):
+        """Documents with the same text in *different* API batches are NOT deduplicated across batches."""
+        embedder = OpenAIDocumentEmbedder(api_key=Secret.from_token("fake_api_key"))
+        fake_texts_to_embed = {"id_1": "shared text", "id_2": "shared text"}
+
+        from openai.types.create_embedding_response import Usage
+
+        mock_response_a = Mock()
+        mock_response_a.data = [Mock(embedding=[0.1, 0.2])]
+        mock_response_a.model = "text-embedding-ada-002"
+        mock_response_a.usage = Usage(prompt_tokens=3, total_tokens=3)
+
+        mock_response_b = Mock()
+        mock_response_b.data = [Mock(embedding=[0.5, 0.6])]
+        mock_response_b.model = "text-embedding-ada-002"
+        mock_response_b.usage = Usage(prompt_tokens=3, total_tokens=3)
+
+        with patch.object(
+            embedder.client.embeddings, "create", side_effect=[mock_response_a, mock_response_b]
+        ) as mock_create:
+            doc_ids_to_embeddings, meta = embedder._embed_batch(
+                texts_to_embed=fake_texts_to_embed, batch_size=1
+            )
+
+        # batch_size=1 means each doc gets its own API call — dedupe only operates within a batch.
+        assert mock_create.call_count == 2
+        assert doc_ids_to_embeddings["id_1"] == [0.1, 0.2]
+        assert doc_ids_to_embeddings["id_2"] == [0.5, 0.6]
+        assert meta["usage"]["prompt_tokens"] == 6
+
     @pytest.mark.skipif(os.environ.get("OPENAI_API_KEY", "") == "", reason="OPENAI_API_KEY is not set")
     @pytest.mark.integration
     def test_run(self):

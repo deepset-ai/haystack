@@ -1,0 +1,13 @@
+---
+enhancements:
+  - |
+    `OpenAIDocumentEmbedder` (and its `AzureOpenAIDocumentEmbedder` subclass) now deduplicates
+    byte-identical prepared texts within each API batch before calling the OpenAI embeddings
+    endpoint. Documents that produced the same prepared string (the concatenation of ``prefix`` +
+    ``meta_fields_to_embed`` + ``content`` + ``suffix`` built by ``_prepare_texts_to_embed``) share
+    a single API call; each document still receives an independent copy of the embedding list, so
+    in-place mutation by downstream consumers does not leak between documents. This reduces token
+    usage when the same prepared text appears in multiple documents within a batch (re-indexing
+    duplicate rows, templated or synthetic content) without changing per-document output.
+    Deduplication is scoped to a single batch — duplicates that fall into different batches are
+    still embedded independently.
