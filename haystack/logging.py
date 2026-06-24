@@ -393,8 +393,7 @@ def configure_logging(
         shared_processors.append(correlate_logs_with_traces)
 
     # `structlog.configure` is process-global: it affects every native structlog logger, not just Haystack's. We only
-    # configure it when explicitly asked (`configure_structlog`); the import-time call skips it and relies on the
-    # scoped handler below to format Haystack's own logs, leaving the host app's structlog loggers untouched.
+    # configure it when explicitly asked (`configure_structlog`).
     if configure_structlog:
         structlog.configure(
             # `filter_by_level` reads the effective level from the underlying stdlib logger on *every* call, so
