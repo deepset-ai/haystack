@@ -54,8 +54,8 @@
             </div>
         </aside>
         <h2>
-            <span class="text">33 statements &nbsp;</span>
-            <button type="button" class="run button_toggle_run" value="run" data-shortcut="r" title="Toggle lines run">33<span class="text"> run</span></button>
+            <span class="text">34 statements &nbsp;</span>
+            <button type="button" class="run button_toggle_run" value="run" data-shortcut="r" title="Toggle lines run">34<span class="text"> run</span></button>
             <button type="button" class="mis show_mis button_toggle_mis" value="mis" data-shortcut="m" title="Toggle lines missing">0<span class="text"> missing</span></button>
             <button type="button" class="exc show_exc button_toggle_exc" value="exc" data-shortcut="x" title="Toggle lines excluded">0<span class="text"> excluded</span></button>
         </h2>
@@ -65,7 +65,7 @@
             <a id="nextFileLink" class="nav" href="z_7d19389bcd8d8e66_sentence_transformers_diversity_py.html">&#xbb; next</a>
             &nbsp; &nbsp; &nbsp;
             <a class="nav" href="https://coverage.readthedocs.io/en/7.14.2">coverage.py v7.14.2</a>,
-            created at 2026-06-24 15:26 +0000
+            created at 2026-06-24 16:53 +0000
         </p>
         <aside class="hidden">
             <button type="button" class="button_next_chunk" data-shortcut="j"></button>
@@ -191,16 +191,22 @@
     <p class="pln"><span class="n"><a id="t109" href="#t109">109</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t110" href="#t110">110</a></span><span class="t">            <span class="nam">document_groups</span><span class="op">[</span><span class="nam">group_value</span><span class="op">]</span><span class="op">[</span><span class="nam">subgroup_value</span><span class="op">]</span><span class="op">.</span><span class="nam">append</span><span class="op">(</span><span class="nam">doc</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t111" href="#t111">111</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t112" href="#t112">112</a></span><span class="t">        <span class="nam">ordered_docs</span> <span class="op">=</span> <span class="op">[</span><span class="op">]</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t113" href="#t113">113</a></span><span class="t">        <span class="key">for</span> <span class="nam">subgroups</span> <span class="key">in</span> <span class="nam">document_groups</span><span class="op">.</span><span class="nam">values</span><span class="op">(</span><span class="op">)</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t114" href="#t114">114</a></span><span class="t">            <span class="key">for</span> <span class="nam">docs</span> <span class="key">in</span> <span class="nam">subgroups</span><span class="op">.</span><span class="nam">values</span><span class="op">(</span><span class="op">)</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t115" href="#t115">115</a></span><span class="t">                <span class="key">if</span> <span class="nam">self</span><span class="op">.</span><span class="nam">sort_docs_by</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t116" href="#t116">116</a></span><span class="t">                    <span class="nam">docs</span><span class="op">.</span><span class="nam">sort</span><span class="op">(</span><span class="nam">key</span><span class="op">=</span><span class="key">lambda</span> <span class="nam">d</span><span class="op">:</span> <span class="nam">d</span><span class="op">.</span><span class="nam">meta</span><span class="op">.</span><span class="nam">get</span><span class="op">(</span><span class="nam">self</span><span class="op">.</span><span class="nam">sort_docs_by</span> <span class="key">or</span> <span class="str">""</span><span class="op">,</span> <span class="nam">float</span><span class="op">(</span><span class="str">"inf"</span><span class="op">)</span><span class="op">)</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t117" href="#t117">117</a></span><span class="t">                <span class="nam">ordered_docs</span><span class="op">.</span><span class="nam">extend</span><span class="op">(</span><span class="nam">docs</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
-    <p class="pln"><span class="n"><a id="t118" href="#t118">118</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t119" href="#t119">119</a></span><span class="t">        <span class="nam">ordered_docs</span><span class="op">.</span><span class="nam">extend</span><span class="op">(</span><span class="nam">no_group_docs</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
-    <p class="pln"><span class="n"><a id="t120" href="#t120">120</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t121" href="#t121">121</a></span><span class="t">        <span class="key">return</span> <span class="op">{</span><span class="str">"documents"</span><span class="op">:</span> <span class="nam">ordered_docs</span><span class="op">}</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t112" href="#t112">112</a></span><span class="t">        <span class="com"># use a non-optional key for type checking; "" disables sorting.</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t113" href="#t113">113</a></span><span class="t">        <span class="nam">sort_field</span> <span class="op">=</span> <span class="nam">self</span><span class="op">.</span><span class="nam">sort_docs_by</span> <span class="key">or</span> <span class="str">""</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t114" href="#t114">114</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t115" href="#t115">115</a></span><span class="t">        <span class="nam">ordered_docs</span> <span class="op">=</span> <span class="op">[</span><span class="op">]</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t116" href="#t116">116</a></span><span class="t">        <span class="key">for</span> <span class="nam">subgroups</span> <span class="key">in</span> <span class="nam">document_groups</span><span class="op">.</span><span class="nam">values</span><span class="op">(</span><span class="op">)</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t117" href="#t117">117</a></span><span class="t">            <span class="key">for</span> <span class="nam">docs</span> <span class="key">in</span> <span class="nam">subgroups</span><span class="op">.</span><span class="nam">values</span><span class="op">(</span><span class="op">)</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t118" href="#t118">118</a></span><span class="t">                <span class="key">if</span> <span class="nam">sort_field</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t119" href="#t119">119</a></span><span class="t">                    <span class="com"># Sort by the field value, placing documents with a missing value last.</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t120" href="#t120">120</a></span><span class="t">                    <span class="com"># The (is_missing, value) tuple ensures that only actual field values are</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t121" href="#t121">121</a></span><span class="t">                    <span class="com"># compared, making the sort work for numbers, strings, and other types.</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t122" href="#t122">122</a></span><span class="t">                    <span class="nam">docs</span><span class="op">.</span><span class="nam">sort</span><span class="op">(</span><span class="nam">key</span><span class="op">=</span><span class="key">lambda</span> <span class="nam">d</span><span class="op">:</span> <span class="op">(</span><span class="nam">d</span><span class="op">.</span><span class="nam">meta</span><span class="op">.</span><span class="nam">get</span><span class="op">(</span><span class="nam">sort_field</span><span class="op">)</span> <span class="key">is</span> <span class="key">None</span><span class="op">,</span> <span class="nam">d</span><span class="op">.</span><span class="nam">meta</span><span class="op">.</span><span class="nam">get</span><span class="op">(</span><span class="nam">sort_field</span><span class="op">)</span><span class="op">)</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t123" href="#t123">123</a></span><span class="t">                <span class="nam">ordered_docs</span><span class="op">.</span><span class="nam">extend</span><span class="op">(</span><span class="nam">docs</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t124" href="#t124">124</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t125" href="#t125">125</a></span><span class="t">        <span class="nam">ordered_docs</span><span class="op">.</span><span class="nam">extend</span><span class="op">(</span><span class="nam">no_group_docs</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t126" href="#t126">126</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t127" href="#t127">127</a></span><span class="t">        <span class="key">return</span> <span class="op">{</span><span class="str">"documents"</span><span class="op">:</span> <span class="nam">ordered_docs</span><span class="op">}</span>&nbsp;</span><span class="r"></span></p>
 </main>
 <footer>
     <div class="content">
@@ -210,7 +216,7 @@
             <a class="nav" href="z_7d19389bcd8d8e66_sentence_transformers_diversity_py.html">&#xbb; next</a>
             &nbsp; &nbsp; &nbsp;
             <a class="nav" href="https://coverage.readthedocs.io/en/7.14.2">coverage.py v7.14.2</a>,
-            created at 2026-06-24 15:26 +0000
+            created at 2026-06-24 16:53 +0000
         </p>
     </div>
 </footer>
