@@ -899,3 +899,13 @@ from haystack import logging
 # Restore the old behavior: format every log record in the process (also configures structlog globally).
 logging.configure_logging(logger_name="")
 ```
+
+**Note on duplicate log lines:** Haystack's handler now sits on the `haystack.*` loggers, which still propagate to the
+root logger. If the host application also configures a handler on the root logger, Haystack's own logs can appear
+twice. To make Haystack fully own its output and stop the duplication, disable propagation:
+
+```python
+from haystack import logging
+
+logging.configure_logging(propagate=False)
+```

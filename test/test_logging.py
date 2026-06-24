@@ -631,7 +631,12 @@ class TestCompositeLogger:
 
     def test_that_haystack_logger_is_used(self) -> None:
         """Forces the usage of the Haystack logger instead of the standard library logger."""
-        allowed_list = [Path("haystack") / "logging.py"]
+        allowed_list = [
+            Path("haystack") / "logging.py",
+            # Deliberately uses the stdlib logger: tenacity's before_log/after_log call it with positional args, which
+            # the Haystack logger rejects.
+            Path("haystack") / "utils" / "requests_utils.py",
+        ]
         for root, _, files in os.walk("haystack"):
             for file in files:
                 path = Path(root) / file
