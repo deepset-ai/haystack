@@ -346,12 +346,8 @@ class _ToolsetWrapper(Toolset):
         return sum(len(toolset) for toolset in self.toolsets)
 
     def __getitem__(self, index: int) -> Tool:
-        """Get a tool by index across all toolsets."""
-        # Leverage iteration instead of manual index tracking
-        for i, tool in enumerate(self):
-            if i == index:
-                return tool
-        raise IndexError("ToolsetWrapper index out of range")
+        """Get a tool by index across all toolsets, supporting negative indices like a list."""
+        return list(self)[index]
 
     def __add__(self, other: Toolset | Tool | list[Tool]) -> "_ToolsetWrapper":
         """Add another toolset or tool to this wrapper."""
