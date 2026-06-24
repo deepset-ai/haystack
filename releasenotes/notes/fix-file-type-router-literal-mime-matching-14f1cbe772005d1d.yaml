@@ -1,10 +1,10 @@
 ---
 fixes:
   - |
-    Fixed ``FileTypeRouter`` to match literal MIME types exactly, as its docstring promised.
-    Strings in ``mime_types`` were compiled as regex without ``re.escape``, so ``+``-containing
-    IANA types (``image/svg+xml``, ``application/ld+json``, every ``application/*+xml`` and
-    ``application/*+json``) silently fell through to ``unclassified`` and ``.`` in literals like
-    ``application/pdf`` could match unrelated MIMEs such as ``applicationXpdf``. Strings made up
-    only of IANA-valid characters are now matched literally; anything else (for example
-    ``audio/.*``) is still compiled as a regex.
+    Fixed ``FileTypeRouter`` silently routing MIME types containing ``+`` (such as
+    ``image/svg+xml``, ``application/ld+json``, and every ``application/*+xml`` / ``application/*+json``)
+    into the ``unclassified`` bucket. Entries in ``mime_types`` were being compiled as regex,
+    so the ``+`` was interpreted as a quantifier and the type never matched itself. Each source's
+    MIME type is now checked against ``mime_types`` by exact equality first, falling back to the
+    existing regex match — so literal MIMEs route correctly and patterns like ``audio/.*`` keep
+    working unchanged.

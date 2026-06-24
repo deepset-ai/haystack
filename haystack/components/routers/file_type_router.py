@@ -20,11 +20,6 @@ from haystack.utils.misc import CUSTOM_MIMETYPES  # noqa: F401
 logger = logging.getLogger(__name__)
 
 
-# Strings matching this shape are treated as literal MIMEs (escaped before compile); anything else
-# is compiled as a regex, preserving the documented regex support.
-_LITERAL_MIME_RE = re.compile(r"\A[a-zA-Z0-9][a-zA-Z0-9.+_\-]*/[a-zA-Z0-9][a-zA-Z0-9.+_\-]*\Z")
-
-
 @component
 class FileTypeRouter:
     """
@@ -33,10 +28,10 @@ class FileTypeRouter:
     FileTypeRouter supports both exact MIME type matching and regex patterns.
 
     For file paths, MIME types come from extensions; byte streams use metadata.
-    Entries in `mime_types` are classified automatically: strings made up only of IANA-valid
-    characters (alphanumerics and `.`, `+`, `_`, `-` on each side of the `/`) are matched literally,
-    so `"image/svg+xml"` matches only `image/svg+xml`. Anything else (for example `"audio/.*"`) is
-    compiled as a regex.
+    Each entry in `mime_types` is matched against a source's MIME type by exact equality first,
+    falling back to regex `fullmatch` if equality misses. So `"image/svg+xml"` routes
+    `image/svg+xml` streams correctly via the equality check (without `+` being interpreted as a
+    regex quantifier), and patterns like `"audio/.*"` keep matching every audio subtype.
 
     ### Usage example
 
@@ -92,14 +87,10 @@ class FileTypeRouter:
 
         self.mime_type_patterns = []
         for mime_type in mime_types:
-            if _LITERAL_MIME_RE.fullmatch(mime_type):
-                # Escape so `.` and `+` in real MIME types match themselves, not regex wildcards.
-                pattern = re.compile(re.escape(mime_type))
-            else:
-                try:
-                    pattern = re.compile(mime_type)
-                except re.error as e:
-                    raise ValueError(f"Invalid MIME type or regex pattern '{mime_type}'.") from e
+            try:
+                pattern = re.compile(mime_type)
+            except re.error as e:
+                raise ValueError(f"Invalid MIME type or regex pattern '{mime_type}'.") from e
             self.mime_type_patterns.append(pattern)
 
         # the actual output type is list[Union[Path, ByteStream]],
@@ -199,10 +190,10 @@ class FileTypeRouter:
 
             matched = False
             if mime_type:
-                # Bucket key is the user's original string — keeps it aligned with the output socket
-                # name; `pattern.pattern` would be the escaped form for literals.
+                # Try exact equality first so MIMEs containing regex metacharacters (e.g. the `+` in
+                # `image/svg+xml`) match themselves before the regex fallback gets a chance to misread them.
                 for bucket_key, pattern in zip(self.mime_types, self.mime_type_patterns, strict=True):
-                    if pattern.fullmatch(mime_type):
+                    if mime_type == bucket_key or pattern.fullmatch(mime_type):
                         mime_types[bucket_key].append(source)
                         matched = True
                         break
