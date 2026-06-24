@@ -5,6 +5,7 @@
 from typing import Any
 from unittest.mock import patch
 
+import numpy as np
 import pytest
 
 from haystack import AsyncPipeline, Document, Pipeline, SuperComponent, component, super_component
@@ -498,8 +499,6 @@ class TestSuperComponentDelegateDefaultFiltering:
     """
 
     def test_run_accepts_numpy_ndarray_input(self):
-        np = pytest.importorskip("numpy")
-
         inner = _CaptureValue()
         pipe = Pipeline()
         pipe.add_component("capture", inner)
@@ -511,8 +510,6 @@ class TestSuperComponentDelegateDefaultFiltering:
 
     @pytest.mark.asyncio
     async def test_run_async_accepts_numpy_ndarray_input(self):
-        np = pytest.importorskip("numpy")
-
         inner = _CaptureValue()
         pipe = AsyncPipeline()
         pipe.add_component("capture", inner)
