@@ -120,9 +120,16 @@ class TestAgentHooksValidation:
         with pytest.raises(ValueError):
             Agent(chat_generator=MockChatGenerator(), hooks={"bogus": [record_a]})
 
-    def test_non_hook_raises(self):
-        with pytest.raises(TypeError):
+    def test_non_callable_object_raises(self):
+        with pytest.raises(TypeError, match="must have a callable 'run"):
             Agent(chat_generator=MockChatGenerator(), hooks={"before_llm": [object()]})
+
+    def test_unwrapped_function_hints_at_hook_decorator(self):
+        def my_hook(state: State) -> None:
+            pass
+
+        with pytest.raises(TypeError, match="@hook decorator"):
+            Agent(chat_generator=MockChatGenerator(), hooks={"before_llm": [my_hook]})
 
 
 class TestBeforeLlmHook:

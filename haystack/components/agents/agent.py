@@ -549,6 +549,11 @@ class Agent:
                 )
             for h in hook_list:
                 if not callable(getattr(h, "run", None)):
+                    if callable(h):
+                        raise TypeError(
+                            f"Hook registered for hook point '{hook_point}' is callable but is not a Hook object. "
+                            "If it is a function, wrap it with the @hook decorator."
+                        )
                     raise TypeError(
                         f"Hook registered for hook point '{hook_point}' must have a callable 'run(state)', "
                         f"got an object of type '{type(h).__name__}'."
