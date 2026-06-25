@@ -1000,12 +1000,6 @@ def test_recursive_splitter_generates_unique_ids_and_correct_meta():
         assert chunk.meta["split_id"] == idx
 
 
-# ── Regression tests for fallback overlap bug ────────────────────────────────
-# When no separator in `separators` matches the text, _chunk_text falls back to
-# fixed chunking.  Before the fix, the final `return` on that path skipped the
-# `_apply_overlap` call, so `split_overlap` was silently ignored.
-
-
 def test_fallback_overlap_char_unit():
     """split_overlap must be applied even when no separator matches (char unit)."""
     splitter = RecursiveDocumentSplitter(split_length=5, split_overlap=2, separators=["\n\n"], split_unit="char")
