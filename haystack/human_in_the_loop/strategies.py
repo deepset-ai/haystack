@@ -373,7 +373,22 @@ def _run_confirmation_strategies(
 
         for tool_call in message.tool_calls:
             tool_name = tool_call.tool_name
-            tool_to_invoke = tools_with_names[tool_name]
+            tool_to_invoke = tools_with_names.get(tool_name)
+
+            # If the tool name doesn't match any known tool (e.g. the model hallucinated it), skip confirmation
+            # entirely and let the original tool call pass through unmodified. ToolInvoker already has proper
+            # handling for unknown tools (ToolNotFoundException, respecting raise_on_failure); we don't want to
+            # duplicate or pre-empt that here.
+            if tool_to_invoke is None:
+                teds.append(
+                    ToolExecutionDecision(
+                        tool_call_id=tool_call.id,
+                        tool_name=tool_name,
+                        execute=True,
+                        final_tool_params=tool_call.arguments,
+                    )
+                )
+                continue
 
             # Prepare final tool args
             final_args = _prepare_tool_args(
@@ -444,7 +459,22 @@ async def _run_confirmation_strategies_async(
 
         for tool_call in message.tool_calls:
             tool_name = tool_call.tool_name
-            tool_to_invoke = tools_with_names[tool_name]
+            tool_to_invoke = tools_with_names.get(tool_name)
+
+            # If the tool name doesn't match any known tool (e.g. the model hallucinated it), skip confirmation
+            # entirely and let the original tool call pass through unmodified. ToolInvoker already has proper
+            # handling for unknown tools (ToolNotFoundException, respecting raise_on_failure); we don't want to
+            # duplicate or pre-empt that here.
+            if tool_to_invoke is None:
+                teds.append(
+                    ToolExecutionDecision(
+                        tool_call_id=tool_call.id,
+                        tool_name=tool_name,
+                        execute=True,
+                        final_tool_params=tool_call.arguments,
+                    )
+                )
+                continue
 
             # Prepare final tool args
             final_args = _prepare_tool_args(
