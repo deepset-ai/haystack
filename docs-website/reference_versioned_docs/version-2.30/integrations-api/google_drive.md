@@ -6,6 +6,173 @@ slug: "/integrations-google-drive"
 ---
 
 
+## haystack_integrations.components.fetchers.google_drive.fetcher
+
+### GoogleDriveFetcher
+
+Fetches the full content of Google Drive files via the Drive API v3.
+
+The fetcher complements `GoogleDriveRetriever`, which returns only metadata (and optionally exported text).
+Wire the retriever's `documents` (or a list of file ids / Drive URLs) into this fetcher to download the full
+content. It dispatches on each file's mime type and always returns `ByteStream`s, ready for a downstream
+converter (for example a `FileTypeRouter` in front of `PyPDFToDocument`, `DOCXToDocument`, `XLSXToDocument`,
+or `PPTXToDocument`):
+
+- **Binary files** (PDF, DOCX, images, ...) are downloaded as-is via `files.get?alt=media`.
+- **Native Google Docs/Sheets/Slides** are exported with `files.export`, by default to the Office formats
+  (DOCX/XLSX/PPTX), configurable via `export_mime_types`.
+- **Folders** and other non-downloadable Google types (Forms, Sites, ...) are skipped.
+
+Each `ByteStream`'s `meta` carries `file_id`, `web_url`, `file_name`, and `content_type`.
+
+The fetcher takes a per-user `access_token` as a run input, typically wired from an upstream `OAuthTokenResolver`.
+The token must carry a delegated Google OAuth scope that allows reading file content (for example
+`https://www.googleapis.com/auth/drive.readonly`).
+
+### Usage example
+
+```python
+from haystack_integrations.components.fetchers.google_drive import GoogleDriveFetcher
+
+fetcher = GoogleDriveFetcher()
+
+# `access_token` is a per-user delegated Google OAuth bearer token.
+result = fetcher.run(
+    access_token="my-delegated-google-token",
+    targets=["https://drive.google.com/file/d/1AbCdEfGhIjKlMnOpQrStUvWxYz/view"],
+)
+streams = result["streams"]
+```
+
+In a pipeline, connect `GoogleDriveRetriever.documents` to the fetcher's `targets` input and an upstream
+component that emits a per-user `access_token` to the fetcher's `access_token` input.
+
+#### __init__
+
+```python
+__init__(
+    *,
+    api_base_url: str = DEFAULT_API_BASE_URL,
+    timeout: float = 30.0,
+    max_retries: int = 3,
+    max_concurrent_requests: int = 5,
+    raise_on_failure: bool = True,
+    export_mime_types: dict[str, str] | None = None
+) -> None
+```
+
+Initialize the fetcher.
+
+**Parameters:**
+
+- **api_base_url** (<code>str</code>) – The Drive API base URL. Defaults to `https://www.googleapis.com/drive/v3`.
+- **timeout** (<code>float</code>) – The HTTP timeout in seconds for each request to the Drive API.
+- **max_retries** (<code>int</code>) – The maximum number of retries for throttled (HTTP 429) or transient server errors.
+- **max_concurrent_requests** (<code>int</code>) – The maximum number of files fetched concurrently by `run_async`. Bounds
+  the in-flight requests to Drive to avoid tripping its rate limits. Has no effect on the synchronous
+  `run`, which fetches files one at a time.
+- **raise_on_failure** (<code>bool</code>) – If `True`, a fetch failure raises an exception. If `False`, the failure is
+  logged and the file is skipped, so the other files are still returned.
+- **export_mime_types** (<code>dict\[str, str\] | None</code>) – Optional mapping of native Google mime type (for example
+  `application/vnd.google-apps.document`) to the mime type to export it as. Replaces the default mapping
+  (Docs/Sheets/Slides to DOCX/XLSX/PPTX). Drive caps a single export at 10 MB.
+
+**Raises:**
+
+- <code>GoogleDriveConfigError</code> – If `max_retries` is negative or `max_concurrent_requests` is not positive.
+
+#### run
+
+```python
+run(
+    access_token: str | Secret, targets: list[Document | str]
+) -> dict[str, list[ByteStream]]
+```
+
+Fetch the content of Google Drive files and return them as `ByteStream`s.
+
+**Parameters:**
+
+- **access_token** (<code>str | Secret</code>) – A delegated Google OAuth bearer token for the user whose files are fetched, typically
+  wired from an upstream `OAuthTokenResolver` (which emits a plain `str`). A `Secret` is also accepted and
+  resolved internally.
+- **targets** (<code>list\[Document | str\]</code>) – The files to fetch, as either `Document`s emitted by `GoogleDriveRetriever` or raw Google
+  Drive file ids / URLs (the two may also be mixed in one list). For a `Document`, the `file_id` in its
+  meta is fetched and `mime_type`, `file_name`, and `web_url` are reused when present. For a raw string,
+  the file id is parsed from a Drive URL (or used as-is) and the file's mime type is looked up. Folders
+  and non-downloadable Google types are skipped.
+
+**Returns:**
+
+- <code>dict\[str, list\[ByteStream\]\]</code> – A dictionary with a `streams` key holding the fetched content as `ByteStream` objects. Each
+  stream's `meta` carries `file_id`, `web_url`, `file_name`, and `content_type`.
+
+**Raises:**
+
+- <code>GoogleDriveConfigError</code> – If an item is neither a `Document` nor a `str`, or if `access_token` is a
+  `Secret` that does not resolve to a string.
+- <code>GoogleDriveRequestError</code> – If a fetch fails and `raise_on_failure` is `True`.
+
+#### run_async
+
+```python
+run_async(
+    access_token: str | Secret, targets: list[Document | str]
+) -> dict[str, list[ByteStream]]
+```
+
+Asynchronously fetch the content of Google Drive files and return them as `ByteStream`s.
+
+**Parameters:**
+
+- **access_token** (<code>str | Secret</code>) – A delegated Google OAuth bearer token for the user whose files are fetched, typically
+  wired from an upstream `OAuthTokenResolver` (which emits a plain `str`). A `Secret` is also accepted and
+  resolved internally.
+- **targets** (<code>list\[Document | str\]</code>) – The files to fetch, as either `Document`s emitted by `GoogleDriveRetriever` or raw Google
+  Drive file ids / URLs (the two may also be mixed in one list). For a `Document`, the `file_id` in its
+  meta is fetched and `mime_type`, `file_name`, and `web_url` are reused when present. For a raw string,
+  the file id is parsed from a Drive URL (or used as-is) and the file's mime type is looked up. Folders
+  and non-downloadable Google types are skipped.
+
+**Returns:**
+
+- <code>dict\[str, list\[ByteStream\]\]</code> – A dictionary with a `streams` key holding the fetched content as `ByteStream` objects. Each
+  stream's `meta` carries `file_id`, `web_url`, `file_name`, and `content_type`.
+
+**Raises:**
+
+- <code>GoogleDriveConfigError</code> – If an item is neither a `Document` nor a `str`, or if `access_token` is a
+  `Secret` that does not resolve to a string.
+- <code>GoogleDriveRequestError</code> – If a fetch fails and `raise_on_failure` is `True`.
+
+#### to_dict
+
+```python
+to_dict() -> dict[str, Any]
+```
+
+Serialize this component to a dictionary.
+
+**Returns:**
+
+- <code>dict\[str, Any\]</code> – The serialized component as a dictionary.
+
+#### from_dict
+
+```python
+from_dict(data: dict[str, Any]) -> GoogleDriveFetcher
+```
+
+Deserialize this component from a dictionary.
+
+**Parameters:**
+
+- **data** (<code>dict\[str, Any\]</code>) – The dictionary representation of this component.
+
+**Returns:**
+
+- <code>GoogleDriveFetcher</code> – The deserialized component instance.
+
 ## haystack_integrations.components.retrievers.google_drive.retriever
 
 ### GoogleDriveRetriever
@@ -65,7 +232,7 @@ __init__(
     include_shared_drives: bool = False,
     order_by: str | None = None,
     fields: list[str] | None = None,
-    api_base_url: str = _DEFAULT_API_BASE_URL,
+    api_base_url: str = DEFAULT_API_BASE_URL,
     timeout: float = 30.0,
     max_retries: int = 3
 ) -> None
