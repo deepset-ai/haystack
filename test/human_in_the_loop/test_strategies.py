@@ -9,6 +9,7 @@ import pytest
 
 from haystack.components.agents.agent import _ExecutionContext
 from haystack.components.agents.state.state import State
+from haystack.components.agents.tool_calling import ToolNotFoundException, _run_tool
 from haystack.dataclasses import ChatMessage, ToolCall
 from haystack.human_in_the_loop import (
     AlwaysAskPolicy,
@@ -21,6 +22,7 @@ from haystack.human_in_the_loop import (
 )
 from haystack.human_in_the_loop.strategies import (
     _apply_tool_execution_decisions,
+    _process_confirmation_strategies,
     _run_confirmation_strategies,
     _run_confirmation_strategies_async,
     _update_chat_history,
@@ -236,6 +238,41 @@ class TestRunConfirmationStrategies:
                 tool_call_id="tc-1", tool_name="hallucinated_tool", execute=True, final_tool_params={"a": 1}
             )
         ]
+
+
+class TestUnknownToolEndToEnd:
+    def test_hallucinated_tool_survives_confirmation_and_is_reported_as_not_found(self, tools):
+        # A confirmation strategy is configured, and the model emits a tool call for a tool that doesn't exist.
+        # The hallucinated call must pass through confirmation unchanged and then be reported by the tool-calling
+        # code as not found, exactly as it would be without any confirmation strategy configured.
+        state = State(schema={"messages": {"type": list[ChatMessage]}})
+        tool_call = ToolCall(id="tc-1", tool_name="hallucinated_tool", arguments={"a": 1})
+        assistant_message = ChatMessage.from_assistant(tool_calls=[tool_call])
+        state.set("messages", [ChatMessage.from_user("do something"), assistant_message])
+
+        modified_messages, _ = _process_confirmation_strategies(
+            confirmation_strategies={
+                tools[0].name: BlockingConfirmationStrategy(
+                    confirmation_policy=AlwaysAskPolicy(), confirmation_ui=SimpleConsoleUI()
+                )
+            },
+            messages_with_tool_calls=[assistant_message],
+            tools=tools,
+            state=state,
+        )
+
+        # The hallucinated call survives the confirmation layer unchanged (it is not dropped).
+        surviving_calls = [tc for message in modified_messages for tc in (message.tool_calls or [])]
+        assert surviving_calls == [tool_call]
+
+        # raise_on_failure=True: the tool-calling code raises ToolNotFoundException.
+        with pytest.raises(ToolNotFoundException):
+            _run_tool(messages=modified_messages, state=state, tools=tools)
+
+        # raise_on_failure=False: it returns an error tool message instead of crashing.
+        tool_messages, _ = _run_tool(messages=modified_messages, state=state, tools=tools, raise_on_failure=False)
+        assert tool_messages[0].tool_call_results[0].error
+        assert "not found" in tool_messages[0].tool_call_results[0].result
 
 
 class TestApplyToolExecutionDecisions:
