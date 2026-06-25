@@ -1,0 +1,135 @@
+---
+title: "TwelveLabsDocumentEmbedder"
+id: twelvelabsdocumentembedder
+slug: "/twelvelabsdocumentembedder"
+description: "This component computes the embeddings of a list of documents using the TwelveLabs Marengo multimodal embedding model and stores the obtained vectors in the embedding field of each document. The vectors are necessary to perform embedding retrieval on a collection of documents."
+---
+
+# TwelveLabsDocumentEmbedder
+
+This component computes the embeddings of a list of documents using the TwelveLabs Marengo multimodal embedding model and stores the obtained vectors in the embedding field of each document. The vectors computed by this component are necessary to perform embedding retrieval on a collection of documents. At retrieval time, the vector representing the query is compared with those of the documents to find the most similar or relevant documents.
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | Before a [`DocumentWriter`](../writers/documentwriter.mdx)  in an indexing pipeline |
+| **Mandatory init variables** | `api_key`: The TwelveLabs API key. Can be set with `TWELVELABS_API_KEY` env var. |
+| **Mandatory run variables** | `documents`: A list of documents |
+| **Output variables** | `documents`: A list of documents (enriched with embeddings)  <br /> <br />`meta`: A dictionary of metadata |
+| **API reference** | [TwelveLabs](/reference/integrations-twelvelabs) |
+| **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/twelvelabs |
+| **Package name** | `twelvelabs-haystack` |
+
+</div>
+
+## Overview
+
+`TwelveLabsDocumentEmbedder` enriches each document with an embedding of its content. To embed a string, use the [`TwelveLabsTextEmbedder`](twelvelabstextembedder.mdx). The default model is `marengo3.0`.
+
+Because Marengo embeds text, images, audio, and video into a single shared space, these embeddings support cross-modal retrieval.
+
+To start using this integration with Haystack, install the package with:
+
+```shell
+pip install twelvelabs-haystack
+```
+
+The component uses a `TWELVELABS_API_KEY` environment variable by default. Otherwise, you can pass an API key at initialization with `api_key`:
+
+```python
+from haystack.utils import Secret
+from haystack_integrations.components.embedders.twelvelabs import (
+    TwelveLabsDocumentEmbedder,
+)
+
+embedder = TwelveLabsDocumentEmbedder(api_key=Secret.from_token("<your-api-key>"))
+```
+
+To get an API key, head to [playground.twelvelabs.io](https://playground.twelvelabs.io).
+
+### Embedding Metadata
+
+Text documents often come with a set of metadata. If they are distinctive and semantically meaningful, you can embed them along with the text of the document to improve retrieval.
+
+You can do this by passing the relevant meta field names with `meta_fields_to_embed`:
+
+```python
+from haystack import Document
+from haystack_integrations.components.embedders.twelvelabs import (
+    TwelveLabsDocumentEmbedder,
+)
+
+doc = Document(content="some text", meta={"title": "relevant title", "page number": 18})
+
+embedder = TwelveLabsDocumentEmbedder(meta_fields_to_embed=["title"])
+
+docs_w_embeddings = embedder.run(documents=[doc])["documents"]
+```
+
+## Usage
+
+### On its own
+
+Here is how you can use the component on its own:
+
+```python
+from haystack import Document
+from haystack_integrations.components.embedders.twelvelabs import (
+    TwelveLabsDocumentEmbedder,
+)
+
+doc = Document(content="a cat playing piano")
+
+document_embedder = TwelveLabsDocumentEmbedder()
+
+result = document_embedder.run(documents=[doc])
+print(result["documents"][0].embedding)
+
+# [-0.043398008, -0.025287028, -0.0061081843, ...]
+```
+
+:::info
+We recommend setting `TWELVELABS_API_KEY` as an environment variable instead of setting it as a parameter.
+:::
+
+### In a pipeline
+
+```python
+from haystack import Document, Pipeline
+from haystack.document_stores.in_memory import InMemoryDocumentStore
+from haystack.components.writers import DocumentWriter
+from haystack.components.retrievers.in_memory import InMemoryEmbeddingRetriever
+from haystack_integrations.components.embedders.twelvelabs import (
+    TwelveLabsDocumentEmbedder,
+    TwelveLabsTextEmbedder,
+)
+
+document_store = InMemoryDocumentStore(embedding_similarity_function="cosine")
+
+documents = [
+    Document(content="a cat playing piano"),
+    Document(content="a dog catching a frisbee at the beach"),
+    Document(content="a timelapse of a city skyline at night"),
+]
+
+indexing_pipeline = Pipeline()
+indexing_pipeline.add_component("embedder", TwelveLabsDocumentEmbedder())
+indexing_pipeline.add_component("writer", DocumentWriter(document_store=document_store))
+indexing_pipeline.connect("embedder", "writer")
+indexing_pipeline.run({"embedder": {"documents": documents}})
+
+query_pipeline = Pipeline()
+query_pipeline.add_component("text_embedder", TwelveLabsTextEmbedder())
+query_pipeline.add_component(
+    "retriever",
+    InMemoryEmbeddingRetriever(document_store=document_store),
+)
+query_pipeline.connect("text_embedder.embedding", "retriever.query_embedding")
+
+result = query_pipeline.run({"text_embedder": {"text": "feline making music"}})
+print(result["retriever"]["documents"][0].content)
+
+# a cat playing piano
+```
+</content>
