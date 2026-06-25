@@ -7,8 +7,8 @@ import pytest
 from haystack.components.agents.state import State
 from haystack.hooks import FunctionHook, hook
 from haystack.hooks.utils import (
-    _deserialize_hooks,
-    _serialize_hooks,
+    _deserialize_hooks_dictionary,
+    _serialize_hooks_dictionary,
     _unique_hooks,
     close_hooks,
     close_hooks_async,
@@ -83,7 +83,7 @@ class TestUniqueHooks:
 class TestSerializeHooks:
     def test_roundtrip_multiple_events(self):
         hooks = {"before_llm": [hook(noop)], "on_exit": [hook(noop)]}
-        restored = _deserialize_hooks(_serialize_hooks(hooks))
+        restored = _deserialize_hooks_dictionary(_serialize_hooks_dictionary(hooks))
         assert set(restored) == {"before_llm", "on_exit"}
         assert all(isinstance(h, FunctionHook) for hook_list in restored.values() for h in hook_list)
         assert restored["before_llm"][0].function is noop

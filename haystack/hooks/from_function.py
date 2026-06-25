@@ -11,6 +11,12 @@ from haystack.core.serialization import default_from_dict, default_to_dict
 from haystack.utils.callable_serialization import deserialize_callable, serialize_callable
 
 
+def _takes_single_state_argument(function: Callable) -> bool:
+    """Return whether `function` takes exactly one parameter annotated with `State`."""
+    params = list(inspect.signature(function).parameters.values())
+    return len(params) == 1 and params[0].annotation is State
+
+
 class FunctionHook:
     """
     Wraps a function (or a sync/async pair) into a serializable `Hook`.
@@ -31,7 +37,8 @@ class FunctionHook:
             should be passed to `async_function` instead. Either `function` or `async_function` (or both) must be set.
         :param async_function: Optional coroutine function awaited by `run_async`. When only `async_function` is set,
             `run` raises a `RuntimeError`. When only `function` is set, `run_async` calls `function`.
-        :raises ValueError: If neither is set, if `function` is a coroutine function, or if `async_function` is not.
+        :raises ValueError: If neither is set, if `function` is a coroutine function, if `async_function` is not, or
+            if a provided function does not declare a `State`-typed parameter.
         """
         if function is None and async_function is None:
             raise ValueError("A FunctionHook requires at least one of `function` or `async_function` to be set.")
@@ -45,6 +52,12 @@ class FunctionHook:
                 f"`async_function` must be a coroutine function defined with `async def`. "
                 f"Got '{getattr(async_function, '__name__', repr(async_function))}'."
             )
+        for func in (function, async_function):
+            if func is not None and not _takes_single_state_argument(func):
+                raise ValueError(
+                    f"Hook function '{func.__name__}' must take a single parameter annotated with `State` "
+                    "(e.g. `def my_hook(state: State) -> None`)."
+                )
         self.function = function
         self.async_function = async_function
 

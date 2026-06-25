@@ -9,12 +9,12 @@ from haystack.hooks.protocol import Hook, HookEvent
 from haystack.utils.deserialization import deserialize_component_inplace
 
 
-def _serialize_hooks(hooks: dict[HookEvent, list[Hook]]) -> dict[str, list[dict[str, Any]]]:
+def _serialize_hooks_dictionary(hooks: dict[HookEvent, list[Hook]]) -> dict[str, list[dict[str, Any]]]:
     """Serialize an event-keyed dict of hooks to plain dictionaries."""
     return {event: [component_to_dict(obj=h, name="hook") for h in hook_list] for event, hook_list in hooks.items()}
 
 
-def _deserialize_hooks(data: dict[str, list[dict[str, Any]]]) -> dict[str, list[Hook]]:
+def _deserialize_hooks_dictionary(data: dict[str, list[dict[str, Any]]]) -> dict[str, list[Hook]]:
     """Deserialize an event-keyed dict of hooks from its serialized form."""
     deserialized: dict[str, list[Hook]] = {}
     for event, serialized_hooks in data.items():

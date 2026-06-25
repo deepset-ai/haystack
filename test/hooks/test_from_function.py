@@ -53,6 +53,27 @@ class TestFunctionHookConstruction:
         with pytest.raises(ValueError):
             FunctionHook(async_function=append_system)
 
+    def test_rejects_function_without_a_parameter(self):
+        def no_params() -> None:
+            pass
+
+        with pytest.raises(ValueError):
+            FunctionHook(function=no_params)
+
+    def test_rejects_function_with_extra_parameters(self):
+        def two_params(state: State, extra: int) -> None:
+            pass
+
+        with pytest.raises(ValueError):
+            FunctionHook(function=two_params)
+
+    def test_rejects_unannotated_parameter(self):
+        def unannotated(state) -> None:
+            pass
+
+        with pytest.raises(ValueError):
+            FunctionHook(function=unannotated)
+
     def test_both_functions(self):
         h = FunctionHook(function=append_system, async_function=append_system_async)
         state = State(schema={})

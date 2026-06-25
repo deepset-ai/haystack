@@ -6,7 +6,7 @@ from typing import Any, Literal, Protocol, get_args
 
 from haystack.components.agents.state.state import State
 
-# Lifecycle points at which the Agent invokes hooks.
+# Points in the Agent's run loop at which hooks can be registered.
 HookEvent = Literal["before_llm", "before_tool", "on_exit"]
 
 BEFORE_LLM: HookEvent = "before_llm"

@@ -25,8 +25,8 @@ from haystack.dataclasses import ChatMessage, ChatRole, StreamingCallbackT, sele
 from haystack.hooks.invocation import _run_hooks, _run_hooks_async
 from haystack.hooks.protocol import BEFORE_LLM, BEFORE_TOOL, ON_EXIT, VALID_HOOK_EVENTS, Hook, HookEvent
 from haystack.hooks.utils import (
-    _deserialize_hooks,
-    _serialize_hooks,
+    _deserialize_hooks_dictionary,
+    _serialize_hooks_dictionary,
     close_hooks,
     close_hooks_async,
     warm_up_hooks,
@@ -505,15 +505,16 @@ class Agent:
             Defaults to 4. Set to 1 to disable parallel tool execution.
         :param tool_streaming_callback_passthrough: If True, pass the streaming callback to tools that accept it.
         :param confirmation_strategies: A dictionary mapping tool names to ConfirmationStrategy instances.
-        :param hooks: A dictionary mapping a lifecycle event to a list of hooks the Agent runs at that point. Valid
-            events are "before_llm" (before each chat-generator call), "before_tool" (after the model requests tool
+        :param hooks: A dictionary mapping a hook point to a list of hooks the Agent runs at that point. Valid hook
+            points are "before_llm" (before each chat-generator call), "before_tool" (after the model requests tool
             calls, before they run) and "on_exit" (when the Agent is about to stop). Each hook receives the live
-            `State` and influences the run by mutating it in place; hooks for an event run in list order. An "on_exit"
-            hook can keep the Agent running by appending a message that is no longer a valid exit (the exit condition
-            is re-evaluated after the hooks run).
+            `State` and influences the run by mutating it in place; hooks for a hook point run in list order. An
+            "on_exit" hook can keep the Agent running by appending a message that is no longer a valid exit (the exit
+            condition is re-evaluated after the hooks run). Note that "on_exit" hooks run when the Agent stops on an
+            exit condition, but not when it stops because `max_agent_steps` is reached.
         :raises TypeError: If the chat_generator does not support tools parameter in its run method.
         :raises ValueError: If any `user_prompt` variable overlaps with the `state_schema` or `run` method parameters,
-            or if a hook is registered under an unknown event.
+            or if a hook is registered under an unknown hook point.
         """
         # --- Validation ---
         self._chat_generator_supports_tools: bool = "tools" in inspect.signature(chat_generator.run).parameters
@@ -541,13 +542,16 @@ class Agent:
             raise ValueError("tool_concurrency_limit must be greater than or equal to 1.")
 
         hooks = hooks or {}
-        for event, hook_list in hooks.items():
-            if event not in VALID_HOOK_EVENTS:
-                raise ValueError(f"Invalid hook event '{event}'. Valid events are: {', '.join(VALID_HOOK_EVENTS)}.")
+        for hook_point, hook_list in hooks.items():
+            if hook_point not in VALID_HOOK_EVENTS:
+                raise ValueError(
+                    f"Invalid hook point '{hook_point}'. Valid hook points are: {', '.join(VALID_HOOK_EVENTS)}."
+                )
             for h in hook_list:
                 if not callable(getattr(h, "run", None)):
                     raise TypeError(
-                        f"Hook registered for event '{event}' must have a callable 'run(state)', got {h!r}."
+                        f"Hook registered for hook point '{hook_point}' must have a callable 'run(state)', "
+                        f"got an object of type '{type(h).__name__}'."
                     )
 
         # --- Attributes ---
@@ -732,7 +736,7 @@ class Agent:
             }
             if self._confirmation_strategies
             else None,
-            hooks=_serialize_hooks(self.hooks) if self.hooks else None,
+            hooks=_serialize_hooks_dictionary(self.hooks) if self.hooks else None,
         )
 
     @classmethod
@@ -761,7 +765,7 @@ class Agent:
             )
 
         if init_params.get("hooks") is not None:
-            init_params["hooks"] = _deserialize_hooks(init_params["hooks"])
+            init_params["hooks"] = _deserialize_hooks_dictionary(init_params["hooks"])
 
         return default_from_dict(cls, data)
 
@@ -1115,7 +1119,7 @@ class Agent:
             exe_context.counter += 1
             exe_context.state.set("step_count", exe_context.counter)
             exit_triggered = self.exit_conditions != ["text"] and self._check_exit_conditions(
-                llm_messages, tool_messages
+                llm_messages=llm_messages, tool_messages=tool_messages
             )
             if exit_triggered:
                 return self._continue_after_exit_hooks(exe_context)
@@ -1184,7 +1188,7 @@ class Agent:
             exe_context.counter += 1
             exe_context.state.set("step_count", exe_context.counter)
             exit_triggered = self.exit_conditions != ["text"] and self._check_exit_conditions(
-                llm_messages, tool_messages
+                llm_messages=llm_messages, tool_messages=tool_messages
             )
             if exit_triggered:
                 return await self._continue_after_exit_hooks_async(exe_context)
@@ -1238,7 +1242,9 @@ class Agent:
         """
         if _is_text_exit(messages):
             return True
-        return self.exit_conditions != ["text"] and self._check_exit_conditions(messages, messages)
+        return self.exit_conditions != ["text"] and self._check_exit_conditions(
+            llm_messages=messages, tool_messages=messages
+        )
 
     def _continue_after_exit_hooks(self, exe_context: _ExecutionContext) -> bool:
         """

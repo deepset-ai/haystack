@@ -186,8 +186,11 @@ class TestOnExitHook:
 
     def test_readonly_hook_does_not_change_exit(self):
         fired = []
-        readonly = hook(lambda state: fired.append(1))
-        agent = _agent(MockChatGenerator(), tools=[save], hooks={"on_exit": [readonly]})
+
+        def record(state: State) -> None:
+            fired.append(1)
+
+        agent = _agent(MockChatGenerator(), tools=[save], hooks={"on_exit": [hook(record)]})
         agent.chat_generator.run = MagicMock(return_value={"replies": [ChatMessage.from_assistant("Final")]})
         agent.run(messages=[ChatMessage.from_user("hi")])
         assert agent.chat_generator.run.call_count == 1
@@ -218,7 +221,11 @@ class TestOnExitHook:
 class TestHookReuseAcrossEvents:
     def test_same_hook_under_two_events(self):
         counter = []
-        counting = hook(lambda state: counter.append(1))
+
+        def count_call(state: State) -> None:
+            counter.append(1)
+
+        counting = hook(count_call)
         agent = _agent(MockChatGenerator(), hooks={"before_llm": [counting], "on_exit": [counting]})
         agent.chat_generator.run = MagicMock(return_value={"replies": [ChatMessage.from_assistant("done")]})
         agent.run(messages=[ChatMessage.from_user("hi")])
@@ -246,7 +253,11 @@ class TestAgentHooksAsync:
     @pytest.mark.asyncio
     async def test_sync_hook_runs_in_async_run(self):
         fired = []
-        agent = _agent(MockChatGenerator(), hooks={"before_llm": [hook(lambda state: fired.append(1))]})
+
+        def record(state: State) -> None:
+            fired.append(1)
+
+        agent = _agent(MockChatGenerator(), hooks={"before_llm": [hook(record)]})
         agent.chat_generator.run_async = AsyncMock(return_value={"replies": [ChatMessage.from_assistant("done")]})
         await agent.run_async(messages=[ChatMessage.from_user("hi")])
         assert fired == [1]

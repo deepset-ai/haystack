@@ -1,7 +1,7 @@
 ---
 features:
   - |
-    Added lifecycle hooks to the ``Agent``. Pass ``hooks`` as a dictionary mapping a lifecycle event to a list of
+    Added hooks to the ``Agent``. Pass ``hooks`` as a dictionary mapping a hook point to a list of
     hooks the Agent runs at that point: ``before_llm`` (before each chat-generator call), ``before_tool`` (after the
     model requests tool calls, before they run), and ``on_exit`` (when the Agent is about to stop). Each hook receives
     the live ``State`` and influences the run by mutating it in place; hooks for an event run in list order, and the

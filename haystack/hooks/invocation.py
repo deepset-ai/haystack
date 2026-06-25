@@ -7,13 +7,13 @@ from haystack.hooks.protocol import Hook, HookEvent
 
 
 def _run_hooks(hooks: dict[HookEvent, list[Hook]], event: HookEvent, state: State) -> None:
-    """Run every hook registered for the given lifecycle event, in list order."""
+    """Run every hook registered for the given hook point, in list order."""
     for h in hooks.get(event, []):
         h.run(state)
 
 
 async def _run_hooks_async(hooks: dict[HookEvent, list[Hook]], event: HookEvent, state: State) -> None:
-    """Run every hook for the given event, awaiting hooks that define `run_async` and calling `run` otherwise."""
+    """Run every hook for the given hook point, awaiting hooks that define `run_async` and calling `run` otherwise."""
     for h in hooks.get(event, []):
         run_async = getattr(h, "run_async", None)
         if run_async is not None:
