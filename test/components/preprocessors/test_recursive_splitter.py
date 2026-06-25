@@ -998,3 +998,56 @@ def test_recursive_splitter_generates_unique_ids_and_correct_meta():
     for idx, chunk in enumerate(chunks):
         assert chunk.meta["parent_id"] == source_doc.id
         assert chunk.meta["split_id"] == idx
+
+
+# ── Regression tests for fallback overlap bug ────────────────────────────────
+# When no separator in `separators` matches the text, _chunk_text falls back to
+# fixed chunking.  Before the fix, the final `return` on that path skipped the
+# `_apply_overlap` call, so `split_overlap` was silently ignored.
+
+
+def test_fallback_overlap_char_unit():
+    """split_overlap must be applied even when no separator matches (char unit)."""
+    splitter = RecursiveDocumentSplitter(split_length=5, split_overlap=2, separators=["\n\n"], split_unit="char")
+    # No \n\n in text → all separators fail → final fixed-chunking fallback
+    text = "abcdefghij"
+    result = splitter.run([Document(content=text)])["documents"]
+
+    # With overlap=2 and length=5: "abcde", "defgh", "ghij"
+    assert len(result) == 3
+    assert result[0].content == "abcde"
+    assert result[1].content == "defgh"
+    assert result[2].content == "ghij"
+
+
+def test_fallback_overlap_word_unit():
+    """split_overlap must be applied even when no separator matches (word unit)."""
+    splitter = RecursiveDocumentSplitter(split_length=3, split_overlap=1, separators=["\n\n"], split_unit="word")
+    # No \n\n → final fixed-chunking fallback
+    text = "one two three four five six seven"
+    result = splitter.run([Document(content=text)])["documents"]
+
+    contents = [d.content for d in result]
+    # Each chunk must share 1 word with its neighbour
+    assert len(result) > 1
+    for i in range(len(result) - 1):
+        prev_words = result[i].content.split()
+        next_words = result[i + 1].content.split()
+        # The last word of chunk i must appear at the start of chunk i+1
+        assert prev_words[-1] == next_words[0], (
+            f"No overlap between chunk {i} ({contents[i]!r}) and chunk {i + 1} ({contents[i + 1]!r})"
+        )
+
+
+@pytest.mark.integration
+def test_fallback_overlap_token_unit():
+    """split_overlap must be applied even when no separator matches (token unit)."""
+    splitter = RecursiveDocumentSplitter(split_length=4, split_overlap=2, separators=["\n\n"], split_unit="token")
+    # No \n\n → final fixed-chunking fallback
+    text = "one two three four five six seven eight"
+    result = splitter.run([Document(content=text)])["documents"]
+
+    # Each chunk should be at most 4 tokens; overlap means more than 1 chunk
+    assert len(result) > 1
+    for chunk in result:
+        assert splitter._chunk_length(chunk.content) <= 4
