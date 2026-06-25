@@ -23,7 +23,16 @@ from haystack.components.generators.chat.types import ChatGenerator
 from haystack.core.serialization import component_to_dict, default_from_dict, default_to_dict
 from haystack.dataclasses import ChatMessage, ChatRole, StreamingCallbackT, select_streaming_callback
 from haystack.hooks.invocation import _run_hooks, _run_hooks_async
-from haystack.hooks.protocol import BEFORE_LLM, BEFORE_TOOL, ON_EXIT, VALID_HOOK_EVENTS, Hook, HookEvent
+from haystack.hooks.protocol import (
+    AFTER_LLM,
+    AFTER_TOOL,
+    BEFORE_LLM,
+    BEFORE_TOOL,
+    ON_EXIT,
+    VALID_HOOK_EVENTS,
+    Hook,
+    HookEvent,
+)
 from haystack.hooks.utils import (
     _deserialize_hooks,
     _serialize_hooks,
@@ -135,6 +144,20 @@ def _get_run_method_params(instance: "Agent") -> set[str]:
     """Derive the parameter names of the Agent.run method via introspection."""
     sig = inspect.signature(instance.run)
     return {name for name, p in sig.parameters.items() if p.kind != inspect.Parameter.VAR_KEYWORD}
+
+
+def _is_text_exit(messages: list[ChatMessage]) -> bool:
+    """
+    Return whether `messages` end in a plain assistant text reply with no tool calls anywhere in the batch.
+
+    This is the "no tool call" exit, used both for the model's own replies and to re-evaluate the messages an
+    `on_exit` hook appends. The last message must be a non-empty assistant text message, so an invalid response
+    (e.g. one with no tool calls and no text) does not trigger an exit.
+    """
+    if not messages:
+        return False
+    last = messages[-1]
+    return not any(m.tool_call for m in messages) and last.is_from(ChatRole.ASSISTANT) and bool(last.text)
 
 
 def _select_tools_by_name(configured_tools: ToolsType, names: list[str]) -> list[Tool | Toolset]:
@@ -492,11 +515,12 @@ class Agent:
         :param tool_streaming_callback_passthrough: If True, pass the streaming callback to tools that accept it.
         :param confirmation_strategies: A dictionary mapping tool names to ConfirmationStrategy instances.
         :param hooks: A dictionary mapping a lifecycle event to a list of hooks the Agent runs at that point. Valid
-            events are "before_llm" (before each chat-generator call), "before_tool" (after the model requests tool
-            calls, before they run) and "on_exit" (when the Agent is about to stop). Each hook receives the live
-            `State` and influences the run by mutating it in place; hooks for an event run in list order. An "on_exit"
-            hook can keep the Agent running by appending a message that is no longer a valid exit (the exit condition
-            is re-evaluated after the hooks run).
+            events are "before_llm" (before each chat-generator call), "after_llm" (after each reply), "before_tool"
+            (after the model requests tool calls, before they run), "after_tool" (after the tools run) and "on_exit"
+            (when the Agent is about to stop). Each
+            hook receives the live `State` and influences the run by mutating it in place; hooks for an event run in
+            list order. An "on_exit" hook can keep the Agent running by appending a message that is no longer a valid
+            exit (the exit condition is re-evaluated after the hooks run).
         :raises TypeError: If the chat_generator does not support tools parameter in its run method.
         :raises ValueError: If any `user_prompt` variable overlaps with the `state_schema` or `run` method parameters,
             or if a hook is registered under an unknown event.
@@ -1064,9 +1088,11 @@ class Agent:
             llm_messages = result["replies"]
             exe_context.state.set("messages", llm_messages)
             _record_llm_usage(exe_context.state, llm_messages)
+            # Runs on every reply, including a plain text reply that would exit below.
+            _run_hooks(self.hooks, AFTER_LLM, exe_context.state)
 
             # Stop on the "no tool call" exit: no tools available, or a plain assistant text reply (see _is_text_exit).
-            if not current_tools or self._is_text_exit(llm_messages):
+            if not current_tools or _is_text_exit(llm_messages):
                 exe_context.counter += 1
                 exe_context.state.set("step_count", exe_context.counter)
                 return self._continue_after_exit_hooks(exe_context)
@@ -1097,6 +1123,7 @@ class Agent:
                 )
             exe_context.state.set("messages", tool_messages)
             _record_tool_calls(exe_context.state, tool_messages)
+            _run_hooks(self.hooks, AFTER_TOOL, exe_context.state)
 
             exe_context.counter += 1
             exe_context.state.set("step_count", exe_context.counter)
@@ -1133,9 +1160,11 @@ class Agent:
             llm_messages = result["replies"]
             exe_context.state.set("messages", llm_messages)
             _record_llm_usage(exe_context.state, llm_messages)
+            # Runs on every reply, including a plain text reply that would exit below.
+            await _run_hooks_async(self.hooks, AFTER_LLM, exe_context.state)
 
             # Stop on the "no tool call" exit: no tools available, or a plain assistant text reply (see _is_text_exit).
-            if not current_tools or self._is_text_exit(llm_messages):
+            if not current_tools or _is_text_exit(llm_messages):
                 exe_context.counter += 1
                 exe_context.state.set("step_count", exe_context.counter)
                 return await self._continue_after_exit_hooks_async(exe_context)
@@ -1166,6 +1195,7 @@ class Agent:
                 )
             exe_context.state.set("messages", tool_messages)
             _record_tool_calls(exe_context.state, tool_messages)
+            await _run_hooks_async(self.hooks, AFTER_TOOL, exe_context.state)
 
             exe_context.counter += 1
             exe_context.state.set("step_count", exe_context.counter)
@@ -1214,20 +1244,6 @@ class Agent:
         # Only return True if at least one exit condition was matched AND none had errors
         return bool(matched_exit_conditions) and not has_errors
 
-    @staticmethod
-    def _is_text_exit(messages: list[ChatMessage]) -> bool:
-        """
-        Return whether `messages` end in a plain assistant text reply with no tool calls anywhere in the batch.
-
-        This is the "no tool call" exit, used both for the model's own replies and to re-evaluate the messages an
-        `on_exit` hook appends. The last message must be a non-empty assistant text message, so an invalid response
-        (e.g. one with no tool calls and no text) does not trigger an exit.
-        """
-        if not messages:
-            return False
-        last = messages[-1]
-        return not any(m.tool_call for m in messages) and last.is_from(ChatRole.ASSISTANT) and bool(last.text)
-
     def _messages_trigger_exit(self, messages: list[ChatMessage]) -> bool:
         """
         Return whether a batch of messages constitutes a valid exit.
@@ -1236,7 +1252,7 @@ class Agent:
         `exit_conditions`. Scoped to the given batch (not the whole history) so an exit-condition tool call from an
         earlier step is not re-matched.
         """
-        if self._is_text_exit(messages):
+        if _is_text_exit(messages):
             return True
         return self.exit_conditions != ["text"] and self._check_exit_conditions(messages, messages)
 

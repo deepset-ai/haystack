@@ -2,15 +2,18 @@
 features:
   - |
     Added lifecycle hooks to the ``Agent``. Pass ``hooks`` as a dictionary mapping a lifecycle event to a list of
-    hooks the Agent runs at that point: ``before_llm`` (before each chat-generator call), ``before_tool`` (after the
-    model requests tool calls, before they run), and ``on_exit`` (when the Agent is about to stop). Each hook receives
-    the live ``State`` and influences the run by mutating it in place; hooks for an event run in list order, and the
-    same hook can be registered under multiple events.
+    hooks the Agent runs at that point: ``before_llm`` (before each chat-generator call), ``after_llm`` (after each
+    reply), ``before_tool`` (after the model requests tool calls, before they run), ``after_tool`` (after the tools
+    run), and ``on_exit`` (when the Agent is about to stop). Each hook receives the live ``State`` and influences the
+    run by mutating it in place; hooks for an event run in list order, and the same hook can be registered under
+    multiple events.
 
     A hook is any object with a ``run(state)`` method (optionally ``run_async(state)``); use the ``@hook`` decorator
     to build one from a function. This enables patterns such as building run-time system context, retrieving memories,
     and requiring a tool to be called before finishing. An ``on_exit`` hook can keep the Agent running by appending a
     message that is no longer a valid exit, since the exit condition is re-evaluated after the hooks run.
+
+    The example below registers one hook at each placement to show what each can do:
 
     .. code-block:: python
 
@@ -34,17 +37,54 @@ features:
 
         @hook
         def build_context(state: State) -> None:
-            # Build run-time system context once, before the first LLM call.
+            # before_llm: build run-time system context once, before the first model call.
             if state.get("step_count") == 0:
                 now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
-                context = ChatMessage.from_system(f"You are a research assistant. The current time is {now}.")
-                state.set("messages", [context, *state.data["messages"]], handler_override=replace_values)
+                system = ChatMessage.from_system(f"You are a research assistant. The current time is {now}.")
+                state.set("messages", [system, *state.data["messages"]], handler_override=replace_values)
+
+
+        @hook
+        def track_usage(state: State) -> None:
+            # after_llm: runs on every reply, e.g. to inspect the answer or read the running token usage.
+            print(f"token usage so far: {state.get('token_usage')}")
+
+
+        @hook
+        def audit_tool_calls(state: State) -> None:
+            # before_tool: see which tools the model is about to run.
+            pending = state.data["messages"][-1].tool_calls
+            print(f"about to run: {[tc.tool_name for tc in pending]}")
+
+
+        @hook
+        def log_tool_results(state: State) -> None:
+            # after_tool: the new results are the trailing tool messages appended this step.
+            new_results = []
+            for message in reversed(state.data["messages"]):
+                if message.tool_call_result is None:
+                    break
+                new_results.append(message.tool_call_result.result)
+            print(f"new tool results: {new_results[::-1]}")
+
+
+        @hook
+        def require_search(state: State) -> None:
+            # on_exit: keep going until the agent has actually searched.
+            if state.get("tool_call_counts", {}).get("search", 0) == 0:
+                state.set("messages", [ChatMessage.from_system("Search before answering.")])
 
 
         agent = Agent(
             chat_generator=OpenAIChatGenerator(model="gpt-5.4-nano"),
             tools=[search],
-            hooks={"before_llm": [build_context]},
+            hooks={
+                "before_llm": [build_context],
+                "after_llm": [track_usage],
+                "before_tool": [audit_tool_calls],
+                "after_tool": [log_tool_results],
+                "on_exit": [require_search],
+            },
         )
 
         result = agent.run(messages=[ChatMessage.from_user("What are the latest developments in fusion energy?")])
