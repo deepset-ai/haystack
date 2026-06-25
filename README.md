@@ -188,7 +188,7 @@
 | haystack/core/pipeline/utils.py                                                     |       69 |        1 |     99% |       201 |
 | haystack/core/serialization.py                                                      |      116 |        5 |     96% |74, 98, 109, 240, 307 |
 | haystack/core/super\_component/\_\_init\_\_.py                                      |        2 |        0 |    100% |           |
-| haystack/core/super\_component/super\_component.py                                  |      196 |        8 |     96% |68, 148, 185, 198, 236, 290, 332, 587 |
+| haystack/core/super\_component/super\_component.py                                  |      196 |        8 |     96% |68, 149, 187, 200, 238, 292, 334, 589 |
 | haystack/core/super\_component/utils.py                                             |       95 |        4 |     96% |77, 112, 124, 181 |
 | haystack/core/type\_utils.py                                                        |      153 |        5 |     97% |51, 58, 121, 157, 249 |
 | haystack/dataclasses/\_\_init\_\_.py                                                |        5 |        0 |    100% |           |
