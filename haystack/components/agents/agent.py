@@ -4,6 +4,7 @@
 
 import inspect
 import re
+import time
 from dataclasses import dataclass
 from typing import Any, Literal, cast
 
@@ -219,6 +220,7 @@ class Agent:
         exit_conditions: list[str] | None = None,
         state_schema: dict[str, Any] | None = None,
         max_agent_steps: int = 100,
+        max_agent_time_seconds: float | None = None,
         streaming_callback: StreamingCallbackT | None = None,
         raise_on_tool_invocation_failure: bool = False,
         tool_invoker_kwargs: dict[str, Any] | None = None,
@@ -248,6 +250,9 @@ class Agent:
             Tools can read from and write to state keys using `inputs_from_state` and `outputs_to_state`.
         :param max_agent_steps: Maximum number of steps the agent will run before stopping. Defaults to 100.
             If the agent exceeds this number of steps, it will stop and return the current state.
+        :param max_agent_time_seconds: Optional maximum wall-clock runtime for one agent invocation, in seconds.
+            The limit is checked between component invocations. A currently running synchronous tool must
+            enforce its own timeout. Defaults to None.
         :param streaming_callback: A callback that will be invoked when a response is streamed from the LLM.
             The same callback can be configured to emit tool results when a tool is called.
         :param raise_on_tool_invocation_failure: Should the agent raise an exception when a tool invocation fails?
@@ -277,6 +282,9 @@ class Agent:
                 "Ensure that each exit condition corresponds to either 'text' or a valid tool name."
             )
 
+        if max_agent_time_seconds is not None and max_agent_time_seconds <= 0:
+            raise ValueError("max_agent_time_seconds must be greater than zero when provided.")
+
         # Validate state schema if provided
         if state_schema is not None:
             _validate_schema(state_schema)
@@ -296,6 +304,7 @@ class Agent:
         self.required_variables = required_variables
         self.exit_conditions = exit_conditions
         self.max_agent_steps = max_agent_steps
+        self.max_agent_time_seconds = max_agent_time_seconds
         self.raise_on_tool_invocation_failure = raise_on_tool_invocation_failure
         self.streaming_callback = streaming_callback
 
@@ -420,6 +429,7 @@ class Agent:
             # We serialize the original state schema, not the resolved one to reflect the original user input
             state_schema=_schema_to_dict(self._state_schema),
             max_agent_steps=self.max_agent_steps,
+            max_agent_time_seconds=self.max_agent_time_seconds,
             streaming_callback=serialize_callable(self.streaming_callback) if self.streaming_callback else None,
             raise_on_tool_invocation_failure=self.raise_on_tool_invocation_failure,
             tool_invoker_kwargs=self.tool_invoker_kwargs,
@@ -479,12 +489,23 @@ class Agent:
             "haystack.agent.run",
             tags={
                 "haystack.agent.max_steps": self.max_agent_steps,
+                "haystack.agent.max_time_seconds": self.max_agent_time_seconds,
                 "haystack.agent.tools": self.tools,
                 "haystack.agent.exit_conditions": self.exit_conditions,
                 "haystack.agent.state_schema": _schema_to_dict(self.state_schema),
             },
             parent_span=parent_span,
         )
+
+    def _is_time_limit_exceeded(self, deadline: float | None) -> bool:
+        if deadline is None or time.monotonic() < deadline:
+            return False
+
+        logger.warning(
+            "Agent reached maximum execution time of {max_agent_time_seconds} seconds, stopping.",
+            max_agent_time_seconds=self.max_agent_time_seconds,
+        )
+        return True
 
     def _initialize_fresh_execution(
         self,
@@ -806,7 +827,15 @@ class Agent:
             # agent_inputs is local and not used after this point, so we avoid deepcopying it
             span.set_content_tag("haystack.agent.input", agent_inputs)
 
+            deadline = (
+                time.monotonic() + self.max_agent_time_seconds
+                if self.max_agent_time_seconds is not None
+                else None
+            )
+
             while exe_context.counter < self.max_agent_steps:
+                if self._is_time_limit_exceeded(deadline):
+                    break
                 # We skip the chat generator when restarting from a snapshot from a ToolBreakpoint
                 if exe_context.skip_chat_generator:
                     llm_messages = exe_context.state.get("messages", [])[-1:]
@@ -856,6 +885,9 @@ class Agent:
 
                     llm_messages = result["replies"]
                     exe_context.state.set("messages", llm_messages)
+
+                if self._is_time_limit_exceeded(deadline):
+                    break
 
                 # Exit for `exit_conditions=["text"]` behavior: the agent stops when there is no tool invoker, or when
                 # the model returns a plain text response (no tool calls). We require the last message to be a non-empty
@@ -1049,7 +1081,15 @@ class Agent:
             # agent_inputs is local and not used after this point, so we avoid deepcopying it
             span.set_content_tag("haystack.agent.input", agent_inputs)
 
+            deadline = (
+                time.monotonic() + self.max_agent_time_seconds
+                if self.max_agent_time_seconds is not None
+                else None
+            )
+
             while exe_context.counter < self.max_agent_steps:
+                if self._is_time_limit_exceeded(deadline):
+                    break
                 # We skip the chat generator when restarting from a snapshot from a ToolBreakpoint
                 if exe_context.skip_chat_generator:
                     llm_messages = exe_context.state.get("messages", [])[-1:]
@@ -1100,6 +1140,9 @@ class Agent:
 
                     llm_messages = result["replies"]
                     exe_context.state.set("messages", llm_messages)
+
+                if self._is_time_limit_exceeded(deadline):
+                    break
 
                 # Exit for `exit_conditions=["text"]` behavior: the agent stops when there is no tool invoker, or when
                 # the model returns a plain text response (no tool calls). We require the last message to be a non-empty

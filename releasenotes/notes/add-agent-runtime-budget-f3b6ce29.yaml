@@ -1,0 +1,7 @@
+---
+features:
+  - |
+    Added an optional ``max_agent_time_seconds`` runtime budget to ``Agent``.
+    When configured, the agent stops before starting another component invocation
+    after the budget expires, complementing ``max_agent_steps`` for deployments
+    with slow or remote tools.
