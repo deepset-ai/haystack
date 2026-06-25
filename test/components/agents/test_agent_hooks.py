@@ -169,52 +169,6 @@ class TestBeforeToolHook:
         assert result["tool_call_counts"]["save"] == 1
 
 
-class TestAfterLlmHook:
-    def test_fires_on_every_reply_including_the_terminal_text_reply(self):
-        count = []
-        agent = _agent(MockChatGenerator(), tools=[save], hooks={"after_llm": [hook(lambda state: count.append(1))]})
-        agent.chat_generator.run = MagicMock(
-            side_effect=[
-                {"replies": [ChatMessage.from_assistant(tool_calls=[ToolCall("save", {"content": "x"})])]},
-                {"replies": [ChatMessage.from_assistant("done")]},
-            ]
-        )
-        agent.run(messages=[ChatMessage.from_user("hi")])
-        # Fires for the tool-calling reply AND the terminal text reply (which before_tool never sees).
-        assert len(count) == 2
-
-
-class TestAfterToolHook:
-    def test_fires_only_on_steps_that_run_tools(self):
-        count = []
-        agent = _agent(MockChatGenerator(), tools=[save], hooks={"after_tool": [hook(lambda state: count.append(1))]})
-        agent.chat_generator.run = MagicMock(
-            side_effect=[
-                {"replies": [ChatMessage.from_assistant(tool_calls=[ToolCall("save", {"content": "x"})])]},
-                {"replies": [ChatMessage.from_assistant("done")]},
-            ]
-        )
-        agent.run(messages=[ChatMessage.from_user("hi")])
-        assert len(count) == 1
-
-    def test_fires_on_the_terminal_tool_exit_step(self):
-        count = []
-        agent = _agent(
-            MockChatGenerator(),
-            tools=[final_answer],
-            exit_conditions=["final_answer"],
-            hooks={"after_tool": [hook(lambda state: count.append(1))]},
-        )
-        agent.chat_generator.run = MagicMock(
-            return_value={
-                "replies": [ChatMessage.from_assistant(tool_calls=[ToolCall("final_answer", {"answer": "a"})])]
-            }
-        )
-        agent.run(messages=[ChatMessage.from_user("q")])
-        # Fires even though this tool step exits the run (no following before_llm).
-        assert len(count) == 1
-
-
 class TestOnExitHook:
     def test_mandatory_tool_forces_extra_step(self):
         agent = _agent(MockChatGenerator(), tools=[save], hooks={"on_exit": [require_save]})

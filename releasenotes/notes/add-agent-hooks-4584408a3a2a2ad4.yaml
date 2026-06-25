@@ -2,11 +2,10 @@
 features:
   - |
     Added lifecycle hooks to the ``Agent``. Pass ``hooks`` as a dictionary mapping a lifecycle event to a list of
-    hooks the Agent runs at that point: ``before_llm`` (before each chat-generator call), ``after_llm`` (after each
-    reply), ``before_tool`` (after the model requests tool calls, before they run), ``after_tool`` (after the tools
-    run), and ``on_exit`` (when the Agent is about to stop). Each hook receives the live ``State`` and influences the
-    run by mutating it in place; hooks for an event run in list order, and the same hook can be registered under
-    multiple events.
+    hooks the Agent runs at that point: ``before_llm`` (before each chat-generator call), ``before_tool`` (after the
+    model requests tool calls, before they run), and ``on_exit`` (when the Agent is about to stop). Each hook receives
+    the live ``State`` and influences the run by mutating it in place; hooks for an event run in list order, and the
+    same hook can be registered under multiple events.
 
     A hook is any object with a ``run(state)`` method (optionally ``run_async(state)``); use the ``@hook`` decorator
     to build one from a function. This enables patterns such as building run-time system context, retrieving memories,
@@ -45,27 +44,10 @@ features:
 
 
         @hook
-        def track_usage(state: State) -> None:
-            # after_llm: runs on every reply, e.g. to inspect the answer or read the running token usage.
-            print(f"token usage so far: {state.get('token_usage')}")
-
-
-        @hook
         def audit_tool_calls(state: State) -> None:
             # before_tool: see which tools the model is about to run.
             pending = state.data["messages"][-1].tool_calls
             print(f"about to run: {[tc.tool_name for tc in pending]}")
-
-
-        @hook
-        def log_tool_results(state: State) -> None:
-            # after_tool: the new results are the trailing tool messages appended this step.
-            new_results = []
-            for message in reversed(state.data["messages"]):
-                if message.tool_call_result is None:
-                    break
-                new_results.append(message.tool_call_result.result)
-            print(f"new tool results: {new_results[::-1]}")
 
 
         @hook
@@ -80,9 +62,7 @@ features:
             tools=[search],
             hooks={
                 "before_llm": [build_context],
-                "after_llm": [track_usage],
                 "before_tool": [audit_tool_calls],
-                "after_tool": [log_tool_results],
                 "on_exit": [require_search],
             },
         )

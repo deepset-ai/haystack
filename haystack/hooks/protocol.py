@@ -7,12 +7,10 @@ from typing import Any, Literal, Protocol, get_args
 from haystack.components.agents.state.state import State
 
 # Lifecycle points at which the Agent invokes hooks.
-HookEvent = Literal["before_llm", "after_llm", "before_tool", "after_tool", "on_exit"]
+HookEvent = Literal["before_llm", "before_tool", "on_exit"]
 
 BEFORE_LLM: HookEvent = "before_llm"
-AFTER_LLM: HookEvent = "after_llm"
 BEFORE_TOOL: HookEvent = "before_tool"
-AFTER_TOOL: HookEvent = "after_tool"
 ON_EXIT: HookEvent = "on_exit"
 VALID_HOOK_EVENTS: tuple[HookEvent, ...] = get_args(HookEvent)
 

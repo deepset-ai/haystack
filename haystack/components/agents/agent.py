@@ -23,16 +23,7 @@ from haystack.components.generators.chat.types import ChatGenerator
 from haystack.core.serialization import component_to_dict, default_from_dict, default_to_dict
 from haystack.dataclasses import ChatMessage, ChatRole, StreamingCallbackT, select_streaming_callback
 from haystack.hooks.invocation import _run_hooks, _run_hooks_async
-from haystack.hooks.protocol import (
-    AFTER_LLM,
-    AFTER_TOOL,
-    BEFORE_LLM,
-    BEFORE_TOOL,
-    ON_EXIT,
-    VALID_HOOK_EVENTS,
-    Hook,
-    HookEvent,
-)
+from haystack.hooks.protocol import BEFORE_LLM, BEFORE_TOOL, ON_EXIT, VALID_HOOK_EVENTS, Hook, HookEvent
 from haystack.hooks.utils import (
     _deserialize_hooks,
     _serialize_hooks,
@@ -515,12 +506,11 @@ class Agent:
         :param tool_streaming_callback_passthrough: If True, pass the streaming callback to tools that accept it.
         :param confirmation_strategies: A dictionary mapping tool names to ConfirmationStrategy instances.
         :param hooks: A dictionary mapping a lifecycle event to a list of hooks the Agent runs at that point. Valid
-            events are "before_llm" (before each chat-generator call), "after_llm" (after each reply), "before_tool"
-            (after the model requests tool calls, before they run), "after_tool" (after the tools run) and "on_exit"
-            (when the Agent is about to stop). Each
-            hook receives the live `State` and influences the run by mutating it in place; hooks for an event run in
-            list order. An "on_exit" hook can keep the Agent running by appending a message that is no longer a valid
-            exit (the exit condition is re-evaluated after the hooks run).
+            events are "before_llm" (before each chat-generator call), "before_tool" (after the model requests tool
+            calls, before they run) and "on_exit" (when the Agent is about to stop). Each hook receives the live
+            `State` and influences the run by mutating it in place; hooks for an event run in list order. An "on_exit"
+            hook can keep the Agent running by appending a message that is no longer a valid exit (the exit condition
+            is re-evaluated after the hooks run).
         :raises TypeError: If the chat_generator does not support tools parameter in its run method.
         :raises ValueError: If any `user_prompt` variable overlaps with the `state_schema` or `run` method parameters,
             or if a hook is registered under an unknown event.
@@ -1088,8 +1078,6 @@ class Agent:
             llm_messages = result["replies"]
             exe_context.state.set("messages", llm_messages)
             _record_llm_usage(exe_context.state, llm_messages)
-            # Runs on every reply, including a plain text reply that would exit below.
-            _run_hooks(self.hooks, AFTER_LLM, exe_context.state)
 
             # Stop on the "no tool call" exit: no tools available, or a plain assistant text reply (see _is_text_exit).
             if not current_tools or _is_text_exit(llm_messages):
@@ -1123,7 +1111,6 @@ class Agent:
                 )
             exe_context.state.set("messages", tool_messages)
             _record_tool_calls(exe_context.state, tool_messages)
-            _run_hooks(self.hooks, AFTER_TOOL, exe_context.state)
 
             exe_context.counter += 1
             exe_context.state.set("step_count", exe_context.counter)
@@ -1160,8 +1147,6 @@ class Agent:
             llm_messages = result["replies"]
             exe_context.state.set("messages", llm_messages)
             _record_llm_usage(exe_context.state, llm_messages)
-            # Runs on every reply, including a plain text reply that would exit below.
-            await _run_hooks_async(self.hooks, AFTER_LLM, exe_context.state)
 
             # Stop on the "no tool call" exit: no tools available, or a plain assistant text reply (see _is_text_exit).
             if not current_tools or _is_text_exit(llm_messages):
@@ -1195,7 +1180,6 @@ class Agent:
                 )
             exe_context.state.set("messages", tool_messages)
             _record_tool_calls(exe_context.state, tool_messages)
-            await _run_hooks_async(self.hooks, AFTER_TOOL, exe_context.state)
 
             exe_context.counter += 1
             exe_context.state.set("step_count", exe_context.counter)
