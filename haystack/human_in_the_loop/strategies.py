@@ -220,6 +220,22 @@ def _get_confirmation_strategy(
     return None
 
 
+def _passthrough_tool_call(tool_call: ToolCall) -> ToolExecutionDecision:
+    """
+    Build a decision that executes a tool call as-is, bypassing confirmation.
+
+    Used for tool calls that don't resolve to a known tool (e.g. the model hallucinated the name). Instead of
+    raising here, the call is passed through unchanged so the tool-calling code resolves it and reports the
+    unknown tool uniformly (`ToolNotFoundException`, respecting `raise_on_failure`).
+
+    :param tool_call: The unresolved tool call to pass through.
+    :returns: A decision that executes the tool call with its original arguments.
+    """
+    return ToolExecutionDecision(
+        tool_call_id=tool_call.id, tool_name=tool_call.tool_name, execute=True, final_tool_params=tool_call.arguments
+    )
+
+
 def _process_confirmation_strategies(
     *,
     confirmation_strategies: dict[str | tuple[str, ...], ConfirmationStrategy],
@@ -359,7 +375,11 @@ def _run_confirmation_strategies(
 
         for tool_call in message.tool_calls:
             tool_name = tool_call.tool_name
-            tool_to_invoke = tools_with_names[tool_name]
+            tool_to_invoke = tools_with_names.get(tool_name)
+            if tool_to_invoke is None:
+                # Unknown tool (e.g. the model hallucinated the name): skip confirmation and pass it through.
+                teds.append(_passthrough_tool_call(tool_call))
+                continue
 
             # Prepare final tool args
             final_args = _prepare_tool_args(
@@ -428,7 +448,11 @@ async def _run_confirmation_strategies_async(
 
         for tool_call in message.tool_calls:
             tool_name = tool_call.tool_name
-            tool_to_invoke = tools_with_names[tool_name]
+            tool_to_invoke = tools_with_names.get(tool_name)
+            if tool_to_invoke is None:
+                # Unknown tool (e.g. the model hallucinated the name): skip confirmation and pass it through.
+                teds.append(_passthrough_tool_call(tool_call))
+                continue
 
             # Prepare final tool args
             final_args = _prepare_tool_args(
