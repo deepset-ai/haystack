@@ -22,6 +22,16 @@ from haystack.components.builders import ChatPromptBuilder
 from haystack.components.generators.chat.types import ChatGenerator
 from haystack.core.serialization import component_to_dict, default_from_dict, default_to_dict
 from haystack.dataclasses import ChatMessage, ChatRole, StreamingCallbackT, select_streaming_callback
+from haystack.hooks.invocation import _run_hooks, _run_hooks_async
+from haystack.hooks.protocol import BEFORE_LLM, BEFORE_TOOL, ON_EXIT, VALID_HOOK_EVENTS, Hook, HookEvent
+from haystack.hooks.utils import (
+    _deserialize_hooks_dictionary,
+    _serialize_hooks_dictionary,
+    close_hooks,
+    close_hooks_async,
+    warm_up_hooks,
+    warm_up_hooks_async,
+)
 from haystack.human_in_the_loop.strategies import (
     _deserialize_confirmation_strategies,
     _process_confirmation_strategies,
@@ -125,6 +135,20 @@ def _get_run_method_params(instance: "Agent") -> set[str]:
     """Derive the parameter names of the Agent.run method via introspection."""
     sig = inspect.signature(instance.run)
     return {name for name, p in sig.parameters.items() if p.kind != inspect.Parameter.VAR_KEYWORD}
+
+
+def _is_text_exit(messages: list[ChatMessage]) -> bool:
+    """
+    Return whether `messages` end in a plain assistant text reply with no tool calls anywhere in the batch.
+
+    This is the "no tool call" exit, used both for the model's own replies and to re-evaluate the messages an
+    `on_exit` hook appends. The last message must be a non-empty assistant text message, so an invalid response
+    (e.g. one with no tool calls and no text) does not trigger an exit.
+    """
+    if not messages:
+        return False
+    last = messages[-1]
+    return not any(m.tool_call for m in messages) and last.is_from(ChatRole.ASSISTANT) and bool(last.text)
 
 
 def _select_tools_by_name(configured_tools: ToolsType, names: list[str]) -> list[Tool | Toolset]:
@@ -392,9 +416,45 @@ class Agent:
     print(result["last_message"].text)
     ```
 
+    #### Using hooks to influence the run loop
+
+    Hooks are callables the Agent runs at `before_llm`, `before_tool` and `on_exit`, each receiving the live `State`.
+    Use the `@hook` decorator to build one from a function. This `on_exit` hook keeps the Agent running until a
+    required tool has been called.
+
+    ```python
+    from haystack.components.agents import Agent
+    from haystack.components.agents.state import State
+    from haystack.components.generators.chat import OpenAIChatGenerator
+    from haystack.dataclasses import ChatMessage
+    from haystack.hooks import hook
+    from haystack.tools import tool
+    from typing import Annotated
+
+
+    @tool
+    def save_result(content: Annotated[str, "The result to save"]) -> str:
+        \"\"\"Save the final result.\"\"\"
+        # Placeholder: would persist `content` to a database or the file system
+        return "saved"
+
+
+    @hook
+    def require_save(state: State) -> None:
+        if state.get("tool_call_counts", {}).get("save_result", 0) == 0:
+            state.set("messages", [ChatMessage.from_system("Call `save_result` before finishing.")])
+
+
+    agent = Agent(
+        chat_generator=OpenAIChatGenerator(),
+        tools=[save_result],
+        hooks={"on_exit": [require_save]},
+    )
+    ```
+
     """
 
-    def __init__(
+    def __init__(  # noqa: PLR0913
         self,
         *,
         chat_generator: ChatGenerator,
@@ -410,6 +470,7 @@ class Agent:
         tool_concurrency_limit: int = 4,
         tool_streaming_callback_passthrough: bool = False,
         confirmation_strategies: dict[str | tuple[str, ...], ConfirmationStrategy] | None = None,
+        hooks: dict[HookEvent, list[Hook]] | None = None,
     ) -> None:
         """
         Initialize the agent component.
@@ -444,8 +505,16 @@ class Agent:
             Defaults to 4. Set to 1 to disable parallel tool execution.
         :param tool_streaming_callback_passthrough: If True, pass the streaming callback to tools that accept it.
         :param confirmation_strategies: A dictionary mapping tool names to ConfirmationStrategy instances.
+        :param hooks: A dictionary mapping a hook point to a list of hooks the Agent runs at that point. Valid hook
+            points are "before_llm" (before each chat-generator call), "before_tool" (after the model requests tool
+            calls, before they run) and "on_exit" (when the Agent is about to stop). Each hook receives the live
+            `State` and influences the run by mutating it in place; hooks for a hook point run in list order. An
+            "on_exit" hook can keep the Agent running by appending a message that is no longer a valid exit (the exit
+            condition is re-evaluated after the hooks run). Note that "on_exit" hooks run when the Agent stops on an
+            exit condition, but not when it stops because `max_agent_steps` is reached.
         :raises TypeError: If the chat_generator does not support tools parameter in its run method.
-        :raises ValueError: If any `user_prompt` variable overlaps with the `state_schema` or `run` method parameters.
+        :raises ValueError: If any `user_prompt` variable overlaps with the `state_schema` or `run` method parameters,
+            or if a hook is registered under an unknown hook point.
         """
         # --- Validation ---
         self._chat_generator_supports_tools: bool = "tools" in inspect.signature(chat_generator.run).parameters
@@ -472,6 +541,24 @@ class Agent:
         if tool_concurrency_limit < 1:
             raise ValueError("tool_concurrency_limit must be greater than or equal to 1.")
 
+        hooks = hooks or {}
+        for hook_point, hook_list in hooks.items():
+            if hook_point not in VALID_HOOK_EVENTS:
+                raise ValueError(
+                    f"Invalid hook point '{hook_point}'. Valid hook points are: {', '.join(VALID_HOOK_EVENTS)}."
+                )
+            for h in hook_list:
+                if not callable(getattr(h, "run", None)):
+                    if callable(h):
+                        raise TypeError(
+                            f"Hook registered for hook point '{hook_point}' is callable but is not a Hook object. "
+                            "If it is a function, wrap it with the @hook decorator."
+                        )
+                    raise TypeError(
+                        f"Hook registered for hook point '{hook_point}' must have a callable 'run(state)', "
+                        f"got an object of type '{type(h).__name__}'."
+                    )
+
         # --- Attributes ---
         self.chat_generator = chat_generator
         # We use an explicit None check for tools b/c testing for truthiness calls __len__, which for SearchableToolset
@@ -487,7 +574,9 @@ class Agent:
         self.tool_concurrency_limit = tool_concurrency_limit
         self.tool_streaming_callback_passthrough = tool_streaming_callback_passthrough
         self._confirmation_strategies = confirmation_strategies or {}
+        self.hooks = hooks
         self._tools_warmed_up = False
+        self._hooks_warmed_up = False
 
         # --- State schema ---
         # shallow copy is sufficient: we only add a top-level "messages" key, never mutate nested values
@@ -581,27 +670,43 @@ class Agent:
                 warm_up_tools(self.tools)
             self._tools_warmed_up = True
 
+    def _warm_up_hooks(self) -> None:
+        """Warm up the configured hooks once."""
+        if not self._hooks_warmed_up:
+            warm_up_hooks(self.hooks)
+            self._hooks_warmed_up = True
+
+    async def _warm_up_hooks_async(self) -> None:
+        """Warm up the configured hooks once, preferring each hook's async warm-up."""
+        if not self._hooks_warmed_up:
+            await warm_up_hooks_async(self.hooks)
+            self._hooks_warmed_up = True
+
     def warm_up(self) -> None:
-        """Warm up the tools and the underlying chat generator."""
+        """Warm up the tools, hooks, and the underlying chat generator."""
         self._warm_up_tools()
+        self._warm_up_hooks()
         if hasattr(self.chat_generator, "warm_up"):
             self.chat_generator.warm_up()
 
     async def warm_up_async(self) -> None:
-        """Warm up the tools and the underlying chat generator on the serving event loop."""
+        """Warm up the tools, hooks, and the underlying chat generator on the serving event loop."""
         self._warm_up_tools()
+        await self._warm_up_hooks_async()
         if hasattr(self.chat_generator, "warm_up_async"):
             await self.chat_generator.warm_up_async()
         elif hasattr(self.chat_generator, "warm_up"):
             self.chat_generator.warm_up()
 
     def close(self) -> None:
-        """Release the underlying chat generator's resources."""
+        """Release the hooks' and the underlying chat generator's resources."""
+        close_hooks(self.hooks)
         if hasattr(self.chat_generator, "close"):
             self.chat_generator.close()
 
     async def close_async(self) -> None:
-        """Release the underlying chat generator's async resources."""
+        """Release the hooks' and the underlying chat generator's async resources."""
+        await close_hooks_async(self.hooks)
         if hasattr(self.chat_generator, "close_async"):
             await self.chat_generator.close_async()
         elif hasattr(self.chat_generator, "close"):
@@ -636,6 +741,7 @@ class Agent:
             }
             if self._confirmation_strategies
             else None,
+            hooks=_serialize_hooks_dictionary(self.hooks) if self.hooks else None,
         )
 
     @classmethod
@@ -662,6 +768,9 @@ class Agent:
             init_params["confirmation_strategies"] = _deserialize_confirmation_strategies(
                 init_params["confirmation_strategies"]
             )
+
+        if init_params.get("hooks") is not None:
+            init_params["hooks"] = _deserialize_hooks_dictionary(init_params["hooks"])
 
         return default_from_dict(cls, data)
 
@@ -964,6 +1073,7 @@ class Agent:
             current_tools = flatten_tools_or_toolsets(exe_context.tools)
             _check_duplicate_tool_names(current_tools)
 
+            _run_hooks(self.hooks, BEFORE_LLM, exe_context.state)
             chat_generator_inputs = {
                 "messages": exe_context.state.data["messages"],
                 **exe_context.chat_generator_inputs,
@@ -978,21 +1088,13 @@ class Agent:
             exe_context.state.set("messages", llm_messages)
             _record_llm_usage(exe_context.state, llm_messages)
 
-            # Exit for `exit_conditions=["text"]` behavior: the agent stops when there is no tool invoker, or when
-            # the model returns a plain text response (no tool calls). We require the last message to be a non-empty
-            # assistant text message so that an invalid response (e.g. a message with no tool calls or text) won't
-            # trigger an exit.
-            last_message = llm_messages[-1] if llm_messages else None
-            if not current_tools or (
-                last_message is not None
-                and not any(msg.tool_call for msg in llm_messages)
-                and last_message.is_from(ChatRole.ASSISTANT)
-                and last_message.text
-            ):
+            # Stop on the "no tool call" exit: no tools available, or a plain assistant text reply (see _is_text_exit).
+            if not current_tools or _is_text_exit(llm_messages):
                 exe_context.counter += 1
                 exe_context.state.set("step_count", exe_context.counter)
-                return False
+                return self._continue_after_exit_hooks(exe_context)
 
+            _run_hooks(self.hooks, BEFORE_TOOL, exe_context.state)
             modified_tool_call_messages, new_chat_history = _process_confirmation_strategies(
                 confirmation_strategies=self._confirmation_strategies,
                 messages_with_tool_calls=llm_messages,
@@ -1022,9 +1124,11 @@ class Agent:
             exe_context.counter += 1
             exe_context.state.set("step_count", exe_context.counter)
             exit_triggered = self.exit_conditions != ["text"] and self._check_exit_conditions(
-                llm_messages, tool_messages
+                llm_messages=llm_messages, tool_messages=tool_messages
             )
-            return not exit_triggered
+            if exit_triggered:
+                return self._continue_after_exit_hooks(exe_context)
+            return True
 
     async def _run_step_async(self, exe_context: _ExecutionContext, agent_span: tracing.Span) -> bool:
         """Execute one agent step asynchronously. Returns True to continue the loop, False to stop."""
@@ -1036,6 +1140,7 @@ class Agent:
             current_tools = flatten_tools_or_toolsets(exe_context.tools)
             _check_duplicate_tool_names(current_tools)
 
+            await _run_hooks_async(self.hooks, BEFORE_LLM, exe_context.state)
             chat_generator_inputs = {
                 "messages": exe_context.state.data["messages"],
                 **exe_context.chat_generator_inputs,
@@ -1052,21 +1157,13 @@ class Agent:
             exe_context.state.set("messages", llm_messages)
             _record_llm_usage(exe_context.state, llm_messages)
 
-            # Exit for `exit_conditions=["text"]` behavior: the agent stops when there is no tool invoker, or when
-            # the model returns a plain text response (no tool calls). We require the last message to be a non-empty
-            # assistant text message so that an invalid response (e.g. a message with no tool calls or text) won't
-            # trigger an exit.
-            last_message = llm_messages[-1] if llm_messages else None
-            if not current_tools or (
-                last_message is not None
-                and not any(msg.tool_call for msg in llm_messages)
-                and last_message.is_from(ChatRole.ASSISTANT)
-                and last_message.text
-            ):
+            # Stop on the "no tool call" exit: no tools available, or a plain assistant text reply (see _is_text_exit).
+            if not current_tools or _is_text_exit(llm_messages):
                 exe_context.counter += 1
                 exe_context.state.set("step_count", exe_context.counter)
-                return False
+                return await self._continue_after_exit_hooks_async(exe_context)
 
+            await _run_hooks_async(self.hooks, BEFORE_TOOL, exe_context.state)
             modified_tool_call_messages, new_chat_history = await _process_confirmation_strategies_async(
                 confirmation_strategies=self._confirmation_strategies,
                 messages_with_tool_calls=llm_messages,
@@ -1096,9 +1193,11 @@ class Agent:
             exe_context.counter += 1
             exe_context.state.set("step_count", exe_context.counter)
             exit_triggered = self.exit_conditions != ["text"] and self._check_exit_conditions(
-                llm_messages, tool_messages
+                llm_messages=llm_messages, tool_messages=tool_messages
             )
-            return not exit_triggered
+            if exit_triggered:
+                return await self._continue_after_exit_hooks_async(exe_context)
+            return True
 
     def _check_exit_conditions(self, llm_messages: list[ChatMessage], tool_messages: list[ChatMessage]) -> bool:
         """
@@ -1137,3 +1236,40 @@ class Agent:
 
         # Only return True if at least one exit condition was matched AND none had errors
         return bool(matched_exit_conditions) and not has_errors
+
+    def _messages_trigger_exit(self, messages: list[ChatMessage]) -> bool:
+        """
+        Return whether a batch of messages constitutes a valid exit.
+
+        Runs the same checks the step uses: a plain assistant text reply, or a successful call to a tool listed in
+        `exit_conditions`. Scoped to the given batch (not the whole history) so an exit-condition tool call from an
+        earlier step is not re-matched.
+        """
+        if _is_text_exit(messages):
+            return True
+        return self.exit_conditions != ["text"] and self._check_exit_conditions(
+            llm_messages=messages, tool_messages=messages
+        )
+
+    def _continue_after_exit_hooks(self, exe_context: _ExecutionContext) -> bool:
+        """
+        Run `on_exit` hooks and return whether the loop should keep going (a hook cancelled the exit).
+
+        Hooks that append nothing leave the original exit decision intact (the loop stops). Otherwise the appended
+        batch is run through the full exit check, so the Agent keeps going unless the batch is itself a valid exit.
+        """
+        if not self.hooks.get(ON_EXIT):
+            return False
+        count_before = len(exe_context.state.data.get("messages") or [])
+        _run_hooks(self.hooks, ON_EXIT, exe_context.state)
+        new_messages = (exe_context.state.data.get("messages") or [])[count_before:]
+        return bool(new_messages) and not self._messages_trigger_exit(new_messages)
+
+    async def _continue_after_exit_hooks_async(self, exe_context: _ExecutionContext) -> bool:
+        """Async version of `_continue_after_exit_hooks`."""
+        if not self.hooks.get(ON_EXIT):
+            return False
+        count_before = len(exe_context.state.data.get("messages") or [])
+        await _run_hooks_async(self.hooks, ON_EXIT, exe_context.state)
+        new_messages = (exe_context.state.data.get("messages") or [])[count_before:]
+        return bool(new_messages) and not self._messages_trigger_exit(new_messages)

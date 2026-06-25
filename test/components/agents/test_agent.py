@@ -297,6 +297,7 @@ class TestAgent:
                 "tool_concurrency_limit": 5,
                 "tool_streaming_callback_passthrough": True,
                 "confirmation_strategies": None,
+                "hooks": None,
             },
         }
         assert serialized_agent == expected_structure
@@ -364,6 +365,7 @@ class TestAgent:
                 "tool_concurrency_limit": 4,
                 "tool_streaming_callback_passthrough": False,
                 "confirmation_strategies": None,
+                "hooks": None,
             },
         }
         assert serialized_agent == expected_structure
