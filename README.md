@@ -216,7 +216,7 @@
 | haystack/human\_in\_the\_loop/\_\_init\_\_.py                                       |        5 |        0 |    100% |           |
 | haystack/human\_in\_the\_loop/dataclasses.py                                        |       16 |        0 |    100% |           |
 | haystack/human\_in\_the\_loop/policies.py                                           |       17 |        0 |    100% |           |
-| haystack/human\_in\_the\_loop/strategies.py                                         |      157 |       15 |     90% |124-125, 261, 285-303, 328-346, 372, 443, 486, 543 |
+| haystack/human\_in\_the\_loop/strategies.py                                         |      163 |       15 |     91% |124-125, 261, 285-303, 328-346, 372, 458, 516, 573 |
 | haystack/human\_in\_the\_loop/types/\_\_init\_\_.py                                 |        2 |        0 |    100% |           |
 | haystack/human\_in\_the\_loop/types/protocol.py                                     |       25 |        0 |    100% |           |
 | haystack/human\_in\_the\_loop/user\_interfaces.py                                   |       96 |        2 |     98% |   65, 103 |
@@ -266,7 +266,7 @@
 | haystack/utils/type\_serialization.py                                               |      112 |       12 |     89% |62, 64, 178-179, 190-193, 199, 215-218 |
 | haystack/utils/url\_validation.py                                                   |        4 |        0 |    100% |           |
 | haystack/version.py                                                                 |        5 |        2 |     60% |      9-10 |
-| **TOTAL**                                                                           | **17985** | **1222** | **93%** |           |
+| **TOTAL**                                                                           | **17991** | **1222** | **93%** |           |
 
 
 ## Setup coverage badge
