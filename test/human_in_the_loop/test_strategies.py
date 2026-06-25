@@ -214,6 +214,29 @@ class TestRunConfirmationStrategies:
         assert teds[1].tool_name == mult_tool.name
         assert teds[1].execute is True
 
+    def test_run_confirmation_strategies_unknown_tool_passes_through(self, tools, execution_context):
+        # The model hallucinated a tool name that isn't in the available tools. Confirmation is skipped and the
+        # call passes through unchanged so the tool-calling code can report it (ToolNotFoundException).
+        teds = _run_confirmation_strategies(
+            confirmation_strategies={
+                tools[0].name: BlockingConfirmationStrategy(
+                    confirmation_policy=AlwaysAskPolicy(), confirmation_ui=SimpleConsoleUI()
+                )
+            },
+            messages_with_tool_calls=[
+                ChatMessage.from_assistant(
+                    tool_calls=[ToolCall(id="tc-1", tool_name="hallucinated_tool", arguments={"a": 1})]
+                )
+            ],
+            tools=tools,
+            state=execution_context.state,
+        )
+        assert teds == [
+            ToolExecutionDecision(
+                tool_call_id="tc-1", tool_name="hallucinated_tool", execute=True, final_tool_params={"a": 1}
+            )
+        ]
+
 
 class TestApplyToolExecutionDecisions:
     @pytest.fixture
@@ -697,3 +720,27 @@ class TestAsyncConfirmationStrategies:
         assert len(teds) == 1
         assert teds[0].tool_name == tools[0].name
         assert teds[0].execute is True
+
+    @pytest.mark.asyncio
+    async def test_run_confirmation_strategies_async_unknown_tool_passes_through(self, tools, execution_context):
+        # The model hallucinated a tool name that isn't in the available tools. Confirmation is skipped and the
+        # call passes through unchanged so the tool-calling code can report it (ToolNotFoundException).
+        teds = await _run_confirmation_strategies_async(
+            confirmation_strategies={
+                tools[0].name: BlockingConfirmationStrategy(
+                    confirmation_policy=AlwaysAskPolicy(), confirmation_ui=SimpleConsoleUI()
+                )
+            },
+            messages_with_tool_calls=[
+                ChatMessage.from_assistant(
+                    tool_calls=[ToolCall(id="tc-1", tool_name="hallucinated_tool", arguments={"a": 1})]
+                )
+            ],
+            tools=tools,
+            state=execution_context.state,
+        )
+        assert teds == [
+            ToolExecutionDecision(
+                tool_call_id="tc-1", tool_name="hallucinated_tool", execute=True, final_tool_params={"a": 1}
+            )
+        ]
