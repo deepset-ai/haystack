@@ -1,0 +1,71 @@
+# CodeQL (SAST)
+#
+# Advanced setup for GitHub code scanning, committed as a workflow file so it is
+# reliably credited by the OpenSSF Scorecard SAST check:
+#   - scorecard's CodeQL-config probe only fires when a workflow references
+#     `github/codeql-action/analyze` (GitHub's "default setup" has no such file),
+#   - running `on: pull_request` produces a CodeQL check on every PR's commits,
+#     which scorecard's "runs on all commits" probe looks for.
+# See https://github.com/ossf/scorecard/issues/3817 for why default setup is not
+# enough on its own.
+#
+# IMPORTANT: GitHub does not allow advanced setup and "default setup" at the same
+# time. Disable CodeQL default setup under
+# Settings -> Code security -> Code scanning -> CodeQL analysis -> Default setup
+# before merging this workflow, otherwise the analyze step fails.
+#
+# Action versions are pinned by commit SHA (required by the pinned-dependencies
+# check) and kept fresh by Dependabot's `github-actions` updater.
+
+name: CodeQL
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    # Weekly baseline scan of the default branch.
+    - cron: "27 4 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  analyze:
+    name: Analyze (${{ matrix.language }})
+    runs-on: ubuntu-latest
+    permissions:
+      # Required to upload code-scanning results to the Security tab.
+      security-events: write
+      # Required by codeql-action to read the workflow/CI config.
+      actions: read
+      contents: read
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Haystack is a Python project; Python is interpreted, so no build is
+          # needed. Add `javascript-typescript` here if the docs-website JS code
+          # should also be scanned.
+          - language: python
+            build-mode: none
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@9887d98ae49f1f598651b556d8c8f02f3ea065cb # v3.27.0
+        with:
+          languages: ${{ matrix.language }}
+          build-mode: ${{ matrix.build-mode }}
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@9887d98ae49f1f598651b556d8c8f02f3ea065cb # v3.27.0
+        with:
+          category: "/language:${{ matrix.language }}"
