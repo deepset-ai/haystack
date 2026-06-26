@@ -138,6 +138,12 @@ document_matches_filter_data = [
         id="> operator with datetime filter value and ISO 8601 string Document value",
     ),
     pytest.param(
+        {"field": "meta.date", "operator": ">", "value": "2023-01-01T00:00:00+00:00"},
+        Document(meta={"date": datetime(2024, 1, 1, tzinfo=timezone.utc)}),
+        True,
+        id="> operator with ISO 8601 string filter value and datetime Document value",
+    ),
+    pytest.param(
         {"field": "meta.page", "operator": ">", "value": 10},
         Document(),
         False,
