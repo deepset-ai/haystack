@@ -32,9 +32,9 @@ def test_token_secret():
         Secret.from_token("")
 
     with pytest.raises(FrozenInstanceError):
-        secret._token = "abba"
+        secret._token = "abba"  # type: ignore[misc]
     with pytest.raises(FrozenInstanceError):
-        secret._type = SecretType.ENV_VAR
+        secret._type = SecretType.ENV_VAR  # type: ignore[misc]
 
 
 def test_env_var_secret():
@@ -52,11 +52,11 @@ def test_env_var_secret():
         secret.resolve_value()
 
     secret = Secret.from_env_var("TEST_ENV_VAR2", strict=False)
-    assert secret._strict is False
+    assert secret._strict is False  # type: ignore[attr-defined]
     assert secret.resolve_value() is None
 
     secret = Secret.from_env_var(["TEST_ENV_VAR2", "TEST_ENV_VAR1"], strict=True)
-    assert secret._env_vars == ("TEST_ENV_VAR2", "TEST_ENV_VAR1")
+    assert secret._env_vars == ("TEST_ENV_VAR2", "TEST_ENV_VAR1")  # type: ignore[attr-defined]
     with pytest.raises(ValueError, match="None of the following .* variables are set"):
         secret.resolve_value()
     os.environ["TEST_ENV_VAR1"] = "test-token-2"
@@ -73,8 +73,8 @@ def test_env_var_secret():
     )
 
     with pytest.raises(FrozenInstanceError):
-        secret._env_vars = ("A", "B")
+        secret._env_vars = ("A", "B")  # type: ignore[attr-defined]
     with pytest.raises(FrozenInstanceError):
-        secret._strict = False
+        secret._strict = False  # type: ignore[attr-defined]
     with pytest.raises(FrozenInstanceError):
-        secret._type = SecretType.TOKEN
+        secret._type = SecretType.TOKEN  # type: ignore[attr-defined]

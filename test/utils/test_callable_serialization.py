@@ -11,7 +11,7 @@ from haystack.testing.callable_serialization.random_callable import callable_to_
 from haystack.utils import deserialize_callable, serialize_callable
 
 
-def some_random_callable_for_testing(some_ignored_arg: str):
+def some_random_callable_for_testing(some_ignored_arg: str) -> None:
     pass
 
 

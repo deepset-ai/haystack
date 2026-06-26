@@ -148,7 +148,7 @@ def test_output_type_deserialization():
     assert deserialize_type("float") == float
     assert deserialize_type("bool") == bool
     assert deserialize_type("None") is None
-    assert deserialize_type("NoneType") == type(None)  # type: ignore
+    assert deserialize_type("NoneType") == type(None)
 
 
 def test_output_builtin_type_deserialization():
@@ -198,10 +198,10 @@ def test_output_type_deserialization_nested():
 def test_output_type_serialization_typing_generic_with_nonetype():
     # NoneType used as a regular argument of a typing generic (not the implicit None of Optional)
     # must be kept, otherwise the serialized type is malformed (e.g. "typing.Dict[str]") or loses information.
-    assert serialize_type(Dict[str, type(None)]) == "typing.Dict[str, None]"
-    assert serialize_type(Dict[type(None), str]) == "typing.Dict[None, str]"
+    assert serialize_type(Dict[str, None]) == "typing.Dict[str, None]"
+    assert serialize_type(Dict[None, str]) == "typing.Dict[None, str]"
     assert serialize_type(Tuple[int, type(None)]) == "typing.Tuple[int, None]"
-    assert serialize_type(List[type(None)]) == "typing.List[None]"
+    assert serialize_type(List[None]) == "typing.List[None]"
     # A Union with more than two members that includes None must keep None as well.
     assert serialize_type(Union[str, int, None]) == "typing.Union[str, int, None]"
     # Optional must still be serialized without a redundant trailing None.
@@ -210,10 +210,10 @@ def test_output_type_serialization_typing_generic_with_nonetype():
 
 def test_output_type_round_trip_typing_generic_with_nonetype():
     for type_ in [
-        Dict[str, type(None)],
-        Dict[type(None), str],
+        Dict[str, None],
+        Dict[None, str],
         Tuple[int, type(None)],
-        List[type(None)],
+        List[None],
         Union[str, int, None],
         Optional[str],
     ]:
