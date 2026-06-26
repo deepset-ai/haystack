@@ -16,6 +16,7 @@ _import_structure = {
     "embedding_based_document_splitter": ["EmbeddingBasedDocumentSplitter"],
     "hierarchical_document_splitter": ["HierarchicalDocumentSplitter"],
     "markdown_header_splitter": ["MarkdownHeaderSplitter"],
+    "python_code_splitter": ["PythonCodeSplitter"],
     "recursive_splitter": ["RecursiveDocumentSplitter"],
     "text_cleaner": ["TextCleaner"],
 }
@@ -29,6 +30,7 @@ if TYPE_CHECKING:
     from .embedding_based_document_splitter import EmbeddingBasedDocumentSplitter as EmbeddingBasedDocumentSplitter
     from .hierarchical_document_splitter import HierarchicalDocumentSplitter as HierarchicalDocumentSplitter
     from .markdown_header_splitter import MarkdownHeaderSplitter as MarkdownHeaderSplitter
+    from .python_code_splitter import PythonCodeSplitter as PythonCodeSplitter
     from .recursive_splitter import RecursiveDocumentSplitter as RecursiveDocumentSplitter
     from .text_cleaner import TextCleaner as TextCleaner
 

@@ -13,6 +13,7 @@ from haystack.utils.misc import (
     _normalize_metadata_field_name,
     _parse_dict_from_json,
     _reciprocal_rank_fusion,
+    expand_page_range,
 )
 
 
@@ -168,3 +169,29 @@ class TestJsonParsing:
         assert "Missing expected keys in JSON: {missing_keys}" in args[0]
         assert kwargs["missing_keys"] == ["key2"]
         assert kwargs["keys"] == ["key1"]
+
+
+class TestExpandPageRange:
+    def test_single_page_integers(self):
+        assert expand_page_range([1, 3, 5]) == [1, 3, 5]
+
+    def test_single_page_strings(self):
+        assert expand_page_range(["1", "3", "5"]) == [1, 3, 5]
+
+    def test_range_strings_expanded(self):
+        assert expand_page_range(["1-3", "5", "8", "10-12"]) == [1, 2, 3, 5, 8, 10, 11, 12]
+
+    def test_mixed_integers_and_range_strings(self):
+        assert expand_page_range([1, "3-5", 7]) == [1, 3, 4, 5, 7]
+
+    def test_empty_input_raises_value_error(self):
+        with pytest.raises(ValueError, match="No valid page numbers"):
+            expand_page_range([])
+
+    def test_invalid_string_raises_value_error(self):
+        with pytest.raises(ValueError, match="Invalid page range"):
+            expand_page_range(["abc"])
+
+    def test_malformed_range_with_multiple_hyphens_raises_value_error(self):
+        with pytest.raises(ValueError, match="Invalid page range"):
+            expand_page_range(["1-3", "5-10-15"])

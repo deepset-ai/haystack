@@ -13,7 +13,7 @@ from openai.types.responses import ParsedResponse, Response, ResponseOutputRefus
 from pydantic import BaseModel
 
 from haystack import component, default_from_dict, default_to_dict, logging
-from haystack.components.generators.utils import _serialize_object
+from haystack.components.generators.utils import _normalize_messages, _serialize_object
 from haystack.dataclasses import (
     AsyncStreamingCallbackT,
     ChatMessage,
@@ -314,7 +314,7 @@ class OpenAIResponsesChatGenerator:
     @component.output_types(replies=list[ChatMessage])
     def run(
         self,
-        messages: list[ChatMessage],
+        messages: list[ChatMessage] | str,
         *,
         streaming_callback: StreamingCallbackT | None = None,
         generation_kwargs: dict[str, Any] | None = None,
@@ -352,6 +352,8 @@ class OpenAIResponsesChatGenerator:
         if not self._is_warmed_up:
             self.warm_up()
 
+        messages = _normalize_messages(messages)
+
         if len(messages) == 0:
             return {"replies": []}
 
@@ -384,7 +386,7 @@ class OpenAIResponsesChatGenerator:
     @component.output_types(replies=list[ChatMessage])
     async def run_async(
         self,
-        messages: list[ChatMessage],
+        messages: list[ChatMessage] | str,
         *,
         streaming_callback: StreamingCallbackT | None = None,
         generation_kwargs: dict[str, Any] | None = None,
@@ -423,6 +425,8 @@ class OpenAIResponsesChatGenerator:
         """
         if not self._is_warmed_up:
             self.warm_up()
+
+        messages = _normalize_messages(messages)
 
         # validate and select the streaming callback
         streaming_callback = select_streaming_callback(

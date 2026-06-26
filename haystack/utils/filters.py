@@ -56,11 +56,8 @@ def _not_equal(value: Any, filter_value: Any) -> bool:
     return not _equal(value=value, filter_value=filter_value)
 
 
-def _greater_than(value: Any, filter_value: Any) -> bool:
-    if value is None or filter_value is None:
-        # We can't compare None values reliably using operators '>', '>=', '<', '<='
-        return False
-
+def _prepare_ordering_comparison(value: Any, filter_value: Any) -> tuple[Any, Any]:
+    """Normalize both values for ordering comparisons, parsing strings as dates."""
     if isinstance(value, str) or isinstance(filter_value, str):
         value = _parse_date(value)
         filter_value = _parse_date(filter_value)
@@ -69,6 +66,15 @@ def _greater_than(value: Any, filter_value: Any) -> bool:
     if isinstance(filter_value, list):
         msg = f"Filter value can't be of type {type(filter_value)} using operators '>', '>=', '<', '<='"
         raise FilterError(msg)
+    return value, filter_value
+
+
+def _greater_than(value: Any, filter_value: Any) -> bool:
+    if value is None or filter_value is None:
+        # We can't compare None values reliably using operators '>', '>=', '<', '<='
+        return False
+
+    value, filter_value = _prepare_ordering_comparison(value=value, filter_value=filter_value)
     return value > filter_value
 
 
@@ -110,7 +116,8 @@ def _greater_than_equal(value: Any, filter_value: Any) -> bool:
         # We can't compare None values reliably using operators '>', '>=', '<', '<='
         return False
 
-    return _equal(value=value, filter_value=filter_value) or _greater_than(value=value, filter_value=filter_value)
+    value, filter_value = _prepare_ordering_comparison(value=value, filter_value=filter_value)
+    return value >= filter_value
 
 
 def _less_than(value: Any, filter_value: Any) -> bool:
@@ -118,7 +125,8 @@ def _less_than(value: Any, filter_value: Any) -> bool:
         # We can't compare None values reliably using operators '>', '>=', '<', '<='
         return False
 
-    return not _greater_than_equal(value=value, filter_value=filter_value)
+    value, filter_value = _prepare_ordering_comparison(value=value, filter_value=filter_value)
+    return value < filter_value
 
 
 def _less_than_equal(value: Any, filter_value: Any) -> bool:
@@ -126,7 +134,8 @@ def _less_than_equal(value: Any, filter_value: Any) -> bool:
         # We can't compare None values reliably using operators '>', '>=', '<', '<='
         return False
 
-    return not _greater_than(value=value, filter_value=filter_value)
+    value, filter_value = _prepare_ordering_comparison(value=value, filter_value=filter_value)
+    return value <= filter_value
 
 
 def _in(value: Any, filter_value: Any) -> bool:

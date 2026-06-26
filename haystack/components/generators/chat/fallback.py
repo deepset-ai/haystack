@@ -9,6 +9,7 @@ from typing import Any
 
 from haystack import component, default_from_dict, default_to_dict, logging
 from haystack.components.generators.chat.types import ChatGenerator
+from haystack.components.generators.utils import _normalize_messages
 from haystack.dataclasses import ChatMessage, StreamingCallbackT
 from haystack.tools import ToolsType
 from haystack.utils.deserialization import deserialize_component_inplace
@@ -135,7 +136,7 @@ class FallbackChatGenerator:
     @component.output_types(replies=list[ChatMessage], meta=dict[str, Any])
     def run(
         self,
-        messages: list[ChatMessage],
+        messages: list[ChatMessage] | str,
         generation_kwargs: dict[str, Any] | None = None,
         tools: ToolsType | None = None,
         streaming_callback: StreamingCallbackT | None = None,
@@ -155,6 +156,8 @@ class FallbackChatGenerator:
         """
         if not self._is_warmed_up:
             self.warm_up()
+
+        messages = _normalize_messages(messages)
 
         failed: list[str] = []
         last_error: BaseException | None = None
@@ -191,7 +194,7 @@ class FallbackChatGenerator:
     @component.output_types(replies=list[ChatMessage], meta=dict[str, Any])
     async def run_async(
         self,
-        messages: list[ChatMessage],
+        messages: list[ChatMessage] | str,
         generation_kwargs: dict[str, Any] | None = None,
         tools: ToolsType | None = None,
         streaming_callback: StreamingCallbackT | None = None,
@@ -211,6 +214,8 @@ class FallbackChatGenerator:
         """
         if not self._is_warmed_up:
             self.warm_up()
+
+        messages = _normalize_messages(messages)
 
         failed: list[str] = []
         last_error: BaseException | None = None

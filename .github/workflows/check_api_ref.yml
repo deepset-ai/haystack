@@ -6,11 +6,14 @@ on:
       - "haystack/**/*.py"
       - "pydoc/*.yml"
 
+permissions:
+  contents: read
+
 jobs:
   test-api-reference-build:
     runs-on: ubuntu-slim
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         with:
           fetch-depth: 0
 
@@ -88,7 +91,7 @@ jobs:
           # Node 22+ prefers ESM when available. We force CJS (CommonJS) resolution to use the working katex build.
           # This should be safe because docusaurus-mdx-checker and its dependencies provide CJS builds.
           export NODE_OPTIONS="--conditions=require"
-          npx docusaurus-mdx-checker -v || {
+          npx docusaurus-mdx-checker@3.0.0 -v || {
               echo ""
               echo "For common MDX problems, see https://docusaurus.io/blog/preparing-your-site-for-docusaurus-v3#common-mdx-problems"
               exit 1

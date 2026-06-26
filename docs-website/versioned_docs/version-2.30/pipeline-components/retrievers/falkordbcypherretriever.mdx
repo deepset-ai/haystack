@@ -1,0 +1,145 @@
+---
+title: "FalkorDBCypherRetriever"
+id: falkordbcypherretriever
+slug: "/falkordbcypherretriever"
+description: "A Retriever that executes arbitrary OpenCypher queries against a FalkorDB Document Store."
+---
+
+# FalkorDBCypherRetriever
+
+A Retriever that executes arbitrary OpenCypher queries against a FalkorDB Document Store.
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | After a query-building component and before a [`PromptBuilder`](../builders/promptbuilder.mdx) in a GraphRAG pipeline |
+| **Mandatory init variables** | `document_store`: An instance of a [FalkorDBDocumentStore](../../document-stores/falkordbdocumentstore.mdx) |
+| **Mandatory run variables** | `query`: An OpenCypher query string (or set `custom_cypher_query` at init) |
+| **Output variables** | `documents`: A list of documents |
+| **API reference** | [FalkorDB](/reference/integrations-falkordb) |
+| **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/falkordb |
+| **Package name** | `falkordb-haystack` |
+
+</div>
+
+## Overview
+
+The `FalkorDBCypherRetriever` executes arbitrary OpenCypher queries against a `FalkorDBDocumentStore`, making it suitable for graph traversal and multi-hop queries in GraphRAG pipelines. The query must return nodes or dictionaries that map to Haystack `Document` fields.
+
+A `custom_cypher_query` can be set at initialization and optionally overridden at runtime by passing `query` to `run()`. Use parameterized queries (`$param_name` in Cypher, passed via `parameters`) rather than string interpolation to avoid injection vulnerabilities.
+
+:::warning[Security]
+Raw Cypher queries must only come from trusted sources. Never pass unsanitized user input directly in query strings. Use `parameters` instead.
+:::
+
+## Installation
+
+```shell
+pip install falkordb-haystack
+```
+
+Ensure FalkorDB is running, for example via Docker:
+
+```shell
+docker run -d -p 6379:6379 falkordb/falkordb:latest
+```
+
+## Usage
+
+### On its own
+
+```python
+from haystack import Document
+from haystack_integrations.document_stores.falkordb import FalkorDBDocumentStore
+from haystack_integrations.components.retrievers.falkordb import FalkorDBCypherRetriever
+
+document_store = FalkorDBDocumentStore(
+    host="localhost",
+    port=6379,
+    recreate_graph=True,
+)
+document_store.write_documents(
+    [
+        Document(
+            content="There are over 7,000 languages spoken around the world today.",
+            meta={"topic": "linguistics"},
+        ),
+        Document(
+            content="Elephants have been observed to recognize themselves in mirrors.",
+            meta={"topic": "biology"},
+        ),
+    ],
+)
+
+retriever = FalkorDBCypherRetriever(
+    document_store=document_store,
+    custom_cypher_query="MATCH (d:Document {topic: $topic}) RETURN d",
+)
+result = retriever.run(parameters={"topic": "linguistics"})
+print(result["documents"][0].content)
+```
+
+### In a pipeline
+
+```python
+from haystack import Document, Pipeline
+from haystack.components.builders import ChatPromptBuilder
+from haystack.components.generators.chat import HuggingFaceLocalChatGenerator
+from haystack.dataclasses import ChatMessage
+from haystack_integrations.document_stores.falkordb import FalkorDBDocumentStore
+from haystack_integrations.components.retrievers.falkordb import FalkorDBCypherRetriever
+
+document_store = FalkorDBDocumentStore(
+    host="localhost",
+    port=6379,
+    recreate_graph=True,
+)
+document_store.write_documents(
+    [
+        Document(
+            content="There are over 7,000 languages spoken around the world today.",
+            meta={"topic": "linguistics"},
+        ),
+        Document(
+            content="Elephants have been observed to recognize themselves in mirrors.",
+            meta={"topic": "biology"},
+        ),
+    ],
+)
+
+prompt_template = [
+    ChatMessage.from_user(
+        """Given these documents, answer the question.
+Documents:
+{% for doc in documents %}
+    {{ doc.content }}
+{% endfor %}
+Question: {{ question }}""",
+    ),
+]
+
+pipeline = Pipeline()
+pipeline.add_component(
+    "retriever",
+    FalkorDBCypherRetriever(
+        document_store=document_store,
+        custom_cypher_query="MATCH (d:Document {topic: $topic}) RETURN d",
+    ),
+)
+pipeline.add_component("prompt_builder", ChatPromptBuilder(template=prompt_template))
+pipeline.add_component(
+    "llm",
+    HuggingFaceLocalChatGenerator(model="HuggingFaceTB/SmolLM2-135M-Instruct"),
+)
+pipeline.connect("retriever.documents", "prompt_builder.documents")
+pipeline.connect("prompt_builder.prompt", "llm.messages")
+
+result = pipeline.run(
+    {
+        "retriever": {"parameters": {"topic": "linguistics"}},
+        "prompt_builder": {"question": "How many languages are there?"},
+    },
+)
+print(result["llm"]["replies"][0].text)
+```

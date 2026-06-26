@@ -21,6 +21,7 @@ class _DummySuccessGen:
         self.text = text
         self.delay = delay
         self.streaming_callback = streaming_callback
+        self.received_messages: list[list[ChatMessage]] = []
 
     def to_dict(self) -> dict[str, Any]:
         return default_to_dict(self, text=self.text, delay=self.delay, streaming_callback=None)
@@ -36,6 +37,7 @@ class _DummySuccessGen:
         tools: ToolsType | None = None,
         streaming_callback: StreamingCallbackT | None = None,
     ) -> dict[str, Any]:
+        self.received_messages.append(messages)
         if self.delay:
             time.sleep(self.delay)
         if streaming_callback:
@@ -49,6 +51,7 @@ class _DummySuccessGen:
         tools: ToolsType | None = None,
         streaming_callback: StreamingCallbackT | None = None,
     ) -> dict[str, Any]:
+        self.received_messages.append(messages)
         if self.delay:
             await asyncio.sleep(self.delay)
         if streaming_callback:
@@ -111,6 +114,22 @@ def test_sequential_first_success():
     assert res["replies"][0].text == "A"
     assert res["meta"]["successful_chat_generator_index"] == 0
     assert res["meta"]["total_attempts"] == 1
+
+
+def test_run_with_string_input():
+    inner = _DummySuccessGen()
+    gen = FallbackChatGenerator(chat_generators=[inner])
+    res = gen.run("hi")
+    assert inner.received_messages[0] == [ChatMessage.from_user("hi")]
+    assert isinstance(res["replies"][0], ChatMessage)
+
+
+async def test_run_async_with_string_input():
+    inner = _DummySuccessGen()
+    gen = FallbackChatGenerator(chat_generators=[inner])
+    res = await gen.run_async("hi")
+    assert inner.received_messages[0] == [ChatMessage.from_user("hi")]
+    assert isinstance(res["replies"][0], ChatMessage)
 
 
 def test_sequential_second_success_after_failure():

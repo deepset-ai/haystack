@@ -31,6 +31,7 @@ from haystack.tools.tool import (
     _serialize_outputs_to_state,
     _serialize_outputs_to_string,
 )
+from haystack.utils.type_serialization import _is_union_type
 
 logger = logging.getLogger(__name__)
 
@@ -369,6 +370,17 @@ class ComponentTool(Tool):
         """
         # We unwrap optional types so we can support types like messages: list[ChatMessage] | None
         unwrapped_param_type = _unwrap_optional(param_type)
+
+        # We handle union types (e.g. list[ChatMessage] | str) by extracting the list[T] arm that has
+        # from_dict, so the conversion below works the same as for plain list[T]. Other arms like str
+        # need no special handling and fall through to Pydantic or the plain return at the end.
+        if _is_union_type(unwrapped_param_type):
+            list_arms = [
+                a
+                for a in get_args(unwrapped_param_type)
+                if get_origin(a) is list and get_args(a) and hasattr(get_args(a)[0], "from_dict")
+            ]
+            unwrapped_param_type = list_arms[0] if list_arms else unwrapped_param_type
 
         # We support calling from_dict on target types that have it, even if they are wrapped in a list.
         # This allows us to support lists of dataclasses as well as single dataclass inputs.

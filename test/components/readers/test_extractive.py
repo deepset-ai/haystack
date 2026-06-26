@@ -436,6 +436,73 @@ def test_nest_answers(mock_reader: ExtractiveReader):
         assert no_answer.score == pytest.approx(expected_no_answer)
 
 
+def test_postprocess_filters_probs_when_answers_per_seq_exceeds_valid_spans(mock_reader: ExtractiveReader):
+    # Setup: seq_length=4, attention-masked positions 0-1, so only context positions 2-3
+    # remain. The number of valid (start <= end) spans is therefore 3: (2,2), (2,3), (3,3).
+    # We ask for 5 answers per sequence — the 2 extra topk picks fall in the masked region
+    # and become probability 0 after sigmoid.
+    start = torch.zeros((2, 4))
+    end = torch.zeros((2, 4))
+    sequence_ids = torch.ones((2, 4))
+    attention_mask = torch.ones((2, 4))
+    attention_mask[:, :2] = 0
+    encoding = Mock()
+    encoding.token_to_chars = lambda i: (int(i), int(i) + 1)
+
+    start_candidates, end_candidates, probs = mock_reader._postprocess(
+        start=start,
+        end=end,
+        sequence_ids=sequence_ids,
+        attention_mask=attention_mask,
+        answers_per_seq=5,
+        encodings=[encoding, encoding],
+    )
+
+    # Per-sequence lengths must all agree so the downstream strict=True zips don't blow up.
+    assert len(start_candidates) == len(end_candidates) == len(probs) == 2
+    for i in range(2):
+        assert len(start_candidates[i]) == len(end_candidates[i]) == len(probs[i]) == 3
+        # All retained probabilities are valid (> 0); masked candidates were dropped.
+        assert torch.all(probs[i] > 0)
+
+
+def test_nest_answers_accepts_variable_length_probability_rows(mock_reader: ExtractiveReader):
+    # Mirrors the new contract from _postprocess: `probabilities` is a list of 1D tensors
+    # whose lengths match the per-sequence start/end lists.
+    start = [[0, 1], [0]]
+    end = [[5, 6], [5]]
+    probabilities = [torch.tensor([0.8, 0.6]), torch.tensor([0.7])]
+    query_ids = [0, 0]
+    document_ids = [0, 1]
+
+    nested_answers = mock_reader._nest_answers(
+        start=start,
+        end=end,
+        probabilities=probabilities,
+        flattened_documents=example_documents[0][:2],
+        queries=example_queries[:1],
+        answers_per_seq=2,
+        top_k=10,
+        score_threshold=None,
+        query_ids=query_ids,
+        document_ids=document_ids,
+        no_answer=False,
+        overlap_threshold=None,
+    )
+
+    assert len(nested_answers) == 1
+    sorted_answers = sorted(nested_answers[0], key=lambda a: a.score, reverse=True)
+
+    docs = example_documents[0][:2]
+    expected = [
+        (pytest.approx(0.8), docs[0].id, "Angel"),
+        (pytest.approx(0.7), docs[1].id, "Olaf "),
+        (pytest.approx(0.6), docs[0].id, "ngela"),
+    ]
+    actual = [(a.score, a.document.id, a.data) for a in sorted_answers]
+    assert actual == expected
+
+
 def test_add_answer_page_number_returns_same_answer(mock_reader: ExtractiveReader, caplog):
     # answer.document_offset is None
     document = Document(content="I thought a lot about this. The answer is 42.", meta={"page_number": 5})

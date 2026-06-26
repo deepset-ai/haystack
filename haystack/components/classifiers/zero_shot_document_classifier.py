@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import warnings
 from dataclasses import replace
 from typing import Any
 
@@ -112,6 +113,15 @@ class TransformersZeroShotDocumentClassifier:
             Dictionary containing keyword arguments used to initialize the
             Hugging Face pipeline for text classification.
         """
+        warnings.warn(
+            "`TransformersZeroShotDocumentClassifier` will be removed from Haystack in version 3.0, as it is moving "
+            "to the `transformers-haystack` package. To continue using it, install that package with "
+            "`pip install transformers-haystack` and update your import to "
+            "`from haystack_integrations.components.classifiers.transformers import "
+            "TransformersZeroShotDocumentClassifier`.",
+            FutureWarning,
+            stacklevel=2,
+        )
 
         torch_and_transformers_import.check()
 
@@ -161,6 +171,8 @@ class TransformersZeroShotDocumentClassifier:
             model=self.huggingface_pipeline_kwargs["model"],
             huggingface_pipeline_kwargs=self.huggingface_pipeline_kwargs,
             token=self.token,
+            multi_label=self.multi_label,
+            classification_field=self.classification_field,
         )
 
         huggingface_pipeline_kwargs = serialization_dict["init_parameters"]["huggingface_pipeline_kwargs"]

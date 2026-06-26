@@ -4,10 +4,16 @@
 
 from unittest.mock import call, patch
 
+import pytest
 from openai.types.chat import chat_completion_chunk
 
-from haystack.components.generators.utils import _convert_streaming_chunks_to_chat_message, print_streaming_chunk
+from haystack.components.generators.utils import (
+    _convert_streaming_chunks_to_chat_message,
+    _normalize_messages,
+    print_streaming_chunk,
+)
 from haystack.dataclasses import (
+    ChatMessage,
     ComponentInfo,
     ReasoningContent,
     StreamingChunk,
@@ -844,3 +850,11 @@ def test_print_streaming_chunk_with_reasoning_continuation():
         # Should only print the reasoning text without the header since it's a continuation
         expected_calls = [call("continued reasoning...", flush=True, end="")]
         mock_print.assert_has_calls(expected_calls)
+
+
+def test_normalize_messages():
+    assert _normalize_messages("Hello") == [ChatMessage.from_user("Hello")]
+    assert _normalize_messages([ChatMessage.from_user("World")]) == [ChatMessage.from_user("World")]
+
+    with pytest.raises(TypeError):
+        _normalize_messages(123)

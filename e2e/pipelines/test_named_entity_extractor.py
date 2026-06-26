@@ -7,7 +7,6 @@
 # test environment. Spacy is not installed in the test environment to keep the CI fast.
 
 import os
-import sys
 
 import pytest
 from thinc.api import NumpyOps, get_current_ops, set_current_ops

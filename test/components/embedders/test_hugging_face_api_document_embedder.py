@@ -107,6 +107,7 @@ class TestHuggingFaceAPIDocumentEmbedder:
             progress_bar=False,
             meta_fields_to_embed=["meta_field"],
             embedding_separator=" ",
+            concurrency_limit=7,
         )
 
         data = embedder.to_dict()
@@ -125,6 +126,7 @@ class TestHuggingFaceAPIDocumentEmbedder:
                 "progress_bar": False,
                 "meta_fields_to_embed": ["meta_field"],
                 "embedding_separator": " ",
+                "concurrency_limit": 7,
             },
         }
 
@@ -143,6 +145,7 @@ class TestHuggingFaceAPIDocumentEmbedder:
                 "progress_bar": False,
                 "meta_fields_to_embed": ["meta_field"],
                 "embedding_separator": " ",
+                "concurrency_limit": 7,
             },
         }
 
@@ -158,6 +161,7 @@ class TestHuggingFaceAPIDocumentEmbedder:
         assert not embedder.progress_bar
         assert embedder.meta_fields_to_embed == ["meta_field"]
         assert embedder.embedding_separator == " "
+        assert embedder.concurrency_limit == 7
 
     def test_prepare_texts_to_embed_w_metadata(self):
         documents = [
@@ -378,6 +382,7 @@ class TestHuggingFaceAPIDocumentEmbedder:
     )
     @pytest.mark.flaky(reruns=3, reruns_delay=10)
     @pytest.mark.skipif(sys.platform != "linux", reason="We only test on Linux to avoid overloading the HF server")
+    @pytest.mark.xfail(reason="hf-inference is temporarily returning 500s")
     def test_live_run_serverless(self):
         docs = [
             Document(content="I love cheese", meta={"topic": "Cuisine"}),
@@ -411,6 +416,7 @@ class TestHuggingFaceAPIDocumentEmbedder:
     )
     @pytest.mark.flaky(reruns=3, reruns_delay=10)
     @pytest.mark.skipif(sys.platform != "linux", reason="We only test on Linux to avoid overloading the HF server")
+    @pytest.mark.xfail(reason="hf-inference is temporarily returning 500s")
     async def test_live_run_serverless_async(self) -> None:
         docs = [
             Document(content="I love cheese", meta={"topic": "Cuisine"}),

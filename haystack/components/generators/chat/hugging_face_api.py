@@ -3,12 +3,13 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import json
+import warnings
 from collections.abc import AsyncIterable, Iterable
 from datetime import datetime
 from typing import Any, Union
 
 from haystack import component, default_from_dict, default_to_dict, logging
-from haystack.components.generators.utils import _convert_streaming_chunks_to_chat_message
+from haystack.components.generators.utils import _convert_streaming_chunks_to_chat_message, _normalize_messages
 from haystack.dataclasses import (
     AsyncStreamingCallbackT,
     ChatMessage,
@@ -263,7 +264,7 @@ class HuggingFaceAPIChatGenerator:
     ### Usage examples
 
     #### With the serverless inference API (Inference Providers) - free tier available
-    <!-- test-ignore -->
+
     ```python
     from haystack.components.generators.chat import HuggingFaceAPIChatGenerator
     from haystack.dataclasses import ChatMessage
@@ -271,19 +272,25 @@ class HuggingFaceAPIChatGenerator:
     from haystack.utils.hf import HFGenerationAPIType
 
     messages = [ChatMessage.from_system("\\nYou are a helpful, respectful and honest assistant"),
-                ChatMessage.from_user("What's Natural Language Processing?")]
+                ChatMessage.from_user("What's Natural Language Processing? Please be succinct")]
 
     # the api_type can be expressed using the HFGenerationAPIType enum or as a string
     api_type = HFGenerationAPIType.SERVERLESS_INFERENCE_API
     api_type = "serverless_inference_api" # this is equivalent to the above
 
-    generator = HuggingFaceAPIChatGenerator(api_type=api_type,
-                                            api_params={"model": "Qwen/Qwen2.5-7B-Instruct",
-                                                        "provider": "together"},
-                                            token=Secret.from_token("<your-api-key>"))
+    generator = HuggingFaceAPIChatGenerator(
+        api_type=api_type,
+        api_params={"model": "Qwen/Qwen2.5-7B-Instruct", "provider": "together"},
+        token=Secret.from_env_var("HF_API_TOKEN")
+    )
 
     result = generator.run(messages)
     print(result)
+    # >> {'replies': [ChatMessage(_role=<ChatRole.ASSISTANT: 'assistant'>,
+    # >> _content=[TextContent(text='Natural Language Processing (NLP) is a field of AI that focuses on the interaction
+    # >> between humans and computers using natural language. It enables machines to understand, interpret, and
+    # >> generate human language.')], _name=None, _meta={'model': 'Qwen/Qwen2.5-7B-Instruct', 'finish_reason':
+    # >> 'tool_calls', 'index': 0, 'usage': {'prompt_tokens': 33, 'completion_tokens': 39}})]}
     ```
 
     #### With the serverless inference API (Inference Providers) and text+image input
@@ -295,7 +302,7 @@ class HuggingFaceAPIChatGenerator:
     from haystack.utils.hf import HFGenerationAPIType
 
     # Create an image from file path, URL, or base64
-    image = ImageContent.from_file_path("path/to/your/image.jpg")
+    image = ImageContent.from_file_path("test/test_files/images/apple.jpg")
 
     # Create a multimodal message with both text and image
     messages = [ChatMessage.from_user(content_parts=["Describe this image in detail", image])]
@@ -303,10 +310,9 @@ class HuggingFaceAPIChatGenerator:
     generator = HuggingFaceAPIChatGenerator(
         api_type=HFGenerationAPIType.SERVERLESS_INFERENCE_API,
         api_params={
-            "model": "Qwen/Qwen2.5-VL-7B-Instruct",  # Vision Language Model
-            "provider": "hyperbolic"
+            "model": "Qwen/Qwen3.5-9B", "provider": "together"  # Vision Language Model
         },
-        token=Secret.from_token("<your-api-key>")
+        token=Secret.from_env_var("HF_API_TOKEN")
     )
 
     result = generator.run(messages)
@@ -391,6 +397,14 @@ class HuggingFaceAPIChatGenerator:
             Support for tools in the Hugging Face API and TGI is not yet fully refined and you may experience
             unexpected behavior.
         """
+        warnings.warn(
+            "`HuggingFaceAPIChatGenerator` will be removed from Haystack in version 3.0, as it is moving to "
+            "the `huggingface-api-haystack` package. To continue using it, install that package with "
+            "`pip install huggingface-api-haystack` and update your import to "
+            "`from haystack_integrations.components.generators.huggingface_api import HuggingFaceAPIChatGenerator`.",
+            FutureWarning,
+            stacklevel=2,
+        )
 
         huggingface_hub_import.check()
 
@@ -490,7 +504,7 @@ class HuggingFaceAPIChatGenerator:
     @component.output_types(replies=list[ChatMessage])
     def run(
         self,
-        messages: list[ChatMessage],
+        messages: list[ChatMessage] | str,
         generation_kwargs: dict[str, Any] | None = None,
         tools: ToolsType | None = None,
         streaming_callback: StreamingCallbackT | None = None,
@@ -499,7 +513,8 @@ class HuggingFaceAPIChatGenerator:
         Invoke the text generation inference based on the provided messages and generation parameters.
 
         :param messages:
-            A list of ChatMessage objects representing the input messages.
+            A list of ChatMessage objects representing the input messages. If a string is provided, it is converted
+            to a list containing a ChatMessage with user role.
         :param generation_kwargs:
             Additional keyword arguments for text generation.
         :param tools:
@@ -514,6 +529,8 @@ class HuggingFaceAPIChatGenerator:
         """
         if not self._is_warmed_up:
             self.warm_up()
+
+        messages = _normalize_messages(messages)
 
         # update generation kwargs by merging with the default ones
         generation_kwargs = {**self.generation_kwargs, **(generation_kwargs or {})}
@@ -541,7 +558,7 @@ class HuggingFaceAPIChatGenerator:
     @component.output_types(replies=list[ChatMessage])
     async def run_async(
         self,
-        messages: list[ChatMessage],
+        messages: list[ChatMessage] | str,
         generation_kwargs: dict[str, Any] | None = None,
         tools: ToolsType | None = None,
         streaming_callback: StreamingCallbackT | None = None,
@@ -553,7 +570,8 @@ class HuggingFaceAPIChatGenerator:
         and return values but can be used with `await` in an async code.
 
         :param messages:
-            A list of ChatMessage objects representing the input messages.
+            A list of ChatMessage objects representing the input messages. If a string is provided, it is converted
+            to a list containing a ChatMessage with user role.
         :param generation_kwargs:
             Additional keyword arguments for text generation.
         :param tools:
@@ -568,6 +586,8 @@ class HuggingFaceAPIChatGenerator:
         """
         if not self._is_warmed_up:
             self.warm_up()
+
+        messages = _normalize_messages(messages)
 
         # update generation kwargs by merging with the default ones
         generation_kwargs = {**self.generation_kwargs, **(generation_kwargs or {})}

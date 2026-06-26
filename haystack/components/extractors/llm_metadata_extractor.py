@@ -32,8 +32,8 @@ class LLMMetadataExtractor:
 
     The metadata is extracted by providing a prompt to an LLM that generates the metadata.
 
-    This component expects as input a list of documents and a prompt. The prompt should have a variable called
-    `document` that will point to a single document in the list of documents. So to access the content of the document,
+    This component expects as input a list of documents and a prompt. The prompt must have exactly one variable, called
+    `document`, that points to a single document in the list of documents. So to access the content of the document,
     you can use `{{ document.content }}` in the prompt.
 
     The component will run the LLM on each document in the list and extract metadata from the document. The metadata
@@ -162,7 +162,9 @@ class LLMMetadataExtractor:
         """
         Initializes the LLMMetadataExtractor.
 
-        :param prompt: The prompt to be used for the LLM.
+        :param prompt: The prompt to be used for the LLM. It must contain exactly one variable, called `document`,
+            which points to a single document in the list of documents. For example, to access the content of the
+            document, use `{{ document.content }}` in the prompt.
         :param chat_generator: a ChatGenerator instance which represents the LLM. In order for the component to work,
             the LLM should be configured to return a JSON object. For example, when using the OpenAIChatGenerator, you
             should pass `{"response_format": {"type": "json_object"}}` in the `generation_kwargs`.
@@ -182,9 +184,10 @@ class LLMMetadataExtractor:
         ast = SandboxedEnvironment().parse(prompt)
         template_variables = meta.find_undeclared_variables(ast)
         variables = list(template_variables)
-        if len(variables) > 1 or variables[0] != "document":
+        if variables != ["document"]:
             raise ValueError(
-                f"Prompt must have exactly one variable called 'document'. Found {','.join(variables)} in the prompt."
+                f"Prompt must have exactly one variable called 'document'. "
+                f"Found {','.join(variables) or 'no variables'} in the prompt."
             )
         self.builder = PromptBuilder(prompt, required_variables=variables)
         self.raise_on_failure = raise_on_failure

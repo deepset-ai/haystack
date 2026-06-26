@@ -1,0 +1,182 @@
+---
+title: "SupabaseDocumentStore"
+id: supabasedocumentstore
+slug: "/supabasedocumentstore"
+description: "Use Supabase as a document store in Haystack, with vector search (pgvector) or full-text search (PGroonga)."
+---
+
+# SupabaseDocumentStore
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| API reference | [Supabase](/reference/integrations-supabase)                                                       |
+| GitHub link   | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/supabase/ |
+
+</div>
+
+[Supabase](https://supabase.com/) is an open-source backend platform built on PostgreSQL. The Supabase integration for Haystack provides two document stores:
+
+- **`SupabasePgvectorDocumentStore`** — vector similarity search using the [pgvector](https://github.com/pgvector/pgvector) PostgreSQL extension, which comes pre-installed on Supabase.
+- **`SupabaseGroongaDocumentStore`** — multilingual full-text search using the [PGroonga](https://pgroonga.github.io/) PostgreSQL extension. No embeddings required.
+
+## Installation
+
+```shell
+pip install supabase-haystack
+```
+
+## SupabasePgvectorDocumentStore
+
+`SupabasePgvectorDocumentStore` is a thin wrapper around [`PgvectorDocumentStore`](./pgvectordocumentstore.mdx) with Supabase-specific defaults:
+
+- Reads the connection string from the `SUPABASE_DB_URL` environment variable.
+- Defaults `create_extension` to `False` since pgvector is pre-installed on Supabase.
+
+### Connection
+
+Set the `SUPABASE_DB_URL` environment variable with your Supabase database connection string.
+
+:::tip[Use session mode (port 5432)]
+Supabase offers two pooler ports: transaction mode (port 6543) and session mode (port 5432). For best compatibility with pgvector operations, use session mode or a direct connection.
+:::
+
+```shell
+export SUPABASE_DB_URL="postgresql://postgres.[project-ref]:[password]@aws-0-[region].pooler.supabase.com:5432/postgres"
+```
+
+### Initialization
+
+```python
+from haystack_integrations.document_stores.supabase import SupabasePgvectorDocumentStore
+
+document_store = SupabasePgvectorDocumentStore(
+    embedding_dimension=768,
+    vector_function="cosine_similarity",
+    recreate_table=True,
+)
+```
+
+To learn more about the initialization parameters, see the [API docs](/reference/integrations-supabase#supabasepgvectordocumentstore).
+
+### Supported Retrievers
+
+- [`SupabasePgvectorEmbeddingRetriever`](/reference/integrations-supabase#supabasepgvectorembeddingretriever): Fetches documents from the store based on a query embedding.
+- [`SupabasePgvectorKeywordRetriever`](/reference/integrations-supabase#supabasepgvectorkeywordretriever): Fetches documents matching a keyword query using PostgreSQL's `ts_rank_cd` ranking.
+
+### Example: RAG pipeline
+
+```python
+from haystack import Document, Pipeline
+from haystack.document_stores.types.policy import DuplicatePolicy
+from haystack.components.embedders import (
+    SentenceTransformersTextEmbedder,
+    SentenceTransformersDocumentEmbedder,
+)
+from haystack.components.builders import ChatPromptBuilder
+from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.dataclasses import ChatMessage
+from haystack.utils import Secret
+
+from haystack_integrations.document_stores.supabase import SupabasePgvectorDocumentStore
+from haystack_integrations.components.retrievers.supabase import (
+    SupabasePgvectorEmbeddingRetriever,
+)
+
+document_store = SupabasePgvectorDocumentStore(
+    embedding_dimension=768,
+    vector_function="cosine_similarity",
+    recreate_table=True,
+)
+
+# Index documents
+documents = [
+    Document(content="There are over 7,000 languages spoken around the world today."),
+    Document(
+        content="Elephants have been observed to behave in a way that indicates a high level of self-awareness.",
+    ),
+    Document(
+        content="In certain places, you can witness the phenomenon of bioluminescent waves.",
+    ),
+]
+embedder = SentenceTransformersDocumentEmbedder()
+documents_with_embeddings = embedder.run(documents)
+document_store.write_documents(
+    documents_with_embeddings["documents"],
+    policy=DuplicatePolicy.OVERWRITE,
+)
+
+# Query pipeline
+prompt_template = [
+    ChatMessage.from_system("Answer the question based on the provided context."),
+    ChatMessage.from_user(
+        "Query: {{query}}\nDocuments:\n{% for doc in documents %}{{ doc.content }}\n{% endfor %}\nAnswer:",
+    ),
+]
+
+query_pipeline = Pipeline()
+query_pipeline.add_component("text_embedder", SentenceTransformersTextEmbedder())
+query_pipeline.add_component(
+    "retriever",
+    SupabasePgvectorEmbeddingRetriever(document_store=document_store),
+)
+query_pipeline.add_component(
+    "prompt_builder",
+    ChatPromptBuilder(
+        template=prompt_template,
+        required_variables=["query", "documents"],
+    ),
+)
+query_pipeline.add_component("generator", OpenAIChatGenerator(model="gpt-4o"))
+query_pipeline.connect("text_embedder.embedding", "retriever.query_embedding")
+query_pipeline.connect("retriever.documents", "prompt_builder.documents")
+query_pipeline.connect("prompt_builder.prompt", "generator.messages")
+
+result = query_pipeline.run(
+    {
+        "text_embedder": {"text": "How many languages are there?"},
+        "prompt_builder": {"query": "How many languages are there?"},
+    },
+)
+```
+
+---
+
+## SupabaseGroongaDocumentStore
+
+`SupabaseGroongaDocumentStore` uses [PGroonga](https://pgroonga.github.io/), a PostgreSQL extension for fast, multilingual full-text search. Unlike the pgvector store, it works with plain text queries and requires no embeddings.
+
+### Prerequisites
+
+PGroonga must be enabled in your Supabase project. Run the following SQL in the Supabase SQL editor:
+
+```sql
+CREATE EXTENSION IF NOT EXISTS pgroonga;
+```
+
+You also need to create a SQL function that PGroonga uses for search. See the [integration README](https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/supabase/) for the required function definition.
+
+### Initialization
+
+```python
+from haystack_integrations.document_stores.supabase import SupabaseGroongaDocumentStore
+from haystack.utils import Secret
+
+document_store = SupabaseGroongaDocumentStore(
+    supabase_url="https://<project-ref>.supabase.co",
+    supabase_key=Secret.from_env_var("SUPABASE_SERVICE_KEY"),
+    table_name="haystack_groonga_documents",
+)
+document_store.warm_up()
+```
+
+:::note
+`warm_up()` must be called before using the store. It initializes the Supabase client and creates the table and PGroonga index if they don't exist.
+:::
+
+To learn more about the initialization parameters, see the [API docs](/reference/integrations-supabase).
+
+### Supported Retrievers
+
+- [`SupabaseGroongaBM25Retriever`](/reference/integrations-supabase): Retrieves documents using PGroonga full-text search. Works without embeddings and can be combined with `SupabasePgvectorEmbeddingRetriever` for hybrid search pipelines.

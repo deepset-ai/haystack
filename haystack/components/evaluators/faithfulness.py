@@ -2,15 +2,18 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import math
 from typing import Any
 
 from numpy import mean as np_mean
 
-from haystack import component, default_from_dict, default_to_dict
+from haystack import component, default_from_dict, default_to_dict, logging
 from haystack.components.evaluators.llm_evaluator import LLMEvaluator
 from haystack.components.generators.chat.types import ChatGenerator
 from haystack.core.serialization import component_to_dict
 from haystack.utils import deserialize_chatgenerator_inplace
+
+logger = logging.getLogger(__name__)
 
 # Default examples to include in the prompt if the user does not provide any examples
 _DEFAULT_EXAMPLES = [
@@ -176,8 +179,13 @@ class FaithfulnessEvaluator(LLMEvaluator):
                 res["score"] = np_mean(res["statement_scores"])
 
         # calculate average answer faithfulness score over all queries
-        result["score"] = np_mean([res["score"] for res in result["results"]])
-        result["individual_scores"] = [res["score"] for res in result["results"]]
+        scores = [res["score"] for res in result["results"]]
+        valid_scores = [s for s in scores if not math.isnan(s)]
+        skipped = len(scores) - len(valid_scores)
+        if skipped:
+            logger.warning("{skipped} query(s) failed and were excluded from the score.", skipped=skipped)
+        result["score"] = np_mean(valid_scores) if valid_scores else float("nan")
+        result["individual_scores"] = scores
 
         return result
 

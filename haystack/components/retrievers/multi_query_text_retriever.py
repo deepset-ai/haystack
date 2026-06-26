@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import asyncio
 from concurrent.futures import ThreadPoolExecutor
 from typing import Any
 
@@ -105,6 +106,33 @@ class MultiQueryTextRetriever:
         docs.sort(key=lambda x: x.score or 0.0, reverse=True)
         return {"documents": docs}
 
+    @component.output_types(documents=list[Document])
+    async def run_async(
+        self, queries: list[str], retriever_kwargs: dict[str, Any] | None = None
+    ) -> dict[str, list[Document]]:
+        """
+        Retrieve documents using multiple queries concurrently.
+
+        Uses the retriever's `run_async` method if available, otherwise falls back to running `run`
+        in a thread executor. Queries are processed concurrently using asyncio.gather.
+
+        :param queries: List of text queries to process.
+        :param retriever_kwargs: Optional dictionary of arguments to pass to the retriever's run method.
+        :returns:
+            A dictionary containing:
+                `documents`: List of retrieved documents sorted by relevance score.
+        """
+        retriever_kwargs = retriever_kwargs or {}
+
+        if not self._is_warmed_up:
+            self.warm_up()
+
+        results = await asyncio.gather(*[self._run_one_async(q, retriever_kwargs) for q in queries])
+        docs: list[Document] = [doc for result in results if result for doc in result]
+        docs = _deduplicate_documents(docs)
+        docs.sort(key=lambda x: x.score or 0.0, reverse=True)
+        return {"documents": docs}
+
     def _run_on_thread(self, query: str, retriever_kwargs: dict[str, Any] | None = None) -> list[Document] | None:
         """
         Process a single query on a separate thread.
@@ -115,6 +143,26 @@ class MultiQueryTextRetriever:
             List of retrieved documents or None if no results.
         """
         result = self.retriever.run(query=query, **(retriever_kwargs or {}))
+        if result and "documents" in result:
+            return result["documents"]
+        return None
+
+    async def _run_one_async(self, query: str, retriever_kwargs: dict[str, Any]) -> list[Document] | None:
+        """
+        Process a single query asynchronously.
+
+        :param query: The text query to process.
+        :param retriever_kwargs: Arguments to pass to the retriever's run method.
+        :returns:
+            List of retrieved documents or None if no results.
+        """
+        loop = asyncio.get_running_loop()
+
+        if hasattr(self.retriever, "run_async") and callable(self.retriever.run_async):
+            result = await self.retriever.run_async(query=query, **retriever_kwargs)
+        else:
+            result = await loop.run_in_executor(None, lambda: self.retriever.run(query=query, **retriever_kwargs))
+
         if result and "documents" in result:
             return result["documents"]
         return None

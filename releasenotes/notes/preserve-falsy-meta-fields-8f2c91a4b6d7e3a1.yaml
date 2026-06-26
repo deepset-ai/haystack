@@ -1,0 +1,4 @@
+---
+fixes:
+  - |
+    Preserve falsy metadata values such as ``0``, ``False``, and empty strings when ``meta_fields_to_embed`` is used by sentence-transformer embedders and rankers.

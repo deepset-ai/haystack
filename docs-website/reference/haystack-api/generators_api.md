@@ -32,15 +32,15 @@ For details on OpenAI API parameters, see
 ```python
 from haystack.components.generators import AzureOpenAIGenerator
 from haystack.utils import Secret
-client = AzureOpenAIGenerator(
-    azure_endpoint="<Your Azure endpoint e.g. `https://your-company.azure.openai.com/>",
-    api_key=Secret.from_token("<your-api-key>"),
-    azure_deployment="<this a model name, e.g.  gpt-4.1-mini>")
-response = client.run("What's Natural Language Processing? Be brief.")
-print(response)
-```
 
-```
+client = AzureOpenAIGenerator(
+    azure_endpoint=Secret.from_env_var("AZURE_OPENAI_ENDPOINT").resolve_value(),
+    api_key=Secret.from_env_var("AZURE_OPENAI_API_KEY"),
+    azure_deployment="gpt-4.1-mini")
+
+response = client.run("What's Natural Language Processing? Be brief.")
+
+print(response)
 # >> {'replies': ['Natural Language Processing (NLP) is a branch of artificial intelligence that focuses on
 # >> the interaction between computers and human language. It involves enabling computers to understand, interpret,
 # >> and respond to natural human language in a way that is both meaningful and useful.'], 'meta': [{'model':
@@ -182,7 +182,7 @@ messages = [ChatMessage.from_user("What's Natural Language Processing?")]
 client = AzureOpenAIChatGenerator(
     azure_endpoint="<Your Azure endpoint e.g. `https://your-company.azure.openai.com/>",
     api_key=Secret.from_token("<your-api-key>"),
-    azure_deployment="<this a model name, e.g. gpt-4.1-mini>")
+    azure_deployment="<this is a model name, e.g. gpt-4.1-mini>")
 response = client.run(messages)
 print(response)
 ```
@@ -246,8 +246,8 @@ for the full list.
 
 ```python
 __init__(
-    azure_endpoint: str | None = None,
-    api_version: str | None = "2024-12-01-preview",
+    azure_endpoint: str | Secret | None = None,
+    api_version: str | Secret | None = "2024-12-01-preview",
     azure_deployment: str | None = "gpt-4.1-mini",
     api_key: Secret | None = Secret.from_env_var(
         "AZURE_OPENAI_API_KEY", strict=False
@@ -275,8 +275,15 @@ Initialize the Azure OpenAI Chat Generator component.
 
 **Parameters:**
 
-- **azure_endpoint** (<code>str | None</code>) – The endpoint of the deployed model, for example `"https://example-resource.azure.openai.com/"`.
-- **api_version** (<code>str | None</code>) – The version of the API to use. Defaults to 2024-12-01-preview.
+- **azure_endpoint** (<code>str | Secret | None</code>) – The endpoint of the deployed model, for example `"https://example-resource.azure.openai.com/"`.
+  Can also be a [Secret](https://docs.haystack.deepset.ai/docs/secret-management), for example
+  `Secret.from_env_var("AZURE_OPENAI_ENDPOINT")`, to resolve the value from an environment variable at
+  runtime. This is useful to switch endpoints between environments (e.g. dev and prod) without changing the
+  serialized pipeline.
+- **api_version** (<code>str | Secret | None</code>) – The version of the API to use. Defaults to 2024-12-01-preview.
+  Can also be a [Secret](https://docs.haystack.deepset.ai/docs/secret-management), for example
+  `Secret.from_env_var("AZURE_OPENAI_API_VERSION")`, to resolve the value from an environment variable at
+  runtime.
 - **azure_deployment** (<code>str | None</code>) – The deployment of the model, usually the model name.
 - **api_key** (<code>Secret | None</code>) – The API key to use for authentication.
 - **azure_ad_token** (<code>Secret | None</code>) – [Azure Active Directory token](https://www.microsoft.com/en-us/security/business/identity-access/microsoft-entra-id).
@@ -626,7 +633,7 @@ This method calls warm_up() on each underlying generator that supports it.
 
 ```python
 run(
-    messages: list[ChatMessage],
+    messages: list[ChatMessage] | str,
     generation_kwargs: dict[str, Any] | None = None,
     tools: ToolsType | None = None,
     streaming_callback: StreamingCallbackT | None = None,
@@ -637,7 +644,7 @@ Execute chat generators sequentially until one succeeds.
 
 **Parameters:**
 
-- **messages** (<code>list\[ChatMessage\]</code>) – The conversation history as a list of ChatMessage instances.
+- **messages** (<code>list\[ChatMessage\] | str</code>) – The conversation history as a list of ChatMessage instances.
 - **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Optional parameters for the chat generator (e.g., temperature, max_tokens).
 - **tools** (<code>ToolsType | None</code>) – A list of Tool and/or Toolset objects, or a single Toolset for function calling capabilities.
 - **streaming_callback** (<code>StreamingCallbackT | None</code>) – Optional callable for handling streaming responses.
@@ -657,7 +664,7 @@ Execute chat generators sequentially until one succeeds.
 
 ```python
 run_async(
-    messages: list[ChatMessage],
+    messages: list[ChatMessage] | str,
     generation_kwargs: dict[str, Any] | None = None,
     tools: ToolsType | None = None,
     streaming_callback: StreamingCallbackT | None = None,
@@ -668,7 +675,7 @@ Asynchronously execute chat generators sequentially until one succeeds.
 
 **Parameters:**
 
-- **messages** (<code>list\[ChatMessage\]</code>) – The conversation history as a list of ChatMessage instances.
+- **messages** (<code>list\[ChatMessage\] | str</code>) – The conversation history as a list of ChatMessage instances.
 - **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Optional parameters for the chat generator (e.g., temperature, max_tokens).
 - **tools** (<code>ToolsType | None</code>) – A list of Tool and/or Toolset objects, or a single Toolset for function calling capabilities.
 - **streaming_callback** (<code>StreamingCallbackT | None</code>) – Optional callable for handling streaming responses.
@@ -701,8 +708,6 @@ format for input and output. Use it to generate text with Hugging Face APIs:
 
 #### With the serverless inference API (Inference Providers) - free tier available
 
-<!-- test-ignore -->
-
 ```python
 from haystack.components.generators.chat import HuggingFaceAPIChatGenerator
 from haystack.dataclasses import ChatMessage
@@ -710,19 +715,25 @@ from haystack.utils import Secret
 from haystack.utils.hf import HFGenerationAPIType
 
 messages = [ChatMessage.from_system("\nYou are a helpful, respectful and honest assistant"),
-            ChatMessage.from_user("What's Natural Language Processing?")]
+            ChatMessage.from_user("What's Natural Language Processing? Please be succinct")]
 
 # the api_type can be expressed using the HFGenerationAPIType enum or as a string
 api_type = HFGenerationAPIType.SERVERLESS_INFERENCE_API
 api_type = "serverless_inference_api" # this is equivalent to the above
 
-generator = HuggingFaceAPIChatGenerator(api_type=api_type,
-                                        api_params={"model": "Qwen/Qwen2.5-7B-Instruct",
-                                                    "provider": "together"},
-                                        token=Secret.from_token("<your-api-key>"))
+generator = HuggingFaceAPIChatGenerator(
+    api_type=api_type,
+    api_params={"model": "Qwen/Qwen2.5-7B-Instruct", "provider": "together"},
+    token=Secret.from_env_var("HF_API_TOKEN")
+)
 
 result = generator.run(messages)
 print(result)
+# >> {'replies': [ChatMessage(_role=<ChatRole.ASSISTANT: 'assistant'>,
+# >> _content=[TextContent(text='Natural Language Processing (NLP) is a field of AI that focuses on the interaction
+# >> between humans and computers using natural language. It enables machines to understand, interpret, and
+# >> generate human language.')], _name=None, _meta={'model': 'Qwen/Qwen2.5-7B-Instruct', 'finish_reason':
+# >> 'tool_calls', 'index': 0, 'usage': {'prompt_tokens': 33, 'completion_tokens': 39}})]}
 ```
 
 #### With the serverless inference API (Inference Providers) and text+image input
@@ -736,7 +747,7 @@ from haystack.utils import Secret
 from haystack.utils.hf import HFGenerationAPIType
 
 # Create an image from file path, URL, or base64
-image = ImageContent.from_file_path("path/to/your/image.jpg")
+image = ImageContent.from_file_path("test/test_files/images/apple.jpg")
 
 # Create a multimodal message with both text and image
 messages = [ChatMessage.from_user(content_parts=["Describe this image in detail", image])]
@@ -744,10 +755,9 @@ messages = [ChatMessage.from_user(content_parts=["Describe this image in detail"
 generator = HuggingFaceAPIChatGenerator(
     api_type=HFGenerationAPIType.SERVERLESS_INFERENCE_API,
     api_params={
-        "model": "Qwen/Qwen2.5-VL-7B-Instruct",  # Vision Language Model
-        "provider": "hyperbolic"
+        "model": "Qwen/Qwen3.5-9B", "provider": "together"  # Vision Language Model
     },
-    token=Secret.from_token("<your-api-key>")
+    token=Secret.from_env_var("HF_API_TOKEN")
 )
 
 result = generator.run(messages)
@@ -870,7 +880,7 @@ Deserialize this component from a dictionary.
 
 ```python
 run(
-    messages: list[ChatMessage],
+    messages: list[ChatMessage] | str,
     generation_kwargs: dict[str, Any] | None = None,
     tools: ToolsType | None = None,
     streaming_callback: StreamingCallbackT | None = None,
@@ -881,7 +891,8 @@ Invoke the text generation inference based on the provided messages and generati
 
 **Parameters:**
 
-- **messages** (<code>list\[ChatMessage\]</code>) – A list of ChatMessage objects representing the input messages.
+- **messages** (<code>list\[ChatMessage\] | str</code>) – A list of ChatMessage objects representing the input messages. If a string is provided, it is converted
+  to a list containing a ChatMessage with user role.
 - **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for text generation.
 - **tools** (<code>ToolsType | None</code>) – A list of tools or a Toolset for which the model can prepare calls. If set, it will override
   the `tools` parameter set during component initialization. This parameter can accept either a
@@ -898,7 +909,7 @@ Invoke the text generation inference based on the provided messages and generati
 
 ```python
 run_async(
-    messages: list[ChatMessage],
+    messages: list[ChatMessage] | str,
     generation_kwargs: dict[str, Any] | None = None,
     tools: ToolsType | None = None,
     streaming_callback: StreamingCallbackT | None = None,
@@ -912,7 +923,8 @@ and return values but can be used with `await` in an async code.
 
 **Parameters:**
 
-- **messages** (<code>list\[ChatMessage\]</code>) – A list of ChatMessage objects representing the input messages.
+- **messages** (<code>list\[ChatMessage\] | str</code>) – A list of ChatMessage objects representing the input messages. If a string is provided, it is converted
+  to a list containing a ChatMessage with user role.
 - **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for text generation.
 - **tools** (<code>ToolsType | None</code>) – A list of tools or a Toolset for which the model can prepare calls. If set, it will override the `tools`
   parameter set during component initialization. This parameter can accept either a list of `Tool` objects
@@ -1104,7 +1116,7 @@ Deserializes the component from a dictionary.
 
 ```python
 run(
-    messages: list[ChatMessage],
+    messages: list[ChatMessage] | str,
     generation_kwargs: dict[str, Any] | None = None,
     streaming_callback: StreamingCallbackT | None = None,
     tools: ToolsType | None = None,
@@ -1115,7 +1127,8 @@ Invoke text generation inference based on the provided messages and generation p
 
 **Parameters:**
 
-- **messages** (<code>list\[ChatMessage\]</code>) – A list of ChatMessage objects representing the input messages.
+- **messages** (<code>list\[ChatMessage\] | str</code>) – A list of ChatMessage objects representing the input messages. If a string is provided,
+  it is converted to a list containing a ChatMessage with user role.
 - **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for text generation.
 - **streaming_callback** (<code>StreamingCallbackT | None</code>) – An optional callable for handling streaming responses.
 - **tools** (<code>ToolsType | None</code>) – A list of Tool and/or Toolset objects, or a single Toolset for which the model can prepare calls.
@@ -1158,7 +1171,7 @@ Create a ChatMessage instance from the provided text, populated with metadata.
 
 ```python
 run_async(
-    messages: list[ChatMessage],
+    messages: list[ChatMessage] | str,
     generation_kwargs: dict[str, Any] | None = None,
     streaming_callback: StreamingCallbackT | None = None,
     tools: ToolsType | None = None,
@@ -1172,7 +1185,7 @@ and return values but can be used with `await` in an async code.
 
 **Parameters:**
 
-- **messages** (<code>list\[ChatMessage\]</code>) – A list of ChatMessage objects representing the input messages.
+- **messages** (<code>list\[ChatMessage\] | str</code>) – A list of ChatMessage objects representing the input messages.
 - **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for text generation.
 - **streaming_callback** (<code>StreamingCallbackT | None</code>) – An optional callable for handling streaming responses.
 - **tools** (<code>ToolsType | None</code>) – A list of Tool and/or Toolset objects, or a single Toolset for which the model can prepare calls.
@@ -1538,7 +1551,7 @@ Deserialize this component from a dictionary.
 
 ```python
 run(
-    messages: list[ChatMessage],
+    messages: list[ChatMessage] | str,
     streaming_callback: StreamingCallbackT | None = None,
     generation_kwargs: dict[str, Any] | None = None,
     *,
@@ -1551,7 +1564,8 @@ Invokes chat completion based on the provided messages and generation parameters
 
 **Parameters:**
 
-- **messages** (<code>list\[ChatMessage\]</code>) – A list of ChatMessage instances representing the input messages.
+- **messages** (<code>list\[ChatMessage\] | str</code>) – A list of ChatMessage instances representing the input messages. If a string is provided, it is converted
+  to a list containing a ChatMessage with user role.
 - **streaming_callback** (<code>StreamingCallbackT | None</code>) – A callback function that is called when a new token is received from the stream.
 - **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for text generation. These parameters will
   override the parameters passed during component initialization.
@@ -1571,7 +1585,7 @@ Invokes chat completion based on the provided messages and generation parameters
 
 ```python
 run_async(
-    messages: list[ChatMessage],
+    messages: list[ChatMessage] | str,
     streaming_callback: StreamingCallbackT | None = None,
     generation_kwargs: dict[str, Any] | None = None,
     *,
@@ -1587,7 +1601,8 @@ but can be used with `await` in async code.
 
 **Parameters:**
 
-- **messages** (<code>list\[ChatMessage\]</code>) – A list of ChatMessage instances representing the input messages.
+- **messages** (<code>list\[ChatMessage\] | str</code>) – A list of ChatMessage instances representing the input messages. If a string is provided, it is converted
+  to a list containing a ChatMessage with user role.
 - **streaming_callback** (<code>StreamingCallbackT | None</code>) – A callback function that is called when a new token is received from the stream.
   Must be a coroutine.
 - **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for text generation. These parameters will
@@ -1792,7 +1807,7 @@ Deserialize this component from a dictionary.
 
 ```python
 run(
-    messages: list[ChatMessage],
+    messages: list[ChatMessage] | str,
     *,
     streaming_callback: StreamingCallbackT | None = None,
     generation_kwargs: dict[str, Any] | None = None,
@@ -1805,7 +1820,7 @@ Invokes response generation based on the provided messages and generation parame
 
 **Parameters:**
 
-- **messages** (<code>list\[ChatMessage\]</code>) – A list of ChatMessage instances representing the input messages.
+- **messages** (<code>list\[ChatMessage\] | str</code>) – A list of ChatMessage instances representing the input messages.
 - **streaming_callback** (<code>StreamingCallbackT | None</code>) – A callback function that is called when a new token is received from the stream.
 - **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for text generation. These parameters will
   override the parameters passed during component initialization.
@@ -1830,7 +1845,7 @@ Invokes response generation based on the provided messages and generation parame
 
 ```python
 run_async(
-    messages: list[ChatMessage],
+    messages: list[ChatMessage] | str,
     *,
     streaming_callback: StreamingCallbackT | None = None,
     generation_kwargs: dict[str, Any] | None = None,
@@ -1846,7 +1861,7 @@ but can be used with `await` in async code.
 
 **Parameters:**
 
-- **messages** (<code>list\[ChatMessage\]</code>) – A list of ChatMessage instances representing the input messages.
+- **messages** (<code>list\[ChatMessage\] | str</code>) – A list of ChatMessage instances representing the input messages.
 - **streaming_callback** (<code>StreamingCallbackT | None</code>) – A callback function that is called when a new token is received from the stream.
   Must be a coroutine.
 - **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for text generation. These parameters will

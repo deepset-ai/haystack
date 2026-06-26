@@ -65,8 +65,10 @@ __init__(
         Literal["cosine_similarity", "inner_product", "l2_distance"] | None
     ) = None,
     filter_policy: str | FilterPolicy = FilterPolicy.REPLACE
-)
+) -> None
 ```
+
+Initialize the PgvectorEmbeddingRetriever.
 
 **Parameters:**
 
@@ -221,8 +223,10 @@ __init__(
     filters: dict[str, Any] | None = None,
     top_k: int = 10,
     filter_policy: str | FilterPolicy = FilterPolicy.REPLACE
-)
+) -> None
 ````
+
+Initialize the PgvectorKeywordRetriever.
 
 **Parameters:**
 
@@ -339,10 +343,11 @@ __init__(
     hnsw_index_name: str = "haystack_hnsw_index",
     hnsw_ef_search: int | None = None,
     keyword_index_name: str = "haystack_keyword_index"
-)
+) -> None
 ```
 
 Creates a new PgvectorDocumentStore instance.
+
 It is meant to be connected to a PostgreSQL database with the pgvector extension installed.
 A specific table to store Haystack documents will be created if it doesn't exist yet.
 
@@ -429,17 +434,18 @@ Deserializes the component from a dictionary.
 #### delete_table
 
 ```python
-delete_table()
+delete_table() -> None
 ```
 
 Deletes the table used to store Haystack documents.
+
 The name of the schema (`schema_name`) and the name of the table (`table_name`)
 are defined when initializing the `PgvectorDocumentStore`.
 
 #### delete_table_async
 
 ```python
-delete_table_async()
+delete_table_async() -> None
 ```
 
 Async method to delete the table used to store Haystack documents.
@@ -720,8 +726,9 @@ count_unique_metadata_by_filter(
 ) -> dict[str, int]
 ```
 
-Returns the count of unique values for each specified metadata field,
-considering only documents that match the provided filters.
+Returns the count of unique values for each specified metadata field.
+
+Considers only documents that match the provided filters.
 
 **Parameters:**
 
@@ -742,8 +749,9 @@ count_unique_metadata_by_filter_async(
 ) -> dict[str, int]
 ```
 
-Asynchronously returns the count of unique values for each specified metadata field,
-considering only documents that match the provided filters.
+Asynchronously returns the count of unique values for each specified metadata field.
+
+Considers only documents that match the provided filters.
 
 **Parameters:**
 
@@ -771,7 +779,6 @@ Example return:
 
 ```python
 {
-    'content': {'type': 'text'},
     'category': {'type': 'text'},
     'status': {'type': 'text'},
     'priority': {'type': 'integer'},
@@ -814,10 +821,7 @@ Returns the minimum and maximum values for a given metadata field.
 - <code>dict\[str, Any\]</code> – A dictionary with 'min' and 'max' keys containing the minimum and maximum values.
   For numeric fields (integer, real), returns numeric min/max.
   For text fields, returns lexicographic min/max based on database collation.
-
-**Raises:**
-
-- <code>ValueError</code> – If the field doesn't exist or has no values.
+  Returns `{"min": None, "max": None}` when the field has no values or the store is empty.
 
 #### get_metadata_field_min_max_async
 
@@ -836,10 +840,7 @@ Asynchronously returns the minimum and maximum values for a given metadata field
 - <code>dict\[str, Any\]</code> – A dictionary with 'min' and 'max' keys containing the minimum and maximum values.
   For numeric fields (integer, real), returns numeric min/max.
   For text fields, returns lexicographic min/max based on database collation.
-
-**Raises:**
-
-- <code>ValueError</code> – If the field doesn't exist or has no values.
+  Returns `{"min": None, "max": None}` when the field has no values or the store is empty.
 
 #### get_metadata_field_unique_values
 

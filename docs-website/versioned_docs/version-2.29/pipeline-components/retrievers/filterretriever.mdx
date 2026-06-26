@@ -77,25 +77,26 @@ from haystack.components.retrievers.filter_retriever import FilterRetriever
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 
 from haystack import Document, Pipeline
-from haystack.components.builders.answer_builder import AnswerBuilder
-from haystack.components.builders.prompt_builder import PromptBuilder
-from haystack.components.generators import OpenAIGenerator
+from haystack.components.builders import ChatPromptBuilder
+from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.dataclasses import ChatMessage
 from haystack.document_stores.types import DuplicatePolicy
 
-import os
-api_key = os.environ['OPENAI_API_KEY']
+# OpenAIChatGenerator reads the OPENAI_API_KEY environment variable by default.
 
 document_store = InMemoryDocumentStore()
 documents = [
-		Document(content="Mark lives in Berlin.", meta={"year": 2018}),
-		Document(content="Mark lives in Paris.", meta={"year": 2021}),
-		Document(content="Mark is Danish.", meta={"year": 2021}),
-		Document(content="Mark lives in New York.", meta={"year": 2023}),
+    Document(content="Mark lives in Berlin.", meta={"year": 2018}),
+    Document(content="Mark lives in Paris.", meta={"year": 2021}),
+    Document(content="Mark is Danish.", meta={"year": 2021}),
+    Document(content="Mark lives in New York.", meta={"year": 2023}),
 ]
 document_store.write_documents(documents=documents)
 
 # Create a RAG query pipeline
-prompt_template = """
+prompt_template = [
+    ChatMessage.from_user(
+        """
     Given these documents, answer the question.\nDocuments:
     {% for doc in documents %}
         {{ doc.content }}
@@ -103,22 +104,30 @@ prompt_template = """
 
     \nQuestion: {{question}}
     \nAnswer:
-    """
+    """,
+    ),
+]
 
 rag_pipeline = Pipeline()
-rag_pipeline.add_component(name="retriever", instance=FilterRetriever(document_store=document_store))
-rag_pipeline.add_component(instance=PromptBuilder(template=prompt_template), name="prompt_builder")
-rag_pipeline.add_component(instance=OpenAIGenerator(api_key=api_key), name="llm")
+rag_pipeline.add_component(
+    name="retriever",
+    instance=FilterRetriever(document_store=document_store),
+)
+rag_pipeline.add_component(
+    instance=ChatPromptBuilder(template=prompt_template, required_variables="*"),
+    name="prompt_builder",
+)
+rag_pipeline.add_component(instance=OpenAIChatGenerator(), name="llm")
 rag_pipeline.connect("retriever", "prompt_builder.documents")
-rag_pipeline.connect("prompt_builder", "llm")
+rag_pipeline.connect("prompt_builder.prompt", "llm.messages")
 
 result = rag_pipeline.run(
-  {
-    "retriever": {"filters": {"field": "year", "operator": "==", "value": 2021}},
-    "prompt_builder": {"question": "Where does Mark live?"},
-  }
+    {
+        "retriever": {"filters": {"field": "year", "operator": "==", "value": 2021}},
+        "prompt_builder": {"question": "Where does Mark live?"},
+    },
 )
-print(result['answer_builder']['answers'][0])`
+print(result["llm"]["replies"][0].text)
 ```
 
 Here’s an example output you might get:

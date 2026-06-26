@@ -8,6 +8,7 @@ from datetime import datetime
 from typing import Any, cast
 
 from haystack import component, default_from_dict, default_to_dict, logging
+from haystack.components.generators.utils import _generators_deprecation_warning
 from haystack.dataclasses import (
     ComponentInfo,
     FinishReason,
@@ -130,6 +131,7 @@ class HuggingFaceAPIGenerator:
         :param stop_words: An optional list of strings representing the stop words.
         :param streaming_callback: An optional callable for handling streaming responses.
         """
+        _generators_deprecation_warning("HuggingFaceAPIGenerator", "HuggingFaceAPIChatGenerator")
 
         huggingface_hub_import.check()
 

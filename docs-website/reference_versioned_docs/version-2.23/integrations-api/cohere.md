@@ -729,7 +729,7 @@ Deserializes the component from a dictionary.
 
 ```python
 run(
-    messages: list[ChatMessage],
+    messages: list[ChatMessage] | str,
     generation_kwargs: dict[str, Any] | None = None,
     tools: ToolsType | None = None,
     streaming_callback: StreamingCallbackT | None = None,
@@ -740,7 +740,8 @@ Invoke the chat endpoint based on the provided messages and generation parameter
 
 **Parameters:**
 
-- **messages** (<code>list\[ChatMessage\]</code>) – list of `ChatMessage` instances representing the input messages.
+- **messages** (<code>list\[ChatMessage\] | str</code>) – list of `ChatMessage` instances representing the input messages.
+  If a string is provided, it is converted to a list containing a ChatMessage with user role.
 - **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – additional keyword arguments for chat generation. These parameters will
   potentially override the parameters passed in the __init__ method.
   For more details on the parameters supported by the Cohere API, refer to the
@@ -759,7 +760,7 @@ Invoke the chat endpoint based on the provided messages and generation parameter
 
 ```python
 run_async(
-    messages: list[ChatMessage],
+    messages: list[ChatMessage] | str,
     generation_kwargs: dict[str, Any] | None = None,
     tools: ToolsType | None = None,
     streaming_callback: StreamingCallbackT | None = None,
@@ -770,7 +771,8 @@ Asynchronously invoke the chat endpoint based on the provided messages and gener
 
 **Parameters:**
 
-- **messages** (<code>list\[ChatMessage\]</code>) – list of `ChatMessage` instances representing the input messages.
+- **messages** (<code>list\[ChatMessage\] | str</code>) – list of `ChatMessage` instances representing the input messages.
+  If a string is provided, it is converted to a list containing a ChatMessage with user role.
 - **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – additional keyword arguments for chat generation. These parameters will
   potentially override the parameters passed in the __init__ method.
   For more details on the parameters supported by the Cohere API, refer to the

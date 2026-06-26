@@ -148,7 +148,7 @@ class TestListJoiner:
 
     def test_pipeline_bad_connection_different_list_types(self):
         with pytest.raises(PipelineConnectError):
-            joiner = ListJoiner(list[str])
+            joiner = ListJoiner(list[int])
             llm = OpenAIChatGenerator(api_key=Secret.from_token("test-api-key"))
             pipe = Pipeline()
             pipe.add_component("joiner", joiner)

@@ -1,0 +1,338 @@
+---
+title: "Multi-Agent Systems"
+id: multi-agent-systems
+slug: "/multi-agent-systems"
+description: "Learn how to build multi-agent systems in Haystack by spawning agents as tools. Use the @tool decorator or ComponentTool to connect specialist agents to a coordinator."
+---
+
+# Multi-Agent Systems
+
+Multi-agent systems let you compose multiple `Agent` instances into larger architectures where a **coordinator** agent delegates to **specialist** agents.
+Each specialist focuses on a specific task with its own tools and system prompt - the coordinator plans and routes work without needing to know how each task gets done.
+
+Spawning agents as tools is useful when:
+
+- A task is too broad for a single agent to handle reliably,
+- You want to isolate different capabilities into focused, reusable agents,
+- You need to keep the coordinator's context lean for better decisions and lower token usage.
+
+In Haystack, you spawn a specialist agent as a tool using either the `@tool` decorator (recommended) or `ComponentTool`.
+
+## Converting an Agent to a Tool
+
+### `@tool` Decorator (Recommended)
+
+Wrapping an agent inside a `@tool` function gives you full control over what the coordinator LLM sees:
+
+- **Simplified parameters**: define explicit `Annotated` arguments instead of exposing `agent.run()`'s full interface
+- **Formatted output**: extract and return only what the coordinator needs, rather than the full result dict
+- **Error handling**: catch exceptions and return a clean message so the coordinator can recover
+
+This approach works better with smaller LLMs because the tool has a clean, minimal signature.
+The coordinator only needs to provide a query string - all the `ChatMessage` construction and result unpacking is hidden inside the function.
+
+```python
+from typing import Annotated
+from haystack.components.agents import Agent
+from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.components.generators.utils import print_streaming_chunk
+from haystack.dataclasses import ChatMessage
+from haystack.tools import ComponentTool, tool
+from haystack.components.websearch import SerperDevWebSearch
+from haystack.utils import Secret
+
+
+research_agent = Agent(
+    chat_generator=OpenAIChatGenerator(model="gpt-5.4-nano"),
+    tools=[
+        ComponentTool(
+            component=SerperDevWebSearch(
+                api_key=Secret.from_env_var("SERPERDEV_API_KEY"),
+                top_k=3,
+            ),
+            name="web_search",
+            description="Search the web for current information on any topic",
+        ),
+    ],
+    system_prompt="You are a research specialist. Search the web to find information.",
+)
+
+
+@tool
+def research(query: Annotated[str, "The research question to investigate"]) -> str:
+    """Research a topic and return a summary of findings."""
+    try:
+        result = research_agent.run(messages=[ChatMessage.from_user(query)])
+        return result["last_message"].text
+    except Exception as e:
+        return f"Research failed: {e}"
+
+
+coordinator = Agent(
+    chat_generator=OpenAIChatGenerator(model="gpt-5.4-nano"),
+    tools=[research],
+    system_prompt="You are a coordinator. Delegate research tasks to the research tool.",
+    streaming_callback=print_streaming_chunk,
+)
+
+result = coordinator.run(
+    messages=[
+        ChatMessage.from_user("What are the latest developments in Haystack AI?"),
+    ],
+)
+```
+
+### `ComponentTool`
+
+`ComponentTool` wraps an agent directly without a wrapper function.
+Choose it when you want **declarative configuration**: the full specialist setup (model, tools, system prompt) lives in one serializable object alongside the coordinator.
+
+Use `outputs_to_string={"source": "last_message"}` to surface only the specialist's final reply to the coordinator rather than the full result dict.
+
+```python
+from haystack.tools import ComponentTool
+
+research_tool = ComponentTool(
+    component=research_agent,
+    name="research_specialist",
+    description="A specialist that researches topics on the web",
+    outputs_to_string={"source": "last_message"},
+)
+
+coordinator = Agent(
+    chat_generator=OpenAIChatGenerator(model="gpt-5.4-nano"),
+    tools=[research_tool],
+    system_prompt="You are a coordinator. Delegate research tasks to the research specialist.",
+    streaming_callback=print_streaming_chunk,
+)
+
+result = coordinator.run(
+    messages=[
+        ChatMessage.from_user("What are the latest developments in Haystack AI?"),
+    ],
+)
+```
+
+The full specialist configuration is captured inline when serialized.
+Wrap the coordinator in a `Pipeline` and call `pipeline.dumps()` to get the YAML, which can be loaded back with `Pipeline.loads()`.
+
+<details>
+<summary>View YAML</summary>
+
+```yaml
+components:
+  coordinator:
+    init_parameters:
+      chat_generator:
+        init_parameters:
+          api_base_url: null
+          api_key:
+            env_vars:
+            - OPENAI_API_KEY
+            strict: true
+            type: env_var
+          generation_kwargs: {}
+          http_client_kwargs: null
+          max_retries: null
+          model: gpt-5.4-nano
+          organization: null
+          streaming_callback: null
+          timeout: null
+          tools: null
+          tools_strict: false
+        type: haystack.components.generators.chat.openai.OpenAIChatGenerator
+      confirmation_strategies: null
+      exit_conditions:
+      - text
+      max_agent_steps: 100
+      raise_on_tool_invocation_failure: false
+      required_variables: null
+      state_schema: {}
+      streaming_callback: null
+      system_prompt: You are a coordinator. Delegate research tasks to the research
+        specialist. Keep your final answer concise.
+      tool_invoker_kwargs: null
+      tools:
+      - data:
+          component:
+            init_parameters:
+              chat_generator:
+                init_parameters:
+                  api_base_url: null
+                  api_key:
+                    env_vars:
+                    - OPENAI_API_KEY
+                    strict: true
+                    type: env_var
+                  generation_kwargs: {}
+                  http_client_kwargs: null
+                  max_retries: null
+                  model: gpt-5.4-nano
+                  organization: null
+                  streaming_callback: null
+                  timeout: null
+                  tools: null
+                  tools_strict: false
+                type: haystack.components.generators.chat.openai.OpenAIChatGenerator
+              confirmation_strategies: null
+              exit_conditions:
+              - text
+              max_agent_steps: 100
+              raise_on_tool_invocation_failure: false
+              required_variables: null
+              state_schema: {}
+              streaming_callback: null
+              system_prompt: You are a research specialist. Search the web to find
+                information. Return a concise summary of your findings in 3-5 sentences.
+              tool_invoker_kwargs: null
+              tools:
+              - data:
+                  component:
+                    init_parameters:
+                      allowed_domains: null
+                      api_key:
+                        env_vars:
+                        - SERPERDEV_API_KEY
+                        strict: true
+                        type: env_var
+                      exclude_subdomains: false
+                      search_params: {}
+                      top_k: 3
+                    type: haystack.components.websearch.serper_dev.SerperDevWebSearch
+                  description: Search the web for current information on any topic
+                  inputs_from_state: null
+                  name: web_search
+                  outputs_to_state: null
+                  outputs_to_string: null
+                  parameters: null
+                type: haystack.tools.component_tool.ComponentTool
+              user_prompt: null
+            type: haystack.components.agents.agent.Agent
+          description: A specialist that researches topics on the web
+          inputs_from_state: null
+          name: research_specialist
+          outputs_to_state: null
+          outputs_to_string:
+            source: last_message
+          parameters: null
+        type: haystack.tools.component_tool.ComponentTool
+      user_prompt: null
+    type: haystack.components.agents.agent.Agent
+connection_type_validation: true
+connections: []
+max_runs_per_component: 100
+metadata: {}
+```
+
+</details>
+
+## Coordinator / Specialist Pattern
+
+The coordinator/specialist pattern cleanly splits responsibilities: the coordinator handles planning and delegation, while each specialist owns a focused toolset and a targeted system prompt.
+
+This is also a form of **context engineering**: deliberately controlling what each agent sees.
+A specialist accumulates its own tool call trace, but the coordinator only needs the final answer.
+Returning just `result["last_message"].text` (with `@tool`) or using `outputs_to_string` (with `ComponentTool`) surfaces only the specialist's final reply, keeping the coordinator's context lean.
+
+When covering multiple topics, the coordinator can call the same specialist tool several times in a single response.
+All tool calls from one LLM response are executed concurrently using a thread pool.
+Control the level of parallelism with `max_workers` in `tool_invoker_kwargs` (default: `4`).
+
+The example below asks the coordinator about two topics: it calls `research` twice and both specialists run in parallel.
+
+`HTMLToDocument` uses [Trafilatura](https://trafilatura.readthedocs.io) to extract clean text from HTML pages.
+Install it before running:
+
+```shell
+pip install trafilatura
+```
+
+```python
+from typing import Annotated
+from haystack.components.agents import Agent
+from haystack.components.converters import HTMLToDocument
+from haystack.components.fetchers.link_content import LinkContentFetcher
+from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.components.generators.utils import print_streaming_chunk
+from haystack.components.websearch import SerperDevWebSearch
+from haystack.dataclasses import ChatMessage
+from haystack.tools import ComponentTool, tool
+from haystack.utils import Secret
+
+
+search_tool = ComponentTool(
+    component=SerperDevWebSearch(
+        api_key=Secret.from_env_var("SERPERDEV_API_KEY"),
+        top_k=3,
+    ),
+    name="web_search",
+    description="Search the web for current information on any topic",
+)
+
+
+@tool
+def fetch_page(url: Annotated[str, "The URL of the web page to fetch"]) -> str:
+    """Fetch the content of a web page given its URL."""
+    try:
+        streams = LinkContentFetcher().run(urls=[url])["streams"]
+        if not streams:
+            return "No content found."
+        documents = HTMLToDocument().run(sources=streams)["documents"]
+        return documents[0].content if documents else "No content extracted."
+    except Exception as e:
+        return f"Failed to fetch page: {e}"
+
+
+research_agent = Agent(
+    chat_generator=OpenAIChatGenerator(model="gpt-5.4-nano"),
+    tools=[search_tool, fetch_page],
+    system_prompt=(
+        "You are a research specialist. Search the web to find relevant pages, "
+        "then fetch their full content for detailed information. "
+        "Return a concise summary of your findings in 3-5 sentences."
+    ),
+)
+
+
+@tool
+def research(query: Annotated[str, "The research question to investigate"]) -> str:
+    """Research a topic and return a summary of findings."""
+    try:
+        result = research_agent.run(messages=[ChatMessage.from_user(query)])
+        return result["last_message"].text
+    except Exception as e:
+        return f"Research failed: {e}"
+
+
+coordinator = Agent(
+    chat_generator=OpenAIChatGenerator(model="gpt-5.4-nano"),
+    tools=[research],
+    system_prompt=(
+        "You are a coordinator. Delegate research tasks to the research tool. "
+        "For questions covering multiple topics, research each one independently. "
+        "Keep your final answer concise."
+    ),
+    streaming_callback=print_streaming_chunk,
+    tool_invoker_kwargs={"max_workers": 4},  # run up to 4 specialist calls in parallel
+)
+
+result = coordinator.run(
+    messages=[
+        ChatMessage.from_user(
+            "What are the latest developments in large language models and retrieval-augmented generation?",
+        ),
+    ],
+)
+```
+
+## Additional References
+
+📖 Related docs:
+
+- [Agent](../../pipeline-components/agents-1/agent.mdx)
+- [State](../../pipeline-components/agents-1/state.mdx)
+- [ComponentTool](../../tools/componenttool.mdx)
+
+📚 Tutorials:
+
+- [Creating a Multi-Agent System](https://haystack.deepset.ai/tutorials/45_creating_a_multi_agent_system)

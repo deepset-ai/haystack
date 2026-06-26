@@ -3,12 +3,22 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import json
+import warnings
 from typing import Any
 
 from haystack import logging
 from haystack.dataclasses import ChatMessage, ReasoningContent, StreamingChunk, ToolCall
 
 logger = logging.getLogger(__name__)
+
+
+def _generators_deprecation_warning(generator_name: str, chatgenerator_name: str) -> None:
+    warnings.warn(
+        f"The `{generator_name}` component is deprecated and will be removed in Haystack 3.0. "
+        f"Use `{chatgenerator_name}` instead, which now also supports string inputs.",
+        FutureWarning,
+        stacklevel=2,
+    )
 
 
 def print_streaming_chunk(chunk: StreamingChunk) -> None:
@@ -170,3 +180,12 @@ def _serialize_object(obj: Any) -> Any:
     if isinstance(obj, list):
         return [_serialize_object(item) for item in obj]
     return obj
+
+
+def _normalize_messages(messages: list[ChatMessage] | str) -> list[ChatMessage]:
+    """Normalize messages to a list of ChatMessage objects."""
+    if isinstance(messages, str):
+        return [ChatMessage.from_user(messages)]
+    if isinstance(messages, list) and all(isinstance(msg, ChatMessage) for msg in messages):
+        return messages
+    raise TypeError("Invalid messages type. Expected list[ChatMessage] or str.")

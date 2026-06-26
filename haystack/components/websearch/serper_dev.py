@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import warnings
 from typing import Any
 from urllib.parse import urlparse
 
@@ -73,6 +74,15 @@ class SerperDevWebSearch:
             For example, you can set 'num' to 20 to increase the number of search results.
             See the [Serper website](https://serper.dev/) for more details.
         """
+        warnings.warn(
+            "`SerperDevWebSearch` will be removed from Haystack in version 3.0, as it is moving to "
+            "the `serperdev-haystack` package. To continue using it, install that package with "
+            "`pip install serperdev-haystack` and update your import to "
+            "`from haystack_integrations.components.websearch.serperdev import SerperDevWebSearch`.",
+            FutureWarning,
+            stacklevel=2,
+        )
+
         self.api_key = api_key
         self.top_k = top_k
         self.allowed_domains = allowed_domains

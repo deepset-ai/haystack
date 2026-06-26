@@ -56,4 +56,4 @@ Every user-facing PR (not docs, not CI) must include a release note:
 
 hatch run release-note SHORT_DESCRIPTION
 
-Edit the generated file in `releasenotes/notes/`.
+Edit the generated file in `releasenotes/notes/`. Release notes use reStructuredText formatting; see the [release notes section in CONTRIBUTING.md](CONTRIBUTING.md#release-notes) for details.

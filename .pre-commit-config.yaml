@@ -35,6 +35,13 @@ repos:
           - ruff
           - add-trailing-comma
 
+      - id: release-note-backticks
+        name: release-note-backticks
+        language: python
+        entry: python scripts/release_note_backticks.py
+        files: ^releasenotes/notes/.*\.yaml$
+        types: [text]
+
   - repo: https://github.com/codespell-project/codespell
     rev: v2.4.1
     hooks:

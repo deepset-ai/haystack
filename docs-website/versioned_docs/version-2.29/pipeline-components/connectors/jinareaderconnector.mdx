@@ -154,7 +154,7 @@ pipe.add_component("prompt_builder", prompt_builder)
 pipe.add_component("llm", llm)
 
 pipe.connect("reader_connector.documents", "prompt_builder.documents")
-pipe.connect("prompt_builder.messages", "llm.messages")
+pipe.connect("prompt_builder.prompt", "llm.messages")
 
 query = "What is the most famous landmark in Berlin?"
 

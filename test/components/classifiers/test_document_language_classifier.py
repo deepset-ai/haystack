@@ -50,3 +50,10 @@ class TestDocumentLanguageClassifier:
             classifier = DocumentLanguageClassifier()
             classifier.run(documents=[Document(content=".")])
             assert "Langdetect cannot detect the language of Document with id" in caplog.text
+
+    def test_none_content_is_unmatched(self, caplog):
+        with caplog.at_level(logging.WARNING):
+            classifier = DocumentLanguageClassifier()
+            result = classifier.run(documents=[Document(content=None)])
+            assert result["documents"][0].meta["language"] == "unmatched"
+            assert "Langdetect cannot detect the language of Document with id" in caplog.text

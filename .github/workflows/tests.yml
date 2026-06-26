@@ -1,4 +1,3 @@
-# If you change this name also do it in ci_metrics.yml
 name: Tests
 
 # The workflow will always run, but the actual tests will only execute when:
@@ -17,8 +16,8 @@ on:
       - "v[0-9].*[0-9].x"
     # when we push, we do not need to satisfy Branch Protection rules, so we can ignore PRs that just change docs
     paths-ignore:
-      - 'docs/**'
-      - 'docs-website/**'
+      - "docs/**"
+      - "docs-website/**"
   pull_request:
     types:
       - opened
@@ -35,11 +34,14 @@ env:
   PYTHON_VERSION: "3.10"
   HATCH_VERSION: "1.16.5"
 
+permissions:
+  contents: read
+
 jobs:
   check-if-changed:
-  # This job checks if the relevant files have been changed.
-  # We check for changes in the check-if-changed job instead of using paths/paths-ignore at workflow level.
-  # This ensures the "Mark tests as completed" job always runs, which is required by Branch Protection rules.
+    # This job checks if the relevant files have been changed.
+    # We check for changes in the check-if-changed job instead of using paths/paths-ignore at workflow level.
+    # This ensures the "Mark tests as completed" job always runs, which is required by Branch Protection rules.
     name: Check if changed
     runs-on: ubuntu-slim
     permissions:
@@ -48,7 +50,7 @@ jobs:
     outputs:
       changes: ${{ steps.changes.outputs.changes }}
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
       - name: Check for changed code
         id: changes
         uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # v4.0.1
@@ -70,7 +72,7 @@ jobs:
       (needs.check-if-changed.outputs.changes == 'true')
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
 
       - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
         with:
@@ -85,13 +87,13 @@ jobs:
         run: hatch run fmt-check
 
       - name: Check presence of license header
-        run: docker run --rm -v "$(pwd):/github/workspace" ghcr.io/korandoru/hawkeye check
+        run: docker run --rm -v "$(pwd):/github/workspace" ghcr.io/korandoru/hawkeye:v6.5.1@sha256:0ebd72353053aa6d3f0cb44a6897786386347bd4636ffc9592f8e47c81ea2b9d check
 
   check-imports:
     needs: format
     runs-on: ubuntu-slim
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
 
       - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
         with:
@@ -121,7 +123,7 @@ jobs:
           - macos-latest
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
 
       - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
         with:
@@ -169,7 +171,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         with:
           # With the default value of 1, there are corner cases where tj-actions/changed-files
           # fails with a `no merge base` error
@@ -210,7 +212,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
 
       - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
         with:
@@ -224,7 +226,6 @@ jobs:
           pip install hatch==${{ env.HATCH_VERSION }} --uploaded-prior-to=P1D
           echo "env=$(hatch env find test)" >> "$GITHUB_OUTPUT"
 
-
       - name: Run
         run: hatch run test:integration-only-fast
 
@@ -237,7 +238,7 @@ jobs:
       HAYSTACK_MPS_ENABLED: false
 
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
 
       - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
         with:
@@ -257,7 +258,6 @@ jobs:
           path: ${{ steps.hatch.outputs.env }}
           key: ${{ runner.os }}-${{ github.sha }}
 
-
       - name: Run
         run: hatch run test:integration-only-fast
 
@@ -270,7 +270,7 @@ jobs:
       HAYSTACK_XPU_ENABLED: false
 
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
 
       - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
         with:
@@ -297,7 +297,7 @@ jobs:
       - integration-tests-windows
     runs-on: ubuntu-slim
     steps:
-      - uses: deepset-ai/notify-slack-action@3cda73b77a148f16f703274198e7771340cf862b # v1
+      - uses: deepset-ai/notify-slack-action@a65def0c8bf91d6520286ab34280151c76a5a008 # v1.1.0
         with:
           slack-webhook-url: ${{ secrets.SLACK_WEBHOOK_URL_NOTIFICATIONS }}
 
@@ -314,15 +314,15 @@ jobs:
       - integration-tests-windows
 
     steps:
-    - name: Mark tests as completed
-      run: |
-        if [ "${{ needs.check-imports.result }}" = "failure" ] ||
-           [ "${{ needs.mypy.result }}" = "failure" ] ||
-           [ "${{ needs.integration-tests-linux.result }}" = "failure" ] ||
-           [ "${{ needs.integration-tests-macos.result }}" = "failure" ] ||
-           [ "${{ needs.integration-tests-windows.result }}" = "failure" ]; then
-          echo "Tests failed!"
-          exit 1
-        else
-          echo "Tests completed!"
-        fi
+      - name: Mark tests as completed
+        run: |
+          if [ "${{ needs.check-imports.result }}" = "failure" ] ||
+             [ "${{ needs.mypy.result }}" = "failure" ] ||
+             [ "${{ needs.integration-tests-linux.result }}" = "failure" ] ||
+             [ "${{ needs.integration-tests-macos.result }}" = "failure" ] ||
+             [ "${{ needs.integration-tests-windows.result }}" = "failure" ]; then
+            echo "Tests failed!"
+            exit 1
+          else
+            echo "Tests completed!"
+          fi

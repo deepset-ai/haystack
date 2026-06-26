@@ -179,6 +179,18 @@ document_matches_filter_data = [
         id=">= operator with smaller ISO 8601 datetime Document value",
     ),
     pytest.param(
+        {"field": "meta.date", "operator": ">=", "value": "1969-07-21"},
+        Document(meta={"date": "1969-07-21T00:00:00"}),
+        True,
+        id=">= operator with equal datetime in different ISO 8601 format",
+    ),
+    pytest.param(
+        {"field": "meta.date", "operator": ">=", "value": "1969-07-21T20:17:40+00:00"},
+        Document(meta={"date": "1969-07-21T22:17:40+02:00"}),
+        True,
+        id=">= operator with equal instant in different timezone offset",
+    ),
+    pytest.param(
         {"field": "meta.page", "operator": ">=", "value": 10},
         Document(),
         False,
@@ -238,6 +250,18 @@ document_matches_filter_data = [
         Document(meta={"date": "1969-07-21T20:17:40"}),
         True,
         id="< operator with smaller ISO 8601 datetime Document value",
+    ),
+    pytest.param(
+        {"field": "meta.date", "operator": "<", "value": "1969-07-21"},
+        Document(meta={"date": "1969-07-21T00:00:00"}),
+        False,
+        id="< operator with equal datetime in different ISO 8601 format",
+    ),
+    pytest.param(
+        {"field": "meta.date", "operator": "<", "value": "1969-07-21T20:17:40+00:00"},
+        Document(meta={"date": "1969-07-21T22:17:40+02:00"}),
+        False,
+        id="< operator with equal instant in different timezone offset",
     ),
     pytest.param(
         {"field": "meta.page", "operator": "<", "value": 10},

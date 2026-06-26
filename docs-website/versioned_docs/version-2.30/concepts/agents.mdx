@@ -1,0 +1,121 @@
+---
+title: "Agents"
+id: agents
+slug: "/agents"
+description: "This page explains how to create an AI agent in Haystack capable of retrieving information, generating responses, and taking actions using various Haystack components."
+---
+
+# Agents
+
+This page explains how to create an AI agent in Haystack capable of retrieving information, generating responses, and taking actions using various Haystack components.
+
+## What’s an AI Agent?
+
+An AI agent is a system that can:
+
+- Understand user input (text, image, audio, and other queries),
+- Retrieve relevant information (documents or structured data),
+- Generate intelligent responses (using LLMs like OpenAI or Hugging Face models),
+- Perform actions (calling APIs, fetching live data, executing functions).
+
+AI agents are autonomous systems that use large language models (LLMs) to make decisions and solve complex tasks.
+They interact with their environment using tools, memory, and reasoning.
+An AI agent is more than a chatbot — it actively plans, chooses the right tools, and executes tasks to achieve a goal.
+Unlike traditional software, it adapts to new information and refines its process as needed.
+
+1. **LLM as the Brain**: The agent’s core is an LLM, which understands context, processes natural language and serves as the central intelligence system.
+2. **Tools for Interaction**: Agents connect to external tools, APIs, and databases to gather information and take action.
+3. **Memory for Context**: Short-term memory helps track conversations, while long-term memory stores knowledge for future interactions.
+4. **Reasoning and Planning**: Agents break down complex problems, come up with step-by-step action plans, and adapt based on new data and feedback.
+
+An AI agent starts with a prompt that defines its role and objectives.
+It decides when to use tools, gathers data, and refines its approach through loops of reasoning and action.
+For example, a customer service agent answers queries using a database — if it lacks an answer, it fetches real-time data, summarizes it, and responds.
+A coding assistant understands project requirements, suggests solutions, and writes code.
+
+## Key Components
+
+### Agent Component
+
+Haystack has a built-in [Agent](../pipeline-components/agents-1/agent.mdx) component that manages the full tool-calling loop — it calls the LLM, invokes tools, updates state, and continues until a stopping condition is met.
+Key capabilities include:
+
+- **State management**: Share typed data between tools, accumulate results across iterations, and surface them in the result dict using `state_schema`. See [State](../pipeline-components/agents-1/state.mdx).
+- **Streaming**: Stream token-by-token output with a `streaming_callback`.
+- **Human-in-the-loop**: Intercept tool calls for human review before execution. See [Human in the Loop](../pipeline-components/agents-1/human-in-the-loop.mdx).
+- **Multi-agent systems**: Wrap an `Agent` as a `ComponentTool` to build coordinator/specialist architectures. See [Multi-Agent Systems](./agents/multi-agent-systems.mdx).
+- **MCP server exposure**: Expose your agent as an MCP server using [Hayhooks](../development/hayhooks.mdx), making it callable from any MCP-compatible client such as Claude Desktop or Cursor.
+- **Multimodal inputs**: Pass images alongside text using `ImageContent` in `ChatMessage` content parts, or return `ImageContent` from tools for dynamic image analysis. Requires a vision-capable model such as `gpt-5` or `gemini-2.5-flash`. See [Multimodal Inputs](../pipeline-components/agents-1/agent.mdx#multimodal-inputs).
+
+Check out the [Agent](../pipeline-components/agents-1/agent.mdx) documentation, or the [example](#tool-calling-agent) below to get started.
+
+### State
+
+[`State`](../pipeline-components/agents-1/state.mdx) is Haystack's built-in mechanism for sharing data between tools and accumulating results across multiple tool calls.
+You define a `state_schema` on the `Agent`, and any keys declared there are returned alongside `messages` and `last_message` in the agent's result dict.
+
+### Tools
+
+Haystack provides several ways to create and manage tools:
+
+- [`Tool`](../tools/tool.mdx) class / [`@tool`](../tools/tool.mdx#tool-decorator) decorator – Define a tool from a Python function. The `@tool` decorator automatically uses the function's name and docstring; the `Tool` class gives full control over the name, description, and schema.
+- [`ComponentTool`](../tools/componenttool.mdx) – Wraps any Haystack component as a callable tool.
+- [`PipelineTool`](../tools/pipelinetool.mdx) – Wraps a full Haystack pipeline as a callable tool.
+- [`MCPTool`](../tools/mcptool.mdx) / [`MCPToolset`](../tools/mcptoolset.mdx) – Connects to Model Context Protocol (MCP) servers to load external tools.
+- [`Toolset`](../tools/toolset.mdx) – Groups multiple tools into a single unit to pass to an Agent or Generator.
+- [`SearchableToolset`](../tools/searchabletoolset.mdx) – Enables keyword-based tool discovery for large catalogs, so the LLM only sees relevant tools at each step.
+
+## Example
+
+### Tool-Calling Agent
+
+Create a tool-calling agent with the `Agent` component. This example requires `OPENAI_API_KEY` and `SERPERDEV_API_KEY` to be set as environment variables:
+
+```shell
+export OPENAI_API_KEY=<your-openai-key>
+export SERPERDEV_API_KEY=<your-serperdev-key>
+```
+
+```python
+from haystack.components.agents import Agent
+from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.components.generators.utils import print_streaming_chunk
+from haystack.components.websearch import SerperDevWebSearch
+from haystack.dataclasses import ChatMessage
+from haystack.tools import ComponentTool
+
+# Wrap the web search component as a tool
+web_tool = ComponentTool(
+    component=SerperDevWebSearch(top_k=3),
+    name="web_search",
+    description="Search the web for current information like weather, news, or facts.",
+)
+
+tool_calling_agent = Agent(
+    chat_generator=OpenAIChatGenerator(model="gpt-5.4-nano"),
+    system_prompt=(
+        "You're a helpful agent. When asked about current information like weather, news, or facts, "
+        "use the web_search tool to find the information and then summarize the findings."
+    ),
+    tools=[web_tool],
+    streaming_callback=print_streaming_chunk,
+)
+
+result = tool_calling_agent.run(
+    messages=[ChatMessage.from_user("How is the weather in Berlin?")],
+)
+print(result["last_message"].text)
+```
+
+Resulting in:
+
+```python
+>>> The current weather in Berlin is approximately 60°F. The forecast for today includes clouds in the morning with some sunshine later. The high temperature is expected to be around 65°F, and the low tonight will drop to 40°F.
+
+- **Morning**: 49°F
+- **Afternoon**: 57°F
+- **Evening**: 47°F
+- **Overnight**: 39°F
+
+For more details, you can check the full forecasts on [AccuWeather](https://www.accuweather.com/en/de/berlin/10178/current-weather/178087) or [Weather.com](https://weather.com/weather/today/l/5ca23443513a0fdc1d37ae2ffaf5586162c6fe592a66acc9320a0d0536be1bb9).
+```

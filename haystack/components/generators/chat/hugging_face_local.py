@@ -6,6 +6,7 @@ import asyncio
 import json
 import re
 import sys
+import warnings
 from collections.abc import AsyncIterator, Callable
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import asynccontextmanager, suppress
@@ -14,6 +15,7 @@ from typing import Any, Literal, Union
 from packaging.version import Version
 
 from haystack import component, default_from_dict, default_to_dict, logging
+from haystack.components.generators.utils import _normalize_messages
 from haystack.dataclasses import ChatMessage, ComponentInfo, StreamingCallbackT, ToolCall
 from haystack.dataclasses.streaming_chunk import select_streaming_callback
 from haystack.lazy_imports import LazyImport
@@ -189,6 +191,15 @@ class HuggingFaceLocalChatGenerator:
             Whether to enable thinking mode in the chat template for thinking-capable models.
             When enabled, the model generates intermediate reasoning before the final response. Defaults to False.
         """
+        warnings.warn(
+            "`HuggingFaceLocalChatGenerator` will be removed from Haystack in version 3.0, as it is moving to the "
+            "`transformers-haystack` package and being renamed to `TransformersChatGenerator`. To continue using it, "
+            "install that package with `pip install transformers-haystack` and update your import to "
+            "`from haystack_integrations.components.generators.transformers import TransformersChatGenerator`.",
+            FutureWarning,
+            stacklevel=2,
+        )
+
         torch_and_transformers_import.check()
 
         if tools and streaming_callback is not None:
@@ -350,7 +361,7 @@ class HuggingFaceLocalChatGenerator:
     @component.output_types(replies=list[ChatMessage])
     def run(
         self,
-        messages: list[ChatMessage],
+        messages: list[ChatMessage] | str,
         generation_kwargs: dict[str, Any] | None = None,
         streaming_callback: StreamingCallbackT | None = None,
         tools: ToolsType | None = None,
@@ -358,7 +369,8 @@ class HuggingFaceLocalChatGenerator:
         """
         Invoke text generation inference based on the provided messages and generation parameters.
 
-        :param messages: A list of ChatMessage objects representing the input messages.
+        :param messages: A list of ChatMessage objects representing the input messages. If a string is provided,
+            it is converted to a list containing a ChatMessage with user role.
         :param generation_kwargs: Additional keyword arguments for text generation.
         :param streaming_callback: An optional callable for handling streaming responses.
         :param tools: A list of Tool and/or Toolset objects, or a single Toolset for which the model can prepare calls.
@@ -368,6 +380,8 @@ class HuggingFaceLocalChatGenerator:
         """
         if self.pipeline is None:
             self.warm_up()
+
+        messages = _normalize_messages(messages)
 
         prepared_inputs = self._prepare_inputs(
             messages=messages, generation_kwargs=generation_kwargs, streaming_callback=streaming_callback, tools=tools
@@ -464,7 +478,7 @@ class HuggingFaceLocalChatGenerator:
     @component.output_types(replies=list[ChatMessage])
     async def run_async(
         self,
-        messages: list[ChatMessage],
+        messages: list[ChatMessage] | str,
         generation_kwargs: dict[str, Any] | None = None,
         streaming_callback: StreamingCallbackT | None = None,
         tools: ToolsType | None = None,
@@ -485,6 +499,8 @@ class HuggingFaceLocalChatGenerator:
         """
         if self.pipeline is None:
             self.warm_up()
+
+        messages = _normalize_messages(messages)
 
         prepared_inputs = self._prepare_inputs(
             messages=messages, generation_kwargs=generation_kwargs, streaming_callback=streaming_callback, tools=tools

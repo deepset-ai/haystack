@@ -27,9 +27,5 @@ Steps to reproduce the behavior
 - [ ] Have you had a look at [our new FAQ page](https://docs.haystack.deepset.ai/docs/faq)?
 
 **System:**
- - OS:
- - GPU/CPU:
- - Haystack version (commit or version number):
- - DocumentStore:
- - Reader:
- - Retriever:
+- OS:
+- Haystack version:

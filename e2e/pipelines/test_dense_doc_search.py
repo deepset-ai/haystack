@@ -77,3 +77,7 @@ def test_dense_doc_search_pipeline(tmp_path, samples_path, del_hf_env_vars):
     # Load the querying pipeline back
     with open(tmp_path / "test_dense_doc_search_query_pipeline.json", "r") as f:
         query_pipeline = Pipeline.from_dict(json.load(f))
+
+    # Run the reloaded pipeline to verify the serialization round-trip preserves behavior
+    querying_result = query_pipeline.run({"text_embedder": {"text": "Who lives in Rome?"}})
+    assert querying_result["embedding_retriever"]["documents"][0].content == "My name is Giorgio and I live in Rome."

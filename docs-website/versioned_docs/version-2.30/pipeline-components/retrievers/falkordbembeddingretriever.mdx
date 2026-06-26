@@ -1,0 +1,138 @@
+---
+title: "FalkorDBEmbeddingRetriever"
+id: falkordbembeddingretriever
+slug: "/falkordbembeddingretriever"
+description: "An embedding-based Retriever compatible with the FalkorDB Document Store."
+---
+
+# FalkorDBEmbeddingRetriever
+
+An embedding-based Retriever compatible with the FalkorDB Document Store.
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | 1. After a Text Embedder and before a [`PromptBuilder`](../builders/promptbuilder.mdx) in a RAG pipeline <br /><br /> 2. The last component in a semantic search pipeline |
+| **Mandatory init variables** | `document_store`: An instance of a [FalkorDBDocumentStore](../../document-stores/falkordbdocumentstore.mdx) |
+| **Mandatory run variables** | `query_embedding`: A vector representing the query (a list of floats) |
+| **Output variables** | `documents`: A list of documents |
+| **API reference** | [FalkorDB](/reference/integrations-falkordb) |
+| **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/falkordb |
+| **Package name** | `falkordb-haystack` |
+
+</div>
+
+## Overview
+
+The `FalkorDBEmbeddingRetriever` retrieves documents from a `FalkorDBDocumentStore` using FalkorDB's native vector index. It compares the query embedding with document embeddings and returns the most similar documents.
+
+In addition to `query_embedding`, the retriever accepts optional `filters` to narrow the search space and `top_k` to limit the number of results.
+
+The embedding dimension and similarity function are configured on the `FalkorDBDocumentStore` at initialization time.
+
+## Installation
+
+```shell
+pip install falkordb-haystack
+```
+
+Ensure FalkorDB is running, for example via Docker:
+
+```shell
+docker run -d -p 6379:6379 falkordb/falkordb:latest
+```
+
+## Usage
+
+### On its own
+
+```python
+from haystack import Document
+from haystack_integrations.document_stores.falkordb import FalkorDBDocumentStore
+from haystack_integrations.components.retrievers.falkordb import (
+    FalkorDBEmbeddingRetriever,
+)
+
+document_store = FalkorDBDocumentStore(
+    host="localhost",
+    port=6379,
+    embedding_dim=3,
+    recreate_graph=True,
+)
+document_store.write_documents(
+    [
+        Document(
+            content="There are over 7,000 languages spoken around the world today.",
+            embedding=[0.1, 0.2, 0.3],
+        ),
+        Document(
+            content="Elephants have been observed to recognize themselves in mirrors.",
+            embedding=[0.8, 0.1, 0.5],
+        ),
+    ],
+)
+
+retriever = FalkorDBEmbeddingRetriever(document_store=document_store, top_k=1)
+result = retriever.run(query_embedding=[0.1, 0.2, 0.3])
+print(result["documents"][0].content)
+```
+
+### In a pipeline
+
+```python
+from haystack import Document, Pipeline
+from haystack.document_stores.types import DuplicatePolicy
+from haystack.components.embedders import (
+    SentenceTransformersDocumentEmbedder,
+    SentenceTransformersTextEmbedder,
+)
+from haystack_integrations.document_stores.falkordb import FalkorDBDocumentStore
+from haystack_integrations.components.retrievers.falkordb import (
+    FalkorDBEmbeddingRetriever,
+)
+
+document_store = FalkorDBDocumentStore(
+    host="localhost",
+    port=6379,
+    embedding_dim=384,
+    recreate_graph=True,
+)
+
+documents = [
+    Document(content="There are over 7,000 languages spoken around the world today."),
+    Document(
+        content="Elephants have been observed to recognize themselves in mirrors.",
+    ),
+    Document(
+        content="Bioluminescent waves can be seen in the Maldives and Puerto Rico.",
+    ),
+]
+
+document_embedder = SentenceTransformersDocumentEmbedder(
+    model="sentence-transformers/all-MiniLM-L6-v2",
+)
+document_embedder.warm_up()
+documents_with_embeddings = document_embedder.run(documents)
+
+document_store.write_documents(
+    documents_with_embeddings["documents"],
+    policy=DuplicatePolicy.OVERWRITE,
+)
+
+query_pipeline = Pipeline()
+query_pipeline.add_component(
+    "text_embedder",
+    SentenceTransformersTextEmbedder(model="sentence-transformers/all-MiniLM-L6-v2"),
+)
+query_pipeline.add_component(
+    "retriever",
+    FalkorDBEmbeddingRetriever(document_store=document_store, top_k=3),
+)
+query_pipeline.connect("text_embedder.embedding", "retriever.query_embedding")
+
+result = query_pipeline.run(
+    {"text_embedder": {"text": "How many languages are there?"}},
+)
+print(result["retriever"]["documents"][0].content)
+```

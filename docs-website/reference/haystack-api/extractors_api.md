@@ -170,8 +170,8 @@ Extracts metadata from documents using a Large Language Model (LLM).
 
 The metadata is extracted by providing a prompt to an LLM that generates the metadata.
 
-This component expects as input a list of documents and a prompt. The prompt should have a variable called
-`document` that will point to a single document in the list of documents. So to access the content of the document,
+This component expects as input a list of documents and a prompt. The prompt must have exactly one variable, called
+`document`, that points to a single document in the list of documents. So to access the content of the document,
 you can use `{{ document.content }}` in the prompt.
 
 The component will run the LLM on each document in the list and extract metadata from the document. The metadata
@@ -304,7 +304,9 @@ Initializes the LLMMetadataExtractor.
 
 **Parameters:**
 
-- **prompt** (<code>str</code>) – The prompt to be used for the LLM.
+- **prompt** (<code>str</code>) – The prompt to be used for the LLM. It must contain exactly one variable, called `document`,
+  which points to a single document in the list of documents. For example, to access the content of the
+  document, use `{{ document.content }}` in the prompt.
 - **chat_generator** (<code>ChatGenerator</code>) – a ChatGenerator instance which represents the LLM. In order for the component to work,
   the LLM should be configured to return a JSON object. For example, when using the OpenAIChatGenerator, you
   should pass `{"response_format": {"type": "json_object"}}` in the `generation_kwargs`.
@@ -467,8 +469,6 @@ in the documents.
 
 Usage example:
 
-<!-- test-ignore -->
-
 ```python
 from haystack import Document
 from haystack.components.extractors.named_entity_extractor import NamedEntityExtractor
@@ -481,6 +481,10 @@ extractor = NamedEntityExtractor(backend="hugging_face", model="dslim/bert-base-
 results = extractor.run(documents=documents)["documents"]
 annotations = [NamedEntityExtractor.get_stored_annotations(doc) for doc in results]
 print(annotations)
+# >> [[NamedEntityAnnotation(entity='PER', start=4, end=10, score=np.float32(0.99054915))],
+# >> [NamedEntityAnnotation(entity='PER', start=11, end=16, score=np.float32(0.99641764)),
+# >>  NamedEntityAnnotation(entity='LOC', start=31, end=39, score=np.float32(0.996198)),
+# >>  NamedEntityAnnotation(entity='LOC', start=41, end=51, score=np.float32(0.9990196))]]
 ```
 
 #### __init__

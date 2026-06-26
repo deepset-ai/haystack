@@ -149,6 +149,7 @@ class Document(metaclass=_BackwardCompatible):  # noqa: PLW1641
 
         The `blob` field is converted to its original type.
         """
+        data = data.copy()
         if blob := data.get("blob"):
             data["blob"] = ByteStream.from_dict(blob)
         if sparse_embedding := data.get("sparse_embedding"):

@@ -13,8 +13,34 @@ concurrency:
   group: release
   cancel-in-progress: false
 
+permissions:
+  contents: read
+
 jobs:
+  authorize:
+    # Releasing acts as HaystackBot (a ruleset-bypass actor), so the ruleset
+    # cannot enforce *who* started the release. Gate on the triggering user's
+    # role instead: only maintainers/admins may run this workflow, even though
+    # workflow_dispatch itself is available to anyone with write access.
+    runs-on: ubuntu-slim
+    steps:
+      - name: Verify the triggering user may release
+        env:
+          GH_TOKEN: ${{ secrets.HAYSTACK_BOT_TOKEN }}
+          ACTOR: ${{ github.triggering_actor }}
+        run: |
+          ROLE=$(gh api "repos/${{ github.repository }}/collaborators/${ACTOR}/permission" --jq '.role_name')
+          echo "::notice::${ACTOR} has repository role '${ROLE}'"
+          case "$ROLE" in
+            admin|maintain)
+              echo "✅ ${ACTOR} is authorized to trigger a release." ;;
+            *)
+              echo "::error::${ACTOR} has role '${ROLE}'. A release can only be triggered by a user with the 'maintain' or 'admin' role."
+              exit 1 ;;
+          esac
+
   parse-validate-version:
+    needs: ["authorize"]
     runs-on: ubuntu-slim
     outputs:
       version: ${{ steps.parse-validate.outputs.version }}
@@ -24,7 +50,7 @@ jobs:
       is_first_rc: ${{ steps.parse-validate.outputs.is_first_rc }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         with:
           fetch-depth: 0  # needed to fetch tags and branches
       - name: Parse and validate version
@@ -48,7 +74,7 @@ jobs:
       contents: write
     steps:
       - name: Checkout repository
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         with:
           fetch-depth: 0  # needed to fetch tags and branches
           # use this token so the created tag triggers workflows (does not happen with the default github.token)
@@ -85,7 +111,7 @@ jobs:
       VERSION: ${{ needs.parse-validate-version.outputs.version }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         with:
           fetch-depth: 0  # needed to fetch tags and branches
 
@@ -125,7 +151,7 @@ jobs:
       VERSION: ${{ needs.parse-validate-version.outputs.version }}
     steps:
       - name: Checkout dc-pipeline-templates
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         with:
           repository: deepset-ai/dc-pipeline-templates
           token: ${{ secrets.HAYSTACK_BOT_TOKEN }}
@@ -156,14 +182,14 @@ jobs:
       VERSION: ${{ needs.parse-validate-version.outputs.version }}
     steps:
       - name: Checkout haystack (for utils)
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         with:
           path: haystack
           sparse-checkout: .github/utils/update_haystack_dc_custom_nodes.py
           sparse-checkout-cone-mode: false
 
       - name: Checkout deepset-cloud-custom-nodes
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         with:
           repository: deepset-ai/deepset-cloud-custom-nodes
           token: ${{ secrets.HAYSTACK_BOT_TOKEN }}
@@ -247,7 +273,7 @@ jobs:
     runs-on: ubuntu-slim
     steps:
       - name: Checkout repository
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
 
       - name: Prepare release notification
         env:

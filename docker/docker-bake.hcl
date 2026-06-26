@@ -32,8 +32,8 @@ target "base" {
     equal("${IS_STABLE}", "true") ? "${IMAGE_NAME}:stable" : ""
   ])}"
   args = {
-    build_image = "python:3.12-slim"
-    base_image = "python:3.12-slim"
+    build_image = "python:3.12-slim@sha256:090ba77e2958f6af52a5341f788b50b032dd4ca28377d2893dcf1ecbdfdfe203"
+    base_image = "python:3.12-slim@sha256:090ba77e2958f6af52a5341f788b50b032dd4ca28377d2893dcf1ecbdfdfe203"
     haystack_version = "${HAYSTACK_VERSION}"
   }
   platforms = ["linux/amd64", "linux/arm64"]
