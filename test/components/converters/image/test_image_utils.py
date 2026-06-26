@@ -149,6 +149,37 @@ class TestExtractImageSourcesInfo:
         with pytest.raises(ValueError, match="missing the 'page_number' key"):
             _extract_image_sources_info(documents=[document], file_path_meta_field="file_path", root_path="")
 
+    def test_extract_image_source_info_rejects_path_traversal(self, test_files_path):
+        # Attacker-controlled document metadata attempts to escape the configured root.
+        document = Document(content="test", meta={"file_path": "../../../../../../etc/passwd"})
+        with pytest.raises(ValueError, match="escapes the configured root"):
+            _extract_image_sources_info(
+                documents=[document],
+                file_path_meta_field="file_path",
+                root_path=str(test_files_path / "images"),
+            )
+
+    def test_extract_image_source_info_rejects_absolute_outside_root(self, test_files_path):
+        # Absolute path that lies outside the configured root must be rejected before any IO.
+        document = Document(content="test", meta={"file_path": "/etc/passwd"})
+        with pytest.raises(ValueError, match="escapes the configured root"):
+            _extract_image_sources_info(
+                documents=[document],
+                file_path_meta_field="file_path",
+                root_path=str(test_files_path / "images"),
+            )
+
+    def test_extract_image_source_info_accepts_path_inside_root(self, test_files_path):
+        # When the resolved path is inside the configured root, processing must succeed.
+        document = Document(content="test", meta={"file_path": "haystack-logo.png"})
+        images_source_info = _extract_image_sources_info(
+            documents=[document],
+            file_path_meta_field="file_path",
+            root_path=str(test_files_path / "images"),
+        )
+        assert len(images_source_info) == 1
+        assert images_source_info[0]["mime_type"] == "image/png"
+
 
 class TestBatchConvertPdfPagesToImages:
     @patch("haystack.components.converters.image.image_utils._convert_pdf_to_images")

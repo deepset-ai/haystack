@@ -1,0 +1,11 @@
+---
+security:
+  - |
+    Hardened ``_extract_image_sources_info`` in ``haystack.components.converters.image.image_utils``
+    against path-traversal payloads supplied via document metadata. When a non-empty ``root_path``
+    is configured, the resolved file path must now stay within that root; ``../`` sequences and
+    absolute paths that escape the root now raise ``ValueError`` before any filesystem read. This
+    prevents attacker-controlled ``file_path`` metadata (e.g. on documents indexed from untrusted
+    sources) from causing image-conversion pipelines to read and exfiltrate arbitrary host files
+    through ``LLMDocumentContentExtractor`` or ``DocumentToImageContent``. Existing callers that
+    pass an empty ``root_path`` and supply already-validated absolute paths are unaffected.
