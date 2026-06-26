@@ -35,7 +35,12 @@ class HTMLToDocument:
     ```
     """
 
-    def __init__(self, extraction_kwargs: dict[str, Any] | None = None, store_full_path: bool = False) -> None:
+    def __init__(
+        self,
+        extraction_kwargs: dict[str, Any] | None = None,
+        store_full_path: bool = False,
+        encoding: str = "utf-8",
+    ) -> None:
         """
         Create an HTMLToDocument component.
 
@@ -45,11 +50,15 @@ class HTMLToDocument:
         :param store_full_path:
         If True, the full path of the file is stored in the metadata of the document.
         If False, only the file name is stored.
+        :param encoding:
+            The default encoding to use when converting HTML files. If the encoding is specified in the metadata of a
+            source ByteStream, it overrides this value.
         """
         trafilatura_import.check()
 
         self.extraction_kwargs = extraction_kwargs or {}
         self.store_full_path = store_full_path
+        self.encoding = encoding
 
     def to_dict(self) -> dict[str, Any]:
         """
@@ -58,7 +67,9 @@ class HTMLToDocument:
         :returns:
             Dictionary with serialized data.
         """
-        return default_to_dict(self, extraction_kwargs=self.extraction_kwargs, store_full_path=self.store_full_path)
+        return default_to_dict(
+            self, extraction_kwargs=self.extraction_kwargs, store_full_path=self.store_full_path, encoding=self.encoding
+        )
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "HTMLToDocument":
@@ -116,7 +127,8 @@ class HTMLToDocument:
                 continue
 
             try:
-                text = extract(bytestream.data.decode("utf-8"), **merged_extraction_kwargs)
+                encoding = bytestream.meta.get("encoding", self.encoding)
+                text = extract(bytestream.data.decode(encoding), **merged_extraction_kwargs)
             except Exception as conversion_e:
                 logger.warning(
                     "Failed to extract text from {source}. Skipping it. Error: {error}",
