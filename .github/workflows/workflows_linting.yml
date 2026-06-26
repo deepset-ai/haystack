@@ -22,7 +22,7 @@ jobs:
           go-version: ">=1.24.0"
 
       - name: Install actionlint
-        run: go install github.com/rhysd/actionlint/cmd/actionlint@latest
+        run: go install github.com/rhysd/actionlint/cmd/actionlint@v1.7.12
 
       - name: Run actionlint
         env:

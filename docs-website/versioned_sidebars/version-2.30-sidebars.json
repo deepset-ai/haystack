@@ -219,6 +219,7 @@
             "pipeline-components/connectors/githubrepoviewer",
             "pipeline-components/connectors/jinareaderconnector",
             "pipeline-components/connectors/langfuseconnector",
+            "pipeline-components/connectors/oauthtokenresolver",
             "pipeline-components/connectors/openapiconnector",
             "pipeline-components/connectors/openapiserviceconnector",
             "pipeline-components/connectors/opentelemetryconnector",
@@ -263,6 +264,7 @@
             "pipeline-components/converters/pypdftodocument",
             "pipeline-components/converters/textfiletodocument",
             "pipeline-components/converters/tikadocumentconverter",
+            "pipeline-components/converters/twelvelabsvideoconverter",
             "pipeline-components/converters/unstructuredfileconverter",
             "pipeline-components/converters/xlsxtodocument"
           ]
@@ -322,6 +324,8 @@
             "pipeline-components/embedders/sentencetransformerstextembedder",
             "pipeline-components/embedders/stackitdocumentembedder",
             "pipeline-components/embedders/stackittextembedder",
+            "pipeline-components/embedders/twelvelabsdocumentembedder",
+            "pipeline-components/embedders/twelvelabstextembedder",
             "pipeline-components/embedders/vertexaidocumentembedder",
             "pipeline-components/embedders/vertexaitextembedder",
             "pipeline-components/embedders/vllmdocumentembedder",
@@ -379,7 +383,9 @@
           },
           "items": [
             "pipeline-components/fetchers/firecrawlcrawler",
+            "pipeline-components/fetchers/googledrivefetcher",
             "pipeline-components/fetchers/linkcontentfetcher",
+            "pipeline-components/fetchers/mssharepointfetcher",
             "pipeline-components/fetchers/external-integrations-fetchers"
           ]
         },
@@ -569,12 +575,14 @@
             "pipeline-components/retrievers/falkordbcypherretriever",
             "pipeline-components/retrievers/falkordbembeddingretriever",
             "pipeline-components/retrievers/filterretriever",
+            "pipeline-components/retrievers/googledriveretriever",
             "pipeline-components/retrievers/inmemorybm25retriever",
             "pipeline-components/retrievers/inmemoryembeddingretriever",
             "pipeline-components/retrievers/cogneeretriever",
             "pipeline-components/retrievers/mem0memoryretriever",
             "pipeline-components/retrievers/mongodbatlasembeddingretriever",
             "pipeline-components/retrievers/mongodbatlasfulltextretriever",
+            "pipeline-components/retrievers/mssharepointretriever",
             "pipeline-components/retrievers/multiqueryembeddingretriever",
             "pipeline-components/retrievers/multiquerytextretriever",
             "pipeline-components/retrievers/multiretriever",
