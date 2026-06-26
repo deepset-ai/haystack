@@ -45,39 +45,139 @@ Before calling `LinkContentFetcher`, an application should therefore validate an
 - Block localhost, link-local, and private-network destinations
 - Consider using an outbound proxy or network-level egress restrictions in production
 
-For example, an application could block private, loopback, link-local, reserved IPs, and custom IP ranges using the standard library's `ipaddress` module:
+We recommend defence in depth: validate the URL up front, re-check the resolved IP at the transport layer to defeat DNS rebinding, and restrict egress at the network layer.
+
+### 1. Validate URLs before the fetch
+
+The URL string itself can be screened with the standard library's `ipaddress` module. This rejects raw-IP URLs that point at private, loopback, link-local, or reserved ranges, and lets the application apply a domain allowlist for hostname URLs.
 
 ```python
 import ipaddress
 from urllib.parse import urlparse
 
-
-PRIVATE_RANGES = (
-    ipaddress.ip_network("127.0.0.0/8"),
-    ipaddress.ip_network("10.0.0.0/8"),
-    ipaddress.ip_network("172.16.0.0/12"),
-    ipaddress.ip_network("192.168.0.0/16"),
-    ipaddress.ip_network("169.254.0.0/16"),
-)
+ALLOWED_DOMAINS = {"haystack.deepset.ai", "docs.haystack.deepset.ai"}
 
 
 def is_unsafe_url(url: str) -> bool:
     parsed = urlparse(url)
     if parsed.scheme != "https" or not parsed.hostname:
         return True
+
+    hostname = parsed.hostname.lower()
+
+    # Raw-IP URL: reject anything in a private/loopback/link-local/reserved range.
     try:
-        ip = ipaddress.ip_address(parsed.hostname)
+        ip = ipaddress.ip_address(hostname)
     except ValueError:
-        # Hostname (not a raw IP). Apply your own domain allowlist policy here. Filter out "LOCALHOST" etc.
-        return False
+        # Hostname URL: apply your domain allowlist.
+        # Explicitly reject 'localhost' (and its variants) because it resolves
+        # locally without ever appearing as a raw IP.
+        if hostname in {"localhost", "localhost.localdomain", "ip6-localhost"}:
+            return True
+        return hostname not in ALLOWED_DOMAINS
+
     return (
         ip.is_private
         or ip.is_loopback
         or ip.is_link_local
         or ip.is_reserved
-        or any(ip in net for net in PRIVATE_RANGES)
+        or ip.is_multicast
+        or ip.is_unspecified
     )
 ```
+
+### 2. Re-check the resolved IP at the transport layer
+
+A hostname-based allowlist alone is not enough: an attacker-controlled DNS record can resolve a permitted hostname to a private address (DNS rebinding), or rotate the answer between the validation lookup and the actual fetch. The fix is to inspect the IP that `httpx` is about to connect to and reject the connection if it lands in a forbidden range.
+
+`LinkContentFetcher` accepts an `httpx_client` argument (or `client_kwargs` for the default client), so an application can hand it a client with a hardened transport:
+
+```python
+import ipaddress
+import socket
+
+import httpx
+from haystack.components.fetchers import LinkContentFetcher
+
+
+class NoPrivateIPTransport(httpx.HTTPTransport):
+    """httpx transport that refuses to connect to private, loopback,
+    link-local, reserved, multicast, or unspecified IPs."""
+
+    def handle_request(self, request: httpx.Request) -> httpx.Response:
+        host = request.url.host
+        try:
+            # Resolve the hostname here, not in the kernel, so we can
+            # inspect every answer the resolver returns.
+            infos = socket.getaddrinfo(host, request.url.port)
+        except socket.gaierror as exc:
+            raise httpx.ConnectError(f"DNS lookup failed for {host}") from exc
+
+        for info in infos:
+            ip = ipaddress.ip_address(info[4][0])
+            if (
+                ip.is_private
+                or ip.is_loopback
+                or ip.is_link_local
+                or ip.is_reserved
+                or ip.is_multicast
+                or ip.is_unspecified
+            ):
+                raise httpx.ConnectError(
+                    f"Refusing to connect to forbidden address {ip} for host {host}"
+                )
+
+        return super().handle_request(request)
+
+
+fetcher = LinkContentFetcher(
+    client_kwargs={
+        "transport": NoPrivateIPTransport(),
+        "follow_redirects": False,  # also re-validate each redirect target
+    }
+)
+```
+
+Disabling `follow_redirects` (the default is `True`) closes another common SSRF pattern where an allowlisted host returns a 302 to an internal address. If redirects are needed, follow them manually and run each `Location` through `is_unsafe_url`.
+
+### 3. Enforce egress restrictions at the network layer
+
+Application-level checks should not be the only line of defence. Even with hardened code, a future component, a vulnerable dependency, or a misconfigured deployment can still attempt outbound requests to internal addresses. The most reliable mitigation is to run Haystack in an environment where those requests cannot leave the pod or container at all.
+
+**Kubernetes — `NetworkPolicy` denying private CIDRs except DNS:**
+
+```yaml
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: haystack-egress-restrict
+spec:
+  podSelector:
+    matchLabels:
+      app: haystack
+  policyTypes:
+    - Egress
+  egress:
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except:
+              - 10.0.0.0/8
+              - 172.16.0.0/12
+              - 192.168.0.0/16
+              - 169.254.0.0/16
+              - 127.0.0.0/8
+    - to:
+        - namespaceSelector: { matchLabels: { kubernetes.io/metadata.name: kube-system } }
+          podSelector: { matchLabels: { k8s-app: kube-dns } }
+      ports:
+        - { protocol: UDP, port: 53 }
+        - { protocol: TCP, port: 53 }
+```
+
+**AWS / Docker** — run the Haystack container with a security group / network whose default egress rules deny the VPC CIDR and the cloud metadata endpoint (`169.254.169.254`). Allow only the specific external hostnames the pipeline needs.
+
+For a deeper background on why URL validation at the framework layer is intentionally **not** provided, see the [Haystack security policy](https://github.com/deepset-ai/haystack/blob/main/SECURITY.md#ssrf-via-url-fetching-components-eg-linkcontentfetcher). The mitigations above are the configurations that policy expects the application and the network layer to provide.
 
 
 ## Usage
