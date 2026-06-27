@@ -83,6 +83,21 @@ class TestToolsetWrapper:
         assert add_tool in result
         assert multiply_tool in result
 
+    def test_wrapper_getitem_supports_negative_indices(self, add_tool, multiply_tool):
+        """Test that _ToolsetWrapper.__getitem__ behaves like a list, including negative indices."""
+        toolset1 = Toolset([add_tool])
+        toolset2 = Toolset([multiply_tool])
+
+        result = toolset1 + toolset2
+
+        assert result[0] is add_tool
+        assert result[1] is multiply_tool
+        assert result[-1] is multiply_tool
+        assert result[-2] is add_tool
+
+        with pytest.raises(IndexError):
+            _ = result[2]
+
     def test_wrapper_with_agent(self, add_tool, multiply_tool):
         """Test that _ToolsetWrapper works with Agent."""
 
