@@ -566,6 +566,12 @@ document_matches_filter_raises_error_data = [
     pytest.param({"operator": "==", "value": "test"}, id="Missing condition field key"),
     pytest.param({"field": "meta.name", "value": "test"}, id="Missing condition operator key"),
     pytest.param({"field": "meta.name", "operator": "=="}, id="Missing condition value key"),
+    # Unknown operators
+    pytest.param({"field": "meta.page", "operator": "gt", "value": 10}, id="Unknown comparison operator"),
+    pytest.param(
+        {"operator": "XOR", "conditions": [{"field": "meta.page", "operator": "==", "value": 10}]},
+        id="Unknown logical operator",
+    ),
 ]
 
 
