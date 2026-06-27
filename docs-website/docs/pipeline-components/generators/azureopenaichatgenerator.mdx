@@ -59,6 +59,12 @@ Then, the component needs a list of `ChatMessage` objects to operate. `ChatMessa
 
 You can pass any chat completion parameters that are valid for the `openai.ChatCompletion.create` method directly to `AzureOpenAIChatGenerator` using the `generation_kwargs` parameter, both at initialization and to `run()` method. For more details on the supported parameters, refer to the [Azure documentation](https://learn.microsoft.com/en-us/azure/ai-services/openai/reference).
 
+:::tip[Production cost control]
+
+For production workloads, set a completion token limit such as `generation_kwargs={"max_completion_tokens": 512}`. This bounds response length, latency, and API spend. If you use this generator inside an agent or retrying pipeline, the limit applies to each model call, so choose a value that fits your expected answer size.
+
+:::
+
 You can also specify a model for this component through the `azure_deployment` init parameter.
 
 ### Structured Output

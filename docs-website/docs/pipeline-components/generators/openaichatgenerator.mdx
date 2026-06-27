@@ -37,6 +37,12 @@ Then, the component needs a list of `ChatMessage` objects to operate. `ChatMessa
 
 You can pass any chat completion parameters valid for the `openai.ChatCompletion.create` method directly to `OpenAIChatGenerator` using the `generation_kwargs` parameter, both at initialization and to `run()` method. For more details on the parameters supported by the OpenAI API, refer to the [OpenAI documentation](https://platform.openai.com/docs/api-reference/chat).
 
+:::tip[Production cost control]
+
+For production workloads, set a completion token limit such as `generation_kwargs={"max_completion_tokens": 512}`. This bounds response length, latency, and API spend. If you use this generator inside an agent or retrying pipeline, the limit applies to each model call, so choose a value that fits your expected answer size.
+
+:::
+
 `OpenAIChatGenerator` can support custom deployments of your OpenAI models through the `api_base_url` init parameter.
 
 ### Structured Output

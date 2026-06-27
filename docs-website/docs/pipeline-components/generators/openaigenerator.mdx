@@ -35,6 +35,12 @@ generator = OpenAIGenerator(api_key=Secret.from_token("<your-api-key>"), model="
 
 Then, the component needs a prompt to operate, but you can pass any text generation parameters valid for the `openai.ChatCompletion.create` method directly to this component using the `generation_kwargs` parameter, both at initialization and to `run()` method. For more details on the parameters supported by the OpenAI API, refer to the [OpenAI documentation](https://platform.openai.com/docs/api-reference/chat).
 
+:::tip[Production cost control]
+
+For production workloads, set a completion token limit such as `generation_kwargs={"max_completion_tokens": 512}`. This bounds response length, latency, and API spend. If you use this generator inside a retrying pipeline, the limit applies to each model call, so choose a value that fits your expected answer size.
+
+:::
+
 `OpenAIGenerator` supports custom deployments of your OpenAI models through the `api_base_url` init parameter.
 
 ### Streaming
