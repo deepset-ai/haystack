@@ -48,6 +48,10 @@ def _not(document: Document | ByteStream, conditions: list[dict[str, Any]]) -> b
 LOGICAL_OPERATORS = {"NOT": _not, "OR": _or, "AND": _and}
 
 
+def _valid_operators_message(operators: dict[str, Any]) -> str:
+    return ", ".join(f"'{operator}'" for operator in sorted(operators))
+
+
 def _equal(value: Any, filter_value: Any) -> bool:
     return value == filter_value
 
@@ -173,6 +177,12 @@ def _logic_condition(condition: dict[str, Any], document: Document | ByteStream)
         msg = f"'conditions' key missing in {condition}"
         raise FilterError(msg)
     operator: str = condition["operator"]
+    if operator not in LOGICAL_OPERATORS:
+        msg = (
+            f"Unsupported logical operator '{operator}'. "
+            f"Valid operators are: {_valid_operators_message(LOGICAL_OPERATORS)}."
+        )
+        raise FilterError(msg)
     conditions: list[dict[str, Any]] = condition["conditions"]
     return LOGICAL_OPERATORS[operator](document=document, conditions=conditions)
 
@@ -214,5 +224,11 @@ def _comparison_condition(condition: dict[str, Any], document: Document | ByteSt
     else:
         document_value = getattr(document, field)
     operator: str = condition["operator"]
+    if operator not in COMPARISON_OPERATORS:
+        msg = (
+            f"Unsupported comparison operator '{operator}'. "
+            f"Valid operators are: {_valid_operators_message(COMPARISON_OPERATORS)}."
+        )
+        raise FilterError(msg)
     filter_value: Any = condition["value"]
     return COMPARISON_OPERATORS[operator](filter_value=filter_value, value=document_value)

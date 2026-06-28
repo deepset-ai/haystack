@@ -574,3 +574,32 @@ def test_document_matches_filter_raises_error(filters):
     with pytest.raises(FilterError):
         document = Document(meta={"page": 10})
         document_matches_filter(filters, document)
+
+
+@pytest.mark.parametrize(
+    "filters, error_message, expected_valid_operators",
+    [
+        pytest.param(
+            {"field": "meta.page", "operator": "gt", "value": 1},
+            "Unsupported comparison operator 'gt'",
+            ["'=='", "'!='", "'>'", "'>='", "'<'", "'<='", "'in'", "'not in'"],
+            id="unknown comparison operator",
+        ),
+        pytest.param(
+            {"operator": "XOR", "conditions": [{"field": "meta.page", "operator": "==", "value": 1}]},
+            "Unsupported logical operator 'XOR'",
+            ["'AND'", "'OR'", "'NOT'"],
+            id="unknown logical operator",
+        ),
+    ],
+)
+def test_document_matches_filter_raises_helpful_error_for_unknown_operator(
+    filters, error_message, expected_valid_operators
+):
+    with pytest.raises(FilterError) as exc_info:
+        document_matches_filter(filters, Document(meta={"page": 10}))
+
+    message = str(exc_info.value)
+    assert error_message in message
+    for operator in expected_valid_operators:
+        assert operator in message
