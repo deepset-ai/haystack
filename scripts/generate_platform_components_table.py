@@ -1,9 +1,6 @@
-#!/usr/bin/env python3
 # SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
 #
 # SPDX-License-Identifier: Apache-2.0
-from __future__ import annotations
-
 """
 Generate a Haystack Enterprise Platform Components MDX table.
 
@@ -12,6 +9,8 @@ decorated with @component, cross-references them against the platform component
 schema (schema-full-component-list.json from deepset-ai/haystack-runtime), and
 writes a formatted MDX page.
 """
+
+from __future__ import annotations
 
 import argparse
 import ast
@@ -114,17 +113,12 @@ _HAYSTACK_DOCS_BASE = "https://docs.haystack.deepset.ai"
 _HAYSTACK_DOCS_PREFIX = "/docs"  # Docusaurus routeBasePath
 
 # Namespaces that must never appear in public documentation
-_EXCLUDED_NAMESPACES = (
-    "deepset_cloud_custom_nodes.",
-    "studio_internal.",
-    "haystack_experimental.",
-    "deepl_haystack.",
-)
+_EXCLUDED_NAMESPACES = ("deepset_cloud_custom_nodes.", "studio_internal.", "haystack_experimental.", "deepl_haystack.")
 
 # Individual class names to exclude regardless of namespace
 _EXCLUDED_CLASS_NAMES = {
     "SuperComponent",  # internal base class, not a user-facing component
-    "LLM",            # alias not present in Haystack OS
+    "LLM",  # alias not present in Haystack OS
 }
 
 # Sets allow O(1) membership tests
@@ -136,6 +130,7 @@ _COMPONENT_DECORATORS: set[str] = {"component", "super_component"}
 
 
 def infer_type(family: str | None, fqn: str) -> str:
+    """Return a human-readable type string from the schema family or FQN path segments."""
     if family and family in TYPE_MAP:
         return TYPE_MAP[family]
     return next((TYPE_MAP[seg] for seg in fqn.split(".") if seg in TYPE_MAP), "Component")
@@ -171,7 +166,8 @@ def _parse_frontmatter(text: str) -> dict[str, str]:
 
 
 def scan_docs_links(docs_src: Path) -> dict[str, str]:
-    """Scan docs-website MDX files and return ``{component_title: absolute_url}``.
+    """
+    Scan docs-website MDX files and return ``{component_title: absolute_url}``.
 
     Reads only the first 1 KB of each file — enough to cover the frontmatter —
     avoiding the cost of loading large MDX files in full.
@@ -255,7 +251,7 @@ def load_platform_components(schema_path: Path) -> dict[str, dict]:
     for fqn, defn in all_defs.items():
         if any(fqn.startswith(ns) for ns in _EXCLUDED_NAMESPACES):
             continue
-        if not (fqn.startswith("haystack.") or fqn.startswith("haystack_integrations.")):
+        if not fqn.startswith(("haystack.", "haystack_integrations.")):
             continue
         if fqn.split(".")[-1] in _EXCLUDED_CLASS_NAMES:
             continue
@@ -268,9 +264,7 @@ def load_platform_components(schema_path: Path) -> dict[str, dict]:
 
 
 def build_mdx(
-    platform_components: dict[str, dict],
-    source_components: set[str],
-    docs_link_map: dict[str, str] | None = None,
+    platform_components: dict[str, dict], source_components: set[str], docs_link_map: dict[str, str] | None = None
 ) -> str:
     """Render the MDX page content."""
     _link_map = docs_link_map or {}
@@ -309,7 +303,8 @@ def build_mdx(
         'title: "Haystack Enterprise Components"',
         "id: platform-components",
         'slug: "/platform-components"',
-        'description: "A complete list of Haystack components available on the Haystack Enterprise Platform, grouped by integration partner."',
+        'description: "A complete list of Haystack components available on the Haystack Enterprise Platform,'
+        ' grouped by integration partner."',
         "---",
         "",
         "# Haystack Enterprise Components",
@@ -333,20 +328,35 @@ def build_mdx(
 
 
 def main(argv: list[str] | None = None) -> None:
-    parser = argparse.ArgumentParser(
-        description="Generate the Haystack Enterprise Platform Components MDX table."
+    """Entry point: parse arguments, run the scan, and write the MDX file."""
+    parser = argparse.ArgumentParser(description="Generate the Haystack Enterprise Platform Components MDX table.")
+    parser.add_argument(
+        "--haystack-src", required=True, type=Path, metavar="PATH", help="Root of the deepset-ai/haystack checkout."
     )
-    parser.add_argument("--haystack-src", required=True, type=Path, metavar="PATH",
-                        help="Root of the deepset-ai/haystack checkout.")
-    parser.add_argument("--integrations-src", required=True, type=Path, metavar="PATH",
-                        help="Root of the deepset-ai/haystack-core-integrations checkout.")
-    parser.add_argument("--schema", required=True, type=Path, metavar="PATH",
-                        help="Path to schema-full-component-list.json from deepset-ai/haystack-runtime.")
-    parser.add_argument("--output", type=Path, metavar="PATH",
-                        default=Path("docs-website/docs/overview/platform-components.mdx"),
-                        help="Destination .mdx file path (default: docs-website/docs/overview/platform-components.mdx).")
-    parser.add_argument("--dry-run", action="store_true",
-                        help="Print generated content to stdout instead of writing the file.")
+    parser.add_argument(
+        "--integrations-src",
+        required=True,
+        type=Path,
+        metavar="PATH",
+        help="Root of the deepset-ai/haystack-core-integrations checkout.",
+    )
+    parser.add_argument(
+        "--schema",
+        required=True,
+        type=Path,
+        metavar="PATH",
+        help="Path to schema JSON file in the platform repo.",
+    )
+    parser.add_argument(
+        "--output",
+        type=Path,
+        metavar="PATH",
+        default=Path("docs-website/docs/overview/platform-components.mdx"),
+        help="Destination .mdx file path (default: docs-website/docs/overview/platform-components.mdx).",
+    )
+    parser.add_argument(
+        "--dry-run", action="store_true", help="Print generated content to stdout instead of writing the file."
+    )
 
     args = parser.parse_args(argv)
 
