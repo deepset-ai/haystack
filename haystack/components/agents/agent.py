@@ -67,6 +67,11 @@ _INTERNAL_STATE_KEYS: dict[str, dict[str, Any]] = {
     "tool_call_counts": {"type": dict[str, int], "handler": replace_values},
 }
 
+# State keys hooks use to control the run loop. Like internal keys they are reserved and cannot be redefined by users,
+# but unlike internal keys they are transient loop-control signals and are NOT exposed as Agent inputs or outputs.
+# `continue_run`: set by an `on_exit` hook to keep the Agent running instead of stopping (re-read each exit attempt).
+_CONTROL_STATE_KEYS: dict[str, dict[str, Any]] = {"continue_run": {"type": bool, "handler": replace_values}}
+
 
 def _accumulate_usage(current: Any, new: Any) -> Any:
     """
@@ -135,6 +140,18 @@ def _get_run_method_params(instance: "Agent") -> set[str]:
     """Derive the parameter names of the Agent.run method via introspection."""
     sig = inspect.signature(instance.run)
     return {name for name, p in sig.parameters.items() if p.kind != inspect.Parameter.VAR_KEYWORD}
+
+
+def _public_outputs(state: State) -> dict[str, Any]:
+    """Return the State data excluding transient loop-control keys (the Agent's user-facing outputs)."""
+    return {key: value for key, value in state.data.items() if key not in _CONTROL_STATE_KEYS}
+
+
+def _consume_continue_run(state: State) -> bool:
+    """Return the `continue_run` control flag and reset it so it does not carry over to the next exit attempt."""
+    should_continue = state.get("continue_run")
+    state.set("continue_run", False)
+    return should_continue
 
 
 def _is_text_exit(messages: list[ChatMessage]) -> bool:
@@ -443,6 +460,7 @@ class Agent:
     def require_save(state: State) -> None:
         if state.get("tool_call_counts", {}).get("save_result", 0) == 0:
             state.set("messages", [ChatMessage.from_system("Call `save_result` before finishing.")])
+            state.set("continue_run", True)  # keep the Agent running instead of stopping
 
 
     agent = Agent(
@@ -509,9 +527,10 @@ class Agent:
             points are "before_llm" (before each chat-generator call), "before_tool" (after the model requests tool
             calls, before they run) and "on_exit" (when the Agent is about to stop). Each hook receives the live
             `State` and influences the run by mutating it in place; hooks for a hook point run in list order. An
-            "on_exit" hook can keep the Agent running by appending a message that is no longer a valid exit (the exit
-            condition is re-evaluated after the hooks run). Note that "on_exit" hooks run when the Agent stops on an
-            exit condition, but not when it stops because `max_agent_steps` is reached.
+            "on_exit" hook can keep the Agent running by setting the `continue_run` control flag
+            (`state.set("continue_run", True)`), usually alongside a message telling the model what to do next. Note
+            that "on_exit" hooks run when the Agent stops on an exit condition, but not when it stops because
+            `max_agent_steps` is reached.
         :raises TypeError: If the chat_generator does not support tools parameter in its run method.
         :raises ValueError: If any `user_prompt` variable overlaps with the `state_schema` or `run` method parameters,
             or if a hook is registered under an unknown hook point.
@@ -530,11 +549,12 @@ class Agent:
             exit_conditions = ["text"]
 
         if state_schema is not None:
-            reserved_used = sorted(set(state_schema) & _INTERNAL_STATE_KEYS.keys())
+            reserved_keys = _INTERNAL_STATE_KEYS.keys() | _CONTROL_STATE_KEYS.keys()
+            reserved_used = sorted(set(state_schema) & reserved_keys)
             if reserved_used:
                 raise ValueError(
                     f"state_schema keys {reserved_used} are reserved for Agent internal state and "
-                    f"cannot be redefined. Reserved keys: {sorted(_INTERNAL_STATE_KEYS)}."
+                    f"cannot be redefined. Reserved keys: {sorted(reserved_keys)}."
                 )
             _validate_schema(state_schema)
         _validate_prompt_message_blocks(user_prompt, system_prompt)
@@ -584,13 +604,16 @@ class Agent:
         self.state_schema = dict(self._state_schema)
         if self.state_schema.get("messages") is None:
             self.state_schema["messages"] = {"type": list[ChatMessage], "handler": merge_lists}
-        for key, config in _INTERNAL_STATE_KEYS.items():
+        for key, config in {**_INTERNAL_STATE_KEYS, **_CONTROL_STATE_KEYS}.items():
             self.state_schema[key] = dict(config)
 
         # --- Component I/O ---
         self._run_method_params = _get_run_method_params(self)
         output_types: dict[str, Any] = {"last_message": ChatMessage}
         for param, config in self.state_schema.items():
+            # Control keys are transient loop-control signals, not exposed as inputs or outputs.
+            if param in _CONTROL_STATE_KEYS:
+                continue
             output_types[param] = config["type"]
             # Internal state keys are populated internally by the Agent itself and are not exposed as inputs
             if param not in self._run_method_params and param not in _INTERNAL_STATE_KEYS:
@@ -859,6 +882,7 @@ class Agent:
         state.set("step_count", 0)
         state.set("token_usage", {})
         state.set("tool_call_counts", {tool.name: 0 for tool in flat_tools})
+        state.set("continue_run", False)
 
         streaming_callback = select_streaming_callback(  # type: ignore[call-overload]
             init_callback=self.streaming_callback, runtime_callback=streaming_callback, requires_async=requires_async
@@ -981,12 +1005,12 @@ class Agent:
                     "Agent reached maximum agent steps of {max_agent_steps}, stopping.",
                     max_agent_steps=self.max_agent_steps,
                 )
-            span.set_content_tag("haystack.agent.output", exe_context.state.data)
+            result = _public_outputs(exe_context.state)
+            if msgs := result.get("messages"):
+                result["last_message"] = msgs[-1]
+            span.set_content_tag("haystack.agent.output", result)
             span.set_tag("haystack.agent.steps_taken", exe_context.counter)
 
-        result = {**exe_context.state.data}
-        if msgs := result.get("messages"):
-            result["last_message"] = msgs[-1]
         return result
 
     async def run_async(
@@ -1055,12 +1079,12 @@ class Agent:
                     "Agent reached maximum agent steps of {max_agent_steps}, stopping.",
                     max_agent_steps=self.max_agent_steps,
                 )
-            span.set_content_tag("haystack.agent.output", exe_context.state.data)
+            result = _public_outputs(exe_context.state)
+            if msgs := result.get("messages"):
+                result["last_message"] = msgs[-1]
+            span.set_content_tag("haystack.agent.output", result)
             span.set_tag("haystack.agent.steps_taken", exe_context.counter)
 
-        result = {**exe_context.state.data}
-        if msgs := result.get("messages"):
-            result["last_message"] = msgs[-1]
         return result
 
     def _run_step(self, exe_context: _ExecutionContext, agent_span: tracing.Span) -> bool:
@@ -1237,39 +1261,22 @@ class Agent:
         # Only return True if at least one exit condition was matched AND none had errors
         return bool(matched_exit_conditions) and not has_errors
 
-    def _messages_trigger_exit(self, messages: list[ChatMessage]) -> bool:
-        """
-        Return whether a batch of messages constitutes a valid exit.
-
-        Runs the same checks the step uses: a plain assistant text reply, or a successful call to a tool listed in
-        `exit_conditions`. Scoped to the given batch (not the whole history) so an exit-condition tool call from an
-        earlier step is not re-matched.
-        """
-        if _is_text_exit(messages):
-            return True
-        return self.exit_conditions != ["text"] and self._check_exit_conditions(
-            llm_messages=messages, tool_messages=messages
-        )
-
     def _continue_after_exit_hooks(self, exe_context: _ExecutionContext) -> bool:
         """
-        Run `on_exit` hooks and return whether the loop should keep going (a hook cancelled the exit).
+        Run `on_exit` hooks and return whether the loop should keep going.
 
-        Hooks that append nothing leave the original exit decision intact (the loop stops). Otherwise the appended
-        batch is run through the full exit check, so the Agent keeps going unless the batch is itself a valid exit.
+        A hook keeps the Agent running by setting the `continue_run` control flag (`state.set("continue_run", True)`),
+        usually alongside a message telling the model what to do next. The flag is consumed on each exit attempt and
+        the loop stays bounded by `max_agent_steps`.
         """
         if not self.hooks.get(ON_EXIT):
             return False
-        count_before = len(exe_context.state.data.get("messages") or [])
         _run_hooks(self.hooks, ON_EXIT, exe_context.state)
-        new_messages = (exe_context.state.data.get("messages") or [])[count_before:]
-        return bool(new_messages) and not self._messages_trigger_exit(new_messages)
+        return _consume_continue_run(exe_context.state)
 
     async def _continue_after_exit_hooks_async(self, exe_context: _ExecutionContext) -> bool:
         """Async version of `_continue_after_exit_hooks`."""
         if not self.hooks.get(ON_EXIT):
             return False
-        count_before = len(exe_context.state.data.get("messages") or [])
         await _run_hooks_async(self.hooks, ON_EXIT, exe_context.state)
-        new_messages = (exe_context.state.data.get("messages") or [])[count_before:]
-        return bool(new_messages) and not self._messages_trigger_exit(new_messages)
+        return _consume_continue_run(exe_context.state)

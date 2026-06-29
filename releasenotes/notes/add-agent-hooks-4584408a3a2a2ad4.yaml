@@ -1,4 +1,9 @@
 ---
+upgrade:
+  - |
+    ``continue_run`` is now a reserved key in ``Agent.state_schema`` (set by an ``on_exit`` hook to keep the Agent
+    running). Passing it via the ``state_schema`` argument now raises ``ValueError``. Rename any conflicting state
+    key (e.g. ``my_continue_run``) to migrate.
 features:
   - |
     Added hooks to the ``Agent``. Pass ``hooks`` as a dictionary mapping a hook point to a list of
@@ -9,8 +14,9 @@ features:
 
     A hook is any object with a ``run(state)`` method (optionally ``run_async(state)``); use the ``@hook`` decorator
     to build one from a function. This enables patterns such as building run-time system context, retrieving memories,
-    and requiring a tool to be called before finishing. An ``on_exit`` hook can keep the Agent running by appending a
-    message that is no longer a valid exit, since the exit condition is re-evaluated after the hooks run.
+    and requiring a tool to be called before finishing. An ``on_exit`` hook can keep the Agent running by setting the
+    ``continue_run`` control flag (``state.set("continue_run", True)``), usually alongside a message telling the model
+    what to do next.
 
     The example below registers one hook at each placement to show what each can do:
 
@@ -55,6 +61,7 @@ features:
             # on_exit: keep going until the agent has actually searched.
             if state.get("tool_call_counts", {}).get("search", 0) == 0:
                 state.set("messages", [ChatMessage.from_system("Search before answering.")])
+                state.set("continue_run", True)
 
 
         agent = Agent(
@@ -95,6 +102,7 @@ features:
                 )["replies"][0].text or ""
                 if "FAIL" in verdict.upper():
                     state.set("messages", [ChatMessage.from_user("Your answer was incomplete. Please improve it.")])
+                    state.set("continue_run", True)
 
 
         agent = Agent(chat_generator=OpenAIChatGenerator(model="gpt-5.4-nano"), hooks={"on_exit": [GradeFinalAnswer()]})

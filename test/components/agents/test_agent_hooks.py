@@ -70,11 +70,13 @@ def record_tool_calls(state: State) -> None:
 def require_save(state: State) -> None:
     if state.get("tool_call_counts", {}).get("save", 0) == 0:
         state.set("messages", [ChatMessage.from_system("You must call save before finishing.")])
+        state.set("continue_run", True)
 
 
 @hook
 def always_continue(state: State) -> None:
     state.set("messages", [ChatMessage.from_system("keep going")])
+    state.set("continue_run", True)
 
 
 @hook
@@ -82,6 +84,7 @@ def critique(state: State) -> None:
     # Push back on the first final answer to force one more loop.
     if state.get("tool_call_counts", {}).get("final_answer", 0) < 2:
         state.set("messages", [ChatMessage.from_user("Please expand.")])
+        state.set("continue_run", True)
 
 
 class LifecycleHook:
@@ -130,6 +133,16 @@ class TestAgentHooksValidation:
 
         with pytest.raises(TypeError, match="@hook decorator"):
             Agent(chat_generator=MockChatGenerator(), hooks={"before_llm": [my_hook]})
+
+    def test_continue_run_is_a_reserved_state_schema_key(self):
+        with pytest.raises(ValueError):
+            Agent(chat_generator=MockChatGenerator(), state_schema={"continue_run": {"type": bool}})
+
+    def test_continue_run_is_not_exposed_as_output(self):
+        agent = _agent(MockChatGenerator())
+        agent.chat_generator.run = MagicMock(return_value={"replies": [ChatMessage.from_assistant("done")]})
+        result = agent.run(messages=[ChatMessage.from_user("hi")])
+        assert "continue_run" not in result
 
 
 class TestBeforeLlmHook:
@@ -274,6 +287,7 @@ class TestAgentHooksAsync:
         async def require_save_async(state: State) -> None:
             if state.get("tool_call_counts", {}).get("save", 0) == 0:
                 state.set("messages", [ChatMessage.from_system("call save first")])
+                state.set("continue_run", True)
 
         agent = _agent(MockChatGenerator(), tools=[save], hooks={"on_exit": [hook(require_save_async)]})
         agent.chat_generator.run_async = AsyncMock(
