@@ -90,6 +90,9 @@ class SearchableToolset(Toolset):
                 f"Invalid catalog type: {type(catalog)}. Expected Tool, Toolset, or list of Tools and/or Toolsets."
             )
 
+        if top_k < 1:
+            raise ValueError(f"top_k must be greater than 0. Received: {top_k}")
+
         if search_tool_parameters_description is not None:
             invalid_keys = set(search_tool_parameters_description.keys()) - self._VALID_SEARCH_TOOL_PARAMS
             if invalid_keys:
@@ -196,6 +199,9 @@ class SearchableToolset(Toolset):
             tool names; they become available immediately.
             """
             num_results = k if k is not None else self._top_k
+
+            if num_results < 1:
+                return f"Number of results `k` must be greater than 0. Received: {num_results}."
 
             if not tool_keywords.strip():
                 return (

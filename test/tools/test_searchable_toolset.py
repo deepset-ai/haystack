@@ -113,6 +113,11 @@ class TestSearchableToolset:
                 )
             )
 
+    @pytest.mark.parametrize("top_k", [0, -1])
+    def test_init_with_non_positive_top_k(self, top_k):
+        with pytest.raises(ValueError, match="top_k must be greater than 0"):
+            SearchableToolset(catalog=[], top_k=top_k)
+
     def test_not_implemented_methods(self):
         toolset = SearchableToolset(catalog=[])
         with pytest.raises(NotImplementedError):
@@ -254,6 +259,18 @@ class TestSearchableToolsetBM25Mode:
 
         # Should find exactly 1 tool
         assert "Found and loaded 1 tool(s):" in result
+
+    @pytest.mark.parametrize("k", [0, -1])
+    def test_search_tools_rejects_non_positive_k(self, large_catalog, k):
+        """Test that search_tools rejects non-positive result limits."""
+        toolset = SearchableToolset(catalog=large_catalog, top_k=2)
+        toolset.warm_up()
+        assert toolset._bootstrap_tool is not None
+
+        result = toolset._bootstrap_tool.invoke(tool_keywords="add numbers together", k=k)
+
+        assert f"Number of results `k` must be greater than 0. Received: {k}." in result
+        assert len(toolset._discovered_tools) == 0
 
     def test_search_tools_no_results(self, large_catalog):
         """Test search_tools with no matching results."""
