@@ -341,11 +341,7 @@ def main(argv: list[str] | None = None) -> None:
         help="Root of the deepset-ai/haystack-core-integrations checkout.",
     )
     parser.add_argument(
-        "--schema",
-        required=True,
-        type=Path,
-        metavar="PATH",
-        help="Path to schema JSON file in the platform repo.",
+        "--schema", required=True, type=Path, metavar="PATH", help="Path to schema JSON file in the platform repo."
     )
     parser.add_argument(
         "--output",
