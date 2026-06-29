@@ -410,7 +410,7 @@ and `aws_region_name`.
   Can be used to tune [retry behavior](https://docs.aws.amazon.com/boto3/latest/guide/retries.html)
   and other low-level settings like timeouts and connection management.
 - **kwargs** (<code>Any</code>) – Additional parameters to pass for model inference. For example, `input_type` and `truncate` for
-  Cohere models.
+  Cohere models, or `dimensions` and `normalize` for Amazon Titan Text Embeddings V2.
 
 **Raises:**
 
@@ -694,7 +694,7 @@ and `aws_region_name`.
   Can be used to tune [retry behavior](https://docs.aws.amazon.com/boto3/latest/guide/retries.html)
   and other low-level settings like timeouts and connection management.
 - **kwargs** (<code>Any</code>) – Additional parameters to pass for model inference. For example, `input_type` and `truncate` for
-  Cohere models.
+  Cohere models, or `dimensions` and `normalize` for Amazon Titan Text Embeddings V2.
 
 **Raises:**
 
@@ -1192,7 +1192,8 @@ __init__(
     tools: ToolsType | None = None,
     *,
     guardrail_config: dict[str, str] | None = None,
-    tools_cachepoint_config: dict[str, str] | None = None
+    tools_cachepoint_config: dict[str, str] | None = None,
+    system_cachepoint_config: dict[str, str] | None = None
 ) -> None
 ```
 
@@ -1286,6 +1287,11 @@ and `aws_region_name`.
   for more information.
 
 - **tools_cachepoint_config** (<code>dict\[str, str\] | None</code>) – Optional configuration to use prompt caching for tools.
+  The dictionary must match the
+  [CachePointBlock schema](https://docs.aws.amazon.com/bedrock/latest/APIReference/API_runtime_CachePointBlock.html).
+  Example: `{"type": "default", "ttl": "5m"}`
+
+- **system_cachepoint_config** (<code>dict\[str, str\] | None</code>) – Optional configuration to use prompt caching for system messages.
   The dictionary must match the
   [CachePointBlock schema](https://docs.aws.amazon.com/bedrock/latest/APIReference/API_runtime_CachePointBlock.html).
   Example: `{"type": "default", "ttl": "5m"}`

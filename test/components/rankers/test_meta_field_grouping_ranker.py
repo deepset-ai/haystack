@@ -132,6 +132,42 @@ class TestMetaFieldGroupingRanker:
         assert result["documents"][1].meta["group"] == "42"
         assert result["documents"][2].content == "Document without group"
 
+    def test_run_sort_docs_by_non_numeric_field_with_missing_values(self) -> None:
+        """
+        Test that sorting by a non-numeric metadata field does not raise an error when some documents are missing
+        that field. Documents missing the sort field are placed at the end of their group.
+        """
+        docs = [
+            Document(content="newest", meta={"group": "42", "date": "2023-03-01"}),
+            Document(content="missing date", meta={"group": "42"}),
+            Document(content="oldest", meta={"group": "42", "date": "2023-01-01"}),
+        ]
+        ranker = MetaFieldGroupingRanker(group_by="group", sort_docs_by="date")
+        result = ranker.run(documents=docs)
+        assert "documents" in result
+        assert len(result["documents"]) == 3
+        assert result["documents"][0].content == "oldest"
+        assert result["documents"][1].content == "newest"
+        assert result["documents"][2].content == "missing date"
+
+    def test_run_sort_docs_by_field_present_but_none(self) -> None:
+        """
+        Test that sorting by a metadata field works when the field is present but set to None for some documents.
+        Documents with a None value are treated like missing values and placed at the end of their group.
+        """
+        docs = [
+            Document(content="present", meta={"group": "42", "date": "2023-01-01"}),
+            Document(content="none value", meta={"group": "42", "date": None}),
+            Document(content="missing", meta={"group": "42"}),
+        ]
+        ranker = MetaFieldGroupingRanker(group_by="group", sort_docs_by="date")
+        result = ranker.run(documents=docs)
+        assert "documents" in result
+        assert len(result["documents"]) == 3
+        assert result["documents"][0].content == "present"
+        assert result["documents"][1].content == "none value"
+        assert result["documents"][2].content == "missing"
+
     def test_run_metadata_with_different_data_types(self) -> None:
         """
         Test the behavior of the MetaFieldGroupingRanker component when the metadata values have different data types.
