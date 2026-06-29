@@ -31,6 +31,7 @@ from haystack.dataclasses.chat_message import ChatRole, TextContent
 from haystack.dataclasses.streaming_chunk import StreamingChunk
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.tools import ComponentTool, Tool, tool
+from haystack.tools.tool_cache import ToolCache
 from haystack.tools.toolset import Toolset
 from haystack.tracing.logging_tracer import LoggingTracer
 from haystack.utils import Secret, serialize_callable
@@ -244,6 +245,7 @@ class TestAgent:
                             "outputs_to_string": None,
                             "inputs_from_state": None,
                             "outputs_to_state": None,
+                            "cacheable": False,
                         },
                     },
                     {
@@ -263,6 +265,7 @@ class TestAgent:
                             "outputs_to_string": None,
                             "inputs_from_state": None,
                             "outputs_to_state": None,
+                            "cacheable": False,
                         },
                     },
                 ],
@@ -326,6 +329,7 @@ class TestAgent:
                                     "outputs_to_string": None,
                                     "inputs_from_state": None,
                                     "outputs_to_state": None,
+                                    "cacheable": False,
                                 },
                             }
                         ]
@@ -395,6 +399,7 @@ class TestAgent:
                             "outputs_to_string": None,
                             "inputs_from_state": None,
                             "outputs_to_state": None,
+                            "cacheable": False,
                         },
                     },
                     {
@@ -414,6 +419,7 @@ class TestAgent:
                             "outputs_to_string": None,
                             "inputs_from_state": None,
                             "outputs_to_state": None,
+                            "cacheable": False,
                         },
                     },
                 ],
@@ -482,6 +488,7 @@ class TestAgent:
                                     "outputs_to_string": None,
                                     "inputs_from_state": None,
                                     "outputs_to_state": None,
+                                    "cacheable": False,
                                 },
                             }
                         ]
@@ -542,6 +549,7 @@ class TestAgent:
                             "outputs_to_string": None,
                             "inputs_from_state": None,
                             "outputs_to_state": None,
+                            "cacheable": False,
                         },
                     },
                     {
@@ -561,6 +569,7 @@ class TestAgent:
                             "outputs_to_string": None,
                             "inputs_from_state": None,
                             "outputs_to_state": None,
+                            "cacheable": False,
                         },
                     },
                 ],
@@ -791,6 +800,30 @@ class TestAgent:
         assert "last_message" in result
         assert isinstance(result["last_message"], ChatMessage)
         assert result["messages"][-1] == result["last_message"]
+
+    def test_run_with_tool_cache_includes_stats_in_output(self, monkeypatch, weather_tool):
+        monkeypatch.setenv("OPENAI_API_KEY", "fake-key")
+        generator = OpenAIChatGenerator()
+
+        weather_tool.cacheable = True
+        cache = ToolCache()
+        agent = Agent(chat_generator=generator, tools=[weather_tool], tool_cache=cache)
+
+        tool_call_reply = {
+            "replies": [
+                ChatMessage.from_assistant(
+                    tool_calls=[ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"})]
+                )
+            ]
+        }
+        text_exit_reply = {"replies": [ChatMessage.from_assistant("The weather is sunny.")]}
+        agent.chat_generator.run = MagicMock(side_effect=[tool_call_reply, text_exit_reply])
+
+        result = agent.run([ChatMessage.from_user("What's the weather in Berlin?")])
+
+        assert "tool_cache_stats" in result
+        assert isinstance(result["tool_cache_stats"], dict)
+        assert set(result["tool_cache_stats"].keys()) == {"hits", "misses", "calls_saved"}
 
     def test_does_not_exit_on_empty_assistant_message(self, monkeypatch, weather_tool):
         monkeypatch.setenv("OPENAI_API_KEY", "fake-key")
@@ -1181,11 +1214,11 @@ class TestAgentTracing:
             '{"messages": "list", "tools": "list"}',
             '{"messages": {"type": "list[haystack.dataclasses.chat_message.ChatMessage]", "senders": []}, "tools": {"type": "list[haystack.tools.tool.Tool] | haystack.tools.toolset.Toolset | None", "senders": []}}',  # noqa: E501
             '{"replies": {"type": "list[haystack.dataclasses.chat_message.ChatMessage]", "receivers": []}}',
-            '{"messages": [{"role": "user", "meta": {}, "name": null, "content": [{"text": "What\'s the weather in Paris?"}]}], "tools": [{"type": "haystack.tools.tool.Tool", "data": {"name": "weather_tool", "description": "Provides weather information for a given location.", "parameters": {"type": "object", "properties": {"location": {"type": "string"}}, "required": ["location"]}, "function": "test_agent.weather_function", "outputs_to_string": null, "inputs_from_state": null, "outputs_to_state": null}}]}',  # noqa: E501
+            '{"messages": [{"role": "user", "meta": {}, "name": null, "content": [{"text": "What\'s the weather in Paris?"}]}], "tools": [{"type": "haystack.tools.tool.Tool", "data": {"name": "weather_tool", "description": "Provides weather information for a given location.", "parameters": {"type": "object", "properties": {"location": {"type": "string"}}, "required": ["location"]}, "function": "test_agent.weather_function", "outputs_to_string": null, "inputs_from_state": null, "outputs_to_state": null, "cacheable": false}}]}',  # noqa: E501
             1,
             '{"replies": [{"role": "assistant", "meta": {}, "name": null, "content": [{"text": "Hello"}]}]}',
             100,
-            '[{"type": "haystack.tools.tool.Tool", "data": {"name": "weather_tool", "description": "Provides weather information for a given location.", "parameters": {"type": "object", "properties": {"location": {"type": "string"}}, "required": ["location"]}, "function": "test_agent.weather_function", "outputs_to_string": null, "inputs_from_state": null, "outputs_to_state": null}}]',  # noqa: E501
+            '[{"type": "haystack.tools.tool.Tool", "data": {"name": "weather_tool", "description": "Provides weather information for a given location.", "parameters": {"type": "object", "properties": {"location": {"type": "string"}}, "required": ["location"]}, "function": "test_agent.weather_function", "outputs_to_string": null, "inputs_from_state": null, "outputs_to_state": null, "cacheable": false}}]',  # noqa: E501
             '["text"]',
             '{"messages": {"type": "list[haystack.dataclasses.chat_message.ChatMessage]", "handler": "haystack.components.agents.state.state_utils.merge_lists"}}',  # noqa: E501
             '{"messages": [{"role": "user", "meta": {}, "name": null, "content": [{"text": "What\'s the weather in Paris?"}]}], "streaming_callback": null, "break_point": null, "snapshot": null}',  # noqa: E501
@@ -1243,11 +1276,11 @@ class TestAgentTracing:
             '{"messages": "list", "tools": "list"}',
             '{"messages": {"type": "list[haystack.dataclasses.chat_message.ChatMessage]", "senders": []}, "tools": {"type": "list[haystack.tools.tool.Tool] | haystack.tools.toolset.Toolset | None", "senders": []}}',  # noqa: E501
             '{"replies": {"type": "list[haystack.dataclasses.chat_message.ChatMessage]", "receivers": []}}',
-            '{"messages": [{"role": "user", "meta": {}, "name": null, "content": [{"text": "What\'s the weather in Paris?"}]}], "tools": [{"type": "haystack.tools.tool.Tool", "data": {"name": "weather_tool", "description": "Provides weather information for a given location.", "parameters": {"type": "object", "properties": {"location": {"type": "string"}}, "required": ["location"]}, "function": "test_agent.weather_function", "outputs_to_string": null, "inputs_from_state": null, "outputs_to_state": null}}]}',  # noqa: E501
+            '{"messages": [{"role": "user", "meta": {}, "name": null, "content": [{"text": "What\'s the weather in Paris?"}]}], "tools": [{"type": "haystack.tools.tool.Tool", "data": {"name": "weather_tool", "description": "Provides weather information for a given location.", "parameters": {"type": "object", "properties": {"location": {"type": "string"}}, "required": ["location"]}, "function": "test_agent.weather_function", "outputs_to_string": null, "inputs_from_state": null, "outputs_to_state": null, "cacheable": false}}]}',  # noqa: E501
             1,
             '{"replies": [{"role": "assistant", "meta": {}, "name": null, "content": [{"text": "Hello from run_async"}]}]}',  # noqa: E501
             100,
-            '[{"type": "haystack.tools.tool.Tool", "data": {"name": "weather_tool", "description": "Provides weather information for a given location.", "parameters": {"type": "object", "properties": {"location": {"type": "string"}}, "required": ["location"]}, "function": "test_agent.weather_function", "outputs_to_string": null, "inputs_from_state": null, "outputs_to_state": null}}]',  # noqa: E501
+            '[{"type": "haystack.tools.tool.Tool", "data": {"name": "weather_tool", "description": "Provides weather information for a given location.", "parameters": {"type": "object", "properties": {"location": {"type": "string"}}, "required": ["location"]}, "function": "test_agent.weather_function", "outputs_to_string": null, "inputs_from_state": null, "outputs_to_state": null, "cacheable": false}}]',  # noqa: E501
             '["text"]',
             '{"messages": {"type": "list[haystack.dataclasses.chat_message.ChatMessage]", "handler": "haystack.components.agents.state.state_utils.merge_lists"}}',  # noqa: E501
             '{"messages": [{"role": "user", "meta": {}, "name": null, "content": [{"text": "What\'s the weather in Paris?"}]}], "streaming_callback": null, "break_point": null, "snapshot": null}',  # noqa: E501
