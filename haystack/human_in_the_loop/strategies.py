@@ -6,9 +6,8 @@ from dataclasses import replace
 from typing import Any
 
 from haystack.components.agents.state.state import State
-from haystack.components.agents.tool_calling import _prepare_tool_args
 from haystack.core.serialization import default_from_dict, default_to_dict
-from haystack.dataclasses import ChatMessage, StreamingCallbackT, ToolCall
+from haystack.dataclasses import ChatMessage, ToolCall
 from haystack.human_in_the_loop import ToolExecutionDecision
 from haystack.human_in_the_loop.types import ConfirmationPolicy, ConfirmationStrategy, ConfirmationUI
 from haystack.tools import Tool
@@ -242,8 +241,6 @@ def _process_confirmation_strategies(
     messages_with_tool_calls: list[ChatMessage],
     tools: list[Tool],
     state: State,
-    streaming_callback: StreamingCallbackT | None = None,
-    enable_streaming_passthrough: bool = False,
     confirmation_strategy_context: dict[str, Any] | None = None,
 ) -> tuple[list[ChatMessage], list[ChatMessage]]:
     """
@@ -252,9 +249,7 @@ def _process_confirmation_strategies(
     :param confirmation_strategies: Mapping of tool names to their corresponding confirmation strategies
     :param messages_with_tool_calls: Chat messages containing tool calls
     :param tools: The available tools, used to resolve each tool call by name
-    :param state: The current runtime state, used to prepare tool arguments and read the chat history
-    :param streaming_callback: Optional streaming callback to pass through to tools that accept it
-    :param enable_streaming_passthrough: Whether to inject the streaming callback into tool arguments
+    :param state: The current runtime state, used to read the chat history
     :param confirmation_strategy_context: Optional request-scoped context passed to the strategies
     :returns:
         Tuple of modified messages with confirmed tool calls and updated chat history
@@ -268,9 +263,6 @@ def _process_confirmation_strategies(
         confirmation_strategies=confirmation_strategies,
         messages_with_tool_calls=messages_with_tool_calls,
         tools=tools,
-        state=state,
-        streaming_callback=streaming_callback,
-        enable_streaming_passthrough=enable_streaming_passthrough,
         confirmation_strategy_context=confirmation_strategy_context,
     )
 
@@ -295,8 +287,6 @@ async def _process_confirmation_strategies_async(
     messages_with_tool_calls: list[ChatMessage],
     tools: list[Tool],
     state: State,
-    streaming_callback: StreamingCallbackT | None = None,
-    enable_streaming_passthrough: bool = False,
     confirmation_strategy_context: dict[str, Any] | None = None,
 ) -> tuple[list[ChatMessage], list[ChatMessage]]:
     """
@@ -307,9 +297,7 @@ async def _process_confirmation_strategies_async(
     :param confirmation_strategies: Mapping of tool names to their corresponding confirmation strategies
     :param messages_with_tool_calls: Chat messages containing tool calls
     :param tools: The available tools, used to resolve each tool call by name
-    :param state: The current runtime state, used to prepare tool arguments and read the chat history
-    :param streaming_callback: Optional streaming callback to pass through to tools that accept it
-    :param enable_streaming_passthrough: Whether to inject the streaming callback into tool arguments
+    :param state: The current runtime state, used to read the chat history
     :param confirmation_strategy_context: Optional request-scoped context passed to the strategies
     :returns:
         Tuple of modified messages with confirmed tool calls and updated chat history
@@ -323,9 +311,6 @@ async def _process_confirmation_strategies_async(
         confirmation_strategies=confirmation_strategies,
         messages_with_tool_calls=messages_with_tool_calls,
         tools=tools,
-        state=state,
-        streaming_callback=streaming_callback,
-        enable_streaming_passthrough=enable_streaming_passthrough,
         confirmation_strategy_context=confirmation_strategy_context,
     )
 
@@ -348,9 +333,6 @@ def _run_confirmation_strategies(
     confirmation_strategies: dict[str | tuple[str, ...], ConfirmationStrategy],
     messages_with_tool_calls: list[ChatMessage],
     tools: list[Tool],
-    state: State,
-    streaming_callback: StreamingCallbackT | None = None,
-    enable_streaming_passthrough: bool = False,
     confirmation_strategy_context: dict[str, Any] | None = None,
 ) -> list[ToolExecutionDecision]:
     """
@@ -359,9 +341,6 @@ def _run_confirmation_strategies(
     :param confirmation_strategies: Mapping of tool names to their corresponding confirmation strategies
     :param messages_with_tool_calls: Messages containing tool calls to process
     :param tools: The available tools, used to resolve each tool call by name
-    :param state: The current runtime state, used to prepare tool arguments
-    :param streaming_callback: Optional streaming callback to pass through to tools that accept it
-    :param enable_streaming_passthrough: Whether to inject the streaming callback into tool arguments
     :param confirmation_strategy_context: Optional request-scoped context passed to the strategies
     :returns:
         A list of ToolExecutionDecision objects representing the decisions made for each tool call.
@@ -381,14 +360,10 @@ def _run_confirmation_strategies(
                 teds.append(_passthrough_tool_call(tool_call))
                 continue
 
-            # Prepare final tool args
-            final_args = _prepare_tool_args(
-                tool=tool_to_invoke,
-                tool_call_arguments=tool_call.arguments,
-                state=state,
-                streaming_callback=streaming_callback,
-                enable_streaming_passthrough=enable_streaming_passthrough,
-            )
+            # Confirm the model-requested arguments. State injection (inputs_from_state and State-typed parameters)
+            # is deliberately left to tool execution, which prepares args per batch so a tool observes State writes
+            # from tools that ran earlier in the same step. Baking injected args here would freeze stale values.
+            final_args = dict(tool_call.arguments)
 
             # Get tool execution decisions from confirmation strategies
             # If no confirmation strategy is defined for this tool, proceed with execution
@@ -418,9 +393,6 @@ async def _run_confirmation_strategies_async(
     confirmation_strategies: dict[str | tuple[str, ...], ConfirmationStrategy],
     messages_with_tool_calls: list[ChatMessage],
     tools: list[Tool],
-    state: State,
-    streaming_callback: StreamingCallbackT | None = None,
-    enable_streaming_passthrough: bool = False,
     confirmation_strategy_context: dict[str, Any] | None = None,
 ) -> list[ToolExecutionDecision]:
     """
@@ -432,9 +404,6 @@ async def _run_confirmation_strategies_async(
         String keys map individual tools, tuple keys map multiple tools to the same strategy.
     :param messages_with_tool_calls: Messages containing tool calls to process
     :param tools: The available tools, used to resolve each tool call by name
-    :param state: The current runtime state, used to prepare tool arguments
-    :param streaming_callback: Optional streaming callback to pass through to tools that accept it
-    :param enable_streaming_passthrough: Whether to inject the streaming callback into tool arguments
     :param confirmation_strategy_context: Optional request-scoped context passed to the strategies
     :returns:
         A list of ToolExecutionDecision objects representing the decisions made for each tool call.
@@ -454,14 +423,10 @@ async def _run_confirmation_strategies_async(
                 teds.append(_passthrough_tool_call(tool_call))
                 continue
 
-            # Prepare final tool args
-            final_args = _prepare_tool_args(
-                tool=tool_to_invoke,
-                tool_call_arguments=tool_call.arguments,
-                state=state,
-                streaming_callback=streaming_callback,
-                enable_streaming_passthrough=enable_streaming_passthrough,
-            )
+            # Confirm the model-requested arguments. State injection (inputs_from_state and State-typed parameters)
+            # is deliberately left to tool execution, which prepares args per batch so a tool observes State writes
+            # from tools that ran earlier in the same step. Baking injected args here would freeze stale values.
+            final_args = dict(tool_call.arguments)
 
             # Get tool execution decisions from confirmation strategies
             # If no confirmation strategy is defined for this tool, proceed with execution

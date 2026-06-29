@@ -3,13 +3,15 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import os
-from typing import Any
+from typing import Annotated, Any
+from unittest.mock import MagicMock
 
 import pytest
 
+from haystack import component
 from haystack.components.agents import Agent
 from haystack.components.generators.chat import OpenAIChatGenerator
-from haystack.dataclasses import ChatMessage
+from haystack.dataclasses import ChatMessage, ToolCall
 from haystack.human_in_the_loop import (
     AlwaysAskPolicy,
     BlockingConfirmationStrategy,
@@ -18,7 +20,7 @@ from haystack.human_in_the_loop import (
     SimpleConsoleUI,
 )
 from haystack.human_in_the_loop.types import ConfirmationStrategy, ConfirmationUI
-from haystack.tools import Tool, create_tool_from_function
+from haystack.tools import Tool, Toolset, create_tool_from_function
 
 
 class MockUserInterface(ConfirmationUI):
@@ -202,3 +204,77 @@ class TestAgent:
         assert result["token_usage"]["prompt_tokens"] > 0
         assert result["token_usage"]["completion_tokens"] > 0
         assert result["token_usage"]["total_tokens"] > 0
+
+
+@component
+class MockChatGenerator:
+    @component.output_types(replies=list[ChatMessage])
+    def run(self, messages: list[ChatMessage], tools: list[Tool] | Toolset | None = None, **kwargs) -> dict[str, Any]:
+        return {"replies": [ChatMessage.from_assistant("Hello")]}
+
+
+def _producer() -> dict[str, str]:
+    return {"value": "PRODUCED"}
+
+
+def _consumer(value: Annotated[str, "the shared value"]) -> str:
+    return f"consumed:{value}"
+
+
+# `producer` overwrites the `shared` state key; `consumer` reads it via inputs_from_state. Called together in one
+# step, the batched executor must run producer first so consumer sees the fresh value.
+producer_tool = Tool(
+    name="producer",
+    description="Produce a value into state.",
+    parameters={"type": "object", "properties": {}, "required": []},
+    function=_producer,
+    outputs_to_state={"shared": {"source": "value"}},
+)
+consumer_tool = Tool(
+    name="consumer",
+    description="Consume the shared value.",
+    parameters={"type": "object", "properties": {"value": {"type": "string"}}, "required": ["value"]},
+    function=_consumer,
+    inputs_from_state={"shared": "value"},
+)
+
+
+class TestConfirmationStrategyToolArgPrep:
+    def test_confirmed_dependent_tool_runs_with_fresh_state(self):
+        """
+        When a confirmation strategy is configured, a tool that reads State a same-step tool writes must still run
+        with the freshly-produced value, not the stale step-start value.
+        """
+        agent = Agent(
+            chat_generator=MockChatGenerator(),
+            tools=[producer_tool, consumer_tool],
+            state_schema={"shared": {"type": str}},
+            confirmation_strategies={
+                "consumer": BlockingConfirmationStrategy(
+                    confirmation_policy=NeverAskPolicy(), confirmation_ui=SimpleConsoleUI()
+                )
+            },
+        )
+        agent.warm_up()
+        # Step 1: the model calls producer and consumer together (consumer relies on inputs_from_state for `value`).
+        # Step 2: a plain text reply ends the run.
+        agent.chat_generator.run = MagicMock(
+            side_effect=[
+                {
+                    "replies": [
+                        ChatMessage.from_assistant(tool_calls=[ToolCall("producer", {}), ToolCall("consumer", {})])
+                    ]
+                },
+                {"replies": [ChatMessage.from_assistant("done")]},
+            ]
+        )
+
+        # `shared` starts stale; producer overwrites it to "PRODUCED" before consumer runs.
+        result = agent.run(messages=[ChatMessage.from_user("go")], shared="OLD")
+
+        consumer_results = [
+            m.tool_call_result.result
+            for m in result["messages"]
+            if m.tool_call_result is not None and m.tool_call_result.origin.tool_name == "consumer"
+        ]
+        assert consumer_results == ["consumed:PRODUCED"]
