@@ -2,6 +2,8 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import threading
+
 import pytest
 
 from haystack.components.agents.state import State
@@ -17,6 +19,14 @@ class RecordingHook:
 
     def run(self, state: State) -> None:
         self.log.append(("run", self.label))
+
+
+class ThreadRecordingHook:
+    def __init__(self) -> None:
+        self.thread_id: int | None = None
+
+    def run(self, state: State) -> None:
+        self.thread_id = threading.get_ident()
 
 
 class AsyncRecordingHook:
@@ -60,6 +70,14 @@ class TestRunHooksAsync:
         log: list = []
         await _run_hooks_async({"before_llm": [RecordingHook("a", log)]}, "before_llm", State(schema={}))
         assert log == [("run", "a")]
+
+    @pytest.mark.asyncio
+    async def test_falls_back_to_run_in_worker_thread(self):
+        hook = ThreadRecordingHook()
+        event_loop_thread_id = threading.get_ident()
+        await _run_hooks_async({"before_llm": [hook]}, "before_llm", State(schema={}))
+        assert hook.thread_id is not None
+        assert hook.thread_id != event_loop_thread_id
 
     @pytest.mark.asyncio
     async def test_runs_in_order_mixing_sync_and_async(self):

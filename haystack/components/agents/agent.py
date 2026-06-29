@@ -158,9 +158,8 @@ def _is_text_exit(messages: list[ChatMessage]) -> bool:
     """
     Return whether `messages` end in a plain assistant text reply with no tool calls anywhere in the batch.
 
-    This is the "no tool call" exit, used both for the model's own replies and to re-evaluate the messages an
-    `on_exit` hook appends. The last message must be a non-empty assistant text message, so an invalid response
-    (e.g. one with no tool calls and no text) does not trigger an exit.
+    This is the "no tool call" exit for the model's own replies. The last message must be a non-empty assistant text
+    message, so an invalid response (e.g. one with no tool calls and no text) does not trigger an exit.
     """
     if not messages:
         return False
@@ -1203,7 +1202,7 @@ class Agent:
                 chat_generator_inputs["tools"] = current_tools
             with tracing.tracer.trace("haystack.agent.step.llm", parent_span=step_span) as llm_span:
                 llm_span.set_content_tag("haystack.agent.step.llm.input", chat_generator_inputs)
-                # For sync-only generators, _run_component_async dispatches to a thread via asyncio.to_thread,
+                # For sync-only generators, _execute_component_async dispatches to a thread via asyncio.to_thread,
                 # which copies the current contextvars context — preserving the active tracing span.
                 result = await _execute_component_async(self.chat_generator, **chat_generator_inputs)
                 llm_span.set_content_tag("haystack.agent.step.llm.output", result)
@@ -1302,6 +1301,7 @@ class Agent:
         """
         if not self.hooks.get(ON_EXIT):
             return False
+        exe_context.state.set("continue_run", False)
         _run_hooks(self.hooks, ON_EXIT, exe_context.state)
         return _consume_continue_run(exe_context.state)
 
@@ -1309,5 +1309,6 @@ class Agent:
         """Async version of `_continue_after_exit_hooks`."""
         if not self.hooks.get(ON_EXIT):
             return False
+        exe_context.state.set("continue_run", False)
         await _run_hooks_async(self.hooks, ON_EXIT, exe_context.state)
         return _consume_continue_run(exe_context.state)

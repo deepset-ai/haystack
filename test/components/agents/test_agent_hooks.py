@@ -280,6 +280,22 @@ class TestOnExitHook:
         agent.run(messages=[ChatMessage.from_user("hi")])
         assert agent.chat_generator.run.call_count == 3
 
+    def test_continue_run_from_before_llm_hook_does_not_force_continuation(self):
+        def leak_continue(state: State) -> None:
+            state.set("continue_run", True)
+
+        def audit(state: State) -> None:
+            pass
+
+        agent = _agent(
+            MockChatGenerator(),
+            max_agent_steps=5,
+            hooks={"before_llm": [hook(leak_continue)], "on_exit": [hook(audit)]},
+        )
+        agent.chat_generator.run = MagicMock(return_value={"replies": [ChatMessage.from_assistant("Final")]})
+        agent.run(messages=[ChatMessage.from_user("hi")])
+        assert agent.chat_generator.run.call_count == 1
+
 
 class TestHookReuseAcrossHookPoints:
     def test_same_hook_under_two_hook_points(self):
