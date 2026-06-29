@@ -604,6 +604,7 @@ export default {
             'pipeline-components/retrievers/qdrantsparseembeddingretriever',
             'pipeline-components/retrievers/sentencewindowretrieval',
             'pipeline-components/retrievers/snowflaketableretriever',
+            'pipeline-components/retrievers/sqlalchemytableretriever',
             'pipeline-components/retrievers/supabasegroongabm25retriever',
             'pipeline-components/retrievers/supabasepgvectorembeddingretriever',
             'pipeline-components/retrievers/supabasepgvectorkeywordretriever',
