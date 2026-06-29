@@ -21,6 +21,7 @@ export default {
         'overview/breaking-change-policy',
         'overview/migration',
         'overview/migrating-from-langgraphlangchain-to-haystack',
+        'overview/platform-components',
       ],
     },
     {
