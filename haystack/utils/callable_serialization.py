@@ -111,7 +111,7 @@ def deserialize_callable(callable_handle: str) -> Callable:
 
         # Handle the case where @tool decorator replaced the function with a Tool object
         if isinstance(attr_value, Tool):
-            attr_value = attr_value.function
+            attr_value = attr_value.function or attr_value.async_function
 
         # Handle the case where @hook decorator replaced the function with a FunctionHook object
         if isinstance(attr_value, FunctionHook):
