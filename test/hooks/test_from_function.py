@@ -17,6 +17,10 @@ async def append_system_async(state: State) -> None:
     state.set("messages", [ChatMessage.from_system("from async hook")])
 
 
+def append_system_postponed_annotation(state: "State") -> None:
+    state.set("messages", [ChatMessage.from_system("from postponed annotation hook")])
+
+
 class TestHookDecorator:
     def test_wraps_sync_function(self):
         wrapped = hook(append_system)
@@ -34,6 +38,12 @@ class TestHookDecorator:
         state = State(schema={})
         hook(append_system).run(state)
         assert [m.text for m in state.data["messages"]] == ["from sync hook"]
+
+    def test_wraps_function_with_postponed_state_annotation(self):
+        wrapped = hook(append_system_postponed_annotation)
+        state = State(schema={})
+        wrapped.run(state)
+        assert [m.text for m in state.data["messages"]] == ["from postponed annotation hook"]
 
     def test_run_on_async_only_raises(self):
         with pytest.raises(RuntimeError):

@@ -168,6 +168,22 @@ def _is_text_exit(messages: list[ChatMessage]) -> bool:
     return not any(m.tool_call for m in messages) and last.is_from(ChatRole.ASSISTANT) and bool(last.text)
 
 
+def _pending_tool_call_messages_from_state(state: State) -> list[ChatMessage]:
+    """
+    Return the pending tool-call message after `before_tool` hooks have run.
+
+    `before_tool` hooks may mutate `state["messages"]`. After they run, the Agent intentionally inspects only the
+    current last message in the state. If that message has tool calls, those calls are executed. If it has no tool
+    calls, no tools run for the step, no tool-based exit condition is triggered, and the Agent loops back to the next
+    LLM call unless `max_agent_steps` has been reached.
+    """
+    messages = state.data.get("messages") or []
+    if not messages:
+        return []
+    last_message = messages[-1]
+    return [last_message] if last_message.tool_calls else []
+
+
 def _select_tools_by_name(configured_tools: ToolsType, names: list[str]) -> list[Tool | Toolset]:
     """
     Select configured tools by name for a single run.
@@ -435,8 +451,17 @@ class Agent:
 
     #### Using hooks to influence the run loop
 
-    Hooks are callables the Agent runs at `before_llm`, `before_tool` and `on_exit`, each receiving the live `State`.
-    Use the `@hook` decorator to build one from a function. This `on_exit` hook keeps the Agent running until a
+    Hooks are callables that receive the live `State` and run at specific points in the Agent loop:
+
+    - `before_llm`: runs before each chat-generator call.
+    - `before_tool`: runs after the model requests tool calls, before any tools run. After these hooks run, the Agent
+      re-reads the current last message from `state["messages"]`. If that message has tool calls, those calls are
+      executed. If it has no tool calls, no tools run for that step, no tool-based exit condition is triggered, and the
+      Agent loops back to the next LLM call unless `max_agent_steps` has been reached.
+    - `on_exit`: runs when the Agent is about to stop on an exit condition. An `on_exit` hook can keep the Agent
+      running by setting `state.set("continue_run", True)`.
+
+    Use the `@hook` decorator to build a hook from a function. This `on_exit` hook keeps the Agent running until a
     required tool has been called.
 
     ```python
@@ -523,14 +548,18 @@ class Agent:
             Defaults to 4. Set to 1 to disable parallel tool execution.
         :param tool_streaming_callback_passthrough: If True, pass the streaming callback to tools that accept it.
         :param confirmation_strategies: A dictionary mapping tool names to ConfirmationStrategy instances.
-        :param hooks: A dictionary mapping a hook point to a list of hooks the Agent runs at that point. Valid hook
-            points are "before_llm" (before each chat-generator call), "before_tool" (after the model requests tool
-            calls, before they run) and "on_exit" (when the Agent is about to stop). Each hook receives the live
-            `State` and influences the run by mutating it in place; hooks for a hook point run in list order. An
-            "on_exit" hook can keep the Agent running by setting the `continue_run` control flag
-            (`state.set("continue_run", True)`), usually alongside a message telling the model what to do next. Note
-            that "on_exit" hooks run when the Agent stops on an exit condition, but not when it stops because
-            `max_agent_steps` is reached.
+        :param hooks: A dictionary mapping a hook point to a list of hooks the Agent runs at that point. Each hook
+            receives the live `State` and influences the run by mutating it in place; hooks for a hook point run in
+            list order. Valid hook points are:
+            - "before_llm": Runs before each chat-generator call.
+            - "before_tool": Runs after the model requests tool calls, before any tools run. After these hooks run,
+              the Agent re-reads the current last message from `state["messages"]`. If that message contains tool
+              calls, those calls are executed. If it does not, no tools run for that step, no tool-based exit condition
+              is triggered, and the Agent loops back to the next LLM call unless `max_agent_steps` has been reached.
+            - "on_exit": Runs when the Agent is about to stop on an exit condition. An "on_exit" hook can keep the
+              Agent running by setting the `continue_run` control flag (`state.set("continue_run", True)`), usually
+              alongside a message telling the model what to do next. "on_exit" hooks run when the Agent stops on an
+              exit condition, but not when it stops because `max_agent_steps` is reached.
         :raises TypeError: If the chat_generator does not support tools parameter in its run method.
         :raises ValueError: If any `user_prompt` variable overlaps with the `state_schema` or `run` method parameters,
             or if a hook is registered under an unknown hook point.
@@ -1119,9 +1148,10 @@ class Agent:
                 return self._continue_after_exit_hooks(exe_context)
 
             _run_hooks(self.hooks, BEFORE_TOOL, exe_context.state)
+            pending_tool_call_messages = _pending_tool_call_messages_from_state(exe_context.state)
             modified_tool_call_messages, new_chat_history = _process_confirmation_strategies(
                 confirmation_strategies=self._confirmation_strategies,
-                messages_with_tool_calls=llm_messages,
+                messages_with_tool_calls=pending_tool_call_messages,
                 state=exe_context.state,
                 confirmation_strategy_context=exe_context.confirmation_strategy_context,
                 tools=current_tools,
@@ -1148,7 +1178,7 @@ class Agent:
             exe_context.counter += 1
             exe_context.state.set("step_count", exe_context.counter)
             exit_triggered = self.exit_conditions != ["text"] and self._check_exit_conditions(
-                llm_messages=llm_messages, tool_messages=tool_messages
+                llm_messages=modified_tool_call_messages, tool_messages=tool_messages
             )
             if exit_triggered:
                 return self._continue_after_exit_hooks(exe_context)
@@ -1188,9 +1218,10 @@ class Agent:
                 return await self._continue_after_exit_hooks_async(exe_context)
 
             await _run_hooks_async(self.hooks, BEFORE_TOOL, exe_context.state)
+            pending_tool_call_messages = _pending_tool_call_messages_from_state(exe_context.state)
             modified_tool_call_messages, new_chat_history = await _process_confirmation_strategies_async(
                 confirmation_strategies=self._confirmation_strategies,
-                messages_with_tool_calls=llm_messages,
+                messages_with_tool_calls=pending_tool_call_messages,
                 tools=current_tools,
                 state=exe_context.state,
                 streaming_callback=exe_context.tool_execution_inputs["streaming_callback"],
@@ -1217,7 +1248,7 @@ class Agent:
             exe_context.counter += 1
             exe_context.state.set("step_count", exe_context.counter)
             exit_triggered = self.exit_conditions != ["text"] and self._check_exit_conditions(
-                llm_messages=llm_messages, tool_messages=tool_messages
+                llm_messages=modified_tool_call_messages, tool_messages=tool_messages
             )
             if exit_triggered:
                 return await self._continue_after_exit_hooks_async(exe_context)

@@ -9,7 +9,7 @@ import pytest
 
 from haystack import component
 from haystack.components.agents import Agent
-from haystack.components.agents.state import State
+from haystack.components.agents.state import State, replace_values
 from haystack.dataclasses import ChatMessage, ToolCall
 from haystack.hooks import hook
 from haystack.tools import Tool, Toolset, tool
@@ -64,6 +64,20 @@ def record_tool_calls(state: State) -> None:
     # Realistic before_tool use case: audit the tool calls the model is about to run.
     pending = state.data["messages"][-1].tool_calls
     state.set("trace", [tc.tool_name for tc in pending])
+
+
+@hook
+def replace_pending_save_call(state: State) -> None:
+    messages = state.data["messages"]
+    replacement = ChatMessage.from_assistant(tool_calls=[ToolCall("save", {"content": "changed"})])
+    state.set("messages", [*messages[:-1], replacement], handler_override=replace_values)
+
+
+@hook
+def replace_pending_call_with_non_tool_message(state: State) -> None:
+    messages = state.data["messages"]
+    replacement = ChatMessage.from_assistant("Skipping tool execution.")
+    state.set("messages", [*messages[:-1], replacement], handler_override=replace_values)
 
 
 @hook
@@ -187,6 +201,35 @@ class TestBeforeToolHook:
         # before_tool sees the pending tool call and does not fire on the final text-only step
         assert result["trace"] == ["save"]
         assert result["tool_call_counts"]["save"] == 1
+
+    def test_rereads_last_state_message_after_hook(self):
+        agent = _agent(MockChatGenerator(), tools=[save], hooks={"before_tool": [replace_pending_save_call]})
+        agent.chat_generator.run = MagicMock(
+            side_effect=[
+                {"replies": [ChatMessage.from_assistant(tool_calls=[ToolCall("save", {"content": "original"})])]},
+                {"replies": [ChatMessage.from_assistant("done")]},
+            ]
+        )
+        result = agent.run(messages=[ChatMessage.from_user("hi")])
+        tool_messages = [m for m in result["messages"] if m.tool_call_result is not None]
+        assert len(tool_messages) == 1
+        assert tool_messages[0].tool_call_result.origin.arguments == {"content": "changed"}
+
+    def test_skips_tool_execution_when_hook_leaves_last_message_without_tool_calls(self):
+        agent = _agent(
+            MockChatGenerator(), tools=[save], hooks={"before_tool": [replace_pending_call_with_non_tool_message]}
+        )
+        agent.chat_generator.run = MagicMock(
+            side_effect=[
+                {"replies": [ChatMessage.from_assistant(tool_calls=[ToolCall("save", {"content": "x"})])]},
+                {"replies": [ChatMessage.from_assistant("done")]},
+            ]
+        )
+        result = agent.run(messages=[ChatMessage.from_user("hi")])
+        assert agent.chat_generator.run.call_count == 2
+        assert result["tool_call_counts"]["save"] == 0
+        assert not [m for m in result["messages"] if m.tool_call_result is not None]
+        assert [m.text for m in result["messages"]][-2:] == ["Skipping tool execution.", "done"]
 
 
 class TestOnExitHook:
