@@ -9,8 +9,8 @@ features:
     Added hooks to the ``Agent``. Pass ``hooks`` as a dictionary mapping a hook point to a list of
     hooks the Agent runs at that point: ``before_llm`` (before each chat-generator call), ``before_tool`` (after the
     model requests tool calls, before they run), and ``on_exit`` (when the Agent is about to stop). Each hook receives
-    the live ``State`` and influences the run by mutating it in place; hooks for an event run in list order, and the
-    same hook can be registered under multiple events.
+    the live ``State`` and influences the run by mutating it in place; hooks for a hook point run in list order, and
+    the same hook can be registered under multiple hook points.
 
     A hook is any object with a ``run(state)`` method (optionally ``run_async(state)``); use the ``@hook`` decorator
     to build one from a function. This enables patterns such as building run-time system context, retrieving memories,

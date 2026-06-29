@@ -81,7 +81,7 @@ class TestUniqueHooks:
 
 
 class TestSerializeHooks:
-    def test_roundtrip_multiple_events(self):
+    def test_roundtrip_multiple_hook_points(self):
         hooks = {"before_llm": [hook(noop)], "on_exit": [hook(noop)]}
         restored = _deserialize_hooks_dictionary(_serialize_hooks_dictionary(hooks))
         assert set(restored) == {"before_llm", "on_exit"}

@@ -7,12 +7,12 @@ from typing import Any, Literal, Protocol, get_args
 from haystack.components.agents.state.state import State
 
 # Points in the Agent's run loop at which hooks can be registered.
-HookEvent = Literal["before_llm", "before_tool", "on_exit"]
+HookPoint = Literal["before_llm", "before_tool", "on_exit"]
 
-BEFORE_LLM: HookEvent = "before_llm"
-BEFORE_TOOL: HookEvent = "before_tool"
-ON_EXIT: HookEvent = "on_exit"
-VALID_HOOK_EVENTS: tuple[HookEvent, ...] = get_args(HookEvent)
+BEFORE_LLM: HookPoint = "before_llm"
+BEFORE_TOOL: HookPoint = "before_tool"
+ON_EXIT: HookPoint = "on_exit"
+VALID_HOOK_POINTS: tuple[HookPoint, ...] = get_args(HookPoint)
 
 
 class Hook(Protocol):
@@ -21,10 +21,10 @@ class Hook(Protocol):
 
     A hook influences the run only by mutating `State` in place. At least `messages` (the conversation),
     `step_count`, `token_usage` and `tool_call_counts` are available; any additional keys defined in the Agent's
-    `state_schema` are available too. The same hook object can be registered under multiple events.
+    `state_schema` are available too. The same hook object can be registered under multiple hook points.
 
-    Implement this protocol directly for stateful hooks (e.g. one wrapping a component), or use the `@hook`
-    decorator to wrap a plain `(State) -> None` function.
+    Implement this protocol directly for stateful hooks (e.g. one wrapping a component), or use the `@hook` decorator to
+    wrap a plain `(State) -> None` function.
 
     A hook may additionally define `async def run_async(self, state: State) -> None` for true async behavior; when
     absent, the Agent calls `run` during async runs. It is left off this protocol on purpose so sync-only hooks

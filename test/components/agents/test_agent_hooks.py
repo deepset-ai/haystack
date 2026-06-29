@@ -119,7 +119,7 @@ def _agent(generator, **kwargs):
 
 
 class TestAgentHooksValidation:
-    def test_invalid_event_raises(self):
+    def test_invalid_hook_point_raises(self):
         with pytest.raises(ValueError):
             Agent(chat_generator=MockChatGenerator(), hooks={"bogus": [record_a]})
 
@@ -238,8 +238,8 @@ class TestOnExitHook:
         assert agent.chat_generator.run.call_count == 3
 
 
-class TestHookReuseAcrossEvents:
-    def test_same_hook_under_two_events(self):
+class TestHookReuseAcrossHookPoints:
+    def test_same_hook_under_two_hook_points(self):
         counter = []
 
         def count_call(state: State) -> None:

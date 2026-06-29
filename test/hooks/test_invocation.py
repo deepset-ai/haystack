@@ -32,19 +32,19 @@ class AsyncRecordingHook:
 
 
 class TestRunHooks:
-    def test_runs_all_hooks_for_event_in_order(self):
+    def test_runs_all_hooks_for_hook_point_in_order(self):
         log: list = []
         hooks = {"before_llm": [RecordingHook("a", log), RecordingHook("b", log)]}
         _run_hooks(hooks, "before_llm", State(schema={}))
         assert log == [("run", "a"), ("run", "b")]
 
-    def test_only_runs_the_given_event(self):
+    def test_only_runs_the_given_hook_point(self):
         log: list = []
         hooks = {"before_llm": [RecordingHook("a", log)], "on_exit": [RecordingHook("b", log)]}
         _run_hooks(hooks, "on_exit", State(schema={}))
         assert log == [("run", "b")]
 
-    def test_no_hooks_for_event_is_noop(self):
+    def test_no_hooks_for_hook_point_is_noop(self):
         _run_hooks({}, "before_llm", State(schema={}))  # does not raise
 
 

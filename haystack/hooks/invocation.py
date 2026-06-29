@@ -3,18 +3,30 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from haystack.components.agents.state.state import State
-from haystack.hooks.protocol import Hook, HookEvent
+from haystack.hooks.protocol import Hook, HookPoint
 
 
-def _run_hooks(hooks: dict[HookEvent, list[Hook]], event: HookEvent, state: State) -> None:
-    """Run every hook registered for the given hook point, in list order."""
-    for h in hooks.get(event, []):
+def _run_hooks(hooks: dict[HookPoint, list[Hook]], hook_point: HookPoint, state: State) -> None:
+    """
+    Run every hook registered for the given hook point, in list order.
+
+    :param hooks: Hooks keyed by hook point.
+    :param hook_point: The hook point whose hooks to run; hooks registered under other hook points are skipped.
+    :param state: The Agent's live `State`, passed to each hook and mutated in place.
+    """
+    for h in hooks.get(hook_point, []):
         h.run(state)
 
 
-async def _run_hooks_async(hooks: dict[HookEvent, list[Hook]], event: HookEvent, state: State) -> None:
-    """Run every hook for the given hook point, awaiting hooks that define `run_async` and calling `run` otherwise."""
-    for h in hooks.get(event, []):
+async def _run_hooks_async(hooks: dict[HookPoint, list[Hook]], hook_point: HookPoint, state: State) -> None:
+    """
+    Run every hook for the given hook point, awaiting `run_async` when defined and calling `run` otherwise.
+
+    :param hooks: Hooks keyed by hook point.
+    :param hook_point: The hook point whose hooks to run; hooks registered under other hook points are skipped.
+    :param state: The Agent's live `State`, passed to each hook and mutated in place.
+    """
+    for h in hooks.get(hook_point, []):
         run_async = getattr(h, "run_async", None)
         if run_async is not None:
             await run_async(state)

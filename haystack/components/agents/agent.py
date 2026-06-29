@@ -23,7 +23,7 @@ from haystack.components.generators.chat.types import ChatGenerator
 from haystack.core.serialization import component_to_dict, default_from_dict, default_to_dict
 from haystack.dataclasses import ChatMessage, ChatRole, StreamingCallbackT, select_streaming_callback
 from haystack.hooks.invocation import _run_hooks, _run_hooks_async
-from haystack.hooks.protocol import BEFORE_LLM, BEFORE_TOOL, ON_EXIT, VALID_HOOK_EVENTS, Hook, HookEvent
+from haystack.hooks.protocol import BEFORE_LLM, BEFORE_TOOL, ON_EXIT, VALID_HOOK_POINTS, Hook, HookPoint
 from haystack.hooks.utils import (
     _deserialize_hooks_dictionary,
     _serialize_hooks_dictionary,
@@ -488,7 +488,7 @@ class Agent:
         tool_concurrency_limit: int = 4,
         tool_streaming_callback_passthrough: bool = False,
         confirmation_strategies: dict[str | tuple[str, ...], ConfirmationStrategy] | None = None,
-        hooks: dict[HookEvent, list[Hook]] | None = None,
+        hooks: dict[HookPoint, list[Hook]] | None = None,
     ) -> None:
         """
         Initialize the agent component.
@@ -563,9 +563,9 @@ class Agent:
 
         hooks = hooks or {}
         for hook_point, hook_list in hooks.items():
-            if hook_point not in VALID_HOOK_EVENTS:
+            if hook_point not in VALID_HOOK_POINTS:
                 raise ValueError(
-                    f"Invalid hook point '{hook_point}'. Valid hook points are: {', '.join(VALID_HOOK_EVENTS)}."
+                    f"Invalid hook point '{hook_point}'. Valid hook points are: {', '.join(VALID_HOOK_POINTS)}."
                 )
             for h in hook_list:
                 if not callable(getattr(h, "run", None)):

@@ -12,7 +12,12 @@ from haystack.utils.callable_serialization import deserialize_callable, serializ
 
 
 def _takes_single_state_argument(function: Callable) -> bool:
-    """Return whether `function` takes exactly one parameter annotated with `State`."""
+    """
+    Return whether `function` takes exactly one parameter annotated with `State`.
+
+    :param function: The callable to inspect.
+    :returns: True if the signature is a single `State`-annotated parameter, False otherwise.
+    """
     params = list(inspect.signature(function).parameters.values())
     return len(params) == 1 and params[0].annotation is State
 
@@ -62,7 +67,12 @@ class FunctionHook:
         self.async_function = async_function
 
     def run(self, state: State) -> None:
-        """Run the synchronous function against the live `State`."""
+        """
+        Run the synchronous function against the live `State`.
+
+        :param state: The Agent's live `State`, mutated in place by the wrapped function.
+        :raises RuntimeError: If the hook only has an `async_function`; use the Agent's async run methods instead.
+        """
         if self.function is None:
             raise RuntimeError(
                 "This FunctionHook only has an `async_function` and cannot run in a synchronous Agent run. "
@@ -71,14 +81,22 @@ class FunctionHook:
         self.function(state)
 
     async def run_async(self, state: State) -> None:
-        """Await the async function if set, otherwise call the synchronous function."""
+        """
+        Await the async function if set, otherwise call the synchronous function.
+
+        :param state: The Agent's live `State`, mutated in place by the wrapped function.
+        """
         if self.async_function is not None:
             await self.async_function(state)
         else:
             self.function(state)  # type: ignore[misc]  # guaranteed non-None: at least one is always set
 
     def to_dict(self) -> dict[str, Any]:
-        """Serialize the hook, storing each function as an importable reference."""
+        """
+        Serialize the hook, storing each wrapped function as an importable reference.
+
+        :returns: A dictionary with the hook's type and the import paths of its sync/async functions.
+        """
         return default_to_dict(
             self,
             function=serialize_callable(self.function) if self.function is not None else None,
@@ -87,7 +105,12 @@ class FunctionHook:
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "FunctionHook":
-        """Deserialize the hook, resolving each function from its importable reference."""
+        """
+        Deserialize the hook, resolving each function from its importable reference.
+
+        :param data: The serialized hook dictionary produced by `to_dict`.
+        :returns: The reconstructed `FunctionHook`.
+        """
         init_params = data.get("init_parameters", {})
         if init_params.get("function") is not None:
             init_params["function"] = deserialize_callable(init_params["function"])
@@ -116,6 +139,7 @@ def hook(function: Callable[[State], None | Awaitable[None]]) -> FunctionHook:
     def require_save(state: State) -> None:
         if state.get("tool_call_counts", {}).get("save", 0) == 0:
             state.set("messages", [ChatMessage.from_system("You must call `save` before finishing.")])
+            state.set("continue_run", True)
 
     agent = Agent(chat_generator=..., tools=[...], hooks={"on_exit": [require_save]})
     ```
