@@ -394,7 +394,7 @@ format for input and output. Use it to generate text with Hugging Face APIs:
 from haystack_integrations.components.generators.huggingface_api import HuggingFaceAPIChatGenerator
 from haystack.dataclasses import ChatMessage
 from haystack.utils import Secret
-from haystack_integrations.components.common.huggingface_api.utils import HFGenerationAPIType
+from haystack_integrations.common.huggingface_api.utils import HFGenerationAPIType
 
 messages = [ChatMessage.from_system("\nYou are a helpful, respectful and honest assistant"),
             ChatMessage.from_user("What's Natural Language Processing?")]
@@ -418,7 +418,7 @@ print(result)
 from haystack_integrations.components.generators.huggingface_api import HuggingFaceAPIChatGenerator
 from haystack.dataclasses import ChatMessage, ImageContent
 from haystack.utils import Secret
-from haystack_integrations.components.common.huggingface_api.utils import HFGenerationAPIType
+from haystack_integrations.common.huggingface_api.utils import HFGenerationAPIType
 
 # Create an image from file path, URL, or base64
 image = ImageContent.from_file_path("path/to/your/image.jpg")
