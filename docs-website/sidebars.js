@@ -603,7 +603,7 @@ export default {
             'pipeline-components/retrievers/qdrantembeddingretriever',
             'pipeline-components/retrievers/qdranthybridretriever',
             'pipeline-components/retrievers/qdrantsparseembeddingretriever',
-            'pipeline-components/retrievers/sentencewindowretrieval',
+            'pipeline-components/retrievers/sentencewindowretriever',
             'pipeline-components/retrievers/snowflaketableretriever',
             'pipeline-components/retrievers/supabasegroongabm25retriever',
             'pipeline-components/retrievers/supabasepgvectorembeddingretriever',
