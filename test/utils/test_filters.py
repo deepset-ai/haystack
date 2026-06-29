@@ -572,6 +572,17 @@ document_matches_filter_raises_error_data = [
         {"operator": "XOR", "conditions": [{"field": "meta.page", "operator": "==", "value": 10}]},
         id="Unknown logical operator",
     ),
+    pytest.param(
+        {
+            "operator": "AND",
+            "conditions": [{"operator": "XOR", "conditions": [{"field": "meta.page", "operator": "==", "value": 10}]}],
+        },
+        id="Unknown nested logical operator",
+    ),
+    pytest.param(
+        {"operator": "and", "conditions": [{"field": "meta.page", "operator": "==", "value": 10}]},
+        id="Lowercase logical operator",
+    ),
 ]
 
 
@@ -580,3 +591,38 @@ def test_document_matches_filter_raises_error(filters):
     with pytest.raises(FilterError):
         document = Document(meta={"page": 10})
         document_matches_filter(filters, document)
+
+
+@pytest.mark.parametrize(
+    "filters,expected_message",
+    [
+        pytest.param(
+            {"field": "meta.page", "operator": "gt", "value": 10},
+            "Unknown comparison operator 'gt'",
+            id="Unknown comparison operator",
+        ),
+        pytest.param(
+            {"operator": "XOR", "conditions": [{"field": "meta.page", "operator": "==", "value": 10}]},
+            "Unknown logical operator 'XOR'",
+            id="Unknown logical operator",
+        ),
+        pytest.param(
+            {
+                "operator": "AND",
+                "conditions": [
+                    {"operator": "XOR", "conditions": [{"field": "meta.page", "operator": "==", "value": 10}]}
+                ],
+            },
+            "Unknown logical operator 'XOR'",
+            id="Unknown nested logical operator",
+        ),
+        pytest.param(
+            {"operator": "and", "conditions": [{"field": "meta.page", "operator": "==", "value": 10}]},
+            "Unknown logical operator 'and'",
+            id="Lowercase logical operator",
+        ),
+    ],
+)
+def test_document_matches_filter_unknown_operator_error_message(filters, expected_message):
+    with pytest.raises(FilterError, match=expected_message):
+        document_matches_filter(filters, Document(meta={"page": 10}))
