@@ -36,6 +36,11 @@ def test_token_secret():
     with pytest.raises(FrozenInstanceError):
         secret._type = SecretType.ENV_VAR
 
+    secret = Secret.from_token("sk-supersecret-1234567890ABCDEF")
+    assert "sk-supersecret-1234567890ABCDEF" not in repr(secret)
+    assert "sk-supersecret-1234567890ABCDEF" not in str(secret)
+    assert "<redacted>" in repr(secret)
+
 
 def test_env_var_secret():
     secret = Secret.from_env_var("TEST_ENV_VAR1")
