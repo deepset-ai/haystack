@@ -582,11 +582,11 @@ weather_tool = Tool(
 )
 ```
 
-#### Reserved `state_schema` keys for built-in run metadata
+#### Reserved `state_schema` keys
 
-**What changed:** `Agent` now auto-populates three new outputs — `step_count`, `token_usage`, and `tool_call_counts` — and reserves those names in its `state_schema`. Passing any of them as a `state_schema` key now raises `ValueError`.
+**What changed:** `Agent` now reserves several names in its `state_schema`: the auto-populated run-metadata outputs `step_count`, `token_usage`, and `tool_call_counts`, and the hook loop-control key `continue_run` (set by an `on_exit` hook to keep the Agent running). Passing any of them as a `state_schema` key now raises `ValueError`.
 
-**Why:** These keys are managed by `Agent` itself and exposed as outputs only; allowing users to redefine them would let an input shadow the value the Agent is trying to write.
+**Why:** These keys are managed by `Agent` itself; allowing users to redefine them would let a user-defined entry shadow the value the Agent reads or writes.
 
 **How to migrate:** Rename any clashing `state_schema` entries.
 

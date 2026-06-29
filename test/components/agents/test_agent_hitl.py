@@ -126,6 +126,7 @@ class TestAgent:
                         },
                     }
                 },
+                "hooks": None,
             },
         }
 

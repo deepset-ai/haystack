@@ -79,6 +79,7 @@ def deserialize_callable(callable_handle: str) -> Callable:
         be found.
     """
     # Import here to avoid circular imports
+    from haystack.hooks.from_function import FunctionHook
     from haystack.tools.tool import Tool
 
     parts = callable_handle.split(".")
@@ -111,6 +112,10 @@ def deserialize_callable(callable_handle: str) -> Callable:
         # Handle the case where @tool decorator replaced the function with a Tool object
         if isinstance(attr_value, Tool):
             attr_value = attr_value.function
+
+        # Handle the case where @hook decorator replaced the function with a FunctionHook object
+        if isinstance(attr_value, FunctionHook):
+            attr_value = attr_value.function or attr_value.async_function
 
         if not callable(attr_value):
             raise DeserializationError(f"The final attribute is not callable: {attr_value}")
