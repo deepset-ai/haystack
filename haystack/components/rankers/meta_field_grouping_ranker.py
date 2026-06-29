@@ -109,11 +109,17 @@ class MetaFieldGroupingRanker:
 
             document_groups[group_value][subgroup_value].append(doc)
 
+        # use a non-optional key for type checking; "" disables sorting.
+        sort_field = self.sort_docs_by or ""
+
         ordered_docs = []
         for subgroups in document_groups.values():
             for docs in subgroups.values():
-                if self.sort_docs_by:
-                    docs.sort(key=lambda d: d.meta.get(self.sort_docs_by or "", float("inf")))
+                if sort_field:
+                    # Sort by the field value, placing documents with a missing value last.
+                    # The (is_missing, value) tuple ensures that only actual field values are
+                    # compared, making the sort work for numbers, strings, and other types.
+                    docs.sort(key=lambda d: (d.meta.get(sort_field) is None, d.meta.get(sort_field)))
                 ordered_docs.extend(docs)
 
         ordered_docs.extend(no_group_docs)
