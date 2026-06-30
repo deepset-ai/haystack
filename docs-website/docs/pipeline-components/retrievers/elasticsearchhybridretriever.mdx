@@ -15,7 +15,7 @@ A Hybrid Retriever uses both traditional keyword-based search (BM25) and embeddi
 
 |  |  |
 | --- | --- |
-| **Most common position in a pipeline** | After an [ElasticsearchDocumentStore](../../document-stores/elasticsearch-document-store.mdx) |
+| **Most common position in a pipeline** | 1. After a TextEmbedder and before a PromptBuilder in a RAG pipeline 2. The last component in a hybrid search pipeline 3. After a TextEmbedder and before an ExtractiveReader in an extractive QA pipeline |
 | **Mandatory init variables** | `document_store`: An instance of [`ElasticsearchDocumentStore`](../../document-stores/elasticsearch-document-store.mdx)  <br /> <br />`embedder`: Any [Embedder](../embedders.mdx) implementing the `TextEmbedder` protocol |
 | **Mandatory run variables** | `query`: A query string |
 | **Output variables** | `documents`: A list of documents matching the query |
