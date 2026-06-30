@@ -1,0 +1,7 @@
+---
+features:
+  - |
+    Added native asynchronous support (``run_async``) to ``LLMRanker``. This allows reranking
+    to run concurrently inside async applications like FastMCP or FastAPI without blocking the
+    main event loop, while automatically falling back to a thread worker for chat generators
+    that don't implement ``run_async``
