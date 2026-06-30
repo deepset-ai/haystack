@@ -243,9 +243,12 @@ def _process_confirmation_strategies(
     tools: list[Tool],
     state: State,
     confirmation_strategy_context: dict[str, Any] | None = None,
-) -> tuple[list[ChatMessage], list[ChatMessage]]:
+) -> list[ChatMessage]:
     """
-    Run the confirmation strategies and return modified tool call messages and updated chat history.
+    Run the confirmation strategies and return the updated chat history.
+
+    The returned history ends with the confirmed/modified tool calls (preceded by any rejection messages), so the
+    pending tool calls to execute are always those on its last message.
 
     :param confirmation_strategies: Mapping of tool names to their corresponding confirmation strategies
     :param messages_with_tool_calls: Chat messages containing tool calls
@@ -253,11 +256,11 @@ def _process_confirmation_strategies(
     :param state: The current runtime state, used to read the chat history
     :param confirmation_strategy_context: Optional request-scoped context passed to the strategies
     :returns:
-        Tuple of modified messages with confirmed tool calls and updated chat history
+        The updated chat history.
     """
-    # If confirmations strategies is empty, return original messages and chat history
+    # If confirmations strategies is empty, return the chat history unchanged
     if not confirmation_strategies:
-        return messages_with_tool_calls, state.get("messages")
+        return state.get("messages")
 
     # Run confirmation strategies and get tool execution decisions
     teds = _run_confirmation_strategies(
@@ -273,13 +276,11 @@ def _process_confirmation_strategies(
     )
 
     # Update the chat history with rejection messages and new tool call messages
-    new_chat_history = _update_chat_history(
+    return _update_chat_history(
         chat_history=state.get("messages"),
         rejection_messages=rejection_messages,
         tool_call_and_explanation_messages=modified_tool_call_messages,
     )
-
-    return modified_tool_call_messages, new_chat_history
 
 
 async def _process_confirmation_strategies_async(
@@ -289,11 +290,14 @@ async def _process_confirmation_strategies_async(
     tools: list[Tool],
     state: State,
     confirmation_strategy_context: dict[str, Any] | None = None,
-) -> tuple[list[ChatMessage], list[ChatMessage]]:
+) -> list[ChatMessage]:
     """
     Async version of _process_confirmation_strategies.
 
-    Run the confirmation strategies and return modified tool call messages and updated chat history.
+    Run the confirmation strategies and return the updated chat history.
+
+    The returned history ends with the confirmed/modified tool calls (preceded by any rejection messages), so the
+    pending tool calls to execute are always those on its last message.
 
     :param confirmation_strategies: Mapping of tool names to their corresponding confirmation strategies
     :param messages_with_tool_calls: Chat messages containing tool calls
@@ -301,11 +305,11 @@ async def _process_confirmation_strategies_async(
     :param state: The current runtime state, used to read the chat history
     :param confirmation_strategy_context: Optional request-scoped context passed to the strategies
     :returns:
-        Tuple of modified messages with confirmed tool calls and updated chat history
+        The updated chat history.
     """
-    # If confirmations strategies is empty, return original messages and chat history
+    # If confirmations strategies is empty, return the chat history unchanged
     if not confirmation_strategies:
-        return messages_with_tool_calls, state.get("messages")
+        return state.get("messages")
 
     # Run confirmation strategies and get tool execution decisions (async version)
     teds = await _run_confirmation_strategies_async(
@@ -321,13 +325,11 @@ async def _process_confirmation_strategies_async(
     )
 
     # Update the chat history with rejection messages and new tool call messages
-    new_chat_history = _update_chat_history(
+    return _update_chat_history(
         chat_history=state.get("messages"),
         rejection_messages=rejection_messages,
         tool_call_and_explanation_messages=modified_tool_call_messages,
     )
-
-    return modified_tool_call_messages, new_chat_history
 
 
 def _run_confirmation_strategies(

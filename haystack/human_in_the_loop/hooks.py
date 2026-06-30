@@ -69,7 +69,7 @@ class ConfirmationHook:
         messages = state.data.get("messages") or []
         if not messages or not messages[-1].tool_calls:
             return
-        _, new_chat_history = _process_confirmation_strategies(
+        new_chat_history = _process_confirmation_strategies(
             confirmation_strategies=self.confirmation_strategies,
             messages_with_tool_calls=[messages[-1]],
             tools=state.get("tools") or [],
@@ -83,7 +83,7 @@ class ConfirmationHook:
         messages = state.data.get("messages") or []
         if not messages or not messages[-1].tool_calls:
             return
-        _, new_chat_history = await _process_confirmation_strategies_async(
+        new_chat_history = await _process_confirmation_strategies_async(
             confirmation_strategies=self.confirmation_strategies,
             messages_with_tool_calls=[messages[-1]],
             tools=state.get("tools") or [],

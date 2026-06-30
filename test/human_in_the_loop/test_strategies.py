@@ -234,7 +234,7 @@ class TestUnknownToolEndToEnd:
         assistant_message = ChatMessage.from_assistant(tool_calls=[tool_call])
         state.set("messages", [ChatMessage.from_user("do something"), assistant_message])
 
-        modified_messages, _ = _process_confirmation_strategies(
+        new_chat_history = _process_confirmation_strategies(
             confirmation_strategies={
                 tools[0].name: BlockingConfirmationStrategy(
                     confirmation_policy=AlwaysAskPolicy(), confirmation_ui=SimpleConsoleUI()
@@ -245,16 +245,18 @@ class TestUnknownToolEndToEnd:
             state=state,
         )
 
-        # The hallucinated call survives the confirmation layer unchanged (it is not dropped).
-        surviving_calls = [tc for message in modified_messages for tc in (message.tool_calls or [])]
+        # The hallucinated call survives the confirmation layer unchanged (it is not dropped), as the pending call
+        # on the last message of the returned history.
+        pending_messages = [new_chat_history[-1]]
+        surviving_calls = [tc for message in pending_messages for tc in (message.tool_calls or [])]
         assert surviving_calls == [tool_call]
 
         # raise_on_failure=True: the tool-calling code raises ToolNotFoundException.
         with pytest.raises(ToolNotFoundException):
-            _run_tool(messages=modified_messages, state=state, tools=tools)
+            _run_tool(messages=pending_messages, state=state, tools=tools)
 
         # raise_on_failure=False: it returns an error tool message instead of crashing.
-        tool_messages, _ = _run_tool(messages=modified_messages, state=state, tools=tools, raise_on_failure=False)
+        tool_messages, _ = _run_tool(messages=pending_messages, state=state, tools=tools, raise_on_failure=False)
         assert tool_messages[0].tool_call_results[0].error
         assert "not found" in tool_messages[0].tool_call_results[0].result
 

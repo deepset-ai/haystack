@@ -196,3 +196,88 @@ class TestConfirmationHookAsync:
         new_messages = state.get("messages")
         assert new_messages[-1].tool_call_result is not None
         assert "rejected" in new_messages[-1].tool_call_result.result.lower()
+
+
+def _echo(x: int) -> dict[str, int]:
+    return {"echoed": x}
+
+
+def _echo_tool(name: str) -> Tool:
+    return Tool(
+        name=name,
+        description=f"Echo tool {name}.",
+        parameters={"type": "object", "properties": {"x": {"type": "integer"}}, "required": ["x"]},
+        function=_echo,
+    )
+
+
+def _multi_tool_hook(decisions: dict[str, ConfirmationUIResult]) -> ConfirmationHook:
+    return ConfirmationHook(
+        confirmation_strategies={
+            name: BlockingConfirmationStrategy(
+                confirmation_policy=AlwaysAskPolicy(), confirmation_ui=MockUserInterface(ui_result)
+            )
+            for name, ui_result in decisions.items()
+        }
+    )
+
+
+def _assert_pending_calls_only_in_last_message(messages: list[ChatMessage]) -> None:
+    """
+    Assert the invariant the Agent loop relies on: after confirmation, every tool call that is still pending (an
+    assistant tool call with no matching tool result later in the history) lives in the last message. The loop reads
+    the calls to execute from the last message alone, so any leftover pending call elsewhere would silently never run.
+    """
+    resolved_ids = {m.tool_call_result.origin.id for m in messages if m.tool_call_result is not None}
+    for index, message in enumerate(messages):
+        pending = [tc for tc in (message.tool_calls or []) if tc.id not in resolved_ids]
+        if pending:
+            assert index == len(messages) - 1, f"pending calls in non-last message at index {index}: {pending}"
+
+
+class TestConfirmationHookPendingInvariant:
+    """The pending tool calls left after the hook runs must always sit in the last message of the chat history."""
+
+    def _run(self, decisions: dict[str, ConfirmationUIResult]) -> list[ChatMessage]:
+        names = list(decisions)
+        tools = [_echo_tool(name) for name in names]
+        tool_calls = [ToolCall(id=f"tc-{name}", tool_name=name, arguments={"x": i}) for i, name in enumerate(names)]
+        messages = [ChatMessage.from_user("go"), ChatMessage.from_assistant(tool_calls=tool_calls)]
+        state = _state_with(messages, tools)
+        _multi_tool_hook(decisions).run(state)
+        return state.get("messages")
+
+    def test_all_confirmed(self):
+        messages = self._run(
+            {"foo": ConfirmationUIResult(action="confirm"), "bar": ConfirmationUIResult(action="confirm")}
+        )
+        _assert_pending_calls_only_in_last_message(messages)
+        # Both calls survive, untouched, on the (single) last assistant message.
+        assert {tc.tool_name for tc in messages[-1].tool_calls} == {"foo", "bar"}
+
+    def test_all_rejected(self):
+        messages = self._run(
+            {"foo": ConfirmationUIResult(action="reject"), "bar": ConfirmationUIResult(action="reject")}
+        )
+        _assert_pending_calls_only_in_last_message(messages)
+        # Nothing left to run: the last message is a tool result, not a pending tool call.
+        assert not messages[-1].tool_calls
+
+    def test_mixed_reject_and_confirm(self):
+        messages = self._run(
+            {"foo": ConfirmationUIResult(action="reject"), "bar": ConfirmationUIResult(action="confirm")}
+        )
+        _assert_pending_calls_only_in_last_message(messages)
+        # The rejected call is resolved earlier; only the confirmed survivor remains pending, on the last message.
+        assert [tc.tool_name for tc in messages[-1].tool_calls] == ["bar"]
+
+    def test_mixed_reject_and_modify(self):
+        messages = self._run(
+            {
+                "foo": ConfirmationUIResult(action="reject"),
+                "bar": ConfirmationUIResult(action="modify", new_tool_params={"x": 99}),
+            }
+        )
+        _assert_pending_calls_only_in_last_message(messages)
+        assert [tc.tool_name for tc in messages[-1].tool_calls] == ["bar"]
+        assert messages[-1].tool_calls[0].arguments == {"x": 99}
