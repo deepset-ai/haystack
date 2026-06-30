@@ -594,6 +594,7 @@ export default {
             'pipeline-components/retrievers/opensearchbm25retriever',
             'pipeline-components/retrievers/opensearchembeddingretriever',
             'pipeline-components/retrievers/opensearchhybridretriever',
+            'pipeline-components/retrievers/opensearchmetadataretriever',
             'pipeline-components/retrievers/opensearchsqlretriever',
             'pipeline-components/retrievers/oracleembeddingretriever',
             'pipeline-components/retrievers/oraclekeywordretriever',
