@@ -248,12 +248,9 @@ def _extract_image_sources_info(
             )
 
         resolved_file_path = Path(root_path, file_path)
-
-        # Defence-in-depth: when a non-empty root_path is supplied, require the resolved file path
-        # to stay within that root. This blocks path-traversal payloads (e.g. "../../etc/passwd") in
-        # attacker-controlled document metadata from reading arbitrary files on the host.
-        # When root_path is empty/falsy, no containment is enforced (preserves the existing
-        # behaviour for callers that pass absolute file paths directly).
+       
+        # When root_path is set, ensure the resolved path stays within it to block path-traversal
+        # payloads (e.g. "../../etc/passwd") coming from document metadata.
         if root_path:
             resolved_file_path = resolved_file_path.resolve()
             resolved_root = Path(root_path).resolve()
