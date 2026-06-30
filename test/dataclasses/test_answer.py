@@ -350,6 +350,19 @@ class TestGeneratedAnswer:
         )
         assert answer.meta["all_messages"] == []
 
+    def test_from_dict_does_not_mutate_input(self):
+        # from_dict must not mutate the caller's input dict while converting
+        # `all_messages` dicts into ChatMessage objects (regression test).
+        meta = {"all_messages": [ChatMessage.from_user("What is the answer?").to_dict()]}
+        serialized = {"data": "42", "query": "What is the answer?", "documents": [], "meta": meta}
+        answer = GeneratedAnswer.from_dict(serialized)
+
+        # the deserialized answer still holds ChatMessage objects
+        assert answer.meta["all_messages"] == [ChatMessage.from_user("What is the answer?")]
+        # but the caller's meta dict is left untouched: it still holds plain dicts
+        assert isinstance(meta["all_messages"][0], dict)
+        assert meta["all_messages"] == [ChatMessage.from_user("What is the answer?").to_dict()]
+
     def test_to_dict_from_dict_round_trip_with_empty_all_messages(self):
         answer = GeneratedAnswer(data="42", query="What is the answer?", documents=[], meta={"all_messages": []})
         assert GeneratedAnswer.from_dict(answer.to_dict()) == answer

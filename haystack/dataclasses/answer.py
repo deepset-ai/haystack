@@ -151,7 +151,8 @@ class GeneratedAnswer:
 
         documents = [Document.from_dict(d) for d in data.get("documents", [])]
 
-        meta = data.get("meta", {})
+        # copy to avoid mutating the caller's input dict when converting all_messages
+        meta = dict(data.get("meta", {}))
         if (all_messages := meta.get("all_messages")) and isinstance(all_messages[0], dict):
             meta["all_messages"] = [ChatMessage.from_dict(m) for m in all_messages]
 
