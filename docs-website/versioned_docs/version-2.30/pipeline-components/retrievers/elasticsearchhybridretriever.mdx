@@ -15,7 +15,7 @@ A Hybrid Retriever uses both traditional keyword-based search (BM25) and embeddi
 
 |  |  |
 | --- | --- |
-| **Most common position in a pipeline** | After an [ElasticsearchDocumentStore](../../document-stores/elasticsearch-document-store.mdx) |
+| **Most common position in a pipeline** | 1. After a TextEmbedder and before a PromptBuilder in a RAG pipeline 2. The last component in a hybrid search pipeline 3. After a TextEmbedder and before an ExtractiveReader in an extractive QA pipeline |
 | **Mandatory init variables** | `document_store`: An instance of [`ElasticsearchDocumentStore`](../../document-stores/elasticsearch-document-store.mdx)  <br /> <br />`embedder`: Any [Embedder](../embedders.mdx) implementing the `TextEmbedder` protocol |
 | **Mandatory run variables** | `query`: A query string |
 | **Output variables** | `documents`: A list of documents matching the query |
@@ -77,7 +77,7 @@ This Retriever needs the `ElasticsearchDocumentStore` populated with documents (
 
 ```python
 from haystack import Document
-from haystack.components.embedders import (
+from haystack_integrations.components.embedders.sentence_transformers import (
     SentenceTransformersTextEmbedder,
     SentenceTransformersDocumentEmbedder,
 )
@@ -103,7 +103,6 @@ documents = [
 ]
 
 doc_embedder = SentenceTransformersDocumentEmbedder(model=model)
-doc_embedder.warm_up()
 docs_with_embeddings = doc_embedder.run(documents)
 document_store.write_documents(docs_with_embeddings["documents"])
 
@@ -128,7 +127,7 @@ Set your `OPENAI_API_KEY` as an environment variable and then run the following 
 from haystack import Document, Pipeline
 from haystack.components.builders import ChatPromptBuilder
 from haystack.components.generators.chat import OpenAIChatGenerator
-from haystack.components.embedders import (
+from haystack_integrations.components.embedders.sentence_transformers import (
     SentenceTransformersDocumentEmbedder,
     SentenceTransformersTextEmbedder,
 )
