@@ -1154,8 +1154,6 @@ class Agent:
                 state=exe_context.state,
                 confirmation_strategy_context=exe_context.confirmation_strategy_context,
                 tools=current_tools,
-                streaming_callback=exe_context.tool_execution_inputs["streaming_callback"],
-                enable_streaming_passthrough=exe_context.tool_execution_inputs["enable_streaming_callback_passthrough"],
             )
             exe_context.state.set(key="messages", value=new_chat_history, handler_override=replace_values)
 
@@ -1223,8 +1221,6 @@ class Agent:
                 messages_with_tool_calls=pending_tool_call_messages,
                 tools=current_tools,
                 state=exe_context.state,
-                streaming_callback=exe_context.tool_execution_inputs["streaming_callback"],
-                enable_streaming_passthrough=exe_context.tool_execution_inputs["enable_streaming_callback_passthrough"],
                 confirmation_strategy_context=exe_context.confirmation_strategy_context,
             )
             exe_context.state.set(key="messages", value=new_chat_history, handler_override=replace_values)

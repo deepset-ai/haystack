@@ -7,7 +7,6 @@ from typing import Any
 
 import pytest
 
-from haystack.components.agents.agent import _ExecutionContext
 from haystack.components.agents.state.state import State
 from haystack.components.agents.tool_calling import ToolNotFoundException, _run_tool
 from haystack.dataclasses import ChatMessage, ToolCall
@@ -49,17 +48,6 @@ def tools() -> list[Tool]:
     )
 
     return [add_tool, mult_tool]
-
-
-@pytest.fixture
-def execution_context(tools: list[Tool]) -> _ExecutionContext:
-    return _ExecutionContext(
-        state=State(schema={"messages": {"type": list[ChatMessage]}}),
-        tools=tools,
-        chat_generator_inputs={},
-        tool_execution_inputs={},
-        counter=0,
-    )
 
 
 class TestBlockingConfirmationStrategy:
@@ -164,20 +152,19 @@ class TestBlockingConfirmationStrategy:
 
 
 class TestRunConfirmationStrategies:
-    def test_run_confirmation_strategies_no_strategy(self, tools, execution_context):
+    def test_run_confirmation_strategies_no_strategy(self, tools):
         teds = _run_confirmation_strategies(
             confirmation_strategies={},
             messages_with_tool_calls=[
                 ChatMessage.from_assistant(tool_calls=[ToolCall(tools[0].name, {"param1": "value1"})])
             ],
             tools=tools,
-            state=execution_context.state,
         )
         assert teds == [
             ToolExecutionDecision(tool_name=tools[0].name, execute=True, final_tool_params={"param1": "value1"})
         ]
 
-    def test_run_confirmation_strategies_with_strategy(self, tools, execution_context):
+    def test_run_confirmation_strategies_with_strategy(self, tools):
         teds = _run_confirmation_strategies(
             confirmation_strategies={
                 tools[0].name: BlockingConfirmationStrategy(
@@ -188,13 +175,12 @@ class TestRunConfirmationStrategies:
                 ChatMessage.from_assistant(tool_calls=[ToolCall(tools[0].name, {"param1": "value1"})])
             ],
             tools=tools,
-            state=execution_context.state,
         )
         assert teds == [
             ToolExecutionDecision(tool_name=tools[0].name, execute=True, final_tool_params={"param1": "value1"})
         ]
 
-    def test_run_confirmation_strategies_with_multi_tool_tuple_key(self, tools, execution_context):
+    def test_run_confirmation_strategies_with_multi_tool_tuple_key(self, tools):
         add_tool, mult_tool = tools[0], tools[1]
 
         strategy = BlockingConfirmationStrategy(confirmation_policy=NeverAskPolicy(), confirmation_ui=SimpleConsoleUI())
@@ -207,7 +193,6 @@ class TestRunConfirmationStrategies:
                 )
             ],
             tools=tools,
-            state=execution_context.state,
         )
 
         assert len(teds) == 2
@@ -216,7 +201,7 @@ class TestRunConfirmationStrategies:
         assert teds[1].tool_name == mult_tool.name
         assert teds[1].execute is True
 
-    def test_run_confirmation_strategies_unknown_tool_passes_through(self, tools, execution_context):
+    def test_run_confirmation_strategies_unknown_tool_passes_through(self, tools):
         # The model hallucinated a tool name that isn't in the available tools. Confirmation is skipped and the
         # call passes through unchanged so the tool-calling code can report it (ToolNotFoundException).
         teds = _run_confirmation_strategies(
@@ -231,7 +216,6 @@ class TestRunConfirmationStrategies:
                 )
             ],
             tools=tools,
-            state=execution_context.state,
         )
         assert teds == [
             ToolExecutionDecision(
@@ -542,15 +526,6 @@ class ConfirmationStrategyContextCapturingStrategy:
 class TestRunContext:
     def test_confirmation_strategy_context_passed_to_strategy(self, tools):
         confirmation_strategy_context = {"event_queue": "mock_queue", "redis_client": "mock_redis"}
-        execution_context = _ExecutionContext(
-            state=State(schema={"messages": {"type": list[ChatMessage]}}),
-            tools=tools,
-            chat_generator_inputs={},
-            tool_execution_inputs={},
-            counter=0,
-            confirmation_strategy_context=confirmation_strategy_context,
-        )
-
         capturing_strategy = ConfirmationStrategyContextCapturingStrategy()
         teds = _run_confirmation_strategies(
             confirmation_strategies={tools[0].name: capturing_strategy},
@@ -558,7 +533,6 @@ class TestRunContext:
                 ChatMessage.from_assistant(tool_calls=[ToolCall(tools[0].name, {"a": 1, "b": 2})])
             ],
             tools=tools,
-            state=execution_context.state,
             confirmation_strategy_context=confirmation_strategy_context,
         )
 
@@ -571,15 +545,6 @@ class TestRunContext:
     @pytest.mark.asyncio
     async def test_confirmation_strategy_context_passed_to_strategy_async(self, tools):
         confirmation_strategy_context = {"websocket": "mock_websocket", "request_id": "12345"}
-        execution_context = _ExecutionContext(
-            state=State(schema={"messages": {"type": list[ChatMessage]}}),
-            tools=tools,
-            chat_generator_inputs={},
-            tool_execution_inputs={},
-            counter=0,
-            confirmation_strategy_context=confirmation_strategy_context,
-        )
-
         capturing_strategy = ConfirmationStrategyContextCapturingStrategy()
         teds = await _run_confirmation_strategies_async(
             confirmation_strategies={tools[0].name: capturing_strategy},
@@ -587,7 +552,6 @@ class TestRunContext:
                 ChatMessage.from_assistant(tool_calls=[ToolCall(tools[0].name, {"a": 1, "b": 2})])
             ],
             tools=tools,
-            state=execution_context.state,
             confirmation_strategy_context=confirmation_strategy_context,
         )
 
@@ -688,7 +652,7 @@ class TestAsyncConfirmationStrategies:
         assert decision.feedback is not None and "rejected asynchronously" in decision.feedback
 
     @pytest.mark.asyncio
-    async def test_async_strategy_used_by_run_confirmation_strategies_async(self, tools, execution_context):
+    async def test_async_strategy_used_by_run_confirmation_strategies_async(self, tools):
         strategy = TrueAsyncConfirmationStrategy(delay=0.01, decision="confirm")
 
         teds = await _run_confirmation_strategies_async(
@@ -697,7 +661,6 @@ class TestAsyncConfirmationStrategies:
                 ChatMessage.from_assistant(tool_calls=[ToolCall(tools[0].name, {"a": 1, "b": 2})])
             ],
             tools=tools,
-            state=execution_context.state,
         )
 
         # Verify that only the async method was called
@@ -726,14 +689,13 @@ class TestAsyncConfirmationStrategies:
         assert decision.final_tool_params == {"param1": "value1"}
 
     @pytest.mark.asyncio
-    async def test_run_confirmation_strategies_async_no_strategy(self, tools, execution_context):
+    async def test_run_confirmation_strategies_async_no_strategy(self, tools):
         teds = await _run_confirmation_strategies_async(
             confirmation_strategies={},
             messages_with_tool_calls=[
                 ChatMessage.from_assistant(tool_calls=[ToolCall(tools[0].name, {"a": 1, "b": 2})])
             ],
             tools=tools,
-            state=execution_context.state,
         )
         assert len(teds) == 1
         assert teds[0].tool_name == tools[0].name
@@ -741,7 +703,7 @@ class TestAsyncConfirmationStrategies:
         assert teds[0].final_tool_params == {"a": 1, "b": 2}
 
     @pytest.mark.asyncio
-    async def test_run_confirmation_strategies_async_with_strategy(self, tools, execution_context):
+    async def test_run_confirmation_strategies_async_with_strategy(self, tools):
         teds = await _run_confirmation_strategies_async(
             confirmation_strategies={
                 tools[0].name: BlockingConfirmationStrategy(
@@ -752,14 +714,13 @@ class TestAsyncConfirmationStrategies:
                 ChatMessage.from_assistant(tool_calls=[ToolCall(tools[0].name, {"a": 1, "b": 2})])
             ],
             tools=tools,
-            state=execution_context.state,
         )
         assert len(teds) == 1
         assert teds[0].tool_name == tools[0].name
         assert teds[0].execute is True
 
     @pytest.mark.asyncio
-    async def test_run_confirmation_strategies_async_unknown_tool_passes_through(self, tools, execution_context):
+    async def test_run_confirmation_strategies_async_unknown_tool_passes_through(self, tools):
         # The model hallucinated a tool name that isn't in the available tools. Confirmation is skipped and the
         # call passes through unchanged so the tool-calling code can report it (ToolNotFoundException).
         teds = await _run_confirmation_strategies_async(
@@ -774,7 +735,6 @@ class TestAsyncConfirmationStrategies:
                 )
             ],
             tools=tools,
-            state=execution_context.state,
         )
         assert teds == [
             ToolExecutionDecision(
