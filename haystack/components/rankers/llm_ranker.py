@@ -1,7 +1,7 @@
 # SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
 #
 # SPDX-License-Identifier: Apache-2.0
-
+import asyncio
 from typing import Any
 
 from haystack import Document, component, default_from_dict, default_to_dict, logging
@@ -248,6 +248,78 @@ class LLMRanker:
 
         try:
             result = self._chat_generator.run(messages=[ChatMessage.from_user(prompt["prompt"])])
+        except Exception as exc:
+            if self.raise_on_failure:
+                raise
+            logger.warning(
+                "LLMRanker failed during chat generation. Returning fallback order. Error: {error}", error=exc
+            )
+            return {"documents": fallback_documents}
+
+        try:
+            reply_text = self._get_reply_text(result)
+            ranked_documents = self._rank_documents_from_reply(reply_text=reply_text, documents=deduplicated_documents)
+        except (TypeError, ValueError) as exc:
+            if self.raise_on_failure:
+                raise
+            logger.warning(
+                "LLMRanker failed while processing the chat response. Returning fallback order. Error: {error}",
+                error=exc,
+            )
+            return {"documents": fallback_documents}
+
+        return {"documents": ranked_documents[:top_k]}
+
+    @component.output_types(documents=list[Document])
+    async def run_async(
+        self, query: str, documents: list[Document], top_k: int | None = None
+    ) -> dict[str, list[Document]]:
+        """
+        Rank documents Asynchronously for a query using an LLM.
+
+        Before ranking, duplicate documents are removed.
+
+        :param query:
+            The query used for reranking.
+        :param documents:
+            Candidate documents to rerank.
+        :param top_k:
+            The maximum number of documents to return. Overrides the instance's `top_k` if provided.
+        :returns:
+            A dictionary with the ranked documents under the `documents` key.
+        """
+        if top_k is not None and top_k <= 0:
+            raise ValueError(f"top_k must be > 0, but got {top_k}")
+
+        if not documents:
+            return {"documents": []}
+
+        top_k = self.top_k if top_k is None else top_k
+        deduplicated_documents = _deduplicate_documents(documents)
+        fallback_documents = deduplicated_documents
+
+        if not query.strip():
+            logger.warning("Empty query provided to LLMRanker. Returning documents without reranking.")
+            return {"documents": fallback_documents}
+
+        if not self._is_warmed_up:
+            self.warm_up()
+
+        prompt = self._prompt_builder.run(query=query.strip(), documents=deduplicated_documents)
+
+        messages = [ChatMessage.from_user(prompt["prompt"])]
+        generator_has_async = hasattr(self._chat_generator, "run_async")
+        try:
+            if generator_has_async:
+                result = await self._chat_generator.run_async(messages=messages)
+            else:
+                logger.debug(
+                    "{generator_type} does not implement 'run_async'."
+                    " Running the synchronous 'run' method in a thread to avoid blocking the event loop.",
+                    generator_type=type(self._chat_generator).__name__,
+                )
+
+                result = await asyncio.to_thread(self._chat_generator.run, messages=messages)
         except Exception as exc:
             if self.raise_on_failure:
                 raise
