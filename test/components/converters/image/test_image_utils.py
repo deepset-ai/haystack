@@ -154,9 +154,7 @@ class TestExtractImageSourcesInfo:
         document = Document(content="test", meta={"file_path": "../../../../../../etc/passwd"})
         with pytest.raises(ValueError, match="escapes the configured root"):
             _extract_image_sources_info(
-                documents=[document],
-                file_path_meta_field="file_path",
-                root_path=str(test_files_path / "images"),
+                documents=[document], file_path_meta_field="file_path", root_path=str(test_files_path / "images")
             )
 
     def test_extract_image_source_info_rejects_absolute_outside_root(self, test_files_path):
@@ -164,18 +162,14 @@ class TestExtractImageSourcesInfo:
         document = Document(content="test", meta={"file_path": "/etc/passwd"})
         with pytest.raises(ValueError, match="escapes the configured root"):
             _extract_image_sources_info(
-                documents=[document],
-                file_path_meta_field="file_path",
-                root_path=str(test_files_path / "images"),
+                documents=[document], file_path_meta_field="file_path", root_path=str(test_files_path / "images")
             )
 
     def test_extract_image_source_info_accepts_path_inside_root(self, test_files_path):
         # When the resolved path is inside the configured root, processing must succeed.
         document = Document(content="test", meta={"file_path": "haystack-logo.png"})
         images_source_info = _extract_image_sources_info(
-            documents=[document],
-            file_path_meta_field="file_path",
-            root_path=str(test_files_path / "images"),
+            documents=[document], file_path_meta_field="file_path", root_path=str(test_files_path / "images")
         )
         assert len(images_source_info) == 1
         assert images_source_info[0]["mime_type"] == "image/png"
