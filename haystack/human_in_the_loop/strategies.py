@@ -2,11 +2,12 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import json
 from dataclasses import replace
 from typing import Any
 
 from haystack.components.agents.state.state import State
-from haystack.core.serialization import default_from_dict, default_to_dict
+from haystack.core.serialization import component_to_dict, default_from_dict, default_to_dict
 from haystack.dataclasses import ChatMessage, ToolCall
 from haystack.human_in_the_loop import ToolExecutionDecision
 from haystack.human_in_the_loop.types import ConfirmationPolicy, ConfirmationStrategy, ConfirmationUI
@@ -572,12 +573,32 @@ def _update_chat_history(
     return chat_history[: insertion_point + 1] + rejection_messages + tool_call_and_explanation_messages
 
 
+def _serialize_confirmation_strategies(
+    confirmation_strategies: dict[str | tuple[str, ...], ConfirmationStrategy],
+) -> dict[str, Any]:
+    """
+    Serialize a confirmation strategies dictionary to a plain, mapping-key-safe dictionary.
+
+    Mapping keys must be strings, so a tuple of tool names (one strategy shared across several tools) is encoded
+    as a JSON-array string (e.g. `("a", "b")` -> `'["a", "b"]'`); a single tool name is kept as-is.
+
+    :param confirmation_strategies: Mapping of tool name (or a tuple of tool names) to its strategy.
+    :returns: The same mapping with string keys and each strategy serialized to a dictionary.
+    """
+    return {
+        (json.dumps(list(key)) if isinstance(key, tuple) else key): component_to_dict(
+            obj=strategy, name="confirmation_strategy"
+        )
+        for key, strategy in confirmation_strategies.items()
+    }
+
+
 def _deserialize_confirmation_strategies(data: dict[str, Any]) -> dict[str | tuple[str, ...], ConfirmationStrategy]:
     """
     Deserialize a confirmation strategies dictionary from its serialized form.
 
-    Deserializes each strategy component in-place and converts any list keys back to tuples,
-    since JSON serializes tuple keys as lists.
+    Deserializes each strategy component in-place and converts keys that were encoded as JSON-array strings (tuples
+    of tool names) back to tuples; single tool-name string keys are kept as-is.
 
     :param data: Raw dictionary of serialized confirmation strategies, keyed by tool name(s).
     :returns: Deserialized confirmation strategies with proper key types.
@@ -585,4 +606,15 @@ def _deserialize_confirmation_strategies(data: dict[str, Any]) -> dict[str | tup
     for raw_key in list(data):
         deserialize_component_inplace(data, key=raw_key)
 
-    return {(tuple(raw_key) if isinstance(raw_key, list) else raw_key): strategy for raw_key, strategy in data.items()}
+    return {_decode_strategy_key(raw_key): strategy for raw_key, strategy in data.items()}
+
+
+def _decode_strategy_key(raw_key: str | list) -> str | tuple[str, ...]:
+    """Reverse of the key encoding in `_serialize_confirmation_strategies`."""
+    # Backwards-compatibility: an actual list (older in-memory forms) becomes a tuple.
+    if isinstance(raw_key, list):
+        return tuple(raw_key)
+    # A JSON-array string encodes a tuple of tool names; any other string is a single tool name.
+    if raw_key.startswith("["):
+        return tuple(json.loads(raw_key))
+    return raw_key

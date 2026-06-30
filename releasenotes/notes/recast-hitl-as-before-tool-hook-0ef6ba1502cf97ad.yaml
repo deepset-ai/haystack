@@ -1,0 +1,34 @@
+---
+upgrade:
+  - |
+    Human-in-the-Loop tool confirmation on ``Agent`` is now expressed as a ``before_tool`` hook instead of a
+    dedicated concept. The ``confirmation_strategies`` and ``confirmation_strategy_context`` parameters have been
+    removed from ``Agent.__init__``, ``Agent.run``, and ``Agent.run_async``. To migrate, wrap your confirmation
+    strategies in the new ``ConfirmationHook``, register it under the ``before_tool`` hook point, and pass any
+    request-scoped resources through the generic ``hook_context`` run argument instead of
+    ``confirmation_strategy_context``:
+
+    .. code-block:: python
+
+        from haystack.components.agents import Agent
+        from haystack.human_in_the_loop import (
+            AlwaysAskPolicy,
+            BlockingConfirmationStrategy,
+            ConfirmationHook,
+            RichConsoleUI,
+        )
+
+        confirmation_hook = ConfirmationHook(
+            confirmation_strategies={
+                "my_tool": BlockingConfirmationStrategy(
+                    confirmation_policy=AlwaysAskPolicy(), confirmation_ui=RichConsoleUI()
+                )
+            }
+        )
+        agent = Agent(chat_generator=..., tools=[...], hooks={"before_tool": [confirmation_hook]})
+        agent.run(messages=[...], hook_context={"websocket": ws})
+features:
+  - |
+    Added ``ConfirmationHook``, a ``before_tool`` Agent hook that applies Human-in-the-Loop confirmation strategies
+    to pending tool calls. It confirms, modifies, or rejects the tool calls the model requested before they run by
+    rewriting the conversation in the Agent's ``State``.

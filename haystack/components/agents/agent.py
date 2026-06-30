@@ -32,12 +32,6 @@ from haystack.hooks.utils import (
     warm_up_hooks,
     warm_up_hooks_async,
 )
-from haystack.human_in_the_loop.strategies import (
-    _deserialize_confirmation_strategies,
-    _process_confirmation_strategies,
-    _process_confirmation_strategies_async,
-)
-from haystack.human_in_the_loop.types import ConfirmationStrategy
 from haystack.tools import (
     Tool,
     Toolset,
@@ -67,10 +61,16 @@ _INTERNAL_STATE_KEYS: dict[str, dict[str, Any]] = {
     "tool_call_counts": {"type": dict[str, int], "handler": replace_values},
 }
 
-# State keys hooks use to control the run loop. Like internal keys they are reserved and cannot be redefined by users,
-# but unlike internal keys they are transient loop-control signals and are NOT exposed as Agent inputs or outputs.
-# `continue_run`: set by an `on_exit` hook to keep the Agent running instead of stopping (re-read each exit attempt).
-_CONTROL_STATE_KEYS: dict[str, dict[str, Any]] = {"continue_run": {"type": bool, "handler": replace_values}}
+# State keys the Agent manages for hooks. Like internal keys they are reserved and cannot be redefined by users, but
+# unlike internal keys they are NOT exposed as Agent inputs or outputs (they are run-control / hook-facing state):
+# - `continue_run`: set by an `on_exit` hook to keep the Agent running instead of stopping (re-read each exit attempt).
+# - `tools`: the flattened tools available in the current step, so a hook can inspect them (e.g. HITL confirmation).
+# - `hook_context`: per-run request-scoped resources passed to `run`/`run_async` for hooks to read.
+_RESERVED_STATE_KEYS: dict[str, dict[str, Any]] = {
+    "continue_run": {"type": bool, "handler": replace_values},
+    "tools": {"type": list, "handler": replace_values},
+    "hook_context": {"type": dict[str, Any], "handler": replace_values},
+}
 
 
 def _accumulate_usage(current: Any, new: Any) -> Any:
@@ -143,8 +143,8 @@ def _get_run_method_params(instance: "Agent") -> set[str]:
 
 
 def _public_outputs(state: State) -> dict[str, Any]:
-    """Return the State data excluding transient loop-control keys (the Agent's user-facing outputs)."""
-    return {key: value for key, value in state.data.items() if key not in _CONTROL_STATE_KEYS}
+    """Return the State data excluding the Agent-managed reserved keys (i.e. the Agent's user-facing outputs)."""
+    return {key: value for key, value in state.data.items() if key not in _RESERVED_STATE_KEYS}
 
 
 def _consume_continue_run(state: State) -> bool:
@@ -327,11 +327,6 @@ class _ExecutionContext:
     :param chat_generator_inputs: Runtime inputs to be passed to the chat generator (tools are injected per step).
     :param tool_execution_inputs: Runtime inputs to be passed to tool execution (tools are injected per step).
     :param counter: A counter to track the number of steps taken in the agent's run.
-    :param confirmation_strategy_context: Optional dictionary for passing request-scoped resources
-        to confirmation strategies. In web/server environments, this enables passing per-request
-        objects (e.g., WebSocket connections, async queues, or pub/sub clients) that strategies can use for
-        non-blocking user interaction. This is passed directly to strategies via the `confirmation_strategy_context`
-        parameter in their `run()` and `run_async()` methods.
     """
 
     state: State
@@ -339,7 +334,6 @@ class _ExecutionContext:
     chat_generator_inputs: dict
     tool_execution_inputs: dict
     counter: int = 0
-    confirmation_strategy_context: dict[str, Any] | None = None
 
 
 @component
@@ -511,7 +505,6 @@ class Agent:
         raise_on_tool_invocation_failure: bool = False,
         tool_concurrency_limit: int = 4,
         tool_streaming_callback_passthrough: bool = False,
-        confirmation_strategies: dict[str | tuple[str, ...], ConfirmationStrategy] | None = None,
         hooks: dict[HookPoint, list[Hook]] | None = None,
     ) -> None:
         """
@@ -546,7 +539,6 @@ class Agent:
         :param tool_concurrency_limit: Maximum number of tool calls to execute at the same time.
             Defaults to 4. Set to 1 to disable parallel tool execution.
         :param tool_streaming_callback_passthrough: If True, pass the streaming callback to tools that accept it.
-        :param confirmation_strategies: A dictionary mapping tool names to ConfirmationStrategy instances.
         :param hooks: A dictionary mapping a hook point to a list of hooks the Agent runs at that point. Each hook
             receives the live `State` and influences the run by mutating it in place; hooks for a hook point run in
             list order. Valid hook points are:
@@ -577,7 +569,7 @@ class Agent:
             exit_conditions = ["text"]
 
         if state_schema is not None:
-            reserved_keys = _INTERNAL_STATE_KEYS.keys() | _CONTROL_STATE_KEYS.keys()
+            reserved_keys = _INTERNAL_STATE_KEYS.keys() | _RESERVED_STATE_KEYS.keys()
             reserved_used = sorted(set(state_schema) & reserved_keys)
             if reserved_used:
                 raise ValueError(
@@ -621,7 +613,6 @@ class Agent:
         self.streaming_callback = streaming_callback
         self.tool_concurrency_limit = tool_concurrency_limit
         self.tool_streaming_callback_passthrough = tool_streaming_callback_passthrough
-        self._confirmation_strategies = confirmation_strategies or {}
         self.hooks = hooks
         self._tools_warmed_up = False
         self._hooks_warmed_up = False
@@ -632,7 +623,7 @@ class Agent:
         self.state_schema = dict(self._state_schema)
         if self.state_schema.get("messages") is None:
             self.state_schema["messages"] = {"type": list[ChatMessage], "handler": merge_lists}
-        for key, config in {**_INTERNAL_STATE_KEYS, **_CONTROL_STATE_KEYS}.items():
+        for key, config in {**_INTERNAL_STATE_KEYS, **_RESERVED_STATE_KEYS}.items():
             self.state_schema[key] = dict(config)
 
         # --- Component I/O ---
@@ -640,7 +631,7 @@ class Agent:
         output_types: dict[str, Any] = {"last_message": ChatMessage}
         for param, config in self.state_schema.items():
             # Control keys are transient loop-control signals, not exposed as inputs or outputs.
-            if param in _CONTROL_STATE_KEYS:
+            if param in _RESERVED_STATE_KEYS:
                 continue
             output_types[param] = config["type"]
             # Internal state keys are populated internally by the Agent itself and are not exposed as inputs
@@ -784,14 +775,6 @@ class Agent:
             raise_on_tool_invocation_failure=self.raise_on_tool_invocation_failure,
             tool_concurrency_limit=self.tool_concurrency_limit,
             tool_streaming_callback_passthrough=self.tool_streaming_callback_passthrough,
-            confirmation_strategies={
-                (list(key) if isinstance(key, tuple) else key): component_to_dict(
-                    obj=strategy, name="confirmation_strategy"
-                )
-                for key, strategy in self._confirmation_strategies.items()
-            }
-            if self._confirmation_strategies
-            else None,
             hooks=_serialize_hooks_dictionary(self.hooks) if self.hooks else None,
         )
 
@@ -814,11 +797,6 @@ class Agent:
             init_params["streaming_callback"] = deserialize_callable(init_params["streaming_callback"])
 
         deserialize_tools_or_toolset_inplace(init_params, key="tools")
-
-        if init_params.get("confirmation_strategies") is not None:
-            init_params["confirmation_strategies"] = _deserialize_confirmation_strategies(
-                init_params["confirmation_strategies"]
-            )
 
         if init_params.get("hooks") is not None:
             init_params["hooks"] = _deserialize_hooks_dictionary(init_params["hooks"])
@@ -855,7 +833,7 @@ class Agent:
         *,
         generation_kwargs: dict[str, Any] | None = None,
         tools: ToolsType | list[str] | None = None,
-        confirmation_strategy_context: dict[str, Any] | None = None,
+        hook_context: dict[str, Any] | None = None,
         **kwargs: Any,
     ) -> _ExecutionContext:
         """
@@ -868,8 +846,8 @@ class Agent:
             override the parameters passed during component initialization.
         :param tools: Optional list of Tool objects, a Toolset, or list of tool names to use for this run.
             When passing tool names, tools are selected from the Agent's originally configured tools.
-        :param confirmation_strategy_context: Optional dictionary for passing request-scoped resources
-            to confirmation strategies.
+        :param hook_context: Optional dictionary of request-scoped resources made available to hooks via
+            `state.get("hook_context")`.
         :param kwargs: Additional data to pass to the State used by the Agent.
         """
         messages = messages or []
@@ -911,6 +889,7 @@ class Agent:
         state.set("token_usage", {})
         state.set("tool_call_counts", {tool.name: 0 for tool in flat_tools})
         state.set("continue_run", False)
+        state.set("hook_context", hook_context or {})
 
         streaming_callback = select_streaming_callback(  # type: ignore[call-overload]
             init_callback=self.streaming_callback, runtime_callback=streaming_callback, requires_async=requires_async
@@ -933,7 +912,6 @@ class Agent:
             tools=selected_tools,
             chat_generator_inputs=generator_inputs,
             tool_execution_inputs=tool_execution_inputs,
-            confirmation_strategy_context=confirmation_strategy_context,
         )
 
     def _select_tools(self, tools: ToolsType | list[str] | None = None) -> ToolsType:
@@ -979,7 +957,7 @@ class Agent:
         *,
         generation_kwargs: dict[str, Any] | None = None,
         tools: ToolsType | list[str] | None = None,
-        confirmation_strategy_context: dict[str, Any] | None = None,
+        hook_context: dict[str, Any] | None = None,
         **kwargs: Any,
     ) -> dict[str, Any]:
         """
@@ -992,10 +970,10 @@ class Agent:
             override the parameters passed during component initialization.
         :param tools: Optional list of Tool objects, a Toolset, or list of tool names to use for this run.
             When passing tool names, tools are selected from the Agent's originally configured tools.
-        :param confirmation_strategy_context: Optional dictionary for passing request-scoped resources
-            to confirmation strategies. Useful in web/server environments to provide per-request
-            objects (e.g., WebSocket connections, async queues, Redis pub/sub clients) that strategies
-            can use for non-blocking user interaction.
+        :param hook_context: Optional dictionary of request-scoped resources made available to hooks via
+            `state.get("hook_context")`. Useful in web/server environments to provide per-request objects
+            (e.g., WebSocket connections, async queues, Redis pub/sub clients) that a hook can use, for
+            example a ConfirmationHook driving non-blocking user interaction.
         :param kwargs: Additional data to pass to the State schema used by the Agent.
             The keys must match the schema defined in the Agent's `state_schema`.
         :returns:
@@ -1019,7 +997,7 @@ class Agent:
             requires_async=False,
             generation_kwargs=generation_kwargs,
             tools=tools,
-            confirmation_strategy_context=confirmation_strategy_context,
+            hook_context=hook_context,
             **kwargs,
         )
 
@@ -1048,7 +1026,7 @@ class Agent:
         *,
         generation_kwargs: dict[str, Any] | None = None,
         tools: ToolsType | list[str] | None = None,
-        confirmation_strategy_context: dict[str, Any] | None = None,
+        hook_context: dict[str, Any] | None = None,
         **kwargs: Any,
     ) -> dict[str, Any]:
         """
@@ -1064,12 +1042,10 @@ class Agent:
         :param generation_kwargs: Additional keyword arguments for LLM. These parameters will
             override the parameters passed during component initialization.
         :param tools: Optional list of Tool objects, a Toolset, or list of tool names to use for this run.
-        :param kwargs: Additional data to pass to the State schema used by the Agent.
-            The keys must match the schema defined in the Agent's `state_schema`.
-        :param confirmation_strategy_context: Optional dictionary for passing request-scoped resources
-            to confirmation strategies. Useful in web/server environments to provide per-request
-            objects (e.g., WebSocket connections, async queues, Redis pub/sub clients) that strategies
-            can use for non-blocking user interaction.
+        :param hook_context: Optional dictionary of request-scoped resources made available to hooks via
+            `state.get("hook_context")`. Useful in web/server environments to provide per-request objects
+            (e.g., WebSocket connections, async queues, Redis pub/sub clients) that a hook can use, for
+            example a ConfirmationHook driving non-blocking user interaction.
         :param kwargs: Additional data to pass to the State schema used by the Agent.
             The keys must match the schema defined in the Agent's `state_schema`.
         :returns:
@@ -1093,7 +1069,7 @@ class Agent:
             requires_async=True,
             tools=tools,
             generation_kwargs=generation_kwargs,
-            confirmation_strategy_context=confirmation_strategy_context,
+            hook_context=hook_context,
             **kwargs,
         )
 
@@ -1124,6 +1100,8 @@ class Agent:
             # earlier steps. Validate names here so duplicates fail before starting the step.
             current_tools = flatten_tools_or_toolsets(exe_context.tools)
             _check_duplicate_tool_names(current_tools)
+            # Expose the current tools to hooks (e.g. ConfirmationHook) via State.
+            exe_context.state.set("tools", current_tools, handler_override=replace_values)
 
             _run_hooks(self.hooks, BEFORE_LLM, exe_context.state)
             chat_generator_inputs = {
@@ -1147,18 +1125,12 @@ class Agent:
                 return self._continue_after_exit_hooks(exe_context)
 
             _run_hooks(self.hooks, BEFORE_TOOL, exe_context.state)
+            # Re-read the pending tool calls from State so that any rewrites a before_tool hook made (e.g.
+            # ConfirmationHook rejecting or modifying calls) are honored by the executor.
             pending_tool_call_messages = _pending_tool_call_messages_from_state(exe_context.state)
-            modified_tool_call_messages, new_chat_history = _process_confirmation_strategies(
-                confirmation_strategies=self._confirmation_strategies,
-                messages_with_tool_calls=pending_tool_call_messages,
-                state=exe_context.state,
-                confirmation_strategy_context=exe_context.confirmation_strategy_context,
-                tools=current_tools,
-            )
-            exe_context.state.set(key="messages", value=new_chat_history, handler_override=replace_values)
 
             tool_execution_inputs = {
-                "messages": modified_tool_call_messages,
+                "messages": pending_tool_call_messages,
                 "state": exe_context.state,
                 **exe_context.tool_execution_inputs,
                 "tools": current_tools,
@@ -1175,7 +1147,7 @@ class Agent:
             exe_context.counter += 1
             exe_context.state.set("step_count", exe_context.counter)
             exit_triggered = self.exit_conditions != ["text"] and self._check_exit_conditions(
-                llm_messages=modified_tool_call_messages, tool_messages=tool_messages
+                llm_messages=pending_tool_call_messages, tool_messages=tool_messages
             )
             if exit_triggered:
                 return self._continue_after_exit_hooks(exe_context)
@@ -1190,6 +1162,8 @@ class Agent:
             # earlier steps. Validate names here so duplicates fail before starting the step.
             current_tools = flatten_tools_or_toolsets(exe_context.tools)
             _check_duplicate_tool_names(current_tools)
+            # Expose the current tools to hooks (e.g. ConfirmationHook) via State.
+            exe_context.state.set("tools", current_tools, handler_override=replace_values)
 
             await _run_hooks_async(self.hooks, BEFORE_LLM, exe_context.state)
             chat_generator_inputs = {
@@ -1215,18 +1189,12 @@ class Agent:
                 return await self._continue_after_exit_hooks_async(exe_context)
 
             await _run_hooks_async(self.hooks, BEFORE_TOOL, exe_context.state)
+            # Re-read the pending tool calls from State so that any rewrites a before_tool hook made (e.g.
+            # ConfirmationHook rejecting or modifying calls) are honored by the executor.
             pending_tool_call_messages = _pending_tool_call_messages_from_state(exe_context.state)
-            modified_tool_call_messages, new_chat_history = await _process_confirmation_strategies_async(
-                confirmation_strategies=self._confirmation_strategies,
-                messages_with_tool_calls=pending_tool_call_messages,
-                tools=current_tools,
-                state=exe_context.state,
-                confirmation_strategy_context=exe_context.confirmation_strategy_context,
-            )
-            exe_context.state.set(key="messages", value=new_chat_history, handler_override=replace_values)
 
             tool_execution_inputs = {
-                "messages": modified_tool_call_messages,
+                "messages": pending_tool_call_messages,
                 "state": exe_context.state,
                 **exe_context.tool_execution_inputs,
                 "tools": current_tools,
@@ -1243,7 +1211,7 @@ class Agent:
             exe_context.counter += 1
             exe_context.state.set("step_count", exe_context.counter)
             exit_triggered = self.exit_conditions != ["text"] and self._check_exit_conditions(
-                llm_messages=modified_tool_call_messages, tool_messages=tool_messages
+                llm_messages=pending_tool_call_messages, tool_messages=tool_messages
             )
             if exit_triggered:
                 return await self._continue_after_exit_hooks_async(exe_context)
