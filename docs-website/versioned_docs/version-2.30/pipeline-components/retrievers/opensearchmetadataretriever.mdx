@@ -9,15 +9,19 @@ description: Searches and ranks the metadata fields of documents stored in an Op
 
 Searches and ranks the metadata fields of documents stored in an OpenSearch Document Store and returns the matching metadata values.
 
+<div className="key-value-table">
+
 |                                         |                                                                                                                                  |
 | --------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
 | **Most common position in a pipeline**  | Standalone, or wherever you need to look up structured metadata (categories, statuses, tags, IDs) instead of full documents      |
 | **Mandatory init variables**            | `document_store`: An instance of `OpenSearchDocumentStore`; `metadata_fields`: List of metadata field names to search and return |
 | **Mandatory run variables**             | `query`: A search query string (may contain comma-separated parts)                                                               |
 | **Output variables**                    | `metadata`: A list of dictionaries containing only the requested metadata fields                                                 |
-| **API reference**                       | [OpenSearch](https://docs.haystack.deepset.ai/reference/integrations-opensearch)                                                 |
+| **API reference**                       | [OpenSearch](/reference/integrations-opensearch)                                                                                 |
 | **GitHub link**                         | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/opensearch                                       |
 | **Package name**                        | `opensearch-haystack`                                                                                                            |
+
+</div>
 
 ## Overview
 
@@ -75,20 +79,38 @@ from haystack_integrations.components.retrievers.opensearch import (
 from haystack_integrations.document_stores.opensearch import OpenSearchDocumentStore
 from haystack.document_stores.types import DuplicatePolicy
 
-document_store = OpenSearchDocumentStore(hosts="http://localhost:9200", index="my_index")
+document_store = OpenSearchDocumentStore(
+    hosts="http://localhost:9200",
+    index="my_index",
+)
 
 documents = [
     Document(
         content="Python programming guide",
-        meta={"category": "Python", "status": "active", "priority": 1, "author": "John Doe"},
+        meta={
+            "category": "Python",
+            "status": "active",
+            "priority": 1,
+            "author": "John Doe",
+        },
     ),
     Document(
         content="Java tutorial",
-        meta={"category": "Java", "status": "active", "priority": 2, "author": "Jane Smith"},
+        meta={
+            "category": "Java",
+            "status": "active",
+            "priority": 2,
+            "author": "Jane Smith",
+        },
     ),
     Document(
         content="Python advanced topics",
-        meta={"category": "Python", "status": "inactive", "priority": 3, "author": "John Doe"},
+        meta={
+            "category": "Python",
+            "status": "inactive",
+            "priority": 3,
+            "author": "John Doe",
+        },
     ),
 ]
 
@@ -134,7 +156,7 @@ retriever = OpenSearchMetadataRetriever(
 )
 
 result = retriever.run(query="Pyth")
-# Matches "Python" through prefix matching, but not "Phyton".
+# Matches "Python" through prefix matching, but not transposed-letter variants.
 ```
 
 The fuzzy-mode parameters (`fuzziness`, `prefix_length`, `max_expansions`, `tie_breaker`) only take effect when `mode="fuzzy"`.
