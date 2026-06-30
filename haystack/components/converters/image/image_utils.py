@@ -248,7 +248,7 @@ def _extract_image_sources_info(
             )
 
         resolved_file_path = Path(root_path, file_path)
-       
+
         # When root_path is set, ensure the resolved path stays within it to block path-traversal
         # payloads (e.g. "../../etc/passwd") coming from document metadata.
         if root_path:
