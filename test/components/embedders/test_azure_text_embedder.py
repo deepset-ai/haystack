@@ -16,8 +16,8 @@ class TestAzureOpenAITextEmbedder:
         embedder = AzureOpenAITextEmbedder(azure_endpoint="https://example-resource.azure.openai.com/")
 
         assert embedder.client.api_key == "fake-api-key"
-        assert embedder.azure_deployment == "text-embedding-ada-002"
-        assert embedder.model == "text-embedding-ada-002"
+        assert embedder.azure_deployment == "text-embedding-3-small"
+        assert embedder.model == "text-embedding-3-small"
         assert embedder.dimensions is None
         assert embedder.organization is None
         assert embedder.prefix == ""
@@ -32,8 +32,8 @@ class TestAzureOpenAITextEmbedder:
         embedder = AzureOpenAITextEmbedder(azure_endpoint="https://example-resource.azure.openai.com/", max_retries=0)
 
         assert embedder.client.api_key == "fake-api-key"
-        assert embedder.azure_deployment == "text-embedding-ada-002"
-        assert embedder.model == "text-embedding-ada-002"
+        assert embedder.azure_deployment == "text-embedding-3-small"
+        assert embedder.model == "text-embedding-3-small"
         assert embedder.dimensions is None
         assert embedder.organization is None
         assert embedder.prefix == ""
@@ -51,7 +51,7 @@ class TestAzureOpenAITextEmbedder:
             "init_parameters": {
                 "api_key": {"env_vars": ["AZURE_OPENAI_API_KEY"], "strict": False, "type": "env_var"},
                 "azure_ad_token": {"env_vars": ["AZURE_OPENAI_AD_TOKEN"], "strict": False, "type": "env_var"},
-                "azure_deployment": "text-embedding-ada-002",
+                "azure_deployment": "text-embedding-3-small",
                 "dimensions": None,
                 "organization": None,
                 "azure_endpoint": "https://example-resource.azure.openai.com/",

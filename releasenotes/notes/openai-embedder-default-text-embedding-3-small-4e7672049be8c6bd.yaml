@@ -1,0 +1,24 @@
+---
+upgrade:
+  - |
+    The default model for ``OpenAITextEmbedder``, ``OpenAIDocumentEmbedder``,
+    ``AzureOpenAITextEmbedder``, and ``AzureOpenAIDocumentEmbedder`` has been changed
+    from ``text-embedding-ada-002`` to ``text-embedding-3-small``.
+
+    ``text-embedding-3-small`` is roughly 5x cheaper per token than the previous
+    generation ``text-embedding-ada-002`` and scores higher on the MTEB benchmark
+    (see OpenAI's [announcement](https://openai.com/index/new-embedding-models-and-api-updates)).
+
+    To preserve previous behavior, pass ``model="text-embedding-ada-002"``
+    explicitly (or, for the Azure variants,
+    ``azure_deployment="text-embedding-ada-002"``).
+
+    Note for Azure users: ``azure_deployment`` refers to the deployment name in
+    your Azure OpenAI resource, not a model identifier. If you do not already
+    have a ``text-embedding-3-small`` deployment in Azure, you will need to
+    create one or pass the name of an existing deployment explicitly.
+
+    Embeddings generated with the new default model are not compatible with
+    embeddings produced by ``text-embedding-ada-002``. If you have a document
+    store populated with previously-generated embeddings, either keep using
+    the old model explicitly or re-embed your corpus.
