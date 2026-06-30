@@ -2,30 +2,62 @@
 title: "State"
 id: state
 slug: "/state"
-description: "`State` is a container for storing shared information during Agent and Tool execution. It provides a structured way to share data between tools, accumulate results across multiple tool calls, and surface them alongside the agent's final answer."
+description: "`State` is a shared scratchpad that lives for one `agent.run()`. Tools read from it and write to it, and the data stays as real Python objects instead of being flattened into text for the LLM."
 ---
 
 # State
 
-`State` is a container for storing shared information during Agent and Tool execution.
-It provides a structured way to share data between tools, accumulate results across multiple tool calls, and surface them alongside the agent's final answer.
+**`State` is a shared scratchpad that lives for one `agent.run()`. Tools read from it and write to it, and the data stays as real Python objects instead of being flattened into text for the LLM.**
 
-## Overview
+The Agent always carries one thing automatically: the `messages` list (the conversation). State is the container for *everything else you want to carry that isn't conversation* — a list of sources, a counter, fetched documents — kept as structured data.
 
-When building agents that use multiple tools, you often need tools to share information or accumulate results across iterations.
-State provides centralized storage that all tools can read from and write to.
-For example, a search tool called multiple times can append its results to a shared `documents` list, which is then returned alongside the agent's final answer for source inspection.
+## When you need it
 
-State uses a schema-based approach where you define:
+Reach for State when a tool's output must **survive as structured data**, for one of three reasons:
 
-- What data can be stored,
-- The type of each piece of data,
-- How values are merged when updated.
+1. **Accumulate across many tool calls.** An agent calls the same tool many times over a run (say a search tool, several times); you want *all* of its results collected in one list at the end — not re-derived by the LLM from chat history, where it paraphrases and drops some.
+2. **Pass data between tools without the LLM in the middle.** One tool fetches a big payload (say 50 documents); another tool processes it. You don't want 50 documents dumped into the prompt as text — State can hand them from the first tool to the second directly.
+3. **Return structured results to your Python code.** After `agent.run()`, read a key like `result["sources"]` to use the exact values the tools produced — not whatever the model happened to mention in its final text.
 
-The Agent creates and manages the `State` object internally. You shouldn't need to instantiate it directly.
-You interact with it through tool definitions (`inputs_from_state`, `outputs_to_state`, or a `state: State` parameter) and read results from the agent's output dict.
+If none of these apply (a plain agent that searches and talks), **you don't need State.**
 
-### Supported Types
+## Visibility
+
+State holds different kinds of keys, and not all of them are visible to the LLM:
+
+| Thing | Visible to LLM? | Who writes it normally |
+|---|---|---|
+| `messages` (a State key) | **Yes** — it *is* the prompt | the Agent (you normally never touch it) |
+| your keys: `notes`, `sources`, `docs`, counters | **No** — Python objects only | your tools, via `outputs_to_state` |
+| a State key passed at runtime, for example `agent.run(user_id="...")` | **No** — injected into tools, hidden from the LLM | your Python code, when you call `agent.run()` |
+| a tool's **return value** | **Yes** — its *whole* return is stringified into the tool-result message *unless* `outputs_to_string` shapes or shrinks it | your tools |
+| an `inputs_from_state` argument | **No** — injected into the tool, hidden from the LLM's schema | pulled from State into a tool |
+
+Any key declared in `state_schema` can also be pre-populated at runtime by passing it to `agent.run()` — see [Reading from State](#reading-from-state-inputs_from_state). This is a less common case, but it is how you feed per-request context to tools, for example a `user_id` for memory tools.
+
+What decides LLM-visibility is **not** "is it in State." It's: `messages` is visible because it's the conversation; a tool's returned text is visible because it becomes a tool message; **everything else in State is a private scratchpad.**
+
+## How it works
+
+The Agent creates and manages the `State` object internally. You don't instantiate it directly — you declare a schema, wire your tools to it, and read the results back from the agent's output dict.
+
+### 1. Declare a schema
+
+Each key gets a `type` and optionally a `handler` that decides how a *new* write merges with the *current* value:
+
+```python
+state_schema = {
+    "sources": {"type": list},      # list type -> default handler merge_lists (APPENDS)
+    "search_count": {"type": int},  # non-list  -> default handler replace_values (OVERWRITES)
+}
+```
+
+Two built-in handlers (importable from `haystack.components.agents.state`):
+
+- **`merge_lists`** — default for `list` types, concatenates. This is what makes accumulation work.
+- **`replace_values`** — default for everything else, overwrites.
+
+A `messages: list[ChatMessage]` key is always added for you; you never declare it.
 
 State supports standard Python types:
 
@@ -34,13 +66,21 @@ State supports standard Python types:
 - Union types: `str | int`, `str | None`
 - Custom classes and data classes.
 
-### Automatic Message Handling
+### 2. Tools touch State in one of three ways
 
-State automatically includes a `messages` field that stores the full conversation history during execution.
-You don't need to define this in your schema.
-It uses `list[ChatMessage]` type with the `merge_lists` handler, so new messages are appended on each iteration.
+| Way | What it does |
+|---|---|
+| `inputs_from_state={"sources": "known_urls"}` | inject the current `sources` value as the tool's `known_urls` argument — *and hide that argument from the LLM* |
+| `outputs_to_state={"sources": {"source": "urls"}}` | take the tool's returned `urls` value and merge it into State key `sources` |
+| a `state: State` parameter | the tool receives the live object and calls `state.get(...)` / `state.set(...)` itself |
+
+### 3. Read it back
+
+`agent.run()` returns the State keys declared in `state_schema` (alongside `messages` and `last_message`), so `result["sources"]` gives you the final value.
 
 ### State API
+
+When a tool receives the live `State` object, it uses these methods:
 
 | Method | Description |
 | --- | --- |
@@ -49,12 +89,128 @@ It uses `list[ChatMessage]` type with the `merge_lists` handler, so new messages
 | `state.has(key)` | Returns `True` if the key exists in state |
 | `state.data` | Returns a snapshot of all current state as a `dict` |
 
-## Schema Definition
+## Realistic examples
+
+The examples below use one small, made-up agent so the code has a concrete shape: a **web-research agent**. The user asks a question; the agent has a `web_search` tool it can call several times; and as it works we want to (1) collect every source URL it visits, so we can show citations at the end, and (2) optionally cap how many searches it runs.
+
+### Accumulate sources with dedup
+
+This is the canonical case. A custom handler — the signature is always `(current, new) -> merged` — keeps the same URL from appearing twice. At the same time, `outputs_to_string` shapes what the LLM sees: it reads the fetched page **content** in the tool result, while the raw **URLs** flow into State for your citations.
+
+```python
+from typing import Annotated
+from haystack.components.agents import Agent
+from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.dataclasses import ChatMessage
+from haystack.tools import tool
+
+
+def dedup_urls(current: list | None, new: list) -> list:
+    existing = set(current or [])
+    return (current or []) + [u for u in new if u not in existing]
+
+
+@tool(
+    outputs_to_state={"sources": {"source": "urls"}},  # copy the "urls" output into State["sources"]
+    outputs_to_string={"source": "content"},  # the LLM sees ONLY the page content in the tool result
+)
+def web_search(query: Annotated[str, "search query"]) -> dict:
+    # ...call the search backend...
+    content = """
+Url: https://a.com
+content from https://a.com ...
+====
+
+Url: https://b.com
+content from https://b.com ...
+"""
+    # "urls" is merged into State["sources"] via the schema's dedup handler;
+    # "content" becomes the tool-result message the LLM reads.
+    return {"urls": ["https://a.com", "https://b.com"], "content": content}
+
+
+agent = Agent(
+    chat_generator=OpenAIChatGenerator(model="gpt-4.1-mini"),
+    tools=[web_search],
+    state_schema={"sources": {"type": list, "handler": dedup_urls}},
+)
+
+result = agent.run(messages=[ChatMessage.from_user("Research X")])
+print(result["sources"])  # clean, deduped list of every URL touched — for your citations
+```
+
+The model decides *which* searches happen and reads each page's content to reason about the answer; State silently collects the exact URLs across all of them. **The model decides, State remembers.**
+
+### Cap the number of searches with a budget counter
+
+When a tool needs to both read and write, give it a `state: State` parameter. Here a counter overwrites itself on each write (`replace_values`) and the tool stops the agent once the budget runs out:
+
+```python
+from typing import Annotated
+from haystack.components.agents import Agent, State
+from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.dataclasses import ChatMessage
+from haystack.tools import tool
+
+
+@tool
+def web_search(query: Annotated[str, "search query"], state: State) -> str:
+    n = state.get("search_count", 0) + 1
+    state.set("search_count", n)  # replace_values -> overwrites the counter
+    if n > 20:
+        return "SEARCH BUDGET EXCEEDED — stop searching and write the answer."
+    # ...do the search...
+    return "results..."
+
+
+agent = Agent(
+    chat_generator=OpenAIChatGenerator(model="gpt-4.1-mini"),
+    tools=[web_search],
+    state_schema={"search_count": {"type": int}},
+)
+
+result = agent.run(messages=[ChatMessage.from_user("Research X")])
+print(result["search_count"])
+```
+
+### Hand a payload between tools, bypassing the LLM
+
+By default the LLM sees a tool's **entire return value** as the tool message. To keep a big payload out of the prompt, pair `outputs_to_state` (the real data goes to State) with a short `outputs_to_string` (the only thing the LLM sees). A second tool then pulls the payload back out of State with `inputs_from_state`, hidden from the LLM's schema:
+
+```python
+@tool(
+    outputs_to_string={"source": "status"},  # the LLM sees ONLY this short string
+    outputs_to_state={"docs": {"source": "documents"}},  # the real payload goes to State, not the prompt
+)
+def fetch_pages(query: Annotated[str, "query"]) -> dict:
+    docs = [...]  # 50 big documents
+    return {"documents": docs, "status": f"fetched {len(docs)} documents"}
+
+
+@tool(
+    inputs_from_state={"docs": "documents"},  # injected from State, hidden from the LLM's schema
+    outputs_to_state={"summary": {"source": "summary"}},
+)
+def summarize(documents: list = None) -> dict:
+    return {"summary": f"summarized {len(documents)} docs"}
+
+
+# the Agent's state_schema must declare both keys:
+# state_schema={"docs": {"type": list}, "summary": {"type": str}}
+```
+
+The 50 documents flow `fetch_pages → State → summarize` directly; the LLM only ever sees the short `status` and `summary` strings.
+
+:::warning[The LLM can't see what's in State, so it can't reliably orchestrate this hand-off on its own.]
+Because `docs` is hidden from the prompt and `summarize`'s `documents` argument is excluded from its schema, the model has no signal that `fetch_pages` stored anything or that `summarize` consumes it. In practice you usually have to spell out the order in the system prompt ("first call `fetch_pages`, then `summarize`"), or drive the two tools from your own code rather than letting the agent choose. Use this pattern when *you* control the call order; don't rely on the model to discover it.
+:::
+
+## Schema reference
 
 The schema defines what data can be stored and how values are updated. Each schema entry consists of:
 
-- `type` (required): The Python type for this field (for example, `str`, `int`, `list`)
-- `handler` (optional): A callable that determines how new values are merged when `set()` is called
+- `type` (required): the Python type for this key (for example, `str`, `int`, `list`)
+- `handler` (optional): a callable that determines how new values are merged when `set()` is called
 
 ```python
 {
@@ -65,14 +221,7 @@ The schema defines what data can be stored and how values are updated. Each sche
 }
 ```
 
-If you don't specify a handler, State automatically assigns a default based on the type.
-
-### Default Handlers
-
-State provides two built-in merge behaviors (importable from `haystack.components.agents.state`):
-
-- **`merge_lists`**: Appends to the existing list (default for list types)
-- **`replace_values`**: Overwrites the existing value (default for non-list types)
+If you don't specify a handler, State assigns a default based on the type: `merge_lists` for list types, `replace_values` for everything else.
 
 ```python
 from haystack.components.agents import State
@@ -93,12 +242,9 @@ state.set("user_name", "Bob")
 print(state.get("user_name"))  # "Bob"
 ```
 
-### Custom Handlers
+### Custom handlers
 
-Custom handlers are useful when the default `merge_lists` or `replace_values` behaviors don't fit your needs.
-A handler takes the current state value and the new value and returns the merged result.
-
-The example below uses a deduplication handler, useful when multiple tool calls might return overlapping results and you want to avoid accumulating duplicates in state:
+A handler takes the current state value and the new value and returns the merged result. Use one when neither `merge_lists` nor `replace_values` fits. The example below deduplicates, useful when overlapping tool calls would otherwise pile up duplicates in state:
 
 ```python
 def deduplicate(current_value: list | None, new_value: list) -> list:
@@ -131,24 +277,16 @@ state.set("user_name", "Bob", handler_override=concatenate_strings)
 print(state.get("user_name"))  # "Alice-Bob"
 ```
 
-## Using State
+## How tools interact with State
 
-Define a `state_schema` when creating the Agent.
-State keys declared in `state_schema` are exposed as output keys on the agent's result dict alongside `messages` and `last_message`.
-
-Tools interact with State through three mechanisms:
-
-- **`outputs_to_state`**: Write tool results to state keys after the tool runs.
-- **`inputs_from_state`**: Inject state values into tool parameters before the tool runs.
-- **Direct `State` injection**: Add a `state: State` parameter to your tool function's signature. The Agent detects the `State` annotation and injects the live `State` object automatically, so you can read or write any key defined in the schema. The `State` object is never exposed to the LLM's parameter schema.
+Define a `state_schema` when creating the Agent. State keys declared in `state_schema` are exposed as output keys on the agent's result dict alongside `messages` and `last_message`. Tools interact with State through the three mechanisms introduced above.
 
 ### Reading from State: `inputs_from_state`
 
 `inputs_from_state` maps state keys to function parameter names using the format `{"state_key": "param_name"}`.
-The value is injected from state before the tool runs, so the LLM never needs to provide it.
+The value is injected from state before the tool runs, so the LLM never needs to provide it. Parameters mapped this way are automatically excluded from the LLM's parameter schema — the model never sees or provides them.
 
-Parameters mapped via `inputs_from_state` are automatically excluded from the LLM's parameter schema.
-The model never sees or provides them:
+You can pre-populate a state key at runtime by passing it as a keyword argument to `agent.run()`, as shown with `user_name` below. This is how you supply per-request context to tools:
 
 ```python
 from typing import Annotated
@@ -276,10 +414,10 @@ print(result["last_message"].text)
 print(f"User info: {result['user_info']}")
 ```
 
-### Combining Inputs and Outputs
+### Combining inputs and outputs
 
 Tools can both read from and write to State, enabling tool chaining across iterations.
-This example builds on `retrieve_documents` from the previous section:
+This example builds on `retrieve_documents` from the previous section. As with the [hand-off example](#hand-a-payload-between-tools-bypassing-the-llm), the LLM cannot see the `documents` key, so it can't tell on its own that `process_documents` depends on `retrieve_documents` — make the order explicit in the system prompt:
 
 ```python
 @tool(
@@ -301,7 +439,7 @@ def process_documents(
 agent = Agent(
     chat_generator=OpenAIChatGenerator(model="gpt-5.4-nano"),
     tools=[retrieve_documents, process_documents],  # chained through state
-    system_prompt="Use the available tools to retrieve and process documents.",
+    system_prompt="First retrieve documents, then process them with the available tools.",
     streaming_callback=print_streaming_chunk,
     state_schema={
         "documents": {"type": list},
@@ -318,7 +456,7 @@ result = agent.run(
 print(f"Processed {result['final_count']} documents")
 ```
 
-### Injecting State Directly into Tools
+### Injecting State directly into tools
 
 As an alternative to `inputs_from_state` and `outputs_to_state`, a tool can declare a `state: State` parameter to receive the live `State` object at invocation time.
 This lets the tool read from and write to any number of state keys without declaring mappings upfront.
