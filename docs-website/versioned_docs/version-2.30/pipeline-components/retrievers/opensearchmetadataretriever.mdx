@@ -68,7 +68,7 @@ pip install opensearch-haystack
 
 ### On its own
 
-This Retriever needs an `OpenSearchDocumentStore` with indexed documents. The example below writes three documents with simple categorical metadata and queries the `category`, `status`, and `priority` fields:
+This Retriever needs an `OpenSearchDocumentStore` with indexed documents. The example below writes three documents with simple categorical metadata and queries the `category` and `status` fields:
 
 ```python
 from haystack import Document
@@ -117,7 +117,7 @@ document_store.write_documents(documents=documents, policy=DuplicatePolicy.SKIP)
 
 retriever = OpenSearchMetadataRetriever(
     document_store=document_store,
-    metadata_fields=["category", "status", "priority"],
+    metadata_fields=["category", "status"],
     top_k=10,
 )
 
@@ -126,8 +126,8 @@ result = retriever.run(query="Python")
 print(result)
 # {
 #     "metadata": [
-#         {"category": "Python", "status": "active", "priority": 1},
-#         {"category": "Python", "status": "inactive", "priority": 3},
+#         {"category": "Python", "status": "active"},
+#         {"category": "Python", "status": "inactive"},
 #     ]
 # }
 ```
@@ -136,7 +136,7 @@ Only the fields listed in `metadata_fields` appear in each result dictionary. Th
 
 ### Multi-part queries
 
-The `query` string can contain several comma-separated parts. Each part is searched across every field listed in `metadata_fields`, and a document that matches multiple parts is ranked higher when `mode="fuzzy"` (controlled by `tie_breaker`).
+The `query` string can contain several comma-separated parts. Each part is searched across every field listed in `metadata_fields`, and a document that matches multiple parts is ranked higher (controlled by `exact_match_weight`).
 
 ```python
 result = retriever.run(query="Python, active")
