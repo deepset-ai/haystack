@@ -44,6 +44,12 @@ class ConfirmationHook:
     Request-scoped resources for the strategies (e.g. a WebSocket or queue) are passed per run via the Agent's
     `hook_context` argument (`agent.run(messages=[...], hook_context={...})`) and read by the hook with
     `state.get("hook_context")`.
+
+    Register this hook only under the `before_tool` hook point. It confirms the pending tool calls on the last
+    message, which exist only between the model requesting tools and those tools running. Under `before_llm` or
+    `on_exit` the last message never has pending tool calls, so the hook silently does nothing and tools run
+    unconfirmed. Use a single ConfirmationHook with one entry per tool (or per tuple of tools) in
+    `confirmation_strategies` rather than registering several hooks.
     """
 
     def __init__(self, confirmation_strategies: dict[str | tuple[str, ...], ConfirmationStrategy]) -> None:

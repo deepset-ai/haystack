@@ -53,20 +53,20 @@ _JINJA2_CHAT_TEMPLATE_RE = re.compile(r"\{%\s*message\s")
 # Regex to extract the role from a Jinja2 message block, e.g. {% message role="user" %}
 _JINJA2_MESSAGE_ROLE_RE = re.compile(r'\{%\s*message\s+role\s*=\s*["\'](\w+)["\']')
 
-# State keys that the Agent populates automatically during a run.
-# Users may not define them in their own `state_schema`, and they are exposed only as Agent outputs.
-_INTERNAL_STATE_KEYS: dict[str, dict[str, Any]] = {
+# Run-metadata state keys the Agent populates automatically during a run. Users may not define them in their own
+# `state_schema`, and they are exposed as Agent outputs only (not inputs).
+_RUN_METADATA_STATE_KEYS: dict[str, dict[str, Any]] = {
     "step_count": {"type": int, "handler": replace_values},
     "token_usage": {"type": dict[str, Any], "handler": replace_values},
     "tool_call_counts": {"type": dict[str, int], "handler": replace_values},
 }
 
-# State keys the Agent manages for hooks. Like internal keys they are reserved and cannot be redefined by users, but
-# unlike internal keys they are NOT exposed as Agent inputs or outputs (they are run-control / hook-facing state):
+# Internal state keys the Agent manages for run control and hooks. Like run-metadata keys they are reserved and cannot
+# be redefined by users, but unlike them they are NOT exposed as Agent inputs or outputs (purely internal state):
 # - `continue_run`: set by an `on_exit` hook to keep the Agent running instead of stopping (re-read each exit attempt).
 # - `tools`: the flattened tools available in the current step, so a hook can inspect them (e.g. HITL confirmation).
 # - `hook_context`: per-run request-scoped resources passed to `run`/`run_async` for hooks to read.
-_RESERVED_STATE_KEYS: dict[str, dict[str, Any]] = {
+_INTERNAL_STATE_KEYS: dict[str, dict[str, Any]] = {
     "continue_run": {"type": bool, "handler": replace_values},
     "tools": {"type": list, "handler": replace_values},
     "hook_context": {"type": dict[str, Any], "handler": replace_values},
@@ -143,8 +143,8 @@ def _get_run_method_params(instance: "Agent") -> set[str]:
 
 
 def _public_outputs(state: State) -> dict[str, Any]:
-    """Return the State data excluding the Agent-managed reserved keys (i.e. the Agent's user-facing outputs)."""
-    return {key: value for key, value in state.data.items() if key not in _RESERVED_STATE_KEYS}
+    """Return the State data excluding the internal state keys (i.e. the Agent's user-facing outputs)."""
+    return {key: value for key, value in state.data.items() if key not in _INTERNAL_STATE_KEYS}
 
 
 def _consume_continue_run(state: State) -> bool:
@@ -569,7 +569,7 @@ class Agent:
             exit_conditions = ["text"]
 
         if state_schema is not None:
-            reserved_keys = _INTERNAL_STATE_KEYS.keys() | _RESERVED_STATE_KEYS.keys()
+            reserved_keys = _RUN_METADATA_STATE_KEYS.keys() | _INTERNAL_STATE_KEYS.keys()
             reserved_used = sorted(set(state_schema) & reserved_keys)
             if reserved_used:
                 raise ValueError(
@@ -623,19 +623,19 @@ class Agent:
         self.state_schema = dict(self._state_schema)
         if self.state_schema.get("messages") is None:
             self.state_schema["messages"] = {"type": list[ChatMessage], "handler": merge_lists}
-        for key, config in {**_INTERNAL_STATE_KEYS, **_RESERVED_STATE_KEYS}.items():
+        for key, config in {**_RUN_METADATA_STATE_KEYS, **_INTERNAL_STATE_KEYS}.items():
             self.state_schema[key] = dict(config)
 
         # --- Component I/O ---
         self._run_method_params = _get_run_method_params(self)
         output_types: dict[str, Any] = {"last_message": ChatMessage}
         for param, config in self.state_schema.items():
-            # Control keys are transient loop-control signals, not exposed as inputs or outputs.
-            if param in _RESERVED_STATE_KEYS:
+            # Internal keys are run-control / hook-facing state, not exposed as inputs or outputs.
+            if param in _INTERNAL_STATE_KEYS:
                 continue
             output_types[param] = config["type"]
-            # Internal state keys are populated internally by the Agent itself and are not exposed as inputs
-            if param not in self._run_method_params and param not in _INTERNAL_STATE_KEYS:
+            # Run-metadata keys are populated by the Agent itself and exposed as outputs only, not inputs.
+            if param not in self._run_method_params and param not in _RUN_METADATA_STATE_KEYS:
                 component.set_input_type(self, name=param, type=config["type"], default=None)
         component.set_output_types(self, **output_types)
 

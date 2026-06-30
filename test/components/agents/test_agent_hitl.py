@@ -298,3 +298,75 @@ class TestConfirmationStrategyToolArgPrep:
             if m.tool_call_result is not None and m.tool_call_result.origin.tool_name == "consumer"
         ]
         assert consumer_results == ["consumed:PRODUCED"]
+
+
+def _echo(x: Annotated[int, "the value to echo"]) -> dict[str, int]:
+    return {"echoed": x}
+
+
+def _echo_tool(name: str) -> Tool:
+    return Tool(
+        name=name,
+        description=f"Echo tool {name}.",
+        parameters={"type": "object", "properties": {"x": {"type": "integer"}}, "required": ["x"]},
+        function=_echo,
+    )
+
+
+def _single_tool_hook(tool_name: str, ui_result: ConfirmationUIResult) -> ConfirmationHook:
+    return ConfirmationHook(
+        confirmation_strategies={
+            tool_name: BlockingConfirmationStrategy(
+                confirmation_policy=AlwaysAskPolicy(), confirmation_ui=MockUserInterface(ui_result)
+            )
+        }
+    )
+
+
+class TestMultipleConfirmationHooks:
+    def test_multiple_hooks_each_targeting_a_different_tool(self):
+        """
+        Three before_tool ConfirmationHooks, each owning a different tool of a three-call batch, compose correctly:
+        a tool a hook does not own passes through unchanged, so reject/modify decisions from all three hooks land on
+        the right calls in the final, re-read pending message.
+        """
+        foo, bar, baz = _echo_tool("foo"), _echo_tool("bar"), _echo_tool("baz")
+        hooks = {
+            "before_tool": [
+                _single_tool_hook("foo", ConfirmationUIResult(action="reject")),
+                _single_tool_hook("bar", ConfirmationUIResult(action="modify", new_tool_params={"x": 99})),
+                _single_tool_hook("baz", ConfirmationUIResult(action="modify", new_tool_params={"x": 77})),
+            ]
+        }
+        agent = Agent(chat_generator=MockChatGenerator(), tools=[foo, bar, baz], hooks=hooks)
+        agent.warm_up()
+        agent.chat_generator.run = MagicMock(
+            side_effect=[
+                {
+                    "replies": [
+                        ChatMessage.from_assistant(
+                            tool_calls=[ToolCall("foo", {"x": 1}), ToolCall("bar", {"x": 2}), ToolCall("baz", {"x": 3})]
+                        )
+                    ]
+                },
+                {"replies": [ChatMessage.from_assistant("done")]},
+            ]
+        )
+
+        result = agent.run(messages=[ChatMessage.from_user("go")])
+
+        results_by_tool = {
+            m.tool_call_result.origin.tool_name: m.tool_call_result
+            for m in result["messages"]
+            if m.tool_call_result is not None
+        }
+        # foo was rejected: it produced an error tool result and never executed.
+        assert results_by_tool["foo"].error is True
+        assert "rejected" in results_by_tool["foo"].result.lower()
+        # bar and baz ran with their modified arguments.
+        assert results_by_tool["bar"].error is False
+        assert results_by_tool["bar"].result == '{"echoed": 99}'
+        assert results_by_tool["baz"].error is False
+        assert results_by_tool["baz"].result == '{"echoed": 77}'
+        # Only the two confirmed tools actually executed.
+        assert result["tool_call_counts"] == {"foo": 0, "bar": 1, "baz": 1}
