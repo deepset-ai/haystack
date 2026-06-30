@@ -13,7 +13,7 @@ Searches and ranks the metadata fields of documents stored in an OpenSearch Docu
 
 |                                         |                                                                                                                                  |
 | --------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
-| **Most common position in a pipeline**  | Standalone, or wherever you need to look up structured metadata (categories, statuses, tags, IDs) instead of full documents      |
+| **Most common position in a pipeline**  | The last component in a metadata lookup pipeline, or wherever you need other structured data from an OpenSearchDocumentStore index |
 | **Mandatory init variables**            | `document_store`: An instance of `OpenSearchDocumentStore`; `metadata_fields`: List of metadata field names to search and return |
 | **Mandatory run variables**             | `query`: A search query string (may contain comma-separated parts)                                                               |
 | **Output variables**                    | `metadata`: A list of dictionaries containing only the requested metadata fields                                                 |
@@ -42,7 +42,6 @@ Both a synchronous `run` method and an asynchronous `run_async` method are avail
 
 The matching engine only operates on metadata fields that OpenSearch indexes as text or keyword values. Numeric, boolean, and array-of-non-strings fields are not valid search targets, because prefix, wildcard, and full-text matching do not apply to them. Mixed-type fields, such as a list that combines strings and numbers, are also not supported.
 
-You can still include numeric or boolean fields in `metadata_fields` to have them returned in the output; they just will not contribute to the match.
 
 ## Installation
 
@@ -163,7 +162,7 @@ The fuzzy-mode parameters (`fuzziness`, `prefix_length`, `max_expansions`, `tie_
 
 ### Combining with filters
 
-You can narrow the candidate set before scoring by passing standard Haystack `filters` at run time. The filters are applied as a `query_string` clause inside the OpenSearch request:
+You can narrow the candidate set before scoring by passing standard Haystack `filters` at run time. The filters are applied in a `bool` `filter` context, so they exclude non-matching documents without affecting scores:
 
 ```python
 result = retriever.run(
