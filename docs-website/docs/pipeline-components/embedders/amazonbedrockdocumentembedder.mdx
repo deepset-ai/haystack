@@ -25,7 +25,7 @@ This component computes embeddings for documents using models through Amazon Bed
 
 ## Overview
 
-[Amazon Bedrock](https://docs.aws.amazon.com/bedrock/latest/userguide/what-is-bedrock.html) is a fully managed service that makes language models from leading AI startups and Amazon available for your use through a unified API.
+[Amazon Bedrock](https://docs.aws.amazon.com/bedrock/latest/userguide/what-is-bedrock.html) is a fully managed service that makes language models from leading AI startups and Amazon available for your use through a unified API.
 
 Supported models are `amazon.titan-embed-text-v1`, `cohere.embed-english-v3`,  `cohere.embed-multilingual-v3`, and `amazon.titan-embed-text-v2:0`.
 
@@ -39,7 +39,7 @@ This component should be used to embed a list of documents. To embed a string, y
 ### Authentication
 
 `AmazonBedrockDocumentEmbedder` uses AWS for authentication. You can either provide credentials as parameters directly to the component or use the AWS CLI and authenticate through your IAM. For more information on how to set up an IAM identity-based policy, see the [official documentation](https://docs.aws.amazon.com/bedrock/latest/userguide/security_iam_id-based-policy-examples.html).
-To initialize `AmazonBedrockDocumentEmbedder` and authenticate by providing credentials, provide the `model_name`, as well as `aws_access_key_id`, `aws_secret_access_key` and `aws_region_name`. Other parameters are optional. You can check them out in our [API reference](/reference/integrations-amazon-bedrock#amazonbedrockdocumentembedder).
+To initialize `AmazonBedrockDocumentEmbedder` and authenticate by providing credentials, provide the `model_name`, as well as `aws_access_key_id`, `aws_secret_access_key` and `aws_region_name`. Other parameters are optional. You can check them out in our [API reference](/reference/integrations-amazon-bedrock#amazonbedrockdocumentembedder).
 
 ### Model-specific parameters
 

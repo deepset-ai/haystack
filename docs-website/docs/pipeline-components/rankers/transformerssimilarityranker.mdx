@@ -41,7 +41,7 @@ You can also set the `device` parameter to use HF models on your CPU or GPU.
 
 ### Authorization
 
-The component uses a `HF_API_TOKEN` environment variable by default. Otherwise, you can pass a Hugging Face API token at initialization with `token` – see code examples below.
+The component uses a `HF_API_TOKEN` environment variable by default. Otherwise, you can pass a Hugging Face API token at initialization with `token` – see code examples below.
 
 ```python
 ranker = TransformersSimilarityRanker(token=Secret.from_token("<your-api-key>"))

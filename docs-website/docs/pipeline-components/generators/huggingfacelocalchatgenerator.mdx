@@ -39,7 +39,7 @@ This component is designed for chat completion, not for text generation. If you 
 
 If a string is passed to `messages`, it is converted into a list containing a single `ChatMessage` with the `user` role.
 
-For remote file authorization, this component uses a `HF_API_TOKEN` environment variable by default. Otherwise, you can pass a Hugging Face API token at initialization with `token`:
+For remote file authorization, this component uses a `HF_API_TOKEN` environment variable by default. Otherwise, you can pass a Hugging Face API token at initialization with `token`:
 
 ```python
 local_generator = HuggingFaceLocalChatGenerator(

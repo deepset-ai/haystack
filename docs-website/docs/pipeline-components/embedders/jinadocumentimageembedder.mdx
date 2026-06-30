@@ -13,8 +13,8 @@ description: "`JinaDocumentImageEmbedder` computes the image embeddings of a lis
 
 |  |  |
 | --- | --- |
-| **Most common position in a pipeline** | Before a [`DocumentWriter`](../writers/documentwriter.mdx) in an indexing pipeline                                                                                                      |
-| **Mandatory init variables**           | `api_key`: The Jina API key. Can be set with `JINA_API_KEY` env var.                                                                                                           |
+| **Most common position in a pipeline** | Before a [`DocumentWriter`](../writers/documentwriter.mdx) in an indexing pipeline                                                                                                      |
+| **Mandatory init variables**           | `api_key`: The Jina API key. Can be set with `JINA_API_KEY` env var.                                                                                                           |
 | **Mandatory run variables**            | `documents`: A list of documents, with a meta field containing an image file path                                                                                              |
 | **Output variables**                   | `documents`: A list of documents (enriched with embeddings)                                                                                                                    |
 | **API reference**                      | [Jina](/reference/integrations-jina)                                                                                                                                                  |
@@ -47,19 +47,19 @@ pip install jina-haystack
 
 ### Authentication
 
-The component uses a `JINA_API_KEY` environment variable by default. Otherwise, you can pass an API key at initialization with a [Secret](../../concepts/secret-management.mdx) and `Secret.from_token`  method:
+The component uses a `JINA_API_KEY` environment variable by default. Otherwise, you can pass an API key at initialization with a [Secret](../../concepts/secret-management.mdx) and `Secret.from_token`  method:
 
 ```python
 embedder = JinaDocumentImageEmbedder(api_key=Secret.from_token("<your-api-key>"))
 ```
 
-To get a Cohere API key, head over to https://jina.ai/embeddings/.
+To get a Cohere API key, head over to https://jina.ai/embeddings/.
 
 ## Usage
 
 ### On its own
 
-Remember to set `JINA_API_KEY` as an environment variable first.
+Remember to set `JINA_API_KEY` as an environment variable first.
 
 ```python
 from haystack import Document

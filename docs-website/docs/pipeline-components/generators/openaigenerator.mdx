@@ -27,7 +27,7 @@ description: "`OpenAIGenerator` enables text generation using OpenAI's large lan
 
 `OpenAIGenerator` supports OpenAI models starting from gpt-3.5-turbo and later (gpt-4, gpt-4-turbo, and so on).
 
-`OpenAIGenerator` needs an OpenAI key to work. It uses an `OPENAI_API_KEY` environment variable by default. Otherwise, you can pass an API key at initialization with `api_key`:
+`OpenAIGenerator` needs an OpenAI key to work. It uses an `OPENAI_API_KEY` environment variable by default. Otherwise, you can pass an API key at initialization with `api_key`:
 
 ```
 generator = OpenAIGenerator(api_key=Secret.from_token("<your-api-key>"), model="gpt-4o-mini")

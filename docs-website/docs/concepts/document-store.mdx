@@ -38,7 +38,7 @@ See the installation and initialization details for each Document Store in the "
 
 ### Work with Documents
 
-Convert your data into `Document` objects before writing them into a Document Store along with its metadata and document ID.
+Convert your data into `Document` objects before writing them into a Document Store along with its metadata and document ID.
 
 The ID field is mandatory, so if you don’t choose a specific ID yourself, Haystack will do its best to come up with a unique ID based on the document’s information and assign it automatically. However, since Haystack uses the document’s contents to create an ID, two identical documents might have identical IDs. Keep it in mind as you update your documents, as the ID will not be updated automatically.
 

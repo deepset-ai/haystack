@@ -30,17 +30,17 @@ There are two ways of performing model-based evaluation in Haystack, both of whi
 
 Recall measures how often the correct document was among the retrieved documents over a set of queries. For a single query, the output is binary: either the correct document is contained in the selection, or it is not. Over the entire dataset, the recall score amounts to a number between zero (no query retrieved the right document) and one (all queries retrieved the right documents).
 
-In some scenarios, there can be multiple correct documents for one query. The metric `recall_single_hit` considers whether at least one of the correct documents is retrieved, whereas `recall_multi_hit` takes into account how many of the multiple correct documents for one query are retrieved.
+In some scenarios, there can be multiple correct documents for one query. The metric `recall_single_hit` considers whether at least one of the correct documents is retrieved, whereas `recall_multi_hit` takes into account how many of the multiple correct documents for one query are retrieved.
 
-Note that recall is affected by the number of documents that the Retriever returns. If the Retriever returns few documents, it means that it is difficult to retrieve the correct documents. Make sure to set the Retriever's `top_k` to an appropriate value in the pipeline that you're evaluating.
+Note that recall is affected by the number of documents that the Retriever returns. If the Retriever returns few documents, it means that it is difficult to retrieve the correct documents. Make sure to set the Retriever's `top_k` to an appropriate value in the pipeline that you're evaluating.
 
 ### [DocumentMRREvaluator](../../pipeline-components/evaluators/documentmrrevaluator.mdx) (Mean Reciprocal Rank)
 
-In contrast to the recall metric, mean reciprocal rank takes the position of the top correctly retrieved document (the “rank”) into account. It does this to account for the fact that a query elicits multiple responses of varying relevance. Like recall, MRR can be a value between zero (no matches) and one (the system retrieved a correct document for all queries as the top result). For more details, check out [Mean Reciprocal Rank wiki page](https://en.wikipedia.org/wiki/Mean_reciprocal_rank).
+In contrast to the recall metric, mean reciprocal rank takes the position of the top correctly retrieved document (the “rank”) into account. It does this to account for the fact that a query elicits multiple responses of varying relevance. Like recall, MRR can be a value between zero (no matches) and one (the system retrieved a correct document for all queries as the top result). For more details, check out [Mean Reciprocal Rank wiki page](https://en.wikipedia.org/wiki/Mean_reciprocal_rank).
 
 ### [DocumentMAPEvaluator](../../pipeline-components/evaluators/documentmapevaluator.mdx) (Mean Average Precision)
 
-Mean average precision is similar to mean reciprocal rank but takes into account the position of every correctly retrieved document. Like MRR, mAP can be a value between zero (no matches) and one (the system retrieved correct documents for all top results). mAP is particularly useful in cases where there is more than one correct answer to be retrieved. For more details, check out [Mean Average Precision wiki page](https://en.wikipedia.org/wiki/Evaluation_measures_(information_retrieval)#Mean_average_precision).
+Mean average precision is similar to mean reciprocal rank but takes into account the position of every correctly retrieved document. Like MRR, mAP can be a value between zero (no matches) and one (the system retrieved correct documents for all top results). mAP is particularly useful in cases where there is more than one correct answer to be retrieved. For more details, check out [Mean Average Precision wiki page](https://en.wikipedia.org/wiki/Evaluation_measures_(information_retrieval)#Mean_average_precision).
 
 ## Statistical Evaluation of Extracted or Generated Answers
 

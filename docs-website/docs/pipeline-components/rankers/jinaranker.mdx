@@ -29,7 +29,7 @@ Use this component to rank documents based on their similarity to the query usin
 
 Additionally, you can use the optional `top_k` and `score_threshold` parameters with `JinaRanker` :
 
-- The Ranker's `top_k` is the number of documents it returns (if it's the last component in the pipeline) or forwards to the next component.
+- The Ranker's `top_k` is the number of documents it returns (if it's the last component in the pipeline) or forwards to the next component.
 - If you set the `score_threshold` for the Ranker, it will only return documents with a similarity score (computed by the Jina AI model) above this threshold.
 
 ### Installation
@@ -42,7 +42,7 @@ pip install jina-haystack
 
 ### Authorization
 
-The component uses a `JINA_API_KEY` environment variable by default. Otherwise, you can pass a Jina API key at initialization with `api_key` like this:
+The component uses a `JINA_API_KEY` environment variable by default. Otherwise, you can pass a Jina API key at initialization with `api_key` like this:
 
 ```python
 ranker = JinaRanker(api_key=Secret.from_token("<your-api-key>"))
@@ -54,9 +54,9 @@ To get your API key, head to Jina AI’s [website](https://jina.ai/reranker/).
 
 ### On its own
 
-You can use `JinaRanker` outside of a pipeline to order documents based on your query.
+You can use `JinaRanker` outside of a pipeline to order documents based on your query.
 
-To run the Ranker, pass a query, provide the documents, and set the number of documents to return in the `top_k` parameter.
+To run the Ranker, pass a query, provide the documents, and set the number of documents to return in the `top_k` parameter.
 
 ```python
 from haystack import Document

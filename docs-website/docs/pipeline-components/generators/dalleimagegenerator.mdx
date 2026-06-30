@@ -29,7 +29,7 @@ The `DALLEImageGenerator` component generates images using OpenAI's image genera
 
 By default, the component uses the `gpt-image-2` model, `"auto"` quality, and 1024x1024 resolution. You can change these parameters using `model` (during component initialization), `quality`, and `size` (during component initialization or run) parameters.
 
-`DALLEImageGenerator` needs an OpenAI key to work. It uses an `OPENAI_API_KEY` environment variable by default. Otherwise, you can pass an API key at initialization with `api_key`:
+`DALLEImageGenerator` needs an OpenAI key to work. It uses an `OPENAI_API_KEY` environment variable by default. Otherwise, you can pass an API key at initialization with `api_key`:
 
 ```
 image_generator = DALLEImageGenerator(api_key=Secret.from_token("<your-api-key>"))

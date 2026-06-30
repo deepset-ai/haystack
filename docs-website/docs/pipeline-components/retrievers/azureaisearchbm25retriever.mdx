@@ -15,7 +15,7 @@ A keyword-based Retriever that fetches documents matching a query from the Azure
 
 |  |  |
 | --- | --- |
-| **Most common position in a pipeline** | 1. Before a [`PromptBuilder`](../builders/promptbuilder.mdx) in a RAG pipeline 2. The last component in the semantic search pipeline 3. Before an [`ExtractiveReader`](../readers/extractivereader.mdx) in an extractive QA pipeline |
+| **Most common position in a pipeline** | 1. Before a [`PromptBuilder`](../builders/promptbuilder.mdx) in a RAG pipeline 2. The last component in the semantic search pipeline 3. Before an [`ExtractiveReader`](../readers/extractivereader.mdx) in an extractive QA pipeline |
 | **Mandatory init variables**           | `document_store`: An instance of [`AzureAISearchDocumentStore`](../../document-stores/azureaisearchdocumentstore.mdx)                                                                                                                   |
 | **Mandatory run variables**            | `query`: A string                                                                                                                                                                                                 |
 | **Output variables**                   | `documents`: A list of documents (matching the query)                                                                                                                                                             |
@@ -29,11 +29,11 @@ A keyword-based Retriever that fetches documents matching a query from the Azure
 
 The `AzureAISearchBM25Retriever` is a keyword-based Retriever designed to fetch documents that match a query from an `AzureAISearchDocumentStore`. It uses the BM25 algorithm which calculates a weighted word overlap between the query and the documents to determine their similarity. The Retriever accepts textual query but you can also provide a combination of terms with boolean operators. Some examples of valid queries could be `"pool"`, `"pool spa"`, and `"pool spa +airport"`.
 
-In addition to the `query`, the `AzureAISearchBM25Retriever` accepts other optional parameters, including `top_k` (the maximum number of documents to retrieve) and `filters` to narrow down the search space.
+In addition to the `query`, the `AzureAISearchBM25Retriever` accepts other optional parameters, including `top_k` (the maximum number of documents to retrieve) and `filters` to narrow down the search space.
 
 If your search index includes a [semantic configuration](https://learn.microsoft.com/en-us/azure/search/semantic-how-to-query-request), you can enable semantic ranking to apply it to the Retriever's results. For more details, refer to the [Azure AI documentation](https://learn.microsoft.com/en-us/azure/search/hybrid-search-how-to-query#semantic-hybrid-search).
 
-If you want a combination of BM25 and vector retrieval, use the `AzureAISearchHybridRetriever`, which uses both vector search and BM25 search to match documents and query.
+If you want a combination of BM25 and vector retrieval, use the `AzureAISearchHybridRetriever`, which uses both vector search and BM25 search to match documents and query.
 
 ## Usage
 
@@ -78,7 +78,7 @@ retriever.run(query="How many languages are spoken around the world today?")
 
 ### In a RAG pipeline
 
-The below example shows how to use the `AzureAISearchBM25Retriever` in a RAG pipeline. Set your `OPENAI_API_KEY` as an environment variable and then run the following code:
+The below example shows how to use the `AzureAISearchBM25Retriever` in a RAG pipeline. Set your `OPENAI_API_KEY` as an environment variable and then run the following code:
 
 ```python
 

@@ -13,7 +13,7 @@ Divides a list of text documents into a list of shorter text documents and then 
 
 |  |  |
 | --- | --- |
-| **Most common position in a pipeline** | In indexing pipelines after [Converters](../converters.mdx)                                                    |
+| **Most common position in a pipeline** | In indexing pipelines after [Converters](../converters.mdx)                                                    |
 | **Mandatory run variables**            | `documents`: A list of documents                                                                              |
 | **Output variables**                   | `documents`: A list of split and cleaned documents                                                            |
 | **API reference**                      | [PreProcessors](/reference/preprocessors-api)                                                                        |
@@ -52,7 +52,7 @@ print(result["documents"])
 
 ### In a pipeline
 
-You can use the `DocumentPreprocessor` in your indexing pipeline. The example below requires installing additional dependencies for the `MultiFileConverter`:
+You can use the `DocumentPreprocessor` in your indexing pipeline. The example below requires installing additional dependencies for the `MultiFileConverter`:
 
 ```shell
 pip install pypdf markdown-it-py  mdit_plain trafilatura python-pptx python-docx jq openpyxl tabulate pandas

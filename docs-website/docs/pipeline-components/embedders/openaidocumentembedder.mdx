@@ -31,7 +31,7 @@ To see the list of compatible OpenAI embedding models, head over to OpenAI [docu
 
 This component should be used to embed a list of documents. To embed a string, use the [OpenAITextEmbedder](openaitextembedder.mdx).
 
-The component uses an `OPENAI_API_KEY` environment variable by default. Otherwise, you can pass an API key at initialization with `api_key`:
+The component uses an `OPENAI_API_KEY` environment variable by default. Otherwise, you can pass an API key at initialization with `api_key`:
 
 ```
 embedder = OpenAIDocumentEmbedder(api_key=Secret.from_token("<your-api-key>"))

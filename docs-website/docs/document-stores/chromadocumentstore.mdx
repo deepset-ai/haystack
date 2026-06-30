@@ -15,7 +15,7 @@ slug: "/chromadocumentstore"
 
 </div>
 
-[Chroma](https://docs.trychroma.com/) is an open source vector database capable of storing collections of documents along with their metadata, creating embeddings for documents and queries, and searching the collections filtering by document metadata or content. Additionally, Chroma supports multi-modal embedding functions.
+[Chroma](https://docs.trychroma.com/) is an open source vector database capable of storing collections of documents along with their metadata, creating embeddings for documents and queries, and searching the collections filtering by document metadata or content. Additionally, Chroma supports multi-modal embedding functions.
 
 Chroma can be used in-memory, as an embedded database, or in a client-server fashion. When running in-memory, Chroma can still keep its contents on disk across different sessions. This allows users to quickly put together prototypes using the in-memory version and later move to production, where the client-server version is deployed.
 
@@ -27,7 +27,7 @@ First, install the Chroma integration, which will install Haystack and Chroma if
 pip install chroma-haystack
 ```
 
-To store data in Chroma, create a `ChromaDocumentStore` instance and write documents with:
+To store data in Chroma, create a `ChromaDocumentStore` instance and write documents with:
 
 ```python
 from haystack_integrations.document_stores.chroma import ChromaDocumentStore
@@ -47,7 +47,7 @@ In this case, since we didn’t pass any embeddings along with our documents, Ch
 
 ### Connection Options
 
-1. **In-Memory Mode (Local)**: Chroma can be set up as a local Document Store for fast and lightweight usage. You can use this option during development or small-scale experiments. Set up a local in-memory instance of `ChromaDocumentStore` like this:
+1. **In-Memory Mode (Local)**: Chroma can be set up as a local Document Store for fast and lightweight usage. You can use this option during development or small-scale experiments. Set up a local in-memory instance of `ChromaDocumentStore` like this:
 
    ```python
    from haystack_integrations.document_stores.chroma import ChromaDocumentStore

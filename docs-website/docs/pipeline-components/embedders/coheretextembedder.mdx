@@ -14,7 +14,7 @@ This component transforms a string into a vector that captures its semantics usi
 |  |  |
 | --- | --- |
 | **Most common position in a pipeline** | Before an embedding [Retriever](../retrievers.mdx)  in a query/RAG pipeline |
-| **Mandatory init variables** | `api_key`: The Cohere API key. Can be set with `COHERE_API_KEY` or `CO_API_KEY` env var. |
+| **Mandatory init variables** | `api_key`: The Cohere API key. Can be set with `COHERE_API_KEY` or `CO_API_KEY` env var. |
 | **Mandatory run variables** | `text`: A string |
 | **Output variables** | `embedding`: A list of float numbers (vectors)  <br /> <br />`meta`:  A dictionary of metadata strings |
 | **API reference** | [Cohere](/reference/integrations-cohere) |
@@ -38,7 +38,7 @@ To start using this integration with Haystack, install it with:
 pip install cohere-haystack
 ```
 
-The component uses a `COHERE_API_KEY` or `CO_API_KEY` environment variable by default. Otherwise, you can pass an API key at initialization with a [Secret](../../concepts/secret-management.mdx) and `Secret.from_token` static method:
+The component uses a `COHERE_API_KEY` or `CO_API_KEY` environment variable by default. Otherwise, you can pass an API key at initialization with a [Secret](../../concepts/secret-management.mdx) and `Secret.from_token` static method:
 
 ```python
 embedder = CohereTextEmbedder(api_key=Secret.from_token("<your-api-key>"))

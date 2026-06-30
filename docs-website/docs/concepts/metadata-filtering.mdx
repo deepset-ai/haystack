@@ -76,10 +76,10 @@ The available logic operators may vary depending on the specific Document Store 
 
 Here is a more complex filter that uses both Comparison and Logic to find documents where:
 
-- Meta field `type` is "article",
-- Meta field `date` is between 1420066800 and 1609455600 (a specific date range),
-- Meta field `rating` is greater than or equal to 3,
-- Documents are either classified as `genre`  ["economy", "politics"] `OR` the meta field `publisher` is "nytimes".
+- Meta field `type` is "article",
+- Meta field `date` is between 1420066800 and 1609455600 (a specific date range),
+- Meta field `rating` is greater than or equal to 3,
+- Documents are either classified as `genre`  ["economy", "politics"] `OR` the meta field `publisher` is "nytimes".
 
 ```python
 filters = {
@@ -133,7 +133,7 @@ pipeline.run(
 )
 ```
 
-In Document Stores, the `filter_documents` method is used to apply filters to stored documents, if the specific integration supports filtering.
+In Document Stores, the `filter_documents` method is used to apply filters to stored documents, if the specific integration supports filtering.
 
 The example below shows how filters can be passed to the `QdrantDocumentStore`:
 

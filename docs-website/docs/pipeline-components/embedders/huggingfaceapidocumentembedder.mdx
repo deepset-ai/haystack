@@ -13,7 +13,7 @@ Use this component to compute document embeddings using various Hugging Face API
 
 |  |  |
 | --- | --- |
-| **Most common position in a pipeline** | Before a [`DocumentWriter`](../writers/documentwriter.mdx)  in an indexing pipeline |
+| **Most common position in a pipeline** | Before a [`DocumentWriter`](../writers/documentwriter.mdx)  in an indexing pipeline |
 | **Mandatory init variables** | `api_type`: The type of Hugging Face API to use  <br /> <br />`api_params`: A dictionary with one of the following keys:  <br /> <br />- `model`: Hugging Face model ID. Required when `api_type` is `SERVERLESS_INFERENCE_API`.**OR** - `url`: URL of the inference endpoint. Required when `api_type` is `INFERENCE_ENDPOINTS` or `TEXT_EMBEDDINGS_INFERENCE`.  <br /> <br />`token`: The Hugging Face API token. Can be set with `HF_API_TOKEN` or `HF_TOKEN` env var. |
 | **Mandatory run variables** | `documents`: A list of documents to be embedded |
 | **Output variables** | `documents`: A list of documents to be embedded (enriched with embeddings) |
@@ -35,7 +35,7 @@ Use this component to compute document embeddings using various Hugging Face API
 This component should be used to embed a list of documents. To embed a string, use [`HuggingFaceAPITextEmbedder`](huggingfaceapitextembedder.mdx).
 :::
 
-The component uses a `HF_API_TOKEN` environment variable by default. Otherwise, you can pass a Hugging Face API token at initialization with `token` – see code examples below.
+The component uses a `HF_API_TOKEN` environment variable by default. Otherwise, you can pass a Hugging Face API token at initialization with `token` – see code examples below.
 The token is needed:
 
 - If you use the Serverless Inference API, or

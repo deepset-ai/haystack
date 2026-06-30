@@ -13,8 +13,8 @@ description: "`AmazonBedrockDocumentImageEmbedder` computes image embeddings for
 
 |  |  |
 | --- | --- |
-| **Most common position in a pipeline** | Before a [`DocumentWriter`](../writers/documentwriter.mdx) in an indexing pipeline |
-| **Mandatory init variables** | `model`: The multimodal embedding model to use.  <br /> <br />`aws_access_key_id`: AWS access key ID. Can be set with `AWS_ACCESS_KEY_ID` env var.  <br /> <br />`aws_secret_access_key`: AWS secret access key. Can be set with `AWS_SECRET_ACCESS_KEY` env var.  <br /> <br />`aws_region_name`: AWS region name. Can be set with `AWS_DEFAULT_REGION` env var. |
+| **Most common position in a pipeline** | Before a [`DocumentWriter`](../writers/documentwriter.mdx) in an indexing pipeline |
+| **Mandatory init variables** | `model`: The multimodal embedding model to use.  <br /> <br />`aws_access_key_id`: AWS access key ID. Can be set with `AWS_ACCESS_KEY_ID` env var.  <br /> <br />`aws_secret_access_key`: AWS secret access key. Can be set with `AWS_SECRET_ACCESS_KEY` env var.  <br /> <br />`aws_region_name`: AWS region name. Can be set with `AWS_DEFAULT_REGION` env var. |
 | **Mandatory run variables** | `documents`: A list of documents, with a meta field containing an image file path |
 | **Output variables** | `documents`: A list of documents (enriched with embeddings) |
 | **API reference** | [Amazon Bedrock](/reference/integrations-amazon-bedrock) |
@@ -45,9 +45,9 @@ pip install amazon-bedrock-haystack
 
 ### Authentication
 
-`AmazonBedrockDocumentImageEmbedder` uses AWS for authentication. You can either provide credentials as parameters directly to the component or use the AWS CLI and authenticate through your IAM. For more information on how to set up an IAM identity-based policy, see the [official documentation](https://docs.aws.amazon.com/bedrock/latest/userguide/security_iam_id-based-policy-examples.html).
+`AmazonBedrockDocumentImageEmbedder` uses AWS for authentication. You can either provide credentials as parameters directly to the component or use the AWS CLI and authenticate through your IAM. For more information on how to set up an IAM identity-based policy, see the [official documentation](https://docs.aws.amazon.com/bedrock/latest/userguide/security_iam_id-based-policy-examples.html).
 
-To initialize `AmazonBedrockDocumentImageEmbedder` and authenticate by providing credentials, provide the `model` name, as well as `aws_access_key_id`, `aws_secret_access_key`, and `aws_region_name`. Other parameters are optional, you can check them out in our [API reference](/reference/integrations-amazon-bedrock#amazonbedrocktextembedder).
+To initialize `AmazonBedrockDocumentImageEmbedder` and authenticate by providing credentials, provide the `model` name, as well as `aws_access_key_id`, `aws_secret_access_key`, and `aws_region_name`. Other parameters are optional, you can check them out in our [API reference](/reference/integrations-amazon-bedrock#amazonbedrocktextembedder).
 
 ### Model-specific parameters
 

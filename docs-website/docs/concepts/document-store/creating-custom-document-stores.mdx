@@ -152,9 +152,9 @@ Haystack comes with some testing functionalities you can use in a custom Documen
 ### Implementation Tips
 
 - The best way to learn how to write a custom Document Store is to look at the existing ones: the `InMemoryDocumentStore`, which is part of Haystack, or the [`ElasticsearchDocumentStore`](https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/elasticsearch), which is a Core Integration, are good places to start.
-- When starting from scratch, it might be easier to create the four CRUD methods of the `DocumentStore` protocol one at a time and test them one at a time as well. For example:
+- When starting from scratch, it might be easier to create the four CRUD methods of the `DocumentStore` protocol one at a time and test them one at a time as well. For example:
   1. Implement the logic for `count_documents`.
-  2. In your `test_document_store.py` module, define the test class `TestDocumentStore(CountDocumentsTest)`. Note how we only inherit from the specific testing mix-in `CountDocumentsTest`.
+  2. In your `test_document_store.py` module, define the test class `TestDocumentStore(CountDocumentsTest)`. Note how we only inherit from the specific testing mix-in `CountDocumentsTest`.
   3. Make the tests pass.
   4. Implement the logic for `write_documents`.
   5. Change `test_document_store.py` so that your class now also derives from the `WriteDocumentsTest` mix-in: `TestDocumentStore(CountDocumentsTest, WriteDocumentsTest)`.
