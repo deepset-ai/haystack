@@ -248,6 +248,18 @@ def _extract_image_sources_info(
             )
 
         resolved_file_path = Path(root_path, file_path)
+
+        # When root_path is set, ensure the resolved path stays within it to block path-traversal
+        # payloads (e.g. "../../etc/passwd") coming from document metadata.
+        if root_path:
+            resolved_file_path = resolved_file_path.resolve()
+            resolved_root = Path(root_path).resolve()
+            if not resolved_file_path.is_relative_to(resolved_root):
+                raise ValueError(
+                    f"Document with ID '{doc.id}' has a file path '{file_path}' that escapes the "
+                    f"configured root '{root_path}'. Resolved path: '{resolved_file_path}'."
+                )
+
         if not resolved_file_path.is_file():
             raise ValueError(
                 f"Document with ID '{doc.id}' has an invalid file path '{resolved_file_path}'. "
