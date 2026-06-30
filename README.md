@@ -11,7 +11,7 @@
 
 [Haystack](https://haystack.deepset.ai/) is an open-source AI orchestration framework for building production-ready LLM applications in Python.
 
-Design modular pipelines and agent workflows with explicit control over retrieval, routing, memory, and generation. Build scalable RAG systems, multimodal applications, semantic search, question answering, and autonomous agents, all in a transparent architecture that lets you experiment, customize deeply, and deploy with confidence.
+Design modular pipelines and agent workflows with explicit control over retrieval, routing, memory, and generation. Build scalable RAG systems, multimodal applications, semantic search, question answering, and autonomous agents. all in a transparent architecture that lets you experiment, customize deeply, and deploy with confidence.
 
 ## Table of Contents
 
@@ -49,7 +49,7 @@ in a matter of minutes. Keep learning with the [tutorials](https://haystack.deep
 use cases, or just to get some inspiration, you can browse our Haystack recipes in the
 [Cookbook](https://haystack.deepset.ai/cookbook).
 
-At any given point, hit the [documentation](https://docs.haystack.deepset.ai/docs/intro) to learn more about Haystack, what it can do for you, and the technology behind.
+At any given point, hit the [documentation](https://docs.haystack.deepset.ai/docs/intro) to learn more about Haystack, what it can do for you, and the technology behind it.
 
 ## Features
 
