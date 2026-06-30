@@ -10,8 +10,8 @@ upgrade:
 fixes:
   - |
     Fixed a bug where configuring an ``Agent`` confirmation strategy could make a tool run with stale arguments.
-    Confirmation prepared and baked each tool's final arguments up front (injecting ``inputs_from_state`` values from
-    the state at the start of the step), which defeated the per-batch argument preparation in tool execution: a tool
-    that reads a state key written by another tool in the same step would run with the pre-step value instead of the
-    freshly produced one. Confirmation now operates on the model-requested arguments and leaves state injection to
-    tool execution, so dependent tools again receive the correct values.
+    HITL confirmation prepared and baked each tool's final arguments up front (injecting ``inputs_from_state`` values
+    from the state at the start of the tool calling step), which defeated the per-batch argument preparation in tool
+    execution: a tool that reads a state key written by another tool in the same step would run with the pre-step
+    value instead of the freshly produced one. HITL confirmation now operates on the model-requested arguments and
+    leaves state injection to tool execution, so dependent tools again receive the correct values.

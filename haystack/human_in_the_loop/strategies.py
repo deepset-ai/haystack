@@ -360,9 +360,7 @@ def _run_confirmation_strategies(
                 teds.append(_passthrough_tool_call(tool_call))
                 continue
 
-            # Confirm the model-requested arguments. State injection (inputs_from_state and State-typed parameters)
-            # is deliberately left to tool execution, which prepares args per batch so a tool observes State writes
-            # from tools that ran earlier in the same step. Baking injected args here would freeze stale values.
+            # Confirm the model-requested arguments
             final_args = dict(tool_call.arguments)
 
             # Get tool execution decisions from confirmation strategies
@@ -423,9 +421,7 @@ async def _run_confirmation_strategies_async(
                 teds.append(_passthrough_tool_call(tool_call))
                 continue
 
-            # Confirm the model-requested arguments. State injection (inputs_from_state and State-typed parameters)
-            # is deliberately left to tool execution, which prepares args per batch so a tool observes State writes
-            # from tools that ran earlier in the same step. Baking injected args here would freeze stale values.
+            # Confirm the model-requested arguments
             final_args = dict(tool_call.arguments)
 
             # Get tool execution decisions from confirmation strategies
