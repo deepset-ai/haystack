@@ -173,6 +173,9 @@ def _logic_condition(condition: dict[str, Any], document: Document | ByteStream)
         msg = f"'conditions' key missing in {condition}"
         raise FilterError(msg)
     operator: str = condition["operator"]
+    if operator not in LOGICAL_OPERATORS:
+        msg = f"Unknown logical operator '{operator}'. Valid operators are: {sorted(LOGICAL_OPERATORS)}"
+        raise FilterError(msg)
     conditions: list[dict[str, Any]] = condition["conditions"]
     return LOGICAL_OPERATORS[operator](document=document, conditions=conditions)
 
@@ -214,5 +217,8 @@ def _comparison_condition(condition: dict[str, Any], document: Document | ByteSt
     else:
         document_value = getattr(document, field)
     operator: str = condition["operator"]
+    if operator not in COMPARISON_OPERATORS:
+        msg = f"Unknown comparison operator '{operator}'. Valid operators are: {sorted(COMPARISON_OPERATORS)}"
+        raise FilterError(msg)
     filter_value: Any = condition["value"]
     return COMPARISON_OPERATORS[operator](filter_value=filter_value, value=document_value)
