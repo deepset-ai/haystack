@@ -412,6 +412,22 @@ class TestApplyToolExecutionDecisions:
                 ],
             )
 
+    def test_ted_without_id_unique_name_applies_normally(self):
+        # An id-less decision whose tool name is unique is not ambiguous, so the guard must not raise: name-based
+        # matching is unambiguous here. The decision should be applied normally.
+        message_with_tool_calls = ChatMessage.from_assistant(
+            tool_calls=[ToolCall(tool_name="search", arguments={"q": "a"})]
+        )
+        rejection_messages, new_tool_call_messages = _apply_tool_execution_decisions(
+            tool_call_messages=[message_with_tool_calls],
+            tool_execution_decisions=[
+                ToolExecutionDecision(tool_name="search", execute=True, final_tool_params={"q": "a"})
+            ],
+        )
+        assert rejection_messages == []
+        assert len(new_tool_call_messages) == 1
+        assert new_tool_call_messages[0].tool_calls == [ToolCall(tool_name="search", arguments={"q": "a"})]
+
 
 class TestUpdateChatHistory:
     @pytest.fixture
