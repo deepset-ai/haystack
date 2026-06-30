@@ -1,0 +1,12 @@
+loaders:
+  - search_path: [../haystack/hooks]
+    modules: ["protocol", "from_function"]
+processors:
+  - type: filter
+    documented_only: true
+    skip_empty_modules: true
+renderer:
+  title: Hooks
+  id: hooks-api
+  description: Hooks that run at points in the Agent's run loop and influence it by mutating State.
+  filename: hooks_api.md
