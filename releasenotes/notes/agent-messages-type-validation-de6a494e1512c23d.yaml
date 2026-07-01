@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Agent component now raises a clear TypeError when the `messages` input is not a list
+    (e.g. a string wired from an upstream component), instead of failing with the opaque
+    "can only concatenate list (not 'str') to list" error.

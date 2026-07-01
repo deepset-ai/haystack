@@ -968,6 +968,12 @@ class TestAgent:
         result = agent.run([])
         assert result["messages"] == []
 
+    def test_run_messages_string_raises_type_error(self):
+        chat_generator = MockChatGeneratorWithoutRunAsync()
+        agent = Agent(chat_generator=chat_generator, tools=[], system_prompt="You are helpful.")
+        with pytest.raises(TypeError, match="Agent component expects list\\[ChatMessage\\] for 'messages', got str"):
+            agent.run("this is a string not a list")
+
     def test_run_only_system_prompt(self, caplog):
         chat_generator = MockChatGeneratorWithoutRunAsync()
         agent = Agent(chat_generator=chat_generator, tools=[], system_prompt="This is a system prompt.")
