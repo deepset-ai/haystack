@@ -750,6 +750,25 @@ def test_run_split_by_dot_and_overlap_1_word_unit_split_idx_start():
         )
 
 
+def test_run_split_by_dot_and_overlap_1_word_unit_split_overlap_metadata():
+    """
+    _split_overlap must be populated when split_unit="word" and split_overlap > 0.
+
+    Regression: the overlap length was computed with a word/token count while
+    curr_pos/split_idx_start are character offsets, so it went negative and the
+    _split_overlap metadata was silently left empty for word/token units.
+    """
+    splitter = RecursiveDocumentSplitter(split_length=4, split_overlap=1, separators=["."], split_unit="word")
+    text = "This is sentence one. This is sentence two. This is sentence three. This is sentence four."
+    chunks = splitter.run([Document(content=text)])["documents"]
+    assert len(chunks) == 5
+    # First chunk overlaps with the next, last with the previous, middle with both.
+    assert any(o["doc_id"] == chunks[1].id for o in chunks[0].meta["_split_overlap"])
+    assert any(o["doc_id"] == chunks[3].id for o in chunks[4].meta["_split_overlap"])
+    for i in (1, 2, 3):
+        assert chunks[i].meta["_split_overlap"], f"chunk {i} has empty _split_overlap"
+
+
 def test_run_trigger_dealing_with_remaining_word_larger_than_split_length():
     splitter = RecursiveDocumentSplitter(split_length=3, split_overlap=2, separators=["."], split_unit="word")
     text = """A simple sentence1. A bright sentence2. A clever sentence3"""

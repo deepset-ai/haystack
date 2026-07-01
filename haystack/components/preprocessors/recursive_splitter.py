@@ -403,15 +403,21 @@ class RecursiveDocumentSplitter:
 
     def _add_overlap_info(self, curr_pos: int, new_doc: Document, new_docs: list[Document]) -> None:
         prev_doc = new_docs[-1]
-        overlap_length = self._chunk_length(prev_doc.content) - (curr_pos - prev_doc.meta["split_idx_start"])  # type: ignore
+        # curr_pos and split_idx_start are character offsets, so the overlap and
+        # range must be measured in characters too. Using self._chunk_length()
+        # here would mix units for word/token splitting (it returns a word/token
+        # count), making overlap_length negative and silently dropping the
+        # _split_overlap metadata.
+        prev_doc_length = len(prev_doc.content)  # type: ignore
+        overlap_length = prev_doc_length - (curr_pos - prev_doc.meta["split_idx_start"])
         if overlap_length > 0:
             prev_doc.meta["_split_overlap"].append({"doc_id": new_doc.id, "range": (0, overlap_length)})
             new_doc.meta["_split_overlap"].append(
                 {
                     "doc_id": prev_doc.id,
                     "range": (
-                        self._chunk_length(prev_doc.content) - overlap_length,  # type: ignore
-                        self._chunk_length(prev_doc.content),  # type: ignore
+                        prev_doc_length - overlap_length,
+                        prev_doc_length,
                     ),
                 }
             )
