@@ -61,6 +61,15 @@ def confirmation_hook(confirmation_strategies) -> ConfirmationHook:
 
 
 class TestAgent:
+    def test_confirmation_hook_accepted_on_before_tool(self, tools, confirmation_hook):
+        agent = Agent(chat_generator=MockChatGenerator(), tools=tools, hooks={"before_tool": [confirmation_hook]})
+        assert agent.hooks["before_tool"] == [confirmation_hook]
+
+    @pytest.mark.parametrize("bad_point", ["before_llm", "on_exit"])
+    def test_confirmation_hook_rejected_on_wrong_hook_point(self, tools, confirmation_hook, bad_point):
+        with pytest.raises(ValueError, match="only supports"):
+            Agent(chat_generator=MockChatGenerator(), tools=tools, hooks={bad_point: [confirmation_hook]})
+
     def test_to_dict(self, tools, confirmation_hook, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test")
         agent = Agent(chat_generator=OpenAIChatGenerator(), tools=tools, hooks={"before_tool": [confirmation_hook]})

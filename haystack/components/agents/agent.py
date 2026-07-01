@@ -147,6 +147,40 @@ def _public_outputs(state: State) -> dict[str, Any]:
     return {key: value for key, value in state.data.items() if key not in _INTERNAL_STATE_KEYS}
 
 
+def _validate_hooks(hooks: dict[HookPoint, list[Hook]]) -> None:
+    """
+    Validate a hooks mapping: known hook points, real Hook objects, and hook-point restrictions.
+
+    :param hooks: Mapping of hook point to the hooks registered under it.
+    :raises ValueError: If a hook point is unknown, or a hook is registered under a hook point it does not support.
+    :raises TypeError: If a registered hook has no callable `run(state)`.
+    """
+    for hook_point, hook_list in hooks.items():
+        if hook_point not in VALID_HOOK_POINTS:
+            raise ValueError(
+                f"Invalid hook point '{hook_point}'. Valid hook points are: {', '.join(VALID_HOOK_POINTS)}."
+            )
+        for h in hook_list:
+            if not callable(getattr(h, "run", None)):
+                if callable(h):
+                    raise TypeError(
+                        f"Hook registered for hook point '{hook_point}' is callable but is not a Hook object. "
+                        "If it is a function, wrap it with the @hook decorator."
+                    )
+                raise TypeError(
+                    f"Hook registered for hook point '{hook_point}' must have a callable 'run(state)', "
+                    f"got an object of type '{type(h).__name__}'."
+                )
+            # A hook may declare `allowed_hook_points` to restrict where it can run (e.g. ConfirmationHook only
+            # makes sense at "before_tool"). Hooks without it can be registered under any hook point.
+            allowed_points = getattr(h, "allowed_hook_points", None)
+            if allowed_points is not None and hook_point not in allowed_points:
+                raise ValueError(
+                    f"Hook of type '{type(h).__name__}' is registered under hook point '{hook_point}' but only "
+                    f"supports: {', '.join(allowed_points)}."
+                )
+
+
 def _consume_continue_run(state: State) -> bool:
     """Return the `continue_run` control flag and reset it so it does not carry over to the next exit attempt."""
     should_continue = state.data["continue_run"]
@@ -553,7 +587,8 @@ class Agent:
               exit condition, but not when it stops because `max_agent_steps` is reached.
         :raises TypeError: If the chat_generator does not support tools parameter in its run method.
         :raises ValueError: If any `user_prompt` variable overlaps with the `state_schema` or `run` method parameters,
-            or if a hook is registered under an unknown hook point.
+            if a hook is registered under an unknown hook point, or if a hook is registered under a hook point it does
+            not support (via its `allowed_hook_points`).
         """
         # --- Validation ---
         self._chat_generator_supports_tools: bool = "tools" in inspect.signature(chat_generator.run).parameters
@@ -582,22 +617,7 @@ class Agent:
             raise ValueError("tool_concurrency_limit must be greater than or equal to 1.")
 
         hooks = hooks or {}
-        for hook_point, hook_list in hooks.items():
-            if hook_point not in VALID_HOOK_POINTS:
-                raise ValueError(
-                    f"Invalid hook point '{hook_point}'. Valid hook points are: {', '.join(VALID_HOOK_POINTS)}."
-                )
-            for h in hook_list:
-                if not callable(getattr(h, "run", None)):
-                    if callable(h):
-                        raise TypeError(
-                            f"Hook registered for hook point '{hook_point}' is callable but is not a Hook object. "
-                            "If it is a function, wrap it with the @hook decorator."
-                        )
-                    raise TypeError(
-                        f"Hook registered for hook point '{hook_point}' must have a callable 'run(state)', "
-                        f"got an object of type '{type(h).__name__}'."
-                    )
+        _validate_hooks(hooks)
 
         # --- Attributes ---
         self.chat_generator = chat_generator

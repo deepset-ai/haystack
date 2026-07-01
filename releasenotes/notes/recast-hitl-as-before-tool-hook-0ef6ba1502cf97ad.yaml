@@ -34,3 +34,9 @@ features:
     rewriting the conversation in the Agent's ``State``. Its ``confirmation_strategies`` mapping accepts a single
     tool name, a tuple of tool names, or the wildcard ``"*"`` that applies to any tool without a more specific
     entry, so you can set a default strategy for all tools and override individual ones.
+  - |
+    Agent hooks may now declare an ``allowed_hook_points`` attribute listing the hook points they support. The
+    ``Agent`` validates it at construction and raises a ``ValueError`` if such a hook is registered under an
+    unsupported hook point. For example, ``ConfirmationHook`` sets ``allowed_hook_points = ("before_tool",)``, so
+    registering it under ``before_llm`` or ``on_exit`` now fails fast instead of silently doing nothing. Hooks that
+    do not declare the attribute can still be registered under any hook point.
