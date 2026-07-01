@@ -55,14 +55,14 @@ def _state_with(messages: list[ChatMessage], tools: list[Tool]) -> State:
     return state
 
 
-def _confirm_hook(ui_result: ConfirmationUIResult) -> ConfirmationHook:
-    return ConfirmationHook(
-        confirmation_strategies={
-            "addition_tool": BlockingConfirmationStrategy(
-                confirmation_policy=AlwaysAskPolicy(), confirmation_ui=MockUserInterface(ui_result)
-            )
-        }
+def _confirm_strat(ui_result: ConfirmationUIResult) -> BlockingConfirmationStrategy:
+    return BlockingConfirmationStrategy(
+        confirmation_policy=AlwaysAskPolicy(), confirmation_ui=MockUserInterface(ui_result)
     )
+
+
+def _confirm_hook(ui_result: ConfirmationUIResult, tool_name: str = "addition_tool") -> ConfirmationHook:
+    return ConfirmationHook(confirmation_strategies={tool_name: _confirm_strat(ui_result)})
 
 
 class TestConfirmationHook:
@@ -179,6 +179,52 @@ class TestConfirmationHook:
         )
         deserialized = ConfirmationHook.from_dict(hook.to_dict())
         assert ("addition_tool", "other_tool") in deserialized.confirmation_strategies
+
+
+class TestConfirmationHookWildcard:
+    def test_wildcard_applies_to_any_tool(self, tools):
+        # No entry for "addition_tool"; the "*" wildcard covers it.
+        messages = [
+            ChatMessage.from_user("add"),
+            ChatMessage.from_assistant(tool_calls=[ToolCall(id="tc-1", tool_name="addition_tool", arguments={})]),
+        ]
+        state = _state_with(messages, tools)
+        _confirm_hook(ConfirmationUIResult(action="reject"), tool_name="*").run(state)
+
+        new_messages = state.get("messages")
+        assert new_messages[-1].tool_call_result is not None
+        assert "rejected" in new_messages[-1].tool_call_result.result.lower()
+
+    def test_specific_key_beats_wildcard(self):
+        add_tool = create_tool_from_function(
+            function=addition_tool, name="addition_tool", description="Adds two integers."
+        )
+        other_tool = create_tool_from_function(function=addition_tool, name="other_tool", description="Another tool.")
+        messages = [
+            ChatMessage.from_user("go"),
+            ChatMessage.from_assistant(
+                tool_calls=[
+                    ToolCall(id="tc-add", tool_name="addition_tool", arguments={"a": 1, "b": 2}),
+                    ToolCall(id="tc-other", tool_name="other_tool", arguments={"a": 3, "b": 4}),
+                ]
+            ),
+        ]
+        state = _state_with(messages, [add_tool, other_tool])
+        # addition_tool has its own (confirm) entry; other_tool falls through to the "*" (reject) wildcard.
+        hook = ConfirmationHook(
+            confirmation_strategies={
+                "addition_tool": _confirm_strat(ConfirmationUIResult(action="confirm")),
+                "*": _confirm_strat(ConfirmationUIResult(action="reject")),
+            }
+        )
+        hook.run(state)
+
+        new_messages = state.get("messages")
+        # addition_tool is confirmed, so it stays pending on the last message; other_tool is rejected.
+        assert [tc.tool_name for tc in new_messages[-1].tool_calls] == ["addition_tool"]
+        rejected = [m for m in new_messages if m.tool_call_result is not None]
+        assert [m.tool_call_result.origin.tool_name for m in rejected] == ["other_tool"]
+        assert rejected[0].tool_call_result.error is True
 
 
 class TestConfirmationHookAsync:

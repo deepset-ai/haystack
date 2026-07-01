@@ -25,9 +25,11 @@ class ConfirmationHook:
     ```python
     from haystack.components.agents import Agent
     from haystack.human_in_the_loop import (
+        AlwaysAskPolicy,
         BlockingConfirmationStrategy,
         ConfirmationHook,
         NeverAskPolicy,
+        RichConsoleUI,
         SimpleConsoleUI,
     )
 
@@ -39,6 +41,23 @@ class ConfirmationHook:
         }
     )
     agent = Agent(chat_generator=..., tools=[...], hooks={"before_tool": [hook]})
+    ```
+
+    A key may be a single tool name, a tuple of tool names sharing one strategy, or the wildcard `"*"` which applies
+    to any tool without a more specific entry. More specific keys win, so you can set a default for all tools and
+    override individual ones:
+
+    ```python
+    hook = ConfirmationHook(
+        confirmation_strategies={
+            "delete_file": BlockingConfirmationStrategy(
+                confirmation_policy=AlwaysAskPolicy(), confirmation_ui=RichConsoleUI()
+            ),
+            "*": BlockingConfirmationStrategy(
+                confirmation_policy=NeverAskPolicy(), confirmation_ui=SimpleConsoleUI()
+            ),
+        }
+    )
     ```
 
     Request-scoped resources for the strategies (e.g. a WebSocket or queue) are passed per run via the Agent's
@@ -54,7 +73,10 @@ class ConfirmationHook:
 
     def __init__(self, confirmation_strategies: dict[str | tuple[str, ...], ConfirmationStrategy]) -> None:
         """
+        Initialize the hook with its per-tool confirmation strategies.
+
         :param confirmation_strategies: Mapping of tool name (or a tuple of tool names) to its `ConfirmationStrategy`.
+            The wildcard key `"*"` applies to any tool without a more specific entry.
         """
         self.confirmation_strategies = confirmation_strategies
 

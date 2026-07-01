@@ -206,7 +206,8 @@ def _get_confirmation_strategy(
     :param tool_name:
         The name of the tool to look up.
     :param confirmation_strategies:
-        Dictionary of confirmation strategies with string or tuple keys.
+        Dictionary of confirmation strategies with string or tuple keys. The `"*"` key, if present, is a wildcard
+        applied to any tool without a more specific entry.
     :returns:
         The confirmation strategy if found, None otherwise.
     """
@@ -217,7 +218,8 @@ def _get_confirmation_strategy(
         if isinstance(key, tuple) and tool_name in key:
             return strategy
 
-    return None
+    # Fall back to the wildcard entry that applies to any tool without a more specific match.
+    return confirmation_strategies.get("*")
 
 
 def _passthrough_tool_call(tool_call: ToolCall) -> ToolExecutionDecision:

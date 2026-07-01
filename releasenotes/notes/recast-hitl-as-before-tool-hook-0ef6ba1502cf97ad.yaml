@@ -31,4 +31,6 @@ features:
   - |
     Added ``ConfirmationHook``, a ``before_tool`` Agent hook that applies Human-in-the-Loop confirmation strategies
     to pending tool calls. It confirms, modifies, or rejects the tool calls the model requested before they run by
-    rewriting the conversation in the Agent's ``State``.
+    rewriting the conversation in the Agent's ``State``. Its ``confirmation_strategies`` mapping accepts a single
+    tool name, a tuple of tool names, or the wildcard ``"*"`` that applies to any tool without a more specific
+    entry, so you can set a default strategy for all tools and override individual ones.
