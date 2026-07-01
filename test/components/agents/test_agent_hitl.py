@@ -355,18 +355,22 @@ class TestMultipleConfirmationHooks:
 
         result = agent.run(messages=[ChatMessage.from_user("go")])
 
-        results_by_tool = {
-            m.tool_call_result.origin.tool_name: m.tool_call_result
-            for m in result["messages"]
-            if m.tool_call_result is not None
-        }
-        # foo was rejected: it produced an error tool result and never executed.
-        assert results_by_tool["foo"].error is True
-        assert "rejected" in results_by_tool["foo"].result.lower()
-        # bar and baz ran with their modified arguments.
-        assert results_by_tool["bar"].error is False
-        assert results_by_tool["bar"].result == '{"echoed": 99}'
-        assert results_by_tool["baz"].error is False
-        assert results_by_tool["baz"].result == '{"echoed": 77}'
+        # The full transcript, in order: foo is rejected (its call + an error tool result appear before the
+        # surviving batch), bar and baz are modified (each with an explanation message) and then executed.
+        assert result["messages"] == [
+            ChatMessage.from_user("go"),
+            ChatMessage.from_assistant(tool_calls=[ToolCall("foo", {"x": 1})]),
+            ChatMessage.from_tool(
+                tool_result="Tool execution for 'foo' was rejected by the user.",
+                origin=ToolCall("foo", {"x": 1}),
+                error=True,
+            ),
+            ChatMessage.from_user("The parameters for tool 'bar' were updated by the user to:\n{'x': 99}"),
+            ChatMessage.from_user("The parameters for tool 'baz' were updated by the user to:\n{'x': 77}"),
+            ChatMessage.from_assistant(tool_calls=[ToolCall("bar", {"x": 99}), ToolCall("baz", {"x": 77})]),
+            ChatMessage.from_tool(tool_result='{"echoed": 99}', origin=ToolCall("bar", {"x": 99}), error=False),
+            ChatMessage.from_tool(tool_result='{"echoed": 77}', origin=ToolCall("baz", {"x": 77}), error=False),
+            ChatMessage.from_assistant("done"),
+        ]
         # Only the two confirmed tools actually executed.
         assert result["tool_call_counts"] == {"foo": 0, "bar": 1, "baz": 1}
