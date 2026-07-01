@@ -26,7 +26,7 @@ This component enables chat completions using AnthropicVertex API.
 ## Overview
 
 `AnthropicVertexChatGenerator` enables text generation using state-of-the-art Claude 3 LLMs using the Anthropic Vertex AI API.
-It supports   `Claude 3.5 Sonnet`, `Claude 3 Opus`, `Claude 3 Sonnet`, and `Claude 3 Haiku` models, that are accessible through the Vertex AI API endpoint. For more details about the models, refer to [Anthropic Vertex AI documentation](https://docs.anthropic.com/en/api/claude-on-vertex-ai).
+It supports   `Claude 3.5 Sonnet`, `Claude 3 Opus`, `Claude 3 Sonnet`, and `Claude 3 Haiku` models, that are accessible through the Vertex AI API endpoint. For more details about the models, refer to [Anthropic Vertex AI documentation](https://docs.anthropic.com/en/api/claude-on-vertex-ai).
 
 ### Parameters
 
@@ -34,16 +34,16 @@ To use the `AnthropicVertexChatGenerator`, ensure you have a GCP project with Ve
 
 You can provide these keys in the following ways:
 
-- The `REGION` and `PROJECT_ID` environment variables (recommended)
-- The `region` and `project_id` init parameters
+- The `REGION` and `PROJECT_ID` environment variables (recommended)
+- The `region` and `project_id` init parameters
 
 Before making requests, you may need to authenticate with GCP using `gcloud auth login`.
 
-Set your preferred supported Anthropic model with the `model` parameter when initializing the component. Additionally, ensure that the desired Anthropic model is activated in the Vertex AI Model Garden.
+Set your preferred supported Anthropic model with the `model` parameter when initializing the component. Additionally, ensure that the desired Anthropic model is activated in the Vertex AI Model Garden.
 
-`AnthropicVertexChatGenerator` requires a prompt to generate text, but you can pass any text generation parameters available in the Anthropic [Messaging API](https://docs.anthropic.com/en/api/messages) method directly to this component using the `generation_kwargs` parameter, both at initialization and when running the component. For more details on the parameters supported by the Anthropic API, see the [Anthropic documentation](https://docs.anthropic.com/).
+`AnthropicVertexChatGenerator` requires a prompt to generate text, but you can pass any text generation parameters available in the Anthropic [Messaging API](https://docs.anthropic.com/en/api/messages) method directly to this component using the `generation_kwargs` parameter, both at initialization and when running the component. For more details on the parameters supported by the Anthropic API, see the [Anthropic documentation](https://docs.anthropic.com/).
 
-Finally, the component needs a list of `ChatMessage` objects to operate. `ChatMessage` is a data class that contains a message, a role (who generated the message, such as `user`, `assistant`, `system`, `function`), and optional metadata.
+Finally, the component needs a list of `ChatMessage` objects to operate. `ChatMessage` is a data class that contains a message, a role (who generated the message, such as `user`, `assistant`, `system`, `function`), and optional metadata.
 
 Only text input modality is supported at this time.
 
@@ -79,7 +79,7 @@ Prompt caching is a feature for Anthropic LLMs that stores large text inputs for
 
 This feature is particularly useful for coding assistants that need full codebase context and for processing large documents. It can help reduce costs and improve response times.
 
-Here's an example of an instance of `AnthropicVertexChatGenerator` being initialized with prompt caching and tagging a message to be cached:
+Here's an example of an instance of `AnthropicVertexChatGenerator` being initialized with prompt caching and tagging a message to be cached:
 
 ```python
 from haystack_integrations.components.generators.anthropic import (
@@ -117,11 +117,11 @@ result = claude_llm.run(messages)
 # and so on, either invoking component directly or in the pipeline
 ```
 
-For more details, refer to Anthropic's [documentation](https://docs.anthropic.com/en/docs/build-with-claude/prompt-caching) and integration [examples](https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/anthropic/example).
+For more details, refer to Anthropic's [documentation](https://docs.anthropic.com/en/docs/build-with-claude/prompt-caching) and integration [examples](https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/anthropic/example).
 
 ## Usage
 
-Install the`anthropic-haystack` package to use the `AnthropicVertexChatGenerator`:
+Install the`anthropic-haystack` package to use the `AnthropicVertexChatGenerator`:
 
 ```shell
 pip install anthropic-haystack
@@ -148,7 +148,7 @@ print(response)
 
 ### In a pipeline
 
-You can also use `AnthropicVertexChatGenerator`with the Anthropic chat models in your pipeline.
+You can also use `AnthropicVertexChatGenerator`with the Anthropic chat models in your pipeline.
 
 ```python
 from haystack import Pipeline

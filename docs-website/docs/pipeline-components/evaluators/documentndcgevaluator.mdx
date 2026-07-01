@@ -24,17 +24,17 @@ The `DocumentNDCGEvaluator` evaluates documents retrieved by Haystack pipelines 
 
 ## Overview
 
-You can use the `DocumentNDCGEvaluator` component to evaluate documents retrieved by a Haystack pipeline, such as a RAG pipeline, against ground truth labels. A higher NDCG is better and indicates that relevant documents appear at an earlier position in the list of retrieved documents.
+You can use the `DocumentNDCGEvaluator` component to evaluate documents retrieved by a Haystack pipeline, such as a RAG pipeline, against ground truth labels. A higher NDCG is better and indicates that relevant documents appear at an earlier position in the list of retrieved documents.
 
 If the ground truth documents have scores, a higher NDCG indicates that documents with a higher score appear at an earlier position in the list of retrieved documents. If the ground truth documents have no scores, binary relevance is assumed, meaning that all ground truth documents are equally relevant, and the order in which they are in the list of retrieved documents does not matter for the NDCG.
 
-No parameters are required to initialize a `DocumentNDCGEvaluator`.
+No parameters are required to initialize a `DocumentNDCGEvaluator`.
 
 ## Usage
 
 ### On its own
 
-Below is an example where we use the `DocumentNDCGEvaluator` to evaluate documents retrieved for a query. There are two ground truth documents and three retrieved documents. All ground truth documents are retrieved, but one non-relevant document is ranked higher than one of the ground truth documents, which lowers the NDCG score.
+Below is an example where we use the `DocumentNDCGEvaluator` to evaluate documents retrieved for a query. There are two ground truth documents and three retrieved documents. All ground truth documents are retrieved, but one non-relevant document is ranked higher than one of the ground truth documents, which lowers the NDCG score.
 
 ```python
 from haystack import Document

@@ -15,7 +15,7 @@ This Retriever accepts the embeddings of a single query as input and returns a l
 
 |  |  |
 | --- | --- |
-| **Most common position in a pipeline** | 1. After a Text Embedder and before a [`PromptBuilder`](../builders/promptbuilder.mdx) in a RAG pipeline 2. The last component in the embedding retrieval pipeline 3. After a Text Embedder and before an [`ExtractiveReader`](../readers/extractivereader.mdx) in an extractive QA pipeline |
+| **Most common position in a pipeline** | 1. After a Text Embedder and before a [`PromptBuilder`](../builders/promptbuilder.mdx) in a RAG pipeline 2. The last component in the embedding retrieval pipeline 3. After a Text Embedder and before an [`ExtractiveReader`](../readers/extractivereader.mdx) in an extractive QA pipeline |
 | **Mandatory init variables**           | `document_store`: An instance of [`AzureAISearchDocumentStore`](../../document-stores/azureaisearchdocumentstore.mdx)                                                                                                                                                                           |
 | **Mandatory run variables**            | `query_embedding`: A list of floats                                                                                                                                                                                                                                       |
 | **Output variables**                   | `documents`: A list of documents                                                                                                                                                                                                                                          |
@@ -27,13 +27,13 @@ This Retriever accepts the embeddings of a single query as input and returns a l
 
 ## Overview
 
-The `AzureAISearchEmbeddingRetriever` is an embedding-based Retriever compatible with the `AzureAISearchDocumentStore`. It compares the query and document embeddings and fetches the most relevant documents from the `AzureAISearchDocumentStore` based on the outcome.
+The `AzureAISearchEmbeddingRetriever` is an embedding-based Retriever compatible with the `AzureAISearchDocumentStore`. It compares the query and document embeddings and fetches the most relevant documents from the `AzureAISearchDocumentStore` based on the outcome.
 
-The query needs to be embedded before being passed to this component. For example, you could use a Text [Embedder](../embedders.mdx) component.
+The query needs to be embedded before being passed to this component. For example, you could use a Text [Embedder](../embedders.mdx) component.
 
 By default, the `AzureAISearchDocumentStore` uses the [HNSW algorithm](https://learn.microsoft.com/en-us/azure/search/vector-search-overview#nearest-neighbors-search) with cosine similarity to handle vector searches. The vector configuration is set during the initialization of the document store and can be customized by providing the `vector_search_configuration` parameter.
 
-In addition to the `query_embedding`, the `AzureAISearchEmbeddingRetriever` accepts other optional parameters, including `top_k` (the maximum number of documents to retrieve) and `filters` to narrow down the search space.
+In addition to the `query_embedding`, the `AzureAISearchEmbeddingRetriever` accepts other optional parameters, including `top_k` (the maximum number of documents to retrieve) and `filters` to narrow down the search space.
 
 :::info[Semantic Ranking]
 
@@ -74,11 +74,11 @@ retriever.run(query_embedding=[0.1] * 384)
 
 ### In a pipeline
 
-Here is how you could use the `AzureAISearchEmbeddingRetriever` in a pipeline. In this example, you would create two pipelines: an indexing one and a querying one.
+Here is how you could use the `AzureAISearchEmbeddingRetriever` in a pipeline. In this example, you would create two pipelines: an indexing one and a querying one.
 
 In the indexing pipeline, the documents are passed to the Document Embedder and then written into the Document Store.
 
-Then, in the querying pipeline, we use a Text Embedder to get the vector representation of the input query that will be then passed to the `AzureAISearchEmbeddingRetriever` to get the results.
+Then, in the querying pipeline, we use a Text Embedder to get the vector representation of the input query that will be then passed to the `AzureAISearchEmbeddingRetriever` to get the results.
 
 ```python
 from haystack import Document, Pipeline

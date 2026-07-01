@@ -27,11 +27,11 @@ description: "`AzureOCRDocumentConverter` converts files to documents using Azur
 
 `AzureOCRDocumentConverter` takes a list of file paths or [`ByteStream`](../../concepts/data-classes.mdx#bytestream) objects as input and uses Azure services to convert the files to a list of documents. Optionally, metadata can be attached to the documents through the `meta` input parameter. You need an active Azure account and a Document Intelligence or Cognitive Services resource to use this integration. Follow the steps described in the Azure [documentation](https://learn.microsoft.com/en-us/azure/ai-services/document-intelligence/quickstarts/get-started-sdks-rest-api) to set up your resource.
 
-The component uses an `AZURE_AI_API_KEY` environment variable by default. Otherwise, you can pass an `api_key` at initialization – see code examples below.
+The component uses an `AZURE_AI_API_KEY` environment variable by default. Otherwise, you can pass an `api_key` at initialization – see code examples below.
 
 When you initialize the component, you can optionally set the `model_id`, which refers to the model you want to use. Please refer to [Azure documentation](https://learn.microsoft.com/en-us/azure/ai-services/document-intelligence/choose-model-feature) for a list of available models. The default model is `"prebuilt-read"`.
 
-The `AzureOCRDocumentConverter` doesn’t extract the tables from a file as plain text but generates separate `Document` objects of type `table` that maintain the two-dimensional structure of the tables.
+The `AzureOCRDocumentConverter` doesn’t extract the tables from a file as plain text but generates separate `Document` objects of type `table` that maintain the two-dimensional structure of the tables.
 
 ## Usage
 

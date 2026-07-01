@@ -13,9 +13,9 @@ This component enables chat completions using Anthropic large language models (L
 
 |  |  |
 | --- | --- |
-| **Most common position in a pipeline** | After a [ChatPromptBuilder](../builders/chatpromptbuilder.mdx) |
+| **Most common position in a pipeline** | After a [ChatPromptBuilder](../builders/chatpromptbuilder.mdx) |
 | **Mandatory init variables** | `api_key`: An Anthropic API key. Can be set with `ANTHROPIC_API_KEY` env var. |
-| **Mandatory run variables** | `messages` A list of [`ChatMessage`](../../concepts/data-classes/chatmessage.mdx)  objects |
+| **Mandatory run variables** | `messages` A list of [`ChatMessage`](../../concepts/data-classes/chatmessage.mdx)  objects |
 | **Output variables** | `replies`: A list of [`ChatMessage`](../../concepts/data-classes/chatmessage.mdx)  objects  <br /> <br />`meta`: A list of dictionaries with the metadata associated with each reply, such as token count, finish reason, and so on |
 | **API reference** | [Anthropic](/reference/integrations-anthropic) |
 | **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/anthropic |
@@ -25,20 +25,20 @@ This component enables chat completions using Anthropic large language models (L
 
 ## Overview
 
-This integration supports Anthropic `chat` models such as `claude-3-5-sonnet-20240620`,`claude-3-opus-20240229`, `claude-3-haiku-20240307`, and similar. Check out the most recent full list in [Anthropic documentation](https://docs.anthropic.com/en/docs/about-claude/models).
+This integration supports Anthropic `chat` models such as `claude-3-5-sonnet-20240620`,`claude-3-opus-20240229`, `claude-3-haiku-20240307`, and similar. Check out the most recent full list in [Anthropic documentation](https://docs.anthropic.com/en/docs/about-claude/models).
 
 ### Parameters
 
-`AnthropicChatGenerator` needs an Anthropic API key to work. You can provide this key in:
+`AnthropicChatGenerator` needs an Anthropic API key to work. You can provide this key in:
 
-- The `ANTHROPIC_API_KEY` environment variable (recommended)
-- The `api_key` init parameter and Haystack [Secret](../../concepts/secret-management.mdx) API: `Secret.from_token("your-api-key-here")`
+- The `ANTHROPIC_API_KEY` environment variable (recommended)
+- The `api_key` init parameter and Haystack [Secret](../../concepts/secret-management.mdx) API: `Secret.from_token("your-api-key-here")`
 
 Set your preferred Anthropic model with the `model` parameter when initializing the component.
 
-`AnthropicChatGenerator` requires a prompt to generate text, but you can pass any text generation parameters available in the Anthropic [Messaging API](https://docs.anthropic.com/en/api/messages) method directly to this component using the `generation_kwargs` parameter, both at initialization and when running the component. For more details on the parameters supported by the Anthropic API, see the [Anthropic documentation](https://docs.anthropic.com).
+`AnthropicChatGenerator` requires a prompt to generate text, but you can pass any text generation parameters available in the Anthropic [Messaging API](https://docs.anthropic.com/en/api/messages) method directly to this component using the `generation_kwargs` parameter, both at initialization and when running the component. For more details on the parameters supported by the Anthropic API, see the [Anthropic documentation](https://docs.anthropic.com).
 
-Finally, the component needs a list of `ChatMessage` objects to operate. `ChatMessage` is a data class that contains a message, a role (who generated the message, such as `user`, `assistant`, `system`, `function`), and optional metadata.
+Finally, the component needs a list of `ChatMessage` objects to operate. `ChatMessage` is a data class that contains a message, a role (who generated the message, such as `user`, `assistant`, `system`, `function`), and optional metadata.
 
 Only text input modality is supported at this time.
 
@@ -132,7 +132,7 @@ For more details, refer to Anthropic's [documentation](https://docs.anthropic.co
 
 ## Usage
 
-Install the`anthropic-haystack` package to use the `AnthropicChatGenerator`:
+Install the`anthropic-haystack` package to use the `AnthropicChatGenerator`:
 
 ```shell
 pip install anthropic-haystack
@@ -170,7 +170,7 @@ print(response)
 
 ### In a pipeline
 
-You can also use `AnthropicChatGenerator`with the Anthropic chat models in your pipeline.
+You can also use `AnthropicChatGenerator`with the Anthropic chat models in your pipeline.
 
 ```python
 from haystack import Pipeline

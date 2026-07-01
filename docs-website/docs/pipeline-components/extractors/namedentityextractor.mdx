@@ -54,7 +54,7 @@ extractor = NamedEntityExtractor(backend="hugging_face", model="dslim/bert-base-
 extractor = NamedEntityExtractor(backend="spacy", model="en_core_web_sm")
 ```
 
-`NamedEntityExtractor` accepts a list of `Documents` as its input. The extractor annotates the raw text in the documents and stores the annotations in the document's `meta` dictionary under the `named_entities` key.
+`NamedEntityExtractor` accepts a list of `Documents` as its input. The extractor annotates the raw text in the documents and stores the annotations in the document's `meta` dictionary under the `named_entities` key.
 
 ```python
 from haystack.dataclasses import Document

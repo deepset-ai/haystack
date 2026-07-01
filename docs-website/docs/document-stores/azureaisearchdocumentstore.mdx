@@ -26,7 +26,7 @@ A Document Store for storing and retrieval from Azure AI Search Index.
 
 This integration requires you to have an active Azure subscription with a deployed [Azure AI Search](https://azure.microsoft.com/en-us/products/ai-services/ai-search) service.
 
-Once you have the subscription, install the `azure-ai-search-haystack` integration:
+Once you have the subscription, install the `azure-ai-search-haystack` integration:
 
 ```python
 pip install azure-ai-search-haystack
@@ -36,7 +36,7 @@ To use the `AzureAISearchDocumentStore`, you need to provide a search service en
 
 During initialization the Document Store will either retrieve the existing search index for the given `index_name` or create a new one if it doesn't already exist. Note that one of the limitations of `AzureAISearchDocumentStore` is that the fields of the Azure search index cannot be modified through the API after creation. Therefore, any additional fields beyond the default ones must be provided as `metadata_fields` during the Document Store's initialization. However, if needed, [Azure AI portal](https://azure.microsoft.com/) can be used to modify the fields without deleting the index.
 
-It is recommended to pass authentication data through `AZURE_AI_SEARCH_API_KEY` and `AZURE_AI_SEARCH_ENDPOINT` before running the following example.
+It is recommended to pass authentication data through `AZURE_AI_SEARCH_API_KEY` and `AZURE_AI_SEARCH_ENDPOINT` before running the following example.
 
 ```python
 from haystack_integrations.document_stores.azure_ai_search import (

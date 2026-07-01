@@ -33,7 +33,7 @@ For more details, see [Postgres documentation](https://www.postgresql.org/docs/c
 
 Keep in mind that, unlike similar components such as `ElasticsearchBM25Retriever`, this Retriever does not apply fuzzy search out of the box, so it’s necessary to carefully formulate the query in order to avoid getting zero results.
 
-In addition to the `query`, the `PgvectorKeywordRetriever` accepts other optional parameters, including `top_k` (the maximum number of documents to retrieve) and `filters` to narrow the search space.
+In addition to the `query`, the `PgvectorKeywordRetriever` accepts other optional parameters, including `top_k` (the maximum number of documents to retrieve) and `filters` to narrow the search space.
 
 ### Installation
 
@@ -75,7 +75,7 @@ retriever.run(query="my nice query")
 
 The prerequisites necessary for running this code are:
 
-- Set an environment variable `OPENAI_API_KEY` with your OpenAI API key.
+- Set an environment variable `OPENAI_API_KEY` with your OpenAI API key.
 - Set an environment variable `PG_CONN_STR` with the connection string to your PostgreSQL database.
 
 ```python

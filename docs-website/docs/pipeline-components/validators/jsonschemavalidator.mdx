@@ -14,7 +14,7 @@ Use this component to ensure that an LLM-generated chat message JSON adheres to 
 |  |  |
 | --- | --- |
 | **Most common position in a pipeline** | After a [Generator](../generators.mdx) |
-| **Mandatory run variables** | `messages`: A list of [`ChatMessage`](../../concepts/data-classes/chatmessage.mdx)  instances to be validated – the last message in this list is the one that is validated |
+| **Mandatory run variables** | `messages`: A list of [`ChatMessage`](../../concepts/data-classes/chatmessage.mdx)  instances to be validated – the last message in this list is the one that is validated |
 | **Output variables** | `validated`: A list of messages if the last message is valid  <br /> <br />`validation_error`: A list of messages if the last message is invalid |
 | **API reference** | [Validators](/reference/validators-api) |
 | **GitHub link** | https://github.com/deepset-ai/haystack/blob/main/haystack/components/validators/json_schema.py |
@@ -24,7 +24,7 @@ Use this component to ensure that an LLM-generated chat message JSON adheres to 
 
 ## Overview
 
-`JsonSchemaValidator` checks the JSON content of a `ChatMessage` against a given [JSON Schema](https://json-schema.org/). If a message's JSON content follows the provided schema, it's moved to the `validated` output. If not, it's moved to the `validation_error`output. When there's an error, the component uses either the provided custom `error_template` or a default template to create the error message. These error `ChatMessages` can be used in Haystack recovery loops.
+`JsonSchemaValidator` checks the JSON content of a `ChatMessage` against a given [JSON Schema](https://json-schema.org/). If a message's JSON content follows the provided schema, it's moved to the `validated` output. If not, it's moved to the `validation_error`output. When there's an error, the component uses either the provided custom `error_template` or a default template to create the error message. These error `ChatMessages` can be used in Haystack recovery loops.
 
 ## Usage
 

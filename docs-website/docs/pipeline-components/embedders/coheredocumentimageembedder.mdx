@@ -13,8 +13,8 @@ description: "`CohereDocumentImageEmbedder` computes the image embeddings of a l
 
 |  |  |
 | --- | --- |
-| **Most common position in a pipeline** | Before a [`DocumentWriter`](../writers/documentwriter.mdx) in an indexing pipeline                |
-| **Mandatory init variables**           | `api_key`: The Cohere API key. Can be set with `COHERE_API_KEY` or `CO_API_KEY` env var. |
+| **Most common position in a pipeline** | Before a [`DocumentWriter`](../writers/documentwriter.mdx) in an indexing pipeline                |
+| **Mandatory init variables**           | `api_key`: The Cohere API key. Can be set with `COHERE_API_KEY` or `CO_API_KEY` env var. |
 | **Mandatory run variables**            | `documents`: A list of documents, with a meta field containing an image file path        |
 | **Output variables**                   | `documents`: A list of documents (enriched with embeddings)                              |
 | **API reference**                      | [Cohere](/reference/integrations-cohere)                                                        |
@@ -43,19 +43,19 @@ pip install cohere-haystack
 
 ### Authentication
 
-The component uses a `COHERE_API_KEY` or `CO_API_KEY` environment variable by default. Otherwise, you can pass an API key at initialization with a [Secret](../../concepts/secret-management.mdx) and `Secret.from_token`  method:
+The component uses a `COHERE_API_KEY` or `CO_API_KEY` environment variable by default. Otherwise, you can pass an API key at initialization with a [Secret](../../concepts/secret-management.mdx) and `Secret.from_token`  method:
 
 ```python
 embedder = CohereTextEmbedder(api_key=Secret.from_token("<your-api-key>"))
 ```
 
-To get a Cohere API key, head over to https://cohere.com/.
+To get a Cohere API key, head over to https://cohere.com/.
 
 ## Usage
 
 ### On its own
 
-Remember to set `COHERE_API_KEY` as an environment variable first.
+Remember to set `COHERE_API_KEY` as an environment variable first.
 
 ```python
 from haystack import Document

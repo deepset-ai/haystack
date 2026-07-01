@@ -39,13 +39,13 @@ Each pattern is evaluated in order, and the first match determines the output. T
 
 Optionally, you can provide a `system_prompt` to guide the classification behavior of the LLM. In this case as well, we recommend checking the model card to discover customization options.
 
-To see the full list of parameters, check out our [API reference](/reference/routers-api#llmmessagesrouter).
+To see the full list of parameters, check out our [API reference](/reference/routers-api#llmmessagesrouter).
 
 ## Usage
 
 ### On its own
 
-Below is an example of using `LLMMessagesRouter` to route Chat Messages to two  output connections based on safety classification. Messages that don’t match any pattern are routed to `unmatched`.
+Below is an example of using `LLMMessagesRouter` to route Chat Messages to two  output connections based on safety classification. Messages that don’t match any pattern are routed to `unmatched`.
 
 We use Llama Guard 4 for content moderation. To use this model with the Hugging Face API, you need to [request access](https://huggingface.co/meta-llama/Llama-Guard-4-12B) and set the `HF_TOKEN` environment variable.
 

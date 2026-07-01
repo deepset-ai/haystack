@@ -37,7 +37,7 @@ To start using this integration with Haystack, install it with:
 pip install nvidia-haystack
 ```
 
-The component uses an `NVIDIA_API_KEY` environment variable by default. Otherwise, you can pass an Nvidia API key at initialization with `api_key` like this:
+The component uses an `NVIDIA_API_KEY` environment variable by default. Otherwise, you can pass an Nvidia API key at initialization with `api_key` like this:
 
 ```python
 ranker = NvidiaRanker(api_key=Secret.from_token("<your-api-key>"))

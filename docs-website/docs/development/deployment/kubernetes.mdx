@@ -55,7 +55,7 @@ spec:
 
 ```
 
-After applying the above to an existing Kubernetes cluster, a `hayhooks` Pod will show up as a Service called `haystack-service`.
+After applying the above to an existing Kubernetes cluster, a `hayhooks` Pod will show up as a Service called `haystack-service`.
 <ClickableImage src="/img/6eb9fb0c7b00367bfbe8182ffc7c3746f3f3d03b720e963df045e28160362d7f-Screenshot_2025-04-15_at_16.15.28.png" alt="Kubernetes Lens interface showing the hayhooks Pod running in the default namespace with status Running" />
 
 Note that the `Service` defined above is of type `ClusterIP`. That means it's exposed only _inside_ the Kubernetes cluster. To expose the Hayhooks API to the _outside_ world as well, you need a `NodePort` or `Ingress` resource. As an alternative, it's also possible to use [Port Forwarding](https://kubernetes.io/docs/tasks/access-application-cluster/port-forward-access-application-cluster/) to access the `Service` locally.

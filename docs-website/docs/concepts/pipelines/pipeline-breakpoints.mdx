@@ -11,7 +11,7 @@ Learn how to pause and resume Haystack pipeline or Agent execution using breakpo
 
 ## Introduction
 
-Haystack pipelines support breakpoints for debugging complex execution flows. A `Breakpoint` allows you to pause the execution at specific components, inspect the pipeline state, and resume execution from saved snapshots. This feature works for any regular component as well as an `Agent` component.
+Haystack pipelines support breakpoints for debugging complex execution flows. A `Breakpoint` allows you to pause the execution at specific components, inspect the pipeline state, and resume execution from saved snapshots. This feature works for any regular component as well as an `Agent` component.
 
 You can set a `Breakpoint` on any component in a pipeline with a specific visit count. When triggered, the system stops the execution of the `Pipeline` and captures a snapshot of the current pipeline state. The state can be saved to a JSON file when snapshot file saving is enabled, see [Snapshot file saving](#snapshot-file-saving) below. You can inspect and modify the snapshot and use it to resume execution from the exact point where it stopped.
 
@@ -115,7 +115,7 @@ print(result["llm"]["replies"])
 
 You can also set breakpoints in an Agent component. An Agent supports two types of breakpoints:
 
-1. **Chat Generator Breakpoint**: Pauses before LLM calls.
+1. **Chat Generator Breakpoint**: Pauses before LLM calls.
 2. **Tool Invoker Breakpoint**: Pauses before any tool execution.
 
 A `ChatGenerator` breakpoint is defined as shown below. You need to define a `Breakpoint` as for a pipeline breakpoint and then an `AgentBreakpoint` where you pass the breakpoint defined before and the name of Agent component.
@@ -148,7 +148,7 @@ agent_breakpoint = AgentBreakpoint(break_point=tool_bp, agent_name="my_agent")
 
 ### Resuming Agent Execution
 
-When an Agent breakpoint is triggered, you can resume execution using the saved snapshot. Similar to the regular component in a pipeline, pass the JSON file with the snapshot to the `run()` method of the pipeline.
+When an Agent breakpoint is triggered, you can resume execution using the saved snapshot. Similar to the regular component in a pipeline, pass the JSON file with the snapshot to the `run()` method of the pipeline.
 
 ```python
 from haystack.core.pipeline.breakpoint import load_pipeline_snapshot
