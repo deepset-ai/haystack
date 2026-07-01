@@ -357,6 +357,77 @@ class TestApplyToolExecutionDecisions:
                 ],
             )
 
+    def test_two_teds_same_name_no_ids_plus_unrelated_call_with_id(self):
+        # Same setup as test_two_teds_same_name_no_ids, but with an extra, unrelated tool call that *does* have an
+        # id. The presence of that unrelated id must not bypass the ambiguity check for the id-less duplicates.
+        message_with_tool_calls = ChatMessage.from_assistant(
+            tool_calls=[
+                ToolCall(tool_name="add_database_tool", arguments={"name": "Malte"}),
+                ToolCall(tool_name="add_database_tool", arguments={"name": "Milos"}),
+                ToolCall(tool_name="other_tool", arguments={}, id="xyz"),
+            ]
+        )
+        with pytest.raises(
+            ValueError,
+            match="ToolExecutionDecisions are missing tool_call_id fields and there are multiple tool calls with the "
+            "same name",
+        ):
+            _apply_tool_execution_decisions(
+                tool_call_messages=[message_with_tool_calls],
+                tool_execution_decisions=[
+                    ToolExecutionDecision(
+                        tool_name="add_database_tool", execute=True, final_tool_params={"name": "Malte"}
+                    ),
+                    ToolExecutionDecision(
+                        tool_name="add_database_tool", execute=True, final_tool_params={"name": "Milos"}
+                    ),
+                    ToolExecutionDecision(
+                        tool_name="other_tool", execute=True, tool_call_id="xyz", final_tool_params={}
+                    ),
+                ],
+            )
+
+    def test_two_teds_same_name_one_with_id_one_without(self):
+        # One of the two same-named tool calls has an id, the other doesn't. The id-less one still falls back to
+        # name-based matching against `decision_by_name`, which is corrupted by the name collision, so this must
+        # also be treated as ambiguous even though only one of the two decisions lacks an id.
+        message_with_tool_calls = ChatMessage.from_assistant(
+            tool_calls=[
+                ToolCall(tool_name="search", arguments={"q": "a"}),
+                ToolCall(tool_name="search", arguments={"q": "b"}, id="1"),
+            ]
+        )
+        with pytest.raises(
+            ValueError,
+            match="ToolExecutionDecisions are missing tool_call_id fields and there are multiple tool calls with the "
+            "same name",
+        ):
+            _apply_tool_execution_decisions(
+                tool_call_messages=[message_with_tool_calls],
+                tool_execution_decisions=[
+                    ToolExecutionDecision(tool_name="search", execute=True, final_tool_params={"q": "a"}),
+                    ToolExecutionDecision(
+                        tool_name="search", execute=True, tool_call_id="1", final_tool_params={"q": "b"}
+                    ),
+                ],
+            )
+
+    def test_ted_without_id_unique_name_applies_normally(self):
+        # An id-less decision whose tool name is unique is not ambiguous, so the guard must not raise: name-based
+        # matching is unambiguous here. The decision should be applied normally.
+        message_with_tool_calls = ChatMessage.from_assistant(
+            tool_calls=[ToolCall(tool_name="search", arguments={"q": "a"})]
+        )
+        rejection_messages, new_tool_call_messages = _apply_tool_execution_decisions(
+            tool_call_messages=[message_with_tool_calls],
+            tool_execution_decisions=[
+                ToolExecutionDecision(tool_name="search", execute=True, final_tool_params={"q": "a"})
+            ],
+        )
+        assert rejection_messages == []
+        assert len(new_tool_call_messages) == 1
+        assert new_tool_call_messages[0].tool_calls == [ToolCall(tool_name="search", arguments={"q": "a"})]
+
 
 class TestUpdateChatHistory:
     @pytest.fixture
