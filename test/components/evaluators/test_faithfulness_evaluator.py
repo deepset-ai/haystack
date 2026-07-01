@@ -207,6 +207,7 @@ class TestFaithfulnessEvaluator:
             ],
             "score": 0.75,
             "meta": None,
+            "evaluation_statuses": ["evaluated", "evaluated"],
         }
 
     def test_run_no_statements_extracted(self, monkeypatch):
@@ -245,6 +246,7 @@ class TestFaithfulnessEvaluator:
             ],
             "score": 0.25,
             "meta": None,
+            "evaluation_statuses": ["evaluated", "evaluated"],
         }
 
     def test_run_missing_parameters(self, monkeypatch):
@@ -295,6 +297,7 @@ class TestFaithfulnessEvaluator:
         assert results["results"][1]["statements"] == []
         assert results["results"][1]["statement_scores"] == []
         assert math.isnan(results["results"][1]["score"])
+        assert results["evaluation_statuses"] == ["evaluated", "error"]
 
         assert "1 query(s) failed and were excluded from the score." in caplog.text
 
