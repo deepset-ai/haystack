@@ -1,0 +1,8 @@
+---
+features:
+  - |
+    Added an ``after_tool`` hook point to the ``Agent``. Hooks registered under ``after_tool`` run after tools execute,
+    once their result messages are in ``state["messages"]``, and before the exit check and the next LLM call. Use it to
+    rewrite the freshly produced tool-result messages, for example to offload, redact, truncate, or summarize results
+    before the next LLM call sees them. It does not run on the plain-text exit step, where no tools run. Register it
+    like any other hook: ``hooks={"after_tool": [my_hook]}``.

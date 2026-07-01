@@ -81,6 +81,24 @@ def replace_pending_call_with_non_tool_message(state: State) -> None:
 
 
 @hook
+def record_after_tool(state: State) -> None:
+    # Realistic after_tool use case: record that freshly produced tool results are available for rewriting.
+    state.set("trace", ["after_tool"])
+
+
+@hook
+def offload_tool_results(state: State) -> None:
+    # Realistic after_tool use case: replace freshly produced tool results with a compact pointer, preserving origin.
+    rewritten = [
+        ChatMessage.from_tool(tool_result="OFFLOADED", origin=m.tool_call_result.origin, error=m.tool_call_result.error)
+        if m.tool_call_result is not None
+        else m
+        for m in state.data["messages"]
+    ]
+    state.set("messages", rewritten, handler_override=replace_values)
+
+
+@hook
 def require_save(state: State) -> None:
     if state.get("tool_call_counts", {}).get("save", 0) == 0:
         state.set("messages", [ChatMessage.from_system("You must call save before finishing.")])
@@ -232,6 +250,74 @@ class TestBeforeToolHook:
         assert [m.text for m in result["messages"]][-2:] == ["Skipping tool execution.", "done"]
 
 
+class TestAfterToolHook:
+    def test_runs_after_tools_and_not_on_text_only_exit(self):
+        agent = _agent(
+            MockChatGenerator(),
+            tools=[save],
+            state_schema={"trace": {"type": list}},
+            hooks={"after_tool": [record_after_tool]},
+        )
+        agent.chat_generator.run = MagicMock(
+            side_effect=[
+                {"replies": [ChatMessage.from_assistant(tool_calls=[ToolCall("save", {"content": "x"})])]},
+                {"replies": [ChatMessage.from_assistant("done")]},
+            ]
+        )
+        result = agent.run(messages=[ChatMessage.from_user("hi")])
+        # Fires once for the single tool step; does not fire on the final text-only step (no tools ran there).
+        assert result["trace"] == ["after_tool"]
+
+    def test_does_not_run_when_no_tools_are_called(self):
+        agent = _agent(
+            MockChatGenerator(),
+            tools=[save],
+            state_schema={"trace": {"type": list}},
+            hooks={"after_tool": [record_after_tool]},
+        )
+        agent.chat_generator.run = MagicMock(return_value={"replies": [ChatMessage.from_assistant("done")]})
+        result = agent.run(messages=[ChatMessage.from_user("hi")])
+        assert result.get("trace", []) == []
+
+    def test_rewrites_tool_results_before_next_llm_call(self):
+        agent = _agent(MockChatGenerator(), tools=[save], hooks={"after_tool": [offload_tool_results]})
+        agent.chat_generator.run = MagicMock(
+            side_effect=[
+                {"replies": [ChatMessage.from_assistant(tool_calls=[ToolCall("save", {"content": "x"})])]},
+                {"replies": [ChatMessage.from_assistant("done")]},
+            ]
+        )
+        result = agent.run(messages=[ChatMessage.from_user("hi")])
+        # The rewritten result is what the next LLM call sees...
+        second_call_messages = agent.chat_generator.run.call_args_list[1].kwargs["messages"]
+        assert [m.tool_call_result.result for m in second_call_messages if m.tool_call_result is not None] == [
+            "OFFLOADED"
+        ]
+        # ...and what ends up in the final conversation.
+        assert [m.tool_call_result.result for m in result["messages"] if m.tool_call_result is not None] == [
+            "OFFLOADED"
+        ]
+
+    def test_rewriting_results_does_not_change_exit_matching(self):
+        # Exit conditions match on tool name + error, not result content, so offloading the result still exits.
+        agent = _agent(
+            MockChatGenerator(),
+            tools=[final_answer],
+            exit_conditions=["final_answer"],
+            hooks={"after_tool": [offload_tool_results]},
+        )
+        agent.chat_generator.run = MagicMock(
+            return_value={
+                "replies": [ChatMessage.from_assistant(tool_calls=[ToolCall("final_answer", {"answer": "42"})])]
+            }
+        )
+        result = agent.run(messages=[ChatMessage.from_user("hi")])
+        assert agent.chat_generator.run.call_count == 1
+        assert [m.tool_call_result.result for m in result["messages"] if m.tool_call_result is not None] == [
+            "OFFLOADED"
+        ]
+
+
 class TestOnExitHook:
     def test_mandatory_tool_forces_extra_step(self):
         agent = _agent(MockChatGenerator(), tools=[save], hooks={"on_exit": [require_save]})
@@ -340,6 +426,20 @@ class TestAgentHooksAsync:
         agent.chat_generator.run_async = AsyncMock(return_value={"replies": [ChatMessage.from_assistant("done")]})
         await agent.run_async(messages=[ChatMessage.from_user("hi")])
         assert fired == [1]
+
+    @pytest.mark.asyncio
+    async def test_after_tool_hook_rewrites_results(self):
+        agent = _agent(MockChatGenerator(), tools=[save], hooks={"after_tool": [offload_tool_results]})
+        agent.chat_generator.run_async = AsyncMock(
+            side_effect=[
+                {"replies": [ChatMessage.from_assistant(tool_calls=[ToolCall("save", {"content": "x"})])]},
+                {"replies": [ChatMessage.from_assistant("done")]},
+            ]
+        )
+        result = await agent.run_async(messages=[ChatMessage.from_user("hi")])
+        assert [m.tool_call_result.result for m in result["messages"] if m.tool_call_result is not None] == [
+            "OFFLOADED"
+        ]
 
     @pytest.mark.asyncio
     async def test_async_on_exit_hook_forces_extra_step(self):
