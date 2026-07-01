@@ -205,7 +205,7 @@ def _pending_tool_call_messages_from_state(state: State) -> list[ChatMessage]:
     """
     Return the pending tool-call message after `before_tool` hooks have run.
 
-    `before_tool` hooks may mutate `state["messages"]`. After they run, the Agent intentionally inspects only the
+    `before_tool` hooks may mutate `state.data["messages"]`. After they run, the Agent intentionally inspects only the
     current last message in the state. If that message has tool calls, those calls are executed. If it has no tool
     calls, no tools run for the step, no tool-based exit condition is triggered, and the Agent loops back to the next
     LLM call unless `max_agent_steps` has been reached.
@@ -482,12 +482,12 @@ class Agent:
 
     - `before_llm`: runs before each chat-generator call.
     - `before_tool`: runs after the model requests tool calls, before any tools run. After these hooks run, the Agent
-      re-reads the current last message from `state["messages"]`. If that message has tool calls, those calls are
+      re-reads the current last message from `state.data["messages"]`. If that message has tool calls, those calls are
       executed. If it has no tool calls, no tools run for that step, no tool-based exit condition is triggered, and the
       Agent loops back to the next LLM call unless `max_agent_steps` has been reached.
-    - `after_tool`: runs after tools execute, once their result messages are in `state["messages"]`, before the exit
-      check and the next LLM call. Use it to rewrite the freshly produced tool-result messages (e.g. offload, redact,
-      truncate, or summarize results). It does not run on the plain-text exit step, where no tools run.
+    - `after_tool`: runs after tools execute, once their result messages are in `state.data["messages"]`, before the
+      exit check and the next LLM call. Use it to rewrite the freshly produced tool-result messages (e.g. offload,
+      redact, truncate, or summarize results). It does not run on the plain-text exit step, where no tools run.
     - `on_exit`: runs when the Agent is about to stop on an exit condition. An `on_exit` hook can keep the Agent
       running by setting `state.set("continue_run", True)`.
 
@@ -581,13 +581,13 @@ class Agent:
             list order. Valid hook points are:
             - "before_llm": Runs before each chat-generator call.
             - "before_tool": Runs after the model requests tool calls, before any tools run. After these hooks run,
-              the Agent re-reads the current last message from `state["messages"]`. If that message contains tool
+              the Agent re-reads the current last message from `state.data["messages"]`. If that message contains tool
               calls, those calls are executed. If it does not, no tools run for that step, no tool-based exit condition
               is triggered, and the Agent loops back to the next LLM call unless `max_agent_steps` has been reached.
-            - "after_tool": Runs after tools execute, once their result messages are in `state["messages"]`, before the
-              exit check and the next LLM call. Use it to rewrite the freshly produced tool-result messages (e.g.
-              offload, redact, truncate, or summarize results). It does not run on the plain-text exit step, where no
-              tools run.
+            - "after_tool": Runs after tools execute, once their result messages are in `state.data["messages"]`,
+              before the exit check and the next LLM call. Use it to rewrite the freshly produced tool-result messages
+              (e.g. offload, redact, truncate, or summarize results). It does not run on the plain-text exit step,
+              where no tools run.
             - "on_exit": Runs when the Agent is about to stop on an exit condition. An "on_exit" hook can keep the
               Agent running by setting the `continue_run` control flag (`state.set("continue_run", True)`), usually
               alongside a message telling the model what to do next. "on_exit" hooks run when the Agent stops on an
@@ -1170,7 +1170,7 @@ class Agent:
                 )
             exe_context.state.set("messages", tool_messages)
             _record_tool_calls(exe_context.state, tool_messages)
-            # `after_tool` hooks may rewrite the tool-result messages in `state["messages"]` (offload, redact,
+            # `after_tool` hooks may rewrite the tool-result messages in `state.data["messages"]` (offload, redact,
             # truncate, summarize) before the next LLM call sees them.
             _run_hooks(self.hooks, AFTER_TOOL, exe_context.state)
 
@@ -1237,7 +1237,7 @@ class Agent:
                 )
             exe_context.state.set("messages", tool_messages)
             _record_tool_calls(exe_context.state, tool_messages)
-            # `after_tool` hooks may rewrite the tool-result messages in `state["messages"]` (offload, redact,
+            # `after_tool` hooks may rewrite the tool-result messages in `state.data["messages"]` (offload, redact,
             # truncate, summarize) before the next LLM call sees them.
             await _run_hooks_async(self.hooks, AFTER_TOOL, exe_context.state)
 
