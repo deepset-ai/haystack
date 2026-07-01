@@ -70,9 +70,7 @@ class TestConfirmationHook:
         messages = [ChatMessage.from_user("hello"), ChatMessage.from_assistant("hi")]
         state = _state_with(messages, tools)
         hook = _confirm_hook(ConfirmationUIResult(action="reject"))
-
         hook.run(state)
-
         assert state.get("messages") == messages
 
     def test_confirm_keeps_tool_call(self, tools):
@@ -87,9 +85,7 @@ class TestConfirmationHook:
                 )
             }
         )
-
         hook.run(state)
-
         assert state.get("messages")[-1].tool_calls == [tool_call]
 
     def test_modify_updates_arguments(self, tools):
@@ -99,12 +95,14 @@ class TestConfirmationHook:
         ]
         state = _state_with(messages, tools)
         hook = _confirm_hook(ConfirmationUIResult(action="modify", new_tool_params={"a": 10, "b": 20}))
-
         hook.run(state)
-
-        pending = state.get("messages")[-1].tool_calls
-        assert len(pending) == 1
-        assert pending[0].arguments == {"a": 10, "b": 20}
+        # The original call is dropped; an explanation user message precedes the rebuilt call with the new arguments.
+        explanation = "The parameters for tool 'addition_tool' were updated by the user to:\n{'a': 10, 'b': 20}"
+        assert state.get("messages") == [
+            ChatMessage.from_user("add"),
+            ChatMessage.from_user(explanation),
+            ChatMessage.from_assistant(tool_calls=[ToolCall("addition_tool", {"a": 10, "b": 20})]),
+        ]
 
     def test_reject_drops_tool_call_and_appends_result(self, tools):
         messages = [
@@ -113,13 +111,17 @@ class TestConfirmationHook:
         ]
         state = _state_with(messages, tools)
         hook = _confirm_hook(ConfirmationUIResult(action="reject"))
-
         hook.run(state)
-
-        new_messages = state.get("messages")
-        # A rejection produces a tool-result message and removes the pending call so the executor skips it.
-        assert new_messages[-1].tool_call_result is not None
-        assert "rejected" in new_messages[-1].tool_call_result.result.lower()
+        # The call is answered by an error tool result, so it is resolved and the executor skips it (no pending call).
+        assert state.get("messages") == [
+            ChatMessage.from_user("add"),
+            ChatMessage.from_assistant(tool_calls=[ToolCall("addition_tool", {"a": 1, "b": 2})]),
+            ChatMessage.from_tool(
+                tool_result="Tool execution for 'addition_tool' was rejected by the user.",
+                origin=ToolCall("addition_tool", {"a": 1, "b": 2}),
+                error=True,
+            ),
+        ]
 
     def test_to_dict(self):
         hook = ConfirmationHook(
@@ -236,12 +238,17 @@ class TestConfirmationHookAsync:
         ]
         state = _state_with(messages, tools)
         hook = _confirm_hook(ConfirmationUIResult(action="reject"))
-
         await hook.run_async(state)
-
-        new_messages = state.get("messages")
-        assert new_messages[-1].tool_call_result is not None
-        assert "rejected" in new_messages[-1].tool_call_result.result.lower()
+        # run_async produces the same transcript as run: the call answered by an error tool result, no pending call.
+        assert state.get("messages") == [
+            ChatMessage.from_user("add"),
+            ChatMessage.from_assistant(tool_calls=[ToolCall("addition_tool", {"a": 1, "b": 2})]),
+            ChatMessage.from_tool(
+                tool_result="Tool execution for 'addition_tool' was rejected by the user.",
+                origin=ToolCall("addition_tool", {"a": 1, "b": 2}),
+                error=True,
+            ),
+        ]
 
 
 def _echo(x: int) -> dict[str, int]:
@@ -259,12 +266,7 @@ def _echo_tool(name: str) -> Tool:
 
 def _multi_tool_hook(decisions: dict[str, ConfirmationUIResult]) -> ConfirmationHook:
     return ConfirmationHook(
-        confirmation_strategies={
-            name: BlockingConfirmationStrategy(
-                confirmation_policy=AlwaysAskPolicy(), confirmation_ui=MockUserInterface(ui_result)
-            )
-            for name, ui_result in decisions.items()
-        }
+        confirmation_strategies={name: _confirm_strat(ui_result) for name, ui_result in decisions.items()}
     )
 
 
