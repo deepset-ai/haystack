@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import threading
 from typing import Any
 
 import pytest
@@ -16,6 +17,7 @@ from haystack.human_in_the_loop import (
     ConfirmationUIResult,
     NeverAskPolicy,
     SimpleConsoleUI,
+    ToolExecutionDecision,
 )
 from haystack.human_in_the_loop.types import ConfirmationUI
 from haystack.tools import Tool, create_tool_from_function
@@ -122,6 +124,31 @@ class TestConfirmationHook:
                 error=True,
             ),
         ]
+
+    def test_hook_context_is_not_deepcopied(self, tools):
+        # A non-copyable resource in hook_context (e.g. a lock, WebSocket, or client) must reach the strategy
+        # unchanged. Reading via state.get would deepcopy and raise; the hook reads via state.data instead.
+        lock = threading.Lock()
+        received = {}
+
+        class CapturingStrategy:
+            def run(
+                self, *, tool_name, tool_description, tool_params, tool_call_id=None, confirmation_strategy_context=None
+            ):
+                received["context"] = confirmation_strategy_context
+                return ToolExecutionDecision(
+                    tool_name=tool_name, tool_call_id=tool_call_id, execute=True, final_tool_params=tool_params
+                )
+
+        messages = [
+            ChatMessage.from_user("add"),
+            ChatMessage.from_assistant(tool_calls=[ToolCall("addition_tool", {"a": 1, "b": 2})]),
+        ]
+        state = _state_with(messages, tools)
+        state.data["hook_context"] = {"resource": lock}
+        ConfirmationHook(confirmation_strategies={"addition_tool": CapturingStrategy()}).run(state)  # type: ignore[dict-item]
+        # Passed through by identity: the non-copyable resource is neither copied nor does the read raise.
+        assert received["context"]["resource"] is lock
 
     def test_to_dict(self):
         hook = ConfirmationHook(

@@ -84,9 +84,10 @@ class ConfirmationHook:
         """
         Confirm the pending tool calls, rewriting the `messages` in `state` to reflect modifications and rejections.
 
-        :param state: The Agent's live `State`. Reads the available tools (`state.get("tools")`) and the per-run
-            context (`state.get("hook_context")`), and the pending tool calls from the last message; writes the
-            updated conversation back to `messages`.
+        :param state: The Agent's live `State`. Reads the available tools (`state.data.get("tools")`) and the per-run
+            context (`state.data.get("hook_context")`), and the pending tool calls from the last message; writes the
+            updated conversation back to `messages`. Reads go through `state.data` rather than `state.get`, which
+            deep-copies and would break non-copyable resources (e.g. a WebSocket or client) in `hook_context`.
         """
         messages = state.data.get("messages") or []
         if not messages or not messages[-1].tool_calls:
@@ -94,9 +95,9 @@ class ConfirmationHook:
         new_chat_history = _process_confirmation_strategies(
             confirmation_strategies=self.confirmation_strategies,
             messages_with_tool_calls=[messages[-1]],
-            tools=state.get("tools") or [],
+            tools=state.data.get("tools") or [],
             state=state,
-            confirmation_strategy_context=state.get("hook_context"),
+            confirmation_strategy_context=state.data.get("hook_context"),
         )
         state.set("messages", new_chat_history, handler_override=replace_values)
 
@@ -108,9 +109,9 @@ class ConfirmationHook:
         new_chat_history = await _process_confirmation_strategies_async(
             confirmation_strategies=self.confirmation_strategies,
             messages_with_tool_calls=[messages[-1]],
-            tools=state.get("tools") or [],
+            tools=state.data.get("tools") or [],
             state=state,
-            confirmation_strategy_context=state.get("hook_context"),
+            confirmation_strategy_context=state.data.get("hook_context"),
         )
         state.set("messages", new_chat_history, handler_override=replace_values)
 

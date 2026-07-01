@@ -105,7 +105,7 @@ def _record_llm_usage(state: State, llm_messages: list[ChatMessage]) -> None:
     :param llm_messages: The ChatMessage objects returned from the latest LLM call. Token usage is read from each
         message's `meta["usage"]` field, if present.
     """
-    current = state.get("token_usage")
+    current = state.data.get("token_usage")
     updated = False
     for msg in llm_messages:
         usage = msg.meta.get("usage")
@@ -124,7 +124,7 @@ def _record_tool_calls(state: State, tool_messages: list[ChatMessage]) -> None:
     :param tool_messages: The ChatMessage objects returned from the latest tool execution. Per-tool counts are
         incremented based on each message's `tool_call_result.origin.tool_name`.
     """
-    counts = state.get("tool_call_counts") or {}
+    counts = state.data.get("tool_call_counts") or {}
     updated = False
     for tm in tool_messages:
         if tm.tool_call_result is None:
@@ -149,7 +149,7 @@ def _public_outputs(state: State) -> dict[str, Any]:
 
 def _consume_continue_run(state: State) -> bool:
     """Return the `continue_run` control flag and reset it so it does not carry over to the next exit attempt."""
-    should_continue = state.get("continue_run")
+    should_continue = state.data["continue_run"]
     state.set("continue_run", False)
     return should_continue
 
@@ -847,7 +847,7 @@ class Agent:
         :param tools: Optional list of Tool objects, a Toolset, or list of tool names to use for this run.
             When passing tool names, tools are selected from the Agent's originally configured tools.
         :param hook_context: Optional dictionary of request-scoped resources made available to hooks via
-            `state.get("hook_context")`.
+            `state.data.get("hook_context")`.
         :param kwargs: Additional data to pass to the State used by the Agent.
         """
         messages = messages or []
@@ -971,7 +971,7 @@ class Agent:
         :param tools: Optional list of Tool objects, a Toolset, or list of tool names to use for this run.
             When passing tool names, tools are selected from the Agent's originally configured tools.
         :param hook_context: Optional dictionary of request-scoped resources made available to hooks via
-            `state.get("hook_context")`. Useful in web/server environments to provide per-request objects
+            `state.data.get("hook_context")`. Useful in web/server environments to provide per-request objects
             (e.g., WebSocket connections, async queues, Redis pub/sub clients) that a hook can use, for
             example a ConfirmationHook driving non-blocking user interaction.
         :param kwargs: Additional data to pass to the State schema used by the Agent.
@@ -1043,7 +1043,7 @@ class Agent:
             override the parameters passed during component initialization.
         :param tools: Optional list of Tool objects, a Toolset, or list of tool names to use for this run.
         :param hook_context: Optional dictionary of request-scoped resources made available to hooks via
-            `state.get("hook_context")`. Useful in web/server environments to provide per-request objects
+            `state.data.get("hook_context")`. Useful in web/server environments to provide per-request objects
             (e.g., WebSocket connections, async queues, Redis pub/sub clients) that a hook can use, for
             example a ConfirmationHook driving non-blocking user interaction.
         :param kwargs: Additional data to pass to the State schema used by the Agent.

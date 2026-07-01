@@ -262,7 +262,7 @@ def _process_confirmation_strategies(
     """
     # If confirmations strategies is empty, return the chat history unchanged
     if not confirmation_strategies:
-        return state.get("messages")
+        return state.data["messages"]
 
     # Run confirmation strategies and get tool execution decisions
     teds = _run_confirmation_strategies(
@@ -279,7 +279,7 @@ def _process_confirmation_strategies(
 
     # Update the chat history with rejection messages and new tool call messages
     return _update_chat_history(
-        chat_history=state.get("messages"),
+        chat_history=state.data["messages"],
         rejection_messages=rejection_messages,
         tool_call_and_explanation_messages=modified_tool_call_messages,
     )
@@ -311,7 +311,7 @@ async def _process_confirmation_strategies_async(
     """
     # If confirmations strategies is empty, return the chat history unchanged
     if not confirmation_strategies:
-        return state.get("messages")
+        return state.data["messages"]
 
     # Run confirmation strategies and get tool execution decisions (async version)
     teds = await _run_confirmation_strategies_async(
@@ -328,7 +328,7 @@ async def _process_confirmation_strategies_async(
 
     # Update the chat history with rejection messages and new tool call messages
     return _update_chat_history(
-        chat_history=state.get("messages"),
+        chat_history=state.data["messages"],
         rejection_messages=rejection_messages,
         tool_call_and_explanation_messages=modified_tool_call_messages,
     )
