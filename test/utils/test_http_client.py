@@ -10,12 +10,12 @@ from haystack.utils.http_client import init_http_client
 
 def test_init_http_client():
     # test without any params
-    http_client = init_http_client()  # type: ignore[call-overload]
+    http_client = init_http_client()
     assert http_client is None
 
     # test client is initialized with http_client_kwargs
     client_kwargs = {"base_url": "https://example.com"}
-    http_client = init_http_client(http_client_kwargs=client_kwargs)  # type: ignore[call-overload]
+    http_client = init_http_client(http_client_kwargs=client_kwargs)
     assert http_client is not None
     assert isinstance(http_client, httpx.Client)
     assert http_client.base_url == "https://example.com"
@@ -23,7 +23,7 @@ def test_init_http_client():
 
 def test_init_http_client_async():
     # test without any params
-    http_async_client = init_http_client(async_client=True)  # type: ignore[call-overload]
+    http_async_client = init_http_client(async_client=True)
     assert http_async_client is None
 
     # test async client is initialized with http_client_kwargs
@@ -42,7 +42,7 @@ def test_http_client_kwargs_type_validation():
 def test_http_client_kwargs_with_invalid_params():
     # test http_client_kwargs with invalid keys
     with pytest.raises(TypeError, match="unexpected keyword argument"):
-        init_http_client(http_client_kwargs={"invalid_key": "invalid"})  # type: ignore[call-overload]
+        init_http_client(http_client_kwargs={"invalid_key": "invalid"})
 
 
 def test_init_http_client_with_dict_limits():
