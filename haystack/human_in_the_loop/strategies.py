@@ -2,11 +2,12 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import json
 from dataclasses import replace
 from typing import Any
 
 from haystack.components.agents.state.state import State
-from haystack.core.serialization import default_from_dict, default_to_dict
+from haystack.core.serialization import component_to_dict, default_from_dict, default_to_dict
 from haystack.dataclasses import ChatMessage, ToolCall
 from haystack.human_in_the_loop import ToolExecutionDecision
 from haystack.human_in_the_loop.types import ConfirmationPolicy, ConfirmationStrategy, ConfirmationUI
@@ -205,7 +206,8 @@ def _get_confirmation_strategy(
     :param tool_name:
         The name of the tool to look up.
     :param confirmation_strategies:
-        Dictionary of confirmation strategies with string or tuple keys.
+        Dictionary of confirmation strategies with string or tuple keys. The `"*"` key, if present, is a wildcard
+        applied to any tool without a more specific entry.
     :returns:
         The confirmation strategy if found, None otherwise.
     """
@@ -216,7 +218,8 @@ def _get_confirmation_strategy(
         if isinstance(key, tuple) and tool_name in key:
             return strategy
 
-    return None
+    # Fall back to the wildcard entry that applies to any tool without a more specific match.
+    return confirmation_strategies.get("*")
 
 
 def _passthrough_tool_call(tool_call: ToolCall) -> ToolExecutionDecision:
@@ -242,9 +245,12 @@ def _process_confirmation_strategies(
     tools: list[Tool],
     state: State,
     confirmation_strategy_context: dict[str, Any] | None = None,
-) -> tuple[list[ChatMessage], list[ChatMessage]]:
+) -> list[ChatMessage]:
     """
-    Run the confirmation strategies and return modified tool call messages and updated chat history.
+    Run the confirmation strategies and return the updated chat history.
+
+    The returned history ends with the confirmed/modified tool calls (preceded by any rejection messages), so the
+    pending tool calls to execute are always those on its last message.
 
     :param confirmation_strategies: Mapping of tool names to their corresponding confirmation strategies
     :param messages_with_tool_calls: Chat messages containing tool calls
@@ -252,11 +258,11 @@ def _process_confirmation_strategies(
     :param state: The current runtime state, used to read the chat history
     :param confirmation_strategy_context: Optional request-scoped context passed to the strategies
     :returns:
-        Tuple of modified messages with confirmed tool calls and updated chat history
+        The updated chat history.
     """
-    # If confirmations strategies is empty, return original messages and chat history
+    # If confirmations strategies is empty, return the chat history unchanged
     if not confirmation_strategies:
-        return messages_with_tool_calls, state.get("messages")
+        return state.data["messages"]
 
     # Run confirmation strategies and get tool execution decisions
     teds = _run_confirmation_strategies(
@@ -272,13 +278,11 @@ def _process_confirmation_strategies(
     )
 
     # Update the chat history with rejection messages and new tool call messages
-    new_chat_history = _update_chat_history(
-        chat_history=state.get("messages"),
+    return _update_chat_history(
+        chat_history=state.data["messages"],
         rejection_messages=rejection_messages,
         tool_call_and_explanation_messages=modified_tool_call_messages,
     )
-
-    return modified_tool_call_messages, new_chat_history
 
 
 async def _process_confirmation_strategies_async(
@@ -288,11 +292,14 @@ async def _process_confirmation_strategies_async(
     tools: list[Tool],
     state: State,
     confirmation_strategy_context: dict[str, Any] | None = None,
-) -> tuple[list[ChatMessage], list[ChatMessage]]:
+) -> list[ChatMessage]:
     """
     Async version of _process_confirmation_strategies.
 
-    Run the confirmation strategies and return modified tool call messages and updated chat history.
+    Run the confirmation strategies and return the updated chat history.
+
+    The returned history ends with the confirmed/modified tool calls (preceded by any rejection messages), so the
+    pending tool calls to execute are always those on its last message.
 
     :param confirmation_strategies: Mapping of tool names to their corresponding confirmation strategies
     :param messages_with_tool_calls: Chat messages containing tool calls
@@ -300,11 +307,11 @@ async def _process_confirmation_strategies_async(
     :param state: The current runtime state, used to read the chat history
     :param confirmation_strategy_context: Optional request-scoped context passed to the strategies
     :returns:
-        Tuple of modified messages with confirmed tool calls and updated chat history
+        The updated chat history.
     """
-    # If confirmations strategies is empty, return original messages and chat history
+    # If confirmations strategies is empty, return the chat history unchanged
     if not confirmation_strategies:
-        return messages_with_tool_calls, state.get("messages")
+        return state.data["messages"]
 
     # Run confirmation strategies and get tool execution decisions (async version)
     teds = await _run_confirmation_strategies_async(
@@ -320,13 +327,11 @@ async def _process_confirmation_strategies_async(
     )
 
     # Update the chat history with rejection messages and new tool call messages
-    new_chat_history = _update_chat_history(
-        chat_history=state.get("messages"),
+    return _update_chat_history(
+        chat_history=state.data["messages"],
         rejection_messages=rejection_messages,
         tool_call_and_explanation_messages=modified_tool_call_messages,
     )
-
-    return modified_tool_call_messages, new_chat_history
 
 
 def _run_confirmation_strategies(
@@ -572,12 +577,32 @@ def _update_chat_history(
     return chat_history[: insertion_point + 1] + rejection_messages + tool_call_and_explanation_messages
 
 
+def _serialize_confirmation_strategies(
+    confirmation_strategies: dict[str | tuple[str, ...], ConfirmationStrategy],
+) -> dict[str, Any]:
+    """
+    Serialize a confirmation strategies dictionary to a plain, mapping-key-safe dictionary.
+
+    Mapping keys must be strings, so a tuple of tool names (one strategy shared across several tools) is encoded
+    as a JSON-array string (e.g. `("a", "b")` -> `'["a", "b"]'`); a single tool name is kept as-is.
+
+    :param confirmation_strategies: Mapping of tool name (or a tuple of tool names) to its strategy.
+    :returns: The same mapping with string keys and each strategy serialized to a dictionary.
+    """
+    return {
+        (json.dumps(list(key)) if isinstance(key, tuple) else key): component_to_dict(
+            obj=strategy, name="confirmation_strategy"
+        )
+        for key, strategy in confirmation_strategies.items()
+    }
+
+
 def _deserialize_confirmation_strategies(data: dict[str, Any]) -> dict[str | tuple[str, ...], ConfirmationStrategy]:
     """
     Deserialize a confirmation strategies dictionary from its serialized form.
 
-    Deserializes each strategy component in-place and converts any list keys back to tuples,
-    since JSON serializes tuple keys as lists.
+    Deserializes each strategy component in-place and converts keys that were encoded as JSON-array strings (tuples
+    of tool names) back to tuples; single tool-name string keys are kept as-is.
 
     :param data: Raw dictionary of serialized confirmation strategies, keyed by tool name(s).
     :returns: Deserialized confirmation strategies with proper key types.
@@ -585,4 +610,15 @@ def _deserialize_confirmation_strategies(data: dict[str, Any]) -> dict[str | tup
     for raw_key in list(data):
         deserialize_component_inplace(data, key=raw_key)
 
-    return {(tuple(raw_key) if isinstance(raw_key, list) else raw_key): strategy for raw_key, strategy in data.items()}
+    return {_decode_strategy_key(raw_key): strategy for raw_key, strategy in data.items()}
+
+
+def _decode_strategy_key(raw_key: str | list) -> str | tuple[str, ...]:
+    """Reverse of the key encoding in `_serialize_confirmation_strategies`."""
+    # Backwards-compatibility: an actual list (older in-memory forms) becomes a tuple.
+    if isinstance(raw_key, list):
+        return tuple(raw_key)
+    # A JSON-array string encodes a tuple of tool names; any other string is a single tool name.
+    if raw_key.startswith("["):
+        return tuple(json.loads(raw_key))
+    return raw_key

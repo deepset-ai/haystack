@@ -15,6 +15,7 @@ from haystack.dataclasses import ChatMessage, ToolCall
 from haystack.human_in_the_loop import (
     AlwaysAskPolicy,
     BlockingConfirmationStrategy,
+    ConfirmationHook,
     ConfirmationUIResult,
     NeverAskPolicy,
     SimpleConsoleUI,
@@ -54,12 +55,24 @@ def confirmation_strategies() -> dict[str, ConfirmationStrategy]:
     }
 
 
+@pytest.fixture
+def confirmation_hook(confirmation_strategies) -> ConfirmationHook:
+    return ConfirmationHook(confirmation_strategies=confirmation_strategies)
+
+
 class TestAgent:
-    def test_to_dict(self, tools, confirmation_strategies, monkeypatch):
+    def test_confirmation_hook_accepted_on_before_tool(self, tools, confirmation_hook):
+        agent = Agent(chat_generator=MockChatGenerator(), tools=tools, hooks={"before_tool": [confirmation_hook]})
+        assert agent.hooks["before_tool"] == [confirmation_hook]
+
+    @pytest.mark.parametrize("bad_point", ["before_llm", "on_exit"])
+    def test_confirmation_hook_rejected_on_wrong_hook_point(self, tools, confirmation_hook, bad_point):
+        with pytest.raises(ValueError, match="only supports"):
+            Agent(chat_generator=MockChatGenerator(), tools=tools, hooks={bad_point: [confirmation_hook]})
+
+    def test_to_dict(self, tools, confirmation_hook, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test")
-        agent = Agent(
-            chat_generator=OpenAIChatGenerator(), tools=tools, confirmation_strategies=confirmation_strategies
-        )
+        agent = Agent(chat_generator=OpenAIChatGenerator(), tools=tools, hooks={"before_tool": [confirmation_hook]})
         agent_dict = agent.to_dict()
         assert agent_dict == {
             "type": "haystack.components.agents.agent.Agent",
@@ -109,34 +122,41 @@ class TestAgent:
                 "tool_streaming_callback_passthrough": False,
                 "required_variables": None,
                 "user_prompt": None,
-                "confirmation_strategies": {
-                    "addition_tool": {
-                        "type": "haystack.human_in_the_loop.strategies.BlockingConfirmationStrategy",
-                        "init_parameters": {
-                            "confirmation_policy": {
-                                "type": "haystack.human_in_the_loop.policies.NeverAskPolicy",
-                                "init_parameters": {},
+                "hooks": {
+                    "before_tool": [
+                        {
+                            "type": "haystack.human_in_the_loop.hooks.ConfirmationHook",
+                            "init_parameters": {
+                                "confirmation_strategies": {
+                                    "addition_tool": {
+                                        "type": "haystack.human_in_the_loop.strategies.BlockingConfirmationStrategy",
+                                        "init_parameters": {
+                                            "confirmation_policy": {
+                                                "type": "haystack.human_in_the_loop.policies.NeverAskPolicy",
+                                                "init_parameters": {},
+                                            },
+                                            "confirmation_ui": {
+                                                "type": "haystack.human_in_the_loop.user_interfaces.SimpleConsoleUI",
+                                                "init_parameters": {},
+                                            },
+                                            "reject_template": "Tool execution for '{tool_name}' was rejected by "
+                                            "the user.",
+                                            "modify_template": "The parameters for tool '{tool_name}' were updated "
+                                            "by the user to:\n{final_tool_params}",
+                                            "user_feedback_template": "With user feedback: {feedback}",
+                                        },
+                                    }
+                                }
                             },
-                            "confirmation_ui": {
-                                "type": "haystack.human_in_the_loop.user_interfaces.SimpleConsoleUI",
-                                "init_parameters": {},
-                            },
-                            "reject_template": "Tool execution for '{tool_name}' was rejected by the user.",
-                            "modify_template": "The parameters for tool '{tool_name}' were updated by the user to:"
-                            "\n{final_tool_params}",
-                            "user_feedback_template": "With user feedback: {feedback}",
-                        },
-                    }
+                        }
+                    ]
                 },
-                "hooks": None,
             },
         }
 
-    def test_from_dict(self, tools, confirmation_strategies, monkeypatch):
+    def test_from_dict(self, tools, confirmation_hook, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test")
-        agent = Agent(
-            chat_generator=OpenAIChatGenerator(), tools=tools, confirmation_strategies=confirmation_strategies
-        )
+        agent = Agent(chat_generator=OpenAIChatGenerator(), tools=tools, hooks={"before_tool": [confirmation_hook]})
         deserialized_agent = Agent.from_dict(agent.to_dict())
         assert deserialized_agent.to_dict() == agent.to_dict()
         assert isinstance(deserialized_agent.chat_generator, OpenAIChatGenerator)
@@ -144,18 +164,16 @@ class TestAgent:
         assert deserialized_agent.tools[0].name == "addition_tool"
         assert deserialized_agent.tool_concurrency_limit == agent.tool_concurrency_limit
         assert deserialized_agent.tool_streaming_callback_passthrough == agent.tool_streaming_callback_passthrough
-        assert isinstance(deserialized_agent._confirmation_strategies["addition_tool"], BlockingConfirmationStrategy)
-        assert isinstance(
-            deserialized_agent._confirmation_strategies["addition_tool"].confirmation_policy, NeverAskPolicy
-        )
-        assert isinstance(deserialized_agent._confirmation_strategies["addition_tool"].confirmation_ui, SimpleConsoleUI)
+        hook = deserialized_agent.hooks["before_tool"][0]
+        assert isinstance(hook, ConfirmationHook)
+        assert isinstance(hook.confirmation_strategies["addition_tool"], BlockingConfirmationStrategy)
+        assert isinstance(hook.confirmation_strategies["addition_tool"].confirmation_policy, NeverAskPolicy)
+        assert isinstance(hook.confirmation_strategies["addition_tool"].confirmation_ui, SimpleConsoleUI)
 
     @pytest.mark.skipif(not os.environ.get("OPENAI_API_KEY"), reason="OPENAI_API_KEY not set")
     @pytest.mark.integration
     def test_run_blocking_confirmation_strategy_modify(self, tools):
-        agent = Agent(
-            chat_generator=OpenAIChatGenerator(model="gpt-4o-mini"),
-            tools=tools,
+        confirmation_hook = ConfirmationHook(
             confirmation_strategies={
                 "addition_tool": BlockingConfirmationStrategy(
                     confirmation_policy=AlwaysAskPolicy(),
@@ -163,7 +181,12 @@ class TestAgent:
                         ConfirmationUIResult(action="modify", new_tool_params={"a": 2, "b": 3})
                     ),
                 )
-            },
+            }
+        )
+        agent = Agent(
+            chat_generator=OpenAIChatGenerator(model="gpt-4o-mini"),
+            tools=tools,
+            hooks={"before_tool": [confirmation_hook]},
         )
         result = agent.run([ChatMessage.from_user("What is 2+2?")])
 
@@ -181,9 +204,7 @@ class TestAgent:
     @pytest.mark.integration
     @pytest.mark.asyncio
     async def test_run_async_blocking_confirmation_strategy_modify(self, tools):
-        agent = Agent(
-            chat_generator=OpenAIChatGenerator(model="gpt-4o-mini"),
-            tools=tools,
+        confirmation_hook = ConfirmationHook(
             confirmation_strategies={
                 "addition_tool": BlockingConfirmationStrategy(
                     confirmation_policy=AlwaysAskPolicy(),
@@ -191,7 +212,12 @@ class TestAgent:
                         ConfirmationUIResult(action="modify", new_tool_params={"a": 2, "b": 3})
                     ),
                 )
-            },
+            }
+        )
+        agent = Agent(
+            chat_generator=OpenAIChatGenerator(model="gpt-4o-mini"),
+            tools=tools,
+            hooks={"before_tool": [confirmation_hook]},
         )
         result = await agent.run_async([ChatMessage.from_user("What is 2+2?")])
 
@@ -245,15 +271,18 @@ class TestConfirmationStrategyToolArgPrep:
         When a confirmation strategy is configured, a tool that reads State a same-step tool writes must still run
         with the freshly-produced value, not the stale step-start value.
         """
-        agent = Agent(
-            chat_generator=MockChatGenerator(),
-            tools=[producer_tool, consumer_tool],
-            state_schema={"shared": {"type": str}},
+        confirmation_hook = ConfirmationHook(
             confirmation_strategies={
                 "consumer": BlockingConfirmationStrategy(
                     confirmation_policy=NeverAskPolicy(), confirmation_ui=SimpleConsoleUI()
                 )
-            },
+            }
+        )
+        agent = Agent(
+            chat_generator=MockChatGenerator(),
+            tools=[producer_tool, consumer_tool],
+            state_schema={"shared": {"type": str}},
+            hooks={"before_tool": [confirmation_hook]},
         )
         agent.warm_up()
         # Step 1: the model calls producer and consumer together (consumer relies on inputs_from_state for `value`).
@@ -278,3 +307,79 @@ class TestConfirmationStrategyToolArgPrep:
             if m.tool_call_result is not None and m.tool_call_result.origin.tool_name == "consumer"
         ]
         assert consumer_results == ["consumed:PRODUCED"]
+
+
+def _echo(x: Annotated[int, "the value to echo"]) -> dict[str, int]:
+    return {"echoed": x}
+
+
+def _echo_tool(name: str) -> Tool:
+    return Tool(
+        name=name,
+        description=f"Echo tool {name}.",
+        parameters={"type": "object", "properties": {"x": {"type": "integer"}}, "required": ["x"]},
+        function=_echo,
+    )
+
+
+def _single_tool_hook(tool_name: str, ui_result: ConfirmationUIResult) -> ConfirmationHook:
+    return ConfirmationHook(
+        confirmation_strategies={
+            tool_name: BlockingConfirmationStrategy(
+                confirmation_policy=AlwaysAskPolicy(), confirmation_ui=MockUserInterface(ui_result)
+            )
+        }
+    )
+
+
+class TestMultipleConfirmationHooks:
+    def test_multiple_hooks_each_targeting_a_different_tool(self):
+        """
+        Three before_tool ConfirmationHooks, each owning a different tool of a three-call batch, compose correctly:
+        a tool a hook does not own passes through unchanged, so reject/modify decisions from all three hooks land on
+        the right calls in the final, re-read pending message.
+        """
+        foo, bar, baz = _echo_tool("foo"), _echo_tool("bar"), _echo_tool("baz")
+        hooks = {
+            "before_tool": [
+                _single_tool_hook("foo", ConfirmationUIResult(action="reject")),
+                _single_tool_hook("bar", ConfirmationUIResult(action="modify", new_tool_params={"x": 99})),
+                _single_tool_hook("baz", ConfirmationUIResult(action="modify", new_tool_params={"x": 77})),
+            ]
+        }
+        agent = Agent(chat_generator=MockChatGenerator(), tools=[foo, bar, baz], hooks=hooks)
+        agent.warm_up()
+        agent.chat_generator.run = MagicMock(
+            side_effect=[
+                {
+                    "replies": [
+                        ChatMessage.from_assistant(
+                            tool_calls=[ToolCall("foo", {"x": 1}), ToolCall("bar", {"x": 2}), ToolCall("baz", {"x": 3})]
+                        )
+                    ]
+                },
+                {"replies": [ChatMessage.from_assistant("done")]},
+            ]
+        )
+
+        result = agent.run(messages=[ChatMessage.from_user("go")])
+
+        # The full transcript, in order: foo is rejected (its call + an error tool result appear before the
+        # surviving batch), bar and baz are modified (each with an explanation message) and then executed.
+        assert result["messages"] == [
+            ChatMessage.from_user("go"),
+            ChatMessage.from_assistant(tool_calls=[ToolCall("foo", {"x": 1})]),
+            ChatMessage.from_tool(
+                tool_result="Tool execution for 'foo' was rejected by the user.",
+                origin=ToolCall("foo", {"x": 1}),
+                error=True,
+            ),
+            ChatMessage.from_user("The parameters for tool 'bar' were updated by the user to:\n{'x': 99}"),
+            ChatMessage.from_user("The parameters for tool 'baz' were updated by the user to:\n{'x': 77}"),
+            ChatMessage.from_assistant(tool_calls=[ToolCall("bar", {"x": 99}), ToolCall("baz", {"x": 77})]),
+            ChatMessage.from_tool(tool_result='{"echoed": 99}', origin=ToolCall("bar", {"x": 99}), error=False),
+            ChatMessage.from_tool(tool_result='{"echoed": 77}', origin=ToolCall("baz", {"x": 77}), error=False),
+            ChatMessage.from_assistant("done"),
+        ]
+        # Only the two confirmed tools actually executed.
+        assert result["tool_call_counts"] == {"foo": 0, "bar": 1, "baz": 1}

@@ -584,7 +584,7 @@ weather_tool = Tool(
 
 #### Reserved `state_schema` keys
 
-**What changed:** `Agent` now reserves several names in its `state_schema`: the auto-populated run-metadata outputs `step_count`, `token_usage`, and `tool_call_counts`, and the hook loop-control key `continue_run` (set by an `on_exit` hook to keep the Agent running). Passing any of them as a `state_schema` key now raises `ValueError`.
+**What changed:** `Agent` now reserves several names in its `state_schema`: the auto-populated run-metadata outputs `step_count`, `token_usage`, and `tool_call_counts`, and the hook-facing keys `continue_run` (set by an `on_exit` hook to keep the Agent running), `tools` (the tools available in the current step, for hooks to inspect), and `hook_context` (the per-run resources passed to `Agent.run`). Passing any of them as a `state_schema` key now raises `ValueError`.
 
 **Why:** These keys are managed by `Agent` itself; allowing users to redefine them would let a user-defined entry shadow the value the Agent reads or writes.
 
@@ -607,6 +607,60 @@ agent = Agent(
     state_schema={"my_token_usage": {"type": dict}},
 )
 ```
+
+#### Human-in-the-Loop confirmation is now a `before_tool` hook
+
+**What changed:** The `confirmation_strategies` and `confirmation_strategy_context` parameters have been removed from `Agent.__init__`, `Agent.run`, and `Agent.run_async`. Human-in-the-Loop tool confirmation is now expressed through the general Agent hooks mechanism: wrap your confirmation strategies in a `ConfirmationHook` and register it under the `before_tool` hook point. Request-scoped resources that used to be passed via `confirmation_strategy_context` are now passed via the generic `hook_context` run argument (read by hooks with `state.get("hook_context")`).
+
+**Why:** Confirmation was a one-off, before-tool interception bolted onto the Agent. Hooks generalize that seam, so HITL becomes one application of a single, uniform extension point instead of a parallel concept with its own serialization and run plumbing.
+
+**How to migrate:**
+
+Before (v2.x):
+```python
+from haystack.components.agents import Agent
+from haystack.human_in_the_loop import BlockingConfirmationStrategy, AlwaysAskPolicy, RichConsoleUI
+
+agent = Agent(
+    chat_generator=...,
+    tools=[...],
+    confirmation_strategies={
+        "my_tool": BlockingConfirmationStrategy(
+            confirmation_policy=AlwaysAskPolicy(), confirmation_ui=RichConsoleUI()
+        )
+    },
+)
+agent.run(messages=[...], confirmation_strategy_context={"websocket": ws})
+```
+
+After (v3.0):
+```python
+from haystack.components.agents import Agent
+from haystack.human_in_the_loop import (
+    BlockingConfirmationStrategy,
+    AlwaysAskPolicy,
+    ConfirmationHook,
+    RichConsoleUI,
+)
+
+confirmation_hook = ConfirmationHook(
+    confirmation_strategies={
+        "my_tool": BlockingConfirmationStrategy(
+            confirmation_policy=AlwaysAskPolicy(), confirmation_ui=RichConsoleUI()
+        )
+    }
+)
+agent = Agent(chat_generator=..., tools=[...], hooks={"before_tool": [confirmation_hook]})
+agent.run(messages=[...], hook_context={"websocket": ws})
+```
+
+#### Confirmation strategies now see only the model-requested tool arguments
+
+**What changed:** Confirmation strategies now receive the arguments the model produced for a tool call in `tool_params`, rather than the fully-prepared arguments. Values injected from `State` via a tool's `inputs_from_state` mapping (and the `State` object passed to `State`-typed parameters) are no longer included in what is presented for confirmation — that injection now happens only at tool execution time.
+
+**Why:** Preparing and baking each tool's arguments up front defeated the per-batch argument preparation in tool execution, so a tool that read a state key written by another tool in the same step could run with stale values. Confirmation now operates on the model-requested arguments and leaves state injection to execution. See the release note for the failure mode details.
+
+**How to migrate:** If your `ConfirmationUI` or `ConfirmationPolicy` displayed or inspected state-injected argument values, update it to expect only the arguments the model provided. No change is needed if you only relied on the model-requested arguments.
 
 ### LLM
 
