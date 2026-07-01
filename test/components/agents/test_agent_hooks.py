@@ -82,7 +82,6 @@ def replace_pending_call_with_non_tool_message(state: State) -> None:
 
 @hook
 def record_after_tool(state: State) -> None:
-    # Realistic after_tool use case: record that freshly produced tool results are available for rewriting.
     state.set("trace", ["after_tool"])
 
 

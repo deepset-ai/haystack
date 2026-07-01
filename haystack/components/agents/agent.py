@@ -1170,8 +1170,6 @@ class Agent:
                 )
             exe_context.state.set("messages", tool_messages)
             _record_tool_calls(exe_context.state, tool_messages)
-            # `after_tool` hooks may rewrite the tool-result messages in `state.data["messages"]` (offload, redact,
-            # truncate, summarize) before the next LLM call sees them.
             _run_hooks(self.hooks, AFTER_TOOL, exe_context.state)
 
             exe_context.counter += 1
@@ -1237,8 +1235,6 @@ class Agent:
                 )
             exe_context.state.set("messages", tool_messages)
             _record_tool_calls(exe_context.state, tool_messages)
-            # `after_tool` hooks may rewrite the tool-result messages in `state.data["messages"]` (offload, redact,
-            # truncate, summarize) before the next LLM call sees them.
             await _run_hooks_async(self.hooks, AFTER_TOOL, exe_context.state)
 
             exe_context.counter += 1
