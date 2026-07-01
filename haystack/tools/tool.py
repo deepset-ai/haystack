@@ -86,6 +86,12 @@ class Tool:
             "documents": {"handler": custom_handler}
         }
         ```
+    :param cacheable:
+        Whether results from this tool may be served from a `ToolCache` when one is configured on the
+        `ToolInvoker`/`Agent` invoking this tool. Defaults to `False` — caching must be explicitly opted into
+        per tool so that write-effecting tools (sending a message, posting to an API, mutating remote or local
+        state) never serve a stale cached result for what should be a fresh side-effecting call. Set this to
+        `True` only for read-only/idempotent tools such as lookups, fetches, or calculations.
     :raises ValueError: If `function` is async, if `parameters` is not a valid JSON schema, or if the
         `outputs_to_state`, `outputs_to_string`, or `inputs_from_state` configurations are invalid.
     :raises TypeError: If any configuration value in `outputs_to_state`, `outputs_to_string`, or
@@ -99,6 +105,7 @@ class Tool:
     outputs_to_string: dict[str, Any] | None = None
     inputs_from_state: dict[str, str] | None = None
     outputs_to_state: dict[str, dict[str, Any]] | None = None
+    cacheable: bool = False
 
     def __post_init__(self) -> None:  # noqa: C901, PLR0912
         # Check that the function is not a coroutine (async function)

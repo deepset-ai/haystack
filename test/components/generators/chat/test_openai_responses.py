@@ -260,6 +260,7 @@ class TestSerDe:
                             "inputs_from_state": None,
                             "name": "name",
                             "outputs_to_state": None,
+                            "cacheable": False,
                             "outputs_to_string": None,
                             "parameters": {"x": {"type": "string"}},
                         },

@@ -53,6 +53,7 @@ from haystack.tools import (
     flatten_tools_or_toolsets,
     serialize_tools_or_toolset,
 )
+from haystack.tools.tool_cache import ToolCache
 from haystack.utils import _deserialize_value_with_schema
 from haystack.utils.callable_serialization import deserialize_callable, serialize_callable
 from haystack.utils.deserialization import deserialize_component_inplace
@@ -206,6 +207,21 @@ class Agent:
     print(result["last_message"].text)
     ```
 
+    #### Using a `tool_cache` to avoid redundant tool calls
+
+    When an Agent loops over several steps, it can end up calling the same read-only tool with the same
+    arguments more than once (for example, re-fetching a document it already fetched a few steps earlier).
+    Pass a `ToolCache` to avoid re-invoking tools that have opted in via `Tool(..., cacheable=True)`:
+
+    ```python
+    from haystack.components.agents import Agent
+    from haystack.tools.tool_cache import ToolCache
+
+    cache = ToolCache(ttl_seconds=3600, scope="agent_run")
+    agent = Agent(chat_generator=OpenAIChatGenerator(), tools=[my_cacheable_tool], tool_cache=cache)
+    result = agent.run(messages=[ChatMessage.from_user("...")])
+    # result["tool_cache_stats"] -> {"hits": ..., "misses": ..., "calls_saved": ...}
+    ```
     """
 
     def __init__(
@@ -223,6 +239,7 @@ class Agent:
         raise_on_tool_invocation_failure: bool = False,
         tool_invoker_kwargs: dict[str, Any] | None = None,
         confirmation_strategies: dict[str | tuple[str, ...], ConfirmationStrategy] | None = None,
+        tool_cache: ToolCache | None = None,
     ) -> None:
         """
         Initialize the agent component.
@@ -254,6 +271,12 @@ class Agent:
             If set to False, the exception will be turned into a chat message and passed to the LLM.
         :param tool_invoker_kwargs: Additional keyword arguments to pass to the ToolInvoker.
         :param confirmation_strategies: A dictionary mapping tool names to ConfirmationStrategy instances.
+        :param tool_cache: Optional `ToolCache` instance shared across the Agent's run. Passed straight through
+            to the internal `ToolInvoker`, so tool calls for any `Tool` with `cacheable=True` are looked up
+            in the cache before invocation and stored after a successful invocation. When set, the dict returned
+            by `run()`/`run_async()` includes a `"tool_cache_stats"` key with the cache's hit/miss counts for
+            the run. Not included in `to_dict()`/`from_dict()` serialization, since cache backends are runtime
+            objects rather than serializable configuration — see `ToolInvoker.tool_cache` for the same caveat.
         :raises TypeError: If the chat_generator does not support tools parameter in its run method.
         :raises ValueError: If the exit_conditions are not valid.
         :raises ValueError: If any `user_prompt` variable overlaps with the `state_schema` or `run` method parameters.
@@ -298,10 +321,13 @@ class Agent:
         self.max_agent_steps = max_agent_steps
         self.raise_on_tool_invocation_failure = raise_on_tool_invocation_failure
         self.streaming_callback = streaming_callback
+        self.tool_cache = tool_cache
 
         # Set input and output types for the component based on the State schema
         self._run_method_params = _get_run_method_params(self)
-        output_types = {"last_message": ChatMessage}
+        output_types: dict[str, Any] = {"last_message": ChatMessage}
+        if self.tool_cache is not None:
+            output_types["tool_cache_stats"] = dict[str, int]
         for param, config in self.state_schema.items():
             output_types[param] = config["type"]
             # Skip setting input types for parameters that are already in the run method
@@ -327,6 +353,7 @@ class Agent:
             resolved_tool_invoker_kwargs = {
                 "tools": self.tools,
                 "raise_on_failure": self.raise_on_tool_invocation_failure,
+                "tool_cache": self.tool_cache,
                 **(tool_invoker_kwargs or {}),
             }
             self._tool_invoker = ToolInvoker(**resolved_tool_invoker_kwargs)
@@ -406,6 +433,11 @@ class Agent:
     def to_dict(self) -> dict[str, Any]:
         """
         Serialize the component to a dictionary.
+
+        Note: `tool_cache`, if set, is intentionally NOT included — cache backends are runtime objects
+        rather than serializable configuration. A deserialized `Agent` will have `tool_cache=None` even
+        if the original instance had one set; callers that need caching after deserialization should
+        re-attach a `ToolCache` explicitly.
 
         :returns: Dictionary with serialized data.
         """
@@ -768,6 +800,8 @@ class Agent:
             A dictionary with the following keys:
             - "messages": List of all messages exchanged during the agent's run.
             - "last_message": The last message exchanged during the agent's run.
+            - "tool_cache_stats": Only present if a `tool_cache` was configured; a dict with `hits`, `misses`,
+              and `calls_saved` counts for this run.
             - Any additional keys defined in the `state_schema`.
         :raises BreakpointException: If an agent breakpoint is triggered.
         """
@@ -961,6 +995,8 @@ class Agent:
         result = {**exe_context.state.data}
         if msgs := result.get("messages"):
             result["last_message"] = msgs[-1]
+        if self.tool_cache is not None:
+            result["tool_cache_stats"] = self.tool_cache.stats.to_dict()
         return result
 
     async def run_async(  # noqa: PLR0915
@@ -1011,6 +1047,8 @@ class Agent:
             A dictionary with the following keys:
             - "messages": List of all messages exchanged during the agent's run.
             - "last_message": The last message exchanged during the agent's run.
+            - "tool_cache_stats": Only present if a `tool_cache` was configured; a dict with `hits`, `misses`,
+              and `calls_saved` counts for this run.
             - Any additional keys defined in the `state_schema`.
         :raises BreakpointException: If an agent breakpoint is triggered.
         """
@@ -1204,6 +1242,8 @@ class Agent:
         result = {**exe_context.state.data}
         if msgs := result.get("messages"):
             result["last_message"] = msgs[-1]
+        if self.tool_cache is not None:
+            result["tool_cache_stats"] = self.tool_cache.stats.to_dict()
         return result
 
     def _check_exit_conditions(self, llm_messages: list[ChatMessage], tool_messages: list[ChatMessage]) -> bool:

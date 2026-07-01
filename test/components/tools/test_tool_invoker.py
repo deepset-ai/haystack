@@ -33,6 +33,7 @@ from haystack.dataclasses import (
 )
 from haystack.tools import ComponentTool, Tool, Toolset
 from haystack.tools.errors import ToolInvocationError
+from haystack.tools.tool_cache import ToolCache
 
 
 def weather_function(location):
@@ -360,6 +361,7 @@ class TestToolInvokerSerde:
                                     "outputs_to_string": None,
                                     "inputs_from_state": None,
                                     "outputs_to_state": None,
+                                    "cacheable": False,
                                 },
                             }
                         ],
@@ -1469,3 +1471,83 @@ class TestWarmUpTools:
         # After warmup: _tools_with_names should be refreshed with actual tool names
         assert "mcp_not_connected_placeholder_123" not in invoker._tools_with_names
         assert "get_time" in invoker._tools_with_names
+
+
+class TestToolInvokerCaching:
+    def test_cacheable_tool_second_identical_call_is_served_from_cache(self):
+        call_count = []
+
+        def counting_weather_function(location):
+            call_count.append(location)
+            return weather_function(location)
+
+        cacheable_weather_tool = Tool(
+            name="weather_tool",
+            description="Provides weather information for a given location.",
+            parameters=weather_parameters,
+            function=counting_weather_function,
+            cacheable=True,
+        )
+
+        cache = ToolCache()
+        invoker = ToolInvoker(tools=[cacheable_weather_tool], tool_cache=cache)
+
+        tool_call = ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"})
+        message = ChatMessage.from_assistant(tool_calls=[tool_call])
+
+        invoker.run(messages=[message])
+        invoker.run(messages=[message])
+
+        assert len(call_count) == 1
+        assert cache.stats.hits == 1
+        assert cache.stats.misses == 1
+
+    def test_non_cacheable_tool_always_invokes(self, weather_tool):
+        call_count = []
+
+        def counting_weather_function(location):
+            call_count.append(location)
+            return weather_function(location)
+
+        weather_tool.function = counting_weather_function
+
+        cache = ToolCache()
+        invoker = ToolInvoker(tools=[weather_tool], tool_cache=cache)
+
+        tool_call = ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"})
+        message = ChatMessage.from_assistant(tool_calls=[tool_call])
+
+        invoker.run(messages=[message])
+        invoker.run(messages=[message])
+
+        assert len(call_count) == 2
+        assert cache.stats.hits == 0
+        assert cache.stats.misses == 0
+
+    def test_cache_miss_on_different_arguments(self):
+        call_count = []
+
+        def counting_weather_function(location):
+            call_count.append(location)
+            return weather_function(location)
+
+        cacheable_weather_tool = Tool(
+            name="weather_tool",
+            description="Provides weather information for a given location.",
+            parameters=weather_parameters,
+            function=counting_weather_function,
+            cacheable=True,
+        )
+
+        cache = ToolCache()
+        invoker = ToolInvoker(tools=[cacheable_weather_tool], tool_cache=cache)
+
+        berlin_call = ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"})
+        paris_call = ToolCall(tool_name="weather_tool", arguments={"location": "Paris"})
+
+        invoker.run(messages=[ChatMessage.from_assistant(tool_calls=[berlin_call])])
+        invoker.run(messages=[ChatMessage.from_assistant(tool_calls=[paris_call])])
+
+        assert len(call_count) == 2
+        assert cache.stats.misses == 2
+        assert cache.stats.hits == 0
