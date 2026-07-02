@@ -11,6 +11,7 @@ import pytest
 
 from haystack import component, default_from_dict, default_to_dict
 from haystack.components.generators.chat.fallback import FallbackChatGenerator
+from haystack.core.errors import SerializationError
 from haystack.dataclasses import ChatMessage, StreamingCallbackT
 from haystack.tools import ToolsType
 
@@ -468,8 +469,6 @@ class NonSerializableGenerator:
 
 
 def test_serialization_with_custom_generators_without_to_dict():
-    from haystack.core.errors import SerializationError
-
     # 1. Test mixed chain serialization, order preservation, execution, and round-trip
     gen0 = _DummySuccessGen(text="dummy_has_dict")
     gen1 = CustomGeneratorWithoutSerDe(text="custom_no_dict_1")
