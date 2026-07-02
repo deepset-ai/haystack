@@ -62,8 +62,12 @@ jobs:
       - name: Check reStructuredText code formatting
         if: steps.changed-files.outputs.any_changed == 'true' && !contains( github.event.pull_request.labels.*.name, 'ignore-for-release-notes')
         shell: python
+        env:
+          CHANGED_FILES: ${{ steps.changed-files.outputs.all_changed_files }}
         run: |
-          files = "${{ steps.changed-files.outputs.all_changed_files }}".split()
+          import os
+
+          files = os.environ["CHANGED_FILES"].split()
           errors = []
 
           for filepath in files:
