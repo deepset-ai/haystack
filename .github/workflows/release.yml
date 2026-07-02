@@ -57,7 +57,8 @@ jobs:
         id: parse-validate
         env:
           GH_TOKEN: ${{ github.token }}
-        run: .github/utils/parse_validate_version.sh "${{ inputs.version }}"
+          VERSION: ${{ inputs.version }}
+        run: .github/utils/parse_validate_version.sh "$VERSION"
 
   branch-off:
     needs: ["parse-validate-version"]
