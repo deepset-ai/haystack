@@ -11,7 +11,7 @@ import pytest
 from haystack import component
 from haystack.components.agents import Agent
 from haystack.components.agents.state.state import State
-from haystack.dataclasses import ChatMessage, ToolCall
+from haystack.dataclasses import ChatMessage, ImageContent, TextContent, ToolCall
 from haystack.hooks.tool_result_offloading import (
     RESULT_STORE_CONTEXT_KEY,
     AlwaysOffload,
@@ -108,6 +108,31 @@ class TestToolResultOffloadHookBehavior:
         hook.run(state)
         assert state.data["messages"][0].tool_call_result.result == "boom"
 
+    def test_offloads_sequence_of_text_content(self, tmp_path):
+        store = FileSystemToolResultStore(root=tmp_path)
+        hook = ToolResultOffloadHook(store=store, offload_strategies={"*": AlwaysOffload()})
+        message = ChatMessage.from_tool(
+            tool_result=[TextContent("A" * 30), TextContent("B" * 30)],
+            origin=ToolCall(tool_name="a", arguments={}, id="1"),
+        )
+        state = _state_with_messages([message])
+        hook.run(state)
+        offloaded = state.data["messages"][0]
+        assert offloaded.tool_call_result.result.startswith("Tool result offloaded")
+        assert "60 characters" in offloaded.tool_call_result.result
+        assert store.read(offloaded.meta["tool_result_offloaded"]) == "A" * 30 + "B" * 30
+
+    def test_result_with_image_content_is_not_offloaded(self, tmp_path):
+        hook = ToolResultOffloadHook(
+            store=FileSystemToolResultStore(root=tmp_path), offload_strategies={"*": AlwaysOffload()}
+        )
+        content = [TextContent("caption"), ImageContent(base64_image="aGVsbG8=", mime_type="image/png")]
+        message = ChatMessage.from_tool(tool_result=content, origin=ToolCall(tool_name="a", arguments={}, id="1"))
+        state = _state_with_messages([message])
+        hook.run(state)
+        assert state.data["messages"][0].tool_call_result.result == content
+        assert not list(Path(tmp_path).iterdir())
+
     def test_offloading_is_idempotent_across_runs(self, tmp_path):
         hook = ToolResultOffloadHook(
             store=FileSystemToolResultStore(root=tmp_path), offload_strategies={"*": AlwaysOffload()}
@@ -130,7 +155,7 @@ class TestToolResultOffloadHookBehavior:
         pointer = message.tool_call_result.result
         assert reference in pointer
         assert "8 characters" in pointer
-        assert "ABCDE…" in pointer
+        assert "ABCDE..." in pointer
 
     def test_hook_context_store_overrides_constructor_store(self, tmp_path):
         default_store = FileSystemToolResultStore(root=tmp_path / "default")

@@ -9,7 +9,8 @@ from haystack import logging
 from haystack.components.agents.state.state import State
 from haystack.components.agents.state.state_utils import replace_values
 from haystack.core.serialization import default_from_dict, default_to_dict
-from haystack.dataclasses import ChatMessage
+from haystack.dataclasses import ChatMessage, TextContent
+from haystack.dataclasses.chat_message import ToolCallResultContentT
 from haystack.hooks.tool_result_offloading.types import OffloadPolicy, ToolResultStore
 from haystack.utils.deserialization import deserialize_component_inplace
 
@@ -20,7 +21,7 @@ logger = logging.getLogger(__name__)
 _OFFLOADED_META_KEY = "tool_result_offloaded"
 
 # Key under which a per-run store override may be supplied via the Agent's `hook_context` (e.g. a request-scoped
-# sandbox filesystem). When absent, the hook uses the store it was constructed with.
+# sandbox filesystem).
 RESULT_STORE_CONTEXT_KEY = "tool_result_store"
 
 
@@ -37,6 +38,25 @@ def _result_store_key(tool_name: str, tool_call_id: str | None, step: int) -> st
     :returns: A file-name-like key for the store, e.g. `2_web_search_call-123.txt`.
     """
     return f"{step}_{tool_name}_{tool_call_id or 'result'}.txt"
+
+
+def _offloadable_text(content: ToolCallResultContentT) -> str | None:
+    """
+    Return the text of a tool result if it can be offloaded as text, otherwise None.
+
+    A plain string is returned as-is; a non-empty sequence made up entirely of `TextContent` blocks is concatenated
+    into a single string. Anything else (e.g. a result containing image or file content) returns None and is left in
+    context.
+
+    :param content: The tool result content to inspect.
+    :returns: The offloadable text, or None when the content is not purely text.
+    """
+    if isinstance(content, str):
+        return content
+    texts = [block.text for block in content if isinstance(block, TextContent)]
+    if texts and len(texts) == len(content):
+        return "".join(texts)
+    return None
 
 
 def _serialize_offload_strategies(strategies: dict[str | tuple[str, ...], OffloadPolicy]) -> dict[str, Any]:
@@ -197,9 +217,9 @@ class ToolResultOffloadHook:
 
         A message is left as-is when it is not a tool result, when the result is an error (including `before_tool`
         rejections), when it was already offloaded in an earlier step, when no policy applies, when the result is
-        non-string (multimodal) content, or when the policy declines to offload. Otherwise the result is written to
-        `store` and the message is rebuilt with a pointer in place of the full result, preserving its origin and
-        error flag and marking it offloaded.
+        non-text (contains image or file content), or when the policy declines to offload. Otherwise the result text
+        is written to `store` and the message is rebuilt with a pointer in place of the full result, preserving its
+        origin and error flag and marking it offloaded.
 
         :param message: The message to consider offloading.
         :param store: The store to write the result to.
@@ -207,28 +227,37 @@ class ToolResultOffloadHook:
         :returns: An offloaded copy of the message, or the original message when it is not offloaded.
         """
         result = message.tool_call_result
-        # Only real, successful tool output is offloaded — never errors or before_tool rejections, and never a
-        # result already offloaded in an earlier step.
+        # Only successful tool output is offloaded - never errors, before_tool rejections, or a result already offloaded
+        # in an earlier step.
         if result is None or result.error or message.meta.get(_OFFLOADED_META_KEY):
             return message
+
         tool_name = result.origin.tool_name
         policy = self._policy_for(tool_name)
+
+        # If no policy applies, leave the result in context
         if policy is None:
             return message
-        # Offloading supports text results only today; leave multimodal content (images, files) in context.
-        if not isinstance(result.result, str):
+
+        # Offloading currently only supports text results (a string or a sequence of TextContent); leave results
+        # containing image or file content in context.
+        text = _offloadable_text(result.result)
+        if text is None:
             logger.warning(
-                "Tool '{tool}' produced a non-string result; leaving it in context. Result offloading currently "
+                "Tool '{tool}' produced a non-text result; leaving it in context. Result offloading currently "
                 "supports text results only.",
                 tool=tool_name,
             )
             return message
-        if not policy.should_offload(tool_name, result.result, state):
+
+        # If the policy declines to offload, leave the result in context
+        if not policy.should_offload(tool_name, text, state):
             return message
+
         key = _result_store_key(tool_name, result.origin.id, state.data.get("step_count", 0))
-        reference = store.write(key=key, content=result.result)
+        reference = store.write(key=key, content=text)
         return ChatMessage.from_tool(
-            tool_result=self._pointer(reference, result.result),
+            tool_result=self._pointer(reference, text),
             origin=result.origin,
             error=result.error,
             meta={**message.meta, _OFFLOADED_META_KEY: reference},
@@ -242,9 +271,9 @@ class ToolResultOffloadHook:
         :param result: The original result string, used for its length and a leading preview.
         :returns: A one-line pointer carrying the reference, the result length, and a `preview_chars`-long preview.
         """
-        ellipsis = "…" if len(result) > self.preview_chars else ""
+        ellip = "..." if len(result) > self.preview_chars else ""
         preview = result[: self.preview_chars]
-        return f"Tool result offloaded to '{reference}' ({len(result)} characters). Preview: {preview}{ellipsis}"
+        return f"Tool result offloaded to '{reference}' ({len(result)} characters). Preview: {preview}{ellip}"
 
     def to_dict(self) -> dict[str, Any]:
         """
