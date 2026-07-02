@@ -4,6 +4,8 @@
 
 from pathlib import Path
 
+import pytest
+
 from haystack.hooks.tool_result_offloading import FileSystemToolResultStore
 
 
@@ -18,6 +20,22 @@ class TestFileSystemToolResultStore:
         store = FileSystemToolResultStore(root=tmp_path / "nested" / "dir")
         reference = store.write(key="a.txt", content="hi")
         assert Path(reference).read_text(encoding="utf-8") == "hi"
+
+    def test_write_allows_nested_keys_within_root(self, tmp_path):
+        store = FileSystemToolResultStore(root=tmp_path)
+        reference = store.write(key="sub/dir/a.txt", content="ok")
+        assert Path(reference).read_text(encoding="utf-8") == "ok"
+
+    def test_write_rejects_parent_traversal_key(self, tmp_path):
+        store = FileSystemToolResultStore(root=tmp_path / "root")
+        with pytest.raises(ValueError, match="outside the store root"):
+            store.write(key="../escape.txt", content="x")
+        assert not (tmp_path / "escape.txt").exists()
+
+    def test_write_rejects_absolute_key(self, tmp_path):
+        store = FileSystemToolResultStore(root=tmp_path / "root")
+        with pytest.raises(ValueError, match="outside the store root"):
+            store.write(key=str(tmp_path / "outside.txt"), content="x")
 
     def test_read_round_trips_written_content(self, tmp_path):
         store = FileSystemToolResultStore(root=tmp_path)
