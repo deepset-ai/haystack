@@ -5,11 +5,14 @@
 import json
 from typing import Any, Literal
 
+import numpy as np
+
 from haystack.lazy_imports import LazyImport
 from haystack.utils.auth import Secret
 
 with LazyImport(message="Run 'pip install \"sentence-transformers>=5.0.0\"'") as sentence_transformers_import:
     from sentence_transformers import SentenceTransformer
+    from sentence_transformers.util import quantize_embeddings
 
 with LazyImport(message="Run 'pip install \"pillow\"'") as pillow_import:
     from PIL.Image import Image
@@ -111,4 +114,12 @@ class _SentenceTransformersEmbeddingBackend:
         )
 
     def embed(self, data: list[str] | list["Image"], **kwargs: Any) -> list[list[float]]:
+        quantization_ranges = kwargs.pop("quantization_ranges", None)
+        precision = kwargs.get("precision", "float32")
+        if quantization_ranges is not None and precision in ("int8", "uint8"):
+            # scalar quantization calibrates min/max ranges from the batch itself, which is degenerate for
+            # small batches (a single text produces meaningless embeddings), so we quantize with explicit ranges
+            kwargs["precision"] = "float32"
+            embeddings = self.model.encode(data, **kwargs)
+            return quantize_embeddings(embeddings, precision=precision, ranges=np.asarray(quantization_ranges)).tolist()
         return self.model.encode(data, **kwargs).tolist()

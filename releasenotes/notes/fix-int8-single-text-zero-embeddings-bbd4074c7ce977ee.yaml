@@ -1,0 +1,10 @@
+---
+fixes:
+  - |
+    ``SentenceTransformersTextEmbedder`` produced meaningless embeddings (all zeros or all equal values)
+    when using ``precision="int8"`` or ``precision="uint8"``, because scalar quantization calibrated the
+    min/max range from the single-text batch itself. The embedder now accepts a ``quantization_ranges``
+    init parameter with explicit calibration ranges (shape ``(2, embedding_dim)``: minimum values in the
+    first row, maximum values in the second) that are forwarded to
+    ``sentence_transformers.util.quantize_embeddings``. A warning is logged when a quantized precision is
+    used without calibration ranges.
