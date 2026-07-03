@@ -229,12 +229,12 @@ class TestSentenceTransformersDocumentImageEmbedder:
         with pytest.raises(
             TypeError, match="SentenceTransformersDocumentImageEmbedder expects a list of Documents as input"
         ):
-            embedder.run(documents=string_input)
+            embedder.run(documents=string_input)  # type: ignore[arg-type]
 
         with pytest.raises(
             TypeError, match="SentenceTransformersDocumentImageEmbedder expects a list of Documents as input"
         ):
-            embedder.run(documents=list_integers_input)
+            embedder.run(documents=list_integers_input)  # type: ignore[arg-type]
 
     @patch(f"{IMPORT_PATH}._SentenceTransformersEmbeddingBackendFactory")
     def test_model_onnx_backend(self, mocked_factory):

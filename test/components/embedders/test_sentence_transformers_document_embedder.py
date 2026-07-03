@@ -265,6 +265,7 @@ class TestSentenceTransformersDocumentEmbedder:
         )
         mocked_factory.get_embedding_backend.assert_not_called()
         embedder.warm_up()
+        assert embedder.embedding_backend is not None
         embedder.embedding_backend.model.max_seq_length = 512
         mocked_factory.get_embedding_backend.assert_called_once_with(
             model="model",
@@ -317,12 +318,12 @@ class TestSentenceTransformersDocumentEmbedder:
         with pytest.raises(
             TypeError, match="SentenceTransformersDocumentEmbedder expects a list of Documents as input"
         ):
-            embedder.run(documents=string_input)
+            embedder.run(documents=string_input)  # type: ignore[arg-type]
 
         with pytest.raises(
             TypeError, match="SentenceTransformersDocumentEmbedder expects a list of Documents as input"
         ):
-            embedder.run(documents=list_integers_input)
+            embedder.run(documents=list_integers_input)  # type: ignore[arg-type]
 
     def test_embed_metadata(self):
         embedder = SentenceTransformersDocumentEmbedder(

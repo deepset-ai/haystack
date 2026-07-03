@@ -198,15 +198,15 @@ class TestOpenAIDocumentEmbedder:
         list_integers_input = [1, 2, 3]
 
         with pytest.raises(TypeError, match="OpenAIDocumentEmbedder expects a list of Documents as input"):
-            embedder.run(documents=string_input)
+            embedder.run(documents=string_input)  # type: ignore[arg-type]
 
         with pytest.raises(TypeError, match="OpenAIDocumentEmbedder expects a list of Documents as input"):
-            embedder.run(documents=list_integers_input)
+            embedder.run(documents=list_integers_input)  # type: ignore[arg-type]
 
     def test_run_on_empty_list(self):
         embedder = OpenAIDocumentEmbedder(api_key=Secret.from_token("fake-api-key"))
 
-        empty_list_input = []
+        empty_list_input: list[Document] = []
         result = embedder.run(documents=empty_list_input)
 
         assert result["documents"] is not None

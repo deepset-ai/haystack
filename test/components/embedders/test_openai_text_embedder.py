@@ -7,6 +7,7 @@ import os
 
 import pytest
 from openai.types import CreateEmbeddingResponse, Embedding
+from openai.types.create_embedding_response import Usage
 
 from haystack.components.embedders.openai_text_embedder import OpenAITextEmbedder
 from haystack.utils.auth import Secret
@@ -166,7 +167,7 @@ class TestOpenAITextEmbedder:
             data=[Embedding(embedding=[0.1, 0.2, 0.3], index=0, object="embedding")],
             model="text-embedding-ada-002",
             object="list",
-            usage={"prompt_tokens": 6, "total_tokens": 6},
+            usage=Usage(prompt_tokens=6, total_tokens=6),
         )
 
         embedder = OpenAITextEmbedder()
@@ -182,7 +183,7 @@ class TestOpenAITextEmbedder:
         list_integers_input = [1, 2, 3]
 
         with pytest.raises(TypeError, match="OpenAITextEmbedder expects a string as an input"):
-            embedder.run(text=list_integers_input)
+            embedder.run(text=list_integers_input)  # type: ignore[arg-type]
 
     @pytest.mark.skipif(os.environ.get("OPENAI_API_KEY", "") == "", reason="OPENAI_API_KEY is not set")
     @pytest.mark.integration

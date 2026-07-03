@@ -240,6 +240,7 @@ class TestSentenceTransformersTextEmbedder:
         )
         mocked_factory.get_embedding_backend.assert_not_called()
         embedder.warm_up()
+        assert embedder.embedding_backend is not None
         embedder.embedding_backend.model.max_seq_length = 512
         mocked_factory.get_embedding_backend.assert_called_once_with(
             model="model",
@@ -285,7 +286,7 @@ class TestSentenceTransformersTextEmbedder:
         list_integers_input = [1, 2, 3]
 
         with pytest.raises(TypeError, match="SentenceTransformersTextEmbedder expects a string as input"):
-            embedder.run(text=list_integers_input)
+            embedder.run(text=list_integers_input)  # type: ignore[arg-type]
 
     def test_embed_encode_kwargs(self):
         embedder = SentenceTransformersTextEmbedder(model="model", encode_kwargs={"task": "retrieval.query"})

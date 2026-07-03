@@ -137,7 +137,7 @@ class TestHuggingFaceAPITextEmbedder:
         list_integers_input = [1, 2, 3]
 
         with pytest.raises(TypeError):
-            embedder.run(text=list_integers_input)
+            embedder.run(text=list_integers_input)  # type: ignore[arg-type]
 
     def test_run(self, mock_check_valid_model, caplog):
         with patch("huggingface_hub.InferenceClient.feature_extraction") as mock_embedding_patch:

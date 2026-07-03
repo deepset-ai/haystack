@@ -234,7 +234,7 @@ class TestSentenceTransformersSparseTextEmbedder:
         list_integers_input = [1, 2, 3]
 
         with pytest.raises(TypeError, match="SentenceTransformersSparseTextEmbedder expects a string as input"):
-            embedder.run(text=list_integers_input)
+            embedder.run(text=list_integers_input)  # type: ignore[arg-type]
 
     @patch(
         "haystack.components.embedders.sentence_transformers_sparse_text_embedder._SentenceTransformersSparseEmbeddingBackendFactory"

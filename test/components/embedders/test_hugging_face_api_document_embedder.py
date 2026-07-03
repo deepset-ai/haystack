@@ -271,7 +271,7 @@ class TestHuggingFaceAPIDocumentEmbedder:
         list_integers_input = [1, 2, 3]
 
         with pytest.raises(TypeError):
-            embedder.run(text=list_integers_input)
+            embedder.run(text=list_integers_input)  # type: ignore[call-arg]
 
     def test_run_on_empty_list(self, mock_check_valid_model):
         embedder = HuggingFaceAPIDocumentEmbedder(
@@ -280,7 +280,7 @@ class TestHuggingFaceAPIDocumentEmbedder:
             token=Secret.from_token("fake-api-token"),
         )
 
-        empty_list_input = []
+        empty_list_input: list[Document] = []
         result = embedder.run(documents=empty_list_input)
 
         assert result["documents"] is not None
@@ -511,7 +511,7 @@ class TestHuggingFaceAPIDocumentEmbedder:
         list_integers_input = [1, 2, 3]
 
         with pytest.raises(TypeError):
-            await embedder.run_async(text=list_integers_input)
+            await embedder.run_async(text=list_integers_input)  # type: ignore[call-arg]
 
     @pytest.mark.asyncio
     async def test_run_async_on_empty_list(self, mock_check_valid_model):
@@ -521,7 +521,7 @@ class TestHuggingFaceAPIDocumentEmbedder:
             token=Secret.from_token("fake-api-token"),
         )
 
-        empty_list_input = []
+        empty_list_input: list[Document] = []
         result = await embedder.run_async(documents=empty_list_input)
 
         assert result["documents"] is not None
