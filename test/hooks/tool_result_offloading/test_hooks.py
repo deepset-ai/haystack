@@ -133,6 +133,33 @@ class TestToolResultOffloadHookBehavior:
         assert state.data["messages"][0].tool_call_result.result == content
         assert not list(Path(tmp_path).iterdir())
 
+    def test_id_less_parallel_calls_do_not_collide(self, tmp_path):
+        store = FileSystemToolResultStore(root=tmp_path)
+        hook = ToolResultOffloadHook(store=store, offload_strategies={"*": AlwaysOffload()})
+        first = ChatMessage.from_tool(tool_result="FIRST" * 20, origin=ToolCall(tool_name="a", arguments={}, id=None))
+        second = ChatMessage.from_tool(tool_result="SECOND" * 20, origin=ToolCall(tool_name="a", arguments={}, id=None))
+        state = _state_with_messages([first, second])
+        hook.run(state)
+        refs = [m.meta["tool_result_offloaded"] for m in state.data["messages"]]
+        assert refs[0] != refs[1]
+        assert store.read(refs[0]) == "FIRST" * 20
+        assert store.read(refs[1]) == "SECOND" * 20
+        assert len(list(Path(tmp_path).iterdir())) == 2
+
+    def test_only_trailing_tool_results_are_offloaded(self, tmp_path):
+        store = FileSystemToolResultStore(root=tmp_path)
+        hook = ToolResultOffloadHook(store=store, offload_strategies={"*": AlwaysOffload()})
+        # A tool result from a prior turn, then an assistant message, then this step's fresh tool result.
+        history = _tool_message("old", "H" * 50, call_id="old1")
+        assistant = ChatMessage.from_assistant(tool_calls=[ToolCall("a", {}, id="c1")])
+        fresh = _tool_message("a", "F" * 50, call_id="c1")
+        state = _state_with_messages([history, assistant, fresh])
+        hook.run(state)
+        out = state.data["messages"]
+        assert out[0].tool_call_result.result == "H" * 50
+        assert out[2].tool_call_result.result.startswith("Tool result offloaded")
+        assert len(list(Path(tmp_path).iterdir())) == 1
+
     def test_offloading_is_idempotent_across_runs(self, tmp_path):
         hook = ToolResultOffloadHook(
             store=FileSystemToolResultStore(root=tmp_path), offload_strategies={"*": AlwaysOffload()}

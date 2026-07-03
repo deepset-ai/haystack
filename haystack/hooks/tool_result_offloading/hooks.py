@@ -25,19 +25,42 @@ _OFFLOADED_META_KEY = "tool_result_offloaded"
 RESULT_STORE_CONTEXT_KEY = "tool_result_store"
 
 
-def _result_store_key(tool_name: str, tool_call_id: str | None, step: int) -> str:
+def _result_store_key(tool_name: str, tool_call_id: str | None, step: int, index: int) -> str:
     """
     Build a per-result store key that is stable and unique within a run.
 
     Combining the step, tool name, and tool call id keeps results from different tools and different steps from
-    colliding while staying deterministic (so a re-run produces the same key).
+    colliding while staying deterministic (so a re-run produces the same key). When the tool call carries no id
+    (it is optional and not every generator sets it), the result's position in the step's batch is used instead, so
+    two id-less calls to the same tool in the same step do not collide.
 
     :param tool_name: The name of the tool that produced the result.
     :param tool_call_id: The id of the originating tool call, or None when the call carried no id.
     :param step: The Agent's current step count.
+    :param index: The result's position within this step's batch of tool results, used when `tool_call_id` is None.
     :returns: A file-name-like key for the store, e.g. `2_web_search_call-123.txt`.
     """
-    return f"{step}_{tool_name}_{tool_call_id or 'result'}.txt"
+    return f"{step}_{tool_name}_{tool_call_id or f'call{index}'}.txt"
+
+
+def _fresh_tool_results_start(messages: list[ChatMessage]) -> int:
+    """
+    Return the index at which the trailing run of tool-result messages begins.
+
+    The Agent appends the current step's tool results to the end of the conversation, so the trailing contiguous
+    block of tool-result messages is exactly the freshly produced batch; everything before it is history the hook
+    must not touch (results from earlier steps or ones the caller passed in).
+
+    :param messages: The conversation, oldest to newest.
+    :returns: The index of the first message in the trailing tool-result block, or `len(messages)` when the last
+        message is not a tool result (no fresh results to offload).
+    """
+    start = len(messages)
+    for index in range(len(messages) - 1, -1, -1):
+        if messages[index].tool_call_result is None:
+            break
+        start = index
+    return start
 
 
 def _offloadable_text(content: ToolCallResultContentT) -> str | None:
@@ -165,19 +188,23 @@ class ToolResultOffloadHook:
         """
         Offload the freshly produced tool results in `state.data["messages"]` according to `offload_strategies`.
 
-        Walks the conversation, offloads each tool-result message its policy opts in for, and writes the rewritten
-        conversation back to `messages` only if at least one message changed.
+        Considers only the trailing block of tool-result messages (the current step's results); earlier history is
+        left untouched. Offloads each of those messages its policy opts in for, and writes the rewritten conversation
+        back to `messages` only if at least one message changed.
 
         :param state: The Agent's live `State`. Reads the per-run store override from `hook_context` and rewrites the
             offloaded tool-result messages back into `messages`.
         :returns: None. The hook mutates `state` in place.
         """
         messages = state.data.get("messages") or []
+        start = _fresh_tool_results_start(messages)
+        if start >= len(messages):
+            return
         store = self._resolve_store(state)
-        rewritten: list[ChatMessage] = []
+        rewritten: list[ChatMessage] = list(messages[:start])
         changed = False
-        for message in messages:
-            new_message = self._maybe_offload(message, store, state)
+        for index, message in enumerate(messages[start:]):
+            new_message = self._maybe_offload(message, store, state, index)
             rewritten.append(new_message)
             changed = changed or new_message is not message
         if changed:
@@ -211,7 +238,7 @@ class ToolResultOffloadHook:
                 return policy
         return strategies.get("*")
 
-    def _maybe_offload(self, message: ChatMessage, store: ToolResultStore, state: State) -> ChatMessage:
+    def _maybe_offload(self, message: ChatMessage, store: ToolResultStore, state: State, index: int) -> ChatMessage:
         """
         Offload a single tool-result message if its policy opts in, otherwise return it unchanged.
 
@@ -224,6 +251,7 @@ class ToolResultOffloadHook:
         :param message: The message to consider offloading.
         :param store: The store to write the result to.
         :param state: The Agent's live `State`, passed to the policy and used to derive the store key.
+        :param index: The message's position within this step's batch of tool results, used to build the store key.
         :returns: An offloaded copy of the message, or the original message when it is not offloaded.
         """
         result = message.tool_call_result
@@ -254,7 +282,7 @@ class ToolResultOffloadHook:
         if not policy.should_offload(tool_name, text, state):
             return message
 
-        key = _result_store_key(tool_name, result.origin.id, state.data.get("step_count", 0))
+        key = _result_store_key(tool_name, result.origin.id, state.data.get("step_count", 0), index)
         reference = store.write(key=key, content=text)
         return ChatMessage.from_tool(
             tool_result=self._pointer(reference, text),
