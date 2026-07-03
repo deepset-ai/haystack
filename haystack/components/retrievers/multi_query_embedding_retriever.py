@@ -28,8 +28,9 @@ class MultiQueryEmbeddingRetriever:
     from haystack import Document
     from haystack.document_stores.in_memory import InMemoryDocumentStore
     from haystack.document_stores.types import DuplicatePolicy
-    from haystack.components.embedders import SentenceTransformersTextEmbedder
-    from haystack.components.embedders import SentenceTransformersDocumentEmbedder
+    # Requires: pip install sentence-transformers-haystack
+    from haystack_integrations.components.embedders.sentence_transformers import SentenceTransformersTextEmbedder
+    from haystack_integrations.components.embedders.sentence_transformers import SentenceTransformersDocumentEmbedder
     from haystack.components.retrievers import InMemoryEmbeddingRetriever
     from haystack.components.writers import DocumentWriter
     from haystack.components.retrievers import MultiQueryEmbeddingRetriever

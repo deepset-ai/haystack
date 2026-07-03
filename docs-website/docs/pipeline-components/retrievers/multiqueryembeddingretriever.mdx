@@ -64,10 +64,16 @@ Before running the pipeline, documents must be embedded using a Document Embedde
 <Tabs>
 <TabItem value="python" label="Python" default>
 
+The examples on this page use Sentence Transformers embedders that have moved to the `sentence-transformers-haystack` package. Install it to run the examples:
+
+```shell
+pip install sentence-transformers-haystack
+```
+
 ```python
 from haystack import Document, Pipeline
 from haystack.document_stores.in_memory import InMemoryDocumentStore
-from haystack.components.embedders import (
+from haystack_integrations.components.embedders.sentence_transformers import (
     SentenceTransformersTextEmbedder,
     SentenceTransformersDocumentEmbedder,
 )
@@ -138,7 +144,7 @@ components:
             init_parameters: {}
           top_k: 2
       query_embedder:
-        type: haystack.components.embedders.sentence_transformers_text_embedder.SentenceTransformersTextEmbedder
+        type: haystack_integrations.components.embedders.sentence_transformers.sentence_transformers_text_embedder.SentenceTransformersTextEmbedder
         init_parameters:
           model: sentence-transformers/all-MiniLM-L6-v2
 

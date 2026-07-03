@@ -23,7 +23,9 @@ class InMemoryEmbeddingRetriever:
     ### Usage example
     ```python
     from haystack import Document
-    from haystack.components.embedders import SentenceTransformersDocumentEmbedder, SentenceTransformersTextEmbedder
+    # Requires: pip install sentence-transformers-haystack
+    from haystack_integrations.components.embedders.sentence_transformers import SentenceTransformersDocumentEmbedder
+    from haystack_integrations.components.embedders.sentence_transformers import SentenceTransformersTextEmbedder
     from haystack.components.retrievers.in_memory import InMemoryEmbeddingRetriever
     from haystack.document_stores.in_memory import InMemoryDocumentStore
 

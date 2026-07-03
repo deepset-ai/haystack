@@ -15,7 +15,7 @@ A Hybrid Retriever uses both traditional keyword-based search (such as BM25) and
 
 |  |  |
 | --- | --- |
-| Most common position in a pipeline | 1. After a TextEmbedder and before a PromptBuilder in a RAG pipeline 2. The last component in a hybrid search pipeline 3. After a TextEmbedder and before an ExtractiveReader in an extractive QA pipeline |
+| Most common position in a pipeline | 1. After a TextEmbedder and before a PromptBuilder in a RAG pipeline 2. The last component in a hybrid search pipeline 3. After a TextEmbedder and before a TransformersExtractiveReader in an extractive QA pipeline |
 | Mandatory init variables | `document_store`: An instance of `OpenSearchDocumentStore` to use for retrieval  <br /> <br />`embedder`: Any [Embedder](../embedders.mdx) implementing the `TextEmbedder` protocol |
 | Mandatory run variables | `query`: A query string |
 | Output variables | `documents`: A list of documents matching the query |
@@ -83,9 +83,15 @@ docker run -d \\
   opensearchproject/opensearch:2.12.0
 ```
 
+The examples on this page use Sentence Transformers embedders that have moved to the `sentence-transformers-haystack` package. Install it to run the examples:
+
+```shell
+pip install sentence-transformers-haystack
+```
+
 ```python
 from haystack import Document
-from haystack.components.embedders import SentenceTransformersTextEmbedder, SentenceTransformersDocumentEmbedder
+from haystack_integrations.components.embedders.sentence_transformers import SentenceTransformersTextEmbedder, SentenceTransformersDocumentEmbedder
 from haystack_integrations.components.retrievers.opensearch import OpenSearchHybridRetriever
 from haystack_integrations.document_stores.opensearch import OpenSearchDocumentStore
 

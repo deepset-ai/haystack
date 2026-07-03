@@ -96,9 +96,15 @@ Below is an example of a pipeline that embeds documents and stores them in an `I
 
 Note that the retriever must be configured with `return_embedding=True` so that documents have embeddings available for the ranker.
 
+The examples on this page use Sentence Transformers embedders that have moved to the `sentence-transformers-haystack` package. Install it to run the examples:
+
+```shell
+pip install sentence-transformers-haystack
+```
+
 ```python
 from haystack import Document, Pipeline
-from haystack.components.embedders import (
+from haystack_integrations.components.embedders.sentence_transformers import (
     SentenceTransformersDocumentEmbedder,
     SentenceTransformersTextEmbedder,
 )
