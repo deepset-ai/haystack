@@ -164,10 +164,13 @@ class ToolResultOffloadHook:
     warning is logged when such a result has a matching offload policy; supporting only text is a deliberate choice
     for now. Each result is offloaded at most once, even though the hook runs on every tool step.
 
-    For server settings where the store is request-scoped (e.g. an isolated sandbox filesystem), pass it per run via
-    the Agent's `hook_context` under the key `RESULT_STORE_CONTEXT_KEY`
-    (`agent.run(messages=[...], hook_context={RESULT_STORE_CONTEXT_KEY: my_store})`); it overrides the store the hook
-    was constructed with.
+    The hook keeps no mutable state, so a single instance can be shared across concurrent runs. The constructor
+    `store`, however, is shared by every run that does not override it — fine for single-user or local use, but in a
+    multi-user server give each run its own isolated store (a per-session directory or sandbox) via `hook_context`
+    under the key `RESULT_STORE_CONTEXT_KEY`
+    (`agent.run(messages=[...], hook_context={RESULT_STORE_CONTEXT_KEY: per_request_store})`); it overrides the
+    constructor store for that run. Isolating the store per run keeps concurrent users from colliding on store keys or
+    reading each other's offloaded results — important especially when a bash/read tool is scoped to the store.
     """
 
     allowed_hook_points = ("after_tool",)
@@ -200,8 +203,18 @@ class ToolResultOffloadHook:
         left untouched. Offloads each of those messages its policy opts in for, and writes the rewritten conversation
         back to `messages` only if at least one message changed.
 
-        :param state: The Agent's live `State`. Reads the per-run store override from `hook_context` and rewrites the
-            offloaded tool-result messages back into `messages`.
+        Results are written to the store this run resolves to: a per-run store passed in `state`'s `hook_context`
+        under `RESULT_STORE_CONTEXT_KEY` if present, otherwise the store the hook was constructed with. Supply the
+        per-run store when calling the Agent, e.g.
+        `agent.run(messages=[...], hook_context={RESULT_STORE_CONTEXT_KEY: per_request_store})`. In a multi-user
+        server, pass an isolated store per run this way so concurrent users write to separate locations and never
+        read each other's results.
+
+        The hook keeps no mutable state, so a single instance is safe to share across concurrent runs; isolation
+        comes entirely from giving each run its own store via `hook_context`.
+
+        :param state: The Agent's live `State`. Reads the per-run store from `hook_context` and rewrites the offloaded
+            tool-result messages back into `messages`.
         :returns: None. The hook mutates `state` in place.
         """
         messages = state.data.get("messages") or []

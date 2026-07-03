@@ -20,7 +20,9 @@ features:
 
     - ``FileSystemToolResultStore`` writes results to the local file system.
     - Implement the ``ToolResultStore`` protocol to target other backends.
-    - For request-scoped stores in server settings, pass a store per run via the Agent's ``hook_context``.
+    - The hook is stateless and can be shared across concurrent runs. In a multi-user server, pass an isolated store
+      per run via the Agent's ``hook_context`` (``hook_context={RESULT_STORE_CONTEXT_KEY: per_request_store}``) so
+      concurrent users write to separate locations and never read each other's results.
 
     What is offloaded:
 

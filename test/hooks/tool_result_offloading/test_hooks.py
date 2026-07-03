@@ -186,6 +186,26 @@ class TestToolResultOffloadHookBehavior:
         assert "8 characters" in pointer
         assert "ABCDE..." in pointer
 
+    def test_concurrent_runs_are_isolated_by_per_run_store(self, tmp_path):
+        # One shared hook instance, two runs each supplying its own store via hook_context. Even with identical store
+        # keys (same tool, id and step), each run writes to and reads from its own store — no cross-run collision.
+        hook = ToolResultOffloadHook(
+            store=FileSystemToolResultStore(root=tmp_path / "shared"), offload_strategies={"*": AlwaysOffload()}
+        )
+        store_a = FileSystemToolResultStore(root=tmp_path / "a")
+        store_b = FileSystemToolResultStore(root=tmp_path / "b")
+        state_a = _state_with_messages([_tool_message("t", "AAA" * 20, call_id="x")])
+        state_a.data["hook_context"] = {RESULT_STORE_CONTEXT_KEY: store_a}
+        state_b = _state_with_messages([_tool_message("t", "BBB" * 20, call_id="x")])
+        state_b.data["hook_context"] = {RESULT_STORE_CONTEXT_KEY: store_b}
+        hook.run(state_a)
+        hook.run(state_b)
+        ref_a = state_a.data["messages"][0].meta["tool_result_offloaded"]
+        ref_b = state_b.data["messages"][0].meta["tool_result_offloaded"]
+        assert store_a.read(ref_a) == "AAA" * 20
+        assert store_b.read(ref_b) == "BBB" * 20
+        assert not (tmp_path / "shared").exists()
+
     def test_hook_context_store_overrides_constructor_store(self, tmp_path):
         default_store = FileSystemToolResultStore(root=tmp_path / "default")
         request_store = FileSystemToolResultStore(root=tmp_path / "request")
