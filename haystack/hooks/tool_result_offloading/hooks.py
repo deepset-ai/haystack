@@ -130,6 +130,7 @@ class ToolResultOffloadHook:
 
     ```python
     from haystack.components.agents import Agent
+    from haystack.components.generators.chat import OpenAIChatGenerator
     from haystack.hooks.tool_result_offloading import (
         AlwaysOffload,
         FileSystemToolResultStore,
@@ -147,7 +148,11 @@ class ToolResultOffloadHook:
             "*": OffloadOverChars(8000),            # wildcard default for any unlisted tool
         },
     )
-    agent = Agent(chat_generator=..., tools=[...], hooks={"after_tool": [hook]})
+    agent = Agent(
+        chat_generator=OpenAIChatGenerator(model="gpt-5.4-nano"),
+        tools=[web_search, get_time, read_file, list_dir],
+        hooks={"after_tool": [hook]},
+    )
     ```
 
     A key may be a single tool name, a tuple of tool names sharing one policy, or the wildcard `"*"` which applies to

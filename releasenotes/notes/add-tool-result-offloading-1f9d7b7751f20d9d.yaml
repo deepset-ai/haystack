@@ -32,15 +32,32 @@ features:
 
     .. code-block:: python
 
+        from typing import Annotated
+
         from haystack.components.agents import Agent
+        from haystack.components.generators.chat import OpenAIChatGenerator
+        from haystack.dataclasses import ChatMessage
         from haystack.hooks.tool_result_offloading import (
             FileSystemToolResultStore,
             OffloadOverChars,
             ToolResultOffloadHook,
         )
+        from haystack.tools import tool
 
-        hook = ToolResultOffloadHook(
+
+        @tool
+        def search(query: Annotated[str, "The search query"]) -> str:
+            """Search the web and return the (potentially large) results."""
+            return f"... large result for {query} ..."
+
+
+        offload_hook = ToolResultOffloadHook(
             store=FileSystemToolResultStore(root="tool_results"),
             offload_strategies={"*": OffloadOverChars(4000)},
         )
-        agent = Agent(chat_generator=..., tools=[...], hooks={"after_tool": [hook]})
+        agent = Agent(
+            chat_generator=OpenAIChatGenerator(model="gpt-5.4-nano"),
+            tools=[search],
+            hooks={"after_tool": [offload_hook]},
+        )
+        agent.run(messages=[ChatMessage.from_user("Summarize today's tech news")])
