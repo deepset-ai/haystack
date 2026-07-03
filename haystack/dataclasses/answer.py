@@ -5,7 +5,6 @@
 from dataclasses import asdict, dataclass, field
 from typing import Any, Optional, Protocol, runtime_checkable
 
-from haystack.core.serialization import default_from_dict, default_to_dict
 from haystack.dataclasses import ChatMessage, Document
 from haystack.utils.dataclasses import _warn_on_inplace_mutation
 
@@ -54,20 +53,16 @@ class ExtractedAnswer:
         :returns:
             Serialized dictionary representation of the object.
         """
-        document = self.document.to_dict(flatten=False) if self.document is not None else None
-        document_offset = asdict(self.document_offset) if self.document_offset is not None else None
-        context_offset = asdict(self.context_offset) if self.context_offset is not None else None
-        return default_to_dict(
-            self,
-            data=self.data,
-            query=self.query,
-            document=document,
-            context=self.context,
-            score=self.score,
-            document_offset=document_offset,
-            context_offset=context_offset,
-            meta=self.meta,
-        )
+        return {
+            "data": self.data,
+            "query": self.query,
+            "document": self.document.to_dict(flatten=False) if self.document is not None else None,
+            "context": self.context,
+            "score": self.score,
+            "document_offset": asdict(self.document_offset) if self.document_offset is not None else None,
+            "context_offset": asdict(self.context_offset) if self.context_offset is not None else None,
+            "meta": self.meta,
+        }
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "ExtractedAnswer":
@@ -79,16 +74,32 @@ class ExtractedAnswer:
         :returns:
             Deserialized object.
         """
-        init_params = data.get("init_parameters", {})
-        if (doc := init_params.get("document")) is not None:
-            data["init_parameters"]["document"] = Document.from_dict(doc)
+        # backward compat: old format wrapped fields in init_parameters
+        if "init_parameters" in data:
+            data = data["init_parameters"]
 
-        if (offset := init_params.get("document_offset")) is not None:
-            data["init_parameters"]["document_offset"] = ExtractedAnswer.Span(**offset)
+        document = data.get("document")
+        if document is not None:
+            document = Document.from_dict(document)
 
-        if (offset := init_params.get("context_offset")) is not None:
-            data["init_parameters"]["context_offset"] = ExtractedAnswer.Span(**offset)
-        return default_from_dict(cls, data)
+        document_offset = data.get("document_offset")
+        if document_offset is not None:
+            document_offset = ExtractedAnswer.Span(**document_offset)
+
+        context_offset = data.get("context_offset")
+        if context_offset is not None:
+            context_offset = ExtractedAnswer.Span(**context_offset)
+
+        return cls(
+            data=data.get("data"),
+            query=data["query"],
+            score=data["score"],
+            document=document,
+            context=data.get("context"),
+            document_offset=document_offset,
+            context_offset=context_offset,
+            meta=data.get("meta", {}),
+        )
 
 
 @_warn_on_inplace_mutation
@@ -110,17 +121,18 @@ class GeneratedAnswer:
         :returns:
             Serialized dictionary representation of the object.
         """
-        documents = [doc.to_dict(flatten=False) for doc in self.documents]
-
-        # Serialize ChatMessage objects to dicts
+        # all_messages is either a list of ChatMessage objects or a list of strings
         meta = self.meta
         all_messages = meta.get("all_messages")
-
-        # all_messages is either a list of ChatMessage objects or a list of strings
         if all_messages and isinstance(all_messages[0], ChatMessage):
             meta = {**meta, "all_messages": [msg.to_dict() for msg in all_messages]}
 
-        return default_to_dict(self, data=self.data, query=self.query, documents=documents, meta=meta)
+        return {
+            "data": self.data,
+            "query": self.query,
+            "documents": [doc.to_dict(flatten=False) for doc in self.documents],
+            "meta": meta,
+        }
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "GeneratedAnswer":
@@ -133,14 +145,15 @@ class GeneratedAnswer:
         :returns:
             Deserialized object.
         """
-        init_params = data.get("init_parameters", {})
+        # backward compatibility: old format wrapped fields in init_parameters
+        if "init_parameters" in data:
+            data = data["init_parameters"]
 
-        if (documents := init_params.get("documents")) is not None:
-            init_params["documents"] = [Document.from_dict(d) for d in documents]
+        documents = [Document.from_dict(d) for d in data.get("documents", [])]
 
-        meta = init_params.get("meta", {})
+        # copy to avoid mutating the caller's input dict when converting all_messages
+        meta = dict(data.get("meta", {}))
         if (all_messages := meta.get("all_messages")) and isinstance(all_messages[0], dict):
             meta["all_messages"] = [ChatMessage.from_dict(m) for m in all_messages]
-        init_params["meta"] = meta
 
-        return default_from_dict(cls, data)
+        return cls(data=data["data"], query=data["query"], documents=documents, meta=meta)

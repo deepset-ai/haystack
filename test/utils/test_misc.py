@@ -70,6 +70,7 @@ class TestReciprocalRankFusion:
         docs = [Document(id="a"), Document(id="b"), Document(id="c")]
         result = _reciprocal_rank_fusion([docs])
         by_id = {doc.id: doc.score for doc in result}
+        assert by_id["a"] is not None and by_id["b"] is not None and by_id["c"] is not None
         assert by_id["a"] > by_id["b"] > by_id["c"]
 
     def test_deduplicates_across_lists(self):
@@ -85,6 +86,7 @@ class TestReciprocalRankFusion:
         result = _reciprocal_rank_fusion([docs_a, docs_b])
         by_id = {doc.id: doc.score for doc in result}
         # "a" is ranked 1st and 2nd; "c" is ranked 3rd and 1st — "a" should win
+        assert by_id["a"] is not None and by_id["c"] is not None
         assert by_id["a"] > by_id["c"]
 
     def test_equal_weights_by_default(self):
@@ -103,6 +105,7 @@ class TestReciprocalRankFusion:
         weighted_by_id = {doc.id: doc.score for doc in result_weighted}
         # with equal weights both docs score the same; with heavy weight on list_a, "a" should outscore "b"
         assert equal_by_id["a"] == pytest.approx(equal_by_id["b"])
+        assert weighted_by_id["a"] is not None and weighted_by_id["b"] is not None
         assert weighted_by_id["a"] > weighted_by_id["b"]
 
 
