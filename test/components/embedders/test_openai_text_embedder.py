@@ -18,7 +18,7 @@ class TestOpenAITextEmbedder:
         embedder = OpenAITextEmbedder()
 
         assert embedder.client.api_key == "fake-api-key"
-        assert embedder.model == "text-embedding-ada-002"
+        assert embedder.model == "text-embedding-3-small"
         assert embedder.api_base_url is None
         assert embedder.organization is None
         assert embedder.prefix == ""
@@ -83,7 +83,7 @@ class TestOpenAITextEmbedder:
                 "api_key": {"env_vars": ["OPENAI_API_KEY"], "strict": True, "type": "env_var"},
                 "api_base_url": None,
                 "dimensions": None,
-                "model": "text-embedding-ada-002",
+                "model": "text-embedding-3-small",
                 "organization": None,
                 "http_client_kwargs": None,
                 "prefix": "",
@@ -153,7 +153,7 @@ class TestOpenAITextEmbedder:
         inp = "The food was delicious"
         prepared_input = embedder._prepare_input(inp)
         assert prepared_input == {
-            "model": "text-embedding-ada-002",
+            "model": "text-embedding-3-small",
             "input": "The food was delicious",
             "encoding_format": "float",
             "dimensions": 1536,

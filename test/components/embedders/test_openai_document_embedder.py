@@ -19,7 +19,7 @@ class TestOpenAIDocumentEmbedder:
         monkeypatch.setenv("OPENAI_API_KEY", "fake-api-key")
         embedder = OpenAIDocumentEmbedder()
         assert embedder.api_key.resolve_value() == "fake-api-key"
-        assert embedder.model == "text-embedding-ada-002"
+        assert embedder.model == "text-embedding-3-small"
         assert embedder.organization is None
         assert embedder.prefix == ""
         assert embedder.suffix == ""
@@ -98,7 +98,7 @@ class TestOpenAIDocumentEmbedder:
             "init_parameters": {
                 "api_key": {"env_vars": ["OPENAI_API_KEY"], "strict": True, "type": "env_var"},
                 "api_base_url": None,
-                "model": "text-embedding-ada-002",
+                "model": "text-embedding-3-small",
                 "dimensions": None,
                 "organization": None,
                 "http_client_kwargs": None,

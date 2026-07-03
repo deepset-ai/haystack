@@ -42,7 +42,7 @@ class OpenAIDocumentEmbedder:
     def __init__(  # noqa: PLR0913 (too-many-arguments)
         self,
         api_key: Secret = Secret.from_env_var("OPENAI_API_KEY"),
-        model: str = "text-embedding-ada-002",
+        model: str = "text-embedding-3-small",
         dimensions: int | None = None,
         api_base_url: str | None = None,
         organization: str | None = None,
@@ -71,7 +71,7 @@ class OpenAIDocumentEmbedder:
             during initialization.
         :param model:
             The name of the model to use for calculating embeddings.
-            The default model is `text-embedding-ada-002`.
+            The default model is `text-embedding-3-small`.
         :param dimensions:
             The number of dimensions of the resulting embeddings. Only `text-embedding-3` and
             later models support this parameter.

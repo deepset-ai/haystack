@@ -38,7 +38,7 @@ class AzureOpenAITextEmbedder(OpenAITextEmbedder):
         self,
         azure_endpoint: str | None = None,
         api_version: str | None = "2023-05-15",
-        azure_deployment: str = "text-embedding-ada-002",
+        azure_deployment: str = "text-embedding-3-small",
         dimensions: int | None = None,
         api_key: Secret | None = Secret.from_env_var("AZURE_OPENAI_API_KEY", strict=False),
         azure_ad_token: Secret | None = Secret.from_env_var("AZURE_OPENAI_AD_TOKEN", strict=False),
@@ -60,7 +60,7 @@ class AzureOpenAITextEmbedder(OpenAITextEmbedder):
         :param api_version:
             The version of the API to use.
         :param azure_deployment:
-            The name of the model deployed on Azure. The default model is text-embedding-ada-002.
+            The name of the model deployed on Azure. The default is `text-embedding-3-small`.
         :param dimensions:
             The number of dimensions the resulting output embeddings should have. Only supported in text-embedding-3
             and later models.
