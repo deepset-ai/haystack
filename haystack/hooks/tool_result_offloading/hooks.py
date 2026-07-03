@@ -16,8 +16,9 @@ from haystack.utils.deserialization import deserialize_component_inplace
 
 logger = logging.getLogger(__name__)
 
-# Meta key marking an already-offloaded tool-result message, so re-running the hook on later steps does not offload
-# the same result twice.
+# Meta key marking an already-offloaded tool-result message (its value is the store reference). The offloaded pointer
+# is itself a tool result in the trailing block the hook scans, so this marker stops a second offload hook registered
+# under `after_tool` from offloading the pointer text again and writing a junk file.
 _OFFLOADED_META_KEY = "tool_result_offloaded"
 
 # Key under which a per-run store override may be supplied via the Agent's `hook_context` (e.g. a request-scoped
@@ -243,10 +244,12 @@ class ToolResultOffloadHook:
         Offload a single tool-result message if its policy opts in, otherwise return it unchanged.
 
         A message is left as-is when it is not a tool result, when the result is an error (including `before_tool`
-        rejections), when it was already offloaded in an earlier step, when no policy applies, when the result is
-        non-text (contains image or file content), or when the policy declines to offload. Otherwise the result text
-        is written to `store` and the message is rebuilt with a pointer in place of the full result, preserving its
-        origin and error flag and marking it offloaded.
+        rejections), when it was already offloaded (e.g. another offload hook under `after_tool` handled it), when no
+        policy applies, when the result is non-text (contains image or file content), or when the policy declines to
+        offload.
+
+        Otherwise the result text is written to `store` and the message is rebuilt with a pointer in place of the full
+        result, preserving its origin and error flag and marking it offloaded.
 
         :param message: The message to consider offloading.
         :param store: The store to write the result to.
@@ -255,8 +258,8 @@ class ToolResultOffloadHook:
         :returns: An offloaded copy of the message, or the original message when it is not offloaded.
         """
         result = message.tool_call_result
-        # Only successful tool output is offloaded - never errors, before_tool rejections, or a result already offloaded
-        # in an earlier step.
+        # Only successful tool output is offloaded - never errors, before_tool rejections, or a result already
+        # offloaded (guards against a second offload hook re-offloading the first one's pointer).
         if result is None or result.error or message.meta.get(_OFFLOADED_META_KEY):
             return message
 

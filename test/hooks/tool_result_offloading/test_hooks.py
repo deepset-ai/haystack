@@ -160,15 +160,17 @@ class TestToolResultOffloadHookBehavior:
         assert out[2].tool_call_result.result.startswith("Tool result offloaded")
         assert len(list(Path(tmp_path).iterdir())) == 1
 
-    def test_offloading_is_idempotent_across_runs(self, tmp_path):
-        hook = ToolResultOffloadHook(
-            store=FileSystemToolResultStore(root=tmp_path), offload_strategies={"*": AlwaysOffload()}
-        )
+    def test_second_offload_hook_does_not_reoffload_pointer(self, tmp_path):
+        # Two offload hooks under `after_tool` run in sequence on the same state. The first offloads the result and
+        # marks it; the `_OFFLOADED_META_KEY` marker stops the second from offloading the pointer text again.
+        store = FileSystemToolResultStore(root=tmp_path)
+        first_hook = ToolResultOffloadHook(store=store, offload_strategies={"*": AlwaysOffload()})
+        second_hook = ToolResultOffloadHook(store=store, offload_strategies={"*": AlwaysOffload()})
         state = _state_with_messages([_tool_message("a", "A" * 50)])
-        hook.run(state)
-        first = state.data["messages"][0].tool_call_result.result
-        hook.run(state)
-        assert state.data["messages"][0].tool_call_result.result == first
+        first_hook.run(state)
+        pointer = state.data["messages"][0].tool_call_result.result
+        second_hook.run(state)
+        assert state.data["messages"][0].tool_call_result.result == pointer
         assert len(list(Path(tmp_path).iterdir())) == 1
 
     def test_pointer_contains_reference_size_and_preview(self, tmp_path):
