@@ -3,12 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from haystack.components.agents.state.state import State
-from haystack.hooks.tool_result_offloading import AlwaysOffload, CallableOffloadPolicy, NeverOffload, OffloadOverChars
-
-
-# Module-level so it is serializable by CallableOffloadPolicy.
-def _offload_web_results(tool_name: str, result: str, state: State) -> bool:
-    return tool_name == "web_search" and len(result) > 5
+from haystack.hooks.tool_result_offloading import AlwaysOffload, NeverOffload, OffloadOverChars
 
 
 class TestOffloadPolicies:
@@ -26,12 +21,3 @@ class TestOffloadPolicies:
     def test_offload_over_chars_roundtrip(self):
         restored = OffloadOverChars.from_dict(OffloadOverChars(threshold=42).to_dict())
         assert restored.threshold == 42
-
-    def test_callable_policy_delegates(self):
-        policy = CallableOffloadPolicy(condition=_offload_web_results)
-        assert policy.should_offload("web_search", "long result", State(schema={})) is True
-        assert policy.should_offload("other", "long result", State(schema={})) is False
-
-    def test_callable_policy_roundtrip(self):
-        restored = CallableOffloadPolicy.from_dict(CallableOffloadPolicy(condition=_offload_web_results).to_dict())
-        assert restored.should_offload("web_search", "long result", State(schema={})) is True

@@ -154,8 +154,10 @@ class ToolResultOffloadHook:
     any tool without a more specific entry. More specific keys win. A tool with no matching key (and no `"*"`) is not
     offloaded.
 
-    Only real, successful tool output is offloaded — results flagged as errors (including `before_tool` rejections)
-    are always left in context. Each result is offloaded at most once, even though the hook runs on every tool step.
+    Only successful, text tool output is offloaded. Error results (including `before_tool` human-in-the-loop
+    rejections) are always left in context. Non-text results (image or file content) are also left in context, and a
+    warning is logged when such a result has a matching offload policy; supporting only text is a deliberate choice
+    for now. Each result is offloaded at most once, even though the hook runs on every tool step.
 
     For server settings where the store is request-scoped (e.g. an isolated sandbox filesystem), pass it per run via
     the Agent's `hook_context` under the key `RESULT_STORE_CONTEXT_KEY`
@@ -244,9 +246,9 @@ class ToolResultOffloadHook:
         Offload a single tool-result message if its policy opts in, otherwise return it unchanged.
 
         A message is left as-is when it is not a tool result, when the result is an error (including `before_tool`
-        rejections), when it was already offloaded (e.g. another offload hook under `after_tool` handled it), when no
-        policy applies, when the result is non-text (contains image or file content), or when the policy declines to
-        offload.
+        human-in-the-loop rejections), when it was already offloaded (e.g. another offload hook under `after_tool`
+        handled it), when no policy applies, when the result is non-text (contains image or file content), or when the
+        policy declines to offload.
 
         Otherwise the result text is written to `store` and the message is rebuilt with a pointer in place of the full
         result, preserving its origin and error flag and marking it offloaded.
@@ -258,8 +260,8 @@ class ToolResultOffloadHook:
         :returns: An offloaded copy of the message, or the original message when it is not offloaded.
         """
         result = message.tool_call_result
-        # Only successful tool output is offloaded - never errors, before_tool rejections, or a result already
-        # offloaded (guards against a second offload hook re-offloading the first one's pointer).
+        # Only successful tool output is offloaded - never errors, before_tool human-in-the-loop rejections, or a
+        # result already offloaded (guards against a second offload hook re-offloading the first one's pointer).
         if result is None or result.error or message.meta.get(_OFFLOADED_META_KEY):
             return message
 
@@ -270,8 +272,9 @@ class ToolResultOffloadHook:
         if policy is None:
             return message
 
-        # Offloading currently only supports text results (a string or a sequence of TextContent); leave results
-        # containing image or file content in context.
+        # A policy matched, so an offload was wanted. Offloading only supports text results (a string or a sequence
+        # of TextContent) for now, by design; leave image/file content in context and warn since the intent was to
+        # offload it.
         text = _offloadable_text(result.result)
         if text is None:
             logger.warning(

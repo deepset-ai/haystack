@@ -2,13 +2,11 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from collections.abc import Callable
 from typing import Any
 
 from haystack.components.agents.state.state import State
-from haystack.core.serialization import default_from_dict, default_to_dict
+from haystack.core.serialization import default_to_dict
 from haystack.hooks.tool_result_offloading.types import OffloadPolicy
-from haystack.utils.callable_serialization import deserialize_callable, serialize_callable
 
 
 class AlwaysOffload(OffloadPolicy):
@@ -70,46 +68,3 @@ class OffloadOverChars(OffloadPolicy):
         :returns: A dictionary representation of the policy.
         """
         return default_to_dict(self, threshold=self.threshold)
-
-
-class CallableOffloadPolicy(OffloadPolicy):
-    """Offload based on a user-supplied `(tool_name, result, state) -> bool` condition."""
-
-    def __init__(self, condition: Callable[[str, str, State], bool]) -> None:
-        """
-        Initialize the policy with its condition callable.
-
-        :param condition: Callable receiving the tool name, the result string, and the live `State`; return True to
-            offload. It must be serializable (a module-level function or an importable callable).
-        """
-        self.condition = condition
-
-    def should_offload(self, tool_name: str, result: str, state: State) -> bool:
-        """
-        Delegate the offload decision to the wrapped condition.
-
-        :param tool_name: The name of the tool that produced the result.
-        :param result: The tool result string.
-        :param state: The Agent's live `State`.
-        :returns: Whatever the wrapped condition returns for these arguments.
-        """
-        return self.condition(tool_name, result, state)
-
-    def to_dict(self) -> dict[str, Any]:
-        """
-        Serialize the policy, encoding its condition callable.
-
-        :returns: A dictionary representation of the policy.
-        """
-        return default_to_dict(self, condition=serialize_callable(self.condition))
-
-    @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "CallableOffloadPolicy":
-        """
-        Deserialize the policy, restoring its condition callable.
-
-        :param data: A dictionary representation produced by `to_dict`.
-        :returns: The deserialized `CallableOffloadPolicy`.
-        """
-        data["init_parameters"]["condition"] = deserialize_callable(data["init_parameters"]["condition"])
-        return default_from_dict(cls, data)

@@ -2,22 +2,33 @@
 features:
   - |
     Added tool result offloading for the ``Agent`` via the new ``haystack.hooks.tool_result_offloading`` module.
-    ``ToolResultOffloadHook`` is an ``after_tool`` hook that writes selected tool results to a ``ToolResultStore`` and
-    replaces them in the conversation with a compact pointer (reference plus a short preview), so the next LLM call
-    sees a reference instead of the full result. This helps manage the context window and is a step towards letting an
-    Agent operate on offloaded results with follow-up tools (e.g. a bash tool reading the referenced files).
+    ``ToolResultOffloadHook`` is an ``after_tool`` hook that writes selected tool results to a store and replaces
+    them in the conversation with a compact pointer (a reference plus a short preview). The next LLM call sees the
+    reference instead of the full result, which helps manage the context window and is a step towards letting an
+    Agent operate on offloaded results with follow-up tools (e.g. a bash tool that reads the referenced files).
 
-    Which tools offload, and under what condition, is configured per tool via ``offload_strategies``, mapping a tool
-    name (or a tuple of tool names, or the wildcard ``"*"``) to an ``OffloadPolicy``: ``AlwaysOffload``,
-    ``NeverOffload``, ``OffloadOverChars`` (offload when the result exceeds a character threshold), or
-    ``CallableOffloadPolicy`` (a custom condition). More specific keys win over the ``"*"`` default. The module ships
-    ``FileSystemToolResultStore`` for writing results to the local file system; implement the ``ToolResultStore``
-    protocol to target other backends. For request-scoped stores in server settings, pass a store per run via the
-    Agent's ``hook_context``.
+    Configure what gets offloaded, per tool, via ``offload_strategies``:
 
-    Only real, successful text results are offloaded: error results (including ``before_tool`` rejections) are left in
-    context, non-string (multimodal) results are left in context with a warning, and each result is offloaded at most
-    once.
+    - Map a tool name, a tuple of tool names, or the wildcard ``"*"`` to an ``OffloadPolicy``. More specific keys
+      win over ``"*"``; a tool with no matching key is not offloaded.
+    - Built-in policies: ``AlwaysOffload``, ``NeverOffload``, and ``OffloadOverChars`` (offload when the result
+      exceeds a character threshold).
+    - For custom conditions, implement the ``OffloadPolicy`` protocol (it provides default ``to_dict``/``from_dict``,
+      so a stateless policy only needs a ``should_offload`` method).
+
+    Choose where results are stored:
+
+    - ``FileSystemToolResultStore`` writes results to the local file system.
+    - Implement the ``ToolResultStore`` protocol to target other backends.
+    - For request-scoped stores in server settings, pass a store per run via the Agent's ``hook_context``.
+
+    What is offloaded:
+
+    - Only successful, text results are offloaded. Error results (including ``before_tool`` human-in-the-loop
+      rejections) are left in context.
+    - Non-text results (image or file content) are left in context; supporting only text is a deliberate choice for
+      now. A warning is logged when a non-text result has a matching offload policy.
+    - Each result is offloaded at most once.
 
     .. code-block:: python
 
