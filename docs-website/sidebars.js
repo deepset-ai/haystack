@@ -156,6 +156,7 @@ export default {
           label: 'Agents',
           items: [
             'pipeline-components/agents-1/agent',
+            'pipeline-components/agents-1/hooks',
             'pipeline-components/agents-1/human-in-the-loop',
             'pipeline-components/agents-1/state',
           ],
