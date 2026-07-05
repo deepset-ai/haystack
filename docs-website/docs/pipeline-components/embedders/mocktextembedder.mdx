@@ -1,0 +1,94 @@
+---
+title: "MockTextEmbedder"
+id: mocktextembedder
+slug: "/mocktextembedder"
+description: "A Text Embedder that returns deterministic embeddings without calling any API, for tests and quick prototypes."
+---
+
+# MockTextEmbedder
+
+A Text Embedder that returns deterministic embeddings without calling any API, for tests and quick prototypes.
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | In place of a real Text Embedder, in tests and prototypes |
+| **Mandatory init variables** | None |
+| **Mandatory run variables** | `text`: A string |
+| **Output variables** | `embedding`: A list of float numbers  <br /> <br />`meta`: A dictionary of metadata |
+| **API reference** | [Embedders](/reference/embedders-api) |
+| **GitHub link** | https://github.com/deepset-ai/haystack/blob/main/haystack/components/embedders/mock_text_embedder.py |
+| **Package name** | `haystack-ai` |
+
+</div>
+
+## Overview
+
+`MockTextEmbedder` is a deterministic, zero-cost drop-in replacement for real Text Embedders such as `OpenAITextEmbedder`. It implements the full embedder interface — `run`, `run_async`, and serialization — but never contacts an external service, which makes it ideal for unit tests, smoke tests, and quick prototypes.
+
+The embedding is selected based on how the component is configured:
+
+- **Deterministic (default)**: With no configuration, the embedding is derived from a stable hash of the input text. The same text always yields the same unit-length embedding, and different texts yield different embeddings, so the mock works in retrieval pipelines and is reproducible across runs and processes.
+- **Fixed embedding**: Pass an `embedding` vector. The same vector is returned for every input.
+- **Dynamic embedding**: Pass an `embedding_fn` callable that receives the prepared text (after `prefix`/`suffix` are applied) and returns the embedding. To support serialization, pass a named function — lambdas and nested functions cannot be serialized.
+
+`embedding` and `embedding_fn` are mutually exclusive.
+
+Further optional parameters:
+
+- `dimension`: The number of dimensions of the deterministic embedding. Defaults to `768`. Ignored when `embedding` or `embedding_fn` is provided, since their length is determined by the value or callable.
+- `model`: The model name reported in the metadata. Purely cosmetic — no model is loaded. Defaults to `"mock-model"`.
+- `meta`: Additional metadata merged into the output `meta`.
+- `prefix` / `suffix`: Strings added to the beginning and end of the text before embedding, mirroring real embedders.
+
+:::info
+The deterministic embeddings are derived from a hash, not from meaning: identical texts get identical vectors, but the similarity between different texts is arbitrary (though stable). For exact-match retrieval in tests this is exactly what you want; do not expect semantically similar texts to end up close together.
+:::
+
+Use `MockTextEmbedder` for queries and its counterpart [`MockDocumentEmbedder`](mockdocumentembedder.mdx) for documents — with the default deterministic mode, a query whose text matches a document's content produces the same vector, so the document is retrieved as the top hit.
+
+## Usage
+
+### On its own
+
+```python
+from haystack.components.embedders import MockTextEmbedder
+
+embedder = MockTextEmbedder(dimension=8)
+result = embedder.run("I love pizza!")
+print(result["embedding"])  # a deterministic list of 8 floats
+```
+
+### In a pipeline
+
+A retrieval pipeline built with mock embedders runs without any API key and always returns the same result for the same input:
+
+```python
+from haystack import Document, Pipeline
+from haystack.components.embedders import MockDocumentEmbedder, MockTextEmbedder
+from haystack.components.retrievers.in_memory import InMemoryEmbeddingRetriever
+from haystack.document_stores.in_memory import InMemoryDocumentStore
+
+document_store = InMemoryDocumentStore()
+documents = [
+    Document(content="My name is Wolfgang and I live in Berlin"),
+    Document(content="I saw a black horse running"),
+]
+
+indexed = MockDocumentEmbedder(dimension=8).run(documents=documents)
+document_store.write_documents(indexed["documents"])
+
+query_pipeline = Pipeline()
+query_pipeline.add_component("text_embedder", MockTextEmbedder(dimension=8))
+query_pipeline.add_component(
+    "retriever",
+    InMemoryEmbeddingRetriever(document_store=document_store),
+)
+query_pipeline.connect("text_embedder.embedding", "retriever.query_embedding")
+
+result = query_pipeline.run(
+    {"text_embedder": {"text": "I saw a black horse running"}},
+)
+print(result["retriever"]["documents"][0].content)  # "I saw a black horse running"
+```
