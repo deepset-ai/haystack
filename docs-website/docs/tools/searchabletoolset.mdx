@@ -46,6 +46,8 @@ subsequent iterations.
 `SearchableToolset` does not support adding new tools after initialization or merging with other toolsets. Use `catalog` to provide all tools upfront.
 :::
 
+All tool names in the catalog must be unique. `warm_up()` raises a `ValueError` if the catalog contains tools with duplicate names, since a search hit could otherwise resolve to the wrong tool.
+
 ## Usage
 
 ### Basic usage with an Agent
