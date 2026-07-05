@@ -67,6 +67,10 @@ The schema defines what data can be stored and how values are updated. Each sche
 
 If you don't specify a handler, State automatically assigns a default based on the type.
 
+:::info Reserved keys
+The `Agent` manages some state keys itself and rejects them in a user-provided `state_schema` with a `ValueError`. This includes the run-metadata keys `step_count`, `token_usage`, and `tool_call_counts`, which the Agent populates automatically during a run: tools can read them mid-run via `inputs_from_state`, and they are returned in the result dictionary. If one of your state keys clashes, rename it (for example, `my_token_usage`).
+:::
+
 ### Default Handlers
 
 State provides two built-in merge behaviors (importable from `haystack.components.agents.state`):
