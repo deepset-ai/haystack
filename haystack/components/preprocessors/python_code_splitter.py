@@ -556,7 +556,8 @@ class PythonCodeSplitter:
             meta["secondary_split"] = True
             meta["secondary_split_index"] = idx
             meta["secondary_split_total"] = len(intermediate)
-            results.append(Document(content=piece.content or "", meta=meta))
+            content = piece.content or "" if idx == 0 else f"# {qualified_name}\n{piece.content or ''}"
+            results.append(Document(content=content, meta=meta))
         return results
 
     @component.output_types(documents=list[Document])
