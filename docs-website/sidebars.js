@@ -702,6 +702,7 @@ export default {
         'tools/mcptool',
         'tools/mcptoolset',
         'tools/searchabletoolset',
+        'tools/skilltoolset',
         {
           type: 'category',
           label: 'Ready-made Tools',
