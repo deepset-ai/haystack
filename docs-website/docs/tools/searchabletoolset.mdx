@@ -50,6 +50,8 @@ subsequent iterations.
 
 `SearchableToolset` builds its search index during `warm_up()`. When used with an [`Agent`](../pipeline-components/agents-1/agent.mdx), constructing the Agent does not trigger this — warm-up happens when you call `Agent.warm_up()` or automatically at run time.
 
+All tool names in the catalog must be unique: `warm_up()` raises a `ValueError` if the catalog contains tools with duplicate names, since a search hit could otherwise resolve to the wrong tool.
+
 The Agent evaluates its `exit_conditions` at runtime, so an exit condition can name any tool in the catalog, even one the agent has not discovered yet.
 
 ## Usage
