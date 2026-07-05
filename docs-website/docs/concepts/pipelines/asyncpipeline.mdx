@@ -26,7 +26,7 @@ The `AsyncPipeline` schedules components based on input readiness and dependency
 
 ### Execution Methods
 
-The `AsyncPipeline` offers three ways to run your pipeline:
+The `AsyncPipeline` offers four ways to run your pipeline:
 
 #### Synchronous Run (`run`)
 
@@ -39,6 +39,41 @@ Executes the pipeline in an asynchronous manner, allowing non-blocking execution
 #### Asynchronous Generator (`run_async_generator`)
 
 Allows step-by-step execution by yielding partial outputs as components complete their tasks. This is particularly useful for monitoring progress, debugging, and handling outputs incrementally. It differs from `run_async`, which executes the pipeline in a single async call.
+
+#### Streaming (`stream`)
+
+Runs the pipeline and returns a handle that streams [`StreamingChunk`](/reference/data-classes-api#streamingchunk) objects as they are produced — a convenient way to stream LLM output from an async application, such as an API endpoint. Iterate the handle with `async for` to consume the chunks; after iteration ends, `handle.result` holds the final pipeline output (the same dictionary returned by `run_async`).
+
+```python
+import asyncio
+
+from haystack import Pipeline
+from haystack.components.builders import ChatPromptBuilder
+from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.dataclasses import ChatMessage
+
+pipe = Pipeline()
+pipe.add_component(
+    "prompt_builder",
+    ChatPromptBuilder(template=[ChatMessage.from_user("Tell me about {{topic}}")]),
+)
+pipe.add_component("llm", OpenAIChatGenerator())
+pipe.connect("prompt_builder.prompt", "llm.messages")
+
+
+async def main():
+    handle = pipe.stream(data={"prompt_builder": {"topic": "Italy"}})
+    async for chunk in handle:
+        print(chunk.content, end="", flush=True)
+    return handle.result
+
+
+result = asyncio.run(main())
+```
+
+By default, chunks from every streaming-capable component are forwarded; pass `streaming_components` with a list of component names to stream only specific components. If the consumer abandons iteration, the underlying pipeline run is cancelled automatically; pass `cancel_on_abandon=False` to let it run to completion instead.
+
+If a `streaming_callback` is set on a component (at init or at runtime through `data`), it is still invoked for each chunk in addition to the chunks being pushed to the handle.
 
 In an `AsyncPipeline`, components such as A and B will run in parallel _only if they have no shared dependencies_ and can process inputs independently.
 
