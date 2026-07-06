@@ -136,6 +136,7 @@ class TestAgentBreakpoints:
                                 "outputs_to_string": None,
                                 "inputs_from_state": None,
                                 "outputs_to_state": None,
+                                "cacheable": False,
                             },
                         }
                     ],
@@ -198,6 +199,7 @@ class TestAgentBreakpoints:
                                 "outputs_to_string": None,
                                 "inputs_from_state": None,
                                 "outputs_to_state": None,
+                                "cacheable": False,
                             },
                         }
                     ],
@@ -270,6 +272,7 @@ class TestAgentBreakpoints:
                                 "outputs_to_string": None,
                                 "inputs_from_state": None,
                                 "outputs_to_state": None,
+                                "cacheable": False,
                             },
                         }
                     ],
@@ -368,6 +371,7 @@ class TestAgentBreakpoints:
                                 "outputs_to_string": None,
                                 "inputs_from_state": None,
                                 "outputs_to_state": None,
+                                "cacheable": False,
                             },
                         }
                     ],

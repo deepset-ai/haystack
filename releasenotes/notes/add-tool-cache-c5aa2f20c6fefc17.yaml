@@ -1,0 +1,7 @@
+features:
+  - |
+    Added an opt-in ``ToolCache`` for caching tool invocation results. Tools opt in via the new
+    ``Tool.cacheable`` field (defaults to ``False``); when a ``ToolCache`` is passed to ``ToolInvoker``
+    or ``Agent``, identical calls to a cacheable tool within the cache's TTL are served from cache instead
+    of re-invoked. ``Agent.run()``/``run_async()`` include a ``tool_cache_stats`` key in their output when
+    a cache is configured, reporting hits/misses/calls_saved for the run.

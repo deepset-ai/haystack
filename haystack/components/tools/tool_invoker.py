@@ -29,6 +29,7 @@ from haystack.tools import (
 )
 from haystack.tools.errors import ToolInvocationError
 from haystack.tools.parameters_schema_utils import _unwrap_optional
+from haystack.tools.tool_cache import ToolCache
 from haystack.tracing.utils import _serializable_value
 from haystack.utils.callable_serialization import deserialize_callable, serialize_callable
 
@@ -179,6 +180,18 @@ class ToolInvoker:
     result = invoker.run(messages=[message])
 
     print(result)
+    ```
+
+    Usage example with a ToolCache (opt-in per-tool caching, see `Tool.cacheable`):
+    ```python
+    from haystack.tools.tool_cache import ToolCache
+
+    cache = ToolCache(ttl_seconds=3600, scope="agent_run")
+    cacheable_tool = Tool(..., cacheable=True)
+    invoker = ToolInvoker(tools=[cacheable_tool], tool_cache=cache)
+    # Identical calls to `cacheable_tool` within the cache's TTL are served from cache;
+    # `cache.stats` tracks hits/misses for inspection after the run.
+    ```
     """
 
     def __init__(
@@ -190,6 +203,7 @@ class ToolInvoker:
         *,
         enable_streaming_callback_passthrough: bool = False,
         max_workers: int = 4,
+        tool_cache: ToolCache | None = None,
     ) -> None:
         """
         Initialize the ToolInvoker component.
@@ -216,6 +230,12 @@ class ToolInvoker:
         :param max_workers:
             The maximum number of workers to use in the thread pool executor.
             This also decides the maximum number of concurrent tool invocations.
+        :param tool_cache:
+            Optional `ToolCache` instance. When provided, tool calls for any `Tool` with `cacheable=True`
+            are looked up in the cache before invocation and the result is stored in the cache after a
+            successful invocation. Tools with `cacheable=False` (the default) always invoke normally,
+            regardless of whether a `tool_cache` is configured. Not included in `to_dict()`/`from_dict()`
+            serialization, since cache backends are runtime objects rather than serializable configuration.
         :raises ValueError:
             If no tools are provided or if duplicate tool names are found.
         """
@@ -225,6 +245,7 @@ class ToolInvoker:
         self.max_workers = max_workers
         self.raise_on_failure = raise_on_failure
         self.convert_result_to_json_string = convert_result_to_json_string
+        self.tool_cache = tool_cache
 
         self._tools_with_names = self._validate_and_prepare_tools(tools)
         self._is_warmed_up = False
@@ -249,6 +270,21 @@ class ToolInvoker:
                 return ctx.run(partial(tool_to_invoke.invoke, **final_args))
             except ToolInvocationError as e:
                 return e
+
+        return _runner
+
+    @staticmethod
+    def _make_cached_result_invoke(cached_result: Any) -> Callable[[], Any]:
+        """
+        Create a zero-arg callable that simply returns an already-cached result.
+
+        Used in place of `_make_context_bound_invoke` on a cache hit, so the surrounding
+        ThreadPoolExecutor/future-based control flow in `run`/`run_async` stays uniform
+        regardless of whether a given call was actually invoked or served from cache.
+        """
+
+        def _runner() -> Any:
+            return cached_result
 
         return _runner
 
@@ -494,6 +530,34 @@ class ToolInvoker:
             meta={"tool_result": tool_messages[-1].tool_call_results[0].result, "tool_call": tool_call},
         )
 
+    def _check_cache(self, tool_to_invoke: Tool, tool_call: ToolCall) -> tuple[bool, Any]:
+        """
+        Look up a tool call in the configured ToolCache, if any.
+
+        Only consulted when `self.tool_cache` is set AND the tool itself opted in via `Tool.cacheable=True`.
+        A tool with `cacheable=False` (the default) is never looked up, regardless of whether a cache is configured.
+
+        :param tool_to_invoke: The Tool that would be invoked.
+        :param tool_call: The ToolCall containing the arguments to look up.
+        :returns: A tuple `(hit, cached_result)`. `hit` is always False if no cache is configured or the tool
+            is not cacheable.
+        """
+        if self.tool_cache is None or not getattr(tool_to_invoke, "cacheable", False):
+            return False, None
+        return self.tool_cache.get(tool_to_invoke.name, tool_call.arguments)
+
+    def _store_in_cache(self, tool_to_invoke: Tool, tool_call: ToolCall, result: Any) -> None:
+        """
+        Store a successful tool invocation result in the configured ToolCache, if any.
+
+        :param tool_to_invoke: The Tool that was invoked.
+        :param tool_call: The ToolCall containing the arguments used.
+        :param result: The result to store.
+        """
+        if self.tool_cache is None or not getattr(tool_to_invoke, "cacheable", False):
+            return
+        self.tool_cache.set(tool_to_invoke.name, tool_call.arguments, result)
+
     def _prepare_tool_call_params(
         self,
         *,
@@ -505,6 +569,10 @@ class ToolInvoker:
     ) -> tuple[list[ToolCall], list[dict[str, Any]], list[ChatMessage]]:
         """
         Prepare tool call parameters for execution and collect any error messages.
+
+        Also performs the cache lookup for cacheable tools: each entry in the returned `tool_call_params`
+        list carries `cache_hit` (bool) and `cached_result` (Any), so the caller (`run`/`run_async`) can
+        skip actual invocation on a hit while keeping a uniform future-based execution path.
 
         :param messages_with_tool_calls: Messages containing tool calls to process
         :param state: The current state for argument injection
@@ -544,7 +612,19 @@ class ToolInvoker:
                 ):
                     final_args["streaming_callback"] = streaming_callback
 
-                tool_call_params.append({"tool_to_invoke": tool_to_invoke, "final_args": final_args})
+                # Cache lookup happens against the original LLM-provided arguments (tool_call.arguments),
+                # not final_args, so that state-injected/streaming_callback-injected values (which can vary
+                # run-to-run without changing the logical call) don't accidentally fragment the cache key.
+                cache_hit, cached_result = self._check_cache(tool_to_invoke, tool_call)
+
+                tool_call_params.append(
+                    {
+                        "tool_to_invoke": tool_to_invoke,
+                        "final_args": final_args,
+                        "cache_hit": cache_hit,
+                        "cached_result": cached_result,
+                    }
+                )
                 tool_calls.append(tool_call)
 
         return tool_calls, tool_call_params, error_messages
@@ -645,15 +725,19 @@ class ToolInvoker:
         if not tool_call_params:
             return {"tool_messages": tool_messages, "state": state}
 
-        # 2) Execute valid tool calls in parallel
+        # 2) Execute valid tool calls in parallel (cache hits get a trivial pass-through callable,
+        #    so the executor/future machinery stays identical regardless of cache outcome)
         with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
             futures = []
             for params in tool_call_params:
-                callable_ = self._make_context_bound_invoke(params["tool_to_invoke"], params["final_args"])
+                if params["cache_hit"]:
+                    callable_ = self._make_cached_result_invoke(params["cached_result"])
+                else:
+                    callable_ = self._make_context_bound_invoke(params["tool_to_invoke"], params["final_args"])
                 futures.append(executor.submit(callable_))
 
-            # 3) Gather and process results: handle errors and merge outputs into state
-            for future, tool_call in zip(futures, tool_calls, strict=True):
+            # 3) Gather and process results: handle errors, store cache misses, and merge outputs into state
+            for future, tool_call, params in zip(futures, tool_calls, tool_call_params, strict=True):
                 result = future.result()
 
                 if isinstance(result, ToolInvocationError):
@@ -663,9 +747,11 @@ class ToolInvoker:
                     logger.error("{error_exception}", error_exception=result)
                     tool_messages.append(ChatMessage.from_tool(tool_result=str(result), origin=tool_call, error=True))
                 else:
-                    # b) In case of success, merge outputs into state
+                    # b) In case of success, store cache misses, merge outputs into state
                     try:
                         tool_to_invoke = tools_with_names[tool_call.tool_name]
+                        if not params["cache_hit"]:
+                            self._store_in_cache(tool_to_invoke, tool_call, result)
                         self._merge_tool_outputs(tool=tool_to_invoke, result=result, state=state)
                         tool_messages.append(
                             self._prepare_tool_result_message(
@@ -781,17 +867,21 @@ class ToolInvoker:
         if not tool_call_params:
             return {"tool_messages": tool_messages, "state": state}
 
-        # 2) Execute valid tool calls in parallel
+        # 2) Execute valid tool calls in parallel (cache hits get a trivial pass-through callable,
+        #    so the executor/future machinery stays identical regardless of cache outcome)
         tool_call_tasks = []
         with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
             for params in tool_call_params:
                 loop = asyncio.get_running_loop()
-                callable_ = ToolInvoker._make_context_bound_invoke(params["tool_to_invoke"], params["final_args"])
+                if params["cache_hit"]:
+                    callable_ = ToolInvoker._make_cached_result_invoke(params["cached_result"])
+                else:
+                    callable_ = ToolInvoker._make_context_bound_invoke(params["tool_to_invoke"], params["final_args"])
                 tool_call_tasks.append(loop.run_in_executor(executor, callable_))
 
-            # 3) Gather and process results: handle errors and merge outputs into state
+            # 3) Gather and process results: handle errors, store cache misses, and merge outputs into state
             tool_results = await asyncio.gather(*tool_call_tasks)
-            for tool_result, tool_call in zip(tool_results, tool_calls, strict=True):
+            for tool_result, tool_call, params in zip(tool_results, tool_calls, tool_call_params, strict=True):
                 # a) This is an error, create error Tool message
                 if isinstance(tool_result, ToolInvocationError):
                     if self.raise_on_failure:
@@ -801,9 +891,11 @@ class ToolInvoker:
                         ChatMessage.from_tool(tool_result=str(tool_result), origin=tool_call, error=True)
                     )
                 else:
-                    # b) In case of success, merge outputs into state
+                    # b) In case of success, store cache misses, merge outputs into state
                     try:
                         tool_to_invoke = tools_with_names[tool_call.tool_name]
+                        if not params["cache_hit"]:
+                            self._store_in_cache(tool_to_invoke, tool_call, tool_result)
                         self._merge_tool_outputs(tool=tool_to_invoke, result=tool_result, state=state)
                         tool_messages.append(
                             self._prepare_tool_result_message(
@@ -838,6 +930,11 @@ class ToolInvoker:
     def to_dict(self) -> dict[str, Any]:
         """
         Serializes the component to a dictionary.
+
+        Note: `tool_cache`, if set, is intentionally NOT included — cache backends are runtime objects
+        (in-memory state, possibly external connections) rather than serializable configuration. A
+        deserialized `ToolInvoker` will have `tool_cache=None` even if the original instance had one set;
+        callers that need caching after deserialization should re-attach a `ToolCache` explicitly.
 
         :returns:
             Dictionary with serialized data.

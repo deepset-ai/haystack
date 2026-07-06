@@ -108,6 +108,7 @@ class ComponentTool(Tool):
         outputs_to_string: dict[str, str | Callable[[Any], str]] | None = None,
         inputs_from_state: dict[str, str] | None = None,
         outputs_to_state: dict[str, dict[str, str | Callable]] | None = None,
+        cacheable: bool = False,
     ) -> None:
         """
         Create a Tool instance from a Haystack component.
@@ -166,6 +167,9 @@ class ComponentTool(Tool):
                 "documents": {"handler": custom_handler}
             }
             ```
+        :param cacheable:
+            If True, results of this tool's invocations may be cached by a `ToolCache` passed to
+            `ToolInvoker`/`Agent`. See `Tool.cacheable` for details.
         :raises TypeError: If the object passed is not a Haystack Component instance.
         :raises ValueError: If the component has already been added to a pipeline, or if schema generation fails.
         """
@@ -232,6 +236,7 @@ class ComponentTool(Tool):
             inputs_from_state=inputs_from_state,
             outputs_to_state=outputs_to_state,
             outputs_to_string=outputs_to_string,
+            cacheable=cacheable,
         )
 
     def _get_valid_inputs(self) -> set[str]:
@@ -279,6 +284,7 @@ class ComponentTool(Tool):
             "outputs_to_string": _serialize_outputs_to_string(self.outputs_to_string)
             if self.outputs_to_string
             else None,
+            "cacheable": self.cacheable,
         }
 
         return {"type": generate_qualified_class_name(type(self)), "data": serialized}
@@ -306,6 +312,7 @@ class ComponentTool(Tool):
             outputs_to_string=inner_data.get("outputs_to_string", None),
             inputs_from_state=inner_data.get("inputs_from_state", None),
             outputs_to_state=inner_data.get("outputs_to_state", None),
+            cacheable=inner_data.get("cacheable", False),
         )
 
     def _create_tool_parameters_schema(self, component: Component, inputs_from_state: dict[str, Any]) -> dict[str, Any]:
