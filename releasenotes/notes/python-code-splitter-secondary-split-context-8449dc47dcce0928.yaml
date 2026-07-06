@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    Fixed ``PythonCodeSplitter`` secondary-split pieces losing all identifying
+    context after the first piece when a function, method, or class body is
+    oversized and falls back to line-based splitting. Every piece after the
+    first is now prefixed with the unit's qualified name (e.g. ``# ClassName.method_name``)
+    so that retrieval can still associate the chunk with its source function.
