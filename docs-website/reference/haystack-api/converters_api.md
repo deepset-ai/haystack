@@ -446,6 +446,7 @@ print(documents[0].content)
 __init__(
     extraction_kwargs: dict[str, Any] | None = None,
     store_full_path: bool = False,
+    encoding: str = "utf-8",
 ) -> None
 ```
 
@@ -458,6 +459,8 @@ Create an HTMLToDocument component.
   the [Trafilatura documentation](https://trafilatura.readthedocs.io/en/latest/corefunctions.html#extract).
 - **store_full_path** (<code>bool</code>) – If True, the full path of the file is stored in the metadata of the document.
   If False, only the file name is stored.
+- **encoding** (<code>str</code>) – The default encoding to use when converting HTML files. If the encoding is specified in the metadata of a
+  source ByteStream, it overrides this value.
 
 #### to_dict
 
@@ -1060,6 +1063,7 @@ __init__(
     table_to_single_line: bool = False,
     progress_bar: bool = True,
     store_full_path: bool = False,
+    encoding: str = "utf-8",
     *,
     extract_frontmatter: bool = False
 ) -> None
@@ -1073,6 +1077,8 @@ Create a MarkdownToDocument component.
 - **progress_bar** (<code>bool</code>) – If True shows a progress bar when running.
 - **store_full_path** (<code>bool</code>) – If True, the full path of the file is stored in the metadata of the document.
   If False, only the file name is stored.
+- **encoding** (<code>str</code>) – The default encoding to use when converting Markdown files. If the encoding is specified in the metadata
+  of a source ByteStream, it overrides this value.
 - **extract_frontmatter** (<code>bool</code>) – If True, YAML frontmatter at the beginning of the Markdown file is
   removed from the document content and added to the document metadata.
 
