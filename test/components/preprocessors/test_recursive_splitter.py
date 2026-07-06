@@ -785,6 +785,7 @@ def test_word_unit_split_populates_split_overlap_metadata():
     assert chunks[4].meta["_split_overlap"] == [{"doc_id": chunks[3].id, "range": (19, 23)}]  # "This"
 
 
+@pytest.mark.integration
 def test_token_unit_split_populates_split_overlap_metadata():
     """
     _split_overlap ranges must be character offsets into the referenced chunk when
