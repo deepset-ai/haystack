@@ -448,7 +448,7 @@ class Pipeline(PipelineBase):
                     "The given breakpoint {break_point} was never triggered. This is because:\n"
                     "1. The provided component is not a part of the pipeline execution path.\n"
                     "2. The component did not reach the visit count specified in the pipeline_breakpoint",
-                    pipeline_breakpoint=break_point,
+                    break_point=break_point,
                 )
 
             return pipeline_outputs
