@@ -609,7 +609,7 @@ Creates an instance of FallbackChatGenerator.
 to_dict() -> dict[str, Any]
 ```
 
-Serialize the component, including nested chat generators when they support serialization.
+Serialize the component, including nested chat generators.
 
 #### from_dict
 
