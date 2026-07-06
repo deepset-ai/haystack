@@ -25,6 +25,12 @@ It stores documents alongside dense vector embeddings in a native `VECTOR` colum
 pip install oracle-haystack
 ```
 
+The examples on this page use Sentence Transformers embedders that have moved to the `sentence-transformers-haystack` package. Install it to run the examples:
+
+```shell
+pip install sentence-transformers-haystack
+```
+
 ## Connection
 
 `OracleDocumentStore` connects to Oracle using the `OracleConnectionConfig` dataclass, which supports two connection modes:
@@ -108,7 +114,7 @@ document_store = OracleDocumentStore(
 ```python
 from haystack import Document, Pipeline
 from haystack.document_stores.types import DuplicatePolicy
-from haystack.components.embedders import (
+from haystack_integrations.components.embedders.sentence_transformers import (
     SentenceTransformersDocumentEmbedder,
     SentenceTransformersTextEmbedder,
 )
@@ -146,7 +152,6 @@ documents = [
 doc_embedder = SentenceTransformersDocumentEmbedder(
     model="sentence-transformers/all-MiniLM-L6-v2",
 )
-doc_embedder.warm_up()
 embedded_docs = doc_embedder.run(documents)["documents"]
 document_store.write_documents(embedded_docs, policy=DuplicatePolicy.OVERWRITE)
 

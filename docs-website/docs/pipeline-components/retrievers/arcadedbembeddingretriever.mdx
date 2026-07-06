@@ -35,6 +35,12 @@ pip install arcadedb-haystack
 
 Ensure ArcadeDB is running, for example via Docker, and credentials are set (`ARCADEDB_USERNAME`, `ARCADEDB_PASSWORD`).
 
+The examples on this page use Sentence Transformers embedders that have moved to the `sentence-transformers-haystack` package. Install it to run the examples:
+
+```shell
+pip install sentence-transformers-haystack
+```
+
 ## Usage
 
 ### On its own
@@ -63,7 +69,7 @@ for doc in result["documents"]:
 ```python
 from haystack import Document, Pipeline
 from haystack.document_stores.types import DuplicatePolicy
-from haystack.components.embedders import (
+from haystack_integrations.components.embedders.sentence_transformers import (
     SentenceTransformersTextEmbedder,
     SentenceTransformersDocumentEmbedder,
 )

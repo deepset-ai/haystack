@@ -15,7 +15,7 @@ This Retriever accepts the embeddings of a single query as input and returns a l
 
 |  |  |
 | --- | --- |
-| **Most common position in a pipeline** | 1. After a Text Embedder and before a [`PromptBuilder`](../builders/promptbuilder.mdx) in a RAG pipeline 2. The last component in the embedding retrieval pipeline 3. After a Text Embedder and before an [`ExtractiveReader`](../readers/extractivereader.mdx) in an extractive QA pipeline |
+| **Most common position in a pipeline** | 1. After a Text Embedder and before a [`PromptBuilder`](../builders/promptbuilder.mdx) in a RAG pipeline 2. The last component in the embedding retrieval pipeline 3. After a Text Embedder and before an [`TransformersExtractiveReader`](../readers/transformersextractivereader.mdx) in an extractive QA pipeline |
 | **Mandatory init variables**           | `document_store`: An instance of [`AzureAISearchDocumentStore`](../../document-stores/azureaisearchdocumentstore.mdx)                                                                                                                                                                           |
 | **Mandatory run variables**            | `query_embedding`: A list of floats                                                                                                                                                                                                                                       |
 | **Output variables**                   | `documents`: A list of documents                                                                                                                                                                                                                                          |
@@ -80,9 +80,15 @@ In the indexing pipeline, the documents are passed to the Document Embedder and 
 
 Then, in the querying pipeline, we use a Text Embedder to get the vector representation of the input query that will be then passed to the `AzureAISearchEmbeddingRetriever` to get the results.
 
+The examples on this page use Sentence Transformers embedders that have moved to the `sentence-transformers-haystack` package. Install it to run the examples:
+
+```shell
+pip install sentence-transformers-haystack
+```
+
 ```python
 from haystack import Document, Pipeline
-from haystack.components.embedders import (
+from haystack_integrations.components.embedders.sentence_transformers import (
     SentenceTransformersDocumentEmbedder,
     SentenceTransformersTextEmbedder,
 )

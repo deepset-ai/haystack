@@ -130,6 +130,12 @@ print(json.loads(result["validator"]["validated"][0].text))
 
 In this example, the `TextLanguageRouter` component directs the query to one of three language-specific Retrievers. The next component would be a `PromptBuilder`, but we cannot connect multiple Retrievers to a single `PromptBuilder` directly. Instead, we connect all the Retrievers to the `BranchJoiner` component. The `BranchJoiner`  then takes the output from the Retriever that was actually called and passes it as a single list of documents to the `PromptBuilder`. The `BranchJoiner` ensures that the pipeline can handle multiple languages seamlessly by consolidating different outputs from the Retrievers into a unified connection for further processing.
 
+The examples on this page use language classification components that have moved to the `langdetect-haystack` package. Install it to run the examples:
+
+```shell
+pip install langdetect-haystack
+```
+
 ```python
 from haystack import Document, Pipeline
 from haystack.document_stores.in_memory import InMemoryDocumentStore
@@ -137,7 +143,7 @@ from haystack.components.retrievers.in_memory import InMemoryBM25Retriever
 from haystack.components.joiners import BranchJoiner
 from haystack.components.builders import ChatPromptBuilder
 from haystack.components.generators.chat import OpenAIChatGenerator
-from haystack.components.routers import TextLanguageRouter
+from haystack_integrations.components.routers.langdetect import TextLanguageRouter
 from haystack.dataclasses import ChatMessage
 
 prompt_template = [
