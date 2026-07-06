@@ -22,7 +22,6 @@ if ! command -v python &> /dev/null; then
     exit 1
 fi
 
-# Upgrade pip so that the --uploaded-prior-to supply-chain flag is available
 echo "⬆️  Upgrading pip..."
 python -m pip install --upgrade pip
 
@@ -30,7 +29,6 @@ python -m pip install --upgrade pip
 echo "📦 Checking base dependencies..."
 python -c "import requests, toml" 2>/dev/null || {
     echo "⚠️  Installing base dependencies (requests, toml)..."
-    # --uploaded-prior-to=P1D avoids versions uploaded in the last day (supply-chain guard)
     pip install requests toml --uploaded-prior-to=P1D
 }
 
