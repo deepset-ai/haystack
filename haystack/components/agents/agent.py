@@ -520,6 +520,12 @@ class Agent:
         system_prompt = system_prompt or self.system_prompt
         messages = messages or []
 
+        if not isinstance(messages, list):
+            raise TypeError(
+                f"Agent component expects list[ChatMessage] for 'messages', got {type(messages).__name__}. "
+                "Check that the 'messages' input is correctly wired in the pipeline."
+            )
+
         if user_prompt is not None:
             if self._user_chat_prompt_builder is None:
                 raise ValueError(
