@@ -408,7 +408,9 @@ In query pipelines, use a TextEmbedder to embed queries and send them to the ret
 
 ```python
 from haystack import Document
-from haystack.components.embedders import SentenceTransformersDocumentEmbedder, SentenceTransformersTextEmbedder
+# Requires: pip install sentence-transformers-haystack
+from haystack_integrations.components.embedders.sentence_transformers import SentenceTransformersDocumentEmbedder
+from haystack_integrations.components.embedders.sentence_transformers import SentenceTransformersTextEmbedder
 from haystack.components.retrievers.in_memory import InMemoryEmbeddingRetriever
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 
@@ -575,8 +577,9 @@ The results are combined and sorted by relevance score.
 from haystack import Document
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.document_stores.types import DuplicatePolicy
-from haystack.components.embedders import SentenceTransformersTextEmbedder
-from haystack.components.embedders import SentenceTransformersDocumentEmbedder
+# Requires: pip install sentence-transformers-haystack
+from haystack_integrations.components.embedders.sentence_transformers import SentenceTransformersTextEmbedder
+from haystack_integrations.components.embedders.sentence_transformers import SentenceTransformersDocumentEmbedder
 from haystack.components.retrievers import InMemoryEmbeddingRetriever
 from haystack.components.writers import DocumentWriter
 from haystack.components.retrievers import MultiQueryEmbeddingRetriever
@@ -878,7 +881,9 @@ from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.document_stores.types import DuplicatePolicy
 from haystack.components.retrievers import InMemoryBM25Retriever, InMemoryEmbeddingRetriever
 from haystack.components.retrievers import TextEmbeddingRetriever, MultiRetriever
-from haystack.components.embedders import SentenceTransformersTextEmbedder, SentenceTransformersDocumentEmbedder
+# Requires: pip install sentence-transformers-haystack
+from haystack_integrations.components.embedders.sentence_transformers import SentenceTransformersTextEmbedder
+from haystack_integrations.components.embedders.sentence_transformers import SentenceTransformersDocumentEmbedder
 from haystack.components.writers import DocumentWriter
 
 documents = [
@@ -1249,7 +1254,9 @@ The results are sorted by relevance score.
 from haystack import Document
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.document_stores.types import DuplicatePolicy
-from haystack.components.embedders import SentenceTransformersTextEmbedder, SentenceTransformersDocumentEmbedder
+# Requires: pip install sentence-transformers-haystack
+from haystack_integrations.components.embedders.sentence_transformers import SentenceTransformersTextEmbedder
+from haystack_integrations.components.embedders.sentence_transformers import SentenceTransformersDocumentEmbedder
 from haystack.components.retrievers import InMemoryEmbeddingRetriever, TextEmbeddingRetriever
 from haystack.components.writers import DocumentWriter
 
