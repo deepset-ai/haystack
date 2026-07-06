@@ -6,10 +6,7 @@
 # Builds the Atheris fuzz targets for ClusterFuzzLite / OSS-Fuzz.
 # `compile_python_fuzzer` is provided by the base-builder-python image.
 
-# Upgrade pip so that the --uploaded-prior-to supply-chain flag is available
 python3 -m pip install --upgrade pip
-# --uploaded-prior-to=P1D restricts dependency resolution to versions uploaded
-# more than a day ago, guarding against freshly-uploaded (potentially malicious) releases
 pip3 install . --uploaded-prior-to=P1D
 
 for harness in "$SRC"/haystack/test/fuzz/fuzz_*.py; do
