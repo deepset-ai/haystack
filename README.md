@@ -117,7 +117,7 @@
 | haystack/components/preprocessors/document\_cleaner.py                              |      117 |        2 |     98% |  101, 345 |
 | haystack/components/preprocessors/document\_preprocessor.py                         |       46 |        2 |     96% |  162, 197 |
 | haystack/components/preprocessors/document\_splitter.py                             |      206 |        0 |    100% |           |
-| haystack/components/preprocessors/embedding\_based\_document\_splitter.py           |      202 |       42 |     79% |170-171, 198-202, 218, 228-237, 245-254, 261-273, 279-282, 288-291, 401, 432-455, 518-519 |
+| haystack/components/preprocessors/embedding\_based\_document\_splitter.py           |      202 |       42 |     79% |171-172, 199-203, 219, 229-238, 246-255, 262-274, 280-283, 289-292, 402, 433-456, 519-520 |
 | haystack/components/preprocessors/hierarchical\_document\_splitter.py               |       59 |        0 |    100% |           |
 | haystack/components/preprocessors/markdown\_header\_splitter.py                     |      162 |        6 |     96% |219-220, 228, 276, 299, 354 |
 | haystack/components/preprocessors/python\_code\_splitter.py                         |      289 |       15 |     95% |150, 162, 190, 197, 231, 280, 308-310, 411-413, 415, 528, 594 |
@@ -142,12 +142,12 @@
 | haystack/components/retrievers/filter\_retriever.py                                 |       22 |        1 |     95% |        55 |
 | haystack/components/retrievers/in\_memory/\_\_init\_\_.py                           |        5 |        0 |    100% |           |
 | haystack/components/retrievers/in\_memory/bm25\_retriever.py                        |       48 |        2 |     96% |  147, 185 |
-| haystack/components/retrievers/in\_memory/embedding\_retriever.py                   |       53 |        3 |     94% |102, 167, 218 |
-| haystack/components/retrievers/multi\_query\_embedding\_retriever.py                |       71 |        4 |     94% |95, 97, 170, 199 |
+| haystack/components/retrievers/in\_memory/embedding\_retriever.py                   |       53 |        3 |     94% |104, 169, 220 |
+| haystack/components/retrievers/multi\_query\_embedding\_retriever.py                |       71 |        4 |     94% |96, 98, 171, 200 |
 | haystack/components/retrievers/multi\_query\_text\_retriever.py                     |       61 |        4 |     93% |77, 101, 148, 168 |
-| haystack/components/retrievers/multi\_retriever.py                                  |       90 |        3 |     97% |122, 151, 154 |
+| haystack/components/retrievers/multi\_retriever.py                                  |       90 |        3 |     97% |124, 153, 156 |
 | haystack/components/retrievers/sentence\_window\_retriever.py                       |       98 |        6 |     94% |139, 249, 269-276, 291-298 |
-| haystack/components/retrievers/text\_embedding\_retriever.py                        |       47 |        3 |     94% |78, 80, 140 |
+| haystack/components/retrievers/text\_embedding\_retriever.py                        |       47 |        3 |     94% |80, 82, 142 |
 | haystack/components/retrievers/types/\_\_init\_\_.py                                |        2 |        0 |    100% |           |
 | haystack/components/retrievers/types/protocol.py                                    |        5 |        0 |    100% |           |
 | haystack/components/routers/\_\_init\_\_.py                                         |        5 |        0 |    100% |           |
@@ -233,7 +233,7 @@
 | haystack/tools/errors.py                                                            |        6 |        0 |    100% |           |
 | haystack/tools/from\_function.py                                                    |       55 |        0 |    100% |           |
 | haystack/tools/parameters\_schema\_utils.py                                         |      105 |        3 |     97% |95, 148-149 |
-| haystack/tools/pipeline\_tool.py                                                    |       32 |        2 |     94% |  249, 252 |
+| haystack/tools/pipeline\_tool.py                                                    |       32 |        2 |     94% |  248, 251 |
 | haystack/tools/searchable\_toolset.py                                               |      110 |        0 |    100% |           |
 | haystack/tools/serde\_utils.py                                                      |       43 |        3 |     93% |33, 35, 57 |
 | haystack/tools/tool.py                                                              |      152 |        5 |     97% |155, 178, 219-220, 320 |
