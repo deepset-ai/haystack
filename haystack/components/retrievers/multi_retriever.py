@@ -297,7 +297,7 @@ class MultiRetriever:
                 if hasattr(retriever, "run_async") and callable(retriever.run_async):
                     result = await retriever.run_async(**run_kwargs)
                 else:
-                    result = await loop.run_in_executor(None, lambda r=retriever: r.run(**run_kwargs))
+                    result = await loop.run_in_executor(None, lambda: retriever.run(**run_kwargs))
                 return result.get("documents", [])
             except Exception as e:
                 raise RuntimeError(f"Retriever '{name}' failed: {e}") from e
