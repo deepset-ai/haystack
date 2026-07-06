@@ -432,6 +432,11 @@ def test_deserialize_value_with_schema_class_not_importable():
         )
 
 
+def test_deserialize_value_with_schema_class_name_without_module():
+    with pytest.raises(DeserializationError, match="Class 'NonExistentClass' not correctly imported"):
+        _deserialize_value_with_schema({"serialization_schema": {"type": "NonExistentClass"}, "serialized_data": {}})
+
+
 def test_serialize_and_deserialize_pydantic_model():
     model_instance = CustomModel(id=1, name="Test")
     serialized = _serialize_value_with_schema(model_instance)
