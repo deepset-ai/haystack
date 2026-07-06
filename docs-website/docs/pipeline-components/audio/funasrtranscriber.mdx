@@ -27,7 +27,7 @@ Transcribe audio files to Haystack Documents using FunASR — a local, open-sour
 
 The default model is `iic/SenseVoiceSmall`, a multilingual model supporting 50+ languages that is 5–10x faster than Whisper. Models are downloaded from ModelScope on first use and cached in `~/.cache/modelscope`.
 
-The component accepts audio file paths (`str` or `Path`) as well as `ByteStream` objects. Call `warm_up()` before running in a pipeline to load the model into memory.
+The component accepts audio file paths (`str` or `Path`) as well as `ByteStream` objects. The model is loaded into memory automatically the first time the component runs.
 
 ## Usage
 
@@ -37,7 +37,6 @@ The component accepts audio file paths (`str` or `Path`) as well as `ByteStream`
 from haystack_integrations.components.audio.funasr import FunASRTranscriber
 
 transcriber = FunASRTranscriber()
-transcriber.warm_up()
 
 result = transcriber.run(sources=["speech.wav"])
 print(result["documents"][0].content)
@@ -61,7 +60,7 @@ result = pipe.run(
         "fetcher": {
             "urls": ["https://example.com/interview.wav"],
         },
-    }
+    },
 )
 print(result["transcriber"]["documents"][0].content)
 ```

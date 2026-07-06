@@ -36,10 +36,18 @@ This component is inspired by [5 Levels of Text Splitting](https://github.com/Fu
 
 ### On its own
 
+The examples on this page use Sentence Transformers embedders that have moved to the `sentence-transformers-haystack` package. Install it to run the examples:
+
+```shell
+pip install sentence-transformers-haystack
+```
+
 ```python
 
 from haystack import Document
-from haystack.components.embedders import SentenceTransformersDocumentEmbedder
+from haystack_integrations.components.embedders.sentence_transformers import (
+    SentenceTransformersDocumentEmbedder,
+)
 from haystack.components.preprocessors import EmbeddingBasedDocumentSplitter
 
 # Create a document with content that has a clear topic shift

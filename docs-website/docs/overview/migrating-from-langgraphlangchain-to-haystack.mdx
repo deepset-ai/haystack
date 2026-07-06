@@ -459,11 +459,11 @@ Both frameworks offer in-memory stores for prototyping and a wide range of produ
 
 <div className="code-comparison">
   <div className="code-comparison__column">
-    <CodeBlock language="python" title="Haystack">{`# pip install haystack-ai sentence-transformers
+    <CodeBlock language="python" title="Haystack">{`# pip install haystack-ai sentence-transformers-haystack
 
 from haystack import Document
 from haystack.document_stores.in_memory import InMemoryDocumentStore
-from haystack.components.embedders import SentenceTransformersDocumentEmbedder
+from haystack_integrations.components.embedders.sentence_transformers import SentenceTransformersDocumentEmbedder
 
 # Embed and write documents to the document store
 document_store = InMemoryDocumentStore()
@@ -505,7 +505,7 @@ vectorstore.add_documents([
 <div className="code-comparison">
   <div className="code-comparison__column">
     <CodeBlock language="python" title="Haystack">{`from haystack import Pipeline
-from haystack.components.embedders import SentenceTransformersTextEmbedder
+from haystack_integrations.components.embedders.sentence_transformers import SentenceTransformersTextEmbedder
 from haystack.components.retrievers.in_memory import InMemoryEmbeddingRetriever
 from haystack.components.builders import ChatPromptBuilder
 from haystack.dataclasses import ChatMessage

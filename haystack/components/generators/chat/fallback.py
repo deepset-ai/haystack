@@ -10,6 +10,7 @@ from typing import Any
 from haystack import component, default_from_dict, default_to_dict, logging
 from haystack.components.generators.chat.types import ChatGenerator
 from haystack.components.generators.utils import _normalize_messages
+from haystack.core.serialization import component_to_dict
 from haystack.dataclasses import ChatMessage, StreamingCallbackT
 from haystack.tools import ToolsType
 from haystack.utils.deserialization import deserialize_component_inplace
@@ -62,9 +63,12 @@ class FallbackChatGenerator:
         self._is_warmed_up = False
 
     def to_dict(self) -> dict[str, Any]:
-        """Serialize the component, including nested chat generators when they support serialization."""
+        """Serialize the component, including nested chat generators."""
         return default_to_dict(
-            self, chat_generators=[gen.to_dict() for gen in self.chat_generators if hasattr(gen, "to_dict")]
+            self,
+            chat_generators=[
+                component_to_dict(gen, name=f"chat_generator_{idx}") for idx, gen in enumerate(self.chat_generators)
+            ],
         )
 
     @classmethod

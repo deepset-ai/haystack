@@ -51,11 +51,17 @@ The recommended way to use `PipelineTool` in Haystack is with the [`Agent`](../p
 
 You can create a `PipelineTool` from any existing Haystack pipeline:
 
+The examples on this page use Sentence Transformers embedders that have moved to the `sentence-transformers-haystack` package. Install it to run the examples:
+
+```shell
+pip install sentence-transformers-haystack
+```
+
 ```python
 from haystack import Document, Pipeline
 from haystack.tools import PipelineTool
 from haystack.components.retrievers.in_memory import InMemoryBM25Retriever
-from haystack.components.rankers.sentence_transformers_similarity import (
+from haystack_integrations.components.rankers.sentence_transformers import (
     SentenceTransformersSimilarityRanker,
 )
 from haystack.document_stores.in_memory import InMemoryDocumentStore
@@ -105,10 +111,8 @@ print(retrieval_tool)
 from haystack import Document, Pipeline
 from haystack.tools import PipelineTool
 from haystack.document_stores.in_memory import InMemoryDocumentStore
-from haystack.components.embedders.sentence_transformers_text_embedder import (
+from haystack_integrations.components.embedders.sentence_transformers import (
     SentenceTransformersTextEmbedder,
-)
-from haystack.components.embedders.sentence_transformers_document_embedder import (
     SentenceTransformersDocumentEmbedder,
 )
 from haystack.components.retrievers import InMemoryEmbeddingRetriever
@@ -173,10 +177,8 @@ You can also wire `PipelineTool` into a pipeline manually with `ChatGenerator` a
 from haystack import Document, Pipeline
 from haystack.tools import PipelineTool
 from haystack.document_stores.in_memory import InMemoryDocumentStore
-from haystack.components.embedders.sentence_transformers_text_embedder import (
+from haystack_integrations.components.embedders.sentence_transformers import (
     SentenceTransformersTextEmbedder,
-)
-from haystack.components.embedders.sentence_transformers_document_embedder import (
     SentenceTransformersDocumentEmbedder,
 )
 from haystack.components.retrievers import InMemoryEmbeddingRetriever
@@ -197,7 +199,6 @@ documents = [
         content="He is best known for his contributions to the design of the modern alternating current (AC) electricity supply system.",
     ),
 ]
-document_embedder.warm_up()
 docs_with_embeddings = document_embedder.run(documents=documents)["documents"]
 document_store.write_documents(docs_with_embeddings)
 

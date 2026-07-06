@@ -45,9 +45,17 @@ Returns a list of Documents ranked by their similarity to the given query.
 
 Components that use heavy resources, like LLMs or embedding models, have a `warm_up()` method that loads the necessary resources (such as models) into memory. This method is automatically called the first time the component runs, so you can use components directly without explicitly calling `warm_up()`:
 
+The examples on this page use Sentence Transformers embedders that have moved to the `sentence-transformers-haystack` package. Install it to run the examples:
+
+```shell
+pip install sentence-transformers-haystack
+```
+
 ```python
 from haystack import Document
-from haystack.components.embedders import SentenceTransformersDocumentEmbedder
+from haystack_integrations.components.embedders.sentence_transformers import (
+    SentenceTransformersDocumentEmbedder,
+)
 
 doc = Document(content="I love pizza!")
 doc_embedder = SentenceTransformersDocumentEmbedder()

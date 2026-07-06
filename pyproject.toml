@@ -163,7 +163,7 @@ integration-only-slow = 'pytest --maxfail=5 -m "integration and slow" {args:test
 all = 'pytest {args:test}'
 
 # TODO We want to eventually type the whole test folder
-types = "mypy --install-types --non-interactive --cache-dir=.mypy_cache/ {args:haystack test/core/ test/marshal/ test/testing/ test/tracing/ test/tools/ test/human_in_the_loop test/evaluation test/document_stores test/dataclasses}"
+types = "mypy --install-types --non-interactive --cache-dir=.mypy_cache/ {args:haystack test/core/ test/marshal/ test/testing/ test/tracing/ test/tools/ test/human_in_the_loop test/evaluation test/document_stores test/dataclasses test/utils/}"
 
 [tool.hatch.envs.e2e]
 template = "test"
@@ -199,7 +199,7 @@ packages = ["haystack"]
 [tool.codespell]
 ignore-words-list = "ans,astroid,nd,ned,nin,ue,rouge,ist, Claus,SME"
 quiet-level = 3
-skip = "./test,./e2e,*.svg,*/abbreviations/*,*/package-lock.json"
+skip = "./test,./e2e,*.svg,*/abbreviations/*"
 
 [tool.pytest.ini_options]
 minversion = "6.0"

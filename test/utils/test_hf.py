@@ -59,7 +59,7 @@ def test_convert_message_to_hf_format():
         "tool_calls": [{"type": "function", "function": {"name": "weather", "arguments": {"city": "Paris"}}}],
     }
 
-    tool_result = {"weather": "sunny", "temperature": "25"}
+    tool_result = '{"weather": "sunny", "temperature": "25"}'
     message = ChatMessage.from_tool(
         tool_result=tool_result, origin=ToolCall(id="123", tool_name="weather", arguments={"city": "Paris"})
     )
@@ -83,7 +83,7 @@ def test_convert_message_to_hf_invalid():
             ToolCallResult(
                 result="result!",
                 origin=ToolCall(id="123", tool_name="weather", arguments={"city": "Paris"}),
-                error=None,
+                error=None,  # type: ignore[arg-type]
             ),
         ],
     )

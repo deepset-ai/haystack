@@ -82,6 +82,12 @@ CMAKE_ARGS="-DGGML_CUDA=on" pip install llama-cpp-python
 pip install llama-cpp-haystack
 ```
 
+The examples on this page use Sentence Transformers embedders that have moved to the `sentence-transformers-haystack` package. Install it to run the examples:
+
+```shell
+pip install sentence-transformers-haystack
+```
+
 ## Usage
 
 1. Download the GGUF version of the desired LLM. The GGUF versions of popular models can be downloaded from [Hugging Face](https://huggingface.co/models?library=gguf).
@@ -97,7 +103,6 @@ generator = LlamaCppChatGenerator(
     model_kwargs={"n_gpu_layers": -1},
     generation_kwargs={"max_tokens": 128, "temperature": 0.1},
 )
-generator.warm_up()
 messages = [ChatMessage.from_user("Who is the best American actor?")]
 result = generator.run(messages)
 ```
@@ -209,7 +214,7 @@ from datasets import load_dataset
 from haystack import Document, Pipeline
 from haystack.components.builders.answer_builder import AnswerBuilder
 from haystack.components.builders import ChatPromptBuilder
-from haystack.components.embedders import (
+from haystack_integrations.components.embedders.sentence_transformers import (
     SentenceTransformersDocumentEmbedder,
     SentenceTransformersTextEmbedder,
 )
@@ -240,7 +245,7 @@ Index the documents to the `InMemoryDocumentStore` using the `SentenceTransforme
 
 ```python
 doc_store = InMemoryDocumentStore(embedding_similarity_function="cosine")
-# Install sentence transformers using "pip install sentence-transformers"
+# Install the Sentence Transformers embedders using "pip install sentence-transformers-haystack"
 doc_embedder = SentenceTransformersDocumentEmbedder(
     model="sentence-transformers/all-MiniLM-L6-v2",
 )

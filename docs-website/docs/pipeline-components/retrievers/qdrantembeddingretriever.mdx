@@ -13,7 +13,7 @@ An embedding-based Retriever compatible with the Qdrant Document Store.
 
 |  |  |
 | --- | --- |
-| **Most common position in a pipeline** | 1\. After a Text Embedder and before a [`PromptBuilder`](../builders/promptbuilder.mdx)  in a RAG Pipeline  <br /> <br />2. The last component in the semantic search pipeline  <br />3. After a Text Embedder and before an [`ExtractiveReader`](../readers/extractivereader.mdx)  in an extractive QA pipeline |
+| **Most common position in a pipeline** | 1\. After a Text Embedder and before a [`PromptBuilder`](../builders/promptbuilder.mdx)  in a RAG Pipeline  <br /> <br />2. The last component in the semantic search pipeline  <br />3. After a Text Embedder and before a [`TransformersExtractiveReader`](../readers/transformersextractivereader.mdx)  in an extractive QA pipeline |
 | **Mandatory init variables** | `document_store`: An instance of a [QdrantDocumentStore](../../document-stores/qdrant-document-store.mdx) |
 | **Mandatory run variables** | `query_embedding`: A vector representing the query (a list of floats) |
 | **Output variables** | `documents`: A list of documents |
@@ -65,11 +65,17 @@ retriever.run(query_embedding=[0.1] * 768)
 
 #### In a Pipeline
 
+The examples on this page use Sentence Transformers embedders that have moved to the `sentence-transformers-haystack` package. Install it to run the examples:
+
+```shell
+pip install sentence-transformers-haystack
+```
+
 ```python
 from haystack.document_stores.types import DuplicatePolicy
 from haystack import Document
 from haystack import Pipeline
-from haystack.components.embedders import (
+from haystack_integrations.components.embedders.sentence_transformers import (
     SentenceTransformersTextEmbedder,
     SentenceTransformersDocumentEmbedder,
 )

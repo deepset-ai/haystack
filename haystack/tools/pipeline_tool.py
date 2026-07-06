@@ -38,10 +38,9 @@ class PipelineTool(ComponentTool):
     from haystack import Document, Pipeline
     from haystack.dataclasses import ChatMessage
     from haystack.document_stores.in_memory import InMemoryDocumentStore
-    from haystack.components.embedders.sentence_transformers_text_embedder import SentenceTransformersTextEmbedder
-    from haystack.components.embedders.sentence_transformers_document_embedder import (
-        SentenceTransformersDocumentEmbedder
-    )
+    # Requires: pip install sentence-transformers-haystack
+    from haystack_integrations.components.embedders.sentence_transformers import SentenceTransformersTextEmbedder
+    from haystack_integrations.components.embedders.sentence_transformers import SentenceTransformersDocumentEmbedder
     from haystack.components.generators.chat import OpenAIChatGenerator
     from haystack.components.retrievers import InMemoryEmbeddingRetriever
     from haystack.components.agents import Agent
