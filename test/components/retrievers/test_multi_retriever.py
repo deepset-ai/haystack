@@ -101,7 +101,8 @@ class TestMultiRetriever:
         retriever = MultiRetriever(retrievers=retrievers)
         assert retriever.retrievers == retrievers
         assert retriever.filters is None
-        assert retriever.top_k == 10
+        assert retriever.top_k_per_retriever is None
+        assert retriever.top_k is None
         assert retriever.max_workers == 4
         assert retriever.join_mode == "reciprocal_rank_fusion"
 
@@ -258,6 +259,7 @@ class TestMultiRetriever:
         retriever = MultiRetriever(
             retrievers={"bm25": InMemoryBM25Retriever(document_store=InMemoryDocumentStore())},
             filters=None,
+            top_k_per_retriever=3,
             top_k=5,
             max_workers=2,
         )
@@ -288,6 +290,7 @@ class TestMultiRetriever:
                     }
                 },
                 "filters": None,
+                "top_k_per_retriever": 3,
                 "top_k": 5,
                 "max_workers": 2,
                 "join_mode": "reciprocal_rank_fusion",
@@ -321,6 +324,7 @@ class TestMultiRetriever:
                     }
                 },
                 "filters": None,
+                "top_k_per_retriever": 3,
                 "top_k": 5,
                 "max_workers": 2,
                 "join_mode": "concatenate",
@@ -331,6 +335,7 @@ class TestMultiRetriever:
         assert len(result.retrievers) == 1
         assert "bm25" in result.retrievers
         assert isinstance(result.retrievers["bm25"], InMemoryBM25Retriever)
+        assert result.top_k_per_retriever == 3
         assert result.top_k == 5
         assert result.max_workers == 2
         assert result.join_mode == "concatenate"

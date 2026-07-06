@@ -98,8 +98,10 @@ class MultiRetriever:
             The maximum number of documents to return per retriever. If set, this will override the `top_k`
             parameter for each retriever. If None, the `top_k` parameter of retrievers will be used.
         :param top_k:
-            The maximum number of documents to return overall. When set, this will extract the top_k documents
-            from the combined results of all retrievers. If None, all results are returned.
+            The maximum number of documents to return overall, extracted from the combined results of all
+            retrievers. When set, the results are always merged using reciprocal rank fusion (regardless of
+            `join_mode`) so that the combined list has a consistent global ranking before it is truncated to
+            `top_k`. If None, all results are returned.
         :param max_workers:
             The maximum number of threads to use for parallel retrieval.
         :param join_mode:
@@ -187,9 +189,10 @@ class MultiRetriever:
             parameter for each retriever. If None, the `top_k` parameter set for retrievers will be used.
             Defaults to the value set at initialization.
         :param top_k:
-            The maximum number of documents to return overall. When set, this will extract the top_k documents
-            from the combined results of all retrievers. If None, all results are returned. Defaults to the
-            value set at initialization.
+            The maximum number of documents to return overall, extracted from the combined results of all
+            retrievers. When set, the results are always merged using reciprocal rank fusion (regardless of
+            `join_mode`) so that the combined list has a consistent global ranking before it is truncated to
+            `top_k`. If None, all results are returned. Defaults to the value set at initialization.
         :param active_retrievers:
             Names of retrievers to run. Defaults to all. Must match keys in the `retrievers` dictionary.
 
@@ -256,9 +259,10 @@ class MultiRetriever:
             parameter for each retriever. If None, the `top_k` parameter set for retrievers will be used.
             Defaults to the value set at initialization.
         :param top_k:
-            The maximum number of documents to return overall. When set, this will extract the top_k documents
-            from the combined results of all retrievers. If None, all results are returned. Defaults to the
-            value set at initialization.
+            The maximum number of documents to return overall, extracted from the combined results of all
+            retrievers. When set, the results are always merged using reciprocal rank fusion (regardless of
+            `join_mode`) so that the combined list has a consistent global ranking before it is truncated to
+            `top_k`. If None, all results are returned. Defaults to the value set at initialization.
         :param active_retrievers:
             Names of retrievers to run. Defaults to all. Must match keys in the `retrievers` dictionary.
 
@@ -312,6 +316,7 @@ class MultiRetriever:
             self,
             retrievers={name: component_to_dict(obj=r, name=name) for name, r in self.retrievers.items()},
             filters=self.filters,
+            top_k_per_retriever=self.top_k_per_retriever,
             top_k=self.top_k,
             max_workers=self.max_workers,
             join_mode=self.join_mode,
