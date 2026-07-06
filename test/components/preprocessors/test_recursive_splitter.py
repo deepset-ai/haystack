@@ -750,13 +750,9 @@ def test_run_split_by_dot_and_overlap_1_word_unit_split_idx_start():
         )
 
 
-def test_run_split_by_dot_and_overlap_1_word_unit_split_overlap_metadata():
+def test_word_unit_split_populates_split_overlap_metadata():
     """
     _split_overlap must be populated when split_unit="word" and split_overlap > 0.
-
-    Regression: the overlap length was computed with a word/token count while
-    curr_pos/split_idx_start are character offsets, so it went negative and the
-    _split_overlap metadata was silently left empty for word/token units.
     """
     splitter = RecursiveDocumentSplitter(split_length=4, split_overlap=1, separators=["."], split_unit="word")
     text = "This is sentence one. This is sentence two. This is sentence three. This is sentence four."
