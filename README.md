@@ -145,7 +145,7 @@
 | haystack/components/retrievers/in\_memory/embedding\_retriever.py                   |       53 |        3 |     94% |104, 169, 220 |
 | haystack/components/retrievers/multi\_query\_embedding\_retriever.py                |       71 |        4 |     94% |96, 98, 171, 200 |
 | haystack/components/retrievers/multi\_query\_text\_retriever.py                     |       61 |        4 |     93% |77, 101, 148, 168 |
-| haystack/components/retrievers/multi\_retriever.py                                  |       90 |        3 |     97% |124, 153, 156 |
+| haystack/components/retrievers/multi\_retriever.py                                  |      106 |        3 |     97% |137, 166, 169 |
 | haystack/components/retrievers/sentence\_window\_retriever.py                       |       98 |        6 |     94% |139, 249, 269-276, 291-298 |
 | haystack/components/retrievers/text\_embedding\_retriever.py                        |       47 |        3 |     94% |80, 82, 142 |
 | haystack/components/retrievers/types/\_\_init\_\_.py                                |        2 |        0 |    100% |           |
@@ -178,7 +178,7 @@
 | haystack/core/component/types.py                                                    |       42 |        3 |     93% |     87-89 |
 | haystack/core/errors.py                                                             |       76 |        9 |     88% |60-67, 127, 146, 150, 161, 165, 178, 187 |
 | haystack/core/pipeline/\_\_init\_\_.py                                              |        3 |        0 |    100% |           |
-| haystack/core/pipeline/async\_pipeline.py                                           |      171 |       50 |     71% |91-92, 97, 258-301, 313, 370-376, 388-390, 394, 411-413, 417-420, 440-453, 463 |
+| haystack/core/pipeline/async\_pipeline.py                                           |      171 |       48 |     72% |91-92, 97, 258-301, 313, 370-376, 389, 394, 411-413, 417-420, 440-453, 463 |
 | haystack/core/pipeline/base.py                                                      |      562 |       53 |     91% |124, 240-241, 245, 362, 374, 564, 601-611, 776, 844, 1373, 1539, 1543, 1553-1559, 1576-1638 |
 | haystack/core/pipeline/breakpoint.py                                                |      175 |       14 |     92% |68, 73, 81, 102, 111, 119, 127, 150-155, 226 |
 | haystack/core/pipeline/component\_checks.py                                         |       64 |        0 |    100% |           |
@@ -266,7 +266,7 @@
 | haystack/utils/type\_serialization.py                                               |      112 |       12 |     89% |62, 64, 178-179, 190-193, 199, 215-218 |
 | haystack/utils/url\_validation.py                                                   |        4 |        0 |    100% |           |
 | haystack/version.py                                                                 |        5 |        2 |     60% |      9-10 |
-| **TOTAL**                                                                           | **18013** | **1223** | **93%** |           |
+| **TOTAL**                                                                           | **18029** | **1221** | **93%** |           |
 
 
 ## Setup coverage badge
