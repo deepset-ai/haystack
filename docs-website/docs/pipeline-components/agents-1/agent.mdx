@@ -50,11 +50,11 @@ The `step_count`, `token_usage`, and `tool_call_counts` outputs are populated au
 ```python
 response = agent.run(messages=[ChatMessage.from_user("What is 7 * (4 + 2)?")])
 
-print(response["step_count"])  # e.g. 2
+print(response["step_count"])  # 2
 print(
     response["token_usage"],
-)  # e.g. {"prompt_tokens": 512, "completion_tokens": 86, ...}
-print(response["tool_call_counts"])  # e.g. {"calculator": 1}
+)  # {"prompt_tokens": 512, "completion_tokens": 86, ...}
+print(response["tool_call_counts"])  # {"calculator": 1}
 ```
 
 ## Parameters
