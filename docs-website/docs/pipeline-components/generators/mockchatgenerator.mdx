@@ -25,20 +25,20 @@ A Chat Generator that returns predefined responses without calling any API, for 
 
 ## Overview
 
-`MockChatGenerator` is a deterministic, zero-cost drop-in replacement for real Chat Generators such as `OpenAIChatGenerator`. It implements the full Chat Generator interface — `run`, `run_async`, streaming callbacks, and serialization — but never contacts an external service, which makes it ideal for unit tests, smoke tests, and quick prototypes.
+`MockChatGenerator` is a deterministic, zero-cost drop-in replacement for real Chat Generators such as `OpenAIChatGenerator`. It implements `run`, `run_async`, streaming callbacks, and serialization but never contacts an external service, which makes it ideal for unit tests, smoke tests, and quick prototypes.
 
 The response is selected based on how the component is configured:
 
 - **Fixed response**: Pass a single string or `ChatMessage` via `responses`. The same reply is returned on every call. A `ChatMessage` passed as a response must have the `assistant` role.
 - **Cycling responses**: Pass a list of strings and/or `ChatMessage` objects via `responses`. Each call returns the next item, wrapping around to the start once the list is exhausted. This is useful to drive multi-step flows such as Agents, where the first call returns a tool call and a later call returns the final answer.
-- **Dynamic response**: Pass a `response_fn` callable that receives the input messages and returns the reply as a string or an assistant `ChatMessage`. Use this when the reply should depend on the input. To support serialization, pass a named function — lambdas and nested functions cannot be serialized.
+- **Dynamic response**: Pass a `response_fn` callable that receives the input messages and returns the reply as a string or an assistant `ChatMessage`. Use this when the reply should depend on the input. To support serialization, pass a named function.
 - **Echo (default)**: With no configuration, the component echoes back the text of the last message that has text content, so it is usable out of the box.
 
 `responses` and `response_fn` are mutually exclusive.
 
 Further optional parameters:
 
-- `model`: The model name reported in the response metadata. Purely cosmetic — no model is loaded. Defaults to `"mock-model"`.
+- `model`: The model name reported in the response metadata. Defaults to `"mock-model"`.
 - `meta`: Additional metadata merged into the `meta` of every returned `ChatMessage`. A per-response `ChatMessage`'s own metadata takes precedence.
 - `streaming_callback`: An optional callback invoked with `StreamingChunk` objects reconstructed from the predefined response. It lets the mock exercise streaming code paths without a real model.
 
