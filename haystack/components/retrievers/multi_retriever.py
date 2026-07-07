@@ -11,6 +11,7 @@ from haystack import component, default_from_dict, default_to_dict
 from haystack.components.retrievers.types.protocol import TextRetriever
 from haystack.core.serialization import component_from_dict, component_to_dict, import_class_by_name
 from haystack.dataclasses import Document
+from haystack.utils.async_utils import _execute_component_async
 from haystack.utils.experimental import _experimental
 from haystack.utils.misc import _deduplicate_documents, _reciprocal_rank_fusion
 
@@ -38,9 +39,7 @@ class MultiRetriever:
     from haystack.document_stores.types import DuplicatePolicy
     from haystack.components.retrievers import InMemoryBM25Retriever, InMemoryEmbeddingRetriever
     from haystack.components.retrievers import TextEmbeddingRetriever, MultiRetriever
-    # Requires: pip install sentence-transformers-haystack
-    from haystack_integrations.components.embedders.sentence_transformers import SentenceTransformersTextEmbedder
-    from haystack_integrations.components.embedders.sentence_transformers import SentenceTransformersDocumentEmbedder
+    from haystack.components.embedders import OpenAITextEmbedder, OpenAIDocumentEmbedder
     from haystack.components.writers import DocumentWriter
 
     documents = [
@@ -51,7 +50,7 @@ class MultiRetriever:
 
     # Populate the document store
     doc_store = InMemoryDocumentStore()
-    doc_embedder = SentenceTransformersDocumentEmbedder(model="sentence-transformers/all-MiniLM-L6-v2")
+    doc_embedder = OpenAIDocumentEmbedder()
     doc_writer = DocumentWriter(document_store=doc_store, policy=DuplicatePolicy.SKIP)
     doc_writer.run(documents=doc_embedder.run(documents)["documents"])
 
@@ -61,7 +60,7 @@ class MultiRetriever:
             "bm25": InMemoryBM25Retriever(document_store=doc_store),
             "embedding": TextEmbeddingRetriever(
                 retriever=InMemoryEmbeddingRetriever(document_store=doc_store),
-                text_embedder=SentenceTransformersTextEmbedder(model="sentence-transformers/all-MiniLM-L6-v2"),
+                text_embedder=OpenAITextEmbedder(),
             ),
         },
         top_k=3,
@@ -117,7 +116,6 @@ class MultiRetriever:
         self.top_k = top_k
         self.max_workers = max_workers
         self.join_mode = join_mode
-        self._is_warmed_up = False
 
     def _merge_results(self, document_lists: list[list[Document]], top_k: int | None = None) -> list[Document]:
         """
@@ -160,14 +158,39 @@ class MultiRetriever:
 
     def warm_up(self) -> None:
         """
-        Warm up the retrievers if any has a warm_up method.
+        Warm up the retrievers.
         """
-        if self._is_warmed_up:
-            return
         for retriever in self.retrievers.values():
-            if hasattr(retriever, "warm_up") and callable(retriever.warm_up):
+            if hasattr(retriever, "warm_up"):
                 retriever.warm_up()
-        self._is_warmed_up = True
+
+    async def warm_up_async(self) -> None:
+        """
+        Warm up the retrievers on the serving event loop.
+        """
+        for retriever in self.retrievers.values():
+            if hasattr(retriever, "warm_up_async"):
+                await retriever.warm_up_async()
+            elif hasattr(retriever, "warm_up"):
+                retriever.warm_up()
+
+    def close(self) -> None:
+        """
+        Release the retrievers' resources.
+        """
+        for retriever in self.retrievers.values():
+            if hasattr(retriever, "close"):
+                retriever.close()
+
+    async def close_async(self) -> None:
+        """
+        Release the retrievers' async resources.
+        """
+        for retriever in self.retrievers.values():
+            if hasattr(retriever, "close_async"):
+                await retriever.close_async()
+            elif hasattr(retriever, "close"):
+                retriever.close()
 
     @component.output_types(documents=list[Document])
     def run(
@@ -205,8 +228,7 @@ class MultiRetriever:
         :raises ValueError:
             If any name in `active_retrievers` does not match a retriever name.
         """
-        if not self._is_warmed_up:
-            self.warm_up()
+        self.warm_up()
 
         resolved_top_k_per_retriever = (
             top_k_per_retriever if top_k_per_retriever is not None else self.top_k_per_retriever
@@ -275,8 +297,7 @@ class MultiRetriever:
         :raises ValueError:
             If any name in `active_retrievers` does not match a retriever name.
         """
-        if not self._is_warmed_up:
-            self.warm_up()
+        await self.warm_up_async()
 
         resolved_top_k_per_retriever = (
             top_k_per_retriever if top_k_per_retriever is not None else self.top_k_per_retriever
@@ -292,14 +313,9 @@ class MultiRetriever:
         if resolved_filters is not None:
             run_kwargs["filters"] = resolved_filters
 
-        loop = asyncio.get_running_loop()
-
         async def _run_one(name: str, retriever: TextRetriever) -> list[Document]:
             try:
-                if hasattr(retriever, "run_async") and callable(retriever.run_async):
-                    result = await retriever.run_async(**run_kwargs)
-                else:
-                    result = await loop.run_in_executor(None, lambda: retriever.run(**run_kwargs))
+                result = await _execute_component_async(retriever, **run_kwargs)
                 return result.get("documents", [])
             except Exception as e:
                 raise RuntimeError(f"Retriever '{name}' failed: {e}") from e

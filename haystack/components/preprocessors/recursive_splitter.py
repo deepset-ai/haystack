@@ -99,6 +99,8 @@ class RecursiveDocumentSplitter:
         """
         Warm up the sentence tokenizer and tiktoken tokenizer if needed.
         """
+        if self._is_warmed_up:
+            return
         if "sentence" in self.separators:
             self.nltk_tokenizer = self._get_custom_sentence_tokenizer(self.sentence_splitter_params)
         if self.split_units == "token":

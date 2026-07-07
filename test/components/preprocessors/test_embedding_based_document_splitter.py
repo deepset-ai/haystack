@@ -9,9 +9,8 @@ from unittest.mock import AsyncMock, Mock, patch
 import pytest
 
 from haystack import Document
-from haystack.components.embedders import HuggingFaceAPIDocumentEmbedder, SentenceTransformersDocumentEmbedder
+from haystack.components.embedders import OpenAIDocumentEmbedder
 from haystack.components.preprocessors import EmbeddingBasedDocumentSplitter
-from haystack.utils import ComponentDevice
 
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
@@ -54,45 +53,10 @@ class TestEmbeddingBasedDocumentSplitter:
         with pytest.raises(ValueError, match="max_length must be greater than min_length"):
             EmbeddingBasedDocumentSplitter(document_embedder=mock_embedder, min_length=100, max_length=50)
 
-    def test_warm_up(self):
-        mock_embedder = Mock()
-        splitter = EmbeddingBasedDocumentSplitter(document_embedder=mock_embedder)
-
-        with patch(
-            "haystack.components.preprocessors.embedding_based_document_splitter.SentenceSplitter"
-        ) as mock_splitter_class:
-            mock_splitter = Mock()
-            mock_splitter_class.return_value = mock_splitter
-
-            splitter.warm_up()
-
-            assert splitter.sentence_splitter == mock_splitter
-            mock_splitter_class.assert_called_once()
-
-    def test_run_not_warmed_up(self):
-        mock_embedder = Mock()
-        splitter = EmbeddingBasedDocumentSplitter(document_embedder=mock_embedder)
-
-        with patch.object(splitter, "warm_up", wraps=splitter.warm_up) as mock_warm_up:
-            splitter.run(documents=[])
-            assert splitter._is_warmed_up
-            mock_warm_up.assert_called_once()
-
-    @pytest.mark.asyncio
-    async def test_run_not_warmed_up_async(self) -> None:
-        mock_embedder = AsyncMock()
-        splitter = EmbeddingBasedDocumentSplitter(document_embedder=mock_embedder)
-
-        with patch.object(splitter, "warm_up", wraps=splitter.warm_up) as mock_warm_up:
-            await splitter.run_async(documents=[])
-            assert splitter._is_warmed_up
-            mock_warm_up.assert_called_once()
-
     def test_run_invalid_input(self):
         mock_embedder = Mock()
         splitter = EmbeddingBasedDocumentSplitter(document_embedder=mock_embedder)
         splitter.sentence_splitter = Mock()
-        splitter._is_warmed_up = True
 
         with pytest.raises(TypeError, match="expects a List of Documents"):
             splitter.run(documents="not a list")
@@ -102,7 +66,6 @@ class TestEmbeddingBasedDocumentSplitter:
         mock_embedder = AsyncMock()
         splitter = EmbeddingBasedDocumentSplitter(document_embedder=mock_embedder)
         splitter.sentence_splitter = AsyncMock()
-        splitter._is_warmed_up = True
 
         with pytest.raises(TypeError, match="expects a List of Documents"):
             await splitter.run_async(documents="not a list")
@@ -111,7 +74,6 @@ class TestEmbeddingBasedDocumentSplitter:
         mock_embedder = Mock()
         splitter = EmbeddingBasedDocumentSplitter(document_embedder=mock_embedder)
         splitter.sentence_splitter = Mock()
-        splitter._is_warmed_up = True
 
         with pytest.raises(ValueError, match="content for document ID"):
             splitter.run(documents=[Document(content=None)])
@@ -121,7 +83,6 @@ class TestEmbeddingBasedDocumentSplitter:
         mock_embedder = AsyncMock()
         splitter = EmbeddingBasedDocumentSplitter(document_embedder=mock_embedder)
         splitter.sentence_splitter = AsyncMock()
-        splitter._is_warmed_up = True
 
         with pytest.raises(ValueError, match="content for document ID"):
             await splitter.run_async(documents=[Document(content=None)])
@@ -130,7 +91,6 @@ class TestEmbeddingBasedDocumentSplitter:
         mock_embedder = Mock()
         splitter = EmbeddingBasedDocumentSplitter(document_embedder=mock_embedder)
         splitter.sentence_splitter = Mock()
-        splitter._is_warmed_up = True
 
         result = splitter.run(documents=[Document(content="")])
         assert result["documents"] == []
@@ -140,7 +100,6 @@ class TestEmbeddingBasedDocumentSplitter:
         mock_embedder = AsyncMock()
         splitter = EmbeddingBasedDocumentSplitter(document_embedder=mock_embedder)
         splitter.sentence_splitter = AsyncMock()
-        splitter._is_warmed_up = True
 
         result = await splitter.run_async(documents=[Document(content="")])
         assert result["documents"] == []
@@ -359,18 +318,10 @@ class TestEmbeddingBasedDocumentSplitter:
         assert result["init_parameters"]["max_length"] == 1000
         assert "document_embedder" in result["init_parameters"]
 
+    @pytest.mark.skipif(os.environ.get("OPENAI_API_KEY", "") == "", reason="OPENAI_API_KEY is not set")
     @pytest.mark.integration
-    @pytest.mark.slow
-    def test_split_document_with_multiple_topics(self, del_hf_env_vars, monkeypatch):
-        import torch
-
-        # Force CPU usage to avoid MPS memory issues
-        monkeypatch.setenv("PYTORCH_ENABLE_MPS_FALLBACK", "1")
-        torch.backends.mps.is_available = lambda: False
-
-        embedder = SentenceTransformersDocumentEmbedder(
-            model="sentence-transformers/all-MiniLM-L6-v2", device=ComponentDevice.from_str("cpu")
-        )
+    def test_split_document_with_multiple_topics(self):
+        embedder = OpenAIDocumentEmbedder(model="text-embedding-3-small")
 
         splitter = EmbeddingBasedDocumentSplitter(
             document_embedder=embedder, sentences_per_group=2, percentile=0.9, min_length=30, max_length=300
@@ -403,16 +354,10 @@ class TestEmbeddingBasedDocumentSplitter:
         assert combined in original or original in combined
 
     @pytest.mark.asyncio
-    @pytest.mark.skipif(
-        not os.environ.get("TEI_URL", None),
-        reason="Export an env var called TEI_URL containing the TextEmbeddingInference url to run this test.",
-    )
-    @pytest.mark.slow
+    @pytest.mark.skipif(os.environ.get("OPENAI_API_KEY", "") == "", reason="OPENAI_API_KEY is not set")
     @pytest.mark.integration
     async def test_split_document_with_multiple_topics_async(self) -> None:
-        embedder = HuggingFaceAPIDocumentEmbedder(
-            api_type="text_embeddings_inference", api_params={"url": os.environ.get("TEI_URL")}
-        )
+        embedder = OpenAIDocumentEmbedder(model="text-embedding-3-small")
 
         splitter = EmbeddingBasedDocumentSplitter(
             document_embedder=embedder, sentences_per_group=2, percentile=0.9, min_length=30, max_length=300
@@ -444,10 +389,10 @@ class TestEmbeddingBasedDocumentSplitter:
         original = text
         assert combined in original or original in combined
 
-    @pytest.mark.slow
+    @pytest.mark.skipif(os.environ.get("OPENAI_API_KEY", "") == "", reason="OPENAI_API_KEY is not set")
     @pytest.mark.integration
-    def test_trailing_whitespace_is_preserved(self, del_hf_env_vars):
-        embedder = SentenceTransformersDocumentEmbedder(model="sentence-transformers/all-MiniLM-L6-v2")
+    def test_trailing_whitespace_is_preserved(self):
+        embedder = OpenAIDocumentEmbedder(model="text-embedding-3-small")
 
         splitter = EmbeddingBasedDocumentSplitter(document_embedder=embedder, sentences_per_group=1)
 
@@ -467,16 +412,10 @@ class TestEmbeddingBasedDocumentSplitter:
         assert result["documents"][0].content == text
 
     @pytest.mark.asyncio
-    @pytest.mark.skipif(
-        not os.environ.get("TEI_URL", None),
-        reason="Export an env var called TEI_URL containing the TextEmbeddingInference url to run this test.",
-    )
-    @pytest.mark.slow
+    @pytest.mark.skipif(os.environ.get("OPENAI_API_KEY", "") == "", reason="OPENAI_API_KEY is not set")
     @pytest.mark.integration
     async def test_trailing_whitespace_is_preserved_async(self) -> None:
-        embedder = HuggingFaceAPIDocumentEmbedder(
-            api_type="text_embeddings_inference", api_params={"url": os.environ.get("TEI_URL")}
-        )
+        embedder = OpenAIDocumentEmbedder(model="text-embedding-3-small")
         splitter = EmbeddingBasedDocumentSplitter(document_embedder=embedder, sentences_per_group=1)
 
         # Normal trailing whitespace
@@ -494,10 +433,10 @@ class TestEmbeddingBasedDocumentSplitter:
         result = await splitter.run_async(documents=[Document(content=text)])
         assert result["documents"][0].content == text
 
+    @pytest.mark.skipif(os.environ.get("OPENAI_API_KEY", "") == "", reason="OPENAI_API_KEY is not set")
     @pytest.mark.integration
-    @pytest.mark.slow
-    def test_no_extra_whitespaces_between_sentences(self, del_hf_env_vars):
-        embedder = SentenceTransformersDocumentEmbedder(model="sentence-transformers/all-MiniLM-L6-v2")
+    def test_no_extra_whitespaces_between_sentences(self):
+        embedder = OpenAIDocumentEmbedder(model="text-embedding-3-small")
 
         splitter = EmbeddingBasedDocumentSplitter(
             document_embedder=embedder, sentences_per_group=1, percentile=0.9, min_length=10, max_length=500
@@ -524,16 +463,10 @@ class TestEmbeddingBasedDocumentSplitter:
         )  # noqa: E501
 
     @pytest.mark.asyncio
-    @pytest.mark.skipif(
-        not os.environ.get("TEI_URL", None),
-        reason="Export an env var called TEI_URL containing the TextEmbeddingInference url to run this test.",
-    )
+    @pytest.mark.skipif(os.environ.get("OPENAI_API_KEY", "") == "", reason="OPENAI_API_KEY is not set")
     @pytest.mark.integration
-    @pytest.mark.slow
     async def test_no_extra_whitespaces_between_sentences_async(self) -> None:
-        embedder = HuggingFaceAPIDocumentEmbedder(
-            api_type="text_embeddings_inference", api_params={"url": os.environ.get("TEI_URL")}
-        )
+        embedder = OpenAIDocumentEmbedder(model="text-embedding-3-small")
 
         splitter = EmbeddingBasedDocumentSplitter(
             document_embedder=embedder, sentences_per_group=1, percentile=0.9, min_length=10, max_length=500
@@ -559,15 +492,15 @@ class TestEmbeddingBasedDocumentSplitter:
             == "Machine learning has revolutionized many industries. Neural networks can process vast amounts of data. Deep learning models achieve remarkable accuracy on complex tasks."  # noqa: E501
         )  # noqa: E501
 
+    @pytest.mark.skipif(os.environ.get("OPENAI_API_KEY", "") == "", reason="OPENAI_API_KEY is not set")
     @pytest.mark.integration
-    @pytest.mark.slow
-    def test_split_large_splits_recursion(self, del_hf_env_vars):
+    def test_split_large_splits_recursion(self):
         """
         Test that _split_large_splits() works correctly without infinite loops.
         This test uses a longer text that will trigger the recursive splitting logic.
         If the chunk cannot be split further, it is allowed to be larger than max_length.
         """
-        embedder = SentenceTransformersDocumentEmbedder(model="sentence-transformers/all-MiniLM-L6-v2", batch_size=32)
+        embedder = OpenAIDocumentEmbedder(model="text-embedding-3-small")
         semantic_chunker = EmbeddingBasedDocumentSplitter(
             document_embedder=embedder, sentences_per_group=5, percentile=0.95, min_length=50, max_length=1000
         )
@@ -600,21 +533,15 @@ The history of software is closely tied to the development of digital computers 
             assert "page_number" in split_doc.meta
 
     @pytest.mark.asyncio
-    @pytest.mark.skipif(
-        not os.environ.get("TEI_URL", None),
-        reason="Export an env var called TEI_URL containing the TextEmbeddingInference url to run this test.",
-    )
+    @pytest.mark.skipif(os.environ.get("OPENAI_API_KEY", "") == "", reason="OPENAI_API_KEY is not set")
     @pytest.mark.integration
-    @pytest.mark.slow
     async def test_split_large_splits_recursion_async(self) -> None:
         """
         Test that _split_large_splits() works correctly without infinite loops.
         This test uses a longer text that will trigger the recursive splitting logic.
         If the chunk cannot be split further, it is allowed to be larger than max_length.
         """
-        embedder = HuggingFaceAPIDocumentEmbedder(
-            api_type="text_embeddings_inference", api_params={"url": os.environ.get("TEI_URL")}
-        )
+        embedder = OpenAIDocumentEmbedder(model="text-embedding-3-small")
         semantic_chunker = EmbeddingBasedDocumentSplitter(
             document_embedder=embedder, sentences_per_group=5, percentile=0.95, min_length=50, max_length=1000
         )
@@ -646,14 +573,14 @@ The history of software is closely tied to the development of digital computers 
             assert split_doc.meta["split_id"] == i
             assert "page_number" in split_doc.meta
 
+    @pytest.mark.skipif(os.environ.get("OPENAI_API_KEY", "") == "", reason="OPENAI_API_KEY is not set")
     @pytest.mark.integration
-    @pytest.mark.slow
-    def test_split_large_splits_actually_splits(self, del_hf_env_vars):
+    def test_split_large_splits_actually_splits(self):
         """
         Test that _split_large_splits() actually works and can split long texts into multiple chunks.
         This test uses a very long text that should be split into multiple chunks.
         """
-        embedder = SentenceTransformersDocumentEmbedder(model="sentence-transformers/all-MiniLM-L6-v2", batch_size=32)
+        embedder = OpenAIDocumentEmbedder(model="text-embedding-3-small")
         semantic_chunker = EmbeddingBasedDocumentSplitter(
             document_embedder=embedder,
             sentences_per_group=3,
@@ -729,20 +656,14 @@ Artificial intelligence is transforming education by enabling personalized learn
                 assert split_doc.meta["page_number"] == 4
 
     @pytest.mark.asyncio
-    @pytest.mark.skipif(
-        not os.environ.get("TEI_URL", None),
-        reason="Export an env var called TEI_URL containing the TextEmbeddingInference url to run this test.",
-    )
+    @pytest.mark.skipif(os.environ.get("OPENAI_API_KEY", "") == "", reason="OPENAI_API_KEY is not set")
     @pytest.mark.integration
-    @pytest.mark.slow
     async def test_split_large_splits_actually_splits_async(self) -> None:
         """
         Test that _split_large_splits() actually works and can split long texts into multiple chunks.
         This test uses a very long text that should be split into multiple chunks.
         """
-        embedder = HuggingFaceAPIDocumentEmbedder(
-            api_type="text_embeddings_inference", api_params={"url": os.environ.get("TEI_URL")}
-        )
+        embedder = OpenAIDocumentEmbedder(model="text-embedding-3-small")
         semantic_chunker = EmbeddingBasedDocumentSplitter(
             document_embedder=embedder,
             sentences_per_group=3,
@@ -816,3 +737,97 @@ Artificial intelligence is transforming education by enabling personalized learn
                 assert split_doc.meta["page_number"] == 3
             if i in [9, 10]:
                 assert split_doc.meta["page_number"] == 4
+
+
+class TestComponentLifecycle:
+    def test_warm_up_builds_splitter_and_delegates_to_embedder(self):
+        mock_embedder = Mock()
+        splitter = EmbeddingBasedDocumentSplitter(document_embedder=mock_embedder)
+
+        with patch(
+            "haystack.components.preprocessors.embedding_based_document_splitter.SentenceSplitter"
+        ) as mock_splitter_class:
+            splitter.warm_up()
+
+            assert splitter.sentence_splitter is mock_splitter_class.return_value
+            mock_splitter_class.assert_called_once()
+            mock_embedder.warm_up.assert_called_once()
+
+    def test_warm_up_builds_splitter_once(self):
+        mock_embedder = Mock()
+        splitter = EmbeddingBasedDocumentSplitter(document_embedder=mock_embedder)
+
+        with patch(
+            "haystack.components.preprocessors.embedding_based_document_splitter.SentenceSplitter"
+        ) as mock_splitter_class:
+            splitter.warm_up()
+            first_splitter = splitter.sentence_splitter
+            splitter.warm_up()
+
+            mock_splitter_class.assert_called_once()
+            assert splitter.sentence_splitter is first_splitter
+
+    @pytest.mark.asyncio
+    async def test_warm_up_async_delegates_to_embedder_async(self) -> None:
+        mock_embedder = Mock()
+        mock_embedder.warm_up_async = AsyncMock()
+        splitter = EmbeddingBasedDocumentSplitter(document_embedder=mock_embedder)
+
+        with patch("haystack.components.preprocessors.embedding_based_document_splitter.SentenceSplitter"):
+            await splitter.warm_up_async()
+
+        mock_embedder.warm_up_async.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_warm_up_async_falls_back_to_sync_warm_up(self) -> None:
+        mock_embedder = Mock(spec=["warm_up"])
+        splitter = EmbeddingBasedDocumentSplitter(document_embedder=mock_embedder)
+
+        with patch("haystack.components.preprocessors.embedding_based_document_splitter.SentenceSplitter"):
+            await splitter.warm_up_async()
+
+        mock_embedder.warm_up.assert_called_once()
+
+    def test_close_delegates_to_embedder(self):
+        mock_embedder = Mock()
+        splitter = EmbeddingBasedDocumentSplitter(document_embedder=mock_embedder)
+
+        splitter.close()
+
+        mock_embedder.close.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_close_async_delegates_to_embedder(self) -> None:
+        mock_embedder = Mock()
+        mock_embedder.close_async = AsyncMock()
+        splitter = EmbeddingBasedDocumentSplitter(document_embedder=mock_embedder)
+
+        await splitter.close_async()
+
+        mock_embedder.close_async.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_close_async_falls_back_to_sync_close(self) -> None:
+        mock_embedder = Mock(spec=["close"])
+        splitter = EmbeddingBasedDocumentSplitter(document_embedder=mock_embedder)
+
+        await splitter.close_async()
+
+        mock_embedder.close.assert_called_once()
+
+    def test_lifecycle_is_safe_when_embedder_lacks_methods(self):
+        mock_embedder = Mock(spec=[])
+        splitter = EmbeddingBasedDocumentSplitter(document_embedder=mock_embedder)
+
+        with patch("haystack.components.preprocessors.embedding_based_document_splitter.SentenceSplitter"):
+            splitter.warm_up()
+        splitter.close()
+
+    @pytest.mark.asyncio
+    async def test_lifecycle_is_safe_when_embedder_lacks_methods_async(self) -> None:
+        mock_embedder = Mock(spec=[])
+        splitter = EmbeddingBasedDocumentSplitter(document_embedder=mock_embedder)
+
+        with patch("haystack.components.preprocessors.embedding_based_document_splitter.SentenceSplitter"):
+            await splitter.warm_up_async()
+        await splitter.close_async()

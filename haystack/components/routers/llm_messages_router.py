@@ -10,6 +10,7 @@ from haystack.components.generators.chat.types import ChatGenerator
 from haystack.core.serialization import component_to_dict
 from haystack.dataclasses import ChatMessage, ChatRole
 from haystack.utils import deserialize_chatgenerator_inplace
+from haystack.utils.async_utils import _execute_component_async
 
 
 @component
@@ -83,20 +84,34 @@ class LLMMessagesRouter:
         self._output_patterns = output_patterns
 
         self._compiled_patterns = [re.compile(pattern) for pattern in output_patterns]
-        self._is_warmed_up = False
 
         component.set_output_types(
             self, **{"chat_generator_text": str, **dict.fromkeys(output_names + ["unmatched"], list[ChatMessage])}
         )
 
     def warm_up(self) -> None:
-        """
-        Warm up the underlying LLM.
-        """
-        if not self._is_warmed_up:
-            if hasattr(self._chat_generator, "warm_up"):
-                self._chat_generator.warm_up()
-            self._is_warmed_up = True
+        """Warm up the underlying chat generator."""
+        if hasattr(self._chat_generator, "warm_up"):
+            self._chat_generator.warm_up()
+
+    async def warm_up_async(self) -> None:
+        """Warm up the underlying chat generator on the serving event loop."""
+        if hasattr(self._chat_generator, "warm_up_async"):
+            await self._chat_generator.warm_up_async()
+        elif hasattr(self._chat_generator, "warm_up"):
+            self._chat_generator.warm_up()
+
+    def close(self) -> None:
+        """Release the underlying chat generator's resources."""
+        if hasattr(self._chat_generator, "close"):
+            self._chat_generator.close()
+
+    async def close_async(self) -> None:
+        """Release the underlying chat generator's async resources."""
+        if hasattr(self._chat_generator, "close_async"):
+            await self._chat_generator.close_async()
+        elif hasattr(self._chat_generator, "close"):
+            self._chat_generator.close()
 
     def run(self, messages: list[ChatMessage]) -> dict[str, str | list[ChatMessage]]:
         """
@@ -120,8 +135,7 @@ class LLMMessagesRouter:
             )
             raise ValueError(msg)
 
-        if not self._is_warmed_up:
-            self.warm_up()
+        self.warm_up()
 
         messages_for_inference = []
         if self._system_prompt:
@@ -129,6 +143,53 @@ class LLMMessagesRouter:
         messages_for_inference.extend(messages)
 
         chat_generator_text = self._chat_generator.run(messages=messages_for_inference)["replies"][0].text
+
+        output = {"chat_generator_text": chat_generator_text}
+
+        for output_name, pattern in zip(self._output_names, self._compiled_patterns, strict=True):
+            if pattern.search(chat_generator_text):
+                output[output_name] = messages
+                break
+        else:
+            output["unmatched"] = messages
+
+        return output
+
+    async def run_async(self, messages: list[ChatMessage]) -> dict[str, str | list[ChatMessage]]:
+        """
+        Asynchronously classify the messages based on LLM output and route them to the appropriate output connection.
+
+        This is the asynchronous version of the `run` method. It has the same parameters and return values
+        but can be used with `await` in an async code. If the chat generator only implements a synchronous
+        `run` method, it is executed in a thread to avoid blocking the event loop.
+
+        :param messages: A list of ChatMessages to be routed. Only user and assistant messages are supported.
+
+        :returns: A dictionary with the following keys:
+            - "chat_generator_text": The text output of the LLM, useful for debugging.
+            - "output_names": Each contains the list of messages that matched the corresponding pattern.
+            - "unmatched": The messages that did not match any of the output patterns.
+
+        :raises ValueError: If messages is an empty list or contains messages with unsupported roles.
+        """
+        if not messages:
+            raise ValueError("`messages` must be a non-empty list.")
+        if not all(message.is_from(ChatRole.USER) or message.is_from(ChatRole.ASSISTANT) for message in messages):
+            msg = (
+                "`messages` must contain only user and assistant messages. To customize the behavior of the "
+                "`chat_generator`, you can use the `system_prompt` parameter."
+            )
+            raise ValueError(msg)
+
+        await self.warm_up_async()
+
+        messages_for_inference = []
+        if self._system_prompt:
+            messages_for_inference.append(ChatMessage.from_system(self._system_prompt))
+        messages_for_inference.extend(messages)
+
+        generator_result = await _execute_component_async(self._chat_generator, messages=messages_for_inference)
+        chat_generator_text = generator_result["replies"][0].text
 
         output = {"chat_generator_text": chat_generator_text}
 

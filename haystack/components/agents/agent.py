@@ -4,10 +4,11 @@
 
 import inspect
 import re
+from copy import deepcopy
 from dataclasses import dataclass
 from typing import Any, Literal, cast
 
-from haystack import Pipeline, component, logging, tracing
+from haystack import component, logging, tracing
 from haystack.components.agents.state.state import (
     State,
     _schema_from_dict,
@@ -16,44 +17,32 @@ from haystack.components.agents.state.state import (
     replace_values,
 )
 from haystack.components.agents.state.state_utils import merge_lists
+from haystack.components.agents.tool_calling import _run_tool, _run_tool_async
 from haystack.components.builders import ChatPromptBuilder
 from haystack.components.generators.chat.types import ChatGenerator
-from haystack.components.tools import ToolInvoker
-from haystack.core.errors import BreakpointException, PipelineRuntimeError
-from haystack.core.pipeline.async_pipeline import AsyncPipeline
-from haystack.core.pipeline.breakpoint import (
-    SnapshotCallback,
-    _create_pipeline_snapshot_from_chat_generator,
-    _create_pipeline_snapshot_from_tool_invoker,
-    _save_pipeline_snapshot,
-    _should_trigger_tool_invoker_breakpoint,
-    _validate_tool_breakpoint_is_valid,
-)
 from haystack.core.serialization import component_to_dict, default_from_dict, default_to_dict
-from haystack.dataclasses import (
-    AgentBreakpoint,
-    AgentSnapshot,
-    ChatMessage,
-    ChatRole,
-    StreamingCallbackT,
-    ToolBreakpoint,
-    select_streaming_callback,
+from haystack.dataclasses import ChatMessage, ChatRole, StreamingCallbackT, select_streaming_callback
+from haystack.hooks.invocation import _run_hooks, _run_hooks_async
+from haystack.hooks.protocol import AFTER_TOOL, BEFORE_LLM, BEFORE_TOOL, ON_EXIT, VALID_HOOK_POINTS, Hook, HookPoint
+from haystack.hooks.utils import (
+    _deserialize_hooks_dictionary,
+    _serialize_hooks_dictionary,
+    close_hooks,
+    close_hooks_async,
+    warm_up_hooks,
+    warm_up_hooks_async,
 )
-from haystack.human_in_the_loop import ToolExecutionDecision
-from haystack.human_in_the_loop.strategies import (
-    _process_confirmation_strategies,
-    _process_confirmation_strategies_async,
-)
-from haystack.human_in_the_loop.types import ConfirmationStrategy
 from haystack.tools import (
     Tool,
     Toolset,
     ToolsType,
+    _check_duplicate_tool_names,
     deserialize_tools_or_toolset_inplace,
     flatten_tools_or_toolsets,
     serialize_tools_or_toolset,
+    warm_up_tools,
 )
-from haystack.utils import _deserialize_value_with_schema
+from haystack.utils.async_utils import _execute_component_async
 from haystack.utils.callable_serialization import deserialize_callable, serialize_callable
 from haystack.utils.deserialization import deserialize_component_inplace
 
@@ -61,6 +50,90 @@ logger = logging.getLogger(__name__)
 
 # Regex to detect the Jinja2 chat template syntax
 _JINJA2_CHAT_TEMPLATE_RE = re.compile(r"\{%\s*message\s")
+# Regex to extract the role from a Jinja2 message block, e.g. {% message role="user" %}
+_JINJA2_MESSAGE_ROLE_RE = re.compile(r'\{%\s*message\s+role\s*=\s*["\'](\w+)["\']')
+
+# Run-metadata state keys the Agent populates automatically during a run. Users may not define them in their own
+# `state_schema`, and they are exposed as Agent outputs only (not inputs).
+_RUN_METADATA_STATE_KEYS: dict[str, dict[str, Any]] = {
+    "step_count": {"type": int, "handler": replace_values},
+    "token_usage": {"type": dict[str, Any], "handler": replace_values},
+    "tool_call_counts": {"type": dict[str, int], "handler": replace_values},
+}
+
+# Internal state keys the Agent manages for run control and hooks. Like run-metadata keys they are reserved and cannot
+# be redefined by users, but unlike them they are NOT exposed as Agent inputs or outputs (purely internal state):
+# - `continue_run`: set by an `on_exit` hook to keep the Agent running instead of stopping (re-read each exit attempt).
+# - `tools`: the flattened tools available in the current step, so a hook can inspect them (e.g. HITL confirmation).
+# - `hook_context`: per-run request-scoped resources passed to `run`/`run_async` for hooks to read.
+_INTERNAL_STATE_KEYS: dict[str, dict[str, Any]] = {
+    "continue_run": {"type": bool, "handler": replace_values},
+    "tools": {"type": list, "handler": replace_values},
+    "hook_context": {"type": dict[str, Any], "handler": replace_values},
+}
+
+
+def _accumulate_usage(current: Any, new: Any) -> Any:
+    """
+    Recursively sum numeric leaf values across two usage-like dicts.
+
+    Used to aggregate `ChatMessage.meta["usage"]` payloads across LLM calls in a run. Nested dicts (e.g. OpenAI's
+    `completion_tokens_details`) are merged recursively; numeric leaves are summed; other types fall back to the new
+    value.
+
+    :param current: The current accumulated usage data.
+    :param new: The new usage data to merge in.
+    """
+    if isinstance(current, dict) and isinstance(new, dict):
+        result = dict(current)
+        for k, v in new.items():
+            result[k] = _accumulate_usage(result[k], v) if k in result else deepcopy(v)
+        return result
+    if isinstance(current, (int, float)) and isinstance(new, (int, float)):
+        return current + new
+    return new
+
+
+def _record_llm_usage(state: State, llm_messages: list[ChatMessage]) -> None:
+    """
+    Aggregate token usage from the latest LLM messages into the State.
+
+    Only writes when at least one message reports `meta["usage"]`, so generators that don't surface usage data
+    leave `token_usage` at its default empty dict rather than overwriting it.
+
+    :param state: The Agent's State, used to read the running `token_usage` total and write back the new total.
+    :param llm_messages: The ChatMessage objects returned from the latest LLM call. Token usage is read from each
+        message's `meta["usage"]` field, if present.
+    """
+    current = state.data.get("token_usage")
+    updated = False
+    for msg in llm_messages:
+        usage = msg.meta.get("usage")
+        if isinstance(usage, dict):
+            current = _accumulate_usage(current or {}, usage)
+            updated = True
+    if updated:
+        state.set("token_usage", current)
+
+
+def _record_tool_calls(state: State, tool_messages: list[ChatMessage]) -> None:
+    """
+    Increment per-tool call counts in the State for every successfully dispatched tool.
+
+    :param state: The Agent's State, used to read the running `tool_call_counts` map and write back the new totals.
+    :param tool_messages: The ChatMessage objects returned from the latest tool execution. Per-tool counts are
+        incremented based on each message's `tool_call_result.origin.tool_name`.
+    """
+    counts = state.data.get("tool_call_counts") or {}
+    updated = False
+    for tm in tool_messages:
+        if tm.tool_call_result is None:
+            continue
+        name = tm.tool_call_result.origin.tool_name
+        counts[name] = counts.get(name, 0) + 1
+        updated = True
+    if updated:
+        state.set("tool_call_counts", counts)
 
 
 def _get_run_method_params(instance: "Agent") -> set[str]:
@@ -69,35 +142,232 @@ def _get_run_method_params(instance: "Agent") -> set[str]:
     return {name for name, p in sig.parameters.items() if p.kind != inspect.Parameter.VAR_KEYWORD}
 
 
+def _public_outputs(state: State) -> dict[str, Any]:
+    """Return the State data excluding the internal state keys (i.e. the Agent's user-facing outputs)."""
+    return {key: value for key, value in state.data.items() if key not in _INTERNAL_STATE_KEYS}
+
+
+def _validate_hooks(hooks: dict[HookPoint, list[Hook]]) -> None:
+    """
+    Validate a hooks mapping: known hook points, real Hook objects, and hook-point restrictions.
+
+    :param hooks: Mapping of hook point to the hooks registered under it.
+    :raises ValueError: If a hook point is unknown, or a hook is registered under a hook point it does not support.
+    :raises TypeError: If a registered hook has no callable `run(state)`.
+    """
+    for hook_point, hook_list in hooks.items():
+        if hook_point not in VALID_HOOK_POINTS:
+            raise ValueError(
+                f"Invalid hook point '{hook_point}'. Valid hook points are: {', '.join(VALID_HOOK_POINTS)}."
+            )
+        for h in hook_list:
+            if not callable(getattr(h, "run", None)):
+                if callable(h):
+                    raise TypeError(
+                        f"Hook registered for hook point '{hook_point}' is callable but is not a Hook object. "
+                        "If it is a function, wrap it with the @hook decorator."
+                    )
+                raise TypeError(
+                    f"Hook registered for hook point '{hook_point}' must have a callable 'run(state)', "
+                    f"got an object of type '{type(h).__name__}'."
+                )
+            # A hook may declare `allowed_hook_points` to restrict where it can run (e.g. ConfirmationHook only
+            # makes sense at "before_tool"). Hooks without it can be registered under any hook point.
+            allowed_points = getattr(h, "allowed_hook_points", None)
+            if allowed_points is not None and hook_point not in allowed_points:
+                raise ValueError(
+                    f"Hook of type '{type(h).__name__}' is registered under hook point '{hook_point}' but only "
+                    f"supports: {', '.join(allowed_points)}."
+                )
+
+
+def _consume_continue_run(state: State) -> bool:
+    """Return the `continue_run` control flag and reset it so it does not carry over to the next exit attempt."""
+    should_continue = state.data["continue_run"]
+    state.set("continue_run", False)
+    return should_continue
+
+
+def _is_text_exit(messages: list[ChatMessage]) -> bool:
+    """
+    Return whether `messages` end in a plain assistant text reply with no tool calls anywhere in the batch.
+
+    This is the "no tool call" exit for the model's own replies. The last message must be a non-empty assistant text
+    message, so an invalid response (e.g. one with no tool calls and no text) does not trigger an exit.
+    """
+    if not messages:
+        return False
+    last = messages[-1]
+    return not any(m.tool_call for m in messages) and last.is_from(ChatRole.ASSISTANT) and bool(last.text)
+
+
+def _pending_tool_call_messages_from_state(state: State) -> list[ChatMessage]:
+    """
+    Return the pending tool-call message after `before_tool` hooks have run.
+
+    `before_tool` hooks may mutate `state.data["messages"]`. After they run, the Agent intentionally inspects only the
+    current last message in the state. If that message has tool calls, those calls are executed. If it has no tool
+    calls, no tools run for the step, no tool-based exit condition is triggered, and the Agent loops back to the next
+    LLM call unless `max_agent_steps` has been reached.
+    """
+    messages = state.data.get("messages") or []
+    if not messages:
+        return []
+    last_message = messages[-1]
+    return [last_message] if last_message.tool_calls else []
+
+
+def _select_tools_by_name(configured_tools: ToolsType, names: list[str]) -> list[Tool | Toolset]:
+    """
+    Select configured tools by name for a single run.
+
+    Standalone Tools are kept when their name is requested. A Toolset that exposes a requested name is replaced by a
+    per-run `spawn()` (an isolated copy) with the requested names registered as its `_selected_tool_names`, so
+    dynamic toolsets such as SearchableToolset preserve their behavior (search/lazy-loading) over the selected subset
+    without mutating the shared, configured Toolset.
+
+    :param configured_tools: The tools configured on the Agent.
+    :param names: The requested tool names.
+    :returns: The selected standalone Tools and/or spawned, selection-scoped Toolsets.
+    :raises ValueError: If no tools were configured, or if any requested name is not a valid tool name.
+    """
+    if not configured_tools:
+        raise ValueError("No tools were configured for the Agent at initialization.")
+
+    requested_names = set(names)
+    items: list[Tool | Toolset] = (
+        [configured_tools] if isinstance(configured_tools, Toolset) else list(configured_tools)
+    )
+
+    # Resolve selectable names per item. For Toolsets we use get_selectable_tools() so dynamic toolsets
+    # (e.g. SearchableToolset) offer their full catalog by name, not just the tools exposed by iteration.
+    selectable_per_item: list[tuple[Tool | Toolset, set[str]]] = []
+    valid_tool_names: set[str] = set()
+    for item in items:
+        item_names = {tool.name for tool in item.get_selectable_tools()} if isinstance(item, Toolset) else {item.name}
+        selectable_per_item.append((item, item_names))
+        valid_tool_names |= item_names
+
+    invalid_tool_names = requested_names - valid_tool_names
+    if invalid_tool_names:
+        raise ValueError(
+            f"The following tool names are not valid: {invalid_tool_names}. Valid tool names are: {valid_tool_names}."
+        )
+
+    selected: list[Tool | Toolset] = []
+    for item, item_names in selectable_per_item:
+        matched = requested_names & item_names
+        if not matched:
+            continue
+        if isinstance(item, Toolset):
+            # Apply the selection to a per-run copy so the shared, configured Toolset is never mutated.
+            spawned = item.spawn()
+            spawned._selected_tool_names = matched
+            selected.append(spawned)
+        else:
+            selected.append(item)
+    return selected
+
+
+def _spawn_tools(tools: ToolsType) -> ToolsType:
+    """
+    Return per-run copies of `tools`, replacing each Toolset with an isolated `spawn()` (Tools are passed through).
+
+    This isolates run-scoped Toolset state (e.g. a SearchableToolset's discovered tools and any active name
+    selection) so that concurrent runs sharing the same configured Toolset — such as parallel sub-agent tool calls
+    or concurrent requests against one Agent — don't corrupt each other.
+    """
+    if isinstance(tools, Toolset):
+        return tools.spawn()
+    return [item.spawn() if isinstance(item, Toolset) else item for item in tools]
+
+
+def _validate_prompt_message_blocks(user_prompt: str | None, system_prompt: str | None) -> None:
+    """
+    Validate explicit Jinja2 message blocks in Agent prompts.
+
+    :param user_prompt: Optional user prompt template.
+    :param system_prompt: Optional system prompt template.
+    :raises ValueError: If a prompt contains multiple message blocks or a literal block role is invalid.
+    """
+    if user_prompt is not None:
+        message_blocks = _JINJA2_CHAT_TEMPLATE_RE.findall(user_prompt)
+        roles = _JINJA2_MESSAGE_ROLE_RE.findall(user_prompt)
+        if len(message_blocks) > 1:
+            raise ValueError(f"user_prompt must define exactly one message block, found {len(message_blocks)}.")
+        if roles and roles[0] != "user":
+            raise ValueError(f"user_prompt message block must have role 'user', found role '{roles[0]}'.")
+
+    if system_prompt is not None and _JINJA2_CHAT_TEMPLATE_RE.search(system_prompt):
+        message_blocks = _JINJA2_CHAT_TEMPLATE_RE.findall(system_prompt)
+        roles = _JINJA2_MESSAGE_ROLE_RE.findall(system_prompt)
+        if len(message_blocks) > 1:
+            raise ValueError(f"system_prompt must define exactly one message block, found {len(message_blocks)}.")
+        if roles and roles[0] != "system":
+            raise ValueError(f"system_prompt message block must have role 'system', found role '{roles[0]}'.")
+
+
+def _template_for_role(prompt: str, role: str) -> str:
+    """
+    Convert a prompt into a ChatPromptBuilder string template for the expected role.
+
+    :param prompt: Prompt template, with or without an explicit Jinja2 message block.
+    :param role: Role to use when wrapping a plain string prompt.
+    :returns: The original message-block template, or a plain string prompt wrapped in one message block.
+    """
+    if _JINJA2_CHAT_TEMPLATE_RE.search(prompt):
+        return prompt
+    return f'{{% message role="{role}" %}}{prompt}{{% endmessage %}}'
+
+
+def _render_prompt_messages(
+    *, prompt_builder: ChatPromptBuilder, expected_role: ChatRole, prompt_label: str, kwargs: dict[str, Any]
+) -> list[ChatMessage]:
+    """
+    Render one Agent prompt and validate the rendered message.
+
+    :param prompt_builder: Builder configured with the prompt template.
+    :param expected_role: Role the rendered message must have.
+    :param prompt_label: Prompt name used in error messages.
+    :param kwargs: Runtime values available to the prompt template.
+    :returns: A single rendered prompt message.
+    :raises ValueError: If the prompt renders to zero, multiple, or wrong-role messages.
+    """
+    prompt_kwargs = {var: kwargs[var] for var in prompt_builder.variables if var in kwargs}
+    prompt_messages = prompt_builder.run(**prompt_kwargs)["prompt"]
+    if len(prompt_messages) != 1:
+        raise ValueError(
+            f"{prompt_label} must render to exactly one {expected_role.value} message. "
+            f"Got {len(prompt_messages)} messages."
+        )
+    if not prompt_messages[0].is_from(expected_role):
+        raise ValueError(
+            f"{prompt_label} must render to a {expected_role.value} message. "
+            f"Got a message with role {prompt_messages[0].role}."
+        )
+    return prompt_messages
+
+
 @dataclass(kw_only=True)
 class _ExecutionContext:
     """
     Context for executing the agent.
 
     :param state: The current state of the agent, including messages and any additional data.
-    :param component_visits: A dictionary tracking how many times each component has been visited.
-    :param chat_generator_inputs: Runtime inputs to be passed to the chat generator.
-    :param tool_invoker_inputs: Runtime inputs to be passed to the tool invoker.
+    :param tools: The tools selected for this run, kept unflattened (the original Toolset or list of
+        Tools/Toolsets). Storing the unflattened form lets each step re-flatten it and pick up tools a dynamic
+        toolset (e.g. SearchableToolset) discovers over time; flattening would freeze a snapshot. The chat
+        generator and tool execution receive a freshly flattened snapshot per step.
+    :param chat_generator_inputs: Runtime inputs to be passed to the chat generator (tools are injected per step).
+    :param tool_execution_inputs: Runtime inputs to be passed to tool execution (tools are injected per step).
     :param counter: A counter to track the number of steps taken in the agent's run.
-    :param skip_chat_generator: A flag to indicate whether to skip the chat generator in the next iteration.
-        This is useful when resuming from a ToolBreakpoint where the ToolInvoker needs to be called first.
-    :param confirmation_strategy_context: Optional dictionary for passing request-scoped resources
-        to confirmation strategies. In web/server environments, this enables passing per-request
-        objects (e.g., WebSocket connections, async queues, or pub/sub clients) that strategies can use for
-        non-blocking user interaction. This is passed directly to strategies via the `confirmation_strategy_context`
-        parameter in their `run()` and `run_async()` methods.
-    :param tool_execution_decisions: Optional list of ToolExecutionDecision objects to use instead of prompting
-        the user. This is useful when restarting from a snapshot where tool execution decisions were already made.
     """
 
     state: State
-    component_visits: dict
+    tools: ToolsType
     chat_generator_inputs: dict
-    tool_invoker_inputs: dict
+    tool_execution_inputs: dict
     counter: int = 0
-    skip_chat_generator: bool = False
-    confirmation_strategy_context: dict[str, Any] | None = None
-    tool_execution_decisions: list[ToolExecutionDecision] | None = None
 
 
 @component
@@ -206,9 +476,58 @@ class Agent:
     print(result["last_message"].text)
     ```
 
+    #### Using hooks to influence the run loop
+
+    Hooks are callables that receive the live `State` and run at specific points in the Agent loop:
+
+    - `before_llm`: runs before each chat-generator call.
+    - `before_tool`: runs after the model requests tool calls, before any tools run. After these hooks run, the Agent
+      re-reads the current last message from `state.data["messages"]`. If that message has tool calls, those calls are
+      executed. If it has no tool calls, no tools run for that step, no tool-based exit condition is triggered, and the
+      Agent loops back to the next LLM call unless `max_agent_steps` has been reached.
+    - `after_tool`: runs after tools execute, once their result messages are in `state.data["messages"]`, before the
+      exit check and the next LLM call. Use it to rewrite the freshly produced tool-result messages (e.g. offload,
+      redact, truncate, or summarize results). It does not run on the plain-text exit step, where no tools run.
+    - `on_exit`: runs when the Agent is about to stop on an exit condition. An `on_exit` hook can keep the Agent
+      running by setting `state.set("continue_run", True)`.
+
+    Use the `@hook` decorator to build a hook from a function. This `on_exit` hook keeps the Agent running until a
+    required tool has been called.
+
+    ```python
+    from haystack.components.agents import Agent
+    from haystack.components.agents.state import State
+    from haystack.components.generators.chat import OpenAIChatGenerator
+    from haystack.dataclasses import ChatMessage
+    from haystack.hooks import hook
+    from haystack.tools import tool
+    from typing import Annotated
+
+
+    @tool
+    def save_result(content: Annotated[str, "The result to save"]) -> str:
+        \"\"\"Save the final result.\"\"\"
+        # Placeholder: would persist `content` to a database or the file system
+        return "saved"
+
+
+    @hook
+    def require_save(state: State) -> None:
+        if state.get("tool_call_counts", {}).get("save_result", 0) == 0:
+            state.set("messages", [ChatMessage.from_system("Call `save_result` before finishing.")])
+            state.set("continue_run", True)  # keep the Agent running instead of stopping
+
+
+    agent = Agent(
+        chat_generator=OpenAIChatGenerator(),
+        tools=[save_result],
+        hooks={"on_exit": [require_save]},
+    )
+    ```
+
     """
 
-    def __init__(
+    def __init__(  # noqa: PLR0913
         self,
         *,
         chat_generator: ChatGenerator,
@@ -221,19 +540,20 @@ class Agent:
         max_agent_steps: int = 100,
         streaming_callback: StreamingCallbackT | None = None,
         raise_on_tool_invocation_failure: bool = False,
-        tool_invoker_kwargs: dict[str, Any] | None = None,
-        confirmation_strategies: dict[str | tuple[str, ...], ConfirmationStrategy] | None = None,
+        tool_concurrency_limit: int = 4,
+        tool_streaming_callback_passthrough: bool = False,
+        hooks: dict[HookPoint, list[Hook]] | None = None,
     ) -> None:
         """
         Initialize the agent component.
 
         :param chat_generator: An instance of the chat generator that your agent should use. It must support tools.
         :param tools: A list of Tool and/or Toolset objects, or a single Toolset that the agent can use.
-        :param system_prompt: System prompt for the agent. Can be a plain string or a Jinja2 string template.
+        :param system_prompt: System prompt for the agent. Can be a plain string template or a Jinja2 message template.
             For details on the supported template syntax, refer to the
             [documentation](https://docs.haystack.deepset.ai/docs/chatpromptbuilder#string-templates).
-        :param user_prompt: User prompt for the agent, defined as a Jinja2 string template. If provided, this is
-            appended to the messages provided at runtime.
+        :param user_prompt: User prompt for the agent. Can be a plain string template or a Jinja2 message template.
+            If provided, this is appended to the messages provided at runtime.
             For details on the supported template syntax, refer to the
             [documentation](https://docs.haystack.deepset.ai/docs/chatpromptbuilder#string-templates).
         :param required_variables:
@@ -247,50 +567,70 @@ class Agent:
             with `"type"` (required) and an optional `"handler"` for merging values across tool calls.
             Tools can read from and write to state keys using `inputs_from_state` and `outputs_to_state`.
         :param max_agent_steps: Maximum number of steps the agent will run before stopping. Defaults to 100.
-            If the agent exceeds this number of steps, it will stop and return the current state.
+            A step is one chat-generator call plus the execution of every tool call the model requested in
+            that call (if any). If the agent reaches this number of steps it stops and returns the current state.
         :param streaming_callback: A callback that will be invoked when a response is streamed from the LLM.
             The same callback can be configured to emit tool results when a tool is called.
         :param raise_on_tool_invocation_failure: Should the agent raise an exception when a tool invocation fails?
             If set to False, the exception will be turned into a chat message and passed to the LLM.
-        :param tool_invoker_kwargs: Additional keyword arguments to pass to the ToolInvoker.
-        :param confirmation_strategies: A dictionary mapping tool names to ConfirmationStrategy instances.
+        :param tool_concurrency_limit: Maximum number of tool calls to execute at the same time.
+            Defaults to 4. Set to 1 to disable parallel tool execution.
+        :param tool_streaming_callback_passthrough: If True, pass the streaming callback to tools that accept it.
+        :param hooks: A dictionary mapping a hook point to a list of hooks the Agent runs at that point. Each hook
+            receives the live `State` and influences the run by mutating it in place; hooks for a hook point run in
+            list order. Valid hook points are:
+            - "before_llm": Runs before each chat-generator call.
+            - "before_tool": Runs after the model requests tool calls, before any tools run. After these hooks run,
+              the Agent re-reads the current last message from `state.data["messages"]`. If that message contains tool
+              calls, those calls are executed. If it does not, no tools run for that step, no tool-based exit condition
+              is triggered, and the Agent loops back to the next LLM call unless `max_agent_steps` has been reached.
+            - "after_tool": Runs after tools execute, once their result messages are in `state.data["messages"]`,
+              before the exit check and the next LLM call. Use it to rewrite the freshly produced tool-result messages
+              (e.g. offload, redact, truncate, or summarize results). It does not run on the plain-text exit step,
+              where no tools run.
+            - "on_exit": Runs when the Agent is about to stop on an exit condition. An "on_exit" hook can keep the
+              Agent running by setting the `continue_run` control flag (`state.set("continue_run", True)`), usually
+              alongside a message telling the model what to do next. "on_exit" hooks run when the Agent stops on an
+              exit condition, but not when it stops because `max_agent_steps` is reached.
         :raises TypeError: If the chat_generator does not support tools parameter in its run method.
-        :raises ValueError: If the exit_conditions are not valid.
-        :raises ValueError: If any `user_prompt` variable overlaps with the `state_schema` or `run` method parameters.
+        :raises ValueError: If any `user_prompt` variable overlaps with the `state_schema` or `run` method parameters,
+            if a hook is registered under an unknown hook point, or if a hook is registered under a hook point it does
+            not support (via its `allowed_hook_points`).
         """
-        # Check if chat_generator supports tools parameter
-        chat_generator_run_method = inspect.signature(chat_generator.run)
-        self._chat_generator_supports_tools: bool = "tools" in chat_generator_run_method.parameters
-        if tools and not self._chat_generator_supports_tools:
+        # --- Validation ---
+        self._chat_generator_supports_tools: bool = "tools" in inspect.signature(chat_generator.run).parameters
+        # We use an explicit None check for tools b/c testing for truthiness calls __len__, which for SearchableToolset
+        # would iterate and prematurely warm it up at init.
+        if tools is not None and not self._chat_generator_supports_tools:
             raise TypeError(
                 f"{type(chat_generator).__name__} does not accept tools parameter in its run method. "
                 "The Agent component requires a chat generator that supports tools when tools are provided."
             )
 
-        valid_exits = ["text"] + [tool.name for tool in flatten_tools_or_toolsets(tools)]
         if exit_conditions is None:
             exit_conditions = ["text"]
-        if not all(condition in valid_exits for condition in exit_conditions):
-            raise ValueError(
-                f"Invalid exit conditions provided: {exit_conditions}. "
-                f"Valid exit conditions must be a subset of {valid_exits}. "
-                "Ensure that each exit condition corresponds to either 'text' or a valid tool name."
-            )
 
-        # Validate state schema if provided
         if state_schema is not None:
+            reserved_keys = _RUN_METADATA_STATE_KEYS.keys() | _INTERNAL_STATE_KEYS.keys()
+            reserved_used = sorted(set(state_schema) & reserved_keys)
+            if reserved_used:
+                raise ValueError(
+                    f"state_schema keys {reserved_used} are reserved for Agent internal state and "
+                    f"cannot be redefined. Reserved keys: {sorted(reserved_keys)}."
+                )
             _validate_schema(state_schema)
-        self._state_schema = state_schema or {}
+        _validate_prompt_message_blocks(user_prompt, system_prompt)
+        if tool_concurrency_limit < 1:
+            raise ValueError("tool_concurrency_limit must be greater than or equal to 1.")
 
-        # Initialize state schema
-        # shallow copy is sufficient: we only add a top-level "messages" key, never mutate nested values
-        resolved_state_schema = dict(self._state_schema)
-        if resolved_state_schema.get("messages") is None:
-            resolved_state_schema["messages"] = {"type": list[ChatMessage], "handler": merge_lists}
-        self.state_schema = resolved_state_schema
+        hooks = hooks or {}
+        _validate_hooks(hooks)
 
+        # --- Attributes ---
         self.chat_generator = chat_generator
-        self.tools = tools or []
+        # We use an explicit None check for tools b/c testing for truthiness calls __len__, which for SearchableToolset
+        # would iterate and prematurely warm it up at init.
+        self.tools = tools if tools is not None else []
         self.system_prompt = system_prompt
         self.user_prompt = user_prompt
         self.required_variables = required_variables
@@ -298,47 +638,48 @@ class Agent:
         self.max_agent_steps = max_agent_steps
         self.raise_on_tool_invocation_failure = raise_on_tool_invocation_failure
         self.streaming_callback = streaming_callback
+        self.tool_concurrency_limit = tool_concurrency_limit
+        self.tool_streaming_callback_passthrough = tool_streaming_callback_passthrough
+        self.hooks = hooks
+        self._tools_warmed_up = False
+        self._hooks_warmed_up = False
 
-        # Set input and output types for the component based on the State schema
+        # --- State schema ---
+        # shallow copy is sufficient: we only add a top-level "messages" key, never mutate nested values
+        self._state_schema = state_schema or {}
+        self.state_schema = dict(self._state_schema)
+        if self.state_schema.get("messages") is None:
+            self.state_schema["messages"] = {"type": list[ChatMessage], "handler": merge_lists}
+        for key, config in {**_RUN_METADATA_STATE_KEYS, **_INTERNAL_STATE_KEYS}.items():
+            self.state_schema[key] = dict(config)
+
+        # --- Component I/O ---
         self._run_method_params = _get_run_method_params(self)
-        output_types = {"last_message": ChatMessage}
+        output_types: dict[str, Any] = {"last_message": ChatMessage}
         for param, config in self.state_schema.items():
-            output_types[param] = config["type"]
-            # Skip setting input types for parameters that are already in the run method
-            if param in self._run_method_params:
+            # Internal keys are run-control / hook-facing state, not exposed as inputs or outputs.
+            if param in _INTERNAL_STATE_KEYS:
                 continue
-            component.set_input_type(self, name=param, type=config["type"], default=None)
+            output_types[param] = config["type"]
+            # Run-metadata keys are populated by the Agent itself and exposed as outputs only, not inputs.
+            if param not in self._run_method_params and param not in _RUN_METADATA_STATE_KEYS:
+                component.set_input_type(self, name=param, type=config["type"], default=None)
         component.set_output_types(self, **output_types)
 
-        # required_variables is initially set to [] and populated later by _register_prompt_variables
+        # --- Prompt builders ---
+        # required_variables starts empty and is populated by _register_prompt_variables once
+        # builder.variables are known
         self._user_chat_prompt_builder = (
-            ChatPromptBuilder(template=user_prompt, required_variables=[]) if user_prompt is not None else None
+            ChatPromptBuilder(template=_template_for_role(user_prompt, "user"), required_variables=[])
+            if user_prompt is not None
+            else None
         )
-        # Only create a system prompt builder when the prompt uses Jinja2 message syntax
         self._system_chat_prompt_builder: ChatPromptBuilder | None = None
-        if system_prompt is not None and _JINJA2_CHAT_TEMPLATE_RE.search(system_prompt):
-            self._system_chat_prompt_builder = ChatPromptBuilder(template=system_prompt, required_variables=[])
-
-        self._register_prompt_variables()
-
-        self.tool_invoker_kwargs = tool_invoker_kwargs
-        self._tool_invoker = None
-        if self.tools:
-            resolved_tool_invoker_kwargs = {
-                "tools": self.tools,
-                "raise_on_failure": self.raise_on_tool_invocation_failure,
-                **(tool_invoker_kwargs or {}),
-            }
-            self._tool_invoker = ToolInvoker(**resolved_tool_invoker_kwargs)
-        elif type(self).__name__ == "Agent":
-            logger.warning(
-                "No tools provided to the Agent. The Agent will behave like a ChatGenerator and only return text "
-                "responses. To enable tool usage, pass tools directly to the Agent, not to the chat_generator."
+        if system_prompt is not None:
+            self._system_chat_prompt_builder = ChatPromptBuilder(
+                template=_template_for_role(system_prompt, "system"), required_variables=[]
             )
-
-        self._confirmation_strategies = confirmation_strategies or {}
-
-        self._is_warmed_up = False
+        self._register_prompt_variables()
 
     def _register_prompt_variables(self) -> None:
         """
@@ -349,11 +690,10 @@ class Agent:
         """
         required_variables = self.required_variables
 
-        if (
-            required_variables is not None
-            and self._system_chat_prompt_builder is None
-            and self._user_chat_prompt_builder is None
-        ):
+        prompt_builders = [
+            builder for builder in (self._system_chat_prompt_builder, self._user_chat_prompt_builder) if builder
+        ]
+        if required_variables is not None and not any(builder.variables for builder in prompt_builders):
             logger.warning(
                 "The parameter required_variables is provided but neither user_prompt nor system_prompt "
                 "contains template variables. Either provide a prompt with Jinja2 template variables "
@@ -392,16 +732,54 @@ class Agent:
             else:
                 component.set_input_type(self, name=var_name, type=Any, default=None)
 
+    def _warm_up_tools(self) -> None:
+        """Warm up the configured tools once."""
+        if not self._tools_warmed_up:
+            if self.tools:
+                warm_up_tools(self.tools)
+            self._tools_warmed_up = True
+
+    def _warm_up_hooks(self) -> None:
+        """Warm up the configured hooks once."""
+        if not self._hooks_warmed_up:
+            warm_up_hooks(self.hooks)
+            self._hooks_warmed_up = True
+
+    async def _warm_up_hooks_async(self) -> None:
+        """Warm up the configured hooks once, preferring each hook's async warm-up."""
+        if not self._hooks_warmed_up:
+            await warm_up_hooks_async(self.hooks)
+            self._hooks_warmed_up = True
+
     def warm_up(self) -> None:
-        """
-        Warm up the Agent.
-        """
-        if not self._is_warmed_up:
-            if hasattr(self.chat_generator, "warm_up"):
-                self.chat_generator.warm_up()
-            if hasattr(self._tool_invoker, "warm_up") and self._tool_invoker is not None:
-                self._tool_invoker.warm_up()
-            self._is_warmed_up = True
+        """Warm up the tools, hooks, and the underlying chat generator."""
+        self._warm_up_tools()
+        self._warm_up_hooks()
+        if hasattr(self.chat_generator, "warm_up"):
+            self.chat_generator.warm_up()
+
+    async def warm_up_async(self) -> None:
+        """Warm up the tools, hooks, and the underlying chat generator on the serving event loop."""
+        self._warm_up_tools()
+        await self._warm_up_hooks_async()
+        if hasattr(self.chat_generator, "warm_up_async"):
+            await self.chat_generator.warm_up_async()
+        elif hasattr(self.chat_generator, "warm_up"):
+            self.chat_generator.warm_up()
+
+    def close(self) -> None:
+        """Release the hooks' and the underlying chat generator's resources."""
+        close_hooks(self.hooks)
+        if hasattr(self.chat_generator, "close"):
+            self.chat_generator.close()
+
+    async def close_async(self) -> None:
+        """Release the hooks' and the underlying chat generator's async resources."""
+        await close_hooks_async(self.hooks)
+        if hasattr(self.chat_generator, "close_async"):
+            await self.chat_generator.close_async()
+        elif hasattr(self.chat_generator, "close"):
+            self.chat_generator.close()
 
     def to_dict(self) -> dict[str, Any]:
         """
@@ -422,15 +800,9 @@ class Agent:
             max_agent_steps=self.max_agent_steps,
             streaming_callback=serialize_callable(self.streaming_callback) if self.streaming_callback else None,
             raise_on_tool_invocation_failure=self.raise_on_tool_invocation_failure,
-            tool_invoker_kwargs=self.tool_invoker_kwargs,
-            confirmation_strategies={
-                (list(key) if isinstance(key, tuple) else key): component_to_dict(
-                    obj=strategy, name="confirmation_strategy"
-                )
-                for key, strategy in self._confirmation_strategies.items()
-            }
-            if self._confirmation_strategies
-            else None,
+            tool_concurrency_limit=self.tool_concurrency_limit,
+            tool_streaming_callback_passthrough=self.tool_streaming_callback_passthrough,
+            hooks=_serialize_hooks_dictionary(self.hooks) if self.hooks else None,
         )
 
     @classmethod
@@ -453,33 +825,27 @@ class Agent:
 
         deserialize_tools_or_toolset_inplace(init_params, key="tools")
 
-        if init_params.get("confirmation_strategies") is not None:
-            restored: dict[str | tuple[str, ...], Any] = {}
-            for raw_key in init_params["confirmation_strategies"].keys():
-                deserialize_component_inplace(init_params["confirmation_strategies"], key=raw_key)
-                strategy = init_params["confirmation_strategies"][raw_key]
-                if isinstance(raw_key, list):
-                    key = tuple(raw_key)
-                else:
-                    key = raw_key
-                restored[key] = strategy
-            init_params["confirmation_strategies"] = restored
+        if init_params.get("hooks") is not None:
+            init_params["hooks"] = _deserialize_hooks_dictionary(init_params["hooks"])
 
         return default_from_dict(cls, data)
 
-    def _create_agent_span(self) -> Any:
+    def _create_agent_span(self, tools: ToolsType) -> Any:
         """
         Create a span for the agent run.
 
         If the agent is running as part of a pipeline, this span will be nested
         under the current active span (the pipeline's component span).
+
+        :param tools: The tools selected for this run (init-time tools or the runtime override
+            resolved by `_initialize_fresh_execution`), so the span reflects the tools actually used.
         """
         parent_span = tracing.tracer.current_span()
         return tracing.tracer.trace(
             "haystack.agent.run",
             tags={
                 "haystack.agent.max_steps": self.max_agent_steps,
-                "haystack.agent.tools": self.tools,
+                "haystack.agent.tools": tools,
                 "haystack.agent.exit_conditions": self.exit_conditions,
                 "haystack.agent.state_schema": _schema_to_dict(self.state_schema),
             },
@@ -492,11 +858,9 @@ class Agent:
         streaming_callback: StreamingCallbackT | None,
         requires_async: bool,
         *,
-        system_prompt: str | None = None,
-        user_prompt: str | None = None,
         generation_kwargs: dict[str, Any] | None = None,
         tools: ToolsType | list[str] | None = None,
-        confirmation_strategy_context: dict[str, Any] | None = None,
+        hook_context: dict[str, Any] | None = None,
         **kwargs: Any,
     ) -> _ExecutionContext:
         """
@@ -505,103 +869,76 @@ class Agent:
         :param messages: List of ChatMessage objects to start the agent with.
         :param streaming_callback: Optional callback for streaming responses.
         :param requires_async: Whether the agent run requires asynchronous execution.
-        :param system_prompt: System prompt for the agent. If provided, it overrides the default system prompt.
-        :param user_prompt: User prompt for the agent. If provided, it overrides the default user prompt and is
-            appended to the messages provided at runtime.
         :param generation_kwargs: Additional keyword arguments for chat generator. These parameters will
             override the parameters passed during component initialization.
         :param tools: Optional list of Tool objects, a Toolset, or list of tool names to use for this run.
             When passing tool names, tools are selected from the Agent's originally configured tools.
-        :param confirmation_strategy_context: Optional dictionary for passing request-scoped resources
-            to confirmation strategies.
+        :param hook_context: Optional dictionary of request-scoped resources made available to hooks via
+            `state.data.get("hook_context")`.
         :param kwargs: Additional data to pass to the State used by the Agent.
         """
-        user_prompt = user_prompt or self.user_prompt
-        system_prompt = system_prompt or self.system_prompt
         messages = messages or []
 
-        if user_prompt is not None:
-            if self._user_chat_prompt_builder is None:
-                raise ValueError(
-                    "user_prompt is provided but the ChatPromptBuilder is not initialized. "
-                    "Please make sure a user_prompt is provided at initialization time."
-                )
-
-            # Only forward the prompt kwargs to the prompt builder
-            prompt_kwargs = {var: kwargs[var] for var in self._user_chat_prompt_builder.variables if var in kwargs}
-            user_messages = self._user_chat_prompt_builder.run(template=user_prompt, **prompt_kwargs)["prompt"]
-            if len(user_messages) != 1:
-                raise ValueError(
-                    f"user_prompt must render to exactly one user message. Got {len(user_messages)} messages."
-                )
-            if not user_messages[0].is_from(ChatRole.USER):
-                raise ValueError(
-                    f"user_prompt must render to a user message. Got a message with role {user_messages[0].role}."
-                )
+        if self._user_chat_prompt_builder is not None:
+            user_messages = _render_prompt_messages(
+                prompt_builder=self._user_chat_prompt_builder,
+                expected_role=ChatRole.USER,
+                prompt_label="user_prompt",
+                kwargs=kwargs,
+            )
             messages = messages + user_messages
 
-        if system_prompt is not None:
-            if _JINJA2_CHAT_TEMPLATE_RE.search(system_prompt):
-                if self._system_chat_prompt_builder is None:
-                    raise ValueError(
-                        "system_prompt contains Jinja2 template syntax but no system prompt builder is initialized. "
-                        "Please make sure a system_prompt with Jinja2 template syntax is provided at initialization "
-                        "time."
-                    )
-
-                prompt_kwargs = {
-                    var: kwargs[var] for var in self._system_chat_prompt_builder.variables if var in kwargs
-                }
-                system_messages = self._system_chat_prompt_builder.run(template=system_prompt, **prompt_kwargs)[
-                    "prompt"
-                ]
-                if len(system_messages) != 1:
-                    raise ValueError(
-                        f"system_prompt must render to exactly one system message. Got {len(system_messages)} messages."
-                    )
-                if not system_messages[0].is_from(ChatRole.SYSTEM):
-                    raise ValueError(
-                        "system_prompt must render to a system message. "
-                        f"Got a message with role {system_messages[0].role}."
-                    )
-                messages = system_messages + messages
-            else:
-                messages = [ChatMessage.from_system(system_prompt)] + messages
+        if self._system_chat_prompt_builder is not None:
+            system_messages = _render_prompt_messages(
+                prompt_builder=self._system_chat_prompt_builder,
+                expected_role=ChatRole.SYSTEM,
+                prompt_label="system_prompt",
+                kwargs=kwargs,
+            )
+            messages = system_messages + messages
 
         if all(m.is_from(ChatRole.SYSTEM) for m in messages):
             logger.warning("All messages provided to the Agent component are system messages. This is not recommended.")
 
+        selected_tools = self._select_tools(tools)
+        flat_tools = flatten_tools_or_toolsets(selected_tools)
+        # Validate tool support once for the run (covers both init-time and runtime tools)
+        if flat_tools and not self._chat_generator_supports_tools:
+            raise TypeError(
+                f"{type(self.chat_generator).__name__} does not accept tools parameter in its run method. "
+                "The Agent component requires a chat generator that supports tools when tools are provided."
+            )
+
         state_kwargs: dict[str, Any] = {key: kwargs[key] for key in self.state_schema.keys() if key in kwargs}
         state = State(schema=self.state_schema, data=state_kwargs)
         state.set("messages", messages)
+        state.set("step_count", 0)
+        state.set("token_usage", {})
+        state.set("tool_call_counts", {tool.name: 0 for tool in flat_tools})
+        state.set("continue_run", False)
+        state.set("hook_context", hook_context or {})
 
         streaming_callback = select_streaming_callback(  # type: ignore[call-overload]
             init_callback=self.streaming_callback, runtime_callback=streaming_callback, requires_async=requires_async
         )
-
-        selected_tools = self._select_tools(tools)
-        tool_invoker_inputs: dict[str, Any] = {"tools": selected_tools}
         generator_inputs: dict[str, Any] = {}
-        if self._chat_generator_supports_tools:
-            generator_inputs["tools"] = selected_tools
         if streaming_callback is not None:
-            tool_invoker_inputs["streaming_callback"] = streaming_callback
             generator_inputs["streaming_callback"] = streaming_callback
         if generation_kwargs is not None:
             generator_inputs["generation_kwargs"] = generation_kwargs
 
-        # We add enable_streaming_callback_passthrough to the tool invoker inputs
-        if self._tool_invoker:
-            tool_invoker_inputs["enable_streaming_callback_passthrough"] = (
-                self._tool_invoker.enable_streaming_callback_passthrough
-            )
+        tool_execution_inputs: dict[str, Any] = {
+            "raise_on_failure": self.raise_on_tool_invocation_failure,
+            "streaming_callback": streaming_callback,
+            "max_workers": self.tool_concurrency_limit,
+            "enable_streaming_callback_passthrough": self.tool_streaming_callback_passthrough,
+        }
 
         return _ExecutionContext(
             state=state,
-            component_visits=dict.fromkeys(["chat_generator", "tool_invoker"], 0),
+            tools=selected_tools,
             chat_generator_inputs=generator_inputs,
-            tool_invoker_inputs=tool_invoker_inputs,
-            confirmation_strategy_context=confirmation_strategy_context,
+            tool_execution_inputs=tool_execution_inputs,
         )
 
     def _select_tools(self, tools: ToolsType | list[str] | None = None) -> ToolsType:
@@ -615,127 +952,39 @@ class Agent:
             or if any provided tool name is not valid.
         :raises TypeError: If tools is not a list of Tool objects, a Toolset, or a list of tool names (strings).
         """
+        # Toolsets are spawned into per-run copies (see _spawn_tools / _select_tools_by_name) so concurrent runs
+        # sharing the same configured Toolset don't corrupt each other's run-scoped state.
         if tools is None:
-            return self.tools
+            return _spawn_tools(self.tools)
 
         if isinstance(tools, list) and all(isinstance(t, str) for t in tools):
-            if not self.tools:
-                raise ValueError("No tools were configured for the Agent at initialization.")
-            available_tools = flatten_tools_or_toolsets(self.tools)
-            selected_tool_names = cast(list[str], tools)  # mypy thinks this could still be list[Tool] or Toolset
-            valid_tool_names = {tool.name for tool in available_tools}
-            invalid_tool_names = {name for name in selected_tool_names if name not in valid_tool_names}
-            if invalid_tool_names:
-                raise ValueError(
-                    f"The following tool names are not valid: {invalid_tool_names}. "
-                    f"Valid tool names are: {valid_tool_names}."
-                )
-            return [tool for tool in available_tools if tool.name in selected_tool_names]
+            return _select_tools_by_name(self.tools, cast(list[str], tools))
 
         if isinstance(tools, Toolset):
-            return tools
+            # Per-run tools are not covered by the Agent's own warm_up(), so warm them up here.
+            # warm_up() is expected to be idempotent, so re-warming on every run is cheap.
+            warm_up_tools(tools)
+            return _spawn_tools(tools)
 
         if isinstance(tools, list):
-            return cast(list[Tool | Toolset], tools)  # mypy can't narrow the Union type from isinstance check
+            selected = cast(list[Tool | Toolset], tools)  # mypy can't narrow the Union type from isinstance check
+            # Per-run tools are not covered by the Agent's own warm_up(), so warm them up here.
+            # warm_up() is expected to be idempotent, so re-warming on every run is cheap.
+            warm_up_tools(selected)
+            return _spawn_tools(selected)
 
         raise TypeError(
             "tools must be a list of Tool and/or Toolset objects, a Toolset, or a list of tool names (strings)."
         )
 
-    def _initialize_from_snapshot(
-        self,
-        snapshot: AgentSnapshot,
-        streaming_callback: StreamingCallbackT | None,
-        requires_async: bool,
-        *,
-        generation_kwargs: dict[str, Any] | None = None,
-        tools: ToolsType | list[str] | None = None,
-        confirmation_strategy_context: dict[str, Any] | None = None,
-    ) -> _ExecutionContext:
-        """
-        Initialize execution context from an AgentSnapshot.
-
-        :param snapshot: An AgentSnapshot containing the state of a previously saved agent execution.
-        :param streaming_callback: Optional callback for streaming responses.
-        :param requires_async: Whether the agent run requires asynchronous execution.
-        :param generation_kwargs: Additional keyword arguments for chat generator. These parameters will
-            override the parameters passed during component initialization.
-        :param tools: Optional list of Tool objects, a Toolset, or list of tool names to use for this run.
-            When passing tool names, tools are selected from the Agent's originally configured tools.
-        :param confirmation_strategy_context: Optional dictionary for passing request-scoped resources
-            to confirmation strategies.
-        """
-        component_visits = snapshot.component_visits
-        current_inputs = {
-            "chat_generator": _deserialize_value_with_schema(snapshot.component_inputs["chat_generator"]),
-            "tool_invoker": _deserialize_value_with_schema(snapshot.component_inputs["tool_invoker"]),
-        }
-
-        state_data = current_inputs["tool_invoker"]["state"].data
-        state = State(schema=self.state_schema, data=state_data)
-
-        skip_chat_generator = isinstance(snapshot.break_point.break_point, ToolBreakpoint)
-        streaming_callback = current_inputs["chat_generator"].get("streaming_callback", streaming_callback)
-        streaming_callback = select_streaming_callback(  # type: ignore[call-overload]
-            init_callback=self.streaming_callback, runtime_callback=streaming_callback, requires_async=requires_async
-        )
-
-        selected_tools = self._select_tools(tools)
-        tool_invoker_inputs: dict[str, Any] = {"tools": selected_tools}
-        generator_inputs: dict[str, Any] = {}
-        if self._chat_generator_supports_tools:
-            generator_inputs["tools"] = selected_tools
-        if streaming_callback is not None:
-            tool_invoker_inputs["streaming_callback"] = streaming_callback
-            generator_inputs["streaming_callback"] = streaming_callback
-        if generation_kwargs is not None:
-            generator_inputs["generation_kwargs"] = generation_kwargs
-
-        # We add enable_streaming_callback_passthrough to the tool invoker inputs
-        if self._tool_invoker:
-            tool_invoker_inputs["enable_streaming_callback_passthrough"] = (
-                self._tool_invoker.enable_streaming_callback_passthrough
-            )
-
-        return _ExecutionContext(
-            state=state,
-            component_visits=component_visits,
-            chat_generator_inputs=generator_inputs,
-            tool_invoker_inputs=tool_invoker_inputs,
-            counter=snapshot.break_point.break_point.visit_count,
-            skip_chat_generator=skip_chat_generator,
-            confirmation_strategy_context=confirmation_strategy_context,
-        )
-
-    def _runtime_checks(self, break_point: AgentBreakpoint | None, tools: ToolsType) -> None:
-        """
-        Perform runtime checks before running the agent.
-
-        :param break_point: An AgentBreakpoint, can be a Breakpoint for the "chat_generator" or a ToolBreakpoint
-            for "tool_invoker".
-        :param tools: Tools selected for this run. This can differ from initialization-time tools when runtime tools
-            are provided to `run`/`run_async`.
-        :raises ValueError: If the break_point is invalid.
-        """
-        if not self._is_warmed_up:
-            self.warm_up()
-
-        if break_point and isinstance(break_point.break_point, ToolBreakpoint):
-            _validate_tool_breakpoint_is_valid(agent_breakpoint=break_point, tools=tools)
-
-    def run(  # noqa: PLR0915
+    def run(
         self,
         messages: list[ChatMessage],
         streaming_callback: StreamingCallbackT | None = None,
         *,
         generation_kwargs: dict[str, Any] | None = None,
-        break_point: AgentBreakpoint | None = None,
-        snapshot: AgentSnapshot | None = None,
-        system_prompt: str | None = None,
-        user_prompt: str | None = None,
         tools: ToolsType | list[str] | None = None,
-        snapshot_callback: SnapshotCallback | None = None,
-        confirmation_strategy_context: dict[str, Any] | None = None,
+        hook_context: dict[str, Any] | None = None,
         **kwargs: Any,
     ) -> dict[str, Any]:
         """
@@ -746,236 +995,65 @@ class Agent:
             The same callback can be configured to emit tool results when a tool is called.
         :param generation_kwargs: Additional keyword arguments for LLM. These parameters will
             override the parameters passed during component initialization.
-        :param break_point: An AgentBreakpoint, can be a Breakpoint for the "chat_generator" or a ToolBreakpoint
-            for "tool_invoker".
-        :param snapshot: An `AgentSnapshot` object containing the state of a previously saved agent execution,
-            used to restart the agent from where it left off.
-        :param system_prompt: System prompt for the agent. If provided, it overrides the default system prompt.
-        :param user_prompt: User prompt for the agent. If provided, it overrides the default user prompt and is
-            appended to the messages provided at runtime.
         :param tools: Optional list of Tool objects, a Toolset, or list of tool names to use for this run.
             When passing tool names, tools are selected from the Agent's originally configured tools.
-        :param snapshot_callback: Optional callback function that is invoked when a pipeline snapshot is created.
-            The callback receives a `PipelineSnapshot` object and can return an optional string.
-            If provided, the callback is used instead of the default file-saving behavior.
-        :param confirmation_strategy_context: Optional dictionary for passing request-scoped resources
-            to confirmation strategies. Useful in web/server environments to provide per-request
-            objects (e.g., WebSocket connections, async queues, Redis pub/sub clients) that strategies
-            can use for non-blocking user interaction.
+        :param hook_context: Optional dictionary of request-scoped resources made available to hooks via
+            `state.data.get("hook_context")`. Useful in web/server environments to provide per-request objects
+            (e.g., WebSocket connections, async queues, Redis pub/sub clients) that a hook can use, for
+            example a ConfirmationHook driving non-blocking user interaction.
         :param kwargs: Additional data to pass to the State schema used by the Agent.
             The keys must match the schema defined in the Agent's `state_schema`.
         :returns:
             A dictionary with the following keys:
             - "messages": List of all messages exchanged during the agent's run.
             - "last_message": The last message exchanged during the agent's run.
+            - "step_count": The number of steps the agent ran. A step is one chat-generator call plus the
+              execution of every tool call the model requested in that call (if any). The counter is incremented
+              after each step completes, including the final step that hits an exit condition or `max_agent_steps`.
+            - "token_usage": Aggregated token usage from every LLM call in the run, summed from each LLM message's
+              `meta["usage"]`.
+            - "tool_call_counts": Mapping of tool name to the number of times that tool was invoked.
             - Any additional keys defined in the `state_schema`.
-        :raises BreakpointException: If an agent breakpoint is triggered.
         """
-        agent_inputs = {
-            "messages": messages,
-            "streaming_callback": streaming_callback,
-            "break_point": break_point,
-            "snapshot": snapshot,
+        agent_inputs = {"messages": messages, "streaming_callback": streaming_callback, **kwargs}
+        self.warm_up()
+
+        exe_context = self._initialize_fresh_execution(
+            messages=messages,
+            streaming_callback=streaming_callback,
+            requires_async=False,
+            generation_kwargs=generation_kwargs,
+            tools=tools,
+            hook_context=hook_context,
             **kwargs,
-        }
-        self._runtime_checks(break_point=break_point, tools=self._select_tools(tools))
+        )
 
-        if snapshot:
-            exe_context = self._initialize_from_snapshot(
-                snapshot=snapshot,
-                streaming_callback=streaming_callback,
-                requires_async=False,
-                generation_kwargs=generation_kwargs,
-                tools=tools,
-                confirmation_strategy_context=confirmation_strategy_context,
-            )
-        else:
-            exe_context = self._initialize_fresh_execution(
-                messages=messages,
-                streaming_callback=streaming_callback,
-                requires_async=False,
-                system_prompt=system_prompt,
-                user_prompt=user_prompt,
-                generation_kwargs=generation_kwargs,
-                tools=tools,
-                confirmation_strategy_context=confirmation_strategy_context,
-                **kwargs,
-            )
-
-        with self._create_agent_span() as span:
-            # agent_inputs is local and not used after this point, so we avoid deepcopying it
+        with self._create_agent_span(exe_context.tools) as span:
             span.set_content_tag("haystack.agent.input", agent_inputs)
-
             while exe_context.counter < self.max_agent_steps:
-                # We skip the chat generator when restarting from a snapshot from a ToolBreakpoint
-                if exe_context.skip_chat_generator:
-                    llm_messages = exe_context.state.get("messages", [])[-1:]
-                    # Set to False so the next iteration will call the chat generator
-                    exe_context.skip_chat_generator = False
-                else:
-                    try:
-                        result = Pipeline._run_component(
-                            component_name="chat_generator",
-                            component={"instance": self.chat_generator},
-                            inputs={
-                                "messages": exe_context.state.data["messages"],
-                                **exe_context.chat_generator_inputs,
-                            },
-                            component_visits=exe_context.component_visits,
-                            parent_span=span,
-                            break_point=break_point.break_point if isinstance(break_point, AgentBreakpoint) else None,
-                        )
-                    except PipelineRuntimeError as e:
-                        agent_name = getattr(self, "__component_name__", None)
-                        pipe_snapshot = _create_pipeline_snapshot_from_chat_generator(
-                            agent_name=agent_name, execution_context=exe_context, break_point=None
-                        )
-                        new_error = PipelineRuntimeError.from_exception(agent_name or "Agent", Agent, e)
-                        new_error.pipeline_snapshot = pipe_snapshot
-                        # If Agent is not in a pipeline, we save the snapshot to a file or invoke a custom callback.
-                        # Checked by __component_name__ not being set.
-                        if agent_name is None:
-                            new_error.pipeline_snapshot_file_path = _save_pipeline_snapshot(
-                                pipeline_snapshot=pipe_snapshot, snapshot_callback=snapshot_callback
-                            )
-                        raise new_error from e
-                    except BreakpointException as e:
-                        agent_name = break_point.agent_name if break_point else None
-                        e.pipeline_snapshot = _create_pipeline_snapshot_from_chat_generator(
-                            agent_name=agent_name, execution_context=exe_context, break_point=break_point
-                        )
-                        e._break_point = e.pipeline_snapshot.break_point
-                        # If Agent is not in a pipeline, we save the snapshot to a file or invoke a custom callback.
-                        # Checked by __component_name__ not being set.
-                        if getattr(self, "__component_name__", None) is None:
-                            full_file_path = _save_pipeline_snapshot(
-                                pipeline_snapshot=e.pipeline_snapshot, snapshot_callback=snapshot_callback
-                            )
-                            e.pipeline_snapshot_file_path = full_file_path
-                        raise e
-
-                    llm_messages = result["replies"]
-                    exe_context.state.set("messages", llm_messages)
-
-                # Exit for `exit_conditions=["text"]` behavior: the agent stops when there is no tool invoker, or when
-                # the model returns a plain text response (no tool calls). We require the last message to be a non-empty
-                # assistant text message so that an invalid response (e.g. a message with no tool calls or text) won't
-                # trigger an exit.
-                last_message = llm_messages[-1] if llm_messages else None
-                if self._tool_invoker is None or (
-                    last_message is not None
-                    and not any(msg.tool_call for msg in llm_messages)
-                    and last_message.is_from(ChatRole.ASSISTANT)
-                    and last_message.text
-                ):
-                    exe_context.counter += 1
+                if not self._run_step(exe_context, span):
                     break
-
-                # We only pass down the breakpoint if the tool name matches the tool call in the LLM messages
-                break_point_to_pass = None
-                if (
-                    break_point
-                    and isinstance(break_point.break_point, ToolBreakpoint)
-                    and _should_trigger_tool_invoker_breakpoint(
-                        break_point=break_point.break_point, llm_messages=llm_messages
-                    )
-                ):
-                    break_point_to_pass = break_point.break_point
-
-                # Apply confirmation strategies and update State and messages sent to ToolInvoker
-                # Run confirmation strategies to get updated tool call messages and modified chat history
-                modified_tool_call_messages, new_chat_history = _process_confirmation_strategies(
-                    confirmation_strategies=self._confirmation_strategies,
-                    messages_with_tool_calls=llm_messages,
-                    execution_context=exe_context,
-                )
-                # Replace the chat history in state with the modified one
-                exe_context.state.set(key="messages", value=new_chat_history, handler_override=replace_values)
-
-                # Run ToolInvoker
-                try:
-                    # We only send the messages from the LLM to the tool invoker
-                    tool_invoker_result = Pipeline._run_component(
-                        component_name="tool_invoker",
-                        component={"instance": self._tool_invoker},
-                        inputs={
-                            "messages": modified_tool_call_messages,
-                            "state": exe_context.state,
-                            **exe_context.tool_invoker_inputs,
-                        },
-                        component_visits=exe_context.component_visits,
-                        parent_span=span,
-                        break_point=break_point_to_pass,
-                    )
-                except PipelineRuntimeError as e:
-                    agent_name = getattr(self, "__component_name__", None)
-                    tool_name = getattr(e.__cause__, "tool_name", None)
-                    pipe_snapshot = _create_pipeline_snapshot_from_tool_invoker(
-                        tool_name=tool_name, agent_name=agent_name, execution_context=exe_context, break_point=None
-                    )
-                    new_error = PipelineRuntimeError.from_exception(agent_name or "Agent", Agent, e)
-                    new_error.pipeline_snapshot = pipe_snapshot
-                    # If Agent is not in a pipeline, we save the snapshot to a file or invoke a custom callback.
-                    # Checked by __component_name__ not being set.
-                    if agent_name is None:
-                        new_error.pipeline_snapshot_file_path = _save_pipeline_snapshot(
-                            pipeline_snapshot=pipe_snapshot, snapshot_callback=snapshot_callback
-                        )
-                    raise new_error from e
-                except BreakpointException as e:
-                    e.pipeline_snapshot = _create_pipeline_snapshot_from_tool_invoker(
-                        tool_name=e.break_point.tool_name if isinstance(e.break_point, ToolBreakpoint) else None,
-                        agent_name=break_point.agent_name if break_point else None,
-                        execution_context=exe_context,
-                        break_point=break_point,
-                    )
-                    e._break_point = e.pipeline_snapshot.break_point
-                    # If Agent is not in a pipeline, we save the snapshot to a file or invoke a custom callback.
-                    # Checked by __component_name__ not being set.
-                    if getattr(self, "__component_name__", None) is None:
-                        e.pipeline_snapshot_file_path = _save_pipeline_snapshot(
-                            pipeline_snapshot=e.pipeline_snapshot, snapshot_callback=snapshot_callback
-                        )
-                    raise e
-
-                tool_messages = tool_invoker_result["tool_messages"]
-                exe_context.state = tool_invoker_result["state"]
-                exe_context.state.set("messages", tool_messages)
-
-                # Check if any LLM message's tool call name matches an exit condition
-                if self.exit_conditions != ["text"] and self._check_exit_conditions(llm_messages, tool_messages):
-                    exe_context.counter += 1
-                    break
-
-                # Increment the step counter
-                exe_context.counter += 1
-
             if exe_context.counter >= self.max_agent_steps:
                 logger.warning(
                     "Agent reached maximum agent steps of {max_agent_steps}, stopping.",
                     max_agent_steps=self.max_agent_steps,
                 )
-            span.set_content_tag("haystack.agent.output", exe_context.state.data)
+            result = _public_outputs(exe_context.state)
+            if msgs := result.get("messages"):
+                result["last_message"] = msgs[-1]
+            span.set_content_tag("haystack.agent.output", result)
             span.set_tag("haystack.agent.steps_taken", exe_context.counter)
 
-        result = {**exe_context.state.data}
-        if msgs := result.get("messages"):
-            result["last_message"] = msgs[-1]
         return result
 
-    async def run_async(  # noqa: PLR0915
+    async def run_async(
         self,
         messages: list[ChatMessage],
         streaming_callback: StreamingCallbackT | None = None,
         *,
         generation_kwargs: dict[str, Any] | None = None,
-        break_point: AgentBreakpoint | None = None,
-        snapshot: AgentSnapshot | None = None,
-        system_prompt: str | None = None,
-        user_prompt: str | None = None,
         tools: ToolsType | list[str] | None = None,
-        snapshot_callback: SnapshotCallback | None = None,
-        confirmation_strategy_context: dict[str, Any] | None = None,
+        hook_context: dict[str, Any] | None = None,
         **kwargs: Any,
     ) -> dict[str, Any]:
         """
@@ -990,221 +1068,183 @@ class Agent:
             LLM. The same callback can be configured to emit tool results when a tool is called.
         :param generation_kwargs: Additional keyword arguments for LLM. These parameters will
             override the parameters passed during component initialization.
-        :param break_point: An AgentBreakpoint, can be a Breakpoint for the "chat_generator" or a ToolBreakpoint
-            for "tool_invoker".
-        :param snapshot: An `AgentSnapshot` object containing the state of a previously saved agent execution,
-            used to restart the agent from where it left off.
-        :param system_prompt: System prompt for the agent. If provided, it overrides the default system prompt.
-        :param user_prompt: User prompt for the agent. If provided, it overrides the default user prompt and is
-            appended to the messages provided at runtime.
         :param tools: Optional list of Tool objects, a Toolset, or list of tool names to use for this run.
-        :param snapshot_callback: Optional callback function that is invoked when a pipeline snapshot is created.
-            The callback receives a `PipelineSnapshot` object and can return an optional string.
-            If provided, the callback is used instead of the default file-saving behavior.
-        :param confirmation_strategy_context: Optional dictionary for passing request-scoped resources
-            to confirmation strategies. Useful in web/server environments to provide per-request
-            objects (e.g., WebSocket connections, async queues, Redis pub/sub clients) that strategies
-            can use for non-blocking user interaction.
+        :param hook_context: Optional dictionary of request-scoped resources made available to hooks via
+            `state.data.get("hook_context")`. Useful in web/server environments to provide per-request objects
+            (e.g., WebSocket connections, async queues, Redis pub/sub clients) that a hook can use, for
+            example a ConfirmationHook driving non-blocking user interaction.
         :param kwargs: Additional data to pass to the State schema used by the Agent.
             The keys must match the schema defined in the Agent's `state_schema`.
         :returns:
             A dictionary with the following keys:
             - "messages": List of all messages exchanged during the agent's run.
             - "last_message": The last message exchanged during the agent's run.
+            - "step_count": The number of steps the agent ran. A step is one chat-generator call plus the
+              execution of every tool call the model requested in that call (if any). The counter is incremented
+              after each step completes, including the final step that hits an exit condition or `max_agent_steps`.
+            - "token_usage": Aggregated token usage from every LLM call in the run, summed from each LLM message's
+              `meta["usage"]`.
+            - "tool_call_counts": Mapping of tool name to the number of times that tool was invoked.
             - Any additional keys defined in the `state_schema`.
-        :raises BreakpointException: If an agent breakpoint is triggered.
         """
-        agent_inputs = {
-            "messages": messages,
-            "streaming_callback": streaming_callback,
-            "break_point": break_point,
-            "snapshot": snapshot,
+        agent_inputs = {"messages": messages, "streaming_callback": streaming_callback, **kwargs}
+        await self.warm_up_async()
+
+        exe_context = self._initialize_fresh_execution(
+            messages=messages,
+            streaming_callback=streaming_callback,
+            requires_async=True,
+            tools=tools,
+            generation_kwargs=generation_kwargs,
+            hook_context=hook_context,
             **kwargs,
-        }
-        self._runtime_checks(break_point=break_point, tools=self._select_tools(tools))
+        )
 
-        if snapshot:
-            exe_context = self._initialize_from_snapshot(
-                snapshot=snapshot,
-                streaming_callback=streaming_callback,
-                requires_async=True,
-                tools=tools,
-                generation_kwargs=generation_kwargs,
-                confirmation_strategy_context=confirmation_strategy_context,
-            )
-        else:
-            exe_context = self._initialize_fresh_execution(
-                messages=messages,
-                streaming_callback=streaming_callback,
-                requires_async=True,
-                system_prompt=system_prompt,
-                user_prompt=user_prompt,
-                tools=tools,
-                generation_kwargs=generation_kwargs,
-                confirmation_strategy_context=confirmation_strategy_context,
-                **kwargs,
-            )
-
-        with self._create_agent_span() as span:
-            # agent_inputs is local and not used after this point, so we avoid deepcopying it
+        with self._create_agent_span(exe_context.tools) as span:
             span.set_content_tag("haystack.agent.input", agent_inputs)
-
             while exe_context.counter < self.max_agent_steps:
-                # We skip the chat generator when restarting from a snapshot from a ToolBreakpoint
-                if exe_context.skip_chat_generator:
-                    llm_messages = exe_context.state.get("messages", [])[-1:]
-                    # Set to False so the next iteration will call the chat generator
-                    exe_context.skip_chat_generator = False
-                else:
-                    try:
-                        result = await AsyncPipeline._run_component_async(
-                            component_name="chat_generator",
-                            component={"instance": self.chat_generator},
-                            component_inputs={
-                                "messages": exe_context.state.data["messages"],
-                                **exe_context.chat_generator_inputs,
-                            },
-                            component_visits=exe_context.component_visits,
-                            parent_span=span,
-                            break_point=break_point.break_point if isinstance(break_point, AgentBreakpoint) else None,
-                        )
-                    except PipelineRuntimeError as e:
-                        agent_name = getattr(self, "__component_name__", None)
-                        pipe_snapshot = _create_pipeline_snapshot_from_chat_generator(
-                            agent_name=agent_name, execution_context=exe_context, break_point=None
-                        )
-                        new_error = PipelineRuntimeError.from_exception(agent_name or "Agent", Agent, e)
-                        new_error.pipeline_snapshot = pipe_snapshot
-                        # If Agent is not in a pipeline, we save the snapshot to a file or invoke a custom callback.
-                        # Checked by __component_name__ not being set.
-                        if agent_name is None:
-                            new_error.pipeline_snapshot_file_path = _save_pipeline_snapshot(
-                                pipeline_snapshot=pipe_snapshot, snapshot_callback=snapshot_callback
-                            )
-                        raise new_error from e
-                    except BreakpointException as e:
-                        e.pipeline_snapshot = _create_pipeline_snapshot_from_chat_generator(
-                            agent_name=break_point.agent_name if break_point else None,
-                            execution_context=exe_context,
-                            break_point=break_point,
-                        )
-                        e._break_point = e.pipeline_snapshot.break_point
-                        # We check if the agent is part of a pipeline by checking for __component_name__
-                        # If it is not in a pipeline, we save the snapshot to a file or invoke a custom callback.
-                        in_pipeline = getattr(self, "__component_name__", None) is not None
-                        if not in_pipeline:
-                            e.pipeline_snapshot_file_path = _save_pipeline_snapshot(
-                                pipeline_snapshot=e.pipeline_snapshot, snapshot_callback=snapshot_callback
-                            )
-                        raise e
-
-                    llm_messages = result["replies"]
-                    exe_context.state.set("messages", llm_messages)
-
-                # Exit for `exit_conditions=["text"]` behavior: the agent stops when there is no tool invoker, or when
-                # the model returns a plain text response (no tool calls). We require the last message to be a non-empty
-                # assistant text message so that an invalid response (e.g. a message with no tool calls or text) won't
-                # trigger an exit.
-                last_message = llm_messages[-1] if llm_messages else None
-                if self._tool_invoker is None or (
-                    last_message is not None
-                    and not any(msg.tool_call for msg in llm_messages)
-                    and last_message.is_from(ChatRole.ASSISTANT)
-                    and last_message.text
-                ):
-                    exe_context.counter += 1
+                if not await self._run_step_async(exe_context, span):
                     break
-
-                # We only pass down the breakpoint if the tool name matches the tool call in the LLM messages
-                break_point_to_pass = None
-                if (
-                    break_point
-                    and isinstance(break_point.break_point, ToolBreakpoint)
-                    and _should_trigger_tool_invoker_breakpoint(
-                        break_point=break_point.break_point, llm_messages=llm_messages
-                    )
-                ):
-                    break_point_to_pass = break_point.break_point
-
-                # Apply confirmation strategies and update State and messages sent to ToolInvoker
-                # Run confirmation strategies to get updated tool call messages and modified chat history
-                modified_tool_call_messages, new_chat_history = await _process_confirmation_strategies_async(
-                    confirmation_strategies=self._confirmation_strategies,
-                    messages_with_tool_calls=llm_messages,
-                    execution_context=exe_context,
-                )
-                # Replace the chat history in state with the modified one
-                exe_context.state.set(key="messages", value=new_chat_history, handler_override=replace_values)
-
-                try:
-                    # We only send the messages from the LLM to the tool invoker
-                    tool_invoker_result = await AsyncPipeline._run_component_async(
-                        component_name="tool_invoker",
-                        component={"instance": self._tool_invoker},
-                        component_inputs={
-                            "messages": modified_tool_call_messages,
-                            "state": exe_context.state,
-                            **exe_context.tool_invoker_inputs,
-                        },
-                        component_visits=exe_context.component_visits,
-                        parent_span=span,
-                        break_point=break_point_to_pass,
-                    )
-                except PipelineRuntimeError as e:
-                    agent_name = getattr(self, "__component_name__", None)
-                    tool_name = getattr(e.__cause__, "tool_name", None)
-                    pipe_snapshot = _create_pipeline_snapshot_from_tool_invoker(
-                        tool_name=tool_name, agent_name=agent_name, execution_context=exe_context, break_point=None
-                    )
-                    new_error = PipelineRuntimeError.from_exception(agent_name or "Agent", Agent, e)
-                    new_error.pipeline_snapshot = pipe_snapshot
-                    # If Agent is not in a pipeline, we save the snapshot to a file or invoke a custom callback.
-                    # Checked by __component_name__ not being set.
-                    if agent_name is None:
-                        new_error.pipeline_snapshot_file_path = _save_pipeline_snapshot(
-                            pipeline_snapshot=pipe_snapshot, snapshot_callback=snapshot_callback
-                        )
-                    raise new_error from e
-                except BreakpointException as e:
-                    e.pipeline_snapshot = _create_pipeline_snapshot_from_tool_invoker(
-                        tool_name=e.break_point.tool_name if isinstance(e.break_point, ToolBreakpoint) else None,
-                        agent_name=break_point.agent_name if break_point else None,
-                        execution_context=exe_context,
-                        break_point=break_point,
-                    )
-                    e._break_point = e.pipeline_snapshot.break_point
-                    # If Agent is not in a pipeline, we save the snapshot to a file or invoke a custom callback.
-                    # Checked by __component_name__ not being set.
-                    if getattr(self, "__component_name__", None) is None:
-                        e.pipeline_snapshot_file_path = _save_pipeline_snapshot(
-                            pipeline_snapshot=e.pipeline_snapshot, snapshot_callback=snapshot_callback
-                        )
-                    raise e
-
-                tool_messages = tool_invoker_result["tool_messages"]
-                exe_context.state = tool_invoker_result["state"]
-                exe_context.state.set("messages", tool_messages)
-
-                # Check if any LLM message's tool call name matches an exit condition
-                if self.exit_conditions != ["text"] and self._check_exit_conditions(llm_messages, tool_messages):
-                    exe_context.counter += 1
-                    break
-
-                # Increment the step counter
-                exe_context.counter += 1
-
             if exe_context.counter >= self.max_agent_steps:
                 logger.warning(
                     "Agent reached maximum agent steps of {max_agent_steps}, stopping.",
                     max_agent_steps=self.max_agent_steps,
                 )
-            span.set_content_tag("haystack.agent.output", exe_context.state.data)
+            result = _public_outputs(exe_context.state)
+            if msgs := result.get("messages"):
+                result["last_message"] = msgs[-1]
+            span.set_content_tag("haystack.agent.output", result)
             span.set_tag("haystack.agent.steps_taken", exe_context.counter)
 
-        result = {**exe_context.state.data}
-        if msgs := result.get("messages"):
-            result["last_message"] = msgs[-1]
         return result
+
+    def _run_step(self, exe_context: _ExecutionContext, agent_span: tracing.Span) -> bool:
+        """Execute one agent step. Returns True to continue the loop, False to stop."""
+        with tracing.tracer.trace(
+            "haystack.agent.step", tags={"haystack.agent.step": exe_context.counter}, parent_span=agent_span
+        ) as step_span:
+            # Re-flatten the tools every step so dynamic toolsets (e.g. SearchableToolset) surface tools discovered in
+            # earlier steps. Validate names here so duplicates fail before starting the step.
+            current_tools = flatten_tools_or_toolsets(exe_context.tools)
+            _check_duplicate_tool_names(current_tools)
+            # Expose the current tools to hooks (e.g. ConfirmationHook) via State.
+            exe_context.state.set("tools", current_tools, handler_override=replace_values)
+
+            _run_hooks(self.hooks, BEFORE_LLM, exe_context.state)
+            chat_generator_inputs = {
+                "messages": exe_context.state.data["messages"],
+                **exe_context.chat_generator_inputs,
+            }
+            if current_tools:
+                chat_generator_inputs["tools"] = current_tools
+            with tracing.tracer.trace("haystack.agent.step.llm", parent_span=step_span) as llm_span:
+                llm_span.set_content_tag("haystack.agent.step.llm.input", chat_generator_inputs)
+                result = self.chat_generator.run(**chat_generator_inputs)
+                llm_span.set_content_tag("haystack.agent.step.llm.output", result)
+            llm_messages = result["replies"]
+            exe_context.state.set("messages", llm_messages)
+            _record_llm_usage(exe_context.state, llm_messages)
+
+            # Stop on the "no tool call" exit: no tools available, or a plain assistant text reply (see _is_text_exit).
+            if not current_tools or _is_text_exit(llm_messages):
+                exe_context.counter += 1
+                exe_context.state.set("step_count", exe_context.counter)
+                return self._continue_after_exit_hooks(exe_context)
+
+            _run_hooks(self.hooks, BEFORE_TOOL, exe_context.state)
+            # Re-read the pending tool calls from State so that any rewrites a before_tool hook made (e.g.
+            # ConfirmationHook rejecting or modifying calls) are honored by the executor.
+            pending_tool_call_messages = _pending_tool_call_messages_from_state(exe_context.state)
+
+            tool_execution_inputs = {
+                "messages": pending_tool_call_messages,
+                "state": exe_context.state,
+                **exe_context.tool_execution_inputs,
+                "tools": current_tools,
+            }
+            with tracing.tracer.trace("haystack.agent.step.tool", parent_span=step_span) as tool_span:
+                tool_span.set_content_tag("haystack.agent.step.tool.input", tool_execution_inputs)
+                tool_messages, exe_context.state = _run_tool(**tool_execution_inputs)
+                tool_span.set_content_tag(
+                    "haystack.agent.step.tool.output", {"tool_messages": tool_messages, "state": exe_context.state}
+                )
+            exe_context.state.set("messages", tool_messages)
+            _record_tool_calls(exe_context.state, tool_messages)
+            _run_hooks(self.hooks, AFTER_TOOL, exe_context.state)
+
+            exe_context.counter += 1
+            exe_context.state.set("step_count", exe_context.counter)
+            exit_triggered = self.exit_conditions != ["text"] and self._check_exit_conditions(
+                llm_messages=pending_tool_call_messages, tool_messages=tool_messages
+            )
+            if exit_triggered:
+                return self._continue_after_exit_hooks(exe_context)
+            return True
+
+    async def _run_step_async(self, exe_context: _ExecutionContext, agent_span: tracing.Span) -> bool:
+        """Execute one agent step asynchronously. Returns True to continue the loop, False to stop."""
+        with tracing.tracer.trace(
+            "haystack.agent.step", tags={"haystack.agent.step": exe_context.counter}, parent_span=agent_span
+        ) as step_span:
+            # Re-flatten the tools every step so dynamic toolsets (e.g. SearchableToolset) surface tools discovered in
+            # earlier steps. Validate names here so duplicates fail before starting the step.
+            current_tools = flatten_tools_or_toolsets(exe_context.tools)
+            _check_duplicate_tool_names(current_tools)
+            # Expose the current tools to hooks (e.g. ConfirmationHook) via State.
+            exe_context.state.set("tools", current_tools, handler_override=replace_values)
+
+            await _run_hooks_async(self.hooks, BEFORE_LLM, exe_context.state)
+            chat_generator_inputs = {
+                "messages": exe_context.state.data["messages"],
+                **exe_context.chat_generator_inputs,
+            }
+            if current_tools:
+                chat_generator_inputs["tools"] = current_tools
+            with tracing.tracer.trace("haystack.agent.step.llm", parent_span=step_span) as llm_span:
+                llm_span.set_content_tag("haystack.agent.step.llm.input", chat_generator_inputs)
+                # For sync-only generators, _execute_component_async dispatches to a thread via asyncio.to_thread,
+                # which copies the current contextvars context — preserving the active tracing span.
+                result = await _execute_component_async(self.chat_generator, **chat_generator_inputs)
+                llm_span.set_content_tag("haystack.agent.step.llm.output", result)
+            llm_messages = result["replies"]
+            exe_context.state.set("messages", llm_messages)
+            _record_llm_usage(exe_context.state, llm_messages)
+
+            # Stop on the "no tool call" exit: no tools available, or a plain assistant text reply (see _is_text_exit).
+            if not current_tools or _is_text_exit(llm_messages):
+                exe_context.counter += 1
+                exe_context.state.set("step_count", exe_context.counter)
+                return await self._continue_after_exit_hooks_async(exe_context)
+
+            await _run_hooks_async(self.hooks, BEFORE_TOOL, exe_context.state)
+            # Re-read the pending tool calls from State so that any rewrites a before_tool hook made (e.g.
+            # ConfirmationHook rejecting or modifying calls) are honored by the executor.
+            pending_tool_call_messages = _pending_tool_call_messages_from_state(exe_context.state)
+
+            tool_execution_inputs = {
+                "messages": pending_tool_call_messages,
+                "state": exe_context.state,
+                **exe_context.tool_execution_inputs,
+                "tools": current_tools,
+            }
+            with tracing.tracer.trace("haystack.agent.step.tool", parent_span=step_span) as tool_span:
+                tool_span.set_content_tag("haystack.agent.step.tool.input", tool_execution_inputs)
+                tool_messages, exe_context.state = await _run_tool_async(**tool_execution_inputs)
+                tool_span.set_content_tag(
+                    "haystack.agent.step.tool.output", {"tool_messages": tool_messages, "state": exe_context.state}
+                )
+            exe_context.state.set("messages", tool_messages)
+            _record_tool_calls(exe_context.state, tool_messages)
+            await _run_hooks_async(self.hooks, AFTER_TOOL, exe_context.state)
+
+            exe_context.counter += 1
+            exe_context.state.set("step_count", exe_context.counter)
+            exit_triggered = self.exit_conditions != ["text"] and self._check_exit_conditions(
+                llm_messages=pending_tool_call_messages, tool_messages=tool_messages
+            )
+            if exit_triggered:
+                return await self._continue_after_exit_hooks_async(exe_context)
+            return True
 
     def _check_exit_conditions(self, llm_messages: list[ChatMessage], tool_messages: list[ChatMessage]) -> bool:
         """
@@ -1215,7 +1255,7 @@ class Agent:
         parallel tool calls does not matter.
 
         :param llm_messages: List of messages from the LLM
-        :param tool_messages: List of messages from the tool invoker
+        :param tool_messages: List of messages from tool execution.
         :return: True if an exit condition is met and there are no errors, False otherwise
         """
         matched_exit_conditions: set[str] = set()
@@ -1243,3 +1283,25 @@ class Agent:
 
         # Only return True if at least one exit condition was matched AND none had errors
         return bool(matched_exit_conditions) and not has_errors
+
+    def _continue_after_exit_hooks(self, exe_context: _ExecutionContext) -> bool:
+        """
+        Run `on_exit` hooks and return whether the loop should keep going.
+
+        A hook keeps the Agent running by setting the `continue_run` control flag (`state.set("continue_run", True)`),
+        usually alongside a message telling the model what to do next. The flag is consumed on each exit attempt and
+        the loop stays bounded by `max_agent_steps`.
+        """
+        if not self.hooks.get(ON_EXIT):
+            return False
+        exe_context.state.set("continue_run", False)
+        _run_hooks(self.hooks, ON_EXIT, exe_context.state)
+        return _consume_continue_run(exe_context.state)
+
+    async def _continue_after_exit_hooks_async(self, exe_context: _ExecutionContext) -> bool:
+        """Async version of `_continue_after_exit_hooks`."""
+        if not self.hooks.get(ON_EXIT):
+            return False
+        exe_context.state.set("continue_run", False)
+        await _run_hooks_async(self.hooks, ON_EXIT, exe_context.state)
+        return _consume_continue_run(exe_context.state)

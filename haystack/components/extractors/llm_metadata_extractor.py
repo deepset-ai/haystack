@@ -20,6 +20,7 @@ from haystack.components.preprocessors import DocumentSplitter
 from haystack.core.serialization import component_to_dict
 from haystack.dataclasses import ChatMessage
 from haystack.utils import deserialize_chatgenerator_inplace, expand_page_range
+from haystack.utils.async_utils import _execute_component_async
 from haystack.utils.misc import _parse_dict_from_json
 
 logger = logging.getLogger(__name__)
@@ -196,16 +197,42 @@ class LLMMetadataExtractor:
         self.expanded_range = expand_page_range(page_range) if page_range else None
         self.max_workers = max_workers
         self._chat_generator = chat_generator
-        self._is_warmed_up = False
 
     def warm_up(self) -> None:
         """
-        Warm up the LLM provider component.
+        Warm up the underlying chat generator and splitter.
         """
-        if not self._is_warmed_up:
-            if hasattr(self._chat_generator, "warm_up"):
-                self._chat_generator.warm_up()
-            self._is_warmed_up = True
+        for inner in (self._chat_generator, self.splitter):
+            if hasattr(inner, "warm_up"):
+                inner.warm_up()
+
+    async def warm_up_async(self) -> None:
+        """
+        Warm up the underlying chat generator and splitter on the serving event loop.
+        """
+        for inner in (self._chat_generator, self.splitter):
+            if hasattr(inner, "warm_up_async"):
+                await inner.warm_up_async()
+            elif hasattr(inner, "warm_up"):
+                inner.warm_up()
+
+    def close(self) -> None:
+        """
+        Release the underlying chat generator's and splitter's resources.
+        """
+        for inner in (self._chat_generator, self.splitter):
+            if hasattr(inner, "close"):
+                inner.close()
+
+    async def close_async(self) -> None:
+        """
+        Release the underlying chat generator's and splitter's async resources.
+        """
+        for inner in (self._chat_generator, self.splitter):
+            if hasattr(inner, "close_async"):
+                await inner.close_async()
+            elif hasattr(inner, "close"):
+                inner.close()
 
     def to_dict(self) -> dict[str, Any]:
         """
@@ -306,7 +333,7 @@ class LLMMetadataExtractor:
             return {"error": "Document has no content, skipping LLM call."}
 
         try:
-            result = await self._chat_generator.run_async(messages=[prompt])  # type: ignore[attr-defined]
+            result = await _execute_component_async(self._chat_generator, messages=[prompt])
         except Exception as e:
             if self.raise_on_failure:
                 raise e
@@ -375,8 +402,7 @@ class LLMMetadataExtractor:
             logger.warning("No documents provided. Skipping metadata extraction.")
             return {"documents": [], "failed_documents": []}
 
-        if not self._is_warmed_up:
-            self.warm_up()
+        self.warm_up()
 
         expanded_range = self.expanded_range
         if page_range:
@@ -421,19 +447,11 @@ class LLMMetadataExtractor:
             "metadata_extraction_error" and "metadata_extraction_response" in their metadata. These documents can be
             re-run with the extractor to extract metadata.
         """
-        if not hasattr(self._chat_generator, "run_async"):
-            logger.warning(
-                "{chat_generator_type} does not implement method 'run_async'. Falling back to 'run'.",
-                chat_generator_type=type(self._chat_generator).__name__,
-            )
-            return self.run(documents, page_range)
-
         if len(documents) == 0:
             logger.warning("No documents provided. Skipping metadata extraction.")
             return {"documents": [], "failed_documents": []}
 
-        if not self._is_warmed_up:
-            self.warm_up()
+        await self.warm_up_async()
 
         expanded_range = self.expanded_range
         if page_range:
