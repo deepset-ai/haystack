@@ -1,0 +1,5 @@
+enhancements:
+  - |
+    Removed duplicated class-import logic between ``core/serialization.py`` and
+    ``utils/type_serialization.py`` by sharing a single internal implementation.
+    No change to public behavior.
