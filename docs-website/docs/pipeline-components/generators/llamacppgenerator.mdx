@@ -52,6 +52,12 @@ CMAKE_ARGS="-DGGML_CUDA=on" pip install llama-cpp-python
 pip install llama-cpp-haystack
 ```
 
+The examples on this page use Sentence Transformers embedders that have moved to the `sentence-transformers-haystack` package. Install it to run the examples:
+
+```shell
+pip install sentence-transformers-haystack
+```
+
 ## Usage
 
 1. You need to download the GGUF version of the desired LLM. The GGUF versions of popular models can be downloaded from [Hugging Face](https://huggingface.co/models?library=gguf).
@@ -67,7 +73,6 @@ generator = LlamaCppGenerator(
     model_kwargs={"n_gpu_layers": -1},
     generation_kwargs={"max_tokens": 128, "temperature": 0.1},
 )
-generator.warm_up()
 prompt = f"Who is the best American actor?"
 result = generator.run(prompt)
 ```
@@ -147,7 +152,7 @@ from datasets import load_dataset
 from haystack import Document, Pipeline
 from haystack.components.builders.answer_builder import AnswerBuilder
 from haystack.components.builders.prompt_builder import PromptBuilder
-from haystack.components.embedders import (
+from haystack_integrations.components.embedders.sentence_transformers import (
     SentenceTransformersDocumentEmbedder,
     SentenceTransformersTextEmbedder,
 )

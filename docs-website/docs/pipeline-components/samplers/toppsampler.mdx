@@ -54,6 +54,12 @@ print(docs)
 
 To best understand how can you use a `TopPSampler` and which components to pair it with, explore the following example.
 
+The examples on this page use Sentence Transformers rankers and SerperDev web search component that have moved to the `sentence-transformers-haystack` and `serperdev-haystack` packages. Install them to run the examples:
+
+```shell
+pip install sentence-transformers-haystack serperdev-haystack
+```
+
 ```python
 # import necessary dependencies
 from haystack import Pipeline
@@ -62,10 +68,12 @@ from haystack.components.fetchers import LinkContentFetcher
 from haystack.components.converters import HTMLToDocument
 from haystack.components.generators.chat import OpenAIChatGenerator
 from haystack.components.preprocessors import DocumentSplitter
-from haystack.components.rankers import SentenceTransformersSimilarityRanker
+from haystack_integrations.components.rankers.sentence_transformers import (
+    SentenceTransformersSimilarityRanker,
+)
 from haystack.components.routers.file_type_router import FileTypeRouter
 from haystack.components.samplers import TopPSampler
-from haystack.components.websearch import SerperDevWebSearch
+from haystack_integrations.components.websearch.serperdev import SerperDevWebSearch
 from haystack.utils import Secret
 from haystack.dataclasses import ChatMessage
 

@@ -408,7 +408,9 @@ In query pipelines, use a TextEmbedder to embed queries and send them to the ret
 
 ```python
 from haystack import Document
-from haystack.components.embedders import SentenceTransformersDocumentEmbedder, SentenceTransformersTextEmbedder
+# Requires: pip install sentence-transformers-haystack
+from haystack_integrations.components.embedders.sentence_transformers import SentenceTransformersDocumentEmbedder
+from haystack_integrations.components.embedders.sentence_transformers import SentenceTransformersTextEmbedder
 from haystack.components.retrievers.in_memory import InMemoryEmbeddingRetriever
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 
@@ -575,8 +577,9 @@ The results are combined and sorted by relevance score.
 from haystack import Document
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.document_stores.types import DuplicatePolicy
-from haystack.components.embedders import SentenceTransformersTextEmbedder
-from haystack.components.embedders import SentenceTransformersDocumentEmbedder
+# Requires: pip install sentence-transformers-haystack
+from haystack_integrations.components.embedders.sentence_transformers import SentenceTransformersTextEmbedder
+from haystack_integrations.components.embedders.sentence_transformers import SentenceTransformersDocumentEmbedder
 from haystack.components.retrievers import InMemoryEmbeddingRetriever
 from haystack.components.writers import DocumentWriter
 from haystack.components.retrievers import MultiQueryEmbeddingRetriever
@@ -878,7 +881,9 @@ from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.document_stores.types import DuplicatePolicy
 from haystack.components.retrievers import InMemoryBM25Retriever, InMemoryEmbeddingRetriever
 from haystack.components.retrievers import TextEmbeddingRetriever, MultiRetriever
-from haystack.components.embedders import SentenceTransformersTextEmbedder, SentenceTransformersDocumentEmbedder
+# Requires: pip install sentence-transformers-haystack
+from haystack_integrations.components.embedders.sentence_transformers import SentenceTransformersTextEmbedder
+from haystack_integrations.components.embedders.sentence_transformers import SentenceTransformersDocumentEmbedder
 from haystack.components.writers import DocumentWriter
 
 documents = [
@@ -922,7 +927,8 @@ __init__(
     *,
     retrievers: dict[str, TextRetriever],
     filters: dict[str, Any] | None = None,
-    top_k: int = 10,
+    top_k_per_retriever: int | None = None,
+    top_k: int | None = None,
     max_workers: int = 4,
     join_mode: Literal[
         "concatenate", "reciprocal_rank_fusion"
@@ -937,7 +943,12 @@ Create the MultiRetriever component.
 - **retrievers** (<code>dict\[str, TextRetriever\]</code>) – A dictionary mapping names to text retrievers (implementing the `TextRetriever` protocol) to run in
   parallel.
 - **filters** (<code>dict\[str, Any\] | None</code>) – A dictionary of filters to apply when retrieving documents.
-- **top_k** (<code>int</code>) – The maximum number of documents to return per retriever.
+- **top_k_per_retriever** (<code>int | None</code>) – The maximum number of documents to return per retriever. If set, this will override the `top_k`
+  parameter for each retriever. If None, the `top_k` parameter of retrievers will be used.
+- **top_k** (<code>int | None</code>) – The maximum number of documents to return overall, extracted from the combined results of all
+  retrievers. When set, the results are always merged using reciprocal rank fusion (regardless of
+  `join_mode`) so that the combined list has a consistent global ranking before it is truncated to
+  `top_k`. If None, all results are returned.
 - **max_workers** (<code>int</code>) – The maximum number of threads to use for parallel retrieval.
 - **join_mode** (<code>Literal['concatenate', 'reciprocal_rank_fusion']</code>) – How to merge results from multiple retrievers. Available modes:
 - `concatenate`: Combines all results into a single list and deduplicates.
@@ -957,6 +968,7 @@ Warm up the retrievers if any has a warm_up method.
 run(
     query: str,
     filters: dict[str, Any] | None = None,
+    top_k_per_retriever: int | None = None,
     top_k: int | None = None,
     *,
     active_retrievers: list[str] | None = None
@@ -969,7 +981,13 @@ Runs retrievers in parallel on the given query and returns deduplicated results.
 
 - **query** (<code>str</code>) – The query to run the retrievers on.
 - **filters** (<code>dict\[str, Any\] | None</code>) – Filters to apply. Defaults to the value set at initialization.
-- **top_k** (<code>int | None</code>) – Maximum documents to return per retriever. Defaults to the value set at initialization.
+- **top_k_per_retriever** (<code>int | None</code>) – The maximum number of documents to return per retriever. When set, this will override the `top_k`
+  parameter for each retriever. If None, the `top_k` parameter set for retrievers will be used.
+  Defaults to the value set at initialization.
+- **top_k** (<code>int | None</code>) – The maximum number of documents to return overall, extracted from the combined results of all
+  retrievers. When set, the results are always merged using reciprocal rank fusion (regardless of
+  `join_mode`) so that the combined list has a consistent global ranking before it is truncated to
+  `top_k`. If None, all results are returned. Defaults to the value set at initialization.
 - **active_retrievers** (<code>list\[str\] | None</code>) – Names of retrievers to run. Defaults to all. Must match keys in the `retrievers` dictionary.
 
 **Returns:**
@@ -987,6 +1005,7 @@ Runs retrievers in parallel on the given query and returns deduplicated results.
 run_async(
     query: str,
     filters: dict[str, Any] | None = None,
+    top_k_per_retriever: int | None = None,
     top_k: int | None = None,
     *,
     active_retrievers: list[str] | None = None
@@ -1001,7 +1020,13 @@ Uses each retriever's `run_async` method if available, otherwise runs `run` in a
 
 - **query** (<code>str</code>) – The query to run the retrievers on.
 - **filters** (<code>dict\[str, Any\] | None</code>) – Filters to apply. Defaults to the value set at initialization.
-- **top_k** (<code>int | None</code>) – Maximum documents to return per retriever. Defaults to the value set at initialization.
+- **top_k_per_retriever** (<code>int | None</code>) – The maximum number of documents to return per retriever. When set, this will override the `top_k`
+  parameter for each retriever. If None, the `top_k` parameter set for retrievers will be used.
+  Defaults to the value set at initialization.
+- **top_k** (<code>int | None</code>) – The maximum number of documents to return overall, extracted from the combined results of all
+  retrievers. When set, the results are always merged using reciprocal rank fusion (regardless of
+  `join_mode`) so that the combined list has a consistent global ranking before it is truncated to
+  `top_k`. If None, all results are returned. Defaults to the value set at initialization.
 - **active_retrievers** (<code>list\[str\] | None</code>) – Names of retrievers to run. Defaults to all. Must match keys in the `retrievers` dictionary.
 
 **Returns:**
@@ -1249,7 +1274,9 @@ The results are sorted by relevance score.
 from haystack import Document
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.document_stores.types import DuplicatePolicy
-from haystack.components.embedders import SentenceTransformersTextEmbedder, SentenceTransformersDocumentEmbedder
+# Requires: pip install sentence-transformers-haystack
+from haystack_integrations.components.embedders.sentence_transformers import SentenceTransformersTextEmbedder
+from haystack_integrations.components.embedders.sentence_transformers import SentenceTransformersDocumentEmbedder
 from haystack.components.retrievers import InMemoryEmbeddingRetriever, TextEmbeddingRetriever
 from haystack.components.writers import DocumentWriter
 

@@ -50,12 +50,18 @@ The recommended way to use `ComponentTool` in Haystack is with the [`Agent`](../
 
 ### With the Agent Component
 
+The examples on this page use SerperDev web search component that have moved to the `serperdev-haystack` package. Install it to run the examples:
+
+```shell
+pip install serperdev-haystack
+```
+
 ```python
 from haystack.components.generators.chat import OpenAIChatGenerator
 from haystack.dataclasses import ChatMessage
 from haystack.tools import ComponentTool
 from haystack.components.agents import Agent
-from haystack.components.websearch import SerperDevWebSearch
+from haystack_integrations.components.websearch.serperdev import SerperDevWebSearch
 from haystack.utils import Secret
 
 # Create a SerperDev search component
@@ -88,7 +94,7 @@ You can also wire `ComponentTool` into a pipeline manually with `ChatGenerator` 
 ```python
 from haystack import Pipeline
 from haystack.tools import ComponentTool
-from haystack.components.websearch import SerperDevWebSearch
+from haystack_integrations.components.websearch.serperdev import SerperDevWebSearch
 from haystack.utils import Secret
 from haystack.components.tools.tool_invoker import ToolInvoker
 from haystack.components.generators.chat import OpenAIChatGenerator

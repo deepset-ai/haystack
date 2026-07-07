@@ -13,7 +13,7 @@ An embedding-based Retriever compatible with the Pinecone Document Store.
 
 |  |  |
 | --- | --- |
-| **Most common position in a pipeline** | 1. After a Text Embedder and before a [`PromptBuilder`](../builders/promptbuilder.mdx)   in a RAG pipeline 2. The last component in the semantic search pipeline 3. After a Text Embedder and before an [`ExtractiveReader`](../readers/extractivereader.mdx)   in an extractive QA pipeline |
+| **Most common position in a pipeline** | 1. After a Text Embedder and before a [`PromptBuilder`](../builders/promptbuilder.mdx)   in a RAG pipeline 2. The last component in the semantic search pipeline 3. After a Text Embedder and before a [`TransformersExtractiveReader`](../readers/transformersextractivereader.mdx)   in an extractive QA pipeline |
 | **Mandatory init variables**           | `document_store`: An instance of a [PineconeDocumentStore](../../document-stores/pinecone-document-store.mdx)                                                                                                                                                                                   |
 | **Mandatory run variables**            | `query_embedding`: A vector representing the query (a list of floats)                                                                                                                                                                                                     |
 | **Output variables**                   | `documents`: A list of documents                                                                                                                                                                                                                                          |
@@ -64,7 +64,7 @@ Install the dependencies you’ll need:
 
 ```shell
 pip install pinecone-haystack
-pip install sentence-transformers
+pip install sentence-transformers-haystack
 ```
 
 Use this Retriever in a query Pipeline like this:
@@ -73,7 +73,7 @@ Use this Retriever in a query Pipeline like this:
 from haystack.document_stores.types import DuplicatePolicy
 from haystack import Document
 from haystack import Pipeline
-from haystack.components.embedders import (
+from haystack_integrations.components.embedders.sentence_transformers import (
     SentenceTransformersTextEmbedder,
     SentenceTransformersDocumentEmbedder,
 )

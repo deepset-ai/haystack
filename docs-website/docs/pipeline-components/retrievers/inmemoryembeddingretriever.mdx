@@ -13,7 +13,7 @@ Use this Retriever with the InMemoryDocumentStore if you're looking for embeddin
 
 |  |  |
 | --- | --- |
-| **Most common position in a pipeline** | In query pipelines:  <br />In a RAG pipeline, before a [`PromptBuilder`](../builders/promptbuilder.mdx)  <br />In a semantic search pipeline, as the last component  <br />In an extractive QA pipeline, after a Tex tEmbedder and before an [`ExtractiveReader`](../readers/extractivereader.mdx) |
+| **Most common position in a pipeline** | In query pipelines:  <br />In a RAG pipeline, before a [`PromptBuilder`](../builders/promptbuilder.mdx)  <br />In a semantic search pipeline, as the last component  <br />In an extractive QA pipeline, after a Tex tEmbedder and before a [`TransformersExtractiveReader`](../readers/transformersextractivereader.mdx) |
 | **Mandatory init variables** | `document_store`: An instance of [InMemoryDocumentStore](../../document-stores/inmemorydocumentstore.mdx) |
 | **Mandatory run variables** | `query_embedding`: A list of floating point numbers |
 | **Output variables** | `documents`: A list of documents |
@@ -39,10 +39,16 @@ The `embedding_similarity_function`  to use for embedding retrieval must be defi
 
 Use this Retriever in a query pipeline like this:
 
+The examples on this page use Sentence Transformers embedders that have moved to the `sentence-transformers-haystack` package. Install it to run the examples:
+
+```shell
+pip install sentence-transformers-haystack
+```
+
 ```python
 from haystack import Document, Pipeline
 from haystack.document_stores.in_memory import InMemoryDocumentStore
-from haystack.components.embedders import (
+from haystack_integrations.components.embedders.sentence_transformers import (
     SentenceTransformersTextEmbedder,
     SentenceTransformersDocumentEmbedder,
 )

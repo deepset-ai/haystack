@@ -16,6 +16,7 @@ class TestMarkdownToDocument:
         converter = MarkdownToDocument()
         assert converter.table_to_single_line is False
         assert converter.progress_bar is True
+        assert converter.encoding == "utf-8"
         assert converter.extract_frontmatter is False
 
     def test_init_params_custom(self):
@@ -201,3 +202,32 @@ class TestMarkdownToDocument:
         for doc in docs:
             assert "What to build with Haystack" in doc.content
             assert "# git clone https://github.com/deepset-ai/haystack.git" in doc.content
+
+    def test_bytestream_encoding_from_meta(self):
+        """
+        Test that a non-UTF-8 ByteStream is decoded using the encoding specified in its meta.
+        """
+        # "caf\xe9" is "café" in latin-1; decoding as utf-8 would raise UnicodeDecodeError.
+        latin1_md = "# caf\xe9".encode("latin-1")
+        bytestream = ByteStream(data=latin1_md, meta={"encoding": "latin-1"})
+
+        converter = MarkdownToDocument(progress_bar=False)
+        output = converter.run(sources=[bytestream])
+        docs = output["documents"]
+
+        assert len(docs) == 1
+        assert "café" in docs[0].content
+
+    def test_bytestream_encoding_from_init(self):
+        """
+        Test that the encoding passed to __init__ is used as a fallback when not set in ByteStream meta.
+        """
+        latin1_md = "# caf\xe9".encode("latin-1")
+        bytestream = ByteStream(data=latin1_md)
+
+        converter = MarkdownToDocument(encoding="latin-1", progress_bar=False)
+        output = converter.run(sources=[bytestream])
+        docs = output["documents"]
+
+        assert len(docs) == 1
+        assert "café" in docs[0].content

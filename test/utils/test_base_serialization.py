@@ -233,44 +233,38 @@ def test_serializing_and_deserializing_empty_structures(value, result):
                 "serialized_data": [
                     [
                         {
-                            "type": "haystack.dataclasses.answer.GeneratedAnswer",
-                            "init_parameters": {
-                                "data": "Paris",
-                                "query": "What is the capital of France?",
-                                "documents": [
-                                    {
-                                        "id": "1",
-                                        "content": "Paris is the capital of France",
-                                        "blob": None,
-                                        "meta": {},
-                                        "score": None,
-                                        "embedding": None,
-                                        "sparse_embedding": None,
-                                    }
-                                ],
-                                "meta": {"page": 1},
-                            },
+                            "data": "Paris",
+                            "query": "What is the capital of France?",
+                            "documents": [
+                                {
+                                    "id": "1",
+                                    "content": "Paris is the capital of France",
+                                    "blob": None,
+                                    "meta": {},
+                                    "score": None,
+                                    "embedding": None,
+                                    "sparse_embedding": None,
+                                }
+                            ],
+                            "meta": {"page": 1},
                         }
                     ],
                     [
                         {
-                            "type": "haystack.dataclasses.answer.GeneratedAnswer",
-                            "init_parameters": {
-                                "data": "Berlin",
-                                "query": "What is the capital of Germany?",
-                                "documents": [
-                                    {
-                                        "id": "2",
-                                        "content": "Berlin is the capital of Germany",
-                                        "blob": None,
-                                        "meta": {},
-                                        "score": None,
-                                        "embedding": None,
-                                        "sparse_embedding": None,
-                                    }
-                                ],
-                                "meta": {"page": 1},
-                            },
+                            "data": "Berlin",
+                            "query": "What is the capital of Germany?",
+                            "documents": [
+                                {
+                                    "id": "2",
+                                    "content": "Berlin is the capital of Germany",
+                                    "blob": None,
+                                    "meta": {},
+                                    "score": None,
+                                    "embedding": None,
+                                    "sparse_embedding": None,
+                                }
+                            ],
+                            "meta": {"page": 1},
                         }
                     ],
                 ],
@@ -364,23 +358,20 @@ def test_serialize_and_deserialize_value_with_schema_with_various_types():
             "list_of_dicts": [{"numbers": [1, 2, 3]}],
             "answers": [
                 {
-                    "type": "haystack.dataclasses.answer.GeneratedAnswer",
-                    "init_parameters": {
-                        "data": "Paris",
-                        "query": "What is the capital of France?",
-                        "documents": [
-                            {
-                                "id": "2",
-                                "content": "Paris is the capital of France",
-                                "blob": None,
-                                "meta": {},
-                                "score": None,
-                                "embedding": None,
-                                "sparse_embedding": None,
-                            }
-                        ],
-                        "meta": {"page": 1},
-                    },
+                    "data": "Paris",
+                    "query": "What is the capital of France?",
+                    "documents": [
+                        {
+                            "id": "2",
+                            "content": "Paris is the capital of France",
+                            "blob": None,
+                            "meta": {},
+                            "score": None,
+                            "embedding": None,
+                            "sparse_embedding": None,
+                        }
+                    ],
+                    "meta": {"page": 1},
                 }
             ],
         },
