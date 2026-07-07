@@ -194,8 +194,9 @@ def default_to_dict(obj: Any, **init_parameters: Any) -> dict[str, Any]:
     serialized by calling that method.
 
     This is the format used for saved pipeline files (`Pipeline.dump`/`Pipeline.load`). Don't merge
-    it with `base_serialization`'s serializer — that one uses a different envelope for a different
-    job (arbitrary runtime values, not Components) and changing either would break saved files.
+    it with `base_serialization._serialize_value_with_schema` — that one uses a different envelope
+    for a different job (arbitrary runtime values, not Components) and changing either would break
+    saved files.
 
     An example usage:
 
@@ -264,7 +265,7 @@ def default_from_dict(cls: type[T], data: dict[str, Any]) -> T:
     This is mostly necessary for components but can be used by any object. Reverses the
     `{"type": ..., "init_parameters": ...}` envelope produced by `default_to_dict` — see that
     function's docstring for why this envelope is not interchangeable with
-    `haystack.utils.base_serialization`'s.
+    `haystack.utils.base_serialization._serialize_value_with_schema`'s.
 
     The function will raise a `DeserializationError` if the `type` field in `data` is
     missing or it doesn't match the type of `cls`.

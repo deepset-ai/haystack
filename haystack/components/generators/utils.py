@@ -163,8 +163,9 @@ def _serialize_object(obj: Any) -> Any:
     """
     Convert an object to a serializable dict recursively.
 
-    Used for OpenAI SDK response objects, so it skips any attribute starting with "_" (SDK-internal
-    fields). `base_serialization`'s serializer doesn't skip those, so don't swap this out for it.
+    Used to serialize `logprobs` and `usage` from OpenAI SDK response objects, so it skips any
+    attribute starting with "_" (SDK-internal fields). `base_serialization._serialize_value_with_schema`
+    doesn't skip those, so don't swap this out for it.
     """
     if hasattr(obj, "model_dump"):
         return obj.model_dump()
