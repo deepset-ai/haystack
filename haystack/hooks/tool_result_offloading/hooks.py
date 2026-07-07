@@ -31,9 +31,9 @@ def _result_store_key(tool_name: str, tool_call_id: str | None, step: int, index
     Build a per-result store key that is stable and unique within a run.
 
     Combining the step, tool name, and tool call id keeps results from different tools and different steps from
-    colliding while staying deterministic (so a re-run produces the same key). When the tool call carries no id
-    (it is optional and not every generator sets it), the result's position in the step's batch is used instead, so
-    two id-less calls to the same tool in the same step do not collide.
+    colliding. When the tool call carries no id (it is optional and not every generator sets it), the result's
+    position in the step's batch is used instead, so two id-less calls to the same tool in the same step do not
+    collide.
 
     :param tool_name: The name of the tool that produced the result.
     :param tool_call_id: The id of the originating tool call, or None when the call carried no id.
@@ -56,12 +56,10 @@ def _fresh_tool_results_start(messages: list[ChatMessage]) -> int:
     :returns: The index of the first message in the trailing tool-result block, or `len(messages)` when the last
         message is not a tool result (no fresh results to offload).
     """
-    start = len(messages)
-    for index in range(len(messages) - 1, -1, -1):
-        if messages[index].tool_call_result is None:
-            break
-        start = index
-    return start
+    index = len(messages)
+    while index > 0 and messages[index - 1].tool_call_result is not None:
+        index -= 1
+    return index
 
 
 def _offloadable_text(content: ToolCallResultContentT) -> str | None:
@@ -219,7 +217,7 @@ class ToolResultOffloadHook:
         """
         messages = state.data.get("messages") or []
         start = _fresh_tool_results_start(messages)
-        if start >= len(messages):
+        if start == len(messages):
             return
         store = self._resolve_store(state)
         rewritten: list[ChatMessage] = list(messages[:start])
