@@ -170,7 +170,12 @@ def _convert_streaming_chunks_to_chat_message(chunks: list[StreamingChunk]) -> C
 
 
 def _serialize_object(obj: Any) -> Any:
-    """Convert an object to a serializable dict recursively"""
+    """
+    Convert an object to a serializable dict recursively.
+
+    Used for OpenAI SDK response objects, so it skips any attribute starting with "_" (SDK-internal
+    fields). `base_serialization`'s serializer doesn't skip those, so don't swap this out for it.
+    """
     if hasattr(obj, "model_dump"):
         return obj.model_dump()
     if hasattr(obj, "__dict__"):
