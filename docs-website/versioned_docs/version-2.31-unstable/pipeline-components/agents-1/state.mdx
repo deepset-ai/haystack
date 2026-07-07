@@ -1,0 +1,415 @@
+---
+title: "State"
+id: state
+slug: "/state"
+description: "`State` is a container for storing shared information during Agent and Tool execution. It provides a structured way to share data between tools, accumulate results across multiple tool calls, and surface them alongside the agent's final answer."
+---
+
+# State
+
+`State` is a container for storing shared information during Agent and Tool execution.
+It provides a structured way to share data between tools, accumulate results across multiple tool calls, and surface them alongside the agent's final answer.
+
+## Overview
+
+When building agents that use multiple tools, you often need tools to share information or accumulate results across iterations.
+State provides centralized storage that all tools can read from and write to.
+For example, a search tool called multiple times can append its results to a shared `documents` list, which is then returned alongside the agent's final answer for source inspection.
+
+State uses a schema-based approach where you define:
+
+- What data can be stored,
+- The type of each piece of data,
+- How values are merged when updated.
+
+The Agent creates and manages the `State` object internally. You shouldn't need to instantiate it directly.
+You interact with it through tool definitions (`inputs_from_state`, `outputs_to_state`, or a `state: State` parameter) and read results from the agent's output dict.
+
+### Supported Types
+
+State supports standard Python types:
+
+- Basic types: `str`, `int`, `float`, `bool`, `dict`
+- List types: `list`, `list[str]`, `list[int]`, `list[Document]`
+- Union types: `str | int`, `str | None`
+- Custom classes and data classes.
+
+### Automatic Message Handling
+
+State automatically includes a `messages` field that stores the full conversation history during execution.
+You don't need to define this in your schema.
+It uses `list[ChatMessage]` type with the `merge_lists` handler, so new messages are appended on each iteration.
+
+### State API
+
+| Method | Description |
+| --- | --- |
+| `state.get(key, default=None)` | Read a value; returns `default` if the key doesn't exist |
+| `state.set(key, value)` | Write a value, merged using the schema's handler |
+| `state.has(key)` | Returns `True` if the key exists in state |
+| `state.data` | Returns a snapshot of all current state as a `dict` |
+
+## Schema Definition
+
+The schema defines what data can be stored and how values are updated. Each schema entry consists of:
+
+- `type` (required): The Python type for this field (for example, `str`, `int`, `list`)
+- `handler` (optional): A callable that determines how new values are merged when `set()` is called
+
+```python
+{
+    "parameter_name": {
+        "type": SomeType,  # Required: expected Python type
+        "handler": some_func,  # Optional: merge function
+    },
+}
+```
+
+If you don't specify a handler, State automatically assigns a default based on the type.
+
+### Default Handlers
+
+State provides two built-in merge behaviors (importable from `haystack.components.agents.state`):
+
+- **`merge_lists`**: Appends to the existing list (default for list types)
+- **`replace_values`**: Overwrites the existing value (default for non-list types)
+
+```python
+from haystack.components.agents import State
+
+schema = {
+    "documents": {"type": list},  # uses merge_lists by default
+    "user_name": {"type": str},  # uses replace_values by default
+}
+
+state = State(schema=schema)
+
+state.set("documents", [1, 2])
+state.set("documents", [3, 4])
+print(state.get("documents"))  # [1, 2, 3, 4]
+
+state.set("user_name", "Alice")
+state.set("user_name", "Bob")
+print(state.get("user_name"))  # "Bob"
+```
+
+### Custom Handlers
+
+Custom handlers are useful when the default `merge_lists` or `replace_values` behaviors don't fit your needs.
+A handler takes the current state value and the new value and returns the merged result.
+
+The example below uses a deduplication handler, useful when multiple tool calls might return overlapping results and you want to avoid accumulating duplicates in state:
+
+```python
+def deduplicate(current_value: list | None, new_value: list) -> list:
+    """Append new items, skipping any already in the list."""
+    existing = set(current_value or [])
+    return (current_value or []) + [item for item in new_value if item not in existing]
+
+
+schema = {"doc_ids": {"type": list, "handler": deduplicate}}
+
+state = State(schema=schema)
+state.set("doc_ids", ["doc-1", "doc-2"])
+state.set("doc_ids", ["doc-2", "doc-3"])
+print(state.get("doc_ids"))  # ["doc-1", "doc-2", "doc-3"]
+```
+
+You can also override the handler for a single `set()` call:
+
+```python
+from haystack.components.agents import State
+
+
+def concatenate_strings(current: str | None, new: str) -> str:
+    return f"{current}-{new}" if current else new
+
+
+state = State(schema={"user_name": {"type": str}})
+state.set("user_name", "Alice")
+state.set("user_name", "Bob", handler_override=concatenate_strings)
+print(state.get("user_name"))  # "Alice-Bob"
+```
+
+## Using State
+
+Define a `state_schema` when creating the Agent.
+State keys declared in `state_schema` are exposed as output keys on the agent's result dict alongside `messages` and `last_message`.
+
+Tools interact with State through three mechanisms:
+
+- **`outputs_to_state`**: Write tool results to state keys after the tool runs.
+- **`inputs_from_state`**: Inject state values into tool parameters before the tool runs.
+- **Direct `State` injection**: Add a `state: State` parameter to your tool function's signature. The Agent detects the `State` annotation and injects the live `State` object automatically, so you can read or write any key defined in the schema. The `State` object is never exposed to the LLM's parameter schema.
+
+### Reading from State: `inputs_from_state`
+
+`inputs_from_state` maps state keys to function parameter names using the format `{"state_key": "param_name"}`.
+The value is injected from state before the tool runs, so the LLM never needs to provide it.
+
+Parameters mapped via `inputs_from_state` are automatically excluded from the LLM's parameter schema.
+The model never sees or provides them:
+
+```python
+from typing import Annotated
+from haystack.components.agents import Agent
+from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.components.generators.utils import print_streaming_chunk
+from haystack.dataclasses import ChatMessage
+from haystack.tools import tool
+
+
+@tool(inputs_from_state={"user_name": "user_context"})
+def search_documents(
+    query: Annotated[str, "The search query"],
+    user_context: str,  # injected from state; excluded from LLM schema
+) -> dict:
+    """Search documents using query and user context."""
+    return {"results": [f"Found results for '{query}' (user: {user_context})"]}
+
+
+agent = Agent(
+    chat_generator=OpenAIChatGenerator(model="gpt-5.4-nano"),
+    tools=[search_documents],
+    system_prompt="Use the search_documents tool to find information.",
+    streaming_callback=print_streaming_chunk,
+    state_schema={"user_name": {"type": str}},
+)
+
+result = agent.run(
+    messages=[ChatMessage.from_user("Search for Python tutorials")],
+    user_name="Alice",  # state key "user_name" is pre-populated by passing user_name= to agent.run()
+)
+
+print(result["last_message"].text)
+```
+
+### Writing to State: `outputs_to_state`
+
+The `outputs_to_state` parameter maps tool output keys to state keys. Each entry supports two optional fields:
+
+```python
+{
+    "state_key": {
+        "source": "tool_output_key",  # which key to read from the tool's return dict; omit to store the entire dict
+        "handler": some_func,  # override the schema's merge handler for this mapping only
+    },
+}
+```
+
+```python
+from typing import Annotated
+from haystack.components.agents import Agent
+from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.components.generators.utils import print_streaming_chunk
+from haystack.dataclasses import ChatMessage
+from haystack.tools import tool
+
+
+@tool(
+    outputs_to_state={
+        "documents": {"source": "documents"},
+        "result_count": {"source": "count"},
+        "last_query": {"source": "query"},
+    },
+)
+def retrieve_documents(
+    query: Annotated[str, "The search query"],
+) -> dict:
+    """Retrieve relevant documents."""
+    return {
+        "documents": [
+            {"title": "Doc 1", "content": "Content about Python"},
+            {"title": "Doc 2", "content": "More about Python"},
+        ],
+        "count": 2,
+        "query": query,
+    }
+
+
+agent = Agent(
+    chat_generator=OpenAIChatGenerator(model="gpt-5.4-nano"),
+    tools=[retrieve_documents],
+    system_prompt="Use the retrieve_documents tool to find information.",
+    streaming_callback=print_streaming_chunk,
+    state_schema={
+        "documents": {"type": list},
+        "result_count": {"type": int},
+        "last_query": {"type": str},
+    },
+)
+
+result = agent.run(messages=[ChatMessage.from_user("Find information about Python")])
+
+print(f"Documents: {result['documents']}")
+print(f"Result count: {result['result_count']}")
+print(f"Last query: {result['last_query']}")
+```
+
+If you omit `source`, the entire tool result dict is stored under the state key:
+
+```python
+from haystack.components.agents import Agent
+from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.components.generators.utils import print_streaming_chunk
+from haystack.dataclasses import ChatMessage
+from haystack.tools import tool
+
+
+@tool(outputs_to_state={"user_info": {}})
+def get_user_info() -> dict:
+    """Get user information."""
+    return {"name": "Alice", "email": "alice@example.com", "role": "admin"}
+
+
+agent = Agent(
+    chat_generator=OpenAIChatGenerator(model="gpt-5.4-nano"),
+    tools=[get_user_info],
+    system_prompt="Use the get_user_info tool to look up user details.",
+    streaming_callback=print_streaming_chunk,
+    state_schema={"user_info": {"type": dict}},
+)
+
+result = agent.run(messages=[ChatMessage.from_user("What are the user's details?")])
+
+print(result["last_message"].text)
+print(f"User info: {result['user_info']}")
+```
+
+### Combining Inputs and Outputs
+
+Tools can both read from and write to State, enabling tool chaining across iterations.
+This example builds on `retrieve_documents` from the previous section:
+
+```python
+@tool(
+    inputs_from_state={"documents": "documents"},
+    outputs_to_state={
+        "final_docs": {"source": "processed_docs"},
+        "final_count": {"source": "processed_count"},
+    },
+)
+def process_documents(
+    max_results: Annotated[int, "Maximum number of documents to return"],
+    documents: list = None,  # injected from state; LLM does not provide this
+) -> dict:
+    """Process retrieved documents and return a filtered subset."""
+    processed = (documents or [])[:max_results]
+    return {"processed_docs": processed, "processed_count": len(processed)}
+
+
+agent = Agent(
+    chat_generator=OpenAIChatGenerator(model="gpt-5.4-nano"),
+    tools=[retrieve_documents, process_documents],  # chained through state
+    system_prompt="Use the available tools to retrieve and process documents.",
+    streaming_callback=print_streaming_chunk,
+    state_schema={
+        "documents": {"type": list},
+        "result_count": {"type": int},
+        "last_query": {"type": str},
+        "final_docs": {"type": list},
+        "final_count": {"type": int},
+    },
+)
+
+result = agent.run(
+    messages=[ChatMessage.from_user("Find and process 3 documents about Python")],
+)
+print(f"Processed {result['final_count']} documents")
+```
+
+### Injecting State Directly into Tools
+
+As an alternative to `inputs_from_state` and `outputs_to_state`, a tool can declare a `state: State` parameter to receive the live `State` object at invocation time.
+This lets the tool read from and write to any number of state keys without declaring mappings upfront.
+
+The ToolInvoker detects the `State` annotation and injects the object automatically.
+It is excluded from the LLM-facing schema. The model is never asked to supply it.
+Both `State` and `State | None` annotations are supported.
+
+For function-based tools, add the `state` parameter and use the `@tool` decorator:
+
+```python
+from typing import Annotated
+from haystack.components.agents import Agent, State
+from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.components.generators.utils import print_streaming_chunk
+from haystack.dataclasses import ChatMessage, Document
+from haystack.tools import tool
+
+
+@tool
+def retrieve_and_store(
+    query: Annotated[str, "The search query"],
+    state: State,
+) -> str:
+    """Retrieve documents and store them directly in state."""
+    documents = [Document(content=f"Result for '{query}'")]
+    state.set("documents", documents)
+    user_name = state.get("user_name", "unknown")
+    return f"Retrieved {len(documents)} document(s) for {user_name}"
+
+
+agent = Agent(
+    chat_generator=OpenAIChatGenerator(model="gpt-5.4-nano"),
+    tools=[retrieve_and_store],
+    system_prompt="Use the retrieve_and_store tool to find documents.",
+    streaming_callback=print_streaming_chunk,
+    state_schema={"documents": {"type": list[Document]}, "user_name": {"type": str}},
+)
+
+result = agent.run(
+    messages=[ChatMessage.from_user("Find documents about Python")],
+    user_name="Alice",
+)
+
+print(result["last_message"].text)
+print(result["documents"])
+```
+
+For component-based tools, declare a `State` input socket on the `run` method and wrap it with `ComponentTool`:
+
+```python
+from haystack import component
+from haystack.components.agents import Agent, State
+from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.components.generators.utils import print_streaming_chunk
+from haystack.dataclasses import ChatMessage, Document
+from haystack.tools import ComponentTool
+
+
+@component
+class DocumentRetriever:
+    """Retrieve documents and store them in state."""
+
+    @component.output_types(reply=str)
+    def run(self, query: str, state: State) -> dict[str, str]:
+        """
+        Retrieve documents based on query and store them in state.
+
+        :param query: The search query
+        """
+        documents = [Document(content=f"Result for '{query}'")]
+        state.set("documents", documents)
+        return {"reply": f"Retrieved {len(documents)} document(s)"}
+
+
+retriever_tool = ComponentTool(
+    component=DocumentRetriever(),
+    name="retrieve",
+    description="Retrieve documents based on a search query",
+)
+
+agent = Agent(
+    chat_generator=OpenAIChatGenerator(model="gpt-5.4-nano"),
+    tools=[retriever_tool],
+    system_prompt="Use the retrieve tool to find documents.",
+    streaming_callback=print_streaming_chunk,
+    state_schema={"documents": {"type": list[Document]}},
+)
+
+result = agent.run(messages=[ChatMessage.from_user("Find documents about Python")])
+
+print(result["last_message"].text)
+print(result["documents"])
+```

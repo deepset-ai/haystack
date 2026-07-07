@@ -223,7 +223,11 @@ def _deserialize_value(value: dict[str, Any]) -> Any:
     payload = value["data"]
 
     # Custom class where value_type is a qualified class name
-    cls = import_class_by_name(value_type)
+    # ValueError covers type names without a module prefix, which import_class_by_name cannot split
+    try:
+        cls = import_class_by_name(value_type)
+    except (ImportError, ValueError) as e:
+        raise DeserializationError(f"Class '{value_type}' not correctly imported") from e
 
     # try from_dict (e.g. Haystack dataclasses and Components)
     if hasattr(cls, "from_dict") and callable(cls.from_dict):
