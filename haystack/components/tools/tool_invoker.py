@@ -11,10 +11,11 @@ from concurrent.futures import ThreadPoolExecutor
 from functools import partial
 from typing import Any
 
+from haystack import logging
 from haystack.components.agents import State
 from haystack.core.component.component import component
 from haystack.core.component.sockets import Sockets
-from haystack.core.serialization import default_from_dict, default_to_dict, logging
+from haystack.core.serialization import default_from_dict, default_to_dict
 from haystack.dataclasses import ChatMessage, ToolCall
 from haystack.dataclasses.streaming_chunk import StreamingCallbackT, StreamingChunk, select_streaming_callback
 from haystack.tools import (

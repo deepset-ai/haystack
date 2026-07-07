@@ -7,15 +7,11 @@ from collections.abc import Callable, Iterable
 from dataclasses import dataclass
 from typing import Any, TypeVar
 
-from haystack import logging
 from haystack.core.component.component import _hook_component_init
 from haystack.core.errors import DeserializationError, SerializationError
 from haystack.utils.auth import Secret
 from haystack.utils.device import ComponentDevice
-from haystack.utils.type_serialization import thread_safe_import
-
-logger = logging.getLogger(__name__)
-
+from haystack.utils.type_serialization import _import_class_by_name
 
 T = TypeVar("T")
 
@@ -323,13 +319,4 @@ def import_class_by_name(fully_qualified_name: str) -> type[object]:
     :returns: the class object.
     :raises ImportError: If the class cannot be imported or found.
     """
-    try:
-        module_path, class_name = fully_qualified_name.rsplit(".", 1)
-        logger.debug(
-            "Attempting to import class '{cls_name}' from module '{md_path}'", cls_name=class_name, md_path=module_path
-        )
-        module = thread_safe_import(module_path)
-        return getattr(module, class_name)
-    except (ImportError, AttributeError) as error:
-        logger.exception("Failed to import class '{full_name}'", full_name=fully_qualified_name)
-        raise ImportError(f"Could not import class '{fully_qualified_name}'") from error
+    return _import_class_by_name(fully_qualified_name)
