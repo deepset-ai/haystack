@@ -8,10 +8,9 @@ import inspect
 import json
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
-from functools import partial
 from typing import Any
 
-from haystack import logging
+from haystack import logging, tracing
 from haystack.components.agents.state.state import State
 from haystack.core.component.sockets import Sockets
 from haystack.dataclasses import ChatMessage, ToolCall
@@ -179,32 +178,58 @@ def _create_tool_result_streaming_chunk(tool_message: ChatMessage, tool_call: To
     )
 
 
-def _make_context_bound_invoke(tool: Tool, args: dict[str, Any]) -> Callable[[], Any]:
+def _create_tool_span(tool: Tool, tool_call: ToolCall) -> Any:
+    """
+    Create one tracing span for a single tool call, nested under the currently active span.
+
+    Both OpenTelemetry and Langfuse expect a single tool call per span, so each call gets its own span rather than
+    grouping all of a step's calls together. The span is tagged with the tool's identity; the caller adds the call
+    arguments and result as content tags.
+    """
+    return tracing.tracer.trace(
+        "haystack.agent.step.tool",
+        tags={"haystack.tool.name": tool_call.tool_name, "haystack.tool.description": tool.description},
+        parent_span=tracing.tracer.current_span(),
+    )
+
+
+def _make_context_bound_invoke(tool: Tool, args: dict[str, Any], tool_call: ToolCall) -> Callable[[], Any]:
     """
     Return a zero-arg callable that runs `tool.invoke(**args)` under the current contextvars snapshot.
 
-    This preserves tracing spans and other context-local state across thread-pool boundaries.
-    The callable returns a ToolInvocationError instead of raising so that parallel executions can
-    collect failures without aborting the whole batch.
+    This preserves tracing spans and other context-local state across thread-pool boundaries, so the per-call span
+    created inside the worker nests correctly under the step span. The callable returns a ToolInvocationError instead
+    of raising so that parallel executions can collect failures without aborting the whole batch.
     """
     ctx = contextvars.copy_context()
 
+    def _invoke() -> Any:
+        with _create_tool_span(tool, tool_call) as span:
+            span.set_content_tag("haystack.agent.step.tool.input", tool_call.arguments)
+            try:
+                result = tool.invoke(**args)
+            except ToolInvocationError as e:
+                span.set_content_tag("haystack.agent.step.tool.output", {"error": str(e)})
+                return e
+            span.set_content_tag("haystack.agent.step.tool.output", result)
+            return result
+
     def _runner() -> Any:
-        try:
-            return ctx.run(partial(tool.invoke, **args))
-        except ToolInvocationError as e:
-            return e
+        return ctx.run(_invoke)
 
     return _runner
 
 
-def _make_bounded_invoke_async(tool: Tool, args: dict[str, Any], semaphore: asyncio.Semaphore) -> Callable[[], Any]:
+def _make_bounded_invoke_async(
+    tool: Tool, args: dict[str, Any], semaphore: asyncio.Semaphore, tool_call: ToolCall
+) -> Callable[[], Any]:
     """
     Return a zero-arg async callable that awaits `tool.invoke_async(**args)` while holding `semaphore`.
 
     Concurrency is bounded uniformly across native-async tools and sync-fallback tools (which dispatch
     to a worker thread inside `Tool.invoke_async`). ContextVars naturally inherit into child tasks for
-    the native-async branch, and `asyncio.to_thread` propagates them for the fallback branch.
+    the native-async branch, and `asyncio.to_thread` propagates them for the fallback branch, so the per-call
+    span nests correctly under the step span.
 
     Returns a `ToolInvocationError` instead of raising so that gathered executions can collect failures
     without aborting the whole batch.
@@ -212,10 +237,15 @@ def _make_bounded_invoke_async(tool: Tool, args: dict[str, Any], semaphore: asyn
 
     async def _runner() -> Any:
         async with semaphore:
-            try:
-                return await tool.invoke_async(**args)
-            except ToolInvocationError as e:
-                return e
+            with _create_tool_span(tool, tool_call) as span:
+                span.set_content_tag("haystack.agent.step.tool.input", tool_call.arguments)
+                try:
+                    result = await tool.invoke_async(**args)
+                except ToolInvocationError as e:
+                    span.set_content_tag("haystack.agent.step.tool.output", {"error": str(e)})
+                    return e
+                span.set_content_tag("haystack.agent.step.tool.output", result)
+                return result
 
     return _runner
 
@@ -523,7 +553,7 @@ def _run_tool(
                     streaming_callback=streaming_callback,
                     enable_streaming_passthrough=enable_streaming_callback_passthrough,
                 )
-                futures[idx] = executor.submit(_make_context_bound_invoke(resolved_tools[idx], args))
+                futures[idx] = executor.submit(_make_context_bound_invoke(resolved_tools[idx], args, tool_calls[idx]))
 
             # Merge results in call order within the batch so write-write merges stay deterministic.
             for idx in batch:
@@ -607,7 +637,7 @@ async def _run_tool_async(
                 streaming_callback=streaming_callback,
                 enable_streaming_passthrough=enable_streaming_callback_passthrough,
             )
-            tasks[idx] = _make_bounded_invoke_async(resolved_tools[idx], args, semaphore)()
+            tasks[idx] = _make_bounded_invoke_async(resolved_tools[idx], args, semaphore, tool_calls[idx])()
         batch_results = await asyncio.gather(*tasks.values())
 
         # Merge results in call order within the batch so write-write merges stay deterministic.

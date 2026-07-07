@@ -1162,12 +1162,7 @@ class Agent:
                 **exe_context.tool_execution_inputs,
                 "tools": current_tools,
             }
-            with tracing.tracer.trace("haystack.agent.step.tool", parent_span=step_span) as tool_span:
-                tool_span.set_content_tag("haystack.agent.step.tool.input", tool_execution_inputs)
-                tool_messages, exe_context.state = _run_tool(**tool_execution_inputs)
-                tool_span.set_content_tag(
-                    "haystack.agent.step.tool.output", {"tool_messages": tool_messages, "state": exe_context.state}
-                )
+            tool_messages, exe_context.state = _run_tool(**tool_execution_inputs)
             exe_context.state.set("messages", tool_messages)
             _record_tool_calls(exe_context.state, tool_messages)
             _run_hooks(self.hooks, AFTER_TOOL, exe_context.state)
@@ -1227,12 +1222,7 @@ class Agent:
                 **exe_context.tool_execution_inputs,
                 "tools": current_tools,
             }
-            with tracing.tracer.trace("haystack.agent.step.tool", parent_span=step_span) as tool_span:
-                tool_span.set_content_tag("haystack.agent.step.tool.input", tool_execution_inputs)
-                tool_messages, exe_context.state = await _run_tool_async(**tool_execution_inputs)
-                tool_span.set_content_tag(
-                    "haystack.agent.step.tool.output", {"tool_messages": tool_messages, "state": exe_context.state}
-                )
+            tool_messages, exe_context.state = await _run_tool_async(**tool_execution_inputs)
             exe_context.state.set("messages", tool_messages)
             _record_tool_calls(exe_context.state, tool_messages)
             await _run_hooks_async(self.hooks, AFTER_TOOL, exe_context.state)
