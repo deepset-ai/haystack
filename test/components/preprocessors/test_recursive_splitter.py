@@ -751,6 +751,60 @@ def test_run_split_by_dot_and_overlap_1_word_unit_split_idx_start():
         )
 
 
+def test_word_unit_split_populates_split_overlap_metadata():
+    """
+    _split_overlap ranges must be character offsets into the referenced chunk when
+    split_unit="word" and split_overlap > 0
+    """
+    splitter = RecursiveDocumentSplitter(split_length=4, split_overlap=1, separators=["."], split_unit="word")
+    text = "This is sentence one. This is sentence two. This is sentence three. This is sentence four."
+    chunks = splitter.run([Document(content=text)])["documents"]
+    assert len(chunks) == 5
+
+    assert chunks[0].content == "This is sentence one."
+    assert chunks[0].meta["_split_overlap"] == [{"doc_id": chunks[1].id, "range": (0, 4)}]  # "one."
+
+    assert chunks[1].content == "one. This is sentence"
+    assert chunks[1].meta["_split_overlap"] == [
+        {"doc_id": chunks[0].id, "range": (17, 21)},  # "one."
+        {"doc_id": chunks[2].id, "range": (0, 8)},  # "sentence"
+    ]
+
+    assert chunks[2].content == "sentence two. This is"
+    assert chunks[2].meta["_split_overlap"] == [
+        {"doc_id": chunks[1].id, "range": (13, 21)},  # "sentence"
+        {"doc_id": chunks[3].id, "range": (0, 2)},  # "is"
+    ]
+
+    assert chunks[3].content == "is sentence three. This"
+    assert chunks[3].meta["_split_overlap"] == [
+        {"doc_id": chunks[2].id, "range": (19, 21)},  # "is"
+        {"doc_id": chunks[4].id, "range": (0, 4)},  # "This"
+    ]
+
+    assert chunks[4].content == "This is sentence four."
+    assert chunks[4].meta["_split_overlap"] == [{"doc_id": chunks[3].id, "range": (19, 23)}]  # "This"
+
+
+@pytest.mark.integration
+def test_token_unit_split_populates_split_overlap_metadata():
+    """
+    _split_overlap ranges must be character offsets into the referenced chunk when
+    split_unit="token" and split_overlap > 0
+    """
+    splitter = RecursiveDocumentSplitter(split_length=4, split_overlap=1, separators=["."], split_unit="token")
+    text = "This is sentence one. This is sentence two. This is sentence three. This is sentence four."
+    chunks = splitter.run([Document(content=text)])["documents"]
+    assert len(chunks) == 8
+
+    assert chunks[0].meta["_split_overlap"] == [{"doc_id": chunks[1].id, "range": (0, 4)}]
+    assert chunks[1].meta["_split_overlap"] == [
+        {"doc_id": chunks[0].id, "range": (16, 20)},
+        {"doc_id": chunks[2].id, "range": (0, 1)},
+    ]
+    assert chunks[7].meta["_split_overlap"] == [{"doc_id": chunks[6].id, "range": (9, 18)}]
+
+
 def test_run_trigger_dealing_with_remaining_word_larger_than_split_length():
     splitter = RecursiveDocumentSplitter(split_length=3, split_overlap=2, separators=["."], split_unit="word")
     text = """A simple sentence1. A bright sentence2. A clever sentence3"""

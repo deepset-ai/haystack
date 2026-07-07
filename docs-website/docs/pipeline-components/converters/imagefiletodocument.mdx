@@ -64,10 +64,16 @@ print(documents)
 
 In the following Pipeline, image documents are created using the `ImageFileToDocument` component, then they are enriched with image embeddings and saved in the Document Store.
 
+The examples on this page use Sentence Transformers embedders that have moved to the `sentence-transformers-haystack` package. Install it to run the examples:
+
+```shell
+pip install sentence-transformers-haystack
+```
+
 ```python
 from haystack import Pipeline
 from haystack.components.converters.image import ImageFileToDocument
-from haystack.components.embedders.image import (
+from haystack_integrations.components.embedders.sentence_transformers import (
     SentenceTransformersDocumentImageEmbedder,
 )
 from haystack.components.writers.document_writer import DocumentWriter
