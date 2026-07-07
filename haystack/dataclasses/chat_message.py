@@ -249,6 +249,9 @@ def _serialize_content_part(part: ChatMessageContentT) -> dict[str, Any]:
     """
     Serialize a single content part of a ChatMessage.
 
+    Output looks like `{"text": "hello"}` or `{"image": {...}}` — short, hand-writable keys, not a
+    full class name. People write these by hand (e.g. in chat templates), so keep it this way.
+
     :param part:
         A ChatMessageContentT object.
     :returns:
