@@ -324,6 +324,33 @@ def _check_duplicate_tool_names(tools: list[Tool] | None) -> None:
         raise ValueError(f"Duplicate tool names found: {duplicate_tool_names}")
 
 
+def _convert_handler(config: dict[str, Any], converter: Callable[[Any], Any]) -> dict[str, Any]:
+    """
+    Copies a single output config, converting its "handler" entry (if present) via `converter`.
+
+    :param config: A single output configuration dictionary that may contain a "handler" key.
+    :param converter: `serialize_callable` or `deserialize_callable`, applied to the "handler" value.
+    :returns: A copy of `config` with the "handler" value converted, if present.
+    """
+    new_config = config.copy()
+    if "handler" in config:
+        new_config["handler"] = converter(config["handler"])
+    return new_config
+
+
+def _convert_handler_in_configs(
+    configs: dict[str, dict[str, Any]], converter: Callable[[Any], Any]
+) -> dict[str, dict[str, Any]]:
+    """
+    Applies `_convert_handler` to every config in a dictionary of named output configs.
+
+    :param configs: A mapping of keys to output configuration dictionaries.
+    :param converter: `serialize_callable` or `deserialize_callable`, applied to each "handler" value.
+    :returns: A new mapping with the same keys, each config converted via `_convert_handler`.
+    """
+    return {key: _convert_handler(config, converter) for key, config in configs.items()}
+
+
 def _serialize_outputs_to_state(outputs_to_state: dict[str, dict[str, Any]]) -> dict[str, dict[str, Any]]:
     """
     Serializes the outputs_to_state dictionary, converting any callable handlers to their string representation.
@@ -331,13 +358,7 @@ def _serialize_outputs_to_state(outputs_to_state: dict[str, dict[str, Any]]) -> 
     :param outputs_to_state: The outputs_to_state dictionary to serialize.
     :returns: The serialized outputs_to_state dictionary.
     """
-    serialized_outputs = {}
-    for key, config in outputs_to_state.items():
-        serialized_config = config.copy()
-        if "handler" in config:
-            serialized_config["handler"] = serialize_callable(config["handler"])
-        serialized_outputs[key] = serialized_config
-    return serialized_outputs
+    return _convert_handler_in_configs(outputs_to_state, serialize_callable)
 
 
 def _deserialize_outputs_to_state(outputs_to_state: dict[str, dict[str, Any]]) -> dict[str, dict[str, Any]]:
@@ -347,13 +368,7 @@ def _deserialize_outputs_to_state(outputs_to_state: dict[str, dict[str, Any]]) -
     :param outputs_to_state: The outputs_to_state dictionary to deserialize.
     :returns: The deserialized outputs_to_state dictionary.
     """
-    deserialized_outputs = {}
-    for key, config in outputs_to_state.items():
-        deserialized_config = config.copy()
-        if "handler" in config:
-            deserialized_config["handler"] = deserialize_callable(config["handler"])
-        deserialized_outputs[key] = deserialized_config
-    return deserialized_outputs
+    return _convert_handler_in_configs(outputs_to_state, deserialize_callable)
 
 
 def _serialize_outputs_to_string(outputs_to_string: dict[str, Any]) -> dict[str, Any]:
@@ -365,19 +380,10 @@ def _serialize_outputs_to_string(outputs_to_string: dict[str, Any]) -> dict[str,
     """
     if "source" in outputs_to_string or "handler" in outputs_to_string or "raw_result" in outputs_to_string:
         # Single output configuration
-        serialized_outputs = outputs_to_string.copy()
-        if "handler" in outputs_to_string:
-            serialized_outputs["handler"] = serialize_callable(outputs_to_string["handler"])
-        return serialized_outputs
+        return _convert_handler(outputs_to_string, serialize_callable)
 
     # Multiple outputs configuration
-    serialized_outputs = {}
-    for key, config in outputs_to_string.items():
-        serialized_config = config.copy()
-        if "handler" in config:
-            serialized_config["handler"] = serialize_callable(config["handler"])
-        serialized_outputs[key] = serialized_config
-    return serialized_outputs
+    return _convert_handler_in_configs(outputs_to_string, serialize_callable)
 
 
 def _deserialize_outputs_to_string(outputs_to_string: dict[str, Any]) -> dict[str, Any]:
@@ -389,16 +395,7 @@ def _deserialize_outputs_to_string(outputs_to_string: dict[str, Any]) -> dict[st
     """
     if "source" in outputs_to_string or "handler" in outputs_to_string or "raw_result" in outputs_to_string:
         # Single output configuration
-        deserialized_outputs = outputs_to_string.copy()
-        if "handler" in outputs_to_string:
-            deserialized_outputs["handler"] = deserialize_callable(outputs_to_string["handler"])
-        return deserialized_outputs
+        return _convert_handler(outputs_to_string, deserialize_callable)
 
     # Multiple outputs configuration
-    deserialized_outputs = {}
-    for key, config in outputs_to_string.items():
-        deserialized_config = config.copy()
-        if "handler" in config:
-            deserialized_config["handler"] = deserialize_callable(config["handler"])
-        deserialized_outputs[key] = deserialized_config
-    return deserialized_outputs
+    return _convert_handler_in_configs(outputs_to_string, deserialize_callable)
