@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import re
+from typing import Any
 
 import pytest
 
@@ -254,7 +255,7 @@ class TestTool:
         }
 
     def test_serialize_outputs_to_state(self):
-        config = {
+        config: dict[str, dict[str, Any]] = {
             "documents": {"source": "docs", "handler": format_string},
             "summary": {"source": "docs", "handler": get_weather_report},
             "raw_docs": {"source": "docs"},
