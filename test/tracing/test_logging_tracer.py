@@ -77,7 +77,7 @@ class TestLoggingTracer:
             if hasattr(record, "operation_name"):
                 groups.append((record.operation_name, []))
             elif hasattr(record, "tag_name") and groups:
-                groups[-1][1].append(record.tag_value)
+                groups[-1][1].append(record.tag_value)  # type: ignore[attr-defined]
 
         # One contiguous group per span, and every tag inside a group belongs to that span (no interleaving).
         assert len(groups) == num_threads
