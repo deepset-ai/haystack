@@ -403,9 +403,9 @@ agent.run(messages=[ChatMessage.from_user("What's the weather in Berlin?")])
 
 #### Tracing span hierarchy reshaped
 
-**What changed:** Each iteration of the Agent loop now emits a single `haystack.agent.step` Haystack span with two nested children — `haystack.agent.step.llm` for the chat generator call and `haystack.agent.step.tool` for the tool invocation (only when tool calls happen). Previously each iteration produced two child spans through `Pipeline._run_component` (one for the chat generator, one for the tool invoker) tagged with `haystack.component.name` / `haystack.component.type`. The new spans do NOT carry `haystack.component.*` tags; they expose new content tags `haystack.agent.step.llm.input`/`.output` and `haystack.agent.step.tool.input`/`.output`.
+**What changed:** Each iteration of the Agent loop now emits a single `haystack.agent.step` Haystack span with nested children: `haystack.agent.step.llm` for the chat generator call, and one `haystack.agent.step.tool` span *per tool call* (only when tool calls happen). Previously each iteration produced two child spans through `Pipeline._run_component` (one for the chat generator, one for the tool invoker) tagged with `haystack.component.name` / `haystack.component.type`, and a single tool span grouped all of a step's tool calls together. The new spans do NOT carry `haystack.component.*` tags; the LLM span exposes content tags `haystack.agent.step.llm.input`/`.output`, and each tool span carries `haystack.tool.name` / `haystack.tool.description` tags plus content tags `haystack.agent.step.tool.input` (the call arguments) / `.output` (the tool result).
 
-**Why:** Removes the dependency on `Pipeline._run_component` inside `Agent.run` and produces a clearer per-iteration trace structure that maps directly onto common agent-tracing conventions (e.g., Langfuse `chain → {generation, tool}`).
+**Why:** Removes the dependency on `Pipeline._run_component` inside `Agent.run` and produces a clearer per-iteration trace structure that maps directly onto common agent-tracing conventions — one span per tool call, as codified by the OpenTelemetry GenAI "execute tool" span and followed by backends like Langfuse (`chain → {generation, tool, tool, …}`).
 
 **How to migrate:** Custom tracer backends or `SpanHandler` implementations that dispatched on `component_type == "ToolInvoker"` or `component_type.endswith("ChatGenerator")` for Agent-internal spans must now dispatch on the new operation names instead. For example, in the Langfuse integration this means subclassing or updating the `DefaultSpanHandler` and overriding `create_span` to recognize the three new operations:
 
@@ -429,8 +429,13 @@ class AgentStepSpanHandler(DefaultSpanHandler):
                 self.tracer.start_as_current_observation(name="llm", as_type=cast(ObservationSpanType, "generation"))
             )
         if context.operation_name == "haystack.agent.step.tool":
+            # One span per tool call; the tool name rides along as a tag so the observation can be named upfront.
+            tool_name = context.tags.get("haystack.tool.name")
             return LangfuseSpan(
-                self.tracer.start_as_current_observation(name="tool", as_type=cast(ObservationSpanType, "tool"))
+                self.tracer.start_as_current_observation(
+                    name=f"tool - {tool_name}" if tool_name else "tool",
+                    as_type=cast(ObservationSpanType, "tool"),
+                )
             )
         return super().create_span(context)
 ```

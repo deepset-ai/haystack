@@ -12,6 +12,7 @@ import pytest
 
 from haystack import component, default_from_dict, default_to_dict
 from haystack.components.generators.chat.fallback import FallbackChatGenerator
+from haystack.core.errors import SerializationError
 from haystack.dataclasses import ChatMessage, StreamingCallbackT
 from haystack.tools import ToolsType
 
@@ -428,3 +429,61 @@ class TestComponentLifecycle:
         fallback = FallbackChatGenerator(chat_generators=gens)
         fallback.warm_up()
         fallback.close()
+
+
+@component
+class CustomGeneratorWithoutSerDe:
+    def __init__(self, text: str = "custom_ok"):
+        self.text = text
+
+    def run(
+        self,
+        messages: list[ChatMessage],
+        generation_kwargs: dict[str, Any] | None = None,
+        tools: ToolsType | None = None,
+        streaming_callback: StreamingCallbackT | None = None,
+    ) -> dict[str, Any]:
+        return {"replies": [ChatMessage.from_assistant(self.text)], "meta": {}}
+
+
+@component
+class NonSerializableGenerator:
+    def __init__(self, non_serializable_arg: Any):
+        self.non_serializable_arg = non_serializable_arg
+
+    def run(self, messages: list[ChatMessage]) -> dict[str, Any]:
+        return {"replies": []}
+
+
+def test_serialization_with_custom_generators_without_to_dict():
+    # 1. Test mixed chain serialization, order preservation, execution, and round-trip
+    gen0 = _DummySuccessGen(text="dummy_has_dict")
+    gen1 = CustomGeneratorWithoutSerDe(text="custom_no_dict_1")
+    gen2 = CustomGeneratorWithoutSerDe(text="custom_no_dict_2")
+
+    original = FallbackChatGenerator(chat_generators=[gen0, gen1, gen2])
+    data = original.to_dict()
+
+    # Ensure all three components are serialized and not silently omitted
+    assert len(data["init_parameters"]["chat_generators"]) == 3
+
+    # Reconstruct/Deserialize
+    restored = FallbackChatGenerator.from_dict(data)
+    assert isinstance(restored, FallbackChatGenerator)
+    assert len(restored.chat_generators) == 3
+
+    # Assert fallback order is exactly preserved
+    assert restored.chat_generators[0].text == "dummy_has_dict"
+    assert restored.chat_generators[1].text == "custom_no_dict_1"
+    assert restored.chat_generators[2].text == "custom_no_dict_2"
+    assert isinstance(restored.chat_generators[1], CustomGeneratorWithoutSerDe)
+    assert isinstance(restored.chat_generators[2], CustomGeneratorWithoutSerDe)
+
+    # Verify pipeline execution on the restored instance
+    res = restored.run([ChatMessage.from_user("hi")])
+    assert res["replies"][0].text == "dummy_has_dict"
+
+    # 2. Test failure path (fail loud) when a component is not serializable
+    non_serializable_fallback = FallbackChatGenerator(chat_generators=[NonSerializableGenerator(object())])
+    with pytest.raises(SerializationError, match="unsupported value of type"):
+        non_serializable_fallback.to_dict()

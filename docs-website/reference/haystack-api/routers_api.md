@@ -657,7 +657,31 @@ Initialize the LLMMessagesRouter component.
 warm_up() -> None
 ```
 
-Warm up the underlying LLM.
+Warm up the underlying chat generator.
+
+#### warm_up_async
+
+```python
+warm_up_async() -> None
+```
+
+Warm up the underlying chat generator on the serving event loop.
+
+#### close
+
+```python
+close() -> None
+```
+
+Release the underlying chat generator's resources.
+
+#### close_async
+
+```python
+close_async() -> None
+```
+
+Release the underlying chat generator's async resources.
 
 #### run
 
@@ -666,6 +690,33 @@ run(messages: list[ChatMessage]) -> dict[str, str | list[ChatMessage]]
 ```
 
 Classify the messages based on LLM output and route them to the appropriate output connection.
+
+**Parameters:**
+
+- **messages** (<code>list\[ChatMessage\]</code>) – A list of ChatMessages to be routed. Only user and assistant messages are supported.
+
+**Returns:**
+
+- <code>dict\[str, str | list\[ChatMessage\]\]</code> – A dictionary with the following keys:
+- "chat_generator_text": The text output of the LLM, useful for debugging.
+- "output_names": Each contains the list of messages that matched the corresponding pattern.
+- "unmatched": The messages that did not match any of the output patterns.
+
+**Raises:**
+
+- <code>ValueError</code> – If messages is an empty list or contains messages with unsupported roles.
+
+#### run_async
+
+```python
+run_async(messages: list[ChatMessage]) -> dict[str, str | list[ChatMessage]]
+```
+
+Asynchronously classify the messages based on LLM output and route them to the appropriate output connection.
+
+This is the asynchronous version of the `run` method. It has the same parameters and return values
+but can be used with `await` in an async code. If the chat generator only implements a synchronous
+`run` method, it is executed in a thread to avoid blocking the event loop.
 
 **Parameters:**
 
@@ -855,374 +906,3 @@ Deserialize this component from a dictionary.
 **Returns:**
 
 - <code>MetadataRouter</code> – The deserialized component instance.
-
-## text_language_router
-
-### TextLanguageRouter
-
-Routes text strings to different output connections based on their language.
-
-Provide a list of languages during initialization. If the document's text doesn't match any of the
-specified languages, the metadata value is set to "unmatched".
-For routing documents based on their language, use the DocumentLanguageClassifier component,
-followed by the MetaDataRouter.
-
-### Usage example
-
-```python
-from haystack import Pipeline, Document
-from haystack.components.routers import TextLanguageRouter
-from haystack.document_stores.in_memory import InMemoryDocumentStore
-from haystack.components.retrievers.in_memory import InMemoryBM25Retriever
-
-document_store = InMemoryDocumentStore()
-document_store.write_documents([Document(content="Elvis Presley was an American singer and actor.")])
-
-p = Pipeline()
-p.add_component(instance=TextLanguageRouter(languages=["en"]), name="text_language_router")
-p.add_component(instance=InMemoryBM25Retriever(document_store=document_store), name="retriever")
-p.connect("text_language_router.en", "retriever.query")
-
-result = p.run({"text_language_router": {"text": "Who was Elvis Presley?"}})
-assert result["retriever"]["documents"][0].content == "Elvis Presley was an American singer and actor."
-
-result = p.run({"text_language_router": {"text": "ένα ελληνικό κείμενο"}})
-assert result["text_language_router"]["unmatched"] == "ένα ελληνικό κείμενο"
-```
-
-#### __init__
-
-```python
-__init__(languages: list[str] | None = None) -> None
-```
-
-Initialize the TextLanguageRouter component.
-
-**Parameters:**
-
-- **languages** (<code>list\[str\] | None</code>) – A list of ISO language codes.
-  See the supported languages in [`langdetect` documentation](https://github.com/Mimino666/langdetect#languages).
-  If not specified, defaults to ["en"].
-
-#### run
-
-```python
-run(text: str) -> dict[str, str]
-```
-
-Routes the text strings to different output connections based on their language.
-
-If the document's text doesn't match any of the specified languages, the metadata value is set to "unmatched".
-
-**Parameters:**
-
-- **text** (<code>str</code>) – A text string to route.
-
-**Returns:**
-
-- <code>dict\[str, str\]</code> – A dictionary in which the key is the language (or `"unmatched"`),
-  and the value is the text.
-
-**Raises:**
-
-- <code>TypeError</code> – If the input is not a string.
-
-## transformers_text_router
-
-### TransformersTextRouter
-
-Routes the text strings to different connections based on a category label.
-
-The labels are specific to each model and can be found it its description on Hugging Face.
-
-### Usage example
-
-<!-- test-ignore -->
-
-```python
-from haystack.core.pipeline import Pipeline
-from haystack.components.routers import TransformersTextRouter
-from haystack.components.builders import PromptBuilder
-from haystack.components.generators import HuggingFaceLocalGenerator
-
-p = Pipeline()
-p.add_component(
-    instance=TransformersTextRouter(model="papluca/xlm-roberta-base-language-detection"),
-    name="text_router"
-)
-p.add_component(
-    instance=PromptBuilder(template="Answer the question: {{query}}\nAnswer:"),
-    name="english_prompt_builder"
-)
-p.add_component(
-    instance=PromptBuilder(template="Beantworte die Frage: {{query}}\nAntwort:"),
-    name="german_prompt_builder"
-)
-
-p.add_component(
-    instance=HuggingFaceLocalGenerator(model="DiscoResearch/Llama3-DiscoLeo-Instruct-8B-v0.1"),
-    name="german_llm"
-)
-p.add_component(
-    instance=HuggingFaceLocalGenerator(model="microsoft/Phi-3-mini-4k-instruct"),
-    name="english_llm"
-)
-
-p.connect("text_router.en", "english_prompt_builder.query")
-p.connect("text_router.de", "german_prompt_builder.query")
-p.connect("english_prompt_builder.prompt", "english_llm.prompt")
-p.connect("german_prompt_builder.prompt", "german_llm.prompt")
-
-# English Example
-print(p.run({"text_router": {"text": "What is the capital of Germany?"}}))
-
-# German Example
-print(p.run({"text_router": {"text": "Was ist die Hauptstadt von Deutschland?"}}))
-```
-
-#### __init__
-
-```python
-__init__(
-    model: str,
-    labels: list[str] | None = None,
-    device: ComponentDevice | None = None,
-    token: Secret | None = Secret.from_env_var(
-        ["HF_API_TOKEN", "HF_TOKEN"], strict=False
-    ),
-    huggingface_pipeline_kwargs: dict[str, Any] | None = None,
-) -> None
-```
-
-Initializes the TransformersTextRouter component.
-
-**Parameters:**
-
-- **model** (<code>str</code>) – The name or path of a Hugging Face model for text classification.
-- **labels** (<code>list\[str\] | None</code>) – The list of labels. If not provided, the component fetches the labels
-  from the model configuration file hosted on the Hugging Face Hub using
-  `transformers.AutoConfig.from_pretrained`.
-- **device** (<code>ComponentDevice | None</code>) – The device for loading the model. If `None`, automatically selects the default device.
-  If a device or device map is specified in `huggingface_pipeline_kwargs`, it overrides this parameter.
-- **token** (<code>Secret | None</code>) – The API token used to download private models from Hugging Face.
-  If `True`, uses either `HF_API_TOKEN` or `HF_TOKEN` environment variables.
-  To generate these tokens, run `transformers-cli login`.
-- **huggingface_pipeline_kwargs** (<code>dict\[str, Any\] | None</code>) – A dictionary of keyword arguments for initializing the Hugging Face
-  text classification pipeline.
-
-#### warm_up
-
-```python
-warm_up() -> None
-```
-
-Initializes the component.
-
-#### to_dict
-
-```python
-to_dict() -> dict[str, Any]
-```
-
-Serializes the component to a dictionary.
-
-**Returns:**
-
-- <code>dict\[str, Any\]</code> – Dictionary with serialized data.
-
-#### from_dict
-
-```python
-from_dict(data: dict[str, Any]) -> TransformersTextRouter
-```
-
-Deserializes the component from a dictionary.
-
-**Parameters:**
-
-- **data** (<code>dict\[str, Any\]</code>) – Dictionary to deserialize from.
-
-**Returns:**
-
-- <code>TransformersTextRouter</code> – Deserialized component.
-
-#### run
-
-```python
-run(text: str) -> dict[str, str]
-```
-
-Routes the text strings to different connections based on a category label.
-
-**Parameters:**
-
-- **text** (<code>str</code>) – A string of text to route.
-
-**Returns:**
-
-- <code>dict\[str, str\]</code> – A dictionary with the label as key and the text as value.
-
-**Raises:**
-
-- <code>TypeError</code> – If the input is not a str.
-
-## zero_shot_text_router
-
-### TransformersZeroShotTextRouter
-
-Routes the text strings to different connections based on a category label.
-
-Specify the set of labels for categorization when initializing the component.
-
-### Usage example
-
-```python
-from haystack import Document
-from haystack.document_stores.in_memory import InMemoryDocumentStore
-from haystack.core.pipeline import Pipeline
-from haystack.components.routers import TransformersZeroShotTextRouter
-from haystack.components.embedders import SentenceTransformersTextEmbedder, SentenceTransformersDocumentEmbedder
-from haystack.components.retrievers import InMemoryEmbeddingRetriever
-
-document_store = InMemoryDocumentStore()
-doc_embedder = SentenceTransformersDocumentEmbedder(model="intfloat/e5-base-v2")
-docs = [
-    Document(
-        content="Germany, officially the Federal Republic of Germany, is a country in the western region of "
-        "Central Europe. The nation's capital and most populous city is Berlin and its main financial centre "
-        "is Frankfurt; the largest urban area is the Ruhr."
-    ),
-    Document(
-        content="France, officially the French Republic, is a country located primarily in Western Europe. "
-        "France is a unitary semi-presidential republic with its capital in Paris, the country's largest city "
-        "and main cultural and commercial centre; other major urban areas include Marseille, Lyon, Toulouse, "
-        "Lille, Bordeaux, Strasbourg, Nantes and Nice."
-    )
-]
-docs_with_embeddings = doc_embedder.run(docs)
-document_store.write_documents(docs_with_embeddings["documents"])
-
-p = Pipeline()
-p.add_component(instance=TransformersZeroShotTextRouter(labels=["passage", "query"]), name="text_router")
-p.add_component(
-    instance=SentenceTransformersTextEmbedder(model="intfloat/e5-base-v2", prefix="passage: "),
-    name="passage_embedder"
-)
-p.add_component(
-    instance=SentenceTransformersTextEmbedder(model="intfloat/e5-base-v2", prefix="query: "),
-    name="query_embedder"
-)
-p.add_component(
-    instance=InMemoryEmbeddingRetriever(document_store=document_store),
-    name="query_retriever"
-)
-p.add_component(
-    instance=InMemoryEmbeddingRetriever(document_store=document_store),
-    name="passage_retriever"
-)
-
-p.connect("text_router.passage", "passage_embedder.text")
-p.connect("passage_embedder.embedding", "passage_retriever.query_embedding")
-p.connect("text_router.query", "query_embedder.text")
-p.connect("query_embedder.embedding", "query_retriever.query_embedding")
-
-# Query Example
-p.run({"text_router": {"text": "What is the capital of Germany?"}})
-
-# Passage Example
-p.run({
-    "text_router":{
-        "text": "The United Kingdom of Great Britain and Northern Ireland, commonly known as the "            "United Kingdom (UK) or Britain, is a country in Northwestern Europe, off the north-western coast of "            "the continental mainland."
-    }
-})
-```
-
-#### __init__
-
-```python
-__init__(
-    labels: list[str],
-    multi_label: bool = False,
-    model: str = "MoritzLaurer/deberta-v3-base-zeroshot-v1.1-all-33",
-    device: ComponentDevice | None = None,
-    token: Secret | None = Secret.from_env_var(
-        ["HF_API_TOKEN", "HF_TOKEN"], strict=False
-    ),
-    huggingface_pipeline_kwargs: dict[str, Any] | None = None,
-) -> None
-```
-
-Initializes the TransformersZeroShotTextRouter component.
-
-**Parameters:**
-
-- **labels** (<code>list\[str\]</code>) – The set of labels to use for classification. Can be a single label,
-  a string of comma-separated labels, or a list of labels.
-- **multi_label** (<code>bool</code>) – Indicates if multiple labels can be true.
-  If `False`, label scores are normalized so their sum equals 1 for each sequence.
-  If `True`, the labels are considered independent and probabilities are normalized for each candidate by
-  doing a softmax of the entailment score vs. the contradiction score.
-- **model** (<code>str</code>) – The name or path of a Hugging Face model for zero-shot text classification.
-- **device** (<code>ComponentDevice | None</code>) – The device for loading the model. If `None`, automatically selects the default device.
-  If a device or device map is specified in `huggingface_pipeline_kwargs`, it overrides this parameter.
-- **token** (<code>Secret | None</code>) – The API token used to download private models from Hugging Face.
-  If `True`, uses either `HF_API_TOKEN` or `HF_TOKEN` environment variables.
-  To generate these tokens, run `transformers-cli login`.
-- **huggingface_pipeline_kwargs** (<code>dict\[str, Any\] | None</code>) – A dictionary of keyword arguments for initializing the Hugging Face
-  zero shot text classification.
-
-#### warm_up
-
-```python
-warm_up() -> None
-```
-
-Initializes the component.
-
-#### to_dict
-
-```python
-to_dict() -> dict[str, Any]
-```
-
-Serializes the component to a dictionary.
-
-**Returns:**
-
-- <code>dict\[str, Any\]</code> – Dictionary with serialized data.
-
-#### from_dict
-
-```python
-from_dict(data: dict[str, Any]) -> TransformersZeroShotTextRouter
-```
-
-Deserializes the component from a dictionary.
-
-**Parameters:**
-
-- **data** (<code>dict\[str, Any\]</code>) – Dictionary to deserialize from.
-
-**Returns:**
-
-- <code>TransformersZeroShotTextRouter</code> – Deserialized component.
-
-#### run
-
-```python
-run(text: str) -> dict[str, str]
-```
-
-Routes the text strings to different connections based on a category label.
-
-**Parameters:**
-
-- **text** (<code>str</code>) – A string of text to route.
-
-**Returns:**
-
-- <code>dict\[str, str\]</code> – A dictionary with the label as key and the text as value.
-
-**Raises:**
-
-- <code>TypeError</code> – If the input is not a str.

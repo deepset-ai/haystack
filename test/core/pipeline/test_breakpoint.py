@@ -8,7 +8,7 @@ import logging
 import pytest
 
 from haystack import component
-from haystack.core.errors import BreakpointException
+from haystack.core.errors import BreakpointException, PipelineInvalidPipelineSnapshotError
 from haystack.core.pipeline import Pipeline
 from haystack.core.pipeline.breakpoint import (
     HAYSTACK_PIPELINE_SNAPSHOT_SAVE_ENABLED,
@@ -133,6 +133,69 @@ def test_breakpoint_saves_intermediate_outputs(tmp_path, monkeypatch):
         assert isinstance(loaded_snapshot.break_point, Breakpoint)
         assert loaded_snapshot.break_point.component_name == "comp2"
         assert loaded_snapshot.break_point.visit_count == 0
+
+
+@component
+class _AppendingComponent:
+    @component.output_types(result=str)
+    def run(self, input_value: str) -> dict[str, str]:
+        return {"result": f"{input_value}_processed"}
+
+
+def _three_component_pipeline() -> Pipeline:
+    pipeline = Pipeline()
+    pipeline.add_component("comp1", _AppendingComponent())
+    pipeline.add_component("comp2", _AppendingComponent())
+    pipeline.add_component("comp3", _AppendingComponent())
+    pipeline.connect("comp1", "comp2")
+    pipeline.connect("comp2", "comp3")
+    return pipeline
+
+
+def test_break_point_with_pipeline_snapshot_steps_through_pipeline():
+    pipeline = _three_component_pipeline()
+
+    # run until the breakpoint on comp2
+    with pytest.raises(BreakpointException) as exc_info:
+        pipeline.run(data={"comp1": {"input_value": "test"}}, break_point=Breakpoint(component_name="comp2"))
+    first_snapshot = exc_info.value.pipeline_snapshot
+    assert first_snapshot is not None
+    assert first_snapshot.pipeline_state.component_visits == {"comp1": 1, "comp2": 0, "comp3": 0}
+
+    # step: resume from the snapshot and pause again at comp3
+    with pytest.raises(BreakpointException) as exc_info:
+        pipeline.run(data={}, pipeline_snapshot=first_snapshot, break_point=Breakpoint(component_name="comp3"))
+    second_snapshot = exc_info.value.pipeline_snapshot
+    assert second_snapshot is not None
+    assert second_snapshot.pipeline_state.component_visits == {"comp1": 1, "comp2": 1, "comp3": 0}
+
+    # resume from the second snapshot and run to completion
+    result = pipeline.run(data={}, pipeline_snapshot=second_snapshot)
+    assert result["comp3"]["result"] == "test_processed_processed_processed"
+
+
+def test_break_point_on_earlier_component_than_pipeline_snapshot_never_triggers():
+    pipeline = _three_component_pipeline()
+
+    with pytest.raises(BreakpointException) as exc_info:
+        pipeline.run(data={"comp1": {"input_value": "test"}}, break_point=Breakpoint(component_name="comp2"))
+    snapshot = exc_info.value.pipeline_snapshot
+
+    # comp1 already ran before the snapshot was taken, so a breakpoint on it never triggers
+    # and the resumed run completes normally
+    result = pipeline.run(data={}, pipeline_snapshot=snapshot, break_point=Breakpoint(component_name="comp1"))
+    assert result["comp3"]["result"] == "test_processed_processed_processed"
+
+
+def test_break_point_matching_pipeline_snapshot_break_point_raises():
+    pipeline = _three_component_pipeline()
+
+    with pytest.raises(BreakpointException) as exc_info:
+        pipeline.run(data={"comp1": {"input_value": "test"}}, break_point=Breakpoint(component_name="comp2"))
+    snapshot = exc_info.value.pipeline_snapshot
+
+    with pytest.raises(PipelineInvalidPipelineSnapshotError, match="different component or visit count"):
+        pipeline.run(data={}, pipeline_snapshot=snapshot, break_point=Breakpoint(component_name="comp2", visit_count=0))
 
 
 class TestCreatePipelineSnapshot:
