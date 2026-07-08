@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import contextlib
+import warnings
 from collections.abc import Iterator
 from typing import Any
 
@@ -55,6 +56,17 @@ class DatadogSpan(Span):
 class DatadogTracer(Tracer):
     def __init__(self, tracer: "ddTracer") -> None:
         """Creates an instance of DatadogTracer."""
+        warnings.warn(
+            "`DatadogTracer` will be removed from Haystack in version 3.0, as it is moving to "
+            "the `datadog-haystack` package. To continue using it, install that package with "
+            "`pip install datadog-haystack` and either add the `DatadogConnector` component to your "
+            "pipeline or update your import to "
+            "`from haystack_integrations.tracing.datadog import DatadogTracer`. Note that Datadog tracing in "
+            "Haystack 3.0 is no longer auto-enabled when `ddtrace` is installed; use the `DatadogConnector` to "
+            "enable it.",
+            FutureWarning,
+            stacklevel=2,
+        )
         ddtrace_import.check()
         self._tracer = tracer
 

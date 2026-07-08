@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import warnings
 from asyncio import Semaphore, gather
 from dataclasses import replace
 from itertools import chain
@@ -144,6 +145,15 @@ class HuggingFaceAPIDocumentEmbedder:
             The maximum number of requests that should be allowed to run concurrently.
             This parameter is only used in the `run_async` method.
         """
+        warnings.warn(
+            "`HuggingFaceAPIDocumentEmbedder` will be removed from Haystack in version 3.0, as it is moving to "
+            "the `huggingface-api-haystack` package. To continue using it, install that package with "
+            "`pip install huggingface-api-haystack` and update your import to "
+            "`from haystack_integrations.components.embedders.huggingface_api import HuggingFaceAPIDocumentEmbedder`.",
+            FutureWarning,
+            stacklevel=2,
+        )
+
         huggingface_hub_import.check()
 
         if isinstance(api_type, str):

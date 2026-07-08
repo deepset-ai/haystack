@@ -3,8 +3,8 @@
 #
 # Requires: VERSION, RUN_URL, HAS_FAILURE, GH_TOKEN, GITHUB_REPOSITORY
 # Optional: IS_RC, IS_FIRST_RC, MAJOR_MINOR, GITHUB_URL, PYPI_URL, DOCKER_URL,
-#           BUMP_VERSION_PR_URL, DC_PIPELINE_TEMPLATES_PR_URL, CUSTOM_NODES_PR_URL,
-#           DC_PIPELINE_IMAGES_PR_URL, GITHUB_WORKSPACE
+#           BUMP_VERSION_PR_URL, DC_PIPELINE_TEMPLATES_PR_URL, DC_CUSTOM_NODES_PR_URL,
+#           HAYSTACK_RUNTIME_PR_URL, GITHUB_WORKSPACE
 # Output: slack_payload.json
 #
 # This script is used in the release.yml workflow to prepare the notification payload
@@ -64,7 +64,7 @@ if [[ "${IS_RC:-}" == "true" ]]; then
   PLATFORM_PRS=""
   [[ -n "${DC_PIPELINE_TEMPLATES_PR_URL:-}" ]] && PLATFORM_PRS+=$'\n'"- <${DC_PIPELINE_TEMPLATES_PR_URL}|dc-pipeline-templates>"
   [[ -n "${DC_CUSTOM_NODES_PR_URL:-}" ]] && PLATFORM_PRS+=$'\n'"- <${DC_CUSTOM_NODES_PR_URL}|deepset-cloud-custom-nodes>"
-  [[ -n "${DC_PIPELINE_IMAGES_PR_URL:-}" ]] && PLATFORM_PRS+=$'\n'"- <${DC_PIPELINE_IMAGES_PR_URL}|dc-pipeline-images>"
+  [[ -n "${HAYSTACK_RUNTIME_PR_URL:-}" ]] && PLATFORM_PRS+=$'\n'"- <${HAYSTACK_RUNTIME_PR_URL}|haystack-runtime>"
   if [[ -n "${PLATFORM_PRS}" ]]; then
     TXT+=$'\n\n'":factory: *Test PRs opened on Platform:*${PLATFORM_PRS}"
   fi

@@ -353,7 +353,10 @@ class RecursiveDocumentSplitter:
                 return chunks
 
         # if no separator worked, fall back to word- or character-level chunking
-        return self._fall_back_to_fixed_chunking(text, self.split_units)
+        chunks = self._fall_back_to_fixed_chunking(text, self.split_units)
+        if self.split_overlap > 0:
+            chunks = self._apply_overlap(chunks)
+        return chunks
 
     def _fall_back_to_fixed_chunking(self, text: str, split_units: Literal["word", "char", "token"]) -> list[str]:
         """
@@ -400,17 +403,14 @@ class RecursiveDocumentSplitter:
 
     def _add_overlap_info(self, curr_pos: int, new_doc: Document, new_docs: list[Document]) -> None:
         prev_doc = new_docs[-1]
-        overlap_length = self._chunk_length(prev_doc.content) - (curr_pos - prev_doc.meta["split_idx_start"])  # type: ignore
+        # curr_pos and split_idx_start are character offsets, so measure the
+        # overlap and range in characters too (not via _chunk_length, which returns a word/token count).
+        prev_doc_length = len(prev_doc.content)  # type: ignore
+        overlap_length = prev_doc_length - (curr_pos - prev_doc.meta["split_idx_start"])
         if overlap_length > 0:
             prev_doc.meta["_split_overlap"].append({"doc_id": new_doc.id, "range": (0, overlap_length)})
             new_doc.meta["_split_overlap"].append(
-                {
-                    "doc_id": prev_doc.id,
-                    "range": (
-                        self._chunk_length(prev_doc.content) - overlap_length,  # type: ignore
-                        self._chunk_length(prev_doc.content),  # type: ignore
-                    ),
-                }
+                {"doc_id": prev_doc.id, "range": (prev_doc_length - overlap_length, prev_doc_length)}
             )
 
     def _run_one(self, doc: Document) -> list[Document]:
@@ -447,7 +447,15 @@ class RecursiveDocumentSplitter:
 
             # keep the new chunk doc and update the current position
             new_docs.append(new_doc)
-            current_position += len(chunk) - (self.split_overlap if split_nr < len(chunks) - 1 else 0)
+            # Advance current_position by chunk length minus overlap.
+            # split_overlap is in split_units, not chars, so get the actual
+            # overlap string from _get_overlap() and use its char length.
+            if self.split_overlap > 0 and split_nr < len(chunks) - 1:
+                overlap_str, _ = self._get_overlap([doc.content for doc in new_docs])  # type: ignore[misc]
+                overlap_char_len = len(overlap_str)
+            else:
+                overlap_char_len = 0
+            current_position += len(chunk) - overlap_char_len
 
         return new_docs
 

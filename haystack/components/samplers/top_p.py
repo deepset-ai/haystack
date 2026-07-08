@@ -80,7 +80,7 @@ class TopPSampler:
         if not documents:
             return {"documents": []}
 
-        top_p = top_p or self.top_p
+        top_p = top_p if top_p is not None else self.top_p
         if not 0 <= top_p <= 1:
             raise ValueError(f"top_p must be between 0 and 1. Got {top_p}.")
 
@@ -140,9 +140,10 @@ class TopPSampler:
         else:
             score = doc.score
 
-        if not isinstance(score, float):
-            score = None
-        return score
+        # bool is a subclass of int but is not a valid score
+        if isinstance(score, bool) or not isinstance(score, (int, float)):
+            return None
+        return float(score)
 
     def _get_documents_and_scores(self, documents: list[Document]) -> tuple[list[Document], list[float]]:
         """

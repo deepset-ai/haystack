@@ -11,6 +11,9 @@ from haystack.dataclasses.chat_message import ChatMessage
 
 logger = logging.getLogger(__name__)
 
+DEFAULT_REFERENCE_PATTERN = r"\[(\d+)\]"
+EXPANDED_REFERENCE_PATTERN = r"\[(\d+(?:[,-]\d+)*)\]"
+
 
 @component
 class AnswerBuilder:
@@ -74,6 +77,7 @@ class AnswerBuilder:
         last_message_only: bool = False,
         *,
         return_only_referenced_documents: bool = True,
+        expand_reference_ranges: bool = False,
     ) -> None:
         """
         Creates an instance of the AnswerBuilder component.
@@ -104,6 +108,10 @@ class AnswerBuilder:
             If True (default value), only the documents that were actually referenced in `replies` are returned.
             If False, all documents are returned.
             If `reference_pattern` is not provided, this parameter has no effect, and all documents are returned.
+        :param expand_reference_ranges:
+            If True, reference ranges like `[6-10]` are expanded to documents 6 through 10.
+            Defaults to False for backwards compatibility.
+            When enabled with the default `reference_pattern`, a broader pattern is used automatically.
         """
         if pattern:
             AnswerBuilder._check_num_groups_in_regex(pattern)
@@ -112,6 +120,7 @@ class AnswerBuilder:
         self.reference_pattern = reference_pattern
         self.last_message_only = last_message_only
         self.return_only_referenced_documents = return_only_referenced_documents
+        self.expand_reference_ranges = expand_reference_ranges
 
     @component.output_types(answers=list[GeneratedAnswer])
     def run(
@@ -122,6 +131,7 @@ class AnswerBuilder:
         documents: list[Document] | None = None,
         pattern: str | None = None,
         reference_pattern: str | None = None,
+        expand_reference_ranges: bool | None = None,
     ) -> dict[str, Any]:
         """
         Turns the output of a Generator into `GeneratedAnswer` objects using regular expressions.
@@ -158,6 +168,9 @@ class AnswerBuilder:
             If not specified, no parsing is done, and all documents are returned.
             References need to be specified as indices of the input documents and start at [1].
             Example: `\\[(\\d+)\\]` finds "1" in a string "this is an answer[1]".
+        :param expand_reference_ranges:
+            If True, reference ranges like `[6-10]` are expanded to documents 6 through 10.
+            If not specified, the value from the component initialization is used.
 
         :returns: A dictionary with the following keys:
             - `answers`: The answers received from the output of the Generator.
@@ -172,6 +185,12 @@ class AnswerBuilder:
 
         pattern = pattern or self.pattern
         reference_pattern = reference_pattern or self.reference_pattern
+        expand_reference_ranges = (
+            self.expand_reference_ranges if expand_reference_ranges is None else expand_reference_ranges
+        )
+        reference_pattern = AnswerBuilder._resolve_reference_pattern(
+            reference_pattern=reference_pattern, expand_reference_ranges=expand_reference_ranges
+        )
 
         replies_to_iterate = replies[-1:] if self.last_message_only and replies else replies
         meta_to_iterate = meta[-1:] if self.last_message_only and meta else meta
@@ -188,7 +207,12 @@ class AnswerBuilder:
             referenced_docs = []
             if documents:
                 referenced_idxs = (
-                    AnswerBuilder._extract_reference_idxs(extracted_reply, reference_pattern)
+                    AnswerBuilder._extract_reference_idxs(
+                        extracted_reply,
+                        reference_pattern,
+                        expand_ranges=expand_reference_ranges,
+                        num_documents=len(documents),
+                    )
                     if reference_pattern
                     else set()
                 )
@@ -245,9 +269,40 @@ class AnswerBuilder:
         return ""
 
     @staticmethod
-    def _extract_reference_idxs(reply: str, reference_pattern: str) -> set[int]:
-        document_idxs = re.findall(reference_pattern, reply)
-        return {int(idx) - 1 for idx in document_idxs}
+    def _resolve_reference_pattern(reference_pattern: str | None, expand_reference_ranges: bool) -> str | None:
+        if not reference_pattern or not expand_reference_ranges:
+            return reference_pattern
+        if reference_pattern == DEFAULT_REFERENCE_PATTERN:
+            return EXPANDED_REFERENCE_PATTERN
+        return reference_pattern
+
+    @staticmethod
+    def _extract_reference_idxs(
+        reply: str, reference_pattern: str, expand_ranges: bool = False, num_documents: int | None = None
+    ) -> set[int]:
+        matches = re.findall(reference_pattern, reply)
+        idxs: set[int] = set()
+        for match in matches:
+            if expand_ranges:
+                for part in match.split(","):
+                    part = part.strip()
+                    if not part:
+                        continue
+                    if "-" in part:
+                        start_str, end_str = part.split("-", 1)
+                        start, end = int(start_str), int(end_str)
+                        if start > end:
+                            continue
+                        # Clamp the range end to the number of documents to avoid materializing a huge
+                        # set from an out-of-range citation like `[1-999999999]` in the Generator output.
+                        if num_documents is not None:
+                            end = min(end, num_documents)
+                        idxs.update(range(start - 1, end))
+                    else:
+                        idxs.add(int(part) - 1)
+            else:
+                idxs.add(int(match) - 1)
+        return idxs
 
     @staticmethod
     def _check_num_groups_in_regex(pattern: str) -> None:

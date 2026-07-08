@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import warnings
 from dataclasses import replace
 from pathlib import Path
 from typing import Any, Literal
@@ -115,6 +116,16 @@ class SentenceTransformersSimilarityRanker:
         :raises ValueError:
             If `top_k` is not > 0.
         """
+        warnings.warn(
+            "`SentenceTransformersSimilarityRanker` will be removed from Haystack in version 3.0, as it is moving to "
+            "the `sentence-transformers-haystack` package. To continue using it, install that package with "
+            "`pip install sentence-transformers-haystack` and update your import to "
+            "`from haystack_integrations.components.rankers.sentence_transformers import "
+            "SentenceTransformersSimilarityRanker`.",
+            FutureWarning,
+            stacklevel=2,
+        )
+
         torch_and_sentence_transformers_import.check()
 
         if top_k <= 0:
@@ -264,7 +275,7 @@ class SentenceTransformersSimilarityRanker:
         prepared_documents = []
         for doc in deduplicated_documents:
             meta_values_to_embed = [
-                str(doc.meta[key]) for key in self.meta_fields_to_embed if key in doc.meta and doc.meta[key]
+                str(doc.meta[key]) for key in self.meta_fields_to_embed if key in doc.meta and doc.meta[key] is not None
             ]
             prepared_documents.append(
                 self.document_prefix

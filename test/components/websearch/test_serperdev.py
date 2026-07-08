@@ -282,7 +282,10 @@ class TestSerperDevSearchAPI:
         results = ws.run(query="Who is the boyfriend of Olivia Wilde?")
         documents = results["documents"]
         links = results["links"]
-        assert len(documents) == len(links) == 10
+        # documents can also include answer box and "people also ask" results, so only links
+        # (which come from organic results) are guaranteed to be at most top_k
+        assert 0 < len(documents) <= 10
+        assert 0 < len(links) <= 10
         assert all(isinstance(doc, Document) for doc in documents)
         assert all(isinstance(link, str) for link in links)
         assert all(link.startswith("http") for link in links)
@@ -298,7 +301,10 @@ class TestSerperDevSearchAPI:
         results = await ws.run_async(query="Who is the boyfriend of Olivia Wilde?")
         documents = results["documents"]
         links = results["links"]
-        assert len(documents) == len(links) == 10
+        # documents can also include answer box and "people also ask" results, so only links
+        # (which come from organic results) are guaranteed to be at most top_k
+        assert 0 < len(documents) <= 10
+        assert 0 < len(links) <= 10
         assert all(isinstance(doc, Document) for doc in documents)
         assert all(isinstance(link, str) for link in links)
         assert all(link.startswith("http") for link in links)

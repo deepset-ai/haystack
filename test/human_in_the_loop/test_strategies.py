@@ -239,6 +239,28 @@ class TestRunConfirmationStrategies:
         assert teds[1].tool_name == mult_tool.name
         assert teds[1].execute is True
 
+    def test_run_confirmation_strategies_with_unknown_tool_name(self, tools, execution_context):
+        # The chat model hallucinated a tool call for a tool that isn't in `tools`. This must not raise a KeyError,
+        # even though a confirmation strategy is configured (for a different, known tool).
+        teds = _run_confirmation_strategies(
+            confirmation_strategies={
+                tools[0].name: BlockingConfirmationStrategy(
+                    confirmation_policy=AlwaysAskPolicy(), confirmation_ui=SimpleConsoleUI()
+                )
+            },
+            messages_with_tool_calls=[
+                ChatMessage.from_assistant(
+                    tool_calls=[ToolCall(tool_name="does_not_exist", arguments={"a": 1}, id="1")]
+                )
+            ],
+            execution_context=execution_context,
+        )
+        assert teds == [
+            ToolExecutionDecision(
+                tool_name="does_not_exist", execute=True, tool_call_id="1", final_tool_params={"a": 1}
+            )
+        ]
+
 
 class TestApplyToolExecutionDecisions:
     @pytest.fixture
@@ -700,6 +722,29 @@ class TestAsyncConfirmationStrategies:
         assert teds[0].tool_name == tools[0].name
         assert teds[0].execute is True
         assert teds[0].final_tool_params == {"a": 1, "b": 2}
+
+    @pytest.mark.asyncio
+    async def test_run_confirmation_strategies_async_with_unknown_tool_name(self, tools, execution_context):
+        # The chat model hallucinated a tool call for a tool that isn't in `tools`. This must not raise a KeyError,
+        # even though a confirmation strategy is configured (for a different, known tool).
+        teds = await _run_confirmation_strategies_async(
+            confirmation_strategies={
+                tools[0].name: BlockingConfirmationStrategy(
+                    confirmation_policy=AlwaysAskPolicy(), confirmation_ui=SimpleConsoleUI()
+                )
+            },
+            messages_with_tool_calls=[
+                ChatMessage.from_assistant(
+                    tool_calls=[ToolCall(tool_name="does_not_exist", arguments={"a": 1}, id="1")]
+                )
+            ],
+            execution_context=execution_context,
+        )
+        assert teds == [
+            ToolExecutionDecision(
+                tool_name="does_not_exist", execute=True, tool_call_id="1", final_tool_params={"a": 1}
+            )
+        ]
 
     @pytest.mark.asyncio
     async def test_run_confirmation_strategies_async_with_strategy(self, tools, execution_context):

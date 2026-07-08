@@ -915,6 +915,12 @@ class TestConversion:
         assert _get_first_item(value=["Hello"]) == "Hello"
         assert _get_first_item(value=[ChatMessage.from_assistant("Hello")]) == ChatMessage.from_assistant("Hello")
 
+    def test_get_first_item_rejects_multi_element_list(self):
+        with pytest.raises(ValueError, match="Cannot unwrap a list of 2 items to a single value"):
+            _get_first_item(value=["a", "b"])
+        with pytest.raises(ValueError, match="Cannot unwrap a list of 3 items to a single value"):
+            _get_first_item(value=[1, 2, 3])
+
     def test_types_are_compatible_with_conversion(self):
         assert _types_are_compatible(sender=Optional[str], receiver=str) == (False, None)
         assert _types_are_compatible(sender=str | None, receiver=str) == (False, None)
@@ -1086,6 +1092,71 @@ class TestConversion:
             )
             == "Hello"
         )
+
+    def test_unwrap_rejects_non_str_chatmessage_inner_types(self):
+        assert _types_are_compatible(sender=List[Document], receiver=Document) == (False, None)
+        assert _types_are_compatible(sender=list[Document], receiver=Document) == (False, None)
+        assert _types_are_compatible(sender=List[GeneratedAnswer], receiver=GeneratedAnswer) == (False, None)
+        assert _types_are_compatible(sender=list[GeneratedAnswer], receiver=GeneratedAnswer) == (False, None)
+        assert _types_are_compatible(sender=List[ByteStream], receiver=ByteStream) == (False, None)
+        assert _types_are_compatible(sender=list[ByteStream], receiver=ByteStream) == (False, None)
+
+        assert _types_are_compatible(sender=List[int], receiver=int) == (False, None)
+        assert _types_are_compatible(sender=list[int], receiver=int) == (False, None)
+        assert _types_are_compatible(sender=List[float], receiver=float) == (False, None)
+        assert _types_are_compatible(sender=List[bytes], receiver=bytes) == (False, None)
+        assert _types_are_compatible(sender=List[dict], receiver=dict) == (False, None)
+
+        assert _types_are_compatible(sender=List[Class1], receiver=Class1) == (False, None)
+        assert _types_are_compatible(sender=list[Class1], receiver=Class1) == (False, None)
+        assert _types_are_compatible(sender=List[Class3], receiver=Class1) == (False, None)
+
+        assert _types_are_compatible(sender=list[Document], receiver=Optional[Document]) == (False, None)
+        assert _types_are_compatible(sender=list[Document], receiver=Document | None) == (False, None)
+        assert _types_are_compatible(sender=list[Document], receiver=Union[Document, int]) == (False, None)
+
+        # subclasses of str / ChatMessage are intentionally NOT allowed
+        class MyStr(str):
+            __slots__ = ()
+
+        assert _types_are_compatible(sender=list[MyStr], receiver=str) == (False, None)
+
+        # Other shapes that should never unwrap
+        assert _types_are_compatible(sender=list[Any], receiver=str) == (False, None)
+        assert _types_are_compatible(sender=list[list[str]], receiver=str) == (False, None)
+        assert _types_are_compatible(sender=list[str | None], receiver=ChatMessage) == (False, None)
+        assert _types_are_compatible(sender=list[ChatMessage | None], receiver=str) == (False, None)
+
+        assert _types_are_compatible(sender=List[str], receiver=str) == (True, ConversionStrategy.UNWRAP)
+        assert _types_are_compatible(sender=List[ChatMessage], receiver=ChatMessage) == (
+            True,
+            ConversionStrategy.UNWRAP,
+        )
+        assert _types_are_compatible(sender=List[str], receiver=ChatMessage) == (
+            True,
+            ConversionStrategy.UNWRAP_STR_TO_CHAT_MESSAGE,
+        )
+        assert _types_are_compatible(sender=List[ChatMessage], receiver=str) == (
+            True,
+            ConversionStrategy.UNWRAP_CHAT_MESSAGE_TO_STR,
+        )
+        assert _types_are_compatible(sender=list[str], receiver=Optional[str]) == (True, ConversionStrategy.UNWRAP)
+        assert _types_are_compatible(sender=list[ChatMessage], receiver=Optional[ChatMessage]) == (
+            True,
+            ConversionStrategy.UNWRAP,
+        )
+
+    def test_convert_value_unwrap_raises_on_multi_element_list(self):
+        with pytest.raises(ValueError, match="Cannot unwrap a list of 2 items to a single value"):
+            _convert_value(value=["a", "b"], conversion_strategy=ConversionStrategy.UNWRAP)
+        with pytest.raises(ValueError, match="Cannot unwrap a list of 2 items to a single value"):
+            _convert_value(value=["a", "b"], conversion_strategy=ConversionStrategy.UNWRAP_STR_TO_CHAT_MESSAGE)
+        with pytest.raises(ValueError, match="Cannot unwrap a list of 2 items to a single value"):
+            _convert_value(
+                value=[ChatMessage.from_assistant("x"), ChatMessage.from_assistant("y")],
+                conversion_strategy=ConversionStrategy.UNWRAP_CHAT_MESSAGE_TO_STR,
+            )
+        assert _convert_value(value=["only"], conversion_strategy=ConversionStrategy.UNWRAP) == "only"
 
     def test_union_in_sender_problem(self):
         # Case 1: sender is a union that includes the type that can be converted

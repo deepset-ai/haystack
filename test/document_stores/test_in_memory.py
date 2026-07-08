@@ -5,13 +5,15 @@
 import asyncio
 import gc
 import logging
+import math
 import tempfile
-from typing import cast
+from typing import Literal, cast
 from unittest.mock import patch
 
 import pytest
 
 from haystack import Document
+from haystack.dataclasses import ByteStream, SparseEmbedding
 from haystack.document_stores.errors import DocumentStoreError, DuplicateDocumentError
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.testing.document_store import (
@@ -145,6 +147,26 @@ class TestMemoryDocumentStore(
         assert list(document_store_loaded.storage.values()) == docs
         assert document_store_loaded.to_dict() == in_memory_doc_store.to_dict()
 
+    def test_save_to_disk_and_load_from_disk_with_blob_and_sparse_embedding(
+        self, in_memory_doc_store: InMemoryDocumentStore, tmp_dir: str
+    ) -> None:
+        doc = Document(
+            content="document with binary data",
+            blob=ByteStream(data=b"binary data", mime_type="image/png"),
+            sparse_embedding=SparseEmbedding(indices=[0, 5], values=[0.1, 0.9]),
+        )
+        in_memory_doc_store.write_documents([doc])
+        save_path = tmp_dir + "/in_memory_doc_store.json"
+        in_memory_doc_store.save_to_disk(save_path)
+        document_store_loaded = InMemoryDocumentStore.load_from_disk(save_path)
+
+        loaded_doc = document_store_loaded.filter_documents()[0]
+        assert isinstance(loaded_doc.blob, ByteStream)
+        assert isinstance(loaded_doc.sparse_embedding, SparseEmbedding)
+        assert loaded_doc == doc
+        # The loaded store must be savable again
+        document_store_loaded.save_to_disk(save_path)
+
     def test_invalid_bm25_algorithm(self):
         with pytest.raises(ValueError, match="BM25 algorithm 'invalid' is not supported"):
             InMemoryDocumentStore(bm25_algorithm="invalid")  # type: ignore[arg-type]
@@ -172,6 +194,23 @@ class TestMemoryDocumentStore(
         results = document_store.bm25_retrieval(query="How to test this?", top_k=2)
         assert len(results) == 0
         assert "No documents found for BM25 retrieval. Returning empty list." in caplog.text
+
+    @pytest.mark.parametrize("bm25_algorithm", ["BM25Okapi", "BM25L", "BM25Plus"])
+    def test_bm25_retrieval_with_tokenless_corpus(
+        self, bm25_algorithm: Literal["BM25Okapi", "BM25L", "BM25Plus"]
+    ) -> None:
+        # Regression test for #11598: a corpus where every document has empty (but not None)
+        # content must not raise ZeroDivisionError at query time.
+        store = InMemoryDocumentStore(bm25_algorithm=bm25_algorithm)
+        store.write_documents([Document(content="", meta={"i": 1}), Document(content="", meta={"i": 2})])
+        results = store.bm25_retrieval(query="anything")
+        if bm25_algorithm == "BM25Okapi":
+            # Unscaled BM25Okapi keeps non-positive scores, so documents are returned with score 0.0.
+            assert len(results) == 2
+            assert all(doc.score == 0.0 for doc in results)
+        else:
+            # BM25L / BM25Plus filter out non-positive scores.
+            assert results == []
 
     def test_bm25_retrieval_empty_query(self, document_store: InMemoryDocumentStore) -> None:
         # Tests if the bm25_retrieval method returns a document when the query is an empty string.
@@ -355,6 +394,18 @@ class TestMemoryDocumentStore(
         )
         assert len(results) == 1
         assert results[0].content == "Haystack supports multiple languages"
+
+    def test_embedding_retrieval_with_zero_vector_does_not_produce_nan(self):
+        # A zero embedding has no direction; normalizing it must not divide by zero and
+        # produce NaN cosine scores, which would silently corrupt ranking.
+        docstore = InMemoryDocumentStore(embedding_similarity_function="cosine")
+        docstore.write_documents(
+            [Document(content="zero", embedding=[0.0, 0.0, 0.0]), Document(content="normal", embedding=[1.0, 0.0, 0.0])]
+        )
+        results = docstore.embedding_retrieval(query_embedding=[1.0, 0.0, 0.0], scale_score=False)
+        scores = {doc.content: doc.score for doc in results}
+        assert all(score is not None and not math.isnan(score) for score in scores.values())
+        assert scores["zero"] == 0.0
 
     def test_embedding_retrieval_invalid_query(self, in_memory_doc_store):
         with pytest.raises(ValueError, match="query_embedding should be a non-empty list of floats"):

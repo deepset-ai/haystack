@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import warnings
 from typing import Any
 
 import httpx
@@ -29,7 +30,7 @@ class SearchApiWebSearch:
     from haystack.components.websearch import SearchApiWebSearch
     from haystack.utils import Secret
 
-    websearch = SearchApiWebSearch(top_k=10, api_key=Secret.from_env_var("SERPERDEV_API_KEY"))
+    websearch = SearchApiWebSearch(top_k=10, api_key=Secret.from_env_var("SEARCHAPI_API_KEY"))
     results = websearch.run(query="Who is the boyfriend of Olivia Wilde?")
 
     assert results["documents"]
@@ -57,6 +58,14 @@ class SearchApiWebSearch:
             The default search engine is Google, however, users can change it by setting the `engine`
             parameter in the `search_params`.
         """
+        warnings.warn(
+            "`SearchApiWebSearch` will be removed from Haystack in version 3.0, as it is moving to "
+            "the `searchapi-haystack` package. To continue using it, install that package with "
+            "`pip install searchapi-haystack` and update your import to "
+            "`from haystack_integrations.components.websearch.searchapi import SearchApiWebSearch`.",
+            FutureWarning,
+            stacklevel=2,
+        )
 
         self.api_key = api_key
         self.top_k = top_k

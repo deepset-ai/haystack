@@ -3,12 +3,22 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import json
+import warnings
 from typing import Any
 
 from haystack import logging
 from haystack.dataclasses import ChatMessage, ReasoningContent, StreamingChunk, ToolCall
 
 logger = logging.getLogger(__name__)
+
+
+def _generators_deprecation_warning(generator_name: str, chatgenerator_name: str) -> None:
+    warnings.warn(
+        f"The `{generator_name}` component is deprecated and will be removed in Haystack 3.0. "
+        f"Use `{chatgenerator_name}` instead, which now also supports string inputs.",
+        FutureWarning,
+        stacklevel=2,
+    )
 
 
 def print_streaming_chunk(chunk: StreamingChunk) -> None:

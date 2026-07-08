@@ -1,0 +1,142 @@
+---
+title: "OracleEmbeddingRetriever"
+id: oracleembeddingretriever
+slug: "/oracleembeddingretriever"
+description: "An embedding-based Retriever compatible with the Oracle Document Store."
+---
+
+# OracleEmbeddingRetriever
+
+An embedding-based Retriever compatible with the Oracle Document Store.
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | 1. After a Text Embedder and before a [`PromptBuilder`](../builders/promptbuilder.mdx) in a RAG pipeline 2. The last component in a semantic search pipeline 3. After a Text Embedder and before an [`ExtractiveReader`](../readers/extractivereader.mdx) in an extractive QA pipeline |
+| **Mandatory init variables**           | `document_store`: An instance of an [OracleDocumentStore](../../document-stores/oracledocumentstore.mdx) |
+| **Mandatory run variables**            | `query_embedding`: A vector representing the query (a list of floats) |
+| **Output variables**                   | `documents`: A list of documents |
+| **API reference**                      | [Oracle](/reference/integrations-oracle) |
+| **GitHub link**                        | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/oracle |
+| **Package name**                       | `oracle-haystack` |
+
+</div>
+
+## Overview
+
+The `OracleEmbeddingRetriever` is an embedding-based Retriever compatible with `OracleDocumentStore`. It uses Oracle AI Vector Search to compare query and document embeddings, fetching the most relevant documents based on vector similarity.
+
+When using `OracleEmbeddingRetriever` in a pipeline, make sure embeddings are available for both documents (at index time) and queries (at query time). Use a Document Embedder in your indexing pipeline and a Text Embedder in your query pipeline.
+
+The distance metric (COSINE, EUCLIDEAN, or DOT) is configured on the `OracleDocumentStore`. In addition to `query_embedding`, the retriever accepts `top_k` (maximum documents to return) and `filters` to narrow the search space.
+
+## Installation
+
+To run Oracle Database 23ai locally with Docker:
+
+```shell
+docker run -d --name oracle23ai \
+  -p 1521:1521 \
+  -e ORACLE_PASSWORD=oracle \
+  container-registry.oracle.com/database/free:latest
+```
+
+Install the Oracle integration for Haystack:
+
+```shell
+pip install oracle-haystack
+```
+
+## Usage
+
+### On its own
+
+This Retriever needs an `OracleDocumentStore` and indexed documents with embeddings to run.
+
+```python
+from haystack.utils import Secret
+from haystack_integrations.document_stores.oracle import (
+    OracleDocumentStore,
+    OracleConnectionConfig,
+)
+from haystack_integrations.components.retrievers.oracle import OracleEmbeddingRetriever
+
+document_store = OracleDocumentStore(
+    connection_config=OracleConnectionConfig(
+        user=Secret.from_env_var("ORACLE_USER"),
+        password=Secret.from_env_var("ORACLE_PASSWORD"),
+        dsn=Secret.from_env_var("ORACLE_DSN"),
+    ),
+    embedding_dim=768,
+)
+
+retriever = OracleEmbeddingRetriever(document_store=document_store)
+
+# using a fake vector to keep the example simple
+retriever.run(query_embedding=[0.1] * 768)
+```
+
+### In a Pipeline
+
+```python
+from haystack import Document, Pipeline
+from haystack.document_stores.types import DuplicatePolicy
+from haystack.components.embedders import (
+    SentenceTransformersDocumentEmbedder,
+    SentenceTransformersTextEmbedder,
+)
+from haystack.utils import Secret
+
+from haystack_integrations.document_stores.oracle import (
+    OracleDocumentStore,
+    OracleConnectionConfig,
+)
+from haystack_integrations.components.retrievers.oracle import OracleEmbeddingRetriever
+
+document_store = OracleDocumentStore(
+    connection_config=OracleConnectionConfig(
+        user=Secret.from_env_var("ORACLE_USER"),
+        password=Secret.from_env_var("ORACLE_PASSWORD"),
+        dsn=Secret.from_env_var("ORACLE_DSN"),
+    ),
+    embedding_dim=768,
+)
+
+documents = [
+    Document(content="There are over 7,000 languages spoken around the world today."),
+    Document(
+        content="Elephants have been observed to behave in a way that indicates a high level of self-awareness, such as recognizing themselves in mirrors.",
+    ),
+    Document(
+        content="In certain parts of the world, like the Maldives, Puerto Rico, and San Diego, you can witness the phenomenon of bioluminescent waves.",
+    ),
+]
+
+document_embedder = SentenceTransformersDocumentEmbedder(
+    model="sentence-transformers/all-MiniLM-L6-v2",
+)
+document_embedder.warm_up()
+documents_with_embeddings = document_embedder.run(documents)
+
+document_store.write_documents(
+    documents_with_embeddings["documents"],
+    policy=DuplicatePolicy.OVERWRITE,
+)
+
+query_pipeline = Pipeline()
+query_pipeline.add_component(
+    "text_embedder",
+    SentenceTransformersTextEmbedder(model="sentence-transformers/all-MiniLM-L6-v2"),
+)
+query_pipeline.add_component(
+    "retriever",
+    OracleEmbeddingRetriever(document_store=document_store),
+)
+query_pipeline.connect("text_embedder.embedding", "retriever.query_embedding")
+
+query = "How many languages are there?"
+result = query_pipeline.run({"text_embedder": {"text": query}})
+
+print(result["retriever"]["documents"][0])
+```

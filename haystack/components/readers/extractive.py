@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import math
+import warnings
 from dataclasses import replace
 from pathlib import Path
 from typing import Any
@@ -107,6 +108,15 @@ class ExtractiveReader:
             when loading the model specified in `model`. For details on what kwargs you can pass,
             see the model's documentation.
         """
+        warnings.warn(
+            "`ExtractiveReader` will be removed from Haystack in version 3.0, as it is moving to the "
+            "`transformers-haystack` package and being renamed to `TransformersExtractiveReader`. To continue using "
+            "it, install that package with `pip install transformers-haystack` and update your import to "
+            "`from haystack_integrations.components.readers.transformers import TransformersExtractiveReader`.",
+            FutureWarning,
+            stacklevel=2,
+        )
+
         torch_and_transformers_import.check()
         self.model_name_or_path = str(model)
         self.model = None

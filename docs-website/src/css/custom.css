@@ -996,3 +996,16 @@ html[data-theme='dark'] .navbar-version-badge-dropdown:hover > a::after {
     display: none !important;
   }
 }
+
+/* Inline logos next to integration names */
+.ds-logo {
+  height: 14px;
+  vertical-align: middle;
+  margin-right: 5px;
+  display: inline;
+}
+
+/* Allow a ClickableImage to expand to full content width */
+.img-full-width {
+  max-width: 100% !important;
+}

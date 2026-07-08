@@ -2,6 +2,8 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import warnings
+
 from haystack import component, logging
 from haystack.lazy_imports import LazyImport
 
@@ -53,6 +55,14 @@ class TextLanguageRouter:
             See the supported languages in [`langdetect` documentation](https://github.com/Mimino666/langdetect#languages).
             If not specified, defaults to ["en"].
         """
+        warnings.warn(
+            "`TextLanguageRouter` will be removed from Haystack in version 3.0, as it is moving to "
+            "the `langdetect-haystack` package. To continue using it, install that package with "
+            "`pip install langdetect-haystack` and update your import to "
+            "`from haystack_integrations.components.routers.langdetect import TextLanguageRouter`.",
+            FutureWarning,
+            stacklevel=2,
+        )
         langdetect_import.check()
         if not languages:
             languages = ["en"]

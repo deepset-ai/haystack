@@ -18,6 +18,27 @@ Enumeration of export formats supported by DoclingServe.
 - `TEXT`: Extracts plain text.
 - `JSON`: Returns the full Docling document as a JSON string.
 
+### ConversionMode
+
+Bases: <code>str</code>, <code>Enum</code>
+
+Execution mode for DoclingServe conversions.
+
+- `SYNC`: Uses DoclingServe's synchronous conversion endpoints.
+- `ASYNC`: Uses DoclingServe's async job endpoints and polls for completion.
+
+### DoclingServeConversionError
+
+Bases: <code>Exception</code>
+
+Raised when DoclingServe reports an async task or conversion failure.
+
+### DoclingServeTimeoutError
+
+Bases: <code>DoclingServeConversionError</code>
+
+Raised when a DoclingServe async task exceeds job_timeout.
+
 ### DoclingServeConverter
 
 Converts documents to Haystack Documents using a DoclingServe server.
@@ -54,7 +75,10 @@ __init__(
     timeout: float = 120.0,
     api_key: Secret | None = Secret.from_env_var(
         "DOCLING_SERVE_API_KEY", strict=False
-    )
+    ),
+    mode: ConversionMode | str = ConversionMode.SYNC,
+    poll_interval: float = 2.0,
+    job_timeout: float = 600.0
 ) -> None
 ```
 
@@ -73,6 +97,11 @@ Initializes the DoclingServeConverter.
 - **api_key** (<code>Secret | None</code>) – API key for authenticating with a secured DoclingServe instance. Reads from the
   `DOCLING_SERVE_API_KEY` environment variable by default. Set to `None` to disable
   authentication.
+- **mode** (<code>ConversionMode | str</code>) – Conversion mode. `sync` uses DoclingServe's synchronous endpoints. `async` submits
+  conversion jobs to DoclingServe's async endpoints and polls until completion.
+- **poll_interval** (<code>float</code>) – Controls both the server-side long-poll wait (?wait= parameter) and the maximum local sleep between polls.
+  A higher value reduces round-trips; a lower value increases polling frequency.
+- **job_timeout** (<code>float</code>) – Maximum time in seconds to wait for each async conversion job.
 
 #### to_dict
 

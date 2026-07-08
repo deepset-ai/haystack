@@ -346,6 +346,26 @@ class TestSentenceTransformersDocumentEmbedder:
             precision="float32",
         )
 
+    def test_embed_metadata_preserves_falsy_values(self):
+        embedder = SentenceTransformersDocumentEmbedder(
+            model="model",
+            meta_fields_to_embed=["rating", "is_available", "missing", "none_value"],
+            embedding_separator="\n",
+        )
+        embedder.embedding_backend = MagicMock()
+        embedder.embedding_backend.embed.return_value = [[random.random() for _ in range(16)]]
+        documents = [Document(content="document", meta={"rating": 0, "is_available": False, "none_value": None})]
+
+        embedder.run(documents=documents)
+
+        embedder.embedding_backend.embed.assert_called_once_with(
+            ["0\nFalse\ndocument"],
+            batch_size=32,
+            show_progress_bar=True,
+            normalize_embeddings=False,
+            precision="float32",
+        )
+
     def test_embed_encode_kwargs(self):
         embedder = SentenceTransformersDocumentEmbedder(model="model", encode_kwargs={"task": "retrieval.passage"})
         embedder.embedding_backend = MagicMock()

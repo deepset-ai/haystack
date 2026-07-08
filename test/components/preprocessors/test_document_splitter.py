@@ -71,6 +71,15 @@ class TestSplittingByFunctionOrCharacterRegex:
         with pytest.raises(ValueError, match="split_overlap must be greater than or equal to 0."):
             DocumentSplitter(split_overlap=-1)
 
+    def test_split_overlap_not_less_than_split_length(self):
+        # split_overlap == split_length makes the window step 0, and a larger
+        # overlap makes it negative — both crash deep in `windowed` at run time.
+        # Fail fast at init with a clear error instead.
+        with pytest.raises(ValueError, match="split_overlap must be less than split_length."):
+            DocumentSplitter(split_length=3, split_overlap=3)
+        with pytest.raises(ValueError, match="split_overlap must be less than split_length."):
+            DocumentSplitter(split_length=3, split_overlap=5)
+
     def test_split_by_word(self):
         splitter = DocumentSplitter(split_by="word", split_length=10)
         text = "This is a text with some words. There is a second sentence. And there is a third sentence."

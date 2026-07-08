@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import warnings
 from dataclasses import replace
 from enum import Enum
 from typing import Any
@@ -87,6 +88,15 @@ class HuggingFaceTEIRanker:
             depending on your TEI server configuration.
             Check your HF token in your [account settings](https://huggingface.co/settings/tokens).
         """
+        warnings.warn(
+            "`HuggingFaceTEIRanker` will be removed from Haystack in version 3.0, as it is moving to "
+            "the `huggingface-api-haystack` package. To continue using it, install that package with "
+            "`pip install huggingface-api-haystack` and update your import to "
+            "`from haystack_integrations.components.rankers.huggingface_api import HuggingFaceTEIRanker`.",
+            FutureWarning,
+            stacklevel=2,
+        )
+
         self.url = url
         self.top_k = top_k
         self.timeout = timeout

@@ -322,7 +322,7 @@ class PipelineBase:  # noqa: PLW1641
         callbacks: DeserializationCallbacks | None = None,
     ) -> T:
         """
-        Creates a `Pipeline` object a string representation.
+        Creates a `Pipeline` object from a string representation.
 
         The string representation is read from the file-like object passed in the `fp` argument.
 

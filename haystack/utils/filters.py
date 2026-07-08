@@ -56,19 +56,27 @@ def _not_equal(value: Any, filter_value: Any) -> bool:
     return not _equal(value=value, filter_value=filter_value)
 
 
-def _greater_than(value: Any, filter_value: Any) -> bool:
-    if value is None or filter_value is None:
-        # We can't compare None values reliably using operators '>', '>=', '<', '<='
-        return False
-
+def _prepare_ordering_comparison(value: Any, filter_value: Any) -> tuple[Any, Any]:
+    """Normalize both values for ordering comparisons, parsing strings as dates."""
     if isinstance(value, str) or isinstance(filter_value, str):
-        value = _parse_date(value)
-        filter_value = _parse_date(filter_value)
+        if not isinstance(value, datetime):
+            value = _parse_date(value)
+        if not isinstance(filter_value, datetime):
+            filter_value = _parse_date(filter_value)
         value, filter_value = _ensure_both_dates_naive_or_aware(value, filter_value)
 
     if isinstance(filter_value, list):
         msg = f"Filter value can't be of type {type(filter_value)} using operators '>', '>=', '<', '<='"
         raise FilterError(msg)
+    return value, filter_value
+
+
+def _greater_than(value: Any, filter_value: Any) -> bool:
+    if value is None or filter_value is None:
+        # We can't compare None values reliably using operators '>', '>=', '<', '<='
+        return False
+
+    value, filter_value = _prepare_ordering_comparison(value=value, filter_value=filter_value)
     return value > filter_value
 
 
@@ -110,7 +118,8 @@ def _greater_than_equal(value: Any, filter_value: Any) -> bool:
         # We can't compare None values reliably using operators '>', '>=', '<', '<='
         return False
 
-    return _equal(value=value, filter_value=filter_value) or _greater_than(value=value, filter_value=filter_value)
+    value, filter_value = _prepare_ordering_comparison(value=value, filter_value=filter_value)
+    return value >= filter_value
 
 
 def _less_than(value: Any, filter_value: Any) -> bool:
@@ -118,7 +127,8 @@ def _less_than(value: Any, filter_value: Any) -> bool:
         # We can't compare None values reliably using operators '>', '>=', '<', '<='
         return False
 
-    return not _greater_than_equal(value=value, filter_value=filter_value)
+    value, filter_value = _prepare_ordering_comparison(value=value, filter_value=filter_value)
+    return value < filter_value
 
 
 def _less_than_equal(value: Any, filter_value: Any) -> bool:
@@ -126,7 +136,8 @@ def _less_than_equal(value: Any, filter_value: Any) -> bool:
         # We can't compare None values reliably using operators '>', '>=', '<', '<='
         return False
 
-    return not _greater_than(value=value, filter_value=filter_value)
+    value, filter_value = _prepare_ordering_comparison(value=value, filter_value=filter_value)
+    return value <= filter_value
 
 
 def _in(value: Any, filter_value: Any) -> bool:
@@ -162,6 +173,9 @@ def _logic_condition(condition: dict[str, Any], document: Document | ByteStream)
         msg = f"'conditions' key missing in {condition}"
         raise FilterError(msg)
     operator: str = condition["operator"]
+    if operator not in LOGICAL_OPERATORS:
+        msg = f"Unknown logical operator '{operator}'. Valid operators are: {sorted(LOGICAL_OPERATORS)}"
+        raise FilterError(msg)
     conditions: list[dict[str, Any]] = condition["conditions"]
     return LOGICAL_OPERATORS[operator](document=document, conditions=conditions)
 
@@ -186,8 +200,9 @@ def _comparison_condition(condition: dict[str, Any], document: Document | ByteSt
         parts = field.split(".")
         document_value = getattr(document, parts[0])
         for part in parts[1:]:
-            if part not in document_value:
-                # If a field is not found we treat it as None
+            if not isinstance(document_value, dict) or part not in document_value:
+                # If a field is not found (or an intermediate value is not a dict,
+                # e.g. None) we treat it as None
                 document_value = None
                 break
             document_value = document_value[part]
@@ -202,5 +217,8 @@ def _comparison_condition(condition: dict[str, Any], document: Document | ByteSt
     else:
         document_value = getattr(document, field)
     operator: str = condition["operator"]
+    if operator not in COMPARISON_OPERATORS:
+        msg = f"Unknown comparison operator '{operator}'. Valid operators are: {sorted(COMPARISON_OPERATORS)}"
+        raise FilterError(msg)
     filter_value: Any = condition["value"]
     return COMPARISON_OPERATORS[operator](filter_value=filter_value, value=document_value)

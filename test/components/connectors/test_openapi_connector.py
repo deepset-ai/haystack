@@ -104,6 +104,7 @@ class TestOpenAPIConnector:
         # Test without arguments
         response = connector.run(operation_id="search")
         mock_client.invoke.assert_called_with({"name": "search", "arguments": {}})
+        assert response == {"response": {"results": ["test result"]}}
 
     def test_in_pipeline(self, mock_client):
         mock_client.invoke.return_value = {"results": ["test result"]}

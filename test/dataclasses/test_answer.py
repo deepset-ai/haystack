@@ -312,6 +312,26 @@ class TestGeneratedAnswer:
         # deserializing the same dictionary again must still work and be equal
         assert GeneratedAnswer.from_dict(data) == first
 
+    def test_from_dict_with_empty_all_messages(self):
+        # An empty `all_messages` list must not crash deserialization: `is not None`
+        # let `[]` through and then indexed `all_messages[0]`, raising IndexError.
+        answer = GeneratedAnswer.from_dict(
+            {
+                "type": "haystack.dataclasses.answer.GeneratedAnswer",
+                "init_parameters": {
+                    "data": "42",
+                    "query": "What is the answer?",
+                    "documents": [],
+                    "meta": {"all_messages": []},
+                },
+            }
+        )
+        assert answer.meta["all_messages"] == []
+
+    def test_to_dict_from_dict_round_trip_with_empty_all_messages(self):
+        answer = GeneratedAnswer(data="42", query="What is the answer?", documents=[], meta={"all_messages": []})
+        assert GeneratedAnswer.from_dict(answer.to_dict()) == answer
+
     def test_no_warning_on_init(self):
         with warnings.catch_warnings():
             warnings.simplefilter("error", Warning)
