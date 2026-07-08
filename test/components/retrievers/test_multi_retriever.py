@@ -102,7 +102,8 @@ class TestMultiRetriever:
         retriever = MultiRetriever(retrievers=retrievers)
         assert retriever.retrievers == retrievers
         assert retriever.filters is None
-        assert retriever.top_k == 10
+        assert retriever.top_k_per_retriever is None
+        assert retriever.top_k is None
         assert retriever.max_workers == 4
         assert retriever.join_mode == "reciprocal_rank_fusion"
 
@@ -162,7 +163,7 @@ class TestMultiRetriever:
         ids = [doc.id for doc in result["documents"]]
         assert ids.count("doc1") == 1
 
-    def test_run_resolves_filters_and_top_k(self):
+    def test_run_resolves_filters_and_top_k_per_retriever(self):
         received: dict = {}
 
         @component
@@ -174,18 +175,67 @@ class TestMultiRetriever:
                 return {"documents": []}
 
         retriever = MultiRetriever(
-            retrievers={"capturing": CapturingRetriever()}, filters={"field": "meta.category"}, top_k=5
+            retrievers={"capturing": CapturingRetriever()}, filters={"field": "meta.category"}, top_k_per_retriever=5
         )
 
-        # Should use init-time values when not overridden
+        # Should use init-time values when not overridden (top_k_per_retriever is forwarded as the retriever's top_k)
         retriever.run(query="energy")
         assert received["filters"] == {"field": "meta.category"}
         assert received["top_k"] == 5
 
         # Should prefer run-time values when provided
-        retriever.run(query="energy", filters={"field": "meta.other"}, top_k=2)
+        retriever.run(query="energy", filters={"field": "meta.other"}, top_k_per_retriever=2)
         assert received["filters"] == {"field": "meta.other"}
         assert received["top_k"] == 2
+
+    def test_run_forwards_top_k_per_retriever_not_overall_top_k(self):
+        received: dict = {}
+
+        @component
+        class CapturingRetriever:
+            @component.output_types(documents=list[Document])
+            def run(self, query: str, filters: dict[str, Any] | None = None, top_k: int | None = None):
+                received["top_k"] = top_k
+                return {"documents": []}
+
+        retriever = MultiRetriever(retrievers={"capturing": CapturingRetriever()})
+
+        # top_k_per_retriever is forwarded to each retriever as its top_k
+        retriever.run(query="energy", top_k_per_retriever=3)
+        assert received["top_k"] == 3
+
+        # the overall top_k is applied at merge-time only, not forwarded to retrievers
+        received.clear()
+        retriever.run(query="energy", top_k=5)
+        assert received.get("top_k") is None
+
+    def test_run_top_k_truncates_merged_results(self, sample_documents):
+        retriever = MultiRetriever(
+            retrievers={
+                "a": MockRetriever(documents=sample_documents[:3]),
+                "b": MockRetriever(documents=sample_documents[2:5]),
+            },
+            max_workers=2,
+        )
+        result = retriever.run(query="energy", top_k=2)
+        assert len(result["documents"]) == 2
+        scores = [doc.score for doc in result["documents"]]
+        assert all(score is not None for score in scores)
+        assert scores == sorted(scores, reverse=True)
+
+    def test_run_top_k_forces_rrf_in_concatenate_mode(self, sample_documents):
+        # In concatenate mode there is no global ranking, so setting top_k falls back to RRF to truncate consistently
+        retriever = MultiRetriever(
+            retrievers={
+                "a": MockRetriever(documents=sample_documents[:3]),
+                "b": MockRetriever(documents=sample_documents[1:4]),
+            },
+            join_mode="concatenate",
+            max_workers=2,
+        )
+        result = retriever.run(query="energy", top_k=2)
+        assert len(result["documents"]) == 2
+        assert all(doc.score is not None for doc in result["documents"])
 
     def test_run_with_active_retrievers(self, sample_documents):
         retriever = MultiRetriever(
@@ -210,6 +260,7 @@ class TestMultiRetriever:
         retriever = MultiRetriever(
             retrievers={"bm25": InMemoryBM25Retriever(document_store=InMemoryDocumentStore())},
             filters=None,
+            top_k_per_retriever=3,
             top_k=5,
             max_workers=2,
         )
@@ -241,6 +292,7 @@ class TestMultiRetriever:
                     }
                 },
                 "filters": None,
+                "top_k_per_retriever": 3,
                 "top_k": 5,
                 "max_workers": 2,
                 "join_mode": "reciprocal_rank_fusion",
@@ -275,6 +327,7 @@ class TestMultiRetriever:
                     }
                 },
                 "filters": None,
+                "top_k_per_retriever": 3,
                 "top_k": 5,
                 "max_workers": 2,
                 "join_mode": "concatenate",
@@ -285,6 +338,7 @@ class TestMultiRetriever:
         assert len(result.retrievers) == 1
         assert "bm25" in result.retrievers
         assert isinstance(result.retrievers["bm25"], InMemoryBM25Retriever)
+        assert result.top_k_per_retriever == 3
         assert result.top_k == 5
         assert result.max_workers == 2
         assert result.join_mode == "concatenate"
@@ -385,7 +439,7 @@ class TestMultiRetrieverAsync:
         assert ids.index("doc1") < ids.index("doc3")
 
     @pytest.mark.asyncio
-    async def test_run_async_resolves_filters_and_top_k(self):
+    async def test_run_async_resolves_filters_and_top_k_per_retriever(self):
         received: dict = {}
 
         @component
@@ -397,16 +451,67 @@ class TestMultiRetrieverAsync:
                 return {"documents": []}
 
         retriever = MultiRetriever(
-            retrievers={"capturing": CapturingRetriever()}, filters={"field": "meta.category"}, top_k=5
+            retrievers={"capturing": CapturingRetriever()}, filters={"field": "meta.category"}, top_k_per_retriever=5
         )
 
+        # top_k_per_retriever is forwarded as the retriever's top_k
         await retriever.run_async(query="energy")
         assert received["filters"] == {"field": "meta.category"}
         assert received["top_k"] == 5
 
-        await retriever.run_async(query="energy", filters={"field": "meta.other"}, top_k=2)
+        await retriever.run_async(query="energy", filters={"field": "meta.other"}, top_k_per_retriever=2)
         assert received["filters"] == {"field": "meta.other"}
         assert received["top_k"] == 2
+
+    @pytest.mark.asyncio
+    async def test_run_async_forwards_top_k_per_retriever_not_overall_top_k(self):
+        received: dict = {}
+
+        @component
+        class CapturingRetriever:
+            @component.output_types(documents=list[Document])
+            def run(self, query: str, filters: dict[str, Any] | None = None, top_k: int | None = None):
+                received["top_k"] = top_k
+                return {"documents": []}
+
+        retriever = MultiRetriever(retrievers={"capturing": CapturingRetriever()})
+
+        # top_k_per_retriever is forwarded to each retriever as its top_k
+        await retriever.run_async(query="energy", top_k_per_retriever=3)
+        assert received["top_k"] == 3
+
+        # the overall top_k is applied at merge-time only, not forwarded to retrievers
+        received.clear()
+        await retriever.run_async(query="energy", top_k=5)
+        assert received.get("top_k") is None
+
+    @pytest.mark.asyncio
+    async def test_run_async_top_k_truncates_merged_results(self, sample_documents):
+        retriever = MultiRetriever(
+            retrievers={
+                "a": MockRetriever(documents=sample_documents[:3]),
+                "b": MockRetriever(documents=sample_documents[2:5]),
+            }
+        )
+        result = await retriever.run_async(query="energy", top_k=2)
+        assert len(result["documents"]) == 2
+        scores = [doc.score for doc in result["documents"]]
+        assert all(score is not None for score in scores)
+        assert scores == sorted(scores, reverse=True)
+
+    @pytest.mark.asyncio
+    async def test_run_async_top_k_forces_rrf_in_concatenate_mode(self, sample_documents):
+        # In concatenate mode there is no global ranking, so setting top_k falls back to RRF to truncate consistently
+        retriever = MultiRetriever(
+            retrievers={
+                "a": MockRetriever(documents=sample_documents[:3]),
+                "b": MockRetriever(documents=sample_documents[1:4]),
+            },
+            join_mode="concatenate",
+        )
+        result = await retriever.run_async(query="energy", top_k=2)
+        assert len(result["documents"]) == 2
+        assert all(doc.score is not None for doc in result["documents"])
 
     @pytest.mark.asyncio
     async def test_run_async_with_active_retrievers(self, sample_documents):

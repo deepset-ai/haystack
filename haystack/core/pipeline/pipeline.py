@@ -287,10 +287,14 @@ class Pipeline(PipelineBase):
             output is included.
 
         :param break_point:
-            A set of breakpoints that can be used to debug the pipeline execution.
+            A breakpoint that pauses execution before the specified component runs by raising a
+            `BreakpointException` carrying a `PipelineSnapshot` of the current pipeline state.
 
         :param pipeline_snapshot:
-            A dictionary containing a snapshot of a previously saved pipeline execution.
+            A snapshot of a previously interrupted pipeline execution to resume from. Can be combined with
+            `break_point` to step through a pipeline: resume from the snapshot and pause again at the next
+            breakpoint. The `break_point` must target a different component or visit count than the one the
+            snapshot was created at, otherwise it would trigger again before any progress is made.
 
         :param snapshot_callback:
             Optional callback function that is invoked when a pipeline snapshot is created.
@@ -319,10 +323,16 @@ class Pipeline(PipelineBase):
         """
         pipeline_running(self)  # telemetry
 
-        if break_point and pipeline_snapshot:
+        if (
+            break_point
+            and pipeline_snapshot
+            and break_point.component_name == pipeline_snapshot.break_point.component_name
+            and break_point.visit_count == pipeline_snapshot.break_point.visit_count
+        ):
             msg = (
-                "pipeline_breakpoint and pipeline_snapshot cannot be provided at the same time. "
-                "The pipeline run will be aborted."
+                "The provided break_point targets the same component and visit count as the break_point of the "
+                "pipeline_snapshot. It would trigger again before the resumed component runs, so the pipeline "
+                "could not make any progress. Provide a break_point with a different component or visit count."
             )
             raise PipelineInvalidPipelineSnapshotError(message=msg)
 
