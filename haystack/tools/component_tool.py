@@ -337,7 +337,7 @@ class ComponentTool(Tool):
         :raises SchemaGenerationError: If schema generation fails
         :returns: OpenAI tools schema for the component's run method parameters.
         """
-        _, param_descriptions = _get_component_param_descriptions(component)
+        param_descriptions = _get_component_param_descriptions(component)
 
         # collect fields (types and defaults) and descriptions from function parameters
         fields: dict[str, Any] = {}

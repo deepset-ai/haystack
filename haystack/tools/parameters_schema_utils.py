@@ -102,7 +102,7 @@ def _get_param_descriptions(method: Callable) -> tuple[str, dict[str, str]]:
     return parsed_doc.short_description or "", param_descriptions
 
 
-def _get_component_param_descriptions(component: Any) -> tuple[str, dict[str, str]]:
+def _get_component_param_descriptions(component: Any) -> dict[str, str]:
     """
     Get parameter descriptions from a component, handling both regular Components and SuperComponents.
 
@@ -110,12 +110,12 @@ def _get_component_param_descriptions(component: Any) -> tuple[str, dict[str, st
     For SuperComponents, this extracts descriptions from the underlying pipeline components.
 
     :param component: The component to extract parameter descriptions from
-    :returns: A tuple of (short_description, param_descriptions)
+    :returns: A dictionary mapping parameter names to their descriptions
     """
     from haystack.core.super_component.super_component import _SuperComponent
 
     # Get descriptions from the component's run method
-    short_desc, param_descriptions = _get_param_descriptions(component.run)
+    _, param_descriptions = _get_param_descriptions(component.run)
 
     # If it's a SuperComponent, enhance the parameter descriptions from the original components
     if isinstance(component, _SuperComponent):
@@ -145,7 +145,7 @@ def _get_component_param_descriptions(component: Any) -> tuple[str, dict[str, st
             if descriptions:
                 param_descriptions[super_param_name] = ", and ".join(descriptions) + "."
 
-    return short_desc, param_descriptions
+    return param_descriptions
 
 
 def _dataclass_to_pydantic_model(dc_type: Any) -> type[BaseModel]:
