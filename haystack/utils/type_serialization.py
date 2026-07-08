@@ -5,14 +5,16 @@
 import builtins
 import importlib
 import inspect
-import sys
 import typing
 from threading import Lock
 from types import GenericAlias, ModuleType, NoneType, UnionType
 from typing import Any, Union, get_args
 
+from haystack import logging
 from haystack.core.errors import DeserializationError
 from haystack.core.serialization_security import _check_builtin_is_type, _check_module_allowed
+
+logger = logging.getLogger(__name__)
 
 _import_lock = Lock()
 
@@ -188,30 +190,10 @@ def deserialize_type(type_str: str) -> Any:
     # Handle non-generic types
     # First, check if there's a module prefix
     if "." in type_str:
-        parts = type_str.split(".")
-        module_name = ".".join(parts[:-1])
-        type_name = parts[-1]
-
-        _check_module_allowed(module_name)
-
-        module = sys.modules.get(module_name)
-        if module is None:
-            try:
-                module = thread_safe_import(module_name)
-            except ImportError as e:
-                raise DeserializationError(f"Could not import the module: {module_name}") from e
-
-        # Get the class from the module
-        if hasattr(module, type_name):
-            resolved = getattr(module, type_name)
-            # `builtins` is on the allowlist; a type annotation must resolve to an actual type. This
-            # lets builtin types through (e.g. `builtins.memoryview`) while rejecting builtin
-            # functions like `builtins.eval`.
-            if module_name == "builtins":
-                _check_builtin_is_type(resolved, type_str)
-            return resolved
-
-        raise DeserializationError(f"Could not locate the type: {type_name} in the module: {module_name}")
+        try:
+            return _import_class_by_name(type_str)
+        except ImportError as e:
+            raise DeserializationError(str(e)) from e
 
     # No module prefix, check builtins and typing
     # Special cases for None / NoneType first: `getattr(builtins, "None")` returns the `None`
@@ -248,3 +230,35 @@ def thread_safe_import(module_name: str) -> ModuleType:
     """
     with _import_lock:
         return importlib.import_module(module_name)
+
+
+def _import_class_by_name(fully_qualified_name: str) -> Any:
+    """
+    Imports an attribute (typically a class) given its fully qualified name.
+
+    Checks the module against the deserialization allowlist (see
+    `haystack.core.serialization_security`) and, for `builtins`, that the resolved attribute is
+    an actual type — rejecting dangerous builtins like `eval`/`compile`.
+
+    :param fully_qualified_name: the fully qualified name, e.g. "my_package.MyClass"
+    :returns: the imported attribute.
+    :raises ImportError: If the module cannot be imported or the attribute doesn't exist on it.
+    :raises DeserializationError: If the module is not on the deserialization allowlist, or the
+        resolved builtin is not a type.
+    """
+    module_path, attr_name = fully_qualified_name.rsplit(".", 1)
+    _check_module_allowed(module_path)
+    try:
+        logger.debug(
+            "Attempting to import '{attr_name}' from module '{module_path}'",
+            attr_name=attr_name,
+            module_path=module_path,
+        )
+        module = thread_safe_import(module_path)
+        resolved = getattr(module, attr_name)
+        if module_path == "builtins":
+            _check_builtin_is_type(resolved, fully_qualified_name)
+        return resolved
+    except (ImportError, AttributeError) as error:
+        logger.exception("Failed to import '{full_name}'", full_name=fully_qualified_name)
+        raise ImportError(f"Could not import '{fully_qualified_name}'") from error

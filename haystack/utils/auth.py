@@ -162,6 +162,10 @@ class TokenSecret(Secret):
             "Cannot deserialize token-based secret. Use an alternative secret type like environment variables."
         )
 
+    def __repr__(self) -> str:
+        # Hide the token so it can't leak through print/log/traceback formatting.
+        return f"TokenSecret(_token=<redacted>, _type={self._type!r})"
+
     def resolve_value(self) -> Any | None:
         """Return the token."""
         return self._token
