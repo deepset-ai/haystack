@@ -222,7 +222,7 @@ class AnswerBuilder:
                     else set(range(len(documents)))
                 )
 
-                for idx in doc_idxs:
+                for idx in sorted(doc_idxs):
                     try:
                         doc = documents[idx]
                     except IndexError:
