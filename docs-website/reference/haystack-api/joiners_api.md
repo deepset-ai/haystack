@@ -299,7 +299,9 @@ It supports different join modes:
 
 ```python
 from haystack import Pipeline, Document
-from haystack.components.embedders import SentenceTransformersTextEmbedder, SentenceTransformersDocumentEmbedder
+# Requires: pip install sentence-transformers-haystack
+from haystack_integrations.components.embedders.sentence_transformers import SentenceTransformersTextEmbedder
+from haystack_integrations.components.embedders.sentence_transformers import SentenceTransformersDocumentEmbedder
 from haystack.components.joiners import DocumentJoiner
 from haystack.components.retrievers import InMemoryBM25Retriever
 from haystack.components.retrievers import InMemoryEmbeddingRetriever

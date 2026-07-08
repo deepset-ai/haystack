@@ -45,6 +45,12 @@ docker run -d -p 8529:8529 \
   arangodb:3.12 arangod --vector-index
 ```
 
+The examples on this page use Sentence Transformers embedders that have moved to the `sentence-transformers-haystack` package. Install it to run the examples:
+
+```shell
+pip install sentence-transformers-haystack
+```
+
 ## Usage
 
 ### On its own
@@ -84,7 +90,7 @@ print(result["documents"][0].content)
 ```python
 from haystack import Document, Pipeline
 from haystack.document_stores.types import DuplicatePolicy
-from haystack.components.embedders import (
+from haystack_integrations.components.embedders.sentence_transformers import (
     SentenceTransformersDocumentEmbedder,
     SentenceTransformersTextEmbedder,
 )

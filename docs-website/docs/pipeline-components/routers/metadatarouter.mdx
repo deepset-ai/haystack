@@ -80,10 +80,18 @@ result = router.run(documents=streams)
 
 Below is an example of an indexing pipeline that converts text files to documents and uses the `DocumentLanguageClassifier` to detect the language of the text and add it to the documents' metadata. It then uses the `MetadataRouter` to forward only English language documents to the `DocumentWriter`. Documents of other languages will not be added to the `DocumentStore`.
 
+The examples on this page use language classification components that have moved to the `langdetect-haystack` package. Install it to run the examples:
+
+```shell
+pip install langdetect-haystack
+```
+
 ```python
 from haystack import Pipeline
 from haystack.components.file_converters import TextFileToDocument
-from haystack.components.classifiers import DocumentLanguageClassifier
+from haystack_integrations.components.classifiers.langdetect import (
+    DocumentLanguageClassifier,
+)
 from haystack.components.routers import MetadataRouter
 from haystack.components.writers import DocumentWriter
 from haystack.document_stores.in_memory import InMemoryDocumentStore

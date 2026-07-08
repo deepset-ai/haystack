@@ -27,6 +27,12 @@ description: "Use Supabase as a document store in Haystack, with vector search (
 pip install supabase-haystack
 ```
 
+The examples on this page use Sentence Transformers embedders that have moved to the `sentence-transformers-haystack` package. Install it to run the examples:
+
+```shell
+pip install sentence-transformers-haystack
+```
+
 ## SupabasePgvectorDocumentStore
 
 `SupabasePgvectorDocumentStore` is a thin wrapper around [`PgvectorDocumentStore`](./pgvectordocumentstore.mdx) with Supabase-specific defaults:
@@ -70,7 +76,7 @@ To learn more about the initialization parameters, see the [API docs](/reference
 ```python
 from haystack import Document, Pipeline
 from haystack.document_stores.types.policy import DuplicatePolicy
-from haystack.components.embedders import (
+from haystack_integrations.components.embedders.sentence_transformers import (
     SentenceTransformersTextEmbedder,
     SentenceTransformersDocumentEmbedder,
 )

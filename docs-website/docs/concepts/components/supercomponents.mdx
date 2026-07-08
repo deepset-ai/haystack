@@ -19,12 +19,20 @@ With this decorator, the `to_dict` and `from_dict` serialization is optional, as
 
 The custom HybridRetriever example SuperComponent below turns your query into embeddings, then runs both a BM25 search and an embedding-based search at the same time. It finally merges those two result sets and returns the combined documents.
 
+The examples on this page use Sentence Transformers embedders that have moved to the `sentence-transformers-haystack` package. Install it to run the examples:
+
+```shell
+pip install sentence-transformers-haystack
+```
+
 ```python
-# pip install haystack-ai datasets "sentence-transformers>=3.0.0"
+# pip install haystack-ai datasets sentence-transformers-haystack
 
 from haystack import Document, Pipeline, super_component
 from haystack.components.joiners import DocumentJoiner
-from haystack.components.embedders import SentenceTransformersTextEmbedder
+from haystack_integrations.components.embedders.sentence_transformers import (
+    SentenceTransformersTextEmbedder,
+)
 from haystack.components.retrievers import (
     InMemoryBM25Retriever,
     InMemoryEmbeddingRetriever,

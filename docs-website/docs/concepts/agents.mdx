@@ -76,11 +76,17 @@ export OPENAI_API_KEY=<your-openai-key>
 export SERPERDEV_API_KEY=<your-serperdev-key>
 ```
 
+The examples on this page use SerperDev web search component that have moved to the `serperdev-haystack` package. Install it to run the examples:
+
+```shell
+pip install serperdev-haystack
+```
+
 ```python
 from haystack.components.agents import Agent
 from haystack.components.generators.chat import OpenAIChatGenerator
 from haystack.components.generators.utils import print_streaming_chunk
-from haystack.components.websearch import SerperDevWebSearch
+from haystack_integrations.components.websearch.serperdev import SerperDevWebSearch
 from haystack.dataclasses import ChatMessage
 from haystack.tools import ComponentTool
 
