@@ -423,7 +423,6 @@ export default {
             'pipeline-components/generators/coherechatgenerator',
             'pipeline-components/generators/coheregenerator',
             'pipeline-components/generators/cometapichatgenerator',
-            'pipeline-components/generators/dalleimagegenerator',
             'pipeline-components/generators/fallbackchatgenerator',
             'pipeline-components/generators/googleaigeminichatgenerator',
             'pipeline-components/generators/googleaigeminigenerator',
@@ -445,6 +444,7 @@ export default {
             'pipeline-components/generators/openaichatgenerator',
             'pipeline-components/generators/openairesponseschatgenerator',
             'pipeline-components/generators/openaigenerator',
+            'pipeline-components/generators/openaiimagegenerator',
             'pipeline-components/generators/openrouterchatgenerator',
             'pipeline-components/generators/perplexitychatgenerator',
             'pipeline-components/generators/sagemakergenerator',
@@ -551,7 +551,6 @@ export default {
             id: 'pipeline-components/readers'
           },
           items: [
-            'pipeline-components/readers/extractivereader',
             'pipeline-components/readers/transformersextractivereader',
           ],
         },
