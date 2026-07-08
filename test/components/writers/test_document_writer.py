@@ -71,11 +71,17 @@ class TestDocumentWriter:
             DocumentWriter.from_dict(data)
 
     def test_from_dict_nonexisting_docstore(self):
+        # Use a type whose module passes the deserialization allowlist (haystack.*) but cannot be
+        # resolved, so we still exercise the "import failed" code path rather than the allowlist gate.
         data = {
             "type": "haystack.components.writers.document_writer.DocumentWriter",
-            "init_parameters": {"document_store": {"type": "Nonexisting.DocumentStore", "init_parameters": {}}},
+            "init_parameters": {
+                "document_store": {"type": "haystack.does.not.exist.DocumentStore", "init_parameters": {}}
+            },
         }
-        with pytest.raises(ImportError, match=r"Failed to deserialize 'document_store':.*Nonexisting\.DocumentStore"):
+        with pytest.raises(
+            ImportError, match=r"Failed to deserialize 'document_store':.*haystack\.does\.not\.exist\.DocumentStore"
+        ):
             DocumentWriter.from_dict(data)
 
     def test_run(self, in_memory_doc_store):

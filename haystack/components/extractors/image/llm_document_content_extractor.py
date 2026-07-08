@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import asyncio
 import json
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import replace
@@ -17,6 +18,7 @@ from haystack.core.serialization import component_to_dict
 from haystack.dataclasses import ImageContent, TextContent
 from haystack.dataclasses.chat_message import ChatMessage
 from haystack.utils import deserialize_chatgenerator_inplace
+from haystack.utils.async_utils import _execute_component_async
 from haystack.utils.misc import _parse_dict_from_json
 
 logger = logging.getLogger(__name__)
@@ -167,16 +169,38 @@ class LLMDocumentContentExtractor:
         self._document_to_image_content = DocumentToImageContent(
             file_path_meta_field=file_path_meta_field, root_path=root_path, detail=detail, size=size
         )
-        self._is_warmed_up = False
 
     def warm_up(self) -> None:
         """
-        Warm up the ChatGenerator if it has a warm_up method.
+        Warm up the underlying chat generator.
         """
-        if not self._is_warmed_up:
-            if hasattr(self._chat_generator, "warm_up"):
-                self._chat_generator.warm_up()
-            self._is_warmed_up = True
+        if hasattr(self._chat_generator, "warm_up"):
+            self._chat_generator.warm_up()
+
+    async def warm_up_async(self) -> None:
+        """
+        Warm up the underlying chat generator on the serving event loop.
+        """
+        if hasattr(self._chat_generator, "warm_up_async"):
+            await self._chat_generator.warm_up_async()
+        elif hasattr(self._chat_generator, "warm_up"):
+            self._chat_generator.warm_up()
+
+    def close(self) -> None:
+        """
+        Release the underlying chat generator's resources.
+        """
+        if hasattr(self._chat_generator, "close"):
+            self._chat_generator.close()
+
+    async def close_async(self) -> None:
+        """
+        Release the underlying chat generator's async resources.
+        """
+        if hasattr(self._chat_generator, "close_async"):
+            await self._chat_generator.close_async()
+        elif hasattr(self._chat_generator, "close"):
+            self._chat_generator.close()
 
     def to_dict(self) -> dict[str, Any]:
         """
@@ -271,6 +295,34 @@ class LLMDocumentContentExtractor:
 
         return result
 
+    async def _run_async(self, image_content: ImageContent | None) -> dict[str, Any]:
+        """
+        Execute the LLM inference asynchronously for each document.
+
+        :param image_content: The image content for one document, or None if conversion failed.
+        :returns:
+            The LLM response if successful, or a dictionary with an "error" key on failure.
+        """
+        if image_content is None:
+            return {"error": "Document has no content, skipping LLM call."}
+
+        # the prompt is the same for all documents, so we can set it up once here for each document
+        message = ChatMessage.from_user(content_parts=[TextContent(text=self.prompt), image_content])
+
+        try:
+            result = await _execute_component_async(self._chat_generator, messages=[message])
+        except Exception as e:
+            if self.raise_on_failure:
+                raise e
+            logger.exception(
+                "LLM {class_name} execution failed. Skipping metadata extraction. Failed with exception '{error}'.",
+                class_name=self._chat_generator.__class__.__name__,
+                error=e,
+            )
+            result = {"error": "LLM failed with exception: " + str(e)}
+
+        return result
+
     @staticmethod
     def _process_llm_results(document: Document, result: dict[str, Any]) -> tuple[Document, bool]:
         """
@@ -310,13 +362,53 @@ class LLMDocumentContentExtractor:
         if not documents:
             return {"documents": [], "failed_documents": []}
 
-        if not self._is_warmed_up:
-            self.warm_up()
+        self.warm_up()
 
         image_contents = self._document_to_image_content.run(documents=documents)["image_contents"]
 
         with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
             results = executor.map(self._run_on_thread, image_contents)
+
+        successful_documents = []
+        failed_documents = []
+        for document, result in zip(documents, results, strict=True):
+            doc, success = self._process_llm_results(document, result)
+            if success:
+                successful_documents.append(doc)
+            else:
+                failed_documents.append(doc)
+
+        return {"documents": successful_documents, "failed_documents": failed_documents}
+
+    @component.output_types(documents=list[Document], failed_documents=list[Document])
+    async def run_async(self, documents: list[Document]) -> dict[str, list[Document]]:
+        """
+        Asynchronously run extraction on image-based documents. One LLM call per document.
+
+        This is the asynchronous version of the `run` method. It has the same parameters and return values
+        but can be used with `await` in an async code. LLM calls are made concurrently, bounded by `max_workers`.
+        If the chat generator only implements a synchronous `run` method, it is executed in a thread to avoid
+        blocking the event loop.
+
+        :param documents: A list of image-based documents to process. Each must have a valid file path in its metadata.
+        :returns:
+            A dictionary with "documents" (successfully processed) and "failed_documents" (with failure metadata).
+        """
+        if not documents:
+            return {"documents": [], "failed_documents": []}
+
+        await self.warm_up_async()
+
+        image_contents = self._document_to_image_content.run(documents=documents)["image_contents"]
+
+        # Run the LLM on each image content, bounding concurrency per task so max_workers is enforced.
+        sem = asyncio.Semaphore(max(1, self.max_workers))
+
+        async def _bounded_run(image_content: ImageContent | None) -> dict[str, Any]:
+            async with sem:
+                return await self._run_async(image_content)
+
+        results = await asyncio.gather(*[_bounded_run(image_content) for image_content in image_contents])
 
         successful_documents = []
         failed_documents = []

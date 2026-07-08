@@ -1,0 +1,15 @@
+---
+features:
+  - |
+    Added a ``shared`` parameter to ``InMemoryDocumentStore``. When ``True`` (the default, matching previous
+    behavior), documents live in process-global storage shared across instances that use the same ``index``. When
+    ``False``, documents are kept instance-local and freed when the instance is garbage collected. Use
+    ``shared=False`` for stores that are created frequently (for example, one per request in a served application)
+    to avoid unbounded growth of the process-global storage.
+fixes:
+  - |
+    ``SearchableToolset`` now builds its internal BM25 ``InMemoryDocumentStore`` with ``shared=False``, so its
+    search index is freed together with the toolset instead of accumulating in ``InMemoryDocumentStore``'s
+    process-global storage. Previously, repeatedly constructing a ``SearchableToolset`` (for example, building an
+    ``Agent`` per request in a served application) leaked one storage partition per instance for the lifetime of
+    the process.

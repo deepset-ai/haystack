@@ -1,0 +1,10 @@
+---
+features:
+  - |
+    Added ``MockTextEmbedder`` and ``MockDocumentEmbedder``, embedders that return deterministic embeddings without
+    calling any API. They are zero-cost drop-in replacements for real embedders in tests, smoke tests, and quick
+    prototypes. By default each embedding is derived from a stable hash of the (prepared) text, so the same text
+    always yields the same unit-length embedding and different texts yield different embeddings, making the mocks
+    usable in retrieval pipelines and reproducible across runs and processes. A fixed ``embedding`` vector or a
+    custom ``embedding_fn`` callable can be provided instead. Both implement the full embedder interface, including
+    ``run``, ``run_async``, and serialization.
