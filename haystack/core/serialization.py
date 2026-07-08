@@ -290,7 +290,10 @@ def default_from_dict(cls: type[T], data: dict[str, Any]) -> T:
     :raises DeserializationError:
         If the `type` field in `data` is missing or it doesn't match the type of `cls`.
     """
-    init_params = data.get("init_parameters", {})
+    # Copy so that replacing serialized sub-objects (Secret/ComponentDevice/nested components) with their
+    # deserialized instances below does not mutate the caller's ``data`` dict in place. Without this, a second
+    # deserialization of the same dict would receive already-parsed objects instead of their serialized form.
+    init_params = dict(data.get("init_parameters", {}))
     if "type" not in data:
         raise DeserializationError("Missing 'type' in serialization data")
     if data["type"] != generate_qualified_class_name(cls):
