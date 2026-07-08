@@ -180,38 +180,44 @@ def test_serializing_and_deserializing_empty_structures(value, result):
                 "serialized_data": [
                     [
                         {
-                            "data": "Paris",
-                            "query": "What is the capital of France?",
-                            "documents": [
-                                {
-                                    "id": "1",
-                                    "content": "Paris is the capital of France",
-                                    "blob": None,
-                                    "meta": {},
-                                    "score": None,
-                                    "embedding": None,
-                                    "sparse_embedding": None,
-                                }
-                            ],
-                            "meta": {"page": 1},
+                            "type": "haystack.dataclasses.answer.GeneratedAnswer",
+                            "init_parameters": {
+                                "data": "Paris",
+                                "query": "What is the capital of France?",
+                                "documents": [
+                                    {
+                                        "id": "1",
+                                        "content": "Paris is the capital of France",
+                                        "blob": None,
+                                        "meta": {},
+                                        "score": None,
+                                        "embedding": None,
+                                        "sparse_embedding": None,
+                                    }
+                                ],
+                                "meta": {"page": 1},
+                            },
                         }
                     ],
                     [
                         {
-                            "data": "Berlin",
-                            "query": "What is the capital of Germany?",
-                            "documents": [
-                                {
-                                    "id": "2",
-                                    "content": "Berlin is the capital of Germany",
-                                    "blob": None,
-                                    "meta": {},
-                                    "score": None,
-                                    "embedding": None,
-                                    "sparse_embedding": None,
-                                }
-                            ],
-                            "meta": {"page": 1},
+                            "type": "haystack.dataclasses.answer.GeneratedAnswer",
+                            "init_parameters": {
+                                "data": "Berlin",
+                                "query": "What is the capital of Germany?",
+                                "documents": [
+                                    {
+                                        "id": "2",
+                                        "content": "Berlin is the capital of Germany",
+                                        "blob": None,
+                                        "meta": {},
+                                        "score": None,
+                                        "embedding": None,
+                                        "sparse_embedding": None,
+                                    }
+                                ],
+                                "meta": {"page": 1},
+                            },
                         }
                     ],
                 ],
@@ -305,20 +311,23 @@ def test_serialize_and_deserialize_value_with_schema_with_various_types():
             "list_of_dicts": [{"numbers": [1, 2, 3]}],
             "answers": [
                 {
-                    "data": "Paris",
-                    "query": "What is the capital of France?",
-                    "documents": [
-                        {
-                            "id": "2",
-                            "content": "Paris is the capital of France",
-                            "blob": None,
-                            "meta": {},
-                            "score": None,
-                            "embedding": None,
-                            "sparse_embedding": None,
-                        }
-                    ],
-                    "meta": {"page": 1},
+                    "type": "haystack.dataclasses.answer.GeneratedAnswer",
+                    "init_parameters": {
+                        "data": "Paris",
+                        "query": "What is the capital of France?",
+                        "documents": [
+                            {
+                                "id": "2",
+                                "content": "Paris is the capital of France",
+                                "blob": None,
+                                "meta": {},
+                                "score": None,
+                                "embedding": None,
+                                "sparse_embedding": None,
+                            }
+                        ],
+                        "meta": {"page": 1},
+                    },
                 }
             ],
         },
@@ -368,6 +377,20 @@ def test_deserialize_value_with_wrong_value():
         _deserialize_value_with_schema(
             {"serialization_schema": {"type": "test_base_serialization.CustomEnum"}, "serialized_data": "NOT_VALID"}
         )
+
+
+def test_deserialize_value_with_schema_class_not_importable():
+    with pytest.raises(
+        DeserializationError, match="Class 'test_base_serialization.NonExistentClass' not correctly imported"
+    ):
+        _deserialize_value_with_schema(
+            {"serialization_schema": {"type": "test_base_serialization.NonExistentClass"}, "serialized_data": {}}
+        )
+
+
+def test_deserialize_value_with_schema_class_name_without_module():
+    with pytest.raises(DeserializationError, match="Class 'NonExistentClass' not correctly imported"):
+        _deserialize_value_with_schema({"serialization_schema": {"type": "NonExistentClass"}, "serialized_data": {}})
 
 
 def test_serialize_and_deserialize_pydantic_model():
