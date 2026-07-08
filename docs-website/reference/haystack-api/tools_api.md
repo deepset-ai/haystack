@@ -31,20 +31,21 @@ Key features:
 
 To use ComponentTool, you first need a Haystack component - either an existing one or a new one you create.
 You can create a ComponentTool from the component by passing the component to the ComponentTool constructor.
-Below is an example of creating a ComponentTool from an existing SerperDevWebSearch component.
+Below is an example of creating a ComponentTool from an existing SerperDevWebSearch component
+from the `serperdev-haystack` integration package (`pip install serperdev-haystack`).
 
 ## Usage Example:
 
 <!-- test-ignore -->
 
 ```python
-from haystack import component, Pipeline
+from haystack import component
 from haystack.tools import ComponentTool
-from haystack.components.websearch import SerperDevWebSearch
 from haystack.utils import Secret
-from haystack.components.tools.tool_invoker import ToolInvoker
+from haystack.components.agents import Agent
 from haystack.components.generators.chat import OpenAIChatGenerator
 from haystack.dataclasses import ChatMessage
+from haystack_integrations.components.websearch.serperdev import SerperDevWebSearch
 
 # Create a SerperDev search component
 search = SerperDevWebSearch(api_key=Secret.from_env_var("SERPERDEV_API_KEY"), top_k=3)
@@ -56,18 +57,13 @@ tool = ComponentTool(
     description="Search the web for current information on any topic"  # Optional: defaults to component docstring
 )
 
-# Create pipeline with OpenAIChatGenerator and ToolInvoker
-pipeline = Pipeline()
-pipeline.add_component("llm", OpenAIChatGenerator(tools=[tool]))
-pipeline.add_component("tool_invoker", ToolInvoker(tools=[tool]))
-
-# Connect components
-pipeline.connect("llm.replies", "tool_invoker.messages")
+# Create an Agent with an OpenAIChatGenerator and the tool
+agent = Agent(chat_generator=OpenAIChatGenerator(), tools=[tool])
 
 message = ChatMessage.from_user("Use the web search tool to find information about Nikola Tesla")
 
-# Run pipeline
-result = pipeline.run({"llm": {"messages": [message]}})
+# Run the Agent
+result = agent.run(messages=[message])
 
 print(result)
 ```
@@ -232,7 +228,9 @@ print(tool)
 
 **Parameters:**
 
-- **function** (<code>Callable</code>) – The function to be converted into a Tool.
+- **function** (<code>Callable</code>) – The function to be converted into a Tool. May be either a regular function (assigned to the
+  resulting Tool's `function` field) or a coroutine function defined with `async def` (assigned
+  to `async_function`).
   The function must include type hints for all parameters.
   The function is expected to have basic python input types (str, int, float, bool, list, dict, tuple).
   Other input types may work but are not guaranteed.
@@ -446,9 +444,7 @@ Below is an example of creating a PipelineTool
 from haystack import Document, Pipeline
 from haystack.dataclasses import ChatMessage
 from haystack.document_stores.in_memory import InMemoryDocumentStore
-# Requires: pip install sentence-transformers-haystack
-from haystack_integrations.components.embedders.sentence_transformers import SentenceTransformersTextEmbedder
-from haystack_integrations.components.embedders.sentence_transformers import SentenceTransformersDocumentEmbedder
+from haystack.components.embedders import OpenAITextEmbedder, OpenAIDocumentEmbedder
 from haystack.components.generators.chat import OpenAIChatGenerator
 from haystack.components.retrievers import InMemoryEmbeddingRetriever
 from haystack.components.agents import Agent
@@ -456,7 +452,7 @@ from haystack.tools import PipelineTool
 
 # Initialize a document store and add some documents
 document_store = InMemoryDocumentStore()
-document_embedder = SentenceTransformersDocumentEmbedder(model="sentence-transformers/all-MiniLM-L6-v2")
+document_embedder = OpenAIDocumentEmbedder()
 documents = [
     Document(content="Nikola Tesla was a Serbian-American inventor and electrical engineer."),
     Document(
@@ -469,9 +465,7 @@ document_store.write_documents(docs_with_embeddings)
 
 # Build a simple retrieval pipeline
 retrieval_pipeline = Pipeline()
-retrieval_pipeline.add_component(
-    "embedder", SentenceTransformersTextEmbedder(model="sentence-transformers/all-MiniLM-L6-v2")
-)
+retrieval_pipeline.add_component("embedder", OpenAITextEmbedder())
 retrieval_pipeline.add_component("retriever", InMemoryEmbeddingRetriever(document_store=document_store))
 
 retrieval_pipeline.connect("embedder.embedding", "retriever.query_embedding")
@@ -508,7 +502,7 @@ print(result["messages"][-1].text)
 
 ```python
 __init__(
-    pipeline: Pipeline | AsyncPipeline,
+    pipeline: Pipeline,
     *,
     name: str,
     description: str,
@@ -525,7 +519,7 @@ Create a Tool instance from a Haystack pipeline.
 
 **Parameters:**
 
-- **pipeline** (<code>Pipeline | AsyncPipeline</code>) – The Haystack pipeline to wrap as a tool.
+- **pipeline** (<code>Pipeline</code>) – The Haystack pipeline to wrap as a tool.
 - **name** (<code>str</code>) – Name of the tool.
 - **description** (<code>str</code>) – Description of the tool.
 - **input_mapping** (<code>dict\[str, list\[str\]\] | None</code>) – A dictionary mapping component input names to pipeline input socket paths.
@@ -645,36 +639,50 @@ Bases: <code>Toolset</code>
 
 Dynamic tool discovery from large catalogs using BM25 search.
 
-This Toolset enables LLMs to discover and use tools from large catalogs through
-BM25-based search. Instead of exposing all tools at once (which can overwhelm the
-LLM context), it provides a `search_tools` bootstrap tool that allows the LLM to
-find and load specific tools as needed.
+This Toolset enables LLMs to discover and use tools from large catalogs through BM25-based search.
+Instead of exposing all tools at once (which can overwhelm the LLM context), it provides a `search_tools` bootstrap
+tool that allows the LLM to find and load specific tools as needed.
 
-For very small catalogs (below `search_threshold`), acts as a simple passthrough
-exposing all tools directly without any discovery mechanism.
+For very small catalogs (below `search_threshold`), acts as a simple passthrough exposing all tools directly
+without any discovery mechanism.
 
 ### Usage Example
 
 ```python
+from typing import Annotated
+
 from haystack.components.agents import Agent
 from haystack.components.generators.chat import OpenAIChatGenerator
 from haystack.dataclasses import ChatMessage
-from haystack.tools import Tool, SearchableToolset
+from haystack.tools import SearchableToolset, tool
 
-# Create a catalog of tools
-catalog = [
-    Tool(name="get_weather", description="Get weather for a city",
-         parameters={}, function=lambda: None),
-    Tool(name="search_web", description="Search the web",
-         parameters={}, function=lambda: None),
-    # ... 100s more tools
-]
-toolset = SearchableToolset(catalog=catalog)
+@tool
+def get_weather(city: Annotated[str, "The city to get the weather for"]) -> str:
+    '''Get the current weather for a city.'''
+    return f"The weather in {city} is 22°C and sunny."
+
+@tool
+def search_web(query: Annotated[str, "The query to search the web for"]) -> str:
+    '''Search the web for a query.'''
+    return f"Top result for '{query}': ..."
+
+@tool
+def convert_currency(
+    amount: Annotated[float, "The amount to convert"],
+    to_currency: Annotated[str, "The currency to convert to, e.g. 'EUR'"],
+) -> str:
+    '''Convert an amount in USD to another currency.'''
+    return f"{amount} USD is {amount * 0.9} {to_currency}"
+
+# search_threshold=2 means a catalog of 2+ tools activates discovery: the agent only sees the
+# `search_tools` tool and must search to load the others (set it higher for larger catalogs).
+toolset = SearchableToolset(catalog=[get_weather, search_web, convert_currency], search_threshold=2)
 
 agent = Agent(chat_generator=OpenAIChatGenerator(), tools=toolset)
 
 # The agent is initially provided only with the search_tools tool and will use it to find relevant tools.
 result = agent.run(messages=[ChatMessage.from_user("What's the weather in Milan?")])
+print(result["last_message"].text)
 ```
 
 #### __init__
@@ -697,12 +705,11 @@ Initialize the SearchableToolset.
 
 - **catalog** (<code>ToolsType</code>) – Source of tools - a list of Tools, list of Toolsets, or a single Toolset.
 - **top_k** (<code>int</code>) – Default number of results for search_tools.
-- **search_threshold** (<code>int</code>) – Minimum catalog size to activate search.
-  If catalog has fewer tools, acts as passthrough (all tools visible).
-  Default is 8.
+- **search_threshold** (<code>int</code>) – Minimum catalog size to activate search. If catalog has fewer tools, acts as
+  passthrough (all tools visible). Default is 8.
 - **search_tool_name** (<code>str</code>) – Custom name for the bootstrap search tool. Default is "search_tools".
-- **search_tool_description** (<code>str | None</code>) – Custom description for the bootstrap search tool.
-  If not provided, uses a default description.
+- **search_tool_description** (<code>str | None</code>) – Custom description for the bootstrap search tool. If not provided, uses a
+  default description.
 - **search_tool_parameters_description** (<code>dict\[str, str\] | None</code>) – Custom descriptions for the bootstrap search tool's parameters.
   Keys must be a subset of `{"tool_keywords", "k"}`.
   Example: `{"tool_keywords": "Keywords to find tools, e.g. 'email send'"}`
@@ -723,10 +730,29 @@ warm_up() -> None
 
 Prepare the toolset for use.
 
-Warms up child toolsets first (so lazy toolsets like MCPToolset can connect),
-then flattens the catalog, indexes it, and creates the search_tools bootstrap tool.
-In passthrough mode, it warms up all catalog tools directly.
-Must be called before using the toolset with an Agent.
+Warms up the catalog (so lazy toolsets like MCPToolset can connect) and flattens it. Above the passthrough
+threshold, it also indexes the catalog and creates the search_tools bootstrap tool.
+
+This method is idempotent: it only warms up the toolset the first time it is called.
+
+**Raises:**
+
+- <code>ValueError</code> – If the flattened catalog contains tools with duplicate names.
+
+#### get_selectable_tools
+
+```python
+get_selectable_tools() -> list[Tool]
+```
+
+Return the full catalog of tools that can be selected by name.
+
+Iteration only exposes the search tool plus already-discovered tools, but name-based selection can target
+any tool in the catalog, so this returns the entire flattened catalog (warming up first if needed).
+
+**Returns:**
+
+- <code>list\[Tool\]</code> – The flattened catalog of tools.
 
 #### clear
 
@@ -736,9 +762,24 @@ clear() -> None
 
 Clear all discovered tools.
 
-This method allows resetting the toolset's discovered tools between agent runs
-when the same toolset instance is reused. This can be useful for long-running
-applications to control memory usage or to start fresh searches.
+This method allows resetting the toolset's discovered tools between agent runs when the same toolset instance
+is reused. This can be useful for long-running applications to control memory usage or to start fresh searches.
+
+#### spawn
+
+```python
+spawn() -> SearchableToolset
+```
+
+Return an isolated copy for a single run.
+
+The copy shares the read-only catalog and BM25 index but gets fresh discovered tools and name selection,
+plus a bootstrap search tool bound to the copy. This way concurrent runs sharing the same configured
+SearchableToolset don't share discovered tools or collide on the active selection.
+
+**Returns:**
+
+- <code>SearchableToolset</code> – A run-scoped copy of this SearchableToolset.
 
 #### to_dict
 
@@ -768,6 +809,130 @@ Deserialize a toolset from a dictionary.
 
 - <code>SearchableToolset</code> – New SearchableToolset instance.
 
+**Raises:**
+
+- <code>TypeError</code> – If a serialized catalog entry is not a subclass of Tool or Toolset.
+
+## skills/skill_toolset
+
+### SkillToolset
+
+Bases: <code>Toolset</code>
+
+A Toolset that lets an Agent discover and read skills via progressive disclosure.
+
+A skill is a directory (or equivalent storage unit) containing a `SKILL.md` file with YAML frontmatter
+(`name` and `description`) and a markdown body of instructions. Skills may bundle additional files
+(reference docs, examples, templates).
+
+- On `warm_up`, the name and description of every discovered skill are baked into the `load_skill` tool
+  description so the model knows which skills exist without any system prompt injection.
+- `load_skill` returns a skill's full instructions on demand, plus a manifest of its bundled files.
+- `read_skill_file` reads a bundled file on demand.
+
+### Usage example
+
+```python
+from haystack.components.agents import Agent
+from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.dataclasses import ChatMessage
+from haystack.tools import SkillToolset
+from haystack.skill_stores.file_system import FileSystemSkillStore
+
+store = FileSystemSkillStore("skills/")
+skills_toolset = SkillToolset(store)
+agent = Agent(chat_generator=OpenAIChatGenerator(), tools=skills_toolset)
+result = agent.run(messages=[ChatMessage.from_user("Fill in this PDF form for me.")])
+```
+
+Expected filesystem layout:
+
+```
+skills/
+  pdf-forms/
+    SKILL.md            # frontmatter (name, description) + markdown instructions
+    reference/forms.md
+```
+
+The tool names `load_skill` and `read_skill_file` are fixed, so an `Agent` can use at most one
+`SkillToolset`. To serve skills from multiple sources, back a single toolset with a custom store that
+merges them.
+
+#### __init__
+
+```python
+__init__(store: SkillStore) -> None
+```
+
+Initialize the SkillToolset.
+
+Constructing the toolset does not read any skills. The store is queried for the available skills on
+`warm_up()`, so stores that do I/O (reading a directory, connecting to a database) stay cheap to
+construct.
+
+The `load_skill` and `read_skill_file` tools are created right away, so the toolset can be used as a
+collection (length, membership checks, iteration) immediately.
+
+**Parameters:**
+
+- **store** (<code>SkillStore</code>) – A `haystack.skill_stores.types.SkillStore` instance to back this toolset.
+
+#### skills
+
+```python
+skills: dict[str, SkillInfo]
+```
+
+Mapping of skill name to its metadata. Triggers `warm_up()` on first access if not already warmed up.
+
+#### warm_up
+
+```python
+warm_up() -> None
+```
+
+Discover the available skills from the store and bake the catalog into the `load_skill` description.
+
+Only the description content is dynamic, so the (static) tools created in `__init__` are reused; this
+refreshes `load_skill`'s description once the catalog is known. Idempotent: repeated calls after the
+first are no-ops.
+
+#### add
+
+```python
+add(tool: Tool | Toolset) -> None
+```
+
+Adding tools is not supported: a SkillToolset's tools are fixed and defined by its store.
+
+#### to_dict
+
+```python
+to_dict() -> dict[str, Any]
+```
+
+Serialize the toolset to a dictionary.
+
+**Returns:**
+
+- <code>dict\[str, Any\]</code> – Dictionary representation of the toolset.
+
+#### from_dict
+
+```python
+from_dict(data: dict[str, Any]) -> SkillToolset
+```
+
+Deserialize a toolset from a dictionary.
+
+**Parameters:**
+
+- **data** (<code>dict\[str, Any\]</code>) – Dictionary representation of the toolset, as produced by `to_dict`.
+
+**Returns:**
+
+- <code>SkillToolset</code> – A new SkillToolset instance.
+
 ## tool
 
 ### Tool
@@ -787,8 +952,11 @@ pipeline/agent setup.
 - **name** (<code>str</code>) – Name of the Tool.
 - **description** (<code>str</code>) – Description of the Tool.
 - **parameters** (<code>dict\[str, Any\]</code>) – A JSON schema defining the parameters expected by the Tool.
-- **function** (<code>Callable</code>) – The function that will be invoked when the Tool is called.
-  Must be a synchronous function; async functions are not supported.
+- **function** (<code>Callable | None</code>) – The synchronous function invoked by `Tool.invoke`. Must be a regular function — coroutine functions should
+  be passed to `async_function` instead. Either `function` or `async_function` (or both) must be set.
+- **async_function** (<code>Callable | None</code>) – Optional coroutine function awaited by `Tool.invoke_async`. When only `async_function` is set, `invoke` raises
+  a `ToolInvocationError`. When only `function` is set, `invoke_async` falls back to running `function` in a
+  worker thread via `asyncio.to_thread`.
 - **outputs_to_string** (<code>dict\[str, Any\] | None</code>) – Optional dictionary defining how tool outputs should be converted into string(s) or results.
   If not provided, the tool result is converted to a string using a default handler.
 
@@ -846,8 +1014,10 @@ Example:
 
 **Raises:**
 
-- <code>ValueError</code> – If `function` is async, if `parameters` is not a valid JSON schema, or if the
-  `outputs_to_state`, `outputs_to_string`, or `inputs_from_state` configurations are invalid.
+- <code>ValueError</code> – If neither `function` nor `async_function` is provided, if `function` is a
+  coroutine function, if `async_function` is not a coroutine function, if `parameters` is not a
+  valid JSON schema, or if the `outputs_to_state`, `outputs_to_string`, or `inputs_from_state`
+  configurations are invalid.
 - <code>TypeError</code> – If any configuration value in `outputs_to_state`, `outputs_to_string`, or
   `inputs_from_state` has the wrong type.
 
@@ -877,7 +1047,27 @@ as it may be called multiple times.
 invoke(**kwargs: Any) -> Any
 ```
 
-Invoke the Tool with the provided keyword arguments.
+Invoke the Tool synchronously with the provided keyword arguments.
+
+**Raises:**
+
+- <code>ToolInvocationError</code> – If the Tool has no sync `function`, or if the underlying call
+  raises an exception.
+
+#### invoke_async
+
+```python
+invoke_async(**kwargs: Any) -> Any
+```
+
+Invoke the Tool asynchronously with the provided keyword arguments.
+
+If `async_function` is set, it is awaited directly. Otherwise the sync `function` is dispatched to a worker
+thread via `asyncio.to_thread`, which propagates the current context to the worker.
+
+**Raises:**
+
+- <code>ToolInvocationError</code> – If the underlying call raises an exception.
 
 #### to_dict
 
@@ -922,100 +1112,62 @@ Toolset serves two main purposes:
    Example:
 
 ```python
-from haystack.tools import Tool, Toolset
-from haystack.components.tools import ToolInvoker
+from typing import Annotated
+from haystack.tools import tool, Toolset
+from haystack.components.agents import Agent
+from haystack.components.generators.chat import OpenAIChatGenerator
 
-# Define math functions
-def add_numbers(a: int, b: int) -> int:
+# Create tools with the @tool decorator (the recommended way)
+@tool
+def add(a: Annotated[int, "first number"], b: Annotated[int, "second number"]) -> int:
+    '''Add two numbers.'''
     return a + b
 
-def subtract_numbers(a: int, b: int) -> int:
+@tool
+def subtract(a: Annotated[int, "first number"], b: Annotated[int, "second number"]) -> int:
+    '''Subtract b from a.'''
     return a - b
 
-# Create tools with proper schemas
-add_tool = Tool(
-    name="add",
-    description="Add two numbers",
-    parameters={
-        "type": "object",
-        "properties": {
-            "a": {"type": "integer"},
-            "b": {"type": "integer"}
-        },
-        "required": ["a", "b"]
-    },
-    function=add_numbers
-)
-
-subtract_tool = Tool(
-    name="subtract",
-    description="Subtract b from a",
-    parameters={
-        "type": "object",
-        "properties": {
-            "a": {"type": "integer"},
-            "b": {"type": "integer"}
-        },
-        "required": ["a", "b"]
-    },
-    function=subtract_numbers
-)
-
 # Create a toolset with the math tools
-math_toolset = Toolset([add_tool, subtract_tool])
+math_toolset = Toolset([add, subtract])
 
-# Use the toolset with a ToolInvoker or ChatGenerator component
-invoker = ToolInvoker(tools=math_toolset)
+# Use the toolset with an Agent
+agent = Agent(chat_generator=OpenAIChatGenerator(), tools=math_toolset)
 ```
 
 2. Base class for dynamic tool loading:
-   By subclassing Toolset, you can create implementations that dynamically load tools
-   from external sources like OpenAPI URLs, MCP servers, or other resources.
+   By subclassing Toolset, you can create implementations that dynamically load tools from external sources like
+   OpenAPI URLs, MCP servers, or other resources.
 
    Example:
 
 ```python
+from typing import Annotated
 from haystack.core.serialization import generate_qualified_class_name
-from haystack.tools import Tool, Toolset
-from haystack.components.tools import ToolInvoker
+from haystack.tools import tool, Toolset
+from haystack.components.agents import Agent
+from haystack.components.generators.chat import OpenAIChatGenerator
 
 class CalculatorToolset(Toolset):
     '''A toolset for calculator operations.'''
 
     def __init__(self) -> None:
-        tools = self._create_tools()
-        super().__init__(tools)
+        super().__init__(self._create_tools())
 
     def _create_tools(self):
-        # These Tool instances are obviously defined statically and for illustration purposes only.
+        # These tools are defined statically for illustration purposes only.
         # In a real-world scenario, you would dynamically load tools from an external source here.
-        tools = []
-        add_tool = Tool(
-            name="add",
-            description="Add two numbers",
-            parameters={
-                "type": "object",
-                "properties": {"a": {"type": "integer"}, "b": {"type": "integer"}},
-                "required": ["a", "b"],
-            },
-            function=lambda a, b: a + b,
-        )
+        @tool
+        def add(a: Annotated[int, "first number"], b: Annotated[int, "second number"]) -> int:
+            '''Add two numbers.'''
+            return a + b
 
-        multiply_tool = Tool(
-            name="multiply",
-            description="Multiply two numbers",
-            parameters={
-                "type": "object",
-                "properties": {"a": {"type": "integer"}, "b": {"type": "integer"}},
-                "required": ["a", "b"],
-            },
-            function=lambda a, b: a * b,
-        )
+        @tool
+        def multiply(a: Annotated[int, "first number"], b: Annotated[int, "second number"]) -> int:
+            '''Multiply two numbers.'''
+            return a * b
 
-        tools.append(add_tool)
-        tools.append(multiply_tool)
-
-        return tools
+        return [add, multiply]
 
     def to_dict(self):
         return {
@@ -1027,21 +1179,56 @@ class CalculatorToolset(Toolset):
     def from_dict(cls, data):
         return cls()  # Recreate the tools dynamically during deserialization
 
-# Create the dynamic toolset and use it with ToolInvoker
+# Create the dynamic toolset and use it with an Agent
 calculator_toolset = CalculatorToolset()
-invoker = ToolInvoker(tools=calculator_toolset)
+agent = Agent(chat_generator=OpenAIChatGenerator(), tools=calculator_toolset)
 ```
 
-Toolset implements the collection interface (__iter__, __contains__, __len__, __getitem__),
-making it behave like a list of Tools. This makes it compatible with components that expect
-iterable tools, such as ToolInvoker or Haystack chat generators.
+Toolset implements the collection interface (__iter__, __contains__, __len__, __getitem__), making it behave like
+a list of Tools. This makes it compatible with components that expect iterable tools, such as Agent or Haystack
+chat generators.
 
 When implementing a custom Toolset subclass for dynamic tool loading:
 
 - Perform the dynamic loading in the __init__ method
 - Override to_dict() and from_dict() methods if your tools are defined dynamically
-- Serialize endpoint descriptors rather than tool instances if your tools
-  are loaded from external sources
+- Serialize endpoint descriptors rather than tool instances if your tools are loaded from external sources
+
+#### get_selectable_tools
+
+```python
+get_selectable_tools() -> list[Tool]
+```
+
+Return the full set of tools that can be selected by name, ignoring any active name filter.
+
+This differs from iteration, which yields only the tools currently exposed (and respects the name filter).
+Override this when a Toolset's iteration does not surface every selectable tool, so name-based selection
+can still target the full set.
+
+Warms up the Toolset first if needed, so lazily loaded tools (those a Toolset fetches in `warm_up()`)
+are available for selection.
+
+**Returns:**
+
+- <code>list\[Tool\]</code> – The list of tools available for name-based selection.
+
+#### spawn
+
+```python
+spawn() -> Toolset
+```
+
+Return an isolated copy of this Toolset for a single run.
+
+The copy shares this Toolset's read-only state (its tools and any warmed-up resources) but gets fresh
+run-scoped state, so concurrent runs that share the same configured Toolset don't corrupt each other (for
+example, one run's name selection leaking into another). Warms up first if needed so the copy shares the
+warmed state. Subclasses with additional run-scoped state should override this.
+
+**Returns:**
+
+- <code>Toolset</code> – A run-scoped copy of this Toolset.
 
 #### warm_up
 
@@ -1070,19 +1257,32 @@ class MCPToolset(Toolset):
         self.mcp_connection = establish_connection(self.server_url)
 ```
 
-This method should be idempotent, as it may be called multiple times.
+This method is idempotent: it only warms up the tools the first time it is called.
+Subclasses overriding it should preserve this contract (for example by guarding on
+`self._is_warmed_up`).
 
 #### add
 
 ```python
-add(tool: Union[Tool, Toolset]) -> None
+add(tool: Tool | Toolset) -> None
 ```
 
 Add a new Tool or merge another Toolset.
 
+If this Toolset has already been warmed up, the newly added Tool (or the tools of the
+added Toolset) are warmed up immediately so they are ready to use without requiring a
+second `warm_up()` call on the whole Toolset.
+
+Note: adding a Toolset flattens it into its individual tools, so this is only recommended
+for Toolsets that don't manage shared resources in their `warm_up()` (or `__init__`).
+For example, combining with an `MCPToolset`, which owns a shared connection, is not
+recommended: the connection's lifecycle would no longer be managed by the original
+Toolset. In those cases combine Toolsets with `+` (which preserves each Toolset as a
+unit via `_ToolsetWrapper`) instead.
+
 **Parameters:**
 
-- **tool** (<code>Union\[Tool, Toolset\]</code>) – A Tool instance or another Toolset to add
+- **tool** (<code>Tool | Toolset</code>) – A Tool instance or another Toolset to add
 
 **Raises:**
 
