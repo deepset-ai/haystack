@@ -70,6 +70,19 @@ Only the frontmatter of each `SKILL.md` is read at warm-up to build the catalog;
 
 `read_skill_file` returns text files as strings, images as [`ImageContent`](../concepts/data-classes/imagecontent.mdx), and PDFs as [`FileContent`](../concepts/data-classes/filecontent.mdx). Image and file results are passed to the model as content parts of the tool result instead of being converted to a string, so an `Agent` backed by a multimodal chat generator that supports these inputs (for example, `OpenAIResponsesChatGenerator`) can read a skill's visual assets — such as a reference screenshot or a showcase PDF — directly. Binary files that are neither images nor PDFs are rejected with an error.
 
+### Executing bundled scripts
+
+`SkillToolset` only *reads* skills — `load_skill` and `read_skill_file` never execute anything. If your skills bundle executable scripts (for example, a Python helper that the instructions tell the model to run), pass a script-execution tool of your own to the `Agent` alongside the toolset:
+
+```python
+agent = Agent(
+    chat_generator=OpenAIChatGenerator(),
+    tools=[skills_toolset, run_shell_command_tool],  # your own execution tool
+)
+```
+
+The agent can then read a bundled script with `read_skill_file` and run it through your execution tool. Since such a tool runs model-chosen commands, scope it carefully — restrict what it can execute, sandbox it, or guard it with a [Human in the Loop](../pipeline-components/agents-1/human-in-the-loop.mdx) confirmation strategy.
+
 ## Usage
 
 ### With an Agent
