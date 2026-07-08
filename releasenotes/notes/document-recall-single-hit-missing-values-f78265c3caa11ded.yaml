@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Fixed ``DocumentRecallEvaluator`` in ``single_hit`` mode reporting a false recall of 1.0 when the
+    configured ``document_comparison_field`` is missing (or empty) on all documents. Missing/empty
+    comparison values are now excluded before matching, so the score is 0.0 in that case, mirroring
+    the behavior of ``multi_hit`` mode.

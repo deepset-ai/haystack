@@ -117,6 +117,20 @@ class DocumentRecallEvaluator:
         unique_retrievals = {self._get_comparison_value(p) for p in retrieved_documents}
         retrieved_ground_truths = unique_truths.intersection(unique_retrievals)
 
+        if not unique_truths or unique_truths <= {"", None}:
+            logger.warning(
+                "There are no ground truth documents or none of them contain a valid comparison value. "
+                "Score will be set to 0."
+            )
+            return 0.0
+
+        if not unique_retrievals or unique_retrievals <= {"", None}:
+            logger.warning(
+                "There are no retrieved documents or none of them contain a valid comparison value. "
+                "Score will be set to 0."
+            )
+            return 0.0
+
         return float(len(retrieved_ground_truths) > 0)
 
     def _recall_multi_hit(self, ground_truth_documents: list[Document], retrieved_documents: list[Document]) -> float:
