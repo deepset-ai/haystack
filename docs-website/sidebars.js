@@ -312,6 +312,8 @@ export default {
             'pipeline-components/embedders/jinatextembedder',
             'pipeline-components/embedders/mistraldocumentembedder',
             'pipeline-components/embedders/mistraltextembedder',
+            'pipeline-components/embedders/mockdocumentembedder',
+            'pipeline-components/embedders/mocktextembedder',
             'pipeline-components/embedders/nvidiadocumentembedder',
             'pipeline-components/embedders/nvidiatextembedder',
             'pipeline-components/embedders/ollamadocumentembedder',
