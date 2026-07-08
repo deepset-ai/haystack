@@ -182,9 +182,12 @@ def _create_tool_span(tool: Tool, tool_call: ToolCall) -> Any:
     """
     Create one tracing span for a single tool call, nested under the currently active span.
 
-    Both OpenTelemetry and Langfuse expect a single tool call per span, so each call gets its own span rather than
-    grouping all of a step's calls together. The span is tagged with the tool's identity; the caller adds the call
-    arguments and result as content tags.
+    The established standard for tracing agents is one span per tool call, so each call gets its own span rather than
+    grouping all of a step's calls together. The OpenTelemetry GenAI semantic conventions codify this with a dedicated
+    "execute tool" span per invocation
+    (https://github.com/open-telemetry/semantic-conventions-genai/blob/main/docs/gen-ai/gen-ai-agent-spans.md#execute-tool-span),
+    and tracing backends such as Langfuse follow the same model. The span is tagged with the tool's identity; the caller
+    adds the call arguments and result as content tags.
     """
     return tracing.tracer.trace(
         "haystack.agent.step.tool",
