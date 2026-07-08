@@ -117,32 +117,19 @@ def _get_component_param_descriptions(component: Any) -> tuple[str, dict[str, st
     # Get descriptions from the component's run method
     short_desc, param_descriptions = _get_param_descriptions(component.run)
 
-    # If it's a SuperComponent, enhance the descriptions from the original components
+    # If it's a SuperComponent, enhance the parameter descriptions from the original components
     if isinstance(component, _SuperComponent):
-        # Collect descriptions from components in the pipeline
-        component_descriptions = []
-        processed_components = set()
-
-        # First gather descriptions from all components that have inputs mapped
         for super_param_name, pipeline_paths in component.input_mapping.items():
             # Collect descriptions from all mapped components
             descriptions = []
             for path in pipeline_paths:
                 try:
-                    # Get the component and socket this input is mapped fromq
+                    # Get the component and socket this input is mapped from
                     comp_name, socket_name = component._split_component_path(path)
                     pipeline_component = component.pipeline.get_component(comp_name)
 
-                    # Get run method descriptions for this component
-                    run_desc, run_param_descriptions = _get_param_descriptions(pipeline_component.run)
-
-                    # Don't add the same component description multiple times
-                    if comp_name not in processed_components:
-                        processed_components.add(comp_name)
-                        if run_desc:
-                            component_descriptions.append(f"'{comp_name}': {run_desc}")
-
                     # Add parameter description if available
+                    _, run_param_descriptions = _get_param_descriptions(pipeline_component.run)
                     if input_param_mapping := run_param_descriptions.get(socket_name):
                         descriptions.append(f"Provided to the '{comp_name}' component as: '{input_param_mapping}'")
                 except Exception as e:
@@ -153,18 +140,10 @@ def _get_component_param_descriptions(component: Any) -> tuple[str, dict[str, st
                         e=str(e),
                     )
 
-            # We don't only handle a one to one description mapping of input parameters, but a one to many mapping.
-            # i.e. for a combined_input parameter description:
-            # super_comp = SuperComponent(
-            #   pipeline=pipeline,
-            #   input_mapping={"combined_input": ["comp_a.query", "comp_b.text"]},
-            # )
+            # A single SuperComponent input can map to multiple pipeline components, e.g.
+            # input_mapping={"combined_input": ["comp_a.query", "comp_b.text"]}
             if descriptions:
                 param_descriptions[super_param_name] = ", and ".join(descriptions) + "."
-
-        # We also create a combined description for the SuperComponent based on its components
-        if component_descriptions:
-            short_desc = f"A component that combines: {', '.join(component_descriptions)}"
 
     return short_desc, param_descriptions
 
