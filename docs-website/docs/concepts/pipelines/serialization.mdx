@@ -123,7 +123,7 @@ allow_deserialization_module("mypkg")
 export HAYSTACK_DESERIALIZATION_ALLOWLIST="mypkg.*,otherpkg.*"
 ```
 
-Patterns are matched as prefixes (`"mypkg"` matches `mypkg` and any of its submodules) or, if they contain `*`, `?`, or `[`, using `fnmatch` rules.
+Patterns are matched as prefixes by default (`"mypkg"` matches `mypkg` and any of its submodules), or as `fnmatch` globs if they contain `*`, `?`, or `[` somewhere other than a trailing `.*`. A trailing `.*` is treated as a prefix match, so `"mypkg"` and `"mypkg.*"` behave identically.
 
 If the source of the serialized data is fully trusted, you can bypass the allowlist entirely with `unsafe=True`:
 
