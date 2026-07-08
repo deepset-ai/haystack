@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+from copy import deepcopy
 from dataclasses import asdict, dataclass, field
 from typing import Any, Optional, Protocol, runtime_checkable
 
@@ -79,6 +80,10 @@ class ExtractedAnswer:
         :returns:
             Deserialized object.
         """
+        # Deep-copy so `from_dict` stays side-effect free: the nested replacements below
+        # otherwise mutate the caller's dict in place, corrupting it for reuse (a second
+        # deserialization of the same dict would then receive already-parsed objects).
+        data = deepcopy(data)
         init_params = data.get("init_parameters", {})
         if (doc := init_params.get("document")) is not None:
             data["init_parameters"]["document"] = Document.from_dict(doc)
@@ -133,6 +138,10 @@ class GeneratedAnswer:
         :returns:
             Deserialized object.
         """
+        # Deep-copy so `from_dict` stays side-effect free: the nested replacements below
+        # otherwise mutate the caller's dict in place, corrupting it for reuse (a second
+        # deserialization of the same dict would then receive already-parsed objects).
+        data = deepcopy(data)
         init_params = data.get("init_parameters", {})
 
         if (documents := init_params.get("documents")) is not None:
