@@ -63,11 +63,19 @@ document_writer.run(documents=documents)
 
 Below is an example of an indexing pipeline that first uses the `SentenceTransformersDocumentEmbedder` to create embeddings of documents and then use the `DocumentWriter` to write the documents to an `InMemoryDocumentStore`:
 
+The examples on this page use Sentence Transformers embedders that have moved to the `sentence-transformers-haystack` package. Install it to run the examples:
+
+```shell
+pip install sentence-transformers-haystack
+```
+
 ```python
 from haystack.pipeline import Pipeline
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.document_stores.types import DuplicatePolicy
-from haystack.components.embedders import SentenceTransformersDocumentEmbedder
+from haystack_integrations.components.embedders.sentence_transformers import (
+    SentenceTransformersDocumentEmbedder,
+)
 from haystack.components.writers import DocumentWriter
 
 documents = [

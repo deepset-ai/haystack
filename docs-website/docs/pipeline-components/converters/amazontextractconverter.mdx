@@ -72,7 +72,6 @@ from haystack_integrations.components.converters.amazon_textract import (
 )
 
 converter = AmazonTextractConverter(feature_types=["TABLES", "FORMS"])
-converter.warm_up()
 result = converter.run(sources=["invoice.pdf"])
 documents = result["documents"]
 raw_responses = result["raw_textract_response"]

@@ -88,11 +88,19 @@ print(results["llm"]["replies"])
 </TabItem>
 <TabItem value="huggingface" label="Hugging Face">
 
-[HuggingFaceAPIChatGenerator](../pipeline-components/generators/huggingfaceapichatgenerator.mdx) is included in the `haystack-ai` package. You can get a [free Hugging Face token](https://huggingface.co/settings/tokens) to use the Serverless Inference API.
+[HuggingFaceAPIChatGenerator](../pipeline-components/generators/huggingfaceapichatgenerator.mdx) is included in the `huggingface-api-haystack` package. You can get a [free Hugging Face token](https://huggingface.co/settings/tokens) to use the Serverless Inference API.
+
+The examples on this page use the Hugging Face API components and the SerperDev web search component, which have moved to the `huggingface-api-haystack` and `serperdev-haystack` packages. Install them to run the examples:
+
+```shell
+pip install huggingface-api-haystack serperdev-haystack
+```
 
 ```python
 from haystack import Pipeline, Document
-from haystack.components.generators.chat import HuggingFaceAPIChatGenerator
+from haystack_integrations.components.generators.huggingface_api import (
+    HuggingFaceAPIChatGenerator,
+)
 from haystack.components.retrievers import InMemoryBM25Retriever
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.components.builders import ChatPromptBuilder
@@ -389,7 +397,7 @@ from haystack.components.agents import Agent
 from haystack.components.generators.chat import OpenAIChatGenerator
 from haystack.dataclasses import ChatMessage
 from haystack.tools import ComponentTool
-from haystack.components.websearch import SerperDevWebSearch
+from haystack_integrations.components.websearch.serperdev import SerperDevWebSearch
 from haystack.utils import Secret
 
 search_tool = ComponentTool(component=SerperDevWebSearch())
@@ -411,14 +419,16 @@ print(result["last_message"].text)
 </TabItem>
 <TabItem value="huggingface" label="Hugging Face">
 
-[HuggingFaceAPIChatGenerator](../pipeline-components/generators/huggingfaceapichatgenerator.mdx) is included in the `haystack-ai` package. You can get a [free Hugging Face token](https://huggingface.co/settings/tokens) to use the Serverless Inference API.
+[HuggingFaceAPIChatGenerator](../pipeline-components/generators/huggingfaceapichatgenerator.mdx) is included in the `huggingface-api-haystack` package. You can get a [free Hugging Face token](https://huggingface.co/settings/tokens) to use the Serverless Inference API.
 
 ```python
 from haystack.components.agents import Agent
-from haystack.components.generators.chat import HuggingFaceAPIChatGenerator
+from haystack_integrations.components.generators.huggingface_api import (
+    HuggingFaceAPIChatGenerator,
+)
 from haystack.dataclasses import ChatMessage
 from haystack.tools import ComponentTool
-from haystack.components.websearch import SerperDevWebSearch
+from haystack_integrations.components.websearch.serperdev import SerperDevWebSearch
 from haystack.utils import Secret
 
 search_tool = ComponentTool(component=SerperDevWebSearch())
@@ -454,7 +464,7 @@ from haystack.components.agents import Agent
 from haystack_integrations.components.generators.anthropic import AnthropicChatGenerator
 from haystack.dataclasses import ChatMessage
 from haystack.tools import ComponentTool
-from haystack.components.websearch import SerperDevWebSearch
+from haystack_integrations.components.websearch.serperdev import SerperDevWebSearch
 from haystack.utils import Secret
 
 search_tool = ComponentTool(component=SerperDevWebSearch())
@@ -492,7 +502,7 @@ from haystack_integrations.components.generators.amazon_bedrock import (
 )
 from haystack.dataclasses import ChatMessage
 from haystack.tools import ComponentTool
-from haystack.components.websearch import SerperDevWebSearch
+from haystack_integrations.components.websearch.serperdev import SerperDevWebSearch
 
 os.environ["AWS_ACCESS_KEY_ID"] = "YOUR_AWS_ACCESS_KEY_ID"
 os.environ["AWS_SECRET_ACCESS_KEY"] = "YOUR_AWS_SECRET_ACCESS_KEY"
@@ -531,7 +541,7 @@ from haystack_integrations.components.generators.google_genai import (
 )
 from haystack.dataclasses import ChatMessage
 from haystack.tools import ComponentTool
-from haystack.components.websearch import SerperDevWebSearch
+from haystack_integrations.components.websearch.serperdev import SerperDevWebSearch
 from haystack.utils import Secret
 
 search_tool = ComponentTool(component=SerperDevWebSearch())

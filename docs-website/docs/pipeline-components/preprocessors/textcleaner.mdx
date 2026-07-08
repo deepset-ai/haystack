@@ -55,14 +55,22 @@ result = cleaner.run(texts=[text_to_clean])
 
 ### In a pipeline
 
-In this example, we are using `TextCleaner` after an `ExtractiveReader` and an `OutputAdapter` to remove the punctuation in texts. Then, our custom-made `ExactMatchEvaluator` component compares the retrieved answer to the ground truth answer.
+In this example, we are using `TextCleaner` after a `TransformersExtractiveReader` and an `OutputAdapter` to remove the punctuation in texts. Then, our custom-made `ExactMatchEvaluator` component compares the retrieved answer to the ground truth answer.
+
+The examples on this page use Transformers components that have moved to the `transformers-haystack` package. Install it to run the examples:
+
+```shell
+pip install transformers-haystack
+```
 
 ```python
 from typing import List
 from haystack import component, Document, Pipeline
 from haystack.components.converters import OutputAdapter
 from haystack.components.preprocessors import TextCleaner
-from haystack.components.readers import ExtractiveReader
+from haystack_integrations.components.readers.transformers import (
+    TransformersExtractiveReader,
+)
 from haystack.components.retrievers.in_memory import InMemoryBM25Retriever
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 
@@ -96,7 +104,7 @@ adapter = OutputAdapter(
 
 p = Pipeline()
 p.add_component("retriever", InMemoryBM25Retriever(document_store=document_store))
-p.add_component("reader", ExtractiveReader())
+p.add_component("reader", TransformersExtractiveReader())
 p.add_component("adapter", adapter)
 p.add_component("cleaner", TextCleaner(remove_punctuation=True))
 p.add_component("evaluator", ExactMatchEvaluator())
