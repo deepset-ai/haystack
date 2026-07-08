@@ -6,24 +6,6 @@ slug: "/utils-api"
 ---
 
 
-## asynchronous
-
-### is_callable_async_compatible
-
-```python
-is_callable_async_compatible(func: Callable) -> bool
-```
-
-Returns if the given callable is usable inside a component's `run_async` method.
-
-**Parameters:**
-
-- **func** (<code>Callable</code>) – The callable to check.
-
-**Returns:**
-
-- <code>bool</code> – True if the callable is compatible, False otherwise.
-
 ## auth
 
 ### SecretType
@@ -53,10 +35,10 @@ Encapsulates a secret used for authentication.
 Usage example:
 
 ```python
-from haystack.components.generators import OpenAIGenerator
+from haystack.components.generators.chat import OpenAIChatGenerator
 from haystack.utils import Secret
 
-generator = OpenAIGenerator(api_key=Secret.from_token("<here_goes_your_token>"))
+generator = OpenAIChatGenerator(api_key=Secret.from_token("<here_goes_your_token>"))
 ```
 
 #### from_token
@@ -281,6 +263,13 @@ deserialize_callable(callable_handle: str) -> Callable
 
 Deserializes a callable given its full import path as a string.
 
+Every module path tried during resolution is checked against the
+deserialization allowlist (see `haystack.core.serialization_security`). Callables in modules
+outside the allowlist are rejected with a `DeserializationError` before any import is
+attempted. To allow a third-party module, extend the allowlist via
+`Pipeline.load(..., allowed_modules=[...])`, `allow_deserialization_module(...)`, or the
+`HAYSTACK_DESERIALIZATION_ALLOWLIST` environment variable.
+
 **Parameters:**
 
 - **callable_handle** (<code>str</code>) – The full path of the callable_handle
@@ -291,7 +280,8 @@ Deserializes a callable given its full import path as a string.
 
 **Raises:**
 
-- <code>DeserializationError</code> – If the callable cannot be found
+- <code>DeserializationError</code> – If the module path is not on the deserialization allowlist, or if the callable cannot
+  be found.
 
 ## deserialization
 
@@ -800,6 +790,20 @@ Hello! I am {{user_name}}. Please describe the images.
 {% endmessage %}
 ```
 
+This extension also provides an `{% insert %}` placeholder tag that evaluates an expression to a `ChatMessage`
+or a list of `ChatMessage` objects and expands it into the prompt, so a runtime conversation can be interleaved
+with literal `{% message %}` blocks:
+
+```
+{% message role="system" %}You are a helpful assistant.{% endmessage %}
+{% insert messages %}
+{% message role="user" %}{{ query }}{% endmessage %}
+```
+
+The expression can be a plain variable (`{% insert messages %}`), a slice or index
+(`{% insert messages[-1:] %}`, `{% insert messages[-1] %}`), or a combination of variables
+(`{% insert previous + current %}`).
+
 ### How it works
 
 1. The `{% message %}` tag is used to define a chat message.
@@ -817,9 +821,9 @@ Hello! I am {{user_name}}. Please describe the images.
 parse(parser: Any) -> nodes.Node | list[nodes.Node]
 ```
 
-Parse the message tag and its attributes in the Jinja2 template.
+Dispatch parsing based on the tag that triggered the extension.
 
-This method handles the parsing of role (mandatory), name (optional), meta (optional) and message body content.
+Handles both the single `{% message %}` block tag and the `{% insert %}` placeholder tag.
 
 **Parameters:**
 
@@ -827,11 +831,7 @@ This method handles the parsing of role (mandatory), name (optional), meta (opti
 
 **Returns:**
 
-- <code>Node | list\[Node\]</code> – A CallBlock node containing the parsed message configuration
-
-**Raises:**
-
-- <code>TemplateSyntaxError</code> – If an invalid role is provided
+- <code>Node | list\[Node\]</code> – A CallBlock node containing the parsed configuration
 
 ### templatize_part
 
@@ -1111,6 +1111,11 @@ This function will dynamically import the module if it's not already imported
 and then retrieve the type object from it. It also handles nested generic types like
 `list[dict[int, str]]`.
 
+Every module path with a `.` prefix is checked against the deserialization
+allowlist (see `haystack.core.serialization_security`) before being imported. Modules outside
+the allowlist are rejected with a `DeserializationError`. Builtin and `typing`/`collections`
+names without a module prefix bypass this check.
+
 **Parameters:**
 
 - **type_str** (<code>str</code>) – The string representation of the type's full import path.
@@ -1121,7 +1126,8 @@ and then retrieve the type object from it. It also handles nested generic types 
 
 **Raises:**
 
-- <code>DeserializationError</code> – If the type cannot be deserialized due to missing module or type.
+- <code>DeserializationError</code> – If the module is not on the deserialization allowlist, or if the type cannot be
+  deserialized due to a missing module or type.
 
 ### thread_safe_import
 

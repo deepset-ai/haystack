@@ -880,7 +880,31 @@ If no LLM is specified using the `chat_generator` parameter, the component will 
 warm_up() -> None
 ```
 
-Warm up the component by warming up the underlying chat generator.
+Warm up the underlying chat generator.
+
+#### warm_up_async
+
+```python
+warm_up_async() -> None
+```
+
+Warm up the underlying chat generator on the serving event loop.
+
+#### close
+
+```python
+close() -> None
+```
+
+Release the underlying chat generator's resources.
+
+#### close_async
+
+```python
+close_async() -> None
+```
+
+Release the underlying chat generator's async resources.
 
 #### validate_init_parameters
 
