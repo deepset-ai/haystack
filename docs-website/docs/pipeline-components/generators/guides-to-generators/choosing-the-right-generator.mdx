@@ -58,7 +58,7 @@ generator = SomeGenerator(streaming_callback=print_streaming_chunk)
 
 ### Sync and Async Callbacks
 
-Streaming-capable components (such as `OpenAIChatGenerator`, `HuggingFaceAPIChatGenerator`, `HuggingFaceLocalChatGenerator`, and `Agent`) accept both sync and async streaming callbacks in async contexts (`run_async` or an [AsyncPipeline](../../../concepts/pipelines/asyncpipeline.mdx)). When you pass a sync callback to `run_async`, a warning is logged because the callback runs synchronously on the event loop and may block it, but the run proceeds and streams as expected. Async callbacks remain preferred for performance in async contexts.
+Streaming-capable components (such as `OpenAIChatGenerator`, `HuggingFaceAPIChatGenerator`, `HuggingFaceLocalChatGenerator`, and `Agent`) accept both sync and async streaming callbacks in async contexts (`run_async` or [async pipeline execution](../../../concepts/pipelines.mdx)). When you pass a sync callback to `run_async`, a warning is logged because the callback runs synchronously on the event loop and may block it, but the run proceeds and streams as expected. Async callbacks remain preferred for performance in async contexts.
 
 ```python
 import asyncio
