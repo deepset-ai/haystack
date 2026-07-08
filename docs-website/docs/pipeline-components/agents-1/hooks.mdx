@@ -41,7 +41,7 @@ The Agent manages a few state keys that hooks interact with. They are reserved �
 
 - `continue_run`: Set by an `on_exit` hook to keep the Agent running.
 - `tools`: The tools available in the current step, for hooks to inspect.
-- `hook_context`: Request-scoped resources passed to `Agent.run(hook_context={...})` / `run_async(hook_context={...})`. Hooks read it with `state.get("hook_context")` — use it for per-request resources such as a user ID, a WebSocket, or a database client.
+- `hook_context`: Request-scoped resources passed to `Agent.run(hook_context={...})` / `run_async(hook_context={...})`. Hooks read it with `state.data["hook_context"]` or `state.data.get("hook_context")` — use it for per-request resources such as a user ID, a WebSocket, or a database client. Avoid the plain `state.get("hook_context")` here: `State.get` returns a deep copy of the value, which often fails for the kinds of resources stored in this dict (such as a WebSocket or a database client).
 
 Hooks can also read the automatically tracked run metadata, such as `step_count` and `tool_call_counts`.
 

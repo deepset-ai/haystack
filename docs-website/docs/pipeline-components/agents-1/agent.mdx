@@ -61,7 +61,7 @@ The `Agent` returns a dictionary containing:
 
 - `tools`: Pass a list of `Tool`/`Toolset` objects, or a list of tool name strings to select a subset of the agent's configured tools for this run.
 - `generation_kwargs`: Additional keyword arguments forwarded to the LLM, overriding any set at init time (e.g. `{“temperature”: 0.2}`).
-- `hook_context`: A dict of request-scoped resources made available to [hooks](./hooks.mdx) via `state.get("hook_context")` — for example, a user ID or a WebSocket connection.
+- `hook_context`: A dict of request-scoped resources made available to [hooks](./hooks.mdx) via `state.data["hook_context"]` — for example, a user ID or a WebSocket connection.
 
 :::info
 For the full parameter reference, see the [Agents API Documentation](/reference/agents-api).

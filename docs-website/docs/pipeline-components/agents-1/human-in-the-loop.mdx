@@ -285,7 +285,7 @@ Returned by the strategy to the agent.
 
 The [hitl-hayhooks-redis-openwebui](https://github.com/deepset-ai/hitl-hayhooks-redis-openwebui) repository shows a full production-style HITL setup using a Haystack Agent served via [Hayhooks](https://github.com/deepset-ai/hayhooks) with approval dialogs rendered in [Open WebUI](https://github.com/open-webui/open-webui).
 
-The key pattern it demonstrates is a custom `RedisConfirmationStrategy` that receives per-request resources - a Redis client and an async event queue - at runtime. Pass such resources via the generic `hook_context` run argument (`agent.run(messages=[...], hook_context={"redis": client})`); hooks read them from state with `state.get("hook_context")`:
+The key pattern it demonstrates is a custom `RedisConfirmationStrategy` that receives per-request resources - a Redis client and an async event queue - at runtime. Pass such resources via the generic `hook_context` run argument (`agent.run(messages=[...], hook_context={"redis": client})`); hooks read them from state with `state.data["hook_context"]`:
 
 - When a tool call is about to execute, the strategy emits a `tool_call_start` SSE event and blocks on `Redis BLPOP` waiting for an approval decision.
 - The Open WebUI Pipe function receives the SSE event, shows the user a confirmation dialog, then writes `approved` or `rejected` to Redis via `LPUSH`.
