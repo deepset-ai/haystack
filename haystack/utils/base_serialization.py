@@ -77,6 +77,10 @@ def _serialize_value_with_schema(payload: Any) -> dict[str, Any]:  # noqa: PLR09
     - Lists, tuples, and sets. Lists with mixed types are not supported.
     - Primitive types (str, int, float, bool, None)
 
+    This is for runtime values (Agent/State data, pipeline inputs/outputs at a breakpoint), not
+    Component definitions — see `default_to_dict` in `core/serialization.py` for that other format.
+    Don't merge the two; they're not interchangeable.
+
     :param payload: The value to serialize (can be any type)
     :returns: The serialized dict representation of the given value. Contains two keys:
         - "serialization_schema": Contains type information for each field.

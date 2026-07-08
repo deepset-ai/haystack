@@ -4,7 +4,6 @@
 
 from __future__ import annotations
 
-import asyncio
 from typing import Any
 
 from haystack import component, default_from_dict, default_to_dict, logging
@@ -13,6 +12,7 @@ from haystack.components.generators.utils import _normalize_messages
 from haystack.core.serialization import component_to_dict
 from haystack.dataclasses import ChatMessage, StreamingCallbackT
 from haystack.tools import ToolsType
+from haystack.utils.async_utils import _execute_component_async
 from haystack.utils.deserialization import deserialize_component_inplace
 
 logger = logging.getLogger(__name__)
@@ -60,7 +60,6 @@ class FallbackChatGenerator:
             raise ValueError(msg)
 
         self.chat_generators = list(chat_generators)
-        self._is_warmed_up = False
 
     def to_dict(self) -> dict[str, Any]:
         """Serialize the component, including nested chat generators."""
@@ -88,19 +87,32 @@ class FallbackChatGenerator:
         return default_from_dict(cls, data)
 
     def warm_up(self) -> None:
-        """
-        Warm up all underlying chat generators.
-
-        This method calls warm_up() on each underlying generator that supports it.
-        """
-        if self._is_warmed_up:
-            return
-
+        """Warm up all underlying chat generators."""
         for gen in self.chat_generators:
-            if hasattr(gen, "warm_up") and callable(gen.warm_up):
+            if hasattr(gen, "warm_up"):
                 gen.warm_up()
 
-        self._is_warmed_up = True
+    async def warm_up_async(self) -> None:
+        """Warm up all underlying chat generators on the serving event loop."""
+        for gen in self.chat_generators:
+            if hasattr(gen, "warm_up_async"):
+                await gen.warm_up_async()
+            elif hasattr(gen, "warm_up"):
+                gen.warm_up()
+
+    def close(self) -> None:
+        """Release the underlying chat generators' resources."""
+        for gen in self.chat_generators:
+            if hasattr(gen, "close"):
+                gen.close()
+
+    async def close_async(self) -> None:
+        """Release the underlying chat generators' async resources."""
+        for gen in self.chat_generators:
+            if hasattr(gen, "close_async"):
+                await gen.close_async()
+            elif hasattr(gen, "close"):
+                gen.close()
 
     def _run_single_sync(
         self,
@@ -122,15 +134,8 @@ class FallbackChatGenerator:
         tools: ToolsType | None,
         streaming_callback: StreamingCallbackT | None,
     ) -> dict[str, Any]:
-        if hasattr(gen, "run_async") and callable(gen.run_async):
-            return await gen.run_async(
-                messages=messages,
-                generation_kwargs=generation_kwargs,
-                tools=tools,
-                streaming_callback=streaming_callback,
-            )
-        return await asyncio.to_thread(
-            gen.run,
+        return await _execute_component_async(
+            gen,
             messages=messages,
             generation_kwargs=generation_kwargs,
             tools=tools,
@@ -158,8 +163,7 @@ class FallbackChatGenerator:
               total_attempts, failed_chat_generators, plus any metadata from the successful generator.
         :raises RuntimeError: If all chat generators fail.
         """
-        if not self._is_warmed_up:
-            self.warm_up()
+        self.warm_up()
 
         messages = _normalize_messages(messages)
 
@@ -216,8 +220,7 @@ class FallbackChatGenerator:
               total_attempts, failed_chat_generators, plus any metadata from the successful generator.
         :raises RuntimeError: If all chat generators fail.
         """
-        if not self._is_warmed_up:
-            self.warm_up()
+        await self.warm_up_async()
 
         messages = _normalize_messages(messages)
 

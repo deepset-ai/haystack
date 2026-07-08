@@ -52,13 +52,14 @@ class TestContextRelevanceEvaluator:
         ]
 
         assert isinstance(component._chat_generator, OpenAIChatGenerator)
-        assert component._chat_generator.client.api_key == "test-api-key"
+        assert component._chat_generator.api_key.resolve_value() == "test-api-key"
         assert component._chat_generator.generation_kwargs == {"response_format": {"type": "json_object"}, "seed": 42}
 
-    def test_init_fail_wo_openai_api_key(self, monkeypatch):
+    def test_key_resolved_at_warm_up_not_init(self, monkeypatch):
         monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+        component = ContextRelevanceEvaluator()
         with pytest.raises(ValueError, match="None of the .* environment variables are set"):
-            ContextRelevanceEvaluator()
+            component.warm_up()
 
     def test_init_with_parameters(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
@@ -75,7 +76,7 @@ class TestContextRelevanceEvaluator:
         ]
 
         assert isinstance(component._chat_generator, OpenAIChatGenerator)
-        assert component._chat_generator.client.api_key == "test-api-key"
+        assert component._chat_generator.api_key.resolve_value() == "test-api-key"
         assert component._chat_generator.generation_kwargs == {"response_format": {"type": "json_object"}, "seed": 42}
 
     def test_init_with_chat_generator(self, monkeypatch):
@@ -123,7 +124,7 @@ class TestContextRelevanceEvaluator:
 
         component = ContextRelevanceEvaluator.from_dict(data)
         assert isinstance(component._chat_generator, OpenAIChatGenerator)
-        assert component._chat_generator.client.api_key == "test-api-key"
+        assert component._chat_generator.api_key.resolve_value() == "test-api-key"
         assert component._chat_generator.generation_kwargs == {"response_format": {"type": "json_object"}, "seed": 42}
         assert component.examples == [{"inputs": {"questions": "What is football?"}, "outputs": {"score": 0}}]
 

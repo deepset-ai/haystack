@@ -2,13 +2,14 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import os
 from typing import Any
-from unittest.mock import ANY
+from unittest.mock import ANY, AsyncMock, Mock
 
 import pytest
 
 from haystack import Document, component
-from haystack.components.embedders import SentenceTransformersDocumentEmbedder, SentenceTransformersTextEmbedder
+from haystack.components.embedders import OpenAIDocumentEmbedder, OpenAITextEmbedder
 from haystack.components.retrievers import (
     InMemoryBM25Retriever,
     InMemoryEmbeddingRetriever,
@@ -75,7 +76,7 @@ def sample_documents():
 def document_store_with_embeddings(sample_documents):
     """Create a document store populated with embedded documents."""
     document_store = InMemoryDocumentStore()
-    doc_embedder = SentenceTransformersDocumentEmbedder(model="sentence-transformers/all-MiniLM-L6-v2")
+    doc_embedder = OpenAIDocumentEmbedder()
     doc_writer = DocumentWriter(document_store=document_store, policy=DuplicatePolicy.SKIP)
     embedded_docs = doc_embedder.run(sample_documents)["documents"]
     doc_writer.run(documents=embedded_docs)
@@ -91,7 +92,7 @@ def bm25_retriever(document_store_with_embeddings):
 def embedding_retriever(document_store_with_embeddings):
     return TextEmbeddingRetriever(
         retriever=InMemoryEmbeddingRetriever(document_store=document_store_with_embeddings),
-        text_embedder=SentenceTransformersTextEmbedder(model="sentence-transformers/all-MiniLM-L6-v2"),
+        text_embedder=OpenAITextEmbedder(),
     )
 
 
@@ -279,6 +280,7 @@ class TestMultiRetriever:
                                     "bm25_parameters": {},
                                     "embedding_similarity_function": "dot_product",
                                     "index": ANY,
+                                    "shared": True,
                                     "return_embedding": True,
                                 },
                             },
@@ -313,6 +315,7 @@ class TestMultiRetriever:
                                     "bm25_parameters": {},
                                     "embedding_similarity_function": "dot_product",
                                     "index": "4bb5369d-779f-487b-9c16-3c40f503438b",
+                                    "shared": True,
                                     "return_embedding": True,
                                 },
                             },
@@ -364,21 +367,24 @@ class TestMultiRetriever:
         with pytest.raises(ImportError, match="Could not import class"):
             MultiRetriever.from_dict(data)
 
+    @pytest.mark.skipif(os.environ.get("OPENAI_API_KEY", "") == "", reason="OPENAI_API_KEY is not set")
     @pytest.mark.integration
-    def test_run_with_filters(self, del_hf_env_vars, bm25_retriever, embedding_retriever):
+    def test_run_with_filters(self, bm25_retriever, embedding_retriever):
         retriever = MultiRetriever(retrievers={"bm25": bm25_retriever, "embedding": embedding_retriever})
         result = retriever.run(query="energy", filters={"field": "meta.category", "operator": "==", "value": "solar"})
         assert len(result["documents"]) == 1
         assert result["documents"][0].meta["category"] == "solar"
 
+    @pytest.mark.skipif(os.environ.get("OPENAI_API_KEY", "") == "", reason="OPENAI_API_KEY is not set")
     @pytest.mark.integration
-    def test_run_with_top_k(self, del_hf_env_vars, bm25_retriever, embedding_retriever):
+    def test_run_with_top_k(self, bm25_retriever, embedding_retriever):
         retriever = MultiRetriever(retrievers={"bm25": bm25_retriever, "embedding": embedding_retriever})
         result = retriever.run(query="energy", top_k=2)
         assert len(result["documents"]) == 2
 
+    @pytest.mark.skipif(os.environ.get("OPENAI_API_KEY", "") == "", reason="OPENAI_API_KEY is not set")
     @pytest.mark.integration
-    def test_run_with_active_retrievers_integration(self, del_hf_env_vars, bm25_retriever, embedding_retriever):
+    def test_run_with_active_retrievers_integration(self, bm25_retriever, embedding_retriever):
         retriever = MultiRetriever(retrievers={"bm25": bm25_retriever, "embedding": embedding_retriever})
         result_bm25_active = retriever.run(query="energy", active_retrievers=["bm25"])
         result_bm25 = bm25_retriever.run(query="energy")
@@ -551,9 +557,10 @@ class TestMultiRetrieverAsync:
         assert len(result["documents"]) == 1
         assert result["documents"][0].id == "async1"
 
+    @pytest.mark.skipif(os.environ.get("OPENAI_API_KEY", "") == "", reason="OPENAI_API_KEY is not set")
     @pytest.mark.integration
     @pytest.mark.asyncio
-    async def test_run_async_with_filters(self, del_hf_env_vars, bm25_retriever, embedding_retriever):
+    async def test_run_async_with_filters(self, bm25_retriever, embedding_retriever):
         retriever = MultiRetriever(retrievers={"bm25": bm25_retriever, "embedding": embedding_retriever})
         result = await retriever.run_async(
             query="energy", filters={"field": "meta.category", "operator": "==", "value": "solar"}
@@ -561,18 +568,18 @@ class TestMultiRetrieverAsync:
         assert len(result["documents"]) == 1
         assert result["documents"][0].meta["category"] == "solar"
 
+    @pytest.mark.skipif(os.environ.get("OPENAI_API_KEY", "") == "", reason="OPENAI_API_KEY is not set")
     @pytest.mark.integration
     @pytest.mark.asyncio
-    async def test_run_async_with_top_k(self, del_hf_env_vars, bm25_retriever, embedding_retriever):
+    async def test_run_async_with_top_k(self, bm25_retriever, embedding_retriever):
         retriever = MultiRetriever(retrievers={"bm25": bm25_retriever, "embedding": embedding_retriever})
         result = await retriever.run_async(query="energy", top_k=2)
         assert len(result["documents"]) == 2
 
+    @pytest.mark.skipif(os.environ.get("OPENAI_API_KEY", "") == "", reason="OPENAI_API_KEY is not set")
     @pytest.mark.integration
     @pytest.mark.asyncio
-    async def test_run_async_with_active_retrievers_integration(
-        self, del_hf_env_vars, bm25_retriever, embedding_retriever
-    ):
+    async def test_run_async_with_active_retrievers_integration(self, bm25_retriever, embedding_retriever):
         retriever = MultiRetriever(retrievers={"bm25": bm25_retriever, "embedding": embedding_retriever})
         result_bm25_active = await retriever.run_async(query="energy", active_retrievers=["bm25"])
         result_bm25 = await bm25_retriever.run_async(query="energy")
@@ -589,3 +596,66 @@ class TestMultiRetrieverExperimental:
     @pytest.mark.filterwarnings("always::haystack.utils.experimental.ExperimentalWarning")
     def test_experimental_attribute_is_set(self):
         assert getattr(MultiRetriever, "__experimental__", False) is True
+
+
+class TestComponentLifecycle:
+    def test_warm_up_delegates_to_all_retrievers(self):
+        a = Mock(spec=["run", "warm_up"])
+        b = Mock(spec=["run", "warm_up"])
+        retriever = MultiRetriever(retrievers={"a": a, "b": b})
+        retriever.warm_up()
+        a.warm_up.assert_called_once()
+        b.warm_up.assert_called_once()
+
+    async def test_warm_up_async_delegates_to_all_retrievers(self):
+        a = Mock(spec=["run", "warm_up_async"])
+        a.warm_up_async = AsyncMock()
+        b = Mock(spec=["run", "warm_up_async"])
+        b.warm_up_async = AsyncMock()
+        retriever = MultiRetriever(retrievers={"a": a, "b": b})
+        await retriever.warm_up_async()
+        a.warm_up_async.assert_awaited_once()
+        b.warm_up_async.assert_awaited_once()
+
+    async def test_warm_up_async_falls_back_to_sync_warm_up(self):
+        a = Mock(spec=["run", "warm_up"])
+        b = Mock(spec=["run", "warm_up"])
+        retriever = MultiRetriever(retrievers={"a": a, "b": b})
+        await retriever.warm_up_async()
+        a.warm_up.assert_called_once()
+        b.warm_up.assert_called_once()
+
+    def test_close_delegates_to_all_retrievers(self):
+        a = Mock(spec=["run", "close"])
+        b = Mock(spec=["run", "close"])
+        retriever = MultiRetriever(retrievers={"a": a, "b": b})
+        retriever.close()
+        a.close.assert_called_once()
+        b.close.assert_called_once()
+
+    async def test_close_async_delegates_to_all_retrievers(self):
+        a = Mock(spec=["run", "close_async"])
+        a.close_async = AsyncMock()
+        b = Mock(spec=["run", "close_async"])
+        b.close_async = AsyncMock()
+        retriever = MultiRetriever(retrievers={"a": a, "b": b})
+        await retriever.close_async()
+        a.close_async.assert_awaited_once()
+        b.close_async.assert_awaited_once()
+
+    async def test_close_async_falls_back_to_sync_close(self):
+        a = Mock(spec=["run", "close"])
+        b = Mock(spec=["run", "close"])
+        retriever = MultiRetriever(retrievers={"a": a, "b": b})
+        await retriever.close_async()
+        a.close.assert_called_once()
+        b.close.assert_called_once()
+
+    async def test_lifecycle_is_safe_when_retrievers_lack_methods(self):
+        a = Mock(spec=["run"])
+        b = Mock(spec=["run"])
+        retriever = MultiRetriever(retrievers={"a": a, "b": b})
+        retriever.warm_up()
+        await retriever.warm_up_async()
+        retriever.close()
+        await retriever.close_async()
