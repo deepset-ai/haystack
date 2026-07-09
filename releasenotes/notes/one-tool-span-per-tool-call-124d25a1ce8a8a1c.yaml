@@ -1,0 +1,11 @@
+---
+enhancements:
+  - |
+    The ``Agent`` now emits one ``haystack.agent.step.tool`` tracing span per tool call instead of a single span
+    grouping every tool call in a step. Each span carries the tool's name and description as tags, plus the call
+    arguments and result when content tracing is enabled. This matches the OpenTelemetry and Langfuse convention of
+    a single tool call per span, so traces render one observation per tool invocation.
+  - |
+    ``LoggingTracer`` now serializes the log records it emits when a span closes, so a span's operation name and its
+    tags stay contiguous even when spans are opened and closed from parallel threads (for example, the ``Agent``
+    running tool calls concurrently).

@@ -1,0 +1,110 @@
+---
+title: "MSSharePointRetriever"
+id: mssharepointretriever
+slug: "/mssharepointretriever"
+description: "Retrieves content from Microsoft SharePoint and OneDrive via the Microsoft Search (Graph) API."
+---
+
+# MSSharePointRetriever
+
+Retrieves content from Microsoft SharePoint and OneDrive via the Microsoft Search (Graph) API.
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | At the start of a query pipeline, after an [`OAuthTokenResolver`](../connectors/oauthtokenresolver.mdx) that provides the `access_token` |
+| **Mandatory init variables** | None |
+| **Mandatory run variables** | `query`: The search query string  <br /> <br />`access_token`: A delegated Microsoft Graph bearer token, typically wired from an upstream `OAuthTokenResolver` |
+| **Output variables** | `documents`: A list of [Documents](../../concepts/data-classes.mdx) holding the search snippets and resource metadata |
+| **API reference** | [Microsoft SharePoint](/reference/integrations-microsoft-sharepoint) |
+| **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/microsoft_sharepoint |
+| **Package name** | `microsoft-sharepoint-haystack` |
+
+</div>
+
+## Overview
+
+`MSSharePointRetriever` searches a user's Microsoft SharePoint and OneDrive content through the [Microsoft Search (Graph) API](https://learn.microsoft.com/en-us/graph/api/resources/search-api-overview). Given a query, it calls `POST /search/query` and maps each hit to a Haystack `Document` whose `content` is the search snippet and whose `meta` carries the resource metadata: `file_name`, `web_url`, `entity_type`, `created_date_time`, `last_modified_date_time`, `created_by`, `last_modified_by`, `mime_type`, and `file_extension`. It also stores the SharePoint identifiers a downstream fetcher needs to read list items and pages by ID (`site_id`, `list_id`, `list_item_id`, `list_item_unique_id`).
+
+The retriever does **not** download or convert the underlying files – it only returns Search snippets and metadata. To download the full content of the hits, compose it with [`MSSharePointFetcher`](../fetchers/mssharepointfetcher.mdx) followed by a converter.
+
+### Authentication
+
+The retriever takes a per-user `access_token` as a run input. The token must carry **delegated** Microsoft Graph permissions (for example `Files.Read.All`, plus `Sites.Read.All` for site and list scoping); the Search API supports delegated permissions only. Typically you wire the token from an upstream [`OAuthTokenResolver`](../connectors/oauthtokenresolver.mdx), which emits a plain string. A `Secret` is also accepted and resolved internally.
+
+### Scoping and filtering the search
+
+You can narrow what is searched in several ways:
+
+- `entity_types`: which Microsoft Search entity types to query. Defaults to `["driveItem", "listItem"]`, which covers files, folders, SharePoint pages and news, and list items. Other valid values are `"list"` and `"site"`.
+- KQL operators embedded directly in the query, for example `filetype:docx`, `author:"Jane Doe"`, or `path:"https://contoso.sharepoint.com/sites/Team"`. See the [Keyword Query Language (KQL) syntax reference](https://learn.microsoft.com/en-us/sharepoint/dev/general-development/keyword-query-language-kql-syntax-reference).
+- `query_template`: a reusable template such as `'{searchTerms} path:"https://contoso.sharepoint.com/sites/Team"'`, where the literal `{searchTerms}` placeholder is replaced by the run-time query.
+
+### Installation
+
+Install the Microsoft SharePoint integration with:
+
+```shell
+pip install microsoft-sharepoint-haystack
+```
+
+## Usage
+
+### On its own
+
+`access_token` below is a per-user delegated Microsoft Graph bearer token. In production you would obtain it from an [`OAuthTokenResolver`](../connectors/oauthtokenresolver.mdx) rather than pasting it in.
+
+```python
+from haystack_integrations.components.retrievers.microsoft_sharepoint import (
+    MSSharePointRetriever,
+)
+
+retriever = MSSharePointRetriever(top_k=5)
+
+result = retriever.run(
+    query="quarterly roadmap",
+    access_token="my-delegated-graph-token",
+)
+
+for doc in result["documents"]:
+    print(doc.meta["file_name"], "-", doc.meta["web_url"])
+```
+
+### In a pipeline
+
+The following pipeline obtains a token from an `OAuthTokenResolver` and feeds it into the retriever, so that running the pipeline requires only the query:
+
+```python
+from haystack import Pipeline
+from haystack.utils import Secret
+from haystack_integrations.components.connectors.oauth import OAuthTokenResolver
+from haystack_integrations.utils.oauth import OAuthRefreshTokenSource
+from haystack_integrations.components.retrievers.microsoft_sharepoint import (
+    MSSharePointRetriever,
+)
+
+pipeline = Pipeline()
+pipeline.add_component(
+    "resolver",
+    OAuthTokenResolver(
+        token_source=OAuthRefreshTokenSource(
+            token_url="https://login.microsoftonline.com/common/oauth2/v2.0/token",
+            client_id="aaa-bbb-ccc",
+            refresh_token=Secret.from_env_var("MS_REFRESH_TOKEN"),
+            scopes=[
+                "https://graph.microsoft.com/Files.Read.All",
+                "https://graph.microsoft.com/Sites.Read.All",
+                "offline_access",
+            ],
+        ),
+    ),
+)
+pipeline.add_component("retriever", MSSharePointRetriever(top_k=5))
+pipeline.connect("resolver.access_token", "retriever.access_token")
+
+result = pipeline.run({"retriever": {"query": "quarterly roadmap"}})
+documents = result["retriever"]["documents"]
+```
+
+To download and convert the full content of the retrieved hits, connect the retriever's `documents` output to a [`MSSharePointFetcher`](../fetchers/mssharepointfetcher.mdx). See that page for an end-to-end retrieve-fetch-convert example.

@@ -53,7 +53,7 @@ jobs:
 
       # We keep the license inventory on FOSSA
       - name: Send license report to Fossa
-        uses: fossas/fossa-action@ff70fe9fe17cbd2040648f1c45e8ec4e4884dcf3 # v1.9.0
+        uses: fossas/fossa-action@29693cc50323968e039056be419b32989fc5880c # v2.0.0
         continue-on-error: true # not critical
         with:
           api-key: ${{ secrets.FOSSA_LICENSE_SCAN_TOKEN }}

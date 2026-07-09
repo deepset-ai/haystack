@@ -81,11 +81,12 @@ class TestContentParts:
             "error": True,
         }
 
-    def test_tool_call_result_to_dict_mixed_content(self, base64_image_string):
+    def test_tool_call_result_to_dict_mixed_content(self, base64_image_string, base64_pdf_string):
         text_content = TextContent(text="Here is an image:")
         image_content = ImageContent(base64_image=base64_image_string, mime_type="image/png")
+        file_content = FileContent(base64_data=base64_pdf_string, mime_type="application/pdf", filename="guide.pdf")
         tool_call = ToolCall(tool_name="test_tool", arguments={})
-        result = ToolCallResult(result=[text_content, image_content], origin=tool_call, error=False)
+        result = ToolCallResult(result=[text_content, image_content, file_content], origin=tool_call, error=False)
 
         assert result.to_dict() == {
             "result": [
@@ -96,6 +97,15 @@ class TestContentParts:
                         "mime_type": "image/png",
                         "detail": None,
                         "meta": {},
+                        "validation": True,
+                    }
+                },
+                {
+                    "file": {
+                        "base64_data": base64_pdf_string,
+                        "mime_type": "application/pdf",
+                        "filename": "guide.pdf",
+                        "extra": {},
                         "validation": True,
                     }
                 },
@@ -115,7 +125,7 @@ class TestContentParts:
         with pytest.raises(ValueError):
             ToolCallResult.from_dict({"result": "result", "error": False})
 
-    def test_tool_call_result_from_dict_mixed_content(self, base64_image_string):
+    def test_tool_call_result_from_dict_mixed_content(self, base64_image_string, base64_pdf_string):
         data = {
             "result": [
                 {"text": "Caption"},
@@ -128,6 +138,15 @@ class TestContentParts:
                         "validation": True,
                     }
                 },
+                {
+                    "file": {
+                        "base64_data": base64_pdf_string,
+                        "mime_type": "application/pdf",
+                        "filename": "guide.pdf",
+                        "extra": {},
+                        "validation": True,
+                    }
+                },
             ],
             "origin": {"tool_name": "test_tool", "arguments": {}, "id": "call_123", "extra": None},
             "error": False,
@@ -135,10 +154,14 @@ class TestContentParts:
 
         result = ToolCallResult.from_dict(data)
         assert isinstance(result.result, list)
-        assert len(result.result) == 2
+        assert len(result.result) == 3
         assert isinstance(result.result[0], TextContent)
         assert isinstance(result.result[1], ImageContent)
+        assert isinstance(result.result[2], FileContent)
         assert result.result[0].text == "Caption"
+        assert result.result[1].base64_image == base64_image_string
+        assert result.result[2].base64_data == base64_pdf_string
+        assert result.result[2].filename == "guide.pdf"
 
     def test_text_content_init(self):
         tc = TextContent(text="Hello")

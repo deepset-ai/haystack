@@ -38,9 +38,11 @@ class TestPipelineBreakpoints:
         feedback_message = [ChatMessage.from_system(feedback_prompt)]
 
         pipe = Pipeline()
-        pipe.add_component("prompt_builder", ChatPromptBuilder(template=user_message))
+        pipe.add_component("prompt_builder", ChatPromptBuilder(template=user_message, required_variables=None))
         pipe.add_component("llm", FakeChatGenerator("Nuclear physics is the study of atomic nuclei."))
-        pipe.add_component("feedback_prompt_builder", ChatPromptBuilder(template=feedback_message))
+        pipe.add_component(
+            "feedback_prompt_builder", ChatPromptBuilder(template=feedback_message, required_variables=None)
+        )
         pipe.add_component("feedback_llm", FakeChatGenerator("Score: 8/10. Concise and accurate."))
         pipe.add_component("list_joiner", ListJoiner(list[ChatMessage]))
 

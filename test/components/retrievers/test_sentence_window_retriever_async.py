@@ -7,11 +7,10 @@ import re
 
 import pytest
 
-from haystack import Document
+from haystack import Document, Pipeline
 from haystack.components.preprocessors import DocumentSplitter
 from haystack.components.retrievers import InMemoryBM25Retriever
 from haystack.components.retrievers.sentence_window_retriever import SentenceWindowRetriever
-from haystack.core.pipeline.async_pipeline import AsyncPipeline
 
 
 class TestSentenceWindowRetrieverAsync:
@@ -189,7 +188,7 @@ class TestSentenceWindowRetrieverAsync:
         docs = splitter.run([doc])
         in_memory_doc_store.write_documents(docs["documents"])
 
-        pipe = AsyncPipeline()
+        pipe = Pipeline()
         pipe.add_component("bm25_retriever", InMemoryBM25Retriever(in_memory_doc_store, top_k=1))
         pipe.add_component(
             "sentence_window_retriever", SentenceWindowRetriever(document_store=in_memory_doc_store, window_size=2)
@@ -214,7 +213,7 @@ class TestSentenceWindowRetrieverAsync:
     @pytest.mark.asyncio
     @pytest.mark.integration
     async def test_serialization_deserialization_in_pipeline(self, in_memory_doc_store):
-        pipe = AsyncPipeline()
+        pipe = Pipeline()
         pipe.add_component("bm25_retriever", InMemoryBM25Retriever(in_memory_doc_store, top_k=1))
         pipe.add_component(
             "sentence_window_retriever", SentenceWindowRetriever(document_store=in_memory_doc_store, window_size=2)
@@ -222,6 +221,6 @@ class TestSentenceWindowRetrieverAsync:
         pipe.connect("bm25_retriever", "sentence_window_retriever")
 
         serialized = pipe.to_dict()
-        deserialized = AsyncPipeline.from_dict(serialized)
+        deserialized = Pipeline.from_dict(serialized)
 
         assert deserialized == pipe

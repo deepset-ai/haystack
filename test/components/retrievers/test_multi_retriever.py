@@ -2,13 +2,14 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import os
 from typing import Any
-from unittest.mock import ANY
+from unittest.mock import ANY, AsyncMock, Mock
 
 import pytest
 
 from haystack import Document, component
-from haystack.components.embedders import SentenceTransformersDocumentEmbedder, SentenceTransformersTextEmbedder
+from haystack.components.embedders import OpenAIDocumentEmbedder, OpenAITextEmbedder
 from haystack.components.retrievers import (
     InMemoryBM25Retriever,
     InMemoryEmbeddingRetriever,
@@ -75,7 +76,7 @@ def sample_documents():
 def document_store_with_embeddings(sample_documents):
     """Create a document store populated with embedded documents."""
     document_store = InMemoryDocumentStore()
-    doc_embedder = SentenceTransformersDocumentEmbedder(model="sentence-transformers/all-MiniLM-L6-v2")
+    doc_embedder = OpenAIDocumentEmbedder()
     doc_writer = DocumentWriter(document_store=document_store, policy=DuplicatePolicy.SKIP)
     embedded_docs = doc_embedder.run(sample_documents)["documents"]
     doc_writer.run(documents=embedded_docs)
@@ -91,7 +92,7 @@ def bm25_retriever(document_store_with_embeddings):
 def embedding_retriever(document_store_with_embeddings):
     return TextEmbeddingRetriever(
         retriever=InMemoryEmbeddingRetriever(document_store=document_store_with_embeddings),
-        text_embedder=SentenceTransformersTextEmbedder(model="sentence-transformers/all-MiniLM-L6-v2"),
+        text_embedder=OpenAITextEmbedder(),
     )
 
 
@@ -101,7 +102,8 @@ class TestMultiRetriever:
         retriever = MultiRetriever(retrievers=retrievers)
         assert retriever.retrievers == retrievers
         assert retriever.filters is None
-        assert retriever.top_k == 10
+        assert retriever.top_k_per_retriever is None
+        assert retriever.top_k is None
         assert retriever.max_workers == 4
         assert retriever.join_mode == "reciprocal_rank_fusion"
 
@@ -161,7 +163,7 @@ class TestMultiRetriever:
         ids = [doc.id for doc in result["documents"]]
         assert ids.count("doc1") == 1
 
-    def test_run_resolves_filters_and_top_k(self):
+    def test_run_resolves_filters_and_top_k_per_retriever(self):
         received: dict = {}
 
         @component
@@ -173,18 +175,67 @@ class TestMultiRetriever:
                 return {"documents": []}
 
         retriever = MultiRetriever(
-            retrievers={"capturing": CapturingRetriever()}, filters={"field": "meta.category"}, top_k=5
+            retrievers={"capturing": CapturingRetriever()}, filters={"field": "meta.category"}, top_k_per_retriever=5
         )
 
-        # Should use init-time values when not overridden
+        # Should use init-time values when not overridden (top_k_per_retriever is forwarded as the retriever's top_k)
         retriever.run(query="energy")
         assert received["filters"] == {"field": "meta.category"}
         assert received["top_k"] == 5
 
         # Should prefer run-time values when provided
-        retriever.run(query="energy", filters={"field": "meta.other"}, top_k=2)
+        retriever.run(query="energy", filters={"field": "meta.other"}, top_k_per_retriever=2)
         assert received["filters"] == {"field": "meta.other"}
         assert received["top_k"] == 2
+
+    def test_run_forwards_top_k_per_retriever_not_overall_top_k(self):
+        received: dict = {}
+
+        @component
+        class CapturingRetriever:
+            @component.output_types(documents=list[Document])
+            def run(self, query: str, filters: dict[str, Any] | None = None, top_k: int | None = None):
+                received["top_k"] = top_k
+                return {"documents": []}
+
+        retriever = MultiRetriever(retrievers={"capturing": CapturingRetriever()})
+
+        # top_k_per_retriever is forwarded to each retriever as its top_k
+        retriever.run(query="energy", top_k_per_retriever=3)
+        assert received["top_k"] == 3
+
+        # the overall top_k is applied at merge-time only, not forwarded to retrievers
+        received.clear()
+        retriever.run(query="energy", top_k=5)
+        assert received.get("top_k") is None
+
+    def test_run_top_k_truncates_merged_results(self, sample_documents):
+        retriever = MultiRetriever(
+            retrievers={
+                "a": MockRetriever(documents=sample_documents[:3]),
+                "b": MockRetriever(documents=sample_documents[2:5]),
+            },
+            max_workers=2,
+        )
+        result = retriever.run(query="energy", top_k=2)
+        assert len(result["documents"]) == 2
+        scores = [doc.score for doc in result["documents"]]
+        assert all(score is not None for score in scores)
+        assert scores == sorted(scores, reverse=True)
+
+    def test_run_top_k_forces_rrf_in_concatenate_mode(self, sample_documents):
+        # In concatenate mode there is no global ranking, so setting top_k falls back to RRF to truncate consistently
+        retriever = MultiRetriever(
+            retrievers={
+                "a": MockRetriever(documents=sample_documents[:3]),
+                "b": MockRetriever(documents=sample_documents[1:4]),
+            },
+            join_mode="concatenate",
+            max_workers=2,
+        )
+        result = retriever.run(query="energy", top_k=2)
+        assert len(result["documents"]) == 2
+        assert all(doc.score is not None for doc in result["documents"])
 
     def test_run_with_active_retrievers(self, sample_documents):
         retriever = MultiRetriever(
@@ -209,6 +260,7 @@ class TestMultiRetriever:
         retriever = MultiRetriever(
             retrievers={"bm25": InMemoryBM25Retriever(document_store=InMemoryDocumentStore())},
             filters=None,
+            top_k_per_retriever=3,
             top_k=5,
             max_workers=2,
         )
@@ -228,6 +280,7 @@ class TestMultiRetriever:
                                     "bm25_parameters": {},
                                     "embedding_similarity_function": "dot_product",
                                     "index": ANY,
+                                    "shared": True,
                                     "return_embedding": True,
                                 },
                             },
@@ -239,6 +292,7 @@ class TestMultiRetriever:
                     }
                 },
                 "filters": None,
+                "top_k_per_retriever": 3,
                 "top_k": 5,
                 "max_workers": 2,
                 "join_mode": "reciprocal_rank_fusion",
@@ -261,6 +315,7 @@ class TestMultiRetriever:
                                     "bm25_parameters": {},
                                     "embedding_similarity_function": "dot_product",
                                     "index": "4bb5369d-779f-487b-9c16-3c40f503438b",
+                                    "shared": True,
                                     "return_embedding": True,
                                 },
                             },
@@ -272,6 +327,7 @@ class TestMultiRetriever:
                     }
                 },
                 "filters": None,
+                "top_k_per_retriever": 3,
                 "top_k": 5,
                 "max_workers": 2,
                 "join_mode": "concatenate",
@@ -282,6 +338,7 @@ class TestMultiRetriever:
         assert len(result.retrievers) == 1
         assert "bm25" in result.retrievers
         assert isinstance(result.retrievers["bm25"], InMemoryBM25Retriever)
+        assert result.top_k_per_retriever == 3
         assert result.top_k == 5
         assert result.max_workers == 2
         assert result.join_mode == "concatenate"
@@ -310,21 +367,24 @@ class TestMultiRetriever:
         with pytest.raises(ImportError, match="Could not import class"):
             MultiRetriever.from_dict(data)
 
+    @pytest.mark.skipif(os.environ.get("OPENAI_API_KEY", "") == "", reason="OPENAI_API_KEY is not set")
     @pytest.mark.integration
-    def test_run_with_filters(self, del_hf_env_vars, bm25_retriever, embedding_retriever):
+    def test_run_with_filters(self, bm25_retriever, embedding_retriever):
         retriever = MultiRetriever(retrievers={"bm25": bm25_retriever, "embedding": embedding_retriever})
         result = retriever.run(query="energy", filters={"field": "meta.category", "operator": "==", "value": "solar"})
         assert len(result["documents"]) == 1
         assert result["documents"][0].meta["category"] == "solar"
 
+    @pytest.mark.skipif(os.environ.get("OPENAI_API_KEY", "") == "", reason="OPENAI_API_KEY is not set")
     @pytest.mark.integration
-    def test_run_with_top_k(self, del_hf_env_vars, bm25_retriever, embedding_retriever):
+    def test_run_with_top_k(self, bm25_retriever, embedding_retriever):
         retriever = MultiRetriever(retrievers={"bm25": bm25_retriever, "embedding": embedding_retriever})
         result = retriever.run(query="energy", top_k=2)
         assert len(result["documents"]) == 2
 
+    @pytest.mark.skipif(os.environ.get("OPENAI_API_KEY", "") == "", reason="OPENAI_API_KEY is not set")
     @pytest.mark.integration
-    def test_run_with_active_retrievers_integration(self, del_hf_env_vars, bm25_retriever, embedding_retriever):
+    def test_run_with_active_retrievers_integration(self, bm25_retriever, embedding_retriever):
         retriever = MultiRetriever(retrievers={"bm25": bm25_retriever, "embedding": embedding_retriever})
         result_bm25_active = retriever.run(query="energy", active_retrievers=["bm25"])
         result_bm25 = bm25_retriever.run(query="energy")
@@ -379,7 +439,7 @@ class TestMultiRetrieverAsync:
         assert ids.index("doc1") < ids.index("doc3")
 
     @pytest.mark.asyncio
-    async def test_run_async_resolves_filters_and_top_k(self):
+    async def test_run_async_resolves_filters_and_top_k_per_retriever(self):
         received: dict = {}
 
         @component
@@ -391,16 +451,67 @@ class TestMultiRetrieverAsync:
                 return {"documents": []}
 
         retriever = MultiRetriever(
-            retrievers={"capturing": CapturingRetriever()}, filters={"field": "meta.category"}, top_k=5
+            retrievers={"capturing": CapturingRetriever()}, filters={"field": "meta.category"}, top_k_per_retriever=5
         )
 
+        # top_k_per_retriever is forwarded as the retriever's top_k
         await retriever.run_async(query="energy")
         assert received["filters"] == {"field": "meta.category"}
         assert received["top_k"] == 5
 
-        await retriever.run_async(query="energy", filters={"field": "meta.other"}, top_k=2)
+        await retriever.run_async(query="energy", filters={"field": "meta.other"}, top_k_per_retriever=2)
         assert received["filters"] == {"field": "meta.other"}
         assert received["top_k"] == 2
+
+    @pytest.mark.asyncio
+    async def test_run_async_forwards_top_k_per_retriever_not_overall_top_k(self):
+        received: dict = {}
+
+        @component
+        class CapturingRetriever:
+            @component.output_types(documents=list[Document])
+            def run(self, query: str, filters: dict[str, Any] | None = None, top_k: int | None = None):
+                received["top_k"] = top_k
+                return {"documents": []}
+
+        retriever = MultiRetriever(retrievers={"capturing": CapturingRetriever()})
+
+        # top_k_per_retriever is forwarded to each retriever as its top_k
+        await retriever.run_async(query="energy", top_k_per_retriever=3)
+        assert received["top_k"] == 3
+
+        # the overall top_k is applied at merge-time only, not forwarded to retrievers
+        received.clear()
+        await retriever.run_async(query="energy", top_k=5)
+        assert received.get("top_k") is None
+
+    @pytest.mark.asyncio
+    async def test_run_async_top_k_truncates_merged_results(self, sample_documents):
+        retriever = MultiRetriever(
+            retrievers={
+                "a": MockRetriever(documents=sample_documents[:3]),
+                "b": MockRetriever(documents=sample_documents[2:5]),
+            }
+        )
+        result = await retriever.run_async(query="energy", top_k=2)
+        assert len(result["documents"]) == 2
+        scores = [doc.score for doc in result["documents"]]
+        assert all(score is not None for score in scores)
+        assert scores == sorted(scores, reverse=True)
+
+    @pytest.mark.asyncio
+    async def test_run_async_top_k_forces_rrf_in_concatenate_mode(self, sample_documents):
+        # In concatenate mode there is no global ranking, so setting top_k falls back to RRF to truncate consistently
+        retriever = MultiRetriever(
+            retrievers={
+                "a": MockRetriever(documents=sample_documents[:3]),
+                "b": MockRetriever(documents=sample_documents[1:4]),
+            },
+            join_mode="concatenate",
+        )
+        result = await retriever.run_async(query="energy", top_k=2)
+        assert len(result["documents"]) == 2
+        assert all(doc.score is not None for doc in result["documents"])
 
     @pytest.mark.asyncio
     async def test_run_async_with_active_retrievers(self, sample_documents):
@@ -446,9 +557,10 @@ class TestMultiRetrieverAsync:
         assert len(result["documents"]) == 1
         assert result["documents"][0].id == "async1"
 
+    @pytest.mark.skipif(os.environ.get("OPENAI_API_KEY", "") == "", reason="OPENAI_API_KEY is not set")
     @pytest.mark.integration
     @pytest.mark.asyncio
-    async def test_run_async_with_filters(self, del_hf_env_vars, bm25_retriever, embedding_retriever):
+    async def test_run_async_with_filters(self, bm25_retriever, embedding_retriever):
         retriever = MultiRetriever(retrievers={"bm25": bm25_retriever, "embedding": embedding_retriever})
         result = await retriever.run_async(
             query="energy", filters={"field": "meta.category", "operator": "==", "value": "solar"}
@@ -456,18 +568,18 @@ class TestMultiRetrieverAsync:
         assert len(result["documents"]) == 1
         assert result["documents"][0].meta["category"] == "solar"
 
+    @pytest.mark.skipif(os.environ.get("OPENAI_API_KEY", "") == "", reason="OPENAI_API_KEY is not set")
     @pytest.mark.integration
     @pytest.mark.asyncio
-    async def test_run_async_with_top_k(self, del_hf_env_vars, bm25_retriever, embedding_retriever):
+    async def test_run_async_with_top_k(self, bm25_retriever, embedding_retriever):
         retriever = MultiRetriever(retrievers={"bm25": bm25_retriever, "embedding": embedding_retriever})
         result = await retriever.run_async(query="energy", top_k=2)
         assert len(result["documents"]) == 2
 
+    @pytest.mark.skipif(os.environ.get("OPENAI_API_KEY", "") == "", reason="OPENAI_API_KEY is not set")
     @pytest.mark.integration
     @pytest.mark.asyncio
-    async def test_run_async_with_active_retrievers_integration(
-        self, del_hf_env_vars, bm25_retriever, embedding_retriever
-    ):
+    async def test_run_async_with_active_retrievers_integration(self, bm25_retriever, embedding_retriever):
         retriever = MultiRetriever(retrievers={"bm25": bm25_retriever, "embedding": embedding_retriever})
         result_bm25_active = await retriever.run_async(query="energy", active_retrievers=["bm25"])
         result_bm25 = await bm25_retriever.run_async(query="energy")
@@ -484,3 +596,66 @@ class TestMultiRetrieverExperimental:
     @pytest.mark.filterwarnings("always::haystack.utils.experimental.ExperimentalWarning")
     def test_experimental_attribute_is_set(self):
         assert getattr(MultiRetriever, "__experimental__", False) is True
+
+
+class TestComponentLifecycle:
+    def test_warm_up_delegates_to_all_retrievers(self):
+        a = Mock(spec=["run", "warm_up"])
+        b = Mock(spec=["run", "warm_up"])
+        retriever = MultiRetriever(retrievers={"a": a, "b": b})
+        retriever.warm_up()
+        a.warm_up.assert_called_once()
+        b.warm_up.assert_called_once()
+
+    async def test_warm_up_async_delegates_to_all_retrievers(self):
+        a = Mock(spec=["run", "warm_up_async"])
+        a.warm_up_async = AsyncMock()
+        b = Mock(spec=["run", "warm_up_async"])
+        b.warm_up_async = AsyncMock()
+        retriever = MultiRetriever(retrievers={"a": a, "b": b})
+        await retriever.warm_up_async()
+        a.warm_up_async.assert_awaited_once()
+        b.warm_up_async.assert_awaited_once()
+
+    async def test_warm_up_async_falls_back_to_sync_warm_up(self):
+        a = Mock(spec=["run", "warm_up"])
+        b = Mock(spec=["run", "warm_up"])
+        retriever = MultiRetriever(retrievers={"a": a, "b": b})
+        await retriever.warm_up_async()
+        a.warm_up.assert_called_once()
+        b.warm_up.assert_called_once()
+
+    def test_close_delegates_to_all_retrievers(self):
+        a = Mock(spec=["run", "close"])
+        b = Mock(spec=["run", "close"])
+        retriever = MultiRetriever(retrievers={"a": a, "b": b})
+        retriever.close()
+        a.close.assert_called_once()
+        b.close.assert_called_once()
+
+    async def test_close_async_delegates_to_all_retrievers(self):
+        a = Mock(spec=["run", "close_async"])
+        a.close_async = AsyncMock()
+        b = Mock(spec=["run", "close_async"])
+        b.close_async = AsyncMock()
+        retriever = MultiRetriever(retrievers={"a": a, "b": b})
+        await retriever.close_async()
+        a.close_async.assert_awaited_once()
+        b.close_async.assert_awaited_once()
+
+    async def test_close_async_falls_back_to_sync_close(self):
+        a = Mock(spec=["run", "close"])
+        b = Mock(spec=["run", "close"])
+        retriever = MultiRetriever(retrievers={"a": a, "b": b})
+        await retriever.close_async()
+        a.close.assert_called_once()
+        b.close.assert_called_once()
+
+    async def test_lifecycle_is_safe_when_retrievers_lack_methods(self):
+        a = Mock(spec=["run"])
+        b = Mock(spec=["run"])
+        retriever = MultiRetriever(retrievers={"a": a, "b": b})
+        retriever.warm_up()
+        await retriever.warm_up_async()
+        retriever.close()
+        await retriever.close_async()

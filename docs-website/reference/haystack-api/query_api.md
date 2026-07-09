@@ -108,7 +108,37 @@ The language of the original query is preserved in the expanded queries.
 
 - **query** (<code>str</code>) – The original query to expand.
 - **n_expansions** (<code>int | None</code>) – Number of additional queries to generate (not including the original).
-  If None, uses the value from initialization. Can be 0 to generate no additional queries.
+  If None, uses the value from initialization. Must be a positive integer.
+
+**Returns:**
+
+- <code>dict\[str, list\[str\]\]</code> – Dictionary with "queries" key containing the list of expanded queries.
+  If include_original_query=True, the original query will be included in addition
+  to the n_expansions alternative queries.
+
+**Raises:**
+
+- <code>ValueError</code> – If n_expansions is not positive (less than or equal to 0).
+
+#### run_async
+
+```python
+run_async(query: str, n_expansions: int | None = None) -> dict[str, list[str]]
+```
+
+Asynchronously expand the input query into multiple semantically similar queries.
+
+The language of the original query is preserved in the expanded queries.
+
+This is the asynchronous version of the `run` method. It has the same parameters and return values
+but can be used with `await` in an async code. If the chat generator only implements a synchronous
+`run` method, it is executed in a thread to avoid blocking the event loop.
+
+**Parameters:**
+
+- **query** (<code>str</code>) – The original query to expand.
+- **n_expansions** (<code>int | None</code>) – Number of additional queries to generate (not including the original).
+  If None, uses the value from initialization. Must be a positive integer.
 
 **Returns:**
 
@@ -126,4 +156,28 @@ The language of the original query is preserved in the expanded queries.
 warm_up() -> None
 ```
 
-Warm up the LLM provider component.
+Warm up the underlying chat generator.
+
+#### warm_up_async
+
+```python
+warm_up_async() -> None
+```
+
+Warm up the underlying chat generator on the serving event loop.
+
+#### close
+
+```python
+close() -> None
+```
+
+Release the underlying chat generator's resources.
+
+#### close_async
+
+```python
+close_async() -> None
+```
+
+Release the underlying chat generator's async resources.

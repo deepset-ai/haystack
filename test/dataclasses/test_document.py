@@ -52,7 +52,7 @@ def test_init_with_parameters():
         embedding=[0.1, 0.2, 0.3],
         sparse_embedding=sparse_embedding,
     )
-    assert doc.id == "1aa43af57c1dbc317241bf55d3067049f334d3b458d95dc72f71a7111f6c1a56"
+    assert doc.id == "c31efd4986b1f2424e5058482c6f668ccad2309043c2346524cd81d255e159fe"
     assert doc.content == "test text"
     assert doc.blob is not None
     assert doc.blob.data == blob_data
@@ -95,7 +95,7 @@ def test_init_with_legacy_field():
         embedding=[0.1, 0.2, 0.3],
         meta={"date": "10-10-2023", "type": "article"},
     )
-    assert doc.id == "a2c0321b34430cc675294611e55529fceb56140ca3202f1c59a43a8cecac1f43"
+    assert doc.id == "dcd4914f727544e89ce8082f6f2e298d244dd0803a4dc167f19d24e7d43b28ac"
     assert doc.content == "test text"
     assert doc.meta == {"date": "10-10-2023", "type": "article"}
     assert doc.score == 0.812
@@ -121,6 +121,21 @@ def test_basic_equality_id():
     doc2 = replace(doc2, id="5678")
 
     assert doc1 != doc2
+
+
+def test_id_is_independent_of_meta_key_order():
+    doc1 = Document(content="hello", meta={"a": 1, "b": 2})
+    doc2 = Document(content="hello", meta={"b": 2, "a": 1})
+
+    assert doc1.meta == doc2.meta
+    assert doc1.id == doc2.id
+
+
+def test_id_is_independent_of_nested_meta_key_order():
+    doc1 = Document(content="hello", meta={"outer": {"a": 1, "b": 2}})
+    doc2 = Document(content="hello", meta={"outer": {"b": 2, "a": 1}})
+
+    assert doc1.id == doc2.id
 
 
 def test_to_dict():
