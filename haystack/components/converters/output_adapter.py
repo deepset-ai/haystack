@@ -136,8 +136,12 @@ class OutputAdapter:
             # we try to evaluate it and would fail.
             # This must be done cause the output could be different literal structures.
             # This doesn't support any user types.
+            # When the declared output_type is str we skip literal evaluation so that a
+            # rendered string that happens to be a valid Python literal (e.g. "1,000" -> (1, 0),
+            # "42" -> 42, "None" -> None) is returned unchanged instead of being coerced to
+            # another type, which would violate the declared output_type.
             with contextlib.suppress(Exception):
-                if not self._unsafe:
+                if not self._unsafe and self.output_type is not str:
                     output_result = ast.literal_eval(output_result)
 
             adapted_outputs["output"] = output_result

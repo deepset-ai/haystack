@@ -200,7 +200,7 @@ class TestOutputAdapter:
             name="output_adapter",
             instance=OutputAdapter(
                 template="{{ documents[0].content | json_loads}}",
-                output_type=str,
+                output_type=dict,
                 custom_filters={"json_loads": lambda s: json.loads(str(s))},
             ),
         )
@@ -209,6 +209,19 @@ class TestOutputAdapter:
         result = pipe.run(data={})
         assert result
         assert result["output_adapter"]["output"] == {"framework": "Haystack"}
+
+    def test_string_output_type_preserved_over_literal_eval(self):
+        # A rendered string that happens to be a valid Python literal must be returned
+        # unchanged when output_type=str, and not silently coerced to another type
+        # (e.g. "1,000" is a valid Python tuple literal that evaluates to (1, 0)).
+        result = OutputAdapter(template="{{ reply }}", output_type=str).run(reply="1,000")
+        assert result["output"] == "1,000"
+        assert isinstance(result["output"], str)
+
+        # Non-str output types must still reconstruct structured literals from the rendered string.
+        result = OutputAdapter(template="{{ reply }}", output_type=list).run(reply="[1, 2, 3]")
+        assert result["output"] == [1, 2, 3]
+        assert isinstance(result["output"], list)
 
     def test_unsafe(self):
         adapter = OutputAdapter(template="{{ documents[0] }}", output_type=Document, unsafe=True)
