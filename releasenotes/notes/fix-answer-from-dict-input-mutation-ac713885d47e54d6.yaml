@@ -5,4 +5,4 @@ fixes:
     dictionary in place. They replaced nested values (``documents``, ``document``, offsets and
     ``meta["all_messages"]``) directly inside the passed dictionary, so deserializing the same
     dictionary a second time received already-parsed objects and raised an ``AttributeError``.
-    Both methods now deep-copy their input and are side-effect free.
+    Both methods now copy their input before deserializing and are side-effect free.
