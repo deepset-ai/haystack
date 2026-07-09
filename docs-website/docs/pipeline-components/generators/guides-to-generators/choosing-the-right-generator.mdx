@@ -56,6 +56,35 @@ generator = SomeGenerator(streaming_callback=print_streaming_chunk)
 # For ChatGenerators, pass a list[ChatMessage]. For text generators, pass a prompt string.
 ```
 
+### Sync and Async Callbacks
+
+Streaming-capable components (such as `OpenAIChatGenerator`, `HuggingFaceAPIChatGenerator`, `TransformersChatGenerator`, and `Agent`) accept both sync and async streaming callbacks in async contexts (`run_async` or [async pipeline execution](../../../concepts/pipelines.mdx)). When you pass a sync callback to `run_async`, a warning is logged because the callback runs synchronously on the event loop and may block it, but the run proceeds and streams as expected. Async callbacks remain preferred for performance in async contexts.
+
+```python
+import asyncio
+
+from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.dataclasses import ChatMessage, StreamingChunk
+
+
+def print_chunk(chunk: StreamingChunk) -> None:
+    print(chunk.content, end="", flush=True)
+
+
+async def main():
+    llm = OpenAIChatGenerator()
+    # a sync callback in an async context logs a warning and streams as expected
+    await llm.run_async(
+        [ChatMessage.from_user("Tell me about Italy")],
+        streaming_callback=print_chunk,
+    )
+
+
+asyncio.run(main())
+```
+
+The reverse is not supported: passing an async callback to the sync `run` method raises an error, since a coroutine cannot be awaited from sync code.
+
 ### Custom Callback
 
 If you need custom rendering, write your own callback. Handle the four chunk types in order:
@@ -193,7 +222,7 @@ On-premise models mean that you host open models on your machine or infrastructu
 
 #### Local Experimentation
 
-- GPU: [`HuggingFaceLocalChatGenerator`](../huggingfacelocalchatgenerator.mdx) is based on the Hugging Face Transformers library. This is good for experimentation when you have some GPU resources (for example, in Colab). If GPU resources are limited, alternative quantization options like bitsandbytes, GPTQ, and AWQ are supported. For more performant solutions in production use cases, refer to the options below.
+- GPU: [`TransformersChatGenerator`](../transformerschatgenerator.mdx) is based on the Hugging Face Transformers library. This is good for experimentation when you have some GPU resources (for example, in Colab). If GPU resources are limited, alternative quantization options like bitsandbytes, GPTQ, and AWQ are supported. For more performant solutions in production use cases, refer to the options below.
 - CPU (+ GPU if available): [`LlamaCppChatGenerator`](../llamacppchatgenerator.mdx) uses the Llama.cpp library –  a project written in C/C++ for efficient inference of LLMs. In particular, it employs the quantized GGUF format, suitable for running these models on standard machines (even without GPUs). If GPU resources are available, some model layers can be offloaded to GPU for enhanced speed.
 - CPU (+ GPU if available): [`OllamaChatGenerator`](../ollamachatgenerator.mdx) is based on the Ollama project, acting like Docker for LLMs. It provides a simple way to package and deploy these models. Internally based on the Llama.cpp library, it offers a more streamlined process for running on various platforms.
 

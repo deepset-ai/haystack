@@ -192,14 +192,44 @@ class TestHTMLToDocument:
         for doc in docs:
             assert "Haystack" in doc.content
 
+    def test_bytestream_encoding_from_meta(self):
+        """
+        Test that a non-UTF-8 ByteStream is decoded using the encoding specified in its meta.
+        """
+        # "caf\xe9" is "café" in latin-1; decoding as utf-8 would raise UnicodeDecodeError.
+        latin1_html = b"<html><body><p>caf\xe9</p></body></html>"
+        bytestream = ByteStream(data=latin1_html, meta={"encoding": "latin-1"})
+
+        converter = HTMLToDocument()
+        results = converter.run(sources=[bytestream])
+        docs = results["documents"]
+
+        assert len(docs) == 1
+        assert "café" in docs[0].content
+
+    def test_bytestream_encoding_from_init(self):
+        """
+        Test that the encoding passed to __init__ is used as a fallback when not set in ByteStream meta.
+        """
+        latin1_html = b"<html><body><p>caf\xe9</p></body></html>"
+        bytestream = ByteStream(data=latin1_html)
+
+        converter = HTMLToDocument(encoding="latin-1")
+        results = converter.run(sources=[bytestream])
+        docs = results["documents"]
+
+        assert len(docs) == 1
+        assert "café" in docs[0].content
+
     def test_serde(self):
         """
         Test if the component runs correctly gets serialized and deserialized.
         """
-        converter = HTMLToDocument()
+        converter = HTMLToDocument(encoding="latin-1")
         serde_data = converter.to_dict()
         new_converter = HTMLToDocument.from_dict(serde_data)
         assert new_converter.extraction_kwargs == converter.extraction_kwargs
+        assert new_converter.encoding == converter.encoding
 
     def test_run_difficult_html(self, test_files_path):
         converter = HTMLToDocument()

@@ -2,21 +2,17 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import json
 from dataclasses import replace
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
-from haystack.components.agents import State
-from haystack.components.tools.tool_invoker import ToolInvoker
-from haystack.core.serialization import default_from_dict, default_to_dict
-from haystack.dataclasses import ChatMessage, StreamingCallbackT, ToolCall
+from haystack.components.agents.state.state import State
+from haystack.core.serialization import component_to_dict, default_from_dict, default_to_dict
+from haystack.dataclasses import ChatMessage, ToolCall
 from haystack.human_in_the_loop import ToolExecutionDecision
 from haystack.human_in_the_loop.types import ConfirmationPolicy, ConfirmationStrategy, ConfirmationUI
 from haystack.tools import Tool
 from haystack.utils.deserialization import deserialize_component_inplace
-
-# To prevent circular imports
-if TYPE_CHECKING:
-    from haystack.components.agents.agent import _ExecutionContext
 
 REJECTION_FEEDBACK_TEMPLATE = "Tool execution for '{tool_name}' was rejected by the user."
 MODIFICATION_FEEDBACK_TEMPLATE = (
@@ -210,7 +206,8 @@ def _get_confirmation_strategy(
     :param tool_name:
         The name of the tool to look up.
     :param confirmation_strategies:
-        Dictionary of confirmation strategies with string or tuple keys.
+        Dictionary of confirmation strategies with string or tuple keys. The `"*"` key, if present, is a wildcard
+        applied to any tool without a more specific entry.
     :returns:
         The confirmation strategy if found, None otherwise.
     """
@@ -221,71 +218,58 @@ def _get_confirmation_strategy(
         if isinstance(key, tuple) and tool_name in key:
             return strategy
 
-    return None
+    # Fall back to the wildcard entry that applies to any tool without a more specific match.
+    return confirmation_strategies.get("*")
 
 
-def _prepare_tool_args(
-    *,
-    tool: Tool,
-    tool_call_arguments: dict[str, Any],
-    state: State,
-    streaming_callback: StreamingCallbackT | None = None,
-    enable_streaming_passthrough: bool = False,
-) -> dict[str, Any]:
+def _passthrough_tool_call(tool_call: ToolCall) -> ToolExecutionDecision:
     """
-    Prepare the final arguments for a tool by injecting state inputs and optionally a streaming callback.
+    Build a decision that executes a tool call as-is, bypassing confirmation.
 
-    :param tool:
-        The tool instance to prepare arguments for.
-    :param tool_call_arguments:
-        The initial arguments provided for the tool call.
-    :param state:
-        The current state containing inputs to be injected into the tool arguments.
-    :param streaming_callback:
-        Optional streaming callback to be injected if enabled and applicable.
-    :param enable_streaming_passthrough:
-        Flag indicating whether to inject the streaming callback into the tool arguments.
+    Used for tool calls that don't resolve to a known tool (e.g. the model hallucinated the name). Instead of
+    raising here, the call is passed through unchanged so the tool-calling code resolves it and reports the
+    unknown tool uniformly (`ToolNotFoundException`, respecting `raise_on_failure`).
 
-    :returns:
-        A dictionary of final arguments ready for tool invocation.
+    :param tool_call: The unresolved tool call to pass through.
+    :returns: A decision that executes the tool call with its original arguments.
     """
-    # Combine user + state inputs
-    final_args = ToolInvoker._inject_state_args(tool, tool_call_arguments.copy(), state)
-    # Check whether to inject streaming_callback
-    if (
-        enable_streaming_passthrough
-        and streaming_callback is not None
-        and "streaming_callback" not in final_args
-        and "streaming_callback" in ToolInvoker._get_func_params(tool)
-    ):
-        final_args["streaming_callback"] = streaming_callback
-    return final_args
+    return ToolExecutionDecision(
+        tool_call_id=tool_call.id, tool_name=tool_call.tool_name, execute=True, final_tool_params=tool_call.arguments
+    )
 
 
 def _process_confirmation_strategies(
     *,
     confirmation_strategies: dict[str | tuple[str, ...], ConfirmationStrategy],
     messages_with_tool_calls: list[ChatMessage],
-    execution_context: "_ExecutionContext",
-) -> tuple[list[ChatMessage], list[ChatMessage]]:
+    tools: list[Tool],
+    state: State,
+    confirmation_strategy_context: dict[str, Any] | None = None,
+) -> list[ChatMessage]:
     """
-    Run the confirmation strategies and return modified tool call messages and updated chat history.
+    Run the confirmation strategies and return the updated chat history.
+
+    The returned history ends with the confirmed/modified tool calls (preceded by any rejection messages), so the
+    pending tool calls to execute are always those on its last message.
 
     :param confirmation_strategies: Mapping of tool names to their corresponding confirmation strategies
     :param messages_with_tool_calls: Chat messages containing tool calls
-    :param execution_context: The current execution context of the agent
+    :param tools: The available tools, used to resolve each tool call by name
+    :param state: The current runtime state, used to read the chat history
+    :param confirmation_strategy_context: Optional request-scoped context passed to the strategies
     :returns:
-        Tuple of modified messages with confirmed tool calls and updated chat history
+        The updated chat history.
     """
-    # If confirmations strategies is empty, return original messages and chat history
+    # If confirmations strategies is empty, return the chat history unchanged
     if not confirmation_strategies:
-        return messages_with_tool_calls, execution_context.state.get("messages")
+        return state.data["messages"]
 
     # Run confirmation strategies and get tool execution decisions
     teds = _run_confirmation_strategies(
         confirmation_strategies=confirmation_strategies,
         messages_with_tool_calls=messages_with_tool_calls,
-        execution_context=execution_context,
+        tools=tools,
+        confirmation_strategy_context=confirmation_strategy_context,
     )
 
     # Apply tool execution decisions to messages_with_tool_calls
@@ -294,41 +278,47 @@ def _process_confirmation_strategies(
     )
 
     # Update the chat history with rejection messages and new tool call messages
-    new_chat_history = _update_chat_history(
-        chat_history=execution_context.state.get("messages"),
+    return _update_chat_history(
+        chat_history=state.data["messages"],
         rejection_messages=rejection_messages,
         tool_call_and_explanation_messages=modified_tool_call_messages,
     )
-
-    return modified_tool_call_messages, new_chat_history
 
 
 async def _process_confirmation_strategies_async(
     *,
     confirmation_strategies: dict[str | tuple[str, ...], ConfirmationStrategy],
     messages_with_tool_calls: list[ChatMessage],
-    execution_context: "_ExecutionContext",
-) -> tuple[list[ChatMessage], list[ChatMessage]]:
+    tools: list[Tool],
+    state: State,
+    confirmation_strategy_context: dict[str, Any] | None = None,
+) -> list[ChatMessage]:
     """
     Async version of _process_confirmation_strategies.
 
-    Run the confirmation strategies and return modified tool call messages and updated chat history.
+    Run the confirmation strategies and return the updated chat history.
+
+    The returned history ends with the confirmed/modified tool calls (preceded by any rejection messages), so the
+    pending tool calls to execute are always those on its last message.
 
     :param confirmation_strategies: Mapping of tool names to their corresponding confirmation strategies
     :param messages_with_tool_calls: Chat messages containing tool calls
-    :param execution_context: The current execution context of the agent
+    :param tools: The available tools, used to resolve each tool call by name
+    :param state: The current runtime state, used to read the chat history
+    :param confirmation_strategy_context: Optional request-scoped context passed to the strategies
     :returns:
-        Tuple of modified messages with confirmed tool calls and updated chat history
+        The updated chat history.
     """
-    # If confirmations strategies is empty, return original messages and chat history
+    # If confirmations strategies is empty, return the chat history unchanged
     if not confirmation_strategies:
-        return messages_with_tool_calls, execution_context.state.get("messages")
+        return state.data["messages"]
 
     # Run confirmation strategies and get tool execution decisions (async version)
     teds = await _run_confirmation_strategies_async(
         confirmation_strategies=confirmation_strategies,
         messages_with_tool_calls=messages_with_tool_calls,
-        execution_context=execution_context,
+        tools=tools,
+        confirmation_strategy_context=confirmation_strategy_context,
     )
 
     # Apply tool execution decisions to messages_with_tool_calls
@@ -337,34 +327,30 @@ async def _process_confirmation_strategies_async(
     )
 
     # Update the chat history with rejection messages and new tool call messages
-    new_chat_history = _update_chat_history(
-        chat_history=execution_context.state.get("messages"),
+    return _update_chat_history(
+        chat_history=state.data["messages"],
         rejection_messages=rejection_messages,
         tool_call_and_explanation_messages=modified_tool_call_messages,
     )
-
-    return modified_tool_call_messages, new_chat_history
 
 
 def _run_confirmation_strategies(
     confirmation_strategies: dict[str | tuple[str, ...], ConfirmationStrategy],
     messages_with_tool_calls: list[ChatMessage],
-    execution_context: "_ExecutionContext",
+    tools: list[Tool],
+    confirmation_strategy_context: dict[str, Any] | None = None,
 ) -> list[ToolExecutionDecision]:
     """
     Run confirmation strategies for tool calls in the provided chat messages.
 
     :param confirmation_strategies: Mapping of tool names to their corresponding confirmation strategies
     :param messages_with_tool_calls: Messages containing tool calls to process
-    :param execution_context: The current execution context containing state and inputs
+    :param tools: The available tools, used to resolve each tool call by name
+    :param confirmation_strategy_context: Optional request-scoped context passed to the strategies
     :returns:
         A list of ToolExecutionDecision objects representing the decisions made for each tool call.
     """
-    state = execution_context.state
-    tools_with_names = {tool.name: tool for tool in execution_context.tool_invoker_inputs["tools"]}
-    existing_teds = execution_context.tool_execution_decisions if execution_context.tool_execution_decisions else []
-    existing_teds_by_name = {ted.tool_name: ted for ted in existing_teds if ted.tool_name}
-    existing_teds_by_id = {ted.tool_call_id: ted for ted in existing_teds if ted.tool_call_id}
+    tools_with_names = {tool.name: tool for tool in tools}
 
     teds = []
     for message in messages_with_tool_calls:
@@ -374,32 +360,13 @@ def _run_confirmation_strategies(
         for tool_call in message.tool_calls:
             tool_name = tool_call.tool_name
             tool_to_invoke = tools_with_names.get(tool_name)
-
-            # If the tool name doesn't match any known tool (e.g. the model hallucinated it), skip confirmation
-            # entirely and let the original tool call pass through unmodified. ToolInvoker already has proper
-            # handling for unknown tools (ToolNotFoundException, respecting raise_on_failure); we don't want to
-            # duplicate or pre-empt that here.
             if tool_to_invoke is None:
-                teds.append(
-                    ToolExecutionDecision(
-                        tool_call_id=tool_call.id,
-                        tool_name=tool_name,
-                        execute=True,
-                        final_tool_params=tool_call.arguments,
-                    )
-                )
+                # Unknown tool (e.g. the model hallucinated the name): skip confirmation and pass it through.
+                teds.append(_passthrough_tool_call(tool_call))
                 continue
 
-            # Prepare final tool args
-            final_args = _prepare_tool_args(
-                tool=tool_to_invoke,
-                tool_call_arguments=tool_call.arguments,
-                state=state,
-                streaming_callback=execution_context.tool_invoker_inputs.get("streaming_callback"),
-                enable_streaming_passthrough=execution_context.tool_invoker_inputs.get(
-                    "enable_streaming_passthrough", False
-                ),
-            )
+            # Confirm the model-requested arguments
+            final_args = dict(tool_call.arguments)
 
             # Get tool execution decisions from confirmation strategies
             # If no confirmation strategy is defined for this tool, proceed with execution
@@ -412,18 +379,14 @@ def _run_confirmation_strategies(
                 )
                 continue
 
-            # Check if there's already a decision for this tool call in the execution context
-            ted = existing_teds_by_id.get(tool_call.id or "") or existing_teds_by_name.get(tool_name)
-
-            # If not, run the confirmation strategy
-            if not ted:
-                ted = strategy.run(
-                    tool_name=tool_name,
-                    tool_description=tool_to_invoke.description,
-                    tool_params=final_args,
-                    tool_call_id=tool_call.id,
-                    confirmation_strategy_context=execution_context.confirmation_strategy_context,
-                )
+            # Run the confirmation strategy
+            ted = strategy.run(
+                tool_name=tool_name,
+                tool_description=tool_to_invoke.description,
+                tool_params=final_args,
+                tool_call_id=tool_call.id,
+                confirmation_strategy_context=confirmation_strategy_context,
+            )
             teds.append(ted)
 
     return teds
@@ -432,7 +395,8 @@ def _run_confirmation_strategies(
 async def _run_confirmation_strategies_async(
     confirmation_strategies: dict[str | tuple[str, ...], ConfirmationStrategy],
     messages_with_tool_calls: list[ChatMessage],
-    execution_context: "_ExecutionContext",
+    tools: list[Tool],
+    confirmation_strategy_context: dict[str, Any] | None = None,
 ) -> list[ToolExecutionDecision]:
     """
     Async version of _run_confirmation_strategies.
@@ -442,15 +406,12 @@ async def _run_confirmation_strategies_async(
     :param confirmation_strategies: Mapping of tool names to their corresponding confirmation strategies
         String keys map individual tools, tuple keys map multiple tools to the same strategy.
     :param messages_with_tool_calls: Messages containing tool calls to process
-    :param execution_context: The current execution context containing state and inputs
+    :param tools: The available tools, used to resolve each tool call by name
+    :param confirmation_strategy_context: Optional request-scoped context passed to the strategies
     :returns:
         A list of ToolExecutionDecision objects representing the decisions made for each tool call.
     """
-    state = execution_context.state
-    tools_with_names = {tool.name: tool for tool in execution_context.tool_invoker_inputs["tools"]}
-    existing_teds = execution_context.tool_execution_decisions if execution_context.tool_execution_decisions else []
-    existing_teds_by_name = {ted.tool_name: ted for ted in existing_teds if ted.tool_name}
-    existing_teds_by_id = {ted.tool_call_id: ted for ted in existing_teds if ted.tool_call_id}
+    tools_with_names = {tool.name: tool for tool in tools}
 
     teds = []
     for message in messages_with_tool_calls:
@@ -460,32 +421,13 @@ async def _run_confirmation_strategies_async(
         for tool_call in message.tool_calls:
             tool_name = tool_call.tool_name
             tool_to_invoke = tools_with_names.get(tool_name)
-
-            # If the tool name doesn't match any known tool (e.g. the model hallucinated it), skip confirmation
-            # entirely and let the original tool call pass through unmodified. ToolInvoker already has proper
-            # handling for unknown tools (ToolNotFoundException, respecting raise_on_failure); we don't want to
-            # duplicate or pre-empt that here.
             if tool_to_invoke is None:
-                teds.append(
-                    ToolExecutionDecision(
-                        tool_call_id=tool_call.id,
-                        tool_name=tool_name,
-                        execute=True,
-                        final_tool_params=tool_call.arguments,
-                    )
-                )
+                # Unknown tool (e.g. the model hallucinated the name): skip confirmation and pass it through.
+                teds.append(_passthrough_tool_call(tool_call))
                 continue
 
-            # Prepare final tool args
-            final_args = _prepare_tool_args(
-                tool=tool_to_invoke,
-                tool_call_arguments=tool_call.arguments,
-                state=state,
-                streaming_callback=execution_context.tool_invoker_inputs.get("streaming_callback"),
-                enable_streaming_passthrough=execution_context.tool_invoker_inputs.get(
-                    "enable_streaming_passthrough", False
-                ),
-            )
+            # Confirm the model-requested arguments
+            final_args = dict(tool_call.arguments)
 
             # Get tool execution decisions from confirmation strategies
             # If no confirmation strategy is defined for this tool, proceed with execution
@@ -498,28 +440,23 @@ async def _run_confirmation_strategies_async(
                 )
                 continue
 
-            # Check if there's already a decision for this tool call in the execution context
-            ted = existing_teds_by_id.get(tool_call.id or "") or existing_teds_by_name.get(tool_name)
-
-            # If not, run the confirmation strategy (async version)
-            if not ted:
-                # Use run_async if available, otherwise fall back to sync run
-                if hasattr(strategy, "run_async"):
-                    ted = await strategy.run_async(
-                        tool_name=tool_name,
-                        tool_description=tool_to_invoke.description,
-                        tool_params=final_args,
-                        tool_call_id=tool_call.id,
-                        confirmation_strategy_context=execution_context.confirmation_strategy_context,
-                    )
-                else:
-                    ted = strategy.run(
-                        tool_name=tool_name,
-                        tool_description=tool_to_invoke.description,
-                        tool_params=final_args,
-                        tool_call_id=tool_call.id,
-                        confirmation_strategy_context=execution_context.confirmation_strategy_context,
-                    )
+            # Use run_async if available, otherwise fall back to sync run
+            if hasattr(strategy, "run_async"):
+                ted = await strategy.run_async(
+                    tool_name=tool_name,
+                    tool_description=tool_to_invoke.description,
+                    tool_params=final_args,
+                    tool_call_id=tool_call.id,
+                    confirmation_strategy_context=confirmation_strategy_context,
+                )
+            else:
+                ted = strategy.run(
+                    tool_name=tool_name,
+                    tool_description=tool_to_invoke.description,
+                    tool_params=final_args,
+                    tool_call_id=tool_call.id,
+                    confirmation_strategy_context=confirmation_strategy_context,
+                )
             teds.append(ted)
 
     return teds
@@ -599,6 +536,9 @@ def _apply_tool_execution_decisions(
         if new_tool_calls:
             new_tool_call_messages.append(make_assistant_message(chat_msg, new_tool_calls))
 
+    # new_tool_call_messages is a list of assistant messages with an optional preceding user message explaining
+    #   modifications
+    # rejection_messages is a list of pairs of assistant and tool messages for rejected tool calls
     return rejection_messages, new_tool_call_messages
 
 
@@ -635,3 +575,50 @@ def _update_chat_history(
     insertion_point = max(last_user_idx, last_tool_idx)
 
     return chat_history[: insertion_point + 1] + rejection_messages + tool_call_and_explanation_messages
+
+
+def _serialize_confirmation_strategies(
+    confirmation_strategies: dict[str | tuple[str, ...], ConfirmationStrategy],
+) -> dict[str, Any]:
+    """
+    Serialize a confirmation strategies dictionary to a plain, mapping-key-safe dictionary.
+
+    Mapping keys must be strings, so a tuple of tool names (one strategy shared across several tools) is encoded
+    as a JSON-array string (e.g. `("a", "b")` -> `'["a", "b"]'`); a single tool name is kept as-is.
+
+    :param confirmation_strategies: Mapping of tool name (or a tuple of tool names) to its strategy.
+    :returns: The same mapping with string keys and each strategy serialized to a dictionary.
+    """
+    return {
+        (json.dumps(list(key)) if isinstance(key, tuple) else key): component_to_dict(
+            obj=strategy, name="confirmation_strategy"
+        )
+        for key, strategy in confirmation_strategies.items()
+    }
+
+
+def _deserialize_confirmation_strategies(data: dict[str, Any]) -> dict[str | tuple[str, ...], ConfirmationStrategy]:
+    """
+    Deserialize a confirmation strategies dictionary from its serialized form.
+
+    Deserializes each strategy component in-place and converts keys that were encoded as JSON-array strings (tuples
+    of tool names) back to tuples; single tool-name string keys are kept as-is.
+
+    :param data: Raw dictionary of serialized confirmation strategies, keyed by tool name(s).
+    :returns: Deserialized confirmation strategies with proper key types.
+    """
+    for raw_key in list(data):
+        deserialize_component_inplace(data, key=raw_key)
+
+    return {_decode_strategy_key(raw_key): strategy for raw_key, strategy in data.items()}
+
+
+def _decode_strategy_key(raw_key: str | list) -> str | tuple[str, ...]:
+    """Reverse of the key encoding in `_serialize_confirmation_strategies`."""
+    # Backwards-compatibility: an actual list (older in-memory forms) becomes a tuple.
+    if isinstance(raw_key, list):
+        return tuple(raw_key)
+    # A JSON-array string encodes a tuple of tool names; any other string is a single tool name.
+    if raw_key.startswith("["):
+        return tuple(json.loads(raw_key))
+    return raw_key

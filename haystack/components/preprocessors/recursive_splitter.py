@@ -99,6 +99,8 @@ class RecursiveDocumentSplitter:
         """
         Warm up the sentence tokenizer and tiktoken tokenizer if needed.
         """
+        if self._is_warmed_up:
+            return
         if "sentence" in self.separators:
             self.nltk_tokenizer = self._get_custom_sentence_tokenizer(self.sentence_splitter_params)
         if self.split_units == "token":
@@ -403,17 +405,14 @@ class RecursiveDocumentSplitter:
 
     def _add_overlap_info(self, curr_pos: int, new_doc: Document, new_docs: list[Document]) -> None:
         prev_doc = new_docs[-1]
-        overlap_length = self._chunk_length(prev_doc.content) - (curr_pos - prev_doc.meta["split_idx_start"])  # type: ignore
+        # curr_pos and split_idx_start are character offsets, so measure the
+        # overlap and range in characters too (not via _chunk_length, which returns a word/token count).
+        prev_doc_length = len(prev_doc.content)  # type: ignore
+        overlap_length = prev_doc_length - (curr_pos - prev_doc.meta["split_idx_start"])
         if overlap_length > 0:
             prev_doc.meta["_split_overlap"].append({"doc_id": new_doc.id, "range": (0, overlap_length)})
             new_doc.meta["_split_overlap"].append(
-                {
-                    "doc_id": prev_doc.id,
-                    "range": (
-                        self._chunk_length(prev_doc.content) - overlap_length,  # type: ignore
-                        self._chunk_length(prev_doc.content),  # type: ignore
-                    ),
-                }
+                {"doc_id": prev_doc.id, "range": (prev_doc_length - overlap_length, prev_doc_length)}
             )
 
     def _run_one(self, doc: Document) -> list[Document]:

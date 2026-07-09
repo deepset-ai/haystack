@@ -11,6 +11,7 @@ from haystack import component, default_from_dict, default_to_dict
 from haystack.components.retrievers.types.protocol import TextRetriever
 from haystack.core.serialization import component_from_dict, component_to_dict, import_class_by_name
 from haystack.dataclasses import Document
+from haystack.utils.async_utils import _execute_component_async
 from haystack.utils.experimental import _experimental
 from haystack.utils.misc import _deduplicate_documents, _reciprocal_rank_fusion
 
@@ -38,7 +39,7 @@ class MultiRetriever:
     from haystack.document_stores.types import DuplicatePolicy
     from haystack.components.retrievers import InMemoryBM25Retriever, InMemoryEmbeddingRetriever
     from haystack.components.retrievers import TextEmbeddingRetriever, MultiRetriever
-    from haystack.components.embedders import SentenceTransformersTextEmbedder, SentenceTransformersDocumentEmbedder
+    from haystack.components.embedders import OpenAITextEmbedder, OpenAIDocumentEmbedder
     from haystack.components.writers import DocumentWriter
 
     documents = [
@@ -49,7 +50,7 @@ class MultiRetriever:
 
     # Populate the document store
     doc_store = InMemoryDocumentStore()
-    doc_embedder = SentenceTransformersDocumentEmbedder(model="sentence-transformers/all-MiniLM-L6-v2")
+    doc_embedder = OpenAIDocumentEmbedder()
     doc_writer = DocumentWriter(document_store=doc_store, policy=DuplicatePolicy.SKIP)
     doc_writer.run(documents=doc_embedder.run(documents)["documents"])
 
@@ -59,7 +60,7 @@ class MultiRetriever:
             "bm25": InMemoryBM25Retriever(document_store=doc_store),
             "embedding": TextEmbeddingRetriever(
                 retriever=InMemoryEmbeddingRetriever(document_store=doc_store),
-                text_embedder=SentenceTransformersTextEmbedder(model="sentence-transformers/all-MiniLM-L6-v2"),
+                text_embedder=OpenAITextEmbedder(),
             ),
         },
         top_k=3,
@@ -81,7 +82,8 @@ class MultiRetriever:
         *,
         retrievers: dict[str, TextRetriever],
         filters: dict[str, Any] | None = None,
-        top_k: int = 10,
+        top_k_per_retriever: int | None = None,
+        top_k: int | None = None,
         max_workers: int = 4,
         join_mode: Literal["concatenate", "reciprocal_rank_fusion"] = "reciprocal_rank_fusion",
     ) -> None:
@@ -93,8 +95,14 @@ class MultiRetriever:
             parallel.
         :param filters:
             A dictionary of filters to apply when retrieving documents.
+        :param top_k_per_retriever:
+            The maximum number of documents to return per retriever. If set, this will override the `top_k`
+            parameter for each retriever. If None, the `top_k` parameter of retrievers will be used.
         :param top_k:
-            The maximum number of documents to return per retriever.
+            The maximum number of documents to return overall, extracted from the combined results of all
+            retrievers. When set, the results are always merged using reciprocal rank fusion (regardless of
+            `join_mode`) so that the combined list has a consistent global ranking before it is truncated to
+            `top_k`. If None, all results are returned.
         :param max_workers:
             The maximum number of threads to use for parallel retrieval.
         :param join_mode:
@@ -104,21 +112,26 @@ class MultiRetriever:
         """
         self.retrievers = retrievers
         self.filters = filters
+        self.top_k_per_retriever = top_k_per_retriever
         self.top_k = top_k
         self.max_workers = max_workers
         self.join_mode = join_mode
-        self._is_warmed_up = False
 
-    def _merge_results(self, document_lists: list[list[Document]]) -> list[Document]:
+    def _merge_results(self, document_lists: list[list[Document]], top_k: int | None = None) -> list[Document]:
         """
         Merge per-retriever result lists according to `join_mode`.
 
         In `concatenate` mode, all lists are flattened and deduplicated. In `reciprocal_rank_fusion` mode, results
-        are deduplicated and re-scored using RRF, then returned in descending score order.
+        are deduplicated and re-scored using RRF, then returned in descending score order. When `top_k` is set, RRF
+        is always used so the combined results have a consistent global ranking, and only the top `top_k` documents
+        are returned.
         """
-        if self.join_mode == "reciprocal_rank_fusion":
+        # When top_k is set we always use reciprocal rank fusion to merge the results, regardless of join_mode,
+        # so that truncation is applied to a consistently ranked list.
+        if top_k is not None or self.join_mode == "reciprocal_rank_fusion":
             documents = _reciprocal_rank_fusion(document_lists)
-            return sorted(documents, key=lambda d: d.score if d.score is not None else -inf, reverse=True)
+            merged = sorted(documents, key=lambda d: d.score if d.score is not None else -inf, reverse=True)
+            return merged[:top_k] if top_k is not None else merged
         return _deduplicate_documents([doc for docs in document_lists for doc in docs])
 
     def _resolve_retrievers(self, active_retrievers: list[str] | None) -> dict[str, TextRetriever]:
@@ -145,20 +158,46 @@ class MultiRetriever:
 
     def warm_up(self) -> None:
         """
-        Warm up the retrievers if any has a warm_up method.
+        Warm up the retrievers.
         """
-        if self._is_warmed_up:
-            return
         for retriever in self.retrievers.values():
-            if hasattr(retriever, "warm_up") and callable(retriever.warm_up):
+            if hasattr(retriever, "warm_up"):
                 retriever.warm_up()
-        self._is_warmed_up = True
+
+    async def warm_up_async(self) -> None:
+        """
+        Warm up the retrievers on the serving event loop.
+        """
+        for retriever in self.retrievers.values():
+            if hasattr(retriever, "warm_up_async"):
+                await retriever.warm_up_async()
+            elif hasattr(retriever, "warm_up"):
+                retriever.warm_up()
+
+    def close(self) -> None:
+        """
+        Release the retrievers' resources.
+        """
+        for retriever in self.retrievers.values():
+            if hasattr(retriever, "close"):
+                retriever.close()
+
+    async def close_async(self) -> None:
+        """
+        Release the retrievers' async resources.
+        """
+        for retriever in self.retrievers.values():
+            if hasattr(retriever, "close_async"):
+                await retriever.close_async()
+            elif hasattr(retriever, "close"):
+                retriever.close()
 
     @component.output_types(documents=list[Document])
     def run(
         self,
         query: str,
         filters: dict[str, Any] | None = None,
+        top_k_per_retriever: int | None = None,
         top_k: int | None = None,
         *,
         active_retrievers: list[str] | None = None,
@@ -170,8 +209,15 @@ class MultiRetriever:
             The query to run the retrievers on.
         :param filters:
             Filters to apply. Defaults to the value set at initialization.
+        :param top_k_per_retriever:
+            The maximum number of documents to return per retriever. When set, this will override the `top_k`
+            parameter for each retriever. If None, the `top_k` parameter set for retrievers will be used.
+            Defaults to the value set at initialization.
         :param top_k:
-            Maximum documents to return per retriever. Defaults to the value set at initialization.
+            The maximum number of documents to return overall, extracted from the combined results of all
+            retrievers. When set, the results are always merged using reciprocal rank fusion (regardless of
+            `join_mode`) so that the combined list has a consistent global ranking before it is truncated to
+            `top_k`. If None, all results are returned. Defaults to the value set at initialization.
         :param active_retrievers:
             Names of retrievers to run. Defaults to all. Must match keys in the `retrievers` dictionary.
 
@@ -182,9 +228,11 @@ class MultiRetriever:
         :raises ValueError:
             If any name in `active_retrievers` does not match a retriever name.
         """
-        if not self._is_warmed_up:
-            self.warm_up()
+        self.warm_up()
 
+        resolved_top_k_per_retriever = (
+            top_k_per_retriever if top_k_per_retriever is not None else self.top_k_per_retriever
+        )
         resolved_top_k = top_k if top_k is not None else self.top_k
         resolved_filters = filters if filters is not None else self.filters
 
@@ -192,10 +240,15 @@ class MultiRetriever:
 
         results_by_name: dict[str, list[Document]] = {}
         with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
-            future_to_name = {
-                executor.submit(retriever.run, query=query, filters=resolved_filters, top_k=resolved_top_k): name
-                for name, retriever in retrievers_to_run.items()
-            }
+            future_to_name = {}
+            for name, retriever in retrievers_to_run.items():
+                run_kwargs: dict[str, Any] = {"query": query}
+                if resolved_top_k_per_retriever is not None:
+                    run_kwargs["top_k"] = resolved_top_k_per_retriever
+                if resolved_filters is not None:
+                    run_kwargs["filters"] = resolved_filters
+                future_to_name[executor.submit(retriever.run, **run_kwargs)] = name
+
             for future in as_completed(future_to_name):
                 name = future_to_name[future]
                 try:
@@ -204,13 +257,14 @@ class MultiRetriever:
                     raise RuntimeError(f"Retriever '{name}' failed: {e}") from e
 
         document_lists = [results_by_name[name] for name in retrievers_to_run]
-        return {"documents": self._merge_results(document_lists)}
+        return {"documents": self._merge_results(document_lists, top_k=resolved_top_k)}
 
     @component.output_types(documents=list[Document])
     async def run_async(
         self,
         query: str,
         filters: dict[str, Any] | None = None,
+        top_k_per_retriever: int | None = None,
         top_k: int | None = None,
         *,
         active_retrievers: list[str] | None = None,
@@ -224,8 +278,15 @@ class MultiRetriever:
             The query to run the retrievers on.
         :param filters:
             Filters to apply. Defaults to the value set at initialization.
+        :param top_k_per_retriever:
+            The maximum number of documents to return per retriever. When set, this will override the `top_k`
+            parameter for each retriever. If None, the `top_k` parameter set for retrievers will be used.
+            Defaults to the value set at initialization.
         :param top_k:
-            Maximum documents to return per retriever. Defaults to the value set at initialization.
+            The maximum number of documents to return overall, extracted from the combined results of all
+            retrievers. When set, the results are always merged using reciprocal rank fusion (regardless of
+            `join_mode`) so that the combined list has a consistent global ranking before it is truncated to
+            `top_k`. If None, all results are returned. Defaults to the value set at initialization.
         :param active_retrievers:
             Names of retrievers to run. Defaults to all. Must match keys in the `retrievers` dictionary.
 
@@ -236,30 +297,31 @@ class MultiRetriever:
         :raises ValueError:
             If any name in `active_retrievers` does not match a retriever name.
         """
-        if not self._is_warmed_up:
-            self.warm_up()
+        await self.warm_up_async()
 
+        resolved_top_k_per_retriever = (
+            top_k_per_retriever if top_k_per_retriever is not None else self.top_k_per_retriever
+        )
         resolved_top_k = top_k if top_k is not None else self.top_k
         resolved_filters = filters if filters is not None else self.filters
 
         retrievers_to_run = self._resolve_retrievers(active_retrievers)
 
-        loop = asyncio.get_running_loop()
+        run_kwargs: dict[str, Any] = {"query": query}
+        if resolved_top_k_per_retriever is not None:
+            run_kwargs["top_k"] = resolved_top_k_per_retriever
+        if resolved_filters is not None:
+            run_kwargs["filters"] = resolved_filters
 
         async def _run_one(name: str, retriever: TextRetriever) -> list[Document]:
             try:
-                if hasattr(retriever, "run_async") and callable(retriever.run_async):
-                    result = await retriever.run_async(query=query, filters=resolved_filters, top_k=resolved_top_k)
-                else:
-                    result = await loop.run_in_executor(
-                        None, lambda: retriever.run(query=query, filters=resolved_filters, top_k=resolved_top_k)
-                    )
+                result = await _execute_component_async(retriever, **run_kwargs)
                 return result.get("documents", [])
             except Exception as e:
                 raise RuntimeError(f"Retriever '{name}' failed: {e}") from e
 
         document_lists = list(await asyncio.gather(*[_run_one(name, r) for name, r in retrievers_to_run.items()]))
-        return {"documents": self._merge_results(document_lists)}
+        return {"documents": self._merge_results(document_lists, top_k=resolved_top_k)}
 
     def to_dict(self) -> dict[str, Any]:
         """
@@ -272,6 +334,7 @@ class MultiRetriever:
             self,
             retrievers={name: component_to_dict(obj=r, name=name) for name, r in self.retrievers.items()},
             filters=self.filters,
+            top_k_per_retriever=self.top_k_per_retriever,
             top_k=self.top_k,
             max_workers=self.max_workers,
             join_mode=self.join_mode,

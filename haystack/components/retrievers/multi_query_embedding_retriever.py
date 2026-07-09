@@ -10,6 +10,7 @@ from haystack import Document, component, default_from_dict, default_to_dict
 from haystack.components.embedders.types.protocol import TextEmbedder
 from haystack.components.retrievers.types import EmbeddingRetriever
 from haystack.core.serialization import component_to_dict
+from haystack.utils.async_utils import _execute_component_async
 from haystack.utils.misc import _deduplicate_documents
 
 
@@ -28,8 +29,8 @@ class MultiQueryEmbeddingRetriever:
     from haystack import Document
     from haystack.document_stores.in_memory import InMemoryDocumentStore
     from haystack.document_stores.types import DuplicatePolicy
-    from haystack.components.embedders import SentenceTransformersTextEmbedder
-    from haystack.components.embedders import SentenceTransformersDocumentEmbedder
+    from haystack.components.embedders import OpenAITextEmbedder
+    from haystack.components.embedders import OpenAIDocumentEmbedder
     from haystack.components.retrievers import InMemoryEmbeddingRetriever
     from haystack.components.writers import DocumentWriter
     from haystack.components.retrievers import MultiQueryEmbeddingRetriever
@@ -45,14 +46,14 @@ class MultiQueryEmbeddingRetriever:
 
     # Populate the document store
     doc_store = InMemoryDocumentStore()
-    doc_embedder = SentenceTransformersDocumentEmbedder(model="sentence-transformers/all-MiniLM-L6-v2")
+    doc_embedder = OpenAIDocumentEmbedder()
     doc_writer = DocumentWriter(document_store=doc_store, policy=DuplicatePolicy.SKIP)
     documents = doc_embedder.run(documents)["documents"]
     doc_writer.run(documents=documents)
 
     # Run the multi-query retriever
     in_memory_retriever = InMemoryEmbeddingRetriever(document_store=doc_store, top_k=1)
-    query_embedder = SentenceTransformersTextEmbedder(model="sentence-transformers/all-MiniLM-L6-v2")
+    query_embedder = OpenAITextEmbedder()
 
     multi_query_retriever = MultiQueryEmbeddingRetriever(
         retriever=in_memory_retriever,
@@ -84,18 +85,42 @@ class MultiQueryEmbeddingRetriever:
         self.retriever = retriever
         self.query_embedder = query_embedder
         self.max_workers = max_workers
-        self._is_warmed_up = False
 
     def warm_up(self) -> None:
         """
-        Warm up the query embedder and the retriever if any has a warm_up method.
+        Warm up the query embedder and the retriever.
         """
-        if not self._is_warmed_up:
-            if hasattr(self.query_embedder, "warm_up") and callable(self.query_embedder.warm_up):
-                self.query_embedder.warm_up()
-            if hasattr(self.retriever, "warm_up") and callable(self.retriever.warm_up):
-                self.retriever.warm_up()
-            self._is_warmed_up = True
+        for inner in (self.query_embedder, self.retriever):
+            if hasattr(inner, "warm_up"):
+                inner.warm_up()
+
+    async def warm_up_async(self) -> None:
+        """
+        Warm up the query embedder and the retriever on the serving event loop.
+        """
+        for inner in (self.query_embedder, self.retriever):
+            if hasattr(inner, "warm_up_async"):
+                await inner.warm_up_async()
+            elif hasattr(inner, "warm_up"):
+                inner.warm_up()
+
+    def close(self) -> None:
+        """
+        Release the query embedder's and the retriever's resources.
+        """
+        for inner in (self.query_embedder, self.retriever):
+            if hasattr(inner, "close"):
+                inner.close()
+
+    async def close_async(self) -> None:
+        """
+        Release the query embedder's and the retriever's async resources.
+        """
+        for inner in (self.query_embedder, self.retriever):
+            if hasattr(inner, "close_async"):
+                await inner.close_async()
+            elif hasattr(inner, "close"):
+                inner.close()
 
     @component.output_types(documents=list[Document])
     def run(self, queries: list[str], retriever_kwargs: dict[str, Any] | None = None) -> dict[str, list[Document]]:
@@ -111,8 +136,7 @@ class MultiQueryEmbeddingRetriever:
         docs: list[Document] = []
         retriever_kwargs = retriever_kwargs or {}
 
-        if not self._is_warmed_up:
-            self.warm_up()
+        self.warm_up()
 
         with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
             queries_results = executor.map(lambda query: self._run_on_thread(query, retriever_kwargs), queries)
@@ -144,8 +168,7 @@ class MultiQueryEmbeddingRetriever:
         """
         retriever_kwargs = retriever_kwargs or {}
 
-        if not self._is_warmed_up:
-            self.warm_up()
+        await self.warm_up_async()
 
         results = await asyncio.gather(*[self._run_one_async(q, retriever_kwargs) for q in queries])
         docs: list[Document] = [doc for result in results if result for doc in result]
@@ -178,21 +201,11 @@ class MultiQueryEmbeddingRetriever:
         :returns:
             List of retrieved documents or None if no results.
         """
-        loop = asyncio.get_running_loop()
-
-        if hasattr(self.query_embedder, "run_async") and callable(self.query_embedder.run_async):
-            embedding_result = await self.query_embedder.run_async(text=query)
-        else:
-            embedding_result = await loop.run_in_executor(None, lambda: self.query_embedder.run(text=query))
+        embedding_result = await _execute_component_async(self.query_embedder, text=query)
 
         query_embedding = embedding_result["embedding"]
 
-        if hasattr(self.retriever, "run_async") and callable(self.retriever.run_async):
-            result = await self.retriever.run_async(query_embedding=query_embedding, **retriever_kwargs)
-        else:
-            result = await loop.run_in_executor(
-                None, lambda: self.retriever.run(query_embedding=query_embedding, **retriever_kwargs)
-            )
+        result = await _execute_component_async(self.retriever, query_embedding=query_embedding, **retriever_kwargs)
 
         if result and "documents" in result:
             return result["documents"]

@@ -2,17 +2,32 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import inspect
+
 import httpx
 import pytest
 
 from haystack.components.generators.utils import print_streaming_chunk
 from haystack.core.errors import DeserializationError, SerializationError
 from haystack.testing.callable_serialization.random_callable import callable_to_deserialize
+from haystack.tools import tool
 from haystack.utils import deserialize_callable, serialize_callable
 
 
 def some_random_callable_for_testing(some_ignored_arg: str) -> None:
     pass
+
+
+@tool
+def sync_tool_for_testing(x: int) -> int:
+    """A sync tool."""
+    return x
+
+
+@tool
+async def async_tool_for_testing(x: int) -> int:
+    """An async tool."""
+    return x
 
 
 class TestClass:
@@ -94,6 +109,20 @@ def test_staticmethod_serialization_deserialization():
     result = serialize_callable(TestClass.static_method)
     fn = deserialize_callable(result)
     assert fn == TestClass.static_method
+
+
+def test_deserialization_of_tool_decorated_function():
+    # The @tool decorator replaces the module-level sync function with a Tool object;
+    # deserialization should return the underlying sync function.
+    fn = deserialize_callable("test_callable_serialization.sync_tool_for_testing")
+    assert fn(x=5) == 5
+
+
+def test_deserialization_of_tool_decorated_async_function():
+    # The @tool decorator replaces the module-level async function with a Tool object that has
+    # only `async_function` set; deserialization should return the underlying coroutine function.
+    fn = deserialize_callable("test_callable_serialization.async_tool_for_testing")
+    assert inspect.iscoroutinefunction(fn)
 
 
 def test_callable_deserialization_errors():

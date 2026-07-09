@@ -114,6 +114,55 @@ result = agent.run(
 print(result["last_message"].text)
 ```
 
+#### Using hooks to influence the run loop
+
+Hooks are callables that receive the live `State` and run at specific points in the Agent loop:
+
+- `before_llm`: runs before each chat-generator call.
+- `before_tool`: runs after the model requests tool calls, before any tools run. After these hooks run, the Agent
+  re-reads the current last message from `state.data["messages"]`. If that message has tool calls, those calls are
+  executed. If it has no tool calls, no tools run for that step, no tool-based exit condition is triggered, and the
+  Agent loops back to the next LLM call unless `max_agent_steps` has been reached.
+- `after_tool`: runs after tools execute, once their result messages are in `state.data["messages"]`, before the
+  exit check and the next LLM call. Use it to rewrite the freshly produced tool-result messages (e.g. offload,
+  redact, truncate, or summarize results). It does not run on the plain-text exit step, where no tools run.
+- `on_exit`: runs when the Agent is about to stop on an exit condition. An `on_exit` hook can keep the Agent
+  running by setting `state.set("continue_run", True)`.
+
+Use the `@hook` decorator to build a hook from a function. This `on_exit` hook keeps the Agent running until a
+required tool has been called.
+
+```python
+from haystack.components.agents import Agent
+from haystack.components.agents.state import State
+from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.dataclasses import ChatMessage
+from haystack.hooks import hook
+from haystack.tools import tool
+from typing import Annotated
+
+
+@tool
+def save_result(content: Annotated[str, "The result to save"]) -> str:
+    """Save the final result."""
+    # Placeholder: would persist `content` to a database or the file system
+    return "saved"
+
+
+@hook
+def require_save(state: State) -> None:
+    if state.get("tool_call_counts", {}).get("save_result", 0) == 0:
+        state.set("messages", [ChatMessage.from_system("Call `save_result` before finishing.")])
+        state.set("continue_run", True)  # keep the Agent running instead of stopping
+
+
+agent = Agent(
+    chat_generator=OpenAIChatGenerator(),
+    tools=[save_result],
+    hooks={"on_exit": [require_save]},
+)
+```
+
 #### __init__
 
 ```python
@@ -129,10 +178,9 @@ __init__(
     max_agent_steps: int = 100,
     streaming_callback: StreamingCallbackT | None = None,
     raise_on_tool_invocation_failure: bool = False,
-    tool_invoker_kwargs: dict[str, Any] | None = None,
-    confirmation_strategies: (
-        dict[str | tuple[str, ...], ConfirmationStrategy] | None
-    ) = None
+    tool_concurrency_limit: int = 4,
+    tool_streaming_callback_passthrough: bool = False,
+    hooks: dict[HookPoint, list[Hook]] | None = None
 ) -> None
 ```
 
@@ -142,11 +190,11 @@ Initialize the agent component.
 
 - **chat_generator** (<code>ChatGenerator</code>) – An instance of the chat generator that your agent should use. It must support tools.
 - **tools** (<code>ToolsType | None</code>) – A list of Tool and/or Toolset objects, or a single Toolset that the agent can use.
-- **system_prompt** (<code>str | None</code>) – System prompt for the agent. Can be a plain string or a Jinja2 string template.
+- **system_prompt** (<code>str | None</code>) – System prompt for the agent. Can be a plain string template or a Jinja2 message template.
   For details on the supported template syntax, refer to the
   [documentation](https://docs.haystack.deepset.ai/docs/chatpromptbuilder#string-templates).
-- **user_prompt** (<code>str | None</code>) – User prompt for the agent, defined as a Jinja2 string template. If provided, this is
-  appended to the messages provided at runtime.
+- **user_prompt** (<code>str | None</code>) – User prompt for the agent. Can be a plain string template or a Jinja2 message template.
+  If provided, this is appended to the messages provided at runtime.
   For details on the supported template syntax, refer to the
   [documentation](https://docs.haystack.deepset.ai/docs/chatpromptbuilder#string-templates).
 - **required_variables** (<code>list\[str\] | Literal['\*'] | None</code>) – Lists the variables that must be provided as inputs to `user_prompt` or `system_prompt`.
@@ -159,19 +207,38 @@ Initialize the agent component.
   with `"type"` (required) and an optional `"handler"` for merging values across tool calls.
   Tools can read from and write to state keys using `inputs_from_state` and `outputs_to_state`.
 - **max_agent_steps** (<code>int</code>) – Maximum number of steps the agent will run before stopping. Defaults to 100.
-  If the agent exceeds this number of steps, it will stop and return the current state.
+  A step is one chat-generator call plus the execution of every tool call the model requested in
+  that call (if any). If the agent reaches this number of steps it stops and returns the current state.
 - **streaming_callback** (<code>StreamingCallbackT | None</code>) – A callback that will be invoked when a response is streamed from the LLM.
   The same callback can be configured to emit tool results when a tool is called.
 - **raise_on_tool_invocation_failure** (<code>bool</code>) – Should the agent raise an exception when a tool invocation fails?
   If set to False, the exception will be turned into a chat message and passed to the LLM.
-- **tool_invoker_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments to pass to the ToolInvoker.
-- **confirmation_strategies** (<code>dict\[str | tuple\[str, ...\], ConfirmationStrategy\] | None</code>) – A dictionary mapping tool names to ConfirmationStrategy instances.
+- **tool_concurrency_limit** (<code>int</code>) – Maximum number of tool calls to execute at the same time.
+  Defaults to 4. Set to 1 to disable parallel tool execution.
+- **tool_streaming_callback_passthrough** (<code>bool</code>) – If True, pass the streaming callback to tools that accept it.
+- **hooks** (<code>dict\[HookPoint, list\[Hook\]\] | None</code>) – A dictionary mapping a hook point to a list of hooks the Agent runs at that point. Each hook
+  receives the live `State` and influences the run by mutating it in place; hooks for a hook point run in
+  list order. Valid hook points are:
+- "before_llm": Runs before each chat-generator call.
+- "before_tool": Runs after the model requests tool calls, before any tools run. After these hooks run,
+  the Agent re-reads the current last message from `state.data["messages"]`. If that message contains tool
+  calls, those calls are executed. If it does not, no tools run for that step, no tool-based exit condition
+  is triggered, and the Agent loops back to the next LLM call unless `max_agent_steps` has been reached.
+- "after_tool": Runs after tools execute, once their result messages are in `state.data["messages"]`,
+  before the exit check and the next LLM call. Use it to rewrite the freshly produced tool-result messages
+  (e.g. offload, redact, truncate, or summarize results). It does not run on the plain-text exit step,
+  where no tools run.
+- "on_exit": Runs when the Agent is about to stop on an exit condition. An "on_exit" hook can keep the
+  Agent running by setting the `continue_run` control flag (`state.set("continue_run", True)`), usually
+  alongside a message telling the model what to do next. "on_exit" hooks run when the Agent stops on an
+  exit condition, but not when it stops because `max_agent_steps` is reached.
 
 **Raises:**
 
 - <code>TypeError</code> – If the chat_generator does not support tools parameter in its run method.
-- <code>ValueError</code> – If the exit_conditions are not valid.
-- <code>ValueError</code> – If any `user_prompt` variable overlaps with the `state_schema` or `run` method parameters.
+- <code>ValueError</code> – If any `user_prompt` variable overlaps with the `state_schema` or `run` method parameters,
+  if a hook is registered under an unknown hook point, or if a hook is registered under a hook point it does
+  not support (via its `allowed_hook_points`).
 
 #### warm_up
 
@@ -179,7 +246,31 @@ Initialize the agent component.
 warm_up() -> None
 ```
 
-Warm up the Agent.
+Warm up the tools, hooks, and the underlying chat generator.
+
+#### warm_up_async
+
+```python
+warm_up_async() -> None
+```
+
+Warm up the tools, hooks, and the underlying chat generator on the serving event loop.
+
+#### close
+
+```python
+close() -> None
+```
+
+Release the hooks' and the underlying chat generator's resources.
+
+#### close_async
+
+```python
+close_async() -> None
+```
+
+Release the hooks' and the underlying chat generator's async resources.
 
 #### to_dict
 
@@ -217,13 +308,8 @@ run(
     streaming_callback: StreamingCallbackT | None = None,
     *,
     generation_kwargs: dict[str, Any] | None = None,
-    break_point: AgentBreakpoint | None = None,
-    snapshot: AgentSnapshot | None = None,
-    system_prompt: str | None = None,
-    user_prompt: str | None = None,
     tools: ToolsType | list[str] | None = None,
-    snapshot_callback: SnapshotCallback | None = None,
-    confirmation_strategy_context: dict[str, Any] | None = None,
+    hook_context: dict[str, Any] | None = None,
     **kwargs: Any
 ) -> dict[str, Any]
 ```
@@ -237,22 +323,12 @@ Process messages and execute tools until an exit condition is met.
   The same callback can be configured to emit tool results when a tool is called.
 - **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for LLM. These parameters will
   override the parameters passed during component initialization.
-- **break_point** (<code>AgentBreakpoint | None</code>) – An AgentBreakpoint, can be a Breakpoint for the "chat_generator" or a ToolBreakpoint
-  for "tool_invoker".
-- **snapshot** (<code>AgentSnapshot | None</code>) – An `AgentSnapshot` object containing the state of a previously saved agent execution,
-  used to restart the agent from where it left off.
-- **system_prompt** (<code>str | None</code>) – System prompt for the agent. If provided, it overrides the default system prompt.
-- **user_prompt** (<code>str | None</code>) – User prompt for the agent. If provided, it overrides the default user prompt and is
-  appended to the messages provided at runtime.
 - **tools** (<code>ToolsType | list\[str\] | None</code>) – Optional list of Tool objects, a Toolset, or list of tool names to use for this run.
   When passing tool names, tools are selected from the Agent's originally configured tools.
-- **snapshot_callback** (<code>SnapshotCallback | None</code>) – Optional callback function that is invoked when a pipeline snapshot is created.
-  The callback receives a `PipelineSnapshot` object and can return an optional string.
-  If provided, the callback is used instead of the default file-saving behavior.
-- **confirmation_strategy_context** (<code>dict\[str, Any\] | None</code>) – Optional dictionary for passing request-scoped resources
-  to confirmation strategies. Useful in web/server environments to provide per-request
-  objects (e.g., WebSocket connections, async queues, Redis pub/sub clients) that strategies
-  can use for non-blocking user interaction.
+- **hook_context** (<code>dict\[str, Any\] | None</code>) – Optional dictionary of request-scoped resources made available to hooks via
+  `state.data.get("hook_context")`. Useful in web/server environments to provide per-request objects
+  (e.g., WebSocket connections, async queues, Redis pub/sub clients) that a hook can use, for
+  example a ConfirmationHook driving non-blocking user interaction.
 - **kwargs** (<code>Any</code>) – Additional data to pass to the State schema used by the Agent.
   The keys must match the schema defined in the Agent's `state_schema`.
 
@@ -261,11 +337,13 @@ Process messages and execute tools until an exit condition is met.
 - <code>dict\[str, Any\]</code> – A dictionary with the following keys:
 - "messages": List of all messages exchanged during the agent's run.
 - "last_message": The last message exchanged during the agent's run.
+- "step_count": The number of steps the agent ran. A step is one chat-generator call plus the
+  execution of every tool call the model requested in that call (if any). The counter is incremented
+  after each step completes, including the final step that hits an exit condition or `max_agent_steps`.
+- "token_usage": Aggregated token usage from every LLM call in the run, summed from each LLM message's
+  `meta["usage"]`.
+- "tool_call_counts": Mapping of tool name to the number of times that tool was invoked.
 - Any additional keys defined in the `state_schema`.
-
-**Raises:**
-
-- <code>BreakpointException</code> – If an agent breakpoint is triggered.
 
 #### run_async
 
@@ -275,13 +353,8 @@ run_async(
     streaming_callback: StreamingCallbackT | None = None,
     *,
     generation_kwargs: dict[str, Any] | None = None,
-    break_point: AgentBreakpoint | None = None,
-    snapshot: AgentSnapshot | None = None,
-    system_prompt: str | None = None,
-    user_prompt: str | None = None,
     tools: ToolsType | list[str] | None = None,
-    snapshot_callback: SnapshotCallback | None = None,
-    confirmation_strategy_context: dict[str, Any] | None = None,
+    hook_context: dict[str, Any] | None = None,
     **kwargs: Any
 ) -> dict[str, Any]
 ```
@@ -299,21 +372,11 @@ if available.
   LLM. The same callback can be configured to emit tool results when a tool is called.
 - **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for LLM. These parameters will
   override the parameters passed during component initialization.
-- **break_point** (<code>AgentBreakpoint | None</code>) – An AgentBreakpoint, can be a Breakpoint for the "chat_generator" or a ToolBreakpoint
-  for "tool_invoker".
-- **snapshot** (<code>AgentSnapshot | None</code>) – An `AgentSnapshot` object containing the state of a previously saved agent execution,
-  used to restart the agent from where it left off.
-- **system_prompt** (<code>str | None</code>) – System prompt for the agent. If provided, it overrides the default system prompt.
-- **user_prompt** (<code>str | None</code>) – User prompt for the agent. If provided, it overrides the default user prompt and is
-  appended to the messages provided at runtime.
 - **tools** (<code>ToolsType | list\[str\] | None</code>) – Optional list of Tool objects, a Toolset, or list of tool names to use for this run.
-- **snapshot_callback** (<code>SnapshotCallback | None</code>) – Optional callback function that is invoked when a pipeline snapshot is created.
-  The callback receives a `PipelineSnapshot` object and can return an optional string.
-  If provided, the callback is used instead of the default file-saving behavior.
-- **confirmation_strategy_context** (<code>dict\[str, Any\] | None</code>) – Optional dictionary for passing request-scoped resources
-  to confirmation strategies. Useful in web/server environments to provide per-request
-  objects (e.g., WebSocket connections, async queues, Redis pub/sub clients) that strategies
-  can use for non-blocking user interaction.
+- **hook_context** (<code>dict\[str, Any\] | None</code>) – Optional dictionary of request-scoped resources made available to hooks via
+  `state.data.get("hook_context")`. Useful in web/server environments to provide per-request objects
+  (e.g., WebSocket connections, async queues, Redis pub/sub clients) that a hook can use, for
+  example a ConfirmationHook driving non-blocking user interaction.
 - **kwargs** (<code>Any</code>) – Additional data to pass to the State schema used by the Agent.
   The keys must match the schema defined in the Agent's `state_schema`.
 
@@ -322,11 +385,13 @@ if available.
 - <code>dict\[str, Any\]</code> – A dictionary with the following keys:
 - "messages": List of all messages exchanged during the agent's run.
 - "last_message": The last message exchanged during the agent's run.
+- "step_count": The number of steps the agent ran. A step is one chat-generator call plus the
+  execution of every tool call the model requested in that call (if any). The counter is incremented
+  after each step completes, including the final step that hits an exit condition or `max_agent_steps`.
+- "token_usage": Aggregated token usage from every LLM call in the run, summed from each LLM message's
+  `meta["usage"]`.
+- "tool_call_counts": Mapping of tool name to the number of times that tool was invoked.
 - Any additional keys defined in the `state_schema`.
-
-**Raises:**
-
-- <code>BreakpointException</code> – If an agent breakpoint is triggered.
 
 ## state/state
 

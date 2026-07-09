@@ -1,6 +1,6 @@
 loaders:
   - search_path: [../haystack/human_in_the_loop]
-    modules: ["dataclasses", "policies", "strategies", "user_interfaces"]
+    modules: ["dataclasses", "hooks", "policies", "strategies", "user_interfaces"]
 processors:
   - type: filter
     documented_only: true

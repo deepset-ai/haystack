@@ -52,6 +52,7 @@ class MarkdownToDocument:
         table_to_single_line: bool = False,
         progress_bar: bool = True,
         store_full_path: bool = False,
+        encoding: str = "utf-8",
         *,
         extract_frontmatter: bool = False,
     ) -> None:
@@ -65,6 +66,9 @@ class MarkdownToDocument:
         :param store_full_path:
             If True, the full path of the file is stored in the metadata of the document.
             If False, only the file name is stored.
+        :param encoding:
+            The default encoding to use when converting Markdown files. If the encoding is specified in the metadata
+            of a source ByteStream, it overrides this value.
         :param extract_frontmatter:
             If True, YAML frontmatter at the beginning of the Markdown file is
             removed from the document content and added to the document metadata.
@@ -74,6 +78,7 @@ class MarkdownToDocument:
         self.table_to_single_line = table_to_single_line
         self.progress_bar = progress_bar
         self.store_full_path = store_full_path
+        self.encoding = encoding
         self.extract_frontmatter = extract_frontmatter
 
     @component.output_types(documents=list[Document])
@@ -116,7 +121,8 @@ class MarkdownToDocument:
                 logger.warning("Could not read {source}. Skipping it. Error: {error}", source=source, error=e)
                 continue
             try:
-                file_content = bytestream.data.decode("utf-8")
+                encoding = bytestream.meta.get("encoding", self.encoding)
+                file_content = bytestream.data.decode(encoding)
                 file_content, frontmatter = self._extract_frontmatter(file_content, source)
                 text = parser.render(file_content)
             except Exception as conversion_e:

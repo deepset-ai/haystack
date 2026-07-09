@@ -1,0 +1,124 @@
+---
+title: "PerplexityWebSearch"
+id: perplexitywebsearch
+slug: "/perplexitywebsearch"
+description: "Search the web using the Perplexity Search API and return results as Haystack Documents."
+---
+
+# PerplexityWebSearch
+
+Search the web using the Perplexity Search API.
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | Before a [`ChatPromptBuilder`](../builders/chatpromptbuilder.mdx) or at the beginning of an indexing pipeline |
+| **Mandatory init variables** | `api_key`: A Perplexity API key. Can be set with `PERPLEXITY_API_KEY` env var. |
+| **Mandatory run variables** | `query`: A string with your search query. |
+| **Output variables** | `documents`: A list of Haystack Documents containing search result content and metadata. <br /> <br />`links`: A list of strings of resulting URLs. |
+| **API reference** | [Integrations](/reference/integrations-perplexity) |
+| **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/blob/main/integrations/perplexity/src/haystack_integrations/components/websearch/perplexity/perplexity_websearch.py |
+| **Package name** | `perplexity-haystack` |
+
+</div>
+
+## Overview
+
+When you give `PerplexityWebSearch` a query, it uses the [Perplexity Search API](https://docs.perplexity.ai/) to search the web and return relevant content as Haystack `Document` objects. It also returns a list of the source URLs.
+
+Each returned `Document` contains a text snippet as its `content` and a `meta` dictionary with `title`, `url`, `date`, and `last_updated` fields.
+
+`PerplexityWebSearch` requires a Perplexity API key to work. By default, it reads from the `PERPLEXITY_API_KEY` environment variable. You can also pass an `api_key` directly during initialization.
+
+The `top_k` parameter controls the maximum number of results returned (between 1 and 20, default is 10).
+
+You can filter and refine search results using `search_params`, which supports keys such as `country`, `search_recency_filter`, `search_domain_filter`, and date range filters. These can be set at initialization or overridden per `run()` call. See the [Perplexity Search API reference](https://docs.perplexity.ai/api-reference/search-post) for the full list of parameters.
+
+`PerplexityWebSearch` supports both synchronous (`run()`) and asynchronous (`run_async()`) operation.
+
+## Usage
+
+### On its own
+
+```python
+from haystack.utils import Secret
+from haystack_integrations.components.websearch.perplexity import PerplexityWebSearch
+
+web_search = PerplexityWebSearch(
+    api_key=Secret.from_env_var("PERPLEXITY_API_KEY"),
+    top_k=5,
+)
+result = web_search.run(query="What is Haystack by deepset?")
+
+for doc in result["documents"]:
+    print(doc.content)
+    print(doc.meta["url"])
+```
+
+With search filters:
+
+```python
+from haystack.utils import Secret
+from haystack_integrations.components.websearch.perplexity import PerplexityWebSearch
+
+web_search = PerplexityWebSearch(
+    api_key=Secret.from_env_var("PERPLEXITY_API_KEY"),
+    top_k=5,
+    search_params={"country": "us", "search_recency_filter": "week"},
+)
+result = web_search.run(query="Latest AI research papers")
+
+for doc in result["documents"]:
+    print(doc.meta["title"], doc.meta["url"])
+```
+
+### In a pipeline
+
+Here is an example of a RAG pipeline that uses `PerplexityWebSearch` to look up an answer on the web.
+
+```python
+from haystack import Pipeline
+from haystack.utils import Secret
+from haystack.components.builders.chat_prompt_builder import ChatPromptBuilder
+from haystack.dataclasses import ChatMessage
+from haystack_integrations.components.generators.perplexity import (
+    PerplexityChatGenerator,
+)
+from haystack_integrations.components.websearch.perplexity import PerplexityWebSearch
+
+web_search = PerplexityWebSearch(
+    api_key=Secret.from_env_var("PERPLEXITY_API_KEY"),
+    top_k=3,
+)
+
+prompt_template = [
+    ChatMessage.from_system("You are a helpful assistant."),
+    ChatMessage.from_user(
+        "Given the information below:\n"
+        "{% for document in documents %}{{ document.content }}\n{% endfor %}\n"
+        "Answer the following question: {{ query }}.\nAnswer:",
+    ),
+]
+
+prompt_builder = ChatPromptBuilder(
+    template=prompt_template,
+    required_variables=["query", "documents"],
+)
+
+llm = PerplexityChatGenerator(
+    api_key=Secret.from_env_var("PERPLEXITY_API_KEY"),
+)
+
+pipe = Pipeline()
+pipe.add_component("search", web_search)
+pipe.add_component("prompt_builder", prompt_builder)
+pipe.add_component("llm", llm)
+
+pipe.connect("search.documents", "prompt_builder.documents")
+pipe.connect("prompt_builder.prompt", "llm.messages")
+
+query = "What is Haystack by deepset?"
+result = pipe.run(data={"search": {"query": query}, "prompt_builder": {"query": query}})
+print(result["llm"]["replies"][0].text)
+```

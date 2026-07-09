@@ -163,9 +163,10 @@ A template can be a list of `ChatMessage` objects, or a special string, as shown
 
 It constructs prompts using static or dynamic templates, which you can update for each pipeline run.
 
-Template variables in the template are optional unless specified otherwise.
-If an optional variable isn't provided, it defaults to an empty string. Use `variable` and `required_variables`
-to define input types and required variables.
+Template variables in the template are required by default. To make any subset of variables optional,
+set `required_variables` to an explicit list of the variables that should remain required; any variable
+not listed becomes optional and defaults to an empty string when missing.
+Set `required_variables` to `None` to mark every variable as optional.
 
 ### Usage examples
 
@@ -266,7 +267,7 @@ builder.run(user_name="John", images=images)
 ```python
 __init__(
     template: list[ChatMessage] | str | None = None,
-    required_variables: list[str] | Literal["*"] | None = None,
+    required_variables: list[str] | Literal["*"] | None = "*",
     variables: list[str] | None = None,
 ) -> None
 ```
@@ -279,8 +280,10 @@ Constructs a ChatPromptBuilder component.
   renders the prompt with the provided variables. Provide the template in either
   the `init` method`or the`run\` method.
 - **required_variables** (<code>list\[str\] | Literal['\*'] | None</code>) – List variables that must be provided as input to ChatPromptBuilder.
-  If a variable listed as required is not provided, an exception is raised.
-  If set to `"*"`, all variables found in the prompt are required. Optional.
+  Defaults to `"*"`, which marks every variable found in the prompt as required.
+  Pass an explicit list to only require a subset of the variables; any variable not listed becomes
+  optional and is replaced with an empty string in the rendered prompt when missing.
+  Set to `None` to mark every variable as optional.
 - **variables** (<code>list\[str\] | None</code>) – List input variables to use in prompt templates instead of the ones inferred from the
   `template` parameter. For example, to use more variables during prompt engineering than the ones present
   in the default template, you can provide them here.
@@ -353,8 +356,9 @@ Deserialize this component from a dictionary.
 Renders a prompt filling in any variables so that it can send it to a Generator.
 
 The prompt uses Jinja2 template syntax.
-The variables in the default template are used as PromptBuilder's input and are all optional.
-If they're not provided, they're replaced with an empty string in the rendered prompt.
+The variables in the default template are used as PromptBuilder's input and are all required by default.
+To make any subset of variables optional, set `required_variables` to an explicit list of the variables that
+should remain required. Optional variables are replaced with an empty string in the rendered prompt.
 To try out different prompts, you can replace the prompt template at runtime by
 providing a template for each pipeline run invocation.
 
@@ -377,12 +381,12 @@ builder.run(target_language="spanish", snippet="I can't speak spanish.")
 #### In a Pipeline
 
 This is an example of a RAG pipeline where PromptBuilder renders a custom prompt template and fills it
-with the contents of the retrieved documents and a query. The rendered prompt is then sent to a Generator.
+with the contents of the retrieved documents and a query. The rendered prompt is then sent to a ChatGenerator.
 
 ```python
 from haystack import Pipeline, Document
 from haystack.utils import Secret
-from haystack.components.generators import OpenAIGenerator
+from haystack.components.generators.chat import OpenAIChatGenerator
 from haystack.components.builders.prompt_builder import PromptBuilder
 
 # in a real world use case documents could come from a retriever, web, or any other source
@@ -399,7 +403,7 @@ prompt_template = """
     """
 p = Pipeline()
 p.add_component(instance=PromptBuilder(template=prompt_template), name="prompt_builder")
-p.add_component(instance=OpenAIGenerator(api_key=Secret.from_env_var("OPENAI_API_KEY")), name="llm")
+p.add_component(instance=OpenAIChatGenerator(api_key=Secret.from_env_var("OPENAI_API_KEY")), name="llm")
 p.connect("prompt_builder", "llm")
 
 question = "Where does Joe live?"
@@ -480,7 +484,7 @@ Use `template_variables` to overwrite pipeline variables (such as documents) as 
 ```python
 __init__(
     template: str,
-    required_variables: list[str] | Literal["*"] | None = None,
+    required_variables: list[str] | Literal["*"] | None = "*",
     variables: list[str] | None = None,
 ) -> None
 ```
@@ -492,12 +496,12 @@ Constructs a PromptBuilder component.
 - **template** (<code>str</code>) – A prompt template that uses Jinja2 syntax to add variables. For example:
   `"Summarize this document: {{ documents[0].content }}\nSummary:"`
   It's used to render the prompt.
-  The variables in the default template are input for PromptBuilder and are all optional,
-  unless explicitly specified.
-  If an optional variable is not provided, it's replaced with an empty string in the rendered prompt.
+  The variables in the default template are input for PromptBuilder and are all required by default.
 - **required_variables** (<code>list\[str\] | Literal['\*'] | None</code>) – List variables that must be provided as input to PromptBuilder.
-  If a variable listed as required is not provided, an exception is raised.
-  If set to `"*"`, all variables found in the prompt are required. Optional.
+  Defaults to `"*"`, which marks every variable found in the prompt as required.
+  Pass an explicit list to only require a subset of the variables; any variable not listed becomes
+  optional and is replaced with an empty string in the rendered prompt when missing.
+  Set to `None` to mark every variable as optional.
 - **variables** (<code>list\[str\] | None</code>) – List input variables to use in prompt templates instead of the ones inferred from the
   `template` parameter. For example, to use more variables during prompt engineering than the ones present
   in the default template, you can provide them here.

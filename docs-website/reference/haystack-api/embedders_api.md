@@ -101,6 +101,38 @@ Creates an AzureOpenAIDocumentEmbedder component.
 - **raise_on_failure** (<code>bool</code>) – Whether to raise an exception if the embedding request fails. If `False`, the component will log the error
   and continue processing the remaining documents. If `True`, it will raise an exception on failure.
 
+#### warm_up
+
+```python
+warm_up() -> None
+```
+
+Initializes the synchronous AzureOpenAI client.
+
+#### warm_up_async
+
+```python
+warm_up_async() -> None
+```
+
+Initializes the asynchronous AzureOpenAI client on the serving event loop.
+
+#### close
+
+```python
+close() -> None
+```
+
+Releases the synchronous AzureOpenAI client.
+
+#### close_async
+
+```python
+close_async() -> None
+```
+
+Releases the asynchronous AzureOpenAI client.
+
 #### to_dict
 
 ```python
@@ -213,6 +245,38 @@ Creates an AzureOpenAITextEmbedder component.
 - **http_client_kwargs** (<code>dict\[str, Any\] | None</code>) – A dictionary of keyword arguments to configure a custom `httpx.Client`or `httpx.AsyncClient`.
   For more information, see the [HTTPX documentation](https://www.python-httpx.org/api/#client).
 
+#### warm_up
+
+```python
+warm_up() -> None
+```
+
+Initializes the synchronous Azure OpenAI client.
+
+#### warm_up_async
+
+```python
+warm_up_async() -> None
+```
+
+Initializes the asynchronous Azure OpenAI client on the serving event loop.
+
+#### close
+
+```python
+close() -> None
+```
+
+Releases the synchronous Azure OpenAI client.
+
+#### close_async
+
+```python
+close_async() -> None
+```
+
+Releases the asynchronous Azure OpenAI client.
+
 #### to_dict
 
 ```python
@@ -241,459 +305,81 @@ Deserializes the component from a dictionary.
 
 - <code>AzureOpenAITextEmbedder</code> – Deserialized component.
 
-## hugging_face_api_document_embedder
+## mock_document_embedder
 
-### HuggingFaceAPIDocumentEmbedder
+### MockDocumentEmbedder
 
-Embeds documents using Hugging Face APIs.
+A Document Embedder that returns deterministic embeddings without calling any API.
 
-Use it with the following Hugging Face APIs:
+It is a drop-in replacement for real Document Embedders (such as `OpenAIDocumentEmbedder`) in tests, smoke tests,
+and quick prototypes. It implements the same interface (`run`, `run_async`, serialization) but never contacts an
+external service, so it is fully deterministic and free to run.
 
-- [Free Serverless Inference API](https://huggingface.co/inference-api)
-- [Paid Inference Endpoints](https://huggingface.co/inference-endpoints)
-- [Self-hosted Text Embeddings Inference](https://github.com/huggingface/text-embeddings-inference)
+The embedding is selected based on how the component is configured:
 
-### Usage examples
+- **Deterministic (default)**: with no configuration, each document's embedding is derived from a hash of its
+  (prepared) text. The same text always yields the same embedding, and different texts yield different
+  embeddings, so the mock works in retrieval pipelines and is reproducible across runs and processes.
+- **Fixed embedding**: pass an `embedding` vector. The same vector is assigned to every document.
+- **Dynamic embedding**: pass an `embedding_fn` callable that receives the (prepared) text of a document and
+  returns the embedding. This is useful when the embedding should depend on the input in a custom way.
 
-#### With free serverless inference API
-
-<!-- test-ignore -->
-
-```python
-from haystack.components.embedders import HuggingFaceAPIDocumentEmbedder
-from haystack.utils import Secret
-from haystack.dataclasses import Document
-
-doc = Document(content="I love pizza!")
-
-doc_embedder = HuggingFaceAPIDocumentEmbedder(api_type="serverless_inference_api",
-                                              api_params={"model": "BAAI/bge-small-en-v1.5"},
-                                              token=Secret.from_token("<your-api-key>"))
-
-result = document_embedder.run([doc])
-print(result["documents"][0].embedding)
-
-# [0.017020374536514282, -0.023255806416273117, ...]
-```
-
-#### With paid inference endpoints
-
-<!-- test-ignore -->
-
-```python
-from haystack.components.embedders import HuggingFaceAPIDocumentEmbedder
-from haystack.utils import Secret
-from haystack.dataclasses import Document
-
-doc = Document(content="I love pizza!")
-
-doc_embedder = HuggingFaceAPIDocumentEmbedder(api_type="inference_endpoints",
-                                              api_params={"url": "<your-inference-endpoint-url>"},
-                                              token=Secret.from_token("<your-api-key>"))
-
-result = document_embedder.run([doc])
-print(result["documents"][0].embedding)
-
-# [0.017020374536514282, -0.023255806416273117, ...]
-```
-
-#### With self-hosted text embeddings inference
-
-<!-- test-ignore -->
-
-```python
-from haystack.components.embedders import HuggingFaceAPIDocumentEmbedder
-from haystack.dataclasses import Document
-
-doc = Document(content="I love pizza!")
-
-doc_embedder = HuggingFaceAPIDocumentEmbedder(api_type="text_embeddings_inference",
-                                              api_params={"url": "http://localhost:8080"})
-
-result = document_embedder.run([doc])
-print(result["documents"][0].embedding)
-
-# [0.017020374536514282, -0.023255806416273117, ...]
-```
-
-#### __init__
-
-```python
-__init__(
-    api_type: HFEmbeddingAPIType | str,
-    api_params: dict[str, str],
-    token: Secret | None = Secret.from_env_var(
-        ["HF_API_TOKEN", "HF_TOKEN"], strict=False
-    ),
-    prefix: str = "",
-    suffix: str = "",
-    truncate: bool | None = True,
-    normalize: bool | None = False,
-    batch_size: int = 32,
-    progress_bar: bool = True,
-    meta_fields_to_embed: list[str] | None = None,
-    embedding_separator: str = "\n",
-    concurrency_limit: int = 4,
-) -> None
-```
-
-Creates a HuggingFaceAPIDocumentEmbedder component.
-
-**Parameters:**
-
-- **api_type** (<code>HFEmbeddingAPIType | str</code>) – The type of Hugging Face API to use.
-- **api_params** (<code>dict\[str, str\]</code>) – A dictionary with the following keys:
-- `model`: Hugging Face model ID. Required when `api_type` is `SERVERLESS_INFERENCE_API`.
-- `url`: URL of the inference endpoint. Required when `api_type` is `INFERENCE_ENDPOINTS` or
-  `TEXT_EMBEDDINGS_INFERENCE`.
-- **token** (<code>Secret | None</code>) – The Hugging Face token to use as HTTP bearer authorization.
-  Check your HF token in your [account settings](https://huggingface.co/settings/tokens).
-- **prefix** (<code>str</code>) – A string to add at the beginning of each text.
-- **suffix** (<code>str</code>) – A string to add at the end of each text.
-- **truncate** (<code>bool | None</code>) – Truncates the input text to the maximum length supported by the model.
-  Applicable when `api_type` is `TEXT_EMBEDDINGS_INFERENCE`, or `INFERENCE_ENDPOINTS`
-  if the backend uses Text Embeddings Inference.
-  If `api_type` is `SERVERLESS_INFERENCE_API`, this parameter is ignored.
-- **normalize** (<code>bool | None</code>) – Normalizes the embeddings to unit length.
-  Applicable when `api_type` is `TEXT_EMBEDDINGS_INFERENCE`, or `INFERENCE_ENDPOINTS`
-  if the backend uses Text Embeddings Inference.
-  If `api_type` is `SERVERLESS_INFERENCE_API`, this parameter is ignored.
-- **batch_size** (<code>int</code>) – Number of documents to process at once.
-- **progress_bar** (<code>bool</code>) – If `True`, shows a progress bar when running.
-- **meta_fields_to_embed** (<code>list\[str\] | None</code>) – List of metadata fields to embed along with the document text.
-- **embedding_separator** (<code>str</code>) – Separator used to concatenate the metadata fields to the document text.
-- **concurrency_limit** (<code>int</code>) – The maximum number of requests that should be allowed to run concurrently.
-  This parameter is only used in the `run_async` method.
-
-#### to_dict
-
-```python
-to_dict() -> dict[str, Any]
-```
-
-Serializes the component to a dictionary.
-
-**Returns:**
-
-- <code>dict\[str, Any\]</code> – Dictionary with serialized data.
-
-#### from_dict
-
-```python
-from_dict(data: dict[str, Any]) -> HuggingFaceAPIDocumentEmbedder
-```
-
-Deserializes the component from a dictionary.
-
-**Parameters:**
-
-- **data** (<code>dict\[str, Any\]</code>) – Dictionary to deserialize from.
-
-**Returns:**
-
-- <code>HuggingFaceAPIDocumentEmbedder</code> – Deserialized component.
-
-#### run
-
-```python
-run(documents: list[Document]) -> dict[str, list[Document]]
-```
-
-Embeds a list of documents.
-
-**Parameters:**
-
-- **documents** (<code>list\[Document\]</code>) – Documents to embed.
-
-**Returns:**
-
-- <code>dict\[str, list\[Document\]\]</code> – A dictionary with the following keys:
-- `documents`: A list of documents with embeddings.
-
-#### run_async
-
-```python
-run_async(documents: list[Document]) -> dict[str, list[Document]]
-```
-
-Embeds a list of documents asynchronously.
-
-**Parameters:**
-
-- **documents** (<code>list\[Document\]</code>) – Documents to embed.
-
-**Returns:**
-
-- <code>dict\[str, list\[Document\]\]</code> – A dictionary with the following keys:
-- `documents`: A list of documents with embeddings.
-
-## hugging_face_api_text_embedder
-
-### HuggingFaceAPITextEmbedder
-
-Embeds strings using Hugging Face APIs.
-
-Use it with the following Hugging Face APIs:
-
-- [Free Serverless Inference API](https://huggingface.co/inference-api)
-- [Paid Inference Endpoints](https://huggingface.co/inference-endpoints)
-- [Self-hosted Text Embeddings Inference](https://github.com/huggingface/text-embeddings-inference)
-
-### Usage examples
-
-#### With free serverless inference API
-
-<!-- test-ignore -->
-
-```python
-from haystack.components.embedders import HuggingFaceAPITextEmbedder
-from haystack.utils import Secret
-
-text_embedder = HuggingFaceAPITextEmbedder(api_type="serverless_inference_api",
-                                           api_params={"model": "BAAI/bge-small-en-v1.5"},
-                                           token=Secret.from_token("<your-api-key>"))
-
-print(text_embedder.run("I love pizza!"))
-
-# {'embedding': [0.017020374536514282, -0.023255806416273117, ...],
-```
-
-#### With paid inference endpoints
-
-<!-- test-ignore -->
-
-```python
-from haystack.components.embedders import HuggingFaceAPITextEmbedder
-from haystack.utils import Secret
-text_embedder = HuggingFaceAPITextEmbedder(api_type="inference_endpoints",
-                                           api_params={"model": "BAAI/bge-small-en-v1.5"},
-                                           token=Secret.from_token("<your-api-key>"))
-
-print(text_embedder.run("I love pizza!"))
-
-# {'embedding': [0.017020374536514282, -0.023255806416273117, ...],
-```
-
-#### With self-hosted text embeddings inference
-
-<!-- test-ignore -->
-
-```python
-from haystack.components.embedders import HuggingFaceAPITextEmbedder
-from haystack.utils import Secret
-
-text_embedder = HuggingFaceAPITextEmbedder(api_type="text_embeddings_inference",
-                                           api_params={"url": "http://localhost:8080"})
-
-print(text_embedder.run("I love pizza!"))
-
-# {'embedding': [0.017020374536514282, -0.023255806416273117, ...],
-```
-
-#### __init__
-
-```python
-__init__(
-    api_type: HFEmbeddingAPIType | str,
-    api_params: dict[str, str],
-    token: Secret | None = Secret.from_env_var(
-        ["HF_API_TOKEN", "HF_TOKEN"], strict=False
-    ),
-    prefix: str = "",
-    suffix: str = "",
-    truncate: bool | None = True,
-    normalize: bool | None = False,
-) -> None
-```
-
-Creates a HuggingFaceAPITextEmbedder component.
-
-**Parameters:**
-
-- **api_type** (<code>HFEmbeddingAPIType | str</code>) – The type of Hugging Face API to use.
-- **api_params** (<code>dict\[str, str\]</code>) – A dictionary with the following keys:
-- `model`: Hugging Face model ID. Required when `api_type` is `SERVERLESS_INFERENCE_API`.
-- `url`: URL of the inference endpoint. Required when `api_type` is `INFERENCE_ENDPOINTS` or
-  `TEXT_EMBEDDINGS_INFERENCE`.
-- **token** (<code>Secret | None</code>) – The Hugging Face token to use as HTTP bearer authorization.
-  Check your HF token in your [account settings](https://huggingface.co/settings/tokens).
-- **prefix** (<code>str</code>) – A string to add at the beginning of each text.
-- **suffix** (<code>str</code>) – A string to add at the end of each text.
-- **truncate** (<code>bool | None</code>) – Truncates the input text to the maximum length supported by the model.
-  Applicable when `api_type` is `TEXT_EMBEDDINGS_INFERENCE`, or `INFERENCE_ENDPOINTS`
-  if the backend uses Text Embeddings Inference.
-  If `api_type` is `SERVERLESS_INFERENCE_API`, this parameter is ignored.
-- **normalize** (<code>bool | None</code>) – Normalizes the embeddings to unit length.
-  Applicable when `api_type` is `TEXT_EMBEDDINGS_INFERENCE`, or `INFERENCE_ENDPOINTS`
-  if the backend uses Text Embeddings Inference.
-  If `api_type` is `SERVERLESS_INFERENCE_API`, this parameter is ignored.
-
-#### to_dict
-
-```python
-to_dict() -> dict[str, Any]
-```
-
-Serializes the component to a dictionary.
-
-**Returns:**
-
-- <code>dict\[str, Any\]</code> – Dictionary with serialized data.
-
-#### from_dict
-
-```python
-from_dict(data: dict[str, Any]) -> HuggingFaceAPITextEmbedder
-```
-
-Deserializes the component from a dictionary.
-
-**Parameters:**
-
-- **data** (<code>dict\[str, Any\]</code>) – Dictionary to deserialize from.
-
-**Returns:**
-
-- <code>HuggingFaceAPITextEmbedder</code> – Deserialized component.
-
-#### run
-
-```python
-run(text: str) -> dict[str, Any]
-```
-
-Embeds a single string.
-
-**Parameters:**
-
-- **text** (<code>str</code>) – Text to embed.
-
-**Returns:**
-
-- <code>dict\[str, Any\]</code> – A dictionary with the following keys:
-- `embedding`: The embedding of the input text.
-
-#### run_async
-
-```python
-run_async(text: str) -> dict[str, Any]
-```
-
-Embeds a single string asynchronously.
-
-**Parameters:**
-
-- **text** (<code>str</code>) – Text to embed.
-
-**Returns:**
-
-- <code>dict\[str, Any\]</code> – A dictionary with the following keys:
-- `embedding`: The embedding of the input text.
-
-## image/sentence_transformers_doc_image_embedder
-
-### SentenceTransformersDocumentImageEmbedder
-
-A component for computing Document embeddings based on images using Sentence Transformers models.
-
-The embedding of each Document is stored in the `embedding` field of the Document.
+Like real Document Embedders, the metadata fields listed in `meta_fields_to_embed` are concatenated with the
+document content before embedding, so the deterministic embedding reflects the embedded metadata.
 
 ### Usage example
 
-<!-- test-ignore -->
-
 ```python
 from haystack import Document
-from haystack.components.embedders.image import SentenceTransformersDocumentImageEmbedder
+from haystack.components.embedders import MockDocumentEmbedder
 
-embedder = SentenceTransformersDocumentImageEmbedder(model="sentence-transformers/clip-ViT-B-32")
-
-documents = [
-    Document(content="A photo of a cat", meta={"file_path": "cat.jpg"}),
-    Document(content="A photo of a dog", meta={"file_path": "dog.jpg"}),
-]
-
-result = embedder.run(documents=documents)
-documents_with_embeddings = result["documents"]
-print(documents_with_embeddings)
-
-# [Document(id=...,
-#           content='A photo of a cat',
-#           meta={'file_path': 'cat.jpg',
-#                 'embedding_source': {'type': 'image', 'file_path_meta_field': 'file_path'}},
-#           embedding=vector of size 512),
-#  ...]
+embedder = MockDocumentEmbedder(dimension=8)
+result = embedder.run([Document(content="I love pizza!")])
+print(result["documents"][0].embedding)  # a deterministic list of 8 floats
 ```
 
 #### __init__
 
 ```python
 __init__(
+    embedding: list[float] | None = None,
     *,
-    file_path_meta_field: str = "file_path",
-    root_path: str | None = None,
-    model: str = "sentence-transformers/clip-ViT-B-32",
-    device: ComponentDevice | None = None,
-    token: Secret | None = Secret.from_env_var(
-        ["HF_API_TOKEN", "HF_TOKEN"], strict=False
-    ),
-    batch_size: int = 32,
-    progress_bar: bool = True,
-    normalize_embeddings: bool = False,
-    trust_remote_code: bool = False,
-    local_files_only: bool = False,
-    model_kwargs: dict[str, Any] | None = None,
-    tokenizer_kwargs: dict[str, Any] | None = None,
-    config_kwargs: dict[str, Any] | None = None,
-    precision: Literal[
-        "float32", "int8", "uint8", "binary", "ubinary"
-    ] = "float32",
-    encode_kwargs: dict[str, Any] | None = None,
-    backend: Literal["torch", "onnx", "openvino"] = "torch"
+    embedding_fn: EmbeddingFn | None = None,
+    dimension: int = 768,
+    model: str = "mock-model",
+    meta: dict[str, Any] | None = None,
+    prefix: str = "",
+    suffix: str = "",
+    meta_fields_to_embed: list[str] | None = None,
+    embedding_separator: str = "\n",
+    progress_bar: bool = False
 ) -> None
 ```
 
-Creates a SentenceTransformersDocumentEmbedder component.
+Creates an instance of MockDocumentEmbedder.
 
 **Parameters:**
 
-- **file_path_meta_field** (<code>str</code>) – The metadata field in the Document that contains the file path to the image or PDF.
-- **root_path** (<code>str | None</code>) – The root directory path where document files are located. If provided, file paths in
-  document metadata will be resolved relative to this path. If None, file paths are treated as absolute paths.
-- **model** (<code>str</code>) – The Sentence Transformers model to use for calculating embeddings. Pass a local path or ID of the model on
-  Hugging Face. To be used with this component, the model must be able to embed images and text into the same
-  vector space. Compatible models include:
-- "sentence-transformers/clip-ViT-B-32"
-- "sentence-transformers/clip-ViT-L-14"
-- "sentence-transformers/clip-ViT-B-16"
-- "sentence-transformers/clip-ViT-B-32-multilingual-v1"
-- "jinaai/jina-embeddings-v4"
-- "jinaai/jina-clip-v1"
-- "jinaai/jina-clip-v2".
-- **device** (<code>ComponentDevice | None</code>) – The device to use for loading the model.
-  Overrides the default device.
-- **token** (<code>Secret | None</code>) – The API token to download private models from Hugging Face.
-- **batch_size** (<code>int</code>) – Number of documents to embed at once.
-- **progress_bar** (<code>bool</code>) – If `True`, shows a progress bar when embedding documents.
-- **normalize_embeddings** (<code>bool</code>) – If `True`, the embeddings are normalized using L2 normalization, so that each embedding has a norm of 1.
-- **trust_remote_code** (<code>bool</code>) – If `False`, allows only Hugging Face verified model architectures.
-  If `True`, allows custom models and scripts.
-- **local_files_only** (<code>bool</code>) – If `True`, does not attempt to download the model from Hugging Face Hub and only looks at local files.
-- **model_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for `AutoModelForSequenceClassification.from_pretrained`
-  when loading the model. Refer to specific model documentation for available kwargs.
-- **tokenizer_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for `AutoTokenizer.from_pretrained` when loading the tokenizer.
-  Refer to specific model documentation for available kwargs.
-- **config_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for `AutoConfig.from_pretrained` when loading the model configuration.
-- **precision** (<code>Literal['float32', 'int8', 'uint8', 'binary', 'ubinary']</code>) – The precision to use for the embeddings.
-  All non-float32 precisions are quantized embeddings.
-  Quantized embeddings are smaller and faster to compute, but may have a lower accuracy.
-  They are useful for reducing the size of the embeddings of a corpus for semantic search, among other tasks.
-- **encode_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for `SentenceTransformer.encode` when embedding documents.
-  This parameter is provided for fine customization. Be careful not to clash with already set parameters and
-  avoid passing parameters that change the output type.
-- **backend** (<code>Literal['torch', 'onnx', 'openvino']</code>) – The backend to use for the Sentence Transformers model. Choose from "torch", "onnx", or "openvino".
-  Refer to the [Sentence Transformers documentation](https://sbert.net/docs/sentence_transformer/usage/efficiency.html)
-  for more information on acceleration and quantization options.
+- **embedding** (<code>list\[float\] | None</code>) – An optional fixed embedding assigned to every document. Mutually exclusive with
+  `embedding_fn`. If neither is provided, a deterministic embedding is derived from each document's text.
+- **embedding_fn** (<code>EmbeddingFn | None</code>) – An optional callable that receives the prepared text of a document and returns the
+  embedding as a list of floats. Mutually exclusive with `embedding`. To support serialization, pass a
+  named function (lambdas and nested functions cannot be serialized).
+- **dimension** (<code>int</code>) – The number of dimensions of the deterministic embedding. Ignored when `embedding` or
+  `embedding_fn` is provided, since their length is determined by the value or callable.
+- **model** (<code>str</code>) – The model name reported in the metadata. Purely cosmetic; no model is loaded.
+- **meta** (<code>dict\[str, Any\] | None</code>) – Additional metadata merged into the output `meta`.
+- **prefix** (<code>str</code>) – A string to add at the beginning of each text before embedding.
+- **suffix** (<code>str</code>) – A string to add at the end of each text before embedding.
+- **meta_fields_to_embed** (<code>list\[str\] | None</code>) – List of metadata fields to embed along with the document text.
+- **embedding_separator** (<code>str</code>) – Separator used to concatenate the metadata fields to the document text.
+- **progress_bar** (<code>bool</code>) – Accepted for interface compatibility with real Document Embedders and ignored.
+
+**Raises:**
+
+- <code>ValueError</code> – If both `embedding` and `embedding_fn` are provided, if `dimension` is not positive, or
+  if `embedding` is an empty list.
+- <code>TypeError</code> – If `embedding` is not a sequence of numbers.
 
 #### to_dict
 
@@ -701,27 +387,15 @@ Creates a SentenceTransformersDocumentEmbedder component.
 to_dict() -> dict[str, Any]
 ```
 
-Serializes the component to a dictionary.
-
-**Returns:**
-
-- <code>dict\[str, Any\]</code> – Dictionary with serialized data.
+Serialize the component to a dictionary.
 
 #### from_dict
 
 ```python
-from_dict(data: dict[str, Any]) -> SentenceTransformersDocumentImageEmbedder
+from_dict(data: dict[str, Any]) -> MockDocumentEmbedder
 ```
 
-Deserializes the component from a dictionary.
-
-**Parameters:**
-
-- **data** (<code>dict\[str, Any\]</code>) – Dictionary to deserialize from.
-
-**Returns:**
-
-- <code>SentenceTransformersDocumentImageEmbedder</code> – Deserialized component.
+Deserialize the component from a dictionary.
 
 #### warm_up
 
@@ -729,24 +403,185 @@ Deserializes the component from a dictionary.
 warm_up() -> None
 ```
 
-Initializes the component.
+No-op warm up, provided for interface compatibility with real Embedders.
 
 #### run
 
 ```python
-run(documents: list[Document]) -> dict[str, list[Document]]
+run(documents: list[Document]) -> dict[str, Any]
 ```
 
-Embed a list of documents.
+Return the input documents with deterministic embeddings added, without calling any API.
 
 **Parameters:**
 
-- **documents** (<code>list\[Document\]</code>) – Documents to embed.
+- **documents** (<code>list\[Document\]</code>) – A list of documents to embed.
 
 **Returns:**
 
-- <code>dict\[str, list\[Document\]\]</code> – A dictionary with the following keys:
-- `documents`: Documents with embeddings.
+- <code>dict\[str, Any\]</code> – A dictionary with the following keys:
+- `documents`: A list of documents with embeddings.
+- `meta`: Metadata about the (mock) model.
+
+**Raises:**
+
+- <code>TypeError</code> – If `documents` is not a list of `Document` objects.
+
+#### run_async
+
+```python
+run_async(documents: list[Document]) -> dict[str, Any]
+```
+
+Asynchronously return the input documents with deterministic embeddings added, without calling any API.
+
+**Parameters:**
+
+- **documents** (<code>list\[Document\]</code>) – A list of documents to embed.
+
+**Returns:**
+
+- <code>dict\[str, Any\]</code> – A dictionary with the following keys:
+- `documents`: A list of documents with embeddings.
+- `meta`: Metadata about the (mock) model.
+
+**Raises:**
+
+- <code>TypeError</code> – If `documents` is not a list of `Document` objects.
+
+## mock_text_embedder
+
+### MockTextEmbedder
+
+A Text Embedder that returns deterministic embeddings without calling any API.
+
+It is a drop-in replacement for real Text Embedders (such as `OpenAITextEmbedder`) in tests, smoke tests, and
+quick prototypes. It implements the same interface (`run`, `run_async`, serialization) but never contacts an
+external service, so it is fully deterministic and free to run.
+
+The embedding is selected based on how the component is configured:
+
+- **Deterministic (default)**: with no configuration, the embedding is derived from a hash of the input text.
+  The same text always yields the same embedding, and different texts yield different embeddings, so the mock
+  works in retrieval pipelines and is reproducible across runs and processes.
+- **Fixed embedding**: pass an `embedding` vector. The same vector is returned for every input.
+- **Dynamic embedding**: pass an `embedding_fn` callable that receives the (prepared) text and returns the
+  embedding. This is useful when the embedding should depend on the input in a custom way.
+
+### Usage example
+
+```python
+from haystack.components.embedders import MockTextEmbedder
+
+embedder = MockTextEmbedder(dimension=8)
+result = embedder.run("I love pizza!")
+print(result["embedding"])  # a deterministic list of 8 floats
+```
+
+#### __init__
+
+```python
+__init__(
+    embedding: list[float] | None = None,
+    *,
+    embedding_fn: EmbeddingFn | None = None,
+    dimension: int = 768,
+    model: str = "mock-model",
+    meta: dict[str, Any] | None = None,
+    prefix: str = "",
+    suffix: str = ""
+) -> None
+```
+
+Creates an instance of MockTextEmbedder.
+
+**Parameters:**
+
+- **embedding** (<code>list\[float\] | None</code>) – An optional fixed embedding returned for every input. Mutually exclusive with
+  `embedding_fn`. If neither is provided, a deterministic embedding is derived from the input text.
+- **embedding_fn** (<code>EmbeddingFn | None</code>) – An optional callable that receives the prepared text (after `prefix`/`suffix` are
+  applied) and returns the embedding as a list of floats. Mutually exclusive with `embedding`. To support
+  serialization, pass a named function (lambdas and nested functions cannot be serialized).
+- **dimension** (<code>int</code>) – The number of dimensions of the deterministic embedding. Ignored when `embedding` or
+  `embedding_fn` is provided, since their length is determined by the value or callable.
+- **model** (<code>str</code>) – The model name reported in the metadata. Purely cosmetic; no model is loaded.
+- **meta** (<code>dict\[str, Any\] | None</code>) – Additional metadata merged into the output `meta`.
+- **prefix** (<code>str</code>) – A string to add at the beginning of the text before embedding.
+- **suffix** (<code>str</code>) – A string to add at the end of the text before embedding.
+
+**Raises:**
+
+- <code>ValueError</code> – If both `embedding` and `embedding_fn` are provided, if `dimension` is not positive, or
+  if `embedding` is an empty list.
+- <code>TypeError</code> – If `embedding` is not a sequence of numbers.
+
+#### to_dict
+
+```python
+to_dict() -> dict[str, Any]
+```
+
+Serialize the component to a dictionary.
+
+#### from_dict
+
+```python
+from_dict(data: dict[str, Any]) -> MockTextEmbedder
+```
+
+Deserialize the component from a dictionary.
+
+#### warm_up
+
+```python
+warm_up() -> None
+```
+
+No-op warm up, provided for interface compatibility with real Embedders.
+
+#### run
+
+```python
+run(text: str) -> dict[str, Any]
+```
+
+Return a deterministic embedding for the input text without calling any API.
+
+**Parameters:**
+
+- **text** (<code>str</code>) – The text to embed.
+
+**Returns:**
+
+- <code>dict\[str, Any\]</code> – A dictionary with the following keys:
+- `embedding`: The embedding of the input text.
+- `meta`: Metadata about the (mock) model.
+
+**Raises:**
+
+- <code>TypeError</code> – If `text` is not a string.
+
+#### run_async
+
+```python
+run_async(text: str) -> dict[str, Any]
+```
+
+Asynchronously return a deterministic embedding for the input text without calling any API.
+
+**Parameters:**
+
+- **text** (<code>str</code>) – The text to embed.
+
+**Returns:**
+
+- <code>dict\[str, Any\]</code> – A dictionary with the following keys:
+- `embedding`: The embedding of the input text.
+- `meta`: Metadata about the (mock) model.
+
+**Raises:**
+
+- <code>TypeError</code> – If `text` is not a string.
 
 ## openai_document_embedder
 
@@ -827,6 +662,38 @@ in the OpenAI client.
   For more information, see the [HTTPX documentation](https://www.python-httpx.org/api/#client).
 - **raise_on_failure** (<code>bool</code>) – Whether to raise an exception if the embedding request fails. If `False`, the component will log the error
   and continue processing the remaining documents. If `True`, it will raise an exception on failure.
+
+#### warm_up
+
+```python
+warm_up() -> None
+```
+
+Initializes the synchronous OpenAI client.
+
+#### warm_up_async
+
+```python
+warm_up_async() -> None
+```
+
+Initializes the asynchronous OpenAI client on the serving event loop.
+
+#### close
+
+```python
+close() -> None
+```
+
+Releases the synchronous OpenAI client.
+
+#### close_async
+
+```python
+close_async() -> None
+```
+
+Releases the asynchronous OpenAI client.
 
 #### to_dict
 
@@ -962,6 +829,38 @@ in the OpenAI client.
 - **http_client_kwargs** (<code>dict\[str, Any\] | None</code>) – A dictionary of keyword arguments to configure a custom `httpx.Client`or `httpx.AsyncClient`.
   For more information, see the [HTTPX documentation](https://www.python-httpx.org/api/#client).
 
+#### warm_up
+
+```python
+warm_up() -> None
+```
+
+Initializes the synchronous OpenAI client.
+
+#### warm_up_async
+
+```python
+warm_up_async() -> None
+```
+
+Initializes the asynchronous OpenAI client on the serving event loop.
+
+#### close
+
+```python
+close() -> None
+```
+
+Releases the synchronous OpenAI client.
+
+#### close_async
+
+```python
+close_async() -> None
+```
+
+Releases the asynchronous OpenAI client.
+
 #### to_dict
 
 ```python
@@ -1028,561 +927,3 @@ but can be used with `await` in async code.
 - <code>dict\[str, Any\]</code> – A dictionary with the following keys:
 - `embedding`: The embedding of the input text.
 - `meta`: Information about the usage of the model.
-
-## sentence_transformers_document_embedder
-
-### SentenceTransformersDocumentEmbedder
-
-Calculates document embeddings using Sentence Transformers models.
-
-It stores the embeddings in the `embedding` metadata field of each document.
-You can also embed documents' metadata.
-Use this component in indexing pipelines to embed input documents
-and send them to DocumentWriter to write into a Document Store.
-
-### Usage example:
-
-<!-- test-ignore -->
-
-```python
-from haystack import Document
-from haystack.components.embedders import SentenceTransformersDocumentEmbedder
-doc = Document(content="I love pizza!")
-doc_embedder = SentenceTransformersDocumentEmbedder()
-
-result = doc_embedder.run([doc])
-print(result['documents'][0].embedding)
-
-# [-0.07804739475250244, 0.1498992145061493, ...]
-```
-
-#### __init__
-
-```python
-__init__(
-    model: str = "sentence-transformers/all-mpnet-base-v2",
-    device: ComponentDevice | None = None,
-    token: Secret | None = Secret.from_env_var(
-        ["HF_API_TOKEN", "HF_TOKEN"], strict=False
-    ),
-    prefix: str = "",
-    suffix: str = "",
-    batch_size: int = 32,
-    progress_bar: bool = True,
-    normalize_embeddings: bool = False,
-    meta_fields_to_embed: list[str] | None = None,
-    embedding_separator: str = "\n",
-    trust_remote_code: bool = False,
-    local_files_only: bool = False,
-    truncate_dim: int | None = None,
-    model_kwargs: dict[str, Any] | None = None,
-    tokenizer_kwargs: dict[str, Any] | None = None,
-    config_kwargs: dict[str, Any] | None = None,
-    precision: Literal[
-        "float32", "int8", "uint8", "binary", "ubinary"
-    ] = "float32",
-    encode_kwargs: dict[str, Any] | None = None,
-    backend: Literal["torch", "onnx", "openvino"] = "torch",
-    revision: str | None = None,
-) -> None
-```
-
-Creates a SentenceTransformersDocumentEmbedder component.
-
-**Parameters:**
-
-- **model** (<code>str</code>) – The model to use for calculating embeddings.
-  Pass a local path or ID of the model on Hugging Face.
-- **device** (<code>ComponentDevice | None</code>) – The device to use for loading the model.
-  Overrides the default device.
-- **token** (<code>Secret | None</code>) – The API token to download private models from Hugging Face.
-- **prefix** (<code>str</code>) – A string to add at the beginning of each document text.
-  Can be used to prepend the text with an instruction, as required by some embedding models,
-  such as E5 and bge.
-- **suffix** (<code>str</code>) – A string to add at the end of each document text.
-- **batch_size** (<code>int</code>) – Number of documents to embed at once.
-- **progress_bar** (<code>bool</code>) – If `True`, shows a progress bar when embedding documents.
-- **normalize_embeddings** (<code>bool</code>) – If `True`, the embeddings are normalized using L2 normalization, so that each embedding has a norm of 1.
-- **meta_fields_to_embed** (<code>list\[str\] | None</code>) – List of metadata fields to embed along with the document text.
-- **embedding_separator** (<code>str</code>) – Separator used to concatenate the metadata fields to the document text.
-- **trust_remote_code** (<code>bool</code>) – If `False`, allows only Hugging Face verified model architectures.
-  If `True`, allows custom models and scripts.
-- **local_files_only** (<code>bool</code>) – If `True`, does not attempt to download the model from Hugging Face Hub and only looks at local files.
-- **truncate_dim** (<code>int | None</code>) – The dimension to truncate sentence embeddings to. `None` does no truncation.
-  If the model wasn't trained with Matryoshka Representation Learning,
-  truncating embeddings can significantly affect performance.
-- **model_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for `AutoModelForSequenceClassification.from_pretrained`
-  when loading the model. Refer to specific model documentation for available kwargs.
-- **tokenizer_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for `AutoTokenizer.from_pretrained` when loading the tokenizer.
-  Refer to specific model documentation for available kwargs.
-- **config_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for `AutoConfig.from_pretrained` when loading the model configuration.
-- **precision** (<code>Literal['float32', 'int8', 'uint8', 'binary', 'ubinary']</code>) – The precision to use for the embeddings.
-  All non-float32 precisions are quantized embeddings.
-  Quantized embeddings are smaller and faster to compute, but may have a lower accuracy.
-  They are useful for reducing the size of the embeddings of a corpus for semantic search, among other tasks.
-- **encode_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for `SentenceTransformer.encode` when embedding documents.
-  This parameter is provided for fine customization. Be careful not to clash with already set parameters and
-  avoid passing parameters that change the output type.
-- **backend** (<code>Literal['torch', 'onnx', 'openvino']</code>) – The backend to use for the Sentence Transformers model. Choose from "torch", "onnx", or "openvino".
-  Refer to the [Sentence Transformers documentation](https://sbert.net/docs/sentence_transformer/usage/efficiency.html)
-  for more information on acceleration and quantization options.
-- **revision** (<code>str | None</code>) – The specific model version to use. It can be a branch name, a tag name, or a commit id,
-  for a stored model on Hugging Face.
-
-#### to_dict
-
-```python
-to_dict() -> dict[str, Any]
-```
-
-Serializes the component to a dictionary.
-
-**Returns:**
-
-- <code>dict\[str, Any\]</code> – Dictionary with serialized data.
-
-#### from_dict
-
-```python
-from_dict(data: dict[str, Any]) -> SentenceTransformersDocumentEmbedder
-```
-
-Deserializes the component from a dictionary.
-
-**Parameters:**
-
-- **data** (<code>dict\[str, Any\]</code>) – Dictionary to deserialize from.
-
-**Returns:**
-
-- <code>SentenceTransformersDocumentEmbedder</code> – Deserialized component.
-
-#### warm_up
-
-```python
-warm_up() -> None
-```
-
-Initializes the component.
-
-#### run
-
-```python
-run(documents: list[Document]) -> dict[str, list[Document]]
-```
-
-Embed a list of documents.
-
-**Parameters:**
-
-- **documents** (<code>list\[Document\]</code>) – Documents to embed.
-
-**Returns:**
-
-- <code>dict\[str, list\[Document\]\]</code> – A dictionary with the following keys:
-- `documents`: Documents with embeddings.
-
-## sentence_transformers_sparse_document_embedder
-
-### SentenceTransformersSparseDocumentEmbedder
-
-Calculates document sparse embeddings using sparse embedding models from Sentence Transformers.
-
-It stores the sparse embeddings in the `sparse_embedding` metadata field of each document.
-You can also embed documents' metadata.
-Use this component in indexing pipelines to embed input documents
-and send them to DocumentWriter to write a into a Document Store.
-
-### Usage example:
-
-<!-- test-ignore -->
-
-```python
-from haystack import Document
-from haystack.components.embedders import SentenceTransformersSparseDocumentEmbedder
-
-doc = Document(content="I love pizza!")
-doc_embedder = SentenceTransformersSparseDocumentEmbedder()
-
-result = doc_embedder.run([doc])
-print(result['documents'][0].sparse_embedding)
-
-# SparseEmbedding(indices=[999, 1045, ...], values=[0.918, 0.867, ...])
-```
-
-#### __init__
-
-```python
-__init__(
-    *,
-    model: str = "prithivida/Splade_PP_en_v2",
-    device: ComponentDevice | None = None,
-    token: Secret | None = Secret.from_env_var(
-        ["HF_API_TOKEN", "HF_TOKEN"], strict=False
-    ),
-    prefix: str = "",
-    suffix: str = "",
-    batch_size: int = 32,
-    progress_bar: bool = True,
-    meta_fields_to_embed: list[str] | None = None,
-    embedding_separator: str = "\n",
-    trust_remote_code: bool = False,
-    local_files_only: bool = False,
-    model_kwargs: dict[str, Any] | None = None,
-    tokenizer_kwargs: dict[str, Any] | None = None,
-    config_kwargs: dict[str, Any] | None = None,
-    backend: Literal["torch", "onnx", "openvino"] = "torch",
-    revision: str | None = None
-) -> None
-```
-
-Creates a SentenceTransformersSparseDocumentEmbedder component.
-
-**Parameters:**
-
-- **model** (<code>str</code>) – The model to use for calculating sparse embeddings.
-  Pass a local path or ID of the model on Hugging Face.
-- **device** (<code>ComponentDevice | None</code>) – The device to use for loading the model.
-  Overrides the default device.
-- **token** (<code>Secret | None</code>) – The API token to download private models from Hugging Face.
-- **prefix** (<code>str</code>) – A string to add at the beginning of each document text.
-- **suffix** (<code>str</code>) – A string to add at the end of each document text.
-- **batch_size** (<code>int</code>) – Number of documents to embed at once.
-- **progress_bar** (<code>bool</code>) – If `True`, shows a progress bar when embedding documents.
-- **meta_fields_to_embed** (<code>list\[str\] | None</code>) – List of metadata fields to embed along with the document text.
-- **embedding_separator** (<code>str</code>) – Separator used to concatenate the metadata fields to the document text.
-- **trust_remote_code** (<code>bool</code>) – If `False`, allows only Hugging Face verified model architectures.
-  If `True`, allows custom models and scripts.
-- **local_files_only** (<code>bool</code>) – If `True`, does not attempt to download the model from Hugging Face Hub and only looks at local files.
-- **model_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for `AutoModelForSequenceClassification.from_pretrained`
-  when loading the model. Refer to specific model documentation for available kwargs.
-- **tokenizer_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for `AutoTokenizer.from_pretrained` when loading the tokenizer.
-  Refer to specific model documentation for available kwargs.
-- **config_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for `AutoConfig.from_pretrained` when loading the model configuration.
-- **backend** (<code>Literal['torch', 'onnx', 'openvino']</code>) – The backend to use for the Sentence Transformers model. Choose from "torch", "onnx", or "openvino".
-  Refer to the [Sentence Transformers documentation](https://sbert.net/docs/sentence_transformer/usage/efficiency.html)
-  for more information on acceleration and quantization options.
-- **revision** (<code>str | None</code>) – The specific model version to use. It can be a branch name, a tag name, or a commit id,
-  for a stored model on Hugging Face.
-
-#### to_dict
-
-```python
-to_dict() -> dict[str, Any]
-```
-
-Serializes the component to a dictionary.
-
-**Returns:**
-
-- <code>dict\[str, Any\]</code> – Dictionary with serialized data.
-
-#### from_dict
-
-```python
-from_dict(data: dict[str, Any]) -> SentenceTransformersSparseDocumentEmbedder
-```
-
-Deserializes the component from a dictionary.
-
-**Parameters:**
-
-- **data** (<code>dict\[str, Any\]</code>) – Dictionary to deserialize from.
-
-**Returns:**
-
-- <code>SentenceTransformersSparseDocumentEmbedder</code> – Deserialized component.
-
-#### warm_up
-
-```python
-warm_up() -> None
-```
-
-Initializes the component.
-
-#### run
-
-```python
-run(documents: list[Document]) -> dict[str, list[Document]]
-```
-
-Embed a list of documents.
-
-**Parameters:**
-
-- **documents** (<code>list\[Document\]</code>) – Documents to embed.
-
-**Returns:**
-
-- <code>dict\[str, list\[Document\]\]</code> – A dictionary with the following keys:
-- `documents`: Documents with sparse embeddings under the `sparse_embedding` field.
-
-## sentence_transformers_sparse_text_embedder
-
-### SentenceTransformersSparseTextEmbedder
-
-Embeds strings using sparse embedding models from Sentence Transformers.
-
-You can use it to embed user query and send it to a sparse embedding retriever.
-
-Usage example:
-
-<!-- test-ignore -->
-
-```python
-from haystack.components.embedders import SentenceTransformersSparseTextEmbedder
-
-text_to_embed = "I love pizza!"
-
-text_embedder = SentenceTransformersSparseTextEmbedder()
-
-print(text_embedder.run(text_to_embed))
-
-# {'sparse_embedding': SparseEmbedding(indices=[999, 1045, ...], values=[0.918, 0.867, ...])}
-```
-
-#### __init__
-
-```python
-__init__(
-    *,
-    model: str = "prithivida/Splade_PP_en_v2",
-    device: ComponentDevice | None = None,
-    token: Secret | None = Secret.from_env_var(
-        ["HF_API_TOKEN", "HF_TOKEN"], strict=False
-    ),
-    prefix: str = "",
-    suffix: str = "",
-    trust_remote_code: bool = False,
-    local_files_only: bool = False,
-    model_kwargs: dict[str, Any] | None = None,
-    tokenizer_kwargs: dict[str, Any] | None = None,
-    config_kwargs: dict[str, Any] | None = None,
-    backend: Literal["torch", "onnx", "openvino"] = "torch",
-    revision: str | None = None
-) -> None
-```
-
-Create a SentenceTransformersSparseTextEmbedder component.
-
-**Parameters:**
-
-- **model** (<code>str</code>) – The model to use for calculating sparse embeddings.
-  Specify the path to a local model or the ID of the model on Hugging Face.
-- **device** (<code>ComponentDevice | None</code>) – Overrides the default device used to load the model.
-- **token** (<code>Secret | None</code>) – An API token to use private models from Hugging Face.
-- **prefix** (<code>str</code>) – A string to add at the beginning of each text to be embedded.
-- **suffix** (<code>str</code>) – A string to add at the end of each text to embed.
-- **trust_remote_code** (<code>bool</code>) – If `False`, permits only Hugging Face verified model architectures.
-  If `True`, permits custom models and scripts.
-- **local_files_only** (<code>bool</code>) – If `True`, does not attempt to download the model from Hugging Face Hub and only looks at local files.
-- **model_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for `AutoModelForSequenceClassification.from_pretrained`
-  when loading the model. Refer to specific model documentation for available kwargs.
-- **tokenizer_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for `AutoTokenizer.from_pretrained` when loading the tokenizer.
-  Refer to specific model documentation for available kwargs.
-- **config_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for `AutoConfig.from_pretrained` when loading the model configuration.
-- **backend** (<code>Literal['torch', 'onnx', 'openvino']</code>) – The backend to use for the Sentence Transformers model. Choose from "torch", "onnx", or "openvino".
-  Refer to the [Sentence Transformers documentation](https://sbert.net/docs/sentence_transformer/usage/efficiency.html)
-  for more information on acceleration and quantization options.
-- **revision** (<code>str | None</code>) – The specific model version to use. It can be a branch name, a tag name, or a commit id,
-  for a stored model on Hugging Face.
-
-#### to_dict
-
-```python
-to_dict() -> dict[str, Any]
-```
-
-Serializes the component to a dictionary.
-
-**Returns:**
-
-- <code>dict\[str, Any\]</code> – Dictionary with serialized data.
-
-#### from_dict
-
-```python
-from_dict(data: dict[str, Any]) -> SentenceTransformersSparseTextEmbedder
-```
-
-Deserializes the component from a dictionary.
-
-**Parameters:**
-
-- **data** (<code>dict\[str, Any\]</code>) – Dictionary to deserialize from.
-
-**Returns:**
-
-- <code>SentenceTransformersSparseTextEmbedder</code> – Deserialized component.
-
-#### warm_up
-
-```python
-warm_up() -> None
-```
-
-Initializes the component.
-
-#### run
-
-```python
-run(text: str) -> dict[str, Any]
-```
-
-Embed a single string.
-
-**Parameters:**
-
-- **text** (<code>str</code>) – Text to embed.
-
-**Returns:**
-
-- <code>dict\[str, Any\]</code> – A dictionary with the following keys:
-- `sparse_embedding`: The sparse embedding of the input text.
-
-## sentence_transformers_text_embedder
-
-### SentenceTransformersTextEmbedder
-
-Embeds strings using Sentence Transformers models.
-
-You can use it to embed user query and send it to an embedding retriever.
-
-Usage example:
-
-<!-- test-ignore -->
-
-```python
-from haystack.components.embedders import SentenceTransformersTextEmbedder
-
-text_to_embed = "I love pizza!"
-
-text_embedder = SentenceTransformersTextEmbedder()
-
-print(text_embedder.run(text_to_embed))
-
-# {'embedding': [-0.07804739475250244, 0.1498992145061493,, ...]}
-```
-
-#### __init__
-
-```python
-__init__(
-    model: str = "sentence-transformers/all-mpnet-base-v2",
-    device: ComponentDevice | None = None,
-    token: Secret | None = Secret.from_env_var(
-        ["HF_API_TOKEN", "HF_TOKEN"], strict=False
-    ),
-    prefix: str = "",
-    suffix: str = "",
-    batch_size: int = 32,
-    progress_bar: bool = True,
-    normalize_embeddings: bool = False,
-    trust_remote_code: bool = False,
-    local_files_only: bool = False,
-    truncate_dim: int | None = None,
-    model_kwargs: dict[str, Any] | None = None,
-    tokenizer_kwargs: dict[str, Any] | None = None,
-    config_kwargs: dict[str, Any] | None = None,
-    precision: Literal[
-        "float32", "int8", "uint8", "binary", "ubinary"
-    ] = "float32",
-    encode_kwargs: dict[str, Any] | None = None,
-    backend: Literal["torch", "onnx", "openvino"] = "torch",
-    revision: str | None = None,
-) -> None
-```
-
-Create a SentenceTransformersTextEmbedder component.
-
-**Parameters:**
-
-- **model** (<code>str</code>) – The model to use for calculating embeddings.
-  Specify the path to a local model or the ID of the model on Hugging Face.
-- **device** (<code>ComponentDevice | None</code>) – Overrides the default device used to load the model.
-- **token** (<code>Secret | None</code>) – An API token to use private models from Hugging Face.
-- **prefix** (<code>str</code>) – A string to add at the beginning of each text to be embedded.
-  You can use it to prepend the text with an instruction, as required by some embedding models,
-  such as E5 and bge.
-- **suffix** (<code>str</code>) – A string to add at the end of each text to embed.
-- **batch_size** (<code>int</code>) – Number of texts to embed at once.
-- **progress_bar** (<code>bool</code>) – If `True`, shows a progress bar for calculating embeddings.
-  If `False`, disables the progress bar.
-- **normalize_embeddings** (<code>bool</code>) – If `True`, the embeddings are normalized using L2 normalization, so that the embeddings have a norm of 1.
-- **trust_remote_code** (<code>bool</code>) – If `False`, permits only Hugging Face verified model architectures.
-  If `True`, permits custom models and scripts.
-- **local_files_only** (<code>bool</code>) – If `True`, does not attempt to download the model from Hugging Face Hub and only looks at local files.
-- **truncate_dim** (<code>int | None</code>) – The dimension to truncate sentence embeddings to. `None` does no truncation.
-  If the model has not been trained with Matryoshka Representation Learning,
-  truncation of embeddings can significantly affect performance.
-- **model_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for `AutoModelForSequenceClassification.from_pretrained`
-  when loading the model. Refer to specific model documentation for available kwargs.
-- **tokenizer_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for `AutoTokenizer.from_pretrained` when loading the tokenizer.
-  Refer to specific model documentation for available kwargs.
-- **config_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for `AutoConfig.from_pretrained` when loading the model configuration.
-- **precision** (<code>Literal['float32', 'int8', 'uint8', 'binary', 'ubinary']</code>) – The precision to use for the embeddings.
-  All non-float32 precisions are quantized embeddings.
-  Quantized embeddings are smaller in size and faster to compute, but may have a lower accuracy.
-  They are useful for reducing the size of the embeddings of a corpus for semantic search, among other tasks.
-- **encode_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for `SentenceTransformer.encode` when embedding texts.
-  This parameter is provided for fine customization. Be careful not to clash with already set parameters and
-  avoid passing parameters that change the output type.
-- **backend** (<code>Literal['torch', 'onnx', 'openvino']</code>) – The backend to use for the Sentence Transformers model. Choose from "torch", "onnx", or "openvino".
-  Refer to the [Sentence Transformers documentation](https://sbert.net/docs/sentence_transformer/usage/efficiency.html)
-  for more information on acceleration and quantization options.
-- **revision** (<code>str | None</code>) – The specific model version to use. It can be a branch name, a tag name, or a commit id,
-  for a stored model on Hugging Face.
-
-#### to_dict
-
-```python
-to_dict() -> dict[str, Any]
-```
-
-Serializes the component to a dictionary.
-
-**Returns:**
-
-- <code>dict\[str, Any\]</code> – Dictionary with serialized data.
-
-#### from_dict
-
-```python
-from_dict(data: dict[str, Any]) -> SentenceTransformersTextEmbedder
-```
-
-Deserializes the component from a dictionary.
-
-**Parameters:**
-
-- **data** (<code>dict\[str, Any\]</code>) – Dictionary to deserialize from.
-
-**Returns:**
-
-- <code>SentenceTransformersTextEmbedder</code> – Deserialized component.
-
-#### warm_up
-
-```python
-warm_up() -> None
-```
-
-Initializes the component.
-
-#### run
-
-```python
-run(text: str) -> dict[str, Any]
-```
-
-Embed a single string.
-
-**Parameters:**
-
-- **text** (<code>str</code>) – Text to embed.
-
-**Returns:**
-
-- <code>dict\[str, Any\]</code> – A dictionary with the following keys:
-- `embedding`: The embedding of the input text.
