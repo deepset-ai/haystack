@@ -153,7 +153,7 @@
 | haystack/core/super\_component/utils.py                                   |       95 |        4 |     96% |77, 112, 124, 181 |
 | haystack/core/type\_utils.py                                              |      153 |        5 |     97% |51, 58, 121, 157, 249 |
 | haystack/dataclasses/\_\_init\_\_.py                                      |        5 |        0 |    100% |           |
-| haystack/dataclasses/answer.py                                            |       59 |        0 |    100% |           |
+| haystack/dataclasses/answer.py                                            |       61 |        0 |    100% |           |
 | haystack/dataclasses/breakpoints.py                                       |       37 |        0 |    100% |           |
 | haystack/dataclasses/byte\_stream.py                                      |       39 |        0 |    100% |           |
 | haystack/dataclasses/chat\_message.py                                     |      330 |        4 |     99% |140, 369, 385, 607 |
@@ -246,7 +246,7 @@
 | haystack/utils/type\_serialization.py                                     |      121 |        6 |     95% |65, 67, 187-188, 196, 218 |
 | haystack/utils/url\_validation.py                                         |        4 |        0 |    100% |           |
 | haystack/version.py                                                       |        5 |        2 |     60% |      9-10 |
-| **TOTAL**                                                                 | **15787** |  **853** | **95%** |           |
+| **TOTAL**                                                                 | **15789** |  **853** | **95%** |           |
 
 
 ## Setup coverage badge
