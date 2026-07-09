@@ -1,0 +1,103 @@
+---
+title: "Mem0MemoryStore"
+id: mem0memorystore
+slug: "/mem0memorystore"
+description: "A memory store backed by the Mem0 cloud API."
+---
+
+# Mem0MemoryStore
+
+`Mem0MemoryStore` is a memory store backed by the Mem0 cloud API. It is the shared data layer used by [`Mem0MemoryRetriever`](../pipeline-components/retrievers/mem0memoryretriever.mdx), [`Mem0MemoryWriter`](../pipeline-components/writers/mem0memorywriter.mdx), and the [Mem0 Memory Tools](../tools/ready-made-tools/mem0memorytools.mdx).
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Used by** | [`Mem0MemoryRetriever`](../pipeline-components/retrievers/mem0memoryretriever.mdx), [`Mem0MemoryWriter`](../pipeline-components/writers/mem0memorywriter.mdx), [`Mem0MemoryRetrieverTool`, `Mem0MemoryWriterTool`](../tools/ready-made-tools/mem0memorytools.mdx) |
+| **Optional init variables** | `api_key`: Defaults to `MEM0_API_KEY` environment variable |
+| **API reference** | [Mem0](/reference/integrations-mem0#mem0memorystore) |
+| **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/mem0 |
+| **Package name** | `mem0-haystack` |
+
+</div>
+
+## Overview
+
+`Mem0MemoryStore` wraps the Mem0 cloud API and provides two core methods:
+
+- `add_memories` — stores a list of `ChatMessage` objects as memories in Mem0.
+- `search_memories` — retrieves memories from Mem0 that are relevant to a query.
+
+Scope memories with at least one Mem0 entity ID: `user_id`, `run_id`, `agent_id`, or `app_id`. These are runtime parameters, so a single store instance can serve multiple users or sessions.
+
+The `infer` parameter on `add_memories` controls how Mem0 processes incoming messages:
+
+- `infer=True` lets Mem0 extract memories from the messages automatically. This is useful when storing a full Agent turn.
+- `infer=False` stores the supplied message text as-is. This is useful when the exact memory text has already been selected upstream.
+
+### Installation
+
+Install the Mem0 integration:
+
+```bash
+pip install mem0-haystack
+```
+
+Set your Mem0 API key:
+
+```bash
+export MEM0_API_KEY="your-mem0-api-key"
+```
+
+## Usage
+
+### On its own
+
+```python
+from haystack.dataclasses import ChatMessage
+from haystack_integrations.memory_stores.mem0 import Mem0MemoryStore
+
+store = Mem0MemoryStore()
+
+store.add_memories(
+    messages=[ChatMessage.from_user("Alice prefers concise Python examples.")],
+    user_id="alice",
+    infer=False,
+)
+
+memories = store.search_memories(
+    query="What does Alice prefer?",
+    user_id="alice",
+    top_k=3,
+)
+print([msg.text for msg in memories])
+```
+
+### Scoping with multiple entity IDs
+
+Mem0 supports narrowing the scope of reads and writes with `user_id`, `run_id`, `agent_id`, and `app_id`. Pass any combination at call time:
+
+```python
+store.add_memories(
+    messages=[ChatMessage.from_user("Alice is working on a documentation search system.")],
+    user_id="alice",
+    run_id="docs-assistant-session-1",
+    infer=True,
+)
+
+memories = store.search_memories(
+    query="What project is Alice working on?",
+    user_id="alice",
+    run_id="docs-assistant-session-1",
+)
+print([msg.text for msg in memories])
+```
+
+### Retrieving all memories in scope
+
+Pass `query=None` to return all memories matching the provided scope without a relevance search:
+
+```python
+all_memories = store.search_memories(query=None, user_id="alice")
+print([msg.text for msg in all_memories])
+```

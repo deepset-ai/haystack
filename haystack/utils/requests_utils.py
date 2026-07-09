@@ -8,7 +8,10 @@ from typing import Any
 import httpx
 from tenacity import after_log, before_log, retry, retry_if_exception_type, stop_after_attempt, wait_exponential
 
-logger = logging.getLogger(__file__)
+# NOTE: this uses the standard library logger (not `haystack.logging`) on purpose: tenacity's `before_log`/`after_log`
+# call the logger with positional arguments, which Haystack's keyword-only patched logger would reject. We still name
+# it with `__name__` so it lives under the `haystack` namespace and is picked up by `configure_logging`.
+logger = logging.getLogger(__name__)
 
 
 def request_with_retry(

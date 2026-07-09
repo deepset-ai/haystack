@@ -74,6 +74,38 @@ Initializes the component.
 - **client_kwargs** (<code>dict | None</code>) – Additional keyword arguments to pass to the httpx client.
   If `None`, default values are used.
 
+#### warm_up
+
+```python
+warm_up() -> None
+```
+
+Initializes the synchronous httpx client.
+
+#### warm_up_async
+
+```python
+warm_up_async() -> None
+```
+
+Initializes the asynchronous httpx client on the serving event loop.
+
+#### close
+
+```python
+close() -> None
+```
+
+Releases the synchronous httpx client.
+
+#### close_async
+
+```python
+close_async() -> None
+```
+
+Releases the asynchronous httpx client.
+
 #### run
 
 ```python

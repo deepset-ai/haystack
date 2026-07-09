@@ -1,6 +1,7 @@
 loaders:
   - search_path: [../haystack/tools]
-    modules: ["tool", "from_function", "component_tool", "pipeline_tool", "searchable_toolset", "toolset"]
+    modules: ["tool", "from_function", "component_tool", "pipeline_tool", "searchable_toolset", "toolset",
+      "skills/skill_toolset"]
 processors:
   - type: filter
     documented_only: true

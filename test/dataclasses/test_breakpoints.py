@@ -6,21 +6,7 @@ import warnings
 
 import pytest
 
-from haystack.dataclasses.breakpoints import AgentBreakpoint, AgentSnapshot, Breakpoint, PipelineSnapshot, PipelineState
-
-
-def test_agent_snapshot_no_warning_on_init():
-    bp = AgentBreakpoint(agent_name="agent", break_point=Breakpoint(component_name="chat_generator"))
-    with warnings.catch_warnings():
-        warnings.simplefilter("error", Warning)
-        AgentSnapshot(component_inputs={}, component_visits={}, break_point=bp)
-
-
-def test_agent_snapshot_warn_on_inplace_mutation():
-    bp = AgentBreakpoint(agent_name="agent", break_point=Breakpoint(component_name="chat_generator"))
-    snap = AgentSnapshot(component_inputs={}, component_visits={}, break_point=bp)
-    with pytest.warns(Warning, match="dataclasses.replace"):
-        snap.component_inputs = {"new": "value"}
+from haystack.dataclasses.breakpoints import Breakpoint, PipelineSnapshot, PipelineState
 
 
 def test_pipeline_state_no_warning_on_init():
