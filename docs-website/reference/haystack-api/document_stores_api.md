@@ -32,6 +32,7 @@ __init__(
         "dot_product", "cosine"
     ] = "dot_product",
     index: str | None = None,
+    shared: bool = True,
     async_executor: ThreadPoolExecutor | None = None,
     return_embedding: bool = True,
 ) -> None
@@ -50,7 +51,11 @@ Initializes the DocumentStore.
   One of "dot_product" (default) or "cosine". To choose the most appropriate function, look for information
   about your embedding model.
 - **index** (<code>str | None</code>) – A specific index to store the documents. If not specified, a random UUID is used.
-  Using the same index allows you to store documents across multiple InMemoryDocumentStore instances.
+  When `shared` is True, instances using the same index share the same documents.
+- **shared** (<code>bool</code>) – Whether the documents live in process-global storage shared across instances using the same
+  index (True, the default), or are kept instance-local and freed when this instance is garbage collected
+  (False). Shared storage persists for the lifetime of the process, so prefer `shared=False` for stores
+  that are created frequently (for example per request) to avoid unbounded memory growth.
 - **async_executor** (<code>ThreadPoolExecutor | None</code>) – Optional ThreadPoolExecutor to use for async calls. If not provided, a single-threaded
   executor will be initialized and used.
 - **return_embedding** (<code>bool</code>) – Whether to return the embedding of the retrieved Documents. Default is True.

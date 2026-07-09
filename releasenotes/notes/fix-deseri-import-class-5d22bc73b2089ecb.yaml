@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    Fixed ``_deserialize_value_with_schema`` raising ``ImportError`` instead of ``DeserializationError``
+    when a snapshot references a class that can no longer be imported.

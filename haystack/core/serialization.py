@@ -7,10 +7,8 @@ from collections.abc import Callable, Iterable
 from dataclasses import dataclass
 from typing import Any, TypeVar
 
-from haystack import logging
 from haystack.core.component.component import _hook_component_init
 from haystack.core.errors import DeserializationError, SerializationError
-from haystack.core.serialization_security import _check_builtin_is_type, _check_module_allowed
 
 # `allow_deserialization_module` is re-exported here to enable all serialization-specific imports
 # from haystack.core.serialization.
@@ -18,10 +16,7 @@ from haystack.core.serialization_security import _check_builtin_is_type, _check_
 from haystack.core.serialization_security import allow_deserialization_module as allow_deserialization_module
 from haystack.utils.auth import Secret
 from haystack.utils.device import ComponentDevice
-from haystack.utils.type_serialization import thread_safe_import
-
-logger = logging.getLogger(__name__)
-
+from haystack.utils.type_serialization import _import_class_by_name
 
 T = TypeVar("T")
 
@@ -193,6 +188,11 @@ def default_to_dict(obj: Any, **init_parameters: Any) -> dict[str, Any]:
     Objects in `init_parameters` that have a `to_dict()` method are automatically
     serialized by calling that method.
 
+    This is the format used for saved pipeline files (`Pipeline.dump`/`Pipeline.load`). Don't merge
+    it with `base_serialization._serialize_value_with_schema` — that one uses a different envelope
+    for a different job (arbitrary runtime values, not Components) and changing either would break
+    saved files.
+
     An example usage:
 
     ```python
@@ -257,7 +257,10 @@ def default_from_dict(cls: type[T], data: dict[str, Any]) -> T:
     """
     Utility function to deserialize a dictionary to an object.
 
-    This is mostly necessary for components but can be used by any object.
+    This is mostly necessary for components but can be used by any object. Reverses the
+    `{"type": ..., "init_parameters": ...}` envelope produced by `default_to_dict` — see that
+    function's docstring for why this envelope is not interchangeable with
+    `haystack.utils.base_serialization._serialize_value_with_schema`'s.
 
     The function will raise a `DeserializationError` if the `type` field in `data` is
     missing or it doesn't match the type of `cls`.
@@ -372,21 +375,4 @@ def import_class_by_name(fully_qualified_name: str) -> type[object]:
     :raises ImportError: If the class cannot be imported or found.
     :raises DeserializationError: If the module is not on the deserialization allowlist.
     """
-    module_path, class_name = fully_qualified_name.rsplit(".", 1)
-    _check_module_allowed(module_path)
-    try:
-        logger.debug(
-            "Attempting to import class '{cls_name}' from module '{md_path}'", cls_name=class_name, md_path=module_path
-        )
-        module = thread_safe_import(module_path)
-        resolved = getattr(module, class_name)
-        # `builtins` is on the allowlist; a class reference must resolve to an actual type. This
-        # rejects dangerous builtins like `eval`/`compile` (e.g. a nested
-        # `{"type": "builtins.compile"}` payload in `default_from_dict`) while letting builtin
-        # types through.
-        if module_path == "builtins":
-            _check_builtin_is_type(resolved, fully_qualified_name)
-        return resolved
-    except (ImportError, AttributeError) as error:
-        logger.exception("Failed to import class '{full_name}'", full_name=fully_qualified_name)
-        raise ImportError(f"Could not import class '{fully_qualified_name}'") from error
+    return _import_class_by_name(fully_qualified_name)

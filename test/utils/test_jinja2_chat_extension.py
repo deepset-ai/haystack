@@ -4,6 +4,7 @@
 
 import base64
 import json
+from typing import Any
 from unittest.mock import patch
 
 import pytest
@@ -98,7 +99,12 @@ class TestChatMessageExtension:
         """
         rendered = jinja_env.from_string(template).render()
         output = json.loads(rendered.strip())
-        expected = {"role": "system", "content": [{"text": "You are a helpful assistant."}], "name": None, "meta": {}}
+        expected: dict[str, Any] = {
+            "role": "system",
+            "content": [{"text": "You are a helpful assistant."}],
+            "name": None,
+            "meta": {},
+        }
         assert output == expected
 
     def test_user_message_with_variable(self, jinja_env):
@@ -109,7 +115,12 @@ class TestChatMessageExtension:
         """
         rendered = jinja_env.from_string(template).render(name="Alice")
         output = json.loads(rendered.strip())
-        expected = {"role": "user", "content": [{"text": "Hello, my name is Alice!"}], "name": None, "meta": {}}
+        expected: dict[str, Any] = {
+            "role": "user",
+            "content": [{"text": "Hello, my name is Alice!"}],
+            "name": None,
+            "meta": {},
+        }
         assert output == expected
 
     def test_assistant_message_with_tool_call(self, jinja_env):
@@ -122,7 +133,7 @@ class TestChatMessageExtension:
         tool_call = ToolCall(tool_name="search", arguments={"query": "an interesting question"}, id="search_1")
         rendered = jinja_env.from_string(template).render(tool_call=tool_call)
         output = json.loads(rendered.strip())
-        expected = {
+        expected: dict[str, Any] = {
             "role": "assistant",
             "content": [
                 {"text": "Let me search for that information."},
@@ -150,7 +161,7 @@ class TestChatMessageExtension:
         reasoning = ReasoningContent(reasoning_text="Let me think about it...", extra={"key": "value"})
         rendered = jinja_env.from_string(template).render(reasoning=reasoning)
         output = json.loads(rendered.strip())
-        expected = {
+        expected: dict[str, Any] = {
             "role": "assistant",
             "content": [
                 {"reasoning": {"reasoning_text": "Let me think about it...", "extra": {"key": "value"}}},
@@ -171,7 +182,7 @@ class TestChatMessageExtension:
         tool_result = ToolCallResult(result="Here are the search results", origin=tool_call, error=False)
         rendered = jinja_env.from_string(template).render(tool_result=tool_result)
         output = json.loads(rendered.strip())
-        expected = {
+        expected: dict[str, Any] = {
             "role": "tool",
             "content": [
                 {
@@ -209,7 +220,7 @@ class TestChatMessageExtension:
         )
         rendered = jinja_env.from_string(template).render(tool_result=tool_result)
         output = json.loads(rendered.strip())
-        expected = {
+        expected: dict[str, Any] = {
             "role": "tool",
             "content": [
                 {
@@ -251,7 +262,7 @@ class TestChatMessageExtension:
         image = ImageContent(base64_image=base64_image_string, mime_type="image/png")
         rendered = jinja_env.from_string(template).render(image=image)
         output = json.loads(rendered.strip())
-        expected = {
+        expected: dict[str, Any] = {
             "role": "user",
             "content": [
                 {"text": "Please describe this image:"},
@@ -285,7 +296,7 @@ class TestChatMessageExtension:
         ]
         rendered = jinja_env.from_string(template).render(images=images)
         output = json.loads(rendered.strip())
-        expected = {
+        expected: dict[str, Any] = {
             "role": "user",
             "content": [
                 {"text": "Compare these images:"},
@@ -332,7 +343,7 @@ class TestChatMessageExtension:
         rendered = jinja_env.from_string(template).render(images=[image, image])
         output = json.loads(rendered.strip())
 
-        expected = {
+        expected: dict[str, Any] = {
             "role": "user",
             "content": [
                 {"text": "Image 1:"},
@@ -373,7 +384,7 @@ class TestChatMessageExtension:
         rendered = jinja_env.from_string(template).render(file=file)
         output = json.loads(rendered.strip())
 
-        expected = {
+        expected: dict[str, Any] = {
             "role": "user",
             "content": [
                 {"text": "Please describe this document:"},
@@ -403,7 +414,7 @@ But my favorite subject is Small Language Models.
         """
         rendered = jinja_env.from_string(template).render()
         output = json.loads(rendered.strip())
-        expected = {
+        expected: dict[str, Any] = {
             "role": "user",
             "content": [
                 {
@@ -429,7 +440,7 @@ But my favorite subject is Small Language Models.
 
     def test_templatize_part_filter_with_invalid_type(self, jinja_env):
         with pytest.raises(TypeError, match="Unsupported type in ChatMessage content"):
-            templatize_part(jinja_env, 123)
+            templatize_part(jinja_env, 123)  # type: ignore[arg-type]
 
     def test_empty_message_content_raises_error(self, jinja_env):
         error_message = "Message content in template is empty or contains only whitespace characters."
@@ -483,7 +494,7 @@ But my favorite subject is Small Language Models.
             {% endmessage %}""",
             """{% message role="user" %}\tString\t{% endmessage %}""",
         ]
-        expected = {"role": "user", "content": [{"text": "String"}], "name": None, "meta": {}}
+        expected: dict[str, Any] = {"role": "user", "content": [{"text": "String"}], "name": None, "meta": {}}
         for template in templates:
             rendered = jinja_env.from_string(template).render()
             output = json.loads(rendered.strip())

@@ -3,13 +3,19 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import re
+from typing import Any
 
 import pytest
 
 from haystack.dataclasses import TextContent
 from haystack.tools import Tool, _check_duplicate_tool_names
 from haystack.tools.errors import ToolInvocationError
-from haystack.tools.tool import _deserialize_outputs_to_string, _serialize_outputs_to_string
+from haystack.tools.tool import (
+    _deserialize_outputs_to_state,
+    _deserialize_outputs_to_string,
+    _serialize_outputs_to_state,
+    _serialize_outputs_to_string,
+)
 
 
 def get_weather_report(city: str) -> str:
@@ -246,6 +252,32 @@ class TestTool:
         assert deserialized == {
             "report": {"source": "report", "handler": format_string},
             "temp": {"source": "temperature", "handler": format_string},
+        }
+
+    def test_serialize_outputs_to_state(self):
+        config: dict[str, dict[str, Any]] = {
+            "documents": {"source": "docs", "handler": format_string},
+            "summary": {"source": "docs", "handler": get_weather_report},
+            "raw_docs": {"source": "docs"},
+        }
+        serialized = _serialize_outputs_to_state(config)
+        assert serialized == {
+            "documents": {"source": "docs", "handler": "test_tool.format_string"},
+            "summary": {"source": "docs", "handler": "test_tool.get_weather_report"},
+            "raw_docs": {"source": "docs"},
+        }
+
+    def test_deserialize_outputs_to_state(self):
+        serialized = {
+            "documents": {"source": "docs", "handler": "test_tool.format_string"},
+            "summary": {"source": "docs", "handler": "test_tool.get_weather_report"},
+            "raw_docs": {"source": "docs"},
+        }
+        deserialized = _deserialize_outputs_to_state(serialized)
+        assert deserialized == {
+            "documents": {"source": "docs", "handler": format_string},
+            "summary": {"source": "docs", "handler": get_weather_report},
+            "raw_docs": {"source": "docs"},
         }
 
     def test_inputs_from_state_validation_with_invalid_parameter(self):
