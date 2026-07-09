@@ -200,15 +200,15 @@ class TestOpenAIDocumentEmbedder:
         list_integers_input = [1, 2, 3]
 
         with pytest.raises(TypeError, match="OpenAIDocumentEmbedder expects a list of Documents as input"):
-            embedder.run(documents=string_input)
+            embedder.run(documents=string_input)  # type: ignore[arg-type]
 
         with pytest.raises(TypeError, match="OpenAIDocumentEmbedder expects a list of Documents as input"):
-            embedder.run(documents=list_integers_input)
+            embedder.run(documents=list_integers_input)  # type: ignore[arg-type]
 
     def test_run_on_empty_list(self):
         embedder = OpenAIDocumentEmbedder(api_key=Secret.from_token("fake-api-key"))
 
-        empty_list_input = []
+        empty_list_input: list[Document] = []
         result = embedder.run(documents=empty_list_input)
 
         assert result["documents"] is not None
@@ -217,6 +217,7 @@ class TestOpenAIDocumentEmbedder:
     def test_embed_batch_handles_exceptions_gracefully(self, caplog):
         embedder = OpenAIDocumentEmbedder(api_key=Secret.from_token("fake_api_key"))
         embedder.warm_up()
+        assert embedder.client is not None
         fake_texts_to_embed = {"1": "text1", "2": "text2"}
         with patch.object(
             embedder.client.embeddings,
@@ -231,6 +232,7 @@ class TestOpenAIDocumentEmbedder:
     def test_run_handles_exceptions_gracefully(self, caplog):
         embedder = OpenAIDocumentEmbedder(api_key=Secret.from_token("fake_api_key"), batch_size=1)
         embedder.warm_up()
+        assert embedder.client is not None
         docs = [
             Document(content="I love cheese", meta={"topic": "Cuisine"}),
             Document(content="A transformer is a deep learning architecture", meta={"topic": "ML"}),
@@ -260,6 +262,7 @@ class TestOpenAIDocumentEmbedder:
     def test_embed_batch_raises_exception_on_failure(self):
         embedder = OpenAIDocumentEmbedder(api_key=Secret.from_token("fake_api_key"), raise_on_failure=True)
         embedder.warm_up()
+        assert embedder.client is not None
         fake_texts_to_embed = {"1": "text1", "2": "text2"}
         with patch.object(
             embedder.client.embeddings,
@@ -354,12 +357,14 @@ class TestComponentLifecycle:
         monkeypatch.setenv("OPENAI_API_KEY", "fake-api-key")
         embedder = OpenAIDocumentEmbedder()
         embedder.warm_up()
+        assert embedder.client is not None
         assert embedder.client.max_retries == 5
         assert embedder.client.timeout == 30.0
 
     def test_warm_up_uses_timeout_and_max_retries_from_parameters(self):
         embedder = OpenAIDocumentEmbedder(api_key=Secret.from_token("fake-api-key"), timeout=40.0, max_retries=1)
         embedder.warm_up()
+        assert embedder.client is not None
         assert embedder.client.max_retries == 1
         assert embedder.client.timeout == 40.0
 
@@ -368,6 +373,7 @@ class TestComponentLifecycle:
         monkeypatch.setenv("OPENAI_MAX_RETRIES", "10")
         embedder = OpenAIDocumentEmbedder(api_key=Secret.from_token("fake-api-key"))
         embedder.warm_up()
+        assert embedder.client is not None
         assert embedder.client.max_retries == 10
         assert embedder.client.timeout == 100.0
 
@@ -379,6 +385,7 @@ class TestComponentLifecycle:
 
     def test_sync_lifecycle(self, mock_openai_clients):
         sync_cls, _ = mock_openai_clients
+        sync_client = sync_cls.return_value
         embedder = OpenAIDocumentEmbedder()
         assert embedder.client is None
         assert embedder.async_client is None
@@ -388,11 +395,12 @@ class TestComponentLifecycle:
         assert embedder.async_client is None
 
         embedder.close()
-        sync_cls.return_value.close.assert_called_once()
+        sync_client.close.assert_called_once()
         assert embedder.client is None
 
     async def test_async_lifecycle(self, mock_openai_clients):
         _, async_cls = mock_openai_clients
+        async_client = async_cls.return_value
         embedder = OpenAIDocumentEmbedder()
 
         await embedder.warm_up_async()
@@ -400,7 +408,7 @@ class TestComponentLifecycle:
         assert embedder.client is None
 
         await embedder.close_async()
-        async_cls.return_value.close.assert_awaited_once()
+        async_client.close.assert_awaited_once()
         assert embedder.async_client is None
 
     async def test_close_is_safe_without_warm_up(self, mock_openai_clients):
