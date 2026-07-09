@@ -71,6 +71,13 @@ document_store.write_documents(
 print(document_store.count_documents())
 ```
 
+The `http_auth` value depends on how your OpenSearch instance is deployed:
+
+- For the local Docker example above, use the OpenSearch admin user and the value you set in `OPENSEARCH_INITIAL_ADMIN_PASSWORD`.
+- For Amazon OpenSearch Service, do not use the local Docker password or IAM console password as `http_auth`.
+  Configure the authentication method required by your domain instead. For IAM-based access, pass an AWS SigV4 auth
+  object, such as `AWSV4SignerAuth`, as shown in the [OpenSearch Python client documentation](https://docs.opensearch.org/latest/clients/python-low-level/#connecting-to-amazon-opensearch-service).
+
 ### Supported Retrievers
 
 [`OpenSearchBM25Retriever`](../pipeline-components/retrievers/opensearchbm25retriever.mdx): A keyword-based Retriever that fetches documents matching a query from the Document Store.
