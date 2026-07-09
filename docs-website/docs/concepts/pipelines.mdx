@@ -81,7 +81,7 @@ result = asyncio.run(main())
 
 By default, chunks from every streaming-capable component are forwarded; pass `streaming_components` with a list of component names to stream only specific components. If the consumer abandons iteration, the underlying pipeline run is cancelled automatically; pass `cancel_on_abandon=False` to let it run to completion instead.
 
-If a `streaming_callback` is set on a component (at init or at runtime through `data`), it is still invoked for each chunk in addition to the chunks being pushed to the handle. When streaming, components accept a sync `streaming_callback` in `run_async` too — see the [Choosing the Right Generator guide](../pipeline-components/generators/guides-to-generators/choosing-the-right-generator.mdx) for details.
+If a `streaming_callback` is set on a component (at init or at runtime through `data`), it is still invoked for each chunk in addition to the chunks being pushed to the handle. When streaming, components accept a sync `streaming_callback` in `run_async` too — see the [Choosing the Right Generator guide](../pipeline-components/generators/guides-to-generators/choosing-the-right-generator.mdx#sync-and-async-callbacks) for details.
 
 #### Error Handling and Task Cancellation
 
