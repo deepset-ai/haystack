@@ -79,16 +79,20 @@ class ExtractedAnswer:
         :returns:
             Deserialized object.
         """
+        # Shallow-copy the init parameters so `from_dict` stays side-effect free: the nested
+        # replacements below otherwise mutate the caller's dict in place, corrupting it for reuse
+        # (a second deserialization of the same dict would then receive already-parsed objects).
         init_params = data.get("init_parameters", {})
+        new_params = dict(init_params)
         if (doc := init_params.get("document")) is not None:
-            data["init_parameters"]["document"] = Document.from_dict(doc)
+            new_params["document"] = Document.from_dict(doc)
 
         if (offset := init_params.get("document_offset")) is not None:
-            data["init_parameters"]["document_offset"] = ExtractedAnswer.Span(**offset)
+            new_params["document_offset"] = ExtractedAnswer.Span(**offset)
 
         if (offset := init_params.get("context_offset")) is not None:
-            data["init_parameters"]["context_offset"] = ExtractedAnswer.Span(**offset)
-        return default_from_dict(cls, data)
+            new_params["context_offset"] = ExtractedAnswer.Span(**offset)
+        return default_from_dict(cls, {**data, "init_parameters": new_params})
 
 
 @_warn_on_inplace_mutation
@@ -133,14 +137,20 @@ class GeneratedAnswer:
         :returns:
             Deserialized object.
         """
+        # Shallow-copy the init parameters so `from_dict` stays side-effect free: the nested
+        # replacements below otherwise mutate the caller's dict in place, corrupting it for reuse
+        # (a second deserialization of the same dict would then receive already-parsed objects).
         init_params = data.get("init_parameters", {})
+        new_params = dict(init_params)
 
         if (documents := init_params.get("documents")) is not None:
-            init_params["documents"] = [Document.from_dict(d) for d in documents]
+            new_params["documents"] = [Document.from_dict(d) for d in documents]
 
-        meta = init_params.get("meta", {})
+        # Shallow-copy `meta` before touching `all_messages` so the caller's nested dict is
+        # left untouched as well.
+        meta = dict(init_params.get("meta", {}))
         if (all_messages := meta.get("all_messages")) and isinstance(all_messages[0], dict):
             meta["all_messages"] = [ChatMessage.from_dict(m) for m in all_messages]
-        init_params["meta"] = meta
+        new_params["meta"] = meta
 
-        return default_from_dict(cls, data)
+        return default_from_dict(cls, {**data, "init_parameters": new_params})
