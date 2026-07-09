@@ -75,6 +75,7 @@ class OpenAIResponsesChatGenerator:
     """
 
     SUPPORTED_MODELS: ClassVar[list[str]] = [
+        "MiniMax-M3",
         "gpt-5-mini",
         "gpt-5-nano",
         "gpt-5",

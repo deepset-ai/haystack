@@ -194,6 +194,7 @@ class TestOpenAIChatGenerator:
         assert isinstance(models, list)
         assert len(models) > 0
         assert all(isinstance(m, str) for m in models)
+        assert "MiniMax-M3" in models
 
     def test_init_default(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
