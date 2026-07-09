@@ -107,6 +107,22 @@ class TestToolsetWrapper:
         assert add_tool in result
         assert multiply_tool in result
 
+    def test_wrapper_getitem_supports_negative_index(self, add_tool, multiply_tool, subtract_tool):
+        """Test that __getitem__ supports negative indices like the base Toolset."""
+        result = Toolset([add_tool]) + Toolset([multiply_tool, subtract_tool])
+        assert len(result) == 3
+        assert result[-1] is subtract_tool
+        assert result[-2] is multiply_tool
+        assert result[-3] is add_tool
+
+    def test_wrapper_getitem_out_of_range_raises(self, add_tool, multiply_tool):
+        """Test that an out-of-range index raises IndexError."""
+        result = Toolset([add_tool]) + Toolset([multiply_tool])
+        with pytest.raises(IndexError):
+            _ = result[5]
+        with pytest.raises(IndexError):
+            _ = result[-5]
+
     def test_wrapper_with_agent(self, add_tool, multiply_tool, monkeypatch):
         """Test that _ToolsetWrapper works with Agent."""
         monkeypatch.setenv("OPENAI_API_KEY", "test")
