@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    Fixed ``DocumentNDCGEvaluator`` returning a score greater than 1.0 when the
+    retrieved documents contained the same relevant document more than once.
+    Each relevant ground truth document is now credited at most once when
+    computing the discounted cumulative gain, so the NDCG score stays within the
+    documented 0.0 to 1.0 range.
