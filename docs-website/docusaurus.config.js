@@ -186,10 +186,6 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
             to: '/docs/pipelines',
           },
           {
-            from: '/docs/asyncpipeline',
-            to: '/docs/pipelines',
-          },
-          {
             from: '/docs/prompt_node',
             to: '/docs/promptbuilder',
           },
