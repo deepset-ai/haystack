@@ -66,7 +66,6 @@ export default {
             'concepts/pipelines/debugging-pipelines',
             'concepts/pipelines/pipeline-breakpoints',
             'concepts/pipelines/pipeline-loops',
-            'concepts/pipelines/asyncpipeline',
             'concepts/pipelines/smart-pipeline-connections',
           ],
         },
