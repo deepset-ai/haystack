@@ -250,6 +250,29 @@ def test_preserve_document_metadata():
     assert split_docs[0].content == "\nContent"
 
 
+def test_secondary_split_keeps_content_before_embedded_header():
+    """With keep_headers=False, prose before an embedded lower-level header must
+    not be dropped during the secondary split."""
+    splitter = MarkdownHeaderSplitter(
+        keep_headers=False, header_split_levels=[1], secondary_split="word", split_length=100
+    )
+    docs = splitter.run(documents=[Document(content="# Main\nintro paragraph text\n## Sub\nmore text\n")])["documents"]
+    combined = "".join(doc.content or "" for doc in docs)
+    assert "intro paragraph text" in combined
+
+
+def test_secondary_split_keeps_content_before_code_fence_comment():
+    """With keep_headers=False, prose before a '#' comment inside a fenced code block must
+    not be dropped during the secondary split (the comment is not a real header)."""
+    splitter = MarkdownHeaderSplitter(
+        keep_headers=False, header_split_levels=[1], secondary_split="word", split_length=100
+    )
+    content = "# Main\nsome intro text\n```python\n# a comment in code\n```\nmore text\n"
+    docs = splitter.run(documents=[Document(content=content)])["documents"]
+    combined = "".join(doc.content or "" for doc in docs)
+    assert "some intro text" in combined
+
+
 # Error and edge case handling
 def test_non_text_document():
     """Test that the component correctly handles non-text documents."""
