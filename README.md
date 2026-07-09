@@ -146,7 +146,7 @@
 | haystack/core/pipeline/draw.py                                            |      199 |       41 |     79% |35-58, 142, 145, 148, 150, 158, 162-169, 293, 303, 375-377, 382, 390-391, 419-424 |
 | haystack/core/pipeline/pipeline.py                                        |      317 |       21 |     93% |171, 178, 408, 452-453, 550, 573, 741, 935, 940, 957-961, 965-977, 1018-1027, 1052 |
 | haystack/core/pipeline/utils.py                                           |       69 |        1 |     99% |       201 |
-| haystack/core/serialization.py                                            |      127 |        7 |     94% |75, 99, 110, 246, 330, 346-347 |
+| haystack/core/serialization.py                                            |      127 |        7 |     94% |75, 99, 110, 246, 333, 349-350 |
 | haystack/core/serialization\_security.py                                  |       70 |        1 |     99% |       216 |
 | haystack/core/super\_component/\_\_init\_\_.py                            |        2 |        0 |    100% |           |
 | haystack/core/super\_component/super\_component.py                        |      194 |        7 |     96% |67, 196, 209, 247, 301, 343, 596 |
