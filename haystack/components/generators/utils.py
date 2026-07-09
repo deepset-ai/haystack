@@ -3,22 +3,12 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import json
-import warnings
 from typing import Any
 
 from haystack import logging
 from haystack.dataclasses import ChatMessage, ReasoningContent, StreamingChunk, ToolCall
 
 logger = logging.getLogger(__name__)
-
-
-def _generators_deprecation_warning(generator_name: str, chatgenerator_name: str) -> None:
-    warnings.warn(
-        f"The `{generator_name}` component is deprecated and will be removed in Haystack 3.0. "
-        f"Use `{chatgenerator_name}` instead, which now also supports string inputs.",
-        FutureWarning,
-        stacklevel=2,
-    )
 
 
 def print_streaming_chunk(chunk: StreamingChunk) -> None:
@@ -61,7 +51,7 @@ def print_streaming_chunk(chunk: StreamingChunk) -> None:
                 print(tool_call.arguments, flush=True, end="")
 
     ## Tool Call Result streaming
-    # Print tool call results if available (from ToolInvoker)
+    # Print tool call results if available.
     if chunk.tool_call_result:
         # Tool Call Result is fully formed so delta accumulation is not needed
         print(f"[TOOL RESULT]\n{chunk.tool_call_result.result}", flush=True, end="")
@@ -170,7 +160,13 @@ def _convert_streaming_chunks_to_chat_message(chunks: list[StreamingChunk]) -> C
 
 
 def _serialize_object(obj: Any) -> Any:
-    """Convert an object to a serializable dict recursively"""
+    """
+    Convert an object to a serializable dict recursively.
+
+    Used to serialize `logprobs` and `usage` from OpenAI SDK response objects, so it skips any
+    attribute starting with "_" (SDK-internal fields). `base_serialization._serialize_value_with_schema`
+    doesn't skip those, so don't swap this out for it.
+    """
     if hasattr(obj, "model_dump"):
         return obj.model_dump()
     if hasattr(obj, "__dict__"):

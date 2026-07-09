@@ -7,14 +7,9 @@ from enum import Enum
 import pydantic
 import pytest
 
-from haystack.core.errors import DeserializationError, SerializationError
+from haystack.core.errors import DeserializationError
 from haystack.dataclasses import ChatMessage, Document, GeneratedAnswer
-from haystack.utils.base_serialization import (
-    _deserialize_value_with_schema,
-    _serialize_value_with_schema,
-    deserialize_class_instance,
-    serialize_class_instance,
-)
+from haystack.utils.base_serialization import _deserialize_value_with_schema, _serialize_value_with_schema
 
 
 class CustomModel(pydantic.BaseModel):
@@ -37,56 +32,8 @@ class CustomClass:
         return cls()
 
 
-class CustomClassNoToDict:
-    @classmethod
-    def from_dict(cls, data):
-        assert data == {"key": "value", "more": False}
-        return cls()
-
-
-class CustomClassNoFromDict:
-    def to_dict(self):
-        return {"key": "value", "more": False}
-
-
 def simple_calc_function(x: int) -> int:
     return x * 2
-
-
-def test_serialize_class_instance():
-    result = serialize_class_instance(CustomClass())
-    assert result == {"data": {"key": "value", "more": False}, "type": "test_base_serialization.CustomClass"}
-
-
-def test_serialize_class_instance_missing_method():
-    with pytest.raises(SerializationError, match="does not have a 'to_dict' method"):
-        serialize_class_instance(CustomClassNoToDict())
-
-
-def test_deserialize_class_instance():
-    data = {"data": {"key": "value", "more": False}, "type": "test_base_serialization.CustomClass"}
-
-    result = deserialize_class_instance(data)
-    assert isinstance(result, CustomClass)
-
-
-def test_deserialize_class_instance_invalid_data():
-    with pytest.raises(DeserializationError, match="Missing 'type'"):
-        deserialize_class_instance({})
-
-    with pytest.raises(DeserializationError, match="Missing 'data'"):
-        deserialize_class_instance({"type": "test_base_serialization.CustomClass"})
-
-    with pytest.raises(
-        DeserializationError, match="Class 'test_base_serialization.CustomClass1' not correctly imported"
-    ):
-        deserialize_class_instance({"type": "test_base_serialization.CustomClass1", "data": {}})
-
-    with pytest.raises(
-        DeserializationError,
-        match="Class 'test_base_serialization.CustomClassNoFromDict' does not have a 'from_dict' method",
-    ):
-        deserialize_class_instance({"type": "test_base_serialization.CustomClassNoFromDict", "data": {}})
 
 
 @pytest.mark.parametrize(
@@ -233,38 +180,44 @@ def test_serializing_and_deserializing_empty_structures(value, result):
                 "serialized_data": [
                     [
                         {
-                            "data": "Paris",
-                            "query": "What is the capital of France?",
-                            "documents": [
-                                {
-                                    "id": "1",
-                                    "content": "Paris is the capital of France",
-                                    "blob": None,
-                                    "meta": {},
-                                    "score": None,
-                                    "embedding": None,
-                                    "sparse_embedding": None,
-                                }
-                            ],
-                            "meta": {"page": 1},
+                            "type": "haystack.dataclasses.answer.GeneratedAnswer",
+                            "init_parameters": {
+                                "data": "Paris",
+                                "query": "What is the capital of France?",
+                                "documents": [
+                                    {
+                                        "id": "1",
+                                        "content": "Paris is the capital of France",
+                                        "blob": None,
+                                        "meta": {},
+                                        "score": None,
+                                        "embedding": None,
+                                        "sparse_embedding": None,
+                                    }
+                                ],
+                                "meta": {"page": 1},
+                            },
                         }
                     ],
                     [
                         {
-                            "data": "Berlin",
-                            "query": "What is the capital of Germany?",
-                            "documents": [
-                                {
-                                    "id": "2",
-                                    "content": "Berlin is the capital of Germany",
-                                    "blob": None,
-                                    "meta": {},
-                                    "score": None,
-                                    "embedding": None,
-                                    "sparse_embedding": None,
-                                }
-                            ],
-                            "meta": {"page": 1},
+                            "type": "haystack.dataclasses.answer.GeneratedAnswer",
+                            "init_parameters": {
+                                "data": "Berlin",
+                                "query": "What is the capital of Germany?",
+                                "documents": [
+                                    {
+                                        "id": "2",
+                                        "content": "Berlin is the capital of Germany",
+                                        "blob": None,
+                                        "meta": {},
+                                        "score": None,
+                                        "embedding": None,
+                                        "sparse_embedding": None,
+                                    }
+                                ],
+                                "meta": {"page": 1},
+                            },
                         }
                     ],
                 ],
@@ -358,20 +311,23 @@ def test_serialize_and_deserialize_value_with_schema_with_various_types():
             "list_of_dicts": [{"numbers": [1, 2, 3]}],
             "answers": [
                 {
-                    "data": "Paris",
-                    "query": "What is the capital of France?",
-                    "documents": [
-                        {
-                            "id": "2",
-                            "content": "Paris is the capital of France",
-                            "blob": None,
-                            "meta": {},
-                            "score": None,
-                            "embedding": None,
-                            "sparse_embedding": None,
-                        }
-                    ],
-                    "meta": {"page": 1},
+                    "type": "haystack.dataclasses.answer.GeneratedAnswer",
+                    "init_parameters": {
+                        "data": "Paris",
+                        "query": "What is the capital of France?",
+                        "documents": [
+                            {
+                                "id": "2",
+                                "content": "Paris is the capital of France",
+                                "blob": None,
+                                "meta": {},
+                                "score": None,
+                                "embedding": None,
+                                "sparse_embedding": None,
+                            }
+                        ],
+                        "meta": {"page": 1},
+                    },
                 }
             ],
         },

@@ -1,8 +1,7 @@
 ---
 fixes:
   - |
-    Fixed ``human_in_the_loop`` confirmation strategies (``_run_confirmation_strategies`` and
-    ``_run_confirmation_strategies_async``) raising an unhandled ``KeyError`` when a tool call references a tool name
-    that isn't in the ``tools`` list (e.g. the chat model hallucinated it). The call now passes through unmodified to
-    ``ToolInvoker``, which already raises a clean ``ToolNotFoundException`` (respecting ``raise_on_failure``) for this
-    case.
+    Fixed a ``KeyError`` raised by the human-in-the-loop confirmation strategies when a chat model hallucinated a
+    tool call whose name is not in the agent's tools. Such tool calls now bypass confirmation and pass through
+    unchanged, so the tool-calling code reports the unknown tool uniformly via ``ToolNotFoundException`` (respecting
+    ``raise_on_failure``) instead of crashing.

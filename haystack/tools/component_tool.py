@@ -57,18 +57,19 @@ class ComponentTool(Tool):
 
     To use ComponentTool, you first need a Haystack component - either an existing one or a new one you create.
     You can create a ComponentTool from the component by passing the component to the ComponentTool constructor.
-    Below is an example of creating a ComponentTool from an existing SerperDevWebSearch component.
+    Below is an example of creating a ComponentTool from an existing SerperDevWebSearch component
+    from the `serperdev-haystack` integration package (`pip install serperdev-haystack`).
 
     ## Usage Example:
     <!-- test-ignore -->
     ```python
-    from haystack import component, Pipeline
+    from haystack import component
     from haystack.tools import ComponentTool
-    from haystack.components.websearch import SerperDevWebSearch
     from haystack.utils import Secret
-    from haystack.components.tools.tool_invoker import ToolInvoker
+    from haystack.components.agents import Agent
     from haystack.components.generators.chat import OpenAIChatGenerator
     from haystack.dataclasses import ChatMessage
+    from haystack_integrations.components.websearch.serperdev import SerperDevWebSearch
 
     # Create a SerperDev search component
     search = SerperDevWebSearch(api_key=Secret.from_env_var("SERPERDEV_API_KEY"), top_k=3)
@@ -80,18 +81,13 @@ class ComponentTool(Tool):
         description="Search the web for current information on any topic"  # Optional: defaults to component docstring
     )
 
-    # Create pipeline with OpenAIChatGenerator and ToolInvoker
-    pipeline = Pipeline()
-    pipeline.add_component("llm", OpenAIChatGenerator(tools=[tool]))
-    pipeline.add_component("tool_invoker", ToolInvoker(tools=[tool]))
-
-    # Connect components
-    pipeline.connect("llm.replies", "tool_invoker.messages")
+    # Create an Agent with an OpenAIChatGenerator and the tool
+    agent = Agent(chat_generator=OpenAIChatGenerator(), tools=[tool])
 
     message = ChatMessage.from_user("Use the web search tool to find information about Nikola Tesla")
 
-    # Run pipeline
-    result = pipeline.run({"llm": {"messages": [message]}})
+    # Run the Agent
+    result = agent.run(messages=[message])
 
     print(result)
     ```
@@ -206,6 +202,29 @@ class ComponentTool(Tool):
             )
             return dict(component.run(**converted_kwargs))
 
+        async def async_component_invoker(**kwargs: Any) -> dict[str, Any]:
+            """
+            Asynchronous counterpart of `component_invoker`. Awaits the component's `run_async`.
+
+            :param kwargs: The keyword arguments to invoke the component with.
+            :returns: The result of the component invocation.
+            """
+            input_sockets = component.__haystack_input__._sockets_dict  # type: ignore[attr-defined]
+            converted_kwargs = {
+                param_name: self._convert_param(param_value, input_sockets[param_name].type)
+                for param_name, param_value in kwargs.items()
+            }
+            logger.debug(
+                "Invoking component {component_type} asynchronously with kwargs: {converted_kwargs}",
+                component_type=type(component),
+                converted_kwargs=converted_kwargs,
+            )
+            # We know run_async exists at this point b/c we only pass the async invoker if the component has
+            # __haystack_supports_async__ = True
+            return dict(await component.run_async(**converted_kwargs))  # type: ignore[attr-defined]
+
+        component_supports_async = getattr(component, "__haystack_supports_async__", False)
+
         # Generate a name for the tool if not provided
         if not name:
             class_name = component.__class__.__name__
@@ -223,12 +242,14 @@ class ComponentTool(Tool):
         self._component = component
         self._is_warmed_up = False
 
-        # Create the Tool instance with the component invoker as the function to be called and the schema
+        # Create the Tool instance with the component invoker as the function to be called and the schema.
+        # When the wrapped component exposes a `run_async`, also pass the async invoker.
         super().__init__(
             name=name,
             description=description,
             parameters=tool_schema,
             function=component_invoker,
+            async_function=async_component_invoker if component_supports_async else None,
             inputs_from_state=inputs_from_state,
             outputs_to_state=outputs_to_state,
             outputs_to_string=outputs_to_string,
@@ -330,7 +351,7 @@ class ComponentTool(Tool):
             if _contains_callable_type(input_type):
                 continue
 
-            # Skip State-typed parameters - ToolInvoker injects them at runtime
+            # Skip State-typed parameters - Agent tool execution injects them at runtime
             if _unwrap_optional(input_type) is State:
                 continue
 

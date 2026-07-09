@@ -340,19 +340,33 @@ def test_remove_title_from_schema_handle_no_title_in_top_level():
     }
 
 
-def test_from_function_async_raises_error():
-    async def async_get_weather(city: str) -> str:
-        """Get weather report for a city."""
-        return f"Weather report for {city}: 20°C, sunny"
-
-    with pytest.raises(ValueError, match="Async functions are not supported as tools"):
-        create_tool_from_function(async_get_weather)
+async def async_function_with_docstring(city: str) -> str:
+    """Get weather report for a city."""
+    return f"Weather report for {city}: 20°C, sunny"
 
 
-def test_tool_decorator_async_raises_error():
-    with pytest.raises(ValueError, match="Async functions are not supported as tools"):
+class TestFromFunctionAsync:
+    def test_create_tool_from_async_function(self):
+        tool_obj = create_tool_from_function(async_function_with_docstring)
 
-        @tool
-        async def async_get_weather(city: str) -> str:
-            """Get weather report for a city."""
-            return f"Weather report for {city}: 20°C, sunny"
+        assert tool_obj.function is None
+        assert tool_obj.async_function is async_function_with_docstring
+        assert tool_obj.name == "async_function_with_docstring"
+        assert tool_obj.parameters == {
+            "type": "object",
+            "properties": {"city": {"type": "string"}},
+            "required": ["city"],
+        }
+
+    def test_tool_decorator_on_async_function(self):
+        decorated = tool(async_function_with_docstring)
+
+        assert decorated.function is None
+        assert decorated.async_function is async_function_with_docstring
+        assert decorated.name == "async_function_with_docstring"
+
+    @pytest.mark.asyncio
+    async def test_invoke_async(self):
+        decorated = tool(async_function_with_docstring)
+
+        assert await decorated.invoke_async(city="Berlin") == "Weather report for Berlin: 20°C, sunny"

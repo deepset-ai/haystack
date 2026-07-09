@@ -341,7 +341,9 @@ class DocumentCleaner:
         :returns: The longest ngram that all sequences have in common.
         """
         sequences = [s for s in sequences if s]  # filter empty sequences
-        if not sequences:
+        if len(sequences) < 2:
+            # a single sequence has no ngram "in common" with any other; treating
+            # its own longest ngram as a repeated header/footer would wipe it
             return ""
         seqs_ngrams = map(partial(self._allngram, min_ngram=min_ngram, max_ngram=max_ngram), sequences)
         intersection = reduce(set.intersection, seqs_ngrams)

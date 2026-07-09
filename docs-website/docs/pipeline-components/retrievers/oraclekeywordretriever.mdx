@@ -13,7 +13,7 @@ A keyword-based Retriever that fetches documents matching a query from the Oracl
 
 |  |  |
 | --- | --- |
-| **Most common position in a pipeline** | 1. Before a [`PromptBuilder`](../builders/promptbuilder.mdx) in a RAG pipeline 2. The last component in a keyword search pipeline 3. Before an [`ExtractiveReader`](../readers/extractivereader.mdx) in an extractive QA pipeline |
+| **Most common position in a pipeline** | 1. Before a [`PromptBuilder`](../builders/promptbuilder.mdx) in a RAG pipeline 2. The last component in a keyword search pipeline 3. Before a [`TransformersExtractiveReader`](../readers/transformersextractivereader.mdx) in an extractive QA pipeline |
 | **Mandatory init variables**           | `document_store`: An instance of an [OracleDocumentStore](../../document-stores/oracledocumentstore.mdx) |
 | **Mandatory run variables**            | `query`: A string |
 | **Output variables**                   | `documents`: A list of documents matching the query |
