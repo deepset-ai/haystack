@@ -448,6 +448,7 @@ export default {
             'pipeline-components/generators/openaigenerator',
             'pipeline-components/generators/openaiimagegenerator',
             'pipeline-components/generators/openrouterchatgenerator',
+            'pipeline-components/generators/orcarouterchatgenerator',
             'pipeline-components/generators/perplexitychatgenerator',
             'pipeline-components/generators/sagemakergenerator',
             'pipeline-components/generators/stackitchatgenerator',
