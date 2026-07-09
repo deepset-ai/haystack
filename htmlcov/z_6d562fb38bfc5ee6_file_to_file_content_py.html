@@ -65,7 +65,7 @@
             <a id="nextFileLink" class="nav" href="z_6d562fb38bfc5ee6_html_py.html">&#xbb; next</a>
             &nbsp; &nbsp; &nbsp;
             <a class="nav" href="https://coverage.readthedocs.io/en/7.14.3">coverage.py v7.14.3</a>,
-            created at 2026-07-09 09:12 +0000
+            created at 2026-07-09 09:29 +0000
         </p>
         <aside class="hidden">
             <button type="button" class="button_next_chunk" data-shortcut="j"></button>
@@ -164,12 +164,16 @@
     <p class="run"><span class="n"><a id="t82" href="#t82">82</a></span><span class="t">                <span class="key">continue</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t83" href="#t83">83</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t84" href="#t84">84</a></span><span class="t">            <span class="nam">base64_data</span> <span class="op">=</span> <span class="nam">base64</span><span class="op">.</span><span class="nam">b64encode</span><span class="op">(</span><span class="nam">bytestream</span><span class="op">.</span><span class="nam">data</span><span class="op">)</span><span class="op">.</span><span class="nam">decode</span><span class="op">(</span><span class="str">"utf-8"</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t85" href="#t85">85</a></span><span class="t">            <span class="nam">file_content</span> <span class="op">=</span> <span class="nam">FileContent</span><span class="op">(</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run run2"><span class="n"><a id="t86" href="#t86">86</a></span><span class="t">                <span class="nam">base64_data</span><span class="op">=</span><span class="nam">base64_data</span><span class="op">,</span> <span class="nam">mime_type</span><span class="op">=</span><span class="nam">bytestream</span><span class="op">.</span><span class="nam">mime_type</span><span class="op">,</span> <span class="nam">filename</span><span class="op">=</span><span class="nam">filename</span><span class="op">,</span> <span class="nam">extra</span><span class="op">=</span><span class="nam">extra_dict</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run run2"><span class="n"><a id="t87" href="#t87">87</a></span><span class="t">            <span class="op">)</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t88" href="#t88">88</a></span><span class="t">            <span class="nam">file_contents</span><span class="op">.</span><span class="nam">append</span><span class="op">(</span><span class="nam">file_content</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
-    <p class="pln"><span class="n"><a id="t89" href="#t89">89</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t90" href="#t90">90</a></span><span class="t">        <span class="key">return</span> <span class="op">{</span><span class="str">"file_contents"</span><span class="op">:</span> <span class="nam">file_contents</span><span class="op">}</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t85" href="#t85">85</a></span><span class="t">            <span class="com"># ``normalize_metadata`` returns the same dict object for every source when ``extra`` is a</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t86" href="#t86">86</a></span><span class="t">            <span class="com"># single dict (or ``None``), so give each FileContent its own copy. Otherwise mutating one</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t87" href="#t87">87</a></span><span class="t">            <span class="com"># file's ``extra`` downstream would leak into all the others. The other converters avoid this</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t88" href="#t88">88</a></span><span class="t">            <span class="com"># implicitly by merging ``extra`` into a fresh ``{**bytestream.meta, ...}`` dict.</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t89" href="#t89">89</a></span><span class="t">            <span class="nam">file_content</span> <span class="op">=</span> <span class="nam">FileContent</span><span class="op">(</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run run2"><span class="n"><a id="t90" href="#t90">90</a></span><span class="t">                <span class="nam">base64_data</span><span class="op">=</span><span class="nam">base64_data</span><span class="op">,</span> <span class="nam">mime_type</span><span class="op">=</span><span class="nam">bytestream</span><span class="op">.</span><span class="nam">mime_type</span><span class="op">,</span> <span class="nam">filename</span><span class="op">=</span><span class="nam">filename</span><span class="op">,</span> <span class="nam">extra</span><span class="op">=</span><span class="nam">dict</span><span class="op">(</span><span class="nam">extra_dict</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run run2"><span class="n"><a id="t91" href="#t91">91</a></span><span class="t">            <span class="op">)</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t92" href="#t92">92</a></span><span class="t">            <span class="nam">file_contents</span><span class="op">.</span><span class="nam">append</span><span class="op">(</span><span class="nam">file_content</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t93" href="#t93">93</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t94" href="#t94">94</a></span><span class="t">        <span class="key">return</span> <span class="op">{</span><span class="str">"file_contents"</span><span class="op">:</span> <span class="nam">file_contents</span><span class="op">}</span>&nbsp;</span><span class="r"></span></p>
 </main>
 <footer>
     <div class="content">
@@ -179,7 +183,7 @@
             <a class="nav" href="z_6d562fb38bfc5ee6_html_py.html">&#xbb; next</a>
             &nbsp; &nbsp; &nbsp;
             <a class="nav" href="https://coverage.readthedocs.io/en/7.14.3">coverage.py v7.14.3</a>,
-            created at 2026-07-09 09:12 +0000
+            created at 2026-07-09 09:29 +0000
         </p>
     </div>
 </footer>
