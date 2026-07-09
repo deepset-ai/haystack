@@ -1,8 +1,0 @@
----
-fixes:
-  - |
-    ``GeneratedAnswer`` and ``ExtractedAnswer`` now serialize to the same flat format as
-    all other Haystack dataclasses (``Document``, ``ChatMessage``, etc.), removing an
-    inconsistency that caused redundant type metadata to be embedded in pipeline
-    snapshots and ``State`` objects. Deserialization is backward compatible: ``from_dict()``
-    still accepts the old ``{"type": "...", "init_parameters": {...}}`` format.

@@ -33,10 +33,6 @@ This generator enables chat completion using various Hugging Face APIs.
 
 This component's main input is a list of `ChatMessage` objects. `ChatMessage` is a data class that contains a message, a role (who generated the message, such as `user`, `assistant`, `system`, `function`), and optional metadata. If a string is passed, it is converted into a list containing a single `ChatMessage` with the `user` role. For more information, check out our [`ChatMessage` docs](../../concepts/data-classes/chatmessage.mdx).
 
-:::info
-This component is designed for chat completion. If you want to use Hugging Face APIs for simple text generation (such as translation or summarization tasks) or don't want to use the `ChatMessage` object, use [`HuggingFaceAPIGenerator`](huggingfaceapigenerator.mdx) instead.
-:::
-
 The component uses a `HF_API_TOKEN` environment variable by default. Otherwise, you can pass a Hugging Face API token at initialization with `token` – see code examples below.
 The token is needed:
 

@@ -64,6 +64,115 @@ Populate the ToolExecutionDecision from a dictionary representation.
 
 - <code>ToolExecutionDecision</code> – An instance of ToolExecutionDecision.
 
+## hooks
+
+### ConfirmationHook
+
+A `before_tool` Agent hook that applies Human-in-the-Loop confirmation strategies to pending tool calls.
+
+Register it on an `Agent` to confirm, modify, or reject tool calls before they run:
+
+```python
+from haystack.components.agents import Agent
+from haystack.human_in_the_loop import (
+    AlwaysAskPolicy,
+    BlockingConfirmationStrategy,
+    ConfirmationHook,
+    NeverAskPolicy,
+    RichConsoleUI,
+    SimpleConsoleUI,
+)
+
+hook = ConfirmationHook(
+    confirmation_strategies={
+        "my_tool": BlockingConfirmationStrategy(
+            confirmation_policy=NeverAskPolicy(), confirmation_ui=SimpleConsoleUI()
+        )
+    }
+)
+agent = Agent(chat_generator=..., tools=[...], hooks={"before_tool": [hook]})
+```
+
+A key may be a single tool name, a tuple of tool names sharing one strategy, or the wildcard `"*"` which applies
+to any tool without a more specific entry. More specific keys win, so you can set a default for all tools and
+override individual ones:
+
+```python
+hook = ConfirmationHook(
+    confirmation_strategies={
+        "delete_file": BlockingConfirmationStrategy(
+            confirmation_policy=AlwaysAskPolicy(), confirmation_ui=RichConsoleUI()
+        ),
+        "*": BlockingConfirmationStrategy(
+            confirmation_policy=NeverAskPolicy(), confirmation_ui=SimpleConsoleUI()
+        ),
+    }
+)
+```
+
+Request-scoped resources for the strategies (e.g. a WebSocket or queue) are passed per run via the Agent's
+`hook_context` argument (`agent.run(messages=[...], hook_context={...})`) and read by the hook with
+`state.data.get("hook_context")`.
+
+This hook only makes sense at the `before_tool` hook point, where the pending tool calls exist (between the model
+requesting tools and those tools running); the Agent enforces this and raises if it is registered elsewhere. Use a
+single ConfirmationHook with one entry per tool (or per tuple of tools) in `confirmation_strategies` rather than
+registering several hooks.
+
+#### __init__
+
+```python
+__init__(
+    confirmation_strategies: dict[str | tuple[str, ...], ConfirmationStrategy],
+) -> None
+```
+
+Initialize the hook with its per-tool confirmation strategies.
+
+**Parameters:**
+
+- **confirmation_strategies** (<code>dict\[str | tuple\[str, ...\], ConfirmationStrategy\]</code>) – Mapping of tool name (or a tuple of tool names) to its `ConfirmationStrategy`.
+  The wildcard key `"*"` applies to any tool without a more specific entry.
+
+#### run
+
+```python
+run(state: State) -> None
+```
+
+Confirm the pending tool calls, rewriting the `messages` in `state` to reflect modifications and rejections.
+
+**Parameters:**
+
+- **state** (<code>State</code>) – The Agent's live `State`. Reads the available tools (`state.data.get("tools")`) and the per-run
+  context (`state.data.get("hook_context")`), and the pending tool calls from the last message; writes the
+  updated conversation back to `messages`. Reads go through `state.data` rather than `state.get`, which
+  deep-copies and would break non-copyable resources (e.g. a WebSocket or client) in `hook_context`.
+
+#### run_async
+
+```python
+run_async(state: State) -> None
+```
+
+Async version of `run`.
+
+#### to_dict
+
+```python
+to_dict() -> dict[str, Any]
+```
+
+Serialize the hook, including its confirmation strategies (tuple keys become JSON-array strings).
+
+#### from_dict
+
+```python
+from_dict(data: dict[str, Any]) -> ConfirmationHook
+```
+
+Deserialize the hook, reconstructing its confirmation strategies.
+
 ## policies
 
 ### AlwaysAskPolicy
