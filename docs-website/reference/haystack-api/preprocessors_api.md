@@ -488,7 +488,7 @@ This component is inspired by [5 Levels of Text Splitting](https://github.com/Fu
 
 ```python
 from haystack import Document
-from haystack.components.embedders import SentenceTransformersDocumentEmbedder
+from haystack.components.embedders import OpenAIDocumentEmbedder
 from haystack.components.preprocessors import EmbeddingBasedDocumentSplitter
 
 # Create a document with content that has a clear topic shift
@@ -498,7 +498,7 @@ doc = Document(
 )
 
 # Initialize the embedder to calculate semantic similarities
-embedder = SentenceTransformersDocumentEmbedder()
+embedder = OpenAIDocumentEmbedder()
 
 # Configure the splitter with parameters that control splitting behavior
 splitter = EmbeddingBasedDocumentSplitter(
@@ -556,7 +556,34 @@ Initialize EmbeddingBasedDocumentSplitter.
 warm_up() -> None
 ```
 
-Warm up the component by initializing the sentence splitter.
+Warm up the component by initializing the sentence splitter and the document embedder.
+
+#### warm_up_async
+
+```python
+warm_up_async() -> None
+```
+
+Warm up the component on the serving event loop.
+
+Initializes the sentence splitter and warms up the document embedder using its async warm-up path when
+available, falling back to the synchronous one otherwise.
+
+#### close
+
+```python
+close() -> None
+```
+
+Release the document embedder's resources.
+
+#### close_async
+
+```python
+close_async() -> None
+```
+
+Release the document embedder's async resources.
 
 #### run
 

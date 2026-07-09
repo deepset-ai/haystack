@@ -1,0 +1,514 @@
+---
+title: "Haystack Enterprise Components"
+id: platform-components
+slug: "/platform-components"
+description: "A complete list of Haystack components available on the Haystack Enterprise Platform, grouped by integration partner."
+---
+
+# Haystack Enterprise Components
+
+The Haystack Enterprise Platform currently supports **224 components** and **55 integrations**. The following table lists them grouped by integration partner.
+
+## Core Components
+
+| Component | Type | Haystack Enterprise Platform |
+|-----------|------|------------------------------|
+| [Agent](https://docs.haystack.deepset.ai/docs/agent) | Component | ✅ Available |
+| [AnswerBuilder](https://docs.haystack.deepset.ai/docs/answerbuilder) | Builder | ✅ Available |
+| [AnswerJoiner](https://docs.haystack.deepset.ai/docs/answerjoiner) | Joiner | ✅ Available |
+| [AutoMergingRetriever](https://docs.haystack.deepset.ai/docs/automergingretriever) | Retriever | ✅ Available |
+| [AzureOCRDocumentConverter](https://docs.haystack.deepset.ai/docs/azureocrdocumentconverter) | Converter | ✅ Available |
+| [AzureOpenAIChatGenerator](https://docs.haystack.deepset.ai/docs/azureopenaichatgenerator) | Generator | ✅ Available |
+| [AzureOpenAIDocumentEmbedder](https://docs.haystack.deepset.ai/docs/azureopenaidocumentembedder) | Embedder | ✅ Available |
+| [AzureOpenAIResponsesChatGenerator](https://docs.haystack.deepset.ai/docs/azureopenairesponseschatgenerator) | Generator | ✅ Available |
+| [AzureOpenAITextEmbedder](https://docs.haystack.deepset.ai/docs/azureopenaitextembedder) | Embedder | ✅ Available |
+| [BranchJoiner](https://docs.haystack.deepset.ai/docs/branchjoiner) | Joiner | ✅ Available |
+| [CacheChecker](https://docs.haystack.deepset.ai/docs/cachechecker) | Component | ✅ Available |
+| [ChatPromptBuilder](https://docs.haystack.deepset.ai/docs/chatpromptbuilder) | Builder | ✅ Available |
+| [ConditionalRouter](https://docs.haystack.deepset.ai/docs/conditionalrouter) | Router | ✅ Available |
+| [CSVDocumentCleaner](https://docs.haystack.deepset.ai/docs/csvdocumentcleaner) | Preprocessor | ✅ Available |
+| [CSVDocumentSplitter](https://docs.haystack.deepset.ai/docs/csvdocumentsplitter) | Preprocessor | ✅ Available |
+| [CSVToDocument](https://docs.haystack.deepset.ai/docs/csvtodocument) | Converter | ✅ Available |
+| [DocumentCleaner](https://docs.haystack.deepset.ai/docs/documentcleaner) | Preprocessor | ✅ Available |
+| [DocumentJoiner](https://docs.haystack.deepset.ai/docs/documentjoiner) | Joiner | ✅ Available |
+| [DocumentLanguageClassifier](https://docs.haystack.deepset.ai/docs/documentlanguageclassifier) | Classifier | ✅ Available |
+| [DocumentLengthRouter](https://docs.haystack.deepset.ai/docs/documentlengthrouter) | Router | ✅ Available |
+| [DocumentPreprocessor](https://docs.haystack.deepset.ai/docs/documentpreprocessor) | Preprocessor | ✅ Available |
+| [DocumentSplitter](https://docs.haystack.deepset.ai/docs/documentsplitter) | Preprocessor | ✅ Available |
+| [DocumentToImageContent](https://docs.haystack.deepset.ai/docs/documenttoimagecontent) | Converter | ✅ Available |
+| [DocumentTypeRouter](https://docs.haystack.deepset.ai/docs/documenttyperouter) | Router | ✅ Available |
+| [DocumentWriter](https://docs.haystack.deepset.ai/docs/documentwriter) | Writer | ✅ Available |
+| [DOCXToDocument](https://docs.haystack.deepset.ai/docs/docxtodocument) | Converter | ✅ Available |
+| [EmbeddingBasedDocumentSplitter](https://docs.haystack.deepset.ai/docs/embeddingbaseddocumentsplitter) | Preprocessor | ✅ Available |
+| [FallbackChatGenerator](https://docs.haystack.deepset.ai/docs/fallbackchatgenerator) | Generator | ✅ Available |
+| [FileToFileContent](https://docs.haystack.deepset.ai/docs/filetofilecontent) | Converter | ✅ Available |
+| [FileTypeRouter](https://docs.haystack.deepset.ai/docs/filetyperouter) | Router | ✅ Available |
+| [FilterRetriever](https://docs.haystack.deepset.ai/docs/filterretriever) | Retriever | ✅ Available |
+| [HierarchicalDocumentSplitter](https://docs.haystack.deepset.ai/docs/hierarchicaldocumentsplitter) | Preprocessor | ✅ Available |
+| [HTMLToDocument](https://docs.haystack.deepset.ai/docs/htmltodocument) | Converter | ✅ Available |
+| [HuggingFaceAPIChatGenerator](https://docs.haystack.deepset.ai/docs/huggingfaceapichatgenerator) | Generator | ✅ Available |
+| [HuggingFaceAPIDocumentEmbedder](https://docs.haystack.deepset.ai/docs/huggingfaceapidocumentembedder) | Embedder | ✅ Available |
+| [HuggingFaceAPITextEmbedder](https://docs.haystack.deepset.ai/docs/huggingfaceapitextembedder) | Embedder | ✅ Available |
+| [HuggingFaceLocalChatGenerator](https://docs.haystack.deepset.ai/docs/huggingfacelocalchatgenerator) | Generator | ✅ Available |
+| [HuggingFaceTEIRanker](https://docs.haystack.deepset.ai/docs/huggingfaceteiranker) | Ranker | ✅ Available |
+| [ImageFileToDocument](https://docs.haystack.deepset.ai/docs/imagefiletodocument) | Converter | ✅ Available |
+| [ImageFileToImageContent](https://docs.haystack.deepset.ai/docs/imagefiletoimagecontent) | Converter | ✅ Available |
+| [JSONConverter](https://docs.haystack.deepset.ai/docs/jsonconverter) | Converter | ✅ Available |
+| [JsonSchemaValidator](https://docs.haystack.deepset.ai/docs/jsonschemavalidator) | Validator | ✅ Available |
+| [LinkContentFetcher](https://docs.haystack.deepset.ai/docs/linkcontentfetcher) | Fetcher | ✅ Available |
+| [ListJoiner](https://docs.haystack.deepset.ai/docs/listjoiner) | Joiner | ✅ Available |
+| [LLMDocumentContentExtractor](https://docs.haystack.deepset.ai/docs/llmdocumentcontentextractor) | Extractor | ✅ Available |
+| [LLMMessagesRouter](https://docs.haystack.deepset.ai/docs/llmmessagesrouter) | Router | ✅ Available |
+| [LLMMetadataExtractor](https://docs.haystack.deepset.ai/docs/llmmetadataextractor) | Extractor | ✅ Available |
+| [LLMRanker](https://docs.haystack.deepset.ai/docs/llmranker) | Ranker | ✅ Available |
+| [LostInTheMiddleRanker](https://docs.haystack.deepset.ai/docs/lostinthemiddleranker) | Ranker | ✅ Available |
+| [MarkdownHeaderSplitter](https://docs.haystack.deepset.ai/docs/markdownheadersplitter) | Preprocessor | ✅ Available |
+| [MarkdownToDocument](https://docs.haystack.deepset.ai/docs/markdowntodocument) | Converter | ✅ Available |
+| [MetadataRouter](https://docs.haystack.deepset.ai/docs/metadatarouter) | Router | ✅ Available |
+| [MetaFieldGroupingRanker](https://docs.haystack.deepset.ai/docs/metafieldgroupingranker) | Ranker | ✅ Available |
+| [MetaFieldRanker](https://docs.haystack.deepset.ai/docs/metafieldranker) | Ranker | ✅ Available |
+| [MSGToDocument](https://docs.haystack.deepset.ai/docs/msgtodocument) | Converter | ✅ Available |
+| [MultiFileConverter](https://docs.haystack.deepset.ai/docs/multifileconverter) | Converter | ✅ Available |
+| [MultiQueryEmbeddingRetriever](https://docs.haystack.deepset.ai/docs/multiqueryembeddingretriever) | Retriever | ✅ Available |
+| [MultiQueryTextRetriever](https://docs.haystack.deepset.ai/docs/multiquerytextretriever) | Retriever | ✅ Available |
+| [MultiRetriever](https://docs.haystack.deepset.ai/docs/multiretriever) | Retriever | ✅ Available |
+| [NamedEntityExtractor](https://docs.haystack.deepset.ai/docs/namedentityextractor) | Extractor | ✅ Available |
+| [OpenAIChatGenerator](https://docs.haystack.deepset.ai/docs/openaichatgenerator) | Generator | ✅ Available |
+| [OpenAIDocumentEmbedder](https://docs.haystack.deepset.ai/docs/openaidocumentembedder) | Embedder | ✅ Available |
+| [OpenAIResponsesChatGenerator](https://docs.haystack.deepset.ai/docs/openairesponseschatgenerator) | Generator | ✅ Available |
+| [OpenAITextEmbedder](https://docs.haystack.deepset.ai/docs/openaitextembedder) | Embedder | ✅ Available |
+| [OpenAPIConnector](https://docs.haystack.deepset.ai/docs/openapiconnector) | Connector | ✅ Available |
+| [OpenAPIServiceConnector](https://docs.haystack.deepset.ai/docs/openapiserviceconnector) | Connector | ✅ Available |
+| [OpenAPIServiceToFunctions](https://docs.haystack.deepset.ai/docs/openapiservicetofunctions) | Converter | ✅ Available |
+| [OutputAdapter](https://docs.haystack.deepset.ai/docs/outputadapter) | Converter | ✅ Available |
+| [PDFMinerToDocument](https://docs.haystack.deepset.ai/docs/pdfminertodocument) | Converter | ✅ Available |
+| [PDFToImageContent](https://docs.haystack.deepset.ai/docs/pdftoimagecontent) | Converter | ✅ Available |
+| [PPTXToDocument](https://docs.haystack.deepset.ai/docs/pptxtodocument) | Converter | ✅ Available |
+| [PromptBuilder](https://docs.haystack.deepset.ai/docs/promptbuilder) | Builder | ✅ Available |
+| [PyPDFToDocument](https://docs.haystack.deepset.ai/docs/pypdftodocument) | Converter | ✅ Available |
+| [PythonCodeSplitter](https://docs.haystack.deepset.ai/docs/pythoncodesplitter) | Preprocessor | ✅ Available |
+| [QueryExpander](https://docs.haystack.deepset.ai/docs/queryexpander) | Component | ✅ Available |
+| [RecursiveDocumentSplitter](https://docs.haystack.deepset.ai/docs/recursivesplitter) | Preprocessor | ✅ Available |
+| [RegexTextExtractor](https://docs.haystack.deepset.ai/docs/regextextextractor) | Extractor | ✅ Available |
+| [RemoteWhisperTranscriber](https://docs.haystack.deepset.ai/docs/remotewhispertranscriber) | Audio | ✅ Available |
+| [SearchApiWebSearch](https://docs.haystack.deepset.ai/docs/searchapiwebsearch) | Component | ✅ Available |
+| [SentenceTransformersDiversityRanker](https://docs.haystack.deepset.ai/docs/sentencetransformersdiversityranker) | Ranker | ✅ Available |
+| [SentenceTransformersDocumentEmbedder](https://docs.haystack.deepset.ai/docs/sentencetransformersdocumentembedder) | Embedder | ✅ Available |
+| [SentenceTransformersDocumentImageEmbedder](https://docs.haystack.deepset.ai/docs/sentencetransformersdocumentimageembedder) | Embedder | ✅ Available |
+| [SentenceTransformersSimilarityRanker](https://docs.haystack.deepset.ai/docs/sentencetransformerssimilarityranker) | Ranker | ✅ Available |
+| [SentenceTransformersSparseDocumentEmbedder](https://docs.haystack.deepset.ai/docs/sentencetransformerssparsedocumentembedder) | Embedder | ✅ Available |
+| [SentenceTransformersSparseTextEmbedder](https://docs.haystack.deepset.ai/docs/sentencetransformerssparsetextembedder) | Embedder | ✅ Available |
+| [SentenceTransformersTextEmbedder](https://docs.haystack.deepset.ai/docs/sentencetransformerstextembedder) | Embedder | ✅ Available |
+| [SentenceWindowRetriever](https://docs.haystack.deepset.ai/docs/sentencewindowretriever) | Retriever | ✅ Available |
+| [SerperDevWebSearch](https://docs.haystack.deepset.ai/docs/serperdevwebsearch) | Component | ✅ Available |
+| [StringJoiner](https://docs.haystack.deepset.ai/docs/stringjoiner) | Joiner | ✅ Available |
+| [TextCleaner](https://docs.haystack.deepset.ai/docs/textcleaner) | Preprocessor | ✅ Available |
+| [TextEmbeddingRetriever](https://docs.haystack.deepset.ai/docs/textembeddingretriever) | Retriever | ✅ Available |
+| [TextFileToDocument](https://docs.haystack.deepset.ai/docs/textfiletodocument) | Converter | ✅ Available |
+| [TextLanguageRouter](https://docs.haystack.deepset.ai/docs/textlanguagerouter) | Router | ✅ Available |
+| [TikaDocumentConverter](https://docs.haystack.deepset.ai/docs/tikadocumentconverter) | Converter | ✅ Available |
+| [ToolInvoker](https://docs.haystack.deepset.ai/docs/toolinvoker) | Component | ✅ Available |
+| [TopPSampler](https://docs.haystack.deepset.ai/docs/toppsampler) | Sampler | ✅ Available |
+| [TransformersExtractiveReader](https://docs.haystack.deepset.ai/docs/transformersextractivereader) | Reader | ✅ Available |
+| [TransformersSimilarityRanker](https://docs.haystack.deepset.ai/docs/transformerssimilarityranker) | Ranker | ✅ Available |
+| [TransformersTextRouter](https://docs.haystack.deepset.ai/docs/transformerstextrouter) | Router | ✅ Available |
+| [TransformersZeroShotDocumentClassifier](https://docs.haystack.deepset.ai/docs/transformerszeroshotdocumentclassifier) | Classifier | ✅ Available |
+| [TransformersZeroShotTextRouter](https://docs.haystack.deepset.ai/docs/transformerszeroshottextrouter) | Router | ✅ Available |
+| [XLSXToDocument](https://docs.haystack.deepset.ai/docs/xlsxtodocument) | Converter | ✅ Available |
+
+## AIML API
+
+| Component | Type | Haystack Enterprise Platform |
+|-----------|------|------------------------------|
+| [AIMLAPIChatGenerator](https://docs.haystack.deepset.ai/docs/aimllapichatgenerator) | Generator | ✅ Available |
+
+## AlloyDB
+
+| Component | Type | Haystack Enterprise Platform |
+|-----------|------|------------------------------|
+| [AlloyDBEmbeddingRetriever](https://docs.haystack.deepset.ai/docs/alloydbembeddingretriever) | Retriever | ✅ Available |
+| [AlloyDBKeywordRetriever](https://docs.haystack.deepset.ai/docs/alloydbkeywordretriever) | Retriever | ✅ Available |
+
+## Amazon Bedrock
+
+| Component | Type | Haystack Enterprise Platform |
+|-----------|------|------------------------------|
+| [AmazonBedrockChatGenerator](https://docs.haystack.deepset.ai/docs/amazonbedrockchatgenerator) | Generator | ✅ Available |
+| [AmazonBedrockDocumentEmbedder](https://docs.haystack.deepset.ai/docs/amazonbedrockdocumentembedder) | Embedder | ✅ Available |
+| [AmazonBedrockDocumentImageEmbedder](https://docs.haystack.deepset.ai/docs/amazonbedrockdocumentimageembedder) | Embedder | ✅ Available |
+| [AmazonBedrockRanker](https://docs.haystack.deepset.ai/docs/amazonbedrockranker) | Ranker | ✅ Available |
+| [AmazonBedrockTextEmbedder](https://docs.haystack.deepset.ai/docs/amazonbedrocktextembedder) | Embedder | ✅ Available |
+
+## Amazon S3
+
+| Component | Type | Haystack Enterprise Platform |
+|-----------|------|------------------------------|
+| [S3Downloader](https://docs.haystack.deepset.ai/docs/s3downloader) | Component | ✅ Available |
+
+## Amazon Textract
+
+| Component | Type | Haystack Enterprise Platform |
+|-----------|------|------------------------------|
+| [AmazonTextractConverter](https://docs.haystack.deepset.ai/docs/amazontextractconverter) | Converter | ✅ Available |
+
+## Anthropic
+
+| Component | Type | Haystack Enterprise Platform |
+|-----------|------|------------------------------|
+| [AnthropicChatGenerator](https://docs.haystack.deepset.ai/docs/anthropicchatgenerator) | Generator | ✅ Available |
+| [AnthropicFoundryChatGenerator](https://docs.haystack.deepset.ai/docs/anthropicfoundrychatgenerator) | Generator | ✅ Available |
+| [AnthropicVertexChatGenerator](https://docs.haystack.deepset.ai/docs/anthropicvertexchatgenerator) | Generator | ✅ Available |
+
+## ArcadeDB
+
+| Component | Type | Haystack Enterprise Platform |
+|-----------|------|------------------------------|
+| [ArcadeDBEmbeddingRetriever](https://docs.haystack.deepset.ai/docs/arcadedbembeddingretriever) | Retriever | ✅ Available |
+
+## Astra
+
+| Component | Type | Haystack Enterprise Platform |
+|-----------|------|------------------------------|
+| [AstraEmbeddingRetriever](https://docs.haystack.deepset.ai/docs/astraretriever) | Retriever | ✅ Available |
+
+## Azure AI Search
+
+| Component | Type | Haystack Enterprise Platform |
+|-----------|------|------------------------------|
+| [AzureAISearchBM25Retriever](https://docs.haystack.deepset.ai/docs/azureaisearchbm25retriever) | Retriever | ✅ Available |
+| [AzureAISearchEmbeddingRetriever](https://docs.haystack.deepset.ai/docs/azureaisearchembeddingretriever) | Retriever | ✅ Available |
+| [AzureAISearchHybridRetriever](https://docs.haystack.deepset.ai/docs/azureaisearchhybridretriever) | Retriever | ✅ Available |
+
+## Azure Document Intelligence
+
+| Component | Type | Haystack Enterprise Platform |
+|-----------|------|------------------------------|
+| [AzureDocumentIntelligenceConverter](https://docs.haystack.deepset.ai/docs/azuredocumentintelligenceconverter) | Converter | ✅ Available |
+
+## Brave
+
+| Component | Type | Haystack Enterprise Platform |
+|-----------|------|------------------------------|
+| [BraveWebSearch](https://docs.haystack.deepset.ai/docs/bravewebsearch) | Component | ✅ Available |
+
+## Chroma
+
+| Component | Type | Haystack Enterprise Platform |
+|-----------|------|------------------------------|
+| [ChromaEmbeddingRetriever](https://docs.haystack.deepset.ai/docs/chromaembeddingretriever) | Retriever | ✅ Available |
+| [ChromaQueryTextRetriever](https://docs.haystack.deepset.ai/docs/chromaqueryretriever) | Retriever | ✅ Available |
+
+## Cohere
+
+| Component | Type | Haystack Enterprise Platform |
+|-----------|------|------------------------------|
+| [CohereChatGenerator](https://docs.haystack.deepset.ai/docs/coherechatgenerator) | Generator | ✅ Available |
+| [CohereDocumentEmbedder](https://docs.haystack.deepset.ai/docs/coheredocumentembedder) | Embedder | ✅ Available |
+| [CohereRanker](https://docs.haystack.deepset.ai/docs/cohereranker) | Ranker | ✅ Available |
+| [CohereTextEmbedder](https://docs.haystack.deepset.ai/docs/coheretextembedder) | Embedder | ✅ Available |
+
+## Docling
+
+| Component | Type | Haystack Enterprise Platform |
+|-----------|------|------------------------------|
+| [DoclingConverter](https://docs.haystack.deepset.ai/docs/doclingconverter) | Converter | ✅ Available |
+| [DoclingServeConverter](https://docs.haystack.deepset.ai/docs/doclingserveconverter) | Converter | ✅ Available |
+
+## Elasticsearch
+
+| Component | Type | Haystack Enterprise Platform |
+|-----------|------|------------------------------|
+| [ElasticsearchBM25Retriever](https://docs.haystack.deepset.ai/docs/elasticsearchbm25retriever) | Retriever | ✅ Available |
+| [ElasticsearchEmbeddingRetriever](https://docs.haystack.deepset.ai/docs/elasticsearchembeddingretriever) | Retriever | ✅ Available |
+| [ElasticsearchHybridRetriever](https://docs.haystack.deepset.ai/docs/elasticsearchhybridretriever) | Retriever | ✅ Available |
+| [ElasticsearchSQLRetriever](https://docs.haystack.deepset.ai/docs/elasticsearchsqlretriever) | Retriever | ✅ Available |
+
+## FalkorDB
+
+| Component | Type | Haystack Enterprise Platform |
+|-----------|------|------------------------------|
+| [FalkorDBCypherRetriever](https://docs.haystack.deepset.ai/docs/falkordbcypherretriever) | Retriever | ✅ Available |
+| [FalkorDBEmbeddingRetriever](https://docs.haystack.deepset.ai/docs/falkordbembeddingretriever) | Retriever | ✅ Available |
+
+## FastEmbed
+
+| Component | Type | Haystack Enterprise Platform |
+|-----------|------|------------------------------|
+| [FastembedDocumentEmbedder](https://docs.haystack.deepset.ai/docs/fastembeddocumentembedder) | Embedder | ✅ Available |
+| [FastembedRanker](https://docs.haystack.deepset.ai/docs/fastembedranker) | Ranker | ✅ Available |
+| [FastembedSparseDocumentEmbedder](https://docs.haystack.deepset.ai/docs/fastembedsparsedocumentembedder) | Embedder | ✅ Available |
+| [FastembedSparseTextEmbedder](https://docs.haystack.deepset.ai/docs/fastembedsparsetextembedder) | Embedder | ✅ Available |
+| [FastembedTextEmbedder](https://docs.haystack.deepset.ai/docs/fastembedtextembedder) | Embedder | ✅ Available |
+
+## Firecrawl
+
+| Component | Type | Haystack Enterprise Platform |
+|-----------|------|------------------------------|
+| [FirecrawlCrawler](https://docs.haystack.deepset.ai/docs/firecrawlcrawler) | Fetcher | ✅ Available |
+| [FirecrawlWebSearch](https://docs.haystack.deepset.ai/docs/firecrawlwebsearch) | Component | ✅ Available |
+
+## GitHub
+
+| Component | Type | Haystack Enterprise Platform |
+|-----------|------|------------------------------|
+| [GitHubFileEditor](https://docs.haystack.deepset.ai/docs/githubfileeditor) | Connector | ✅ Available |
+| [GitHubIssueCommenter](https://docs.haystack.deepset.ai/docs/githubissuecommenter) | Connector | ✅ Available |
+| [GitHubIssueViewer](https://docs.haystack.deepset.ai/docs/githubissueviewer) | Connector | ✅ Available |
+| [GitHubPRCreator](https://docs.haystack.deepset.ai/docs/githubprcreator) | Connector | ✅ Available |
+| [GitHubRepoForker](https://docs.haystack.deepset.ai/docs/githubrepoforker) | Connector | ✅ Available |
+| [GitHubRepoViewer](https://docs.haystack.deepset.ai/docs/githubrepoviewer) | Connector | ✅ Available |
+
+## Google Generative AI
+
+| Component | Type | Haystack Enterprise Platform |
+|-----------|------|------------------------------|
+| [GoogleGenAIChatGenerator](https://docs.haystack.deepset.ai/docs/googlegenaichatgenerator) | Generator | ✅ Available |
+| [GoogleGenAIDocumentEmbedder](https://docs.haystack.deepset.ai/docs/googlegenaidocumentembedder) | Embedder | ✅ Available |
+| [GoogleGenAITextEmbedder](https://docs.haystack.deepset.ai/docs/googlegenaitextembedder) | Embedder | ✅ Available |
+
+## Hugging Face API
+
+| Component | Type | Haystack Enterprise Platform |
+|-----------|------|------------------------------|
+| [HuggingFaceAPIChatGenerator](https://docs.haystack.deepset.ai/docs/huggingfaceapichatgenerator) | Generator | ✅ Available |
+| [HuggingFaceAPIDocumentEmbedder](https://docs.haystack.deepset.ai/docs/huggingfaceapidocumentembedder) | Embedder | ✅ Available |
+| [HuggingFaceAPITextEmbedder](https://docs.haystack.deepset.ai/docs/huggingfaceapitextembedder) | Embedder | ✅ Available |
+| [HuggingFaceTEIRanker](https://docs.haystack.deepset.ai/docs/huggingfaceteiranker) | Ranker | ✅ Available |
+
+## Jina AI
+
+| Component | Type | Haystack Enterprise Platform |
+|-----------|------|------------------------------|
+| [JinaDocumentEmbedder](https://docs.haystack.deepset.ai/docs/jinadocumentembedder) | Embedder | ✅ Available |
+| [JinaRanker](https://docs.haystack.deepset.ai/docs/jinaranker) | Ranker | ✅ Available |
+| [JinaReaderConnector](https://docs.haystack.deepset.ai/docs/jinareaderconnector) | Connector | ✅ Available |
+| [JinaTextEmbedder](https://docs.haystack.deepset.ai/docs/jinatextembedder) | Embedder | ✅ Available |
+
+## Langfuse
+
+| Component | Type | Haystack Enterprise Platform |
+|-----------|------|------------------------------|
+| [LangfuseConnector](https://docs.haystack.deepset.ai/docs/langfuseconnector) | Connector | ✅ Available |
+
+## Lara
+
+| Component | Type | Haystack Enterprise Platform |
+|-----------|------|------------------------------|
+| [LaraDocumentTranslator](https://docs.haystack.deepset.ai/docs/laradocumenttranslator) | Component | ✅ Available |
+
+## LiteLLM
+
+| Component | Type | Haystack Enterprise Platform |
+|-----------|------|------------------------------|
+| [LiteLLMChatGenerator](https://docs.haystack.deepset.ai/docs/litellmchatgenerator) | Generator | ✅ Available |
+
+## Llama Stack
+
+| Component | Type | Haystack Enterprise Platform |
+|-----------|------|------------------------------|
+| [LlamaStackChatGenerator](https://docs.haystack.deepset.ai/docs/llamastackchatgenerator) | Generator | ✅ Available |
+
+## Llama.cpp
+
+| Component | Type | Haystack Enterprise Platform |
+|-----------|------|------------------------------|
+| [LlamaCppChatGenerator](https://docs.haystack.deepset.ai/docs/llamacppchatgenerator) | Generator | ✅ Available |
+
+## MarkItDown
+
+| Component | Type | Haystack Enterprise Platform |
+|-----------|------|------------------------------|
+| [MarkItDownConverter](https://docs.haystack.deepset.ai/docs/markitdownconverter) | Converter | ✅ Available |
+
+## Mem0
+
+| Component | Type | Haystack Enterprise Platform |
+|-----------|------|------------------------------|
+| [Mem0MemoryRetriever](https://docs.haystack.deepset.ai/docs/mem0memoryretriever) | Retriever | ✅ Available |
+| [Mem0MemoryWriter](https://docs.haystack.deepset.ai/docs/mem0memorywriter) | Writer | ✅ Available |
+
+## Meta Llama
+
+| Component | Type | Haystack Enterprise Platform |
+|-----------|------|------------------------------|
+| [MetaLlamaChatGenerator](https://docs.haystack.deepset.ai/docs/metallamachatgenerator) | Generator | ✅ Available |
+
+## Mistral
+
+| Component | Type | Haystack Enterprise Platform |
+|-----------|------|------------------------------|
+| [MistralChatGenerator](https://docs.haystack.deepset.ai/docs/mistralchatgenerator) | Generator | ✅ Available |
+| [MistralDocumentEmbedder](https://docs.haystack.deepset.ai/docs/mistraldocumentembedder) | Embedder | ✅ Available |
+| [MistralOCRDocumentConverter](https://docs.haystack.deepset.ai/docs/mistralocrdocumentconverter) | Converter | ✅ Available |
+| [MistralTextEmbedder](https://docs.haystack.deepset.ai/docs/mistraltextembedder) | Embedder | ✅ Available |
+
+## MongoDB Atlas
+
+| Component | Type | Haystack Enterprise Platform |
+|-----------|------|------------------------------|
+| [MongoDBAtlasEmbeddingRetriever](https://docs.haystack.deepset.ai/docs/mongodbatlasembeddingretriever) | Retriever | ✅ Available |
+| [MongoDBAtlasFullTextRetriever](https://docs.haystack.deepset.ai/docs/mongodbatlasfulltextretriever) | Retriever | ✅ Available |
+
+## NVIDIA
+
+| Component | Type | Haystack Enterprise Platform |
+|-----------|------|------------------------------|
+| [NvidiaChatGenerator](https://docs.haystack.deepset.ai/docs/nvidiachatgenerator) | Generator | ✅ Available |
+| [NvidiaDocumentEmbedder](https://docs.haystack.deepset.ai/docs/nvidiadocumentembedder) | Embedder | ✅ Available |
+| [NvidiaRanker](https://docs.haystack.deepset.ai/docs/nvidiaranker) | Ranker | ✅ Available |
+| [NvidiaTextEmbedder](https://docs.haystack.deepset.ai/docs/nvidiatextembedder) | Embedder | ✅ Available |
+
+## Ollama
+
+| Component | Type | Haystack Enterprise Platform |
+|-----------|------|------------------------------|
+| [OllamaChatGenerator](https://docs.haystack.deepset.ai/docs/ollamachatgenerator) | Generator | ✅ Available |
+| [OllamaDocumentEmbedder](https://docs.haystack.deepset.ai/docs/ollamadocumentembedder) | Embedder | ✅ Available |
+| [OllamaTextEmbedder](https://docs.haystack.deepset.ai/docs/ollamatextembedder) | Embedder | ✅ Available |
+
+## OpenRouter
+
+| Component | Type | Haystack Enterprise Platform |
+|-----------|------|------------------------------|
+| [OpenRouterChatGenerator](https://docs.haystack.deepset.ai/docs/openrouterchatgenerator) | Generator | ✅ Available |
+
+## OpenSearch
+
+| Component | Type | Haystack Enterprise Platform |
+|-----------|------|------------------------------|
+| [OpenSearchBM25Retriever](https://docs.haystack.deepset.ai/docs/opensearchbm25retriever) | Retriever | ✅ Available |
+| [OpenSearchEmbeddingRetriever](https://docs.haystack.deepset.ai/docs/opensearchembeddingretriever) | Retriever | ✅ Available |
+| [OpenSearchHybridRetriever](https://docs.haystack.deepset.ai/docs/opensearchhybridretriever) | Retriever | ✅ Available |
+| [OpenSearchMetadataRetriever](https://docs.haystack.deepset.ai/docs/opensearchmetadataretriever) | Retriever | ✅ Available |
+| [OpenSearchSQLRetriever](https://docs.haystack.deepset.ai/docs/opensearchsqlretriever) | Retriever | ✅ Available |
+
+## Oracle
+
+| Component | Type | Haystack Enterprise Platform |
+|-----------|------|------------------------------|
+| [OracleEmbeddingRetriever](https://docs.haystack.deepset.ai/docs/oracleembeddingretriever) | Retriever | ✅ Available |
+| [OracleKeywordRetriever](https://docs.haystack.deepset.ai/docs/oraclekeywordretriever) | Retriever | ✅ Available |
+
+## Perplexity
+
+| Component | Type | Haystack Enterprise Platform |
+|-----------|------|------------------------------|
+| [PerplexityChatGenerator](https://docs.haystack.deepset.ai/docs/perplexitychatgenerator) | Generator | ✅ Available |
+| [PerplexityDocumentEmbedder](https://docs.haystack.deepset.ai/docs/perplexitydocumentembedder) | Embedder | ✅ Available |
+| [PerplexityTextEmbedder](https://docs.haystack.deepset.ai/docs/perplexitytextembedder) | Embedder | ✅ Available |
+| [PerplexityWebSearch](https://docs.haystack.deepset.ai/docs/perplexitywebsearch) | Component | ✅ Available |
+
+## pgvector
+
+| Component | Type | Haystack Enterprise Platform |
+|-----------|------|------------------------------|
+| [PgvectorEmbeddingRetriever](https://docs.haystack.deepset.ai/docs/pgvectorembeddingretriever) | Retriever | ✅ Available |
+| [PgvectorKeywordRetriever](https://docs.haystack.deepset.ai/docs/pgvectorkeywordretriever) | Retriever | ✅ Available |
+
+## Pinecone
+
+| Component | Type | Haystack Enterprise Platform |
+|-----------|------|------------------------------|
+| [PineconeEmbeddingRetriever](https://docs.haystack.deepset.ai/docs/pineconedenseretriever) | Retriever | ✅ Available |
+
+## Presidio
+
+| Component | Type | Haystack Enterprise Platform |
+|-----------|------|------------------------------|
+| [PresidioDocumentCleaner](https://docs.haystack.deepset.ai/docs/presidiodocumentcleaner) | Preprocessor | ✅ Available |
+| [PresidioEntityExtractor](https://docs.haystack.deepset.ai/docs/presidioentityextractor) | Extractor | ✅ Available |
+| [PresidioTextCleaner](https://docs.haystack.deepset.ai/docs/presidiotextcleaner) | Preprocessor | ✅ Available |
+
+## Pyversity
+
+| Component | Type | Haystack Enterprise Platform |
+|-----------|------|------------------------------|
+| [PyversityRanker](https://docs.haystack.deepset.ai/docs/pyversityranker) | Ranker | ✅ Available |
+
+## Qdrant
+
+| Component | Type | Haystack Enterprise Platform |
+|-----------|------|------------------------------|
+| [QdrantEmbeddingRetriever](https://docs.haystack.deepset.ai/docs/qdrantembeddingretriever) | Retriever | ✅ Available |
+| [QdrantHybridRetriever](https://docs.haystack.deepset.ai/docs/qdranthybridretriever) | Retriever | ✅ Available |
+| [QdrantSparseEmbeddingRetriever](https://docs.haystack.deepset.ai/docs/qdrantsparseembeddingretriever) | Retriever | ✅ Available |
+
+## Snowflake
+
+| Component | Type | Haystack Enterprise Platform |
+|-----------|------|------------------------------|
+| [SnowflakeTableRetriever](https://docs.haystack.deepset.ai/docs/snowflaketableretriever) | Retriever | ✅ Available |
+
+## SQLAlchemy
+
+| Component | Type | Haystack Enterprise Platform |
+|-----------|------|------------------------------|
+| SQLAlchemyTableRetriever | Retriever | ✅ Available |
+
+## STACKIT
+
+| Component | Type | Haystack Enterprise Platform |
+|-----------|------|------------------------------|
+| [STACKITChatGenerator](https://docs.haystack.deepset.ai/docs/stackitchatgenerator) | Generator | ✅ Available |
+| [STACKITDocumentEmbedder](https://docs.haystack.deepset.ai/docs/stackitdocumentembedder) | Embedder | ✅ Available |
+| [STACKITTextEmbedder](https://docs.haystack.deepset.ai/docs/stackittextembedder) | Embedder | ✅ Available |
+
+## Supabase
+
+| Component | Type | Haystack Enterprise Platform |
+|-----------|------|------------------------------|
+| [SupabasePgvectorEmbeddingRetriever](https://docs.haystack.deepset.ai/docs/supabasepgvectorembeddingretriever) | Retriever | ✅ Available |
+| [SupabasePgvectorKeywordRetriever](https://docs.haystack.deepset.ai/docs/supabasepgvectorkeywordretriever) | Retriever | ✅ Available |
+
+## Tavily
+
+| Component | Type | Haystack Enterprise Platform |
+|-----------|------|------------------------------|
+| [TavilyWebSearch](https://docs.haystack.deepset.ai/docs/tavilywebsearch) | Component | ✅ Available |
+
+## TogetherAI
+
+| Component | Type | Haystack Enterprise Platform |
+|-----------|------|------------------------------|
+| [TogetherAIChatGenerator](https://docs.haystack.deepset.ai/docs/togetheraichatgenerator) | Generator | ✅ Available |
+
+## Unstructured
+
+| Component | Type | Haystack Enterprise Platform |
+|-----------|------|------------------------------|
+| [UnstructuredFileConverter](https://docs.haystack.deepset.ai/docs/unstructuredfileconverter) | Converter | ✅ Available |
+
+## Valkey
+
+| Component | Type | Haystack Enterprise Platform |
+|-----------|------|------------------------------|
+| [ValkeyEmbeddingRetriever](https://docs.haystack.deepset.ai/docs/valkeyembeddingretriever) | Retriever | ✅ Available |
+
+## Vespa
+
+| Component | Type | Haystack Enterprise Platform |
+|-----------|------|------------------------------|
+| [VespaEmbeddingRetriever](https://docs.haystack.deepset.ai/docs/vespaembeddingretriever) | Retriever | ✅ Available |
+| [VespaKeywordRetriever](https://docs.haystack.deepset.ai/docs/vespakeywordretriever) | Retriever | ✅ Available |
+
+## vLLM
+
+| Component | Type | Haystack Enterprise Platform |
+|-----------|------|------------------------------|
+| [VLLMChatGenerator](https://docs.haystack.deepset.ai/docs/vllmchatgenerator) | Generator | ✅ Available |
+| [VLLMDocumentEmbedder](https://docs.haystack.deepset.ai/docs/vllmdocumentembedder) | Embedder | ✅ Available |
+| [VLLMRanker](https://docs.haystack.deepset.ai/docs/vllmranker) | Ranker | ✅ Available |
+| [VLLMTextEmbedder](https://docs.haystack.deepset.ai/docs/vllmtextembedder) | Embedder | ✅ Available |
+
+## Weaviate
+
+| Component | Type | Haystack Enterprise Platform |
+|-----------|------|------------------------------|
+| [WeaviateBM25Retriever](https://docs.haystack.deepset.ai/docs/weaviatebm25retriever) | Retriever | ✅ Available |
+| [WeaviateEmbeddingRetriever](https://docs.haystack.deepset.ai/docs/weaviateembeddingretriever) | Retriever | ✅ Available |
+
+## Weights & Biases (Weave)
+
+| Component | Type | Haystack Enterprise Platform |
+|-----------|------|------------------------------|
+| [WeaveConnector](https://docs.haystack.deepset.ai/docs/weaveconnector) | Connector | ✅ Available |

@@ -29,16 +29,18 @@ class Tool:
     name: str
     description: str
     parameters: Dict[str, Any]
-    function: Callable
+    function: Callable | None = None
     outputs_to_string: dict[str, Any] | None = None
     inputs_from_state: dict[str, str] | None = None
     outputs_to_state: dict[str, dict[str, Any]] | None = None
+    async_function: Callable | None = None
 ```
 
 - `name` is the name of the Tool.
 - `description` is a string describing what the Tool does.
 - `parameters` is a JSON schema describing the expected parameters.
-- `function` is invoked when the Tool is called.
+- `function` is invoked when the Tool is called. It must be a regular (sync) function.
+- `async_function` (optional) is a coroutine function awaited when the Tool is invoked in an async context. See [Async Tools](#async-tools) below.
 - `outputs_to_string` (optional) controls how parts of the tool’s output are converted into one or more strings (e.g. for LLM consumption).
 - `inputs_from_state` (optional) maps values from the agent state to the tool’s input parameters (e.g. to share info between tools)
 - `outputs_to_state` (optional) specifies how tool outputs are written back into the agent state, with optional handlers.
@@ -296,6 +298,30 @@ result = agent.run(messages=[user_message])
 print(result["last_message"].text)
 # Red apple with stem resting on straw.
 ```
+
+## Async Tools
+
+Tools support native async invocation. A `Tool` can carry an `async_function` (a coroutine function) alongside or instead of the sync `function`. When an [`Agent`](../pipeline-components/agents-1/agent.mdx) runs via `run_async`, it awaits the tool's `async_function` if one is available; `Tool.invoke_async` does the same when calling a tool directly.
+
+The `@tool` decorator and `create_tool_from_function` route `async def` callables to `async_function` automatically, so decorating an `async def` is all it takes to produce an async tool:
+
+```python
+from typing import Annotated
+from haystack.tools import tool
+
+
+@tool
+async def weather(city: Annotated[str, "The name of the city"]) -> str:
+    """Get the weather for a city."""
+    ...
+```
+
+How the two fields interact:
+
+- If only `function` is set, `invoke_async` falls back to running the sync function in a worker thread, so sync tools keep working in async contexts.
+- If only `async_function` is set, the tool can only be invoked asynchronously — calling the sync `invoke` raises a `ToolInvocationError`.
+
+[`ComponentTool`](componenttool.mdx) automatically wires an async invoker for components that define `run_async`, and [`PipelineTool`](pipelinetool.mdx) inherits this behavior — in Haystack 3.0 every `Pipeline` exposes a native `run_async`, so pipeline tools support the async path out of the box.
 
 ## Toolset
 

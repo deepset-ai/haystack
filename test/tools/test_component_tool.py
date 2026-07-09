@@ -179,7 +179,6 @@ class TestComponentTool:
         assert tool.description == "A simple component that generates text."
         assert tool.parameters == {
             "type": "object",
-            "description": "A simple component that generates text.",
             "properties": {"text": {"type": "string", "description": "user's name"}},
             "required": ["text"],
         }
@@ -198,21 +197,13 @@ class TestComponentTool:
         tool = ComponentTool(component=SimpleComponent(), inputs_from_state={"text": "text"})
         assert tool.inputs_from_state == {"text": "text"}
         # Inputs should be excluded from schema generation
-        assert tool.parameters == {
-            "type": "object",
-            "properties": {},
-            "description": "A simple component that generates text.",
-        }
+        assert tool.parameters == {"type": "object", "properties": {}}
 
     def test_from_component_with_inputs_from_state_different_names(self):
         tool = ComponentTool(component=SimpleComponent(), inputs_from_state={"state_text": "text"})
         assert tool.inputs_from_state == {"state_text": "text"}
         # Inputs should be excluded from schema generation
-        assert tool.parameters == {
-            "type": "object",
-            "properties": {},
-            "description": "A simple component that generates text.",
-        }
+        assert tool.parameters == {"type": "object", "properties": {}}
 
     def test_from_component_with_invalid_inputs_from_state_nested_dict(self):
         """Test that ComponentTool rejects nested dict format for inputs_from_state"""
@@ -240,7 +231,6 @@ class TestComponentTool:
                     "type": "object",
                 }
             },
-            "description": "A simple component that processes a User.",
             "properties": {"user": {"$ref": "#/$defs/User", "description": "The User object to process."}},
             "required": ["user"],
             "type": "object",
@@ -262,7 +252,6 @@ class TestComponentTool:
 
         assert tool.parameters == {
             "type": "object",
-            "description": "Concatenates a list of strings into a single string.",
             "properties": {
                 "texts": {
                     "type": "array",
@@ -303,7 +292,6 @@ class TestComponentTool:
                     "type": "object",
                 },
             },
-            "description": "Creates information about the person.",
             "properties": {"person": {"$ref": "#/$defs/Person", "description": "The Person to process."}},
             "required": ["person"],
             "type": "object",
@@ -328,7 +316,6 @@ class TestComponentTool:
                 "Document": DOCUMENT_SCHEMA,
                 "SparseEmbedding": SPARSE_EMBEDDING_SCHEMA,
             },
-            "description": "Concatenates the content of multiple documents with newlines.",
             "properties": {
                 "documents": {
                     "description": "List of Documents whose content will be concatenated",
@@ -351,7 +338,6 @@ class TestComponentTool:
         builder = PromptBuilder(template="Hello, {{name}}!")
         tool = ComponentTool(component=builder, name="prompt_builder_tool")
         assert tool.parameters == {
-            "description": "Renders the prompt template with the provided variables.",
             "properties": {
                 "name": {"description": "Input 'name' for the component."},
                 "template": {
@@ -417,10 +403,9 @@ class TestComponentTool:
         # Create ComponentTool from SuperComponent
         tool = ComponentTool(component=super_comp, name="text_processor")
 
-        # Verify that schema includes the docstrings from the original component
+        # Verify that schema includes the per-parameter docstrings from the original component
         assert tool.parameters == {
             "type": "object",
-            "description": "A component that combines: 'processor': Process inputs and return result.",
             "properties": {
                 "input_text": {
                     "type": "string",
@@ -484,11 +469,9 @@ class TestComponentTool:
         # Create ComponentTool from SuperComponent
         tool = ComponentTool(component=super_comp, name="combined_processor")
 
-        # Verify that schema includes combined docstrings from both components
+        # Verify that schema includes combined per-parameter docstrings from both components
         assert tool.parameters == {
             "type": "object",
-            "description": "A component that combines: 'comp_a': Process query in component A., 'comp_b': Process "
-            "text in component B.",
             "properties": {
                 "combined_input": {
                     "type": "string",

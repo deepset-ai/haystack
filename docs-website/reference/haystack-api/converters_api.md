@@ -6,135 +6,6 @@ slug: "/converters-api"
 ---
 
 
-## azure
-
-### AzureOCRDocumentConverter
-
-Converts files to documents using Azure's Document Intelligence service.
-
-Supported file formats are: PDF, JPEG, PNG, BMP, TIFF, DOCX, XLSX, PPTX, and HTML.
-
-To use this component, you need an active Azure account
-and a Document Intelligence or Cognitive Services resource. For help with setting up your resource, see
-[Azure documentation](https://learn.microsoft.com/en-us/azure/ai-services/document-intelligence/quickstarts/get-started-sdks-rest-api).
-
-### Usage example
-
-<!-- test-ignore -->
-
-```python
-import os
-from datetime import datetime
-from haystack.components.converters import AzureOCRDocumentConverter
-from haystack.utils import Secret
-
-converter = AzureOCRDocumentConverter(
-    endpoint=os.environ["CORE_AZURE_CS_ENDPOINT"],
-    api_key=Secret.from_env_var("CORE_AZURE_CS_API_KEY"),
-)
-results = converter.run(
-    sources=["test/test_files/pdf/react_paper.pdf"],
-    meta={"date_added": datetime.now().isoformat()},
-)
-documents = results["documents"]
-print(documents[0].content)
-# 'This is a text from the PDF file.'
-```
-
-#### __init__
-
-```python
-__init__(
-    endpoint: str,
-    api_key: Secret = Secret.from_env_var("AZURE_AI_API_KEY"),
-    model_id: str = "prebuilt-read",
-    preceding_context_len: int = 3,
-    following_context_len: int = 3,
-    merge_multiple_column_headers: bool = True,
-    page_layout: Literal["natural", "single_column"] = "natural",
-    threshold_y: float | None = 0.05,
-    store_full_path: bool = False,
-) -> None
-```
-
-Creates an AzureOCRDocumentConverter component.
-
-**Parameters:**
-
-- **endpoint** (<code>str</code>) – The endpoint of your Azure resource.
-- **api_key** (<code>Secret</code>) – The API key of your Azure resource.
-- **model_id** (<code>str</code>) – The ID of the model you want to use. For a list of available models, see [Azure documentation]
-  (https://learn.microsoft.com/en-us/azure/ai-services/document-intelligence/choose-model-feature).
-- **preceding_context_len** (<code>int</code>) – Number of lines before a table to include as preceding context
-  (this will be added to the metadata).
-- **following_context_len** (<code>int</code>) – Number of lines after a table to include as subsequent context (
-  this will be added to the metadata).
-- **merge_multiple_column_headers** (<code>bool</code>) – If `True`, merges multiple column header rows into a single row.
-- **page_layout** (<code>Literal['natural', 'single_column']</code>) – The type reading order to follow. Possible options:
-- `natural`: Uses the natural reading order determined by Azure.
-- `single_column`: Groups all lines with the same height on the page based on a threshold
-  determined by `threshold_y`.
-- **threshold_y** (<code>float | None</code>) – Only relevant if `single_column` is set to `page_layout`.
-  The threshold, in inches, to determine if two recognized PDF elements are grouped into a
-  single line. This is crucial for section headers or numbers which may be spatially separated
-  from the remaining text on the horizontal axis.
-- **store_full_path** (<code>bool</code>) – If True, the full path of the file is stored in the metadata of the document.
-  If False, only the file name is stored.
-
-#### run
-
-```python
-run(
-    sources: list[str | Path | ByteStream],
-    meta: dict[str, Any] | list[dict[str, Any]] | None = None,
-) -> dict[str, Any]
-```
-
-Convert a list of files to Documents using Azure's Document Intelligence service.
-
-**Parameters:**
-
-- **sources** (<code>list\[str | Path | ByteStream\]</code>) – List of file paths or ByteStream objects.
-- **meta** (<code>dict\[str, Any\] | list\[dict\[str, Any\]\] | None</code>) – Optional metadata to attach to the Documents.
-  This value can be either a list of dictionaries or a single dictionary.
-  If it's a single dictionary, its content is added to the metadata of all produced Documents.
-  If it's a list, the length of the list must match the number of sources, because the two lists will be
-  zipped. If `sources` contains ByteStream objects, their `meta` will be added to the output Documents.
-
-**Returns:**
-
-- <code>dict\[str, Any\]</code> – A dictionary with the following keys:
-- `documents`: List of created Documents
-- `raw_azure_response`: List of raw Azure responses used to create the Documents
-
-#### to_dict
-
-```python
-to_dict() -> dict[str, Any]
-```
-
-Serializes the component to a dictionary.
-
-**Returns:**
-
-- <code>dict\[str, Any\]</code> – Dictionary with serialized data.
-
-#### from_dict
-
-```python
-from_dict(data: dict[str, Any]) -> AzureOCRDocumentConverter
-```
-
-Deserializes the component from a dictionary.
-
-**Parameters:**
-
-- **data** (<code>dict\[str, Any\]</code>) – The dictionary to deserialize from.
-
-**Returns:**
-
-- <code>AzureOCRDocumentConverter</code> – The deserialized component.
-
 ## csv
 
 ### CSVToDocument
@@ -446,6 +317,7 @@ print(documents[0].content)
 __init__(
     extraction_kwargs: dict[str, Any] | None = None,
     store_full_path: bool = False,
+    encoding: str = "utf-8",
 ) -> None
 ```
 
@@ -458,6 +330,8 @@ Create an HTMLToDocument component.
   the [Trafilatura documentation](https://trafilatura.readthedocs.io/en/latest/corefunctions.html#extract).
 - **store_full_path** (<code>bool</code>) – If True, the full path of the file is stored in the metadata of the document.
   If False, only the file name is stored.
+- **encoding** (<code>str</code>) – The default encoding to use when converting HTML files. If the encoding is specified in the metadata of a
+  source ByteStream, it overrides this value.
 
 #### to_dict
 
@@ -623,7 +497,8 @@ into ImageContent objects.
 Converts image file references into empty Document objects with associated metadata.
 
 This component is useful in pipelines where image file paths need to be wrapped in `Document` objects to be
-processed by downstream components such as the `SentenceTransformersImageDocumentEmbedder`.
+processed by downstream components such as the `LLMDocumentContentExtractor` or the
+`SentenceTransformersDocumentImageEmbedder` (available in the `sentence-transformers-haystack` integration).
 
 It does **not** extract any content from the image files, instead it creates `Document` objects with `None` as
 their content and attaches metadata such as file path and any user-provided values.
@@ -1060,6 +935,7 @@ __init__(
     table_to_single_line: bool = False,
     progress_bar: bool = True,
     store_full_path: bool = False,
+    encoding: str = "utf-8",
     *,
     extract_frontmatter: bool = False
 ) -> None
@@ -1073,6 +949,8 @@ Create a MarkdownToDocument component.
 - **progress_bar** (<code>bool</code>) – If True shows a progress bar when running.
 - **store_full_path** (<code>bool</code>) – If True, the full path of the file is stored in the metadata of the document.
   If False, only the file name is stored.
+- **encoding** (<code>str</code>) – The default encoding to use when converting Markdown files. If the encoding is specified in the metadata
+  of a source ByteStream, it overrides this value.
 - **extract_frontmatter** (<code>bool</code>) – If True, YAML frontmatter at the beginning of the Markdown file is
   removed from the document content and added to the document metadata.
 
@@ -1204,67 +1082,6 @@ Initialize the MultiFileConverter.
 
 - **encoding** (<code>str</code>) – The encoding to use when reading files.
 - **json_content_key** (<code>str</code>) – The key to use in a content field in a document when converting JSON files.
-
-## openapi_functions
-
-### OpenAPIServiceToFunctions
-
-Converts OpenAPI service definitions to a format suitable for OpenAI function calling.
-
-The definition must respect OpenAPI specification 3.0.0 or higher.
-It can be specified in JSON or YAML format.
-Each function must have:
-\- unique operationId
-\- description
-\- requestBody and/or parameters
-\- schema for the requestBody and/or parameters
-For more details on OpenAPI specification see the [official documentation](https://github.com/OAI/OpenAPI-Specification).
-For more details on OpenAI function calling see the [official documentation](https://platform.openai.com/docs/guides/function-calling).
-
-Usage example:
-
-```python
-from haystack.components.converters import OpenAPIServiceToFunctions
-from haystack.dataclasses.byte_stream import ByteStream
-
-converter = OpenAPIServiceToFunctions()
-spec = ByteStream.from_string(
-    '{"openapi":"3.0.0","info":{"title":"API","version":"1.0.0"},"paths":{"/search":{"get":{"operationId":"search","summary":"Search","parameters":[{"name":"q","in":"query","required":true,"schema":{"type":"string"}}]}}}}'
-)
-result = converter.run(sources=[spec])
-assert result["functions"]
-```
-
-#### __init__
-
-```python
-__init__() -> None
-```
-
-Create an OpenAPIServiceToFunctions component.
-
-#### run
-
-```python
-run(sources: list[str | Path | ByteStream]) -> dict[str, Any]
-```
-
-Converts OpenAPI definitions in OpenAI function calling format.
-
-**Parameters:**
-
-- **sources** (<code>list\[str | Path | ByteStream\]</code>) – File paths or ByteStream objects of OpenAPI definitions (in JSON or YAML format).
-
-**Returns:**
-
-- <code>dict\[str, Any\]</code> – A dictionary with the following keys:
-- functions: Function definitions in JSON object format
-- openapi_specs: OpenAPI specs in JSON/YAML object format with resolved references
-
-**Raises:**
-
-- <code>RuntimeError</code> – If the OpenAPI definitions cannot be downloaded or processed.
-- <code>ValueError</code> – If the source type is not recognized or no functions are found in the OpenAPI definitions.
 
 ## output_adapter
 
@@ -1698,108 +1515,6 @@ Converts PDF files to documents.
 
 - <code>dict\[str, list\[Document\]\]</code> – A dictionary with the following keys:
 - `documents`: A list of converted documents.
-
-## tika
-
-### XHTMLParser
-
-Bases: <code>HTMLParser</code>
-
-Custom parser to extract pages from Tika XHTML content.
-
-#### handle_starttag
-
-```python
-handle_starttag(tag: str, attrs: list[tuple[str, str | None]]) -> None
-```
-
-Identify the start of a page div.
-
-#### handle_endtag
-
-```python
-handle_endtag(tag: str) -> None
-```
-
-Identify the end of a page div.
-
-#### handle_data
-
-```python
-handle_data(data: str) -> None
-```
-
-Populate the page content.
-
-### TikaDocumentConverter
-
-Converts files of different types to Documents.
-
-This component uses [Apache Tika](https://tika.apache.org/) for parsing the files and, therefore,
-requires a running Tika server.
-For more options on running Tika,
-see the [official documentation](https://github.com/apache/tika-docker/blob/main/README.md#usage).
-
-Usage example:
-
-<!-- test-ignore -->
-
-```python
-from haystack.components.converters.tika import TikaDocumentConverter
-from datetime import datetime
-
-converter = TikaDocumentConverter()
-results = converter.run(
-    sources=["sample.docx", "my_document.rtf", "archive.zip"],
-    meta={"date_added": datetime.now().isoformat()}
-)
-documents = results["documents"]
-
-print(documents[0].content)
-# >> 'This is a text from the docx file.'
-```
-
-#### __init__
-
-```python
-__init__(
-    tika_url: str = "http://localhost:9998/tika", store_full_path: bool = False
-) -> None
-```
-
-Create a TikaDocumentConverter component.
-
-**Parameters:**
-
-- **tika_url** (<code>str</code>) – Tika server URL.
-- **store_full_path** (<code>bool</code>) – If True, the full path of the file is stored in the metadata of the document.
-  If False, only the file name is stored.
-
-#### run
-
-```python
-run(
-    sources: list[str | Path | ByteStream],
-    meta: dict[str, Any] | list[dict[str, Any]] | None = None,
-) -> dict[str, list[Document]]
-```
-
-Converts files to Documents.
-
-**Parameters:**
-
-- **sources** (<code>list\[str | Path | ByteStream\]</code>) – List of HTML file paths or ByteStream objects.
-- **meta** (<code>dict\[str, Any\] | list\[dict\[str, Any\]\] | None</code>) – Optional metadata to attach to the Documents.
-  This value can be either a list of dictionaries or a single dictionary.
-  If it's a single dictionary, its content is added to the metadata of all produced Documents.
-  If it's a list, the length of the list must match the number of sources, because the two lists will
-  be zipped.
-  If `sources` contains ByteStream objects, their `meta` will be added to the output Documents.
-
-**Returns:**
-
-- <code>dict\[str, list\[Document\]\]</code> – A dictionary with the following keys:
-- `documents`: Created Documents
 
 ## txt
 
