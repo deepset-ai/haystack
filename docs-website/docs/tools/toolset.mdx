@@ -78,6 +78,17 @@ math_toolset.add(multiply_numbers)
 math_toolset.add(another_toolset)
 ```
 
+### Run-Scoped Copies and Tool Selection
+
+A `Toolset` is never mutated in place during an [`Agent`](../pipeline-components/agents-1/agent.mdx) run. Each run operates on an isolated, run-scoped copy of the configured `Toolset`, created with the `spawn()` method. This makes concurrent runs that share the same `Toolset` instance safe: per-run state, such as an active tool-name selection or a [`SearchableToolset`](searchabletoolset.mdx)'s discovered tools, cannot leak or collide across runs.
+
+You can also restrict an `Agent` to a subset of tools at runtime by passing tool names, for example `agent.run(tools=["tool_a", "tool_b"])`. When a `Toolset` is configured, the selection is applied to the live (run-scoped) `Toolset` rather than flattening it into a static list, so dynamic behavior like a `SearchableToolset`'s search and lazy loading keeps working over the selected subset.
+
+Two methods support this and can be overridden when subclassing:
+
+- `get_selectable_tools()`: Returns every tool available for name-based selection, ignoring any active selection restriction. Override it if your subclass's iteration does not surface every selectable tool.
+- `spawn()`: Returns an isolated, run-scoped copy of the `Toolset`. Override it if your subclass holds additional run-scoped state.
+
 ## Usage
 
 You can use `Toolset` wherever you can use Tools in Haystack.
