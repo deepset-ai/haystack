@@ -22,7 +22,7 @@ Let agents discover and read skills — reusable instruction sets with bundled f
 
 ## Overview
 
-A *skill* is a directory (or equivalent storage unit) containing a `SKILL.md` file with YAML frontmatter (`name` and `description`) and a markdown body of instructions. Skills may bundle additional files, such as reference docs, examples, or templates.
+A *skill* is a directory (or equivalent storage unit) containing a `SKILL.md` file with YAML frontmatter (`description` is required; `name` is optional and defaults to the directory name) and a markdown body of instructions. Skills may bundle additional files, such as reference docs, examples, or templates.
 
 `SkillToolset` lets an [`Agent`](../pipeline-components/agents-1/agent.mdx) use skills through *progressive disclosure*, similar to how coding assistants like Claude Code expose skills: the model first sees only each skill's name and description, loads the full instructions when a task calls for them, and fetches bundled files only when the instructions reference them. This keeps the context small even with many detailed skills.
 
@@ -46,7 +46,7 @@ The tool names `load_skill` and `read_skill_file` are fixed, so an `Agent` can u
 ```
 skills/
   pdf-forms/
-    SKILL.md            # frontmatter (name, description) + markdown instructions
+    SKILL.md            # frontmatter (description required, name optional) + markdown instructions
     reference/forms.md  # optional bundled file
 ```
 
