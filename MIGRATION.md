@@ -73,6 +73,26 @@ from haystack.dataclasses import Document
 doc = Document(content="col\n1\n2\n3")
 ```
 
+### `GeneratedAnswer` and `ExtractedAnswer` serialization format
+
+**What changed:** `GeneratedAnswer.to_dict()` and `ExtractedAnswer.to_dict()` now return a flat dictionary of the object's fields instead of wrapping them in a `{"type": ..., "init_parameters": {...}}` envelope. `from_dict()` still accepts the old wrapped format, so existing serialized artifacts keep loading.
+
+**Why:** Aligns these dataclasses with how every other Haystack dataclass (`Document`, `ChatMessage`, etc.) serializes, and removes redundant type metadata from pipeline snapshots and `State` objects.
+
+**How to migrate:** Update any code that reads the serialized output to access fields at the top level instead of under `init_parameters`. See [#11805](https://github.com/deepset-ai/haystack/pull/11805).
+
+Before (v2.x):
+```python
+serialized = generated_answer.to_dict()
+data = serialized["init_parameters"]["data"]
+```
+
+After (v3.0):
+```python
+serialized = generated_answer.to_dict()
+data = serialized["data"]
+```
+
 ### Components Moved to External Packages
 
 **What changed:** Some components have been moved out of Haystack into dedicated integration packages,
