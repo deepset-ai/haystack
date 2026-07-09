@@ -121,6 +121,17 @@ class TestDocumentCleaner:
         result = cleaner.run(documents=[Document(content=text)])
         assert result["documents"][0].content == expected_text
 
+    def test_remove_repeated_substrings_preserves_unique_middle_page(self):
+        cleaner = DocumentCleaner(
+            remove_empty_lines=False, remove_extra_whitespaces=False, remove_repeated_substrings=True
+        )
+        text = "PAGE ONE\fThe quick brown fox jumps high\fPAGE THREE"
+        result = cleaner.run(documents=[Document(content=text)])["documents"][0]
+        assert result.content.split("\f")[1] == "The quick brown fox jumps high"
+        # With no genuine repeated header/footer, all three pages must round-trip unchanged and in order.
+        assert result.content.split("\f") == ["PAGE ONE", "The quick brown fox jumps high", "PAGE THREE"]
+        assert result.content == text
+
     def test_copy_metadata(self):
         cleaner = DocumentCleaner()
         documents = [
