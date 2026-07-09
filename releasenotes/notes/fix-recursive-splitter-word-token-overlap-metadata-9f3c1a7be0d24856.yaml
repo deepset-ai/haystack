@@ -1,0 +1,9 @@
+---
+fixes:
+  - |
+    Fixed ``RecursiveDocumentSplitter`` not populating the ``_split_overlap``
+    metadata when ``split_unit`` is ``"word"`` or ``"token"`` and ``split_overlap``
+    is greater than 0. The overlap length was computed with a word/token count
+    while the offsets it is compared against are character positions, so it
+    became negative and the overlap metadata was silently dropped. The overlap
+    is now measured in characters, matching the ranges it records.

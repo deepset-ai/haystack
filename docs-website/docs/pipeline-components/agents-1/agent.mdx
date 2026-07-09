@@ -38,16 +38,33 @@ The `Agent` returns a dictionary containing:
 
 - `messages`: the full conversation history,
 - `last_message`: the final `ChatMessage` from the agent,
+- `step_count`: the number of steps the agent ran,
+- `token_usage`: aggregated token usage summed across every LLM call in the run,
+- `tool_call_counts`: how many times each tool was invoked, keyed by tool name,
 - Additional dynamic keys based on `state_schema`.
+
+### Run Metadata
+
+The `step_count`, `token_usage`, and `tool_call_counts` outputs are populated automatically during a run. They are added to the agent's `state_schema` behind the scenes, so tools registered with `inputs_from_state` can read them mid-run. They are outputs only — they cannot be passed as inputs to `run()` or `run_async()`, and using them as keys in your own `state_schema` raises a `ValueError`. See [State](./state.mdx#schema-definition) for details.
+
+```python
+response = agent.run(messages=[ChatMessage.from_user("What is 7 * (4 + 2)?")])
+
+print(response["step_count"])  # 2
+print(
+    response["token_usage"],
+)  # {"prompt_tokens": 512, "completion_tokens": 86, ...}
+print(response["tool_call_counts"])  # {"calculator": 1}
+```
 
 ## Parameters
 
 `chat_generator` is the only mandatory parameter — an instance of a Chat Generator that supports tools. All other parameters are optional.
 
-- `tools`: A list of tool or toolset instances the agent can call. Supported types: [`Tool`](../../tools/tool.mdx), [`ComponentTool`](../../tools/componenttool.mdx), [`PipelineTool`](../../tools/pipelinetool.mdx), [`MCPTool`](../../tools/mcptool.mdx), [`Toolset`](../../tools/toolset.mdx), [`MCPToolset`](../../tools/mcptoolset.mdx), [`SearchableToolset`](../../tools/searchabletoolset.mdx).
+- `tools`: A list of tool or toolset instances the agent can call. Supported types: [`Tool`](../../tools/tool.mdx), [`ComponentTool`](../../tools/componenttool.mdx), [`PipelineTool`](../../tools/pipelinetool.mdx), [`MCPTool`](../../tools/mcptool.mdx), [`Toolset`](../../tools/toolset.mdx), [`MCPToolset`](../../tools/mcptoolset.mdx), [`SearchableToolset`](../../tools/searchabletoolset.mdx). Tool names must be unique; duplicate names are detected at the start of each agent step, before the chat generator is called.
 - `system_prompt`: A plain string or Jinja2 template used as the system message for every run. If the template contains Jinja2 variables, those variables become additional inputs to `run()`.
 - `user_prompt`: A Jinja2 template appended to the user-provided messages on each run. Template variables become additional inputs to `run()`. Use `required_variables` to enforce which variables must be provided.
-- `exit_conditions`: List of conditions that cause the agent to stop. Use `”text”` to stop when the LLM replies without a tool call, or a tool name to stop once that tool has been executed. Defaults to `[“text”]`.
+- `exit_conditions`: List of conditions that cause the agent to stop. Use `”text”` to stop when the LLM replies without a tool call, or a tool name to stop once that tool has been executed. Defaults to `[“text”]`. Exit conditions are evaluated at runtime rather than validated at initialization, so a condition can name a tool that is only loaded later — for example, a tool passed at runtime via `run(tools=...)` or one discovered by a [`SearchableToolset`](../../tools/searchabletoolset.mdx).
 - `state_schema`: Defines the agent's runtime state — a dict mapping key names to type configs (e.g. `{“docs”: {“type”: list[Document]}}`). Tools can read from and write to state keys via `inputs_from_state` and `outputs_to_state`. See [State](./state.mdx) for full details.
 - `streaming_callback`: A callback invoked for each streamed token. Use the built-in `print_streaming_chunk` for console output.
 - `max_agent_steps`: Maximum number of LLM + tool call iterations before the agent stops. Defaults to `100`.
@@ -250,7 +267,7 @@ components:
               exclude_subdomains: false
               search_params: {}
               top_k: 3
-            type: haystack.components.websearch.serper_dev.SerperDevWebSearch
+            type: haystack_integrations.components.websearch.serperdev.websearch.SerperDevWebSearch
           description: Search the web for current information on any topic
           inputs_from_state: null
           name: web_search
