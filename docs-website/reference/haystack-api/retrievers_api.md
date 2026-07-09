@@ -408,9 +408,7 @@ In query pipelines, use a TextEmbedder to embed queries and send them to the ret
 
 ```python
 from haystack import Document
-# Requires: pip install sentence-transformers-haystack
-from haystack_integrations.components.embedders.sentence_transformers import SentenceTransformersDocumentEmbedder
-from haystack_integrations.components.embedders.sentence_transformers import SentenceTransformersTextEmbedder
+from haystack.components.embedders import OpenAIDocumentEmbedder, OpenAITextEmbedder
 from haystack.components.retrievers.in_memory import InMemoryEmbeddingRetriever
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 
@@ -418,7 +416,7 @@ docs = [
     Document(content="Python is a popular programming language"),
     Document(content="python ist eine beliebte Programmiersprache"),
 ]
-doc_embedder = SentenceTransformersDocumentEmbedder()
+doc_embedder = OpenAIDocumentEmbedder()
 docs_with_embeddings = doc_embedder.run(docs)["documents"]
 
 doc_store = InMemoryDocumentStore()
@@ -426,7 +424,7 @@ doc_store.write_documents(docs_with_embeddings)
 retriever = InMemoryEmbeddingRetriever(doc_store)
 
 query="Programmiersprache"
-text_embedder = SentenceTransformersTextEmbedder()
+text_embedder = OpenAITextEmbedder()
 query_embedding = text_embedder.run(query)["embedding"]
 
 result = retriever.run(query_embedding=query_embedding)
@@ -577,9 +575,8 @@ The results are combined and sorted by relevance score.
 from haystack import Document
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.document_stores.types import DuplicatePolicy
-# Requires: pip install sentence-transformers-haystack
-from haystack_integrations.components.embedders.sentence_transformers import SentenceTransformersTextEmbedder
-from haystack_integrations.components.embedders.sentence_transformers import SentenceTransformersDocumentEmbedder
+from haystack.components.embedders import OpenAITextEmbedder
+from haystack.components.embedders import OpenAIDocumentEmbedder
 from haystack.components.retrievers import InMemoryEmbeddingRetriever
 from haystack.components.writers import DocumentWriter
 from haystack.components.retrievers import MultiQueryEmbeddingRetriever
@@ -595,14 +592,14 @@ documents = [
 
 # Populate the document store
 doc_store = InMemoryDocumentStore()
-doc_embedder = SentenceTransformersDocumentEmbedder(model="sentence-transformers/all-MiniLM-L6-v2")
+doc_embedder = OpenAIDocumentEmbedder()
 doc_writer = DocumentWriter(document_store=doc_store, policy=DuplicatePolicy.SKIP)
 documents = doc_embedder.run(documents)["documents"]
 doc_writer.run(documents=documents)
 
 # Run the multi-query retriever
 in_memory_retriever = InMemoryEmbeddingRetriever(document_store=doc_store, top_k=1)
-query_embedder = SentenceTransformersTextEmbedder(model="sentence-transformers/all-MiniLM-L6-v2")
+query_embedder = OpenAITextEmbedder()
 
 multi_query_retriever = MultiQueryEmbeddingRetriever(
     retriever=in_memory_retriever,
@@ -647,7 +644,31 @@ Initialize MultiQueryEmbeddingRetriever.
 warm_up() -> None
 ```
 
-Warm up the query embedder and the retriever if any has a warm_up method.
+Warm up the query embedder and the retriever.
+
+#### warm_up_async
+
+```python
+warm_up_async() -> None
+```
+
+Warm up the query embedder and the retriever on the serving event loop.
+
+#### close
+
+```python
+close() -> None
+```
+
+Release the query embedder's and the retriever's resources.
+
+#### close_async
+
+```python
+close_async() -> None
+```
+
+Release the query embedder's and the retriever's async resources.
 
 #### run
 
@@ -785,7 +806,31 @@ Initialize MultiQueryTextRetriever.
 warm_up() -> None
 ```
 
-Warm up the retriever if it has a warm_up method.
+Warm up the retriever.
+
+#### warm_up_async
+
+```python
+warm_up_async() -> None
+```
+
+Warm up the retriever on the serving event loop.
+
+#### close
+
+```python
+close() -> None
+```
+
+Release the retriever's resources.
+
+#### close_async
+
+```python
+close_async() -> None
+```
+
+Release the retriever's async resources.
 
 #### run
 
@@ -881,9 +926,7 @@ from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.document_stores.types import DuplicatePolicy
 from haystack.components.retrievers import InMemoryBM25Retriever, InMemoryEmbeddingRetriever
 from haystack.components.retrievers import TextEmbeddingRetriever, MultiRetriever
-# Requires: pip install sentence-transformers-haystack
-from haystack_integrations.components.embedders.sentence_transformers import SentenceTransformersTextEmbedder
-from haystack_integrations.components.embedders.sentence_transformers import SentenceTransformersDocumentEmbedder
+from haystack.components.embedders import OpenAITextEmbedder, OpenAIDocumentEmbedder
 from haystack.components.writers import DocumentWriter
 
 documents = [
@@ -894,7 +937,7 @@ documents = [
 
 # Populate the document store
 doc_store = InMemoryDocumentStore()
-doc_embedder = SentenceTransformersDocumentEmbedder(model="sentence-transformers/all-MiniLM-L6-v2")
+doc_embedder = OpenAIDocumentEmbedder()
 doc_writer = DocumentWriter(document_store=doc_store, policy=DuplicatePolicy.SKIP)
 doc_writer.run(documents=doc_embedder.run(documents)["documents"])
 
@@ -904,7 +947,7 @@ retriever = MultiRetriever(
         "bm25": InMemoryBM25Retriever(document_store=doc_store),
         "embedding": TextEmbeddingRetriever(
             retriever=InMemoryEmbeddingRetriever(document_store=doc_store),
-            text_embedder=SentenceTransformersTextEmbedder(model="sentence-transformers/all-MiniLM-L6-v2"),
+            text_embedder=OpenAITextEmbedder(),
         ),
     },
     top_k=3,
@@ -960,7 +1003,31 @@ Create the MultiRetriever component.
 warm_up() -> None
 ```
 
-Warm up the retrievers if any has a warm_up method.
+Warm up the retrievers.
+
+#### warm_up_async
+
+```python
+warm_up_async() -> None
+```
+
+Warm up the retrievers on the serving event loop.
+
+#### close
+
+```python
+close() -> None
+```
+
+Release the retrievers' resources.
+
+#### close_async
+
+```python
+close_async() -> None
+```
+
+Release the retrievers' async resources.
 
 #### run
 
@@ -1274,9 +1341,7 @@ The results are sorted by relevance score.
 from haystack import Document
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.document_stores.types import DuplicatePolicy
-# Requires: pip install sentence-transformers-haystack
-from haystack_integrations.components.embedders.sentence_transformers import SentenceTransformersTextEmbedder
-from haystack_integrations.components.embedders.sentence_transformers import SentenceTransformersDocumentEmbedder
+from haystack.components.embedders import OpenAITextEmbedder, OpenAIDocumentEmbedder
 from haystack.components.retrievers import InMemoryEmbeddingRetriever, TextEmbeddingRetriever
 from haystack.components.writers import DocumentWriter
 
@@ -1291,14 +1356,14 @@ documents = [
 
 # Populate the document store
 doc_store = InMemoryDocumentStore()
-doc_embedder = SentenceTransformersDocumentEmbedder(model="sentence-transformers/all-MiniLM-L6-v2")
+doc_embedder = OpenAIDocumentEmbedder()
 doc_writer = DocumentWriter(document_store=doc_store, policy=DuplicatePolicy.SKIP)
 documents = doc_embedder.run(documents)["documents"]
 doc_writer.run(documents=documents)
 
 # Run the retriever
 in_memory_retriever = InMemoryEmbeddingRetriever(document_store=doc_store, top_k=1)
-text_embedder = SentenceTransformersTextEmbedder(model="sentence-transformers/all-MiniLM-L6-v2")
+text_embedder = OpenAITextEmbedder()
 retriever = TextEmbeddingRetriever(retriever=in_memory_retriever, text_embedder=text_embedder)
 result = retriever.run(query="Geothermal energy")
 
@@ -1326,7 +1391,31 @@ Initialize TextEmbeddingRetriever.
 warm_up() -> None
 ```
 
-Warm up the text embedder and the retriever if any has a warm_up method.
+Warm up the text embedder and the retriever.
+
+#### warm_up_async
+
+```python
+warm_up_async() -> None
+```
+
+Warm up the text embedder and the retriever on the serving event loop.
+
+#### close
+
+```python
+close() -> None
+```
+
+Release the text embedder's and the retriever's resources.
+
+#### close_async
+
+```python
+close_async() -> None
+```
+
+Release the text embedder's and the retriever's async resources.
 
 #### run
 

@@ -159,7 +159,7 @@ Below is an example of a RAG pipeline where we use a `PromptBuilder` to render a
 ```python
 from haystack import Pipeline, Document
 from haystack.utils import Secret
-from haystack.components.generators import OpenAIGenerator
+from haystack.components.generators.chat import OpenAIChatGenerator
 from haystack.components.builders.prompt_builder import PromptBuilder
 
 # in a real world use case documents could come from a retriever, web, or any other source
@@ -179,7 +179,7 @@ prompt_template = """
 p = Pipeline()
 p.add_component(instance=PromptBuilder(template=prompt_template), name="prompt_builder")
 p.add_component(
-    instance=OpenAIGenerator(api_key=Secret.from_env_var("OPENAI_API_KEY")),
+    instance=OpenAIChatGenerator(api_key=Secret.from_env_var("OPENAI_API_KEY")),
     name="llm",
 )
 p.connect("prompt_builder", "llm")
@@ -278,20 +278,21 @@ components:
       model: gpt-5-mini
       organization: null
       streaming_callback: null
-      system_prompt: null
       timeout: null
-    type: haystack.components.generators.openai.OpenAIGenerator
+      tools: null
+      tools_strict: false
+    type: haystack.components.generators.chat.openai.OpenAIChatGenerator
   prompt_builder:
     init_parameters:
-      required_variables: null
-      template: "\n    Given these documents, answer the question.\\nDocuments:\n\
-        \    {% for doc in documents %}\n        {{ doc.content }}\n    {% endfor\
-        \ %}\n\n    \\nQuestion: {{query}}\n    \\nAnswer:\n    "
+      required_variables: '*'
+      template: "\n    Given these documents, answer the question.\nDocuments:\n \
+        \   {% for doc in documents %}\n        {{ doc.content }}\n    {% endfor %}\n\
+        \n    \nQuestion: {{query}}\n    \nAnswer:\n    "
       variables: null
     type: haystack.components.builders.prompt_builder.PromptBuilder
 connection_type_validation: true
 connections:
-- receiver: llm.prompt
+- receiver: llm.messages
   sender: prompt_builder.prompt
 max_runs_per_component: 100
 metadata: {}

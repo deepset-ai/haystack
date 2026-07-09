@@ -196,6 +196,29 @@ class MockChatGenerator:
         return {"replies": [ChatMessage.from_assistant("Hello from run_async")]}
 
 
+@component
+class ParallelToolCallingChatGenerator:
+    """Requests two `weather_tool` calls on the first turn, then returns a plain reply so the agent loop exits."""
+
+    tool_invoked = False
+
+    @component.output_types(replies=list[ChatMessage])
+    def run(self, messages: list[ChatMessage], tools: list[Tool] | Toolset | None = None, **kwargs) -> dict[str, Any]:
+        if self.tool_invoked:
+            return {"replies": [ChatMessage.from_assistant("done")]}
+        self.tool_invoked = True
+        return {
+            "replies": [
+                ChatMessage.from_assistant(
+                    tool_calls=[
+                        ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"}),
+                        ToolCall(tool_name="weather_tool", arguments={"location": "Paris"}),
+                    ]
+                )
+            ]
+        }
+
+
 class TestAgent:
     def test_output_types(self, weather_tool, component_tool, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "fake-key")
@@ -1436,11 +1459,56 @@ class TestAgentTracing:
             "haystack.agent.run",
         ]
 
+        # The single tool call gets its own tool span carrying the tool's identity plus its call args and result.
         _, tool_tags = agent_spans[1]
-        assert set(tool_tags) == {"haystack.agent.step.tool.input", "haystack.agent.step.tool.output"}
+        assert set(tool_tags) == {
+            "haystack.tool.name",
+            "haystack.tool.description",
+            "haystack.agent.step.tool.input",
+            "haystack.agent.step.tool.output",
+        }
+        assert tool_tags["haystack.tool.name"] == "weather_tool"
+        assert tool_tags["haystack.agent.step.tool.input"] == '{"location": "Berlin"}'
 
         _, run_tags = agent_spans[-1]
         assert run_tags["haystack.agent.steps_taken"] == 2
+
+        tracing.tracer.is_content_tracing_enabled = False
+        tracing.disable_tracing()
+
+    def test_agent_tracing_span_run_with_parallel_tool_calls(self, caplog, monkeypatch, weather_tool):
+        """Each tool call in a step gets its own `haystack.agent.step.tool` span instead of one grouped span."""
+        agent = Agent(chat_generator=ParallelToolCallingChatGenerator(), tools=[weather_tool])
+
+        tracing.tracer.is_content_tracing_enabled = True
+        tracing.enable_tracing(LoggingTracer())
+        caplog.set_level(logging.DEBUG)
+
+        _ = agent.run([ChatMessage.from_user("What's the weather in Berlin and Paris?")])
+
+        # The two tool calls run in parallel worker threads; LoggingTracer serializes each span's records so tags
+        # stay bucketed under their owning span even under concurrency.
+        spans: list[tuple[str, dict[str, Any]]] = []
+        for record in caplog.records:
+            if hasattr(record, "operation_name"):
+                spans.append((record.operation_name, {}))
+            elif hasattr(record, "tag_name") and spans:
+                spans[-1][1][record.tag_name] = record.tag_value
+
+        tool_spans = [tags for op, tags in spans if op == "haystack.agent.step.tool"]
+        # Two tool calls -> two tool spans, one per call, each carrying its own identity, arguments, and result.
+        assert len(tool_spans) == 2
+        for tags in tool_spans:
+            assert set(tags) == {
+                "haystack.tool.name",
+                "haystack.tool.description",
+                "haystack.agent.step.tool.input",
+                "haystack.agent.step.tool.output",
+            }
+        assert {tags["haystack.agent.step.tool.input"] for tags in tool_spans} == {
+            '{"location": "Berlin"}',
+            '{"location": "Paris"}',
+        }
 
         tracing.tracer.is_content_tracing_enabled = False
         tracing.disable_tracing()
@@ -1494,6 +1562,34 @@ class TestAgentTracing:
         }
 
         # Clean up
+        tracing.tracer.is_content_tracing_enabled = False
+        tracing.disable_tracing()
+
+    @pytest.mark.asyncio
+    async def test_agent_tracing_span_async_run_with_parallel_tool_calls(self, caplog, monkeypatch, weather_tool):
+        """The async path also emits one `haystack.agent.step.tool` span per tool call."""
+        agent = Agent(chat_generator=ParallelToolCallingChatGenerator(), tools=[weather_tool])
+
+        tracing.tracer.is_content_tracing_enabled = True
+        tracing.enable_tracing(LoggingTracer())
+        caplog.set_level(logging.DEBUG)
+
+        _ = await agent.run_async([ChatMessage.from_user("What's the weather in Berlin and Paris?")])
+
+        spans: list[tuple[str, dict[str, Any]]] = []
+        for record in caplog.records:
+            if hasattr(record, "operation_name"):
+                spans.append((record.operation_name, {}))
+            elif hasattr(record, "tag_name") and spans:
+                spans[-1][1][record.tag_name] = record.tag_value
+
+        tool_spans = [tags for op, tags in spans if op == "haystack.agent.step.tool"]
+        assert len(tool_spans) == 2
+        assert {tags["haystack.agent.step.tool.input"] for tags in tool_spans} == {
+            '{"location": "Berlin"}',
+            '{"location": "Paris"}',
+        }
+
         tracing.tracer.is_content_tracing_enabled = False
         tracing.disable_tracing()
 

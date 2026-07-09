@@ -113,6 +113,20 @@ class TestFileToFileContent:
         assert results["file_contents"][0].extra == {"key": "value1"}
         assert results["file_contents"][1].extra == {"key": "value2"}
 
+    def test_run_with_extra_dict_does_not_share_reference(self) -> None:
+        # A single ``extra`` dict is applied to every source; each FileContent must get its own copy
+        # so that mutating one file's ``extra`` downstream does not leak into the others.
+        converter = FileToFileContent()
+        sources = ["./test/test_files/txt/doc_1.txt", "./test/test_files/txt/doc_2.txt"]
+        results = converter.run(sources=sources, extra={"tenant": "acme"})
+
+        file_contents = results["file_contents"]
+        assert len(file_contents) == 2
+        assert file_contents[0].extra is not file_contents[1].extra
+
+        file_contents[0].extra["page"] = 1
+        assert "page" not in file_contents[1].extra
+
     def test_run_skips_empty_files_among_valid(self, caplog) -> None:
         byte_stream_empty = ByteStream(data=b"")
         valid_source = "./test/test_files/txt/doc_1.txt"

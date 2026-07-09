@@ -114,97 +114,6 @@ Populate the Breakpoint from a dictionary representation.
 
 - <code>Breakpoint</code> – An instance of Breakpoint.
 
-### ToolBreakpoint
-
-Bases: <code>Breakpoint</code>
-
-A dataclass representing a breakpoint specific to tools used within an Agent component.
-
-Inherits from Breakpoint and adds the ability to target individual tools. If `tool_name` is None,
-the breakpoint applies to all tools within the Agent component.
-
-**Parameters:**
-
-- **tool_name** (<code>str | None</code>) – The name of the tool to target within the Agent component. If None, applies to all tools.
-
-### AgentBreakpoint
-
-A dataclass representing a breakpoint tied to an Agent’s execution.
-
-This allows for debugging either a specific component (e.g., the chat generator) or a tool used by the agent.
-It enforces constraints on which component names are valid for each breakpoint type.
-
-**Parameters:**
-
-- **agent_name** (<code>str</code>) – The name of the agent component in a pipeline where the breakpoint is set.
-- **break_point** (<code>Breakpoint | ToolBreakpoint</code>) – An instance of Breakpoint or ToolBreakpoint indicating where to break execution.
-
-**Raises:**
-
-- <code>ValueError</code> – If the component_name is invalid for the given breakpoint type:
-- Breakpoint must have component_name='chat_generator'.
-- ToolBreakpoint must have component_name='tool_invoker'.
-
-#### to_dict
-
-```python
-to_dict() -> dict[str, Any]
-```
-
-Convert the AgentBreakpoint to a dictionary representation.
-
-**Returns:**
-
-- <code>dict\[str, Any\]</code> – A dictionary containing the agent name and the breakpoint details.
-
-#### from_dict
-
-```python
-from_dict(data: dict) -> AgentBreakpoint
-```
-
-Populate the AgentBreakpoint from a dictionary representation.
-
-**Parameters:**
-
-- **data** (<code>dict</code>) – A dictionary containing the agent name and the breakpoint details.
-
-**Returns:**
-
-- <code>AgentBreakpoint</code> – An instance of AgentBreakpoint.
-
-### AgentSnapshot
-
-Snapshot of an Agent's state at a breakpoint (component inputs, visit counts, and breakpoint).
-
-#### to_dict
-
-```python
-to_dict() -> dict[str, Any]
-```
-
-Convert the AgentSnapshot to a dictionary representation.
-
-**Returns:**
-
-- <code>dict\[str, Any\]</code> – A dictionary containing the agent state, timestamp, and breakpoint.
-
-#### from_dict
-
-```python
-from_dict(data: dict) -> AgentSnapshot
-```
-
-Populate the AgentSnapshot from a dictionary representation.
-
-**Parameters:**
-
-- **data** (<code>dict</code>) – A dictionary containing the agent state, timestamp, and breakpoint.
-
-**Returns:**
-
-- <code>AgentSnapshot</code> – An instance of AgentSnapshot.
-
 ### PipelineState
 
 A dataclass to hold the state of the pipeline at a specific point in time.
@@ -254,8 +163,7 @@ A dataclass to hold a snapshot of the pipeline at a specific point in time.
 - **original_input_data** (<code>dict\[str, Any\]</code>) – The original input data provided to the pipeline.
 - **ordered_component_names** (<code>list\[str\]</code>) – A list of component names in the order they were visited.
 - **pipeline_state** (<code>PipelineState</code>) – The state of the pipeline at the time of the snapshot.
-- **break_point** (<code>AgentBreakpoint | Breakpoint</code>) – The breakpoint that triggered the snapshot.
-- **agent_snapshot** (<code>AgentSnapshot | None</code>) – Optional agent snapshot if the breakpoint is an agent breakpoint.
+- **break_point** (<code>Breakpoint</code>) – The breakpoint that triggered the snapshot.
 - **timestamp** (<code>datetime | None</code>) – A timestamp indicating when the snapshot was taken.
 - **include_outputs_from** (<code>set\[str\]</code>) – Set of component names whose outputs should be included in the pipeline results.
 
@@ -1138,6 +1046,20 @@ For PDF to ImageContent conversion, use the `PDFToImageContent` component.
 
 - <code>ValueError</code> – If the URL does not point to an image or if it points to a PDF file.
 
+## skill_info
+
+### SkillInfo
+
+Lightweight metadata describing a skill.
+
+This is what a `SkillStore` returns when listing its skills, keeping the catalog cheap; the full skill
+content (the instructions body and bundled files) is fetched on demand.
+
+**Parameters:**
+
+- **name** (<code>str</code>) – The skill's name, used to look it up.
+- **description** (<code>str</code>) – A short description of when to use the skill. Shown to the agent up front.
+
 ## sparse_embedding
 
 ### SparseEmbedding
@@ -1338,11 +1260,15 @@ Picks the correct streaming callback given an optional initial and runtime callb
 
 The runtime callback takes precedence over the initial callback.
 
+In an async context (`requires_async=True`), a sync callback is accepted but emits a warning: it will run inline on
+the event loop and may block it. In a sync context (`requires_async=False`), an async callback is rejected because
+there is no way to await it.
+
 **Parameters:**
 
 - **init_callback** (<code>StreamingCallbackT | None</code>) – The initial callback.
 - **runtime_callback** (<code>StreamingCallbackT | None</code>) – The runtime callback.
-- **requires_async** (<code>bool</code>) – Whether the selected callback must be async compatible.
+- **requires_async** (<code>bool</code>) – Whether the selected callback will be invoked from an async context.
 
 **Returns:**
 
