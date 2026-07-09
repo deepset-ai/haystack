@@ -1,11 +1,11 @@
 ---
-title: "DALLEImageGenerator"
-id: dalleimagegenerator
-slug: "/dalleimagegenerator"
+title: "OpenAIImageGenerator"
+id: openaiimagegenerator
+slug: "/openaiimagegenerator"
 description: "Generate images using OpenAI's image generation models such as `gpt-image-2`."
 ---
 
-# DALLEImageGenerator
+# OpenAIImageGenerator
 
 Generate images using OpenAI's image generation models such as `gpt-image-2`.
 
@@ -18,33 +18,33 @@ Generate images using OpenAI's image generation models such as `gpt-image-2`.
 | **Mandatory run variables** | `prompt`: A string containing the prompt for the model |
 | **Output variables** | `images`: A list of generated images  <br /> <br />`revised_prompt`: A string containing the prompt that was used to generate the image, if there was any revision to the prompt made by OpenAI |
 | **API reference** | [Generators](/reference/generators-api) |
-| **GitHub link** | https://github.com/deepset-ai/haystack/blob/main/haystack/components/generators/openai_dalle.py |
+| **GitHub link** | https://github.com/deepset-ai/haystack/blob/main/haystack/components/generators/openai_image_generator.py |
 | **Package name** | `haystack-ai` |
 
 </div>
 
 ## Overview
 
-The `DALLEImageGenerator` component generates images using OpenAI's image generation models (such as `gpt-image-2`).
+The `OpenAIImageGenerator` component generates images using OpenAI's image generation models (such as `gpt-image-2`).
 
 By default, the component uses the `gpt-image-2` model, `"auto"` quality, and 1024x1024 resolution. You can change these parameters using `model` (during component initialization), `quality`, and `size` (during component initialization or run) parameters.
 
-`DALLEImageGenerator` needs an OpenAI key to work. It uses an `OPENAI_API_KEY` environment variable by default. Otherwise, you can pass an API key at initialization with `api_key`:
+`OpenAIImageGenerator` needs an OpenAI key to work. It uses an `OPENAI_API_KEY` environment variable by default. Otherwise, you can pass an API key at initialization with `api_key`:
 
 ```
-image_generator = DALLEImageGenerator(api_key=Secret.from_token("<your-api-key>"))
+image_generator = OpenAIImageGenerator(api_key=Secret.from_token("<your-api-key>"))
 ```
 
-Check our [API reference](/reference/generators-api#dalleimagegenerator) for the detailed component parameters description, or the [OpenAI documentation](https://developers.openai.com/api/reference/resources/images/methods/generate) for the details on OpenAI API parameters.
+Check our [API reference](/reference/generators-api#openaiimagegenerator) for the detailed component parameters description, or the [OpenAI documentation](https://developers.openai.com/api/reference/resources/images/methods/generate) for the details on OpenAI API parameters.
 
 ## Usage
 
 ### On its own
 
 ```python
-from haystack.components.generators import DALLEImageGenerator
+from haystack.components.generators import OpenAIImageGenerator
 
-image_generator = DALLEImageGenerator()
+image_generator = OpenAIImageGenerator()
 response = image_generator.run("Show me a picture of a black cat.")
 
 print(response)
@@ -52,11 +52,11 @@ print(response)
 
 ### In a pipeline
 
-In the following pipeline, we first set up a `PromptBuilder` that will structure the image description with a detailed template describing various artistic elements. The pipeline then passes this structured prompt into a `DALLEImageGenerator` to generate the image based on this detailed description.
+In the following pipeline, we first set up a `PromptBuilder` that will structure the image description with a detailed template describing various artistic elements. The pipeline then passes this structured prompt into an `OpenAIImageGenerator` to generate the image based on this detailed description.
 
 ```python
 from haystack import Pipeline
-from haystack.components.generators import DALLEImageGenerator
+from haystack.components.generators import OpenAIImageGenerator
 from haystack.components.builders import PromptBuilder
 
 prompt_builder = PromptBuilder(
@@ -70,7 +70,7 @@ prompt_builder = PromptBuilder(
                 Additional details: {details}""",
 )
 
-image_generator = DALLEImageGenerator()
+image_generator = OpenAIImageGenerator()
 
 pipeline = Pipeline()
 pipeline.add_component("prompt_builder", prompt_builder)
