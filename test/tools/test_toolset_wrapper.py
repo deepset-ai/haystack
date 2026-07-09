@@ -125,6 +125,26 @@ class TestToolsetWrapper:
         with pytest.raises(ValueError, match="Duplicate tool names found"):
             _ = result + toolset_with_dup
 
+    def test_wrapper_supports_negative_indices(self, add_tool, multiply_tool, subtract_tool):
+        """Test that _ToolsetWrapper supports negative indices like Toolset."""
+        wrapper = Toolset([add_tool]) + Toolset([multiply_tool, subtract_tool])
+        assert wrapper[-1] == subtract_tool
+        assert wrapper[-2] == multiply_tool
+        assert wrapper[-3] == add_tool
+
+    def test_wrapper_negative_indices_respect_filter(self, add_tool, multiply_tool, subtract_tool):
+        """Test that negative indexing uses the filtered tool view."""
+        wrapper = Toolset([add_tool, multiply_tool]) + Toolset([subtract_tool])
+        wrapper._selected_tool_names = {"add", "subtract"}
+        assert wrapper[-1] == subtract_tool
+        assert wrapper[-2] == add_tool
+
+    def test_wrapper_negative_index_out_of_range(self, add_tool, multiply_tool):
+        """Test that out-of-range negative indices raise IndexError."""
+        wrapper = Toolset([add_tool]) + Toolset([multiply_tool])
+        with pytest.raises(IndexError):
+            _ = wrapper[-3]
+
 
 class TestToolsetWrapperWarmUp:
     """Tests for warm_up behavior of _ToolsetWrapper."""

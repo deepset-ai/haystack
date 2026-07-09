@@ -1,0 +1,4 @@
+---
+fixes:
+  - |
+    Fix ``_ToolsetWrapper`` indexing so negative indices behave like ``Toolset`` indices when toolsets are combined.
