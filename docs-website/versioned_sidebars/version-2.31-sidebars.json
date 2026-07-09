@@ -442,6 +442,7 @@
             "pipeline-components/generators/openairesponseschatgenerator",
             "pipeline-components/generators/openaigenerator",
             "pipeline-components/generators/openrouterchatgenerator",
+            "pipeline-components/generators/orcarouterchatgenerator",
             "pipeline-components/generators/perplexitychatgenerator",
             "pipeline-components/generators/sagemakergenerator",
             "pipeline-components/generators/stackitchatgenerator",
@@ -716,7 +717,8 @@
             "tools/ready-made-tools/githubissueviewertool",
             "tools/ready-made-tools/githubprcreatortool",
             "tools/ready-made-tools/githubrepoviewertool",
-            "tools/ready-made-tools/mem0memorytools"
+            "tools/ready-made-tools/mem0memorytools",
+            "tools/ready-made-tools/mirageshelltool"
           ]
         }
       ]
