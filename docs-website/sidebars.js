@@ -374,7 +374,6 @@ export default {
           items: [
             'pipeline-components/extractors/llmdocumentcontentextractor',
             'pipeline-components/extractors/llmmetadataextractor',
-            'pipeline-components/extractors/namedentityextractor',
             'pipeline-components/extractors/presidioentityextractor',
             'pipeline-components/extractors/regextextextractor',
             'pipeline-components/extractors/spacynamedentityextractor',
@@ -429,7 +428,6 @@ export default {
             'pipeline-components/generators/googleaigeminigenerator',
             'pipeline-components/generators/googlegenaichatgenerator',
             'pipeline-components/generators/huggingfaceapichatgenerator',
-            'pipeline-components/generators/huggingfacelocalchatgenerator',
             'pipeline-components/generators/litellmchatgenerator',
             'pipeline-components/generators/llamacppchatgenerator',
             'pipeline-components/generators/llamacppgenerator',
