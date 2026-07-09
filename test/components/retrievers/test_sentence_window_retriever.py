@@ -77,6 +77,7 @@ class TestSentenceWindowRetriever:
                         "bm25_tokenization_regex": "(?u)\\b\\w+\\b",
                         "embedding_similarity_function": "dot_product",
                         "index": ANY,
+                        "shared": True,
                         "return_embedding": True,
                     },
                 },

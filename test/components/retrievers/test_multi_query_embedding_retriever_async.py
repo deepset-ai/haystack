@@ -7,7 +7,7 @@ from typing import Any
 import numpy as np
 import pytest
 
-from haystack import AsyncPipeline, Document, component
+from haystack import Document, Pipeline, component
 from haystack.components.retrievers import InMemoryEmbeddingRetriever, MultiQueryEmbeddingRetriever
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 
@@ -204,7 +204,7 @@ class TestMultiQueryEmbeddingRetrieverAsync:
             retriever=InMemoryEmbeddingRetriever(document_store=InMemoryDocumentStore()),
             query_embedder=MockQueryEmbedder(),
         )
-        pipeline = AsyncPipeline()
+        pipeline = Pipeline()
         pipeline.add_component("retriever", multi_retriever)
         result = await pipeline.run_async(data={"retriever": {"queries": ["green energy", "solar power"]}})
 

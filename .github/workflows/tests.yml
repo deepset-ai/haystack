@@ -55,7 +55,7 @@ jobs:
           persist-credentials: false
       - name: Check for changed code
         id: changes
-        uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # v4.0.1
+        uses: dorny/paths-filter@7b450fff21473bca461d4b92ce414b9d0420d706 # v4.0.2
         with:
           filters: |
             changes:
@@ -265,7 +265,7 @@ jobs:
           pip install hatch==${{ env.HATCH_VERSION }} --uploaded-prior-to=P1D
           echo "env=$(hatch env find test)" >> "$GITHUB_OUTPUT"
 
-      - uses: actions/cache/restore@2c8a9bd7457de244a408f35966fab2fb45fda9c8 # v6.0.0
+      - uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         id: cache
         with:
           path: ${{ steps.hatch.outputs.env }}

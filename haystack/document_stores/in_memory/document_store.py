@@ -49,7 +49,8 @@ class BM25DocumentStats:
     doc_len: int
 
 
-# Global storage for all InMemoryDocumentStore instances, indexed by the index name.
+# Process-global storage, keyed by index, for stores created with shared=True. Lets instances sharing an index
+# operate on the same data. Non-shared stores keep their data instance-local instead (see `__init__`).
 _STORAGES: dict[str, dict[str, Document]] = {}
 _BM25_STATS_STORAGES: dict[str, dict[str, BM25DocumentStats]] = {}
 _AVERAGE_DOC_LEN_STORAGES: dict[str, float] = {}
@@ -68,6 +69,7 @@ class InMemoryDocumentStore:
         bm25_parameters: dict | None = None,
         embedding_similarity_function: Literal["dot_product", "cosine"] = "dot_product",
         index: str | None = None,
+        shared: bool = True,
         async_executor: ThreadPoolExecutor | None = None,
         return_embedding: bool = True,
     ) -> None:
@@ -83,7 +85,11 @@ class InMemoryDocumentStore:
             One of "dot_product" (default) or "cosine". To choose the most appropriate function, look for information
             about your embedding model.
         :param index: A specific index to store the documents. If not specified, a random UUID is used.
-            Using the same index allows you to store documents across multiple InMemoryDocumentStore instances.
+            When `shared` is True, instances using the same index share the same documents.
+        :param shared: Whether the documents live in process-global storage shared across instances using the same
+            index (True, the default), or are kept instance-local and freed when this instance is garbage collected
+            (False). Shared storage persists for the lifetime of the process, so prefer `shared=False` for stores
+            that are created frequently (for example per request) to avoid unbounded memory growth.
         :param async_executor:
             Optional ThreadPoolExecutor to use for async calls. If not provided, a single-threaded
             executor will be initialized and used.
@@ -92,27 +98,28 @@ class InMemoryDocumentStore:
         self.bm25_tokenization_regex = bm25_tokenization_regex
         self.tokenizer = re.compile(bm25_tokenization_regex).findall
 
-        if index is None:
-            index = str(uuid.uuid4())
+        # Shared stores keep their data in the process-global dicts keyed by index, so instances sharing an index
+        # operate on the same documents. Non-shared stores keep their data instance-local so it is freed with the
+        # instance instead of accumulating in the globals.
+        self._shared = shared
+        self.index = index if index is not None else str(uuid.uuid4())
 
-        self.index = index
-        if self.index not in _STORAGES:
-            _STORAGES[self.index] = {}
+        if self._shared:
+            if self.index not in _STORAGES:
+                _STORAGES[self.index] = {}
+                _BM25_STATS_STORAGES[self.index] = {}
+                _AVERAGE_DOC_LEN_STORAGES[self.index] = 0.0
+                _FREQ_VOCAB_FOR_IDF_STORAGES[self.index] = Counter()
+        else:
+            self._local_storage: dict[str, Document] = {}
+            self._local_bm25_attr: dict[str, BM25DocumentStats] = {}
+            self._local_avg_doc_len: float = 0.0
+            self._local_freq_vocab_for_idf: Counter = Counter()
 
         self.bm25_algorithm = bm25_algorithm
         self.bm25_algorithm_inst = self._dispatch_bm25()
         self.bm25_parameters = bm25_parameters or {}
         self.embedding_similarity_function = embedding_similarity_function
-
-        # Per-document statistics
-        if self.index not in _BM25_STATS_STORAGES:
-            _BM25_STATS_STORAGES[self.index] = {}
-
-        if self.index not in _AVERAGE_DOC_LEN_STORAGES:
-            _AVERAGE_DOC_LEN_STORAGES[self.index] = 0.0
-
-        if self.index not in _FREQ_VOCAB_FOR_IDF_STORAGES:
-            _FREQ_VOCAB_FOR_IDF_STORAGES[self.index] = Counter()
 
         # keep track of whether we own the executor if we created it we must also clean it up
         self._owns_executor = async_executor is None
@@ -142,23 +149,26 @@ class InMemoryDocumentStore:
         """
         Utility property that returns the storage used by this instance of InMemoryDocumentStore.
         """
-        return _STORAGES.get(self.index, {})
+        return _STORAGES[self.index] if self._shared else self._local_storage
 
     @property
     def _bm25_attr(self) -> dict[str, BM25DocumentStats]:
-        return _BM25_STATS_STORAGES.get(self.index, {})
+        return _BM25_STATS_STORAGES[self.index] if self._shared else self._local_bm25_attr
 
     @property
     def _avg_doc_len(self) -> float:
-        return _AVERAGE_DOC_LEN_STORAGES.get(self.index, 0.0)
+        return _AVERAGE_DOC_LEN_STORAGES[self.index] if self._shared else self._local_avg_doc_len
 
     @_avg_doc_len.setter
     def _avg_doc_len(self, value: float) -> None:
-        _AVERAGE_DOC_LEN_STORAGES[self.index] = value
+        if self._shared:
+            _AVERAGE_DOC_LEN_STORAGES[self.index] = value
+        else:
+            self._local_avg_doc_len = value
 
     @property
     def _freq_vocab_for_idf(self) -> Counter:
-        return _FREQ_VOCAB_FOR_IDF_STORAGES.get(self.index, Counter())
+        return _FREQ_VOCAB_FOR_IDF_STORAGES[self.index] if self._shared else self._local_freq_vocab_for_idf
 
     def _dispatch_bm25(self) -> "Callable[[str, list[Document]], list[tuple[Document, float]]]":
         """
@@ -359,6 +369,7 @@ class InMemoryDocumentStore:
             bm25_parameters=self.bm25_parameters,
             embedding_similarity_function=self.embedding_similarity_function,
             index=self.index,
+            shared=self._shared,
             return_embedding=self.return_embedding,
         )
 
@@ -512,10 +523,16 @@ class InMemoryDocumentStore:
         """
         Deletes all documents in the document store.
         """
-        _STORAGES[self.index] = {}
-        _BM25_STATS_STORAGES[self.index] = {}
-        _AVERAGE_DOC_LEN_STORAGES[self.index] = 0.0
-        _FREQ_VOCAB_FOR_IDF_STORAGES[self.index] = Counter()
+        if self._shared:
+            _STORAGES[self.index] = {}
+            _BM25_STATS_STORAGES[self.index] = {}
+            _AVERAGE_DOC_LEN_STORAGES[self.index] = 0.0
+            _FREQ_VOCAB_FOR_IDF_STORAGES[self.index] = Counter()
+        else:
+            self._local_storage = {}
+            self._local_bm25_attr = {}
+            self._local_avg_doc_len = 0.0
+            self._local_freq_vocab_for_idf = Counter()
 
     def update_by_filter(self, filters: dict[str, Any], meta: dict[str, Any]) -> int:
         """

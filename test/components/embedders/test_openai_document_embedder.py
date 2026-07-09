@@ -4,11 +4,12 @@
 
 import contextlib
 import os
-from unittest.mock import Mock, patch
+from unittest.mock import AsyncMock, MagicMock, Mock, patch
 
 import pytest
 from openai import APIError
 
+import haystack.components.embedders.openai_document_embedder as openai_document_embedder_module
 from haystack import Document
 from haystack.components.embedders.openai_document_embedder import OpenAIDocumentEmbedder
 from haystack.utils.auth import Secret
@@ -27,8 +28,10 @@ class TestOpenAIDocumentEmbedder:
         assert embedder.progress_bar is True
         assert embedder.meta_fields_to_embed == []
         assert embedder.embedding_separator == "\n"
-        assert embedder.client.max_retries == 5
-        assert embedder.client.timeout == 30.0
+        assert embedder.timeout is None
+        assert embedder.max_retries is None
+        assert embedder.client is None
+        assert embedder.async_client is None
 
     def test_init_with_parameters(self, monkeypatch):
         monkeypatch.setenv("OPENAI_TIMEOUT", "100")
@@ -55,8 +58,10 @@ class TestOpenAIDocumentEmbedder:
         assert embedder.progress_bar is False
         assert embedder.meta_fields_to_embed == ["test_field"]
         assert embedder.embedding_separator == " | "
-        assert embedder.client.max_retries == 1
-        assert embedder.client.timeout == 40.0
+        assert embedder.timeout == 40.0
+        assert embedder.max_retries == 1
+        assert embedder.client is None
+        assert embedder.async_client is None
 
     def test_init_with_parameters_and_env_vars(self, monkeypatch):
         monkeypatch.setenv("OPENAI_TIMEOUT", "100")
@@ -81,13 +86,10 @@ class TestOpenAIDocumentEmbedder:
         assert embedder.progress_bar is False
         assert embedder.meta_fields_to_embed == ["test_field"]
         assert embedder.embedding_separator == " | "
-        assert embedder.client.max_retries == 10
-        assert embedder.client.timeout == 100.0
-
-    def test_init_fail_wo_api_key(self, monkeypatch):
-        monkeypatch.delenv("OPENAI_API_KEY", raising=False)
-        with pytest.raises(ValueError, match="None of the .* environment variables are set"):
-            OpenAIDocumentEmbedder()
+        assert embedder.timeout is None
+        assert embedder.max_retries is None
+        assert embedder.client is None
+        assert embedder.async_client is None
 
     def test_to_dict(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "fake-api-key")
@@ -214,6 +216,7 @@ class TestOpenAIDocumentEmbedder:
 
     def test_embed_batch_handles_exceptions_gracefully(self, caplog):
         embedder = OpenAIDocumentEmbedder(api_key=Secret.from_token("fake_api_key"))
+        embedder.warm_up()
         fake_texts_to_embed = {"1": "text1", "2": "text2"}
         with patch.object(
             embedder.client.embeddings,
@@ -227,6 +230,7 @@ class TestOpenAIDocumentEmbedder:
 
     def test_run_handles_exceptions_gracefully(self, caplog):
         embedder = OpenAIDocumentEmbedder(api_key=Secret.from_token("fake_api_key"), batch_size=1)
+        embedder.warm_up()
         docs = [
             Document(content="I love cheese", meta={"topic": "Cuisine"}),
             Document(content="A transformer is a deep learning architecture", meta={"topic": "ML"}),
@@ -255,6 +259,7 @@ class TestOpenAIDocumentEmbedder:
 
     def test_embed_batch_raises_exception_on_failure(self):
         embedder = OpenAIDocumentEmbedder(api_key=Secret.from_token("fake_api_key"), raise_on_failure=True)
+        embedder.warm_up()
         fake_texts_to_embed = {"1": "text1", "2": "text2"}
         with patch.object(
             embedder.client.embeddings,
@@ -277,6 +282,7 @@ class TestOpenAIDocumentEmbedder:
         embedder = OpenAIDocumentEmbedder(model=model, meta_fields_to_embed=["topic"], embedding_separator=" | ")
 
         result = embedder.run(documents=docs)
+        assert embedder.client is not None
         documents_with_embeddings = result["documents"]
 
         assert isinstance(documents_with_embeddings, list)
@@ -308,6 +314,7 @@ class TestOpenAIDocumentEmbedder:
         ]
 
         result = await embedder.run_async(documents=docs)
+        assert embedder.async_client is not None
         documents_with_embeddings = result["documents"]
 
         assert isinstance(documents_with_embeddings, list)
@@ -328,4 +335,89 @@ class TestOpenAIDocumentEmbedder:
 
         # Close async client; suppress RuntimeError if the event loop is already closed
         with contextlib.suppress(RuntimeError):
-            await embedder.async_client.close()
+            await embedder.close_async()
+
+
+@pytest.fixture
+def mock_openai_clients(monkeypatch):
+    monkeypatch.setenv("OPENAI_API_KEY", "fake")
+    sync_cls = MagicMock(name="OpenAI")
+    async_cls = MagicMock(name="AsyncOpenAI")
+    async_cls.return_value.close = AsyncMock()
+    monkeypatch.setattr(openai_document_embedder_module, "OpenAI", sync_cls)
+    monkeypatch.setattr(openai_document_embedder_module, "AsyncOpenAI", async_cls)
+    return sync_cls, async_cls
+
+
+class TestComponentLifecycle:
+    def test_warm_up_uses_default_timeout_and_max_retries(self, monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "fake-api-key")
+        embedder = OpenAIDocumentEmbedder()
+        embedder.warm_up()
+        assert embedder.client.max_retries == 5
+        assert embedder.client.timeout == 30.0
+
+    def test_warm_up_uses_timeout_and_max_retries_from_parameters(self):
+        embedder = OpenAIDocumentEmbedder(api_key=Secret.from_token("fake-api-key"), timeout=40.0, max_retries=1)
+        embedder.warm_up()
+        assert embedder.client.max_retries == 1
+        assert embedder.client.timeout == 40.0
+
+    def test_warm_up_uses_timeout_and_max_retries_from_env_vars(self, monkeypatch):
+        monkeypatch.setenv("OPENAI_TIMEOUT", "100")
+        monkeypatch.setenv("OPENAI_MAX_RETRIES", "10")
+        embedder = OpenAIDocumentEmbedder(api_key=Secret.from_token("fake-api-key"))
+        embedder.warm_up()
+        assert embedder.client.max_retries == 10
+        assert embedder.client.timeout == 100.0
+
+    def test_key_resolved_at_warm_up_not_init(self, monkeypatch):
+        monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+        embedder = OpenAIDocumentEmbedder()
+        with pytest.raises(ValueError, match="None of the .* environment variables are set"):
+            embedder.warm_up()
+
+    def test_sync_lifecycle(self, mock_openai_clients):
+        sync_cls, _ = mock_openai_clients
+        embedder = OpenAIDocumentEmbedder()
+        assert embedder.client is None
+        assert embedder.async_client is None
+
+        embedder.warm_up()
+        assert embedder.client is sync_cls.return_value
+        assert embedder.async_client is None
+
+        embedder.close()
+        sync_cls.return_value.close.assert_called_once()
+        assert embedder.client is None
+
+    async def test_async_lifecycle(self, mock_openai_clients):
+        _, async_cls = mock_openai_clients
+        embedder = OpenAIDocumentEmbedder()
+
+        await embedder.warm_up_async()
+        assert embedder.async_client is async_cls.return_value
+        assert embedder.client is None
+
+        await embedder.close_async()
+        async_cls.return_value.close.assert_awaited_once()
+        assert embedder.async_client is None
+
+    async def test_close_is_safe_without_warm_up(self, mock_openai_clients):
+        embedder = OpenAIDocumentEmbedder()
+        embedder.close()
+        await embedder.close_async()
+        assert embedder.client is None
+        assert embedder.async_client is None
+
+    async def test_close_and_close_async_are_independent(self, mock_openai_clients):
+        embedder = OpenAIDocumentEmbedder()
+        embedder.warm_up()
+        await embedder.warm_up_async()
+
+        embedder.close()
+        assert embedder.client is None
+        assert embedder.async_client is not None
+
+        await embedder.close_async()
+        assert embedder.async_client is None

@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import builtins
 import sys
 import typing
 from collections import deque
@@ -10,6 +11,8 @@ from typing import Any, Deque, Dict, FrozenSet, List, Optional, Set, Tuple, Unio
 
 import pytest
 
+from haystack.core.errors import DeserializationError
+from haystack.core.serialization_security import _DENIED_BUILTIN_NAMES
 from haystack.dataclasses import Answer, ByteStream, ChatMessage, Document
 from haystack.utils.type_serialization import (
     _build_pep604_union_type,
@@ -148,7 +151,7 @@ def test_output_type_deserialization():
     assert deserialize_type("float") == float
     assert deserialize_type("bool") == bool
     assert deserialize_type("None") is None
-    assert deserialize_type("NoneType") == type(None)  # type: ignore
+    assert deserialize_type("NoneType") == type(None)
 
 
 def test_output_builtin_type_deserialization():
@@ -157,6 +160,28 @@ def test_output_builtin_type_deserialization():
     assert deserialize_type("builtins.dict") == dict
     assert deserialize_type("builtins.float") == float
     assert deserialize_type("builtins.bool") == bool
+
+
+# `type` is excluded: it is a valid type in this path (covered by test_builtin_types_round_trip),
+# even though it is denied as a *callable*. Every other denied builtin is a function, not a type.
+@pytest.mark.parametrize("name", sorted(_DENIED_BUILTIN_NAMES - {"type"}))
+def test_dangerous_builtins_rejected(name):
+    # `builtins` is on the allowlist, but a type annotation must resolve to an actual type. Builtin
+    # functions are rejected both with the `builtins.` prefix and via the bare-name fallback (which
+    # skips the allowlist).
+    with pytest.raises(DeserializationError, match="not a type"):
+        deserialize_type(f"builtins.{name}")
+    with pytest.raises(DeserializationError, match="not a type"):
+        deserialize_type(name)
+
+
+@pytest.mark.parametrize("name", ["memoryview", "type", "bytearray", "frozenset"])
+def test_builtin_types_round_trip(name):
+    # Builtin *types* must still resolve as annotations — the type gate keys on `isinstance(type)`,
+    # not on whether the name is also callable, so e.g. `memoryview` and `type` are allowed.
+    expected = getattr(builtins, name)
+    assert deserialize_type(name) is expected
+    assert deserialize_type(f"builtins.{name}") is expected
 
 
 def test_output_type_serialization_nested():
@@ -198,10 +223,10 @@ def test_output_type_deserialization_nested():
 def test_output_type_serialization_typing_generic_with_nonetype():
     # NoneType used as a regular argument of a typing generic (not the implicit None of Optional)
     # must be kept, otherwise the serialized type is malformed (e.g. "typing.Dict[str]") or loses information.
-    assert serialize_type(Dict[str, type(None)]) == "typing.Dict[str, None]"
-    assert serialize_type(Dict[type(None), str]) == "typing.Dict[None, str]"
+    assert serialize_type(Dict[str, type(None)]) == "typing.Dict[str, None]"  # type: ignore[misc]
+    assert serialize_type(Dict[type(None), str]) == "typing.Dict[None, str]"  # type: ignore[misc]
     assert serialize_type(Tuple[int, type(None)]) == "typing.Tuple[int, None]"
-    assert serialize_type(List[type(None)]) == "typing.List[None]"
+    assert serialize_type(List[type(None)]) == "typing.List[None]"  # type: ignore[misc]
     # A Union with more than two members that includes None must keep None as well.
     assert serialize_type(Union[str, int, None]) == "typing.Union[str, int, None]"
     # Optional must still be serialized without a redundant trailing None.
@@ -210,10 +235,10 @@ def test_output_type_serialization_typing_generic_with_nonetype():
 
 def test_output_type_round_trip_typing_generic_with_nonetype():
     for type_ in [
-        Dict[str, type(None)],
-        Dict[type(None), str],
+        Dict[str, type(None)],  # type: ignore[misc]
+        Dict[type(None), str],  # type: ignore[misc]
         Tuple[int, type(None)],
-        List[type(None)],
+        List[type(None)],  # type: ignore[misc]
         Union[str, int, None],
         Optional[str],
     ]:

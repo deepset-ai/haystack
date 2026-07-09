@@ -4,14 +4,13 @@
 
 import os
 from typing import Any
-from unittest.mock import ANY
+from unittest.mock import ANY, AsyncMock, Mock
 
 import numpy as np
 import pytest
 
 from haystack import Document, Pipeline, component
-from haystack.components.embedders import SentenceTransformersTextEmbedder
-from haystack.components.embedders.sentence_transformers_document_embedder import SentenceTransformersDocumentEmbedder
+from haystack.components.embedders import OpenAIDocumentEmbedder, OpenAITextEmbedder
 from haystack.components.generators.chat import OpenAIChatGenerator
 from haystack.components.query import QueryExpander
 from haystack.components.retrievers import InMemoryEmbeddingRetriever, MultiQueryEmbeddingRetriever
@@ -66,7 +65,7 @@ class TestMultiQueryEmbeddingRetriever:
     def document_store_with_embeddings(self, sample_documents):
         """Create a document store populated with embedded documents."""
         document_store = InMemoryDocumentStore()
-        doc_embedder = SentenceTransformersDocumentEmbedder(model="sentence-transformers/all-MiniLM-L6-v2")
+        doc_embedder = OpenAIDocumentEmbedder()
         doc_writer = DocumentWriter(document_store=document_store, policy=DuplicatePolicy.SKIP)
 
         embedded_docs = doc_embedder.run(sample_documents)["documents"]
@@ -128,6 +127,7 @@ class TestMultiQueryEmbeddingRetriever:
                                 "bm25_parameters": {},
                                 "embedding_similarity_function": "dot_product",
                                 "index": ANY,
+                                "shared": True,
                                 "return_embedding": True,
                             },
                         },
@@ -146,7 +146,8 @@ class TestMultiQueryEmbeddingRetriever:
             },
         }
 
-    def test_from_dict(self):
+    def test_from_dict(self, monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "fake-api-key")
         data = {
             "type": "haystack.components.retrievers.multi_query_embedding_retriever.MultiQueryEmbeddingRetriever",  # noqa E501
             "init_parameters": {
@@ -161,6 +162,7 @@ class TestMultiQueryEmbeddingRetriever:
                                 "bm25_parameters": {},
                                 "embedding_similarity_function": "dot_product",
                                 "index": "4bb5369d-779f-487b-9c16-3c40f503438b",
+                                "shared": True,
                                 "return_embedding": True,
                             },
                         },
@@ -172,24 +174,18 @@ class TestMultiQueryEmbeddingRetriever:
                     },
                 },
                 "query_embedder": {
-                    "type": "haystack.components.embedders.sentence_transformers_text_embedder.SentenceTransformersTextEmbedder",  # noqa E501
+                    "type": "haystack.components.embedders.openai_text_embedder.OpenAITextEmbedder",
                     "init_parameters": {
-                        "model": "sentence-transformers/all-MiniLM-L6-v2",
-                        "token": {"type": "env_var", "env_vars": ["HF_API_TOKEN", "HF_TOKEN"], "strict": False},
+                        "api_key": {"env_vars": ["OPENAI_API_KEY"], "strict": True, "type": "env_var"},
+                        "api_base_url": None,
+                        "dimensions": None,
+                        "model": "text-embedding-ada-002",
+                        "organization": None,
+                        "http_client_kwargs": None,
                         "prefix": "",
                         "suffix": "",
-                        "batch_size": 32,
-                        "progress_bar": True,
-                        "normalize_embeddings": False,
-                        "trust_remote_code": False,
-                        "local_files_only": False,
-                        "truncate_dim": None,
-                        "model_kwargs": None,
-                        "tokenizer_kwargs": None,
-                        "config_kwargs": None,
-                        "precision": "float32",
-                        "encode_kwargs": None,
-                        "backend": "torch",
+                        "timeout": None,
+                        "max_retries": None,
                     },
                 },
                 "max_workers": 2,
@@ -234,11 +230,11 @@ class TestMultiQueryEmbeddingRetriever:
         assert contents.count("Solar energy is renewable") == 1
         assert contents.count("Wind energy is clean") == 1
 
+    @pytest.mark.skipif(os.environ.get("OPENAI_API_KEY", "") == "", reason="OPENAI_API_KEY is not set")
     @pytest.mark.integration
-    @pytest.mark.slow
-    def test_run_with_filters(self, del_hf_env_vars, document_store_with_embeddings):
+    def test_run_with_filters(self, document_store_with_embeddings):
         in_memory_retriever = InMemoryEmbeddingRetriever(document_store=document_store_with_embeddings)
-        query_embedder = SentenceTransformersTextEmbedder(model="sentence-transformers/all-MiniLM-L6-v2")
+        query_embedder = OpenAITextEmbedder()
         multi_retriever = MultiQueryEmbeddingRetriever(retriever=in_memory_retriever, query_embedder=query_embedder)
         result = multi_retriever.run(["energy"], {"filters": {"field": "category", "operator": "==", "value": "solar"}})
         assert "documents" in result
@@ -249,13 +245,12 @@ class TestMultiQueryEmbeddingRetriever:
         reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
     )
     @pytest.mark.integration
-    @pytest.mark.slow
-    def test_pipeline_integration(self, del_hf_env_vars, document_store_with_embeddings):
+    def test_pipeline_integration(self, document_store_with_embeddings):
         expander = QueryExpander(
             chat_generator=OpenAIChatGenerator(model="gpt-4.1-nano"), n_expansions=3, include_original_query=True
         )
         in_memory_retriever = InMemoryEmbeddingRetriever(document_store=document_store_with_embeddings)
-        query_embedder = SentenceTransformersTextEmbedder(model="sentence-transformers/all-MiniLM-L6-v2")
+        query_embedder = OpenAITextEmbedder()
         multiquery_retriever = MultiQueryEmbeddingRetriever(
             retriever=in_memory_retriever, query_embedder=query_embedder, max_workers=3
         )
@@ -285,3 +280,66 @@ class TestMultiQueryEmbeddingRetriever:
         # assert there are not duplicates
         ids = [doc.id for doc in results["multiquery_retriever"]["documents"]]
         assert len(ids) == len(set(ids))
+
+
+class TestComponentLifecycle:
+    def test_warm_up_delegates_to_inner_components(self):
+        query_embedder = Mock(spec=["run", "warm_up"])
+        retriever = Mock(spec=["run", "warm_up"])
+        component = MultiQueryEmbeddingRetriever(retriever=retriever, query_embedder=query_embedder)
+        component.warm_up()
+        query_embedder.warm_up.assert_called_once()
+        retriever.warm_up.assert_called_once()
+
+    async def test_warm_up_async_delegates_to_inner_components(self):
+        query_embedder = Mock(spec=["run", "warm_up_async"])
+        query_embedder.warm_up_async = AsyncMock()
+        retriever = Mock(spec=["run", "warm_up_async"])
+        retriever.warm_up_async = AsyncMock()
+        component = MultiQueryEmbeddingRetriever(retriever=retriever, query_embedder=query_embedder)
+        await component.warm_up_async()
+        query_embedder.warm_up_async.assert_awaited_once()
+        retriever.warm_up_async.assert_awaited_once()
+
+    async def test_warm_up_async_falls_back_to_sync_warm_up(self):
+        query_embedder = Mock(spec=["run", "warm_up"])
+        retriever = Mock(spec=["run", "warm_up"])
+        component = MultiQueryEmbeddingRetriever(retriever=retriever, query_embedder=query_embedder)
+        await component.warm_up_async()
+        query_embedder.warm_up.assert_called_once()
+        retriever.warm_up.assert_called_once()
+
+    def test_close_delegates_to_inner_components(self):
+        query_embedder = Mock(spec=["run", "close"])
+        retriever = Mock(spec=["run", "close"])
+        component = MultiQueryEmbeddingRetriever(retriever=retriever, query_embedder=query_embedder)
+        component.close()
+        query_embedder.close.assert_called_once()
+        retriever.close.assert_called_once()
+
+    async def test_close_async_delegates_to_inner_components(self):
+        query_embedder = Mock(spec=["run", "close_async"])
+        query_embedder.close_async = AsyncMock()
+        retriever = Mock(spec=["run", "close_async"])
+        retriever.close_async = AsyncMock()
+        component = MultiQueryEmbeddingRetriever(retriever=retriever, query_embedder=query_embedder)
+        await component.close_async()
+        query_embedder.close_async.assert_awaited_once()
+        retriever.close_async.assert_awaited_once()
+
+    async def test_close_async_falls_back_to_sync_close(self):
+        query_embedder = Mock(spec=["run", "close"])
+        retriever = Mock(spec=["run", "close"])
+        component = MultiQueryEmbeddingRetriever(retriever=retriever, query_embedder=query_embedder)
+        await component.close_async()
+        query_embedder.close.assert_called_once()
+        retriever.close.assert_called_once()
+
+    async def test_lifecycle_is_safe_when_inner_components_lack_methods(self):
+        query_embedder = Mock(spec=["run"])
+        retriever = Mock(spec=["run"])
+        component = MultiQueryEmbeddingRetriever(retriever=retriever, query_embedder=query_embedder)
+        component.warm_up()
+        await component.warm_up_async()
+        component.close()
+        await component.close_async()

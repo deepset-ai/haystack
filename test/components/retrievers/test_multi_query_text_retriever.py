@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import os
-from unittest.mock import ANY
+from unittest.mock import ANY, AsyncMock, Mock
 
 import pytest
 
@@ -88,6 +88,7 @@ class TestMultiQueryTextRetriever:
                                 "bm25_parameters": {},
                                 "embedding_similarity_function": "dot_product",
                                 "index": ANY,
+                                "shared": True,
                                 "return_embedding": True,
                             },
                         },
@@ -116,6 +117,7 @@ class TestMultiQueryTextRetriever:
                                 "bm25_parameters": {},
                                 "embedding_similarity_function": "dot_product",
                                 "index": "88144fa9-6e45-4e5d-8647-4c4002d8b6db",
+                                "shared": True,
                                 "return_embedding": True,
                             },
                         },
@@ -190,3 +192,51 @@ class TestMultiQueryTextRetriever:
         # assert there are not duplicates
         contents = [doc.content for doc in results["multiquery_retriever"]["documents"]]
         assert len(contents) == len(set(contents))
+
+
+class TestComponentLifecycle:
+    def test_warm_up_delegates_to_retriever(self):
+        retriever = Mock(spec=["run", "warm_up"])
+        component = MultiQueryTextRetriever(retriever=retriever)
+        component.warm_up()
+        retriever.warm_up.assert_called_once()
+
+    async def test_warm_up_async_delegates_to_retriever(self):
+        retriever = Mock(spec=["run", "warm_up_async"])
+        retriever.warm_up_async = AsyncMock()
+        component = MultiQueryTextRetriever(retriever=retriever)
+        await component.warm_up_async()
+        retriever.warm_up_async.assert_awaited_once()
+
+    async def test_warm_up_async_falls_back_to_sync_warm_up(self):
+        retriever = Mock(spec=["run", "warm_up"])
+        component = MultiQueryTextRetriever(retriever=retriever)
+        await component.warm_up_async()
+        retriever.warm_up.assert_called_once()
+
+    def test_close_delegates_to_retriever(self):
+        retriever = Mock(spec=["run", "close"])
+        component = MultiQueryTextRetriever(retriever=retriever)
+        component.close()
+        retriever.close.assert_called_once()
+
+    async def test_close_async_delegates_to_retriever(self):
+        retriever = Mock(spec=["run", "close_async"])
+        retriever.close_async = AsyncMock()
+        component = MultiQueryTextRetriever(retriever=retriever)
+        await component.close_async()
+        retriever.close_async.assert_awaited_once()
+
+    async def test_close_async_falls_back_to_sync_close(self):
+        retriever = Mock(spec=["run", "close"])
+        component = MultiQueryTextRetriever(retriever=retriever)
+        await component.close_async()
+        retriever.close.assert_called_once()
+
+    async def test_lifecycle_is_safe_when_retriever_lacks_methods(self):
+        retriever = Mock(spec=["run"])
+        component = MultiQueryTextRetriever(retriever=retriever)
+        component.warm_up()
+        await component.warm_up_async()
+        component.close()
+        await component.close_async()

@@ -408,7 +408,7 @@ In query pipelines, use a TextEmbedder to embed queries and send them to the ret
 
 ```python
 from haystack import Document
-from haystack.components.embedders import SentenceTransformersDocumentEmbedder, SentenceTransformersTextEmbedder
+from haystack.components.embedders import OpenAIDocumentEmbedder, OpenAITextEmbedder
 from haystack.components.retrievers.in_memory import InMemoryEmbeddingRetriever
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 
@@ -416,7 +416,7 @@ docs = [
     Document(content="Python is a popular programming language"),
     Document(content="python ist eine beliebte Programmiersprache"),
 ]
-doc_embedder = SentenceTransformersDocumentEmbedder()
+doc_embedder = OpenAIDocumentEmbedder()
 docs_with_embeddings = doc_embedder.run(docs)["documents"]
 
 doc_store = InMemoryDocumentStore()
@@ -424,7 +424,7 @@ doc_store.write_documents(docs_with_embeddings)
 retriever = InMemoryEmbeddingRetriever(doc_store)
 
 query="Programmiersprache"
-text_embedder = SentenceTransformersTextEmbedder()
+text_embedder = OpenAITextEmbedder()
 query_embedding = text_embedder.run(query)["embedding"]
 
 result = retriever.run(query_embedding=query_embedding)
@@ -575,8 +575,8 @@ The results are combined and sorted by relevance score.
 from haystack import Document
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.document_stores.types import DuplicatePolicy
-from haystack.components.embedders import SentenceTransformersTextEmbedder
-from haystack.components.embedders import SentenceTransformersDocumentEmbedder
+from haystack.components.embedders import OpenAITextEmbedder
+from haystack.components.embedders import OpenAIDocumentEmbedder
 from haystack.components.retrievers import InMemoryEmbeddingRetriever
 from haystack.components.writers import DocumentWriter
 from haystack.components.retrievers import MultiQueryEmbeddingRetriever
@@ -592,14 +592,14 @@ documents = [
 
 # Populate the document store
 doc_store = InMemoryDocumentStore()
-doc_embedder = SentenceTransformersDocumentEmbedder(model="sentence-transformers/all-MiniLM-L6-v2")
+doc_embedder = OpenAIDocumentEmbedder()
 doc_writer = DocumentWriter(document_store=doc_store, policy=DuplicatePolicy.SKIP)
 documents = doc_embedder.run(documents)["documents"]
 doc_writer.run(documents=documents)
 
 # Run the multi-query retriever
 in_memory_retriever = InMemoryEmbeddingRetriever(document_store=doc_store, top_k=1)
-query_embedder = SentenceTransformersTextEmbedder(model="sentence-transformers/all-MiniLM-L6-v2")
+query_embedder = OpenAITextEmbedder()
 
 multi_query_retriever = MultiQueryEmbeddingRetriever(
     retriever=in_memory_retriever,
@@ -644,7 +644,31 @@ Initialize MultiQueryEmbeddingRetriever.
 warm_up() -> None
 ```
 
-Warm up the query embedder and the retriever if any has a warm_up method.
+Warm up the query embedder and the retriever.
+
+#### warm_up_async
+
+```python
+warm_up_async() -> None
+```
+
+Warm up the query embedder and the retriever on the serving event loop.
+
+#### close
+
+```python
+close() -> None
+```
+
+Release the query embedder's and the retriever's resources.
+
+#### close_async
+
+```python
+close_async() -> None
+```
+
+Release the query embedder's and the retriever's async resources.
 
 #### run
 
@@ -782,7 +806,31 @@ Initialize MultiQueryTextRetriever.
 warm_up() -> None
 ```
 
-Warm up the retriever if it has a warm_up method.
+Warm up the retriever.
+
+#### warm_up_async
+
+```python
+warm_up_async() -> None
+```
+
+Warm up the retriever on the serving event loop.
+
+#### close
+
+```python
+close() -> None
+```
+
+Release the retriever's resources.
+
+#### close_async
+
+```python
+close_async() -> None
+```
+
+Release the retriever's async resources.
 
 #### run
 
@@ -878,7 +926,7 @@ from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.document_stores.types import DuplicatePolicy
 from haystack.components.retrievers import InMemoryBM25Retriever, InMemoryEmbeddingRetriever
 from haystack.components.retrievers import TextEmbeddingRetriever, MultiRetriever
-from haystack.components.embedders import SentenceTransformersTextEmbedder, SentenceTransformersDocumentEmbedder
+from haystack.components.embedders import OpenAITextEmbedder, OpenAIDocumentEmbedder
 from haystack.components.writers import DocumentWriter
 
 documents = [
@@ -889,7 +937,7 @@ documents = [
 
 # Populate the document store
 doc_store = InMemoryDocumentStore()
-doc_embedder = SentenceTransformersDocumentEmbedder(model="sentence-transformers/all-MiniLM-L6-v2")
+doc_embedder = OpenAIDocumentEmbedder()
 doc_writer = DocumentWriter(document_store=doc_store, policy=DuplicatePolicy.SKIP)
 doc_writer.run(documents=doc_embedder.run(documents)["documents"])
 
@@ -899,7 +947,7 @@ retriever = MultiRetriever(
         "bm25": InMemoryBM25Retriever(document_store=doc_store),
         "embedding": TextEmbeddingRetriever(
             retriever=InMemoryEmbeddingRetriever(document_store=doc_store),
-            text_embedder=SentenceTransformersTextEmbedder(model="sentence-transformers/all-MiniLM-L6-v2"),
+            text_embedder=OpenAITextEmbedder(),
         ),
     },
     top_k=3,
@@ -922,7 +970,8 @@ __init__(
     *,
     retrievers: dict[str, TextRetriever],
     filters: dict[str, Any] | None = None,
-    top_k: int = 10,
+    top_k_per_retriever: int | None = None,
+    top_k: int | None = None,
     max_workers: int = 4,
     join_mode: Literal[
         "concatenate", "reciprocal_rank_fusion"
@@ -937,7 +986,12 @@ Create the MultiRetriever component.
 - **retrievers** (<code>dict\[str, TextRetriever\]</code>) – A dictionary mapping names to text retrievers (implementing the `TextRetriever` protocol) to run in
   parallel.
 - **filters** (<code>dict\[str, Any\] | None</code>) – A dictionary of filters to apply when retrieving documents.
-- **top_k** (<code>int</code>) – The maximum number of documents to return per retriever.
+- **top_k_per_retriever** (<code>int | None</code>) – The maximum number of documents to return per retriever. If set, this will override the `top_k`
+  parameter for each retriever. If None, the `top_k` parameter of retrievers will be used.
+- **top_k** (<code>int | None</code>) – The maximum number of documents to return overall, extracted from the combined results of all
+  retrievers. When set, the results are always merged using reciprocal rank fusion (regardless of
+  `join_mode`) so that the combined list has a consistent global ranking before it is truncated to
+  `top_k`. If None, all results are returned.
 - **max_workers** (<code>int</code>) – The maximum number of threads to use for parallel retrieval.
 - **join_mode** (<code>Literal['concatenate', 'reciprocal_rank_fusion']</code>) – How to merge results from multiple retrievers. Available modes:
 - `concatenate`: Combines all results into a single list and deduplicates.
@@ -949,7 +1003,31 @@ Create the MultiRetriever component.
 warm_up() -> None
 ```
 
-Warm up the retrievers if any has a warm_up method.
+Warm up the retrievers.
+
+#### warm_up_async
+
+```python
+warm_up_async() -> None
+```
+
+Warm up the retrievers on the serving event loop.
+
+#### close
+
+```python
+close() -> None
+```
+
+Release the retrievers' resources.
+
+#### close_async
+
+```python
+close_async() -> None
+```
+
+Release the retrievers' async resources.
 
 #### run
 
@@ -957,6 +1035,7 @@ Warm up the retrievers if any has a warm_up method.
 run(
     query: str,
     filters: dict[str, Any] | None = None,
+    top_k_per_retriever: int | None = None,
     top_k: int | None = None,
     *,
     active_retrievers: list[str] | None = None
@@ -969,7 +1048,13 @@ Runs retrievers in parallel on the given query and returns deduplicated results.
 
 - **query** (<code>str</code>) – The query to run the retrievers on.
 - **filters** (<code>dict\[str, Any\] | None</code>) – Filters to apply. Defaults to the value set at initialization.
-- **top_k** (<code>int | None</code>) – Maximum documents to return per retriever. Defaults to the value set at initialization.
+- **top_k_per_retriever** (<code>int | None</code>) – The maximum number of documents to return per retriever. When set, this will override the `top_k`
+  parameter for each retriever. If None, the `top_k` parameter set for retrievers will be used.
+  Defaults to the value set at initialization.
+- **top_k** (<code>int | None</code>) – The maximum number of documents to return overall, extracted from the combined results of all
+  retrievers. When set, the results are always merged using reciprocal rank fusion (regardless of
+  `join_mode`) so that the combined list has a consistent global ranking before it is truncated to
+  `top_k`. If None, all results are returned. Defaults to the value set at initialization.
 - **active_retrievers** (<code>list\[str\] | None</code>) – Names of retrievers to run. Defaults to all. Must match keys in the `retrievers` dictionary.
 
 **Returns:**
@@ -987,6 +1072,7 @@ Runs retrievers in parallel on the given query and returns deduplicated results.
 run_async(
     query: str,
     filters: dict[str, Any] | None = None,
+    top_k_per_retriever: int | None = None,
     top_k: int | None = None,
     *,
     active_retrievers: list[str] | None = None
@@ -1001,7 +1087,13 @@ Uses each retriever's `run_async` method if available, otherwise runs `run` in a
 
 - **query** (<code>str</code>) – The query to run the retrievers on.
 - **filters** (<code>dict\[str, Any\] | None</code>) – Filters to apply. Defaults to the value set at initialization.
-- **top_k** (<code>int | None</code>) – Maximum documents to return per retriever. Defaults to the value set at initialization.
+- **top_k_per_retriever** (<code>int | None</code>) – The maximum number of documents to return per retriever. When set, this will override the `top_k`
+  parameter for each retriever. If None, the `top_k` parameter set for retrievers will be used.
+  Defaults to the value set at initialization.
+- **top_k** (<code>int | None</code>) – The maximum number of documents to return overall, extracted from the combined results of all
+  retrievers. When set, the results are always merged using reciprocal rank fusion (regardless of
+  `join_mode`) so that the combined list has a consistent global ranking before it is truncated to
+  `top_k`. If None, all results are returned. Defaults to the value set at initialization.
 - **active_retrievers** (<code>list\[str\] | None</code>) – Names of retrievers to run. Defaults to all. Must match keys in the `retrievers` dictionary.
 
 **Returns:**
@@ -1249,7 +1341,7 @@ The results are sorted by relevance score.
 from haystack import Document
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.document_stores.types import DuplicatePolicy
-from haystack.components.embedders import SentenceTransformersTextEmbedder, SentenceTransformersDocumentEmbedder
+from haystack.components.embedders import OpenAITextEmbedder, OpenAIDocumentEmbedder
 from haystack.components.retrievers import InMemoryEmbeddingRetriever, TextEmbeddingRetriever
 from haystack.components.writers import DocumentWriter
 
@@ -1264,14 +1356,14 @@ documents = [
 
 # Populate the document store
 doc_store = InMemoryDocumentStore()
-doc_embedder = SentenceTransformersDocumentEmbedder(model="sentence-transformers/all-MiniLM-L6-v2")
+doc_embedder = OpenAIDocumentEmbedder()
 doc_writer = DocumentWriter(document_store=doc_store, policy=DuplicatePolicy.SKIP)
 documents = doc_embedder.run(documents)["documents"]
 doc_writer.run(documents=documents)
 
 # Run the retriever
 in_memory_retriever = InMemoryEmbeddingRetriever(document_store=doc_store, top_k=1)
-text_embedder = SentenceTransformersTextEmbedder(model="sentence-transformers/all-MiniLM-L6-v2")
+text_embedder = OpenAITextEmbedder()
 retriever = TextEmbeddingRetriever(retriever=in_memory_retriever, text_embedder=text_embedder)
 result = retriever.run(query="Geothermal energy")
 
@@ -1299,7 +1391,31 @@ Initialize TextEmbeddingRetriever.
 warm_up() -> None
 ```
 
-Warm up the text embedder and the retriever if any has a warm_up method.
+Warm up the text embedder and the retriever.
+
+#### warm_up_async
+
+```python
+warm_up_async() -> None
+```
+
+Warm up the text embedder and the retriever on the serving event loop.
+
+#### close
+
+```python
+close() -> None
+```
+
+Release the text embedder's and the retriever's resources.
+
+#### close_async
+
+```python
+close_async() -> None
+```
+
+Release the text embedder's and the retriever's async resources.
 
 #### run
 

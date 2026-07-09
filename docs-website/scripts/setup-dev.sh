@@ -22,11 +22,14 @@ if ! command -v python &> /dev/null; then
     exit 1
 fi
 
+echo "⬆️  Upgrading pip..."
+python -m pip install --upgrade pip
+
 # Check if base dependencies are installed
 echo "📦 Checking base dependencies..."
 python -c "import requests, toml" 2>/dev/null || {
     echo "⚠️  Installing base dependencies (requests, toml)..."
-    pip install requests toml
+    pip install requests toml --uploaded-prior-to=P1D
 }
 
 # Get Haystack version (default to main)
@@ -46,7 +49,7 @@ echo "📋 Generated requirements.txt with $(wc -l < requirements.txt) dependenc
 
 # Install dependencies
 echo "⚙️  Installing dependencies..."
-pip install -r requirements.txt
+pip install -r requirements.txt --uploaded-prior-to=P1D
 
 echo "✅ Setup complete! You can now run:"
 echo "   python scripts/test_python_snippets.py --verbose"

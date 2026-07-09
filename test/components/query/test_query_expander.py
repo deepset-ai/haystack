@@ -4,7 +4,7 @@
 
 import logging
 import os
-from unittest.mock import Mock
+from unittest.mock import AsyncMock, Mock
 
 import pytest
 
@@ -16,13 +16,6 @@ from haystack.dataclasses.chat_message import ChatMessage
 @pytest.fixture
 def mock_chat_generator():
     return Mock(spec=OpenAIChatGenerator)
-
-
-@pytest.fixture
-def mock_chat_generator_with_warm_up():
-    mock_generator = Mock(spec=OpenAIChatGenerator)
-    mock_generator.warm_up = lambda: None
-    return mock_generator
 
 
 class TestQueryExpander:
@@ -42,20 +35,13 @@ class TestQueryExpander:
         assert expander.n_expansions == 3
         assert expander.chat_generator is mock_chat_generator
 
-    def test_run_warm_up(self, mock_chat_generator_with_warm_up):
-        expander = QueryExpander(chat_generator=mock_chat_generator_with_warm_up)
-        mock_chat_generator_with_warm_up.run.return_value = {"queries": ["test query"]}
+    def test_run_warms_up_chat_generator(self, mock_chat_generator):
+        expander = QueryExpander(chat_generator=mock_chat_generator)
+        mock_chat_generator.run.return_value = {"replies": [ChatMessage.from_assistant("1. test query")]}
 
-        expander.warm_up()
         expander.run("test query")
 
-        assert expander._is_warmed_up is True
-        assert expander.run("test query") == {"queries": ["test query"]}
-
-    def test_warm_up(self, mock_chat_generator):
-        expander = QueryExpander(chat_generator=mock_chat_generator)
-        expander.warm_up()
-        assert expander._is_warmed_up is True
+        mock_chat_generator.warm_up.assert_called()
 
     def test_init_negative_expansions_raises_error(self):
         with pytest.raises(ValueError, match="n_expansions must be positive"):
@@ -355,6 +341,76 @@ class TestQueryExpander:
         assert expander.chat_generator.model == "gpt-4.1-mini"
 
 
+class FakeSyncOnlyChatGenerator:
+    """A chat generator exposing only a synchronous `run` (no `run_async`) for the fallback path."""
+
+    def __init__(self):
+        self.run = Mock()
+
+
+class TestQueryExpanderAsync:
+    @pytest.mark.asyncio
+    async def test_run_async(self):
+        mock_chat_generator = Mock(spec=OpenAIChatGenerator)
+        mock_chat_generator.run_async = AsyncMock(
+            return_value={
+                "replies": [
+                    ChatMessage.from_assistant(
+                        '{"queries": ["alternative query 1", "alternative query 2", "alternative query 3"]}'
+                    )
+                ]
+            }
+        )
+
+        expander = QueryExpander(chat_generator=mock_chat_generator, n_expansions=3)
+        result = await expander.run_async("original query")
+
+        assert result["queries"] == [
+            "alternative query 1",
+            "alternative query 2",
+            "alternative query 3",
+            "original query",
+        ]
+        mock_chat_generator.run_async.assert_awaited_once()
+        mock_chat_generator.run.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_run_async_without_including_original(self):
+        mock_chat_generator = Mock(spec=OpenAIChatGenerator)
+        mock_chat_generator.run_async = AsyncMock(
+            return_value={"replies": [ChatMessage.from_assistant('{"queries": ["alt1", "alt2"]}')]}
+        )
+
+        expander = QueryExpander(chat_generator=mock_chat_generator, include_original_query=False)
+        result = await expander.run_async("original")
+
+        assert result["queries"] == ["alt1", "alt2"]
+        mock_chat_generator.run_async.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_run_async_fallback_to_sync_run(self):
+        fake_chat_generator = FakeSyncOnlyChatGenerator()
+        fake_chat_generator.run.return_value = {
+            "replies": [
+                ChatMessage.from_assistant(
+                    '{"queries": ["alternative query 1", "alternative query 2", "alternative query 3"]}'
+                )
+            ]
+        }
+        assert not hasattr(fake_chat_generator, "run_async")
+
+        expander = QueryExpander(chat_generator=fake_chat_generator, n_expansions=3)
+        result = await expander.run_async("original query")
+
+        assert result["queries"] == [
+            "alternative query 1",
+            "alternative query 2",
+            "alternative query 3",
+            "original query",
+        ]
+        fake_chat_generator.run.assert_called_once()
+
+
 @pytest.mark.integration
 class TestQueryExpanderIntegration:
     @pytest.fixture
@@ -396,6 +452,19 @@ class TestQueryExpanderIntegration:
         not os.environ.get("OPENAI_API_KEY", None),
         reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
     )
+    @pytest.mark.asyncio
+    async def test_query_expansion_async(self, chat_generator):
+        expander = QueryExpander(n_expansions=2, chat_generator=chat_generator)
+        result = await expander.run_async("renewable energy sources")
+
+        assert len(result["queries"]) == 3
+        assert all(len(q.strip()) > 0 for q in result["queries"])
+        assert "renewable energy sources" in result["queries"]
+
+    @pytest.mark.skipif(
+        not os.environ.get("OPENAI_API_KEY", None),
+        reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
+    )
     def test_different_domains(self, chat_generator):
         test_queries = ["machine learning algorithms", "climate change effects", "quantum computing applications"]
 
@@ -409,3 +478,45 @@ class TestQueryExpanderIntegration:
 
             # Should be different from original
             assert query not in result["queries"]
+
+
+class TestComponentLifecycle:
+    def test_warm_up_delegates_to_chat_generator(self, mock_chat_generator):
+        expander = QueryExpander(chat_generator=mock_chat_generator)
+        expander.warm_up()
+        mock_chat_generator.warm_up.assert_called_once()
+
+    async def test_warm_up_async_delegates_to_chat_generator(self, mock_chat_generator):
+        mock_chat_generator.warm_up_async = AsyncMock()
+        expander = QueryExpander(chat_generator=mock_chat_generator)
+        await expander.warm_up_async()
+        mock_chat_generator.warm_up_async.assert_awaited_once()
+
+    async def test_warm_up_async_falls_back_to_sync_warm_up(self):
+        chat_generator = Mock(spec=["run", "warm_up"])
+        expander = QueryExpander(chat_generator=chat_generator)
+        await expander.warm_up_async()
+        chat_generator.warm_up.assert_called_once()
+
+    def test_close_delegates_to_chat_generator(self, mock_chat_generator):
+        expander = QueryExpander(chat_generator=mock_chat_generator)
+        expander.close()
+        mock_chat_generator.close.assert_called_once()
+
+    async def test_close_async_delegates_to_chat_generator(self, mock_chat_generator):
+        mock_chat_generator.close_async = AsyncMock()
+        expander = QueryExpander(chat_generator=mock_chat_generator)
+        await expander.close_async()
+        mock_chat_generator.close_async.assert_awaited_once()
+
+    async def test_close_async_falls_back_to_sync_close(self):
+        chat_generator = Mock(spec=["run", "close"])
+        expander = QueryExpander(chat_generator=chat_generator)
+        await expander.close_async()
+        chat_generator.close.assert_called_once()
+
+    def test_lifecycle_is_safe_when_chat_generator_lacks_methods(self):
+        chat_generator = Mock(spec=["run"])
+        expander = QueryExpander(chat_generator=chat_generator)
+        expander.warm_up()
+        expander.close()
