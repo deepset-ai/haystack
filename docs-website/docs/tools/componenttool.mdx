@@ -32,6 +32,8 @@ It does input type conversion and offers support for components with run methods
 - Lists of dataclasses (such as List[Document])
 - Parameters with mixed types (such as List[Document], str...)
 
+If the wrapped component defines a `run_async` method, `ComponentTool` automatically wires an async invoker as well, so the tool supports async invocation (for example, from `Agent.run_async`) without extra configuration. See [Async Tools](tool.mdx#async-tools) for details.
+
 ### Parameters
 
 - `component` is mandatory and must be a Haystack component instance, either an existing one or a custom component.
