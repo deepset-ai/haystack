@@ -149,7 +149,7 @@ all = 'pytest {args:test}'
 e2e = 'pytest {args:e2e}'
 
 # TODO We want to eventually type the whole test folder
-types = "mypy --install-types --non-interactive --cache-dir=.mypy_cache/ {args:haystack test/core/ test/marshal/ test/testing/ test/tracing/ test/tools/ test/human_in_the_loop test/evaluation test/document_stores test/dataclasses test/utils/}"
+types = "mypy --install-types --non-interactive --cache-dir=.mypy_cache/ {args:haystack test/core/ test/marshal/ test/testing/ test/tracing/ test/tools/ test/human_in_the_loop test/evaluation test/document_stores test/dataclasses test/utils/ test/components/embedders/}"
 
 [project.urls]
 "CI: GitHub" = "https://github.com/deepset-ai/haystack/actions"

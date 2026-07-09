@@ -13,7 +13,7 @@ _import_structure = {
     "base_serialization": ["_deserialize_value_with_schema", "_serialize_value_with_schema"],
     "callable_serialization": ["deserialize_callable", "serialize_callable"],
     "device": ["ComponentDevice", "Device", "DeviceMap", "DeviceType"],
-    "deserialization": ["deserialize_chatgenerator_inplace"],
+    "deserialization": ["deserialize_chatgenerator_inplace", "deserialize_component_inplace"],
     "filters": ["document_matches_filter", "raise_on_invalid_filter_syntax"],
     "jinja2_extensions": ["Jinja2TimeExtension"],
     "jupyter": ["is_in_jupyter"],
@@ -31,6 +31,7 @@ if TYPE_CHECKING:
     from .callable_serialization import deserialize_callable as deserialize_callable
     from .callable_serialization import serialize_callable as serialize_callable
     from .deserialization import deserialize_chatgenerator_inplace as deserialize_chatgenerator_inplace
+    from .deserialization import deserialize_component_inplace as deserialize_component_inplace
     from .device import ComponentDevice as ComponentDevice
     from .device import Device as Device
     from .device import DeviceMap as DeviceMap
