@@ -56,6 +56,35 @@ generator = SomeGenerator(streaming_callback=print_streaming_chunk)
 # For ChatGenerators, pass a list[ChatMessage]. For text generators, pass a prompt string.
 ```
 
+### Sync and Async Callbacks
+
+Streaming-capable components (such as `OpenAIChatGenerator`, `HuggingFaceAPIChatGenerator`, `TransformersChatGenerator`, and `Agent`) accept both sync and async streaming callbacks in async contexts (`run_async` or [async pipeline execution](../../../concepts/pipelines.mdx)). When you pass a sync callback to `run_async`, a warning is logged because the callback runs synchronously on the event loop and may block it, but the run proceeds and streams as expected. Async callbacks remain preferred for performance in async contexts.
+
+```python
+import asyncio
+
+from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.dataclasses import ChatMessage, StreamingChunk
+
+
+def print_chunk(chunk: StreamingChunk) -> None:
+    print(chunk.content, end="", flush=True)
+
+
+async def main():
+    llm = OpenAIChatGenerator()
+    # a sync callback in an async context logs a warning and streams as expected
+    await llm.run_async(
+        [ChatMessage.from_user("Tell me about Italy")],
+        streaming_callback=print_chunk,
+    )
+
+
+asyncio.run(main())
+```
+
+The reverse is not supported: passing an async callback to the sync `run` method raises an error, since a coroutine cannot be awaited from sync code.
+
 ### Custom Callback
 
 If you need custom rendering, write your own callback. Handle the four chunk types in order:
