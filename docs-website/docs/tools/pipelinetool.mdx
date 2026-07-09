@@ -29,6 +29,8 @@ It replaces the older workflow of first wrapping a pipeline in a `SuperComponent
 `PipelineTool` builds the tool parameter schema from the pipeline’s input sockets and uses the underlying components’ docstrings for input descriptions. You can choose which pipeline inputs and outputs to expose with
 `input_mapping` and `output_mapping`. It can be used in a pipeline with `ToolInvoker` or directly with the `Agent` component.
 
+`PipelineTool` also supports async invocation: since every `Pipeline` exposes a native `run_async`, the tool can be awaited (for example, from `Agent.run_async`) without extra configuration. See [Async Tools](tool.mdx#async-tools) for details.
+
 ### Parameters
 
 - `pipeline` is mandatory and must be a `Pipeline` instance.
