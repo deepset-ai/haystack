@@ -242,12 +242,14 @@ class TestComponentLifecycle:
         monkeypatch.setenv("OPENAI_API_KEY", "fake-api-key")
         embedder = OpenAITextEmbedder()
         embedder.warm_up()
+        assert embedder.client is not None
         assert embedder.client.max_retries == 5
         assert embedder.client.timeout == 30.0
 
     def test_warm_up_uses_timeout_and_max_retries_from_parameters(self):
         embedder = OpenAITextEmbedder(api_key=Secret.from_token("fake-api-key"), timeout=40.0, max_retries=1)
         embedder.warm_up()
+        assert embedder.client is not None
         assert embedder.client.max_retries == 1
         assert embedder.client.timeout == 40.0
 
@@ -256,6 +258,7 @@ class TestComponentLifecycle:
         monkeypatch.setenv("OPENAI_MAX_RETRIES", "10")
         embedder = OpenAITextEmbedder(api_key=Secret.from_token("fake-api-key"))
         embedder.warm_up()
+        assert embedder.client is not None
         assert embedder.client.max_retries == 10
         assert embedder.client.timeout == 100.0
 
@@ -267,6 +270,7 @@ class TestComponentLifecycle:
 
     def test_sync_lifecycle(self, mock_openai_clients):
         sync_cls, _ = mock_openai_clients
+        sync_client = sync_cls.return_value
         embedder = OpenAITextEmbedder()
         assert embedder.client is None
         assert embedder.async_client is None
@@ -276,11 +280,12 @@ class TestComponentLifecycle:
         assert embedder.async_client is None
 
         embedder.close()
-        sync_cls.return_value.close.assert_called_once()
+        sync_client.close.assert_called_once()
         assert embedder.client is None
 
     async def test_async_lifecycle(self, mock_openai_clients):
         _, async_cls = mock_openai_clients
+        async_client = async_cls.return_value
         embedder = OpenAITextEmbedder()
 
         await embedder.warm_up_async()
@@ -288,7 +293,7 @@ class TestComponentLifecycle:
         assert embedder.client is None
 
         await embedder.close_async()
-        async_cls.return_value.close.assert_awaited_once()
+        async_client.close.assert_awaited_once()
         assert embedder.async_client is None
 
     async def test_close_is_safe_without_warm_up(self, mock_openai_clients):
