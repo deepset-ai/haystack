@@ -1,0 +1,9 @@
+---
+fixes:
+  - |
+    Telemetry initialization no longer crashes the process when the telemetry config directory cannot be
+    created. In hardened or containerized environments that run as a non-root user with a read-only or
+    non-writable ``HOME``, creating ``~/.haystack`` raised ``PermissionError`` at import time and took down
+    the whole application. Creating the config directory is now wrapped in the same error handling as writing
+    the config file, so telemetry silently disables itself for that run instead of raising. Telemetry remains
+    enabled by default wherever the config can be written.

@@ -86,14 +86,16 @@ class Telemetry:
                 "[documentation page](https://docs.haystack.deepset.ai/docs/telemetry#how-can-i-opt-out). "
                 "More information at [Telemetry](https://docs.haystack.deepset.ai/docs/telemetry)."
             )
-            CONFIG_PATH.parents[0].mkdir(parents=True, exist_ok=True)
             self.user_id = str(uuid.uuid4())
             try:
+                CONFIG_PATH.parents[0].mkdir(parents=True, exist_ok=True)
                 with open(CONFIG_PATH, "w") as outfile:
                     yaml.dump({"user_id": self.user_id}, outfile, default_flow_style=False)
             except Exception as e:
                 logger.debug(
-                    "Telemetry could not write config file to {config_path}", config_path=CONFIG_PATH, exc_info=e
+                    "Telemetry could not create or write the config file {config_path}",
+                    config_path=CONFIG_PATH,
+                    exc_info=e,
                 )
 
         self.event_properties = collect_system_specs()

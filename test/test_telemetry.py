@@ -8,7 +8,7 @@ from unittest.mock import Mock, patch
 
 from haystack import Pipeline, component
 from haystack.core.serialization import generate_qualified_class_name
-from haystack.telemetry._telemetry import pipeline_running, tutorial_running
+from haystack.telemetry._telemetry import Telemetry, pipeline_running, tutorial_running
 from haystack.utils.auth import Secret, TokenSecret
 
 
@@ -151,3 +151,26 @@ def test_send_telemetry_preserves_function_metadata():
 
     # ``functools.wraps`` also exposes the undecorated function through ``__wrapped__``.
     assert pipeline_running.__wrapped__.__name__ == "pipeline_running"
+
+
+def test_telemetry_init_does_not_crash_when_config_dir_is_not_writable(tmp_path, caplog):
+    """
+    Regression test: Telemetry init must not raise when the config directory cannot be created.
+
+    In hardened or containerized environments running as a non-root user with a read-only or
+    non-writable ``HOME``, creating ``~/.haystack`` raises ``PermissionError``. This must degrade
+    gracefully (telemetry disabled for the run) instead of crashing the process at import time.
+    """
+    config_path = tmp_path / "does-not-exist" / "config.yaml"
+    with (
+        patch("haystack.telemetry._telemetry.CONFIG_PATH", config_path),
+        patch("pathlib.Path.mkdir", side_effect=PermissionError("Read-only file system")),
+        caplog.at_level(logging.DEBUG),
+    ):
+        telemetry = Telemetry()  # must not raise
+
+    # A user id is still generated so the rest of the telemetry code can rely on it,
+    # and no config file was written to the unwritable location.
+    assert isinstance(telemetry.user_id, str) and telemetry.user_id
+    assert not config_path.exists()
+    assert "Telemetry could not create or write the config file" in caplog.text
