@@ -19,7 +19,7 @@
 | haystack/components/caching/\_\_init\_\_.py                               |        5 |        0 |    100% |           |
 | haystack/components/caching/cache\_checker.py                             |       37 |        0 |    100% |           |
 | haystack/components/converters/\_\_init\_\_.py                            |        5 |        0 |    100% |           |
-| haystack/components/converters/csv.py                                     |       88 |        4 |     95% |161-162, 184-185 |
+| haystack/components/converters/csv.py                                     |       88 |        4 |     95% |161-162, 189-190 |
 | haystack/components/converters/docx.py                                    |      159 |        1 |     99% |       262 |
 | haystack/components/converters/file\_to\_file\_content.py                 |       32 |        0 |    100% |           |
 | haystack/components/converters/html.py                                    |       50 |        0 |    100% |           |
