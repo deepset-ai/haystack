@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    `request_with_retry` and `async_request_with_retry` now honor a custom `timeout` on every
+    retry attempt. Previously the `timeout` was consumed on the first attempt and any subsequent
+    retry silently fell back to the default of 10 seconds.
