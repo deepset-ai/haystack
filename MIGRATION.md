@@ -73,26 +73,6 @@ from haystack.dataclasses import Document
 doc = Document(content="col\n1\n2\n3")
 ```
 
-### `GeneratedAnswer` and `ExtractedAnswer` serialization format
-
-**What changed:** `GeneratedAnswer.to_dict()` and `ExtractedAnswer.to_dict()` now return a flat dictionary of the object's fields instead of wrapping them in a `{"type": ..., "init_parameters": {...}}` envelope. `from_dict()` still accepts the old wrapped format, so existing serialized artifacts keep loading.
-
-**Why:** Aligns these dataclasses with how every other Haystack dataclass (`Document`, `ChatMessage`, etc.) serializes, and removes redundant type metadata from pipeline snapshots and `State` objects.
-
-**How to migrate:** Update any code that reads the serialized output to access fields at the top level instead of under `init_parameters`. See [#11805](https://github.com/deepset-ai/haystack/pull/11805).
-
-Before (v2.x):
-```python
-serialized = generated_answer.to_dict()
-data = serialized["init_parameters"]["data"]
-```
-
-After (v3.0):
-```python
-serialized = generated_answer.to_dict()
-data = serialized["data"]
-```
-
 ### Components Moved to External Packages
 
 **What changed:** Some components have been moved out of Haystack into dedicated integration packages,
@@ -846,7 +826,7 @@ Patterns are matched as prefixes by default (`"mypkg"` matches `mypkg` and any s
 
 **What changed:** `OpenAIGenerator`, `AzureOpenAIGenerator`, `HuggingFaceAPIGenerator`, and `HuggingFaceLocalGenerator` have been removed.
 Generators living in Haystack Core Integrations will also be removed soon.
-Their chat counterparts (`OpenAIChatGenerator`, `AzureOpenAIChatGenerator`, `HuggingFaceAPIChatGenerator`, `HuggingFaceLocalChatGenerator`) are the replacement. As of Haystack 3.0, all ChatGenerators also accept a plain `str` as input, so the migration rarely requires structural changes.
+Their chat counterparts are the replacement: `OpenAIChatGenerator` and `AzureOpenAIChatGenerator` in Haystack core, `HuggingFaceAPIChatGenerator` in the `huggingface-api-haystack` integration, and `TransformersChatGenerator` (the renamed `HuggingFaceLocalChatGenerator`) in the `transformers-haystack` integration (see [Components Moved to External Packages](#components-moved-to-external-packages)). As of Haystack 3.0, all ChatGenerators also accept a plain `str` as input, so the migration rarely requires structural changes.
 
 **Why:** Over time, Generators became shallow wrappers over the ChatGenerators, converting `str → ChatMessage → str` around the exact same model calls. All new features (tool calling, structured outputs, etc.) were introduced only in ChatGenerators, leaving the legacy classes behind. They were also a source of confusion for newcomers and an unnecessary duplication of code and tests.
 
