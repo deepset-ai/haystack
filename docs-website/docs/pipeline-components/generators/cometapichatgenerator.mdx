@@ -271,7 +271,7 @@ With tool calling:
 
 ```python
 from haystack import Pipeline
-from haystack.components.tools import ToolInvoker
+from haystack.components.agents import Agent
 from haystack.dataclasses import ChatMessage
 from haystack.tools import Tool
 from haystack_integrations.components.generators.cometapi import CometAPIChatGenerator
@@ -288,20 +288,19 @@ tool = Tool(
 )
 
 pipeline = Pipeline()
-pipeline.add_component("generator", CometAPIChatGenerator(tools=[tool]))
-pipeline.add_component("tool_invoker", ToolInvoker(tools=[tool]))
-
-pipeline.connect("generator", "tool_invoker")
+pipeline.add_component(
+    "agent",
+    Agent(chat_generator=CometAPIChatGenerator(), tools=[tool]),
+)
 
 results = pipeline.run(
     data={
-        "generator": {
+        "agent": {
             "messages": [ChatMessage.from_user("What's the weather like in Paris?")],
-            "generation_kwargs": {"tool_choice": "auto"},
         }
     }
 )
 
-print(results["tool_invoker"]["tool_messages"][0].tool_call_result.result)
->> The weather in Paris is sunny and 32°C
+print(results["agent"]["last_message"].text)
+>> The weather in Paris is sunny and 32°C.
 ```

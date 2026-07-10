@@ -19,10 +19,7 @@ Working on this level with Haystack components is a hands-on approach. Component
 
 #### Generators
 
-[Generators](../pipeline-components/generators.mdx) are responsible for generating text responses after you give them a prompt. They are specific for each LLM technology (OpenAI, Cohere, local models, and others). There are two types of Generators: chat and non-chat:
-
-- The chat ones enable chat completion and are designed for conversational contexts. It expects a list of messages to interact with the user.
-- The non-chat Generators use LLMs for simpler text generation (for example, translating or summarizing text).
+[Generators](../pipeline-components/generators.mdx) are responsible for generating text responses after you give them a prompt. They are specific for each LLM technology (OpenAI, Cohere, local models, and others). Haystack core ships ChatGenerators: they enable chat completion and are designed for conversational contexts, expecting a list of Chat Messages to interact with the user. For simpler text generation (for example, translating or summarizing text), they also accept a plain string prompt. The legacy non-chat Generators were removed from Haystack core in 3.0, although some integrations still provide them.
 
 Read more about various Generators in our [guides](../pipeline-components/generators/guides-to-generators/choosing-the-right-generator.mdx).
 

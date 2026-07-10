@@ -20,7 +20,7 @@ Function calling is useful for a variety of purposes, but two main points are pa
 
 :::note[Important Note]
 
-The model doesn't actually call the function. Function calling returns the name of a function and the arguments to invoke it. The actual invocation is performed by your code (or by a Haystack component such as `ToolInvoker` or `Agent`).
+The model doesn't actually call the function. Function calling returns the name of a function and the arguments to invoke it. The actual invocation is performed by your code (or by a Haystack component such as `Agent`).
 :::
 
 ## Example
@@ -74,15 +74,16 @@ At this point the model has only *requested* a call. Nothing has been executed y
 
 ### 3. Actually Invoke the Tool
 
-To execute the requested tool calls, use the [`ToolInvoker`](../../tools/toolinvoker.mdx) component. It takes a list of [`ChatMessage`](../../../concepts/data-classes/chatmessage.mdx) objects containing tool calls, runs the corresponding tools, and returns new `ChatMessage` objects (with role `tool`) carrying the results as `ToolCallResult`s. To get a final natural-language answer, feed those results back to the ChatGenerator.
+To execute the requested tool calls, call `Tool.invoke` with the arguments the model prepared, then wrap each result in a [`ChatMessage`](../../../concepts/data-classes/chatmessage.mdx) with role `tool` using `ChatMessage.from_tool`. To get a final natural-language answer, feed those results back to the ChatGenerator.
 
 ```python
-from haystack.components.tools import ToolInvoker
-
-invoker = ToolInvoker(tools=[get_weather])
-
 # Run the tools requested by the assistant.
-tool_messages = invoker.run(messages=response["replies"])["tool_messages"]
+tool_messages = []
+for tool_call in response["replies"][0].tool_calls:
+    result = get_weather.invoke(**tool_call.arguments)
+    tool_messages.append(
+        ChatMessage.from_tool(tool_result=str(result), origin=tool_call),
+    )
 
 # Send the full conversation back to the model for the final reply.
 messages = [
@@ -97,7 +98,7 @@ print(final["replies"][0].text)
 
 #### Using the Agent component
 
-In real applications, you typically don't manage the loop yourself: the [`Agent`](../../agents-1/agent.mdx) component does it for you. Internally, it wraps a ChatGenerator and a `ToolInvoker` and iterates until the model produces a final answer.
+In real applications, you typically don't manage the loop yourself: the [`Agent`](../../agents-1/agent.mdx) component does it for you. Internally, it wraps a ChatGenerator with built-in tool execution and iterates until the model produces a final answer.
 
 ```python
 from haystack.components.agents import Agent

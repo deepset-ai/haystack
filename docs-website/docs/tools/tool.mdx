@@ -21,7 +21,7 @@ If you are looking for the details of this data class's methods and parameters, 
 
 A tool is a function for which Language Models can prepare a call.
 
-The `Tool` class is used in Chat Generators and provides a consistent experience across models. `Tool` is also used in the [`ToolInvoker`](../pipeline-components/tools/toolinvoker.mdx) component that executes calls prepared by Language Models.
+The `Tool` class is used in Chat Generators and provides a consistent experience across models. `Tool` is also used by the [`Agent`](../pipeline-components/agents-1/agent.mdx) component, which executes the calls prepared by Language Models.
 
 ```python
 @dataclass
@@ -326,7 +326,7 @@ How the two fields interact:
 ## Toolset
 
 A Toolset groups multiple Tool instances into a single manageable unit.
-It simplifies the passing of tools to components like Chat Generators or `ToolInvoker`, and supports filtering, serialization, and reuse.
+It simplifies the passing of tools to components like Chat Generators or the `Agent`, and supports filtering, serialization, and reuse.
 
 ```python
 from haystack.tools import Toolset
@@ -341,12 +341,12 @@ See more details and examples on the [Toolset documentation page](toolset.mdx).
 To better understand this section, make sure you are also familiar with Haystack’s [`ChatMessage`](../concepts/data-classes/chatmessage.mdx) data class.
 
 :::tip
-The recommended way to use tools in Haystack is through the [`Agent`](../pipeline-components/agents-1/agent.mdx) component, which manages the full tool call loop automatically. The sections below also show how to wire `ChatGenerator` and `ToolInvoker` together manually for cases where you need fine-grained control over the loop.
+The recommended way to use tools in Haystack is through the [`Agent`](../pipeline-components/agents-1/agent.mdx) component, which manages the full tool call loop automatically. The sections below also show how to drive tool calls manually with a `ChatGenerator` for cases where you need fine-grained control over the loop.
 :::
 
 ### Passing Tools to Agent
 
-The [`Agent`](../pipeline-components/agents-1/agent.mdx) component is the easiest way to use tools. It internally combines a Chat Generator and a `ToolInvoker`, runs the tool call loop for you, and exposes the final response and any state written by tools.
+The [`Agent`](../pipeline-components/agents-1/agent.mdx) component is the easiest way to use tools. It combines a Chat Generator with built-in tool execution, runs the tool call loop for you, and exposes the final response and any state written by tools.
 
 ```python
 from typing import Annotated
@@ -379,10 +379,10 @@ print(response["messages"])
 print("Calc Result:", response.get("calc_result"))
 ```
 
-### Manual Tool Calling with ChatGenerator and ToolInvoker
+### Manual Tool Calling with a Chat Generator
 
 :::note
-The following sections show the lower-level approach of driving tool calls yourself with `ChatGenerator` and `ToolInvoker`. This is useful when you need precise control over the loop — for example, to add custom logic between steps — but for most use cases the `Agent` component above is simpler.
+The following sections show the lower-level approach of driving tool calls yourself with a `ChatGenerator` and `Tool.invoke`. This is useful when you need precise control over the loop — for example, to add custom logic between steps — but for most use cases the `Agent` component above is simpler.
 :::
 
 #### Passing Tools to a Chat Generator
@@ -442,8 +442,7 @@ print(res_w_tool_call)
 
 #### Executing Tool Calls
 
-To execute prepared tool calls, you can use the [`ToolInvoker`](../pipeline-components/tools/toolinvoker.mdx) component.
-This component acts as the execution engine for tools, processing the calls prepared by the Language Model.
+The Language Model only prepares the tool call — it does not execute it. When driving the loop yourself, you execute the prepared calls with `Tool.invoke` and wrap each result in a tool `ChatMessage` using `ChatMessage.from_tool`. (When you use the `Agent` component, it does this for you.)
 
 Here’s an example:
 
@@ -451,7 +450,7 @@ Here’s an example:
 import random
 from typing import Annotated
 from haystack.components.generators.chat import OpenAIChatGenerator
-from haystack.components.tools import ToolInvoker
+from haystack.dataclasses import ChatMessage
 from haystack.tools import tool
 
 
@@ -467,18 +466,19 @@ def weather(location: Annotated[str, "the city to get weather for"]) -> dict:
 # Initialize the Chat Generator with the weather tool
 chat_generator = OpenAIChatGenerator(model="gpt-5.4-nano", tools=[weather])
 
-# Initialize the Tool Invoker with the weather tool
-tool_invoker = ToolInvoker(tools=[weather])
-
 user_message = ChatMessage.from_user("What is the weather in Berlin?")
 
 replies = chat_generator.run(messages=[user_message])["replies"]
 print(f"assistant messages: {replies}")
 
-# If the assistant message contains a tool call, run the tool invoker
-if replies[0].tool_calls:
-    tool_messages = tool_invoker.run(messages=replies)["tool_messages"]
-    print(f"tool messages: {tool_messages}")
+# If the assistant message contains tool calls, execute them and build tool messages
+tool_messages = []
+for tool_call in replies[0].tool_calls:
+    result = weather.invoke(**tool_call.arguments)
+    tool_messages.append(
+        ChatMessage.from_tool(tool_result=str(result), origin=tool_call),
+    )
+print(f"tool messages: {tool_messages}")
 ```
 
 ```
@@ -501,10 +501,10 @@ In some cases, the raw output from a tool may not be immediately suitable for th
 
 You can refine the tool’s response by passing it back to the Chat Generator. This generates a user-friendly and conversational message.
 
-Building on the [previous example](#executing-tool-calls), we extend the `if` block to send all messages back to the Chat Generator:
+Building on the [previous example](#executing-tool-calls), we send all messages back to the Chat Generator:
 
 ```python
-# ... same setup as above (weather tool, chat_generator, tool_invoker)
+# ... same setup as above (weather tool, chat_generator)
 
 user_message = ChatMessage.from_user("What is the weather in Berlin?")
 
@@ -512,7 +512,12 @@ replies = chat_generator.run(messages=[user_message])["replies"]
 print(f"assistant messages: {replies}")
 
 if replies[0].tool_calls:
-    tool_messages = tool_invoker.run(messages=replies)["tool_messages"]
+    tool_messages = []
+    for tool_call in replies[0].tool_calls:
+        result = weather.invoke(**tool_call.arguments)
+        tool_messages.append(
+            ChatMessage.from_tool(tool_result=str(result), origin=tool_call),
+        )
     print(f"tool messages: {tool_messages}")
     # pass all messages back to the Chat Generator for a final natural-language response
     messages = [user_message] + replies + tool_messages

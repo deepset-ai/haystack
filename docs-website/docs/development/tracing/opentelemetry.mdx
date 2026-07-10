@@ -28,8 +28,8 @@ Learn how to trace your Haystack pipelines with OpenTelemetry.
 
 [OpenTelemetry](https://opentelemetry.io/) is an open-source observability framework for collecting traces, metrics, and logs. Haystack integrates with OpenTelemetry, so you can send traces of your pipeline runs to any OpenTelemetry-compatible backend.
 
-:::info[Moving to an integration]
-`OpenTelemetryTracer` is deprecated in Haystack core and is moving to the `opentelemetry-haystack` package. Starting with Haystack 3.0, OpenTelemetry tracing is no longer auto-enabled when `opentelemetry-sdk` is installed. Install the integration and either enable the `OpenTelemetryTracer` directly or add the `OpenTelemetryConnector` component to your pipeline.
+:::info[Provided by an integration]
+`OpenTelemetryTracer` lives in the `opentelemetry-haystack` package and is not part of Haystack core. Since Haystack 3.0, OpenTelemetry tracing is no longer auto-enabled when `opentelemetry-sdk` is installed. Install the integration and either enable the `OpenTelemetryTracer` directly or add the `OpenTelemetryConnector` component to your pipeline.
 :::
 
 ## Installation

@@ -180,43 +180,46 @@ def get_current_weather(
 tool = create_tool_from_function(get_current_weather)
 ```
 
-Create a new instance of `GoogleGenAIChatGenerator` to set the tools and a [ToolInvoker](https://www.notion.so/docs/toolinvoker) to invoke the tools.
+Create a new instance of `GoogleGenAIChatGenerator` to set the tools:
 
 ```python
 import os
 from haystack_integrations.components.generators.google_genai import (
     GoogleGenAIChatGenerator,
 )
-from haystack.components.tools import ToolInvoker
 
 os.environ["GOOGLE_API_KEY"] = "<MY_API_KEY>"
 
 genai_chat = GoogleGenAIChatGenerator(tools=[tool])
-
-tool_invoker = ToolInvoker(tools=[tool])
 ```
 
-And then ask a question:
+And then ask a question. The model prepares the tool call, your code executes it with `Tool.invoke`, and the results go back to the model for the final answer:
 
 ```python
 from haystack.dataclasses import ChatMessage
 
 messages = [ChatMessage.from_user("What is the temperature in celsius in Berlin?")]
-res = genai_chat.run(messages=messages)
+replies = genai_chat.run(messages=messages)["replies"]
 
-print(res["replies"][0].tool_calls)
+print(replies[0].tool_calls)
 >>> [ToolCall(tool_name='get_current_weather',
 >>>           arguments={'unit': 'celsius', 'location': 'Berlin'}, id=None)]
 
-tool_messages = tool_invoker.run(messages=replies)["tool_messages"]
-messages = user_message + replies + tool_messages
+tool_messages = []
+for tool_call in replies[0].tool_calls:
+    result = tool.invoke(**tool_call.arguments)
+    tool_messages.append(ChatMessage.from_tool(tool_result=result, origin=tool_call))
 
-messages += res["replies"][0] + [ChatMessage.from_function(content=weather, name="get_current_weather")]
+messages = messages + replies + tool_messages
 
 final_replies = genai_chat.run(messages=messages)["replies"]
 print(final_replies[0].text)
 >>> The temperature in Berlin is 20 degrees Celsius.
 ```
+
+:::tip
+For a component that manages the full tool call loop for you, use the [`Agent`](../agents-1/agent.mdx).
+:::
 
 #### With Streaming
 

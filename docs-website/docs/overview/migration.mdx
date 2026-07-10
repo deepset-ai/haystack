@@ -115,7 +115,7 @@ The first step when migrating a pipeline with a `PromptNode` is to identify the 
 - A Generator component for the model provider of choice,
 - A `PromptBuilder` or `ChatPromptBuilder` component to build the prompt to be used.
 
-The [_Migration examples_](#migration-examples) section below shows how to port a `PromptNode` using OpenAI with a prompt template to a corresponding Haystack 2.x pipeline using the `OpenAIGenerator` in conjunction with a `PromptBuilder` component.
+The [_Migration examples_](#migration-examples) section below shows how to port a `PromptNode` using OpenAI with a prompt template to a corresponding pipeline using the `OpenAIChatGenerator` in conjunction with a `PromptBuilder` component.
 
 ### Agents
 
@@ -123,7 +123,7 @@ The agentic approach facilitates the answering of questions that are significant
 
 Haystack 1.x provided Agents, enabling the use of LLMs in a loop.
 
-Currently in Haystack 2.x, you can build Agents using three main elements in a pipeline: Chat Generators, ToolInvoker component, and Tools. A standalone Agent abstraction in Haystack 2.x is in an experimental phase.
+In current versions of Haystack, you build Agents with the standalone [`Agent`](../pipeline-components/agents-1/agent.mdx) component, which combines a Chat Generator with Tools and runs the tool-calling loop for you.
 
 :::note[Agents Documentation Page]
 
@@ -448,7 +448,7 @@ from datasets import load_dataset
 from haystack import Document, Pipeline
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.components.builders import PromptBuilder
-from haystack.components.generators import OpenAIGenerator
+from haystack.components.generators.chat import OpenAIChatGenerator
 from haystack.components.embedders import SentenceTransformersDocumentEmbedder
 from haystack.components.embedders import SentenceTransformersTextEmbedder
 from haystack.components.retrievers import InMemoryEmbeddingRetriever
@@ -476,7 +476,7 @@ Answer:
 prompt_builder = PromptBuilder(template=template)
 
 retriever = InMemoryEmbeddingRetriever(document_store=document_store, top_k=2)
-generator = OpenAIGenerator(model="gpt-3.5-turbo")
+generator = OpenAIChatGenerator(model="gpt-4o-mini")
 query_embedder = SentenceTransformersTextEmbedder(
     model="sentence-transformers/all-MiniLM-L6-v2",
 )
@@ -489,12 +489,13 @@ basic_rag_pipeline.add_component("llm", generator)
 
 basic_rag_pipeline.connect("text_embedder.embedding", "retriever.query_embedding")
 basic_rag_pipeline.connect("retriever", "prompt_builder.documents")
-basic_rag_pipeline.connect("prompt_builder", "llm")
+basic_rag_pipeline.connect("prompt_builder.prompt", "llm.messages")
 
 query = "What does Rhodes Statue look like?"
 output = basic_rag_pipeline.run(
     {"text_embedder": {"text": query}, "prompt_builder": {"question": query}},
 )
+print(output["llm"]["replies"][0].text)
 ```
 
 </details>

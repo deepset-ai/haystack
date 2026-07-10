@@ -74,7 +74,24 @@ Here’s what the resulting log would look like when a pipeline is run:
 
 Haystack leverages the [structlog library](https://www.structlog.org/en/stable/) to provide structured key-value logs. This provides additional metadata with each log message and is especially useful if you archive your logs with tools like [ELK](https://www.elastic.co/de/elastic-stack), [Grafana](https://grafana.com/oss/agent/?plcmt=footer), or [Datadog](https://www.datadoghq.com/).
 
-If Haystack detects a [structlog installation](https://www.structlog.org/en/stable/) on your system, it will automatically switch to structlog for logging.
+If Haystack detects a [structlog installation](https://www.structlog.org/en/stable/) on your system, it installs a structlog-based formatting handler on import - but only for Haystack's own logger namespaces (`haystack`, `haystack_integrations`, and `haystack_experimental`). The root logger and the process-global structlog configuration are left untouched, so importing Haystack does not change how your application or other libraries log.
+
+### Scoping and Duplicate Log Lines
+
+You can adjust this behavior with an explicit `configure_logging` call:
+
+- `configure_logging(logger_name="")` attaches the formatting handler to the root logger instead, restoring the legacy behavior of formatting every log record in the process.
+- `configure_logging(propagate=False)` stops Haystack's log records from propagating to ancestor loggers. Use this to avoid duplicate log lines when your application also configures a handler on the root logger.
+
+```python
+from haystack.logging import configure_logging
+
+# Format all log records in the process (legacy behavior)
+configure_logging(logger_name="")
+
+# Avoid duplicate log lines when the host app configures the root logger
+configure_logging(propagate=False)
+```
 
 ### Console Rendering
 
@@ -102,4 +119,4 @@ We recommend JSON logging when deploying Haystack to production. Haystack will a
 
 ### Disabling Structured Logging
 
-To disable structured logging despite an existing installation of structlog, set the environment variable `HAYSTACK_LOGGING_IGNORE_STRUCTLOG_ENV_VAR` to `true` when running Haystack.
+To disable structured logging despite an existing installation of structlog, set the environment variable `HAYSTACK_LOGGING_IGNORE_STRUCTLOG` to `true` when running Haystack.

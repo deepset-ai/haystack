@@ -91,14 +91,14 @@ print(response["messages"][-1].text)
 
 ### In a Pipeline
 
-You can also wire `ComponentTool` into a pipeline manually with `ChatGenerator` and `ToolInvoker` for full control over the tool call loop.
+You can also use `ComponentTool` in a pipeline by passing it to an `Agent` component.
 
 ```python
 from haystack import Pipeline
 from haystack.tools import ComponentTool
 from haystack_integrations.components.websearch.serperdev import SerperDevWebSearch
 from haystack.utils import Secret
-from haystack.components.tools.tool_invoker import ToolInvoker
+from haystack.components.agents import Agent
 from haystack.components.generators.chat import OpenAIChatGenerator
 from haystack.dataclasses import ChatMessage
 
@@ -113,17 +113,18 @@ tool = ComponentTool(
 )
 
 pipeline = Pipeline()
-pipeline.add_component("llm", OpenAIChatGenerator(model="gpt-5.4-nano", tools=[tool]))
-pipeline.add_component("tool_invoker", ToolInvoker(tools=[tool]))
-pipeline.connect("llm.replies", "tool_invoker.messages")
+pipeline.add_component(
+    "agent",
+    Agent(chat_generator=OpenAIChatGenerator(model="gpt-5.4-nano"), tools=[tool]),
+)
 
 message = ChatMessage.from_user(
     "Use the web search tool to find information about Nikola Tesla",
 )
 
-result = pipeline.run({"llm": {"messages": [message]}})
+result = pipeline.run({"agent": {"messages": [message]}})
 
-print(result)
+print(result["agent"]["last_message"].text)
 ```
 
 ## Additional References
