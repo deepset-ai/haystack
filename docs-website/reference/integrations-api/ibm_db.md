@@ -1,7 +1,7 @@
 ---
-title: "Ibm Db"
+title: "IBM Db2"
 id: integrations-ibm-db
-description: "Ibm Db integration for Haystack"
+description: "IBM Db2 integration for Haystack"
 slug: "/integrations-ibm-db"
 ---
 
@@ -99,13 +99,13 @@ Deserializes the component from a dictionary.
 
 ## haystack_integrations.document_stores.ibm_db.document_store
 
-IBM DB2 Document Store for Haystack.
+IBM Db2 Document Store for Haystack.
 
 ### IBMDb2DocumentStore
 
-IBM DB2 Document Store for Haystack using vector search capabilities.
+IBM Db2 Document Store for Haystack using vector search capabilities.
 
-This document store uses IBM DB2's native vector search functionality
+This document store uses IBM Db2's native vector search functionality
 to store and retrieve documents with embeddings.
 
 #### __init__
@@ -130,7 +130,7 @@ __init__(
 )
 ```
 
-Initialize the IBM DB2 Document Store.
+Initialize the IBM Db2 Document Store.
 
 **Parameters:**
 
