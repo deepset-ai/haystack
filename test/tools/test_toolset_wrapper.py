@@ -107,6 +107,16 @@ class TestToolsetWrapper:
         assert add_tool in result
         assert multiply_tool in result
 
+    def test_wrapper_supports_negative_indexing(self, add_tool, multiply_tool):
+        """A combined Toolset must index like a list, including negative indices.
+
+        See issue #11759: _ToolsetWrapper.__getitem__ only scanned forward and raised
+        IndexError for negative indices, unlike a plain Toolset.
+        """
+        result = Toolset([add_tool]) + Toolset([multiply_tool])
+        assert result[-1].name == multiply_tool.name
+        assert result[-2].name == add_tool.name
+
     def test_wrapper_with_agent(self, add_tool, multiply_tool, monkeypatch):
         """Test that _ToolsetWrapper works with Agent."""
         monkeypatch.setenv("OPENAI_API_KEY", "test")

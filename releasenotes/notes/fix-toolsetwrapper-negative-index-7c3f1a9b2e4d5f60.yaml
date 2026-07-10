@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    ``_ToolsetWrapper.__getitem__`` now supports negative indices, so a combined ``Toolset``
+    (created via ``+``) indexes like a list. For example, ``combined[-1]`` returns the last tool,
+    matching the behavior of a plain ``Toolset``.

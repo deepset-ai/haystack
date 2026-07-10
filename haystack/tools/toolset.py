@@ -427,6 +427,8 @@ class _ToolsetWrapper(Toolset):
 
     def __getitem__(self, index: int) -> Tool:
         """Get a tool by index across all toolsets."""
+        if index < 0:
+            index += len(self)
         # Leverage iteration instead of manual index tracking
         for i, tool in enumerate(self):
             if i == index:
