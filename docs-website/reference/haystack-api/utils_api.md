@@ -679,14 +679,6 @@ Create a component device representation from a JSON-serialized dictionary.
 
 ## filters
 
-### raise_on_invalid_filter_syntax
-
-```python
-raise_on_invalid_filter_syntax(filters: dict[str, Any] | None = None) -> None
-```
-
-Raise an error if the filter syntax is invalid.
-
 ### document_matches_filter
 
 ```python
