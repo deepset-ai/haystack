@@ -2,14 +2,16 @@
 title: "Function Calling"
 id: function-calling
 slug: "/function-calling"
-description: "Learn about function calling and how to use it in Haystack."
+description: "Learn how function calling works in Haystack and what happens under the hood when an Agent runs tools."
 ---
 
 # Function Calling
 
-Learn about function calling and how to use it in Haystack.
+Learn how function calling works in Haystack and what happens under the hood when an [`Agent`](../../agents-1/agent.mdx) runs tools.
 
 Function calling is a powerful feature that significantly enhances the capabilities of Large Language Models (LLMs). It enables better functionality, immediate data access, and interaction, and sets up for integration with external APIs and services. Function calling turns LLMs into adaptable tools for various use case scenarios.
+
+In practice, you rarely drive this loop yourself: the `Agent` component manages it for you. This page walks through the individual steps of a tool call so you can understand what the `Agent` automates — useful for debugging agents or building a custom loop when you need fine-grained control.
 
 ## Use Cases
 
@@ -25,11 +27,11 @@ The model doesn't actually call the function. Function calling returns the name 
 
 ## Example
 
-Let's walk through function calling in Haystack in three steps: define a tool, let the LLM pick it, and then actually invoke it.
+Let's walk through the three steps the `Agent` performs on every tool call: define a tool, let the LLM pick it, and then actually invoke it.
 
 :::tip[Real-world usage]
 
-We split function calling into separate steps below for clarity. In real applications, the [`Agent`](../../agents-1/agent.mdx) component handles the full loop for you. See [Using the Agent component](#using-the-agent-component) at the end of this section.
+We split function calling into separate steps below to show what happens under the hood. In real applications, the [`Agent`](../../agents-1/agent.mdx) component handles the full loop for you. See [Using the Agent component](#using-the-agent-component) at the end of this section.
 :::
 
 ### 1. Define a Tool

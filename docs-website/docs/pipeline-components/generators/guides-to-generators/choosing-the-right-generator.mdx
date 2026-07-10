@@ -9,19 +9,8 @@ description: "This page provides information on choosing the right ChatGenerator
 
 This page provides information on choosing the right ChatGenerator for interacting with Generative Language Models in Haystack. It discusses using proprietary and open models from various providers and explores options for using open models on-premise.
 
-In Haystack, ChatGenerators are the main interface for interacting with Generative Language Models.
+In Haystack, ChatGenerators are the main interface for interacting with Generative Language Models. They accept either a plain prompt string or a list of [Chat Messages](../../../concepts/data-classes/chatmessage.mdx), return Chat Messages in “replies”, and support Function Calling and Multimodal inputs.
 This guide aims to simplify the process of choosing the right ChatGenerator based on your preferences and computing resources. This guide does not focus on selecting a specific model itself but rather a model type and a Haystack ChatGenerator: as you will see, in several cases, you have different options to use the same model.
-
-## Generators vs ChatGenerators
-
-In earlier versions, Haystack shipped two flavors of Generators: plain Generators (such as `OpenAIGenerator`), which took a prompt string, and ChatGenerators (such as `OpenAIChatGenerator`), which work with the [ChatMessage data class](../../../concepts/data-classes/chatmessage.mdx).
-
-- **ChatGenerators** accept either a plain prompt string or a list of Chat Messages, and return Chat Messages in “replies”. They support Function Calling and Multimodal inputs.
-- Haystack core now ships only ChatGenerators, plus the special-purpose `OpenAIImageGenerator` for image generation. Some integrations still provide non-chat Generators.
-
-:::warning
-The legacy non-chat Generators (`OpenAIGenerator`, `AzureOpenAIGenerator`, `HuggingFaceAPIGenerator`, `HuggingFaceLocalGenerator`) were removed in Haystack 3.0. Use the corresponding ChatGenerators instead — they also accept a plain string prompt, so simple text-in/text-out use cases keep working.
-:::
 
 ## Streaming Support
 

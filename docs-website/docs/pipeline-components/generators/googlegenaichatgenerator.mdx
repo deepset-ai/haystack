@@ -217,9 +217,31 @@ print(final_replies[0].text)
 >>> The temperature in Berlin is 20 degrees Celsius.
 ```
 
-:::tip
-For a component that manages the full tool call loop for you, use the [`Agent`](../agents-1/agent.mdx).
-:::
+#### With an Agent
+
+Instead of driving the tool call loop yourself, pass the generator and your tools to an [`Agent`](../agents-1/agent.mdx). It lets the model prepare tool calls, executes them, and feeds the results back until a final answer is ready:
+
+```python
+import os
+from haystack.components.agents import Agent
+from haystack.dataclasses import ChatMessage
+from haystack_integrations.components.generators.google_genai import (
+    GoogleGenAIChatGenerator,
+)
+
+os.environ["GOOGLE_API_KEY"] = "<MY_API_KEY>"
+
+agent = Agent(
+    chat_generator=GoogleGenAIChatGenerator(),
+    tools=[tool],
+)
+
+result = agent.run(
+    messages=[ChatMessage.from_user("What is the temperature in celsius in Berlin?")]
+)
+print(result["last_message"].text)
+>>> The temperature in Berlin is 20 degrees Celsius.
+```
 
 #### With Streaming
 

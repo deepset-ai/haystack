@@ -256,10 +256,11 @@ print("Reasoning model:", result["reasoning"]["replies"][0].text)
 print("Simple model:", result["simple"]["replies"][0].text)
 ```
 
-With tool calling:
+### With an Agent
+
+For tool calling, pass the generator and your tools to an [`Agent`](../agents-1/agent.mdx), which manages the full tool call loop:
 
 ```python
-from haystack import Pipeline
 from haystack.components.agents import Agent
 from haystack.dataclasses import ChatMessage
 from haystack.tools import Tool
@@ -276,20 +277,10 @@ tool = Tool(
     function=weather,
 )
 
-pipeline = Pipeline()
-pipeline.add_component(
-    "agent",
-    Agent(chat_generator=AIMLAPIChatGenerator(), tools=[tool]),
-)
+agent = Agent(chat_generator=AIMLAPIChatGenerator(), tools=[tool])
 
-results = pipeline.run(
-    data={
-        "agent": {
-            "messages": [ChatMessage.from_user("What's the weather like in Paris?")],
-        }
-    }
-)
+result = agent.run(messages=[ChatMessage.from_user("What's the weather like in Paris?")])
 
-print(results["agent"]["last_message"].text)
+print(result["last_message"].text)
 >> The weather in Paris is sunny and 32°C.
 ```
