@@ -535,13 +535,40 @@ class TestRun:
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
         chat_messages = [ChatMessage.from_user("What's the capital of France")]
         component = OpenAIResponsesChatGenerator(
-            model="gpt-4",
-            generation_kwargs={"reasoning_effort": "low", "reasoning_summary": "auto", "verbosity": "low"},
+            model="gpt-5.6-luna",
+            generation_kwargs={
+                "reasoning_effort": "low",
+                "reasoning_summary": "auto",
+                "reasoning_mode": "pro",
+                "verbosity": "low",
+            },
         )
         results = component.run(chat_messages)
         assert len(results["replies"]) == 1
-        assert openai_mock_responses.call_args.kwargs["reasoning"] == {"effort": "low", "summary": "auto"}
+        assert openai_mock_responses.call_args.kwargs["reasoning"] == {
+            "effort": "low",
+            "summary": "auto",
+            "mode": "pro",
+        }
         assert openai_mock_responses.call_args.kwargs["text"] == {"verbosity": "low"}
+
+    def test_run_with_reasoning_mode_only(self, openai_mock_responses, monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+        chat_messages = [ChatMessage.from_user("What's the capital of France")]
+        component = OpenAIResponsesChatGenerator(model="gpt-5.6-luna", generation_kwargs={"reasoning_mode": "standard"})
+        results = component.run(chat_messages)
+        assert len(results["replies"]) == 1
+        assert openai_mock_responses.call_args.kwargs["reasoning"] == {"mode": "standard"}
+
+    def test_run_with_reasoning_mode_merges_with_existing_reasoning_dict(self, openai_mock_responses, monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+        chat_messages = [ChatMessage.from_user("What's the capital of France")]
+        component = OpenAIResponsesChatGenerator(
+            model="gpt-5.6-luna", generation_kwargs={"reasoning": {"effort": "high"}, "reasoning_mode": "pro"}
+        )
+        results = component.run(chat_messages)
+        assert len(results["replies"]) == 1
+        assert openai_mock_responses.call_args.kwargs["reasoning"] == {"effort": "high", "mode": "pro"}
 
     def test_run_with_params_streaming(self, openai_mock_responses_stream_text_delta):
         streaming_callback_called = False

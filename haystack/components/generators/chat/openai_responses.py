@@ -160,8 +160,21 @@ class OpenAIResponsesChatGenerator:
                 - `summary`: The summary of the reasoning.
                 - `effort`: The level of effort to put into the reasoning. Can be `low`, `medium` or `high`.
                 - `generate_summary`: Whether to generate a summary of the reasoning.
+                - `mode`: The reasoning mode. Can be `standard`, or `pro`. Supported since GPT-5.6.
                 Note: OpenAI does not return the reasoning tokens, but we can view summary if its enabled.
                 For details, see the [OpenAI Reasoning documentation](https://platform.openai.com/docs/guides/reasoning).
+            - `include`: Specify additional output data to include in the model response. Supported values are:
+                - web_search_call.action.sources: Include the sources of the web search tool call.
+                - code_interpreter_call.outputs: Includes the outputs of python code execution in code interpreter tool
+                    call items.
+                - computer_call_output.output.image_url: Include image urls from the computer call output.
+                - file_search_call.results: Include the search results of the file search tool call.
+                - message.input_image.image_url: Include image urls from the input message.
+                - message.output_text.logprobs: Include logprobs with assistant messages.
+                - reasoning.encrypted_content: Includes an encrypted version of reasoning tokens in reasoning item
+                    outputs. This enables reasoning items to be used in multi-turn conversations when using the
+                    Responses API statelessly (like when the store parameter is set to false, or when an organization
+                    is enrolled in the zero data retention program).
         :param timeout:
             Timeout for OpenAI client calls. If not set, it defaults to either the
             `OPENAI_TIMEOUT` environment variable, or 30 seconds.
@@ -554,6 +567,11 @@ class OpenAIResponsesChatGenerator:
         if reasoning_summary is not None:
             reasoning = generation_kwargs.setdefault("reasoning", {})
             reasoning["summary"] = reasoning_summary
+
+        reasoning_mode = generation_kwargs.pop("reasoning_mode", None)
+        if reasoning_mode is not None:
+            reasoning = generation_kwargs.setdefault("reasoning", {})
+            reasoning["mode"] = reasoning_mode
 
         verbosity = generation_kwargs.pop("verbosity", None)
         if verbosity is not None:

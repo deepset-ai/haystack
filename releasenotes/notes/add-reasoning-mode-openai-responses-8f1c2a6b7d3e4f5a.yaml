@@ -1,0 +1,6 @@
+---
+features:
+  - |
+    Added a ``reasoning_mode`` flattened generation kwarg to ``OpenAIResponsesChatGenerator``, which is merged into the
+    ``reasoning`` dictionary sent to the OpenAI Responses API. This lets you set the reasoning mode (for example
+    ``standard`` or ``pro``, supported since GPT-5.6) without having to construct the nested ``reasoning`` dict yourself.
