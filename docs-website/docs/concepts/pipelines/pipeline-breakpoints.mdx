@@ -15,8 +15,6 @@ Haystack pipelines support breakpoints for debugging complex execution flows. A 
 
 You can set a `Breakpoint` on any component in a pipeline with a specific visit count. When triggered, the system stops the execution of the `Pipeline` and captures a snapshot of the current pipeline state. The state can be saved to a JSON file when snapshot file saving is enabled, see [Snapshot file saving](#snapshot-file-saving) below. You can inspect and modify the snapshot and use it to resume execution from the exact point where it stopped.
 
-Breakpoints inside an Agent, such as on its chat generator or on individual tools, are not supported in Haystack 3.0. To inspect an Agent's behavior, use [tracing](https://docs.haystack.deepset.ai/docs/tracing) instead.
-
 ## Setting a `Breakpoint` on a Regular Component
 
 Create a `Breakpoint` by specifying the component name and the visit count at which to trigger it. This is useful for pipelines with loops. The default `visit_count` value is 0.
