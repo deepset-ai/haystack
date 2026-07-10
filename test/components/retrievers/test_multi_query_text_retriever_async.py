@@ -6,7 +6,7 @@ from typing import Any
 
 import pytest
 
-from haystack import AsyncPipeline, Document, component
+from haystack import Document, Pipeline, component
 from haystack.components.retrievers import InMemoryBM25Retriever, MultiQueryTextRetriever
 from haystack.components.writers import DocumentWriter
 from haystack.document_stores.in_memory import InMemoryDocumentStore
@@ -133,7 +133,7 @@ class TestMultiQueryTextRetrieverAsync:
         multi_retriever = MultiQueryTextRetriever(
             retriever=InMemoryBM25Retriever(document_store=document_store_with_docs)
         )
-        pipeline = AsyncPipeline()
+        pipeline = Pipeline()
         pipeline.add_component("retriever", multi_retriever)
         result = await pipeline.run_async(data={"retriever": {"queries": ["renewable energy", "solar power"]}})
 

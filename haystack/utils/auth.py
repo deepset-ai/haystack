@@ -41,10 +41,10 @@ class Secret(ABC):
 
     Usage example:
     ```python
-    from haystack.components.generators import OpenAIGenerator
+    from haystack.components.generators.chat import OpenAIChatGenerator
     from haystack.utils import Secret
 
-    generator = OpenAIGenerator(api_key=Secret.from_token("<here_goes_your_token>"))
+    generator = OpenAIChatGenerator(api_key=Secret.from_token("<here_goes_your_token>"))
     ```
     """
 
@@ -161,6 +161,10 @@ class TokenSecret(Secret):
         raise ValueError(
             "Cannot deserialize token-based secret. Use an alternative secret type like environment variables."
         )
+
+    def __repr__(self) -> str:
+        # Hide the token so it can't leak through print/log/traceback formatting.
+        return f"TokenSecret(_token=<redacted>, _type={self._type!r})"
 
     def resolve_value(self) -> Any | None:
         """Return the token."""

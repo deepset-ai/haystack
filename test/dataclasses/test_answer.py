@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import warnings
+from copy import deepcopy
 
 import pytest
 
@@ -100,6 +101,30 @@ class TestExtractedAnswer:
         assert answer.document_offset == ExtractedAnswer.Span(42, 44)
         assert answer.context_offset == ExtractedAnswer.Span(14, 16)
         assert answer.meta == {"meta_key": "meta_value"}
+
+    def test_from_dict_does_not_mutate_input(self):
+        data = {
+            "type": "haystack.dataclasses.answer.ExtractedAnswer",
+            "init_parameters": {
+                "data": "42",
+                "query": "What is the answer?",
+                "document": {
+                    "id": "8f800a524b139484fc719ecc35f971a080de87618319bc4836b784d69baca57f",
+                    "content": "I thought a lot about this. The answer is 42.",
+                },
+                "context": "The answer is 42.",
+                "score": 1.0,
+                "document_offset": {"start": 42, "end": 44},
+                "context_offset": {"start": 14, "end": 16},
+                "meta": {"meta_key": "meta_value"},
+            },
+        }
+        snapshot = deepcopy(data)
+        first = ExtractedAnswer.from_dict(data)
+        # from_dict must not mutate its input dictionary
+        assert data == snapshot
+        # deserializing the same dictionary again must still work and be equal
+        assert ExtractedAnswer.from_dict(data) == first
 
     def test_no_warning_on_init(self):
         with warnings.catch_warnings():
@@ -263,6 +288,29 @@ class TestGeneratedAnswer:
         ]
         assert answer.meta["meta_key"] == "meta_value"
         assert answer.meta["all_messages"] == [ChatMessage.from_user("What is the answer?")]
+
+    def test_from_dict_does_not_mutate_input(self):
+        data = {
+            "type": "haystack.dataclasses.answer.GeneratedAnswer",
+            "init_parameters": {
+                "data": "42",
+                "query": "What is the answer?",
+                "documents": [
+                    {"id": "1", "content": "The answer is 42."},
+                    {"id": "2", "content": "I believe the answer is 42."},
+                ],
+                "meta": {
+                    "meta_key": "meta_value",
+                    "all_messages": [ChatMessage.from_user("What is the answer?").to_dict()],
+                },
+            },
+        }
+        snapshot = deepcopy(data)
+        first = GeneratedAnswer.from_dict(data)
+        # from_dict must not mutate its input dictionary
+        assert data == snapshot
+        # deserializing the same dictionary again must still work and be equal
+        assert GeneratedAnswer.from_dict(data) == first
 
     def test_from_dict_with_empty_all_messages(self):
         # An empty `all_messages` list must not crash deserialization: `is not None`

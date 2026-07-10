@@ -1,0 +1,202 @@
+---
+title: "Hooks"
+id: hooks
+slug: "/hooks"
+description: "Hooks let you run custom logic at defined points of an Agent's run loop — before each LLM call, before and after tool execution, and on exit."
+---
+
+# Hooks
+
+Hooks let you run custom logic at defined points of an [`Agent`](./agent.mdx)'s run loop — before each LLM call, before and after tool execution, and on exit.
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Configured on**       | The [`Agent`](./agent.mdx) component via the `hooks` parameter |
+| **Key classes**         | `hook` (decorator), `FunctionHook`, `Hook` (protocol) |
+| **Import path**         | `haystack.hooks` |
+| **API reference**       | [Hooks](/reference/hooks-api) |
+| **GitHub link**         | https://github.com/deepset-ai/haystack/blob/main/haystack/hooks/ |
+| **Package name** | `haystack-ai` |
+
+</div>
+
+## Overview
+
+Pass `hooks` to the `Agent` as a dictionary mapping a *hook point* to a list of hooks the Agent runs at that point. Each hook receives the live [`State`](./state.mdx) and influences the run by mutating it in place. Hooks for a hook point run in list order, and the same hook can be registered under multiple hook points.
+
+This enables patterns such as building run-time system context, retrieving memories before the first LLM call, auditing or intercepting tool calls, and requiring a condition to hold before the Agent is allowed to finish.
+
+### Hook points
+
+- `before_llm`: Runs before each chat-generator call.
+- `before_tool`: Runs after the model requests tool calls, before any tools run. After these hooks run, the Agent re-reads the current last message from `state.data["messages"]`. If that message contains tool calls, those calls are executed. If it does not, no tools run for that step, no tool-based exit condition is triggered, and the Agent loops back to the next LLM call unless `max_agent_steps` has been reached.
+- `after_tool`: Runs after tools execute, once their result messages are in `state.data["messages"]`, before the exit-condition check and the next LLM call. Use it to rewrite the freshly produced tool-result messages — for example, to offload, redact, truncate, or summarize results. It does not run on the plain-text exit step. It does still run when a `before_tool` hook removed the pending tool calls: no tools executed on that step, so don't assume the last message is a fresh tool result.
+- `on_exit`: Runs when the Agent is about to stop on an exit condition. An `on_exit` hook can keep the Agent running by setting the `continue_run` control flag (`state.set("continue_run", True)`), usually alongside a message telling the model what to do next. `on_exit` hooks run when the Agent stops on an exit condition, but not when it stops because `max_agent_steps` is reached.
+
+Registering a hook under an unknown hook point raises a `ValueError` at construction. A hook class can declare an `allowed_hook_points` attribute listing the hook points it supports; the Agent validates it and fails fast if the hook is registered somewhere it doesn't belong.
+
+### State keys for hooks
+
+The Agent manages a few state keys that hooks interact with. Like the run-metadata keys (`step_count`, `token_usage`, `tool_call_counts`), they are reserved — using any of them in your own `state_schema` raises a `ValueError`. See [State](./state.mdx#schema-definition) for the full list:
+
+- `continue_run`: Set by an `on_exit` hook to keep the Agent running.
+- `tools`: The tools available in the current step, for hooks to inspect.
+- `hook_context`: Request-scoped resources passed to `Agent.run(hook_context={...})` / `run_async(hook_context={...})`. Hooks read it with `state.data["hook_context"]` or `state.data.get("hook_context")` — use it for per-request resources such as a user ID, a WebSocket, or a database client. Avoid the plain `state.get("hook_context")` here: `State.get` returns a deep copy of the value, which often fails for the kinds of resources stored in this dict (such as a WebSocket or a database client).
+
+Hooks can also read the automatically tracked run metadata: `step_count`, `token_usage`, and `tool_call_counts`.
+
+## Creating hooks
+
+### With the `@hook` decorator
+
+The `@hook` decorator wraps a function taking a single `State` argument into a hook. A regular function becomes the hook's sync path, a coroutine function its async path. To give a single hook both paths, construct a `FunctionHook` directly with both `function` and `async_function`.
+
+The example below registers a hook at each of `before_llm`, `before_tool`, and `on_exit` to show what hooks can do:
+
+```python
+from datetime import datetime, timezone
+from typing import Annotated
+
+from haystack.components.agents import Agent
+from haystack.components.agents.state import State, replace_values
+from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.dataclasses import ChatMessage
+from haystack.hooks import hook
+from haystack.tools import tool
+
+
+@tool
+def search(query: Annotated[str, "The search query"]) -> str:
+    """Search the web."""
+    # Placeholder: would call a real search API
+    return "Fusion startups reported net-energy-gain milestones this year."
+
+
+@hook
+def build_context(state: State) -> None:
+    # before_llm: build run-time system context once, before the first model call.
+    if state.get("step_count") == 0:
+        now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+        system = ChatMessage.from_system(
+            f"You are a research assistant. The current time is {now}.",
+        )
+        state.set(
+            "messages",
+            [system, *state.data["messages"]],
+            handler_override=replace_values,
+        )
+
+
+@hook
+def audit_tool_calls(state: State) -> None:
+    # before_tool: see which tools the model is about to run.
+    pending = state.data["messages"][-1].tool_calls
+    print(f"about to run: {[tc.tool_name for tc in pending]}")
+
+
+@hook
+def require_search(state: State) -> None:
+    # on_exit: keep going until the agent has actually searched.
+    if state.get("tool_call_counts", {}).get("search", 0) == 0:
+        state.set("messages", [ChatMessage.from_system("Search before answering.")])
+        state.set("continue_run", True)
+
+
+agent = Agent(
+    chat_generator=OpenAIChatGenerator(model="gpt-5.4-nano"),
+    tools=[search],
+    hooks={
+        "before_llm": [build_context],
+        "before_tool": [audit_tool_calls],
+        "on_exit": [require_search],
+    },
+)
+
+result = agent.run(
+    messages=[
+        ChatMessage.from_user("What are the latest developments in fusion energy?"),
+    ],
+)
+print(result["last_message"].text)
+```
+
+### Class-based hooks
+
+A hook is any object with a `run(state)` method; it may additionally define `run_async(state)` for true async behavior. Class-based hooks may also implement the optional lifecycle methods `warm_up` / `warm_up_async` and `close` / `close_async`. The Agent calls them from its own `warm_up` / `close`, so a hook can defer opening clients or reading credentials until warm-up and release them on close.
+
+When a class-based hook should be serializable (so an Agent using it can be serialized), implement `to_dict` / `from_dict`: store serializable constructor arguments on the hook and rebuild runtime clients from those values.
+
+The example below is an `on_exit` hook that grades the Agent's answer with its own LLM and asks the Agent to improve a weak answer before finishing:
+
+```python
+from typing import Any
+
+from haystack.components.agents import Agent
+from haystack.components.agents.state import State
+from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.core.serialization import default_from_dict, default_to_dict
+from haystack.dataclasses import ChatMessage
+
+
+class GradeFinalAnswer:
+    """Grade the Agent's answer with an LLM and ask it to improve a weak answer before finishing."""
+
+    def __init__(self, model: str = "gpt-5.4-nano"):
+        self.model = model
+        self._judge = OpenAIChatGenerator(model=self.model)
+
+    def warm_up(self) -> None:
+        # Warm up the judge's own client during the Agent's warm-up.
+        self._judge.warm_up()
+
+    def close(self) -> None:
+        # Release the judge's client during the Agent's close.
+        self._judge.close()
+
+    def run(self, state: State) -> None:
+        answer = state.data["messages"][-1].text or ""
+        verdict = (
+            self._judge.run(
+                messages=[
+                    ChatMessage.from_user(
+                        f"Reply with only PASS or FAIL. Is this answer complete?\n\n{answer}",
+                    ),
+                ],
+            )["replies"][0].text
+            or ""
+        )
+        if "FAIL" in verdict.upper():
+            state.set(
+                "messages",
+                [
+                    ChatMessage.from_user(
+                        "Your answer was incomplete. Please improve it.",
+                    ),
+                ],
+            )
+            state.set("continue_run", True)
+
+    def to_dict(self) -> dict[str, Any]:
+        return default_to_dict(self, model=self.model)
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "GradeFinalAnswer":
+        return default_from_dict(cls, data)
+
+
+agent = Agent(
+    chat_generator=OpenAIChatGenerator(model="gpt-5.4-nano"),
+    hooks={"on_exit": [GradeFinalAnswer()]},
+)
+result = agent.run(messages=[ChatMessage.from_user("Explain how vaccines work.")])
+print(result["last_message"].text)
+```
+
+## Ready-made hooks
+
+Haystack ships two ready-made hooks:
+
+- `ConfirmationHook`: A `before_tool` hook that applies Human-in-the-Loop confirmation strategies to pending tool calls — a human can confirm, modify, or reject the tool calls the model requested before they run. See [Human in the Loop](./human-in-the-loop.mdx).
+- `ToolResultOffloadHook`: An `after_tool` hook that offloads tool results to a `ToolResultStore` (such as `FileSystemToolResultStore`) and replaces them in the conversation with a compact pointer, so the next LLM call sees a reference instead of the full result. Per-tool policies (`AlwaysOffload`, `NeverOffload`, `OffloadOverChars`) control which results are offloaded. See [Tool Result Offloading](./tool-result-offloading.mdx).

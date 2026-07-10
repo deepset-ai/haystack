@@ -131,7 +131,13 @@ TOOL_CALL_RESULT_SCHEMA = {
             "anyOf": [
                 {"type": "string"},
                 {
-                    "items": {"anyOf": [{"$ref": "#/$defs/TextContent"}, {"$ref": "#/$defs/ImageContent"}]},
+                    "items": {
+                        "anyOf": [
+                            {"$ref": "#/$defs/TextContent"},
+                            {"$ref": "#/$defs/ImageContent"},
+                            {"$ref": "#/$defs/FileContent"},
+                        ]
+                    },
                     "type": "array",
                 },
             ],
@@ -313,6 +319,7 @@ CHAT_MESSAGE_SCHEMA = {
                 "ToolCall": TOOL_CALL_SCHEMA,
                 "TextContent": TEXT_CONTENT_SCHEMA,
                 "ImageContent": IMAGE_CONTENT_SCHEMA,
+                "FileContent": FILE_CONTENT_SCHEMA,
             },
         ),
         (

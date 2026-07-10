@@ -223,7 +223,7 @@ class MarkdownHeaderSplitter:
 
             if not self.keep_headers:  # skip header extraction if keep_headers
                 # extract header information
-                header_match = re.search(self._header_pattern, doc.content)
+                header_match = re.match(self._header_pattern, doc.content)
                 if header_match:
                     content_for_splitting = doc.content[header_match.end() :]
 

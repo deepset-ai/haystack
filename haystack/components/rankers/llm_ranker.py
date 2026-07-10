@@ -11,6 +11,7 @@ from haystack.components.generators.chat.types import ChatGenerator
 from haystack.core.serialization import component_to_dict
 from haystack.dataclasses import ChatMessage
 from haystack.utils import deserialize_chatgenerator_inplace
+from haystack.utils.async_utils import _execute_component_async
 from haystack.utils.misc import _deduplicate_documents, _parse_dict_from_json
 
 logger = logging.getLogger(__name__)
@@ -170,16 +171,30 @@ class LLMRanker:
             self._chat_generator = _default_openai_chat_generator()
         else:
             self._chat_generator = chat_generator
-        self._is_warmed_up = False
 
     def warm_up(self) -> None:
-        """
-        Warm up the underlying chat generator.
-        """
-        if not self._is_warmed_up:
-            if hasattr(self._chat_generator, "warm_up"):
-                self._chat_generator.warm_up()
-            self._is_warmed_up = True
+        """Warm up the underlying chat generator."""
+        if hasattr(self._chat_generator, "warm_up"):
+            self._chat_generator.warm_up()
+
+    async def warm_up_async(self) -> None:
+        """Warm up the underlying chat generator on the serving event loop."""
+        if hasattr(self._chat_generator, "warm_up_async"):
+            await self._chat_generator.warm_up_async()
+        elif hasattr(self._chat_generator, "warm_up"):
+            self._chat_generator.warm_up()
+
+    def close(self) -> None:
+        """Release the underlying chat generator's resources."""
+        if hasattr(self._chat_generator, "close"):
+            self._chat_generator.close()
+
+    async def close_async(self) -> None:
+        """Release the underlying chat generator's async resources."""
+        if hasattr(self._chat_generator, "close_async"):
+            await self._chat_generator.close_async()
+        elif hasattr(self._chat_generator, "close"):
+            self._chat_generator.close()
 
     def to_dict(self) -> dict[str, Any]:
         """
@@ -241,13 +256,78 @@ class LLMRanker:
             logger.warning("Empty query provided to LLMRanker. Returning documents without reranking.")
             return {"documents": fallback_documents}
 
-        if not self._is_warmed_up:
-            self.warm_up()
+        self.warm_up()
 
         prompt = self._prompt_builder.run(query=query.strip(), documents=deduplicated_documents)
 
         try:
             result = self._chat_generator.run(messages=[ChatMessage.from_user(prompt["prompt"])])
+        except Exception as exc:
+            if self.raise_on_failure:
+                raise
+            logger.warning(
+                "LLMRanker failed during chat generation. Returning fallback order. Error: {error}", error=exc
+            )
+            return {"documents": fallback_documents}
+
+        try:
+            reply_text = self._get_reply_text(result)
+            ranked_documents = self._rank_documents_from_reply(reply_text=reply_text, documents=deduplicated_documents)
+        except (TypeError, ValueError) as exc:
+            if self.raise_on_failure:
+                raise
+            logger.warning(
+                "LLMRanker failed while processing the chat response. Returning fallback order. Error: {error}",
+                error=exc,
+            )
+            return {"documents": fallback_documents}
+
+        return {"documents": ranked_documents[:top_k]}
+
+    @component.output_types(documents=list[Document])
+    async def run_async(
+        self, query: str, documents: list[Document], top_k: int | None = None
+    ) -> dict[str, list[Document]]:
+        """
+        Asynchronously rank documents for a query using an LLM.
+
+        Before ranking, duplicate documents are removed.
+
+        This is the asynchronous version of the `run` method. It has the same parameters and return values
+        but can be used with `await` in an async code. If the chat generator only implements a synchronous
+        `run` method, it is executed in a thread to avoid blocking the event loop.
+
+        :param query:
+            The query used for reranking.
+        :param documents:
+            Candidate documents to rerank.
+        :param top_k:
+            The maximum number of documents to return. Overrides the instance's `top_k` if provided.
+        :returns:
+            A dictionary with the ranked documents under the `documents` key.
+        """
+        if top_k is not None and top_k <= 0:
+            raise ValueError(f"top_k must be > 0, but got {top_k}")
+
+        if not documents:
+            return {"documents": []}
+
+        top_k = self.top_k if top_k is None else top_k
+        deduplicated_documents = _deduplicate_documents(documents)
+        fallback_documents = deduplicated_documents
+
+        if not query.strip():
+            logger.warning("Empty query provided to LLMRanker. Returning documents without reranking.")
+            return {"documents": fallback_documents}
+
+        await self.warm_up_async()
+
+        prompt = self._prompt_builder.run(query=query.strip(), documents=deduplicated_documents)
+
+        try:
+            result = await _execute_component_async(
+                self._chat_generator, messages=[ChatMessage.from_user(prompt["prompt"])]
+            )
         except Exception as exc:
             if self.raise_on_failure:
                 raise

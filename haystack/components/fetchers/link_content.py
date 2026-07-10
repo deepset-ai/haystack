@@ -149,26 +149,9 @@ class LinkContentFetcher:
         self.client_kwargs.setdefault("timeout", timeout)
         self.client_kwargs.setdefault("follow_redirects", True)
 
-        # Create httpx clients
-        client_kwargs = {**self.client_kwargs}
-
-        # Optional HTTP/2 support
-        if http2:
-            try:
-                h2_import.check()
-                client_kwargs["http2"] = True
-            except ImportError:
-                logger.warning(
-                    "HTTP/2 support requested but 'h2' package is not installed. "
-                    "Falling back to HTTP/1.1. Install with `pip install httpx[http2]` to enable HTTP/2 support."
-                )
-                self.http2 = False  # Update the setting to match actual capability
-
-        # Initialize synchronous client
-        self._client = httpx.Client(**client_kwargs)
-
-        # Initialize asynchronous client
-        self._async_client = httpx.AsyncClient(**client_kwargs)
+        # httpx clients are built lazily in warm_up / warm_up_async (resource lifecycle)
+        self._client: httpx.Client | None = None
+        self._async_client: httpx.AsyncClient | None = None
 
         # register default content handlers that extract data from the response
         self.handlers: dict[str, Callable[[httpx.Response], ByteStream]] = defaultdict(lambda: _text_content_handler)
@@ -189,11 +172,64 @@ class LinkContentFetcher:
             after=self._switch_user_agent,
         )
         def get_response(url: str) -> httpx.Response:
+            assert self._client is not None  # mypy: client is built by warm_up before run
             response = self._client.get(url, headers=self._get_headers())
             response.raise_for_status()
             return response
 
         self._get_response: Callable = get_response
+
+    def _build_client_kwargs(self) -> dict[str, Any]:
+        """
+        Build the keyword arguments used to construct the httpx clients.
+
+        Resolves optional HTTP/2 support, downgrading to HTTP/1.1 if the 'h2' package is not installed.
+        """
+        client_kwargs = {**self.client_kwargs}
+
+        # Optional HTTP/2 support
+        if self.http2:
+            try:
+                h2_import.check()
+                client_kwargs["http2"] = True
+            except ImportError:
+                logger.warning(
+                    "HTTP/2 support requested but 'h2' package is not installed. "
+                    "Falling back to HTTP/1.1. Install with `pip install httpx[http2]` to enable HTTP/2 support."
+                )
+                self.http2 = False  # Update the setting to match actual capability
+
+        return client_kwargs
+
+    def warm_up(self) -> None:
+        """
+        Initializes the synchronous httpx client.
+        """
+        if self._client is None:
+            self._client = httpx.Client(**self._build_client_kwargs())
+
+    async def warm_up_async(self) -> None:  # noqa: RUF029
+        """
+        Initializes the asynchronous httpx client on the serving event loop.
+        """
+        if self._async_client is None:
+            self._async_client = httpx.AsyncClient(**self._build_client_kwargs())
+
+    def close(self) -> None:
+        """
+        Releases the synchronous httpx client.
+        """
+        if self._client is not None:
+            self._client.close()
+            self._client = None
+
+    async def close_async(self) -> None:
+        """
+        Releases the asynchronous httpx client.
+        """
+        if self._async_client is not None:
+            await self._async_client.aclose()
+            self._async_client = None
 
     def _get_headers(self) -> dict[str, str]:
         """
@@ -201,27 +237,10 @@ class LinkContentFetcher:
 
         client defaults -> component defaults -> user-provided -> rotating UA
         """
-        base = dict(self._client.headers)
+        base = dict(self._client.headers) if self._client is not None else {}
         return _merge_headers(
             base, REQUEST_HEADERS, self.request_headers, {"User-Agent": self.user_agents[self.current_user_agent_idx]}
         )
-
-    def __del__(self) -> None:
-        """
-        Clean up resources when the component is deleted.
-
-        Closes both the synchronous and asynchronous HTTP clients to prevent
-        resource leaks.
-        """
-        try:
-            # Close the synchronous client if it exists
-            if hasattr(self, "_client"):
-                self._client.close()
-
-            # There is no way to close the async client without await
-        except Exception:
-            # Suppress any exceptions during cleanup
-            pass
 
     @component.output_types(streams=list[ByteStream])
     def run(self, urls: list[str]) -> dict[str, Any]:
@@ -241,6 +260,8 @@ class LinkContentFetcher:
             In all other scenarios, any retrieval errors are logged, and a list of successfully retrieved `ByteStream`
              objects is returned.
         """
+        self.warm_up()
+
         streams: list[ByteStream] = []
         if not urls:
             return {"streams": streams}
@@ -273,10 +294,13 @@ class LinkContentFetcher:
         :param urls: A list of URLs to fetch content from.
         :returns: `ByteStream` objects representing the extracted content.
         """
+        await self.warm_up_async()
+
         streams: list[ByteStream] = []
         if not urls:
             return {"streams": streams}
 
+        assert self._async_client is not None  # mypy: async_client is built by warm_up_async above
         # Create tasks for all URLs using _fetch_async directly
         tasks = [self._fetch_async(url, self._async_client) for url in urls]
 

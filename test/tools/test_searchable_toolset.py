@@ -5,51 +5,65 @@
 
 import os
 from collections.abc import Callable
-from typing import Any
+from typing import Annotated, Any
 
 import pytest
 
-from haystack.tools import SearchableToolset, Tool, Toolset
+from haystack import component
+from haystack.components.agents import Agent
+from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.dataclasses import ChatMessage, ToolCall
+from haystack.tools import SearchableToolset, Tool, Toolset, flatten_tools_or_toolsets
 from haystack.tools.from_function import create_tool_from_function
 
 
 # Test helper functions
-def get_weather(city: str) -> str:
+def get_weather(city: Annotated[str, "The city to get the weather for"]) -> str:
     """Get current weather for a city."""
     return f"Weather in {city}: 22°C, sunny"
 
 
-def add_numbers(a: int, b: int) -> int:
+def add_numbers(a: Annotated[int, "The first number"], b: Annotated[int, "The second number"]) -> int:
     """Add two numbers together."""
     return a + b
 
 
-def multiply_numbers(a: int, b: int) -> int:
+def multiply_numbers(a: Annotated[int, "The first number"], b: Annotated[int, "The second number"]) -> int:
     """Multiply two numbers."""
     return a * b
 
 
-def get_stock_price(symbol: str) -> str:
+def get_stock_price(symbol: Annotated[str, "The ticker symbol, e.g. 'AAPL'"]) -> str:
     """Get stock price by ticker symbol."""
     return f"{symbol}: $150.00"
 
 
-def search_database(query: str) -> str:
+def search_database(query: Annotated[str, "The query to search records for"]) -> str:
     """Search the database for records."""
     return f"Found 5 records matching '{query}'"
 
 
-def send_email(to: str, subject: str, body: str) -> str:
+def send_email(
+    to: Annotated[str, "The recipient email address"],
+    subject: Annotated[str, "The email subject"],
+    body: Annotated[str, "The email body"],
+) -> str:
     """Send an email to a recipient."""
     return f"Email sent to {to}"
 
 
-def calculate_tax(amount: float, rate: float) -> float:
+def calculate_tax(
+    amount: Annotated[float, "The amount to tax"], rate: Annotated[float, "The tax rate as a fraction, e.g. 0.2"]
+) -> float:
     """Calculate tax on an amount."""
     return amount * rate
 
 
-def convert_currency(amount: float, from_currency: str, to_currency: str) -> float:
+def convert_currency(
+    amount: Annotated[float, "The amount to convert"],
+    from_currency: Annotated[str, "The source currency, e.g. 'USD'"],
+    to_currency: Annotated[str, "The target currency, e.g. 'EUR'"],
+) -> float:
     """Convert currency from one to another."""
     return amount * 1.1  # Simplified conversion
 
@@ -146,33 +160,31 @@ class TestSearchableToolsetPassthrough:
         """Test that small catalogs trigger passthrough mode."""
         toolset = SearchableToolset(catalog=small_catalog)
         toolset.warm_up()
-
-        assert toolset._is_passthrough() is True
+        assert toolset._passthrough is True
 
     def test_passthrough_exposes_all_tools(self, small_catalog):
         """Test that passthrough mode exposes all catalog tools."""
         toolset = SearchableToolset(catalog=small_catalog)
         toolset.warm_up()
-
         assert len(toolset) == len(small_catalog)
-
         tool_names = [tool.name for tool in toolset]
         assert "get_weather" in tool_names
         assert "add_numbers" in tool_names
         assert "multiply_numbers" in tool_names
 
     def test_passthrough_no_bootstrap_tool(self, small_catalog):
-        """Test that passthrough mode doesn't create bootstrap tool."""
+        """Test that passthrough mode neither creates nor exposes the search bootstrap tool."""
         toolset = SearchableToolset(catalog=small_catalog)
         toolset.warm_up()
-
         assert toolset._bootstrap_tool is None
+        # The search tool must never be present in passthrough mode.
+        assert "search_tools" not in toolset
+        assert all(tool.name != "search_tools" for tool in toolset)
 
     def test_passthrough_contains_by_name(self, small_catalog):
         """Test __contains__ by name in passthrough mode."""
         toolset = SearchableToolset(catalog=small_catalog)
         toolset.warm_up()
-
         assert "get_weather" in toolset
         assert "nonexistent" not in toolset
 
@@ -180,7 +192,6 @@ class TestSearchableToolsetPassthrough:
         """Test __contains__ by tool instance in passthrough mode."""
         toolset = SearchableToolset(catalog=small_catalog)
         toolset.warm_up()
-
         assert weather_tool in toolset
 
     def test_passthrough_contains_by_tool_invalid_type(self, small_catalog):
@@ -195,8 +206,7 @@ class TestSearchableToolsetPassthrough:
         # With threshold of 10, 8 tools should be passthrough
         toolset = SearchableToolset(catalog=large_catalog, search_threshold=10)
         toolset.warm_up()
-
-        assert toolset._is_passthrough() is True
+        assert toolset._passthrough is True
         assert len(list(toolset)) == 8
 
 
@@ -255,6 +265,32 @@ class TestSearchableToolsetBM25Mode:
         # Should find exactly 1 tool
         assert "Found and loaded 1 tool(s):" in result
 
+    def test_search_with_selection_scopes_retrieval(self):
+        """With a name selection, search is scoped to the selected tools so a small top_k still finds them."""
+
+        def fn(x):
+            return x
+
+        params = {"type": "object", "properties": {"x": {"type": "string"}}, "required": ["x"]}
+        # Several decoys match "weather" strongly; the target matches it too but less strongly.
+        catalog = [
+            Tool(name=f"decoy_{i}", description="weather weather weather forecast", parameters=params, function=fn)
+            for i in range(5)
+        ]
+        catalog.append(Tool(name="target_weather", description="weather report", parameters=params, function=fn))
+
+        toolset = SearchableToolset(catalog=catalog, search_threshold=3, top_k=1)
+        toolset.warm_up()
+        assert toolset._bootstrap_tool is not None
+        toolset._selected_tool_names = {"target_weather"}
+
+        result = toolset._bootstrap_tool.invoke(tool_keywords="weather")
+
+        # Even with top_k=1 and several stronger-matching decoys, the scoped search still finds the selected tool
+        # (the old approach retrieved top_k across the whole catalog and then dropped non-selected results).
+        assert "target_weather" in result
+        assert set(toolset._discovered_tools) == {"target_weather"}
+
     def test_search_tools_no_results(self, large_catalog):
         """Test search_tools with no matching results."""
         toolset = SearchableToolset(catalog=large_catalog)
@@ -308,10 +344,10 @@ class TestSearchableToolsetIteration:
 
     def test_iter_automatically_warms_up(self, large_catalog):
         toolset = SearchableToolset(catalog=large_catalog)
-        assert not toolset._warmed_up
+        assert not toolset._is_warmed_up
 
         list(toolset)
-        assert toolset._warmed_up
+        assert toolset._is_warmed_up
 
     def test_contains_bootstrap_tool(self, large_catalog):
         """Test __contains__ for bootstrap tool."""
@@ -358,7 +394,6 @@ class TestSearchableToolsetSerialization:
         assert len(data["data"]["catalog"]) == len(large_catalog)
 
     def test_to_dict_with_toolset(self, large_catalog):
-
         toolset = Toolset(tools=large_catalog)
 
         searchable_toolset = SearchableToolset(catalog=toolset)
@@ -368,8 +403,17 @@ class TestSearchableToolsetSerialization:
         assert "data" in data
         assert data["data"]["top_k"] == 3
         assert data["data"]["search_threshold"] == 8
-        assert len(data["data"]["catalog"]) == 1
-        assert data["data"]["catalog"][0]["type"] == "haystack.tools.toolset.Toolset"
+        # A single Toolset catalog serializes as that toolset, not wrapped in a list.
+        assert isinstance(data["data"]["catalog"], dict)
+        assert data["data"]["catalog"]["type"] == "haystack.tools.toolset.Toolset"
+
+    def test_serde_roundtrip_with_toolset_catalog(self, large_catalog):
+        """A single Toolset catalog round-trips back to a Toolset, not a list."""
+        searchable_toolset = SearchableToolset(catalog=Toolset(tools=large_catalog))
+        restored = SearchableToolset.from_dict(searchable_toolset.to_dict())
+        assert isinstance(restored._raw_catalog, Toolset)
+        restored.warm_up()
+        assert len(restored._catalog) == len(large_catalog)
 
     def test_from_dict(self, large_catalog):
         """Test deserialization from dict."""
@@ -404,7 +448,7 @@ class TestSearchableToolsetSerialization:
         assert restored._bootstrap_tool is not None
 
         # Verify behavior matches
-        assert restored._is_passthrough() == toolset._is_passthrough()
+        assert restored._passthrough == toolset._passthrough
 
         # Verify bootstrap tool works
         result = restored._bootstrap_tool.invoke(tool_keywords="weather")
@@ -447,7 +491,7 @@ class TestSearchableToolsetWithToolset:
         search_toolset = SearchableToolset(catalog=base_toolset)
         search_toolset.warm_up()
 
-        assert search_toolset._is_passthrough() is True
+        assert search_toolset._passthrough is True
         assert len(list(search_toolset)) == len(small_catalog)
 
     def test_accepts_list_of_toolsets(self, weather_tool, add_tool, multiply_tool, stock_tool):
@@ -480,6 +524,16 @@ class TestSearchableToolsetWithToolset:
 class TestSearchableToolsetWarmUp:
     """Tests for warm_up behavior."""
 
+    def test_not_warmed_up_after_agent_init(self, large_catalog, monkeypatch):
+        """Initializing an Agent with a SearchableToolset must not warm it up (no premature flatten/connect)."""
+        monkeypatch.setenv("OPENAI_API_KEY", "fake-key")
+        toolset = SearchableToolset(catalog=large_catalog)
+        assert toolset._is_warmed_up is False
+
+        Agent(chat_generator=OpenAIChatGenerator(), tools=toolset)
+
+        assert toolset._is_warmed_up is False
+
     def test_warm_up_idempotent(self, large_catalog):
         """Test that warm_up can be called multiple times safely."""
         toolset = SearchableToolset(catalog=large_catalog)
@@ -510,6 +564,16 @@ class TestSearchableToolsetWarmUp:
 
         assert toolset._bootstrap_tool is None
 
+    def test_warm_up_raises_on_duplicate_tool_names(self):
+        """Test that warm_up raises when the flattened catalog has duplicate tool names."""
+        params = {"type": "object", "properties": {}}
+        tool1 = Tool(name="dup", description="first", parameters=params, function=lambda: 1)
+        tool2 = Tool(name="dup", description="second", parameters=params, function=lambda: 2)
+        toolset = SearchableToolset(catalog=[tool1, tool2])
+
+        with pytest.raises(ValueError, match="Duplicate tool names found"):
+            toolset.warm_up()
+
 
 class TestSearchableToolsetEdgeCases:
     """Tests for edge cases and error handling."""
@@ -518,16 +582,14 @@ class TestSearchableToolsetEdgeCases:
         """Test with empty catalog."""
         toolset = SearchableToolset(catalog=[])
         toolset.warm_up()
-
-        assert toolset._is_passthrough() is True
+        assert toolset._passthrough is True
         assert len(list(toolset)) == 0
 
     def test_single_tool_catalog(self, weather_tool):
         """Test with single tool catalog."""
         toolset = SearchableToolset(catalog=[weather_tool])
         toolset.warm_up()
-
-        assert toolset._is_passthrough() is True
+        assert toolset._passthrough is True
         assert len(list(toolset)) == 1
 
     def test_exactly_at_threshold(self):
@@ -544,9 +606,8 @@ class TestSearchableToolsetEdgeCases:
 
         toolset = SearchableToolset(catalog=tools, search_threshold=8)
         toolset.warm_up()
-
         # Should NOT be passthrough (>= threshold triggers discovery)
-        assert toolset._is_passthrough() is False
+        assert toolset._passthrough is False
 
     def test_one_below_threshold(self):
         """Test catalog size one below threshold."""
@@ -562,9 +623,8 @@ class TestSearchableToolsetEdgeCases:
 
         toolset = SearchableToolset(catalog=tools, search_threshold=8)
         toolset.warm_up()
-
         # Should be passthrough
-        assert toolset._is_passthrough() is True
+        assert toolset._passthrough is True
 
     def test_multiple_loads_same_tool(self, large_catalog):
         """Test searching for the same tool multiple times."""
@@ -623,7 +683,7 @@ class TestSearchableToolsetLazyToolset:
         # After warm_up, all 10 lazy tools should be in the catalog
         assert len(toolset._catalog) == 10
         # 10 tools >= 8 threshold -> BM25 mode
-        assert toolset._is_passthrough() is False
+        assert toolset._passthrough is False
         assert toolset._bootstrap_tool is not None
 
         # Search should find lazy tools
@@ -650,7 +710,7 @@ class TestSearchableToolsetLazyToolset:
         toolset = SearchableToolset(catalog=SmallLazyToolset())
         toolset.warm_up()
 
-        assert toolset._is_passthrough() is True
+        assert toolset._passthrough is True
         assert len(list(toolset)) == 1
         assert "lazy_single" in toolset
 
@@ -687,7 +747,7 @@ class TestSearchableToolsetLazyToolset:
 
         # Should have 5 lazy + 5 eager = 10 tools
         assert len(toolset._catalog) == 10
-        assert toolset._is_passthrough() is False
+        assert toolset._passthrough is False
         assert any(t.name == "lazy_0" for t in toolset._catalog)
         assert any(t.name == "eager_0" for t in toolset._catalog)
 
@@ -756,6 +816,149 @@ class TestSearchableToolsetCustomSearchTool:
         assert "get_weather" in result
 
 
+class TestSearchableToolsetAgentToolSelection:
+    """Deterministic Agent tests for runtime tool-name selection and lazy tool_call_counts."""
+
+    def test_get_selectable_tools_exposes_full_catalog(self, large_catalog):
+        """get_selectable_tools() exposes the whole catalog, unlike iteration (search tool + discovered only)."""
+        toolset = SearchableToolset(catalog=large_catalog, search_threshold=3)
+        toolset.warm_up()
+
+        # Iteration only exposes the bootstrap search tool before anything is discovered.
+        assert [tool.name for tool in toolset] == ["search_tools"]
+        # The catalog, however, is fully available for name-based selection.
+        assert {tool.name for tool in toolset.get_selectable_tools()} == {tool.name for tool in large_catalog}
+
+    def test_runtime_tool_names_select_isolated_spawn_and_preserve_search(self, large_catalog, monkeypatch):
+        """Selecting catalog tool names returns an isolated spawn carrying the selection and keeping search active."""
+        monkeypatch.setenv("OPENAI_API_KEY", "fake-key")
+        toolset = SearchableToolset(catalog=large_catalog, search_threshold=3)  # 8 tools -> search mode
+        agent = Agent(chat_generator=OpenAIChatGenerator(), tools=toolset)
+
+        selected = agent._select_tools(["get_weather", "add_numbers"])
+
+        # An isolated spawn is returned with the selection; the configured toolset is not mutated.
+        assert len(selected) == 1
+        spawned = selected[0]
+        assert isinstance(spawned, SearchableToolset)
+        assert spawned is not toolset
+        assert spawned._selected_tool_names == {"get_weather", "add_numbers"}
+        assert toolset._selected_tool_names is None
+        # Search is preserved on the spawn (not dismantled): only the bootstrap tool is exposed up front.
+        assert [tool.name for tool in spawned] == ["search_tools"]
+        # And search only discovers tools within the selected subset.
+        assert spawned._bootstrap_tool is not None
+        spawned._bootstrap_tool.invoke(tool_keywords="weather add stock multiply")
+        assert set(spawned._discovered_tools) <= {"get_weather", "add_numbers"}
+        # The configured toolset's discovered tools are untouched.
+        assert toolset._discovered_tools == {}
+
+    def test_spawns_have_independent_discovered_tools_and_selection(self, large_catalog):
+        """Two spawns of one SearchableToolset don't share discovered tools or collide on the active selection."""
+        toolset = SearchableToolset(catalog=large_catalog, search_threshold=3)
+        toolset.warm_up()
+
+        spawn_a = toolset.spawn()
+        spawn_b = toolset.spawn()
+
+        assert spawn_a is not spawn_b
+        assert spawn_a is not toolset
+        # Bootstrap tools are rebound per spawn (not shared with the original or each other).
+        assert spawn_a._bootstrap_tool is not None
+        assert spawn_a._bootstrap_tool is not spawn_b._bootstrap_tool
+
+        spawn_a._selected_tool_names = {"get_weather"}
+        spawn_a._bootstrap_tool.invoke(tool_keywords="weather add stock multiply")
+
+        # Discovery on spawn_a does not leak into spawn_b or the configured toolset.
+        assert set(spawn_a._discovered_tools) <= {"get_weather"}
+        assert spawn_b._discovered_tools == {}
+        assert toolset._discovered_tools == {}
+        # The selection is likewise isolated.
+        assert spawn_b._selected_tool_names is None
+        assert toolset._selected_tool_names is None
+
+    def test_runtime_tool_names_passthrough_exposes_selected(self, large_catalog, monkeypatch):
+        """In passthrough mode, selecting names exposes exactly those catalog tools directly."""
+        monkeypatch.setenv("OPENAI_API_KEY", "fake-key")
+        toolset = SearchableToolset(catalog=large_catalog, search_threshold=20)  # 8 < 20 -> passthrough
+        agent = Agent(chat_generator=OpenAIChatGenerator(), tools=toolset)
+
+        selected = agent._select_tools(["get_weather", "add_numbers"])
+
+        assert selected == [toolset]
+        assert {tool.name for tool in flatten_tools_or_toolsets(selected)} == {"get_weather", "add_numbers"}
+
+    def test_agent_run_with_runtime_tool_names(self, large_catalog):
+        """An Agent with a SearchableToolset runs with specific catalog tools selected by name on an isolated spawn."""
+        toolset = SearchableToolset(catalog=large_catalog, search_threshold=20)  # passthrough exposes the selection
+
+        @component
+        class WeatherCallingGenerator:
+            invoked = False
+
+            @component.output_types(replies=list[ChatMessage])
+            def run(self, messages, tools=None, **kwargs):
+                # In passthrough mode the selected catalog tool is exposed directly.
+                assert [tool.name for tool in tools] == ["get_weather"]
+                if self.invoked:
+                    return {"replies": [ChatMessage.from_assistant("done")]}
+                self.invoked = True
+                return {
+                    "replies": [
+                        ChatMessage.from_assistant(
+                            tool_calls=[ToolCall(tool_name="get_weather", arguments={"city": "Berlin"})]
+                        )
+                    ]
+                }
+
+        agent = Agent(chat_generator=WeatherCallingGenerator(), tools=toolset, max_agent_steps=5)
+        result = agent.run(messages=[ChatMessage.from_user("What's the weather in Berlin?")], tools=["get_weather"])
+
+        assert result["tool_call_counts"]["get_weather"] == 1
+        # The Agent runs against an isolated spawn, so the configured toolset's selection never gets set.
+        assert toolset._selected_tool_names is None
+
+    def test_discovered_tool_call_counts_added_lazily(self, large_catalog):
+        """tool_call_counts seeds only the search tool up front; a discovered+called tool is added lazily."""
+        toolset = SearchableToolset(catalog=large_catalog, search_threshold=3, top_k=5)
+
+        @component
+        class SearchThenWeatherGenerator:
+            step = 0
+
+            @component.output_types(replies=list[ChatMessage])
+            def run(self, messages, tools=None, **kwargs):
+                self.step += 1
+                if self.step == 1:
+                    return {
+                        "replies": [
+                            ChatMessage.from_assistant(
+                                tool_calls=[ToolCall(tool_name="search_tools", arguments={"tool_keywords": "weather"})]
+                            )
+                        ]
+                    }
+                if self.step == 2:
+                    return {
+                        "replies": [
+                            ChatMessage.from_assistant(
+                                tool_calls=[ToolCall(tool_name="get_weather", arguments={"city": "Berlin"})]
+                            )
+                        ]
+                    }
+                return {"replies": [ChatMessage.from_assistant("done")]}
+
+        agent = Agent(chat_generator=SearchThenWeatherGenerator(), tools=toolset, max_agent_steps=6)
+        result = agent.run(messages=[ChatMessage.from_user("What's the weather in Berlin?")])
+
+        counts = result["tool_call_counts"]
+        # search_tools is seeded at init; get_weather is only counted after being discovered and called.
+        assert counts["search_tools"] == 1
+        assert counts["get_weather"] == 1
+        # The Agent discovers tools on an isolated spawn, so the configured toolset's discovered tools stay empty.
+        assert toolset._discovered_tools == {}
+
+
 @pytest.mark.skipif(not os.environ.get("OPENAI_API_KEY"), reason="OPENAI_API_KEY not set")
 @pytest.mark.integration
 class TestSearchableToolsetAgentIntegration:
@@ -763,23 +966,45 @@ class TestSearchableToolsetAgentIntegration:
 
     def test_agent_discovers_and_uses_tools(self, large_catalog):
         """Agent discovers tools via BM25 search and uses them."""
-        from haystack.components.agents import Agent
-        from haystack.components.generators.chat import OpenAIChatGenerator
-        from haystack.dataclasses import ChatMessage
-
         toolset = SearchableToolset(catalog=large_catalog, top_k=2, search_threshold=3)
         agent = Agent(chat_generator=OpenAIChatGenerator(model="gpt-4.1-nano"), tools=toolset, max_agent_steps=5)
 
         assert len(agent.tools) == 1
         result = agent.run(messages=[ChatMessage.from_user("What's the weather in Milan?")])
 
-        assert len(agent.tools) > 1
+        # Discovered tools are cleared after the run (reset), so only the search tool remains exposed.
+        assert len(agent.tools) == 1
         assert "messages" in result
         messages = result["messages"]
         assert len(messages) > 1
 
+        # Discovery happened during the run: the agent searched and then called the discovered tool.
         tool_calls = [tool_call for msg in messages if msg.tool_calls for tool_call in msg.tool_calls]
         assert len(tool_calls) > 1
         assert any(tool_call.tool_name == "search_tools" for tool_call in tool_calls)
         assert any(tool_call.tool_name == "get_weather" for tool_call in tool_calls)
         assert "22" in messages[-1].text
+
+    def test_agent_discovers_multiple_tools_across_steps(self, large_catalog):
+        """A task needing two different tools forces the agent to search for and load each one."""
+        # Use two tools the model cannot answer on its own (live weather and stock price) so it is forced
+        # to call both. top_k=1 means a single search returns at most one tool, so the agent must search
+        # again for the second tool — exercising that discovered tools accumulate across agent steps.
+        toolset = SearchableToolset(catalog=large_catalog, top_k=1, search_threshold=3)
+        agent = Agent(chat_generator=OpenAIChatGenerator(model="gpt-4.1-nano"), tools=toolset, max_agent_steps=8)
+
+        result = agent.run(
+            messages=[
+                ChatMessage.from_user(
+                    "What is the current weather in Milan, and what is the current stock price of AAPL? "
+                    "Use the available tools to look up both."
+                )
+            ]
+        )
+
+        tool_calls = [tool_call for msg in result["messages"] if msg.tool_calls for tool_call in msg.tool_calls]
+        called = {tc.tool_name for tc in tool_calls}
+        # The agent had to search (more than once given top_k=1) and use both discovered tools.
+        assert sum(tc.tool_name == "search_tools" for tc in tool_calls) >= 2
+        assert "get_weather" in called
+        assert "get_stock_price" in called
