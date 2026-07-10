@@ -15,8 +15,8 @@ This is useful for high-stakes operations - such as sending emails, modifying da
 
 |  |  |
 | --- | --- |
-| **Configured on**       | The [`Agent`](./agent.mdx) component via `confirmation_strategies`                               |
-| **Key classes**         | `BlockingConfirmationStrategy`, `AlwaysAskPolicy`, `AskOncePolicy`, `NeverAskPolicy`, `RichConsoleUI`, `SimpleConsoleUI` |
+| **Configured on**       | The [`Agent`](./agent.mdx) component, as a `ConfirmationHook` registered under the `before_tool` [hook point](./hooks.mdx) |
+| **Key classes**         | `ConfirmationHook`, `BlockingConfirmationStrategy`, `AlwaysAskPolicy`, `AskOncePolicy`, `NeverAskPolicy`, `RichConsoleUI`, `SimpleConsoleUI` |
 | **Import path**         | `haystack.human_in_the_loop`                                                                     |
 | **GitHub link**         | https://github.com/deepset-ai/haystack/blob/main/haystack/human_in_the_loop/                    |
 | **Package name** | `haystack-ai` |
@@ -25,8 +25,11 @@ This is useful for high-stakes operations - such as sending emails, modifying da
 
 ## Overview
 
-The HITL system is composed of three layers:
+HITL is one application of the Agent's general [hooks](./hooks.mdx) mechanism: a `ConfirmationHook` registered under the `before_tool` hook point intercepts the tool calls the model requested before they run, and confirms, modifies, or rejects them by rewriting the conversation in the Agent's `State`.
 
+The HITL system is composed of these layers:
+
+- **`ConfirmationHook`** - the `before_tool` hook that applies your confirmation strategies to pending tool calls. Its `confirmation_strategies` mapping accepts a single tool name, a tuple of tool names, or the wildcard `"*"` that applies to any tool without a more specific entry.
 - **Strategy** - decides what to do when a tool is about to be called. The built-in `BlockingConfirmationStrategy` pauses execution and asks a human.
 - **Policy** - decides *when* to ask. Built-in policies: `AlwaysAskPolicy`, `NeverAskPolicy`, `AskOncePolicy`.
 - **UI** - the interface used to ask the human. Built-in UIs: `RichConsoleUI` (requires `rich`) and `SimpleConsoleUI` (stdlib only).
@@ -40,6 +43,10 @@ If the policy says to ask, the UI prompts the human with the tool name, descript
 
 The agent then continues with the human's decision.
 
+:::info
+Strategies see only the arguments the model produced for a tool call. Values injected from [`State`](./state.mdx) via a tool's `inputs_from_state` mapping are not included in what is presented for confirmation — that injection happens at tool execution time.
+:::
+
 ## Usage
 
 ### Basic setup
@@ -52,6 +59,7 @@ from haystack.dataclasses import ChatMessage
 from haystack.human_in_the_loop import (
     AlwaysAskPolicy,
     BlockingConfirmationStrategy,
+    ConfirmationHook,
     SimpleConsoleUI,
 )
 from haystack.tools import tool
@@ -75,7 +83,11 @@ strategy = BlockingConfirmationStrategy(
 agent = Agent(
     chat_generator=OpenAIChatGenerator(model="gpt-5.4-mini"),
     tools=[send_email],
-    confirmation_strategies={"send_email": strategy},
+    hooks={
+        "before_tool": [
+            ConfirmationHook(confirmation_strategies={"send_email": strategy}),
+        ],
+    },
 )
 
 result = agent.run(
@@ -116,7 +128,7 @@ strategy = BlockingConfirmationStrategy(
 
 ### Applying strategies to multiple tools
 
-You can configure different strategies per tool, or share one strategy across a group of tools using a tuple key:
+You can configure different strategies per tool, share one strategy across a group of tools using a tuple key, or set a default for all tools with the wildcard `"*"` (applied to any tool without a more specific entry):
 
 ```python
 @tool
@@ -145,14 +157,18 @@ ask_strategy = BlockingConfirmationStrategy(
     confirmation_ui=SimpleConsoleUI(),
 )
 
-agent = Agent(
-    chat_generator=OpenAIChatGenerator(model="gpt-5.4-mini"),
-    tools=[send_email, delete_record, update_record, search],
+confirmation_hook = ConfirmationHook(
     confirmation_strategies={
         # Share one strategy across multiple sensitive tools using a tuple key
         ("send_email", "delete_record", "update_record"): ask_strategy,
         # search has no strategy - always executes without asking
     },
+)
+
+agent = Agent(
+    chat_generator=OpenAIChatGenerator(model="gpt-5.4-mini"),
+    tools=[send_email, delete_record, update_record, search],
+    hooks={"before_tool": [confirmation_hook]},
 )
 ```
 
@@ -269,7 +285,7 @@ Returned by the strategy to the agent.
 
 The [hitl-hayhooks-redis-openwebui](https://github.com/deepset-ai/hitl-hayhooks-redis-openwebui) repository shows a full production-style HITL setup using a Haystack Agent served via [Hayhooks](https://github.com/deepset-ai/hayhooks) with approval dialogs rendered in [Open WebUI](https://github.com/open-webui/open-webui).
 
-The key pattern it demonstrates is a custom `RedisConfirmationStrategy` that uses `confirmation_strategy_context` to pass per-request resources - a Redis client and an async event queue - into the strategy at runtime:
+The key pattern it demonstrates is a custom `RedisConfirmationStrategy` that receives per-request resources - a Redis client and an async event queue - at runtime. Pass such resources via the generic `hook_context` run argument (`agent.run(messages=[...], hook_context={"redis": client})`). `ConfirmationHook` reads this dict from state with `state.data["hook_context"]` (not `state.get`, which returns a deep copy that fails for live resources like clients and queues - see [Hooks](./hooks.mdx)) and passes it to each strategy's `run()` as the `confirmation_strategy_context` keyword argument, which is how a custom strategy receives the Redis client and event queue:
 
 - When a tool call is about to execute, the strategy emits a `tool_call_start` SSE event and blocks on `Redis BLPOP` waiting for an approval decision.
 - The Open WebUI Pipe function receives the SSE event, shows the user a confirmation dialog, then writes `approved` or `rejected` to Redis via `LPUSH`.
