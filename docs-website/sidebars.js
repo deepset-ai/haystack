@@ -158,6 +158,7 @@ export default {
             'pipeline-components/agents-1/agent',
             'pipeline-components/agents-1/hooks',
             'pipeline-components/agents-1/human-in-the-loop',
+            'pipeline-components/agents-1/tool-result-offloading',
             'pipeline-components/agents-1/state',
           ],
         },
