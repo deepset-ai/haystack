@@ -2,16 +2,16 @@
 title: "Migration Guide"
 id: migration
 slug: "/migration"
-description: "Learn how to make the move to Haystack 3.0 from Haystack 2.x."
+description: "Learn how to make the move to Haystack 3.x from Haystack 2.x."
 ---
 
 # Migration Guide
 
-Learn how to make the move to Haystack 3.0 from Haystack 2.x.
+Learn how to make the move to Haystack 3.x from Haystack 2.x.
 
-This guide is designed for those with previous experience with Haystack 2.x who want to upgrade to Haystack 3.0. It walks through every breaking change and shows how to adapt your code. If you're new to Haystack, skip this page and proceed directly to the [Get Started](get-started.mdx) guide.
+This guide is designed for those with previous experience with Haystack 2.x who want to upgrade to Haystack 3.x. It walks through every breaking change and shows how to adapt your code. If you're new to Haystack, skip this page and proceed directly to the [Get Started](get-started.mdx) guide.
 
-Haystack 3.0 is an evolution of Haystack 2.x, not a rewrite: components, pipelines, and the `Agent` work as before. Most applications only need import updates and small, mechanical changes. The complete list of breaking changes with extended examples is maintained in [MIGRATION.md](https://github.com/deepset-ai/haystack/blob/main/MIGRATION.md) in the Haystack repository.
+Haystack 3.x is an evolution of Haystack 2.x, not a rewrite: components, pipelines, and the `Agent` work as before. Most applications only need import updates and small, mechanical changes. The complete list of breaking changes with extended examples is maintained in [MIGRATION.md](https://github.com/deepset-ai/haystack/blob/main/MIGRATION.md) in the Haystack repository.
 
 ## Update Your Installation
 
@@ -298,7 +298,7 @@ See [Human-in-the-Loop](../pipeline-components/agents-1/human-in-the-loop.mdx) f
 
 The hash used to auto-generate `Document.id` is now computed from a canonical (key-sorted) JSON serialization of `meta`, so the ID no longer depends on the insertion order of `meta` keys. Documents with empty `meta` keep their v2.x IDs, but documents with non-empty `meta` get different IDs in 3.0.
 
-If you rely on auto-generated IDs matching documents already persisted in a Document Store written by Haystack 2.x, re-ingest the affected documents, pass the previous `id` explicitly, or migrate the stored IDs in place: read the stored documents, regenerate their IDs with Haystack 3.0 (`replace(doc, id="")`), write them back, and delete the entries under the old IDs. [MIGRATION.md](https://github.com/deepset-ai/haystack/blob/main/MIGRATION.md) contains a complete example script.
+If you rely on auto-generated IDs matching documents already persisted in a Document Store written by Haystack 2.x, re-ingest the affected documents, pass the previous `id` explicitly, or migrate the stored IDs in place: read the stored documents, regenerate their IDs with Haystack 3.x (`replace(doc, id="")`), write them back, and delete the entries under the old IDs. [MIGRATION.md](https://github.com/deepset-ai/haystack/blob/main/MIGRATION.md) contains a complete example script.
 
 ### Logging no longer reconfigures the whole process
 
