@@ -74,7 +74,7 @@ At this point the model has only *requested* a call. Nothing has been executed y
 
 ### 3. Actually Invoke the Tool
 
-To execute the requested tool calls, use the [`ToolInvoker`](../../tools/toolinvoker.mdx) component. It takes a list of [`ChatMessage`](../../../concepts/data-classes/chatmessage.mdx) objects containing tool calls, runs the corresponding tools, and returns new `ChatMessage` objects (with role `tool`) carrying the results as `ToolCallResult`s. To get a final natural-language answer, feed those results back to the ChatGenerator.
+To execute the requested tool calls, use the `ToolInvoker` component. It takes a list of [`ChatMessage`](../../../concepts/data-classes/chatmessage.mdx) objects containing tool calls, runs the corresponding tools, and returns new `ChatMessage` objects (with role `tool`) carrying the results as `ToolCallResult`s. To get a final natural-language answer, feed those results back to the ChatGenerator.
 
 ```python
 from haystack.components.tools import ToolInvoker

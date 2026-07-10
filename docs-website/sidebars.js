@@ -645,13 +645,6 @@ export default {
         },
         {
           type: 'category',
-          label: 'Tools',
-          items: [
-            'pipeline-components/tools/toolinvoker',
-          ],
-        },
-        {
-          type: 'category',
           label: 'Translators',
           items: [
             'pipeline-components/translators/laradocumenttranslator',
