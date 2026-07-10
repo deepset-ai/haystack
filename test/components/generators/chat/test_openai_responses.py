@@ -570,6 +570,47 @@ class TestRun:
         assert len(results["replies"]) == 1
         assert openai_mock_responses.call_args.kwargs["reasoning"] == {"effort": "high", "mode": "pro"}
 
+    def test_run_with_include_reasoning_encrypted_content(self, openai_mock_responses, monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+        chat_messages = [ChatMessage.from_user("What's the capital of France")]
+        component = OpenAIResponsesChatGenerator(
+            model="gpt-5.6-luna", generation_kwargs={"include_reasoning_encrypted_content": True}
+        )
+        results = component.run(chat_messages)
+        assert len(results["replies"]) == 1
+        assert openai_mock_responses.call_args.kwargs["include"] == ["reasoning.encrypted_content"]
+
+    def test_run_with_include_reasoning_encrypted_content_merges_with_existing_include_list(
+        self, openai_mock_responses, monkeypatch
+    ):
+        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+        chat_messages = [ChatMessage.from_user("What's the capital of France")]
+        component = OpenAIResponsesChatGenerator(
+            model="gpt-5.6-luna",
+            generation_kwargs={
+                "include": ["message.output_text.logprobs"],
+                "include_reasoning_encrypted_content": True,
+            },
+        )
+        results = component.run(chat_messages)
+        assert len(results["replies"]) == 1
+        assert openai_mock_responses.call_args.kwargs["include"] == [
+            "message.output_text.logprobs",
+            "reasoning.encrypted_content",
+        ]
+
+    def test_run_with_include_reasoning_encrypted_content_false_does_not_set_include(
+        self, openai_mock_responses, monkeypatch
+    ):
+        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+        chat_messages = [ChatMessage.from_user("What's the capital of France")]
+        component = OpenAIResponsesChatGenerator(
+            model="gpt-5.6-luna", generation_kwargs={"include_reasoning_encrypted_content": False}
+        )
+        results = component.run(chat_messages)
+        assert len(results["replies"]) == 1
+        assert "include" not in openai_mock_responses.call_args.kwargs
+
     def test_run_with_params_streaming(self, openai_mock_responses_stream_text_delta):
         streaming_callback_called = False
 

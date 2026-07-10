@@ -573,6 +573,11 @@ class OpenAIResponsesChatGenerator:
             reasoning = generation_kwargs.setdefault("reasoning", {})
             reasoning["mode"] = reasoning_mode
 
+        include_reasoning_encrypted_content = generation_kwargs.pop("include_reasoning_encrypted_content", None)
+        if include_reasoning_encrypted_content is True:
+            include = generation_kwargs.setdefault("include", [])
+            include.append("reasoning.encrypted_content")
+
         verbosity = generation_kwargs.pop("verbosity", None)
         if verbosity is not None:
             text = generation_kwargs.setdefault("text", {})
