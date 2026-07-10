@@ -21,7 +21,7 @@ If you are looking for the details of this data class's methods and parameters, 
 
 A tool is a function for which Language Models can prepare a call.
 
-The `Tool` class is used in Chat Generators and provides a consistent experience across models. `Tool` is also used in the [`ToolInvoker`](../pipeline-components/tools/toolinvoker.mdx) component that executes calls prepared by Language Models.
+The `Tool` class is used in Chat Generators and provides a consistent experience across models. `Tool` is also used in the `ToolInvoker` component that executes calls prepared by Language Models.
 
 ```python
 @dataclass
@@ -442,7 +442,7 @@ print(res_w_tool_call)
 
 #### Executing Tool Calls
 
-To execute prepared tool calls, you can use the [`ToolInvoker`](../pipeline-components/tools/toolinvoker.mdx) component.
+To execute prepared tool calls, you can use the `ToolInvoker` component.
 This component acts as the execution engine for tools, processing the calls prepared by the Language Model.
 
 Here’s an example:
