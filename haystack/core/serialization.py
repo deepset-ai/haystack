@@ -106,7 +106,7 @@ def _validate_component_to_dict_output(component: Any, name: str, data: dict[str
                 check_dict(v)
 
     def check_dict(d: dict[str, Any]) -> None:
-        if any(not isinstance(k, str) for k in data):
+        if any(not isinstance(k, str) for k in d):
             raise SerializationError(
                 f"Component '{name}' of type '{type(component).__name__}' has a non-string key in the serialized data."
             )
