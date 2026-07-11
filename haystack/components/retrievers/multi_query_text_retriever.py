@@ -148,7 +148,14 @@ class MultiQueryTextRetriever:
 
         await self.warm_up_async()
 
-        results = await asyncio.gather(*[self._run_one_async(q, retriever_kwargs) for q in queries])
+        tasks = [asyncio.create_task(self._run_one_async(query, retriever_kwargs)) for query in queries]
+        try:
+            results = await asyncio.gather(*tasks)
+        except Exception:
+            for task in tasks:
+                task.cancel()
+            await asyncio.gather(*tasks, return_exceptions=True)
+            raise
         docs: list[Document] = [doc for result in results if result for doc in result]
         docs = _deduplicate_documents(docs)
         docs.sort(key=lambda x: x.score or 0.0, reverse=True)

@@ -320,7 +320,14 @@ class MultiRetriever:
             except Exception as e:
                 raise RuntimeError(f"Retriever '{name}' failed: {e}") from e
 
-        document_lists = list(await asyncio.gather(*[_run_one(name, r) for name, r in retrievers_to_run.items()]))
+        tasks = [asyncio.create_task(_run_one(name, retriever)) for name, retriever in retrievers_to_run.items()]
+        try:
+            document_lists = list(await asyncio.gather(*tasks))
+        except Exception:
+            for task in tasks:
+                task.cancel()
+            await asyncio.gather(*tasks, return_exceptions=True)
+            raise
         return {"documents": self._merge_results(document_lists, top_k=resolved_top_k)}
 
     def to_dict(self) -> dict[str, Any]:

@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import asyncio
 import os
 from typing import Any
 from unittest.mock import ANY, AsyncMock, Mock
@@ -533,6 +534,46 @@ class TestMultiRetrieverAsync:
         retriever = MultiRetriever(retrievers={"failing": FailingRetriever()})
         with pytest.raises(RuntimeError, match="Retriever 'failing' failed"):
             await retriever.run_async(query="energy")
+
+    @pytest.mark.asyncio
+    async def test_run_async_cancels_sibling_retrievers_when_one_fails(self):
+        slow_started = asyncio.Event()
+        slow_cancelled = False
+
+        @component
+        class SlowRetriever:
+            @component.output_types(documents=list[Document])
+            def run(self, query: str, filters: dict[str, Any] | None = None, top_k: int | None = None):
+                return {"documents": []}
+
+            @component.output_types(documents=list[Document])
+            async def run_async(self, query: str, filters: dict[str, Any] | None = None, top_k: int | None = None):
+                nonlocal slow_cancelled
+                slow_started.set()
+                try:
+                    await asyncio.sleep(5)
+                except asyncio.CancelledError:
+                    slow_cancelled = True
+                    raise
+                return {"documents": []}
+
+        @component
+        class FailingRetriever:
+            @component.output_types(documents=list[Document])
+            def run(self, query: str, filters: dict[str, Any] | None = None, top_k: int | None = None):
+                raise RuntimeError("boom")
+
+            @component.output_types(documents=list[Document])
+            async def run_async(self, query: str, filters: dict[str, Any] | None = None, top_k: int | None = None):
+                await slow_started.wait()
+                raise RuntimeError("boom")
+
+        retriever = MultiRetriever(retrievers={"slow": SlowRetriever(), "failing": FailingRetriever()})
+
+        with pytest.raises(RuntimeError):
+            await retriever.run_async(query="energy")
+
+        assert slow_cancelled is True
 
     @pytest.mark.asyncio
     async def test_run_async_uses_run_async_on_retriever_if_available(self):
