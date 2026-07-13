@@ -269,6 +269,40 @@ class TestPipelineBase:
         assert sorted(pipe.graph.nodes) == ["1", "3", "4"]
         assert sorted([(u, v) for (u, v) in pipe.graph.edges()]) == [("3", "4")]
 
+    def test_remove_component_clears_stale_senders_on_downstream_neighbor(self):
+        pipe = PipelineBase()
+        Producer = component_class("Producer", output_types={"value": int})
+        Consumer = component_class("Consumer", input_types={"value": int})
+        pipe.add_component("producer", Producer())
+        pipe.add_component("consumer", Consumer())
+        pipe.connect("producer.value", "consumer.value")
+
+        pipe.remove_component("producer")
+
+        consumer = pipe.get_component("consumer")
+        consumer_socket = consumer.__haystack_input__._sockets_dict["value"]
+        # The surviving neighbor must not keep a dangling reference to the removed component.
+        assert consumer_socket.senders == []
+        # With the stale sender gone, the now-unconnected mandatory input is exposed again.
+        assert pipe.inputs() == {"consumer": {"value": {"type": int, "is_mandatory": True}}}
+        # Feeding it directly must not raise a spurious "already connected" error.
+        pipe.validate_input({"consumer": {"value": 5}})
+
+    def test_remove_component_clears_stale_receivers_on_upstream_neighbor(self):
+        pipe = PipelineBase()
+        Producer = component_class("Producer", output_types={"value": int})
+        Consumer = component_class("Consumer", input_types={"value": int})
+        pipe.add_component("producer", Producer())
+        pipe.add_component("consumer", Consumer())
+        pipe.connect("producer.value", "consumer.value")
+
+        pipe.remove_component("consumer")
+
+        producer = pipe.get_component("producer")
+        producer_socket = producer.__haystack_output__._sockets_dict["value"]
+        # The surviving upstream neighbor must not keep a dangling receiver reference.
+        assert producer_socket.receivers == []
+
     def test_remove_component_allows_you_to_reuse_the_component(self):
         pipe = PipelineBase()
         Some = component_class("Some", input_types={"in": int}, output_types={"out": int})
