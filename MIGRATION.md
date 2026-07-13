@@ -846,7 +846,7 @@ Patterns are matched as prefixes by default (`"mypkg"` matches `mypkg` and any s
 
 **What changed:** `OpenAIGenerator`, `AzureOpenAIGenerator`, `HuggingFaceAPIGenerator`, and `HuggingFaceLocalGenerator` have been removed.
 Generators living in Haystack Core Integrations will also be removed soon.
-Their chat counterparts (`OpenAIChatGenerator`, `AzureOpenAIChatGenerator`, `HuggingFaceAPIChatGenerator`, `HuggingFaceLocalChatGenerator`) are the replacement. As of Haystack 3.0, all ChatGenerators also accept a plain `str` as input, so the migration rarely requires structural changes.
+Their chat counterparts are the replacement: `OpenAIChatGenerator` and `AzureOpenAIChatGenerator` in Haystack core, `HuggingFaceAPIChatGenerator` in the `huggingface-api-haystack` integration, and `TransformersChatGenerator` (the renamed `HuggingFaceLocalChatGenerator`) in the `transformers-haystack` integration (see [Components Moved to External Packages](#components-moved-to-external-packages)). As of Haystack 3.0, all ChatGenerators also accept a plain `str` as input, so the migration rarely requires structural changes.
 
 **Why:** Over time, Generators became shallow wrappers over the ChatGenerators, converting `str → ChatMessage → str` around the exact same model calls. All new features (tool calling, structured outputs, etc.) were introduced only in ChatGenerators, leaving the legacy classes behind. They were also a source of confusion for newcomers and an unnecessary duplication of code and tests.
 
