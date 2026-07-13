@@ -144,6 +144,21 @@ def test_component_to_dict_invalid_type():
         component_to_dict(UnserializableClass(1, "s", CustomData(99, "aa")), "invalid_component")
 
 
+@component()
+class NestedNonStringKeyClass:
+    def __init__(self, mapping: dict[Any, Any]) -> None:
+        self.mapping = mapping
+
+    def run(self):
+        pass
+
+
+def test_component_to_dict_nested_non_string_key():
+    # A non-string key nested inside init_parameters must be rejected too, not just at the top level.
+    with pytest.raises(SerializationError, match="non-string key"):
+        component_to_dict(NestedNonStringKeyClass(mapping={1: "a"}), "invalid_component")
+
+
 @component
 class CustomComponentWithSecrets:
     def __init__(self, api_key: Secret | None = None, token: Secret | None = None, regular_param: str | None = None):
