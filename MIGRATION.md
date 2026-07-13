@@ -8,11 +8,13 @@ This document is meant to provide a guide for migrating from Haystack v2.X to v3
 
 ### `GeneratedAnswer` and `ExtractedAnswer` serialization format
 
-**What changed:** `GeneratedAnswer.to_dict()` and `ExtractedAnswer.to_dict()` now return a flat dictionary of the object's fields instead of wrapping them in a `{"type": ..., "init_parameters": {...}}` envelope. `from_dict()` still accepts the old wrapped format, so existing serialized artifacts keep loading.
+**What changed:** `GeneratedAnswer.to_dict()` and `ExtractedAnswer.to_dict()` now return a flat dictionary of the object's fields instead of wrapping them in a `{"type": ..., "init_parameters": {...}}` envelope.
 
 **Why:** Aligns these dataclasses with how every other Haystack dataclass (`Document`, `ChatMessage`, etc.) serializes, and removes redundant type metadata from pipeline snapshots and `State` objects.
 
-**How to migrate:** Update any code that reads the serialized output to access fields at the top level instead of under `init_parameters`. See [#11805](https://github.com/deepset-ai/haystack/pull/11805).
+**Deserialization is backward compatible:** `from_dict()` accepts both the new flat format and the old wrapped `{"type": ..., "init_parameters": {...}}` format, so existing serialized artifacts (pipeline snapshots, breakpoints, `State` objects) keep loading without any changes on your side.
+
+**How to migrate:** Only code that *reads* the serialized output needs updating: access fields at the top level instead of under `init_parameters`. Code that deserializes with `from_dict()` needs no changes.
 
 Before (v2.x):
 ```python
@@ -24,6 +26,10 @@ After (v3.0):
 ```python
 serialized = generated_answer.to_dict()
 data = serialized["data"]
+
+# Deserialization still accepts both the new and the old format:
+GeneratedAnswer.from_dict(serialized)          # new flat format
+GeneratedAnswer.from_dict(old_wrapped_dict)    # old {"type": ..., "init_parameters": {...}} format
 ```
 
 ### Components Moved to External Packages
