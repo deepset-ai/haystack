@@ -54,6 +54,33 @@ def record_b(state: State) -> None:
 
 
 @hook
+def record_before_run(state: State) -> None:
+    state.set("trace", ["before_run"])
+
+
+@hook
+def record_on_exit(state: State) -> None:
+    state.set("trace", ["on_exit"])
+
+
+@hook
+def record_after_run(state: State) -> None:
+    state.set("trace", ["after_run"])
+
+
+@hook
+def rewrite_query_into_brief(state: State) -> None:
+    # Realistic before_run use case: turn the user query into a task brief, once, before the first LLM call.
+    state.set("messages", [ChatMessage.from_user("BRIEF")], handler_override=replace_values)
+
+
+@hook
+def write_report(state: State) -> None:
+    # Realistic after_run use case: produce a final artifact from the collected state, however the run ended.
+    state.set("messages", [ChatMessage.from_assistant("REPORT")])
+
+
+@hook
 def build_context(state: State) -> None:
     if state.get("step_count") == 0:
         state.set("messages", [ChatMessage.from_system("INJECTED")])
@@ -174,6 +201,114 @@ class TestAgentHooksValidation:
         agent.chat_generator.run = MagicMock(return_value={"replies": [ChatMessage.from_assistant("done")]})
         result = agent.run(messages=[ChatMessage.from_user("hi")])
         assert "continue_run" not in result
+
+
+class TestBeforeRunHook:
+    def test_runs_once_across_multi_step_run(self):
+        agent = _agent(
+            MockChatGenerator(),
+            tools=[save],
+            state_schema={"trace": {"type": list}},
+            hooks={"before_run": [record_before_run]},
+        )
+        agent.chat_generator.run = MagicMock(
+            side_effect=[
+                {"replies": [ChatMessage.from_assistant(tool_calls=[ToolCall("save", {"content": "x"})])]},
+                {"replies": [ChatMessage.from_assistant("done")]},
+            ]
+        )
+        result = agent.run(messages=[ChatMessage.from_user("hi")])
+        # Unlike before_llm, before_run fires once per run, not once per step.
+        assert result["trace"] == ["before_run"]
+        assert agent.chat_generator.run.call_count == 2
+
+    def test_rewrites_messages_before_first_llm_call(self):
+        agent = _agent(MockChatGenerator(), hooks={"before_run": [rewrite_query_into_brief]})
+        agent.chat_generator.run = MagicMock(return_value={"replies": [ChatMessage.from_assistant("done")]})
+        result = agent.run(messages=[ChatMessage.from_user("original query")])
+        first_call_messages = agent.chat_generator.run.call_args_list[0].kwargs["messages"]
+        assert [m.text for m in first_call_messages] == ["BRIEF"]
+        assert [m.text for m in result["messages"]] == ["BRIEF", "done"]
+
+    def test_hooks_run_in_list_order(self):
+        agent = _agent(
+            MockChatGenerator(), state_schema={"trace": {"type": list}}, hooks={"before_run": [record_a, record_b]}
+        )
+        agent.chat_generator.run = MagicMock(return_value={"replies": [ChatMessage.from_assistant("done")]})
+        result = agent.run(messages=[ChatMessage.from_user("hi")])
+        assert result["trace"] == ["a", "b"]
+
+
+class TestAfterRunHook:
+    def test_runs_once_on_text_exit(self):
+        agent = _agent(
+            MockChatGenerator(), state_schema={"trace": {"type": list}}, hooks={"after_run": [record_after_run]}
+        )
+        agent.chat_generator.run = MagicMock(return_value={"replies": [ChatMessage.from_assistant("done")]})
+        result = agent.run(messages=[ChatMessage.from_user("hi")])
+        assert result["trace"] == ["after_run"]
+        assert agent.chat_generator.run.call_count == 1
+
+    def test_runs_on_tool_based_exit(self):
+        agent = _agent(
+            MockChatGenerator(),
+            tools=[final_answer],
+            exit_conditions=["final_answer"],
+            state_schema={"trace": {"type": list}},
+            hooks={"after_run": [record_after_run]},
+        )
+        agent.chat_generator.run = MagicMock(
+            return_value={
+                "replies": [ChatMessage.from_assistant(tool_calls=[ToolCall("final_answer", {"answer": "42"})])]
+            }
+        )
+        result = agent.run(messages=[ChatMessage.from_user("hi")])
+        assert result["trace"] == ["after_run"]
+
+    def test_runs_when_max_agent_steps_is_exhausted(self):
+        # The motivating use case: unlike on_exit, after_run still fires when the step budget runs out,
+        # so a report-writing hook cannot be skipped.
+        agent = _agent(MockChatGenerator(), tools=[save], max_agent_steps=2, hooks={"after_run": [write_report]})
+        agent.chat_generator.run = MagicMock(
+            return_value={"replies": [ChatMessage.from_assistant(tool_calls=[ToolCall("save", {"content": "x"})])]}
+        )
+        result = agent.run(messages=[ChatMessage.from_user("hi")])
+        assert agent.chat_generator.run.call_count == 2
+        assert result["last_message"].text == "REPORT"
+
+    def test_mutations_are_reflected_in_the_returned_result(self):
+        agent = _agent(MockChatGenerator(), hooks={"after_run": [write_report]})
+        agent.chat_generator.run = MagicMock(return_value={"replies": [ChatMessage.from_assistant("done")]})
+        result = agent.run(messages=[ChatMessage.from_user("hi")])
+        assert [m.text for m in result["messages"]] == ["hi", "done", "REPORT"]
+        assert result["last_message"].text == "REPORT"
+
+    def test_continue_run_has_no_effect(self):
+        agent = _agent(MockChatGenerator(), max_agent_steps=5, hooks={"after_run": [always_continue]})
+        agent.chat_generator.run = MagicMock(return_value={"replies": [ChatMessage.from_assistant("done")]})
+        agent.run(messages=[ChatMessage.from_user("hi")])
+        # The step loop is already over when after_run fires; setting continue_run cannot restart it.
+        assert agent.chat_generator.run.call_count == 1
+
+    def test_on_exit_runs_before_after_run(self):
+        agent = _agent(
+            MockChatGenerator(),
+            state_schema={"trace": {"type": list}},
+            hooks={"on_exit": [record_on_exit], "after_run": [record_after_run]},
+        )
+        agent.chat_generator.run = MagicMock(return_value={"replies": [ChatMessage.from_assistant("done")]})
+        result = agent.run(messages=[ChatMessage.from_user("hi")])
+        assert result["trace"] == ["on_exit", "after_run"]
+
+    def test_allowed_hook_points_is_enforced_for_new_points(self):
+        class BeforeRunOnlyHook:
+            allowed_hook_points = ("before_run",)
+
+            def run(self, state: State) -> None:
+                pass
+
+        with pytest.raises(ValueError):
+            Agent(chat_generator=MockChatGenerator(), hooks={"after_run": [BeforeRunOnlyHook()]})
 
 
 class TestBeforeLlmHook:
@@ -405,12 +540,19 @@ class TestAgentHooksSerde:
         agent = Agent(
             chat_generator=OpenAIChatGenerator(),
             tools=[save],
-            hooks={"before_llm": [build_context], "on_exit": [require_save]},
+            hooks={
+                "before_run": [rewrite_query_into_brief],
+                "before_llm": [build_context],
+                "on_exit": [require_save],
+                "after_run": [write_report],
+            },
         )
         restored = Agent.from_dict(agent.to_dict())
-        assert set(restored.hooks) == {"before_llm", "on_exit"}
+        assert set(restored.hooks) == {"before_run", "before_llm", "on_exit", "after_run"}
+        assert restored.hooks["before_run"][0].function is rewrite_query_into_brief.function
         assert restored.hooks["before_llm"][0].function is build_context.function
         assert restored.hooks["on_exit"][0].function is require_save.function
+        assert restored.hooks["after_run"][0].function is write_report.function
 
 
 class TestAgentHooksAsync:
@@ -439,6 +581,32 @@ class TestAgentHooksAsync:
         assert [m.tool_call_result.result for m in result["messages"] if m.tool_call_result is not None] == [
             "OFFLOADED"
         ]
+
+    @pytest.mark.asyncio
+    async def test_sync_before_run_and_after_run_hooks_run_in_async_run(self):
+        agent = _agent(
+            MockChatGenerator(),
+            state_schema={"trace": {"type": list}},
+            hooks={"before_run": [record_before_run], "after_run": [record_after_run]},
+        )
+        agent.chat_generator.run_async = AsyncMock(return_value={"replies": [ChatMessage.from_assistant("done")]})
+        result = await agent.run_async(messages=[ChatMessage.from_user("hi")])
+        assert result["trace"] == ["before_run", "after_run"]
+
+    @pytest.mark.asyncio
+    async def test_async_after_run_hook_runs_when_max_agent_steps_is_exhausted(self):
+        async def write_report_async(state: State) -> None:
+            state.set("messages", [ChatMessage.from_assistant("REPORT")])
+
+        agent = _agent(
+            MockChatGenerator(), tools=[save], max_agent_steps=2, hooks={"after_run": [hook(write_report_async)]}
+        )
+        agent.chat_generator.run_async = AsyncMock(
+            return_value={"replies": [ChatMessage.from_assistant(tool_calls=[ToolCall("save", {"content": "x"})])]}
+        )
+        result = await agent.run_async(messages=[ChatMessage.from_user("hi")])
+        assert agent.chat_generator.run_async.call_count == 2
+        assert result["last_message"].text == "REPORT"
 
     @pytest.mark.asyncio
     async def test_async_on_exit_hook_forces_extra_step(self):
