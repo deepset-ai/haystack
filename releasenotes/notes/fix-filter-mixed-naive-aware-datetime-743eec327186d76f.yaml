@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    Metadata filtering with the ordering operators (`>`, `>=`, `<`, `<=`) no longer raises
+    `TypeError: can't compare offset-naive and offset-aware datetimes` when a filter value and a
+    document value are both `datetime` objects but one is timezone-aware and the other is naive.
+    The naive/aware reconciliation that already applied to date strings now also applies to
+    `datetime` objects passed directly.

@@ -63,6 +63,10 @@ def _prepare_ordering_comparison(value: Any, filter_value: Any) -> tuple[Any, An
             value = _parse_date(value)
         if not isinstance(filter_value, datetime):
             filter_value = _parse_date(filter_value)
+
+    # Reconcile naive/aware datetimes whether they were passed directly or parsed
+    # from strings above; comparing a naive and an aware datetime raises TypeError.
+    if isinstance(value, datetime) and isinstance(filter_value, datetime):
         value, filter_value = _ensure_both_dates_naive_or_aware(value, filter_value)
 
     if isinstance(filter_value, list):
