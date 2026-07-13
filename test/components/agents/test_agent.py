@@ -2361,8 +2361,8 @@ class TestComponentLifecycle:
         chat_generator.warm_up.reset_mock()
         agent.run([ChatMessage.from_user("What is the weather in Berlin?")])
         assert agent._tools_warmed_up is True
-        # The Agent delegates warm-up to the chat generator during run (MockChatGenerator.run also self-warms).
-        chat_generator.warm_up.assert_called()
+        # warm_up runs twice here: the Agent delegates to the generator, and the generator's own run() self-warms
+        assert chat_generator.warm_up.call_count == 2
 
     @pytest.mark.asyncio
     async def test_warm_up_async_delegates_to_chat_generator(self):
