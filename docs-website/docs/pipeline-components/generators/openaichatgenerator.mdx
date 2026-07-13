@@ -99,7 +99,7 @@ You can stream output as it’s generated. Pass a callback to `streaming_callbac
 from haystack.components.generators.chat.openai import OpenAIChatGenerator
 from haystack.components.generators.utils import print_streaming_chunk
 
-# Configure any `Generator` or `ChatGenerator` with a streaming callback
+# Configure any `ChatGenerator` with a streaming callback
 component = OpenAIChatGenerator(streaming_callback=print_streaming_chunk)
 
 # pass a list of messages or a single string to `run()`

@@ -9,8 +9,8 @@ from typing import Any
 from haystack.components.agents.state.state import State
 from haystack.core.serialization import component_to_dict, default_from_dict, default_to_dict
 from haystack.dataclasses import ChatMessage, ToolCall
-from haystack.human_in_the_loop import ToolExecutionDecision
-from haystack.human_in_the_loop.types import ConfirmationPolicy, ConfirmationStrategy, ConfirmationUI
+from haystack.hooks.human_in_the_loop import ToolExecutionDecision
+from haystack.hooks.human_in_the_loop.types import ConfirmationPolicy, ConfirmationStrategy, ConfirmationUI
 from haystack.tools import Tool
 from haystack.utils.deserialization import deserialize_component_inplace
 

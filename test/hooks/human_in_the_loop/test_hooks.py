@@ -10,7 +10,7 @@ import pytest
 from haystack.components.agents.state.state import State
 from haystack.components.agents.state.state_utils import merge_lists, replace_values
 from haystack.dataclasses import ChatMessage, ToolCall
-from haystack.human_in_the_loop import (
+from haystack.hooks.human_in_the_loop import (
     AlwaysAskPolicy,
     BlockingConfirmationStrategy,
     ConfirmationHook,
@@ -19,7 +19,7 @@ from haystack.human_in_the_loop import (
     SimpleConsoleUI,
     ToolExecutionDecision,
 )
-from haystack.human_in_the_loop.types import ConfirmationUI
+from haystack.hooks.human_in_the_loop.types import ConfirmationUI
 from haystack.tools import Tool, create_tool_from_function
 
 
@@ -159,18 +159,18 @@ class TestConfirmationHook:
             }
         )
         assert hook.to_dict() == {
-            "type": "haystack.human_in_the_loop.hooks.ConfirmationHook",
+            "type": "haystack.hooks.human_in_the_loop.hooks.ConfirmationHook",
             "init_parameters": {
                 "confirmation_strategies": {
                     "addition_tool": {
-                        "type": "haystack.human_in_the_loop.strategies.BlockingConfirmationStrategy",
+                        "type": "haystack.hooks.human_in_the_loop.strategies.BlockingConfirmationStrategy",
                         "init_parameters": {
                             "confirmation_policy": {
-                                "type": "haystack.human_in_the_loop.policies.NeverAskPolicy",
+                                "type": "haystack.hooks.human_in_the_loop.policies.NeverAskPolicy",
                                 "init_parameters": {},
                             },
                             "confirmation_ui": {
-                                "type": "haystack.human_in_the_loop.user_interfaces.SimpleConsoleUI",
+                                "type": "haystack.hooks.human_in_the_loop.user_interfaces.SimpleConsoleUI",
                                 "init_parameters": {},
                             },
                             "reject_template": "Tool execution for '{tool_name}' was rejected by the user.",
