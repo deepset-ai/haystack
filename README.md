@@ -144,7 +144,7 @@
 | haystack/core/pipeline/component\_checks.py                               |       57 |        0 |    100% |           |
 | haystack/core/pipeline/descriptions.py                                    |        6 |        0 |    100% |           |
 | haystack/core/pipeline/draw.py                                            |      199 |       41 |     79% |35-58, 142, 145, 148, 150, 158, 162-169, 293, 303, 375-377, 382, 390-391, 419-424 |
-| haystack/core/pipeline/pipeline.py                                        |      317 |       21 |     93% |171, 178, 408, 452-453, 550, 573, 741, 935, 940, 957-961, 965-977, 1018-1027, 1052 |
+| haystack/core/pipeline/pipeline.py                                        |      317 |       23 |     93% |171, 178, 408, 452-453, 550, 573, 741, 932-936, 940, 957-961, 965-977, 1018-1027, 1052 |
 | haystack/core/pipeline/utils.py                                           |       69 |        1 |     99% |       201 |
 | haystack/core/serialization.py                                            |      127 |        6 |     95% |75, 99, 246, 333, 349-350 |
 | haystack/core/serialization\_security.py                                  |       70 |        1 |     99% |       216 |
@@ -177,6 +177,14 @@
 | haystack/evaluation/eval\_run\_result.py                                  |       93 |       35 |     62% |72-97, 111-120, 189, 192, 195, 200, 211, 215 |
 | haystack/hooks/\_\_init\_\_.py                                            |        5 |        0 |    100% |           |
 | haystack/hooks/from\_function.py                                          |       50 |        2 |     96% |     29-30 |
+| haystack/hooks/human\_in\_the\_loop/\_\_init\_\_.py                       |        5 |        0 |    100% |           |
+| haystack/hooks/human\_in\_the\_loop/dataclasses.py                        |       16 |        0 |    100% |           |
+| haystack/hooks/human\_in\_the\_loop/hooks.py                              |       30 |        1 |     97% |       110 |
+| haystack/hooks/human\_in\_the\_loop/policies.py                           |       17 |        0 |    100% |           |
+| haystack/hooks/human\_in\_the\_loop/strategies.py                         |      158 |        9 |     94% |120-121, 265, 314, 358, 419, 453, 510, 620 |
+| haystack/hooks/human\_in\_the\_loop/types/\_\_init\_\_.py                 |        2 |        0 |    100% |           |
+| haystack/hooks/human\_in\_the\_loop/types/protocol.py                     |       25 |        0 |    100% |           |
+| haystack/hooks/human\_in\_the\_loop/user\_interfaces.py                   |       96 |        2 |     98% |   65, 103 |
 | haystack/hooks/invocation.py                                              |        9 |        0 |    100% |           |
 | haystack/hooks/protocol.py                                                |       13 |        0 |    100% |           |
 | haystack/hooks/tool\_result\_offloading/\_\_init\_\_.py                   |        5 |        0 |    100% |           |
@@ -186,14 +194,6 @@
 | haystack/hooks/tool\_result\_offloading/types/\_\_init\_\_.py             |        2 |        0 |    100% |           |
 | haystack/hooks/tool\_result\_offloading/types/protocol.py                 |       18 |        2 |     89% |    39, 44 |
 | haystack/hooks/utils.py                                                   |       47 |        0 |    100% |           |
-| haystack/human\_in\_the\_loop/\_\_init\_\_.py                             |        5 |        0 |    100% |           |
-| haystack/human\_in\_the\_loop/dataclasses.py                              |       16 |        0 |    100% |           |
-| haystack/human\_in\_the\_loop/hooks.py                                    |       30 |        1 |     97% |       110 |
-| haystack/human\_in\_the\_loop/policies.py                                 |       17 |        0 |    100% |           |
-| haystack/human\_in\_the\_loop/strategies.py                               |      158 |        9 |     94% |120-121, 265, 314, 358, 419, 453, 510, 620 |
-| haystack/human\_in\_the\_loop/types/\_\_init\_\_.py                       |        2 |        0 |    100% |           |
-| haystack/human\_in\_the\_loop/types/protocol.py                           |       25 |        0 |    100% |           |
-| haystack/human\_in\_the\_loop/user\_interfaces.py                         |       96 |        2 |     98% |   65, 103 |
 | haystack/lazy\_imports.py                                                 |       13 |        0 |    100% |           |
 | haystack/logging.py                                                       |      129 |        4 |     97% |247-248, 358-360 |
 | haystack/marshal/\_\_init\_\_.py                                          |        5 |        0 |    100% |           |
@@ -246,7 +246,7 @@
 | haystack/utils/type\_serialization.py                                     |      121 |        6 |     95% |65, 67, 187-188, 196, 218 |
 | haystack/utils/url\_validation.py                                         |        4 |        0 |    100% |           |
 | haystack/version.py                                                       |        5 |        2 |     60% |      9-10 |
-| **TOTAL**                                                                 | **15786** |  **848** | **95%** |           |
+| **TOTAL**                                                                 | **15786** |  **850** | **95%** |           |
 
 
 ## Setup coverage badge

@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-    <title>Coverage for haystack/human_in_the_loop/user_interfaces.py: 98%</title>
+    <title>Coverage for haystack/hooks/human_in_the_loop/user_interfaces.py: 98%</title>
     <link rel="icon" sizes="32x32" href="favicon_32_cb_c827f16f.png">
     <link rel="stylesheet" href="style_cb_4667309f.css" type="text/css">
     <script src="coverage_html_cb_dd2e7eb5.js" defer></script>
@@ -11,7 +11,7 @@
 <header>
     <div class="content">
         <h1>
-            <span class="text">Coverage for </span><b>haystack<span class="sep">/</span>human_in_the_loop<span class="sep">/</span>user_interfaces.py</b>:
+            <span class="text">Coverage for </span><b>haystack<span class="sep">/</span>hooks<span class="sep">/</span>human_in_the_loop<span class="sep">/</span>user_interfaces.py</b>:
             <span class="pc_cov">98%</span>
         </h1>
         <aside id="help_panel_wrapper">
@@ -60,12 +60,12 @@
             <button type="button" class="exc show_exc button_toggle_exc" value="exc" data-shortcut="x" title="Toggle lines excluded">0<span class="text"> excluded</span></button>
         </h2>
         <p class="text">
-            <a id="prevFileLink" class="nav" href="z_28b22a8f56fea0ce_protocol_py.html">&#xab; prev</a> &nbsp; &nbsp;
+            <a id="prevFileLink" class="nav" href="z_f712926f10fc3ca4_protocol_py.html">&#xab; prev</a> &nbsp; &nbsp;
             <a id="indexLink" class="nav" href="index.html">&Hat; index</a> &nbsp; &nbsp;
-            <a id="nextFileLink" class="nav" href="z_77ab7a7134ed4377_lazy_imports_py.html">&#xbb; next</a>
+            <a id="nextFileLink" class="nav" href="z_177ee90f6ce1b012_invocation_py.html">&#xbb; next</a>
             &nbsp; &nbsp; &nbsp;
             <a class="nav" href="https://coverage.readthedocs.io/en/7.14.3">coverage.py v7.14.3</a>,
-            created at 2026-07-13 09:05 +0000
+            created at 2026-07-13 09:18 +0000
         </p>
         <aside class="hidden">
             <button type="button" class="button_next_chunk" data-shortcut="j"></button>
@@ -89,8 +89,8 @@
     <p class="run"><span class="n"><a id="t7" href="#t7">7</a></span><span class="t"><span class="key">from</span> <span class="nam">typing</span> <span class="key">import</span> <span class="nam">Any</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t8" href="#t8">8</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t9" href="#t9">9</a></span><span class="t"><span class="key">from</span> <span class="nam">haystack</span><span class="op">.</span><span class="nam">core</span><span class="op">.</span><span class="nam">serialization</span> <span class="key">import</span> <span class="nam">default_to_dict</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t10" href="#t10">10</a></span><span class="t"><span class="key">from</span> <span class="nam">haystack</span><span class="op">.</span><span class="nam">human_in_the_loop</span> <span class="key">import</span> <span class="nam">ConfirmationUIResult</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t11" href="#t11">11</a></span><span class="t"><span class="key">from</span> <span class="nam">haystack</span><span class="op">.</span><span class="nam">human_in_the_loop</span><span class="op">.</span><span class="nam">types</span> <span class="key">import</span> <span class="nam">ConfirmationUI</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t10" href="#t10">10</a></span><span class="t"><span class="key">from</span> <span class="nam">haystack</span><span class="op">.</span><span class="nam">hooks</span><span class="op">.</span><span class="nam">human_in_the_loop</span> <span class="key">import</span> <span class="nam">ConfirmationUIResult</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t11" href="#t11">11</a></span><span class="t"><span class="key">from</span> <span class="nam">haystack</span><span class="op">.</span><span class="nam">hooks</span><span class="op">.</span><span class="nam">human_in_the_loop</span><span class="op">.</span><span class="nam">types</span> <span class="key">import</span> <span class="nam">ConfirmationUI</span>&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t12" href="#t12">12</a></span><span class="t"><span class="key">from</span> <span class="nam">haystack</span><span class="op">.</span><span class="nam">lazy_imports</span> <span class="key">import</span> <span class="nam">LazyImport</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t13" href="#t13">13</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t14" href="#t14">14</a></span><span class="t"><span class="key">with</span> <span class="nam">LazyImport</span><span class="op">(</span><span class="nam">message</span><span class="op">=</span><span class="str">"Run 'pip install rich'"</span><span class="op">)</span> <span class="key">as</span> <span class="nam">rich_import</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
@@ -297,12 +297,12 @@
 <footer>
     <div class="content">
         <p>
-            <a class="nav" href="z_28b22a8f56fea0ce_protocol_py.html">&#xab; prev</a> &nbsp; &nbsp;
+            <a class="nav" href="z_f712926f10fc3ca4_protocol_py.html">&#xab; prev</a> &nbsp; &nbsp;
             <a class="nav" href="index.html">&Hat; index</a> &nbsp; &nbsp;
-            <a class="nav" href="z_77ab7a7134ed4377_lazy_imports_py.html">&#xbb; next</a>
+            <a class="nav" href="z_177ee90f6ce1b012_invocation_py.html">&#xbb; next</a>
             &nbsp; &nbsp; &nbsp;
             <a class="nav" href="https://coverage.readthedocs.io/en/7.14.3">coverage.py v7.14.3</a>,
-            created at 2026-07-13 09:05 +0000
+            created at 2026-07-13 09:18 +0000
         </p>
     </div>
 </footer>
