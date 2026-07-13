@@ -30,7 +30,7 @@ Two dependency changes to be aware of:
 
 ### Legacy Generators removed
 
-`OpenAIGenerator`, `AzureOpenAIGenerator`, `HuggingFaceAPIGenerator`, and `HuggingFaceLocalGenerator` have been removed. Use their chat counterparts instead — all [ChatGenerators](../pipeline-components/generators.mdx) now also accept a plain `str` as input, so simple text-in/text-out use cases rarely require structural changes.
+`OpenAIGenerator`, `AzureOpenAIGenerator`, `HuggingFaceAPIGenerator`, and `HuggingFaceLocalGenerator` have been removed. Their chat counterparts are the replacement: `OpenAIChatGenerator` and `AzureOpenAIChatGenerator` in Haystack core, `HuggingFaceAPIChatGenerator` in the `huggingface-api-haystack` integration, and `TransformersChatGenerator` (the renamed `HuggingFaceLocalChatGenerator`) in the `transformers-haystack` integration (see [Components Moved to Integration Packages](#components-moved-to-integration-packages)). All [ChatGenerators](../pipeline-components/generators.mdx) now also accept a plain `str` as input, so simple text-in/text-out use cases rarely require structural changes.
 
 Before (v2.x):
 
