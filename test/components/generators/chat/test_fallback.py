@@ -385,12 +385,37 @@ class TestComponentLifecycle:
         for gen in gens:
             gen.warm_up.assert_called_once()
 
+    def test_warm_up_only_called_once_across_multiple_run_calls(self):
+        """warm_up() must not be re-invoked on every run(); generators are initialized at most once."""
+        gens = [Mock(spec=["run", "warm_up"]) for _ in range(2)]
+        for gen in gens:
+            gen.run.return_value = {"replies": [ChatMessage.from_assistant("ok")], "meta": {}}
+        fallback = FallbackChatGenerator(chat_generators=gens)
+        # Call run() three times
+        for _ in range(3):
+            fallback.run([ChatMessage.from_user("hi")])
+        # warm_up must have been called exactly once despite three run() calls
+        for gen in gens:
+            gen.warm_up.assert_called_once()
+
     async def test_warm_up_async_delegates_to_every_generator(self):
         gens = [Mock(spec=["run", "warm_up_async"]) for _ in range(3)]
         for gen in gens:
             gen.warm_up_async = AsyncMock()
         fallback = FallbackChatGenerator(chat_generators=gens)
         await fallback.warm_up_async()
+        for gen in gens:
+            gen.warm_up_async.assert_awaited_once()
+
+    async def test_warm_up_async_only_called_once_across_multiple_run_async_calls(self):
+        """warm_up_async() must not be re-invoked on every run_async(); generators are initialized at most once."""
+        gens = [Mock(spec=["run_async", "warm_up_async"]) for _ in range(2)]
+        for gen in gens:
+            gen.warm_up_async = AsyncMock()
+            gen.run_async = AsyncMock(return_value={"replies": [ChatMessage.from_assistant("ok")], "meta": {}})
+        fallback = FallbackChatGenerator(chat_generators=gens)
+        for _ in range(3):
+            await fallback.run_async([ChatMessage.from_user("hi")])
         for gen in gens:
             gen.warm_up_async.assert_awaited_once()
 

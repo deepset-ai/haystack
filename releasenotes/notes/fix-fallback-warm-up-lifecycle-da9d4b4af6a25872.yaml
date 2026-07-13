@@ -1,0 +1,9 @@
+---
+fixes:
+  - |
+    ``FallbackChatGenerator`` now follows the same ``warm_up`` lifecycle semantics as
+    every other Haystack component. Previously, ``warm_up()`` was called on every
+    ``run()`` and ``run_async()`` invocation, meaning wrapped generators could be
+    initialized multiple times. This is now guarded by a ``_warmed_up`` flag so that
+    each underlying generator is warmed up at most once, regardless of how many times
+    the component is invoked.

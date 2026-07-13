@@ -60,6 +60,7 @@ class FallbackChatGenerator:
             raise ValueError(msg)
 
         self.chat_generators = list(chat_generators)
+        self._warmed_up = False
 
     def to_dict(self) -> dict[str, Any]:
         """Serialize the component, including nested chat generators."""
@@ -87,18 +88,22 @@ class FallbackChatGenerator:
         return default_from_dict(cls, data)
 
     def warm_up(self) -> None:
-        """Warm up all underlying chat generators."""
-        for gen in self.chat_generators:
-            if hasattr(gen, "warm_up"):
-                gen.warm_up()
+        """Warm up all underlying chat generators (called at most once)."""
+        if not self._warmed_up:
+            for gen in self.chat_generators:
+                if hasattr(gen, "warm_up"):
+                    gen.warm_up()
+            self._warmed_up = True
 
     async def warm_up_async(self) -> None:
-        """Warm up all underlying chat generators on the serving event loop."""
-        for gen in self.chat_generators:
-            if hasattr(gen, "warm_up_async"):
-                await gen.warm_up_async()
-            elif hasattr(gen, "warm_up"):
-                gen.warm_up()
+        """Warm up all underlying chat generators on the serving event loop (called at most once)."""
+        if not self._warmed_up:
+            for gen in self.chat_generators:
+                if hasattr(gen, "warm_up_async"):
+                    await gen.warm_up_async()
+                elif hasattr(gen, "warm_up"):
+                    gen.warm_up()
+            self._warmed_up = True
 
     def close(self) -> None:
         """Release the underlying chat generators' resources."""
