@@ -7,13 +7,13 @@ from typing import Any
 from haystack.components.agents.state.state import State
 from haystack.components.agents.state.state_utils import replace_values
 from haystack.core.serialization import default_from_dict, default_to_dict
-from haystack.human_in_the_loop.strategies import (
+from haystack.hooks.human_in_the_loop.strategies import (
     _deserialize_confirmation_strategies,
     _process_confirmation_strategies,
     _process_confirmation_strategies_async,
     _serialize_confirmation_strategies,
 )
-from haystack.human_in_the_loop.types import ConfirmationStrategy
+from haystack.hooks.human_in_the_loop.types import ConfirmationStrategy
 
 
 class ConfirmationHook:
@@ -24,7 +24,7 @@ class ConfirmationHook:
 
     ```python
     from haystack.components.agents import Agent
-    from haystack.human_in_the_loop import (
+    from haystack.hooks.human_in_the_loop import (
         AlwaysAskPolicy,
         BlockingConfirmationStrategy,
         ConfirmationHook,
