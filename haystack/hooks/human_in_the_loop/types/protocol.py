@@ -5,7 +5,7 @@
 from typing import Any, Protocol
 
 from haystack.core.serialization import default_from_dict, default_to_dict
-from haystack.human_in_the_loop.dataclasses import ConfirmationUIResult, ToolExecutionDecision
+from haystack.hooks.human_in_the_loop.dataclasses import ConfirmationUIResult, ToolExecutionDecision
 
 
 class ConfirmationUI(Protocol):

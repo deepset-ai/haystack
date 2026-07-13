@@ -639,6 +639,8 @@ agent = Agent(
 
 **Why:** Confirmation was a one-off, before-tool interception bolted onto the Agent. Hooks generalize that seam, so HITL becomes one application of a single, uniform extension point instead of a parallel concept with its own serialization and run plumbing.
 
+The Human-in-the-Loop module has also moved from `haystack.human_in_the_loop` to `haystack.hooks.human_in_the_loop`, so that it lives alongside the other built-in hooks (such as tool result offloading). Update your imports to the new location.
+
 **How to migrate:**
 
 Before (v2.x):
@@ -661,7 +663,7 @@ agent.run(messages=[...], confirmation_strategy_context={"websocket": ws})
 After (v3.0):
 ```python
 from haystack.components.agents import Agent
-from haystack.human_in_the_loop import (
+from haystack.hooks.human_in_the_loop import (
     BlockingConfirmationStrategy,
     AlwaysAskPolicy,
     ConfirmationHook,

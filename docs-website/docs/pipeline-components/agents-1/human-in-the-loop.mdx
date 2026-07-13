@@ -17,8 +17,8 @@ This is useful for high-stakes operations - such as sending emails, modifying da
 | --- | --- |
 | **Configured on**       | The [`Agent`](./agent.mdx) component, as a `ConfirmationHook` registered under the `before_tool` [hook point](./hooks.mdx) |
 | **Key classes**         | `ConfirmationHook`, `BlockingConfirmationStrategy`, `AlwaysAskPolicy`, `AskOncePolicy`, `NeverAskPolicy`, `RichConsoleUI`, `SimpleConsoleUI` |
-| **Import path**         | `haystack.human_in_the_loop`                                                                     |
-| **GitHub link**         | https://github.com/deepset-ai/haystack/blob/main/haystack/human_in_the_loop/                    |
+| **Import path**         | `haystack.hooks.human_in_the_loop`                                                               |
+| **GitHub link**         | https://github.com/deepset-ai/haystack/blob/main/haystack/hooks/human_in_the_loop/              |
 | **Package name** | `haystack-ai` |
 
 </div>
@@ -56,7 +56,7 @@ from typing import Annotated
 from haystack.components.agents import Agent
 from haystack.components.generators.chat import OpenAIChatGenerator
 from haystack.dataclasses import ChatMessage
-from haystack.human_in_the_loop import (
+from haystack.hooks.human_in_the_loop import (
     AlwaysAskPolicy,
     BlockingConfirmationStrategy,
     ConfirmationHook,
@@ -118,7 +118,7 @@ pip install rich
 ```
 
 ```python
-from haystack.human_in_the_loop import RichConsoleUI
+from haystack.hooks.human_in_the_loop import RichConsoleUI
 
 strategy = BlockingConfirmationStrategy(
     confirmation_policy=AlwaysAskPolicy(),
@@ -202,10 +202,13 @@ Policies control *when* the human is asked.
 
 ### Custom policy
 
-You can implement your own policy by subclassing `ConfirmationPolicy` from `haystack.human_in_the_loop.types`:
+You can implement your own policy by subclassing `ConfirmationPolicy` from `haystack.hooks.human_in_the_loop.types`:
 
 ```python
-from haystack.human_in_the_loop.types import ConfirmationPolicy, ConfirmationUIResult
+from haystack.hooks.human_in_the_loop.types import (
+    ConfirmationPolicy,
+    ConfirmationUIResult,
+)
 from typing import Any
 
 
@@ -227,8 +230,8 @@ It is called after the user responds and receives the full `ConfirmationUIResult
 The following policy asks once per tool name and skips re-asking for any tool the user has already confirmed:
 
 ```python
-from haystack.human_in_the_loop.types import ConfirmationPolicy
-from haystack.human_in_the_loop import ConfirmationUIResult
+from haystack.hooks.human_in_the_loop.types import ConfirmationPolicy
+from haystack.hooks.human_in_the_loop import ConfirmationUIResult
 from typing import Any
 
 
@@ -295,11 +298,11 @@ This is a good reference if you need non-blocking HITL in a web or server enviro
 
 ## Custom UI
 
-Implement `ConfirmationUI` from `haystack.human_in_the_loop.types` to build your own interface - for example, a web-based approval queue:
+Implement `ConfirmationUI` from `haystack.hooks.human_in_the_loop.types` to build your own interface - for example, a web-based approval queue:
 
 ```python
-from haystack.human_in_the_loop.types import ConfirmationUI
-from haystack.human_in_the_loop import ConfirmationUIResult
+from haystack.hooks.human_in_the_loop.types import ConfirmationUI
+from haystack.hooks.human_in_the_loop import ConfirmationUIResult
 from typing import Any
 
 

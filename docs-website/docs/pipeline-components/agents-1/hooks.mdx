@@ -196,7 +196,7 @@ print(result["last_message"].text)
 
 ## Ready-made hooks
 
-Haystack ships two ready-made hooks:
+Haystack ships two ready-made hooks, each in its own submodule of `haystack.hooks`:
 
-- `ConfirmationHook`: A `before_tool` hook that applies Human-in-the-Loop confirmation strategies to pending tool calls — a human can confirm, modify, or reject the tool calls the model requested before they run. See [Human in the Loop](./human-in-the-loop.mdx).
-- `ToolResultOffloadHook`: An `after_tool` hook that offloads tool results to a `ToolResultStore` (such as `FileSystemToolResultStore`) and replaces them in the conversation with a compact pointer, so the next LLM call sees a reference instead of the full result. Per-tool policies (`AlwaysOffload`, `NeverOffload`, `OffloadOverChars`) control which results are offloaded. See [Tool Result Offloading](./tool-result-offloading.mdx).
+- `ConfirmationHook` (from `haystack.hooks.human_in_the_loop`): A `before_tool` hook that applies Human-in-the-Loop confirmation strategies to pending tool calls — a human can confirm, modify, or reject the tool calls the model requested before they run. See [Human in the Loop](./human-in-the-loop.mdx).
+- `ToolResultOffloadHook` (from `haystack.hooks.tool_result_offloading`): An `after_tool` hook that offloads tool results to a `ToolResultStore` (such as `FileSystemToolResultStore`) and replaces them in the conversation with a compact pointer, so the next LLM call sees a reference instead of the full result. Per-tool policies (`AlwaysOffload`, `NeverOffload`, `OffloadOverChars`) control which results are offloaded. See [Tool Result Offloading](./tool-result-offloading.mdx).
