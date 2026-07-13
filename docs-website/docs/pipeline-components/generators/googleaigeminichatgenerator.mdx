@@ -98,41 +98,66 @@ def get_current_weather(
 tool = create_tool_from_function(get_current_weather)
 ```
 
-Create a new instance of `GoogleAIGeminiChatGenerator` to set the tools and a `ToolInvoker` to invoke the tools.
+Create a new instance of `GoogleAIGeminiChatGenerator` to set the tools:
 
 ```python
 import os
 from haystack_integrations.components.generators.google_ai import (
     GoogleAIGeminiChatGenerator,
 )
-from haystack.components.tools import ToolInvoker
 
 os.environ["GOOGLE_API_KEY"] = "<MY_API_KEY>"
 
 gemini_chat = GoogleAIGeminiChatGenerator(model="gemini-2.0-flash", tools=[tool])
-
-tool_invoker = ToolInvoker(tools=[tool])
 ```
 
-And then ask a question:
+And then ask a question. The model prepares the tool call, your code executes it with `Tool.invoke`, and the results go back to the model for the final answer:
 
 ```python
 from haystack.dataclasses import ChatMessage
 
 messages = [ChatMessage.from_user("What is the temperature in celsius in Berlin?")]
-res = gemini_chat.run(messages=messages)
+replies = gemini_chat.run(messages=messages)["replies"]
 
-print(res["replies"][0].tool_calls)
+print(replies[0].tool_calls)
 >>> [ToolCall(tool_name='get_current_weather',
 >>>           arguments={'unit': 'celsius', 'location': 'Berlin'}, id=None)]
 
-tool_messages = tool_invoker.run(messages=replies)["tool_messages"]
-messages = user_message + replies + tool_messages
+tool_messages = []
+for tool_call in replies[0].tool_calls:
+    result = tool.invoke(**tool_call.arguments)
+    tool_messages.append(ChatMessage.from_tool(tool_result=result, origin=tool_call))
 
-messages += res["replies"][0] + [ChatMessage.from_function(content=weather, name="get_current_weather")]
+messages = messages + replies + tool_messages
 
 final_replies = gemini_chat.run(messages=messages)["replies"]
 print(final_replies[0].text)
+>>> The temperature in Berlin is 20 degrees Celsius.
+```
+
+### With an Agent
+
+Instead of driving the tool call loop yourself, pass the generator and your tools to an [`Agent`](../agents-1/agent.mdx). It lets the model prepare tool calls, executes them, and feeds the results back until a final answer is ready:
+
+```python
+import os
+from haystack.components.agents import Agent
+from haystack.dataclasses import ChatMessage
+from haystack_integrations.components.generators.google_ai import (
+    GoogleAIGeminiChatGenerator,
+)
+
+os.environ["GOOGLE_API_KEY"] = "<MY_API_KEY>"
+
+agent = Agent(
+    chat_generator=GoogleAIGeminiChatGenerator(model="gemini-2.0-flash"),
+    tools=[tool],
+)
+
+result = agent.run(
+    messages=[ChatMessage.from_user("What is the temperature in celsius in Berlin?")]
+)
+print(result["last_message"].text)
 >>> The temperature in Berlin is 20 degrees Celsius.
 ```
 
