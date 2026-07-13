@@ -558,30 +558,33 @@ class OpenAIResponsesChatGenerator:
     def _resolve_flattened_kwargs(self, generation_kwargs: dict[str, Any]) -> dict[str, Any]:
         generation_kwargs = generation_kwargs.copy()
 
+        # Flattened reasoning params are merged into a fresh `reasoning` dict so we never mutate the
+        # caller's dict (which is shared via the shallow copy above and reused across `run` calls).
+        reasoning_overrides = {}
         reasoning_effort = generation_kwargs.pop("reasoning_effort", None)
         if reasoning_effort is not None:
-            reasoning = generation_kwargs.setdefault("reasoning", {})
-            reasoning["effort"] = reasoning_effort
+            reasoning_overrides["effort"] = reasoning_effort
 
         reasoning_summary = generation_kwargs.pop("reasoning_summary", None)
         if reasoning_summary is not None:
-            reasoning = generation_kwargs.setdefault("reasoning", {})
-            reasoning["summary"] = reasoning_summary
+            reasoning_overrides["summary"] = reasoning_summary
 
         reasoning_mode = generation_kwargs.pop("reasoning_mode", None)
         if reasoning_mode is not None:
-            reasoning = generation_kwargs.setdefault("reasoning", {})
-            reasoning["mode"] = reasoning_mode
+            reasoning_overrides["mode"] = reasoning_mode
+
+        if reasoning_overrides:
+            generation_kwargs["reasoning"] = {**generation_kwargs.get("reasoning", {}), **reasoning_overrides}
 
         include_reasoning_encrypted_content = generation_kwargs.pop("include_reasoning_encrypted_content", None)
         if include_reasoning_encrypted_content is True:
-            include = generation_kwargs.setdefault("include", [])
-            include.append("reasoning.encrypted_content")
+            include = generation_kwargs.get("include", [])
+            if "reasoning.encrypted_content" not in include:
+                generation_kwargs["include"] = [*include, "reasoning.encrypted_content"]
 
         verbosity = generation_kwargs.pop("verbosity", None)
         if verbosity is not None:
-            text = generation_kwargs.setdefault("text", {})
-            text["verbosity"] = verbosity
+            generation_kwargs["text"] = {**generation_kwargs.get("text", {}), "verbosity": verbosity}
 
         return generation_kwargs
 
