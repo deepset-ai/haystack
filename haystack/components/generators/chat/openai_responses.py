@@ -558,8 +558,7 @@ class OpenAIResponsesChatGenerator:
     def _resolve_flattened_kwargs(self, generation_kwargs: dict[str, Any]) -> dict[str, Any]:
         generation_kwargs = generation_kwargs.copy()
 
-        # Flattened reasoning params are merged into a fresh `reasoning` dict so we never mutate the
-        # caller's dict (which is shared via the shallow copy above and reused across `run` calls).
+        # avoid mutating the caller's dict
         reasoning_overrides = {}
         reasoning_effort = generation_kwargs.pop("reasoning_effort", None)
         if reasoning_effort is not None:
