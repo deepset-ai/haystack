@@ -280,7 +280,7 @@ class TestPipelineBase:
         pipe.remove_component("producer")
 
         consumer = pipe.get_component("consumer")
-        consumer_socket = consumer.__haystack_input__._sockets_dict["value"]
+        consumer_socket = consumer.__haystack_input__._sockets_dict["value"]  # type: ignore[attr-defined]
         # The surviving neighbor must not keep a dangling reference to the removed component.
         assert consumer_socket.senders == []
         # With the stale sender gone, the now-unconnected mandatory input is exposed again.
@@ -299,7 +299,7 @@ class TestPipelineBase:
         pipe.remove_component("consumer")
 
         producer = pipe.get_component("producer")
-        producer_socket = producer.__haystack_output__._sockets_dict["value"]
+        producer_socket = producer.__haystack_output__._sockets_dict["value"]  # type: ignore[attr-defined]
         # The surviving upstream neighbor must not keep a dangling receiver reference.
         assert producer_socket.receivers == []
 
