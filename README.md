@@ -7,7 +7,7 @@
 | haystack/\_\_init\_\_.py                                                  |       11 |        0 |    100% |           |
 | haystack/components/\_\_init\_\_.py                                       |        0 |        0 |    100% |           |
 | haystack/components/agents/\_\_init\_\_.py                                |        5 |        0 |    100% |           |
-| haystack/components/agents/agent.py                                       |      444 |        7 |     98% |131, 199, 215, 339, 907, 1109, 1236 |
+| haystack/components/agents/agent.py                                       |      448 |        6 |     99% |141, 209, 225, 349, 925, 1258 |
 | haystack/components/agents/state/\_\_init\_\_.py                          |        5 |        0 |    100% |           |
 | haystack/components/agents/state/state.py                                 |       73 |        2 |     97% |    75, 79 |
 | haystack/components/agents/state/state\_utils.py                          |       18 |        0 |    100% |           |
@@ -144,7 +144,7 @@
 | haystack/core/pipeline/component\_checks.py                               |       57 |        0 |    100% |           |
 | haystack/core/pipeline/descriptions.py                                    |        6 |        0 |    100% |           |
 | haystack/core/pipeline/draw.py                                            |      199 |       41 |     79% |35-58, 142, 145, 148, 150, 158, 162-169, 293, 303, 375-377, 382, 390-391, 419-424 |
-| haystack/core/pipeline/pipeline.py                                        |      317 |       23 |     93% |171, 178, 408, 452-453, 550, 573, 741, 932-936, 940, 957-961, 965-977, 1018-1027, 1052 |
+| haystack/core/pipeline/pipeline.py                                        |      317 |       21 |     93% |171, 178, 408, 452-453, 550, 573, 741, 935, 940, 957-961, 965-977, 1018-1027, 1052 |
 | haystack/core/pipeline/utils.py                                           |       69 |        1 |     99% |       201 |
 | haystack/core/serialization.py                                            |      127 |        6 |     95% |75, 99, 246, 333, 349-350 |
 | haystack/core/serialization\_security.py                                  |       70 |        1 |     99% |       216 |
@@ -186,7 +186,7 @@
 | haystack/hooks/human\_in\_the\_loop/types/protocol.py                     |       25 |        0 |    100% |           |
 | haystack/hooks/human\_in\_the\_loop/user\_interfaces.py                   |       96 |        2 |     98% |   65, 103 |
 | haystack/hooks/invocation.py                                              |        9 |        0 |    100% |           |
-| haystack/hooks/protocol.py                                                |       13 |        0 |    100% |           |
+| haystack/hooks/protocol.py                                                |       15 |        0 |    100% |           |
 | haystack/hooks/tool\_result\_offloading/\_\_init\_\_.py                   |        5 |        0 |    100% |           |
 | haystack/hooks/tool\_result\_offloading/hooks.py                          |       95 |        1 |     99% |       221 |
 | haystack/hooks/tool\_result\_offloading/policies.py                       |       17 |        0 |    100% |           |
@@ -246,7 +246,7 @@
 | haystack/utils/type\_serialization.py                                     |      121 |        6 |     95% |65, 67, 187-188, 196, 218 |
 | haystack/utils/url\_validation.py                                         |        4 |        0 |    100% |           |
 | haystack/version.py                                                       |        5 |        2 |     60% |      9-10 |
-| **TOTAL**                                                                 | **15790** |  **850** | **95%** |           |
+| **TOTAL**                                                                 | **15796** |  **847** | **95%** |           |
 
 
 ## Setup coverage badge
