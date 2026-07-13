@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    Fixed `Document.__eq__` reporting two Documents as equal when their `meta` mapping contained
+    keys that collide with top-level Document fields such as `id`, `content`, or `score`. The
+    equality comparison now uses the unflattened dictionary representation, so metadata keys
+    that share a name with a Document field are preserved during comparison instead of being
+    silently overwritten by the Document's own field values.

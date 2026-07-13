@@ -93,11 +93,16 @@ class Document(metaclass=_BackwardCompatible):  # noqa: PLW1641
         """
         Compares Documents for equality.
 
-        Two Documents are considered equals if their dictionary representation is identical.
+        Two Documents are considered equal if their field values, including the `meta` mapping, are
+        identical.
+
+        The unflattened dictionary representation is used so that metadata keys that collide with
+        top-level Document fields (e.g. ``id``, ``content``, ``score``) are preserved during the
+        comparison instead of being silently overwritten by the Document's own fields. See #11969.
         """
         if type(self) != type(other):
             return False
-        return self.to_dict() == other.to_dict()
+        return self.to_dict(flatten=False) == other.to_dict(flatten=False)
 
     def __post_init__(self) -> None:
         """
