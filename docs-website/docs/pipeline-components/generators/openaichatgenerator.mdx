@@ -39,6 +39,21 @@ You can pass any chat completion parameters valid for the `openai.ChatCompletion
 
 `OpenAIChatGenerator` can support custom deployments of your OpenAI models through the `api_base_url` init parameter.
 
+For example, you can point it at an OpenAI-compatible multi-model gateway such as [DaoXE](https://daoxe.com) (`https://daoxe.com/v1`). Use an API key from the gateway dashboard and an exact model ID from your account catalog (`GET /v1/models`) rather than a hard-coded public list:
+
+```python
+from haystack.utils import Secret
+from haystack.components.generators.chat import OpenAIChatGenerator
+
+generator = OpenAIChatGenerator(
+    api_key=Secret.from_env_var("DAOXE_API_KEY"),
+    api_base_url="https://daoxe.com/v1",
+    model="YOUR_DAOXE_MODEL_ID",
+)
+```
+
+DaoXE is a multi-model multi-protocol gateway (OpenAI Chat Completions / Responses, Anthropic Messages for other clients). This component uses the Chat Completions path only.
+
 ### Structured Output
 
 `OpenAIChatGenerator` supports structured output generation, allowing you to receive responses in a predictable format. You can use Pydantic models or JSON schemas to define the structure of the output through the `response_format` parameter in `generation_kwargs`.
