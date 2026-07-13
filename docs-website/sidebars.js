@@ -156,9 +156,18 @@ export default {
           label: 'Agents',
           items: [
             'pipeline-components/agents-1/agent',
-            'pipeline-components/agents-1/hooks',
-            'pipeline-components/agents-1/human-in-the-loop',
-            'pipeline-components/agents-1/tool-result-offloading',
+            {
+              type: 'category',
+              label: 'Hooks',
+              link: {
+                type: 'doc',
+                id: 'pipeline-components/agents-1/hooks',
+              },
+              items: [
+                'pipeline-components/agents-1/human-in-the-loop',
+                'pipeline-components/agents-1/tool-result-offloading',
+              ],
+            },
             'pipeline-components/agents-1/state',
           ],
         },
@@ -409,7 +418,6 @@ export default {
               label: 'Guides to Generators',
               items: [
                 'pipeline-components/generators/guides-to-generators/choosing-the-right-generator',
-                'pipeline-components/generators/guides-to-generators/function-calling',
               ],
             },
             'pipeline-components/generators/amazonbedrockchatgenerator',

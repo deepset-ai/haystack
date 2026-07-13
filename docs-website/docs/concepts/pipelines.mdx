@@ -44,7 +44,7 @@ See [Pipeline Loops](pipelines/pipeline-loops.mdx) for a deeper explanation of h
 
 ### Async Execution and Streaming
 
-Pipelines execute components in parallel when their dependencies allow it. This improves performance in complex pipelines with independent operations. For example, a pipeline can run multiple Retrievers or LLM calls simultaneously, execute independent pipeline branches in parallel, and efficiently handle I/O-bound operations that would otherwise cause delays. You can cap the number of components running at the same time with the `concurrency_limit` init parameter.
+When run asynchronously, pipelines execute components in parallel when their dependencies allow it. This improves performance in complex pipelines with independent operations. For example, a pipeline can run multiple Retrievers or LLM calls simultaneously, execute independent pipeline branches in parallel, and efficiently handle I/O-bound operations that would otherwise cause delays. You can cap the number of components running at the same time with the `concurrency_limit` argument of the async run methods (`run_async`, `run_async_generator`, and `stream`). The synchronous `run` method executes components sequentially.
 
 Besides the blocking `run` method, every pipeline offers three ways to run asynchronously:
 

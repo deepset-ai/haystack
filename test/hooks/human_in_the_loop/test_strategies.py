@@ -10,7 +10,7 @@ import pytest
 from haystack.components.agents.state.state import State
 from haystack.components.agents.tool_calling import ToolNotFoundException, _run_tool
 from haystack.dataclasses import ChatMessage, ToolCall
-from haystack.human_in_the_loop import (
+from haystack.hooks.human_in_the_loop import (
     AlwaysAskPolicy,
     AskOncePolicy,
     BlockingConfirmationStrategy,
@@ -19,7 +19,7 @@ from haystack.human_in_the_loop import (
     SimpleConsoleUI,
     ToolExecutionDecision,
 )
-from haystack.human_in_the_loop.strategies import (
+from haystack.hooks.human_in_the_loop.strategies import (
     _apply_tool_execution_decisions,
     _process_confirmation_strategies,
     _run_confirmation_strategies,
@@ -60,14 +60,14 @@ class TestBlockingConfirmationStrategy:
         strategy = BlockingConfirmationStrategy(confirmation_policy=AskOncePolicy(), confirmation_ui=SimpleConsoleUI())
         strategy_dict = strategy.to_dict()
         assert strategy_dict == {
-            "type": "haystack.human_in_the_loop.strategies.BlockingConfirmationStrategy",
+            "type": "haystack.hooks.human_in_the_loop.strategies.BlockingConfirmationStrategy",
             "init_parameters": {
                 "confirmation_policy": {
-                    "type": "haystack.human_in_the_loop.policies.AskOncePolicy",
+                    "type": "haystack.hooks.human_in_the_loop.policies.AskOncePolicy",
                     "init_parameters": {},
                 },
                 "confirmation_ui": {
-                    "type": "haystack.human_in_the_loop.user_interfaces.SimpleConsoleUI",
+                    "type": "haystack.hooks.human_in_the_loop.user_interfaces.SimpleConsoleUI",
                     "init_parameters": {},
                 },
                 "reject_template": "Tool execution for '{tool_name}' was rejected by the user.",
@@ -79,14 +79,14 @@ class TestBlockingConfirmationStrategy:
 
     def test_from_dict(self):
         strategy_dict = {
-            "type": "haystack.human_in_the_loop.strategies.BlockingConfirmationStrategy",
+            "type": "haystack.hooks.human_in_the_loop.strategies.BlockingConfirmationStrategy",
             "init_parameters": {
                 "confirmation_policy": {
-                    "type": "haystack.human_in_the_loop.policies.AskOncePolicy",
+                    "type": "haystack.hooks.human_in_the_loop.policies.AskOncePolicy",
                     "init_parameters": {},
                 },
                 "confirmation_ui": {
-                    "type": "haystack.human_in_the_loop.user_interfaces.SimpleConsoleUI",
+                    "type": "haystack.hooks.human_in_the_loop.user_interfaces.SimpleConsoleUI",
                     "init_parameters": {},
                 },
             },

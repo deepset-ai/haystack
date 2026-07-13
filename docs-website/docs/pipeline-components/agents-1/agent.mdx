@@ -371,7 +371,7 @@ result = agent.run(
 ```
 
 Tools can also return `ImageContent` directly, letting the agent fetch and reason about images dynamically during its loop.
-Two things are required: set `outputs_to_string={"raw_result": True}` so the `ToolInvoker` skips string conversion, and return a `list[ImageContent]` (the tool result type is `str | Sequence[TextContent | ImageContent]`).
+Two things are required: set `outputs_to_string={"raw_result": True}` so the Agent's tool execution skips string conversion, and return a `list[ImageContent]` (the tool result type is `str | Sequence[TextContent | ImageContent]`).
 
 The standard Chat Completions API doesn't support images in tool results — use `OpenAIResponsesChatGenerator` (OpenAI's Responses API) instead:
 

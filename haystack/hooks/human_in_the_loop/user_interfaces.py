@@ -7,8 +7,8 @@ from threading import Lock
 from typing import Any
 
 from haystack.core.serialization import default_to_dict
-from haystack.human_in_the_loop import ConfirmationUIResult
-from haystack.human_in_the_loop.types import ConfirmationUI
+from haystack.hooks.human_in_the_loop import ConfirmationUIResult
+from haystack.hooks.human_in_the_loop.types import ConfirmationUI
 from haystack.lazy_imports import LazyImport
 
 with LazyImport(message="Run 'pip install rich'") as rich_import:
