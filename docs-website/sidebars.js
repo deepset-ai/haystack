@@ -409,7 +409,6 @@ export default {
               label: 'Guides to Generators',
               items: [
                 'pipeline-components/generators/guides-to-generators/choosing-the-right-generator',
-                'pipeline-components/generators/guides-to-generators/function-calling',
               ],
             },
             'pipeline-components/generators/amazonbedrockchatgenerator',

@@ -341,7 +341,7 @@ See more details and examples on the [Toolset documentation page](toolset.mdx).
 To better understand this section, make sure you are also familiar with Haystack’s [`ChatMessage`](../concepts/data-classes/chatmessage.mdx) data class.
 
 :::tip
-The recommended way to use tools in Haystack is through the [`Agent`](../pipeline-components/agents-1/agent.mdx) component, which manages the full tool call loop automatically. If you need fine-grained control over the loop, you can also drive tool calls manually with a Chat Generator and `Tool.invoke` — the [Function Calling guide](../pipeline-components/generators/guides-to-generators/function-calling.mdx) walks through that step by step.
+The recommended way to use tools in Haystack is through the [`Agent`](../pipeline-components/agents-1/agent.mdx) component, which manages the full tool call loop automatically. If you need fine-grained control over the loop, you can also drive tool calls manually: pass the tools to a Chat Generator, execute the requested tool calls with `Tool.invoke`, and send the results back as `ChatMessage.from_tool` messages.
 :::
 
 ### Passing Tools to Agent

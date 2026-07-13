@@ -97,7 +97,7 @@ The `tool_invoker_kwargs` parameter is gone from `Agent`; the relevant options a
 - `enable_streaming_callback_passthrough` → `tool_streaming_callback_passthrough`
 - `convert_result_to_json_string` has been removed: non-string tool results are now always serialized with `json.dumps`.
 
-If you need to execute a prepared tool call outside an `Agent`, call `Tool.invoke` directly — see the [Function Calling guide](../pipeline-components/generators/guides-to-generators/function-calling.mdx).
+If you need to execute a prepared tool call outside an `Agent`, call `Tool.invoke` directly and send the result back to the model as a `ChatMessage.from_tool` message.
 
 ### Other removals and renames
 
