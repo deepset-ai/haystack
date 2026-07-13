@@ -792,10 +792,13 @@ class ChatMessage:
             if tool_calls:
                 haystack_tool_calls = []
                 for tc in tool_calls:
+                    # Zero-argument tool calls from OpenAI-compatible servers may send an
+                    # empty string, null, or omit `arguments` entirely; treat all as {}.
+                    raw_arguments = tc["function"].get("arguments")
                     haystack_tc = ToolCall(
                         id=tc.get("id"),
                         tool_name=tc["function"]["name"],
-                        arguments=json.loads(tc["function"]["arguments"]),
+                        arguments=json.loads(raw_arguments) if raw_arguments else {},
                     )
                     haystack_tool_calls.append(haystack_tc)
             return cls.from_assistant(text=content, name=name, tool_calls=haystack_tool_calls)

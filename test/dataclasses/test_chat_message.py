@@ -966,6 +966,27 @@ class TestFromOpenaiDictFormat:
         assert tool_call.tool_name == "get_weather"
         assert tool_call.arguments == {"location": "Berlin"}
 
+    def test_from_openai_dict_format_tool_call_with_empty_arguments(self):
+        # OpenAI-compatible servers (vLLM, llama.cpp, Ollama, ...) emit an empty
+        # string for a zero-argument tool call; it must not crash.
+        openai_msg = {
+            "role": "assistant",
+            "content": None,
+            "tool_calls": [{"id": "call_1", "function": {"name": "now", "arguments": ""}}],
+        }
+        message = ChatMessage.from_openai_dict_format(openai_msg)
+        assert message.tool_call == ToolCall(id="call_1", tool_name="now", arguments={})
+
+    def test_from_openai_dict_format_tool_call_with_missing_arguments(self):
+        # Some servers omit the `arguments` key entirely for zero-argument calls.
+        openai_msg = {
+            "role": "assistant",
+            "content": None,
+            "tool_calls": [{"id": "call_1", "function": {"name": "now"}}],
+        }
+        message = ChatMessage.from_openai_dict_format(openai_msg)
+        assert message.tool_call.arguments == {}
+
     def test_from_openai_dict_format_tool_message(self):
         openai_msg = {"role": "tool", "content": "The weather is sunny", "tool_call_id": "call_123"}
         message = ChatMessage.from_openai_dict_format(openai_msg)
