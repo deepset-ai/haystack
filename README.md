@@ -75,7 +75,7 @@
 | haystack/components/generators/chat/llm.py                                |       40 |        1 |     98% |       124 |
 | haystack/components/generators/chat/mock.py                               |      144 |        0 |    100% |           |
 | haystack/components/generators/chat/openai.py                             |      230 |        4 |     98% |458, 509, 680, 780 |
-| haystack/components/generators/chat/openai\_responses.py                  |      350 |       41 |     88% |265, 296, 385, 465, 481, 518, 525-532, 540, 581-590, 606-607, 612, 622, 632-648, 657, 714, 811, 853-854, 867, 919, 941, 960 |
+| haystack/components/generators/chat/openai\_responses.py                  |      358 |       41 |     89% |278, 309, 398, 478, 494, 531, 538-545, 553, 606-615, 631-632, 637, 647, 657-673, 682, 739, 836, 878-879, 892, 944, 966, 985 |
 | haystack/components/generators/chat/types/\_\_init\_\_.py                 |        2 |        0 |    100% |           |
 | haystack/components/generators/chat/types/protocol.py                     |        4 |        0 |    100% |           |
 | haystack/components/generators/openai\_image\_generator.py                |       78 |        0 |    100% |           |
@@ -246,7 +246,7 @@
 | haystack/utils/type\_serialization.py                                     |      121 |        6 |     95% |65, 67, 187-188, 196, 218 |
 | haystack/utils/url\_validation.py                                         |        4 |        0 |    100% |           |
 | haystack/version.py                                                       |        5 |        2 |     60% |      9-10 |
-| **TOTAL**                                                                 | **15786** |  **848** | **95%** |           |
+| **TOTAL**                                                                 | **15794** |  **848** | **95%** |           |
 
 
 ## Setup coverage badge
