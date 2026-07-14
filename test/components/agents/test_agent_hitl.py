@@ -8,9 +8,8 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from haystack import component
 from haystack.components.agents import Agent
-from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.components.generators.chat import MockChatGenerator, OpenAIChatGenerator
 from haystack.dataclasses import ChatMessage, ToolCall
 from haystack.hooks.human_in_the_loop import (
     AlwaysAskPolicy,
@@ -21,7 +20,7 @@ from haystack.hooks.human_in_the_loop import (
     SimpleConsoleUI,
 )
 from haystack.hooks.human_in_the_loop.types import ConfirmationStrategy, ConfirmationUI
-from haystack.tools import Tool, Toolset, create_tool_from_function
+from haystack.tools import Tool, create_tool_from_function
 
 
 class MockUserInterface(ConfirmationUI):
@@ -232,13 +231,6 @@ class TestAgent:
         assert result["token_usage"]["prompt_tokens"] > 0
         assert result["token_usage"]["completion_tokens"] > 0
         assert result["token_usage"]["total_tokens"] > 0
-
-
-@component
-class MockChatGenerator:
-    @component.output_types(replies=list[ChatMessage])
-    def run(self, messages: list[ChatMessage], tools: list[Tool] | Toolset | None = None, **kwargs) -> dict[str, Any]:
-        return {"replies": [ChatMessage.from_assistant("Hello")]}
 
 
 def _producer() -> dict[str, str]:
