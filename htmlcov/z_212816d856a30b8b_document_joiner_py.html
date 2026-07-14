@@ -65,7 +65,7 @@
             <a id="nextFileLink" class="nav" href="z_212816d856a30b8b_list_joiner_py.html">&#xbb; next</a>
             &nbsp; &nbsp; &nbsp;
             <a class="nav" href="https://coverage.readthedocs.io/en/7.14.3">coverage.py v7.14.3</a>,
-            created at 2026-07-14 10:44 +0000
+            created at 2026-07-14 11:00 +0000
         </p>
         <aside class="hidden">
             <button type="button" class="button_next_chunk" data-shortcut="j"></button>
@@ -161,7 +161,7 @@
     <p class="pln"><span class="n"><a id="t79" href="#t79">79</a></span><span class="t"><span class="str">    p.add_component(instance=DocumentJoiner(), name="joiner")</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t80" href="#t80">80</a></span><span class="t"><span class="str">    p.connect("bm25_retriever", "joiner")</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t81" href="#t81">81</a></span><span class="t"><span class="str">    p.connect("embedding_retriever", "joiner")</span>&nbsp;</span><span class="r"></span></p>
-    <p class="pln"><span class="n"><a id="t82" href="#t82">82</a></span><span class="t"><span class="str">    p.connect("text_embedder", "embedding_retriever")</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t82" href="#t82">82</a></span><span class="t"><span class="str">    p.connect("text_embedder.embedding", "embedding_retriever.query_embedding")</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t83" href="#t83">83</a></span><span class="t"><span class="str">    query = "What is the capital of France?"</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t84" href="#t84">84</a></span><span class="t"><span class="str">    p.run(data={"query": query, "text": query, "top_k": 1})</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t85" href="#t85">85</a></span><span class="t"><span class="str">    ```</span>&nbsp;</span><span class="r"></span></p>
@@ -360,7 +360,7 @@
             <a class="nav" href="z_212816d856a30b8b_list_joiner_py.html">&#xbb; next</a>
             &nbsp; &nbsp; &nbsp;
             <a class="nav" href="https://coverage.readthedocs.io/en/7.14.3">coverage.py v7.14.3</a>,
-            created at 2026-07-14 10:44 +0000
+            created at 2026-07-14 11:00 +0000
         </p>
     </div>
 </footer>

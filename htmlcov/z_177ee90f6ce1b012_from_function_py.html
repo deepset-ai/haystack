@@ -65,7 +65,7 @@
             <a id="nextFileLink" class="nav" href="z_b2d1aa8511777629___init___py.html">&#xbb; next</a>
             &nbsp; &nbsp; &nbsp;
             <a class="nav" href="https://coverage.readthedocs.io/en/7.14.3">coverage.py v7.14.3</a>,
-            created at 2026-07-14 10:44 +0000
+            created at 2026-07-14 11:00 +0000
         </p>
         <aside class="hidden">
             <button type="button" class="button_next_chunk" data-shortcut="j"></button>
@@ -222,26 +222,38 @@
     <p class="pln"><span class="n"><a id="t140" href="#t140">140</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t141" href="#t141">141</a></span><span class="t"><span class="str">    ```python</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t142" href="#t142">142</a></span><span class="t"><span class="str">    from haystack.components.agents import Agent</span>&nbsp;</span><span class="r"></span></p>
-    <p class="pln"><span class="n"><a id="t143" href="#t143">143</a></span><span class="t"><span class="str">    from haystack.hooks import hook</span>&nbsp;</span><span class="r"></span></p>
-    <p class="pln"><span class="n"><a id="t144" href="#t144">144</a></span><span class="t"><span class="str">    from haystack.components.agents.state import State</span>&nbsp;</span><span class="r"></span></p>
-    <p class="pln"><span class="n"><a id="t145" href="#t145">145</a></span><span class="t"><span class="str">    from haystack.dataclasses import ChatMessage</span>&nbsp;</span><span class="r"></span></p>
-    <p class="pln"><span class="n"><a id="t146" href="#t146">146</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
-    <p class="pln"><span class="n"><a id="t147" href="#t147">147</a></span><span class="t"><span class="str">    @hook</span>&nbsp;</span><span class="r"></span></p>
-    <p class="pln"><span class="n"><a id="t148" href="#t148">148</a></span><span class="t"><span class="str">    def require_save(state: State) -> None:</span>&nbsp;</span><span class="r"></span></p>
-    <p class="pln"><span class="n"><a id="t149" href="#t149">149</a></span><span class="t"><span class="str">        if state.get("tool_call_counts", {}).get("save", 0) == 0:</span>&nbsp;</span><span class="r"></span></p>
-    <p class="pln"><span class="n"><a id="t150" href="#t150">150</a></span><span class="t"><span class="str">            state.set("messages", [ChatMessage.from_system("You must call `save` before finishing.")])</span>&nbsp;</span><span class="r"></span></p>
-    <p class="pln"><span class="n"><a id="t151" href="#t151">151</a></span><span class="t"><span class="str">            state.set("continue_run", True)</span>&nbsp;</span><span class="r"></span></p>
-    <p class="pln"><span class="n"><a id="t152" href="#t152">152</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
-    <p class="pln"><span class="n"><a id="t153" href="#t153">153</a></span><span class="t"><span class="str">    agent = Agent(chat_generator=..., tools=[...], hooks={"on_exit": [require_save]})</span>&nbsp;</span><span class="r"></span></p>
-    <p class="pln"><span class="n"><a id="t154" href="#t154">154</a></span><span class="t"><span class="str">    ```</span>&nbsp;</span><span class="r"></span></p>
-    <p class="pln"><span class="n"><a id="t155" href="#t155">155</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
-    <p class="pln"><span class="n"><a id="t156" href="#t156">156</a></span><span class="t"><span class="str">    :param function: A callable taking the Agent's `State` and returning `None` (sync or async).</span>&nbsp;</span><span class="r"></span></p>
-    <p class="pln"><span class="n"><a id="t157" href="#t157">157</a></span><span class="t"><span class="str">    :returns: A `FunctionHook` wrapping the function.</span>&nbsp;</span><span class="r"></span></p>
-    <p class="pln"><span class="n"><a id="t158" href="#t158">158</a></span><span class="t"><span class="str">    """</span>&nbsp;</span><span class="r"></span></p>
-    <p class="pln"><span class="n"><a id="t159" href="#t159">159</a></span><span class="t">    <span class="com"># `iscoroutinefunction` narrows which slot the callable belongs in; cast to satisfy the typed slots.</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t160" href="#t160">160</a></span><span class="t">    <span class="key">if</span> <span class="nam">inspect</span><span class="op">.</span><span class="nam">iscoroutinefunction</span><span class="op">(</span><span class="nam">function</span><span class="op">)</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t161" href="#t161">161</a></span><span class="t">        <span class="key">return</span> <span class="nam">FunctionHook</span><span class="op">(</span><span class="nam">async_function</span><span class="op">=</span><span class="nam">cast</span><span class="op">(</span><span class="str">"Callable[[State], Awaitable[None]]"</span><span class="op">,</span> <span class="nam">function</span><span class="op">)</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t162" href="#t162">162</a></span><span class="t">    <span class="key">return</span> <span class="nam">FunctionHook</span><span class="op">(</span><span class="nam">function</span><span class="op">=</span><span class="nam">cast</span><span class="op">(</span><span class="str">"Callable[[State], None]"</span><span class="op">,</span> <span class="nam">function</span><span class="op">)</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t143" href="#t143">143</a></span><span class="t"><span class="str">    from haystack.components.generators.chat import OpenAIChatGenerator</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t144" href="#t144">144</a></span><span class="t"><span class="str">    from haystack.hooks import hook</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t145" href="#t145">145</a></span><span class="t"><span class="str">    from haystack.components.agents.state import State</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t146" href="#t146">146</a></span><span class="t"><span class="str">    from haystack.dataclasses import ChatMessage</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t147" href="#t147">147</a></span><span class="t"><span class="str">    from haystack.tools import tool</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t148" href="#t148">148</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t149" href="#t149">149</a></span><span class="t"><span class="str">    @tool</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t150" href="#t150">150</a></span><span class="t"><span class="str">    def weather_tool(city: str) -> str:</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t151" href="#t151">151</a></span><span class="t"><span class="str">        '''Get the current weather for a given city.'''</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t152" href="#t152">152</a></span><span class="t"><span class="str">        return f"The weather in {city} is sunny."</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t153" href="#t153">153</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t154" href="#t154">154</a></span><span class="t"><span class="str">    @tool</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t155" href="#t155">155</a></span><span class="t"><span class="str">    def save(content: str) -> str:</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t156" href="#t156">156</a></span><span class="t"><span class="str">        '''Save content to durable storage.'''</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t157" href="#t157">157</a></span><span class="t"><span class="str">        return "Saved."</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t158" href="#t158">158</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t159" href="#t159">159</a></span><span class="t"><span class="str">    @hook</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t160" href="#t160">160</a></span><span class="t"><span class="str">    def require_save(state: State) -> None:</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t161" href="#t161">161</a></span><span class="t"><span class="str">        if state.get("tool_call_counts", {}).get("save", 0) == 0:</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t162" href="#t162">162</a></span><span class="t"><span class="str">            state.set("messages", [ChatMessage.from_system("You must call `save` before finishing.")])</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t163" href="#t163">163</a></span><span class="t"><span class="str">            state.set("continue_run", True)</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t164" href="#t164">164</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t165" href="#t165">165</a></span><span class="t"><span class="str">    agent = Agent(chat_generator=OpenAIChatGenerator(), tools=[weather_tool, save], hooks={"on_exit": [require_save]})</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t166" href="#t166">166</a></span><span class="t"><span class="str">    ```</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t167" href="#t167">167</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t168" href="#t168">168</a></span><span class="t"><span class="str">    :param function: A callable taking the Agent's `State` and returning `None` (sync or async).</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t169" href="#t169">169</a></span><span class="t"><span class="str">    :returns: A `FunctionHook` wrapping the function.</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t170" href="#t170">170</a></span><span class="t"><span class="str">    """</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t171" href="#t171">171</a></span><span class="t">    <span class="com"># `iscoroutinefunction` narrows which slot the callable belongs in; cast to satisfy the typed slots.</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t172" href="#t172">172</a></span><span class="t">    <span class="key">if</span> <span class="nam">inspect</span><span class="op">.</span><span class="nam">iscoroutinefunction</span><span class="op">(</span><span class="nam">function</span><span class="op">)</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t173" href="#t173">173</a></span><span class="t">        <span class="key">return</span> <span class="nam">FunctionHook</span><span class="op">(</span><span class="nam">async_function</span><span class="op">=</span><span class="nam">cast</span><span class="op">(</span><span class="str">"Callable[[State], Awaitable[None]]"</span><span class="op">,</span> <span class="nam">function</span><span class="op">)</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t174" href="#t174">174</a></span><span class="t">    <span class="key">return</span> <span class="nam">FunctionHook</span><span class="op">(</span><span class="nam">function</span><span class="op">=</span><span class="nam">cast</span><span class="op">(</span><span class="str">"Callable[[State], None]"</span><span class="op">,</span> <span class="nam">function</span><span class="op">)</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
 </main>
 <footer>
     <div class="content">
@@ -251,7 +263,7 @@
             <a class="nav" href="z_b2d1aa8511777629___init___py.html">&#xbb; next</a>
             &nbsp; &nbsp; &nbsp;
             <a class="nav" href="https://coverage.readthedocs.io/en/7.14.3">coverage.py v7.14.3</a>,
-            created at 2026-07-14 10:44 +0000
+            created at 2026-07-14 11:00 +0000
         </p>
     </div>
 </footer>
