@@ -61,6 +61,7 @@ jobs:
       - name: Run snippet tests (verbose)
         shell: bash
         run: |
+          hatch -e test env run -- pip install huggingface-api-haystack # required by LLMMessagesRouter docstring example
           hatch -e test env run -- python docs-website/scripts/test_python_snippets.py --verbose tmp_api_reference/
 
   notify-slack-on-failure:
