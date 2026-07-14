@@ -1,0 +1,10 @@
+---
+fixes:
+  - |
+    When running an `Agent` (or the underlying tool-calling helpers) with
+    `raise_on_failure=False`, tool-result messages for unknown tools are now
+    returned in the original tool-call order. Previously, unknown-tool error
+    messages were moved ahead of all successful results, so for a tool-call
+    order like `[known, unknown]` the returned messages came back as
+    `[unknown, known]`. Both the synchronous and asynchronous execution paths
+    now preserve the order requested by the model.

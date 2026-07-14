@@ -651,6 +651,51 @@ class TestRunToolErrorHandling:
         assert tool_message.tool_call_results[0].error
         assert "not found" in tool_message.tool_call_results[0].result
 
+    # Scenarios exercising unknown tools at different positions relative to a valid call.
+    _ORDER_SCENARIOS = {
+        "unknown_last": ["weather_tool", "missing"],
+        "unknown_first": ["missing", "weather_tool"],
+        "unknown_middle": ["weather_tool", "missing", "weather_tool"],
+        "multiple_unknown": ["missing_a", "weather_tool", "missing_b"],
+    }
+
+    @staticmethod
+    def _tool_calls_for(tool_names):
+        return [
+            ToolCall(
+                tool_name=name, arguments={} if name.startswith("missing") else {"location": "Berlin"}, id=f"call_{i}"
+            )
+            for i, name in enumerate(tool_names)
+        ]
+
+    @staticmethod
+    def _assert_call_order_preserved(tool_messages, tool_names):
+        results = [message.tool_call_results[0] for message in tool_messages]
+        # Returned messages stay in the original tool-call order regardless of outcome.
+        assert [result.origin.tool_name for result in results] == tool_names
+        assert [result.origin.id for result in results] == [f"call_{i}" for i in range(len(tool_names))]
+        # The error flag is set exactly for the unknown tools, not shuffled across positions.
+        assert [result.error for result in results] == [name.startswith("missing") for name in tool_names]
+
+    @pytest.mark.parametrize("tool_names", _ORDER_SCENARIOS.values(), ids=list(_ORDER_SCENARIOS.keys()))
+    def test_unknown_tool_preserves_call_order(self, weather_tool, tool_names):
+        # With raise_on_failure=False, unknown-tool errors used to be returned ahead of all successful results,
+        # so the returned order no longer matched the model's tool-call order (e.g. [ok, missing] -> [missing, ok]).
+        message = ChatMessage.from_assistant(tool_calls=self._tool_calls_for(tool_names))
+        tool_messages, _ = _run_tool(
+            messages=[message], state=State(schema={}), tools=[weather_tool], raise_on_failure=False
+        )
+        self._assert_call_order_preserved(tool_messages, tool_names)
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("tool_names", _ORDER_SCENARIOS.values(), ids=list(_ORDER_SCENARIOS.keys()))
+    async def test_unknown_tool_preserves_call_order_async(self, weather_tool, tool_names):
+        message = ChatMessage.from_assistant(tool_calls=self._tool_calls_for(tool_names))
+        tool_messages, _ = await _run_tool_async(
+            messages=[message], state=State(schema={}), tools=[weather_tool], raise_on_failure=False
+        )
+        self._assert_call_order_preserved(tool_messages, tool_names)
+
     def test_tool_invocation_error(self, faulty_tool):
         tool_call = ToolCall(tool_name="faulty_tool", arguments={"location": "Berlin"})
         tool_call_message = ChatMessage.from_assistant(tool_calls=[tool_call])

@@ -343,7 +343,7 @@ def _prepare_tool_args(
 
 def _resolve_tool_calls(
     messages_with_tool_calls: list[ChatMessage], tools_with_names: dict[str, Tool], *, raise_on_failure: bool
-) -> tuple[list[ToolCall], list[Tool], list[ChatMessage]]:
+) -> tuple[list[ToolCall], list[Tool], list[int], list[tuple[int, ChatMessage]]]:
     """
     Walk all tool calls in `messages_with_tool_calls` and resolve each to its Tool.
 
@@ -351,15 +351,22 @@ def _resolve_tool_calls(
     `_schedule_tool_calls`) so that a tool reading from State observes writes made by tools that ran earlier in the same
      step.
 
-    :returns: (tool_calls, resolved_tools, error_messages)
+    The original position of every call (across all messages) is tracked so that callers can return tool results in
+    call order regardless of outcome: unknown-tool errors carry their position alongside the message, and valid calls
+    carry theirs in a parallel list.
+
+    :returns: (tool_calls, resolved_tools, valid_call_positions, error_entries)
         - tool_calls: ToolCall objects for each valid call, in call order
         - resolved_tools: the resolved Tool for each entry in `tool_calls` (parallel list)
-        - error_messages: ChatMessages for tool-not-found errors (when raise_on_failure is False)
+        - valid_call_positions: original position of each valid call, parallel to `tool_calls`
+        - error_entries: (original_position, ChatMessage) for each tool-not-found error (when raise_on_failure is False)
     """
     tool_calls: list[ToolCall] = []
     resolved_tools: list[Tool] = []
-    error_messages: list[ChatMessage] = []
+    valid_call_positions: list[int] = []
+    error_entries: list[tuple[int, ChatMessage]] = []
 
+    position = 0
     for message in messages_with_tool_calls:
         for tool_call in message.tool_calls:
             tool_name = tool_call.tool_name
@@ -369,13 +376,35 @@ def _resolve_tool_calls(
                 if raise_on_failure:
                     raise error
                 logger.error("{error_exception}", error_exception=error)
-                error_messages.append(ChatMessage.from_tool(tool_result=str(error), origin=tool_call, error=True))
+                error_message = ChatMessage.from_tool(tool_result=str(error), origin=tool_call, error=True)
+                error_entries.append((position, error_message))
+                position += 1
                 continue
 
             tool_calls.append(tool_call)
             resolved_tools.append(tools_with_names[tool_name])
+            valid_call_positions.append(position)
+            position += 1
 
-    return tool_calls, resolved_tools, error_messages
+    return tool_calls, resolved_tools, valid_call_positions, error_entries
+
+
+def _merge_results_in_call_order(
+    results: list[ChatMessage | None], valid_call_positions: list[int], error_entries: list[tuple[int, ChatMessage]]
+) -> list[ChatMessage]:
+    """
+    Combine executed tool results and unknown-tool errors back into original tool-call order.
+
+    Each valid result is placed at the position its call had in the original sequence, and each error at its own
+    position, so that returned messages match the order the model requested regardless of outcome.
+    """
+    ordered: list[ChatMessage | None] = [None] * (len(results) + len(error_entries))
+    for position, error_message in error_entries:
+        ordered[position] = error_message
+    for result, position in zip(results, valid_call_positions, strict=True):
+        if result is not None:
+            ordered[position] = result
+    return [message for message in ordered if message is not None]
 
 
 def _keys_intersect(a: _StateKeys, b: _StateKeys) -> bool:
@@ -529,11 +558,11 @@ def _run_tool(
     if not messages_with_tool_calls:
         return [], state
 
-    tool_calls, resolved_tools, error_messages = _resolve_tool_calls(
+    tool_calls, resolved_tools, valid_call_positions, error_entries = _resolve_tool_calls(
         messages_with_tool_calls, tools_with_names, raise_on_failure=raise_on_failure
     )
     if not tool_calls:
-        return error_messages, state
+        return [message for _, message in error_entries], state
 
     # Group the calls into batches that honor read-after-write dependencies on State (see `_schedule_tool_calls`).
     batches = _schedule_tool_calls(tool_calls, resolved_tools)
@@ -572,7 +601,7 @@ def _run_tool(
                     streaming_callback(_create_tool_result_streaming_chunk(message, tool_calls[idx], stream_index))
                     stream_index += 1
 
-    tool_messages = error_messages + [m for m in results if m is not None]
+    tool_messages = _merge_results_in_call_order(results, valid_call_positions, error_entries)
 
     # We emit a final empty chunk with finish_reason "tool_call_results" to signal the end of the tool results stream.
     if tool_messages and streaming_callback is not None:
@@ -611,11 +640,11 @@ async def _run_tool_async(
     if not messages_with_tool_calls:
         return [], state
 
-    tool_calls, resolved_tools, error_messages = _resolve_tool_calls(
+    tool_calls, resolved_tools, valid_call_positions, error_entries = _resolve_tool_calls(
         messages_with_tool_calls, tools_with_names, raise_on_failure=raise_on_failure
     )
     if not tool_calls:
-        return error_messages, state
+        return [message for _, message in error_entries], state
 
     # Group the calls into batches that honor read-after-write dependencies on State (see `_schedule_tool_calls`).
     batches = _schedule_tool_calls(tool_calls, resolved_tools)
@@ -655,7 +684,7 @@ async def _run_tool_async(
                 )
                 stream_index += 1
 
-    tool_messages = error_messages + [m for m in results if m is not None]
+    tool_messages = _merge_results_in_call_order(results, valid_call_positions, error_entries)
 
     # We emit a final empty chunk with finish_reason "tool_call_results" to signal the end of the tool results stream.
     if tool_messages and streaming_callback is not None:
