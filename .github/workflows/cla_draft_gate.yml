@@ -13,7 +13,7 @@ name: CLA draft gate
 #    14 days. Each step waits for the previous comment to be a few days old, so
 #    PRs that are already old when first gated still get the full sequence
 #    instead of being closed right away.
-# Maintainers can opt a PR out by adding the `skip-cla-gate` label.
+# Maintainers can opt a PR out by adding the `skip-cla-reminder` label.
 
 on:
   status:
@@ -47,7 +47,7 @@ jobs:
           script: |
             const CLA_CONTEXT = "license/cla";
             const LABEL = "cla-pending";
-            const EXEMPT_LABEL = "skip-cla-gate";
+            const EXEMPT_LABEL = "skip-cla-reminder";
             const GRACE_MS = 60 * 60 * 1000; // 1 hour
             const DAY_MS = 24 * 60 * 60 * 1000;
             const MARKER = "<!-- cla-draft-gate ";
