@@ -8,6 +8,11 @@ name: CLA draft gate
 #  - When the CLA is signed (the `license/cla` commit status turns green), mark
 #    the PR ready for review again and re-request the same reviewers. The
 #    scheduled sweep doubles as a backstop in case a status event is missed.
+#  - While a PR stays gated, escalate: remind the contributor 5 days after the
+#    PR was opened, post a final warning after 10 days, and close the PR after
+#    14 days. Each step waits for the previous comment to be a few days old, so
+#    PRs that are already old when first gated still get the full sequence
+#    instead of being closed right away.
 # Maintainers can opt a PR out by adding the `skip-cla-gate` label.
 
 on:
@@ -44,7 +49,10 @@ jobs:
             const LABEL = "cla-pending";
             const EXEMPT_LABEL = "skip-cla-gate";
             const GRACE_MS = 60 * 60 * 1000; // 1 hour
+            const DAY_MS = 24 * 60 * 60 * 1000;
             const MARKER = "<!-- cla-draft-gate ";
+            const REMINDER_MARKER = "<!-- cla-reminder-5d -->";
+            const WARNING_MARKER = "<!-- cla-warning-10d -->";
             const FIRST_TIMER = new Set(["FIRST_TIME_CONTRIBUTOR", "FIRST_TIMER", "NONE"]);
             const { owner, repo } = context.repo;
 
@@ -168,6 +176,74 @@ jobs:
               core.info(`Restored PR #${pr.number} (CLA signed)`);
             }
 
+            // Escalation for PRs that stay gated: reminder after 5 days, final
+            // warning after 10 days, auto-close after 14 days. Steps are also
+            // anchored to the previous comment's age so contributors always get
+            // the full sequence, even on PRs that were old when first gated.
+            async function escalate(pr) {
+              const ageMs = Date.now() - new Date(pr.created_at).getTime();
+              if (ageMs < 5 * DAY_MS) return;
+
+              const comments = await github.paginate(github.rest.issues.listComments, {
+                owner, repo, issue_number: pr.number, per_page: 100,
+              });
+              const reminder = comments.find((c) => c.body?.includes(REMINDER_MARKER));
+              const warning = comments.find((c) => c.body?.includes(WARNING_MARKER));
+              const ageOf = (comment) => Date.now() - new Date(comment.created_at).getTime();
+
+              if (!reminder) {
+                await github.rest.issues.createComment({
+                  owner, repo, issue_number: pr.number,
+                  body: [
+                    REMINDER_MARKER,
+                    `Hi @${pr.user.login}, just a friendly reminder: this PR is still in ` +
+                      "draft because the **Contributor License Agreement (CLA)** hasn't " +
+                      "been signed yet. We'd love to review your contribution! Please " +
+                      `sign the CLA via the link in the \`${CLA_CONTEXT}\` check, and this ` +
+                      "PR will automatically be marked ready for review.",
+                  ].join("\n"),
+                });
+                core.info(`Posted 5-day CLA reminder on PR #${pr.number}`);
+                return;
+              }
+
+              if (!warning) {
+                if (ageMs >= 10 * DAY_MS && ageOf(reminder) >= 5 * DAY_MS) {
+                  await github.rest.issues.createComment({
+                    owner, repo, issue_number: pr.number,
+                    body: [
+                      WARNING_MARKER,
+                      `Hi @${pr.user.login}, this PR is still waiting for the ` +
+                        "**Contributor License Agreement (CLA)** to be signed. Please " +
+                        "note that if the CLA isn't signed within the **next 4 days**, " +
+                        "this PR will be automatically closed as stale. Signing only " +
+                        `takes a minute via the link in the \`${CLA_CONTEXT}\` check, and ` +
+                        "the PR will then automatically be marked ready for review.",
+                    ].join("\n"),
+                  });
+                  core.info(`Posted 10-day CLA warning on PR #${pr.number}`);
+                }
+                return;
+              }
+
+              if (ageMs >= 14 * DAY_MS && ageOf(warning) >= 4 * DAY_MS) {
+                await github.rest.issues.createComment({
+                  owner, repo, issue_number: pr.number,
+                  body:
+                    `Hi @${pr.user.login}, we're closing this PR because the ` +
+                    "**Contributor License Agreement (CLA)** wasn't signed within two " +
+                    "weeks. Thanks a lot for your interest in contributing to Haystack! " +
+                    "If you'd still like to see this change merged, please sign the CLA " +
+                    "and reopen this PR — it will then automatically be marked ready " +
+                    "for review.",
+                });
+                await github.rest.pulls.update({
+                  owner, repo, pull_number: pr.number, state: "closed",
+                });
+                core.info(`Closed PR #${pr.number} (CLA not signed after 14 days)`);
+              }
+            }
+
             // --- Event dispatch -------------------------------------------------
 
             if (context.eventName === "status") {
@@ -193,7 +269,12 @@ jobs:
                 if (pr.user?.type === "Bot") continue;
                 const labels = pr.labels.map((l) => l.name);
                 if (pr.draft) {
-                  if (labels.includes(LABEL) && (await claSigned(pr.head.sha))) await restore(pr);
+                  if (!labels.includes(LABEL) || labels.includes(EXEMPT_LABEL)) continue;
+                  if (await claSigned(pr.head.sha)) {
+                    await restore(pr);
+                  } else {
+                    await escalate(pr);
+                  }
                   continue;
                 }
                 if (!FIRST_TIMER.has(pr.author_association)) continue;
