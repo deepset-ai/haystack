@@ -109,8 +109,7 @@ jobs:
                   "To get your PR reviewed, please sign the CLA via the link in the " +
                     `\`${CLA_CONTEXT}\` check below (or in the CLA bot comment). As soon as ` +
                     "the check turns green, this PR will automatically be marked ready " +
-                    "for review again and a reviewer will be re-assigned. No further " +
-                    "action is needed on your side.",
+                    "for review again and a reviewer will be re-assigned.",
                 ].join("\n");
                 await github.rest.issues.createComment({ owner, repo, issue_number: pr.number, body });
               } else if (reviewers.length || teamReviewers.length) {

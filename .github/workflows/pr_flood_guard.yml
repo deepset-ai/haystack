@@ -85,7 +85,7 @@ jobs:
                   `repository (${others} and this one). Our review capacity is limited, ` +
                   "so please hold off opening more PRs until we've had a chance to " +
                   "review your first two open PRs. This helps us give each contribution " +
-                  "the attention it deserves.",
+                  "the attention it deserves. Thank you!",
               );
             }
 
