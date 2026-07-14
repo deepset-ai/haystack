@@ -832,6 +832,8 @@ A skill is a directory (or equivalent storage unit) containing a `SKILL.md` file
 
 ### Usage example
 
+<!-- test-concept -->
+
 ```python
 from haystack.components.agents import Agent
 from haystack.components.generators.chat import OpenAIChatGenerator
