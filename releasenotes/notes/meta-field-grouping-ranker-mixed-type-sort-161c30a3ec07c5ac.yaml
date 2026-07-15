@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Fixed ``MetaFieldGroupingRanker`` crashing with an uncaught ``TypeError`` when a group contained
+    ``sort_docs_by`` values of mutually non-comparable types (for example an ``int`` and a ``str``). The
+    sort is now wrapped in a ``try``/``except``, so in that case the group's original insertion order is
+    kept and a warning is logged, mirroring the behavior of ``MetaFieldRanker``.

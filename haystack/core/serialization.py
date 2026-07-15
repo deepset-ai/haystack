@@ -106,7 +106,7 @@ def _validate_component_to_dict_output(component: Any, name: str, data: dict[str
                 check_dict(v)
 
     def check_dict(d: dict[str, Any]) -> None:
-        if any(not isinstance(k, str) for k in data):
+        if any(not isinstance(k, str) for k in d):
             raise SerializationError(
                 f"Component '{name}' of type '{type(component).__name__}' has a non-string key in the serialized data."
             )
@@ -290,7 +290,10 @@ def default_from_dict(cls: type[T], data: dict[str, Any]) -> T:
     :raises DeserializationError:
         If the `type` field in `data` is missing or it doesn't match the type of `cls`.
     """
-    init_params = data.get("init_parameters", {})
+    # Copy so that replacing serialized sub-objects (Secret/ComponentDevice/nested components) with their
+    # deserialized instances below does not mutate the caller's ``data`` dict in place. Without this, a second
+    # deserialization of the same dict would receive already-parsed objects instead of their serialized form.
+    init_params = dict(data.get("init_parameters", {}))
     if "type" not in data:
         raise DeserializationError("Missing 'type' in serialization data")
     if data["type"] != generate_qualified_class_name(cls):

@@ -147,9 +147,9 @@ components:
           tools: null
           tools_strict: false
         type: haystack.components.generators.chat.openai.OpenAIChatGenerator
-      confirmation_strategies: null
       exit_conditions:
       - text
+      hooks: null
       max_agent_steps: 100
       raise_on_tool_invocation_failure: false
       required_variables: null
@@ -157,7 +157,8 @@ components:
       streaming_callback: null
       system_prompt: You are a coordinator. Delegate research tasks to the research
         specialist. Keep your final answer concise.
-      tool_invoker_kwargs: null
+      tool_concurrency_limit: 4
+      tool_streaming_callback_passthrough: false
       tools:
       - data:
           component:
@@ -180,9 +181,9 @@ components:
                   tools: null
                   tools_strict: false
                 type: haystack.components.generators.chat.openai.OpenAIChatGenerator
-              confirmation_strategies: null
               exit_conditions:
               - text
+              hooks: null
               max_agent_steps: 100
               raise_on_tool_invocation_failure: false
               required_variables: null
@@ -190,7 +191,8 @@ components:
               streaming_callback: null
               system_prompt: You are a research specialist. Search the web to find
                 information. Return a concise summary of your findings in 3-5 sentences.
-              tool_invoker_kwargs: null
+              tool_concurrency_limit: 4
+              tool_streaming_callback_passthrough: false
               tools:
               - data:
                   component:
@@ -242,7 +244,7 @@ Returning just `result["last_message"].text` (with `@tool`) or using `outputs_to
 
 When covering multiple topics, the coordinator can call the same specialist tool several times in a single response.
 All tool calls from one LLM response are executed concurrently using a thread pool.
-Control the level of parallelism with `max_workers` in `tool_invoker_kwargs` (default: `4`).
+Control the level of parallelism with the `tool_concurrency_limit` init parameter (default: `4`).
 
 The example below asks the coordinator about two topics: it calls `research` twice and both specialists run in parallel.
 
@@ -319,7 +321,7 @@ coordinator = Agent(
         "Keep your final answer concise."
     ),
     streaming_callback=print_streaming_chunk,
-    tool_invoker_kwargs={"max_workers": 4},  # run up to 4 specialist calls in parallel
+    tool_concurrency_limit=4,  # run up to 4 specialist calls in parallel
 )
 
 result = coordinator.run(

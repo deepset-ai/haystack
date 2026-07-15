@@ -56,7 +56,7 @@ result = builder.run(
 
 ### Variables
 
-The template variables found in the init template are used as input types for the component. If there are no `required_variables` set, all variables are considered optional by default. In this case, any missing variables are replaced with empty strings, which can lead to unintended behavior, especially in complex pipelines.
+The template variables found in the init template are used as input types for the component. By default, `required_variables` is set to `"*"`, so all variables in the template are required: if any of them is missing at runtime, the component raises an error and halts execution.
 
 Use `required_variables` and `variables` to specify the input types and required variables:
 
@@ -64,8 +64,9 @@ Use `required_variables` and `variables` to specify the input types and required
   - Defines which template variables must be provided when the component runs.
   - If any required variable is missing, the component raises an error and halts execution.
   - You can:
-    - Pass a list of required variable names (such as `["name"]`), or
-    - Use `"*"` to mark all variables in the template as required.
+    - Use `"*"` (the default) to mark all variables in the template as required, or
+    - Pass a list of required variable names (such as `["name"]`) to make only those required; the remaining variables are optional, or
+    - Pass an empty list (`[]`) or `None` to make all variables optional. Setting `None` explicitly logs a warning, since missing variables are then silently replaced with empty strings, which can lead to unintended behavior, especially in complex pipelines.
 
 - `variables`
   - Lists all variables that can appear in the template, whether required or optional.
@@ -116,6 +117,32 @@ Instead of a list of `ChatMessage` objects, you can also express the template as
 This template format allows you to define `ChatMessage` sequences using Jinja2 syntax. Each `{% message %}` block defines a single message with a specific role, and you can insert dynamic content using `{{ variables }}`.
 
 Compared to using a list of `ChatMessage`s, this format is more flexible and allows including structured parts like images in the templatized `ChatMessage`; to better understand this use case, check out the [multimodal example](#multimodal) in the Usage section below.
+
+#### The `insert` Tag
+
+String templates also support an `{% insert %}` tag. It is a placeholder that evaluates an expression to a `ChatMessage` or a list of `ChatMessage` objects and expands it into the prompt, so messages provided at runtime can be interleaved with literal `{% message %}` blocks. For example, you can wrap the runtime messages with a system message above and a templated user message below, then pass the messages (and any template variables) at run time:
+
+```python
+from haystack.components.builders import ChatPromptBuilder
+from haystack.dataclasses import ChatMessage
+
+template = """
+{% message role="system" %}You are a helpful assistant.{% endmessage %}
+{% insert messages %}
+{% message role="user" %}{{ query }}{% endmessage %}
+"""
+
+builder = ChatPromptBuilder(template=template)
+result = builder.run(
+    messages=[ChatMessage.from_user("Hi"), ChatMessage.from_assistant("Hello!")],
+    query="What's the weather?",
+)
+# result["prompt"] -> [system, user "Hi", assistant "Hello!", user "What's the weather?"]
+```
+
+All content types (tool calls, tool call results, images, reasoning, `name`, and `meta`) round trip without loss. A missing or empty value expands to nothing.
+
+The expression can be a plain variable (`{% insert messages %}`), a slice or index (`{% insert messages[-1:] %}`, `{% insert messages[-1] %}`), or a combination of variables (`{% insert previous + current %}`). Multiple `{% insert %}` tags can be used in a single template, so the runtime messages can be split, reordered, or repeated across different positions.
 
 ### Jinja2 Time Extension
 
@@ -434,7 +461,7 @@ components:
     type: haystack.components.generators.chat.openai.OpenAIChatGenerator
   prompt_builder:
     init_parameters:
-      required_variables: null
+      required_variables: '*'
       template: null
       variables: null
     type: haystack.components.builders.chat_prompt_builder.ChatPromptBuilder

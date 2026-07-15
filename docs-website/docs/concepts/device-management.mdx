@@ -9,7 +9,7 @@ description: "This page discusses the concept of device management in the contex
 
 This page discusses the concept of device management in the context of Haystack.
 
-Many Haystack components, such as `HuggingFaceLocalGenerator` , `AzureOpenAIGenerator`, and others, allow users the ability to pick and choose which language model is to be queried and executed. For components that interface with cloud-based services, the service provider automatically takes care of the details of provisioning the requisite hardware (like GPUs). However, if you wish to use models on your local machine, you’ll need to figure out how to deploy them on your hardware. Further complicating things, different ML libraries have different APIs to launch models on specific devices.
+Many Haystack components, such as `TransformersChatGenerator`, `AzureOpenAIChatGenerator`, and others, allow users the ability to pick and choose which language model is to be queried and executed. For components that interface with cloud-based services, the service provider automatically takes care of the details of provisioning the requisite hardware (like GPUs). However, if you wish to use models on your local machine, you’ll need to figure out how to deploy them on your hardware. Further complicating things, different ML libraries have different APIs to launch models on specific devices.
 
 To make the process of running inference on local models as straightforward as possible, Haystack uses a framework-agnostic device management implementation. Exposing devices through this interface means you no longer need to worry about library-specific invocations and device representations.
 
@@ -31,21 +31,35 @@ Find the full code for the abstractions above in the Haystack GitHub [repo](http
 
 ## Usage
 
+:::info
+The examples below use the [`TransformersChatGenerator`](../pipeline-components/generators/transformerschatgenerator.mdx), which is part of the `transformers-haystack` integration. Install it with:
+
+```bash
+pip install transformers-haystack
+```
+:::
+
 To use a single device for inference, use either the `ComponentDevice.from_single` or `ComponentDevice.from_str` class method:
 
 ```python
 from haystack.utils import ComponentDevice, Device
+from haystack_integrations.components.generators.transformers import (
+    TransformersChatGenerator,
+)
 
 device = ComponentDevice.from_single(Device.gpu(id=1))
 # Alternatively, use a PyTorch device string
 device = ComponentDevice.from_str("cuda:1")
-generator = HuggingFaceLocalGenerator(model="llama2", device=device)
+generator = TransformersChatGenerator(model="Qwen/Qwen3-0.6B", device=device)
 ```
 
 To use multiple devices, use the `ComponentDevice.from_multiple` class method:
 
 ```python
 from haystack.utils import ComponentDevice, Device, DeviceMap
+from haystack_integrations.components.generators.transformers import (
+    TransformersChatGenerator,
+)
 
 device_map = DeviceMap(
     {
@@ -56,7 +70,7 @@ device_map = DeviceMap(
     },
 )
 device = ComponentDevice.from_multiple(device_map)
-generator = HuggingFaceLocalGenerator(model="llama2", device=device)
+generator = TransformersChatGenerator(model="Qwen/Qwen3-0.6B", device=device)
 ```
 
 ### Integrating Devices in Custom Components
@@ -115,13 +129,17 @@ c = MyComponent(device=ComponentDevice.from_multiple(DeviceMap({
 })))
 ```
 
-If the component’s backend provides a more specialized API to manage devices, it could add an additional init parameter that acts as a conduit. For instance, `HuggingFaceLocalGenerator` exposes a `huggingface_pipeline_kwargs` parameter through which Hugging Face-specific `device_map`  arguments can be passed:
+If the component’s backend provides a more specialized API to manage devices, it could add an additional init parameter that acts as a conduit. For instance, `TransformersChatGenerator` exposes a `huggingface_pipeline_kwargs` parameter through which Hugging Face-specific `device_map`  arguments can be passed:
 
 ```python
-generator = HuggingFaceLocalGenerator(
-    model="llama2",
+from haystack_integrations.components.generators.transformers import (
+    TransformersChatGenerator,
+)
+
+generator = TransformersChatGenerator(
+    model="Qwen/Qwen3-0.6B",
     huggingface_pipeline_kwargs={"device_map": "balanced"},
 )
 ```
 
-In such cases, ensure that the parameter precedence and selection behavior is clearly documented. In the case of `HuggingFaceLocalGenerator`, the device map passed through the `huggingface_pipeline_kwargs` parameter overrides the explicit `device` parameter and is documented as such.
+In such cases, ensure that the parameter precedence and selection behavior is clearly documented. In the case of `TransformersChatGenerator`, the device map passed through the `huggingface_pipeline_kwargs` parameter overrides the explicit `device` parameter and is documented as such.

@@ -1,0 +1,5 @@
+---
+upgrade:
+  - |
+    The ``raise_on_invalid_filter_syntax`` utility function has been removed. Its implementation was incorrect
+    and never used across Haystack and Haystack Core Integrations.
