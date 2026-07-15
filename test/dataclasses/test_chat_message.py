@@ -985,6 +985,7 @@ class TestFromOpenaiDictFormat:
             "tool_calls": [{"id": "call_1", "function": {"name": "now"}}],
         }
         message = ChatMessage.from_openai_dict_format(openai_msg)
+        assert message.tool_call is not None
         assert message.tool_call.arguments == {}
 
     def test_from_openai_dict_format_tool_message(self):
