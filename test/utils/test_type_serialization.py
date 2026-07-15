@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import builtins
 import sys
 import typing
 from collections import deque
@@ -10,6 +11,8 @@ from typing import Any, Deque, Dict, FrozenSet, List, Optional, Set, Tuple, Unio
 
 import pytest
 
+from haystack.core.errors import DeserializationError
+from haystack.core.serialization_security import _DENIED_BUILTIN_NAMES
 from haystack.dataclasses import Answer, ByteStream, ChatMessage, Document
 from haystack.utils.type_serialization import (
     _build_pep604_union_type,
@@ -157,6 +160,28 @@ def test_output_builtin_type_deserialization():
     assert deserialize_type("builtins.dict") == dict
     assert deserialize_type("builtins.float") == float
     assert deserialize_type("builtins.bool") == bool
+
+
+# `type` is excluded: it is a valid type in this path (covered by test_builtin_types_round_trip),
+# even though it is denied as a *callable*. Every other denied builtin is a function, not a type.
+@pytest.mark.parametrize("name", sorted(_DENIED_BUILTIN_NAMES - {"type"}))
+def test_dangerous_builtins_rejected(name):
+    # `builtins` is on the allowlist, but a type annotation must resolve to an actual type. Builtin
+    # functions are rejected both with the `builtins.` prefix and via the bare-name fallback (which
+    # skips the allowlist).
+    with pytest.raises(DeserializationError, match="not a type"):
+        deserialize_type(f"builtins.{name}")
+    with pytest.raises(DeserializationError, match="not a type"):
+        deserialize_type(name)
+
+
+@pytest.mark.parametrize("name", ["memoryview", "type", "bytearray", "frozenset"])
+def test_builtin_types_round_trip(name):
+    # Builtin *types* must still resolve as annotations — the type gate keys on `isinstance(type)`,
+    # not on whether the name is also callable, so e.g. `memoryview` and `type` are allowed.
+    expected = getattr(builtins, name)
+    assert deserialize_type(name) is expected
+    assert deserialize_type(f"builtins.{name}") is expected
 
 
 def test_output_type_serialization_nested():

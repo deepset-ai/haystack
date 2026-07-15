@@ -15,7 +15,6 @@ from pydantic import BaseModel
 from haystack import component, default_from_dict, default_to_dict, logging
 from haystack.components.generators.utils import _normalize_messages, _serialize_object
 from haystack.dataclasses import (
-    AsyncStreamingCallbackT,
     ChatMessage,
     ComponentInfo,
     FileContent,
@@ -29,6 +28,7 @@ from haystack.dataclasses import (
     ToolCallDelta,
     select_streaming_callback,
 )
+from haystack.dataclasses.streaming_chunk import _invoke_streaming_callback
 from haystack.tools import (
     ToolsType,
     _check_duplicate_tool_names,
@@ -160,8 +160,21 @@ class OpenAIResponsesChatGenerator:
                 - `summary`: The summary of the reasoning.
                 - `effort`: The level of effort to put into the reasoning. Can be `low`, `medium` or `high`.
                 - `generate_summary`: Whether to generate a summary of the reasoning.
+                - `mode`: The reasoning mode. Can be `standard`, or `pro`. Supported since GPT-5.6.
                 Note: OpenAI does not return the reasoning tokens, but we can view summary if its enabled.
                 For details, see the [OpenAI Reasoning documentation](https://platform.openai.com/docs/guides/reasoning).
+            - `include`: Specify additional output data to include in the model response. Supported values are:
+                - web_search_call.action.sources: Include the sources of the web search tool call.
+                - code_interpreter_call.outputs: Includes the outputs of python code execution in code interpreter tool
+                    call items.
+                - computer_call_output.output.image_url: Include image urls from the computer call output.
+                - file_search_call.results: Include the search results of the file search tool call.
+                - message.input_image.image_url: Include image urls from the input message.
+                - message.output_text.logprobs: Include logprobs with assistant messages.
+                - reasoning.encrypted_content: Includes an encrypted version of reasoning tokens in reasoning item
+                    outputs. This enables reasoning items to be used in multi-turn conversations when using the
+                    Responses API statelessly (like when the store parameter is set to false, or when an organization
+                    is enrolled in the zero data retention program).
         :param timeout:
             Timeout for OpenAI client calls. If not set, it defaults to either the
             `OPENAI_TIMEOUT` environment variable, or 30 seconds.
@@ -195,40 +208,68 @@ class OpenAIResponsesChatGenerator:
         self.tools_strict = tools_strict
         self.http_client_kwargs = http_client_kwargs
 
-        if timeout is None:
-            timeout = float(os.environ.get("OPENAI_TIMEOUT", "30.0"))
-        if max_retries is None:
-            max_retries = int(os.environ.get("OPENAI_MAX_RETRIES", "5"))
+        self.client: OpenAI | None = None
+        self.async_client: AsyncOpenAI | None = None
+        self._tools_warmed_up = False
 
-        resolved_api_key = api_key.resolve_value() if isinstance(api_key, Secret) else api_key
-        client_kwargs: dict[str, Any] = {
+    def _client_kwargs(self) -> dict[str, Any]:
+        timeout = self.timeout if self.timeout is not None else float(os.environ.get("OPENAI_TIMEOUT", "30.0"))
+        max_retries = (
+            self.max_retries if self.max_retries is not None else int(os.environ.get("OPENAI_MAX_RETRIES", "5"))
+        )
+        resolved_api_key = self.api_key.resolve_value() if isinstance(self.api_key, Secret) else self.api_key
+        return {
             "api_key": resolved_api_key,
-            "organization": organization,
-            "base_url": api_base_url,
+            "organization": self.organization,
+            "base_url": self.api_base_url,
             "timeout": timeout,
             "max_retries": max_retries,
         }
 
-        self.client = OpenAI(http_client=init_http_client(self.http_client_kwargs, async_client=False), **client_kwargs)
-        self.async_client = AsyncOpenAI(
-            http_client=init_http_client(self.http_client_kwargs, async_client=True), **client_kwargs
-        )
-        self._is_warmed_up = False
-
-    def warm_up(self) -> None:
-        """
-        Warm up the OpenAI responses chat generator.
-
-        This will warm up the tools registered in the chat generator.
-        This method is idempotent and will only warm up the tools once.
-        """
-        if not self._is_warmed_up:
+    def _warm_up_tools(self) -> None:
+        if not self._tools_warmed_up:
             is_openai_tool = isinstance(self.tools, list) and isinstance(self.tools[0], dict)
             # We only warm up Haystack tools, not OpenAI/MCP tools
             # The type ignore is needed because mypy cannot infer the type correctly
             if not is_openai_tool:
                 warm_up_tools(self.tools)  # type: ignore[arg-type]
-            self._is_warmed_up = True
+            self._tools_warmed_up = True
+
+    def warm_up(self) -> None:
+        """
+        Warm up the tools and initialize the synchronous OpenAI client.
+        """
+        self._warm_up_tools()
+        if self.client is None:
+            self.client = OpenAI(
+                http_client=init_http_client(self.http_client_kwargs, async_client=False), **self._client_kwargs()
+            )
+
+    async def warm_up_async(self) -> None:  # noqa: RUF029
+        """
+        Warm up the tools and initialize the asynchronous OpenAI client on the serving event loop.
+        """
+        self._warm_up_tools()
+        if self.async_client is None:
+            self.async_client = AsyncOpenAI(
+                http_client=init_http_client(self.http_client_kwargs, async_client=True), **self._client_kwargs()
+            )
+
+    def close(self) -> None:
+        """
+        Releases the synchronous OpenAI client.
+        """
+        if self.client is not None:
+            self.client.close()
+            self.client = None
+
+    async def close_async(self) -> None:
+        """
+        Releases the asynchronous OpenAI client.
+        """
+        if self.async_client is not None:
+            await self.async_client.close()
+            self.async_client = None
 
     def _get_telemetry_data(self) -> dict[str, Any]:
         """
@@ -349,8 +390,7 @@ class OpenAIResponsesChatGenerator:
             A dictionary with the following key:
             - `replies`: A list containing the generated responses as ChatMessage instances.
         """
-        if not self._is_warmed_up:
-            self.warm_up()
+        self.warm_up()
 
         messages = _normalize_messages(messages)
 
@@ -370,6 +410,7 @@ class OpenAIResponsesChatGenerator:
             tools_strict=tools_strict,
         )
         openai_endpoint = api_args.pop("openai_endpoint")
+        assert self.client is not None  # mypy: client is built by warm_up above
         openai_endpoint_method = getattr(self.client.responses, openai_endpoint)
         responses = openai_endpoint_method(**api_args)
 
@@ -402,8 +443,8 @@ class OpenAIResponsesChatGenerator:
         :param messages:
             A list of ChatMessage instances representing the input messages.
         :param streaming_callback:
-            A callback function that is called when a new token is received from the stream.
-            Must be a coroutine.
+            A callback function that is called when a new token is received from the stream. Async callbacks are
+            preferred; a sync callback is accepted but will run synchronously on the event loop and may block it.
         :param generation_kwargs:
             Additional keyword arguments for text generation. These parameters will
             override the parameters passed during component initialization.
@@ -423,8 +464,7 @@ class OpenAIResponsesChatGenerator:
             A dictionary with the following key:
             - `replies`: A list containing the generated responses as ChatMessage instances.
         """
-        if not self._is_warmed_up:
-            self.warm_up()
+        await self.warm_up_async()
 
         messages = _normalize_messages(messages)
 
@@ -446,6 +486,7 @@ class OpenAIResponsesChatGenerator:
         )
 
         openai_endpoint = api_args.pop("openai_endpoint")
+        assert self.async_client is not None  # mypy: async_client is built by warm_up_async above
         openai_endpoint_method = getattr(self.async_client.responses, openai_endpoint)
         responses = await openai_endpoint_method(**api_args)
 
@@ -517,20 +558,32 @@ class OpenAIResponsesChatGenerator:
     def _resolve_flattened_kwargs(self, generation_kwargs: dict[str, Any]) -> dict[str, Any]:
         generation_kwargs = generation_kwargs.copy()
 
+        # avoid mutating the caller's dict
+        reasoning_overrides = {}
         reasoning_effort = generation_kwargs.pop("reasoning_effort", None)
         if reasoning_effort is not None:
-            reasoning = generation_kwargs.setdefault("reasoning", {})
-            reasoning["effort"] = reasoning_effort
+            reasoning_overrides["effort"] = reasoning_effort
 
         reasoning_summary = generation_kwargs.pop("reasoning_summary", None)
         if reasoning_summary is not None:
-            reasoning = generation_kwargs.setdefault("reasoning", {})
-            reasoning["summary"] = reasoning_summary
+            reasoning_overrides["summary"] = reasoning_summary
+
+        reasoning_mode = generation_kwargs.pop("reasoning_mode", None)
+        if reasoning_mode is not None:
+            reasoning_overrides["mode"] = reasoning_mode
+
+        if reasoning_overrides:
+            generation_kwargs["reasoning"] = {**generation_kwargs.get("reasoning", {}), **reasoning_overrides}
+
+        include_reasoning_encrypted_content = generation_kwargs.pop("include_reasoning_encrypted_content", None)
+        if include_reasoning_encrypted_content is True:
+            include = generation_kwargs.get("include", [])
+            if "reasoning.encrypted_content" not in include:
+                generation_kwargs["include"] = [*include, "reasoning.encrypted_content"]
 
         verbosity = generation_kwargs.pop("verbosity", None)
         if verbosity is not None:
-            text = generation_kwargs.setdefault("text", {})
-            text["verbosity"] = verbosity
+            generation_kwargs["text"] = {**generation_kwargs.get("text", {}), "verbosity": verbosity}
 
         return generation_kwargs
 
@@ -548,7 +601,7 @@ class OpenAIResponsesChatGenerator:
         return [chat_message]
 
     async def _handle_async_stream_response(
-        self, responses: AsyncStream, callback: AsyncStreamingCallbackT
+        self, responses: AsyncStream, callback: StreamingCallbackT
     ) -> list[ChatMessage]:
         component_info = ComponentInfo.from_component(self)
         chunks: list[StreamingChunk] = []
@@ -557,7 +610,7 @@ class OpenAIResponsesChatGenerator:
                 chunk=openai_chunk, previous_chunks=chunks, component_info=component_info
             )
             chunks.append(chunk_delta)
-            await callback(chunk_delta)
+            await _invoke_streaming_callback(callback, chunk_delta)
         chat_message = _convert_streaming_chunks_to_chat_message(chunks=chunks)
         return [chat_message]
 
@@ -923,7 +976,7 @@ def _convert_chat_message_to_responses_api_format(message: ChatMessage) -> list[
         formatted_tool_results = []
         for result in tool_call_results:
             if result.origin.id is not None:
-                # Handle multimodal tool results (list of TextContent/ImageContent)
+                # Handle multimodal tool results (list of TextContent/ImageContent/FileContent)
                 if isinstance(result.result, list):
                     output_content = [convert_part(part) for part in result.result]
                 elif isinstance(result.result, str):

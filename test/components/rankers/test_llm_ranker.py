@@ -3,12 +3,13 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import os
-from unittest.mock import Mock
+from unittest.mock import AsyncMock, Mock
 
 import pytest
 from jinja2 import TemplateSyntaxError
 
 from haystack import Document
+from haystack.components.generators.chat import MockChatGenerator
 from haystack.components.generators.chat.openai import OpenAIChatGenerator
 from haystack.components.rankers.llm_ranker import DEFAULT_PROMPT_TEMPLATE, LLMRanker
 from haystack.dataclasses import ChatMessage
@@ -109,84 +110,78 @@ def test_run_whitespace_query_returns_fallback(mock_chat_generator):
     mock_chat_generator.run.assert_not_called()
 
 
-def test_run_successful_ranking(mock_chat_generator):
+def test_run_successful_ranking():
     documents = [
         Document(id="1", content="first"),
         Document(id="2", content="second"),
         Document(id="3", content="third"),
     ]
-    mock_chat_generator.run.return_value = {
-        "replies": [ChatMessage.from_assistant('{"documents": [{"index": 2}, {"index": 1}, {"index": 3}]}')]
-    }
-    ranker = LLMRanker(chat_generator=mock_chat_generator, top_k=2)
+    chat_generator = MockChatGenerator('{"documents": [{"index": 2}, {"index": 1}, {"index": 3}]}')
+    ranker = LLMRanker(chat_generator=chat_generator, top_k=2)
 
     result = ranker.run(query="test query", documents=documents)
 
     assert [document.id for document in result["documents"]] == ["2", "1"]
 
 
-def test_run_returns_only_documents_listed_by_the_llm(mock_chat_generator):
+def test_run_returns_only_documents_listed_by_the_llm():
     documents = [Document(id="1", content="first"), Document(id="2", content="second")]
-    mock_chat_generator.run.return_value = {"replies": [ChatMessage.from_assistant('{"documents": [{"index": 2}]}')]}
-    ranker = LLMRanker(chat_generator=mock_chat_generator, top_k=2)
+    chat_generator = MockChatGenerator('{"documents": [{"index": 2}]}')
+    ranker = LLMRanker(chat_generator=chat_generator, top_k=2)
 
     result = ranker.run(query="test query", documents=documents)
 
     assert [document.id for document in result["documents"]] == ["2"]
 
 
-def test_run_runtime_top_k_overrides_instance_top_k(mock_chat_generator):
+def test_run_runtime_top_k_overrides_instance_top_k():
     documents = [
         Document(id="doc_1", content="first"),
         Document(id="doc_2", content="second"),
         Document(id="doc_3", content="third"),
     ]
-    mock_chat_generator.run.return_value = {
-        "replies": [ChatMessage.from_assistant('{"documents": [{"index": 3}, {"index": 2}, {"index": 1}]}')]
-    }
-    ranker = LLMRanker(chat_generator=mock_chat_generator, top_k=3)
+    chat_generator = MockChatGenerator('{"documents": [{"index": 3}, {"index": 2}, {"index": 1}]}')
+    ranker = LLMRanker(chat_generator=chat_generator, top_k=3)
 
     result = ranker.run(query="test query", documents=documents, top_k=1)
 
     assert [document.id for document in result["documents"]] == ["doc_3"]
 
 
-def test_run_ignores_out_of_range_indices(mock_chat_generator):
+def test_run_ignores_out_of_range_indices():
     documents = [Document(id="1", content="first"), Document(id="2", content="second")]
-    mock_chat_generator.run.return_value = {
-        "replies": [ChatMessage.from_assistant('{"documents": [{"index": 99}, {"index": 2}, {"index": 1}]}')]
-    }
-    ranker = LLMRanker(chat_generator=mock_chat_generator)
+    chat_generator = MockChatGenerator('{"documents": [{"index": 99}, {"index": 2}, {"index": 1}]}')
+    ranker = LLMRanker(chat_generator=chat_generator)
 
     result = ranker.run(query="test query", documents=documents)
 
     assert [document.id for document in result["documents"]] == ["2", "1"]
 
 
-def test_run_empty_ranking_result_returns_empty_documents(mock_chat_generator):
+def test_run_empty_ranking_result_returns_empty_documents():
     documents = [Document(id="1", content="first"), Document(id="2", content="second")]
-    mock_chat_generator.run.return_value = {"replies": [ChatMessage.from_assistant('{"documents": []}')]}
-    ranker = LLMRanker(chat_generator=mock_chat_generator)
+    chat_generator = MockChatGenerator('{"documents": []}')
+    ranker = LLMRanker(chat_generator=chat_generator)
 
     result = ranker.run(query="test query", documents=documents)
 
     assert result == {"documents": []}
 
 
-def test_run_invalid_json_falls_back(mock_chat_generator):
+def test_run_invalid_json_falls_back():
     documents = [Document(id="1", content="first"), Document(id="2", content="second")]
-    mock_chat_generator.run.return_value = {"replies": [ChatMessage.from_assistant("not-json")]}
-    ranker = LLMRanker(chat_generator=mock_chat_generator, top_k=1, raise_on_failure=False)
+    chat_generator = MockChatGenerator("not-json")
+    ranker = LLMRanker(chat_generator=chat_generator, top_k=1, raise_on_failure=False)
 
     result = ranker.run(query="test query", documents=documents)
 
     assert result == {"documents": documents}
 
 
-def test_run_invalid_json_raises(mock_chat_generator):
+def test_run_invalid_json_raises():
     documents = [Document(id="1", content="first")]
-    mock_chat_generator.run.return_value = {"replies": [ChatMessage.from_assistant("not-json")]}
-    ranker = LLMRanker(chat_generator=mock_chat_generator, raise_on_failure=True)
+    chat_generator = MockChatGenerator("not-json")
+    ranker = LLMRanker(chat_generator=chat_generator, raise_on_failure=True)
 
     with pytest.raises(ValueError):
         ranker.run(query="test query", documents=documents)
@@ -221,72 +216,64 @@ def test_run_no_replies_falls_back(mock_chat_generator):
     assert result == {"documents": documents}
 
 
-def test_run_reply_without_text_falls_back(mock_chat_generator):
+def test_run_reply_without_text_falls_back():
     documents = [Document(id="1", content="first"), Document(id="2", content="second")]
-    mock_chat_generator.run.return_value = {"replies": [ChatMessage.from_assistant(tool_calls=[])]}
-    ranker = LLMRanker(chat_generator=mock_chat_generator, top_k=1)
+    chat_generator = MockChatGenerator(ChatMessage.from_assistant(tool_calls=[]))
+    ranker = LLMRanker(chat_generator=chat_generator, top_k=1)
 
     result = ranker.run(query="test query", documents=documents)
 
     assert result == {"documents": documents}
 
 
-def test_run_no_valid_document_indices_falls_back(mock_chat_generator):
+def test_run_no_valid_document_indices_falls_back():
     documents = [Document(id="1", content="first"), Document(id="2", content="second")]
-    mock_chat_generator.run.return_value = {
-        "replies": [ChatMessage.from_assistant('{"documents": [{"index": 0}, {"index": 3}]}')]
-    }
-    ranker = LLMRanker(chat_generator=mock_chat_generator, top_k=1)
+    chat_generator = MockChatGenerator('{"documents": [{"index": 0}, {"index": 3}]}')
+    ranker = LLMRanker(chat_generator=chat_generator, top_k=1)
 
     result = ranker.run(query="test query", documents=documents)
 
     assert result == {"documents": documents}
 
 
-def test_run_deduplicates_documents_before_ranking(mock_chat_generator):
+def test_run_deduplicates_documents_before_ranking():
     documents = [
         Document(id="duplicate", content="keep me", score=0.9),
         Document(id="duplicate", content="drop me", score=0.1),
         Document(id="unique", content="unique", score=0.2),
     ]
-    mock_chat_generator.run.return_value = {
-        "replies": [ChatMessage.from_assistant('{"documents": [{"index": 2}, {"index": 1}]}')]
-    }
-    ranker = LLMRanker(chat_generator=mock_chat_generator)
+    chat_generator = MockChatGenerator('{"documents": [{"index": 2}, {"index": 1}]}')
+    ranker = LLMRanker(chat_generator=chat_generator)
 
     result = ranker.run(query="test query", documents=documents)
 
     assert [document.content for document in result["documents"]] == ["unique", "keep me"]
 
 
-def test_run_preserves_duplicate_indices(mock_chat_generator):
+def test_run_preserves_duplicate_indices():
     documents = [Document(id="1", content="first"), Document(id="2", content="second")]
-    mock_chat_generator.run.return_value = {
-        "replies": [ChatMessage.from_assistant('{"documents": [{"index": 2}, {"index": 2}, {"index": 1}]}')]
-    }
-    ranker = LLMRanker(chat_generator=mock_chat_generator)
+    chat_generator = MockChatGenerator('{"documents": [{"index": 2}, {"index": 2}, {"index": 1}]}')
+    ranker = LLMRanker(chat_generator=chat_generator)
 
     result = ranker.run(query="test query", documents=documents)
 
     assert [document.id for document in result["documents"]] == ["2", "2", "1"]
 
 
-def test_run_numeric_string_index_is_accepted(mock_chat_generator):
+def test_run_numeric_string_index_is_accepted():
     documents = [Document(id="1", content="first"), Document(id="2", content="second")]
-    mock_chat_generator.run.return_value = {"replies": [ChatMessage.from_assistant('{"documents": [{"index": "2"}]}')]}
-    ranker = LLMRanker(chat_generator=mock_chat_generator)
+    chat_generator = MockChatGenerator('{"documents": [{"index": "2"}]}')
+    ranker = LLMRanker(chat_generator=chat_generator)
 
     result = ranker.run(query="test query", documents=documents)
 
     assert result == {"documents": [documents[1]]}
 
 
-def test_run_invalid_index_type_falls_back(mock_chat_generator):
+def test_run_invalid_index_type_falls_back():
     documents = [Document(id="1", content="first"), Document(id="2", content="second")]
-    mock_chat_generator.run.return_value = {
-        "replies": [ChatMessage.from_assistant('{"documents": [{"index": "invalid"}]}')]
-    }
-    ranker = LLMRanker(chat_generator=mock_chat_generator)
+    chat_generator = MockChatGenerator('{"documents": [{"index": "invalid"}]}')
+    ranker = LLMRanker(chat_generator=chat_generator)
 
     result = ranker.run(query="test query", documents=documents)
 
@@ -347,3 +334,135 @@ def test_live_run_ranks_rust_for_programming_language_query():
     result = ranker.run(query="Which document is about a programming language?", documents=documents)
 
     assert [document.id for document in result["documents"]] == ["doc-rust"]
+
+
+class FakeSyncOnlyChatGenerator:
+    """A chat generator exposing only a synchronous `run` (no `run_async`) for the fallback path."""
+
+    def __init__(self):
+        self.run = Mock()
+
+
+class TestLLMRankerAsync:
+    @pytest.mark.asyncio
+    async def test_run_async(self):
+        documents = [
+            Document(id="1", content="first"),
+            Document(id="2", content="second"),
+            Document(id="3", content="third"),
+        ]
+        mock_chat_generator = Mock(spec=OpenAIChatGenerator)
+        mock_chat_generator.run_async = AsyncMock(
+            return_value={
+                "replies": [ChatMessage.from_assistant('{"documents": [{"index": 2}, {"index": 1}, {"index": 3}]}')]
+            }
+        )
+        ranker = LLMRanker(chat_generator=mock_chat_generator, top_k=2)
+
+        result = await ranker.run_async(query="test query", documents=documents)
+
+        assert [document.id for document in result["documents"]] == ["2", "1"]
+        mock_chat_generator.run_async.assert_awaited_once()
+        mock_chat_generator.run.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_run_async_fallback_to_sync_run(self):
+        documents = [
+            Document(id="1", content="first"),
+            Document(id="2", content="second"),
+            Document(id="3", content="third"),
+        ]
+        fake_chat_generator = FakeSyncOnlyChatGenerator()
+        fake_chat_generator.run.return_value = {
+            "replies": [ChatMessage.from_assistant('{"documents": [{"index": 2}, {"index": 1}, {"index": 3}]}')]
+        }
+        assert not hasattr(fake_chat_generator, "run_async")
+        ranker = LLMRanker(chat_generator=fake_chat_generator, top_k=2)
+
+        result = await ranker.run_async(query="test query", documents=documents)
+
+        assert [document.id for document in result["documents"]] == ["2", "1"]
+        fake_chat_generator.run.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_run_async_generator_exception_falls_back(self):
+        documents = [Document(id="1", content="first"), Document(id="2", content="second")]
+        mock_chat_generator = Mock(spec=OpenAIChatGenerator)
+        mock_chat_generator.run_async = AsyncMock(side_effect=RuntimeError("generator failed"))
+        ranker = LLMRanker(chat_generator=mock_chat_generator, top_k=1, raise_on_failure=False)
+
+        result = await ranker.run_async(query="test query", documents=documents)
+
+        assert result == {"documents": documents}
+
+    @pytest.mark.asyncio
+    async def test_run_async_generator_exception_raises(self):
+        documents = [Document(id="1", content="first")]
+        mock_chat_generator = Mock(spec=OpenAIChatGenerator)
+        mock_chat_generator.run_async = AsyncMock(side_effect=RuntimeError("generator failed"))
+        ranker = LLMRanker(chat_generator=mock_chat_generator, raise_on_failure=True)
+
+        with pytest.raises(RuntimeError, match="generator failed"):
+            await ranker.run_async(query="test query", documents=documents)
+
+    @pytest.mark.integration
+    @pytest.mark.skipif(
+        not os.environ.get("OPENAI_API_KEY", None),
+        reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
+    )
+    @pytest.mark.asyncio
+    async def test_live_run_async_ranks_berlin_first_for_germany_query(self):
+        documents = [
+            Document(id="doc-berlin", content="Berlin is the capital of Germany."),
+            Document(id="doc-paris", content="Paris is the capital of France."),
+            Document(id="doc-rust", content="Rust is a systems programming language focused on safety."),
+        ]
+        ranker = LLMRanker(top_k=2)
+
+        result = await ranker.run_async(query="What is the capital of Germany?", documents=documents)
+
+        assert result["documents"]
+        assert result["documents"][0].id == "doc-berlin"
+        assert len(result["documents"]) <= 2
+
+
+class TestComponentLifecycle:
+    def test_warm_up_delegates_to_chat_generator(self, mock_chat_generator):
+        ranker = LLMRanker(chat_generator=mock_chat_generator)
+        ranker.warm_up()
+        mock_chat_generator.warm_up.assert_called_once()
+
+    async def test_warm_up_async_delegates_to_chat_generator(self, mock_chat_generator):
+        mock_chat_generator.warm_up_async = AsyncMock()
+        ranker = LLMRanker(chat_generator=mock_chat_generator)
+        await ranker.warm_up_async()
+        mock_chat_generator.warm_up_async.assert_awaited_once()
+
+    async def test_warm_up_async_falls_back_to_sync_warm_up(self):
+        chat_generator = Mock(spec=["run", "warm_up"])
+        ranker = LLMRanker(chat_generator=chat_generator)
+        await ranker.warm_up_async()
+        chat_generator.warm_up.assert_called_once()
+
+    def test_close_delegates_to_chat_generator(self, mock_chat_generator):
+        ranker = LLMRanker(chat_generator=mock_chat_generator)
+        ranker.close()
+        mock_chat_generator.close.assert_called_once()
+
+    async def test_close_async_delegates_to_chat_generator(self, mock_chat_generator):
+        mock_chat_generator.close_async = AsyncMock()
+        ranker = LLMRanker(chat_generator=mock_chat_generator)
+        await ranker.close_async()
+        mock_chat_generator.close_async.assert_awaited_once()
+
+    async def test_close_async_falls_back_to_sync_close(self):
+        chat_generator = Mock(spec=["run", "close"])
+        ranker = LLMRanker(chat_generator=chat_generator)
+        await ranker.close_async()
+        chat_generator.close.assert_called_once()
+
+    def test_lifecycle_is_safe_when_chat_generator_lacks_methods(self):
+        chat_generator = Mock(spec=["run"])
+        ranker = LLMRanker(chat_generator=chat_generator)
+        ranker.warm_up()
+        ranker.close()

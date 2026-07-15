@@ -2,25 +2,18 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import os
 from typing import Any
-from unittest.mock import ANY
+from unittest.mock import ANY, AsyncMock, Mock
 
-import numpy as np
 import pytest
 
 from haystack import Document, component
-from haystack.components.embedders import SentenceTransformersDocumentEmbedder, SentenceTransformersTextEmbedder
+from haystack.components.embedders import MockTextEmbedder, OpenAIDocumentEmbedder, OpenAITextEmbedder
 from haystack.components.retrievers import InMemoryEmbeddingRetriever, TextEmbeddingRetriever
 from haystack.components.writers import DocumentWriter
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.document_stores.types import DuplicatePolicy
-
-
-@component
-class MockTextEmbedder:
-    @component.output_types(embedding=list[float])
-    def run(self, text: str) -> dict[str, list[float]]:
-        return {"embedding": np.ones(384).tolist()}
 
 
 class TestTextEmbeddingRetriever:
@@ -38,7 +31,7 @@ class TestTextEmbeddingRetriever:
     def document_store_with_embeddings(self, sample_documents):
         """Create a document store populated with embedded documents."""
         document_store = InMemoryDocumentStore()
-        doc_embedder = SentenceTransformersDocumentEmbedder(model="sentence-transformers/all-MiniLM-L6-v2")
+        doc_embedder = OpenAIDocumentEmbedder()
         doc_writer = DocumentWriter(document_store=document_store, policy=DuplicatePolicy.SKIP)
 
         embedded_docs = doc_embedder.run(sample_documents)["documents"]
@@ -100,6 +93,7 @@ class TestTextEmbeddingRetriever:
                                 "bm25_parameters": {},
                                 "embedding_similarity_function": "dot_product",
                                 "index": ANY,
+                                "shared": True,
                                 "return_embedding": True,
                             },
                         },
@@ -111,13 +105,22 @@ class TestTextEmbeddingRetriever:
                     },
                 },
                 "text_embedder": {
-                    "type": "retrievers.test_text_embedding_retriever.MockTextEmbedder",
-                    "init_parameters": {},
+                    "type": "haystack.components.embedders.mock_text_embedder.MockTextEmbedder",
+                    "init_parameters": {
+                        "embedding": None,
+                        "embedding_fn": None,
+                        "dimension": 768,
+                        "model": "mock-model",
+                        "meta": {},
+                        "prefix": "",
+                        "suffix": "",
+                    },
                 },
             },
         }
 
-    def test_from_dict(self):
+    def test_from_dict(self, monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "fake-api-key")
         data = {
             "type": "haystack.components.retrievers.text_embedding_retriever.TextEmbeddingRetriever",
             "init_parameters": {
@@ -132,6 +135,7 @@ class TestTextEmbeddingRetriever:
                                 "bm25_parameters": {},
                                 "embedding_similarity_function": "dot_product",
                                 "index": "4bb5369d-779f-487b-9c16-3c40f503438b",
+                                "shared": True,
                                 "return_embedding": True,
                             },
                         },
@@ -143,24 +147,18 @@ class TestTextEmbeddingRetriever:
                     },
                 },
                 "text_embedder": {
-                    "type": "haystack.components.embedders.sentence_transformers_text_embedder.SentenceTransformersTextEmbedder",  # noqa E501
+                    "type": "haystack.components.embedders.openai_text_embedder.OpenAITextEmbedder",
                     "init_parameters": {
-                        "model": "sentence-transformers/all-MiniLM-L6-v2",
-                        "token": {"type": "env_var", "env_vars": ["HF_API_TOKEN", "HF_TOKEN"], "strict": False},
+                        "api_key": {"env_vars": ["OPENAI_API_KEY"], "strict": True, "type": "env_var"},
+                        "api_base_url": None,
+                        "dimensions": None,
+                        "model": "text-embedding-ada-002",
+                        "organization": None,
+                        "http_client_kwargs": None,
                         "prefix": "",
                         "suffix": "",
-                        "batch_size": 32,
-                        "progress_bar": True,
-                        "normalize_embeddings": False,
-                        "trust_remote_code": False,
-                        "local_files_only": False,
-                        "truncate_dim": None,
-                        "model_kwargs": None,
-                        "tokenizer_kwargs": None,
-                        "config_kwargs": None,
-                        "precision": "float32",
-                        "encode_kwargs": None,
-                        "backend": "torch",
+                        "timeout": None,
+                        "max_retries": None,
                     },
                 },
             },
@@ -168,26 +166,89 @@ class TestTextEmbeddingRetriever:
         result = TextEmbeddingRetriever.from_dict(data)
         assert isinstance(result, TextEmbeddingRetriever)
         assert isinstance(result.retriever, InMemoryEmbeddingRetriever)
-        assert isinstance(result.text_embedder, SentenceTransformersTextEmbedder)
+        assert isinstance(result.text_embedder, OpenAITextEmbedder)
 
+    @pytest.mark.skipif(os.environ.get("OPENAI_API_KEY", "") == "", reason="OPENAI_API_KEY is not set")
     @pytest.mark.integration
-    @pytest.mark.slow
-    def test_run_with_filters(self, del_hf_env_vars, document_store_with_embeddings):
+    def test_run_with_filters(self, document_store_with_embeddings):
         retriever = TextEmbeddingRetriever(
             retriever=InMemoryEmbeddingRetriever(document_store=document_store_with_embeddings),
-            text_embedder=SentenceTransformersTextEmbedder(model="sentence-transformers/all-MiniLM-L6-v2"),
+            text_embedder=OpenAITextEmbedder(),
         )
         result = retriever.run(query="energy", filters={"field": "meta.category", "operator": "==", "value": "solar"})
         assert "documents" in result
         assert all(doc.meta.get("category") == "solar" for doc in result["documents"])
 
+    @pytest.mark.skipif(os.environ.get("OPENAI_API_KEY", "") == "", reason="OPENAI_API_KEY is not set")
     @pytest.mark.integration
-    @pytest.mark.slow
-    def test_run_with_top_k(self, del_hf_env_vars, document_store_with_embeddings):
+    def test_run_with_top_k(self, document_store_with_embeddings):
         retriever = TextEmbeddingRetriever(
             retriever=InMemoryEmbeddingRetriever(document_store=document_store_with_embeddings),
-            text_embedder=SentenceTransformersTextEmbedder(model="sentence-transformers/all-MiniLM-L6-v2"),
+            text_embedder=OpenAITextEmbedder(),
         )
         result = retriever.run(query="energy", top_k=2)
         assert "documents" in result
         assert len(result["documents"]) <= 2
+
+
+class TestComponentLifecycle:
+    def test_warm_up_delegates_to_inner_components(self):
+        text_embedder = Mock(spec=["run", "warm_up"])
+        retriever = Mock(spec=["run", "warm_up"])
+        component = TextEmbeddingRetriever(retriever=retriever, text_embedder=text_embedder)
+        component.warm_up()
+        text_embedder.warm_up.assert_called_once()
+        retriever.warm_up.assert_called_once()
+
+    async def test_warm_up_async_delegates_to_inner_components(self):
+        text_embedder = Mock(spec=["run", "warm_up_async"])
+        text_embedder.warm_up_async = AsyncMock()
+        retriever = Mock(spec=["run", "warm_up_async"])
+        retriever.warm_up_async = AsyncMock()
+        component = TextEmbeddingRetriever(retriever=retriever, text_embedder=text_embedder)
+        await component.warm_up_async()
+        text_embedder.warm_up_async.assert_awaited_once()
+        retriever.warm_up_async.assert_awaited_once()
+
+    async def test_warm_up_async_falls_back_to_sync_warm_up(self):
+        text_embedder = Mock(spec=["run", "warm_up"])
+        retriever = Mock(spec=["run", "warm_up"])
+        component = TextEmbeddingRetriever(retriever=retriever, text_embedder=text_embedder)
+        await component.warm_up_async()
+        text_embedder.warm_up.assert_called_once()
+        retriever.warm_up.assert_called_once()
+
+    def test_close_delegates_to_inner_components(self):
+        text_embedder = Mock(spec=["run", "close"])
+        retriever = Mock(spec=["run", "close"])
+        component = TextEmbeddingRetriever(retriever=retriever, text_embedder=text_embedder)
+        component.close()
+        text_embedder.close.assert_called_once()
+        retriever.close.assert_called_once()
+
+    async def test_close_async_delegates_to_inner_components(self):
+        text_embedder = Mock(spec=["run", "close_async"])
+        text_embedder.close_async = AsyncMock()
+        retriever = Mock(spec=["run", "close_async"])
+        retriever.close_async = AsyncMock()
+        component = TextEmbeddingRetriever(retriever=retriever, text_embedder=text_embedder)
+        await component.close_async()
+        text_embedder.close_async.assert_awaited_once()
+        retriever.close_async.assert_awaited_once()
+
+    async def test_close_async_falls_back_to_sync_close(self):
+        text_embedder = Mock(spec=["run", "close"])
+        retriever = Mock(spec=["run", "close"])
+        component = TextEmbeddingRetriever(retriever=retriever, text_embedder=text_embedder)
+        await component.close_async()
+        text_embedder.close.assert_called_once()
+        retriever.close.assert_called_once()
+
+    async def test_lifecycle_is_safe_when_inner_components_lack_methods(self):
+        text_embedder = Mock(spec=["run"])
+        retriever = Mock(spec=["run"])
+        component = TextEmbeddingRetriever(retriever=retriever, text_embedder=text_embedder)
+        component.warm_up()
+        await component.warm_up_async()
+        component.close()
+        await component.close_async()

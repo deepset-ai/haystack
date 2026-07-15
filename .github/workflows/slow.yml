@@ -54,60 +54,16 @@ jobs:
           persist-credentials: false
       - name: Check for changed code
         id: changes
-        uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # v4.0.1
+        uses: dorny/paths-filter@7b450fff21473bca461d4b92ce414b9d0420d706 # v4.0.2
         with:
           # List of Python files that trigger slow integration tests when modified
           filters: |
             changes:
-              - "haystack/components/audio/whisper_local.py"
-              - "haystack/components/classifiers/zero_shot_document_classifier.py"
-              - "haystack/components/converters/tika.py"
-              - "haystack/components/embedders/hugging_face_api_document_embedder.py"
-              - "haystack/components/embedders/hugging_face_api_text_embedder.py"
-              - "haystack/components/embedders/backends/sentence_transformers_backend.py"
-              - "haystack/components/embedders/backends/sentence_transformers_sparse_backend.py"
-              - "haystack/components/embedders/image/sentence_transformers_doc_image_embedder.py"
-              - "haystack/components/embedders/sentence_transformers_text_embedder.py"
-              - "haystack/components/embedders/sentence_transformers_sparse_document_embedder.py"
-              - "haystack/components/embedders/sentence_transformers_sparse_text_embedder.py"
               - "haystack/components/evaluators/sas_evaluator.py"
-              - "haystack/components/generators/chat/hugging_face_api.py"
-              - "haystack/components/generators/chat/hugging_face_local.py"
-              - "haystack/components/generators/hugging_face_api.py"
-              - "haystack/components/generators/hugging_face_local_generator.py"
               - "haystack/components/generators/openai_dalle.py"
-              - "haystack/components/preprocessors/embedding_based_document_splitter.py"
-              - "haystack/components/rankers/sentence_transformers_diversity.py"
-              - "haystack/components/rankers/sentence_transformers_similarity.py"
-              - "haystack/components/rankers/transformers_similarity.py"
-              - "haystack/components/readers/extractive.py"
-              - "haystack/components/retrievers/multi_query_embedding_retriever.py"
-              - "haystack/components/routers/transformers_text_router.py"
-              - "haystack/components/routers/zero_shot_text_router.py"
 
-              - "test/components/audio/test_whisper_local.py"
-              - "test/components/classifiers/test_zero_shot_document_classifier.py"
-              - "test/components/converters/test_tika_doc_converter.py"
-              - "test/components/embedders/test_hugging_face_api_document_embedder.py"
-              - "test/components/embedders/test_hugging_face_api_text_embedder.py"
-              - "test/components/embedders/image/test_sentence_transformers_doc_image_embedder.py"
-              - "test/components/embedders/test_sentence_transformers_text_embedder.py"
-              - "test/components/embedders/test_sentence_transformers_sparse_document_embedder.py"
-              - "test/components/embedders/test_sentence_transformers_sparse_text_embedder.py"
               - "test/components/evaluators/test_sas_evaluator.py"
-              - "test/components/generators/chat/test_hugging_face_api.py"
-              - "test/components/generators/chat/test_hugging_face_local.py"
-              - "test/components/generators/test_hugging_face_api.py"
-              - "test/components/generators/test_hugging_face_local_generator.py"
               - "test/components/generators/test_openai_dalle.py"
-              - "test/components/preprocessors/test_embedding_based_document_splitter.py"
-              - "test/components/rankers/test_sentence_transformers_diversity.py"
-              - "test/components/rankers/test_sentence_transformers_similarity.py"
-              - "test/components/rankers/test_transformers_similarity.py"
-              - "test/components/readers/test_extractive.py"
-              - "test/components/retrievers/test_multi_query_embedding_retriever.py"
-              - "test/components/routers/test_transformers_text_router.py"
-              - "test/components/routers/test_zero_shot_text_router.py"
 
   slow-integration-tests:
     name: Slow Tests / ${{ matrix.os }}
@@ -126,13 +82,6 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
-        include:
-          - os: ubuntu-latest
-            install_cmd: "sudo apt update && sudo apt install ffmpeg"
-          - os: macos-latest
-            install_cmd: "brew install ffmpeg"
-          - os: windows-latest
-            install_cmd: "echo 'No additional dependencies needed'"
 
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
@@ -149,15 +98,6 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install hatch==${{ env.HATCH_VERSION }} --uploaded-prior-to=P1D
-
-      - name: Run Tika
-        if: matrix.os == 'ubuntu-latest'
-        run: |
-          docker run -d -p 9998:9998 apache/tika:2.9.0.0@sha256:92d055a84e9efbedb5541fb38d635a44a16a875d88d1014c183af9eb93a09aaf
-
-      - name: Install Whisper dependencies
-        shell: bash
-        run: ${{ matrix.install_cmd }}
 
       - name: Run tests
         run: hatch run test:integration-only-slow

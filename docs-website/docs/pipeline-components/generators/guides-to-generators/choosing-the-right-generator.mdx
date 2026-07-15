@@ -2,28 +2,15 @@
 title: "Choosing the Right Generator"
 id: choosing-the-right-generator
 slug: "/choosing-the-right-generator"
-description: "This page provides information on choosing the right Generator for interacting with Generative Language Models in Haystack. It explains the distinction between Generators and ChatGenerators, discusses using proprietary and open models from various providers, and explores options for using open models on-premise."
+description: "This page provides information on choosing the right ChatGenerator for interacting with Generative Language Models in Haystack. It discusses using proprietary and open models from various providers and explores options for using open models on-premise."
 ---
 
 # Choosing the Right Generator
 
-This page provides information on choosing the right Generator for interacting with Generative Language Models in Haystack. It explains the distinction between Generators and ChatGenerators, discusses using proprietary and open models from various providers, and explores options for using open models on-premise.
+This page provides information on choosing the right ChatGenerator for interacting with Generative Language Models in Haystack. It discusses using proprietary and open models from various providers and explores options for using open models on-premise.
 
-In Haystack, Generators are the main interface for interacting with Generative Language Models.
-This guide aims to simplify the process of choosing the right Generator based on your preferences and computing resources. This guide does not focus on selecting a specific model itself but rather a model type and a Haystack Generator: as you will see, in several cases, you have different options to use the same model.
-
-## Generators vs ChatGenerators
-
-The first distinction we are talking about is between Generators and ChatGenerators, for example, OpenAIGenerator and OpenAIChatGenerator, HuggingFaceAPIGenerator and HuggingFaceAPIChatGenerator, and so on.
-
-- **Generators** are components that expect a prompt (a string) and return the generated text in “replies”.
-- **ChatGenerators** support the [ChatMessage data class](../../../concepts/data-classes/chatmessage.mdx) out of the box. They expect a list of Chat Messages and return a Chat Message in “replies”.
-
-:::warning
-ChatGenerators are way more powerful than Generators: they for example support Function Calling and Multimodal inputs.
-
-We recommend using ChatGenerators. Generators might be removed in a future major version of Haystack.
-:::
+In Haystack, ChatGenerators are the main interface for interacting with Generative Language Models. They accept either a plain prompt string or a list of [Chat Messages](../../../concepts/data-classes/chatmessage.mdx), return Chat Messages in “replies”, and support Function Calling and Multimodal inputs.
+This guide aims to simplify the process of choosing the right ChatGenerator based on your preferences and computing resources. This guide does not focus on selecting a specific model itself but rather a model type and a Haystack ChatGenerator: as you will see, in several cases, you have different options to use the same model.
 
 ## Streaming Support
 
@@ -52,9 +39,38 @@ The simplest way is to use the built-in `print_streaming_chunk` function. It han
 ```python
 from haystack.components.generators.utils import print_streaming_chunk
 
-generator = SomeGenerator(streaming_callback=print_streaming_chunk)
-# For ChatGenerators, pass a list[ChatMessage]. For text generators, pass a prompt string.
+generator = SomeChatGenerator(streaming_callback=print_streaming_chunk)
+# ChatGenerators accept either a list[ChatMessage] or a plain prompt string.
 ```
+
+### Sync and Async Callbacks
+
+Streaming-capable components (such as `OpenAIChatGenerator`, `HuggingFaceAPIChatGenerator`, `TransformersChatGenerator`, and `Agent`) accept both sync and async streaming callbacks in async contexts (`run_async` or [async pipeline execution](../../../concepts/pipelines.mdx)). When you pass a sync callback to `run_async`, a warning is logged because the callback runs synchronously on the event loop and may block it, but the run proceeds and streams as expected. Async callbacks remain preferred for performance in async contexts.
+
+```python
+import asyncio
+
+from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.dataclasses import ChatMessage, StreamingChunk
+
+
+def print_chunk(chunk: StreamingChunk) -> None:
+    print(chunk.content, end="", flush=True)
+
+
+async def main():
+    llm = OpenAIChatGenerator()
+    # a sync callback in an async context logs a warning and streams as expected
+    await llm.run_async(
+        [ChatMessage.from_user("Tell me about Italy")],
+        streaming_callback=print_chunk,
+    )
+
+
+asyncio.run(main())
+```
+
+The reverse is not supported: passing an async callback to the sync `run` method raises an error, since a coroutine cannot be awaited from sync code.
 
 ### Custom Callback
 
@@ -104,7 +120,7 @@ def my_streaming_callback(chunk: StreamingChunk) -> None:
 
 ### Agents and Tools
 
-Agents and `ToolInvoker` forward your `streaming_callback`. They also emit a final tool-result chunk with a `finish_reason` so UIs can close the “tool phase” cleanly before assistant text resumes. The default `print_streaming_chunk` formats this for you.
+The `Agent` forwards your `streaming_callback` (and, with `tool_streaming_callback_passthrough=True`, also passes it to tools that accept it). It also emits a final tool-result chunk with a `finish_reason` so UIs can close the “tool phase” cleanly before assistant text resumes. The default `print_streaming_chunk` formats this for you.
 
 ## Proprietary vs Open-weights Models
 
@@ -193,7 +209,7 @@ On-premise models mean that you host open models on your machine or infrastructu
 
 #### Local Experimentation
 
-- GPU: [`HuggingFaceLocalChatGenerator`](../huggingfacelocalchatgenerator.mdx) is based on the Hugging Face Transformers library. This is good for experimentation when you have some GPU resources (for example, in Colab). If GPU resources are limited, alternative quantization options like bitsandbytes, GPTQ, and AWQ are supported. For more performant solutions in production use cases, refer to the options below.
+- GPU: [`TransformersChatGenerator`](../transformerschatgenerator.mdx) is based on the Hugging Face Transformers library. This is good for experimentation when you have some GPU resources (for example, in Colab). If GPU resources are limited, alternative quantization options like bitsandbytes, GPTQ, and AWQ are supported. For more performant solutions in production use cases, refer to the options below.
 - CPU (+ GPU if available): [`LlamaCppChatGenerator`](../llamacppchatgenerator.mdx) uses the Llama.cpp library –  a project written in C/C++ for efficient inference of LLMs. In particular, it employs the quantized GGUF format, suitable for running these models on standard machines (even without GPUs). If GPU resources are available, some model layers can be offloaded to GPU for enhanced speed.
 - CPU (+ GPU if available): [`OllamaChatGenerator`](../ollamachatgenerator.mdx) is based on the Ollama project, acting like Docker for LLMs. It provides a simple way to package and deploy these models. Internally based on the Llama.cpp library, it offers a more streamlined process for running on various platforms.
 

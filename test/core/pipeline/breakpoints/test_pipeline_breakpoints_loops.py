@@ -10,6 +10,7 @@ from pydantic import BaseModel, ValidationError
 
 from haystack import component
 from haystack.components.builders import ChatPromptBuilder
+from haystack.components.generators.chat import MockChatGenerator
 from haystack.core.errors import BreakpointException
 from haystack.core.pipeline.pipeline import Pipeline
 from haystack.dataclasses import ChatMessage
@@ -32,16 +33,6 @@ class OutputValidator:
             return {"valid_replies": replies}
         except (ValueError, ValidationError) as e:
             return {"invalid_replies": replies, "error_message": str(e)}
-
-
-@component
-class FakeChatGenerator:
-    def __init__(self, response: str):
-        self.response = response
-
-    @component.output_types(replies=list[ChatMessage])
-    def run(self, messages: list[ChatMessage]) -> dict[str, list[ChatMessage]]:
-        return {"replies": [ChatMessage.from_assistant(self.response)]}
 
 
 class City(BaseModel):
@@ -91,8 +82,11 @@ class TestPipelineBreakpointsLoops:
         )
 
         pipeline = Pipeline(max_runs_per_component=5)
-        pipeline.add_component(instance=ChatPromptBuilder(template=prompt_template), name="prompt_builder")
-        pipeline.add_component(instance=FakeChatGenerator(response=response_json), name="llm")
+        pipeline.add_component(
+            instance=ChatPromptBuilder(template=prompt_template, required_variables=["passage", "schema"]),
+            name="prompt_builder",
+        )
+        pipeline.add_component(instance=MockChatGenerator(response_json), name="llm")
         pipeline.add_component(instance=OutputValidator(pydantic_model=CitiesData), name="output_validator")
 
         pipeline.connect("prompt_builder.prompt", "llm.messages")

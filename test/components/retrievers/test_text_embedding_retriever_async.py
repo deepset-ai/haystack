@@ -7,20 +7,10 @@ from typing import Any
 import numpy as np
 import pytest
 
-from haystack import AsyncPipeline, Document, component
+from haystack import Document, Pipeline, component
+from haystack.components.embedders import MockTextEmbedder
 from haystack.components.retrievers import InMemoryEmbeddingRetriever, TextEmbeddingRetriever
 from haystack.document_stores.in_memory import InMemoryDocumentStore
-
-
-@component
-class MockTextEmbedder:
-    @component.output_types(embedding=list[float])
-    def run(self, text: str) -> dict[str, list[float]]:
-        return {"embedding": np.ones(384).tolist()}
-
-    @component.output_types(embedding=list[float])
-    async def run_async(self, text: str) -> dict[str, list[float]]:
-        return {"embedding": np.ones(384).tolist()}
 
 
 class TestTextEmbeddingRetrieverAsync:
@@ -114,7 +104,7 @@ class TestTextEmbeddingRetrieverAsync:
     async def test_run_async_with_filters(self, document_store_with_categorized_docs):
         retriever = TextEmbeddingRetriever(
             retriever=InMemoryEmbeddingRetriever(document_store=document_store_with_categorized_docs),
-            text_embedder=MockTextEmbedder(),
+            text_embedder=MockTextEmbedder(dimension=384),
         )
         filters = {"field": "category", "operator": "==", "value": "solar"}
         result = await retriever.run_async(query="energy", filters=filters)
@@ -129,7 +119,7 @@ class TestTextEmbeddingRetrieverAsync:
             retriever=InMemoryEmbeddingRetriever(document_store=InMemoryDocumentStore()),
             text_embedder=MockTextEmbedder(),
         )
-        pipeline = AsyncPipeline()
+        pipeline = Pipeline()
         pipeline.add_component("retriever", retriever)
         result = await pipeline.run_async(data={"retriever": {"query": "green energy"}})
 

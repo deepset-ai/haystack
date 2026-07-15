@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import warnings
+from copy import deepcopy
 
 import pytest
 
@@ -67,7 +68,36 @@ class TestExtractedAnswer:
             "meta": {"meta_key": "meta_value"},
         }
 
+    def test_from_dict(self):
+        answer = ExtractedAnswer.from_dict(
+            {
+                "data": "42",
+                "query": "What is the answer?",
+                "document": {
+                    "id": "8f800a524b139484fc719ecc35f971a080de87618319bc4836b784d69baca57f",
+                    "content": "I thought a lot about this. The answer is 42.",
+                },
+                "context": "The answer is 42.",
+                "score": 1.0,
+                "document_offset": {"start": 42, "end": 44},
+                "context_offset": {"start": 14, "end": 16},
+                "meta": {"meta_key": "meta_value"},
+            }
+        )
+        assert answer.data == "42"
+        assert answer.query == "What is the answer?"
+        assert answer.document == Document(
+            id="8f800a524b139484fc719ecc35f971a080de87618319bc4836b784d69baca57f",
+            content="I thought a lot about this. The answer is 42.",
+        )
+        assert answer.context == "The answer is 42."
+        assert answer.score == 1.0
+        assert answer.document_offset == ExtractedAnswer.Span(42, 44)
+        assert answer.context_offset == ExtractedAnswer.Span(14, 16)
+        assert answer.meta == {"meta_key": "meta_value"}
+
     def test_from_dict_legacy(self):
+        # The old wrapped `{"type": ..., "init_parameters": {...}}` format must still deserialize.
         answer = ExtractedAnswer.from_dict(
             {
                 "type": "haystack.dataclasses.answer.ExtractedAnswer",
@@ -98,33 +128,26 @@ class TestExtractedAnswer:
         assert answer.context_offset == ExtractedAnswer.Span(14, 16)
         assert answer.meta == {"meta_key": "meta_value"}
 
-    def test_from_dict(self):
-        answer = ExtractedAnswer.from_dict(
-            {
-                "data": "42",
-                "query": "What is the answer?",
-                "document": {
-                    "id": "8f800a524b139484fc719ecc35f971a080de87618319bc4836b784d69baca57f",
-                    "content": "I thought a lot about this. The answer is 42.",
-                },
-                "context": "The answer is 42.",
-                "score": 1.0,
-                "document_offset": {"start": 42, "end": 44},
-                "context_offset": {"start": 14, "end": 16},
-                "meta": {"meta_key": "meta_value"},
-            }
-        )
-        assert answer.data == "42"
-        assert answer.query == "What is the answer?"
-        assert answer.document == Document(
-            id="8f800a524b139484fc719ecc35f971a080de87618319bc4836b784d69baca57f",
-            content="I thought a lot about this. The answer is 42.",
-        )
-        assert answer.context == "The answer is 42."
-        assert answer.score == 1.0
-        assert answer.document_offset == ExtractedAnswer.Span(42, 44)
-        assert answer.context_offset == ExtractedAnswer.Span(14, 16)
-        assert answer.meta == {"meta_key": "meta_value"}
+    def test_from_dict_does_not_mutate_input(self):
+        data = {
+            "data": "42",
+            "query": "What is the answer?",
+            "document": {
+                "id": "8f800a524b139484fc719ecc35f971a080de87618319bc4836b784d69baca57f",
+                "content": "I thought a lot about this. The answer is 42.",
+            },
+            "context": "The answer is 42.",
+            "score": 1.0,
+            "document_offset": {"start": 42, "end": 44},
+            "context_offset": {"start": 14, "end": 16},
+            "meta": {"meta_key": "meta_value"},
+        }
+        snapshot = deepcopy(data)
+        first = ExtractedAnswer.from_dict(data)
+        # from_dict must not mutate its input dictionary
+        assert data == snapshot
+        # deserializing the same dictionary again must still work and be equal
+        assert ExtractedAnswer.from_dict(data) == first
 
     def test_no_warning_on_init(self):
         with warnings.catch_warnings():
@@ -221,7 +244,62 @@ class TestGeneratedAnswer:
             },
         }
 
+    def test_from_dict(self):
+        answer = GeneratedAnswer.from_dict({"data": "42", "query": "What is the answer?", "documents": [], "meta": {}})
+        assert answer.data == "42"
+        assert answer.query == "What is the answer?"
+        assert answer.documents == []
+        assert answer.meta == {}
+
+    def test_from_dict_with_meta(self):
+        answer = GeneratedAnswer.from_dict(
+            {
+                "data": "42",
+                "query": "What is the answer?",
+                "documents": [],
+                "meta": {"meta_key": "meta_value", "all_messages": ["What is the answer?"]},
+            }
+        )
+        assert answer.data == "42"
+        assert answer.query == "What is the answer?"
+        assert answer.documents == []
+        assert answer.meta["meta_key"] == "meta_value"
+        assert answer.meta["all_messages"] == ["What is the answer?"]
+
+    def test_from_dict_with_chat_message_in_meta(self):
+        answer = GeneratedAnswer.from_dict(
+            {
+                "data": "42",
+                "query": "What is the answer?",
+                "documents": [
+                    {"id": "1", "content": "The answer is 42."},
+                    {"id": "2", "content": "I believe the answer is 42."},
+                    {"id": "3", "content": "42 is definitely the answer."},
+                ],
+                "meta": {
+                    "meta_key": "meta_value",
+                    "all_messages": [ChatMessage.from_user("What is the answer?").to_dict()],
+                },
+            }
+        )
+        assert answer.data == "42"
+        assert answer.query == "What is the answer?"
+        assert answer.documents == [
+            Document(id="1", content="The answer is 42."),
+            Document(id="2", content="I believe the answer is 42."),
+            Document(id="3", content="42 is definitely the answer."),
+        ]
+        assert answer.meta["meta_key"] == "meta_value"
+        assert answer.meta["all_messages"] == [ChatMessage.from_user("What is the answer?")]
+
+    def test_from_dict_with_empty_all_messages(self):
+        answer = GeneratedAnswer.from_dict(
+            {"data": "42", "query": "What is the answer?", "documents": [], "meta": {"all_messages": []}}
+        )
+        assert answer.meta["all_messages"] == []
+
     def test_from_dict_legacy(self):
+        # The old wrapped `{"type": ..., "init_parameters": {...}}` format must still deserialize.
         answer = GeneratedAnswer.from_dict(
             {
                 "type": "haystack.dataclasses.answer.GeneratedAnswer",
@@ -281,8 +359,6 @@ class TestGeneratedAnswer:
         assert answer.meta["all_messages"] == [ChatMessage.from_user("What is the answer?")]
 
     def test_from_dict_with_empty_all_messages_legacy(self):
-        # An empty `all_messages` list must not crash deserialization: `is not None`
-        # let `[]` through and then indexed `all_messages[0]`, raising IndexError.
         answer = GeneratedAnswer.from_dict(
             {
                 "type": "haystack.dataclasses.answer.GeneratedAnswer",
@@ -296,72 +372,25 @@ class TestGeneratedAnswer:
         )
         assert answer.meta["all_messages"] == []
 
-    def test_from_dict(self):
-        answer = GeneratedAnswer.from_dict({"data": "42", "query": "What is the answer?", "documents": [], "meta": {}})
-        assert answer.data == "42"
-        assert answer.query == "What is the answer?"
-        assert answer.documents == []
-        assert answer.meta == {}
-
-    def test_from_dict_with_meta(self):
-        answer = GeneratedAnswer.from_dict(
-            {
-                "data": "42",
-                "query": "What is the answer?",
-                "documents": [],
-                "meta": {"meta_key": "meta_value", "all_messages": ["What is the answer?"]},
-            }
-        )
-        assert answer.data == "42"
-        assert answer.query == "What is the answer?"
-        assert answer.documents == []
-        assert answer.meta["meta_key"] == "meta_value"
-        assert answer.meta["all_messages"] == ["What is the answer?"]
-
-    def test_from_dict_with_chat_message_in_meta(self):
-        answer = GeneratedAnswer.from_dict(
-            {
-                "data": "42",
-                "query": "What is the answer?",
-                "documents": [
-                    {"id": "1", "content": "The answer is 42."},
-                    {"id": "2", "content": "I believe the answer is 42."},
-                    {"id": "3", "content": "42 is definitely the answer."},
-                ],
-                "meta": {
-                    "meta_key": "meta_value",
-                    "all_messages": [ChatMessage.from_user("What is the answer?").to_dict()],
-                },
-            }
-        )
-        assert answer.data == "42"
-        assert answer.query == "What is the answer?"
-        assert answer.documents == [
-            Document(id="1", content="The answer is 42."),
-            Document(id="2", content="I believe the answer is 42."),
-            Document(id="3", content="42 is definitely the answer."),
-        ]
-        assert answer.meta["meta_key"] == "meta_value"
-        assert answer.meta["all_messages"] == [ChatMessage.from_user("What is the answer?")]
-
-    def test_from_dict_with_empty_all_messages(self):
-        answer = GeneratedAnswer.from_dict(
-            {"data": "42", "query": "What is the answer?", "documents": [], "meta": {"all_messages": []}}
-        )
-        assert answer.meta["all_messages"] == []
-
     def test_from_dict_does_not_mutate_input(self):
-        # from_dict must not mutate the caller's input dict while converting
-        # `all_messages` dicts into ChatMessage objects (regression test).
-        meta = {"all_messages": [ChatMessage.from_user("What is the answer?").to_dict()]}
-        serialized = {"data": "42", "query": "What is the answer?", "documents": [], "meta": meta}
-        answer = GeneratedAnswer.from_dict(serialized)
-
-        # the deserialized answer still holds ChatMessage objects
-        assert answer.meta["all_messages"] == [ChatMessage.from_user("What is the answer?")]
-        # but the caller's meta dict is left untouched: it still holds plain dicts
-        assert isinstance(meta["all_messages"][0], dict)
-        assert meta["all_messages"] == [ChatMessage.from_user("What is the answer?").to_dict()]
+        data = {
+            "data": "42",
+            "query": "What is the answer?",
+            "documents": [
+                {"id": "1", "content": "The answer is 42."},
+                {"id": "2", "content": "I believe the answer is 42."},
+            ],
+            "meta": {
+                "meta_key": "meta_value",
+                "all_messages": [ChatMessage.from_user("What is the answer?").to_dict()],
+            },
+        }
+        snapshot = deepcopy(data)
+        first = GeneratedAnswer.from_dict(data)
+        # from_dict must not mutate its input dictionary
+        assert data == snapshot
+        # deserializing the same dictionary again must still work and be equal
+        assert GeneratedAnswer.from_dict(data) == first
 
     def test_to_dict_from_dict_round_trip_with_empty_all_messages(self):
         answer = GeneratedAnswer(data="42", query="What is the answer?", documents=[], meta={"all_messages": []})

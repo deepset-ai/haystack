@@ -46,6 +46,14 @@ subsequent iterations.
 `SearchableToolset` does not support adding new tools after initialization or merging with other toolsets. Use `catalog` to provide all tools upfront.
 :::
 
+### Warm-up
+
+`SearchableToolset` builds its search index during `warm_up()`. When used with an [`Agent`](../pipeline-components/agents-1/agent.mdx), constructing the Agent does not trigger this — warm-up happens when you call `Agent.warm_up()` or automatically at run time.
+
+All tool names in the catalog must be unique: `warm_up()` raises a `ValueError` if the catalog contains tools with duplicate names, since a search hit could otherwise resolve to the wrong tool.
+
+The Agent evaluates its `exit_conditions` at runtime, so an exit condition can name any tool in the catalog, even one the agent has not discovered yet.
+
 ## Usage
 
 ### Basic usage with an Agent
@@ -110,7 +118,7 @@ toolset = SearchableToolset(
 
 ### Reusing the toolset across multiple agent runs
 
-When reusing the same `SearchableToolset` instance across multiple agent runs, you can call `clear()` to reset any tools discovered in the previous run:
+You can safely reuse the same `SearchableToolset` instance across multiple agent runs, including concurrent ones. Each `Agent` run operates on an isolated, run-scoped copy of the toolset (created with [`spawn()`](toolset.mdx#run-scoped-copies-and-tool-selection)), so tools discovered in one run do not persist into, or collide with, other runs — every run starts fresh from the catalog:
 
 ```python
 agent = Agent(
@@ -120,8 +128,8 @@ agent = Agent(
 
 result1 = agent.run(messages=[ChatMessage.from_user("What's the weather in Milan?")])
 
-# Reset discovered tools before the next run
-toolset.clear()
-
+# The next run starts fresh: tools discovered in the previous run are not carried over
 result2 = agent.run(messages=[ChatMessage.from_user("Search for news about AI.")])
 ```
+
+If you drive the toolset directly (outside an `Agent`), you can call `clear()` to reset the discovered tools yourself.

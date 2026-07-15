@@ -57,7 +57,7 @@ class DocumentJoiner:
 
     ```python
     from haystack import Pipeline, Document
-    from haystack.components.embedders import SentenceTransformersTextEmbedder, SentenceTransformersDocumentEmbedder
+    from haystack.components.embedders import OpenAITextEmbedder, OpenAIDocumentEmbedder
     from haystack.components.joiners import DocumentJoiner
     from haystack.components.retrievers import InMemoryBM25Retriever
     from haystack.components.retrievers import InMemoryEmbeddingRetriever
@@ -65,21 +65,21 @@ class DocumentJoiner:
 
     document_store = InMemoryDocumentStore()
     docs = [Document(content="Paris"), Document(content="Berlin"), Document(content="London")]
-    embedder = SentenceTransformersDocumentEmbedder(model="sentence-transformers/all-MiniLM-L6-v2")
+    embedder = OpenAIDocumentEmbedder()
     docs_embeddings = embedder.run(docs)
     document_store.write_documents(docs_embeddings['documents'])
 
     p = Pipeline()
     p.add_component(instance=InMemoryBM25Retriever(document_store=document_store), name="bm25_retriever")
     p.add_component(
-            instance=SentenceTransformersTextEmbedder(model="sentence-transformers/all-MiniLM-L6-v2"),
+            instance=OpenAITextEmbedder(),
             name="text_embedder",
         )
     p.add_component(instance=InMemoryEmbeddingRetriever(document_store=document_store), name="embedding_retriever")
     p.add_component(instance=DocumentJoiner(), name="joiner")
     p.connect("bm25_retriever", "joiner")
     p.connect("embedding_retriever", "joiner")
-    p.connect("text_embedder", "embedding_retriever")
+    p.connect("text_embedder.embedding", "embedding_retriever.query_embedding")
     query = "What is the capital of France?"
     p.run(data={"query": query, "text": query, "top_k": 1})
     ```

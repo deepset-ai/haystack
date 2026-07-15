@@ -74,7 +74,7 @@ class ExtractedAnswer:
         :returns:
             Deserialized object.
         """
-        # backward compat: old format wrapped fields in init_parameters
+        # Backward compatibility: the old format wrapped the fields in an `init_parameters` envelope.
         if "init_parameters" in data:
             data = data["init_parameters"]
 
@@ -145,13 +145,13 @@ class GeneratedAnswer:
         :returns:
             Deserialized object.
         """
-        # backward compatibility: old format wrapped fields in init_parameters
+        # Backward compatibility: the old format wrapped the fields in an `init_parameters` envelope.
         if "init_parameters" in data:
             data = data["init_parameters"]
 
         documents = [Document.from_dict(d) for d in data.get("documents", [])]
 
-        # copy to avoid mutating the caller's input dict when converting all_messages
+        # Copy `meta` before converting `all_messages` so the caller's input dict is left untouched.
         meta = dict(data.get("meta", {}))
         if (all_messages := meta.get("all_messages")) and isinstance(all_messages[0], dict):
             meta["all_messages"] = [ChatMessage.from_dict(m) for m in all_messages]

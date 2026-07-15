@@ -517,7 +517,7 @@ class TestConversionToStreamingChunks:
                     truncation="disabled",
                     usage=ResponseUsage(
                         input_tokens=15,
-                        input_tokens_details=InputTokensDetails(cached_tokens=0),
+                        input_tokens_details=InputTokensDetails(cached_tokens=0, cache_write_tokens=0),
                         output_tokens=77,
                         output_tokens_details=OutputTokensDetails(reasoning_tokens=64),
                         total_tokens=92,
@@ -863,7 +863,7 @@ class TestConversionToStreamingChunks:
                         "truncation": "disabled",
                         "usage": {
                             "input_tokens": 15,
-                            "input_tokens_details": {"cached_tokens": 0},
+                            "input_tokens_details": {"cached_tokens": 0, "cache_write_tokens": 0},
                             "output_tokens": 77,
                             "output_tokens_details": {"reasoning_tokens": 64},
                             "total_tokens": 92,
@@ -1005,7 +1005,7 @@ class TestConversionToStreamingChunks:
                     reasoning=Reasoning(effort="medium", generate_summary=None, summary=None),
                     usage=ResponseUsage(
                         input_tokens=62,
-                        input_tokens_details=InputTokensDetails(cached_tokens=0),
+                        input_tokens_details=InputTokensDetails(cached_tokens=0, cache_write_tokens=0),
                         output_tokens=83,
                         output_tokens_details=OutputTokensDetails(reasoning_tokens=64),
                         total_tokens=145,
@@ -1207,7 +1207,7 @@ class TestConversionToStreamingChunks:
                         "reasoning": {"effort": "medium", "generate_summary": None, "summary": None},
                         "usage": {
                             "input_tokens": 62,
-                            "input_tokens_details": {"cached_tokens": 0},
+                            "input_tokens_details": {"cached_tokens": 0, "cache_write_tokens": 0},
                             "output_tokens": 83,
                             "output_tokens_details": {"reasoning_tokens": 64},
                             "total_tokens": 145,
@@ -1443,6 +1443,34 @@ class TestResponseToChatMessage:
                 "output": [
                     {"type": "input_text", "text": "first result"},
                     {"type": "input_image", "image_url": f"data:image/png;base64,{base64_image_string}"},
+                ],
+                "type": "function_call_output",
+            }
+        ]
+
+    def test_convert_tool_message_list_with_file(self, base64_pdf_string):
+        tool_result = [
+            TextContent(text="first result"),
+            FileContent(base64_data=base64_pdf_string, mime_type="application/pdf", filename="guide.pdf"),
+        ]
+        message = ChatMessage.from_tool(
+            tool_result=tool_result,
+            origin=ToolCall(
+                tool_name="mytool", arguments={}, id="123", extra={"call_id": "call_a82vwFAIzku9SmBuQuecQSRq"}
+            ),
+            error=False,
+        )
+
+        assert _convert_chat_message_to_responses_api_format(message) == [
+            {
+                "call_id": "call_a82vwFAIzku9SmBuQuecQSRq",
+                "output": [
+                    {"type": "input_text", "text": "first result"},
+                    {
+                        "type": "input_file",
+                        "filename": "guide.pdf",
+                        "file_data": f"data:application/pdf;base64,{base64_pdf_string}",
+                    },
                 ],
                 "type": "function_call_output",
             }
