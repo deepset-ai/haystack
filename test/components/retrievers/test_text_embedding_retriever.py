@@ -6,22 +6,14 @@ import os
 from typing import Any
 from unittest.mock import ANY, AsyncMock, Mock
 
-import numpy as np
 import pytest
 
 from haystack import Document, component
-from haystack.components.embedders import OpenAIDocumentEmbedder, OpenAITextEmbedder
+from haystack.components.embedders import MockTextEmbedder, OpenAIDocumentEmbedder, OpenAITextEmbedder
 from haystack.components.retrievers import InMemoryEmbeddingRetriever, TextEmbeddingRetriever
 from haystack.components.writers import DocumentWriter
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.document_stores.types import DuplicatePolicy
-
-
-@component
-class MockTextEmbedder:
-    @component.output_types(embedding=list[float])
-    def run(self, text: str) -> dict[str, list[float]]:
-        return {"embedding": np.ones(384).tolist()}
 
 
 class TestTextEmbeddingRetriever:
@@ -113,8 +105,16 @@ class TestTextEmbeddingRetriever:
                     },
                 },
                 "text_embedder": {
-                    "type": "retrievers.test_text_embedding_retriever.MockTextEmbedder",
-                    "init_parameters": {},
+                    "type": "haystack.components.embedders.mock_text_embedder.MockTextEmbedder",
+                    "init_parameters": {
+                        "embedding": None,
+                        "embedding_fn": None,
+                        "dimension": 768,
+                        "model": "mock-model",
+                        "meta": {},
+                        "prefix": "",
+                        "suffix": "",
+                    },
                 },
             },
         }
