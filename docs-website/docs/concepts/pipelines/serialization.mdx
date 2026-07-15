@@ -42,7 +42,7 @@ with open("/content/test.yml", "w") as file:
 
 You can convert a YAML pipeline back into Python. Use the `loads()` method to convert a string representation of a pipeline (`str`, `bytes` or `bytearray`)  or the `load()` method to convert a pipeline represented in a file-like object into a corresponding Python object.
 
-Both loading methods support callbacks that let you modify components during the deserialization process. Therefore, loading a serialized pipeline or component assumes that the serialized definition originates from a trusted source and has been reviewed by the user.
+Both loading methods support callbacks that let you modify components during the deserialization process. Deserialization is gated by a trusted-module allowlist, so pipelines referencing classes outside of it fail to load until you extend the allowlist — see [Deserialization Security](#deserialization-security) below.
 
 Here is an example script:
 
@@ -95,6 +95,49 @@ pipe = Pipeline.loads(
     callbacks=DeserializationCallbacks(component_pre_init_callback),
 )
 ```
+
+## Deserialization Security
+
+Loading a pipeline instantiates the classes referenced in the serialized data. To prevent a crafted YAML file from importing and instantiating arbitrary classes, `Pipeline.load`, `Pipeline.loads`, and `Pipeline.from_dict` refuse to import classes from modules outside a trusted-module allowlist and raise a `DeserializationError` instead.
+
+By default, the allowlist contains `haystack`, `haystack_integrations`, `haystack_experimental`, `builtins`, `typing`, and `collections`. Dangerous builtins such as `eval`, `exec`, `compile`, `__import__`, `open`, and `getattr` are blocked even though `builtins` is allowlisted.
+
+### Allowing Custom Modules
+
+Pipelines that reference custom components or callables in other packages fail to load until you add the modules to the allowlist. You can extend it in three ways:
+
+```python
+from haystack import Pipeline
+
+# 1. Per call: pass additional module patterns for this deserialization only
+pipe = Pipeline.load(open("pipeline.yaml"), allowed_modules=["mypkg.*"])
+
+# 2. Process-wide: extend the allowlist programmatically
+from haystack.core.serialization import allow_deserialization_module
+
+allow_deserialization_module("mypkg")
+```
+
+```shell
+# 3. Environment variable with comma-separated patterns, read on every deserialization call
+export HAYSTACK_DESERIALIZATION_ALLOWLIST="mypkg.*,otherpkg.*"
+```
+
+Patterns are matched as prefixes by default (`"mypkg"` matches `mypkg` and any of its submodules), or as `fnmatch` globs if they contain `*`, `?`, or `[` somewhere other than a trailing `.*`. A trailing `.*` is treated as a prefix match, so `"mypkg"` and `"mypkg.*"` behave identically.
+
+If the source of the serialized data is fully trusted, you can bypass the allowlist entirely with `unsafe=True`:
+
+```python
+pipe = Pipeline.load(open("pipeline.yaml"), unsafe=True)
+```
+
+Only use `unsafe=True` when you fully trust where the serialized pipeline comes from — it also lifts the block on dangerous builtins.
+
+### Nested Init Parameter Validation
+
+As an additional safeguard, deserialization validates the keys of `init_parameters` against the class's `__init__` signature before recursing into any nested `{"type": "...", "init_parameters": {...}}` dictionary. A nested dictionary whose key is not an accepted parameter name is rejected with a `DeserializationError` *before* the nested type is imported, which blocks attempts to smuggle untrusted classes into unused parameter slots. Classes whose constructor takes `**kwargs` are exempt, since their accepted parameter set cannot be statically determined.
+
+This validation may surface pre-existing bugs in YAML files — for example typos, leftovers from renamed or removed parameters, or stale snapshots from older Haystack versions. The fix is to update the YAML so each nested-component key matches a real `__init__` parameter of the parent class.
 
 ## Default Serialization Behavior
 

@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Fixed ``component_to_dict`` serialization validation not detecting non-string keys in nested
+    dictionaries. The check only inspected the top-level dictionary, so a non-string key inside a
+    nested ``init_parameters`` value passed validation and could later fail during marshalling; nested
+    dictionaries are now validated too.

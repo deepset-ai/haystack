@@ -32,6 +32,8 @@ It does input type conversion and offers support for components with run methods
 - Lists of dataclasses (such as List[Document])
 - Parameters with mixed types (such as List[Document], str...)
 
+If the wrapped component defines a `run_async` method, `ComponentTool` automatically wires an async invoker as well, so the tool supports async invocation (for example, from `Agent.run_async`) without extra configuration. See [Async Tools](tool.mdx#async-tools) for details.
+
 ### Parameters
 
 - `component` is mandatory and must be a Haystack component instance, either an existing one or a custom component.
@@ -45,12 +47,12 @@ It does input type conversion and offers support for components with run methods
 ## Usage
 
 :::tip
-The recommended way to use `ComponentTool` in Haystack is with the [`Agent`](../pipeline-components/agents-1/agent.mdx) component, which manages the tool call loop for you. The pipeline example below shows the manual approach for cases where you need fine-grained control.
+The recommended way to use `ComponentTool` in Haystack is with the [`Agent`](../pipeline-components/agents-1/agent.mdx) component, which manages the tool call loop for you.
 :::
 
 ### With the Agent Component
 
-The examples on this page use SerperDev web search component that have moved to the `serperdev-haystack` package. Install it to run the examples:
+The example on this page uses the SerperDev web search component that has moved to the `serperdev-haystack` package. Install it to run the example:
 
 ```shell
 pip install serperdev-haystack
@@ -85,43 +87,6 @@ response = agent.run(
 )
 
 print(response["messages"][-1].text)
-```
-
-### In a Pipeline
-
-You can also wire `ComponentTool` into a pipeline manually with `ChatGenerator` and `ToolInvoker` for full control over the tool call loop.
-
-```python
-from haystack import Pipeline
-from haystack.tools import ComponentTool
-from haystack_integrations.components.websearch.serperdev import SerperDevWebSearch
-from haystack.utils import Secret
-from haystack.components.tools.tool_invoker import ToolInvoker
-from haystack.components.generators.chat import OpenAIChatGenerator
-from haystack.dataclasses import ChatMessage
-
-# Create a SerperDev search component
-search = SerperDevWebSearch(api_key=Secret.from_env_var("SERPERDEV_API_KEY"), top_k=3)
-
-# Create a tool from the component
-tool = ComponentTool(
-    component=search,
-    name="web_search",  # Optional: defaults to "serper_dev_web_search"
-    description="Search the web for current information on any topic",  # Optional: defaults to component docstring
-)
-
-pipeline = Pipeline()
-pipeline.add_component("llm", OpenAIChatGenerator(model="gpt-5.4-nano", tools=[tool]))
-pipeline.add_component("tool_invoker", ToolInvoker(tools=[tool]))
-pipeline.connect("llm.replies", "tool_invoker.messages")
-
-message = ChatMessage.from_user(
-    "Use the web search tool to find information about Nikola Tesla",
-)
-
-result = pipeline.run({"llm": {"messages": [message]}})
-
-print(result)
 ```
 
 ## Additional References

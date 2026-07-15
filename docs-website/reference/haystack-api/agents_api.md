@@ -219,6 +219,9 @@ Initialize the agent component.
 - **hooks** (<code>dict\[HookPoint, list\[Hook\]\] | None</code>) – A dictionary mapping a hook point to a list of hooks the Agent runs at that point. Each hook
   receives the live `State` and influences the run by mutating it in place; hooks for a hook point run in
   list order. Valid hook points are:
+- "before_run": Runs once per run, after the state is initialized and before the first chat-generator
+  call. Use it to rewrite the initial messages or seed state (e.g. turn the user query into a task
+  brief) without re-running on every step like "before_llm" does.
 - "before_llm": Runs before each chat-generator call.
 - "before_tool": Runs after the model requests tool calls, before any tools run. After these hooks run,
   the Agent re-reads the current last message from `state.data["messages"]`. If that message contains tool
@@ -232,6 +235,11 @@ Initialize the agent component.
   Agent running by setting the `continue_run` control flag (`state.set("continue_run", True)`), usually
   alongside a message telling the model what to do next. "on_exit" hooks run when the Agent stops on an
   exit condition, but not when it stops because `max_agent_steps` is reached.
+- "after_run": Runs once per run, after the step loop has ended and before the Agent builds its return
+  value — regardless of whether the run stopped on an exit condition or because `max_agent_steps` was
+  reached (unlike "on_exit"). Mutations to the state (e.g. appending a final message) are reflected in
+  the returned `messages` / `last_message` and `state_schema` outputs. Setting `continue_run` here has
+  no effect.
 
 **Raises:**
 

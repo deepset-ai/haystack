@@ -4,73 +4,32 @@ This document is meant to provide a guide for migrating from Haystack v2.X to v3
 
 ---
 
-## How to Document a Breaking Change
-
-When you merge a breaking change into the v3 branch, add an entry to this file under the appropriate section below.
-Follow this structure:
-
-### Entry template
-
-```markdown
-### <Short title describing what changed>
-
-**What changed:** One or two sentences describing the change — what was removed, renamed, or altered.
-
-**Why:** Brief motivation (e.g. simplification, API consistency, dependency reduction).
-
-**How to migrate:**
-
-Before (v2.x):
-\`\`\`python
-# example using the old API
-from haystack.components.foo import OldComponent
-component = OldComponent(old_param="value")
-\`\`\`
-
-After (v3.0):
-\`\`\`python
-# example using the new API
-from haystack.components.foo import NewComponent
-component = NewComponent(new_param="value")
-\`\`\`
-```
-
-### Tips
-
-- **One entry per breaking change.** Don't bundle unrelated changes into a single entry.
-- **Include a working code example** for every rename, removal, or signature change.
-- **Link to the PR** when extra context would help (e.g. `See [#1234](https://github.com/deepset-ai/haystack/pull/1234)`).
-- **Components moved to external packages** don't need a full entry: add a row to the table in
-  [Components Moved to External Packages](#components-moved-to-external-packages) instead.
-
----
-
 ## Breaking Changes
 
-<!-- Add entries here as v3 development progresses. Example below shows the expected format. -->
+### `GeneratedAnswer` and `ExtractedAnswer` serialization format
 
-### Example entry: `Document.dataframe` field removed
+**What changed:** `GeneratedAnswer.to_dict()` and `ExtractedAnswer.to_dict()` now return a flat dictionary of the object's fields instead of wrapping them in a `{"type": ..., "init_parameters": {...}}` envelope.
 
-**What changed:** The `dataframe` field on `Document` and the `ExtractedTableAnswer` dataclass have been removed. `pandas` is no longer a required dependency.
+**Why:** Aligns these dataclasses with how every other Haystack dataclass (`Document`, `ChatMessage`, etc.) serializes, and removes redundant type metadata from pipeline snapshots and `State` objects.
 
-**Why:** Reduces the default installation footprint. Components that need `pandas` will raise an informative error prompting the user to install it explicitly.
+**Deserialization is backward compatible:** `from_dict()` accepts both the new flat format and the old wrapped `{"type": ..., "init_parameters": {...}}` format, so existing serialized artifacts (pipeline snapshots, breakpoints, `State` objects) keep loading without any changes on your side.
 
-**How to migrate:**
+**How to migrate:** Only code that *reads* the serialized output needs updating: access fields at the top level instead of under `init_parameters`. Code that deserializes with `from_dict()` needs no changes.
 
 Before (v2.x):
 ```python
-from haystack.dataclasses import Document
-import pandas as pd
-
-doc = Document(content=pd.DataFrame({"col": [1, 2, 3]}))
+serialized = generated_answer.to_dict()
+data = serialized["init_parameters"]["data"]
 ```
 
 After (v3.0):
 ```python
-# Store tabular data as plain content or create a custom component that returns pandas DataFrames as needed.
-from haystack.dataclasses import Document
+serialized = generated_answer.to_dict()
+data = serialized["data"]
 
-doc = Document(content="col\n1\n2\n3")
+# Deserialization still accepts both the new and the old format:
+GeneratedAnswer.from_dict(serialized)          # new flat format
+GeneratedAnswer.from_dict(old_wrapped_dict)    # old {"type": ..., "init_parameters": {...}} format
 ```
 
 ### Components Moved to External Packages
@@ -619,6 +578,8 @@ agent = Agent(
 
 **Why:** Confirmation was a one-off, before-tool interception bolted onto the Agent. Hooks generalize that seam, so HITL becomes one application of a single, uniform extension point instead of a parallel concept with its own serialization and run plumbing.
 
+The Human-in-the-Loop module has also moved from `haystack.human_in_the_loop` to `haystack.hooks.human_in_the_loop`, so that it lives alongside the other built-in hooks (such as tool result offloading). Update your imports to the new location.
+
 **How to migrate:**
 
 Before (v2.x):
@@ -641,7 +602,7 @@ agent.run(messages=[...], confirmation_strategy_context={"websocket": ws})
 After (v3.0):
 ```python
 from haystack.components.agents import Agent
-from haystack.human_in_the_loop import (
+from haystack.hooks.human_in_the_loop import (
     BlockingConfirmationStrategy,
     AlwaysAskPolicy,
     ConfirmationHook,
@@ -826,7 +787,7 @@ Patterns are matched as prefixes by default (`"mypkg"` matches `mypkg` and any s
 
 **What changed:** `OpenAIGenerator`, `AzureOpenAIGenerator`, `HuggingFaceAPIGenerator`, and `HuggingFaceLocalGenerator` have been removed.
 Generators living in Haystack Core Integrations will also be removed soon.
-Their chat counterparts (`OpenAIChatGenerator`, `AzureOpenAIChatGenerator`, `HuggingFaceAPIChatGenerator`, `HuggingFaceLocalChatGenerator`) are the replacement. As of Haystack 3.0, all ChatGenerators also accept a plain `str` as input, so the migration rarely requires structural changes.
+Their chat counterparts are the replacement: `OpenAIChatGenerator` and `AzureOpenAIChatGenerator` in Haystack core, `HuggingFaceAPIChatGenerator` in the `huggingface-api-haystack` integration, and `TransformersChatGenerator` (the renamed `HuggingFaceLocalChatGenerator`) in the `transformers-haystack` integration (see [Components Moved to External Packages](#components-moved-to-external-packages)). As of Haystack 3.0, all ChatGenerators also accept a plain `str` as input, so the migration rarely requires structural changes.
 
 **Why:** Over time, Generators became shallow wrappers over the ChatGenerators, converting `str → ChatMessage → str` around the exact same model calls. All new features (tool calling, structured outputs, etc.) were introduced only in ChatGenerators, leaving the legacy classes behind. They were also a source of confusion for newcomers and an unnecessary duplication of code and tests.
 

@@ -164,9 +164,6 @@ class TestPipelineTool:
         )
 
         assert tool.parameters == {
-            "description": "A component that combines: 'bm25_retriever': Run the InMemoryBM25Retriever on the "
-            "given input data., 'ranker': Returns a list of documents ranked by their similarity "
-            "to the given query.",
             "properties": {
                 "query": {
                     "description": "Provided to the 'bm25_retriever' component as: 'The query string for the Retriever."
@@ -182,9 +179,6 @@ class TestPipelineTool:
     def test_auto_generated_tool_params_no_mappings(self, sample_pipeline):
         tool = PipelineTool(pipeline=sample_pipeline, name="test_tool", description="A test tool")
         assert tool.parameters == {
-            "description": "A component that combines: 'bm25_retriever': Run the InMemoryBM25Retriever on the given "
-            "input data., 'ranker': Returns a list of documents ranked by their similarity to the "
-            "given query.",
             "properties": {
                 "query": {
                     "description": "Provided to the 'bm25_retriever' component as: 'The query string for the "
