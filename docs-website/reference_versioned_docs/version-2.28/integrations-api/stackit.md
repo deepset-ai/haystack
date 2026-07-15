@@ -13,6 +13,7 @@ slug: "/integrations-stackit"
 Bases: <code>OpenAIDocumentEmbedder</code>
 
 A component for computing Document embeddings using STACKIT as model provider.
+
 The embedding of each Document is stored in the `embedding` field of the Document.
 
 Usage example:
@@ -61,10 +62,11 @@ __init__(
     meta_fields_to_embed: list[str] | None = None,
     embedding_separator: str = "\n",
     *,
+    dimensions: int | None = None,
     timeout: float | None = None,
     max_retries: int | None = None,
     http_client_kwargs: dict[str, Any] | None = None
-)
+) -> None
 ```
 
 Creates a STACKITDocumentEmbedder component.
@@ -82,6 +84,8 @@ Creates a STACKITDocumentEmbedder component.
   the logs clean.
 - **meta_fields_to_embed** (<code>list\[str\] | None</code>) – List of meta fields that should be embedded along with the Document text.
 - **embedding_separator** (<code>str</code>) – Separator used to concatenate the meta fields to the Document text.
+- **dimensions** (<code>int | None</code>) – The number of dimensions of the resulting embeddings. Only supported by some models -
+  check the STACKIT model card for the model you are using to see if this parameter is supported.
 - **timeout** (<code>float | None</code>) – Timeout for STACKIT client calls. If not set, it defaults to either the `OPENAI_TIMEOUT` environment
   variable, or 30 seconds.
 - **max_retries** (<code>int | None</code>) – Maximum number of retries to contact STACKIT after an internal error.
@@ -145,10 +149,11 @@ __init__(
     prefix: str = "",
     suffix: str = "",
     *,
+    dimensions: int | None = None,
     timeout: float | None = None,
     max_retries: int | None = None,
     http_client_kwargs: dict[str, Any] | None = None
-)
+) -> None
 ```
 
 Creates a STACKITTextEmbedder component.
@@ -161,6 +166,8 @@ Creates a STACKITTextEmbedder component.
   For more details, see STACKIT [docs](https://docs.stackit.cloud/stackit/en/basic-concepts-stackit-model-serving-319914567.html).
 - **prefix** (<code>str</code>) – A string to add to the beginning of each text.
 - **suffix** (<code>str</code>) – A string to add to the end of each text.
+- **dimensions** (<code>int | None</code>) – The number of dimensions of the resulting embeddings. Only supported by some models -
+  check the STACKIT model card for the model you are using to see if this parameter is supported.
 - **timeout** (<code>float | None</code>) – Timeout for STACKIT client calls. If not set, it defaults to either the `OPENAI_TIMEOUT` environment
   variable, or 30 seconds.
 - **max_retries** (<code>int | None</code>) – Maximum number of retries to contact STACKIT after an internal error.
@@ -203,7 +210,7 @@ Details on the ChatMessage format can be found in the
 from haystack_integrations.components.generators.stackit import STACKITChatGenerator
 from haystack.dataclasses import ChatMessage
 
-generator = STACKITChatGenerator(model="neuralmagic/Meta-Llama-3.1-70B-Instruct-FP8")
+generator = STACKITChatGenerator(model="cortecs/Llama-3.3-70B-Instruct-FP8-Dynamic")
 
 result = generator.run([ChatMessage.from_user("Tell me a joke.")])
 print(result)
@@ -214,12 +221,11 @@ print(result)
 ```python
 SUPPORTED_MODELS: list[str] = [
     "Qwen/Qwen3-VL-235B-A22B-Instruct-FP8",
+    "Qwen/Qwen3.6-27B",
     "cortecs/Llama-3.3-70B-Instruct-FP8-Dynamic",
     "openai/gpt-oss-120b",
     "google/gemma-3-27b-it",
     "openai/gpt-oss-20b",
-    "neuralmagic/Mistral-Nemo-Instruct-2407-FP8",
-    "neuralmagic/Meta-Llama-3.1-8B-Instruct-FP8",
 ]
 
 ```
@@ -243,7 +249,7 @@ __init__(
     timeout: float | None = None,
     max_retries: int | None = None,
     http_client_kwargs: dict[str, Any] | None = None
-)
+) -> None
 ```
 
 Creates an instance of STACKITChatGenerator class.
