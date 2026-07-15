@@ -61,13 +61,9 @@ jobs:
             changes:
               - "haystack/components/evaluators/sas_evaluator.py"
               - "haystack/components/generators/openai_dalle.py"
-              - "haystack/components/preprocessors/embedding_based_document_splitter.py"
-              - "haystack/components/retrievers/multi_query_embedding_retriever.py"
 
               - "test/components/evaluators/test_sas_evaluator.py"
               - "test/components/generators/test_openai_dalle.py"
-              - "test/components/preprocessors/test_embedding_based_document_splitter.py"
-              - "test/components/retrievers/test_multi_query_embedding_retriever.py"
 
   slow-integration-tests:
     name: Slow Tests / ${{ matrix.os }}
