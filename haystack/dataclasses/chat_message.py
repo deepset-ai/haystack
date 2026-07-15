@@ -8,6 +8,9 @@ from dataclasses import asdict, dataclass, field
 from enum import Enum
 from typing import Any
 
+from pydantic import GetCoreSchemaHandler
+from pydantic_core import CoreSchema, core_schema
+
 from haystack import logging
 from haystack.dataclasses.file_content import FileContent
 from haystack.dataclasses.image_content import ImageContent
@@ -265,6 +268,21 @@ def _serialize_content_part(part: ChatMessageContentT) -> dict[str, Any]:
         return part.to_dict()
 
     return {serialization_key: part.to_dict()}
+
+
+def _validate_chat_message(value: Any) -> "ChatMessage":
+    """
+    Coerce a value into a ChatMessage during Pydantic validation.
+
+    :param value: A ChatMessage instance or a dictionary in a format accepted by `ChatMessage.from_dict`.
+    :returns: A ChatMessage object.
+    :raises ValueError: If the value is neither a ChatMessage nor a dictionary.
+    """
+    if isinstance(value, ChatMessage):
+        return value
+    if isinstance(value, dict):
+        return ChatMessage.from_dict(value)
+    raise ValueError(f"Expected `ChatMessage` or `dict`, got `{type(value).__name__}`")
 
 
 @_warn_on_inplace_mutation
@@ -617,6 +635,19 @@ class ChatMessage:
             )
 
         raise ValueError(f"Missing 'content' or '_content' in serialized ChatMessage: `{data}`")
+
+    @classmethod
+    def __get_pydantic_core_schema__(cls, source_type: Any, handler: GetCoreSchemaHandler) -> CoreSchema:
+        """
+        Defines how Pydantic validates and serializes ChatMessage.
+
+        Dictionaries are validated with `from_dict` and existing instances pass through unchanged.
+        Serialization uses `to_dict`, so Pydantic's `model_dump` produces the canonical format instead
+        of the raw dataclass fields.
+        """
+        return core_schema.no_info_plain_validator_function(
+            _validate_chat_message, serialization=core_schema.plain_serializer_function_ser_schema(cls.to_dict)
+        )
 
     def to_openai_dict_format(self, require_tool_call_ids: bool = True) -> dict[str, Any]:
         """

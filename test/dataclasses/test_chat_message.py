@@ -7,6 +7,7 @@ import warnings
 from collections.abc import Sequence
 
 import pytest
+from pydantic import BaseModel, ValidationError
 
 from haystack.dataclasses.chat_message import (
     ChatMessage,
@@ -754,6 +755,57 @@ class TestChatMessageSerde:
             "name": None,
             "meta": {},
         }
+
+
+class ChatHistory(BaseModel):
+    messages: list[ChatMessage]
+
+
+class TestChatMessagePydanticIntegration:
+    def test_model_dump_uses_to_dict(self):
+        messages = [
+            ChatMessage.from_user("Hi"),
+            ChatMessage.from_assistant(tool_calls=[ToolCall(tool_name="mytool", arguments={"a": 1}, id="123")]),
+        ]
+        history = ChatHistory(messages=messages)
+        assert history.model_dump() == {"messages": [message.to_dict() for message in messages]}
+        assert history.model_dump(mode="json") == {"messages": [message.to_dict() for message in messages]}
+
+    def test_model_validate_serialized_messages(self):
+        messages = [ChatMessage.from_user("Hi"), ChatMessage.from_assistant("Hello")]
+        history = ChatHistory.model_validate({"messages": [message.to_dict() for message in messages]})
+        assert history.messages == messages
+
+    def test_instances_pass_through_unchanged(self):
+        message = ChatMessage.from_user("Hi")
+        history = ChatHistory(messages=[message])
+        assert history.messages[0] is message
+
+    def test_round_trip(self, base64_image_string):
+        tool_call = ToolCall(id="123", tool_name="mytool", arguments={"a": 1})
+        messages = [
+            ChatMessage.from_system("You are helpful."),
+            ChatMessage(
+                _role=ChatRole.ASSISTANT,
+                _content=[ReasoningContent(reasoning_text="Thinking..."), TextContent(text="Checking."), tool_call],
+                _meta={"some": "info"},
+            ),
+            ChatMessage.from_tool(tool_result="42", origin=tool_call),
+            ChatMessage(
+                _role=ChatRole.USER,
+                _content=[
+                    ImageContent(base64_image=base64_image_string, mime_type="image/png"),
+                    FileContent(base64_data="aGVsbG8=", mime_type="text/plain", filename="hello.txt"),
+                ],
+            ),
+        ]
+
+        dumped = ChatHistory(messages=messages).model_dump(mode="json")
+        assert ChatHistory.model_validate(dumped).messages == messages
+
+    def test_invalid_value_raises_validation_error(self):
+        with pytest.raises(ValidationError):
+            ChatHistory(messages=["not a message"])  # type: ignore[list-item]
 
 
 class TestToOpenaiDictFormat:

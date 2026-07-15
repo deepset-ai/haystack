@@ -1,0 +1,14 @@
+---
+upgrade:
+  - |
+    Pydantic's ``model_dump`` on models containing ``ChatMessage`` fields now returns the canonical
+    ``ChatMessage.to_dict`` format (``role``/``content`` keys) instead of the raw dataclass fields
+    (``_role``/``_content`` keys). ``ChatMessage.from_dict`` accepts both formats, so round-tripping
+    existing payloads keeps working. If you post-process dumped messages and rely on the raw dataclass
+    keys, update your code to the canonical format.
+enhancements:
+  - |
+    ``ChatMessage`` now integrates natively with Pydantic. Pydantic models with ``ChatMessage`` fields
+    serialize with ``ChatMessage.to_dict`` and validate dictionaries with ``ChatMessage.from_dict``, so
+    ``model_dump`` produces the canonical serialization format and serialized messages round-trip
+    through Pydantic models without custom serializers or validators.
