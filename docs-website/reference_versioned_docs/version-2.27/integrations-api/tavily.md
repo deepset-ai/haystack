@@ -217,3 +217,85 @@ Asynchronously search the web using Tavily and return results as Documents.
 - <code>dict\[str, Any\]</code> – A dictionary with:
 - `documents`: List of Documents containing search result content.
 - `links`: List of URLs from the search results.
+
+## haystack_integrations.tools.tavily.websearch_tool
+
+### TavilyWebSearchTool
+
+Bases: <code>ComponentTool</code>
+
+A tool that searches the web with Tavily.
+
+Wraps the `TavilyWebSearch` component and formats its results as a string that an LLM can cite.
+The tool parameters are derived from the component's `run` method, so the LLM can pass a `query` and,
+optionally, `search_params` overriding the ones set at initialization time.
+
+### Usage example
+
+```python
+from haystack.components.agents import Agent
+from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.dataclasses import ChatMessage
+from haystack_integrations.tools.tavily import TavilyWebSearchTool
+
+web_search = TavilyWebSearchTool(top_k=5, search_params={"search_depth": "advanced"})
+
+agent = Agent(chat_generator=OpenAIChatGenerator(model="gpt-5-mini"), tools=[web_search])
+
+result = agent.run(messages=[ChatMessage.from_user("What is Haystack by deepset?")])
+print(result["last_message"].text)
+```
+
+#### __init__
+
+```python
+__init__(
+    *,
+    api_key: Secret | None = None,
+    top_k: int | None = None,
+    search_params: dict[str, Any] | None = None,
+    name: str = "web_search",
+    description: str = _DEFAULT_DESCRIPTION
+) -> None
+```
+
+Initialize the TavilyWebSearchTool.
+
+**Parameters:**
+
+- **api_key** (<code>Secret | None</code>) – API key for Tavily. If unset, `TavilyWebSearch` reads the `TAVILY_API_KEY` environment variable.
+- **top_k** (<code>int | None</code>) – Maximum number of results to return. If unset, the `TavilyWebSearch` default applies.
+- **search_params** (<code>dict\[str, Any\] | None</code>) – Additional parameters passed to the Tavily search API.
+  See the [Tavily API reference](https://docs.tavily.com/docs/tavily-api/rest_api)
+  for available options. Supported keys include: `search_depth`, `include_answer`,
+  `include_raw_content`, `include_domains`, `exclude_domains`.
+- **name** (<code>str</code>) – Tool name exposed to the LLM.
+- **description** (<code>str</code>) – Tool description exposed to the LLM.
+
+#### to_dict
+
+```python
+to_dict() -> dict[str, Any]
+```
+
+Serialize the tool to a dictionary.
+
+**Returns:**
+
+- <code>dict\[str, Any\]</code> – Dictionary with serialized data.
+
+#### from_dict
+
+```python
+from_dict(data: dict[str, Any]) -> TavilyWebSearchTool
+```
+
+Deserialize the tool from a dictionary.
+
+**Parameters:**
+
+- **data** (<code>dict\[str, Any\]</code>) – Dictionary to deserialize from.
+
+**Returns:**
+
+- <code>TavilyWebSearchTool</code> – Deserialized tool.
