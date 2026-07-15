@@ -419,6 +419,51 @@ class TestToolsetWarmUp:
         assert added.warm_up_count == 1
         assert all(tool.warm_up_count == 1 for tool in added_tools)
 
+    def test_add_lazy_toolset_before_warm_up_retains_lazily_loaded_tools(self):
+        """A lazily-loaded child Toolset added to a not-yet-warmed parent must be warmed
+        before it is flattened, so its tools are retained instead of silently dropped."""
+
+        class LazyToolset(Toolset):
+            def __init__(self):
+                super().__init__([])
+                self.warm_up_count = 0
+
+            def warm_up(self) -> None:
+                if self._is_warmed_up:
+                    return
+                self.warm_up_count += 1
+                self.tools.append(WarmUpCountingTool("lazy"))
+                self._is_warmed_up = True
+
+        lazy = LazyToolset()
+        parent = Toolset()  # cold parent
+        parent.add(lazy)
+
+        # The lazy child is warmed exactly once so its tool materializes and is kept.
+        assert lazy.warm_up_count == 1
+        assert [tool.name for tool in parent] == ["lazy"]
+        # A later parent warm_up() does not re-warm the (already warmed) child.
+        parent.warm_up()
+        assert lazy.warm_up_count == 1
+
+    def test_add_lazy_toolset_before_warm_up_detects_duplicate_names(self, add_tool):
+        """Duplicate-name validation must run against a lazy child's materialized tools,
+        so a collision is detected rather than hidden by the tools being dropped."""
+
+        class LazyDuplicateToolset(Toolset):
+            def __init__(self):
+                super().__init__([])
+
+            def warm_up(self) -> None:
+                if self._is_warmed_up:
+                    return
+                self.tools.append(WarmUpCountingTool("add"))
+                self._is_warmed_up = True
+
+        parent = Toolset([add_tool])  # already contains a tool named "add"
+        with pytest.raises(ValueError):
+            parent.add(LazyDuplicateToolset())
+
     def test_plus_returns_new_unwarmed_toolset(self):
         ts1 = Toolset([WarmUpCountingTool("a")])
         ts1.warm_up()

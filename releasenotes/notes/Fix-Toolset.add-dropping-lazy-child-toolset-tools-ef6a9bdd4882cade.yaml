@@ -1,0 +1,9 @@
+---
+fixes:
+  - |
+    Fixed `Toolset.add()` silently dropping the tools of a lazily-loaded child
+    `Toolset` (one that materializes its tools in `warm_up()`) when it was added
+    to a not-yet-warmed parent. The child `Toolset` is now warmed before it is
+    flattened, so its tools are retained and duplicate-name validation runs
+    against them. Adding a plain `Tool` to a cold parent is unchanged: it is
+    still warmed only when the parent is warmed up.
