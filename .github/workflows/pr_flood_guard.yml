@@ -24,6 +24,7 @@ jobs:
       - uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         with:
           script: |
+            const MAX_OPEN_PRS = 2;
             const { owner, repo } = context.repo;
             const pr = context.payload.pull_request;
 
@@ -70,12 +71,12 @@ jobs:
               }
             }
 
-            // --- Flood check: author has more than two open PRs ---------------
+            // --- Flood check: author has too many open PRs --------------------
             const openPrs = await github.paginate(github.rest.pulls.list, {
               owner, repo, state: "open", per_page: 100,
             });
             const authored = openPrs.filter((p) => p.user?.login === pr.user.login);
-            if (authored.length > 2) {
+            if (authored.length > MAX_OPEN_PRS) {
               const others = authored
                 .filter((p) => p.number !== pr.number)
                 .map((p) => `#${p.number}`)
@@ -84,8 +85,8 @@ jobs:
                 `You currently have ${authored.length} open pull requests in this ` +
                   `repository (${others} and this one). Our review capacity is limited, ` +
                   "so please hold off opening more PRs until we've had a chance to " +
-                  "review your first two open PRs. This helps us give each contribution " +
-                  "the attention it deserves. Thank you!",
+                  `review your first ${MAX_OPEN_PRS} open PRs. This helps us give each ` +
+                  "contribution the attention it deserves. Thank you!",
               );
             }
 
