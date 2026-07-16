@@ -101,7 +101,6 @@ agent = Agent(
     user_prompt="""{% message role="user"%}
 Translate the following document to {{ language }}: {{ document }}
 {% endmessage %}""",
-    required_variables=["language", "document"],
 )
 
 # The template variables 'language' and 'document' become inputs to the run method
@@ -172,7 +171,7 @@ __init__(
     tools: ToolsType | None = None,
     system_prompt: str | None = None,
     user_prompt: str | None = None,
-    required_variables: list[str] | Literal["*"] | None = None,
+    required_variables: list[str] | Literal["*"] | None = "*",
     exit_conditions: list[str] | None = None,
     state_schema: dict[str, Any] | None = None,
     max_agent_steps: int = 100,
@@ -199,7 +198,8 @@ Initialize the agent component.
   [documentation](https://docs.haystack.deepset.ai/docs/chatpromptbuilder#string-templates).
 - **required_variables** (<code>list\[str\] | Literal['\*'] | None</code>) – Lists the variables that must be provided as inputs to `user_prompt` or `system_prompt`.
   If a required variable is not provided at run time, an exception is raised.
-  If set to `"*"`, all variables found in the prompts are required. Optional.
+  If set to `"*"`, all variables found in the prompts are required. Defaults to `"*"`.
+  Set to `None` to make all variables optional; missing ones render as empty strings.
 - **exit_conditions** (<code>list\[str\] | None</code>) – List of conditions that will cause the agent to return.
   Can include "text" if the agent should return when it generates a message without tool calls,
   or tool names that will cause the agent to return once the tool was executed. Defaults to ["text"].
