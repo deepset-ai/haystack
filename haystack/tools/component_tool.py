@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from collections.abc import Callable
-from typing import Any, get_args, get_origin
+from typing import Any
 
 from pydantic import Field, TypeAdapter, create_model
 
@@ -31,7 +31,7 @@ from haystack.tools.tool import (
     _serialize_outputs_to_state,
     _serialize_outputs_to_string,
 )
-from haystack.utils.type_serialization import _is_union_type
+from haystack.utils.deserialization import _deserialize_from_dict, _resolve_from_dict_class
 
 logger = logging.getLogger(__name__)
 
@@ -391,31 +391,10 @@ class ComponentTool(Tool):
         :returns:
             The converted parameter value.
         """
-        # We unwrap optional types so we can support types like messages: list[ChatMessage] | None
-        unwrapped_param_type = _unwrap_optional(param_type)
+        # Types involving a from_dict-capable class (e.g. list[ChatMessage] | None) are deserialized via
+        # from_dict; everything else is validated with Pydantic.
+        target_class = _resolve_from_dict_class(param_type)
+        if target_class is not None:
+            return _deserialize_from_dict(param_value, target_class)
 
-        # We handle union types (e.g. list[ChatMessage] | str) by extracting the list[T] arm that has
-        # from_dict, so the conversion below works the same as for plain list[T]. Other arms like str
-        # need no special handling and fall through to Pydantic or the plain return at the end.
-        if _is_union_type(unwrapped_param_type):
-            list_arms = [
-                a
-                for a in get_args(unwrapped_param_type)
-                if get_origin(a) is list and get_args(a) and hasattr(get_args(a)[0], "from_dict")
-            ]
-            unwrapped_param_type = list_arms[0] if list_arms else unwrapped_param_type
-
-        # We support calling from_dict on target types that have it, even if they are wrapped in a list.
-        # This allows us to support lists of dataclasses as well as single dataclass inputs.
-        target_type = (
-            get_args(unwrapped_param_type)[0] if get_origin(unwrapped_param_type) is list else unwrapped_param_type
-        )
-        if hasattr(target_type, "from_dict"):
-            if isinstance(param_value, list):
-                return [target_type.from_dict(item) if isinstance(item, dict) else item for item in param_value]
-            if isinstance(param_value, dict):
-                return target_type.from_dict(param_value)
-            return param_value
-
-        # Use the original type for pydantic validation
         return TypeAdapter(param_type).validate_python(param_value)

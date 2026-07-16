@@ -1,0 +1,19 @@
+---
+features:
+  - |
+    Added the ``coerce_pipeline_inputs`` utility function (importable from ``haystack.utils``).
+    It deserializes serialized Haystack objects in pipeline input data based on the pipeline's input
+    socket types: for every provided value whose socket type involves a class exposing ``from_dict``
+    (such as ``ChatMessage`` or ``Document``), plain dictionaries are converted into instances of that
+    class. Socket types of the form ``T``, ``list[T]``, and optionals/unions of those are supported,
+    and both the nested (``{"component_name": {"input_name": value}}``) and flat
+    (``{"input_name": value}``) input formats are accepted. This removes the need for API layers to
+    guess which pipeline inputs contain serialized ``ChatMessage`` objects before calling
+    ``Pipeline.run``:
+
+    .. code-block:: python
+
+        from haystack.utils import coerce_pipeline_inputs
+
+        inputs = coerce_pipeline_inputs(pipeline, serialized_inputs)
+        result = pipeline.run(inputs)
