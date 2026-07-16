@@ -5,8 +5,10 @@
 import json
 import warnings
 from collections.abc import Sequence
+from typing import Any
 
 import pytest
+from pydantic import BaseModel
 
 from haystack.dataclasses.chat_message import (
     ChatMessage,
@@ -754,6 +756,85 @@ class TestChatMessageSerde:
             "name": None,
             "meta": {},
         }
+
+
+class MessageEnvelope(BaseModel):
+    message: ChatMessage
+
+
+class TestFromDictPydanticDump:
+    """
+    `ChatMessage.from_dict` supports the format Pydantic produces when it auto-serializes ChatMessage as a plain
+    dataclass: raw dataclass fields (`_role`, `_content`, ...) with unwrapped content parts.
+    """
+
+    def _pydantic_dump(self, message: ChatMessage) -> dict[str, Any]:
+        return MessageEnvelope(message=message).model_dump(mode="json")["message"]
+
+    def test_text_message(self):
+        message = ChatMessage.from_user("What is the answer?", meta={"some": "info"}, name="virginia")
+        assert ChatMessage.from_dict(self._pydantic_dump(message)) == message
+
+    def test_tool_call_message(self):
+        message = ChatMessage.from_assistant(
+            tool_calls=[ToolCall(tool_name="mytool", arguments={"a": 1}, id="123", extra={"call_id": "123"})]
+        )
+        assert ChatMessage.from_dict(self._pydantic_dump(message)) == message
+
+    def test_tool_result_message(self):
+        message = ChatMessage.from_tool(
+            tool_result="42", origin=ToolCall(tool_name="mytool", arguments={"a": 1}, id="123"), error=False
+        )
+        assert ChatMessage.from_dict(self._pydantic_dump(message)) == message
+
+    def test_reasoning_message(self):
+        message = ChatMessage.from_assistant(
+            "Answer", reasoning=ReasoningContent(reasoning_text="Thinking...", extra={"key": "value"})
+        )
+        assert ChatMessage.from_dict(self._pydantic_dump(message)) == message
+
+    def test_image_message(self, base64_image_string):
+        message = ChatMessage.from_user(
+            content_parts=[
+                TextContent(text="What is in this image?"),
+                ImageContent(base64_image=base64_image_string, mime_type="image/png", detail="auto"),
+            ]
+        )
+        assert ChatMessage.from_dict(self._pydantic_dump(message)) == message
+
+    def test_file_message(self):
+        message = ChatMessage.from_user(
+            content_parts=[
+                TextContent(text="Summarize this file."),
+                FileContent(base64_data="aGVsbG8=", mime_type="text/plain", filename="hello.txt"),
+            ]
+        )
+        assert ChatMessage.from_dict(self._pydantic_dump(message)) == message
+
+    def test_multiple_messages(self, base64_image_string):
+        class Response(BaseModel):
+            messages: list[ChatMessage]
+
+        tool_call = ToolCall(id="123", tool_name="mytool", arguments={"a": 1})
+        messages = [
+            ChatMessage.from_user("What is the answer?"),
+            ChatMessage.from_assistant(
+                "Let me check.",
+                meta={"some": "info"},
+                tool_calls=[tool_call],
+                reasoning=ReasoningContent(reasoning_text="Let me think about it..."),
+            ),
+            ChatMessage.from_tool(tool_result="42", origin=tool_call),
+            ChatMessage.from_user(
+                content_parts=[
+                    ImageContent(base64_image=base64_image_string, mime_type="image/png"),
+                    FileContent(base64_data="aGVsbG8=", mime_type="text/plain", filename="hello.txt"),
+                ]
+            ),
+        ]
+
+        dumped = Response(messages=messages).model_dump(mode="json")
+        assert [ChatMessage.from_dict(message) for message in dumped["messages"]] == messages
 
 
 class TestToOpenaiDictFormat:
