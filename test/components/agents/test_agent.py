@@ -303,7 +303,7 @@ class TestAgent:
                 ],
                 "system_prompt": None,
                 "user_prompt": None,
-                "required_variables": None,
+                "required_variables": "*",
                 "exit_conditions": ["text", "weather_tool"],
                 "state_schema": {"foo": {"type": "str"}},
                 "max_agent_steps": 100,
@@ -370,7 +370,7 @@ class TestAgent:
                 },
                 "system_prompt": None,
                 "user_prompt": None,
-                "required_variables": None,
+                "required_variables": "*",
                 "exit_conditions": ["text"],
                 "state_schema": {},
                 "max_agent_steps": 100,
@@ -1765,6 +1765,23 @@ class TestRegisterPromptVariables:
     def test_register_prompt_variables_warning_when_no_prompt_and_required_variables(self, make_agent, caplog):
         make_agent(required_variables=["name"])
         assert "The parameter required_variables is provided but neither" in caplog.text
+
+    def test_register_prompt_variables_no_warning_when_no_prompt_and_default(self, make_agent, caplog):
+        make_agent()
+        assert "The parameter required_variables is provided but neither" not in caplog.text
+
+    def test_register_prompt_variables_all_required_by_default(self, make_agent):
+        agent = make_agent(user_prompt=_user_msg("Question: {{question}}"))
+        assert agent._user_chat_prompt_builder.required_variables == "*"
+
+        socket = agent.__haystack_input__._sockets_dict["question"]
+        assert socket.is_mandatory
+
+    def test_register_prompt_variables_all_optional_with_none(self, make_agent):
+        agent = make_agent(user_prompt=_user_msg("Question: {{question}}"), required_variables=None)
+
+        socket = agent.__haystack_input__._sockets_dict["question"]
+        assert not socket.is_mandatory
 
     def test_register_prompt_variables_set_all_variables_as_required(self, make_agent):
         agent = make_agent(user_prompt=_user_msg("Question: {{question}}"), required_variables="*")
