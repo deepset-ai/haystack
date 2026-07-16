@@ -419,6 +419,57 @@ class TestToolsetWarmUp:
         assert added.warm_up_count == 1
         assert all(tool.warm_up_count == 1 for tool in added_tools)
 
+    def test_add_lazy_toolset_to_cold_parent_retains_tools(self):
+        """Regression: add() must warm a child Toolset before flattening even when the parent is cold.
+
+        Previously the guard was ``if self._is_warmed_up``, so a child Toolset added to a
+        cold parent was flattened while still empty, silently discarding all its tools.
+        """
+
+        class LazyToolset(Toolset):
+            def __init__(self):
+                super().__init__([])
+                self.warmups = 0
+
+            def warm_up(self):
+                if self._is_warmed_up:
+                    return
+                self.warmups += 1
+                self.tools.append(WarmUpCountingTool("lazy"))
+                self._is_warmed_up = True
+
+        lazy = LazyToolset()
+        parent = Toolset()  # cold parent
+        parent.add(lazy)
+
+        assert lazy.warmups == 1, "child Toolset must be warmed before flattening"
+        assert [t.name for t in parent] == ["lazy"], "lazy tool must appear in parent"
+
+    def test_add_lazy_toolset_warm_up_is_idempotent(self):
+        """Adding an already-warm child Toolset to a warm parent does not warm it again."""
+        child = WarmUpCountingToolset([WarmUpCountingTool("a")])
+        child.warm_up()
+        assert child.warm_up_count == 1
+
+        parent = Toolset()
+        parent.warm_up()
+        parent.add(child)
+
+        assert child.warm_up_count == 1, "child must not be warmed a second time"
+
+    def test_add_plain_tool_to_cold_parent_does_not_warm_it(self):
+        """Adding a plain Tool to a cold parent must NOT warm it eagerly (regression guard).
+
+        Plain tools are warmed by parent.warm_up(); warming them early would be wrong.
+        """
+        tool = WarmUpCountingTool("a")
+        parent = Toolset()
+        parent.add(tool)
+
+        assert tool.warm_up_count == 0, "plain Tool must not be warmed before parent.warm_up()"
+        parent.warm_up()
+        assert tool.warm_up_count == 1
+
     def test_plus_returns_new_unwarmed_toolset(self):
         ts1 = Toolset([WarmUpCountingTool("a")])
         ts1.warm_up()

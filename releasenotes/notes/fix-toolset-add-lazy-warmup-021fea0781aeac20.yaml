@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Fixed ``Toolset.add()`` silently dropping all tools when a lazy child ``Toolset``
+    (one that materialises its tools in ``warm_up()``) was added to a parent that had
+    not yet been warmed up. The child is now always warmed before being flattened,
+    regardless of the parent's warm state.
