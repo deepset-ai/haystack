@@ -200,6 +200,24 @@ class TestQueryExpander:
         assert result["queries"] == ["original query", "alt1", "alt2"]
         assert len(result["queries"]) == 3
 
+    def test_run_deduplicates_generated_queries(self):
+        chat_generator = MockChatGenerator('{"queries": ["same query", "same query", "other query"]}')
+        expander = QueryExpander(chat_generator=chat_generator, n_expansions=3, include_original_query=False)
+        result = expander.run("topic")
+        assert result["queries"] == ["same query", "other query"]
+
+    def test_run_deduplicates_generated_queries_case_insensitively(self):
+        chat_generator = MockChatGenerator('{"queries": ["renewable energy", "Renewable Energy"]}')
+        expander = QueryExpander(chat_generator=chat_generator, n_expansions=3, include_original_query=False)
+        result = expander.run("topic")
+        assert result["queries"] == ["renewable energy"]
+
+    def test_run_deduplicates_before_truncating(self):
+        chat_generator = MockChatGenerator('{"queries": ["a", "a", "b", "c"]}')
+        expander = QueryExpander(chat_generator=chat_generator, n_expansions=3, include_original_query=False)
+        result = expander.run("topic")
+        assert result["queries"] == ["a", "b", "c"]
+
     def test_run_truncates_excess_queries(self, caplog):
         chat_generator = MockChatGenerator('{"queries": ["q1", "q2", "q3", "q4", "q5"]}')
         expander = QueryExpander(chat_generator=chat_generator, n_expansions=3, include_original_query=False)
@@ -326,6 +344,24 @@ class TestQueryExpander:
         assert expander.prompt_template == DEFAULT_PROMPT_TEMPLATE
         assert isinstance(expander.chat_generator, OpenAIChatGenerator)
         assert expander.chat_generator.model == "gpt-4.1-mini"
+
+    async def test_run_async_deduplicates_generated_queries(self):
+        chat_generator = MockChatGenerator('{"queries": ["same query", "same query", "other query"]}')
+        expander = QueryExpander(chat_generator=chat_generator, n_expansions=3, include_original_query=False)
+        result = await expander.run_async("topic")
+        assert result["queries"] == ["same query", "other query"]
+
+    async def test_run_async_deduplicates_generated_queries_case_insensitively(self):
+        chat_generator = MockChatGenerator('{"queries": ["renewable energy", "Renewable Energy"]}')
+        expander = QueryExpander(chat_generator=chat_generator, n_expansions=3, include_original_query=False)
+        result = await expander.run_async("topic")
+        assert result["queries"] == ["renewable energy"]
+
+    async def test_run_async_deduplicates_before_truncating(self):
+        chat_generator = MockChatGenerator('{"queries": ["a", "a", "b", "c"]}')
+        expander = QueryExpander(chat_generator=chat_generator, n_expansions=3, include_original_query=False)
+        result = await expander.run_async("topic")
+        assert result["queries"] == ["a", "b", "c"]
 
 
 class FakeSyncOnlyChatGenerator:
