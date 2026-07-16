@@ -16,8 +16,9 @@ on:
       - "v[0-9].*[0-9].x"
     # when we push, we do not need to satisfy Branch Protection rules, so we can ignore PRs that just change docs
     paths-ignore:
-      - "docs/**"
       - "docs-website/**"
+      - "**/*.md"
+      - "images/**"
   pull_request:
     types:
       - opened
@@ -26,11 +27,8 @@ on:
 
 env:
   OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-  CORE_AZURE_CS_ENDPOINT: ${{ secrets.CORE_AZURE_CS_ENDPOINT }}
-  CORE_AZURE_CS_API_KEY: ${{ secrets.CORE_AZURE_CS_API_KEY }}
   AZURE_OPENAI_API_KEY: ${{ secrets.AZURE_OPENAI_API_KEY }}
   AZURE_OPENAI_ENDPOINT: ${{ secrets.AZURE_OPENAI_ENDPOINT }}
-  HF_API_TOKEN: ${{ secrets.HUGGINGFACE_API_KEY }}
   PYTHON_VERSION: "3.10"
   HATCH_VERSION: "1.16.5"
 
