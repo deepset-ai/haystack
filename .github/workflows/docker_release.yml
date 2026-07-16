@@ -12,7 +12,7 @@ on:
       - 'pyproject.toml'
       - 'VERSION.txt'
     tags:
-      - "v2.[0-9]+.[0-9]+*"
+      - "v[0-9]+.[0-9]+.[0-9]+*"
 
 env:
   DOCKER_REPO_NAME: deepset/haystack
@@ -52,7 +52,7 @@ jobs:
 
       - name: Detect stable version
         run: |
-          if [[ "${{ steps.meta.outputs.version }}" =~ ^v2\.[0-9]+\.[0-9]+$ ]]; then
+          if [[ "${{ steps.meta.outputs.version }}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
             echo "IS_STABLE=true" >> "$GITHUB_ENV"
             echo "Stable version detected"
           else
