@@ -6,6 +6,7 @@ import pytest
 
 from haystack import Document
 from haystack.components.rankers.lost_in_the_middle import LostInTheMiddleRanker
+from haystack.dataclasses.byte_stream import ByteStream
 
 
 class TestLostInTheMiddleRanker:
@@ -34,6 +35,12 @@ class TestLostInTheMiddleRanker:
         result = ranker.run(documents=docs)
         assert result["documents"][0].content == "1"
         assert result["documents"][1].content == "2"
+
+    def test_lost_in_the_middle_with_non_textual_documents(self):
+        ranker = LostInTheMiddleRanker()
+        docs = [Document(content="1"), Document(blob=ByteStream(b"some bytes"))]
+        with pytest.raises(ValueError, match="Some provided documents are not textual"):
+            ranker.run(documents=docs)
 
     def test_lost_in_the_middle_init(self):
         # tests that LostInTheMiddleRanker initializes with default values

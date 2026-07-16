@@ -34,7 +34,7 @@
     "react-dom": "^19.0.0",
     "sharp": "^0.35.0",
     "turndown": "^7.2.2",
-    "vercel": "^55.0.0"
+    "vercel": "^56.1.0"
   },
   "devDependencies": {
     "@docusaurus/module-type-aliases": "^3.10.0",

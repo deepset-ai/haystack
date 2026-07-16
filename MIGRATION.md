@@ -32,6 +32,34 @@ GeneratedAnswer.from_dict(serialized)          # new flat format
 GeneratedAnswer.from_dict(old_wrapped_dict)    # old {"type": ..., "init_parameters": {...}} format
 ```
 
+### Pydantic serialization of `ChatMessage`
+
+**What changed:** `ChatMessage` now defines its own Pydantic schema. Pydantic models with `ChatMessage` fields serialize with `ChatMessage.to_dict` and validate dictionaries with `ChatMessage.from_dict`. As a result, `model_dump()` produces the canonical serialization format (`role`/`content` keys) instead of the raw dataclass fields (`_role`/`_content` keys).
+
+**Why:** Pydantic used to auto-serialize `ChatMessage` as a plain dataclass, producing an internal format that diverged from `to_dict` and could not be fully deserialized. Emitting the canonical format lets messages embedded in Pydantic models (such as API request/response DTOs) round-trip cleanly across services.
+
+**Deserialization is backward compatible:** `ChatMessage.from_dict` and Pydantic validation accept both the canonical format and the old raw dataclass format, so payloads produced by older versions keep deserializing without changes.
+
+**How to migrate:** Only code that reads Pydantic-dumped messages by key needs updating: access the canonical keys instead of the raw dataclass fields.
+
+Before (v2.x):
+```python
+from pydantic import BaseModel
+from haystack.dataclasses import ChatMessage
+
+class Response(BaseModel):
+    messages: list[ChatMessage]
+
+dumped = Response(messages=[ChatMessage.from_user("Hi")]).model_dump()
+role = dumped["messages"][0]["_role"]  # raw dataclass fields
+```
+
+After (v3.0):
+```python
+dumped = Response(messages=[ChatMessage.from_user("Hi")]).model_dump()
+role = dumped["messages"][0]["role"]  # canonical ChatMessage.to_dict format
+```
+
 ### Components Moved to External Packages
 
 **What changed:** Some components have been moved out of Haystack into dedicated integration packages,
