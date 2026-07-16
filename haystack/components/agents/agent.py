@@ -473,7 +473,6 @@ class Agent:
         user_prompt=\"\"\"{% message role="user"%}
     Translate the following document to {{ language }}: {{ document }}
     {% endmessage %}\"\"\",
-        required_variables=["language", "document"],
     )
 
     # The template variables 'language' and 'document' become inputs to the run method
@@ -544,7 +543,7 @@ class Agent:
         tools: ToolsType | None = None,
         system_prompt: str | None = None,
         user_prompt: str | None = None,
-        required_variables: list[str] | Literal["*"] | None = None,
+        required_variables: list[str] | Literal["*"] | None = "*",
         exit_conditions: list[str] | None = None,
         state_schema: dict[str, Any] | None = None,
         max_agent_steps: int = 100,
@@ -569,7 +568,8 @@ class Agent:
         :param required_variables:
             Lists the variables that must be provided as inputs to `user_prompt` or `system_prompt`.
             If a required variable is not provided at run time, an exception is raised.
-            If set to `"*"`, all variables found in the prompts are required. Optional.
+            If set to `"*"`, all variables found in the prompts are required. Defaults to `"*"`.
+            Set to `None` to make all variables optional; missing ones render as empty strings.
         :param exit_conditions: List of conditions that will cause the agent to return.
             Can include "text" if the agent should return when it generates a message without tool calls,
             or tool names that will cause the agent to return once the tool was executed. Defaults to ["text"].
@@ -711,7 +711,7 @@ class Agent:
         prompt_builders = [
             builder for builder in (self._system_chat_prompt_builder, self._user_chat_prompt_builder) if builder
         ]
-        if required_variables is not None and not any(builder.variables for builder in prompt_builders):
+        if isinstance(required_variables, list) and not any(builder.variables for builder in prompt_builders):
             logger.warning(
                 "The parameter required_variables is provided but neither user_prompt nor system_prompt "
                 "contains template variables. Either provide a prompt with Jinja2 template variables "

@@ -251,6 +251,10 @@ The agent-specific breakpoint API (`AgentBreakpoint`, `ToolBreakpoint`, `AgentSn
 
 `Agent.run` and `Agent.run_async` no longer accept `system_prompt` or `user_prompt`; both must be set at initialization time. If a prompt must still be assembled per run, build `ChatMessage` objects before the Agent (for example, with a `ChatPromptBuilder`) and pass them through the `messages` input — a system message at the start of `messages` acts as a runtime system prompt. The same change applies to the `LLM` component.
 
+### Prompt template variables are required by default
+
+`Agent` now treats every Jinja2 template variable in `user_prompt` and `system_prompt` as required, in line with the [prompt builders](#prompt-builders-template-variables-are-required-by-default): the `required_variables` parameter's default changed from `None` (all optional) to `"*"` (all required). Previously, missing variables were silently rendered as empty strings. Pass `required_variables=["var1", "var2"]` to require only a subset, or `required_variables=None` to restore the old "all optional" behavior.
+
 ### Tools must declare `inputs_from_state` to read from `State` by name
 
 A tool now reads a value from the Agent's [`State`](../pipeline-components/agents-1/state.mdx) by name only when it declares an explicit `inputs_from_state` mapping. The old implicit behavior — any tool parameter whose name matched a `State` key was silently filled from `State` — has been removed. Add `inputs_from_state={"state_key": "parameter_name"}` to any tool that should read from `State`. Tools that take the full `State` object via a `State`-annotated parameter are unaffected.
