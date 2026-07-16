@@ -477,6 +477,58 @@ pipeline.run(data={"retriever": {"query": query}, "agent": {"messages": [], "que
 If the prompt itself must still be assembled per run, build `ChatMessage` objects before the `Agent` (e.g. with a `ChatPromptBuilder`) and pass them through the `messages` input.
 For a runtime system prompt, construct an `Agent` without `system_prompt` or `user_prompt` and include a system message at the start of `messages`.
 
+#### Prompt template variables are required by default
+
+**What changed:** `Agent` now treats every Jinja2 template variable in `user_prompt` and `system_prompt` as required by default. The `required_variables` parameter's default has been changed from `None` (all optional) to `"*"` (all required). Previously, missing variables were silently rendered as empty strings. Passing `required_variables=None` explicitly still opts into the old "all optional" behavior.
+
+**Why:** Avoids silent rendering bugs where a missing variable produces an unexpectedly empty section of the prompt. Aligns `Agent` with `LLM`, `PromptBuilder`, and `ChatPromptBuilder`, which already require all variables by default in v3.0.
+
+**How to migrate:**
+
+Before (v2.x):
+```python
+from haystack.components.agents import Agent
+
+# All variables were optional by default; missing values rendered as "".
+agent = Agent(
+    chat_generator=...,
+    tools=[...],
+    user_prompt="Answer {{query}} in {{language}}.",
+)
+agent.run(messages=[], query="What is NLP?")  # language silently becomes ""
+```
+
+After (v3.0):
+```python
+from haystack.components.agents import Agent
+
+# Option 1: provide every variable (matches the new safe default).
+agent = Agent(
+    chat_generator=...,
+    tools=[...],
+    user_prompt="Answer {{query}} in {{language}}.",
+)
+agent.run(messages=[], query="What is NLP?", language="English")
+
+# Option 2: declare which variables are required; everything else stays optional.
+agent = Agent(
+    chat_generator=...,
+    tools=[...],
+    user_prompt="Answer {{query}} in {{language}}.",
+    required_variables=["query"],
+)
+agent.run(messages=[], query="What is NLP?")  # language renders as ""
+
+# Option 3: restore the old "all optional" behavior.
+agent = Agent(
+    chat_generator=...,
+    tools=[...],
+    user_prompt="Answer {{query}} in {{language}}.",
+    required_variables=None,
+)
+agent.run(messages=[], query="What is NLP?")  # language renders as ""
+```
+
 #### Tools must declare `inputs_from_state` to read from `State` by name
 
 **What changed:** A tool now reads a value from the Agent's `State` by name only when it declares an explicit `inputs_from_state` mapping. Previously, a tool without `inputs_from_state` had every parameter implicitly treated as a potential `State` key: any parameter whose name matched a `State` key (and that the LLM did not supply) was silently filled from `State`. This implicit name-matching has been removed. It applies to every tool type, since `ComponentTool`, `PipelineTool`, `MCPTool`, and others all derive from the base `Tool` class.
