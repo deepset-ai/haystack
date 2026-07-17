@@ -11,7 +11,7 @@ from haystack import component, default_from_dict, default_to_dict
 from haystack.components.retrievers.types.protocol import TextRetriever
 from haystack.core.serialization import component_from_dict, component_to_dict, import_class_by_name
 from haystack.dataclasses import Document
-from haystack.utils.async_utils import _execute_component_async
+from haystack.utils.async_utils import _execute_component_async, _gather_tasks_with_cancel
 from haystack.utils.experimental import _experimental
 from haystack.utils.misc import _deduplicate_documents, _reciprocal_rank_fusion
 
@@ -321,13 +321,7 @@ class MultiRetriever:
                 raise RuntimeError(f"Retriever '{name}' failed: {e}") from e
 
         tasks = [asyncio.create_task(_run_one(name, retriever)) for name, retriever in retrievers_to_run.items()]
-        try:
-            document_lists = list(await asyncio.gather(*tasks))
-        except Exception:
-            for task in tasks:
-                task.cancel()
-            await asyncio.gather(*tasks, return_exceptions=True)
-            raise
+        document_lists = await _gather_tasks_with_cancel(tasks)
         return {"documents": self._merge_results(document_lists, top_k=resolved_top_k)}
 
     def to_dict(self) -> dict[str, Any]:
