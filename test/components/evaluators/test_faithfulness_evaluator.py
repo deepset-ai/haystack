@@ -203,8 +203,8 @@ class TestFaithfulnessEvaluator:
         assert results == {
             "individual_scores": [0.5, 1],
             "results": [
-                {"score": 0.5, "statement_scores": [1, 0], "statements": ["a", "b"]},
-                {"score": 1, "statement_scores": [1, 1], "statements": ["c", "d"]},
+                {"score": 0.5, "statement_scores": [1, 0], "statements": ["a", "b"], "status": "evaluated"},
+                {"score": 1, "statement_scores": [1, 1], "statements": ["c", "d"], "status": "evaluated"},
             ],
             "score": 0.75,
             "meta": None,
@@ -241,8 +241,8 @@ class TestFaithfulnessEvaluator:
         assert results == {
             "individual_scores": [0.5, 0],
             "results": [
-                {"score": 0.5, "statement_scores": [1, 0], "statements": ["a", "b"]},
-                {"score": 0, "statement_scores": [], "statements": []},
+                {"score": 0.5, "statement_scores": [1, 0], "statements": ["a", "b"], "status": "evaluated"},
+                {"score": 0, "statement_scores": [], "statements": [], "status": "evaluated"},
             ],
             "score": 0.25,
             "meta": None,
@@ -254,13 +254,16 @@ class TestFaithfulnessEvaluator:
         with pytest.raises(ValueError, match="LLM evaluator expected input parameter"):
             component.run()
 
-    def test_run_returns_nan_raise_on_failure_false(self, monkeypatch, caplog):
+    @pytest.mark.parametrize("failure_mode", ["generation", "parsing"])
+    def test_run_returns_nan_raise_on_failure_false(self, monkeypatch, caplog, failure_mode):
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
         component = FaithfulnessEvaluator(raise_on_failure=False)
 
         def chat_generator_run(self, *args, **kwargs):
             if "Python" in kwargs["messages"][0].text:
-                raise Exception("OpenAI API request failed.")
+                if failure_mode == "generation":
+                    raise Exception("OpenAI API request failed.")
+                return {"replies": [ChatMessage.from_assistant("not valid JSON")]}
             return {"replies": [ChatMessage.from_assistant('{"statements": ["c", "d"], "statement_scores": [1, 1]}')]}
 
         monkeypatch.setattr("haystack.components.evaluators.llm_evaluator.OpenAIChatGenerator.run", chat_generator_run)
@@ -291,13 +294,34 @@ class TestFaithfulnessEvaluator:
         assert results["individual_scores"][0] == 1.0
         assert math.isnan(results["individual_scores"][1])
 
-        assert results["results"][0] == {"statements": ["c", "d"], "statement_scores": [1, 1], "score": 1.0}
+        assert results["results"][0] == {
+            "statements": ["c", "d"],
+            "statement_scores": [1, 1],
+            "score": 1.0,
+            "status": "evaluated",
+        }
 
         assert results["results"][1]["statements"] == []
         assert results["results"][1]["statement_scores"] == []
         assert math.isnan(results["results"][1]["score"])
+        assert results["results"][1]["status"] == "error"
 
         assert "1 query(s) failed and were excluded from the score." in caplog.text
+
+    def test_run_all_failures_returns_nan_and_error_statuses(self, monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+        component = FaithfulnessEvaluator(raise_on_failure=False)
+
+        def chat_generator_run(self, *args, **kwargs):
+            raise Exception("OpenAI API request failed.")
+
+        monkeypatch.setattr("haystack.components.evaluators.llm_evaluator.OpenAIChatGenerator.run", chat_generator_run)
+
+        results = component.run(questions=["q1", "q2"], contexts=[["c1"], ["c2"]], predicted_answers=["a1", "a2"])
+
+        assert math.isnan(results["score"])
+        assert all(math.isnan(score) for score in results["individual_scores"])
+        assert [result["status"] for result in results["results"]] == ["error", "error"]
 
     @pytest.mark.skipif(
         not os.environ.get("OPENAI_API_KEY", None),
@@ -313,7 +337,7 @@ class TestFaithfulnessEvaluator:
 
         required_fields = {"individual_scores", "results", "score"}
         assert all(field in result for field in required_fields)
-        nested_required_fields = {"score", "statement_scores", "statements"}
+        nested_required_fields = {"score", "statement_scores", "statements", "status"}
         assert all(field in result["results"][0] for field in nested_required_fields)
 
         # assert that metadata is present in the result
@@ -347,21 +371,24 @@ class TestFaithfulnessEvaluatorAsync:
         assert results == {
             "individual_scores": [0.5, 1.0],
             "results": [
-                {"score": 0.5, "statement_scores": [1, 0], "statements": ["a", "b"]},
-                {"score": 1.0, "statement_scores": [1, 1], "statements": ["c", "d"]},
+                {"score": 0.5, "statement_scores": [1, 0], "statements": ["a", "b"], "status": "evaluated"},
+                {"score": 1.0, "statement_scores": [1, 1], "statements": ["c", "d"], "status": "evaluated"},
             ],
             "score": 0.75,
             "meta": None,
         }
 
     @pytest.mark.asyncio
-    async def test_run_async_returns_nan_raise_on_failure_false(self, monkeypatch, caplog):
+    @pytest.mark.parametrize("failure_mode", ["generation", "parsing"])
+    async def test_run_async_returns_nan_raise_on_failure_false(self, monkeypatch, caplog, failure_mode):
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
         component = FaithfulnessEvaluator(raise_on_failure=False)
 
         async def chat_generator_run_async(self, *args, **kwargs):
             if "Python" in kwargs["messages"][0].text:
-                raise Exception("OpenAI API request failed.")
+                if failure_mode == "generation":
+                    raise Exception("OpenAI API request failed.")
+                return {"replies": [ChatMessage.from_assistant("not valid JSON")]}
             return {"replies": [ChatMessage.from_assistant('{"statements": ["c", "d"], "statement_scores": [1, 1]}')]}
 
         monkeypatch.setattr(
@@ -380,6 +407,8 @@ class TestFaithfulnessEvaluatorAsync:
         assert results["score"] == 1.0
         assert results["individual_scores"][0] == 1.0
         assert math.isnan(results["individual_scores"][1])
+        assert results["results"][0]["status"] == "evaluated"
+        assert results["results"][1]["status"] == "error"
         assert "1 query(s) failed and were excluded from the score." in caplog.text
 
     @pytest.mark.asyncio
@@ -397,7 +426,7 @@ class TestFaithfulnessEvaluatorAsync:
 
         required_fields = {"individual_scores", "results", "score"}
         assert all(field in result for field in required_fields)
-        nested_required_fields = {"score", "statement_scores", "statements"}
+        nested_required_fields = {"score", "statement_scores", "statements", "status"}
         assert all(field in result["results"][0] for field in nested_required_fields)
 
         # assert that metadata is present in the result
