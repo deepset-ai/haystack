@@ -24,6 +24,8 @@ class ConfirmationHook:
 
     ```python
     from haystack.components.agents import Agent
+    from haystack.components.generators.chat import OpenAIChatGenerator
+    from haystack.tools import tool
     from haystack.hooks.human_in_the_loop import (
         AlwaysAskPolicy,
         BlockingConfirmationStrategy,
@@ -33,14 +35,19 @@ class ConfirmationHook:
         SimpleConsoleUI,
     )
 
+    @tool
+    def delete_file(path: str) -> str:
+        '''Delete the file at the given path.'''
+        return f"Deleted {path}."
+
     hook = ConfirmationHook(
         confirmation_strategies={
-            "my_tool": BlockingConfirmationStrategy(
+            "delete_file": BlockingConfirmationStrategy(
                 confirmation_policy=NeverAskPolicy(), confirmation_ui=SimpleConsoleUI()
             )
         }
     )
-    agent = Agent(chat_generator=..., tools=[...], hooks={"before_tool": [hook]})
+    agent = Agent(chat_generator=OpenAIChatGenerator(), tools=[delete_file], hooks={"before_tool": [hook]})
     ```
 
     A key may be a single tool name, a tuple of tool names sharing one strategy, or the wildcard `"*"` which applies

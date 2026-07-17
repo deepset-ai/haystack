@@ -4,6 +4,7 @@
 
 import logging
 import warnings
+from collections import namedtuple
 
 import pytest
 
@@ -254,6 +255,19 @@ class TestDeepcopyWithFallback:
         original = {"component": comp}
         res = _deepcopy_with_exceptions(original)
         assert res["component"] is original["component"]
+
+    def test_deepcopy_with_fallback_namedtuple(self):
+        Point = namedtuple("Point", ["x", "y"])
+        inner = Copyable()
+        original = {"point": Point(inner, 2)}
+        copy = _deepcopy_with_exceptions(original)
+        # A namedtuple must be reconstructed as its own type. Its __new__ takes
+        # positional fields, so the plain ``type(obj)(<generator>)`` path used for
+        # lists/tuples/sets would raise a TypeError instead of copying it.
+        assert isinstance(copy["point"], Point)
+        assert copy["point"].y == 2
+        # Its contents are deep-copied, matching how plain tuples are handled.
+        assert copy["point"].x is not original["point"].x
 
 
 class TestArgsDeprecated:
