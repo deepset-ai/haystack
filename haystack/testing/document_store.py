@@ -1051,24 +1051,27 @@ class CountUniqueMetadataByFilterTest:
 
     @staticmethod
     def test_count_unique_metadata_by_filter_with_multiple_filters(document_store: DocumentStore):
-        """Test counting with multiple filters"""
+        """Test count_unique_metadata_by_filter() with multiple filters."""
         docs = [
-            Document(content="Doc 1", meta={"category": "A", "year": 2023}),
-            Document(content="Doc 2", meta={"category": "A", "year": 2024}),
-            Document(content="Doc 3", meta={"category": "B", "year": 2023}),
-            Document(content="Doc 4", meta={"category": "B", "year": 2024}),
+            Document(content="Doc 1", meta={"category": "B", "year": 2023, "status": "draft"}),
+            Document(content="Doc 2", meta={"category": "B", "year": 2023, "status": "draft"}),
+            Document(content="Doc 3", meta={"category": "B", "year": 2023, "status": "published"}),
+            Document(content="Doc 4", meta={"category": "B", "year": 2024, "status": "draft"}),
         ]
         document_store.write_documents(docs)
-        count = document_store.count_documents_by_filter(  # type:ignore[attr-defined]
+        # The compound filter matches three documents with duplicated values, so the counts only come
+        # out right when the store both applies the filter and properly counts the values.
+        counts = document_store.count_unique_metadata_by_filter(  # type:ignore[attr-defined]
             filters={
                 "operator": "AND",
                 "conditions": [
                     {"field": "meta.category", "operator": "==", "value": "B"},
                     {"field": "meta.year", "operator": "==", "value": 2023},
                 ],
-            }
+            },
+            metadata_fields=["status", "year"],
         )
-        assert count == 1
+        assert counts == {"status": 2, "year": 1}
 
 
 class GetMetadataFieldsInfoTest:
