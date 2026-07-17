@@ -40,10 +40,12 @@ jobs:
     steps:
       - uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         with:
-          # GITHUB_TOKEN can normally convert PRs to draft and back. If those
-          # GraphQL mutations ever fail with "Resource not accessible by
-          # integration", add a classic PAT with `repo` scope as CLA_GATE_PAT.
-          github-token: ${{ secrets.CLA_GATE_PAT || github.token }}
+          # The convertPullRequestToDraft/markPullRequestReadyForReview GraphQL
+          # mutations require a user token; GITHUB_TOKEN fails with "Resource
+          # not accessible by integration" (seen on #12036). Use the bot PAT,
+          # which also lets the ready_for_review/review_requested events from
+          # restore() trigger the linked_issue_review workflow.
+          github-token: ${{ secrets.HAYSTACK_BOT_TOKEN }}
           script: |
             const CLA_CONTEXT = "license/cla";
             const LABEL = "cla-pending";
