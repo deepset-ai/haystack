@@ -198,7 +198,7 @@ class LLMEvaluator:
                 )
                 raise ValueError(msg)
 
-    @component.output_types(results=list[dict[str, Any]])
+    @component.output_types(results=list[dict[str, Any]], meta=list[dict[str, Any]] | None)
     def run(self, **inputs: Any) -> dict[str, Any]:
         """
         Run the LLM evaluator.
@@ -262,7 +262,7 @@ class LLMEvaluator:
 
         return {"results": results, "meta": metadata or None}
 
-    @component.output_types(results=list[dict[str, Any]])
+    @component.output_types(results=list[dict[str, Any]], meta=list[dict[str, Any]] | None)
     async def run_async(self, **inputs: Any) -> dict[str, Any]:
         """
         Run the LLM evaluator asynchronously

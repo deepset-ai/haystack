@@ -150,7 +150,9 @@ class FaithfulnessEvaluator(LLMEvaluator):
             progress_bar=progress_bar,
         )
 
-    @component.output_types(individual_scores=list[float], score=float, results=list[dict[str, Any]])
+    @component.output_types(
+        individual_scores=list[float], score=float, results=list[dict[str, Any]], meta=list[dict[str, Any]] | None
+    )
     def run(self, **inputs: Any) -> dict[str, Any]:
         """
         Run the LLM evaluator.
@@ -172,7 +174,9 @@ class FaithfulnessEvaluator(LLMEvaluator):
         # Post-process the raw results to calculate relevance metrics and scores
         return self._postprocess_results(result)
 
-    @component.output_types(individual_scores=list[float], score=float, results=list[dict[str, Any]])
+    @component.output_types(
+        individual_scores=list[float], score=float, results=list[dict[str, Any]], meta=list[dict[str, Any]] | None
+    )
     async def run_async(self, **inputs: Any) -> dict[str, Any]:
         """
         Run the LLM evaluator asynchronously.

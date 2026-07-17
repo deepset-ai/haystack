@@ -70,6 +70,8 @@ class TestFaithfulnessEvaluator:
         assert component._chat_generator.api_key.resolve_value() == "test-api-key"
         assert component._chat_generator.generation_kwargs == {"response_format": {"type": "json_object"}, "seed": 42}
 
+        assert set(component.__haystack_output__._sockets_dict) == {"score", "individual_scores", "results", "meta"}
+
     def test_key_resolved_at_warm_up_not_init(self, monkeypatch):
         monkeypatch.delenv("OPENAI_API_KEY", raising=False)
         component = FaithfulnessEvaluator()
