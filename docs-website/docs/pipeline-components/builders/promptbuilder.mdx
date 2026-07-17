@@ -31,7 +31,7 @@ The template that is provided to the `PromptBuilder` during initialization needs
 
 ### Variables
 
-The template variables found in the init template are used as input types for the component. If there are no `required_variables` set, all variables are considered optional by default. In this case, any missing variables are replaced with empty strings, which can lead to unintended behavior, especially in complex pipelines.
+The template variables found in the init template are used as input types for the component. By default, `required_variables` is set to `"*"`, so all variables in the template are required: if any of them is missing at runtime, the component raises an error and halts execution.
 
 Use `required_variables` and `variables` to specify the input types and required variables:
 
@@ -39,8 +39,9 @@ Use `required_variables` and `variables` to specify the input types and required
   - Defines which template variables must be provided when the component runs.
   - If any required variable is missing, the component raises an error and halts execution.
   - You can:
-    - Pass a list of required variable names (such as `["query"]`), or
-    - Use `"*"` to mark all variables in the template as required.
+    - Use `"*"` (the default) to mark all variables in the template as required, or
+    - Pass a list of required variable names (such as `["query"]`) to make only those required; the remaining variables are optional, or
+    - Pass an empty list (`[]`) or `None` to make all variables optional. Setting `None` explicitly logs a warning, since missing variables are then silently replaced with empty strings, which can lead to unintended behavior, especially in complex pipelines.
 
 - `variables`
   - Lists all variables that can appear in the template, whether required or optional.
@@ -50,16 +51,21 @@ Use `required_variables` and `variables` to specify the input types and required
 ```python
 from haystack.components.builders import PromptBuilder
 
-# All variables optional (default to empty string)
+# All variables required (the default, equivalent to required_variables="*")
 builder = PromptBuilder(
     template="Hello {{name}}! {{greeting}}",
-    required_variables=[],  # or omit this parameter entirely
 )
 
 # Some variables required
 builder = PromptBuilder(
     template="Hello {{name}}! {{greeting}}",
-    required_variables=["name"],  # 'greeting' remains optional
+    required_variables=["name"],  # 'greeting' becomes optional
+)
+
+# All variables optional (missing ones default to empty string)
+builder = PromptBuilder(
+    template="Hello {{name}}! {{greeting}}",
+    required_variables=[],  # explicit None also works but logs a warning
 )
 ```
 
@@ -159,7 +165,7 @@ Below is an example of a RAG pipeline where we use a `PromptBuilder` to render a
 ```python
 from haystack import Pipeline, Document
 from haystack.utils import Secret
-from haystack.components.generators import OpenAIGenerator
+from haystack.components.generators.chat import OpenAIChatGenerator
 from haystack.components.builders.prompt_builder import PromptBuilder
 
 # in a real world use case documents could come from a retriever, web, or any other source
@@ -179,7 +185,7 @@ prompt_template = """
 p = Pipeline()
 p.add_component(instance=PromptBuilder(template=prompt_template), name="prompt_builder")
 p.add_component(
-    instance=OpenAIGenerator(api_key=Secret.from_env_var("OPENAI_API_KEY")),
+    instance=OpenAIChatGenerator(api_key=Secret.from_env_var("OPENAI_API_KEY")),
     name="llm",
 )
 p.connect("prompt_builder", "llm")
@@ -278,20 +284,21 @@ components:
       model: gpt-5-mini
       organization: null
       streaming_callback: null
-      system_prompt: null
       timeout: null
-    type: haystack.components.generators.openai.OpenAIGenerator
+      tools: null
+      tools_strict: false
+    type: haystack.components.generators.chat.openai.OpenAIChatGenerator
   prompt_builder:
     init_parameters:
-      required_variables: null
-      template: "\n    Given these documents, answer the question.\\nDocuments:\n\
-        \    {% for doc in documents %}\n        {{ doc.content }}\n    {% endfor\
-        \ %}\n\n    \\nQuestion: {{query}}\n    \\nAnswer:\n    "
+      required_variables: '*'
+      template: "\n    Given these documents, answer the question.\nDocuments:\n \
+        \   {% for doc in documents %}\n        {{ doc.content }}\n    {% endfor %}\n\
+        \n    \nQuestion: {{query}}\n    \nAnswer:\n    "
       variables: null
     type: haystack.components.builders.prompt_builder.PromptBuilder
 connection_type_validation: true
 connections:
-- receiver: llm.prompt
+- receiver: llm.messages
   sender: prompt_builder.prompt
 max_runs_per_component: 100
 metadata: {}

@@ -2,12 +2,12 @@
 title: "MCPToolset"
 id: mcptoolset
 slug: "/mcptoolset"
-description: "`MCPToolset` connects to an MCP-compliant server and automatically loads all available tools into a single manageable unit. These tools can be used directly with components like Chat Generator, `ToolInvoker`, or `Agent`."
+description: "`MCPToolset` connects to an MCP-compliant server and automatically loads all available tools into a single manageable unit. These tools can be used directly with components like Chat Generator or `Agent`."
 ---
 
 # MCPToolset
 
-`MCPToolset` connects to an MCP-compliant server and automatically loads all available tools into a single manageable unit. These tools can be used directly with components like Chat Generator, `ToolInvoker`, or `Agent`.
+`MCPToolset` connects to an MCP-compliant server and automatically loads all available tools into a single manageable unit. These tools can be used directly with components like Chat Generator or `Agent`.
 
 <div className="key-value-table">
 
@@ -30,7 +30,7 @@ It supports:
 - **SSE (Server-Sent Events)** _(deprecated)_ for remote MCP servers through HTTP
 - **StdIO** for local tool execution through subprocess
 
-The MCPToolset makes it easy to plug external tools into pipelines (with Chat Generators and `ToolInvoker`) or agents, with built-in support for filtering (with `tool_names`).
+The MCPToolset makes it easy to plug external tools into pipelines or agents, with built-in support for filtering (with `tool_names`).
 
 ### Parameters
 
@@ -88,9 +88,8 @@ toolset = MCPToolset(server_info=server_info, tool_names=["get_current_time"])
 
 ```python
 from haystack import Pipeline
+from haystack.components.agents import Agent
 from haystack.components.generators.chat import OpenAIChatGenerator
-from haystack.components.tools import ToolInvoker
-from haystack.components.converters import OutputAdapter
 from haystack.dataclasses import ChatMessage
 from haystack_integrations.tools.mcp import MCPToolset, StdioServerInfo
 
@@ -101,29 +100,18 @@ server_info = StdioServerInfo(
 toolset = MCPToolset(server_info=server_info)
 
 pipeline = Pipeline()
-pipeline.add_component("llm", OpenAIChatGenerator(model="gpt-4o-mini", tools=toolset))
-pipeline.add_component("tool_invoker", ToolInvoker(tools=toolset))
 pipeline.add_component(
-    "adapter",
-    OutputAdapter(
-        template="{{ initial_msg + initial_tool_messages + tool_messages }}",
-        output_type=list[ChatMessage],
-        unsafe=True,
+    "agent",
+    Agent(
+        chat_generator=OpenAIChatGenerator(model="gpt-4o-mini"),
+        tools=toolset,
     ),
 )
-pipeline.add_component("response_llm", OpenAIChatGenerator(model="gpt-4o-mini"))
-
-pipeline.connect("llm.replies", "tool_invoker.messages")
-pipeline.connect("llm.replies", "adapter.initial_tool_messages")
-pipeline.connect("tool_invoker.tool_messages", "adapter.tool_messages")
-pipeline.connect("adapter.output", "response_llm.messages")
 
 user_input = ChatMessage.from_user(text="What is the time in New York?")
-result = pipeline.run(
-    {"llm": {"messages": [user_input]}, "adapter": {"initial_msg": [user_input]}},
-)
+result = pipeline.run({"agent": {"messages": [user_input]}})
 
-print(result["response_llm"]["replies"][0].text)
+print(result["agent"]["last_message"].text)
 ```
 
 ### With the Agent

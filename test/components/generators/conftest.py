@@ -243,7 +243,7 @@ def openai_mock_responses():
             reasoning=Reasoning(effort="low", generate_summary=None, summary="auto"),
             usage=ResponseUsage(
                 input_tokens=11,
-                input_tokens_details=InputTokensDetails(cached_tokens=0),
+                input_tokens_details=InputTokensDetails(cached_tokens=0, cache_write_tokens=0),
                 output_tokens=13,
                 output_tokens_details=OutputTokensDetails(reasoning_tokens=0),
                 total_tokens=24,
@@ -309,7 +309,7 @@ def openai_mock_async_responses():
             reasoning=Reasoning(effort="low", generate_summary=None, summary="auto"),
             usage=ResponseUsage(
                 input_tokens=11,
-                input_tokens_details=InputTokensDetails(cached_tokens=0),
+                input_tokens_details=InputTokensDetails(cached_tokens=0, cache_write_tokens=0),
                 output_tokens=13,
                 output_tokens_details=OutputTokensDetails(reasoning_tokens=0),
                 total_tokens=24,

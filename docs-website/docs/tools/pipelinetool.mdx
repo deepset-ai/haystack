@@ -27,11 +27,13 @@ It replaces the older workflow of first wrapping a pipeline in a `SuperComponent
 `ComponentTool`.
 
 `PipelineTool` builds the tool parameter schema from the pipeline’s input sockets and uses the underlying components’ docstrings for input descriptions. You can choose which pipeline inputs and outputs to expose with
-`input_mapping` and `output_mapping`. It works with both `Pipeline` and `AsyncPipeline` and can be used in a pipeline with `ToolInvoker` or directly with the `Agent` component.
+`input_mapping` and `output_mapping`. It can be used with the `Agent` component, either directly or within a pipeline.
+
+`PipelineTool` also supports async invocation: since every `Pipeline` exposes a native `run_async`, the tool can be awaited (for example, from `Agent.run_async`) without extra configuration. See [Async Tools](tool.mdx#async-tools) for details.
 
 ### Parameters
 
-- `pipeline` is mandatory and must be a `Pipeline` or `AsyncPipeline` instance.
+- `pipeline` is mandatory and must be a `Pipeline` instance.
 - `name` is mandatory and specifies the tool name.
 - `description` is mandatory and explains what the tool does.
 - `input_mapping` is optional. It maps tool input names to pipeline input socket paths. If omitted, a default mapping is created from all pipeline inputs.
@@ -44,7 +46,7 @@ It replaces the older workflow of first wrapping a pipeline in a `SuperComponent
 ## Usage
 
 :::tip
-The recommended way to use `PipelineTool` in Haystack is with the [`Agent`](../pipeline-components/agents-1/agent.mdx) component, which manages the tool call loop for you. The pipeline example below shows the manual approach for cases where you need fine-grained control.
+The recommended way to use `PipelineTool` in Haystack is with the [`Agent`](../pipeline-components/agents-1/agent.mdx) component, which manages the tool call loop for you. You can run the `Agent` standalone or add it to a pipeline, as the examples below show.
 :::
 
 ### Basic Usage
@@ -171,7 +173,7 @@ print(result["messages"][-1].text)
 
 ### In a Pipeline
 
-You can also wire `PipelineTool` into a pipeline manually with `ChatGenerator` and `ToolInvoker` for full control over the tool call loop.
+You can also use `PipelineTool` in a pipeline by passing it to an `Agent` component.
 
 ```python
 from haystack import Document, Pipeline
@@ -183,7 +185,7 @@ from haystack_integrations.components.embedders.sentence_transformers import (
 )
 from haystack.components.retrievers import InMemoryEmbeddingRetriever
 from haystack.components.generators.chat import OpenAIChatGenerator
-from haystack.components.tools.tool_invoker import ToolInvoker
+from haystack.components.agents import Agent
 from haystack.dataclasses import ChatMessage
 
 # Initialize a document store and add some documents
@@ -225,17 +227,18 @@ retriever_tool = PipelineTool(
 
 pipeline = Pipeline()
 pipeline.add_component(
-    "llm",
-    OpenAIChatGenerator(model="gpt-5.4-nano", tools=[retriever_tool]),
+    "agent",
+    Agent(
+        chat_generator=OpenAIChatGenerator(model="gpt-5.4-nano"),
+        tools=[retriever_tool],
+    ),
 )
-pipeline.add_component("tool_invoker", ToolInvoker(tools=[retriever_tool]))
-pipeline.connect("llm.replies", "tool_invoker.messages")
 
 message = ChatMessage.from_user(
     "Use the document retriever tool to find information about Nikola Tesla",
 )
 
-result = pipeline.run({"llm": {"messages": [message]}})
+result = pipeline.run({"agent": {"messages": [message]}})
 
-print(result)
+print(result["agent"]["last_message"].text)
 ```

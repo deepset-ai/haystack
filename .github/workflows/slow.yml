@@ -11,7 +11,6 @@ name: Slow Integration Tests
 
 env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-  HF_API_TOKEN: ${{ secrets.HUGGINGFACE_API_KEY }}
   PYTHON_VERSION: "3.10"
   HATCH_VERSION: "1.16.5"
   HAYSTACK_MPS_ENABLED: false
@@ -61,13 +60,9 @@ jobs:
             changes:
               - "haystack/components/evaluators/sas_evaluator.py"
               - "haystack/components/generators/openai_dalle.py"
-              - "haystack/components/preprocessors/embedding_based_document_splitter.py"
-              - "haystack/components/retrievers/multi_query_embedding_retriever.py"
 
               - "test/components/evaluators/test_sas_evaluator.py"
               - "test/components/generators/test_openai_dalle.py"
-              - "test/components/preprocessors/test_embedding_based_document_splitter.py"
-              - "test/components/retrievers/test_multi_query_embedding_retriever.py"
 
   slow-integration-tests:
     name: Slow Tests / ${{ matrix.os }}
@@ -79,7 +74,7 @@ jobs:
       github.event_name == 'workflow_dispatch' ||
       github.event_name == 'schedule' ||
       (github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'run-slow-tests')) ||
-      (github.event_name == 'push' && github.ref == 'refs/heads/v[0-9].*[0-9].x') ||
+      github.event_name == 'push' ||
       (needs.check-if-changed.outputs.changes == 'true')
 
     strategy:

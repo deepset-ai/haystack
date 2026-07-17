@@ -1,0 +1,11 @@
+---
+fixes:
+  - |
+    Improved the validation and compatibility layer of ``Document``:
+    - since Haystack 2.x, ``embedding`` is a list of floats, while it was a NumPy array in 1.x, so a NumPy
+      ``embedding`` is converted to a list for backward compatibility. The conversion only happened when ``embedding``
+      was passed as a keyword argument: passed positionally, the array was silently left as is, potentially causing
+      downstream issues.
+    - ``content`` type was validated only when passed as a keyword argument.
+    - ``content`` type validation was also skipped when the value was falsy, such as ``0`` or ``[]``, and failed later
+      with an unrelated error.
