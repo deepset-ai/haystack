@@ -8,19 +8,9 @@ import numpy as np
 import pytest
 
 from haystack import Document, Pipeline, component
+from haystack.components.embedders import MockTextEmbedder
 from haystack.components.retrievers import InMemoryEmbeddingRetriever, MultiQueryEmbeddingRetriever
 from haystack.document_stores.in_memory import InMemoryDocumentStore
-
-
-@component
-class MockQueryEmbedder:
-    @component.output_types(embedding=list[float])
-    def run(self, text: str) -> dict[str, list[float]]:
-        return {"embedding": np.ones(384).tolist()}
-
-    @component.output_types(embedding=list[float])
-    async def run_async(self, text: str) -> dict[str, list[float]]:
-        return {"embedding": np.ones(384).tolist()}
 
 
 class TestMultiQueryEmbeddingRetrieverAsync:
@@ -28,7 +18,7 @@ class TestMultiQueryEmbeddingRetrieverAsync:
     async def test_run_async_with_empty_queries(self):
         multi_retriever = MultiQueryEmbeddingRetriever(
             retriever=InMemoryEmbeddingRetriever(document_store=InMemoryDocumentStore()),
-            query_embedder=MockQueryEmbedder(),
+            query_embedder=MockTextEmbedder(),
         )
         result = await multi_retriever.run_async(queries=[])
         assert "documents" in result
@@ -62,7 +52,7 @@ class TestMultiQueryEmbeddingRetrieverAsync:
             ) -> dict[str, list[Document]]:
                 return {"documents": [doc_low, doc_high, doc_mid]}
 
-        multi_retriever = MultiQueryEmbeddingRetriever(retriever=MockRetriever(), query_embedder=MockQueryEmbedder())
+        multi_retriever = MultiQueryEmbeddingRetriever(retriever=MockRetriever(), query_embedder=MockTextEmbedder())
         result = await multi_retriever.run_async(queries=["query1", "query2"])
 
         scores = [doc.score for doc in result["documents"]]
@@ -96,7 +86,7 @@ class TestMultiQueryEmbeddingRetrieverAsync:
             ) -> dict[str, list[Document]]:
                 return {"documents": [doc3, doc2]}
 
-        multi_retriever = MultiQueryEmbeddingRetriever(retriever=MockRetriever(), query_embedder=MockQueryEmbedder())
+        multi_retriever = MultiQueryEmbeddingRetriever(retriever=MockRetriever(), query_embedder=MockTextEmbedder())
         result = await multi_retriever.run_async(queries=["query1", "query2"])
 
         assert "documents" in result
@@ -131,9 +121,7 @@ class TestMultiQueryEmbeddingRetrieverAsync:
             ) -> dict[str, list[Document]]:
                 return {"documents": [Document(content="Solar energy", id="doc1", score=0.9)]}
 
-        multi_retriever = MultiQueryEmbeddingRetriever(
-            retriever=SyncOnlyRetriever(), query_embedder=MockQueryEmbedder()
-        )
+        multi_retriever = MultiQueryEmbeddingRetriever(retriever=SyncOnlyRetriever(), query_embedder=MockTextEmbedder())
         result = await multi_retriever.run_async(queries=["query1", "query2"])
         assert "documents" in result
         assert len(result["documents"]) == 1
@@ -188,7 +176,7 @@ class TestMultiQueryEmbeddingRetrieverAsync:
         in_memory_retriever = InMemoryEmbeddingRetriever(document_store=document_store_with_categorized_docs)
         filters = {"field": "category", "operator": "==", "value": "solar"}
         multi_retriever = MultiQueryEmbeddingRetriever(
-            retriever=in_memory_retriever, query_embedder=MockQueryEmbedder()
+            retriever=in_memory_retriever, query_embedder=MockTextEmbedder(dimension=384)
         )
         result = await multi_retriever.run_async(
             queries=["energy", "sunlight", "photovoltaic"], retriever_kwargs={"filters": filters}
@@ -202,7 +190,7 @@ class TestMultiQueryEmbeddingRetrieverAsync:
     async def test_run_async_with_pipeline(self):
         multi_retriever = MultiQueryEmbeddingRetriever(
             retriever=InMemoryEmbeddingRetriever(document_store=InMemoryDocumentStore()),
-            query_embedder=MockQueryEmbedder(),
+            query_embedder=MockTextEmbedder(),
         )
         pipeline = Pipeline()
         pipeline.add_component("retriever", multi_retriever)

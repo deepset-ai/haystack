@@ -101,7 +101,6 @@ agent = Agent(
     user_prompt="""{% message role="user"%}
 Translate the following document to {{ language }}: {{ document }}
 {% endmessage %}""",
-    required_variables=["language", "document"],
 )
 
 # The template variables 'language' and 'document' become inputs to the run method
@@ -172,7 +171,7 @@ __init__(
     tools: ToolsType | None = None,
     system_prompt: str | None = None,
     user_prompt: str | None = None,
-    required_variables: list[str] | Literal["*"] | None = None,
+    required_variables: list[str] | Literal["*"] | None = "*",
     exit_conditions: list[str] | None = None,
     state_schema: dict[str, Any] | None = None,
     max_agent_steps: int = 100,
@@ -199,7 +198,8 @@ Initialize the agent component.
   [documentation](https://docs.haystack.deepset.ai/docs/chatpromptbuilder#string-templates).
 - **required_variables** (<code>list\[str\] | Literal['\*'] | None</code>) – Lists the variables that must be provided as inputs to `user_prompt` or `system_prompt`.
   If a required variable is not provided at run time, an exception is raised.
-  If set to `"*"`, all variables found in the prompts are required. Optional.
+  If set to `"*"`, all variables found in the prompts are required. Defaults to `"*"`.
+  Set to `None` to make all variables optional; missing ones render as empty strings.
 - **exit_conditions** (<code>list\[str\] | None</code>) – List of conditions that will cause the agent to return.
   Can include "text" if the agent should return when it generates a message without tool calls,
   or tool names that will cause the agent to return once the tool was executed. Defaults to ["text"].
@@ -219,6 +219,9 @@ Initialize the agent component.
 - **hooks** (<code>dict\[HookPoint, list\[Hook\]\] | None</code>) – A dictionary mapping a hook point to a list of hooks the Agent runs at that point. Each hook
   receives the live `State` and influences the run by mutating it in place; hooks for a hook point run in
   list order. Valid hook points are:
+- "before_run": Runs once per run, after the state is initialized and before the first chat-generator
+  call. Use it to rewrite the initial messages or seed state (e.g. turn the user query into a task
+  brief) without re-running on every step like "before_llm" does.
 - "before_llm": Runs before each chat-generator call.
 - "before_tool": Runs after the model requests tool calls, before any tools run. After these hooks run,
   the Agent re-reads the current last message from `state.data["messages"]`. If that message contains tool
@@ -232,6 +235,11 @@ Initialize the agent component.
   Agent running by setting the `continue_run` control flag (`state.set("continue_run", True)`), usually
   alongside a message telling the model what to do next. "on_exit" hooks run when the Agent stops on an
   exit condition, but not when it stops because `max_agent_steps` is reached.
+- "after_run": Runs once per run, after the step loop has ended and before the Agent builds its return
+  value — regardless of whether the run stopped on an exit condition or because `max_agent_steps` was
+  reached (unlike "on_exit"). Mutations to the state (e.g. appending a final message) are reflected in
+  the returned `messages` / `last_message` and `state_schema` outputs. Setting `continue_run` here has
+  no effect.
 
 **Raises:**
 

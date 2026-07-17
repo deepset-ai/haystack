@@ -232,6 +232,18 @@ def _deserialize_content_part(part: dict[str, Any]) -> ChatMessageContentT:
         if serialization_key in part:
             return cls.from_dict(part[serialization_key])
 
+    # Support for Pydantic's model_dump() output, which produces a flat dictionary without wrapping keys.
+    if "tool_name" in part and "arguments" in part:
+        return ToolCall.from_dict(part)
+    if "result" in part and "origin" in part:
+        return ToolCallResult.from_dict(part)
+    if "reasoning_text" in part:
+        return ReasoningContent.from_dict(part)
+    if "base64_image" in part:
+        return ImageContent.from_dict(part)
+    if "base64_data" in part:
+        return FileContent.from_dict(part)
+
     # NOTE: this verbose error message provides guidance to LLMs when creating invalid messages during agent runs
     msg = (
         f"Unsupported content part in the serialized ChatMessage: {part}. "
@@ -792,10 +804,13 @@ class ChatMessage:
             if tool_calls:
                 haystack_tool_calls = []
                 for tc in tool_calls:
+                    # Zero-argument tool calls from OpenAI-compatible servers may send an
+                    # empty string, null, or omit `arguments` entirely; treat all as {}.
+                    raw_arguments = tc["function"].get("arguments")
                     haystack_tc = ToolCall(
                         id=tc.get("id"),
                         tool_name=tc["function"]["name"],
-                        arguments=json.loads(tc["function"]["arguments"]),
+                        arguments=json.loads(raw_arguments) if raw_arguments else {},
                     )
                     haystack_tool_calls.append(haystack_tc)
             return cls.from_assistant(text=content, name=name, tool_calls=haystack_tool_calls)

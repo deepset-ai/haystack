@@ -2,26 +2,15 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Any
-
 import pytest
 
-from haystack import Pipeline, component
+from haystack import Pipeline
 from haystack.components.builders import ChatPromptBuilder
+from haystack.components.generators.chat import MockChatGenerator
 from haystack.components.joiners import ListJoiner
 from haystack.core.errors import BreakpointException
 from haystack.dataclasses import ChatMessage
 from haystack.dataclasses.breakpoints import Breakpoint
-
-
-@component
-class FakeChatGenerator:
-    def __init__(self, response: str):
-        self.response = response
-
-    @component.output_types(replies=list[ChatMessage])
-    def run(self, messages: list[ChatMessage], **kwargs: Any) -> dict[str, list[ChatMessage]]:
-        return {"replies": [ChatMessage.from_assistant(self.response)]}
 
 
 class TestPipelineBreakpoints:
@@ -39,11 +28,11 @@ class TestPipelineBreakpoints:
 
         pipe = Pipeline()
         pipe.add_component("prompt_builder", ChatPromptBuilder(template=user_message, required_variables=None))
-        pipe.add_component("llm", FakeChatGenerator("Nuclear physics is the study of atomic nuclei."))
+        pipe.add_component("llm", MockChatGenerator("Nuclear physics is the study of atomic nuclei."))
         pipe.add_component(
             "feedback_prompt_builder", ChatPromptBuilder(template=feedback_message, required_variables=None)
         )
-        pipe.add_component("feedback_llm", FakeChatGenerator("Score: 8/10. Concise and accurate."))
+        pipe.add_component("feedback_llm", MockChatGenerator("Score: 8/10. Concise and accurate."))
         pipe.add_component("list_joiner", ListJoiner(list[ChatMessage]))
 
         pipe.connect("prompt_builder.prompt", "llm.messages")

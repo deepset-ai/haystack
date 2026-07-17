@@ -321,7 +321,7 @@ p.add_component(instance=InMemoryEmbeddingRetriever(document_store=document_stor
 p.add_component(instance=DocumentJoiner(), name="joiner")
 p.connect("bm25_retriever", "joiner")
 p.connect("embedding_retriever", "joiner")
-p.connect("text_embedder", "embedding_retriever")
+p.connect("text_embedder.embedding", "embedding_retriever.query_embedding")
 query = "What is the capital of France?"
 p.run(data={"query": query, "text": query, "top_k": 1})
 ```
@@ -452,8 +452,8 @@ pipe.connect("feedback_prompt_builder.prompt", "feedback_llm.messages")
 pipe.connect("feedback_llm.replies", "list_joiner")
 
 query = "What is nuclear physics?"
-ans = pipe.run(data={"prompt_builder": {"template_variables":{"query": query}},
-    "feedback_prompt_builder": {"template_variables":{"query": query}}})
+ans = pipe.run(data={"prompt_builder": {"query": query},
+    "feedback_prompt_builder": {"query": query}})
 
 print(ans["list_joiner"]["values"])
 ```
