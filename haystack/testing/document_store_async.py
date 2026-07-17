@@ -305,13 +305,15 @@ class CountUniqueMetadataByFilterAsyncTest:
     async def test_count_unique_metadata_by_filter_async_with_multiple_filters(document_store: AsyncDocumentStore):
         """Test counting unique metadata asynchronously with multiple filters."""
         docs = [
-            Document(content="Doc 1", meta={"category": "A", "year": 2023}),
-            Document(content="Doc 2", meta={"category": "A", "year": 2024}),
-            Document(content="Doc 3", meta={"category": "B", "year": 2023}),
-            Document(content="Doc 4", meta={"category": "B", "year": 2024}),
+            Document(content="Doc 1", meta={"category": "B", "year": 2023, "status": "draft"}),
+            Document(content="Doc 2", meta={"category": "B", "year": 2023, "status": "draft"}),
+            Document(content="Doc 3", meta={"category": "B", "year": 2023, "status": "published"}),
+            Document(content="Doc 4", meta={"category": "B", "year": 2024, "status": "draft"}),
         ]
         await document_store.write_documents_async(docs)
 
+        # The compound filter matches three documents with duplicated values, so the counts only come
+        # out right when the store both applies the filter and properly counts the values.
         counts = await document_store.count_unique_metadata_by_filter_async(  # type:ignore[attr-defined]
             filters={
                 "operator": "AND",
@@ -320,9 +322,9 @@ class CountUniqueMetadataByFilterAsyncTest:
                     {"field": "meta.year", "operator": "==", "value": 2023},
                 ],
             },
-            metadata_fields=["category", "year"],
+            metadata_fields=["status", "year"],
         )
-        assert counts == {"category": 1, "year": 1}
+        assert counts == {"status": 2, "year": 1}
 
 
 class DeleteByFilterAsyncTest:
