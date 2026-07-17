@@ -332,7 +332,7 @@ print(f"Processed {result['final_count']} documents")
 As an alternative to `inputs_from_state` and `outputs_to_state`, a tool can declare a `state: State` parameter to receive the live `State` object at invocation time.
 This lets the tool read from and write to any number of state keys without declaring mappings upfront.
 
-The ToolInvoker detects the `State` annotation and injects the object automatically.
+The Agent detects the `State` annotation and injects the object automatically.
 It is excluded from the LLM-facing schema. The model is never asked to supply it.
 Both `State` and `State | None` annotations are supported.
 

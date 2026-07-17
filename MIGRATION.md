@@ -4,82 +4,17 @@ This document is meant to provide a guide for migrating from Haystack v2.X to v3
 
 ---
 
-## How to Document a Breaking Change
-
-When you merge a breaking change into the v3 branch, add an entry to this file under the appropriate section below.
-Follow this structure:
-
-### Entry template
-
-```markdown
-### <Short title describing what changed>
-
-**What changed:** One or two sentences describing the change — what was removed, renamed, or altered.
-
-**Why:** Brief motivation (e.g. simplification, API consistency, dependency reduction).
-
-**How to migrate:**
-
-Before (v2.x):
-\`\`\`python
-# example using the old API
-from haystack.components.foo import OldComponent
-component = OldComponent(old_param="value")
-\`\`\`
-
-After (v3.0):
-\`\`\`python
-# example using the new API
-from haystack.components.foo import NewComponent
-component = NewComponent(new_param="value")
-\`\`\`
-```
-
-### Tips
-
-- **One entry per breaking change.** Don't bundle unrelated changes into a single entry.
-- **Include a working code example** for every rename, removal, or signature change.
-- **Link to the PR** when extra context would help (e.g. `See [#1234](https://github.com/deepset-ai/haystack/pull/1234)`).
-- **Components moved to external packages** don't need a full entry: add a row to the table in
-  [Components Moved to External Packages](#components-moved-to-external-packages) instead.
-
----
-
 ## Breaking Changes
-
-<!-- Add entries here as v3 development progresses. Example below shows the expected format. -->
-
-### Example entry: `Document.dataframe` field removed
-
-**What changed:** The `dataframe` field on `Document` and the `ExtractedTableAnswer` dataclass have been removed. `pandas` is no longer a required dependency.
-
-**Why:** Reduces the default installation footprint. Components that need `pandas` will raise an informative error prompting the user to install it explicitly.
-
-**How to migrate:**
-
-Before (v2.x):
-```python
-from haystack.dataclasses import Document
-import pandas as pd
-
-doc = Document(content=pd.DataFrame({"col": [1, 2, 3]}))
-```
-
-After (v3.0):
-```python
-# Store tabular data as plain content or create a custom component that returns pandas DataFrames as needed.
-from haystack.dataclasses import Document
-
-doc = Document(content="col\n1\n2\n3")
-```
 
 ### `GeneratedAnswer` and `ExtractedAnswer` serialization format
 
-**What changed:** `GeneratedAnswer.to_dict()` and `ExtractedAnswer.to_dict()` now return a flat dictionary of the object's fields instead of wrapping them in a `{"type": ..., "init_parameters": {...}}` envelope. `from_dict()` still accepts the old wrapped format, so existing serialized artifacts keep loading.
+**What changed:** `GeneratedAnswer.to_dict()` and `ExtractedAnswer.to_dict()` now return a flat dictionary of the object's fields instead of wrapping them in a `{"type": ..., "init_parameters": {...}}` envelope.
 
 **Why:** Aligns these dataclasses with how every other Haystack dataclass (`Document`, `ChatMessage`, etc.) serializes, and removes redundant type metadata from pipeline snapshots and `State` objects.
 
-**How to migrate:** Update any code that reads the serialized output to access fields at the top level instead of under `init_parameters`. See [#11805](https://github.com/deepset-ai/haystack/pull/11805).
+**Deserialization is backward compatible:** `from_dict()` accepts both the new flat format and the old wrapped `{"type": ..., "init_parameters": {...}}` format, so existing serialized artifacts (pipeline snapshots, breakpoints, `State` objects) keep loading without any changes on your side.
+
+**How to migrate:** Only code that *reads* the serialized output needs updating: access fields at the top level instead of under `init_parameters`. Code that deserializes with `from_dict()` needs no changes.
 
 Before (v2.x):
 ```python
@@ -91,6 +26,10 @@ After (v3.0):
 ```python
 serialized = generated_answer.to_dict()
 data = serialized["data"]
+
+# Deserialization still accepts both the new and the old format:
+GeneratedAnswer.from_dict(serialized)          # new flat format
+GeneratedAnswer.from_dict(old_wrapped_dict)    # old {"type": ..., "init_parameters": {...}} format
 ```
 
 ### Components Moved to External Packages
@@ -538,6 +477,58 @@ pipeline.run(data={"retriever": {"query": query}, "agent": {"messages": [], "que
 If the prompt itself must still be assembled per run, build `ChatMessage` objects before the `Agent` (e.g. with a `ChatPromptBuilder`) and pass them through the `messages` input.
 For a runtime system prompt, construct an `Agent` without `system_prompt` or `user_prompt` and include a system message at the start of `messages`.
 
+#### Prompt template variables are required by default
+
+**What changed:** `Agent` now treats every Jinja2 template variable in `user_prompt` and `system_prompt` as required by default. The `required_variables` parameter's default has been changed from `None` (all optional) to `"*"` (all required). Previously, missing variables were silently rendered as empty strings. Passing `required_variables=None` explicitly still opts into the old "all optional" behavior.
+
+**Why:** Avoids silent rendering bugs where a missing variable produces an unexpectedly empty section of the prompt. Aligns `Agent` with `LLM`, `PromptBuilder`, and `ChatPromptBuilder`, which already require all variables by default in v3.0.
+
+**How to migrate:**
+
+Before (v2.x):
+```python
+from haystack.components.agents import Agent
+
+# All variables were optional by default; missing values rendered as "".
+agent = Agent(
+    chat_generator=...,
+    tools=[...],
+    user_prompt="Answer {{query}} in {{language}}.",
+)
+agent.run(messages=[], query="What is NLP?")  # language silently becomes ""
+```
+
+After (v3.0):
+```python
+from haystack.components.agents import Agent
+
+# Option 1: provide every variable (matches the new safe default).
+agent = Agent(
+    chat_generator=...,
+    tools=[...],
+    user_prompt="Answer {{query}} in {{language}}.",
+)
+agent.run(messages=[], query="What is NLP?", language="English")
+
+# Option 2: declare which variables are required; everything else stays optional.
+agent = Agent(
+    chat_generator=...,
+    tools=[...],
+    user_prompt="Answer {{query}} in {{language}}.",
+    required_variables=["query"],
+)
+agent.run(messages=[], query="What is NLP?")  # language renders as ""
+
+# Option 3: restore the old "all optional" behavior.
+agent = Agent(
+    chat_generator=...,
+    tools=[...],
+    user_prompt="Answer {{query}} in {{language}}.",
+    required_variables=None,
+)
+agent.run(messages=[], query="What is NLP?")  # language renders as ""
+```
+
 #### Tools must declare `inputs_from_state` to read from `State` by name
 
 **What changed:** A tool now reads a value from the Agent's `State` by name only when it declares an explicit `inputs_from_state` mapping. Previously, a tool without `inputs_from_state` had every parameter implicitly treated as a potential `State` key: any parameter whose name matched a `State` key (and that the LLM did not supply) was silently filled from `State`. This implicit name-matching has been removed. It applies to every tool type, since `ComponentTool`, `PipelineTool`, `MCPTool`, and others all derive from the base `Tool` class.
@@ -639,6 +630,8 @@ agent = Agent(
 
 **Why:** Confirmation was a one-off, before-tool interception bolted onto the Agent. Hooks generalize that seam, so HITL becomes one application of a single, uniform extension point instead of a parallel concept with its own serialization and run plumbing.
 
+The Human-in-the-Loop module has also moved from `haystack.human_in_the_loop` to `haystack.hooks.human_in_the_loop`, so that it lives alongside the other built-in hooks (such as tool result offloading). Update your imports to the new location.
+
 **How to migrate:**
 
 Before (v2.x):
@@ -661,7 +654,7 @@ agent.run(messages=[...], confirmation_strategy_context={"websocket": ws})
 After (v3.0):
 ```python
 from haystack.components.agents import Agent
-from haystack.human_in_the_loop import (
+from haystack.hooks.human_in_the_loop import (
     BlockingConfirmationStrategy,
     AlwaysAskPolicy,
     ConfirmationHook,
@@ -846,7 +839,7 @@ Patterns are matched as prefixes by default (`"mypkg"` matches `mypkg` and any s
 
 **What changed:** `OpenAIGenerator`, `AzureOpenAIGenerator`, `HuggingFaceAPIGenerator`, and `HuggingFaceLocalGenerator` have been removed.
 Generators living in Haystack Core Integrations will also be removed soon.
-Their chat counterparts (`OpenAIChatGenerator`, `AzureOpenAIChatGenerator`, `HuggingFaceAPIChatGenerator`, `HuggingFaceLocalChatGenerator`) are the replacement. As of Haystack 3.0, all ChatGenerators also accept a plain `str` as input, so the migration rarely requires structural changes.
+Their chat counterparts are the replacement: `OpenAIChatGenerator` and `AzureOpenAIChatGenerator` in Haystack core, `HuggingFaceAPIChatGenerator` in the `huggingface-api-haystack` integration, and `TransformersChatGenerator` (the renamed `HuggingFaceLocalChatGenerator`) in the `transformers-haystack` integration (see [Components Moved to External Packages](#components-moved-to-external-packages)). As of Haystack 3.0, all ChatGenerators also accept a plain `str` as input, so the migration rarely requires structural changes.
 
 **Why:** Over time, Generators became shallow wrappers over the ChatGenerators, converting `str → ChatMessage → str` around the exact same model calls. All new features (tool calling, structured outputs, etc.) were introduced only in ChatGenerators, leaving the legacy classes behind. They were also a source of confusion for newcomers and an unnecessary duplication of code and tests.
 

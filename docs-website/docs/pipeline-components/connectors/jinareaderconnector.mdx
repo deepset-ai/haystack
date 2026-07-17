@@ -163,7 +163,7 @@ result = pipe.run(
 )
 print(result)
 
-# {'llm': {'replies': ['The most famous landmark in Berlin is the **Brandenburg Gate**. It is considered the symbol of the city and represents reunification.'], 'meta': [{'model': 'gpt-4o-mini-2024-07-18', 'index': 0, 'finish_reason': 'stop', 'usage': {'completion_tokens': 27, 'prompt_tokens': 4479, 'total_tokens': 4506, 'completion_tokens_details': CompletionTokensDetails(accepted_prediction_tokens=0, audio_tokens=0, reasoning_tokens=0, rejected_prediction_tokens=0), 'prompt_tokens_details': PromptTokensDetails(audio_tokens=0, cached_tokens=0)}}]}}
+# {'llm': {'replies': [ChatMessage(_role=<ChatRole.ASSISTANT: 'assistant'>, _content=[TextContent(text='The most famous landmark in Berlin is the **Brandenburg Gate**. It is considered the symbol of the city and represents reunification.')], _name=None, _meta={'model': 'gpt-4o-mini-2024-07-18', 'index': 0, 'finish_reason': 'stop', 'usage': {'completion_tokens': 27, 'prompt_tokens': 4479, 'total_tokens': 4506}})]}}
 ```
 
 The same component in search mode could also be used in an indexing pipeline.

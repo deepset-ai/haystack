@@ -69,7 +69,7 @@ print(response["tool_call_counts"])  # {"calculator": 1}
 - `streaming_callback`: A callback invoked for each streamed token. Use the built-in `print_streaming_chunk` for console output.
 - `max_agent_steps`: Maximum number of LLM + tool call iterations before the agent stops. Defaults to `100`.
 - `raise_on_tool_invocation_failure`: If `True`, raises an exception when a tool call fails. If `False` (default), the error is passed back to the LLM as a message so it can recover.
-- `hooks`: A dict mapping a hook point (`"before_llm"`, `"before_tool"`, `"after_tool"`, `"on_exit"`) to a list of hooks the agent runs at that point. Hooks receive the live `State` and influence the run by mutating it — for example, to build run-time context or require human confirmation of tool calls. See [Hooks](./hooks.mdx) and [Human in the Loop](./human-in-the-loop.mdx).
+- `hooks`: A dict mapping a hook point (`"before_run"`, `"before_llm"`, `"before_tool"`, `"after_tool"`, `"on_exit"`, `"after_run"`) to a list of hooks the agent runs at that point. Hooks receive the live `State` and influence the run by mutating it — for example, to build run-time context or require human confirmation of tool calls. See [Hooks](./hooks.mdx) and [Human in the Loop](./human-in-the-loop.mdx).
 - `tool_concurrency_limit`: Maximum number of tool calls to execute at the same time. Defaults to `4`; set to `1` to disable parallel tool execution.
 - `tool_streaming_callback_passthrough`: If `True`, passes the streaming callback to tools that accept it.
 
@@ -371,7 +371,7 @@ result = agent.run(
 ```
 
 Tools can also return `ImageContent` directly, letting the agent fetch and reason about images dynamically during its loop.
-Two things are required: set `outputs_to_string={"raw_result": True}` so the `ToolInvoker` skips string conversion, and return a `list[ImageContent]` (the tool result type is `str | Sequence[TextContent | ImageContent]`).
+Two things are required: set `outputs_to_string={"raw_result": True}` so the Agent's tool execution skips string conversion, and return a `list[ImageContent]` (the tool result type is `str | Sequence[TextContent | ImageContent]`).
 
 The standard Chat Completions API doesn't support images in tool results — use `OpenAIResponsesChatGenerator` (OpenAI's Responses API) instead:
 

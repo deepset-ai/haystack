@@ -1323,8 +1323,21 @@ in the OpenAI client.
   - `summary`: The summary of the reasoning.
   - `effort`: The level of effort to put into the reasoning. Can be `low`, `medium` or `high`.
   - `generate_summary`: Whether to generate a summary of the reasoning.
+  - `mode`: The reasoning mode. Can be `standard`, or `pro`. Supported since GPT-5.6.
     Note: OpenAI does not return the reasoning tokens, but we can view summary if its enabled.
     For details, see the [OpenAI Reasoning documentation](https://platform.openai.com/docs/guides/reasoning).
+- `include`: Specify additional output data to include in the model response. Supported values are:
+  - web_search_call.action.sources: Include the sources of the web search tool call.
+  - code_interpreter_call.outputs: Includes the outputs of python code execution in code interpreter tool
+    call items.
+  - computer_call_output.output.image_url: Include image urls from the computer call output.
+  - file_search_call.results: Include the search results of the file search tool call.
+  - message.input_image.image_url: Include image urls from the input message.
+  - message.output_text.logprobs: Include logprobs with assistant messages.
+  - reasoning.encrypted_content: Includes an encrypted version of reasoning tokens in reasoning item
+    outputs. This enables reasoning items to be used in multi-turn conversations when using the
+    Responses API statelessly (like when the store parameter is set to false, or when an organization
+    is enrolled in the zero data retention program).
 - **timeout** (<code>float | None</code>) – Timeout for OpenAI client calls. If not set, it defaults to either the
   `OPENAI_TIMEOUT` environment variable, or 30 seconds.
 - **max_retries** (<code>int | None</code>) – Maximum number of retries to contact OpenAI after an internal error.

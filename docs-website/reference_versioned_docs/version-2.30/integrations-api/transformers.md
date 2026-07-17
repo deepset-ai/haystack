@@ -910,7 +910,9 @@ Specify the set of labels for categorization when initializing the component.
 
 ```python
 from haystack import Document
-from haystack.components.embedders import SentenceTransformersTextEmbedder, SentenceTransformersDocumentEmbedder
+# Requires: pip install sentence-transformers-haystack
+from haystack_integrations.components.embedders.sentence_transformers import SentenceTransformersTextEmbedder
+from haystack_integrations.components.embedders.sentence_transformers import SentenceTransformersDocumentEmbedder
 from haystack.components.retrievers import InMemoryEmbeddingRetriever
 from haystack.core.pipeline import Pipeline
 from haystack.document_stores.in_memory import InMemoryDocumentStore

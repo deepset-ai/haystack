@@ -6,5 +6,7 @@ upgrade:
     change: ``to_dict()`` no longer wraps the fields in the ``{"type": "...", "init_parameters":
     {...}}`` envelope and instead returns the fields at the top level. Any code or stored
     artifact that reads the serialized output and expects the ``type``/``init_parameters``
-    keys must be updated to read the fields directly. ``from_dict()`` remains backward
-    compatible and still accepts the old wrapped format.
+    keys must be updated to read the fields directly. Deserialization is backward compatible:
+    ``from_dict()`` accepts both the new flat format and the old wrapped
+    ``{"type": "...", "init_parameters": {...}}`` format, so existing pipeline snapshots,
+    breakpoints, and ``State`` objects keep loading without any changes.

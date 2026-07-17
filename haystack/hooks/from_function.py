@@ -140,9 +140,21 @@ def hook(function: Callable[[State], None | Awaitable[None]]) -> FunctionHook:
 
     ```python
     from haystack.components.agents import Agent
+    from haystack.components.generators.chat import OpenAIChatGenerator
     from haystack.hooks import hook
     from haystack.components.agents.state import State
     from haystack.dataclasses import ChatMessage
+    from haystack.tools import tool
+
+    @tool
+    def weather_tool(city: str) -> str:
+        '''Get the current weather for a given city.'''
+        return f"The weather in {city} is sunny."
+
+    @tool
+    def save(content: str) -> str:
+        '''Save content to durable storage.'''
+        return "Saved."
 
     @hook
     def require_save(state: State) -> None:
@@ -150,7 +162,7 @@ def hook(function: Callable[[State], None | Awaitable[None]]) -> FunctionHook:
             state.set("messages", [ChatMessage.from_system("You must call `save` before finishing.")])
             state.set("continue_run", True)
 
-    agent = Agent(chat_generator=..., tools=[...], hooks={"on_exit": [require_save]})
+    agent = Agent(chat_generator=OpenAIChatGenerator(), tools=[weather_tool, save], hooks={"on_exit": [require_save]})
     ```
 
     :param function: A callable taking the Agent's `State` and returning `None` (sync or async).

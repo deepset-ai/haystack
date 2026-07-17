@@ -4,8 +4,10 @@
 
 from collections import defaultdict
 
-from haystack import Document, component
+from haystack import Document, component, logging
 from haystack.utils.misc import _deduplicate_documents
+
+logger = logging.getLogger(__name__)
 
 
 @component
@@ -117,9 +119,21 @@ class MetaFieldGroupingRanker:
             for docs in subgroups.values():
                 if sort_field:
                     # Sort by the field value, placing documents with a missing value last.
-                    # The (is_missing, value) tuple ensures that only actual field values are
-                    # compared, making the sort work for numbers, strings, and other types.
-                    docs.sort(key=lambda d: (d.meta.get(sort_field) is None, d.meta.get(sort_field)))
+                    # The (is_missing, value) tuple keeps documents with a missing value out of the
+                    # value comparison, but two present values of mutually non-comparable types
+                    # (e.g. an int and a str) would still raise a TypeError. In that case we keep the
+                    # group's insertion order instead of crashing, mirroring MetaFieldRanker.
+                    try:
+                        docs.sort(key=lambda d: (d.meta.get(sort_field) is None, d.meta.get(sort_field)))
+                    except TypeError as error:
+                        logger.warning(
+                            "Tried to sort Documents with IDs {document_ids}, but got TypeError with the "
+                            "message: {error}\nKeeping the original order of the Documents in this group "
+                            "since sorting by '{sort_field}' is not possible.",
+                            document_ids=",".join([doc.id for doc in docs]),
+                            error=error,
+                            sort_field=sort_field,
+                        )
                 ordered_docs.extend(docs)
 
         ordered_docs.extend(no_group_docs)

@@ -23,7 +23,7 @@ class LLMMessagesRouter:
     ### Usage example
 
     ```python
-    from haystack.components.generators.chat import HuggingFaceAPIChatGenerator
+    from haystack_integrations.components.generators.huggingface_api import HuggingFaceAPIChatGenerator
     from haystack.components.routers.llm_messages_router import LLMMessagesRouter
     from haystack.dataclasses import ChatMessage
 

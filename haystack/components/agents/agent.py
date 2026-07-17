@@ -23,7 +23,17 @@ from haystack.components.generators.chat.types import ChatGenerator
 from haystack.core.serialization import component_to_dict, default_from_dict, default_to_dict
 from haystack.dataclasses import ChatMessage, ChatRole, StreamingCallbackT, select_streaming_callback
 from haystack.hooks.invocation import _run_hooks, _run_hooks_async
-from haystack.hooks.protocol import AFTER_TOOL, BEFORE_LLM, BEFORE_TOOL, ON_EXIT, VALID_HOOK_POINTS, Hook, HookPoint
+from haystack.hooks.protocol import (
+    AFTER_RUN,
+    AFTER_TOOL,
+    BEFORE_LLM,
+    BEFORE_RUN,
+    BEFORE_TOOL,
+    ON_EXIT,
+    VALID_HOOK_POINTS,
+    Hook,
+    HookPoint,
+)
 from haystack.hooks.utils import (
     _deserialize_hooks_dictionary,
     _serialize_hooks_dictionary,
@@ -463,7 +473,6 @@ class Agent:
         user_prompt=\"\"\"{% message role="user"%}
     Translate the following document to {{ language }}: {{ document }}
     {% endmessage %}\"\"\",
-        required_variables=["language", "document"],
     )
 
     # The template variables 'language' and 'document' become inputs to the run method
@@ -534,7 +543,7 @@ class Agent:
         tools: ToolsType | None = None,
         system_prompt: str | None = None,
         user_prompt: str | None = None,
-        required_variables: list[str] | Literal["*"] | None = None,
+        required_variables: list[str] | Literal["*"] | None = "*",
         exit_conditions: list[str] | None = None,
         state_schema: dict[str, Any] | None = None,
         max_agent_steps: int = 100,
@@ -559,7 +568,8 @@ class Agent:
         :param required_variables:
             Lists the variables that must be provided as inputs to `user_prompt` or `system_prompt`.
             If a required variable is not provided at run time, an exception is raised.
-            If set to `"*"`, all variables found in the prompts are required. Optional.
+            If set to `"*"`, all variables found in the prompts are required. Defaults to `"*"`.
+            Set to `None` to make all variables optional; missing ones render as empty strings.
         :param exit_conditions: List of conditions that will cause the agent to return.
             Can include "text" if the agent should return when it generates a message without tool calls,
             or tool names that will cause the agent to return once the tool was executed. Defaults to ["text"].
@@ -579,6 +589,9 @@ class Agent:
         :param hooks: A dictionary mapping a hook point to a list of hooks the Agent runs at that point. Each hook
             receives the live `State` and influences the run by mutating it in place; hooks for a hook point run in
             list order. Valid hook points are:
+            - "before_run": Runs once per run, after the state is initialized and before the first chat-generator
+              call. Use it to rewrite the initial messages or seed state (e.g. turn the user query into a task
+              brief) without re-running on every step like "before_llm" does.
             - "before_llm": Runs before each chat-generator call.
             - "before_tool": Runs after the model requests tool calls, before any tools run. After these hooks run,
               the Agent re-reads the current last message from `state.data["messages"]`. If that message contains tool
@@ -592,6 +605,11 @@ class Agent:
               Agent running by setting the `continue_run` control flag (`state.set("continue_run", True)`), usually
               alongside a message telling the model what to do next. "on_exit" hooks run when the Agent stops on an
               exit condition, but not when it stops because `max_agent_steps` is reached.
+            - "after_run": Runs once per run, after the step loop has ended and before the Agent builds its return
+              value — regardless of whether the run stopped on an exit condition or because `max_agent_steps` was
+              reached (unlike "on_exit"). Mutations to the state (e.g. appending a final message) are reflected in
+              the returned `messages` / `last_message` and `state_schema` outputs. Setting `continue_run` here has
+              no effect.
         :raises TypeError: If the chat_generator does not support tools parameter in its run method.
         :raises ValueError: If any `user_prompt` variable overlaps with the `state_schema` or `run` method parameters,
             if a hook is registered under an unknown hook point, or if a hook is registered under a hook point it does
@@ -693,7 +711,7 @@ class Agent:
         prompt_builders = [
             builder for builder in (self._system_chat_prompt_builder, self._user_chat_prompt_builder) if builder
         ]
-        if required_variables is not None and not any(builder.variables for builder in prompt_builders):
+        if isinstance(required_variables, list) and not any(builder.variables for builder in prompt_builders):
             logger.warning(
                 "The parameter required_variables is provided but neither user_prompt nor system_prompt "
                 "contains template variables. Either provide a prompt with Jinja2 template variables "
@@ -1030,6 +1048,7 @@ class Agent:
 
         with self._create_agent_span(exe_context.tools) as span:
             span.set_content_tag("haystack.agent.input", agent_inputs)
+            _run_hooks(self.hooks, BEFORE_RUN, exe_context.state)
             while exe_context.counter < self.max_agent_steps:
                 if not self._run_step(exe_context, span):
                     break
@@ -1038,6 +1057,7 @@ class Agent:
                     "Agent reached maximum agent steps of {max_agent_steps}, stopping.",
                     max_agent_steps=self.max_agent_steps,
                 )
+            _run_hooks(self.hooks, AFTER_RUN, exe_context.state)
             result = _public_outputs(exe_context.state)
             if msgs := result.get("messages"):
                 result["last_message"] = msgs[-1]
@@ -1102,6 +1122,7 @@ class Agent:
 
         with self._create_agent_span(exe_context.tools) as span:
             span.set_content_tag("haystack.agent.input", agent_inputs)
+            await _run_hooks_async(self.hooks, BEFORE_RUN, exe_context.state)
             while exe_context.counter < self.max_agent_steps:
                 if not await self._run_step_async(exe_context, span):
                     break
@@ -1110,6 +1131,7 @@ class Agent:
                     "Agent reached maximum agent steps of {max_agent_steps}, stopping.",
                     max_agent_steps=self.max_agent_steps,
                 )
+            await _run_hooks_async(self.hooks, AFTER_RUN, exe_context.state)
             result = _public_outputs(exe_context.state)
             if msgs := result.get("messages"):
                 result["last_message"] = msgs[-1]

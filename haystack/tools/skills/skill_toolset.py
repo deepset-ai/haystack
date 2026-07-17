@@ -30,6 +30,7 @@ class SkillToolset(Toolset):
 
     ### Usage example
 
+    <!-- test-concept -->
     ```python
     from haystack.components.agents import Agent
     from haystack.components.generators.chat import OpenAIChatGenerator

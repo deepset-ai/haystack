@@ -56,7 +56,7 @@ result = builder.run(
 
 ### Variables
 
-The template variables found in the init template are used as input types for the component. If there are no `required_variables` set, all variables are considered optional by default. In this case, any missing variables are replaced with empty strings, which can lead to unintended behavior, especially in complex pipelines.
+The template variables found in the init template are used as input types for the component. By default, `required_variables` is set to `"*"`, so all variables in the template are required: if any of them is missing at runtime, the component raises an error and halts execution.
 
 Use `required_variables` and `variables` to specify the input types and required variables:
 
@@ -64,8 +64,9 @@ Use `required_variables` and `variables` to specify the input types and required
   - Defines which template variables must be provided when the component runs.
   - If any required variable is missing, the component raises an error and halts execution.
   - You can:
-    - Pass a list of required variable names (such as `["name"]`), or
-    - Use `"*"` to mark all variables in the template as required.
+    - Use `"*"` (the default) to mark all variables in the template as required, or
+    - Pass a list of required variable names (such as `["name"]`) to make only those required; the remaining variables are optional, or
+    - Pass an empty list (`[]`) or `None` to make all variables optional. Setting `None` explicitly logs a warning, since missing variables are then silently replaced with empty strings, which can lead to unintended behavior, especially in complex pipelines.
 
 - `variables`
   - Lists all variables that can appear in the template, whether required or optional.
@@ -460,7 +461,7 @@ components:
     type: haystack.components.generators.chat.openai.OpenAIChatGenerator
   prompt_builder:
     init_parameters:
-      required_variables: null
+      required_variables: '*'
       template: null
       variables: null
     type: haystack.components.builders.chat_prompt_builder.ChatPromptBuilder

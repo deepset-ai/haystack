@@ -5,7 +5,6 @@
 from dataclasses import asdict, dataclass, field
 from typing import Any, Optional, Protocol, runtime_checkable
 
-from haystack.core.serialization import default_from_dict, default_to_dict
 from haystack.dataclasses import ChatMessage, Document
 from haystack.utils.dataclasses import _warn_on_inplace_mutation
 
@@ -54,20 +53,16 @@ class ExtractedAnswer:
         :returns:
             Serialized dictionary representation of the object.
         """
-        document = self.document.to_dict(flatten=False) if self.document is not None else None
-        document_offset = asdict(self.document_offset) if self.document_offset is not None else None
-        context_offset = asdict(self.context_offset) if self.context_offset is not None else None
-        return default_to_dict(
-            self,
-            data=self.data,
-            query=self.query,
-            document=document,
-            context=self.context,
-            score=self.score,
-            document_offset=document_offset,
-            context_offset=context_offset,
-            meta=self.meta,
-        )
+        return {
+            "data": self.data,
+            "query": self.query,
+            "document": self.document.to_dict(flatten=False) if self.document is not None else None,
+            "context": self.context,
+            "score": self.score,
+            "document_offset": asdict(self.document_offset) if self.document_offset is not None else None,
+            "context_offset": asdict(self.context_offset) if self.context_offset is not None else None,
+            "meta": self.meta,
+        }
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "ExtractedAnswer":
@@ -79,20 +74,32 @@ class ExtractedAnswer:
         :returns:
             Deserialized object.
         """
-        # Shallow-copy the init parameters so `from_dict` stays side-effect free: the nested
-        # replacements below otherwise mutate the caller's dict in place, corrupting it for reuse
-        # (a second deserialization of the same dict would then receive already-parsed objects).
-        init_params = data.get("init_parameters", {})
-        new_params = dict(init_params)
-        if (doc := init_params.get("document")) is not None:
-            new_params["document"] = Document.from_dict(doc)
+        # Backward compatibility: the old format wrapped the fields in an `init_parameters` envelope.
+        if "init_parameters" in data:
+            data = data["init_parameters"]
 
-        if (offset := init_params.get("document_offset")) is not None:
-            new_params["document_offset"] = ExtractedAnswer.Span(**offset)
+        document = data.get("document")
+        if document is not None:
+            document = Document.from_dict(document)
 
-        if (offset := init_params.get("context_offset")) is not None:
-            new_params["context_offset"] = ExtractedAnswer.Span(**offset)
-        return default_from_dict(cls, {**data, "init_parameters": new_params})
+        document_offset = data.get("document_offset")
+        if document_offset is not None:
+            document_offset = ExtractedAnswer.Span(**document_offset)
+
+        context_offset = data.get("context_offset")
+        if context_offset is not None:
+            context_offset = ExtractedAnswer.Span(**context_offset)
+
+        return cls(
+            data=data.get("data"),
+            query=data["query"],
+            score=data["score"],
+            document=document,
+            context=data.get("context"),
+            document_offset=document_offset,
+            context_offset=context_offset,
+            meta=data.get("meta", {}),
+        )
 
 
 @_warn_on_inplace_mutation
@@ -114,17 +121,18 @@ class GeneratedAnswer:
         :returns:
             Serialized dictionary representation of the object.
         """
-        documents = [doc.to_dict(flatten=False) for doc in self.documents]
-
-        # Serialize ChatMessage objects to dicts
+        # all_messages is either a list of ChatMessage objects or a list of strings
         meta = self.meta
         all_messages = meta.get("all_messages")
-
-        # all_messages is either a list of ChatMessage objects or a list of strings
         if all_messages and isinstance(all_messages[0], ChatMessage):
             meta = {**meta, "all_messages": [msg.to_dict() for msg in all_messages]}
 
-        return default_to_dict(self, data=self.data, query=self.query, documents=documents, meta=meta)
+        return {
+            "data": self.data,
+            "query": self.query,
+            "documents": [doc.to_dict(flatten=False) for doc in self.documents],
+            "meta": meta,
+        }
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "GeneratedAnswer":
@@ -137,20 +145,15 @@ class GeneratedAnswer:
         :returns:
             Deserialized object.
         """
-        # Shallow-copy the init parameters so `from_dict` stays side-effect free: the nested
-        # replacements below otherwise mutate the caller's dict in place, corrupting it for reuse
-        # (a second deserialization of the same dict would then receive already-parsed objects).
-        init_params = data.get("init_parameters", {})
-        new_params = dict(init_params)
+        # Backward compatibility: the old format wrapped the fields in an `init_parameters` envelope.
+        if "init_parameters" in data:
+            data = data["init_parameters"]
 
-        if (documents := init_params.get("documents")) is not None:
-            new_params["documents"] = [Document.from_dict(d) for d in documents]
+        documents = [Document.from_dict(d) for d in data.get("documents", [])]
 
-        # Shallow-copy `meta` before touching `all_messages` so the caller's nested dict is
-        # left untouched as well.
-        meta = dict(init_params.get("meta", {}))
+        # Copy `meta` before converting `all_messages` so the caller's input dict is left untouched.
+        meta = dict(data.get("meta", {}))
         if (all_messages := meta.get("all_messages")) and isinstance(all_messages[0], dict):
             meta["all_messages"] = [ChatMessage.from_dict(m) for m in all_messages]
-        new_params["meta"] = meta
 
-        return default_from_dict(cls, {**data, "init_parameters": new_params})
+        return cls(data=data["data"], query=data["query"], documents=documents, meta=meta)

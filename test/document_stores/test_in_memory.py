@@ -763,6 +763,26 @@ class TestMemoryDocumentStore(
         # After removing "hello world" (2 tokens), only "foo bar baz" (3 tokens) remains
         assert in_memory_doc_store._avg_doc_len == pytest.approx(3.0)
 
+    def test_bm25_okapi_scores_do_not_depend_on_deleted_documents(self):
+        active_documents = [
+            Document(id="d1", content="common alpha"),
+            Document(id="d2", content="common beta"),
+            Document(id="d3", content="common gamma"),
+        ]
+        fresh_store = InMemoryDocumentStore(bm25_algorithm="BM25Okapi", shared=False)
+        reused_store = InMemoryDocumentStore(bm25_algorithm="BM25Okapi", shared=False)
+        deleted_document = Document(content="one two three four five six seven eight nine ten")
+
+        reused_store.write_documents([deleted_document])
+        reused_store.delete_documents([deleted_document.id])
+        fresh_store.write_documents(active_documents)
+        reused_store.write_documents(active_documents)
+
+        fresh_scores = {doc.id: doc.score for doc in fresh_store.bm25_retrieval(query="common", top_k=3)}
+        reused_scores = {doc.id: doc.score for doc in reused_store.bm25_retrieval(query="common", top_k=3)}
+
+        assert reused_scores == pytest.approx(fresh_scores)
+
 
 class TestMemoryDocumentStoreNotShared(TestMemoryDocumentStore):
     """

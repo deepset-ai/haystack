@@ -1,10 +1,17 @@
 name: CodeQL
 
 on:
+  # Skip runs that do not touch Python code
   push:
     branches: [main]
+    paths:
+      - "**/*.py"
+      - ".github/workflows/codeql.yml"
   pull_request:
     branches: [main]
+    paths:
+      - "**/*.py"
+      - ".github/workflows/codeql.yml"
   workflow_dispatch:
 
 permissions:

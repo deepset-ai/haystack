@@ -11,7 +11,7 @@ import pytest
 
 from haystack import component
 from haystack.components.agents import Agent
-from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.components.generators.chat import MockChatGenerator, OpenAIChatGenerator
 from haystack.dataclasses import ChatMessage, ToolCall
 from haystack.tools import SearchableToolset, Tool, Toolset, flatten_tools_or_toolsets
 from haystack.tools.from_function import create_tool_from_function
@@ -923,32 +923,18 @@ class TestSearchableToolsetAgentToolSelection:
         """tool_call_counts seeds only the search tool up front; a discovered+called tool is added lazily."""
         toolset = SearchableToolset(catalog=large_catalog, search_threshold=3, top_k=5)
 
-        @component
-        class SearchThenWeatherGenerator:
-            step = 0
-
-            @component.output_types(replies=list[ChatMessage])
-            def run(self, messages, tools=None, **kwargs):
-                self.step += 1
-                if self.step == 1:
-                    return {
-                        "replies": [
-                            ChatMessage.from_assistant(
-                                tool_calls=[ToolCall(tool_name="search_tools", arguments={"tool_keywords": "weather"})]
-                            )
-                        ]
-                    }
-                if self.step == 2:
-                    return {
-                        "replies": [
-                            ChatMessage.from_assistant(
-                                tool_calls=[ToolCall(tool_name="get_weather", arguments={"city": "Berlin"})]
-                            )
-                        ]
-                    }
-                return {"replies": [ChatMessage.from_assistant("done")]}
-
-        agent = Agent(chat_generator=SearchThenWeatherGenerator(), tools=toolset, max_agent_steps=6)
+        chat_generator = MockChatGenerator(
+            [
+                ChatMessage.from_assistant(
+                    tool_calls=[ToolCall(tool_name="search_tools", arguments={"tool_keywords": "weather"})]
+                ),
+                ChatMessage.from_assistant(
+                    tool_calls=[ToolCall(tool_name="get_weather", arguments={"city": "Berlin"})]
+                ),
+                "done",
+            ]
+        )
+        agent = Agent(chat_generator=chat_generator, tools=toolset, max_agent_steps=6)
         result = agent.run(messages=[ChatMessage.from_user("What's the weather in Berlin?")])
 
         counts = result["tool_call_counts"]

@@ -2,12 +2,12 @@
 title: "Hooks"
 id: hooks
 slug: "/hooks"
-description: "Hooks let you run custom logic at defined points of an Agent's run loop — before each LLM call, before and after tool execution, and on exit."
+description: "Hooks let you run custom logic at defined points of an Agent's run loop — at the start and end of a run, before each LLM call, before and after tool execution, and on exit."
 ---
 
 # Hooks
 
-Hooks let you run custom logic at defined points of an [`Agent`](./agent.mdx)'s run loop — before each LLM call, before and after tool execution, and on exit.
+Hooks let you run custom logic at defined points of an [`Agent`](./agent.mdx)'s run loop — at the start and end of a run, before each LLM call, before and after tool execution, and on exit.
 
 <div className="key-value-table">
 
@@ -30,10 +30,12 @@ This enables patterns such as building run-time system context, retrieving memor
 
 ### Hook points
 
+- `before_run`: Runs once per run, after the state is initialized and before the first chat-generator call. Use it to rewrite the initial messages or seed state — for example, to turn the user query into a task brief — without re-running on every step like `before_llm` does.
 - `before_llm`: Runs before each chat-generator call.
 - `before_tool`: Runs after the model requests tool calls, before any tools run. After these hooks run, the Agent re-reads the current last message from `state.data["messages"]`. If that message contains tool calls, those calls are executed. If it does not, no tools run for that step, no tool-based exit condition is triggered, and the Agent loops back to the next LLM call unless `max_agent_steps` has been reached.
 - `after_tool`: Runs after tools execute, once their result messages are in `state.data["messages"]`, before the exit-condition check and the next LLM call. Use it to rewrite the freshly produced tool-result messages — for example, to offload, redact, truncate, or summarize results. It does not run on the plain-text exit step. It does still run when a `before_tool` hook removed the pending tool calls: no tools executed on that step, so don't assume the last message is a fresh tool result.
-- `on_exit`: Runs when the Agent is about to stop on an exit condition. An `on_exit` hook can keep the Agent running by setting the `continue_run` control flag (`state.set("continue_run", True)`), usually alongside a message telling the model what to do next. `on_exit` hooks run when the Agent stops on an exit condition, but not when it stops because `max_agent_steps` is reached.
+- `on_exit`: Runs when the Agent is about to stop on an exit condition. An `on_exit` hook can keep the Agent running by setting the `continue_run` control flag (`state.set("continue_run", True)`), usually alongside a message telling the model what to do next. `on_exit` hooks run when the Agent stops on an exit condition, but not when it stops because `max_agent_steps` is reached — use `after_run` for logic that must run however the run ends.
+- `after_run`: Runs once per run, after the step loop has ended and before the Agent builds its return value — regardless of whether the run stopped on an exit condition or because `max_agent_steps` was reached (unlike `on_exit`). Mutations to the state, such as appending a final message, are reflected in the returned `messages` / `last_message` and `state_schema` outputs. Setting `continue_run` here has no effect.
 
 Registering a hook under an unknown hook point raises a `ValueError` at construction. A hook class can declare an `allowed_hook_points` attribute listing the hook points it supports; the Agent validates it and fails fast if the hook is registered somewhere it doesn't belong.
 
@@ -196,7 +198,7 @@ print(result["last_message"].text)
 
 ## Ready-made hooks
 
-Haystack ships two ready-made hooks:
+Haystack ships two ready-made hooks, each in its own submodule of `haystack.hooks`:
 
-- `ConfirmationHook`: A `before_tool` hook that applies Human-in-the-Loop confirmation strategies to pending tool calls — a human can confirm, modify, or reject the tool calls the model requested before they run. See [Human in the Loop](./human-in-the-loop.mdx).
-- `ToolResultOffloadHook`: An `after_tool` hook that offloads tool results to a `ToolResultStore` (such as `FileSystemToolResultStore`) and replaces them in the conversation with a compact pointer, so the next LLM call sees a reference instead of the full result. Per-tool policies (`AlwaysOffload`, `NeverOffload`, `OffloadOverChars`) control which results are offloaded. See [Tool Result Offloading](./tool-result-offloading.mdx).
+- `ConfirmationHook` (from `haystack.hooks.human_in_the_loop`): A `before_tool` hook that applies Human-in-the-Loop confirmation strategies to pending tool calls — a human can confirm, modify, or reject the tool calls the model requested before they run. See [Human in the Loop](./human-in-the-loop.mdx).
+- `ToolResultOffloadHook` (from `haystack.hooks.tool_result_offloading`): An `after_tool` hook that offloads tool results to a `ToolResultStore` (such as `FileSystemToolResultStore`) and replaces them in the conversation with a compact pointer, so the next LLM call sees a reference instead of the full result. Per-tool policies (`AlwaysOffload`, `NeverOffload`, `OffloadOverChars`) control which results are offloaded. See [Tool Result Offloading](./tool-result-offloading.mdx).
