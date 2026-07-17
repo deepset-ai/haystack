@@ -79,7 +79,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
           beforeDefaultRemarkPlugins: [require('./src/remark/versionedReferenceLinks')],
           versions: {
             current: {
-              label: '2.32-unstable',
+              label: '3.0-unstable',
               path: 'next',
               banner: 'unreleased',
             },
@@ -132,7 +132,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
         exclude: ['**/_templates/**'],
         versions: {
           current: {
-            label: '2.32-unstable',
+            label: '3.0-unstable',
             path: 'next',
             banner: 'unreleased',
           },

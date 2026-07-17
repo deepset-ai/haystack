@@ -721,6 +721,7 @@ export default {
             'tools/ready-made-tools/githubrepoviewertool',
             'tools/ready-made-tools/mem0memorytools',
             'tools/ready-made-tools/mirageshelltool',
+            'tools/ready-made-tools/tavilywebsearchtool',
           ],
         },
       ],

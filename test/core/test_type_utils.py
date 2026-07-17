@@ -616,11 +616,10 @@ def test_partially_overlapping_unions_are_not_compatible_strict(sender_type, rec
         pytest.param(Dict[str, int], Dict, id="dict-of-primitive-to-bare-dict"),
         pytest.param(Set[float], Set, id="set-of-primitive-to-bare-set"),
         pytest.param(Tuple[int, str], Tuple, id="tuple-of-primitive-to-bare-tuple"),
-        # TODO These tests are failing
-        pytest.param(list[int], list, id="list-of-primitive-to-bare-list"),
-        pytest.param(dict[str, int], dict, id="dict-of-primitive-to-bare-dict"),
-        pytest.param(set[float], set, id="set-of-primitive-to-bare-set"),
-        pytest.param(tuple[int, str], tuple, id="tuple-of-primitive-to-bare-tuple"),
+        pytest.param(list[int], list, id="list-of-primitive-to-bare-list-pep585"),
+        pytest.param(dict[str, int], dict, id="dict-of-primitive-to-bare-dict-pep585"),
+        pytest.param(set[float], set, id="set-of-primitive-to-bare-set-pep585"),
+        pytest.param(tuple[int, str], tuple, id="tuple-of-primitive-to-bare-tuple-pep585"),
     ],
 )
 def test_container_of_primitive_to_bare_container_strict(sender_type, receiver_type):

@@ -110,9 +110,21 @@ paths, construct a `FunctionHook` directly with both `function` and `async_funct
 
 ```python
 from haystack.components.agents import Agent
+from haystack.components.generators.chat import OpenAIChatGenerator
 from haystack.hooks import hook
 from haystack.components.agents.state import State
 from haystack.dataclasses import ChatMessage
+from haystack.tools import tool
+
+@tool
+def weather_tool(city: str) -> str:
+    '''Get the current weather for a given city.'''
+    return f"The weather in {city} is sunny."
+
+@tool
+def save(content: str) -> str:
+    '''Save content to durable storage.'''
+    return "Saved."
 
 @hook
 def require_save(state: State) -> None:
@@ -120,7 +132,7 @@ def require_save(state: State) -> None:
         state.set("messages", [ChatMessage.from_system("You must call `save` before finishing.")])
         state.set("continue_run", True)
 
-agent = Agent(chat_generator=..., tools=[...], hooks={"on_exit": [require_save]})
+agent = Agent(chat_generator=OpenAIChatGenerator(), tools=[weather_tool, save], hooks={"on_exit": [require_save]})
 ```
 
 **Parameters:**
@@ -199,6 +211,8 @@ Register it on an `Agent` to confirm, modify, or reject tool calls before they r
 
 ```python
 from haystack.components.agents import Agent
+from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.tools import tool
 from haystack.hooks.human_in_the_loop import (
     AlwaysAskPolicy,
     BlockingConfirmationStrategy,
@@ -208,14 +222,19 @@ from haystack.hooks.human_in_the_loop import (
     SimpleConsoleUI,
 )
 
+@tool
+def delete_file(path: str) -> str:
+    '''Delete the file at the given path.'''
+    return f"Deleted {path}."
+
 hook = ConfirmationHook(
     confirmation_strategies={
-        "my_tool": BlockingConfirmationStrategy(
+        "delete_file": BlockingConfirmationStrategy(
             confirmation_policy=NeverAskPolicy(), confirmation_ui=SimpleConsoleUI()
         )
     }
 )
-agent = Agent(chat_generator=..., tools=[...], hooks={"before_tool": [hook]})
+agent = Agent(chat_generator=OpenAIChatGenerator(), tools=[delete_file], hooks={"before_tool": [hook]})
 ```
 
 A key may be a single tool name, a tuple of tool names sharing one strategy, or the wildcard `"*"` which applies
@@ -651,6 +670,8 @@ Offload tool results to a `ToolResultStore`, replacing them in the conversation 
 This `after_tool` Agent hook writes the full result to the store so the next LLM call sees a reference instead of
 the full result. Register it on an `Agent` under the `after_tool` hook point. Which tools offload, and under what
 condition, is controlled per tool by `offload_strategies`:
+
+<!-- test-concept -->
 
 ```python
 from haystack.components.agents import Agent

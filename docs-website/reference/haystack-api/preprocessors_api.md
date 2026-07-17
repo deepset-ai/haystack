@@ -603,6 +603,7 @@ Split documents based on embedding similarity.
 - `documents`: List of documents with the split texts. Each document includes:
   - A metadata field `source_id` to track the original document.
   - A metadata field `split_id` to track the split number.
+  - A metadata field `split_idx_start` with the character offset of the chunk in the original document.
   - A metadata field `page_number` to track the original page number.
   - All other metadata copied from the original document.
 
@@ -632,6 +633,7 @@ This is the asynchronous version of the `run` method with the same parameters an
 - `documents`: List of documents with the split texts. Each document includes:
   - A metadata field `source_id` to track the original document.
   - A metadata field `split_id` to track the split number.
+  - A metadata field `split_idx_start` with the character offset of the chunk in the original document.
   - A metadata field `page_number` to track the original page number.
   - All other metadata copied from the original document.
 

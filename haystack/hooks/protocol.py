@@ -7,12 +7,14 @@ from typing import Any, Literal, Protocol, get_args
 from haystack.components.agents.state.state import State
 
 # Points in the Agent's run loop at which hooks can be registered.
-HookPoint = Literal["before_llm", "before_tool", "after_tool", "on_exit"]
+HookPoint = Literal["before_run", "before_llm", "before_tool", "after_tool", "on_exit", "after_run"]
 
+BEFORE_RUN: HookPoint = "before_run"
 BEFORE_LLM: HookPoint = "before_llm"
 BEFORE_TOOL: HookPoint = "before_tool"
 AFTER_TOOL: HookPoint = "after_tool"
 ON_EXIT: HookPoint = "on_exit"
+AFTER_RUN: HookPoint = "after_run"
 VALID_HOOK_POINTS: tuple[HookPoint, ...] = get_args(HookPoint)
 
 
