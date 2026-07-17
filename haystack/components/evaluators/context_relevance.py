@@ -162,7 +162,9 @@ class ContextRelevanceEvaluator(LLMEvaluator):
             progress_bar=progress_bar,
         )
 
-    @component.output_types(score=float, results=list[dict[str, Any]])
+    @component.output_types(
+        score=float, individual_scores=list[float], results=list[dict[str, Any]], meta=list[dict[str, Any]] | None
+    )
     def run(self, **inputs: Any) -> dict[str, Any]:
         """
         Run the LLM evaluator.
@@ -174,6 +176,7 @@ class ContextRelevanceEvaluator(LLMEvaluator):
         :returns:
             A dictionary with the following outputs:
                 - `score`: Mean context relevance score over all the provided input questions.
+                - `individual_scores`: A list of context relevance scores for each input question.
                 - `results`: A list of dictionaries with `relevant_statements`, `score`, and `status` for each input
                   context. `status` is `evaluated` for valid results and `error` for failed evaluations.
         """
@@ -181,7 +184,9 @@ class ContextRelevanceEvaluator(LLMEvaluator):
         # Post-process the raw results to calculate relevance metrics and scores
         return self._postprocess_results(result)
 
-    @component.output_types(score=float, results=list[dict[str, Any]])
+    @component.output_types(
+        score=float, individual_scores=list[float], results=list[dict[str, Any]], meta=list[dict[str, Any]] | None
+    )
     async def run_async(self, **inputs: Any) -> dict[str, Any]:
         """
         Run the LLM evaluator asynchronously.
@@ -193,6 +198,7 @@ class ContextRelevanceEvaluator(LLMEvaluator):
         :returns:
             A dictionary with the following outputs:
                 - `score`: Mean context relevance score over all the provided input questions.
+                - `individual_scores`: A list of context relevance scores for each input question.
                 - `results`: A list of dictionaries with `relevant_statements`, `score`, and `status` for each input
                   context. `status` is `evaluated` for valid results and `error` for failed evaluations.
         """
