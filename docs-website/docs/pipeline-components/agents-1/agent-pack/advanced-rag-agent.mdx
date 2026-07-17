@@ -132,6 +132,25 @@ agent = create_advanced_rag_agent(
 )
 ```
 
+### Using the tools on their own
+
+The four document-store-backed tools (see [How it works](#how-it-works)) are exported individually and also bundled as `DocumentStoreToolset`, so you can drop them into your own `Agent` with your own prompt:
+
+```python
+from haystack_integrations.agent_pack.advanced_rag import DocumentStoreToolset
+
+agent = Agent(
+    chat_generator=...,
+    tools=[DocumentStoreToolset(document_store), my_retrieval_tool],
+)
+```
+
+## Supported document stores
+
+The metadata tools rely on document store methods that are not part of the base `DocumentStore` protocol: `get_metadata_fields_info`, `get_metadata_field_unique_values`, and `get_metadata_field_min_max`. [`InMemoryDocumentStore`](../../../document-stores/inmemorydocumentstore.mdx) and most document store integrations implement them (OpenSearch, Elasticsearch, Weaviate, Chroma, pgvector, Qdrant, Pinecone, MongoDB Atlas, Astra, and more).
+
+Each tool fails fast at construction time with a clear error if the store doesn't support the method it needs, so stores that implement only some of the methods can still use the matching subset of tools.
+
 ## Configuration
 
 Everything is configured through keyword arguments to `create_advanced_rag_agent`. All parameters are keyword-only. Only `document_store` and `retriever` are required, the rest are optional.
@@ -190,7 +209,7 @@ The agent's tools:
 
 `fetch_documents_by_filter` returns its results in reading order, grouping documents by parent file and sorting by split or page. It shows at most `max_docs` per call and reports the total match count, so larger match sets can be paged through with the tool's `offset` input. On stores that can count documents by filter, an over-broad filter is refused before any documents are fetched, and the refusal is returned to the LLM as an error it recovers from by narrowing the filter.
 
-## The filter grammar
+### The filter grammar
 
 To help the LLM construct valid [Haystack filters](../../../concepts/metadata-filtering.mdx) consistently, the filter grammar is included in the description of the `filters` parameter of `search_documents` and `fetch_documents_by_filter`, rather than placed entirely in the system prompt. The model receives it contextually at the point of tool use:
 
@@ -200,22 +219,3 @@ To help the LLM construct valid [Haystack filters](../../../concepts/metadata-fi
 - field names must be prefixed with `meta.`
 
 The system prompt adds the workflow rules: inspect fields first, verify values before filtering, and relax the filter when a search comes back empty.
-
-## Using the tools on their own
-
-The four document-store-backed tools are exported individually and also bundled as `DocumentStoreToolset`, so you can drop them into your own `Agent` with your own prompt:
-
-```python
-from haystack_integrations.agent_pack.advanced_rag import DocumentStoreToolset
-
-agent = Agent(
-    chat_generator=...,
-    tools=[DocumentStoreToolset(document_store), my_retrieval_tool],
-)
-```
-
-## Supported document stores
-
-The metadata tools rely on document store methods that are not part of the base `DocumentStore` protocol: `get_metadata_fields_info`, `get_metadata_field_unique_values`, and `get_metadata_field_min_max`. [`InMemoryDocumentStore`](../../../document-stores/inmemorydocumentstore.mdx) and most document store integrations implement them (OpenSearch, Elasticsearch, Weaviate, Chroma, pgvector, Qdrant, Pinecone, MongoDB Atlas, Astra, and more).
-
-Each tool fails fast at construction time with a clear error if the store doesn't support the method it needs, so stores that implement only some of the methods can still use the matching subset of tools.

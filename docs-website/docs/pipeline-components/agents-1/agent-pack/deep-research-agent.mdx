@@ -89,11 +89,11 @@ Scope and Write are plain LLM calls (a [`ChatPromptBuilder`](../../builders/chat
 
 `brief`, `notes`, and `report` are declared in the agent's `state_schema`, so they come back as outputs of a single `agent.run(...)` call.
 
-## The agents
+### The agents
 
 The Research phase uses two nested agents. Each one is a Haystack `Agent`: an LLM that loops, calling tools, until it decides to answer.
 
-### Orchestrator
+#### Orchestrator
 
 The orchestrator is the lead agent: it receives the research brief and coordinates the whole investigation.
 
@@ -109,7 +109,7 @@ The orchestrator's tools:
 | `research_subtopic` | The sub-researcher agent, exposed as a tool ([`ComponentTool`](../../../tools/componenttool.mdx)) | Researches a single sub-question in an isolated context and returns a compressed, cited summary. Only that summary is shown to the orchestrator; the summary is also appended to `notes`. |
 | `think_tool` | A no-op reflection tool | Lets the orchestrator pause to plan sub-questions and assess coverage between rounds. |
 
-### Sub-researcher
+#### Sub-researcher
 
 The sub-researcher is a reusable agent that answers a single sub-question. The orchestrator runs it many times in parallel, each in its own isolated context. This is the key idea: each sub-researcher processes the raw search results privately and returns only a concise summary, so the orchestrator's context stays small and the final report stays coherent.
 
@@ -125,7 +125,7 @@ The sub-researcher's tools:
 | `read_url` | [`PipelineTool`](../../../tools/pipelinetool.mdx) over a fetch, route, convert-to-text, and summarize pipeline | Fetches a page (`LinkContentFetcher`), routes by MIME type (`FileTypeRouter`) to `HTMLToDocument` (Trafilatura) or `PyPDFToDocument` so PDFs are parsed too, and summarizes the page toward a question the agent passes, so only the relevant text enters the agent's context, not the full page. Used only when a search snippet is too shallow. |
 | `think_tool` | A no-op reflection tool | "What did I learn? What's missing? Stop or continue?" between searches. |
 
-## Context management
+### Context management
 
 The core challenge in a deep research agent is keeping each context window small and focused. Raw web content (search results, full pages, PDFs) is large and noisy. If it all accumulated in a single context, the model's output quality would degrade. We avoid that with isolation and compression:
 
