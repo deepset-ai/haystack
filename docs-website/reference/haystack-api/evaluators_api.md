@@ -183,6 +183,7 @@ Run the LLM evaluator.
 
 - <code>dict\[str, Any\]</code> – A dictionary with the following outputs:
   - `score`: Mean context relevance score over all the provided input questions.
+  - `individual_scores`: A list of context relevance scores for each input question.
   - `results`: A list of dictionaries with `relevant_statements`, `score`, and `status` for each input
     context. `status` is `evaluated` for valid results and `error` for failed evaluations.
 
@@ -203,6 +204,7 @@ Run the LLM evaluator asynchronously.
 
 - <code>dict\[str, Any\]</code> – A dictionary with the following outputs:
   - `score`: Mean context relevance score over all the provided input questions.
+  - `individual_scores`: A list of context relevance scores for each input question.
   - `results`: A list of dictionaries with `relevant_statements`, `score`, and `status` for each input
     context. `status` is `evaluated` for valid results and `error` for failed evaluations.
 
