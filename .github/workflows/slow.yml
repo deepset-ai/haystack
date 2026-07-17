@@ -11,7 +11,6 @@ name: Slow Integration Tests
 
 env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-  HF_API_TOKEN: ${{ secrets.HUGGINGFACE_API_KEY }}
   PYTHON_VERSION: "3.10"
   HATCH_VERSION: "1.16.5"
   HAYSTACK_MPS_ENABLED: false
@@ -75,7 +74,7 @@ jobs:
       github.event_name == 'workflow_dispatch' ||
       github.event_name == 'schedule' ||
       (github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'run-slow-tests')) ||
-      (github.event_name == 'push' && github.ref == 'refs/heads/v[0-9].*[0-9].x') ||
+      github.event_name == 'push' ||
       (needs.check-if-changed.outputs.changes == 'true')
 
     strategy:
