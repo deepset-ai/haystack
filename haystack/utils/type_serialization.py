@@ -12,7 +12,11 @@ from typing import Any, Union, get_args
 
 from haystack import logging
 from haystack.core.errors import DeserializationError
-from haystack.core.serialization_security import _check_builtin_is_type, _check_module_allowed
+from haystack.core.serialization_security import (
+    _check_builtin_is_type,
+    _check_module_allowed,
+    _check_resolved_module_allowed,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -256,6 +260,13 @@ def _import_class_by_name(fully_qualified_name: str) -> Any:
         )
         module = thread_safe_import(module_path)
         resolved = getattr(module, attr_name)
+        # `_check_module_allowed` above gates the declared module path, which the caller controls.
+        # A class/module re-exported as an attribute of an allowlisted module (e.g.
+        # `haystack.utils.auth.os` -> the `os` module, or a re-exported `subprocess.Popen`) would
+        # otherwise slip through. Re-check the module the object actually belongs to; `module_path`
+        # is the allowlisted module it was resolved from, so a private C accelerator backing it
+        # (e.g. `io.StringIO` -> `_io`) is still accepted.
+        _check_resolved_module_allowed(resolved, declared_module=module_path)
         if module_path == "builtins":
             _check_builtin_is_type(resolved, fully_qualified_name)
         return resolved
