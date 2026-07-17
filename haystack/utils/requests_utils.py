@@ -58,9 +58,7 @@ def request_with_retry(
     if status_codes_to_retry is None:
         status_codes_to_retry = [408, 418, 429, 503]
 
-    # Pop `timeout` once, before the retry loop. `run` is retried, so popping inside it would
-    # drop `timeout` from `kwargs` after the first attempt and silently fall back to the default
-    # on every subsequent retry.
+    # Pop `timeout` once, before the retry loop.
     timeout = kwargs.pop("timeout", 10)
 
     @retry(
