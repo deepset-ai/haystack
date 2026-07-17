@@ -55,6 +55,8 @@ class TestContextRelevanceEvaluator:
         assert component._chat_generator.api_key.resolve_value() == "test-api-key"
         assert component._chat_generator.generation_kwargs == {"response_format": {"type": "json_object"}, "seed": 42}
 
+        assert set(component.__haystack_output__._sockets_dict) == {"score", "individual_scores", "results", "meta"}
+
     def test_key_resolved_at_warm_up_not_init(self, monkeypatch):
         monkeypatch.delenv("OPENAI_API_KEY", raising=False)
         component = ContextRelevanceEvaluator()
@@ -166,7 +168,10 @@ class TestContextRelevanceEvaluator:
         results = component.run(questions=questions, contexts=contexts)
 
         assert results == {
-            "results": [{"score": 1, "relevant_statements": ["a", "b"]}, {"score": 0, "relevant_statements": []}],
+            "results": [
+                {"score": 1, "relevant_statements": ["a", "b"], "status": "evaluated"},
+                {"score": 0, "relevant_statements": [], "status": "evaluated"},
+            ],
             "score": 0.5,
             "meta": None,
             "individual_scores": [1, 0],
@@ -195,7 +200,10 @@ class TestContextRelevanceEvaluator:
         ]
         results = component.run(questions=questions, contexts=contexts)
         assert results == {
-            "results": [{"score": 1, "relevant_statements": ["a", "b"]}, {"score": 0, "relevant_statements": []}],
+            "results": [
+                {"score": 1, "relevant_statements": ["a", "b"], "status": "evaluated"},
+                {"score": 0, "relevant_statements": [], "status": "evaluated"},
+            ],
             "score": 0.5,
             "meta": None,
             "individual_scores": [1, 0],
@@ -207,13 +215,16 @@ class TestContextRelevanceEvaluator:
         with pytest.raises(ValueError, match="LLM evaluator expected input parameter"):
             component.run()
 
-    def test_run_returns_nan_raise_on_failure_false(self, monkeypatch, caplog):
+    @pytest.mark.parametrize("failure_mode", ["generation", "parsing"])
+    def test_run_returns_nan_raise_on_failure_false(self, monkeypatch, caplog, failure_mode):
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
         component = ContextRelevanceEvaluator(raise_on_failure=False)
 
         def chat_generator_run(self, *args, **kwargs):
             if "Python" in kwargs["messages"][0].text:
-                raise Exception("OpenAI API request failed.")
+                if failure_mode == "generation":
+                    raise Exception("OpenAI API request failed.")
+                return {"replies": [ChatMessage.from_assistant("not valid JSON")]}
             return {"replies": [ChatMessage.from_assistant('{"relevant_statements": ["c", "d"], "score": 1}')]}
 
         monkeypatch.setattr("haystack.components.evaluators.llm_evaluator.OpenAIChatGenerator.run", chat_generator_run)
@@ -236,11 +247,27 @@ class TestContextRelevanceEvaluator:
             results = component.run(questions=questions, contexts=contexts)
 
         assert results["score"] == 1
-        assert results["results"][0] == {"relevant_statements": ["c", "d"], "score": 1}
+        assert results["results"][0] == {"relevant_statements": ["c", "d"], "score": 1, "status": "evaluated"}
         assert results["results"][1]["relevant_statements"] == []
         assert math.isnan(results["results"][1]["score"])
+        assert results["results"][1]["status"] == "error"
 
         assert "1 query(s) failed and were excluded from the score." in caplog.text
+
+    def test_run_all_failures_returns_nan_and_error_statuses(self, monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+        component = ContextRelevanceEvaluator(raise_on_failure=False)
+
+        def chat_generator_run(self, *args, **kwargs):
+            raise Exception("OpenAI API request failed.")
+
+        monkeypatch.setattr("haystack.components.evaluators.llm_evaluator.OpenAIChatGenerator.run", chat_generator_run)
+
+        results = component.run(questions=["q1", "q2"], contexts=[["c1"], ["c2"]])
+
+        assert math.isnan(results["score"])
+        assert all(math.isnan(score) for score in results["individual_scores"])
+        assert [result["status"] for result in results["results"]] == ["error", "error"]
 
     @pytest.mark.skipif(
         not os.environ.get("OPENAI_API_KEY", None),
@@ -256,7 +283,7 @@ class TestContextRelevanceEvaluator:
 
         required_fields = {"results"}
         assert all(field in result for field in required_fields)
-        nested_required_fields = {"score", "relevant_statements"}
+        nested_required_fields = {"score", "relevant_statements", "status"}
         assert all(field in result["results"][0] for field in nested_required_fields)
 
         assert "meta" in result
@@ -289,20 +316,26 @@ class TestContextRelevanceEvaluatorAsync:
         results = await component.run_async(questions=questions, contexts=contexts)
 
         assert results == {
-            "results": [{"score": 1, "relevant_statements": ["a", "b"]}, {"score": 0, "relevant_statements": []}],
+            "results": [
+                {"score": 1, "relevant_statements": ["a", "b"], "status": "evaluated"},
+                {"score": 0, "relevant_statements": [], "status": "evaluated"},
+            ],
             "score": 0.5,
             "meta": None,
             "individual_scores": [1, 0],
         }
 
     @pytest.mark.asyncio
-    async def test_run_async_returns_nan_raise_on_failure_false(self, monkeypatch, caplog):
+    @pytest.mark.parametrize("failure_mode", ["generation", "parsing"])
+    async def test_run_async_returns_nan_raise_on_failure_false(self, monkeypatch, caplog, failure_mode):
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
         component = ContextRelevanceEvaluator(raise_on_failure=False)
 
         async def chat_generator_run_async(self, *args, **kwargs):
             if "Python" in kwargs["messages"][0].text:
-                raise Exception("OpenAI API request failed.")
+                if failure_mode == "generation":
+                    raise Exception("OpenAI API request failed.")
+                return {"replies": [ChatMessage.from_assistant("not valid JSON")]}
             return {"replies": [ChatMessage.from_assistant('{"relevant_statements": ["c", "d"], "score": 1}')]}
 
         monkeypatch.setattr(
@@ -316,9 +349,10 @@ class TestContextRelevanceEvaluatorAsync:
             results = await component.run_async(questions=questions, contexts=contexts)
 
         assert results["score"] == 1
-        assert results["results"][0] == {"relevant_statements": ["c", "d"], "score": 1}
+        assert results["results"][0] == {"relevant_statements": ["c", "d"], "score": 1, "status": "evaluated"}
         assert results["results"][1]["relevant_statements"] == []
         assert math.isnan(results["results"][1]["score"])
+        assert results["results"][1]["status"] == "error"
 
         assert "1 query(s) failed and were excluded from the score." in caplog.text
 
@@ -337,7 +371,7 @@ class TestContextRelevanceEvaluatorAsync:
 
         required_fields = {"results"}
         assert all(field in result for field in required_fields)
-        nested_required_fields = {"score", "relevant_statements"}
+        nested_required_fields = {"score", "relevant_statements", "status"}
         assert all(field in result["results"][0] for field in nested_required_fields)
 
         assert "meta" in result
