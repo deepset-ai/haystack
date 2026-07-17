@@ -170,7 +170,7 @@ async def async_request_with_retry(
     if status_codes_to_retry is None:
         status_codes_to_retry = [408, 418, 429, 503]
 
-    # Pop `timeout` once, before the retry loop. 
+    # Pop `timeout` once, before the retry loop.
     timeout = kwargs.pop("timeout", 10)
 
     @retry(
