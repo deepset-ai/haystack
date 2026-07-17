@@ -92,6 +92,7 @@ __init__(
     generation_kwargs: dict[str, Any] | None = None,
     ignore_tools_thinking_messages: bool = True,
     tools: ToolsType | None = None,
+    anthropic_server_tools: list[dict[str, Any]] | None = None,
     *,
     timeout: float | None = None,
     max_retries: int | None = None
@@ -131,6 +132,11 @@ Supported generation_kwargs parameters are:
   for more details.
 - **tools** (<code>ToolsType | None</code>) – A list of Tool and/or Toolset objects, or a single Toolset, that the model can use.
   Each tool should have a unique name.
+- **anthropic_server_tools** (<code>list\[dict\[str, Any\]\] | None</code>) – A list of Anthropic server-side tools passed directly to the API.
+  Use this for native Anthropic tools such as web search (`{"type": "web_search_20250305"}`),
+  code execution tool, or other provider-managed tools. Refer to the
+  [Anthropic documentation](https://docs.anthropic.com/en/docs/agents-and-tools/tool-use/web-search-tool)
+  for the exact dict format each native tool expects.
 - **timeout** (<code>float | None</code>) – Timeout for Anthropic client calls. If not set, it defaults to the default set by the Anthropic client.
 - **max_retries** (<code>int | None</code>) – Maximum number of retries to attempt for failed requests. If not set, it defaults to the default set by
   the Anthropic client.
@@ -300,6 +306,7 @@ __init__(
     generation_kwargs: dict[str, Any] | None = None,
     ignore_tools_thinking_messages: bool = True,
     tools: ToolsType | None = None,
+    anthropic_server_tools: list[dict[str, Any]] | None = None,
     timeout: float | None = None,
     max_retries: int | None = None,
     azure_ad_token_provider: Callable[[], str] | None = None
@@ -340,6 +347,11 @@ Creates an instance of AnthropicFoundryChatGenerator.
   for more details.
 - **tools** (<code>ToolsType | None</code>) – A list of Tool and/or Toolset objects, or a single Toolset, that the model can use.
   Each tool should have a unique name.
+- **anthropic_server_tools** (<code>list\[dict\[str, Any\]\] | None</code>) – A list of Anthropic server-side tools passed directly to the API.
+  Use this for native Anthropic tools such as web search (`{"type": "web_search_20250305"}`),
+  code execution tool, or other provider-managed tools. Refer to the
+  [Anthropic documentation](https://docs.anthropic.com/en/docs/agents-and-tools/tool-use/web-search-tool)
+  for the exact dict format each native tool expects.
 - **timeout** (<code>float | None</code>) – Timeout for Anthropic client calls. If not set, it defaults to the default set by the Anthropic client.
 - **max_retries** (<code>int | None</code>) – Maximum number of retries to attempt for failed requests. If not set, it defaults to the default set by
   the Anthropic client.
@@ -521,6 +533,7 @@ __init__(
     generation_kwargs: dict[str, Any] | None = None,
     ignore_tools_thinking_messages: bool = True,
     tools: ToolsType | None = None,
+    anthropic_server_tools: list[dict[str, Any]] | None = None,
     *,
     timeout: float | None = None,
     max_retries: int | None = None
@@ -557,6 +570,11 @@ Supported generation_kwargs parameters are:
   for more details.
 - **tools** (<code>ToolsType | None</code>) – A list of Tool and/or Toolset objects, or a single Toolset, that the model can use.
   Each tool should have a unique name.
+- **anthropic_server_tools** (<code>list\[dict\[str, Any\]\] | None</code>) – A list of Anthropic server-side tools passed directly to the API.
+  On Vertex AI only the basic web search tool (`{"type": "web_search_20250305"}`) is available:
+  web search with dynamic filtering, web fetch and code execution are not supported. Refer to the
+  [Anthropic documentation](https://docs.anthropic.com/en/docs/agents-and-tools/tool-use/web-search-tool)
+  for the exact dict format each native tool expects.
 - **timeout** (<code>float | None</code>) – Timeout for Anthropic client calls. If not set, it defaults to the default set by the Anthropic client.
 - **max_retries** (<code>int | None</code>) – Maximum number of retries to attempt for failed requests. If not set, it defaults to the default set by
   the Anthropic client.
