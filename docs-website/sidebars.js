@@ -38,6 +38,18 @@ export default {
           },
           items: [
             'concepts/agents/multi-agent-systems',
+            {
+              type: 'category',
+              label: 'Agent Pack',
+              link: {
+                type: 'doc',
+                id: 'concepts/agents/agent-pack',
+              },
+              items: [
+                'concepts/agents/agent-pack/deep-research-agent',
+                'concepts/agents/agent-pack/advanced-rag-agent',
+              ],
+            },
           ],
         },
         {

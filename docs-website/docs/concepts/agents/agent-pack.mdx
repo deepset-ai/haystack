@@ -1,0 +1,77 @@
+---
+title: "Agent Pack"
+id: agent-pack
+slug: "/agent-pack"
+description: "Agent Pack ships pre-configured Haystack Agents - a web deep research agent and a metadata-aware advanced RAG agent - each created with a single factory function call."
+---
+
+# Agent Pack
+
+Agent Pack is a collection of pre-configured, ready-to-run Haystack [`Agent`](../../pipeline-components/agents-1/agent.mdx)s.
+Each agent comes with tested prompts, tool wiring, and sensible budgets, and is created with a single factory function call.
+Use an agent as-is, reconfigure it through keyword arguments, or read its "How it works" section and copy the patterns into your own agents.
+
+{/* TODO: switch the API reference link to /reference/integrations-agent-pack after the first agent-pack-haystack release */}
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **API reference** | [Agent Pack](https://docs.haystack.deepset.ai/reference/integrations-agent-pack) |
+| **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/agent_pack |
+| **Package name** | `agent-pack-haystack` |
+
+</div>
+
+## Installation
+
+```shell
+pip install agent-pack-haystack
+```
+
+Some agents have optional runtime dependencies (for example, web search or PDF parsing) — the install command on each agent's page lists them.
+By default, the agents use OpenAI models, so set `OPENAI_API_KEY` in your environment; the Deep Research Agent additionally needs `TAVILY_API_KEY` for web search.
+
+:::note
+Until the first `agent-pack-haystack` release, install the package from GitHub instead:
+
+```shell
+pip install "agent-pack-haystack @ git+https://github.com/deepset-ai/haystack-core-integrations.git#subdirectory=integrations/agent_pack"
+```
+:::
+
+## The Agents
+
+| Agent | Factory function | What it does | Requires |
+| --- | --- | --- | --- |
+| [Deep Research Agent](./agent-pack/deep-research-agent.mdx) | `create_deep_research_agent` | Researches a question on the web with parallel sub-researchers and writes a structured, cited markdown report. | `OPENAI_API_KEY`, `TAVILY_API_KEY` |
+| [Advanced RAG Agent](./agent-pack/advanced-rag-agent.mdx) | `create_advanced_rag_agent` | Metadata-aware RAG over your document store: inspects metadata fields, builds filters, retrieves, and answers with document citations. | A document store and a retriever, `OPENAI_API_KEY` |
+
+## Usage Pattern
+
+Every factory function follows the same shape: import it from `haystack_integrations.agent_pack`, call it with keyword arguments, and run the returned agent with a user message:
+
+```python
+from haystack.dataclasses import ChatMessage
+from haystack_integrations.agent_pack import create_deep_research_agent
+
+agent = create_deep_research_agent()
+result = agent.run(messages=[ChatMessage.from_user("your question")])
+```
+
+The factories return a plain Haystack [`Agent`](../../pipeline-components/agents-1/agent.mdx) — you can serialize it with `to_dict`/`from_dict`, stream its output, add it to a pipeline, or wrap it as a tool of another agent, like any agent you build yourself.
+
+## When to Use Agent Pack vs. Building Your Own Agent
+
+- **Use an Agent Pack agent** when your use case matches what it does — a cited report from web research, or question answering over a document store with rich metadata — and you want working prompts, tool wiring, and budgets out of the box.
+- **Build your own agent** with the [Agent](../../pipeline-components/agents-1/agent.mdx) component (see [Agents](../agents.mdx) and [Multi-Agent Systems](./multi-agent-systems.mdx)) when you need different phases, tools, or control flow.
+- **Mix both**: each agent page documents its architecture in enough detail to copy the patterns, and some building blocks are importable on their own — for example, the Advanced RAG Agent's `DocumentStoreToolset` drops into any custom agent.
+
+## Additional References
+
+📖 Related docs:
+
+- [Agent](../../pipeline-components/agents-1/agent.mdx)
+- [Multi-Agent Systems](./multi-agent-systems.mdx)
+- [Hooks](../../pipeline-components/agents-1/hooks.mdx)
+- [State](../../pipeline-components/agents-1/state.mdx)

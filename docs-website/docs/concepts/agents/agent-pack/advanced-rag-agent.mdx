@@ -1,0 +1,247 @@
+---
+title: "Advanced RAG Agent"
+id: advanced-rag-agent
+slug: "/advanced-rag-agent"
+description: "A pre-built metadata-aware RAG agent for Haystack: it inspects your document store's metadata fields, values, and ranges, builds filters, retrieves, and answers with document citations."
+---
+
+# Advanced RAG Agent
+
+A **metadata-aware RAG agent** from the [Agent Pack](../agent-pack.mdx): instead of guessing which metadata fields exist, it inspects the document store (fields, values, ranges) and can construct Haystack filters to narrow its retrieval.
+
+{/* TODO: switch the API reference link to /reference/integrations-agent-pack after the first agent-pack-haystack release */}
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Factory function** | `create_advanced_rag_agent` |
+| **Mandatory init variables** | `document_store`: The document store to inspect and fetch from <br /> <br />`retriever`: A retriever component or retrieval pipeline for relevance search |
+| **Environment variables** | `OPENAI_API_KEY`: Your OpenAI API key (default models) |
+| **API reference** | [Agent Pack](https://docs.haystack.deepset.ai/reference/integrations-agent-pack) |
+| **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/agent_pack/src/haystack_integrations/agent_pack/advanced_rag |
+| **Package name** | `agent-pack-haystack` |
+
+</div>
+
+## Quick Start
+
+Install the package together with `arrow`, an optional runtime dependency that renders today's date into the system prompt, so the agent can build filters for relative dates like "the last 5 years":
+
+```shell
+pip install agent-pack-haystack arrow
+```
+
+Set `OPENAI_API_KEY` in the environment. Then index a corpus with varied metadata and ask a question the agent can only answer well by inspecting the metadata, building a filter, and retrieving with it:
+
+```python
+from haystack import Document
+from haystack.components.retrievers.in_memory import InMemoryBM25Retriever
+from haystack.dataclasses import ChatMessage
+from haystack.document_stores.in_memory import InMemoryDocumentStore
+from haystack_integrations.agent_pack import create_advanced_rag_agent
+
+document_store = InMemoryDocumentStore()
+document_store.write_documents(
+    [
+        Document(
+            content="CRISPR gene editing corrected a hereditary blindness mutation in a clinical trial.",
+            meta={"category": "science", "year": 2021, "rating": 4.6},
+        ),
+        Document(
+            content="A quantum computer demonstrated error-corrected logical qubits.",
+            meta={"category": "science", "year": 2023, "rating": 4.8},
+        ),
+        Document(
+            content="Dolly the sheep became the first mammal cloned from an adult somatic cell.",
+            meta={"category": "science", "year": 1996, "rating": 4.2},
+        ),
+        Document(
+            content="The Berlin Wall fell, a decisive moment in the end of the Cold War.",
+            meta={"category": "history", "year": 1989, "rating": 4.7},
+        ),
+        Document(
+            content="Argentina won the FIFA World Cup final against France on penalties.",
+            meta={"category": "sports", "year": 2022, "rating": 4.9},
+        ),
+    ],
+)
+
+agent = create_advanced_rag_agent(
+    document_store=document_store,
+    retriever=InMemoryBM25Retriever(document_store=document_store, top_k=5),
+)
+
+result = agent.run(
+    messages=[ChatMessage.from_user("What science advances happened after 2015?")],
+)
+
+print(result["last_message"].text)  # the answer, citing documents as [doc <short-id>]
+for doc in result["documents"]:  # every document the agent retrieved, deduplicated
+    print(f"[doc {doc.id[:8]}] {doc.meta} :: {doc.content[:60]}")
+```
+
+The agent lists the metadata fields, verifies the `category` values and the `year` range, builds a filter like `{"operator": "AND", "conditions": [{"field": "meta.category", "operator": "==", "value": "science"}, {"field": "meta.year", "operator": ">", "value": 2015}]}`, retrieves with it, and answers citing the CRISPR and quantum documents. Filtering is optional — when metadata can't narrow a question, the agent retrieves without one.
+
+The retrieval you provide should be **scoring-based** — keyword (BM25), embedding, or hybrid. Direct, unscored fetching by metadata is already covered by the built-in `fetch_documents_by_filter` tool.
+
+## Outputs and Citations
+
+`agent.run(...)` returns a dictionary with:
+
+- `last_message` (`ChatMessage`): the answer, citing documents by the first 8 characters of their id, for example `[doc a1b2c3d4]`,
+- `documents` (`list[Document]`): every document the agent retrieved during the run, deduplicated by id, in first-retrieved order — resolve citations against it with `doc.id.startswith(...)`,
+
+plus the standard `Agent` outputs `messages`, `step_count`, `token_usage`, and `tool_call_counts`.
+
+## Configuration
+
+Everything is configured through keyword arguments to `create_advanced_rag_agent`.
+
+**Retrieval**
+
+- `retriever` (required): what retrieves for the `search_documents` tool. Either a standalone retriever component whose `run` method accepts `query` and `filters` (such as `InMemoryBM25Retriever`), or a custom retrieval `Pipeline` — see [Using a Retrieval Pipeline](#using-a-retrieval-pipeline).
+- `retrieval_pipeline_input_mapping`: required when `retriever` is a `Pipeline`. Maps the tool inputs to pipeline input sockets; must have exactly the keys `"query"` and `"filters"`.
+- `retrieval_pipeline_output_mapping`: optional when `retriever` is a `Pipeline`. Maps pipeline output sockets to tool outputs, for example `{"retriever.documents": "documents"}`.
+
+**LLMs and prompt**
+
+- `llm`: drives the agent loop. Defaults to `OpenAIResponsesChatGenerator("gpt-5.4")` with low reasoning effort; any [ChatGenerator](../../../pipeline-components/generators.mdx) works.
+- `backup_answer_llm`: writes the best-effort answer when the run is cut off by `max_agent_steps`. Defaults to a separate `OpenAIResponsesChatGenerator("gpt-5.4")` with low reasoning effort.
+- `system_prompt`: overrides the pre-made system prompt. The default prompt renders today's date and therefore needs the optional `arrow` dependency.
+
+**Budgets and behavior**
+
+- `max_agent_steps` (default `20`): maximum steps for the agent loop. If the loop is cut off by this limit before an answer is written, the built-in `BackupAnswerHook` makes one extra LLM call from the evidence gathered so far, so `last_message` always carries a text answer.
+- `max_fetched_docs` (default `10`): maximum documents `fetch_documents_by_filter` shows per fetch. A filter fetch is not bounded by a retriever's `top_k`, so this caps the tool result instead; the scored `search_documents` tool is bounded by the `top_k` configured on your retrieval components.
+- `tool_concurrency_limit` (default `4`): maximum tool calls executed in parallel within one agent step.
+- `raise_on_tool_invocation_failure` (default `False`): if `True`, a failing tool call raises instead of being returned to the LLM as an error message it can recover from.
+
+**Extensibility**
+
+- `extra_tools`: additional tools or toolsets, appended after the built-in document-store toolset and the retrieval tool.
+- `state_schema`: additional entries merged into the agent's state schema. The built-in `documents` entry always takes precedence.
+- `hooks`: additional [hooks](../../../pipeline-components/agents-1/hooks.mdx) per hook point, merged with the built-in ones. For `after_run`, the built-in backup-answer hook runs first, so custom hooks see the final answer.
+
+### Using a Retrieval Pipeline
+
+For anything beyond a single retriever, pass a retrieval `Pipeline` as the `retriever`, plus an input mapping that tells the tool which sockets receive the query and the filters — for example, hybrid retrieval with reciprocal rank fusion:
+
+```python
+from haystack import Pipeline
+from haystack.components.embedders import OpenAITextEmbedder
+from haystack.components.joiners import DocumentJoiner
+from haystack.components.retrievers.in_memory import (
+    InMemoryBM25Retriever,
+    InMemoryEmbeddingRetriever,
+)
+
+pipeline = Pipeline()
+pipeline.add_component(
+    "bm25_retriever",
+    InMemoryBM25Retriever(document_store=document_store),
+)
+pipeline.add_component("text_embedder", OpenAITextEmbedder())
+pipeline.add_component(
+    "embedding_retriever",
+    InMemoryEmbeddingRetriever(document_store=document_store),
+)
+pipeline.add_component("joiner", DocumentJoiner(join_mode="reciprocal_rank_fusion"))
+pipeline.connect("text_embedder.embedding", "embedding_retriever.query_embedding")
+pipeline.connect("bm25_retriever.documents", "joiner.documents")
+pipeline.connect("embedding_retriever.documents", "joiner.documents")
+
+agent = create_advanced_rag_agent(
+    document_store=document_store,
+    retriever=pipeline,
+    retrieval_pipeline_input_mapping={
+        "query": ["bm25_retriever.query", "text_embedder.text"],
+        "filters": ["bm25_retriever.filters", "embedding_retriever.filters"],
+    },
+    retrieval_pipeline_output_mapping={"joiner.documents": "documents"},
+)
+```
+
+## How It Works
+
+The whole thing is a single Haystack `Agent` that loops over five tools:
+
+```text
+  user question
+      │
+      ▼
+┌──────────────────┐
+│ 1. INSPECT       │  list_metadata_fields → which fields exist and their types
+│    METADATA      │  get_metadata_field_values / get_metadata_field_range → what they contain
+└──────┬───────────┘
+       │ field names, values, ranges
+       ▼
+┌──────────────────┐
+│ 2. RETRIEVE      │  search_documents(query, filters) — relevance search, optionally filtered;
+│                  │  fetch_documents_by_filter(filters) — direct fetch when the exact documents
+│                  │  are identifiable by metadata alone
+└──────┬───────────┘
+       │ documents (id + metadata + content)
+       ▼
+┌──────────────────┐
+│ 3. ANSWER        │  answer from the retrieved documents only, citing them as [doc <short-id>]
+└──────────────────┘
+```
+
+Every retrieved document is accumulated into the agent's [State](../../../pipeline-components/agents-1/state.mdx) under the `documents` key (deduplicated by id), so `agent.run(...)` returns the full `list[Document]` alongside the answer.
+
+If the run is cut off by `max_agent_steps` before an answer is written, a `BackupAnswerHook` (an `after_run` [hook](../../../pipeline-components/agents-1/hooks.mdx)) makes one extra LLM call to produce a best-effort answer from the evidence gathered so far, so `last_message` always carries a text answer.
+
+### The Tools
+
+| Tool | What it is | What it does |
+| --- | --- | --- |
+| `list_metadata_fields` | `ListMetadataFieldsTool` | Lists all metadata fields and their types. The system prompt instructs the agent to call this first. |
+| `get_metadata_field_values` | `GetMetadataFieldValuesTool` | Returns the distinct values of a field, so filters use values that actually exist (listing capped for high-cardinality fields; the total count is reported when the store provides one). |
+| `get_metadata_field_range` | `GetMetadataFieldRangeTool` | Returns min/max of a numeric or orderable field (e.g. years, ratings, ISO dates). |
+| `fetch_documents_by_filter` | `FetchDocumentsByFilterTool` | Fetches documents directly by metadata filter, without relevance scoring — for grabbing specific documents (e.g. a known title or file). Results are put into reading order (grouped by parent file, sorted by split/page), `max_docs` per call; larger match sets are paged via the tool's `offset` input. On stores that support counting documents by filter, over-broad filters are refused *before* fetching, as an error the LLM recovers from by narrowing. |
+| `search_documents` | [ComponentTool](../../../tools/componenttool.mdx) over your retriever, or [PipelineTool](../../../tools/pipelinetool.mdx) over your retrieval pipeline | Retrieves documents for a query by relevance, optionally narrowed by a metadata filter. Bounded by the `top_k` of your retrieval components; an empty result nudges the agent to relax the filter. |
+
+### Reusing the Toolset
+
+The four document-store-backed tools are exported individually and also bundled as `DocumentStoreToolset`, so you can drop them into your own `Agent` with your own prompt:
+
+```python
+from haystack_integrations.agent_pack.advanced_rag import DocumentStoreToolset
+
+agent = Agent(
+    chat_generator=...,
+    tools=[DocumentStoreToolset(document_store), my_retrieval_tool],
+)
+```
+
+The agent and every tool serialize via `to_dict`/`from_dict`. See [Toolset](../../../tools/toolset.mdx) for how toolsets work.
+
+### The Filter Grammar
+
+The Haystack [metadata filter syntax](../../metadata-filtering.mdx) is not something an LLM knows reliably without guidance. Rather than a long system prompt, the grammar is embedded in the **description of the `filters` parameter** of `search_documents` and `fetch_documents_by_filter`, so the model receives it contextually at the point of tool use:
+
+- single condition: `{"field": "meta.category", "operator": "==", "value": "science"}`
+- comparison operators: `==, !=, >, >=, <, <=, in, not in`
+- logical grouping: `{"operator": "AND"|"OR"|"NOT", "conditions": [...]}` (nestable)
+- field names must be prefixed with `meta.`
+
+The system prompt adds the workflow rules: inspect fields first, verify values before filtering, and relax the filter when a search comes back empty.
+
+### Supported Document Stores
+
+The metadata tools rely on [Document Store](../../document-store.mdx) methods that are not part of the base `DocumentStore` protocol: `get_metadata_fields_info`, `get_metadata_field_unique_values`, and `get_metadata_field_min_max`. `InMemoryDocumentStore` and most document store integrations implement them (OpenSearch, Elasticsearch, Weaviate, Chroma, pgvector, Qdrant, Pinecone, MongoDB Atlas, Astra, and more). Each tool fails fast at construction time with a clear error if the store doesn't support the method it needs — stores that implement only some of the methods can still use the matching subset of tools.
+
+## Additional References
+
+📖 Related docs:
+
+- [Agent Pack](../agent-pack.mdx)
+- [Metadata Filtering](../../metadata-filtering.mdx)
+- [Agent](../../../pipeline-components/agents-1/agent.mdx)
+- [Hooks](../../../pipeline-components/agents-1/hooks.mdx)
+- [Toolset](../../../tools/toolset.mdx)
+
+💻 Source code:
+
+- [advanced_rag on GitHub](https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/agent_pack/src/haystack_integrations/agent_pack/advanced_rag)
