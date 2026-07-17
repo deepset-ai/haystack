@@ -2,19 +2,19 @@
 title: "Deep Research Agent"
 id: deep-research-agent
 slug: "/deep-research-agent"
-description: "A deep research agent: give it a question, and it researches the web and produces a structured, cited markdown report."
+description: "A deep research agent: give it a question, and it researches the web and produces a structured, cited Markdown report."
 ---
 
 # Deep Research Agent
 
-A small, working deep research agent: give it a question, and it researches the web and produces a structured, cited markdown report.
+A deep research agent: give it a question, and it researches the web and produces a structured, cited Markdown report.
 
 <div className="key-value-table">
 
 |  |  |
 | --- | --- |
 | **Mandatory run variables** | `messages`: A list of [`ChatMessage`](../../../concepts/data-classes/chatmessage.mdx)s |
-| **Output variables**        | `report`: The final cited markdown report<br />`brief`, `notes`: The intermediate research brief and collected summaries |
+| **Output variables**        | `report`: The final cited Markdown report<br />`brief`, `notes`: The intermediate research brief and collected summaries |
 | **API reference**           | Agent Pack |
 | **GitHub link**             | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/agent_pack/src/haystack_integrations/agent_pack/deep_research |
 | **Package name**            | `agent-pack-haystack` |
@@ -46,7 +46,7 @@ result = agent.run(messages=[ChatMessage.from_user("your research question")])
 print(result["report"])
 ```
 
-`agent.run(...)` returns a dictionary whose main output is `report`, the final markdown report. The dictionary also carries the intermediate `brief` (a `str`) and `notes` (a `list[str]`), plus the standard [`Agent`](../agent.mdx) outputs `messages`, `last_message`, `step_count`, `token_usage`, and `tool_call_counts`.
+`agent.run(...)` returns a dictionary whose main output is `report`, the final Markdown report. The dictionary also carries the intermediate `brief` (a `str`) and `notes` (a `list[str]`), plus the standard [`Agent`](../agent.mdx) outputs `messages`, `last_message`, `step_count`, `token_usage`, and `tool_call_counts`.
 
 ## Configuration
 
@@ -54,7 +54,7 @@ Everything is configured through keyword arguments to `create_deep_research_agen
 
 ### Models
 
-Each phase takes its own [ChatGenerator](../../generators/openairesponseschatgenerator.mdx), so you can mix models by cost and capability, or swap in a different provider.
+Each phase takes its own ChatGenerator, so you can mix models by cost and capability, or swap in a different provider.
 
 - `scope_llm` is the LLM that rewrites the user query into a focused research brief. Defaults to `OpenAIResponsesChatGenerator("gpt-5.4")`.
 - `orchestrator_llm` is the LLM that plans the investigation and delegates the sub-questions. Defaults to `OpenAIResponsesChatGenerator("gpt-5.4")`.
@@ -76,30 +76,11 @@ Each phase takes its own [ChatGenerator](../../generators/openairesponseschatgen
 
 ## How it works
 
-The whole thing is a single Haystack [`Agent`](../agent.mdx), the orchestrator, with two [hooks](../hooks.mdx) that bracket its loop. The three logical phases are Scope, Research, and Write:
+The architecture is built around a single top-level Haystack [`Agent`](../agent.mdx), which acts as the orchestrator. Two [hooks](../hooks.mdx) run before and after its loop, creating three logical phases: Scope, Research, and Write. During the Research phase, the orchestrator invokes isolated sub-researcher agents, each its own `Agent`, through a tool:
 
-```
-  user query
-      │
-      ▼
-┌──────────────┐
-│  1. SCOPE    │   before_run hook: rewrite the question into a focused research brief
-└──────┬───────┘
-       │ brief
-       ▼
-┌──────────────┐   the agent loop (see "The agents" below):
-│ 2. RESEARCH  │   the orchestrator splits the brief into sub-questions,
-│ (agent loop) │   delegates each to a sub-researcher, and collects their summaries
-└──────┬───────┘
-       │ brief + notes
-       ▼
-┌──────────────┐
-│  3. WRITE    │   after_run hook: brief + notes → cited markdown report
-└──────┬───────┘
-       │
-       ▼
-   report (markdown, with inline [text](url) citations)
-```
+- **Scope.** The user question is rewritten into a focused research brief.
+- **Research.** The orchestrator splits the brief into focused sub-questions, delegates each to a sub-researcher, and collects their summaries.
+- **Write.** The brief and the collected summaries become the final report: Markdown with inline `[text](url)` citations.
 
 Scope and Write are plain LLM calls (a [`ChatPromptBuilder`](../../builders/chatpromptbuilder.mdx) and an [`OpenAIResponsesChatGenerator`](../../generators/openairesponseschatgenerator.mdx)), wrapped as serializable hook classes (`ScopeHook`, `WriteHook`):
 
@@ -110,33 +91,33 @@ Scope and Write are plain LLM calls (a [`ChatPromptBuilder`](../../builders/chat
 
 ## The agents
 
-The Research phase is built from two nested agents. An agent here is a Haystack `Agent`: an LLM that loops, calling tools, until it decides to answer.
+The Research phase uses two nested agents. Each one is a Haystack `Agent`: an LLM that loops, calling tools, until it decides to answer.
 
 ### Orchestrator
 
-The lead agent. It receives the research brief and coordinates the whole investigation.
+The orchestrator is the lead agent: it receives the research brief and coordinates the whole investigation.
 
 - **Job:** split the brief into a few focused, non-overlapping sub-questions, delegate each one, check coverage, and stop when there's enough.
 - **Parallelism:** it emits several delegation calls in a single turn, and they run concurrently (bounded by `max_concurrent_researchers`).
 - **Memory:** the summaries returned by sub-researchers are appended to a shared `notes` list (the agent's `State`), which the writer later turns into the report.
 - **Stops when:** it replies with plain text (research complete) or hits `max_orchestrator_steps`.
 
-Its tools:
+The orchestrator's tools:
 
 | Tool | What it is | What it does |
 | --- | --- | --- |
-| `research_subtopic` | The sub-researcher agent, exposed as a tool ([`ComponentTool`](../../../tools/componenttool.mdx)) | Researches ONE sub-question in an isolated context and returns a compressed, cited summary. Only that summary is shown to the orchestrator; the summary is also appended to `notes`. |
+| `research_subtopic` | The sub-researcher agent, exposed as a tool ([`ComponentTool`](../../../tools/componenttool.mdx)) | Researches a single sub-question in an isolated context and returns a compressed, cited summary. Only that summary is shown to the orchestrator; the summary is also appended to `notes`. |
 | `think_tool` | A no-op reflection tool | Lets the orchestrator pause to plan sub-questions and assess coverage between rounds. |
 
 ### Sub-researcher
 
-A reusable agent that answers ONE sub-question. The orchestrator runs it many times (in parallel), each in its own isolated context. This is the key idea: each sub-researcher processes the raw search results privately and returns only a concise summary, so the orchestrator's context stays small and the final report stays coherent.
+The sub-researcher is a reusable agent that answers a single sub-question. The orchestrator runs it many times in parallel, each in its own isolated context. This is the key idea: each sub-researcher processes the raw search results privately and returns only a concise summary, so the orchestrator's context stays small and the final report stays coherent.
 
 - **Job:** search the web, optionally read promising pages, reflect, then write a compressed summary with inline citations to the exact source URLs.
 - **Returns:** its final text message *is* the summary (it exits as soon as it writes plain text).
 - **Bounded by:** `max_researcher_steps`.
 
-Its tools:
+The sub-researcher's tools:
 
 | Tool | What it is | What it does |
 | --- | --- | --- |
@@ -158,11 +139,11 @@ Two settings on the `research_subtopic` tool decide where that summary goes:
 | `outputs_to_string={"source": "last_message"}` | What the orchestrator's LLM sees as the tool result | Only the summary text comes back, not the sub-researcher's full message history. Keeps the orchestrator's context clean. |
 | `outputs_to_state={"notes": {...}}` | What gets saved for the writer | The same summary is appended (as text) to the shared `notes` list, which becomes the writer's input. |
 
-So each summary travels two ways, into the orchestrator's reasoning (so it can decide whether to dig further) and into the `notes` accumulator (so the writer can use it), while the bulky raw research stays isolated and is thrown away:
+So each summary travels two ways, into the orchestrator's reasoning (so it can decide whether to dig further) and into the `notes` accumulator (so the writer can use it), while the bulky raw research stays isolated and is not propagated beyond the sub-researcher:
 
 ```
 sub-researcher  (private context: searches, pages, reflections)
-      │  writes ONE short summary
+      │  writes one short summary
       ├─ outputs_to_string → orchestrator's LLM   (decide: done, or dig more?)
       └─ outputs_to_state  → notes → writer        (final report)
 ```

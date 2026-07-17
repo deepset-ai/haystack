@@ -177,6 +177,7 @@ export default {
                 id: 'pipeline-components/agents-1/agent-pack',
               },
               items: [
+                'pipeline-components/agents-1/agent-pack/advanced-rag-agent',
                 'pipeline-components/agents-1/agent-pack/deep-research-agent',
               ],
             },
