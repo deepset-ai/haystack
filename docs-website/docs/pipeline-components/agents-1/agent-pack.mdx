@@ -1,0 +1,67 @@
+---
+title: "Agent Pack"
+id: agent-pack
+slug: "/agent-pack"
+description: "Agent Pack is a collection of complex, pre-configured Agents you can run as they are, customize or copy as a blueprint."
+---
+
+# Agent Pack
+
+Agent Pack is a collection of complex, pre-configured Haystack Agents you can run as they are, customize, or copy as a blueprint for your own architecture.
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **API reference** | Agent Pack |
+| **GitHub link**   | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/agent_pack |
+| **Package name**  | `agent-pack-haystack` |
+
+</div>
+
+:::warning
+Agent Pack is experimental for the moment. Its APIs and agent architectures can change in any release, without following the usual deprecation policy.
+:::
+
+## Overview
+
+Building a capable agent takes more than an LLM and a list of tools. It takes an architecture: how work is split across sub-agents, how tools are described so the model uses them correctly, how context is kept small as evidence accumulates, and where to hook in the steps that happen before and after the agent loop. Those decisions are what separate a demo from an agent that holds up.
+
+Agent Pack packages those decisions into working agents. Each one is a complete, tested architecture built entirely from Haystack primitives ([`Agent`](./agent.mdx), [Tools](../../tools/tool.mdx), [hooks](./hooks.mdx), [`State`](./state.mdx), and Pipelines), assembled behind a single `create_*` entry point.
+
+There are three ways to use them, and all three are equally valid:
+
+- **Run one as it is.** Call `create_deep_research_agent()`, pass a question, get a report. The defaults are chosen to work out of the box.
+- **Customize it.** Every entry point takes keyword arguments for the models, the tools, and the limits that shape the agent's behavior, so you can adapt it without forking it.
+- **Copy it.** Read the implementation and lift the parts you need into your own agent. The agents are deliberately not monolithic, and nothing important is hidden behind an abstraction you can't see through. If the architecture is what you want but the specifics aren't, copying is the intended path, not a workaround.
+
+That last point is the reason Agent Pack looks the way it does. These are reference architectures as much as they are ready-made agents. The techniques inside them, such as delegating to sub-agents in isolated contexts, compressing what those sub-agents return, and putting a tool's input grammar in its parameter description rather than the system prompt, are general. They transfer to agents that have nothing to do with research or RAG.
+
+## Installation
+
+```shell
+pip install agent-pack-haystack
+```
+
+Each agent has its own optional runtime dependencies and required API keys. See its page for the exact install line.
+
+## Available agents
+
+| Agent | Description |
+| --- | --- |
+| [Deep Research Agent](agent-pack/deep-research-agent.mdx) | Researches a question on the web and produces a structured, cited markdown report. |
+| Advanced RAG Agent | Inspects document store metadata and builds Haystack filters to narrow its retrieval. |
+
+## Why it lives outside Haystack
+
+Agent Pack is a separate package rather than part of `haystack-ai`, and that is a deliberate trade-off.
+
+Good agent architectures are still moving fast. Keeping the pack outside core means we can change an agent's design when we learn something better, release on its own schedule, and avoid committing to stability before these patterns have settled. In exchange, you get agents that improve quickly rather than agents frozen around an early guess. That is also why the pack is explicitly unstable for now: pin `agent-pack-haystack` if you depend on it.
+
+The pack is also how we find out what Haystack itself is missing. Building real agents surfaces gaps in the framework that are invisible in the abstract. When a gap shows up, we can implement it in the pack first, and then, if it turns out to be generally useful, refine it and move it into core. Several features have already taken that path.
+
+For now the pack ships specific agents rather than a general framework for building them. If enough repeated patterns emerge across agents to justify a shared harness, we will introduce one then, rather than designing it up front and hoping the agents fit.
+
+## Feedback
+
+If you hit something these agents can't express, or a gap in Haystack that made building your own agent harder than it should be, [open an issue](https://github.com/deepset-ai/haystack-core-integrations/issues). Those reports are what drives both the pack and the framework forward.
