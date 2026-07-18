@@ -1,7 +1,7 @@
 ---
 fixes:
   - |
-    AnswerBuilder now treats a `[0]` document reference as out of range instead of silently attaching
-    the last document. References are 1-based, so `[0]` produced a negative index that bypassed the
-    out-of-range guard, marking an unrelated document as `referenced` with a wrong `source_index`.
-    The same applied to expanded reference ranges starting at 0 (e.g. `[0-1]`).
+    AnswerBuilder now treats a ``[0]`` document reference as out of range instead of silently attaching
+    the last document. References are 1-based, so ``[0]`` produced a negative index that bypassed the
+    out-of-range guard, marking an unrelated document as ``referenced`` with a wrong ``source_index``.
+    The same applied to expanded reference ranges starting at 0 (e.g. ``[0-1]``).
