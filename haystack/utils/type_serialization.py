@@ -59,6 +59,13 @@ def serialize_type(target: Any) -> str:
     if target is NoneType:
         return "None"
 
+    # `...` (Ellipsis) shows up as an argument in variadic tuples (tuple[int, ...]) and in
+    # Callable[..., X]. It is a singleton constant rather than a type, so serialize it to the same
+    # literal Python uses when rendering these types. Without this it would fall through to
+    # str(Ellipsis) == "Ellipsis", which deserialize_type then rejects as a non-type builtin.
+    if target is Ellipsis:
+        return "..."
+
     args = get_args(target)
 
     if isinstance(target, UnionType):
@@ -171,6 +178,16 @@ def deserialize_type(type_str: str) -> Any:
         If the module is not on the deserialization allowlist, or if the type cannot be
         deserialized due to a missing module or type.
     """
+    # Literal singletons that are not types: the None singleton ("None"), NoneType ("NoneType") and
+    # Ellipsis ("..."). Ellipsis appears in variadic tuples (tuple[int, ...]) and Callable[..., X].
+    # These are resolved up front, before the generic and module-path handling below: the dots in
+    # "..." would otherwise be read as a module path, and the None/Ellipsis singletons would be refused
+    # by the builtin type gate. "Ellipsis" is also accepted so that types serialized by older versions
+    # (which emitted the literal "Ellipsis") can still be read back.
+    special_literals: dict[str, Any] = {"None": None, "NoneType": NoneType, "...": ..., "Ellipsis": ...}
+    if type_str in special_literals:
+        return special_literals[type_str]
+
     # Handle PEP 604 union syntax at the top level (e.g., "str | int", "str | None")
     pep604_union_args = _parse_pep604_union_args(type_str)
     if len(pep604_union_args) > 1:
@@ -199,15 +216,9 @@ def deserialize_type(type_str: str) -> Any:
         except ImportError as e:
             raise DeserializationError(str(e)) from e
 
-    # No module prefix, check builtins and typing
-    # Special cases for None / NoneType first: `getattr(builtins, "None")` returns the `None`
-    # singleton (not a type), so these must be handled before the builtins type gate below.
-    if type_str == "None":
-        return None
-    if type_str == "NoneType":
-        return NoneType
-
-    # Then check builtins
+    # No module prefix, check builtins and typing.
+    # (None / NoneType / Ellipsis are handled at the top of this function, before they can reach the
+    # builtin type gate below which would refuse them for not being types.)
     if hasattr(builtins, type_str):
         resolved = getattr(builtins, type_str)
         # This bare-name path never consults the allowlist. A type annotation must resolve to an

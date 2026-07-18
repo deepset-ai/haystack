@@ -7,7 +7,7 @@ import sys
 import typing
 from collections import deque
 from types import UnionType
-from typing import Any, Deque, Dict, FrozenSet, List, Optional, Set, Tuple, Union
+from typing import Any, Callable, Deque, Dict, FrozenSet, List, Optional, Set, Tuple, Union
 
 import pytest
 
@@ -80,6 +80,10 @@ TYPING_AND_TYPE_TESTS = [
     pytest.param("tuple[dict]", tuple[dict]),
     pytest.param("tuple[float]", tuple[float]),
     pytest.param("tuple[bool]", tuple[bool]),
+    # variadic tuple (the `...` is the Ellipsis singleton, not a type)
+    pytest.param("tuple[int, ...]", tuple[int, ...]),
+    pytest.param("tuple[str, ...]", tuple[str, ...]),
+    pytest.param("tuple[dict[str, int], ...]", tuple[dict[str, int], ...]),
     # typing Tuple
     pytest.param("typing.Tuple", Tuple),
     pytest.param("typing.Tuple[int]", Tuple[int]),
@@ -87,6 +91,7 @@ TYPING_AND_TYPE_TESTS = [
     pytest.param("typing.Tuple[dict]", Tuple[dict]),
     pytest.param("typing.Tuple[float]", Tuple[float]),
     pytest.param("typing.Tuple[bool]", Tuple[bool]),
+    pytest.param("typing.Tuple[int, ...]", Tuple[int, ...]),
     # PEP 604 X | Y
     pytest.param("str | int", str | int),
     pytest.param("int | float", int | float),
@@ -243,6 +248,34 @@ def test_output_type_round_trip_typing_generic_with_nonetype():
         Optional[str],
     ]:
         assert deserialize_type(serialize_type(type_)) == type_
+
+
+def test_output_type_serialization_ellipsis():
+    # The `...` (Ellipsis) singleton is serialized to the literal "..." Python itself uses when rendering
+    # variadic tuples and Callable, not to str(Ellipsis) == "Ellipsis" (which is not a type).
+    assert serialize_type(tuple[int, ...]) == "tuple[int, ...]"
+    assert serialize_type(Tuple[int, ...]) == "typing.Tuple[int, ...]"
+    assert serialize_type(Callable[..., int]) == "typing.Callable[..., int]"
+
+
+def test_output_type_round_trip_variadic_tuple_and_callable_ellipsis():
+    # Regression: `...` used to be serialized as "Ellipsis", which deserialize_type then rejected as a
+    # non-type builtin, so a type Haystack serialized itself could not be read back.
+    for type_ in [
+        tuple[int, ...],
+        tuple[str, ...],
+        tuple[dict[str, int], ...],
+        Tuple[int, ...],
+        Callable[..., int],
+        Callable[..., str],
+    ]:
+        assert deserialize_type(serialize_type(type_)) == type_
+
+
+def test_output_type_deserialization_legacy_ellipsis_literal():
+    # Types serialized by older versions emitted the literal "Ellipsis"; make sure they still load.
+    assert deserialize_type("tuple[int, Ellipsis]") == tuple[int, ...]
+    assert deserialize_type("typing.Callable[Ellipsis, int]") == Callable[..., int]
 
 
 def test_output_type_serialization_haystack_dataclasses():
