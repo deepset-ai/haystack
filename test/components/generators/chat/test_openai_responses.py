@@ -420,6 +420,14 @@ class TestComponentLifecycle:
         generator.warm_up()
         assert generator._tools_warmed_up
 
+    def test_warm_up_with_empty_tools_list_does_not_raise(self, monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "fake-api-key")
+        # An empty list is a valid ``tools`` value (e.g. when built programmatically); warming up
+        # must not index ``tools[0]`` unguarded.
+        generator = OpenAIResponsesChatGenerator(tools=[])
+        generator.warm_up()
+        assert generator._tools_warmed_up
+
     def test_warm_up_with_openai_tools_does_not_raise(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "fake-api-key")
         generator = OpenAIResponsesChatGenerator(
@@ -492,6 +500,21 @@ class TestRun:
             chat_messages = [ChatMessage.from_user("What's the weather like in Paris and Berlin?")]
             component = OpenAIResponsesChatGenerator(tools=duplicate_tools)
             component.run(chat_messages)
+
+    def test_prepare_api_call_does_not_mutate_tool_parameters(self, monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+        parameters = {"type": "object", "properties": {"city": {"type": "string"}}, "required": ["city"]}
+        tool = Tool(name="weather", description="get the weather", parameters=parameters, function=print)
+
+        generator = OpenAIResponsesChatGenerator(tools_strict=False)
+        api_args = generator._prepare_api_call(messages=[ChatMessage.from_user("hi")], tools=[tool])
+
+        # The tool's own schema must not be modified in place, otherwise the same Tool passed to
+        # another generator (or serialized) would carry an additionalProperties flag it never had.
+        assert "additionalProperties" not in tool.parameters
+        assert tool.parameters == {"type": "object", "properties": {"city": {"type": "string"}}, "required": ["city"]}
+        # ...while the payload actually sent to the API still carries additionalProperties=False.
+        assert api_args["tools"][0]["parameters"]["additionalProperties"] is False
 
     def test_run_with_wrong_model(self):
         mock_client = MagicMock()

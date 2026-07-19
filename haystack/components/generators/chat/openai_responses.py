@@ -228,7 +228,7 @@ class OpenAIResponsesChatGenerator:
 
     def _warm_up_tools(self) -> None:
         if not self._tools_warmed_up:
-            is_openai_tool = isinstance(self.tools, list) and isinstance(self.tools[0], dict)
+            is_openai_tool = isinstance(self.tools, list) and bool(self.tools) and isinstance(self.tools[0], dict)
             # We only warm up Haystack tools, not OpenAI/MCP tools
             # The type ignore is needed because mypy cannot infer the type correctly
             if not is_openai_tool:
@@ -539,7 +539,10 @@ class OpenAIResponsesChatGenerator:
                     function_spec = {**t.tool_spec}
                     if not tools_strict:
                         function_spec["strict"] = False
-                    function_spec["parameters"]["additionalProperties"] = False
+                    # Copy the parameters schema before editing it. ``tool_spec`` exposes
+                    # ``Tool.parameters`` by reference, so mutating it here would permanently alter
+                    # the user's Tool (and any other generator that shares the same Tool instance).
+                    function_spec["parameters"] = {**function_spec["parameters"], "additionalProperties": False}
                     tool_definitions.append({"type": "function", **function_spec})
 
             openai_tools = {"tools": tool_definitions}
