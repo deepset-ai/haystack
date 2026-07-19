@@ -151,9 +151,7 @@ class TestMemoryEmbeddingRetriever:
                     meta={"type": "article", "year": 2020},
                 ),
                 Document(
-                    content="python blog current",
-                    embedding=[1.0, 0.0, 0.0, 0.0],
-                    meta={"type": "blog", "year": 2021},
+                    content="python blog current", embedding=[1.0, 0.0, 0.0, 0.0], meta={"type": "blog", "year": 2021}
                 ),
                 Document(
                     content="python article archived",
@@ -164,14 +162,11 @@ class TestMemoryEmbeddingRetriever:
         )
 
         retriever = InMemoryEmbeddingRetriever(
-            ds,
-            filters={"field": "meta.type", "operator": "==", "value": "article"},
-            filter_policy=FilterPolicy.MERGE,
+            ds, filters={"field": "meta.type", "operator": "==", "value": "article"}, filter_policy=FilterPolicy.MERGE
         )
 
         result = retriever.run(
-            query_embedding=[1.0, 0.0, 0.0, 0.0],
-            filters={"field": "meta.year", "operator": ">=", "value": 2020},
+            query_embedding=[1.0, 0.0, 0.0, 0.0], filters={"field": "meta.year", "operator": ">=", "value": 2020}
         )
 
         assert [doc.content for doc in result["documents"]] == ["python article current"]
@@ -187,9 +182,7 @@ class TestMemoryEmbeddingRetriever:
                     meta={"type": "article", "year": 2020},
                 ),
                 Document(
-                    content="python blog current",
-                    embedding=[1.0, 0.0, 0.0, 0.0],
-                    meta={"type": "blog", "year": 2021},
+                    content="python blog current", embedding=[1.0, 0.0, 0.0, 0.0], meta={"type": "blog", "year": 2021}
                 ),
                 Document(
                     content="python article archived",
@@ -200,14 +193,11 @@ class TestMemoryEmbeddingRetriever:
         )
 
         retriever = InMemoryEmbeddingRetriever(
-            ds,
-            filters={"field": "meta.type", "operator": "==", "value": "article"},
-            filter_policy=FilterPolicy.MERGE,
+            ds, filters={"field": "meta.type", "operator": "==", "value": "article"}, filter_policy=FilterPolicy.MERGE
         )
 
         result = await retriever.run_async(
-            query_embedding=[1.0, 0.0, 0.0, 0.0],
-            filters={"field": "meta.year", "operator": ">=", "value": 2020},
+            query_embedding=[1.0, 0.0, 0.0, 0.0], filters={"field": "meta.year", "operator": ">=", "value": 2020}
         )
 
         assert [doc.content for doc in result["documents"]] == ["python article current"]

@@ -154,10 +154,7 @@ class TestMemoryBM25Retriever:
             filter_policy=FilterPolicy.MERGE,
         )
 
-        result = retriever.run(
-            query="python",
-            filters={"field": "meta.year", "operator": ">=", "value": 2020},
-        )
+        result = retriever.run(query="python", filters={"field": "meta.year", "operator": ">=", "value": 2020})
 
         assert [doc.content for doc in result["documents"]] == ["python article current"]
 
@@ -178,8 +175,7 @@ class TestMemoryBM25Retriever:
         )
 
         result = await retriever.run_async(
-            query="python",
-            filters={"field": "meta.year", "operator": ">=", "value": 2020},
+            query="python", filters={"field": "meta.year", "operator": ">=", "value": 2020}
         )
 
         assert [doc.content for doc in result["documents"]] == ["python article current"]
