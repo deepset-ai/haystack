@@ -141,6 +141,77 @@ class TestMemoryEmbeddingRetriever:
         assert len(result["documents"]) == top_k
         assert result["documents"][0].embedding == [1.0, 1.0, 1.0, 1.0]
 
+    def test_run_with_filter_policy_merge_combines_init_and_runtime_filters(self):
+        ds = InMemoryDocumentStore(embedding_similarity_function="cosine")
+        ds.write_documents(
+            [
+                Document(
+                    content="python article current",
+                    embedding=[1.0, 0.0, 0.0, 0.0],
+                    meta={"type": "article", "year": 2020},
+                ),
+                Document(
+                    content="python blog current",
+                    embedding=[1.0, 0.0, 0.0, 0.0],
+                    meta={"type": "blog", "year": 2021},
+                ),
+                Document(
+                    content="python article archived",
+                    embedding=[1.0, 0.0, 0.0, 0.0],
+                    meta={"type": "article", "year": 2019},
+                ),
+            ]
+        )
+
+        retriever = InMemoryEmbeddingRetriever(
+            ds,
+            filters={"field": "meta.type", "operator": "==", "value": "article"},
+            filter_policy=FilterPolicy.MERGE,
+        )
+
+        result = retriever.run(
+            query_embedding=[1.0, 0.0, 0.0, 0.0],
+            filters={"field": "meta.year", "operator": ">=", "value": 2020},
+        )
+
+        assert [doc.content for doc in result["documents"]] == ["python article current"]
+
+    @pytest.mark.asyncio
+    async def test_run_async_with_filter_policy_merge_combines_init_and_runtime_filters(self):
+        ds = InMemoryDocumentStore(embedding_similarity_function="cosine")
+        ds.write_documents(
+            [
+                Document(
+                    content="python article current",
+                    embedding=[1.0, 0.0, 0.0, 0.0],
+                    meta={"type": "article", "year": 2020},
+                ),
+                Document(
+                    content="python blog current",
+                    embedding=[1.0, 0.0, 0.0, 0.0],
+                    meta={"type": "blog", "year": 2021},
+                ),
+                Document(
+                    content="python article archived",
+                    embedding=[1.0, 0.0, 0.0, 0.0],
+                    meta={"type": "article", "year": 2019},
+                ),
+            ]
+        )
+
+        retriever = InMemoryEmbeddingRetriever(
+            ds,
+            filters={"field": "meta.type", "operator": "==", "value": "article"},
+            filter_policy=FilterPolicy.MERGE,
+        )
+
+        result = await retriever.run_async(
+            query_embedding=[1.0, 0.0, 0.0, 0.0],
+            filters={"field": "meta.year", "operator": ">=", "value": 2020},
+        )
+
+        assert [doc.content for doc in result["documents"]] == ["python article current"]
+
     def test_invalid_run_wrong_store_type(self):
         SomeOtherDocumentStore = document_store_class("SomeOtherDocumentStore")
         with pytest.raises(TypeError, match="document_store must be an instance of InMemoryDocumentStore"):
