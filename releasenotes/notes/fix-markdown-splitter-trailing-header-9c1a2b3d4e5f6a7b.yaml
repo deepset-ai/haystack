@@ -1,0 +1,9 @@
+---
+fixes:
+  - |
+    Fixed `MarkdownHeaderSplitter` silently dropping a trailing header that has
+    no body text. With `keep_headers=True` (the default), a header at the end of
+    the document whose only content is whitespace was buffered to prepend to the
+    next chunk, but with no following chunk it was never emitted, so the split
+    documents no longer reconstructed the original text. Such trailing headers
+    are now emitted as a final chunk.
