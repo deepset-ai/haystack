@@ -8,6 +8,7 @@ import pytest
 
 from haystack import Pipeline
 from haystack.components.evaluators import LLMEvaluator
+from haystack.components.generators.chat import MockChatGenerator
 from haystack.components.generators.chat.openai import OpenAIChatGenerator
 from haystack.dataclasses.chat_message import ChatMessage
 
@@ -636,3 +637,40 @@ class TestComponentLifecycle:
         await evaluator.warm_up_async()
         evaluator.close()
         await evaluator.close_async()
+
+
+class TestLLMEvaluatorTracing:
+    def test_run_traces_chat_generator_token_usage(self, spying_tracer):
+        evaluator = LLMEvaluator(
+            instructions="test-instruction",
+            inputs=[("predicted_answers", list[str])],
+            outputs=["score"],
+            examples=[{"inputs": {"predicted_answers": "Answer"}, "outputs": {"score": 1}}],
+            chat_generator=MockChatGenerator('{"score": 1}'),
+        )
+
+        evaluator.run(predicted_answers=["Football is the most popular sport."])
+
+        gen_spans = [s for s in spying_tracer.spans if s.operation_name == "haystack.chat_generator.run"]
+        assert len(gen_spans) == 1
+        output = gen_spans[0].tags["haystack.component.output"]
+        assert output["replies"][0].meta["usage"]["total_tokens"] > 0
+
+
+class TestLLMEvaluatorTracingAsync:
+    @pytest.mark.asyncio
+    async def test_run_async_traces_chat_generator_token_usage(self, spying_tracer):
+        evaluator = LLMEvaluator(
+            instructions="test-instruction",
+            inputs=[("predicted_answers", list[str])],
+            outputs=["score"],
+            examples=[{"inputs": {"predicted_answers": "Answer"}, "outputs": {"score": 1}}],
+            chat_generator=MockChatGenerator('{"score": 1}'),
+        )
+
+        await evaluator.run_async(predicted_answers=["Football is the most popular sport."])
+
+        gen_spans = [s for s in spying_tracer.spans if s.operation_name == "haystack.chat_generator.run"]
+        assert len(gen_spans) == 1
+        output = gen_spans[0].tags["haystack.component.output"]
+        assert output["replies"][0].meta["usage"]["total_tokens"] > 0

@@ -507,3 +507,28 @@ class TestComponentLifecycle:
         expander = QueryExpander(chat_generator=chat_generator)
         expander.warm_up()
         expander.close()
+
+
+class TestQueryExpanderTracing:
+    def test_run_traces_chat_generator_token_usage(self, spying_tracer):
+        expander = QueryExpander(chat_generator=MockChatGenerator('{"queries": ["alt1", "alt2"]}'))
+
+        expander.run(query="green energy sources")
+
+        gen_spans = [s for s in spying_tracer.spans if s.operation_name == "haystack.chat_generator.run"]
+        assert len(gen_spans) == 1
+        output = gen_spans[0].tags["haystack.component.output"]
+        assert output["replies"][0].meta["usage"]["total_tokens"] > 0
+
+
+class TestQueryExpanderTracingAsync:
+    @pytest.mark.asyncio
+    async def test_run_async_traces_chat_generator_token_usage(self, spying_tracer):
+        expander = QueryExpander(chat_generator=MockChatGenerator('{"queries": ["alt1", "alt2"]}'))
+
+        await expander.run_async(query="green energy sources")
+
+        gen_spans = [s for s in spying_tracer.spans if s.operation_name == "haystack.chat_generator.run"]
+        assert len(gen_spans) == 1
+        output = gen_spans[0].tags["haystack.component.output"]
+        assert output["replies"][0].meta["usage"]["total_tokens"] > 0

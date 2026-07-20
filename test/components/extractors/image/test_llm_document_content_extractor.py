@@ -676,3 +676,40 @@ class TestComponentLifecycle:
         await extractor.warm_up_async()
         extractor.close()
         await extractor.close_async()
+
+
+class TestLLMDocumentContentExtractorTracing:
+    @patch.object(DocumentToImageContent, "run")
+    def test_run_traces_chat_generator_token_usage(self, mock_doc_to_image_run, spying_tracer):
+        mock_doc_to_image_run.return_value = {
+            "image_contents": [ImageContent.from_file_path("./test/test_files/images/apple.jpg")]
+        }
+        extractor = LLMDocumentContentExtractor(
+            chat_generator=MockChatGenerator('{"document_content": "Extracted content"}')
+        )
+
+        extractor.run(documents=[Document(content="", meta={"file_path": "/path/to/image.jpg"})])
+
+        gen_spans = [s for s in spying_tracer.spans if s.operation_name == "haystack.chat_generator.run"]
+        assert len(gen_spans) == 1
+        output = gen_spans[0].tags["haystack.component.output"]
+        assert output["replies"][0].meta["usage"]["total_tokens"] > 0
+
+
+class TestLLMDocumentContentExtractorTracingAsync:
+    @pytest.mark.asyncio
+    @patch.object(DocumentToImageContent, "run")
+    async def test_run_async_traces_chat_generator_token_usage(self, mock_doc_to_image_run, spying_tracer):
+        mock_doc_to_image_run.return_value = {
+            "image_contents": [ImageContent.from_file_path("./test/test_files/images/apple.jpg")]
+        }
+        extractor = LLMDocumentContentExtractor(
+            chat_generator=MockChatGenerator('{"document_content": "Extracted content"}')
+        )
+
+        await extractor.run_async(documents=[Document(content="", meta={"file_path": "/path/to/image.jpg"})])
+
+        gen_spans = [s for s in spying_tracer.spans if s.operation_name == "haystack.chat_generator.run"]
+        assert len(gen_spans) == 1
+        output = gen_spans[0].tags["haystack.component.output"]
+        assert output["replies"][0].meta["usage"]["total_tokens"] > 0

@@ -6,14 +6,16 @@ import asyncio
 import json
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import replace
+from functools import partial
 from typing import Any, Literal
 
 from jinja2 import meta
 from jinja2.sandbox import SandboxedEnvironment
 
-from haystack import Document, component, default_from_dict, default_to_dict, logging
+from haystack import Document, component, default_from_dict, default_to_dict, logging, tracing
 from haystack.components.converters.image.document_to_image import DocumentToImageContent
 from haystack.components.generators.chat.types import ChatGenerator
+from haystack.components.generators.utils import _trace_chat_generator_run
 from haystack.core.serialization import component_to_dict
 from haystack.dataclasses import ImageContent, TextContent
 from haystack.dataclasses.chat_message import ChatMessage
@@ -267,11 +269,14 @@ class LLMDocumentContentExtractor:
         meta_updates = {k: v for k, v in parsed.items() if k != DOCUMENT_CONTENT_KEY}
         return content, meta_updates, None
 
-    def _run_on_thread(self, image_content: ImageContent | None) -> dict[str, Any]:
+    def _run_on_thread(
+        self, image_content: ImageContent | None, parent_span: tracing.Span | None = None
+    ) -> dict[str, Any]:
         """
         Execute the LLM inference in a separate thread for each document.
 
         :param image_content: The image content for one document, or None if conversion failed.
+        :param parent_span: Span to nest the generator span under, captured on the calling thread.
         :returns:
             The LLM response if successful, or a dictionary with an "error" key on failure.
         """
@@ -282,7 +287,11 @@ class LLMDocumentContentExtractor:
         message = ChatMessage.from_user(content_parts=[TextContent(text=self.prompt), image_content])
 
         try:
-            result = self._chat_generator.run(messages=[message])
+            with _trace_chat_generator_run(
+                self._chat_generator, {"messages": [message]}, parent_span=parent_span
+            ) as span:
+                result = self._chat_generator.run(messages=[message])
+                span.set_content_tag("haystack.component.output", result)
         except Exception as e:
             if self.raise_on_failure:
                 raise e
@@ -295,11 +304,14 @@ class LLMDocumentContentExtractor:
 
         return result
 
-    async def _run_async(self, image_content: ImageContent | None) -> dict[str, Any]:
+    async def _run_async(
+        self, image_content: ImageContent | None, parent_span: tracing.Span | None = None
+    ) -> dict[str, Any]:
         """
         Execute the LLM inference asynchronously for each document.
 
         :param image_content: The image content for one document, or None if conversion failed.
+        :param parent_span: Span to nest the generator span under, captured on the calling task.
         :returns:
             The LLM response if successful, or a dictionary with an "error" key on failure.
         """
@@ -310,7 +322,11 @@ class LLMDocumentContentExtractor:
         message = ChatMessage.from_user(content_parts=[TextContent(text=self.prompt), image_content])
 
         try:
-            result = await _execute_component_async(self._chat_generator, messages=[message])
+            with _trace_chat_generator_run(
+                self._chat_generator, {"messages": [message]}, parent_span=parent_span
+            ) as span:
+                result = await _execute_component_async(self._chat_generator, messages=[message])
+                span.set_content_tag("haystack.component.output", result)
         except Exception as e:
             if self.raise_on_failure:
                 raise e
@@ -366,8 +382,11 @@ class LLMDocumentContentExtractor:
 
         image_contents = self._document_to_image_content.run(documents=documents)["image_contents"]
 
+        # Capture the current span here so worker threads nest their generator spans under the component span.
+        parent_span = tracing.tracer.current_span()
+
         with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
-            results = executor.map(self._run_on_thread, image_contents)
+            results = executor.map(partial(self._run_on_thread, parent_span=parent_span), image_contents)
 
         successful_documents = []
         failed_documents = []
@@ -401,12 +420,15 @@ class LLMDocumentContentExtractor:
 
         image_contents = self._document_to_image_content.run(documents=documents)["image_contents"]
 
+        # Capture the current span here so concurrent tasks nest their generator spans under the component span.
+        parent_span = tracing.tracer.current_span()
+
         # Run the LLM on each image content, bounding concurrency per task so max_workers is enforced.
         sem = asyncio.Semaphore(max(1, self.max_workers))
 
         async def _bounded_run(image_content: ImageContent | None) -> dict[str, Any]:
             async with sem:
-                return await self._run_async(image_content)
+                return await self._run_async(image_content, parent_span=parent_span)
 
         results = await asyncio.gather(*[_bounded_run(image_content) for image_content in image_contents])
 

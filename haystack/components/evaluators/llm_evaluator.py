@@ -13,6 +13,7 @@ from haystack import component, default_from_dict, default_to_dict, logging
 from haystack.components.builders import PromptBuilder
 from haystack.components.generators.chat.openai import OpenAIChatGenerator
 from haystack.components.generators.chat.types import ChatGenerator
+from haystack.components.generators.utils import _trace_chat_generator_run
 from haystack.core.serialization import component_to_dict
 from haystack.dataclasses.chat_message import ChatMessage
 from haystack.utils import deserialize_chatgenerator_inplace, deserialize_type, serialize_type
@@ -232,7 +233,9 @@ class LLMEvaluator:
             prompt = self.builder.run(**input_names_to_values)
             messages = [ChatMessage.from_user(prompt["prompt"])]
             try:
-                result = self._chat_generator.run(messages=messages)
+                with _trace_chat_generator_run(self._chat_generator, {"messages": messages}) as span:
+                    result = self._chat_generator.run(messages=messages)
+                    span.set_content_tag("haystack.component.output", result)
             except Exception as e:
                 if self.raise_on_failure:
                     raise ValueError(f"Error while generating response for prompt: {prompt}. Error: {e}") from e
@@ -301,15 +304,17 @@ class LLMEvaluator:
             prompt = self.builder.run(**input_names_to_values)
             messages = [ChatMessage.from_user(prompt["prompt"])]
             try:
-                if generator_has_async:
-                    result = await self._chat_generator.run_async(messages=messages)  # type: ignore[attr-defined]
-                else:
-                    logger.debug(
-                        "{generator_type} does not implement 'run_async'."
-                        " Running the synchronous 'run' method in a thread to avoid blocking the event loop.",
-                        generator_type=type(self._chat_generator).__name__,
-                    )
-                    result = await asyncio.to_thread(self._chat_generator.run, messages=messages)
+                with _trace_chat_generator_run(self._chat_generator, {"messages": messages}) as span:
+                    if generator_has_async:
+                        result = await self._chat_generator.run_async(messages=messages)  # type: ignore[attr-defined]
+                    else:
+                        logger.debug(
+                            "{generator_type} does not implement 'run_async'."
+                            " Running the synchronous 'run' method in a thread to avoid blocking the event loop.",
+                            generator_type=type(self._chat_generator).__name__,
+                        )
+                        result = await asyncio.to_thread(self._chat_generator.run, messages=messages)
+                    span.set_content_tag("haystack.component.output", result)
             except Exception as e:
                 if self.raise_on_failure:
                     raise ValueError(f"Error while generating response for prompt: {prompt}. Error: {e}") from e

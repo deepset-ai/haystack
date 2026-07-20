@@ -10,7 +10,7 @@ import pytest
 
 from haystack import Document, Pipeline
 from haystack.components.extractors import LLMMetadataExtractor
-from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.components.generators.chat import MockChatGenerator, OpenAIChatGenerator
 from haystack.components.writers import DocumentWriter
 from haystack.dataclasses import ChatMessage
 from haystack.document_stores.in_memory import InMemoryDocumentStore
@@ -569,3 +569,32 @@ class TestComponentLifecycle:
         await extractor.warm_up_async()
         extractor.close()
         await extractor.close_async()
+
+
+class TestLLMMetadataExtractorTracing:
+    def test_run_traces_chat_generator_token_usage(self, spying_tracer):
+        extractor = LLMMetadataExtractor(
+            prompt="Extract entities from: {{ document.content }}", chat_generator=MockChatGenerator('{"entities": []}')
+        )
+
+        extractor.run(documents=[Document(content="deepset was founded in Berlin.")])
+
+        gen_spans = [s for s in spying_tracer.spans if s.operation_name == "haystack.chat_generator.run"]
+        assert len(gen_spans) == 1
+        output = gen_spans[0].tags["haystack.component.output"]
+        assert output["replies"][0].meta["usage"]["total_tokens"] > 0
+
+
+class TestLLMMetadataExtractorTracingAsync:
+    @pytest.mark.asyncio
+    async def test_run_async_traces_chat_generator_token_usage(self, spying_tracer):
+        extractor = LLMMetadataExtractor(
+            prompt="Extract entities from: {{ document.content }}", chat_generator=MockChatGenerator('{"entities": []}')
+        )
+
+        await extractor.run_async(documents=[Document(content="deepset was founded in Berlin.")])
+
+        gen_spans = [s for s in spying_tracer.spans if s.operation_name == "haystack.chat_generator.run"]
+        assert len(gen_spans) == 1
+        output = gen_spans[0].tags["haystack.component.output"]
+        assert output["replies"][0].meta["usage"]["total_tokens"] > 0

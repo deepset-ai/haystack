@@ -8,6 +8,7 @@ from haystack import Document, component, default_from_dict, default_to_dict, lo
 from haystack.components.builders import PromptBuilder
 from haystack.components.generators.chat.openai import OpenAIChatGenerator
 from haystack.components.generators.chat.types import ChatGenerator
+from haystack.components.generators.utils import _trace_chat_generator_run
 from haystack.core.serialization import component_to_dict
 from haystack.dataclasses import ChatMessage
 from haystack.utils import deserialize_chatgenerator_inplace
@@ -261,7 +262,11 @@ class LLMRanker:
         prompt = self._prompt_builder.run(query=query.strip(), documents=deduplicated_documents)
 
         try:
-            result = self._chat_generator.run(messages=[ChatMessage.from_user(prompt["prompt"])])
+            with _trace_chat_generator_run(
+                self._chat_generator, {"messages": [ChatMessage.from_user(prompt["prompt"])]}
+            ) as span:
+                result = self._chat_generator.run(messages=[ChatMessage.from_user(prompt["prompt"])])
+                span.set_content_tag("haystack.component.output", result)
         except Exception as exc:
             if self.raise_on_failure:
                 raise
@@ -325,9 +330,13 @@ class LLMRanker:
         prompt = self._prompt_builder.run(query=query.strip(), documents=deduplicated_documents)
 
         try:
-            result = await _execute_component_async(
-                self._chat_generator, messages=[ChatMessage.from_user(prompt["prompt"])]
-            )
+            with _trace_chat_generator_run(
+                self._chat_generator, {"messages": [ChatMessage.from_user(prompt["prompt"])]}
+            ) as span:
+                result = await _execute_component_async(
+                    self._chat_generator, messages=[ChatMessage.from_user(prompt["prompt"])]
+                )
+                span.set_content_tag("haystack.component.output", result)
         except Exception as exc:
             if self.raise_on_failure:
                 raise
