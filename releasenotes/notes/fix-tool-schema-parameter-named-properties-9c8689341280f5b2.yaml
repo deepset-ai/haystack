@@ -1,7 +1,7 @@
 ---
 fixes:
   - |
-    Fixed an `AttributeError: 'str' object has no attribute 'items'` raised by `create_tool_from_function`,
-    the `@tool` decorator, and `ComponentTool` when a tool parameter is named `properties`.
-    Keys inside a JSON schema `properties` mapping are property names and are no longer misinterpreted
-    as schema keywords when stripping the auto-generated `title` keywords.
+    Fixed an ``AttributeError: 'str' object has no attribute 'items'`` raised by ``create_tool_from_function``,
+    the ``@tool`` decorator, and ``ComponentTool`` when a tool parameter is named ``properties``.
+    Keys inside a JSON schema ``properties`` mapping are property names and are no longer misinterpreted
+    as schema keywords when stripping the auto-generated ``title`` keywords.
