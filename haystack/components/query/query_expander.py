@@ -228,7 +228,7 @@ class QueryExpander:
                 )
                 expanded_queries = expanded_queries[:expansion_count]
 
-            # Add original query if requested and remove duplicates
+            # Add original query if not already present
             if self.include_original_query:
                 expanded_queries_lower = [q.lower() for q in expanded_queries]
                 if query.lower() not in expanded_queries_lower:
@@ -297,7 +297,7 @@ class QueryExpander:
                 )
                 expanded_queries = expanded_queries[:expansion_count]
 
-            # Add original query if requested and remove duplicates
+            # Add original query if not already present
             if self.include_original_query:
                 expanded_queries_lower = [q.lower() for q in expanded_queries]
                 if query.lower() not in expanded_queries_lower:
@@ -349,7 +349,7 @@ class QueryExpander:
         Parse the generator response to extract individual expanded queries.
 
         :param generator_response: The raw text response from the generator.
-        :return: List of parsed expanded queries.
+        :return: List of parsed expanded queries, deduplicated in first-seen order.
         """
         parsed = _parse_dict_from_json(generator_response, expected_keys=["queries"], raise_on_failure=False)
 
@@ -364,9 +364,13 @@ class QueryExpander:
             return []
 
         queries = []
+        seen: set[str] = set()
         for item in parsed["queries"]:
             if isinstance(item, str) and item.strip():
-                queries.append(item.strip())
+                stripped = item.strip()
+                if stripped not in seen:
+                    seen.add(stripped)
+                    queries.append(stripped)
             else:
                 logger.warning("Skipping non-string or empty query in response: {item}", item=item)
 
