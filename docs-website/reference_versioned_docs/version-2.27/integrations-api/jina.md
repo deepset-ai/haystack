@@ -631,7 +631,7 @@ run(
     documents: list[Document],
     top_k: int | None = None,
     score_threshold: float | None = None,
-) -> dict[str, list[Document]]
+) -> dict[str, Any]
 ```
 
 Returns a list of Documents ranked by their similarity to the given query.
@@ -645,8 +645,9 @@ Returns a list of Documents ranked by their similarity to the given query.
 
 **Returns:**
 
-- <code>dict\[str, list\[Document\]\]</code> – A dictionary with the following keys:
+- <code>dict\[str, Any\]</code> – A dictionary with the following keys:
 - `documents`: List of Documents most similar to the given query in descending order of similarity.
+- `meta`: A dictionary with metadata about the request, including the model used and usage information.
 
 **Raises:**
 
@@ -660,7 +661,7 @@ run_async(
     documents: list[Document],
     top_k: int | None = None,
     score_threshold: float | None = None,
-) -> dict[str, list[Document]]
+) -> dict[str, Any]
 ```
 
 Asynchronously returns a list of Documents ranked by their similarity to the given query.
@@ -677,8 +678,9 @@ but can be used with `await` in async code.
 
 **Returns:**
 
-- <code>dict\[str, list\[Document\]\]</code> – A dictionary with the following keys:
+- <code>dict\[str, Any\]</code> – A dictionary with the following keys:
 - `documents`: List of Documents most similar to the given query in descending order of similarity.
+- `meta`: A dictionary with metadata about the request, including the model used and usage information.
 
 **Raises:**
 
