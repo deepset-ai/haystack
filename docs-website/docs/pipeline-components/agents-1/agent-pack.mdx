@@ -28,7 +28,7 @@ However, building a robust agent often requires more: an architecture that split
 Agent Pack combines these techniques into working agents. Each one is a complete architecture built from Haystack primitives ([`Agent`](./agent.mdx), [Tools](../../tools/tool.mdx), [hooks](./hooks.mdx), [`State`](./state.mdx), and Pipelines), exposed behind a single `create_*` entry point.
 
 There are three ways to use an agent from the pack:
-- **Run it as is.** Call `create_deep_research_agent()`, pass a question, get a report. The defaults are chosen to work out of the box.
+- **Run it as is.** Each agent has a factory that builds a ready-to-run agent with defaults chosen to work out of the box. For example, `create_deep_research_agent()` returns an agent that takes a question and produces a report.
 - **Customize it.** Each entry point exposes parameters for changing models, adding tools, and configuring behavior specific to that type of agent. (*This interface is still being refined to make customization more consistent and flexible.*)
 - **Copy it.** Read the implementation and take inspiration for your agents. These agents are built with this use case in mind, so individual parts should be easy to adapt.
 
