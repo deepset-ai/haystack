@@ -349,7 +349,7 @@ class QueryExpander:
         Parse the generator response to extract individual expanded queries.
 
         :param generator_response: The raw text response from the generator.
-        :return: List of parsed expanded queries, deduplicated case-insensitively, in first-seen order.
+        :return: List of parsed expanded queries, deduplicated in first-seen order.
         """
         parsed = _parse_dict_from_json(generator_response, expected_keys=["queries"], raise_on_failure=False)
 
