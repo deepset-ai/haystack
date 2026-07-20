@@ -9,6 +9,16 @@
 | Meta    | [![Discord](https://img.shields.io/discord/993534733298450452?logo=discord)](https://discord.com/invite/qZxjM4bAHU) [![Twitter Follow](https://img.shields.io/twitter/follow/haystack_ai)](https://twitter.com/haystack_ai)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
 </div>
 
+<div align="center">
+
+# 🎉🎊✨ &nbsp; Haystack 3.0 is out! &nbsp; ✨🎊🎉
+
+### Read the announcement [here](https://haystack.deepset.ai/blog/haystack-3-release)!
+
+## 🥳 🎈 🎆 🪅 🎇 🍾 🥂 🎁 🌈
+
+</div>
+
 [Haystack](https://haystack.deepset.ai/) is an open-source AI orchestration framework for building production-ready LLM applications in Python.
 
 Design modular pipelines and agent workflows with explicit control over retrieval, routing, memory, and generation. Build scalable RAG systems, multimodal applications, semantic search, question answering, and autonomous agents, all in a transparent architecture that lets you experiment, customize deeply, and deploy with confidence.
