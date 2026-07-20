@@ -63,14 +63,20 @@ At any given point, hit the [documentation](https://docs.haystack.deepset.ai/doc
 
 ## Features
 
+**Agents built for production**  
+Extend agent behavior with lifecycle hooks (`before_llm`, `before_tool`, `on_exit`, …) for guardrails and custom logic, and track `step_count`, `token_usage`, and tool calls out of the box for monitoring and cost control.
+
 **Built for context engineering**  
 Design flexible systems with explicit control over how information is retrieved, ranked, filtered, combined, structured, and routed before it reaches the model. Define pipelines and agent workflows where retrieval, memory, tools, and generation are transparent and traceable.
 
-**Model- and vendor-agnostic**  
-Integrate with OpenAI, Mistral, Anthropic, Cohere, Hugging Face, Azure OpenAI, AWS Bedrock, local models, and many others. Swap models or infrastructure components without rewriting your system.
+**Unified pipelines, sync and async**  
+One `Pipeline` runs synchronously or asynchronously and streams token by token — no separate `AsyncPipeline`, no rewrites to switch execution modes.
 
 **Modular and customizable**  
 Use built-in components for retrieval, indexing, tool calling, memory, and evaluation, or create your own. Add loops, branches, and conditional logic to precisely control how context moves through your pipelines and agent workflows.
+
+**Model- and vendor-agnostic**  
+Integrate with OpenAI, Mistral, Anthropic, Cohere, Hugging Face, Azure OpenAI, AWS Bedrock, local models, and many others. Swap models or infrastructure components without rewriting your system.
 
 **Extensible ecosystem**  
 Build and share custom components through a consistent interface that makes it easy for the community and third parties to extend Haystack and contribute to an open ecosystem.
