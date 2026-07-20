@@ -22,6 +22,12 @@ logger = logging.getLogger(__name__)
 
 _import_lock = Lock()
 
+# Literal singletons that are not types and must be resolved before the generic/module-path handling in
+# deserialize_type: the None singleton ("None"), NoneType, and Ellipsis ("..."). Ellipsis appears in
+# variadic tuples (tuple[int, ...]) and Callable[..., X]. "Ellipsis" is also accepted so that types
+# serialized by older Haystack versions (which emitted the literal "Ellipsis") can still be read back.
+_SPECIAL_LITERALS: dict[str, Any] = {"None": None, "NoneType": NoneType, "...": ..., "Ellipsis": ...}
+
 
 def _is_union_type(target: Any) -> bool:
     """
@@ -178,15 +184,11 @@ def deserialize_type(type_str: str) -> Any:
         If the module is not on the deserialization allowlist, or if the type cannot be
         deserialized due to a missing module or type.
     """
-    # Literal singletons that are not types: the None singleton ("None"), NoneType ("NoneType") and
-    # Ellipsis ("..."). Ellipsis appears in variadic tuples (tuple[int, ...]) and Callable[..., X].
-    # These are resolved up front, before the generic and module-path handling below: the dots in
-    # "..." would otherwise be read as a module path, and the None/Ellipsis singletons would be refused
-    # by the builtin type gate. "Ellipsis" is also accepted so that types serialized by older versions
-    # (which emitted the literal "Ellipsis") can still be read back.
-    special_literals: dict[str, Any] = {"None": None, "NoneType": NoneType, "...": ..., "Ellipsis": ...}
-    if type_str in special_literals:
-        return special_literals[type_str]
+    # Resolve the non-type literal singletons (see _SPECIAL_LITERALS) up front, before the generic and
+    # module-path handling below: the dots in "..." would otherwise be read as a module path, and the
+    # None/Ellipsis singletons would be refused by the builtin type gate.
+    if type_str in _SPECIAL_LITERALS:
+        return _SPECIAL_LITERALS[type_str]
 
     # Handle PEP 604 union syntax at the top level (e.g., "str | int", "str | None")
     pep604_union_args = _parse_pep604_union_args(type_str)

@@ -92,6 +92,9 @@ TYPING_AND_TYPE_TESTS = [
     pytest.param("typing.Tuple[float]", Tuple[float]),
     pytest.param("typing.Tuple[bool]", Tuple[bool]),
     pytest.param("typing.Tuple[int, ...]", Tuple[int, ...]),
+    # callable (the `...` is the Ellipsis singleton, not a type)
+    pytest.param("typing.Callable[..., int]", Callable[..., int]),
+    pytest.param("typing.Callable[..., str]", Callable[..., str]),
     # PEP 604 X | Y
     pytest.param("str | int", str | int),
     pytest.param("int | float", int | float),
@@ -246,28 +249,6 @@ def test_output_type_round_trip_typing_generic_with_nonetype():
         List[type(None)],  # type: ignore[misc]
         Union[str, int, None],
         Optional[str],
-    ]:
-        assert deserialize_type(serialize_type(type_)) == type_
-
-
-def test_output_type_serialization_ellipsis():
-    # The `...` (Ellipsis) singleton is serialized to the literal "..." Python itself uses when rendering
-    # variadic tuples and Callable, not to str(Ellipsis) == "Ellipsis" (which is not a type).
-    assert serialize_type(tuple[int, ...]) == "tuple[int, ...]"
-    assert serialize_type(Tuple[int, ...]) == "typing.Tuple[int, ...]"
-    assert serialize_type(Callable[..., int]) == "typing.Callable[..., int]"
-
-
-def test_output_type_round_trip_variadic_tuple_and_callable_ellipsis():
-    # Regression: `...` used to be serialized as "Ellipsis", which deserialize_type then rejected as a
-    # non-type builtin, so a type Haystack serialized itself could not be read back.
-    for type_ in [
-        tuple[int, ...],
-        tuple[str, ...],
-        tuple[dict[str, int], ...],
-        Tuple[int, ...],
-        Callable[..., int],
-        Callable[..., str],
     ]:
         assert deserialize_type(serialize_type(type_)) == type_
 
