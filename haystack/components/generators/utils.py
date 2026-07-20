@@ -38,6 +38,7 @@ def _trace_chat_generator_run(
     :param parent_span: Explicit parent span. Defaults to the current span. Pass it explicitly when the generator
         runs in a worker thread, where the ambient span context does not propagate.
     """
+    # Fall back to the active span so same-thread callers get correct nesting without passing a parent explicitly.
     parent_span = parent_span or tracing.tracer.current_span()
     with tracing.tracer.trace(
         "haystack.chat_generator.run",
