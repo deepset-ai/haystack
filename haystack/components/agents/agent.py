@@ -63,9 +63,9 @@ _JINJA2_CHAT_TEMPLATE_RE = re.compile(r"\{%\s*message\s")
 # Regex to extract the role from a Jinja2 message block, e.g. {% message role="user" %}
 _JINJA2_MESSAGE_ROLE_RE = re.compile(r'\{%\s*message\s+role\s*=\s*["\'](\w+)["\']')
 
-# Exit reason reported when the Agent stops because a chat-generator reply had no tool calls (the "text" exit).
+# `exit_reason` values the Agent sets when it stops without a tool exit condition: a tool-call-free reply, or the
+# `max_agent_steps` budget running out. A tool exit condition instead reports the tool's name.
 _EXIT_REASON_TEXT = "text"
-# Exit reason reported when the Agent stops because it exhausted `max_agent_steps` before meeting an exit condition.
 _EXIT_REASON_MAX_STEPS = "max_agent_steps"
 
 # Run-metadata state keys the Agent populates automatically during a run. Users may not define them in their own
@@ -1064,9 +1064,8 @@ class Agent:
                 if not self._run_step(exe_context, span):
                     break
             else:
-                # The loop ran to completion without a `break`, i.e. no exit condition was met before the step
-                # budget ran out. A `break` means a step set its own `exit_reason` (text or a tool), so this branch
-                # only runs when `max_agent_steps` is the real reason the Agent stopped.
+                # Reached only when the loop ends without a `break`. A `break` means a step already set its own
+                # `exit_reason`, so this branch runs only when `max_agent_steps` is why the Agent stopped.
                 logger.warning(
                     "Agent reached maximum agent steps of {max_agent_steps}, stopping.",
                     max_agent_steps=self.max_agent_steps,
@@ -1146,9 +1145,8 @@ class Agent:
                 if not await self._run_step_async(exe_context, span):
                     break
             else:
-                # The loop ran to completion without a `break`, i.e. no exit condition was met before the step
-                # budget ran out. A `break` means a step set its own `exit_reason` (text or a tool), so this branch
-                # only runs when `max_agent_steps` is the real reason the Agent stopped.
+                # Reached only when the loop ends without a `break`. A `break` means a step already set its own
+                # `exit_reason`, so this branch runs only when `max_agent_steps` is why the Agent stopped.
                 logger.warning(
                     "Agent reached maximum agent steps of {max_agent_steps}, stopping.",
                     max_agent_steps=self.max_agent_steps,
