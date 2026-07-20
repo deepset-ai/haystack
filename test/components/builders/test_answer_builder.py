@@ -186,6 +186,38 @@ class TestAnswerBuilder:
         assert len(answers[0].documents) == 0
         assert "Document index '3' referenced in Generator output is out of range." in caplog.text
 
+    def test_run_with_documents_with_zero_reference(self, caplog):
+        # References are 1-based, so [0] is out of range and must not silently
+        # resolve to the last document via a negative index.
+        component = AnswerBuilder(reference_pattern="\\[(\\d+)\\]")
+        with caplog.at_level(logging.WARNING):
+            output = component.run(
+                query="test query",
+                replies=["Answer: AnswerString[0]"],
+                meta=[{}],
+                documents=[Document(content="test doc 1"), Document(content="test doc 2")],
+            )
+        answers = output["answers"]
+        assert len(answers) == 1
+        assert len(answers[0].documents) == 0
+        assert "Document index '0' referenced in Generator output is out of range." in caplog.text
+
+    def test_run_with_zero_reference_in_expanded_range(self, caplog):
+        component = AnswerBuilder(reference_pattern="\\[([\\d\\s,-]+)\\]", expand_reference_ranges=True)
+        with caplog.at_level(logging.WARNING):
+            output = component.run(
+                query="test query",
+                replies=["Answer: AnswerString[0-1]"],
+                meta=[{}],
+                documents=[Document(content="test doc 1"), Document(content="test doc 2")],
+            )
+        answers = output["answers"]
+        assert len(answers) == 1
+        assert len(answers[0].documents) == 1
+        assert answers[0].documents[0].content == "test doc 1"
+        assert answers[0].documents[0].meta["referenced"] is True
+        assert "Document index '0' referenced in Generator output is out of range." in caplog.text
+
     def test_run_with_reference_pattern_set_at_runtime(self):
         component = AnswerBuilder(reference_pattern="unused pattern")
         output = component.run(
