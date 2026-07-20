@@ -368,9 +368,8 @@ class QueryExpander:
         for item in parsed["queries"]:
             if isinstance(item, str) and item.strip():
                 stripped = item.strip()
-                lowered = stripped.lower()
-                if lowered not in seen:
-                    seen.add(lowered)
+                if stripped not in seen:
+                    seen.add(stripped)
                     queries.append(stripped)
             else:
                 logger.warning("Skipping non-string or empty query in response: {item}", item=item)
