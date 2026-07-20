@@ -1,0 +1,325 @@
+---
+title: "Migration Guide"
+id: migration
+slug: "/migration"
+description: "Learn how to make the move to Haystack 3.x from Haystack 2.x."
+---
+
+# Migration Guide
+
+Learn how to make the move to Haystack 3.x from Haystack 2.x.
+
+This guide is designed for those with previous experience with Haystack 2.x who want to upgrade to Haystack 3.x. It walks through every breaking change and shows how to adapt your code. If you're new to Haystack, skip this page and proceed directly to the [Get Started](get-started.mdx) guide.
+
+Haystack 3.x is an evolution of Haystack 2.x, not a rewrite: components, pipelines, and the `Agent` work as before. Most applications only need import updates and small, mechanical changes. The complete list of breaking changes with extended examples is maintained in [MIGRATION.md](https://github.com/deepset-ai/haystack/blob/main/MIGRATION.md) in the Haystack repository.
+
+## Update Your Installation
+
+The package name is unchanged:
+
+```bash
+pip install --upgrade haystack-ai
+```
+
+Two dependency changes to be aware of:
+
+- **`haystack-experimental` is no longer installed automatically.** If your code imports from `haystack_experimental`, install it explicitly with `pip install haystack-experimental`.
+- **Several components moved to dedicated integration packages** and now require an extra `pip install`. See [Components Moved to Integration Packages](#components-moved-to-integration-packages) below.
+
+## Removed and Renamed Components
+
+### Legacy Generators removed
+
+`OpenAIGenerator`, `AzureOpenAIGenerator`, `HuggingFaceAPIGenerator`, and `HuggingFaceLocalGenerator` have been removed. Their chat counterparts are the replacement: `OpenAIChatGenerator` and `AzureOpenAIChatGenerator` in Haystack core, `HuggingFaceAPIChatGenerator` in the `huggingface-api-haystack` integration, and `TransformersChatGenerator` (the renamed `HuggingFaceLocalChatGenerator`) in the `transformers-haystack` integration (see [Components Moved to Integration Packages](#components-moved-to-integration-packages)). All [ChatGenerators](../pipeline-components/generators.mdx) now also accept a plain `str` as input, so simple text-in/text-out use cases rarely require structural changes.
+
+Before (v2.x):
+
+```python
+from haystack.components.generators import OpenAIGenerator
+
+gen = OpenAIGenerator()
+result = gen.run("What is NLP?")
+text = result["replies"][0]  # str
+meta = result["meta"][0]  # dict with model metadata
+```
+
+After (v3.0):
+
+```python
+from haystack.components.generators.chat import OpenAIChatGenerator
+
+gen = OpenAIChatGenerator()
+result = gen.run("What is NLP?")  # str input accepted directly
+reply = result["replies"][0]  # ChatMessage
+text = reply.text  # str
+meta = reply.meta  # dict with model metadata (now on the message)
+```
+
+Pipelines that connected a `PromptBuilder` (output: `str`) to a legacy Generator keep working unchanged when you swap in a ChatGenerator: the pipeline type system automatically converts `str` to `list[ChatMessage]` at the connection edge. Two follow-up points:
+
+- The legacy Generators' separate `meta` output socket is gone. Remove any `pipeline.connect("llm.meta", ...)` calls; per-reply metadata now lives in each `ChatMessage.meta`, and `AnswerBuilder` reads it from there automatically.
+- To set a system prompt, prepend `ChatMessage.from_system(...)` to the messages instead of using the removed `system_prompt` init parameter.
+
+### `ToolInvoker` removed
+
+Tool execution is now owned by the [`Agent`](../pipeline-components/agents-1/agent.mdx) component. Instead of wiring a ChatGenerator to a `ToolInvoker`, pass the tools to an `Agent`: it forwards the tool definitions to the chat generator, executes requested tool calls, appends tool results to the conversation, and loops until an exit condition is reached.
+
+Before (v2.x):
+
+```python
+from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.components.tools import ToolInvoker
+from haystack.dataclasses import ChatMessage
+
+chat_generator = OpenAIChatGenerator(tools=[weather])
+tool_invoker = ToolInvoker(tools=[weather])
+
+llm_result = chat_generator.run(
+    messages=[ChatMessage.from_user("What is the weather in Berlin?")],
+)
+tool_result = tool_invoker.run(messages=llm_result["replies"])
+```
+
+After (v3.0):
+
+```python
+from haystack.components.agents import Agent
+from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.dataclasses import ChatMessage
+
+agent = Agent(chat_generator=OpenAIChatGenerator(), tools=[weather])
+result = agent.run(messages=[ChatMessage.from_user("What is the weather in Berlin?")])
+```
+
+The `tool_invoker_kwargs` parameter is gone from `Agent`; the relevant options are now top-level constructor parameters:
+
+- `max_workers` → `tool_concurrency_limit`
+- `enable_streaming_callback_passthrough` → `tool_streaming_callback_passthrough`
+- `convert_result_to_json_string` has been removed: non-string tool results are now always serialized with `json.dumps`.
+
+If you need to execute a prepared tool call outside an `Agent`, call `Tool.invoke` directly and send the result back to the model as a `ChatMessage.from_tool` message.
+
+### Other removals and renames
+
+| v2.x | v3.0 replacement |
+| --- | --- |
+| `TransformersSimilarityRanker` | `SentenceTransformersSimilarityRanker` (accepts the same parameters, adds async support) |
+| `DALLEImageGenerator` | [`OpenAIImageGenerator`](../pipeline-components/generators/openaiimagegenerator.mdx) (same API; renamed after OpenAI retired the DALL-E family) |
+| `AsyncPipeline` | `Pipeline` (see [Pipeline changes](#asyncpipeline-merged-into-pipeline)) |
+
+## Components Moved to Integration Packages
+
+Some components moved out of Haystack core into dedicated integration packages hosted in the [haystack-core-integrations](https://github.com/deepset-ai/haystack-core-integrations) repository. This keeps the core lean and lets fixes ship independently of the Haystack release cycle.
+
+To migrate, install the new package (`pip install <new-package>`) and update your imports:
+
+| Old import (`haystack-ai<3.0.0`) | New package | New import |
+|---|---|---|
+| `from haystack.components.generators.chat import HuggingFaceAPIChatGenerator` | `huggingface-api-haystack` | `from haystack_integrations.components.generators.huggingface_api import HuggingFaceAPIChatGenerator` |
+| `from haystack.components.embedders import HuggingFaceAPITextEmbedder` | `huggingface-api-haystack` | `from haystack_integrations.components.embedders.huggingface_api import HuggingFaceAPITextEmbedder` |
+| `from haystack.components.embedders import HuggingFaceAPIDocumentEmbedder` | `huggingface-api-haystack` | `from haystack_integrations.components.embedders.huggingface_api import HuggingFaceAPIDocumentEmbedder` |
+| `from haystack.components.rankers import HuggingFaceTEIRanker` | `huggingface-api-haystack` | `from haystack_integrations.components.rankers.huggingface_api import HuggingFaceTEIRanker` |
+| `from haystack.components.generators.chat import HuggingFaceLocalChatGenerator` | `transformers-haystack` | `from haystack_integrations.components.generators.transformers import TransformersChatGenerator` |
+| `from haystack.components.readers import ExtractiveReader` | `transformers-haystack` | `from haystack_integrations.components.readers.transformers import TransformersExtractiveReader` |
+| `from haystack.components.classifiers import TransformersZeroShotDocumentClassifier` | `transformers-haystack` | `from haystack_integrations.components.classifiers.transformers import TransformersZeroShotDocumentClassifier` |
+| `from haystack.components.routers import TransformersTextRouter` | `transformers-haystack` | `from haystack_integrations.components.routers.transformers import TransformersTextRouter` |
+| `from haystack.components.routers import TransformersZeroShotTextRouter` | `transformers-haystack` | `from haystack_integrations.components.routers.transformers import TransformersZeroShotTextRouter` |
+| `from haystack.components.extractors import NamedEntityExtractor` (Hugging Face backend) | `transformers-haystack` | `from haystack_integrations.components.extractors.transformers import TransformersNamedEntityExtractor` |
+| `from haystack.components.extractors import NamedEntityExtractor` (spaCy backend) | `spacy-haystack` | `from haystack_integrations.components.extractors.spacy import SpacyNamedEntityExtractor` |
+| `from haystack.components.embedders import SentenceTransformersTextEmbedder` | `sentence-transformers-haystack` | `from haystack_integrations.components.embedders.sentence_transformers import SentenceTransformersTextEmbedder` |
+| `from haystack.components.embedders import SentenceTransformersDocumentEmbedder` | `sentence-transformers-haystack` | `from haystack_integrations.components.embedders.sentence_transformers import SentenceTransformersDocumentEmbedder` |
+| `from haystack.components.embedders import SentenceTransformersSparseTextEmbedder` | `sentence-transformers-haystack` | `from haystack_integrations.components.embedders.sentence_transformers import SentenceTransformersSparseTextEmbedder` |
+| `from haystack.components.embedders import SentenceTransformersSparseDocumentEmbedder` | `sentence-transformers-haystack` | `from haystack_integrations.components.embedders.sentence_transformers import SentenceTransformersSparseDocumentEmbedder` |
+| `from haystack.components.embedders.image import SentenceTransformersDocumentImageEmbedder` | `sentence-transformers-haystack` | `from haystack_integrations.components.embedders.sentence_transformers import SentenceTransformersDocumentImageEmbedder` |
+| `from haystack.components.rankers import SentenceTransformersSimilarityRanker` | `sentence-transformers-haystack` | `from haystack_integrations.components.rankers.sentence_transformers import SentenceTransformersSimilarityRanker` |
+| `from haystack.components.rankers import SentenceTransformersDiversityRanker` | `sentence-transformers-haystack` | `from haystack_integrations.components.rankers.sentence_transformers import SentenceTransformersDiversityRanker` |
+| `from haystack.components.websearch import SerperDevWebSearch` | `serperdev-haystack` | `from haystack_integrations.components.websearch.serperdev import SerperDevWebSearch` |
+| `from haystack.components.websearch import SearchApiWebSearch` | `searchapi-haystack` | `from haystack_integrations.components.websearch.searchapi import SearchApiWebSearch` |
+| `from haystack.components.classifiers import DocumentLanguageClassifier` | `langdetect-haystack` | `from haystack_integrations.components.classifiers.langdetect import DocumentLanguageClassifier` |
+| `from haystack.components.routers import TextLanguageRouter` | `langdetect-haystack` | `from haystack_integrations.components.routers.langdetect import TextLanguageRouter` |
+| `from haystack.components.audio import LocalWhisperTranscriber` | `whisper-haystack` | `from haystack_integrations.components.audio.whisper import LocalWhisperTranscriber` |
+| `from haystack.components.audio import RemoteWhisperTranscriber` | `whisper-haystack` | `from haystack_integrations.components.audio.whisper import RemoteWhisperTranscriber` |
+| `from haystack.components.converters import TikaDocumentConverter` | `tika-haystack` | `from haystack_integrations.components.converters.tika import TikaDocumentConverter` |
+| `from haystack.components.converters import AzureOCRDocumentConverter` | `azure-form-recognizer-haystack` | `from haystack_integrations.components.converters.azure_form_recognizer import AzureOCRDocumentConverter` |
+| `from haystack.components.connectors import OpenAPIConnector` | `openapi-haystack` | `from haystack_integrations.components.connectors.openapi import OpenAPIConnector` |
+| `from haystack.components.connectors import OpenAPIServiceConnector` | `openapi-haystack` | `from haystack_integrations.components.connectors.openapi import OpenAPIServiceConnector` |
+| `from haystack.components.converters import OpenAPIServiceToFunctions` | `openapi-haystack` | `from haystack_integrations.components.converters.openapi import OpenAPIServiceToFunctions` |
+| `from haystack.tracing.datadog import DatadogTracer` | `datadog-haystack` | `from haystack_integrations.tracing.datadog import DatadogTracer` |
+| `from haystack.tracing import OpenTelemetryTracer` | `opentelemetry-haystack` | `from haystack_integrations.tracing.opentelemetry import OpenTelemetryTracer` |
+
+## Pipeline Changes
+
+### `AsyncPipeline` merged into `Pipeline`
+
+The `AsyncPipeline` class has been removed. Its asynchronous methods (`run_async`, `run_async_generator`, `stream`) are now part of the single [`Pipeline`](../concepts/pipelines.mdx) class, alongside the synchronous `run`.
+
+Before (v2.x):
+
+```python
+from haystack import AsyncPipeline
+
+pipeline = AsyncPipeline()
+result = await pipeline.run_async(data)
+```
+
+After (v3.0):
+
+```python
+from haystack import Pipeline
+
+pipeline = Pipeline()
+result = await pipeline.run_async(data)
+```
+
+If you used the **synchronous** `AsyncPipeline.run()`, note that it wrapped the concurrent async engine, so `Pipeline.run()` is not a drop-in replacement. Choose by intent:
+
+```python
+# Keep concurrent execution from sync code:
+result = asyncio.run(pipeline.run_async(data, concurrency_limit=4))
+
+# Sequential execution is fine:
+result = pipeline.run(data)  # components run one at a time; no concurrency_limit
+```
+
+Keep in mind that `Pipeline.run` executes components sequentially and does not accept `concurrency_limit`; only `run_async` / `run_async_generator` run components concurrently. Only `run` supports [breakpoints](../concepts/pipelines/pipeline-breakpoints.mdx).
+
+### Deserialization is gated by a module allowlist
+
+`Pipeline.load`, `Pipeline.loads`, and `Pipeline.from_dict` now refuse to import classes from modules outside a trusted-module allowlist and raise a `DeserializationError` instead. The default allowlist contains `haystack`, `haystack_integrations`, `haystack_experimental`, `builtins`, `typing`, and `collections`, so pipelines that only reference Haystack's own packages keep loading without changes.
+
+Pipelines that reference custom components, callables, or types in other packages need the extra modules explicitly allowed:
+
+```python
+from haystack import Pipeline
+
+# 1. Per-call kwarg — recommended for application code.
+with open("pipeline.yaml") as fp:
+    pipeline = Pipeline.load(fp, allowed_modules=["mypkg.*"])
+
+# 2. Per-call bypass — "I fully trust this YAML; skip the allowlist".
+with open("pipeline.yaml") as fp:
+    pipeline = Pipeline.load(fp, unsafe=True)
+
+# 3. Process-wide — call once at startup.
+from haystack.core.serialization import allow_deserialization_module
+
+allow_deserialization_module("mypkg.*")
+```
+
+```bash
+# 4. Environment variable — useful for deployments where code shouldn't change.
+export HAYSTACK_DESERIALIZATION_ALLOWLIST="mypkg.*,otherpkg.*"
+```
+
+See the [Serialization](../concepts/pipelines/serialization.mdx) page for details.
+
+## Prompt Builders: Template Variables Are Required by Default
+
+[`PromptBuilder`](../pipeline-components/builders/promptbuilder.mdx) and [`ChatPromptBuilder`](../pipeline-components/builders/chatpromptbuilder.mdx) now treat every Jinja2 template variable as required. Previously, variables were optional by default and missing values were silently rendered as empty strings. The `required_variables` parameter's default changed from `None` (all optional) to `"*"` (all required).
+
+```python
+from haystack.components.builders import PromptBuilder
+
+# Option 1: provide every variable (matches the new safe default).
+builder = PromptBuilder(template="Hello, {{ name }}! {{ greeting }}")
+builder.run(name="John", greeting="Welcome")
+
+# Option 2: declare which variables are required; everything else stays optional.
+builder = PromptBuilder(
+    template="Hello, {{ name }}! {{ greeting }}",
+    required_variables=["name"],
+)
+builder.run(name="John")  # greeting renders as ""
+
+# Option 3: restore the old "all optional" behavior.
+builder = PromptBuilder(
+    template="Hello, {{ name }}! {{ greeting }}",
+    required_variables=None,
+)
+builder.run(name="John")  # greeting renders as ""
+```
+
+## Agent Changes
+
+Beyond taking over tool execution from the removed `ToolInvoker`, the [`Agent`](../pipeline-components/agents-1/agent.mdx) component has a few more breaking changes:
+
+### Breakpoints and snapshots removed
+
+The agent-specific breakpoint API (`AgentBreakpoint`, `ToolBreakpoint`, `AgentSnapshot`, and the `break_point` / `snapshot` / `snapshot_callback` parameters of `Agent.run`) has been removed. Pausing and resuming execution inside an Agent is no longer supported; [pipeline-level breakpoints](../concepts/pipelines/pipeline-breakpoints.mdx) still cover the common debugging use cases, and [tracing](../development/tracing.mdx) is the recommended way to inspect an Agent's behavior.
+
+### Runtime `system_prompt` and `user_prompt` removed
+
+`Agent.run` and `Agent.run_async` no longer accept `system_prompt` or `user_prompt`; both must be set at initialization time. If a prompt must still be assembled per run, build `ChatMessage` objects before the Agent (for example, with a `ChatPromptBuilder`) and pass them through the `messages` input — a system message at the start of `messages` acts as a runtime system prompt. The same change applies to the `LLM` component.
+
+### Prompt template variables are required by default
+
+`Agent` now treats every Jinja2 template variable in `user_prompt` and `system_prompt` as required, in line with the [prompt builders](#prompt-builders-template-variables-are-required-by-default): the `required_variables` parameter's default changed from `None` (all optional) to `"*"` (all required). Previously, missing variables were silently rendered as empty strings. Pass `required_variables=["var1", "var2"]` to require only a subset, or `required_variables=None` to restore the old "all optional" behavior.
+
+### Tools must declare `inputs_from_state` to read from `State` by name
+
+A tool now reads a value from the Agent's [`State`](../pipeline-components/agents-1/state.mdx) by name only when it declares an explicit `inputs_from_state` mapping. The old implicit behavior — any tool parameter whose name matched a `State` key was silently filled from `State` — has been removed. Add `inputs_from_state={"state_key": "parameter_name"}` to any tool that should read from `State`. Tools that take the full `State` object via a `State`-annotated parameter are unaffected.
+
+### Reserved `state_schema` keys
+
+`Agent` now reserves the names `step_count`, `token_usage`, `tool_call_counts`, `continue_run`, `tools`, and `hook_context` in its `state_schema` and raises a `ValueError` if you pass any of them. Rename clashing entries.
+
+### Human-in-the-Loop confirmation is now a `before_tool` hook
+
+The `confirmation_strategies` and `confirmation_strategy_context` parameters have been removed. Wrap your confirmation strategies in a `ConfirmationHook` registered under the `before_tool` [hook point](../pipeline-components/agents-1/hooks.mdx), and pass request-scoped resources through the generic `hook_context` run argument:
+
+Before (v2.x):
+
+```python
+agent = Agent(
+    chat_generator=...,
+    tools=[...],
+    confirmation_strategies={"my_tool": BlockingConfirmationStrategy(...)},
+)
+agent.run(messages=[...], confirmation_strategy_context={"websocket": ws})
+```
+
+After (v3.0):
+
+```python
+from haystack.human_in_the_loop import ConfirmationHook
+
+confirmation_hook = ConfirmationHook(
+    confirmation_strategies={"my_tool": BlockingConfirmationStrategy(...)},
+)
+agent = Agent(
+    chat_generator=...,
+    tools=[...],
+    hooks={"before_tool": [confirmation_hook]},
+)
+agent.run(messages=[...], hook_context={"websocket": ws})
+```
+
+See [Human-in-the-Loop](../pipeline-components/agents-1/human-in-the-loop.mdx) for the full walkthrough. Note also that confirmation strategies now see only the tool arguments the model produced; values injected from `State` are applied at execution time and are no longer part of what is presented for confirmation.
+
+## Behavior Changes
+
+### Auto-generated `Document.id` changes for documents with non-empty `meta`
+
+The hash used to auto-generate `Document.id` is now computed from a canonical (key-sorted) JSON serialization of `meta`, so the ID no longer depends on the insertion order of `meta` keys. Documents with empty `meta` keep their v2.x IDs, but documents with non-empty `meta` get different IDs in 3.0.
+
+If you rely on auto-generated IDs matching documents already persisted in a Document Store written by Haystack 2.x, re-ingest the affected documents, pass the previous `id` explicitly, or migrate the stored IDs in place: read the stored documents, regenerate their IDs with Haystack 3.x (`replace(doc, id="")`), write them back, and delete the entries under the old IDs. [MIGRATION.md](https://github.com/deepset-ai/haystack/blob/main/MIGRATION.md) contains a complete example script.
+
+### Logging no longer reconfigures the whole process
+
+Importing Haystack no longer attaches its formatting handler to the root logger or configures `structlog` process-wide; the handler is scoped to the `haystack`, `haystack_integrations`, and `haystack_experimental` namespaces. To restore the old process-wide behavior, call `configure_logging(logger_name="")`; to prevent duplicate log lines when your application also configures the root logger, call `configure_logging(propagate=False)`. See the [Logging](../development/logging.mdx) page.
+
+### Tracing is no longer auto-enabled
+
+Haystack no longer auto-enables Datadog or OpenTelemetry tracing when the respective SDK is installed, and both tracers moved to integration packages (`datadog-haystack`, `opentelemetry-haystack`). Enable tracing explicitly — either by adding the integration's connector component (`DatadogConnector`, `OpenTelemetryConnector`) to your pipeline or by calling `haystack.tracing.enable_tracing(...)` with the tracer. The `HAYSTACK_AUTO_TRACE_ENABLED` environment variable no longer has any effect. See [Tracing](../development/tracing.mdx).
+
+### API keys are resolved at warm-up
+
+Components that use external services (such as OpenAI and Azure OpenAI components) now create their API clients during `warm_up()` instead of in `__init__`. A missing API key is reported at warm-up or first run rather than at construction.
+
+### `GeneratedAnswer` and `ExtractedAnswer` serialization
+
+`GeneratedAnswer.to_dict()` and `ExtractedAnswer.to_dict()` now return a flat dictionary of the object's fields instead of wrapping them in a `{"type": ..., "init_parameters": {...}}` envelope, aligning them with all other Haystack dataclasses. `from_dict()` still accepts the old wrapped format, so existing serialized artifacts keep loading. Update any code that reads the serialized output to access fields at the top level instead of under `init_parameters`.
+
+## Migrating from Haystack 1.x
+
+Haystack 1.x (the `farm-haystack` package) reached its end of life long before 3.0. If you are still on 1.x, migrate to the `haystack-ai` package first: the previous version of this page, covering the 1.x→2.x migration, is preserved [in the repository's v2 branch](https://github.com/deepset-ai/haystack/blob/v2.31.x/docs-website/docs/overview/migration.mdx). The archived 1.x documentation is available as a [ZIP file](https://core-engineering.s3.eu-central-1.amazonaws.com/public/docs/haystack-v1-docs.zip), and old tutorials remain accessible in the [GitHub history](https://github.com/deepset-ai/haystack-tutorials/tree/5917718cbfbb61410aab4121ee6fe754040a5dc7).
