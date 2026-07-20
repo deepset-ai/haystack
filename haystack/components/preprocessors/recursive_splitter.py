@@ -380,7 +380,9 @@ class RecursiveDocumentSplitter:
             current_length = 0
 
             for word in words:
-                if word != " ":
+                # re.findall above also yields multi-character whitespace tokens ("  ", "\t").
+                # Only count real words toward the length; any whitespace run is a separator.
+                if word.strip():
                     current_chunk.append(word)
                     current_length += 1
                     if current_length == self.split_length and current_chunk:

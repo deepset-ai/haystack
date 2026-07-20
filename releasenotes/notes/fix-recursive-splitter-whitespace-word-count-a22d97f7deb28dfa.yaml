@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    ``RecursiveDocumentSplitter``'s word-mode fixed-size fallback no longer counts a run of
+    whitespace (e.g. a double space, tab, or page break) as a word. Previously such a run was
+    counted toward the chunk length, producing chunks smaller than ``split_length`` and, for a
+    document made only of whitespace, a whitespace-only chunk.
