@@ -572,21 +572,9 @@ class TestComponentLifecycle:
 
 
 class TestLLMMetadataExtractorTracing:
-    def test_run_traces_chat_generator_token_usage(self, spying_tracer):
-        extractor = LLMMetadataExtractor(
-            prompt="Extract entities from: {{ document.content }}", chat_generator=MockChatGenerator('{"entities": []}')
-        )
-
-        extractor.run(documents=[Document(content="deepset was founded in Berlin.")])
-
-        gen_spans = [s for s in spying_tracer.spans if s.operation_name == "haystack.chat_generator.run"]
-        assert len(gen_spans) == 1
-        output = gen_spans[0].tags["haystack.component.output"]
-        assert output["replies"][0].meta["usage"]["total_tokens"] > 0
-
-    def test_run_nests_per_document_generator_spans_under_parent(self, spying_tracer):
-        # Two documents are processed on worker threads. The generator span for each must nest under the span active
-        # when run() was called, not under another document's generator span.
+    def test_run_traces_token_usage_and_nests_per_document_spans(self, spying_tracer):
+        # Two documents are processed on worker threads. Each generator span must expose the reply's token usage and
+        # nest under the span active when run() was called, not under another document's generator span.
         extractor = LLMMetadataExtractor(
             prompt="Extract entities from: {{ document.content }}", chat_generator=MockChatGenerator('{"entities": []}')
         )
@@ -598,35 +586,27 @@ class TestLLMMetadataExtractorTracing:
         gen_spans = [s for s in spying_tracer.spans if s.operation_name == "haystack.chat_generator.run"]
         assert len(gen_spans) == 2
         assert all(span.parent_span is parent_span for span in gen_spans)
+        assert all(
+            span.tags["haystack.component.output"]["replies"][0].meta["usage"]["total_tokens"] > 0 for span in gen_spans
+        )
 
 
 class TestLLMMetadataExtractorTracingAsync:
     @pytest.mark.asyncio
-    async def test_run_async_traces_chat_generator_token_usage(self, spying_tracer):
+    async def test_run_async_traces_token_usage_and_nests_per_document_spans(self, spying_tracer):
+        # Two documents are processed concurrently. Each generator span must expose the reply's token usage and nest
+        # under the span active when run_async() was called, not under another document's generator span.
         extractor = LLMMetadataExtractor(
             prompt="Extract entities from: {{ document.content }}", chat_generator=MockChatGenerator('{"entities": []}')
         )
 
-        await extractor.run_async(documents=[Document(content="deepset was founded in Berlin.")])
-
-        gen_spans = [s for s in spying_tracer.spans if s.operation_name == "haystack.chat_generator.run"]
-        assert len(gen_spans) == 1
-        output = gen_spans[0].tags["haystack.component.output"]
-        assert output["replies"][0].meta["usage"]["total_tokens"] > 0
-
-    @pytest.mark.asyncio
-    async def test_run_async_nests_per_document_generator_spans_under_parent(self, spying_tracer):
-        # Two documents are processed concurrently. The generator span for each must nest under the span active when
-        # run_async() was called, not under another document's generator span.
-        extractor = LLMMetadataExtractor(
-            prompt="Extract entities from: {{ document.content }}", chat_generator=MockChatGenerator('{"entities": []}')
-        )
-
+        documents = [Document(content="deepset is in Berlin."), Document(content="Paris is in France.")]
         with spying_tracer.trace("parent") as parent_span:
-            await extractor.run_async(
-                documents=[Document(content="deepset is in Berlin."), Document(content="Paris is in France.")]
-            )
+            await extractor.run_async(documents=documents)
 
         gen_spans = [s for s in spying_tracer.spans if s.operation_name == "haystack.chat_generator.run"]
         assert len(gen_spans) == 2
         assert all(span.parent_span is parent_span for span in gen_spans)
+        assert all(
+            span.tags["haystack.component.output"]["replies"][0].meta["usage"]["total_tokens"] > 0 for span in gen_spans
+        )
