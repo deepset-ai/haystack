@@ -584,6 +584,21 @@ class TestLLMMetadataExtractorTracing:
         output = gen_spans[0].tags["haystack.component.output"]
         assert output["replies"][0].meta["usage"]["total_tokens"] > 0
 
+    def test_run_nests_per_document_generator_spans_under_parent(self, spying_tracer):
+        # Two documents are processed on worker threads. The generator span for each must nest under the span active
+        # when run() was called, not under another document's generator span.
+        extractor = LLMMetadataExtractor(
+            prompt="Extract entities from: {{ document.content }}", chat_generator=MockChatGenerator('{"entities": []}')
+        )
+
+        documents = [Document(content="deepset is in Berlin."), Document(content="Paris is in France.")]
+        with spying_tracer.trace("parent") as parent_span:
+            extractor.run(documents=documents)
+
+        gen_spans = [s for s in spying_tracer.spans if s.operation_name == "haystack.chat_generator.run"]
+        assert len(gen_spans) == 2
+        assert all(span.parent_span is parent_span for span in gen_spans)
+
 
 class TestLLMMetadataExtractorTracingAsync:
     @pytest.mark.asyncio
@@ -598,3 +613,20 @@ class TestLLMMetadataExtractorTracingAsync:
         assert len(gen_spans) == 1
         output = gen_spans[0].tags["haystack.component.output"]
         assert output["replies"][0].meta["usage"]["total_tokens"] > 0
+
+    @pytest.mark.asyncio
+    async def test_run_async_nests_per_document_generator_spans_under_parent(self, spying_tracer):
+        # Two documents are processed concurrently. The generator span for each must nest under the span active when
+        # run_async() was called, not under another document's generator span.
+        extractor = LLMMetadataExtractor(
+            prompt="Extract entities from: {{ document.content }}", chat_generator=MockChatGenerator('{"entities": []}')
+        )
+
+        with spying_tracer.trace("parent") as parent_span:
+            await extractor.run_async(
+                documents=[Document(content="deepset is in Berlin."), Document(content="Paris is in France.")]
+            )
+
+        gen_spans = [s for s in spying_tracer.spans if s.operation_name == "haystack.chat_generator.run"]
+        assert len(gen_spans) == 2
+        assert all(span.parent_span is parent_span for span in gen_spans)

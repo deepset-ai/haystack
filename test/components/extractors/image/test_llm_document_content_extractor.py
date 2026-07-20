@@ -695,6 +695,32 @@ class TestLLMDocumentContentExtractorTracing:
         output = gen_spans[0].tags["haystack.component.output"]
         assert output["replies"][0].meta["usage"]["total_tokens"] > 0
 
+    @patch.object(DocumentToImageContent, "run")
+    def test_run_nests_per_document_generator_spans_under_parent(self, mock_doc_to_image_run, spying_tracer):
+        # Two documents are processed on worker threads. The generator span for each must nest under the span active
+        # when run() was called, not under another document's generator span.
+        mock_doc_to_image_run.return_value = {
+            "image_contents": [
+                ImageContent.from_file_path("./test/test_files/images/apple.jpg"),
+                ImageContent.from_file_path("./test/test_files/images/apple.jpg"),
+            ]
+        }
+        extractor = LLMDocumentContentExtractor(
+            chat_generator=MockChatGenerator('{"document_content": "Extracted content"}')
+        )
+
+        with spying_tracer.trace("parent") as parent_span:
+            extractor.run(
+                documents=[
+                    Document(content="", meta={"file_path": "/path/to/a.jpg"}),
+                    Document(content="", meta={"file_path": "/path/to/b.jpg"}),
+                ]
+            )
+
+        gen_spans = [s for s in spying_tracer.spans if s.operation_name == "haystack.chat_generator.run"]
+        assert len(gen_spans) == 2
+        assert all(span.parent_span is parent_span for span in gen_spans)
+
 
 class TestLLMDocumentContentExtractorTracingAsync:
     @pytest.mark.asyncio
@@ -713,3 +739,30 @@ class TestLLMDocumentContentExtractorTracingAsync:
         assert len(gen_spans) == 1
         output = gen_spans[0].tags["haystack.component.output"]
         assert output["replies"][0].meta["usage"]["total_tokens"] > 0
+
+    @pytest.mark.asyncio
+    @patch.object(DocumentToImageContent, "run")
+    async def test_run_async_nests_per_doc_generator_spans_under_parent(self, mock_doc_to_image_run, spying_tracer):
+        # Two documents are processed concurrently. The generator span for each must nest under the span active when
+        # run_async() was called, not under another document's generator span.
+        mock_doc_to_image_run.return_value = {
+            "image_contents": [
+                ImageContent.from_file_path("./test/test_files/images/apple.jpg"),
+                ImageContent.from_file_path("./test/test_files/images/apple.jpg"),
+            ]
+        }
+        extractor = LLMDocumentContentExtractor(
+            chat_generator=MockChatGenerator('{"document_content": "Extracted content"}')
+        )
+
+        with spying_tracer.trace("parent") as parent_span:
+            await extractor.run_async(
+                documents=[
+                    Document(content="", meta={"file_path": "/path/to/a.jpg"}),
+                    Document(content="", meta={"file_path": "/path/to/b.jpg"}),
+                ]
+            )
+
+        gen_spans = [s for s in spying_tracer.spans if s.operation_name == "haystack.chat_generator.run"]
+        assert len(gen_spans) == 2
+        assert all(span.parent_span is parent_span for span in gen_spans)
