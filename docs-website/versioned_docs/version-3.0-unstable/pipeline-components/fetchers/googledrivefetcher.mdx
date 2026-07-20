@@ -1,0 +1,138 @@
+---
+title: "GoogleDriveFetcher"
+id: googledrivefetcher
+slug: "/googledrivefetcher"
+description: "Fetches the full content of Google Drive files via the Drive API v3 and returns it as ByteStreams."
+---
+
+# GoogleDriveFetcher
+
+Fetches the full content of Google Drive files via the Drive API v3 and returns it as ByteStreams.
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | After [`GoogleDriveRetriever`](../retrievers/googledriveretriever.mdx), before a Router or File Converters |
+| **Mandatory init variables** | None |
+| **Mandatory run variables** | `access_token`: A delegated Google OAuth bearer token, typically wired from an upstream `OAuthTokenResolver`  <br /> <br />`targets`: A list of `Document`s (from `GoogleDriveRetriever`) or raw Google Drive file ids / URLs |
+| **Output variables** | `streams`: A list of [ByteStreams](../../concepts/data-classes.mdx) holding the fetched content |
+| **API reference** | [Google Drive](/reference/integrations-google-drive) |
+| **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/google_drive |
+| **Package name** | `google-drive-haystack` |
+
+</div>
+
+## Overview
+
+`GoogleDriveFetcher` downloads the full content of Google Drive files through the [Drive API v3](https://developers.google.com/drive/api/reference/rest/v3) and returns `ByteStream` objects, ready for a downstream converter.
+
+It complements [`GoogleDriveRetriever`](../retrievers/googledriveretriever.mdx), which returns only metadata (and optionally exported text). Wire the retriever's `documents` (or a list of file ids / Drive URLs) into the fetcher to download the underlying content. The fetcher dispatches on each file's mime type:
+
+- **Binary files** (PDF, DOCX, images, ...) are downloaded as-is via `files.get?alt=media`.
+- **Native Google Docs/Sheets/Slides** are exported with `files.export`, by default to the Office formats (DOCX/XLSX/PPTX), configurable via `export_mime_types`.
+- **Folders** and other non-downloadable Google types (Forms, Sites, ...) are skipped.
+
+Each `ByteStream`'s `meta` carries `file_id`, `web_url`, `file_name`, and `content_type`. Because the output is a list of `ByteStream`s of mixed types, the typical next step is a [`FileTypeRouter`](../routers/filetyperouter.mdx) that dispatches each stream to the right converter ([`PyPDFToDocument`](../converters/pypdftodocument.mdx), [`DOCXToDocument`](../converters/docxtodocument.mdx), [`XLSXToDocument`](../converters/xlsxtodocument.mdx), or [`PPTXToDocument`](../converters/pptxtodocument.mdx)).
+
+### Authentication
+
+The fetcher takes a per-user `access_token` as a run input. The token must carry a delegated Google OAuth scope that allows reading file content, for example `https://www.googleapis.com/auth/drive.readonly`. Typically you wire it from an upstream [`OAuthTokenResolver`](../connectors/oauthtokenresolver.mdx), which emits a plain string. A `Secret` is also accepted and resolved internally.
+
+### Error handling and concurrency
+
+- `raise_on_failure` (default `True`): when `False`, a failed fetch is logged and the file is skipped, so the remaining files are still returned.
+- `max_retries` (default `3`): retries on throttled (HTTP 429) and transient server errors.
+- `max_concurrent_requests` (default `5`): bounds the number of files fetched concurrently by `run_async` to avoid tripping Drive rate limits. It has no effect on the synchronous `run`, which fetches files one at a time.
+- `export_mime_types`: overrides the default native-Google-to-Office export mapping. Drive caps a single export at 10 MB.
+
+### Installation
+
+Install the Google Drive integration with:
+
+```shell
+pip install google-drive-haystack
+```
+
+## Usage
+
+### On its own
+
+`access_token` below is a per-user delegated Google OAuth bearer token. You can pass either raw file ids / Drive URLs or the `Document`s produced by `GoogleDriveRetriever`.
+
+```python
+from haystack_integrations.components.fetchers.google_drive import GoogleDriveFetcher
+
+fetcher = GoogleDriveFetcher()
+
+result = fetcher.run(
+    access_token="my-delegated-google-token",
+    targets=[
+        "https://drive.google.com/file/d/1AbCdEfGhIjKlMnOpQrStUvWxYz/view",
+    ],
+)
+
+for stream in result["streams"]:
+    print(stream.meta["file_name"], stream.meta["content_type"])
+```
+
+### In a pipeline
+
+The following query pipeline ties the whole integration together: an [`OAuthTokenResolver`](../connectors/oauthtokenresolver.mdx) provides a token, [`GoogleDriveRetriever`](../retrievers/googledriveretriever.mdx) searches Drive, `GoogleDriveFetcher` downloads the matching files, and a [`FileTypeRouter`](../routers/filetyperouter.mdx) sends each `ByteStream` to the right converter. Note that the resolver's single `access_token` output feeds both the retriever and the fetcher.
+
+```python
+from haystack import Pipeline
+from haystack.utils import Secret
+from haystack.components.routers import FileTypeRouter
+from haystack.components.converters import PyPDFToDocument, DOCXToDocument
+
+from haystack_integrations.components.connectors.oauth import OAuthTokenResolver
+from haystack_integrations.utils.oauth import OAuthRefreshTokenSource
+from haystack_integrations.components.retrievers.google_drive import (
+    GoogleDriveRetriever,
+)
+from haystack_integrations.components.fetchers.google_drive import GoogleDriveFetcher
+
+pipeline = Pipeline()
+pipeline.add_component(
+    "resolver",
+    OAuthTokenResolver(
+        token_source=OAuthRefreshTokenSource(
+            token_url="https://oauth2.googleapis.com/token",
+            client_id="aaa-bbb-ccc",
+            refresh_token=Secret.from_env_var("GOOGLE_REFRESH_TOKEN"),
+            scopes=["https://www.googleapis.com/auth/drive.readonly"],
+        ),
+    ),
+)
+pipeline.add_component("retriever", GoogleDriveRetriever(top_k=5))
+pipeline.add_component("fetcher", GoogleDriveFetcher())
+pipeline.add_component(
+    "router",
+    FileTypeRouter(
+        mime_types=[
+            "application/pdf",
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        ],
+    ),
+)
+pipeline.add_component("pdf_converter", PyPDFToDocument())
+pipeline.add_component("docx_converter", DOCXToDocument())
+
+# The same token feeds both the retriever and the fetcher.
+pipeline.connect("resolver.access_token", "retriever.access_token")
+pipeline.connect("resolver.access_token", "fetcher.access_token")
+
+# The retrieved documents become the fetcher's targets.
+pipeline.connect("retriever.documents", "fetcher.targets")
+
+# Route each fetched ByteStream to the matching converter.
+pipeline.connect("fetcher.streams", "router.sources")
+pipeline.connect("router.application/pdf", "pdf_converter.sources")
+pipeline.connect(
+    "router.application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "docx_converter.sources",
+)
+
+result = pipeline.run({"retriever": {"query": "quarterly roadmap"}})
+```
