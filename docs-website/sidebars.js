@@ -169,6 +169,18 @@ export default {
               ],
             },
             'pipeline-components/agents-1/state',
+            {
+              type: 'category',
+              label: 'Agent Pack',
+              link: {
+                type: 'doc',
+                id: 'pipeline-components/agents-1/agent-pack',
+              },
+              items: [
+                'pipeline-components/agents-1/agent-pack/advanced-rag-agent',
+                'pipeline-components/agents-1/agent-pack/deep-research-agent',
+              ],
+            },
           ],
         },
         {
