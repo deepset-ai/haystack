@@ -26,6 +26,18 @@ A metadata-aware RAG agent: instead of guessing which metadata fields exist, it 
 Part of [Agent Pack](../agent-pack.mdx), which is experimental for the moment. Its APIs and agent architectures can change in any release, without following the usual deprecation policy.
 :::
 
+## When to use this agent
+
+Use the advanced RAG agent when:
+
+- You have a large, heterogeneous corpus (many topics, sources, or document types mixed together) with well-structured metadata. The agent uses that metadata to narrow retrieval, making results more precise than relevance ranking alone.
+- You need to retrieve exact or complete subsets of documents by metadata ("all pages of this file", "everything from source X"), not just the most relevant matches.
+
+It's less useful when:
+
+- There's no metadata, or the metadata isn't useful for narrowing retrieval.
+- The corpus is small and homogeneous, so plain top-k retrieval already returns the right documents.
+
 ## Installation
 
 ```shell

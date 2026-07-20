@@ -25,6 +25,22 @@ A deep research agent: give it a question, and it researches the web and produce
 Part of [Agent Pack](../agent-pack.mdx), which is experimental for the moment. Its APIs and agent architectures can change in any release, without following the usual deprecation policy.
 :::
 
+## When to use this agent
+
+Use the deep research agent when you need more than a quick answer. It's designed for questions that require gathering information from many web sources, evaluating them, and producing a structured report with citations.
+
+Typical use cases include:
+
+- Researching a broad topic across many sources.
+- Comparing products, companies, technologies, or scientific findings.
+- Preparing a literature review or market overview.
+- Answering complex questions that benefit from investigating several sub-topics in parallel.
+
+It's less useful when:
+
+- A single web search or RAG lookup is enough. The multi-agent workflow adds latency and cost.
+- The information lives in a private knowledge base rather than on the public web. For that, use the [Advanced RAG Agent](./advanced-rag-agent.mdx).
+
 ## Installation
 
 ```shell
