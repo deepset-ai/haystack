@@ -55,8 +55,8 @@
         </aside>
         <h2>
             <span class="text">424 statements &nbsp;</span>
-            <button type="button" class="run button_toggle_run" value="run" data-shortcut="r" title="Toggle lines run">406<span class="text"> run</span></button>
-            <button type="button" class="mis show_mis button_toggle_mis" value="mis" data-shortcut="m" title="Toggle lines missing">18<span class="text"> missing</span></button>
+            <button type="button" class="run button_toggle_run" value="run" data-shortcut="r" title="Toggle lines run">408<span class="text"> run</span></button>
+            <button type="button" class="mis show_mis button_toggle_mis" value="mis" data-shortcut="m" title="Toggle lines missing">16<span class="text"> missing</span></button>
             <button type="button" class="exc show_exc button_toggle_exc" value="exc" data-shortcut="x" title="Toggle lines excluded">0<span class="text"> excluded</span></button>
         </h2>
         <p class="text">
@@ -65,7 +65,7 @@
             <a id="nextFileLink" class="nav" href="z_fd3f9c8f3e4c697c___init___py.html">&#xbb; next</a>
             &nbsp; &nbsp; &nbsp;
             <a class="nav" href="https://coverage.readthedocs.io/en/7.14.3">coverage.py v7.14.3</a>,
-            created at 2026-07-20 06:00 +0000
+            created at 2026-07-20 08:27 +0000
         </p>
         <aside class="hidden">
             <button type="button" class="button_next_chunk" data-shortcut="j"></button>
@@ -845,10 +845,10 @@
     <p class="run"><span class="n"><a id="t763" href="#t763">763</a></span><span class="t">            <span class="key">raise</span> <span class="nam">ValueError</span><span class="op">(</span><span class="str">"query_embedding should be a non-empty list of floats."</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t764" href="#t764">764</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t765" href="#t765">765</a></span><span class="t">        <span class="key">if</span> <span class="nam">filters</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
-    <p class="mis show_mis"><span class="n"><a id="t766" href="#t766">766</a></span><span class="t">            <span class="nam">InMemoryDocumentStore</span><span class="op">.</span><span class="nam">_validate_filters</span><span class="op">(</span><span class="nam">filters</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
-    <p class="mis show_mis"><span class="n"><a id="t767" href="#t767">767</a></span><span class="t">            <span class="nam">all_documents</span> <span class="op">=</span> <span class="op">[</span>&nbsp;</span><span class="r"></span></p>
-    <p class="mis mis2 show_mis"><span class="n"><a id="t768" href="#t768">768</a></span><span class="t">                <span class="nam">doc</span> <span class="key">for</span> <span class="nam">doc</span> <span class="key">in</span> <span class="nam">self</span><span class="op">.</span><span class="nam">storage</span><span class="op">.</span><span class="nam">values</span><span class="op">(</span><span class="op">)</span> <span class="key">if</span> <span class="nam">document_matches_filter</span><span class="op">(</span><span class="nam">filters</span><span class="op">=</span><span class="nam">filters</span><span class="op">,</span> <span class="nam">document</span><span class="op">=</span><span class="nam">doc</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
-    <p class="mis mis2 show_mis"><span class="n"><a id="t769" href="#t769">769</a></span><span class="t">            <span class="op">]</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t766" href="#t766">766</a></span><span class="t">            <span class="nam">InMemoryDocumentStore</span><span class="op">.</span><span class="nam">_validate_filters</span><span class="op">(</span><span class="nam">filters</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t767" href="#t767">767</a></span><span class="t">            <span class="nam">all_documents</span> <span class="op">=</span> <span class="op">[</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run run2"><span class="n"><a id="t768" href="#t768">768</a></span><span class="t">                <span class="nam">doc</span> <span class="key">for</span> <span class="nam">doc</span> <span class="key">in</span> <span class="nam">self</span><span class="op">.</span><span class="nam">storage</span><span class="op">.</span><span class="nam">values</span><span class="op">(</span><span class="op">)</span> <span class="key">if</span> <span class="nam">document_matches_filter</span><span class="op">(</span><span class="nam">filters</span><span class="op">=</span><span class="nam">filters</span><span class="op">,</span> <span class="nam">document</span><span class="op">=</span><span class="nam">doc</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run run2"><span class="n"><a id="t769" href="#t769">769</a></span><span class="t">            <span class="op">]</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t770" href="#t770">770</a></span><span class="t">        <span class="key">else</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t771" href="#t771">771</a></span><span class="t">            <span class="nam">all_documents</span> <span class="op">=</span> <span class="nam">list</span><span class="op">(</span><span class="nam">self</span><span class="op">.</span><span class="nam">storage</span><span class="op">.</span><span class="nam">values</span><span class="op">(</span><span class="op">)</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t772" href="#t772">772</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
@@ -1120,7 +1120,7 @@
             <a class="nav" href="z_fd3f9c8f3e4c697c___init___py.html">&#xbb; next</a>
             &nbsp; &nbsp; &nbsp;
             <a class="nav" href="https://coverage.readthedocs.io/en/7.14.3">coverage.py v7.14.3</a>,
-            created at 2026-07-20 06:00 +0000
+            created at 2026-07-20 08:27 +0000
         </p>
     </div>
 </footer>

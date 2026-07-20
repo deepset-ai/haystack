@@ -110,8 +110,8 @@
 | haystack/components/retrievers/auto\_merging\_retriever.py                |       80 |        0 |    100% |           |
 | haystack/components/retrievers/filter\_retriever.py                       |       22 |        1 |     95% |        55 |
 | haystack/components/retrievers/in\_memory/\_\_init\_\_.py                 |        5 |        0 |    100% |           |
-| haystack/components/retrievers/in\_memory/bm25\_retriever.py              |       48 |        2 |     96% |  147, 185 |
-| haystack/components/retrievers/in\_memory/embedding\_retriever.py         |       53 |        3 |     94% |102, 167, 218 |
+| haystack/components/retrievers/in\_memory/bm25\_retriever.py              |       44 |        0 |    100% |           |
+| haystack/components/retrievers/in\_memory/embedding\_retriever.py         |       49 |        1 |     98% |       102 |
 | haystack/components/retrievers/multi\_query\_embedding\_retriever.py      |       77 |        2 |     97% |  193, 212 |
 | haystack/components/retrievers/multi\_query\_text\_retriever.py           |       67 |        3 |     96% |123, 169, 184 |
 | haystack/components/retrievers/multi\_retriever.py                        |      114 |        1 |     99% |       135 |
@@ -167,9 +167,9 @@
 | haystack/document\_stores/errors/\_\_init\_\_.py                          |        2 |        0 |    100% |           |
 | haystack/document\_stores/errors/errors.py                                |        6 |        0 |    100% |           |
 | haystack/document\_stores/in\_memory/\_\_init\_\_.py                      |        5 |        0 |    100% |           |
-| haystack/document\_stores/in\_memory/document\_store.py                   |      424 |       18 |     96% |411-412, 421, 521, 584, 623, 625, 652-653, 668, 692, 766-767, 828, 830, 848, 853-854 |
+| haystack/document\_stores/in\_memory/document\_store.py                   |      424 |       16 |     96% |411-412, 421, 521, 584, 623, 625, 652-653, 668, 692, 828, 830, 848, 853-854 |
 | haystack/document\_stores/types/\_\_init\_\_.py                           |        4 |        0 |    100% |           |
-| haystack/document\_stores/types/filter\_policy.py                         |       65 |       12 |     82% |25, 38-39, 166, 174-181, 224-229, 233-239, 319 |
+| haystack/document\_stores/types/filter\_policy.py                         |       65 |       11 |     83% |25, 38-39, 166, 174-181, 224-229, 233-239 |
 | haystack/document\_stores/types/policy.py                                 |        6 |        0 |    100% |           |
 | haystack/document\_stores/types/protocol.py                               |       11 |        0 |    100% |           |
 | haystack/errors.py                                                        |        2 |        0 |    100% |           |
@@ -246,7 +246,7 @@
 | haystack/utils/type\_serialization.py                                     |      122 |        6 |     95% |69, 71, 191-192, 200, 222 |
 | haystack/utils/url\_validation.py                                         |        4 |        0 |    100% |           |
 | haystack/version.py                                                       |        5 |        2 |     60% |      9-10 |
-| **TOTAL**                                                                 | **15848** |  **820** | **95%** |           |
+| **TOTAL**                                                                 | **15840** |  **813** | **95%** |           |
 
 
 ## Setup coverage badge
