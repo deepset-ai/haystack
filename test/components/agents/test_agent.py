@@ -17,7 +17,7 @@ from openai.types.chat import ChatCompletionChunk, chat_completion_chunk
 
 from haystack import Document, Pipeline, component, tracing
 from haystack.components.agents.agent import Agent, _accumulate_usage, _select_tools_by_name
-from haystack.components.agents.state import merge_lists, replace_values
+from haystack.components.agents.state import State, merge_lists, replace_values
 from haystack.components.agents.tool_calling import _run_tool
 from haystack.components.builders.chat_prompt_builder import ChatPromptBuilder
 from haystack.components.builders.prompt_builder import PromptBuilder
@@ -32,6 +32,7 @@ from haystack.dataclasses import ChatMessage, ToolCall
 from haystack.dataclasses.chat_message import ChatRole, TextContent
 from haystack.dataclasses.streaming_chunk import StreamingChunk
 from haystack.document_stores.in_memory import InMemoryDocumentStore
+from haystack.hooks import hook
 from haystack.tools import ComponentTool, Tool, tool
 from haystack.tools.toolset import Toolset
 from haystack.tracing.logging_tracer import LoggingTracer
@@ -222,9 +223,10 @@ class TestAgent:
             "step_count": OutputSocket(name="step_count", type=int, receivers=[]),
             "token_usage": OutputSocket(name="token_usage", type=dict[str, Any], receivers=[]),
             "tool_call_counts": OutputSocket(name="tool_call_counts", type=dict[str, int], receivers=[]),
+            "exit_reason": OutputSocket(name="exit_reason", type=str, receivers=[]),
         }
         # Check that the internal-state keys are not set up as input sockets
-        assert {"step_count", "token_usage", "tool_call_counts"}.isdisjoint(
+        assert {"step_count", "token_usage", "tool_call_counts", "exit_reason"}.isdisjoint(
             agent.__haystack_input__._sockets_dict.keys()
         )
 
@@ -481,6 +483,7 @@ class TestAgent:
             "step_count": {"type": int, "handler": replace_values},
             "token_usage": {"type": dict[str, Any], "handler": replace_values},
             "tool_call_counts": {"type": dict[str, int], "handler": replace_values},
+            "exit_reason": {"type": str, "handler": replace_values},
             "continue_run": {"type": bool, "handler": replace_values},
             "tools": {"type": list, "handler": replace_values},
             "hook_context": {"type": dict[str, Any], "handler": replace_values},
@@ -591,6 +594,7 @@ class TestAgent:
             "step_count": {"type": int, "handler": replace_values},
             "token_usage": {"type": dict[str, Any], "handler": replace_values},
             "tool_call_counts": {"type": dict[str, int], "handler": replace_values},
+            "exit_reason": {"type": str, "handler": replace_values},
             "continue_run": {"type": bool, "handler": replace_values},
             "tools": {"type": list, "handler": replace_values},
             "hook_context": {"type": dict[str, Any], "handler": replace_values},
@@ -635,6 +639,7 @@ class TestAgent:
             "step_count": {"type": int, "handler": replace_values},
             "token_usage": {"type": dict[str, Any], "handler": replace_values},
             "tool_call_counts": {"type": dict[str, int], "handler": replace_values},
+            "exit_reason": {"type": str, "handler": replace_values},
             "continue_run": {"type": bool, "handler": replace_values},
             "tools": {"type": list, "handler": replace_values},
             "hook_context": {"type": dict[str, Any], "handler": replace_values},
@@ -803,6 +808,8 @@ class TestAgent:
         assert "last_message" in result
         assert isinstance(result["last_message"], ChatMessage)
         assert result["messages"][-1] == result["last_message"]
+        # The exit reason is the tool that triggered the exit, and `last_message` is that tool's result.
+        assert result["exit_reason"] == "weather_tool"
 
     def test_exit_condition_on_tool_provided_at_runtime(self, weather_tool):
         """An exit condition naming a tool absent at init still triggers once that tool is provided at runtime."""
@@ -858,8 +865,8 @@ class TestAgent:
         llm_second = [ChatMessage.from_assistant(tool_calls=[other_call, finish_call])]
         tool_messages_ok = [ChatMessage.from_tool(tool_result="ok", origin=finish_call, error=False)]
 
-        assert agent._check_exit_conditions(llm_first, tool_messages_ok) is True
-        assert agent._check_exit_conditions(llm_second, tool_messages_ok) is True
+        assert agent._check_exit_conditions(llm_first, tool_messages_ok) == "weather_tool"
+        assert agent._check_exit_conditions(llm_second, tool_messages_ok) == "weather_tool"
 
     def test_check_exit_conditions_parallel_calls_with_errored_exit_tool(self, monkeypatch, weather_tool):
         monkeypatch.setenv("OPENAI_API_KEY", "fake-key")
@@ -871,7 +878,7 @@ class TestAgent:
         llm_messages = [ChatMessage.from_assistant(tool_calls=[other_call, finish_call])]
         tool_messages_errored = [ChatMessage.from_tool(tool_result="boom", origin=finish_call, error=True)]
 
-        assert agent._check_exit_conditions(llm_messages, tool_messages_errored) is False
+        assert agent._check_exit_conditions(llm_messages, tool_messages_errored) is None
 
     def test_check_exit_conditions_parallel_calls_error_only_on_non_exit_tool(
         self, monkeypatch, weather_tool, component_tool
@@ -890,7 +897,26 @@ class TestAgent:
             ChatMessage.from_tool(tool_result="ok", origin=finish_call, error=False),
         ]
 
-        assert agent._check_exit_conditions(llm_messages, tool_messages) is True
+        assert agent._check_exit_conditions(llm_messages, tool_messages) == "weather_tool"
+
+    def test_check_exit_conditions_errored_exit_tool_cancels_a_succeeding_one(self, monkeypatch, weather_tool):
+        """An errored exit-condition tool cancels the exit even when another exit-condition tool succeeded."""
+        monkeypatch.setenv("OPENAI_API_KEY", "fake-key")
+        agent = Agent(
+            chat_generator=OpenAIChatGenerator(), tools=[weather_tool], exit_conditions=["weather_tool", "search"]
+        )
+
+        ok_call = ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"})
+        errored_call = ToolCall(tool_name="search", arguments={"q": "weather Berlin"})
+
+        # The succeeding exit tool is listed first, so a naive first-match scan would wrongly return it.
+        llm_messages = [ChatMessage.from_assistant(tool_calls=[ok_call, errored_call])]
+        tool_messages = [
+            ChatMessage.from_tool(tool_result="ok", origin=ok_call, error=False),
+            ChatMessage.from_tool(tool_result="boom", origin=errored_call, error=True),
+        ]
+
+        assert agent._check_exit_conditions(llm_messages, tool_messages) is None
 
     def test_agent_with_no_tools(self):
         agent = Agent(chat_generator=MockChatGenerator("Berlin"), tools=[], max_agent_steps=3)
@@ -907,6 +933,8 @@ class TestAgent:
         assert "last_message" in response
         assert isinstance(response["last_message"], ChatMessage)
         assert response["messages"][-1] == response["last_message"]
+        # With no tools the loop always exits after the first reply, reporting the "text" exit reason.
+        assert response["exit_reason"] == "text"
 
     def test_run_with_system_prompt(self, weather_tool):
         chat_generator = MockChatGeneratorWithoutRunAsync()
@@ -1134,7 +1162,7 @@ class TestAgent:
 
     def test_reserved_state_schema_keys_raise(self, monkeypatch, weather_tool):
         monkeypatch.setenv("OPENAI_API_KEY", "fake-key")
-        for reserved in ("step_count", "token_usage", "tool_call_counts"):
+        for reserved in ("step_count", "token_usage", "tool_call_counts", "exit_reason"):
             with pytest.raises(ValueError, match="reserved for Agent internal state"):
                 Agent(
                     chat_generator=OpenAIChatGenerator(), tools=[weather_tool], state_schema={reserved: {"type": int}}
@@ -1218,6 +1246,97 @@ class TestAgent:
         assert result["step_count"] == 1
         assert result["token_usage"] == {}
         assert result["tool_call_counts"] == {"weather_tool": 0}
+
+
+class TestAgentExitReason:
+    """The Agent reports why it stopped via the `exit_reason` output, so downstream code can route its output."""
+
+    def test_text_exit(self, weather_tool):
+        """A plain assistant reply with no tool calls reports the `"text"` exit reason."""
+        agent = Agent(chat_generator=MockChatGenerator("Berlin is sunny."), tools=[weather_tool])
+        result = agent.run([ChatMessage.from_user("Weather in Berlin?")])
+        assert result["exit_reason"] == "text"
+
+    def test_tool_exit_reports_the_first_matching_tool(self, weather_tool, component_tool):
+        """When several exit-condition tools are called in one step, the first one encountered is reported."""
+        parallel_calls = ChatMessage.from_assistant(
+            tool_calls=[
+                ToolCall(tool_name="parrot", arguments={"parrot": "hi"}),
+                ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"}),
+            ]
+        )
+        agent = Agent(
+            chat_generator=MockChatGenerator(parallel_calls),
+            tools=[weather_tool, component_tool],
+            exit_conditions=["weather_tool", "parrot"],
+        )
+        result = agent.run([ChatMessage.from_user("Go")])
+        assert result["exit_reason"] == "parrot"
+
+    def test_max_steps_exit(self, weather_tool):
+        """Exhausting `max_agent_steps` before meeting an exit condition reports `"max_agent_steps"`."""
+        # The model keeps requesting a (non-exit-condition) tool call, so the loop never exits on its own.
+        tool_call_message = ChatMessage.from_assistant(
+            tool_calls=[ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"})]
+        )
+        agent = Agent(chat_generator=MockChatGenerator(tool_call_message), tools=[weather_tool], max_agent_steps=2)
+        result = agent.run([ChatMessage.from_user("Weather in Berlin?")])
+        assert result["exit_reason"] == "max_agent_steps"
+
+    def test_exit_reason_is_readable_in_after_run_hook(self, weather_tool):
+        """The `after_run` hook can read `exit_reason` to, e.g., append a fallback answer when max steps is hit."""
+        seen_reasons: list[str] = []
+
+        @hook
+        def fallback_on_max_steps(state: State) -> None:
+            reason = state.get("exit_reason")
+            seen_reasons.append(reason)
+            if reason == "max_agent_steps":
+                state.set("messages", [ChatMessage.from_assistant("Fallback answer.")])
+
+        tool_call_message = ChatMessage.from_assistant(
+            tool_calls=[ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"})]
+        )
+        agent = Agent(
+            chat_generator=MockChatGenerator(tool_call_message),
+            tools=[weather_tool],
+            max_agent_steps=2,
+            hooks={"after_run": [fallback_on_max_steps]},
+        )
+        result = agent.run([ChatMessage.from_user("Weather in Berlin?")])
+        assert seen_reasons == ["max_agent_steps"]
+        assert result["exit_reason"] == "max_agent_steps"
+        assert result["last_message"].text == "Fallback answer."
+
+
+class TestAgentExitReasonAsync:
+    """Async coverage for the `exit_reason` output."""
+
+    @pytest.mark.asyncio
+    async def test_text_exit_async(self, weather_tool):
+        agent = Agent(chat_generator=MockChatGenerator("Berlin is sunny."), tools=[weather_tool])
+        result = await agent.run_async([ChatMessage.from_user("Weather in Berlin?")])
+        assert result["exit_reason"] == "text"
+
+    @pytest.mark.asyncio
+    async def test_tool_exit_reason_is_the_tool_name_async(self, weather_tool):
+        tool_call_message = ChatMessage.from_assistant(
+            tool_calls=[ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"})]
+        )
+        agent = Agent(
+            chat_generator=MockChatGenerator(tool_call_message), tools=[weather_tool], exit_conditions=["weather_tool"]
+        )
+        result = await agent.run_async([ChatMessage.from_user("Weather in Berlin?")])
+        assert result["exit_reason"] == "weather_tool"
+
+    @pytest.mark.asyncio
+    async def test_max_steps_exit_async(self, weather_tool):
+        tool_call_message = ChatMessage.from_assistant(
+            tool_calls=[ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"})]
+        )
+        agent = Agent(chat_generator=MockChatGenerator(tool_call_message), tools=[weather_tool], max_agent_steps=2)
+        result = await agent.run_async([ChatMessage.from_user("Weather in Berlin?")])
+        assert result["exit_reason"] == "max_agent_steps"
 
 
 class TestAccumulateUsage:
@@ -1315,9 +1434,9 @@ class TestAgentTracing:
             "haystack.agent.max_steps": 100,
             "haystack.agent.tools": '[{"type": "haystack.tools.tool.Tool", "data": {"name": "weather_tool", "description": "Provides weather information for a given location.", "parameters": {"type": "object", "properties": {"location": {"type": "string"}}, "required": ["location"]}, "function": "test_agent.weather_function", "outputs_to_string": null, "inputs_from_state": null, "outputs_to_state": null, "async_function": null}}]',  # noqa: E501
             "haystack.agent.exit_conditions": '["text"]',
-            "haystack.agent.state_schema": '{"messages": {"type": "list[haystack.dataclasses.chat_message.ChatMessage]", "handler": "haystack.components.agents.state.state_utils.merge_lists"}, "step_count": {"type": "int", "handler": "haystack.components.agents.state.state_utils.replace_values"}, "token_usage": {"type": "dict[str, typing.Any]", "handler": "haystack.components.agents.state.state_utils.replace_values"}, "tool_call_counts": {"type": "dict[str, int]", "handler": "haystack.components.agents.state.state_utils.replace_values"}, "continue_run": {"type": "bool", "handler": "haystack.components.agents.state.state_utils.replace_values"}, "tools": {"type": "list", "handler": "haystack.components.agents.state.state_utils.replace_values"}, "hook_context": {"type": "dict[str, typing.Any]", "handler": "haystack.components.agents.state.state_utils.replace_values"}}',  # noqa: E501
+            "haystack.agent.state_schema": '{"messages": {"type": "list[haystack.dataclasses.chat_message.ChatMessage]", "handler": "haystack.components.agents.state.state_utils.merge_lists"}, "step_count": {"type": "int", "handler": "haystack.components.agents.state.state_utils.replace_values"}, "token_usage": {"type": "dict[str, typing.Any]", "handler": "haystack.components.agents.state.state_utils.replace_values"}, "tool_call_counts": {"type": "dict[str, int]", "handler": "haystack.components.agents.state.state_utils.replace_values"}, "exit_reason": {"type": "str", "handler": "haystack.components.agents.state.state_utils.replace_values"}, "continue_run": {"type": "bool", "handler": "haystack.components.agents.state.state_utils.replace_values"}, "tools": {"type": "list", "handler": "haystack.components.agents.state.state_utils.replace_values"}, "hook_context": {"type": "dict[str, typing.Any]", "handler": "haystack.components.agents.state.state_utils.replace_values"}}',  # noqa: E501
             "haystack.agent.input": '{"messages": [{"role": "user", "meta": {}, "name": null, "content": [{"text": "What\'s the weather in Paris?"}]}], "streaming_callback": null}',  # noqa: E501
-            "haystack.agent.output": '{"messages": [{"role": "user", "meta": {}, "name": null, "content": [{"text": "What\'s the weather in Paris?"}]}, {"role": "assistant", "meta": {}, "name": null, "content": [{"text": "Hello"}]}], "step_count": 1, "token_usage": {}, "tool_call_counts": {"weather_tool": 0}, "last_message": {"role": "assistant", "meta": {}, "name": null, "content": [{"text": "Hello"}]}}',  # noqa: E501
+            "haystack.agent.output": '{"messages": [{"role": "user", "meta": {}, "name": null, "content": [{"text": "What\'s the weather in Paris?"}]}, {"role": "assistant", "meta": {}, "name": null, "content": [{"text": "Hello"}]}], "step_count": 1, "token_usage": {}, "tool_call_counts": {"weather_tool": 0}, "exit_reason": "text", "last_message": {"role": "assistant", "meta": {}, "name": null, "content": [{"text": "Hello"}]}}',  # noqa: E501
             "haystack.agent.steps_taken": 1,
         }
 
@@ -1482,9 +1601,9 @@ class TestAgentTracing:
             "haystack.agent.max_steps": 100,
             "haystack.agent.tools": '[{"type": "haystack.tools.tool.Tool", "data": {"name": "weather_tool", "description": "Provides weather information for a given location.", "parameters": {"type": "object", "properties": {"location": {"type": "string"}}, "required": ["location"]}, "function": "test_agent.weather_function", "outputs_to_string": null, "inputs_from_state": null, "outputs_to_state": null, "async_function": null}}]',  # noqa: E501
             "haystack.agent.exit_conditions": '["text"]',
-            "haystack.agent.state_schema": '{"messages": {"type": "list[haystack.dataclasses.chat_message.ChatMessage]", "handler": "haystack.components.agents.state.state_utils.merge_lists"}, "step_count": {"type": "int", "handler": "haystack.components.agents.state.state_utils.replace_values"}, "token_usage": {"type": "dict[str, typing.Any]", "handler": "haystack.components.agents.state.state_utils.replace_values"}, "tool_call_counts": {"type": "dict[str, int]", "handler": "haystack.components.agents.state.state_utils.replace_values"}, "continue_run": {"type": "bool", "handler": "haystack.components.agents.state.state_utils.replace_values"}, "tools": {"type": "list", "handler": "haystack.components.agents.state.state_utils.replace_values"}, "hook_context": {"type": "dict[str, typing.Any]", "handler": "haystack.components.agents.state.state_utils.replace_values"}}',  # noqa: E501
+            "haystack.agent.state_schema": '{"messages": {"type": "list[haystack.dataclasses.chat_message.ChatMessage]", "handler": "haystack.components.agents.state.state_utils.merge_lists"}, "step_count": {"type": "int", "handler": "haystack.components.agents.state.state_utils.replace_values"}, "token_usage": {"type": "dict[str, typing.Any]", "handler": "haystack.components.agents.state.state_utils.replace_values"}, "tool_call_counts": {"type": "dict[str, int]", "handler": "haystack.components.agents.state.state_utils.replace_values"}, "exit_reason": {"type": "str", "handler": "haystack.components.agents.state.state_utils.replace_values"}, "continue_run": {"type": "bool", "handler": "haystack.components.agents.state.state_utils.replace_values"}, "tools": {"type": "list", "handler": "haystack.components.agents.state.state_utils.replace_values"}, "hook_context": {"type": "dict[str, typing.Any]", "handler": "haystack.components.agents.state.state_utils.replace_values"}}',  # noqa: E501
             "haystack.agent.input": '{"messages": [{"role": "user", "meta": {}, "name": null, "content": [{"text": "What\'s the weather in Paris?"}]}], "streaming_callback": null}',  # noqa: E501
-            "haystack.agent.output": '{"messages": [{"role": "user", "meta": {}, "name": null, "content": [{"text": "What\'s the weather in Paris?"}]}, {"role": "assistant", "meta": {"model": "mock-model", "index": 0, "finish_reason": "stop", "usage": {"prompt_tokens": 5, "completion_tokens": 1, "total_tokens": 6}}, "name": null, "content": [{"text": "Hello"}]}], "step_count": 1, "token_usage": {"prompt_tokens": 5, "completion_tokens": 1, "total_tokens": 6}, "tool_call_counts": {"weather_tool": 0}, "last_message": {"role": "assistant", "meta": {"model": "mock-model", "index": 0, "finish_reason": "stop", "usage": {"prompt_tokens": 5, "completion_tokens": 1, "total_tokens": 6}}, "name": null, "content": [{"text": "Hello"}]}}',  # noqa: E501
+            "haystack.agent.output": '{"messages": [{"role": "user", "meta": {}, "name": null, "content": [{"text": "What\'s the weather in Paris?"}]}, {"role": "assistant", "meta": {"model": "mock-model", "index": 0, "finish_reason": "stop", "usage": {"prompt_tokens": 5, "completion_tokens": 1, "total_tokens": 6}}, "name": null, "content": [{"text": "Hello"}]}], "step_count": 1, "token_usage": {"prompt_tokens": 5, "completion_tokens": 1, "total_tokens": 6}, "tool_call_counts": {"weather_tool": 0}, "exit_reason": "text", "last_message": {"role": "assistant", "meta": {"model": "mock-model", "index": 0, "finish_reason": "stop", "usage": {"prompt_tokens": 5, "completion_tokens": 1, "total_tokens": 6}}, "name": null, "content": [{"text": "Hello"}]}}',  # noqa: E501
             "haystack.agent.steps_taken": 1,
         }
 

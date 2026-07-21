@@ -84,7 +84,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
               banner: 'unreleased',
             },
           },
-          lastVersion: '2.31',
+          lastVersion: '3.0',
         },
         theme: {
           customCss: require.resolve('./src/css/custom.css'),
@@ -137,7 +137,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
             banner: 'unreleased',
           },
         },
-        lastVersion: '2.31',
+        lastVersion: '3.0',
       },
     ],
     [
@@ -204,6 +204,55 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
           {
             from: '/docs/generators-vs-chat-generators',
             to: '/docs/choosing-the-right-generator#generators-vs-chatgenerators',
+          },
+          // Components removed or renamed in Haystack 3.0
+          {
+            from: '/docs/openaigenerator',
+            to: '/docs/openaichatgenerator',
+          },
+          {
+            from: '/docs/azureopenaigenerator',
+            to: '/docs/azureopenaichatgenerator',
+          },
+          {
+            from: '/docs/huggingfaceapigenerator',
+            to: '/docs/huggingfaceapichatgenerator',
+          },
+          {
+            from: '/docs/huggingfacelocalgenerator',
+            to: '/docs/transformerschatgenerator',
+          },
+          {
+            from: '/docs/huggingfacelocalchatgenerator',
+            to: '/docs/transformerschatgenerator',
+          },
+          {
+            from: '/docs/dalleimagegenerator',
+            to: '/docs/openaiimagegenerator',
+          },
+          {
+            from: '/docs/extractivereader',
+            to: '/docs/transformersextractivereader',
+          },
+          {
+            from: '/docs/namedentityextractor',
+            to: '/docs/transformersnamedentityextractor',
+          },
+          {
+            from: '/docs/transformerssimilarityranker',
+            to: '/docs/sentencetransformerssimilarityranker',
+          },
+          {
+            from: '/docs/toolinvoker',
+            to: '/docs/agent',
+          },
+          {
+            from: '/docs/asyncpipeline',
+            to: '/docs/pipelines',
+          },
+          {
+            from: '/docs/function-calling',
+            to: '/docs/tool',
           },
         ],
       },
