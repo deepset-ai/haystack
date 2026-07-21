@@ -1,7 +1,7 @@
 ---
 features:
   - |
-    Added the ``coerce_pipeline_inputs`` utility function (importable from ``haystack.utils``).
+    Added the ``coerce_pipeline_inputs`` utility function (importable from ``haystack``).
     It deserializes serialized Haystack objects in pipeline input data based on the pipeline's input
     socket types: for every provided value whose socket type involves a class exposing ``from_dict``
     (such as ``ChatMessage`` or ``Document``), plain dictionaries are converted into instances of that
@@ -13,7 +13,7 @@ features:
 
     .. code-block:: python
 
-        from haystack.utils import coerce_pipeline_inputs
+        from haystack import coerce_pipeline_inputs
 
         inputs = coerce_pipeline_inputs(pipeline, serialized_inputs)
         result = pipeline.run(inputs)

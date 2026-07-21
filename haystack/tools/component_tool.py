@@ -11,6 +11,8 @@ from haystack import logging
 from haystack.components.agents.state.state import State
 from haystack.core.component import Component
 from haystack.core.serialization import (
+    _deserialize_from_dict,
+    _resolve_from_dict_class,
     component_from_dict,
     component_to_dict,
     generate_qualified_class_name,
@@ -31,7 +33,6 @@ from haystack.tools.tool import (
     _serialize_outputs_to_state,
     _serialize_outputs_to_string,
 )
-from haystack.utils.deserialization import _deserialize_from_dict, _resolve_from_dict_class
 
 logger = logging.getLogger(__name__)
 

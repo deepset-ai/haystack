@@ -14,7 +14,7 @@ import haystack.tracing  # noqa: F401
 from haystack.core.component import component
 from haystack.core.errors import ComponentError, DeserializationError
 from haystack.core.pipeline import Pipeline
-from haystack.core.serialization import default_from_dict, default_to_dict
+from haystack.core.serialization import coerce_pipeline_inputs, default_from_dict, default_to_dict
 from haystack.core.super_component.super_component import SuperComponent, super_component
 from haystack.dataclasses import Answer, Document, ExtractedAnswer, GeneratedAnswer
 from haystack.version import __version__  # noqa: F401
@@ -34,6 +34,7 @@ __all__ = [
     "Pipeline",
     "SuperComponent",
     "super_component",
+    "coerce_pipeline_inputs",
     "component",
     "default_from_dict",
     "default_to_dict",

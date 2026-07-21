@@ -8,17 +8,34 @@ from typing import Any
 from unittest.mock import Mock
 
 import pytest
+from pydantic import BaseModel
 
+from haystack import Document
+from haystack.components.joiners import BranchJoiner
 from haystack.core.component import component
 from haystack.core.errors import DeserializationError, SerializationError
 from haystack.core.pipeline import Pipeline
 from haystack.core.serialization import (
+    coerce_pipeline_inputs,
     component_from_dict,
     component_to_dict,
     default_from_dict,
     default_to_dict,
     generate_qualified_class_name,
     import_class_by_name,
+)
+from haystack.dataclasses import (
+    ByteStream,
+    ChatMessage,
+    ComponentInfo,
+    GeneratedAnswer,
+    ImageContent,
+    ReasoningContent,
+    SparseEmbedding,
+    StreamingChunk,
+    TextContent,
+    ToolCall,
+    ToolCallResult,
 )
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.testing import factory
@@ -644,3 +661,167 @@ def test_default_from_dict_rejects_unknown_nested_parameter():
     # The message lists the accepted parameters (sorted) and tells the user how to fix it.
     assert "Valid parameters are: 'document_store', 'name'." in message
     assert "Correct the parameter name or remove it from the serialized data." in message
+
+
+@component
+class _TypedEcho:
+    """Echoes back a single input whose socket type is set at construction time."""
+
+    def __init__(self, type_: Any) -> None:
+        component.set_input_types(self, value=type_)
+        component.set_output_types(self, value=Any)
+
+    def run(self, **kwargs: Any) -> dict[str, Any]:
+        return {"value": kwargs.get("value")}
+
+
+@component
+class _MultiInputEcho:
+    """A component with one coercible socket alongside plain, non-coercible sockets."""
+
+    @component.output_types(messages=list[ChatMessage])
+    def run(self, messages: list[ChatMessage], top_k: int = 3, config: dict[str, Any] | None = None) -> dict[str, Any]:
+        return {"messages": messages}
+
+
+# One instance per Haystack dataclass exposing to_dict/from_dict, used to check that coerce_pipeline_inputs
+# round-trips each of them for the `T`, `list[T]`, and optional socket shapes.
+DATACLASS_INSTANCES = [
+    pytest.param(Document(content="Hello", meta={"k": "v"}), id="Document"),
+    pytest.param(ChatMessage.from_user("Hi"), id="ChatMessage"),
+    pytest.param(
+        ChatMessage.from_assistant("x", tool_calls=[ToolCall(tool_name="t", arguments={"a": 1}, id="1")]),
+        id="ChatMessage-with-tool-call",
+    ),
+    pytest.param(ByteStream(data=b"hello", mime_type="text/plain", meta={"k": "v"}), id="ByteStream"),
+    pytest.param(SparseEmbedding(indices=[0, 2], values=[0.1, 0.2]), id="SparseEmbedding"),
+    pytest.param(GeneratedAnswer(data="answer", query="q", documents=[Document(content="d")]), id="GeneratedAnswer"),
+    pytest.param(ToolCall(tool_name="t", arguments={"a": 1}, id="1"), id="ToolCall"),
+    pytest.param(
+        ToolCallResult(result="r", origin=ToolCall(tool_name="t", arguments={"a": 1}, id="1"), error=False),
+        id="ToolCallResult",
+    ),
+    pytest.param(TextContent(text="hi"), id="TextContent"),
+    pytest.param(ReasoningContent(reasoning_text="because"), id="ReasoningContent"),
+    pytest.param(ImageContent(base64_image="aGVsbG8=", mime_type="image/png"), id="ImageContent"),
+    pytest.param(ComponentInfo(type="some.Type", name="comp"), id="ComponentInfo"),
+    pytest.param(StreamingChunk(content="hi"), id="StreamingChunk"),
+]
+
+
+class TestCoercePipelineInputsRoundTrip:
+    """`to_dict()` output is coerced back to an equal instance for every from_dict-capable dataclass."""
+
+    @pytest.mark.parametrize("instance", DATACLASS_INSTANCES)
+    def test_single_socket(self, instance):
+        pipe = Pipeline()
+        pipe.add_component("echo", _TypedEcho(type(instance)))
+
+        coerced = coerce_pipeline_inputs(pipe, {"echo": {"value": instance.to_dict()}})
+
+        assert coerced["echo"]["value"] == instance
+
+    @pytest.mark.parametrize("instance", DATACLASS_INSTANCES)
+    def test_list_socket(self, instance):
+        pipe = Pipeline()
+        pipe.add_component("echo", _TypedEcho(list[type(instance)]))
+
+        coerced = coerce_pipeline_inputs(pipe, {"echo": {"value": [instance.to_dict()]}})
+
+        assert coerced["echo"]["value"] == [instance]
+
+    @pytest.mark.parametrize("instance", DATACLASS_INSTANCES)
+    def test_optional_socket(self, instance):
+        pipe = Pipeline()
+        pipe.add_component("echo", _TypedEcho(type(instance) | None))
+
+        coerced = coerce_pipeline_inputs(pipe, {"echo": {"value": instance.to_dict()}})
+
+        assert coerced["echo"]["value"] == instance
+
+
+class TestCoercePipelineInputs:
+    @pytest.fixture
+    def pipeline(self):
+        pipe = Pipeline()
+        pipe.add_component("echo", _MultiInputEcho())
+        return pipe
+
+    def test_nested_format(self, pipeline):
+        messages = [ChatMessage.from_user("Hi"), ChatMessage.from_assistant("Hello")]
+        data = {"echo": {"messages": [message.to_dict() for message in messages], "top_k": 5}}
+
+        coerced = coerce_pipeline_inputs(pipeline, data)
+
+        assert coerced == {"echo": {"messages": messages, "top_k": 5}}
+        # the input data is not mutated
+        assert isinstance(data["echo"]["messages"][0], dict)
+
+    def test_flat_format(self, pipeline):
+        messages = [ChatMessage.from_user("Hi")]
+        data = {"messages": [message.to_dict() for message in messages], "top_k": 5}
+
+        coerced = coerce_pipeline_inputs(pipeline, data)
+
+        assert coerced == {"messages": messages, "top_k": 5}
+
+    def test_instances_pass_through(self, pipeline):
+        messages = [ChatMessage.from_user("Hi")]
+        data = {"echo": {"messages": messages}}
+
+        coerced = coerce_pipeline_inputs(pipeline, data)
+
+        assert coerced["echo"]["messages"][0] is messages[0]
+
+    def test_mixed_list(self, pipeline):
+        message = ChatMessage.from_user("Hi")
+        data = {"echo": {"messages": [message, ChatMessage.from_assistant("Hello").to_dict()]}}
+
+        coerced = coerce_pipeline_inputs(pipeline, data)
+
+        assert coerced["echo"]["messages"] == [message, ChatMessage.from_assistant("Hello")]
+
+    def test_non_coercible_values_untouched(self, pipeline):
+        data = {"echo": {"messages": [], "top_k": 5, "config": {"a": 1}}}
+
+        coerced = coerce_pipeline_inputs(pipeline, data)
+
+        assert coerced == data
+
+    def test_unknown_inputs_untouched(self, pipeline):
+        message_dict = ChatMessage.from_user("Hi").to_dict()
+        data = {"unknown_input": [message_dict], "top_k": 5}
+
+        coerced = coerce_pipeline_inputs(pipeline, data)
+
+        assert coerced == {"unknown_input": [message_dict], "top_k": 5}
+
+    def test_unknown_component_untouched(self, pipeline):
+        message_dict = ChatMessage.from_user("Hi").to_dict()
+        data = {"unknown_component": {"messages": [message_dict]}}
+
+        coerced = coerce_pipeline_inputs(pipeline, data)
+
+        assert coerced == {"unknown_component": {"messages": [message_dict]}}
+
+    def test_variadic_socket(self):
+        pipe = Pipeline()
+        pipe.add_component("joiner", BranchJoiner(list[ChatMessage]))
+        messages = [ChatMessage.from_user("Hi")]
+        data = {"value": [message.to_dict() for message in messages], "unrelated": 1}
+
+        coerced = coerce_pipeline_inputs(pipe, data)
+
+        assert coerced["value"] == messages
+
+    def test_pydantic_model_dump_payload(self, pipeline):
+        class Response(BaseModel):
+            messages: list[ChatMessage]
+
+        messages = [ChatMessage.from_user("Hi"), ChatMessage.from_assistant("Hello")]
+        dumped = Response(messages=messages).model_dump(mode="json")
+        data = {"echo": {"messages": dumped["messages"]}}
+
+        coerced = coerce_pipeline_inputs(pipeline, data)
+
+        assert coerced == {"echo": {"messages": messages}}
