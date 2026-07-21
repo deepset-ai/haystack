@@ -1,0 +1,5 @@
+---
+features:
+  - |
+    Add a ``link_format`` parameter to ``PyPDFToDocument`` and ``PDFMinerToDocument``.
+    Set it to ``"markdown"`` or ``"plain"`` to include PDF hyperlink targets in extracted document content.

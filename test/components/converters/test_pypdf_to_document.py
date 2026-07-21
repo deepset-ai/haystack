@@ -27,6 +27,7 @@ class TestPyPDFToDocument:
         assert pypdf_component.layout_mode_scale_weight == 1.25
         assert pypdf_component.layout_mode_strip_rotated is True
         assert pypdf_component.layout_mode_font_height_weight == 1.0
+        assert pypdf_component.link_format == "none"
 
     def test_init_custom_params(self):
         pypdf_component = PyPDFToDocument(
@@ -37,6 +38,7 @@ class TestPyPDFToDocument:
             layout_mode_scale_weight=2.0,
             layout_mode_strip_rotated=False,
             layout_mode_font_height_weight=0.5,
+            link_format="markdown",
         )
 
         assert pypdf_component.extraction_mode == PyPDFExtractionMode.LAYOUT
@@ -46,10 +48,15 @@ class TestPyPDFToDocument:
         assert pypdf_component.layout_mode_scale_weight == 2.0
         assert pypdf_component.layout_mode_strip_rotated is False
         assert pypdf_component.layout_mode_font_height_weight == 0.5
+        assert pypdf_component.link_format == "markdown"
 
     def test_init_invalid_extraction_mode(self):
         with pytest.raises(ValueError):
             PyPDFToDocument(extraction_mode="invalid")
+
+    def test_init_invalid_link_format(self):
+        with pytest.raises(ValueError, match="Unknown link format"):
+            PyPDFToDocument(link_format="invalid")
 
     def test_to_dict(self, pypdf_component):
         data = pypdf_component.to_dict()
@@ -63,6 +70,7 @@ class TestPyPDFToDocument:
                 "layout_mode_scale_weight": 1.25,
                 "layout_mode_strip_rotated": True,
                 "layout_mode_font_height_weight": 1.0,
+                "link_format": "none",
                 "store_full_path": False,
             },
         }
@@ -78,6 +86,7 @@ class TestPyPDFToDocument:
                 "layout_mode_scale_weight": 1.25,
                 "layout_mode_strip_rotated": True,
                 "layout_mode_font_height_weight": 1.0,
+                "link_format": "plain",
             },
         }
 
@@ -90,12 +99,14 @@ class TestPyPDFToDocument:
         assert instance.layout_mode_scale_weight == 1.25
         assert instance.layout_mode_strip_rotated is True
         assert instance.layout_mode_font_height_weight == 1.0
+        assert instance.link_format == "plain"
 
     def test_from_dict_defaults(self):
         data = {"type": "haystack.components.converters.pypdf.PyPDFToDocument", "init_parameters": {}}
         instance = PyPDFToDocument.from_dict(data)
         assert isinstance(instance, PyPDFToDocument)
         assert instance.extraction_mode == PyPDFExtractionMode.PLAIN
+        assert instance.link_format == "none"
 
     def test_default_convert(self):
         mock_page1 = Mock()
@@ -148,6 +159,35 @@ class TestPyPDFToDocument:
         docs = output["documents"]
         assert len(docs) == 1
         assert docs[0].content.count("\f") == 3
+
+    @pytest.mark.parametrize("link_format", ["markdown", "plain"])
+    def test_link_extraction(self, test_files_path, link_format):
+        converter = PyPDFToDocument(link_format=link_format)
+        paths = [test_files_path / "pdf" / "sample_pdf_with_link.pdf"]
+        output = converter.run(sources=paths)
+        content = output["documents"][0].content
+
+        if link_format == "markdown":
+            assert "[Example](https://example.com)" in content
+        else:
+            assert "Example (https://example.com)" in content
+
+    def test_no_link_extraction(self, test_files_path):
+        converter = PyPDFToDocument()
+        paths = [test_files_path / "pdf" / "sample_pdf_with_link.pdf"]
+        output = converter.run(sources=paths)
+        content = output["documents"][0].content
+
+        assert "https://example.com" not in content
+        assert "Example" in content
+
+    def test_link_extraction_layout_mode(self, test_files_path):
+        converter = PyPDFToDocument(extraction_mode="layout", link_format="markdown")
+        paths = [test_files_path / "pdf" / "sample_pdf_with_link.pdf"]
+        output = converter.run(sources=paths)
+        content = output["documents"][0].content
+
+        assert "[Example](https://example.com)" in content
 
     def test_run_with_meta(self, test_files_path, pypdf_component):
         bytestream = ByteStream(data=b"test", meta={"author": "test_author", "language": "en"})
