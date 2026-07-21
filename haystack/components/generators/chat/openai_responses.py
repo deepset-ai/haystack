@@ -539,8 +539,8 @@ class OpenAIResponsesChatGenerator:
                     function_spec = {**t.tool_spec}
                     if not tools_strict:
                         function_spec["strict"] = False
-                    # Copy the parameters schema before editing it. ``tool_spec`` exposes
-                    # ``Tool.parameters`` by reference, so mutating it here would permanently alter
+                    # Copy the parameters schema before editing it. tool_spec exposes
+                    # Tool.parameters by reference, so mutating it here would permanently alter
                     # the user's Tool (and any other generator that shares the same Tool instance).
                     function_spec["parameters"] = {**function_spec["parameters"], "additionalProperties": False}
                     tool_definitions.append({"type": "function", **function_spec})
