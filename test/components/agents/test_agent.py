@@ -897,6 +897,25 @@ class TestAgent:
 
         assert agent._check_exit_conditions(llm_messages, tool_messages) == "weather_tool"
 
+    def test_check_exit_conditions_errored_exit_tool_cancels_a_succeeding_one(self, monkeypatch, weather_tool):
+        """An errored exit-condition tool cancels the exit even when another exit-condition tool succeeded."""
+        monkeypatch.setenv("OPENAI_API_KEY", "fake-key")
+        agent = Agent(
+            chat_generator=OpenAIChatGenerator(), tools=[weather_tool], exit_conditions=["weather_tool", "search"]
+        )
+
+        ok_call = ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"})
+        errored_call = ToolCall(tool_name="search", arguments={"q": "weather Berlin"})
+
+        # The succeeding exit tool is listed first, so a naive first-match scan would wrongly return it.
+        llm_messages = [ChatMessage.from_assistant(tool_calls=[ok_call, errored_call])]
+        tool_messages = [
+            ChatMessage.from_tool(tool_result="ok", origin=ok_call, error=False),
+            ChatMessage.from_tool(tool_result="boom", origin=errored_call, error=True),
+        ]
+
+        assert agent._check_exit_conditions(llm_messages, tool_messages) is None
+
     def test_agent_with_no_tools(self):
         agent = Agent(chat_generator=MockChatGenerator("Berlin"), tools=[], max_agent_steps=3)
 

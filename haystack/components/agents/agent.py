@@ -1300,33 +1300,22 @@ class Agent:
         :param tool_messages: List of messages from tool execution.
         :return: The name of the tool that satisfied an exit condition, or None if none did (or one errored).
         """
-        matched_exit_conditions: list[str] = []
-        has_errors = False
+        errored_tools = {
+            tool_msg.tool_call_result.origin.tool_name
+            for tool_msg in tool_messages
+            if tool_msg.tool_call_result is not None and tool_msg.tool_call_result.error
+        }
 
+        first_match: str | None = None
         for msg in llm_messages:
             for tool_call in msg.tool_calls:
                 if tool_call.tool_name not in self.exit_conditions:
                     continue
-                matched_exit_conditions.append(tool_call.tool_name)
-
-                # Check if any error is specifically from the tool matching the exit condition
-                tool_errors = [
-                    tool_msg.tool_call_result.error
-                    for tool_msg in tool_messages
-                    if tool_msg.tool_call_result is not None
-                    and tool_msg.tool_call_result.origin.tool_name == tool_call.tool_name
-                ]
-                if any(tool_errors):
-                    has_errors = True
-                    # No need to check further if we found an error
-                    break
-            if has_errors:
-                break
-
-        # Only report a tool as the exit reason if at least one exit condition was matched AND none had errors
-        if matched_exit_conditions and not has_errors:
-            return matched_exit_conditions[0]
-        return None
+                # An errored exit-condition tool cancels the exit, even if another exit-condition tool succeeded.
+                if tool_call.tool_name in errored_tools:
+                    return None
+                first_match = first_match or tool_call.tool_name
+        return first_match
 
     def _continue_after_exit_hooks(self, exe_context: _ExecutionContext) -> bool:
         """
