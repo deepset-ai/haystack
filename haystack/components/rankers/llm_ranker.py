@@ -260,12 +260,11 @@ class LLMRanker:
         self.warm_up()
 
         prompt = self._prompt_builder.run(query=query.strip(), documents=deduplicated_documents)
+        messages = [ChatMessage.from_user(prompt["prompt"])]
 
         try:
-            with _trace_chat_generator_run(
-                self._chat_generator, {"messages": [ChatMessage.from_user(prompt["prompt"])]}
-            ) as span:
-                result = self._chat_generator.run(messages=[ChatMessage.from_user(prompt["prompt"])])
+            with _trace_chat_generator_run(self._chat_generator, {"messages": messages}) as span:
+                result = self._chat_generator.run(messages=messages)
                 span.set_content_tag("haystack.component.output", result)
         except Exception as exc:
             if self.raise_on_failure:
@@ -328,14 +327,11 @@ class LLMRanker:
         await self.warm_up_async()
 
         prompt = self._prompt_builder.run(query=query.strip(), documents=deduplicated_documents)
+        messages = [ChatMessage.from_user(prompt["prompt"])]
 
         try:
-            with _trace_chat_generator_run(
-                self._chat_generator, {"messages": [ChatMessage.from_user(prompt["prompt"])]}
-            ) as span:
-                result = await _execute_component_async(
-                    self._chat_generator, messages=[ChatMessage.from_user(prompt["prompt"])]
-                )
+            with _trace_chat_generator_run(self._chat_generator, {"messages": messages}) as span:
+                result = await _execute_component_async(self._chat_generator, messages=messages)
                 span.set_content_tag("haystack.component.output", result)
         except Exception as exc:
             if self.raise_on_failure:
