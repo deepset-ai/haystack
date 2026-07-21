@@ -8,6 +8,7 @@ from haystack import default_from_dict, default_to_dict, logging
 from haystack.components.builders.prompt_builder import PromptBuilder
 from haystack.components.generators.chat.openai import OpenAIChatGenerator
 from haystack.components.generators.chat.types import ChatGenerator
+from haystack.components.generators.utils import _trace_chat_generator_run
 from haystack.core.component import component
 from haystack.core.serialization import component_to_dict
 from haystack.dataclasses.chat_message import ChatMessage
@@ -209,7 +210,10 @@ class QueryExpander:
 
         try:
             prompt_result = self._prompt_builder.run(query=query.strip(), n_expansions=expansion_count)
-            generator_result = self.chat_generator.run(messages=[ChatMessage.from_user(prompt_result["prompt"])])
+            messages = [ChatMessage.from_user(prompt_result["prompt"])]
+            with _trace_chat_generator_run(self.chat_generator, {"messages": messages}) as span:
+                generator_result = self.chat_generator.run(messages=messages)
+                span.set_content_tag("haystack.component.output", generator_result)
 
             if not generator_result.get("replies") or len(generator_result["replies"]) == 0:
                 logger.warning("ChatGenerator returned no replies for query: {query}", query=query)
@@ -276,9 +280,10 @@ class QueryExpander:
 
         try:
             prompt_result = self._prompt_builder.run(query=query.strip(), n_expansions=expansion_count)
-            generator_result = await _execute_component_async(
-                self.chat_generator, messages=[ChatMessage.from_user(prompt_result["prompt"])]
-            )
+            messages = [ChatMessage.from_user(prompt_result["prompt"])]
+            with _trace_chat_generator_run(self.chat_generator, {"messages": messages}) as span:
+                generator_result = await _execute_component_async(self.chat_generator, messages=messages)
+                span.set_content_tag("haystack.component.output", generator_result)
 
             if not generator_result.get("replies") or len(generator_result["replies"]) == 0:
                 logger.warning("ChatGenerator returned no replies for query: {query}", query=query)

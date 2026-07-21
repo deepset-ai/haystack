@@ -676,3 +676,66 @@ class TestComponentLifecycle:
         await extractor.warm_up_async()
         extractor.close()
         await extractor.close_async()
+
+
+class TestLLMDocumentContentExtractorTracing:
+    @patch.object(DocumentToImageContent, "run")
+    def test_run_traces_token_usage_and_nests_per_document_spans(self, mock_doc_to_image_run, spying_tracer):
+        # Two documents are processed on worker threads. Each generator span must expose the reply's token usage and
+        # nest under the span active when run() was called, not under another document's generator span.
+        mock_doc_to_image_run.return_value = {
+            "image_contents": [
+                ImageContent.from_file_path("./test/test_files/images/apple.jpg"),
+                ImageContent.from_file_path("./test/test_files/images/apple.jpg"),
+            ]
+        }
+        extractor = LLMDocumentContentExtractor(
+            chat_generator=MockChatGenerator('{"document_content": "Extracted content"}')
+        )
+
+        documents = [
+            Document(content="", meta={"file_path": "/path/to/a.jpg"}),
+            Document(content="", meta={"file_path": "/path/to/b.jpg"}),
+        ]
+        with spying_tracer.trace("parent") as parent_span:
+            extractor.run(documents=documents)
+
+        gen_spans = [s for s in spying_tracer.spans if s.operation_name == "haystack.chat_generator.run"]
+        assert len(gen_spans) == 2
+        assert all(span.parent_span is parent_span for span in gen_spans)
+        assert all(
+            span.tags["haystack.component.output"]["replies"][0].meta["usage"]["total_tokens"] > 0 for span in gen_spans
+        )
+
+
+class TestLLMDocumentContentExtractorTracingAsync:
+    @pytest.mark.asyncio
+    @patch.object(DocumentToImageContent, "run")
+    async def test_run_async_traces_token_usage_and_nests_per_document_spans(
+        self, mock_doc_to_image_run, spying_tracer
+    ):
+        # Two documents are processed concurrently. Each generator span must expose the reply's token usage and nest
+        # under the span active when run_async() was called, not under another document's generator span.
+        mock_doc_to_image_run.return_value = {
+            "image_contents": [
+                ImageContent.from_file_path("./test/test_files/images/apple.jpg"),
+                ImageContent.from_file_path("./test/test_files/images/apple.jpg"),
+            ]
+        }
+        extractor = LLMDocumentContentExtractor(
+            chat_generator=MockChatGenerator('{"document_content": "Extracted content"}')
+        )
+
+        documents = [
+            Document(content="", meta={"file_path": "/path/to/a.jpg"}),
+            Document(content="", meta={"file_path": "/path/to/b.jpg"}),
+        ]
+        with spying_tracer.trace("parent") as parent_span:
+            await extractor.run_async(documents=documents)
+
+        gen_spans = [s for s in spying_tracer.spans if s.operation_name == "haystack.chat_generator.run"]
+        assert len(gen_spans) == 2
+        assert all(span.parent_span is parent_span for span in gen_spans)
+        assert all(
+            span.tags["haystack.component.output"]["replies"][0].meta["usage"]["total_tokens"] > 0 for span in gen_spans
+        )
