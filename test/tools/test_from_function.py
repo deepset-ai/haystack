@@ -323,6 +323,46 @@ def test_remove_title_from_schema_do_not_remove_title_property():
     assert schema == {"properties": {"parameter1": {"type": "string"}, "title": {"type": "string"}}, "type": "object"}
 
 
+def test_remove_title_from_schema_property_named_properties():
+    """Test that a property named 'properties' is not misinterpreted as the 'properties' schema keyword."""
+    schema = {
+        "properties": {
+            "entity_id": {"type": "string", "title": "Entity Id"},
+            "properties": {"type": "object", "additionalProperties": True, "title": "Properties"},
+        },
+        "title": "set_properties",
+        "type": "object",
+    }
+
+    _remove_title_from_schema(schema)
+
+    assert schema == {
+        "properties": {"entity_id": {"type": "string"}, "properties": {"type": "object", "additionalProperties": True}},
+        "type": "object",
+    }
+
+
+def test_from_function_with_parameter_named_properties():
+    """Creating a tool from a function with a parameter named 'properties' must not crash."""
+
+    def set_properties(
+        entity_id: Annotated[str, "the entity to update"], properties: Annotated[dict, "the properties to set"]
+    ) -> str:
+        """Set properties on an entity."""
+        return f"Set {properties} on {entity_id}"
+
+    tool = create_tool_from_function(function=set_properties)
+
+    assert tool.parameters == {
+        "type": "object",
+        "properties": {
+            "entity_id": {"type": "string", "description": "the entity to update"},
+            "properties": {"type": "object", "additionalProperties": True, "description": "the properties to set"},
+        },
+        "required": ["entity_id", "properties"],
+    }
+
+
 def test_remove_title_from_schema_handle_no_title_in_top_level():
     schema = {
         "properties": {
