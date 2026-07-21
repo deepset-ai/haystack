@@ -70,7 +70,8 @@ Extend agent behavior with lifecycle hooks (`before_llm`, `before_tool`, `on_exi
 Design flexible systems with explicit control over how information is retrieved, ranked, filtered, combined, structured, and routed before it reaches the model. Define pipelines and agent workflows where retrieval, memory, tools, and generation are transparent and traceable.
 
 **Unified pipelines, sync and async**  
-One `Pipeline` runs synchronously or asynchronously and streams token by token — no separate `AsyncPipeline`, no rewrites to switch execution modes.
+**Native Async Support**  
+One `Pipeline` runs synchronously or asynchronously and streams token by token. `Agent` can run concurrent tool calls.  
 
 **Modular and customizable**  
 Use built-in components for retrieval, indexing, tool calling, memory, and evaluation, or create your own. Add loops, branches, and conditional logic to precisely control how context moves through your pipelines and agent workflows.
