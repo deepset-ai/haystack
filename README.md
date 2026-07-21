@@ -58,12 +58,12 @@
 | haystack/components/evaluators/document\_ndcg.py                          |       66 |        0 |    100% |           |
 | haystack/components/evaluators/document\_recall.py                        |       73 |        2 |     97% |   109-113 |
 | haystack/components/evaluators/faithfulness.py                            |       50 |        0 |    100% |           |
-| haystack/components/evaluators/llm\_evaluator.py                          |      155 |        3 |     98% |238, 254, 331 |
+| haystack/components/evaluators/llm\_evaluator.py                          |      160 |        1 |     99% |       241 |
 | haystack/components/evaluators/sas\_evaluator.py                          |       57 |       25 |     56% |111-125, 153-188 |
 | haystack/components/extractors/\_\_init\_\_.py                            |        5 |        0 |    100% |           |
 | haystack/components/extractors/image/\_\_init\_\_.py                      |        5 |        0 |    100% |           |
-| haystack/components/extractors/image/llm\_document\_content\_extractor.py |      147 |        1 |     99% |       307 |
-| haystack/components/extractors/llm\_metadata\_extractor.py                |      165 |       19 |     88% |317-328, 337-345, 363-366, 409, 458 |
+| haystack/components/extractors/image/llm\_document\_content\_extractor.py |      155 |        1 |     99% |       319 |
+| haystack/components/extractors/llm\_metadata\_extractor.py                |      173 |       16 |     91% |325-333, 347-355, 373-376, 419, 471 |
 | haystack/components/extractors/regex\_text\_extractor.py                  |       49 |        0 |    100% |           |
 | haystack/components/fetchers/\_\_init\_\_.py                              |        5 |        0 |    100% |           |
 | haystack/components/fetchers/link\_content.py                             |      202 |       27 |     87% |192-200, 267, 276-283, 316-320, 409-416, 449, 482 |
@@ -79,7 +79,7 @@
 | haystack/components/generators/chat/types/\_\_init\_\_.py                 |        2 |        0 |    100% |           |
 | haystack/components/generators/chat/types/protocol.py                     |        4 |        0 |    100% |           |
 | haystack/components/generators/openai\_image\_generator.py                |       78 |        0 |    100% |           |
-| haystack/components/generators/utils.py                                   |       85 |        9 |     89% |31, 45, 91, 124-125, 157, 173, 175, 177 |
+| haystack/components/generators/utils.py                                   |       93 |        9 |     90% |69, 83, 129, 162-163, 195, 211, 213, 215 |
 | haystack/components/joiners/\_\_init\_\_.py                               |        5 |        0 |    100% |           |
 | haystack/components/joiners/answer\_joiner.py                             |       49 |        1 |     98% |       140 |
 | haystack/components/joiners/branch.py                                     |       20 |        3 |     85% |105, 116-117 |
@@ -100,9 +100,9 @@
 | haystack/components/preprocessors/sentence\_tokenizer.py                  |       83 |        5 |     94% |62-63, 70-75, 215 |
 | haystack/components/preprocessors/text\_cleaner.py                        |       29 |        0 |    100% |           |
 | haystack/components/query/\_\_init\_\_.py                                 |        5 |        0 |    100% |           |
-| haystack/components/query/query\_expander.py                              |      130 |       10 |     92% |270-271, 275, 284-285, 292-298, 309-312 |
+| haystack/components/query/query\_expander.py                              |      137 |       10 |     93% |274-275, 279, 289-290, 297-303, 314-317 |
 | haystack/components/rankers/\_\_init\_\_.py                               |        5 |        0 |    100% |           |
-| haystack/components/rankers/llm\_ranker.py                                |      147 |       12 |     92% |310, 313, 320-321, 342-349, 371, 380, 384 |
+| haystack/components/rankers/llm\_ranker.py                                |      154 |        8 |     95% |314, 317, 324-325, 349, 376, 385, 389 |
 | haystack/components/rankers/lost\_in\_the\_middle.py                      |       43 |        4 |     91% |57, 83, 87, 117 |
 | haystack/components/rankers/meta\_field.py                                |      118 |        0 |    100% |           |
 | haystack/components/rankers/meta\_field\_grouping\_ranker.py              |       38 |        0 |    100% |           |
@@ -124,7 +124,7 @@
 | haystack/components/routers/document\_length\_router.py                   |       15 |        0 |    100% |           |
 | haystack/components/routers/document\_type\_router.py                     |       46 |        0 |    100% |           |
 | haystack/components/routers/file\_type\_router.py                         |       72 |        6 |     92% |   182-187 |
-| haystack/components/routers/llm\_messages\_router.py                      |       81 |        1 |     99% |       188 |
+| haystack/components/routers/llm\_messages\_router.py                      |       87 |        1 |     99% |       192 |
 | haystack/components/routers/metadata\_router.py                           |       35 |        0 |    100% |           |
 | haystack/components/samplers/\_\_init\_\_.py                              |        5 |        0 |    100% |           |
 | haystack/components/samplers/top\_p.py                                    |       65 |        0 |    100% |           |
@@ -246,7 +246,7 @@
 | haystack/utils/type\_serialization.py                                     |      123 |        6 |     95% |82, 84, 210-211, 219, 235 |
 | haystack/utils/url\_validation.py                                         |        4 |        0 |    100% |           |
 | haystack/version.py                                                       |        5 |        2 |     60% |      9-10 |
-| **TOTAL**                                                                 | **15851** |  **812** | **95%** |           |
+| **TOTAL**                                                                 | **15900** |  **803** | **95%** |           |
 
 
 ## Setup coverage badge
