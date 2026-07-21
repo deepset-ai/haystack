@@ -64,7 +64,7 @@ At any given point, hit the [documentation](https://docs.haystack.deepset.ai/doc
 ## Features
 
 **Agents built for production**  
-Extend agent behavior with lifecycle hooks (`before_llm`, `before_tool`, `on_exit`, …) for guardrails and custom logic, and track `step_count`, `token_usage`, and tool calls out of the box for monitoring and cost control.
+Extend agent behavior with lifecycle hooks (`before_llm`, `before_tool`, `on_exit`, …) for guardrails and custom logic, and track `step_count`, `token_usage`, and tool calls out of the box for monitoring and cost control. Get started fast with ready-made agents from [Agent Pack](https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/agent_pack) (e.g., a deep research agent, or an advanced RAG agent) or give your own agents progressive skill discovery via `SkillToolset`, so skill descriptions only enter context when needed.
 
 **Built for context engineering**  
 Design flexible systems with explicit control over how information is retrieved, ranked, filtered, combined, structured, and routed before it reaches the model. Define pipelines and agent workflows where retrieval, memory, tools, and generation are transparent and traceable.
