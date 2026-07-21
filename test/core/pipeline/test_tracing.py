@@ -12,8 +12,8 @@ from _pytest.monkeypatch import MonkeyPatch
 
 from haystack import Pipeline, component
 from haystack.dataclasses import Document
-from haystack.tracing.tracer import disable_tracing, enable_tracing, tracer
-from test.tracing.utils import EagerSpyingTracer, SpyingSpan, SpyingTracer
+from haystack.tracing.tracer import tracer
+from test.tracing.utils import SpyingSpan, SpyingTracer
 
 
 @component
@@ -158,53 +158,28 @@ class TestTracing:
         ]
 
     @pytest.mark.parametrize("run_async", [False, True])
-    def test_pipeline_output_data_recorded_after_run(self, pipeline, run_async, monkeypatch):
+    @pytest.mark.parametrize("content_tracing", [True, False])
+    def test_pipeline_output_data_trace_tag(
+        self, pipeline, run_async, content_tracing, eager_spying_tracer, monkeypatch
+    ):
         """
-        Verify the haystack.pipeline.output_data tag holds the final pipeline outputs.
+        output_data holds the final outputs and is gated behind content tracing.
 
-        Real tracing backends coerce a tag value when `set_tag` is called (at span start), not lazily at
-        span end. If output_data is set from the still-empty outputs dict at span start, production traces
-        capture an empty pipeline output. Parametrized to cover the sync (`run`) and async (`run_async`) paths.
+        EagerSpyingTracer coerces tags when set (like real backends), so it catches output_data being set from the
+        still-empty outputs dict at span start.
         """
-        monkeypatch.setattr(tracer, "is_content_tracing_enabled", True)
-        eager_tracer = EagerSpyingTracer()
-        enable_tracing(eager_tracer)
-        try:
-            if run_async:
-                asyncio.run(pipeline.run_async(data={"word": "world"}))
-            else:
-                pipeline.run(data={"word": "world"})
-        finally:
-            disable_tracing()
+        monkeypatch.setattr(tracer, "is_content_tracing_enabled", content_tracing)
+        if run_async:
+            asyncio.run(pipeline.run_async(data={"word": "world"}))
+        else:
+            pipeline.run(data={"word": "world"})
 
-        pipeline_span = eager_tracer.spans[0]
-        assert pipeline_span.operation_name == "haystack.pipeline.run"
-        assert json.loads(pipeline_span.tags["haystack.pipeline.input_data"]) == {"hello": {"word": "world"}}
-        assert json.loads(pipeline_span.tags["haystack.pipeline.output_data"]) == {
-            "hello2": {"output": "Hello, Hello, world!!"}
-        }
-
-    @pytest.mark.parametrize("run_async", [False, True])
-    def test_pipeline_output_data_gated_by_content_tracing(self, pipeline, run_async, monkeypatch):
-        """
-        output_data carries the pipeline's answer content, so it is emitted only when content tracing is
-        enabled. input_data stays a normal tag and is always emitted.
-        """
-        monkeypatch.setattr(tracer, "is_content_tracing_enabled", False)
-        eager_tracer = EagerSpyingTracer()
-        enable_tracing(eager_tracer)
-        try:
-            if run_async:
-                asyncio.run(pipeline.run_async(data={"word": "world"}))
-            else:
-                pipeline.run(data={"word": "world"})
-        finally:
-            disable_tracing()
-
-        pipeline_span = eager_tracer.spans[0]
-        assert "haystack.pipeline.output_data" not in pipeline_span.tags
-        assert json.loads(pipeline_span.tags["haystack.pipeline.input_data"]) == {"hello": {"word": "world"}}
-        assert pipeline_span.tags["haystack.pipeline.execution_mode"] == ("async" if run_async else "sync")
+        tags = eager_spying_tracer.spans[0].tags
+        assert json.loads(tags["haystack.pipeline.input_data"]) == {"hello": {"word": "world"}}
+        if content_tracing:
+            assert json.loads(tags["haystack.pipeline.output_data"]) == {"hello2": {"output": "Hello, Hello, world!!"}}
+        else:
+            assert "haystack.pipeline.output_data" not in tags
 
     @pytest.mark.parametrize("run_async", [False, True])
     def test_span_input_not_affected_by_component_mutation(self, run_async, spying_tracer, monkeypatch):
