@@ -82,10 +82,14 @@ _RUN_METADATA_STATE_KEYS: dict[str, dict[str, Any]] = {
 # - `continue_run`: set by an `on_exit` hook to keep the Agent running instead of stopping (re-read each exit attempt).
 # - `tools`: the flattened tools available in the current step, so a hook can inspect them (e.g. HITL confirmation).
 # - `hook_context`: per-run request-scoped resources passed to `run`/`run_async` for hooks to read.
+# - `context_tokens`: approximate current context-window size, refreshed after each LLM call, for hooks to read
+#   (e.g. a `before_llm` hook that triggers compaction once the context grows too large). Kept internal rather than
+#   exposed as an output because it is a best-effort snapshot; see `_record_context_tokens`.
 _INTERNAL_STATE_KEYS: dict[str, dict[str, Any]] = {
     "continue_run": {"type": bool, "handler": replace_values},
     "tools": {"type": list, "handler": replace_values},
     "hook_context": {"type": dict[str, Any], "handler": replace_values},
+    "context_tokens": {"type": int, "handler": replace_values},
 }
 
 
@@ -130,6 +134,54 @@ def _record_llm_usage(state: State, llm_messages: list[ChatMessage]) -> None:
             updated = True
     if updated:
         state.set("token_usage", current)
+
+
+# Input/output token key conventions across chat generators: most report OpenAI-style
+# `prompt_tokens`/`completion_tokens`; OpenAIResponsesChatGenerator reports `input_tokens`/`output_tokens`.
+_INPUT_TOKEN_KEYS = ("prompt_tokens", "input_tokens")
+_OUTPUT_TOKEN_KEYS = ("completion_tokens", "output_tokens")
+
+
+def _context_tokens_from_usage(usage: dict[str, Any]) -> int:
+    """
+    Sum the input and output tokens reported in a single `meta["usage"]` dict.
+
+    :param usage: A ChatMessage `meta["usage"]` payload.
+    :returns: Input plus output tokens, or 0 if neither key convention is present.
+    """
+
+    def _first_numeric(keys: tuple[str, ...]) -> int:
+        for key in keys:
+            value = usage.get(key)
+            # bool is an int subclass, so exclude it explicitly: True/False is not a token count.
+            if isinstance(value, bool):
+                continue
+            if isinstance(value, (int, float)):
+                return int(value)
+        return 0
+
+    return _first_numeric(_INPUT_TOKEN_KEYS) + _first_numeric(_OUTPUT_TOKEN_KEYS)
+
+
+def _record_context_tokens(state: State, llm_messages: list[ChatMessage]) -> None:
+    """
+    Store the approximate current context-window token count from the latest LLM call.
+
+    A chat-generator call returns a single reply, so only the last message is inspected. Unlike
+    `token_usage`, which accumulates across the run, this value is replaced each call with that reply's
+    prompt-plus-completion tokens. Only writes when usage is reported, so generators that don't surface
+    usage leave the previous value untouched.
+
+    :param state: The Agent's State, used to write the latest `context_tokens` count.
+    :param llm_messages: The ChatMessage objects returned from the latest LLM call.
+    """
+    if not llm_messages:
+        return
+    usage = llm_messages[-1].meta.get("usage")
+    if isinstance(usage, dict):
+        tokens = _context_tokens_from_usage(usage)
+        if tokens:
+            state.set("context_tokens", tokens)
 
 
 def _record_tool_calls(state: State, tool_messages: list[ChatMessage]) -> None:
@@ -938,6 +990,7 @@ class Agent:
         state.set("messages", messages)
         state.set("step_count", 0)
         state.set("token_usage", {})
+        state.set("context_tokens", 0)
         state.set("tool_call_counts", {tool.name: 0 for tool in flat_tools})
         state.set("exit_reason", None)
         state.set("continue_run", False)
@@ -1187,6 +1240,7 @@ class Agent:
             llm_messages = result["replies"]
             exe_context.state.set("messages", llm_messages)
             _record_llm_usage(exe_context.state, llm_messages)
+            _record_context_tokens(exe_context.state, llm_messages)
 
             # Stop on the "no tool call" exit: no tools available, or a plain assistant text reply (see _is_text_exit).
             if not current_tools or _is_text_exit(llm_messages):
@@ -1251,6 +1305,7 @@ class Agent:
             llm_messages = result["replies"]
             exe_context.state.set("messages", llm_messages)
             _record_llm_usage(exe_context.state, llm_messages)
+            _record_context_tokens(exe_context.state, llm_messages)
 
             # Stop on the "no tool call" exit: no tools available, or a plain assistant text reply (see _is_text_exit).
             if not current_tools or _is_text_exit(llm_messages):

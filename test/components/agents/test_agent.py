@@ -16,7 +16,13 @@ from openai import Stream
 from openai.types.chat import ChatCompletionChunk, chat_completion_chunk
 
 from haystack import Document, Pipeline, component, tracing
-from haystack.components.agents.agent import Agent, _accumulate_usage, _select_tools_by_name
+from haystack.components.agents.agent import (
+    Agent,
+    _accumulate_usage,
+    _context_tokens_from_usage,
+    _record_context_tokens,
+    _select_tools_by_name,
+)
 from haystack.components.agents.state import State, merge_lists, replace_values
 from haystack.components.agents.tool_calling import _run_tool
 from haystack.components.builders.chat_prompt_builder import ChatPromptBuilder
@@ -225,10 +231,13 @@ class TestAgent:
             "tool_call_counts": OutputSocket(name="tool_call_counts", type=dict[str, int], receivers=[]),
             "exit_reason": OutputSocket(name="exit_reason", type=str, receivers=[]),
         }
-        # Check that the internal-state keys are not set up as input sockets
+        # Check that the run-metadata keys are not set up as input sockets
         assert {"step_count", "token_usage", "tool_call_counts", "exit_reason"}.isdisjoint(
             agent.__haystack_input__._sockets_dict.keys()
         )
+        # context_tokens is internal: exposed as neither an input nor an output socket
+        assert "context_tokens" not in agent.__haystack_input__._sockets_dict
+        assert "context_tokens" not in agent.__haystack_output__._sockets_dict
 
     def test_to_dict(self, weather_tool, component_tool, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "fake-key")
@@ -487,6 +496,7 @@ class TestAgent:
             "continue_run": {"type": bool, "handler": replace_values},
             "tools": {"type": list, "handler": replace_values},
             "hook_context": {"type": dict[str, Any], "handler": replace_values},
+            "context_tokens": {"type": int, "handler": replace_values},
         }
         assert agent.tool_concurrency_limit == 5
         assert agent.tool_streaming_callback_passthrough is True
@@ -598,6 +608,7 @@ class TestAgent:
             "continue_run": {"type": bool, "handler": replace_values},
             "tools": {"type": list, "handler": replace_values},
             "hook_context": {"type": dict[str, Any], "handler": replace_values},
+            "context_tokens": {"type": int, "handler": replace_values},
         }
 
     def test_serde(self, weather_tool, component_tool, monkeypatch):
@@ -643,6 +654,7 @@ class TestAgent:
             "continue_run": {"type": bool, "handler": replace_values},
             "tools": {"type": list, "handler": replace_values},
             "hook_context": {"type": dict[str, Any], "handler": replace_values},
+            "context_tokens": {"type": int, "handler": replace_values},
         }
         assert deserialized_agent.streaming_callback is sync_streaming_callback
 
@@ -1162,7 +1174,7 @@ class TestAgent:
 
     def test_reserved_state_schema_keys_raise(self, monkeypatch, weather_tool):
         monkeypatch.setenv("OPENAI_API_KEY", "fake-key")
-        for reserved in ("step_count", "token_usage", "tool_call_counts", "exit_reason"):
+        for reserved in ("step_count", "token_usage", "context_tokens", "tool_call_counts", "exit_reason"):
             with pytest.raises(ValueError, match="reserved for Agent internal state"):
                 Agent(
                     chat_generator=OpenAIChatGenerator(), tools=[weather_tool], state_schema={reserved: {"type": int}}
@@ -1246,6 +1258,179 @@ class TestAgent:
         assert result["step_count"] == 1
         assert result["token_usage"] == {}
         assert result["tool_call_counts"] == {"weather_tool": 0}
+
+
+class TestContextTokensFromUsage:
+    """`_context_tokens_from_usage` normalizes real provider `meta["usage"]` shapes to input + output tokens.
+
+    Fixtures below are the actual shapes these providers report (nested detail dicts and all), so the test pins
+    the normalization against reality rather than a simplified stand-in.
+    """
+
+    # OpenAI Chat Completions (core repo): `_serialize_object(completion.usage)` -> the full CompletionUsage dump.
+    OPENAI_CHAT_USAGE = {
+        "prompt_tokens": 1117,
+        "completion_tokens": 46,
+        "total_tokens": 1163,
+        "prompt_tokens_details": {"cached_tokens": 0, "audio_tokens": 0},
+        "completion_tokens_details": {
+            "reasoning_tokens": 0,
+            "audio_tokens": 0,
+            "accepted_prediction_tokens": 0,
+            "rejected_prediction_tokens": 0,
+        },
+    }
+    # OpenAI Responses API (core repo): the only Haystack generator that uses input/output keys, each with a
+    # details dict.
+    OPENAI_RESPONSES_USAGE = {
+        "input_tokens": 75,
+        "input_tokens_details": {"cached_tokens": 0},
+        "output_tokens": 1186,
+        "output_tokens_details": {"reasoning_tokens": 1024},
+        "total_tokens": 1261,
+    }
+    # Anthropic chat generator (integration): remaps input/output -> prompt/completion and keeps the cache
+    # accounting (incl. the nested cache_creation breakdown).
+    ANTHROPIC_USAGE = {
+        "prompt_tokens": 2095,
+        "completion_tokens": 503,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 1024,
+        "cache_creation": {"ephemeral_5m_input_tokens": 0, "ephemeral_1h_input_tokens": 0},
+        "service_tier": "standard",
+    }
+    # Amazon Bedrock chat generator (integration): prompt/completion/total plus cache accounting.
+    BEDROCK_USAGE = {
+        "prompt_tokens": 340,
+        "completion_tokens": 92,
+        "total_tokens": 432,
+        "cache_read_input_tokens": 0,
+        "cache_write_input_tokens": 0,
+        "cache_details": {},
+    }
+    # Google GenAI chat generator (integration): total_tokens folds in thoughts, so it exceeds prompt + completion.
+    # We deliberately use prompt+completion, so thoughts are excluded.
+    GOOGLE_GENAI_USAGE = {
+        "prompt_tokens": 20,
+        "completion_tokens": 50,
+        "total_tokens": 85,
+        "thoughts_token_count": 15,
+        "cached_content_token_count": 0,
+    }
+
+    @pytest.mark.parametrize(
+        "usage, expected",
+        [
+            (OPENAI_CHAT_USAGE, 1163),
+            (OPENAI_RESPONSES_USAGE, 1261),
+            (ANTHROPIC_USAGE, 2598),
+            (BEDROCK_USAGE, 432),
+            (GOOGLE_GENAI_USAGE, 70),  # 20 + 50, deliberately not the 85 total (which includes 15 thoughts tokens)
+            ({"prompt_tokens": 10}, 10),  # only one side reported -> partial count
+            ({"completion_tokens": 7}, 7),
+            ({}, 0),  # no usage reported
+            ({"foo": 5, "bar": 9}, 0),  # no recognized keys
+        ],
+    )
+    def test_normalizes_provider_shapes(self, usage, expected):
+        assert _context_tokens_from_usage(usage) == expected
+
+    def test_bool_values_are_not_counted_as_tokens(self):
+        # bool is an int subclass; True/False under a token key must be skipped, not summed.
+        assert _context_tokens_from_usage({"prompt_tokens": True, "completion_tokens": 5}) == 5
+
+
+class TestRecordContextTokens:
+    """`_record_context_tokens` replaces the value with the latest reply's input+output, only when usage is reported."""
+
+    def _state(self) -> State:
+        state = State(schema={"context_tokens": {"type": int, "handler": replace_values}})
+        state.set("context_tokens", 0)
+        return state
+
+    def test_records_latest_reply_usage(self):
+        state = self._state()
+        _record_context_tokens(
+            state, [_assistant_with_usage("Hi", usage={"prompt_tokens": 12, "completion_tokens": 3})]
+        )
+        assert state.get("context_tokens") == 15
+
+    def test_replaces_rather_than_accumulates(self):
+        state = self._state()
+        state.set("context_tokens", 999)
+        _record_context_tokens(state, [_assistant_with_usage("Hi", usage={"prompt_tokens": 4, "completion_tokens": 1})])
+        assert state.get("context_tokens") == 5
+
+    def test_no_messages_leaves_value_untouched(self):
+        state = self._state()
+        state.set("context_tokens", 42)
+        _record_context_tokens(state, [])
+        assert state.get("context_tokens") == 42
+
+    def test_missing_or_empty_usage_leaves_value_untouched(self):
+        # A reply without usage (or with empty usage) must not clobber the previous value, including the initial 0.
+        state = self._state()
+        _record_context_tokens(state, [ChatMessage.from_assistant("no usage here")])
+        _record_context_tokens(state, [_assistant_with_usage("empty", usage={})])
+        assert state.get("context_tokens") == 0
+
+
+class TestAgentContextTokens:
+    """The Agent refreshes the internal `context_tokens` after each LLM call so a hook can read the current
+    context-window size (e.g. to trigger compaction). It is a per-call snapshot, not accumulated."""
+
+    def test_before_llm_hook_reads_refreshed_context_tokens(self, weather_tool):
+        # Step 1: a tool call (prompt 10 + completion 5 = 15). Step 2: the final text answer.
+        first_step = [
+            _assistant_with_usage(
+                tool_calls=[ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"})],
+                usage={"prompt_tokens": 10, "completion_tokens": 5, "total_tokens": 15},
+            )
+        ]
+        second_step = [_assistant_with_usage("Done.", usage={"prompt_tokens": 20, "completion_tokens": 8})]
+
+        seen: list[int] = []
+
+        @hook
+        def capture(state: State) -> None:
+            seen.append(state.get("context_tokens"))
+
+        agent = Agent(
+            chat_generator=MockChatGenerator(first_step + second_step),
+            tools=[weather_tool],
+            hooks={"before_llm": [capture]},
+        )
+        agent.run([ChatMessage.from_user("Weather in Berlin?")])
+
+        # Before the first call there is no usage yet (0); before the second call it reflects the first call (15),
+        # confirming the recorder runs in the loop and the value is refreshed per call rather than accumulated.
+        assert seen == [0, 15]
+
+
+class TestAgentContextTokensAsync:
+    @pytest.mark.asyncio
+    async def test_before_llm_hook_reads_refreshed_context_tokens_async(self, weather_tool):
+        first_step = [
+            _assistant_with_usage(
+                tool_calls=[ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"})],
+                usage={"prompt_tokens": 10, "completion_tokens": 5, "total_tokens": 15},
+            )
+        ]
+        second_step = [_assistant_with_usage("Done.", usage={"prompt_tokens": 20, "completion_tokens": 8})]
+
+        seen: list[int] = []
+
+        @hook
+        def capture(state: State) -> None:
+            seen.append(state.get("context_tokens"))
+
+        agent = Agent(
+            chat_generator=MockChatGenerator(first_step + second_step),
+            tools=[weather_tool],
+            hooks={"before_llm": [capture]},
+        )
+        await agent.run_async([ChatMessage.from_user("Weather in Berlin?")])
+        assert seen == [0, 15]
 
 
 class TestAgentExitReason:
@@ -1434,7 +1619,7 @@ class TestAgentTracing:
             "haystack.agent.max_steps": 100,
             "haystack.agent.tools": '[{"type": "haystack.tools.tool.Tool", "data": {"name": "weather_tool", "description": "Provides weather information for a given location.", "parameters": {"type": "object", "properties": {"location": {"type": "string"}}, "required": ["location"]}, "function": "test_agent.weather_function", "outputs_to_string": null, "inputs_from_state": null, "outputs_to_state": null, "async_function": null}}]',  # noqa: E501
             "haystack.agent.exit_conditions": '["text"]',
-            "haystack.agent.state_schema": '{"messages": {"type": "list[haystack.dataclasses.chat_message.ChatMessage]", "handler": "haystack.components.agents.state.state_utils.merge_lists"}, "step_count": {"type": "int", "handler": "haystack.components.agents.state.state_utils.replace_values"}, "token_usage": {"type": "dict[str, typing.Any]", "handler": "haystack.components.agents.state.state_utils.replace_values"}, "tool_call_counts": {"type": "dict[str, int]", "handler": "haystack.components.agents.state.state_utils.replace_values"}, "exit_reason": {"type": "str", "handler": "haystack.components.agents.state.state_utils.replace_values"}, "continue_run": {"type": "bool", "handler": "haystack.components.agents.state.state_utils.replace_values"}, "tools": {"type": "list", "handler": "haystack.components.agents.state.state_utils.replace_values"}, "hook_context": {"type": "dict[str, typing.Any]", "handler": "haystack.components.agents.state.state_utils.replace_values"}}',  # noqa: E501
+            "haystack.agent.state_schema": '{"messages": {"type": "list[haystack.dataclasses.chat_message.ChatMessage]", "handler": "haystack.components.agents.state.state_utils.merge_lists"}, "step_count": {"type": "int", "handler": "haystack.components.agents.state.state_utils.replace_values"}, "token_usage": {"type": "dict[str, typing.Any]", "handler": "haystack.components.agents.state.state_utils.replace_values"}, "tool_call_counts": {"type": "dict[str, int]", "handler": "haystack.components.agents.state.state_utils.replace_values"}, "exit_reason": {"type": "str", "handler": "haystack.components.agents.state.state_utils.replace_values"}, "continue_run": {"type": "bool", "handler": "haystack.components.agents.state.state_utils.replace_values"}, "tools": {"type": "list", "handler": "haystack.components.agents.state.state_utils.replace_values"}, "hook_context": {"type": "dict[str, typing.Any]", "handler": "haystack.components.agents.state.state_utils.replace_values"}, "context_tokens": {"type": "int", "handler": "haystack.components.agents.state.state_utils.replace_values"}}',  # noqa: E501
             "haystack.agent.input": '{"messages": [{"role": "user", "meta": {}, "name": null, "content": [{"text": "What\'s the weather in Paris?"}]}], "streaming_callback": null}',  # noqa: E501
             "haystack.agent.output": '{"messages": [{"role": "user", "meta": {}, "name": null, "content": [{"text": "What\'s the weather in Paris?"}]}, {"role": "assistant", "meta": {}, "name": null, "content": [{"text": "Hello"}]}], "step_count": 1, "token_usage": {}, "tool_call_counts": {"weather_tool": 0}, "exit_reason": "text", "last_message": {"role": "assistant", "meta": {}, "name": null, "content": [{"text": "Hello"}]}}',  # noqa: E501
             "haystack.agent.steps_taken": 1,
@@ -1601,7 +1786,7 @@ class TestAgentTracing:
             "haystack.agent.max_steps": 100,
             "haystack.agent.tools": '[{"type": "haystack.tools.tool.Tool", "data": {"name": "weather_tool", "description": "Provides weather information for a given location.", "parameters": {"type": "object", "properties": {"location": {"type": "string"}}, "required": ["location"]}, "function": "test_agent.weather_function", "outputs_to_string": null, "inputs_from_state": null, "outputs_to_state": null, "async_function": null}}]',  # noqa: E501
             "haystack.agent.exit_conditions": '["text"]',
-            "haystack.agent.state_schema": '{"messages": {"type": "list[haystack.dataclasses.chat_message.ChatMessage]", "handler": "haystack.components.agents.state.state_utils.merge_lists"}, "step_count": {"type": "int", "handler": "haystack.components.agents.state.state_utils.replace_values"}, "token_usage": {"type": "dict[str, typing.Any]", "handler": "haystack.components.agents.state.state_utils.replace_values"}, "tool_call_counts": {"type": "dict[str, int]", "handler": "haystack.components.agents.state.state_utils.replace_values"}, "exit_reason": {"type": "str", "handler": "haystack.components.agents.state.state_utils.replace_values"}, "continue_run": {"type": "bool", "handler": "haystack.components.agents.state.state_utils.replace_values"}, "tools": {"type": "list", "handler": "haystack.components.agents.state.state_utils.replace_values"}, "hook_context": {"type": "dict[str, typing.Any]", "handler": "haystack.components.agents.state.state_utils.replace_values"}}',  # noqa: E501
+            "haystack.agent.state_schema": '{"messages": {"type": "list[haystack.dataclasses.chat_message.ChatMessage]", "handler": "haystack.components.agents.state.state_utils.merge_lists"}, "step_count": {"type": "int", "handler": "haystack.components.agents.state.state_utils.replace_values"}, "token_usage": {"type": "dict[str, typing.Any]", "handler": "haystack.components.agents.state.state_utils.replace_values"}, "tool_call_counts": {"type": "dict[str, int]", "handler": "haystack.components.agents.state.state_utils.replace_values"}, "exit_reason": {"type": "str", "handler": "haystack.components.agents.state.state_utils.replace_values"}, "continue_run": {"type": "bool", "handler": "haystack.components.agents.state.state_utils.replace_values"}, "tools": {"type": "list", "handler": "haystack.components.agents.state.state_utils.replace_values"}, "hook_context": {"type": "dict[str, typing.Any]", "handler": "haystack.components.agents.state.state_utils.replace_values"}, "context_tokens": {"type": "int", "handler": "haystack.components.agents.state.state_utils.replace_values"}}',  # noqa: E501
             "haystack.agent.input": '{"messages": [{"role": "user", "meta": {}, "name": null, "content": [{"text": "What\'s the weather in Paris?"}]}], "streaming_callback": null}',  # noqa: E501
             "haystack.agent.output": '{"messages": [{"role": "user", "meta": {}, "name": null, "content": [{"text": "What\'s the weather in Paris?"}]}, {"role": "assistant", "meta": {"model": "mock-model", "index": 0, "finish_reason": "stop", "usage": {"prompt_tokens": 5, "completion_tokens": 1, "total_tokens": 6}}, "name": null, "content": [{"text": "Hello"}]}], "step_count": 1, "token_usage": {"prompt_tokens": 5, "completion_tokens": 1, "total_tokens": 6}, "tool_call_counts": {"weather_tool": 0}, "exit_reason": "text", "last_message": {"role": "assistant", "meta": {"model": "mock-model", "index": 0, "finish_reason": "stop", "usage": {"prompt_tokens": 5, "completion_tokens": 1, "total_tokens": 6}}, "name": null, "content": [{"text": "Hello"}]}}',  # noqa: E501
             "haystack.agent.steps_taken": 1,
