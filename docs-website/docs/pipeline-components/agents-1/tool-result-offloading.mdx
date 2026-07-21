@@ -146,7 +146,7 @@ The protocol provides default `to_dict` / `from_dict` implementations, so a poli
 
 ### `FileSystemToolResultStore`
 
-`FileSystemToolResultStore(root=...)` writes each offloaded result to a file under its root directory and returns the absolute file path as the reference. The directory is created on first write. Store keys are derived from the step count, tool name, and tool call ID (for example `2_search_call-123.txt`), so results from different tools and steps do not collide. Keys and references that would resolve outside the root directory are rejected. Even though this implementation uses file paths, callers should still treat the returned reference as opaque and store-scoped.
+`FileSystemToolResultStore(root=...)` writes each offloaded result to a file under its root directory and returns the absolute file path as the reference. The directory is created on first write. Store keys are derived from the step count, tool name, and tool call ID (for example `2_search_call-123.txt`), so results from different tools and steps do not collide. A key that would resolve outside the root directory is rejected.
 
 ### Custom store
 
@@ -193,26 +193,23 @@ Isolating the store per run keeps concurrent users from colliding on store keys 
 
 ## Letting the Agent read offloaded results back
 
-The pointer left in the conversation tells the model where the full result lives, but the model can only act on it if the Agent has a tool that can read from the store. With `FileSystemToolResultStore`, that can be a simple read-back tool bound to the same store:
+The pointer left in the conversation tells the model where the full result lives, but the model can only act on it if the Agent has a tool that can read from the store. With `FileSystemToolResultStore`, that can be a simple file-reading tool:
 
 ```python
 from typing import Annotated
 
-from haystack.hooks.tool_result_offloading import FileSystemToolResultStore
 from haystack.tools import tool
-
-store = FileSystemToolResultStore(root="tool_results")
 
 
 @tool
 def read_offloaded_result(
-    reference: Annotated[str, "Store reference returned by the offload store"],
+    path: Annotated[str, "Absolute path of an offloaded tool result"],
 ) -> str:
     """Read back the full content of an offloaded tool result."""
-    return store.read(reference)
+    return FileSystemToolResultStore(root="tool_results").read(path)
 ```
 
-With this tool available, the Agent can work with a compact conversation and selectively re-read only the offloaded results it actually needs — instead of carrying every full result in context on every LLM call. In multi-user setups, bind the tool to the same per-run store or root scope that your offload hook uses; do not treat the reference as an arbitrary filesystem path.
+With this tool available, the Agent can work with a compact conversation and selectively re-read only the offloaded results it actually needs — instead of carrying every full result in context on every LLM call.
 
 ## Serialization
 

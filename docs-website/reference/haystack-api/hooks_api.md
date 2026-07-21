@@ -955,20 +955,13 @@ read(reference: str) -> str
 
 Read back the content previously written to `reference`.
 
-The resolved reference must stay within the store root: callers must treat it as an opaque
-store-scoped reference, not as an arbitrary filesystem path.
-
 **Parameters:**
 
-- **reference** (<code>str</code>) – A store reference returned by `write`.
+- **reference** (<code>str</code>) – A path returned by `write`.
 
 **Returns:**
 
 - <code>str</code> – The stored content.
-
-**Raises:**
-
-- <code>ValueError</code> – If `reference` resolves to a location outside the store root.
 
 #### to_dict
 
