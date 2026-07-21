@@ -32,6 +32,11 @@ In contrast to other rankers, `LostInTheMiddleRanker` assumes that the input doc
 
 If you specify the `word_count_threshold` when running the component, the Ranker includes all documents up until the point where adding another document would exceed the given threshold. The last document that exceeds the threshold will be included in the resulting list of Documents, but all following documents will be discarded.
 
+`word_count_threshold` counts whitespace-separated words with Python's `str.split()`. It is not a tokenizer-aware budget,
+so the same value can represent many more tokens for code, URLs, non-Latin text, or punctuation-heavy content. If you
+are trying to stay within an LLM context window, use a conservative threshold or count tokens before passing documents to
+this Ranker.
+
 You can also specify the `top_k` parameter to set the maximum number of documents to return.
 
 ## Usage

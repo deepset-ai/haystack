@@ -46,7 +46,9 @@ class LostInTheMiddleRanker:
         be breached will be included in the resulting list of documents, but all subsequent documents will be
         discarded.
 
-        :param word_count_threshold: The maximum total number of words across all documents selected by the ranker.
+        :param word_count_threshold: The maximum total number of whitespace-separated words across all documents
+            selected by the ranker. This is not a token budget; use a conservative value if the downstream LLM
+            context limit is measured in tokens.
         :param top_k: The maximum number of documents to return.
         """
         if isinstance(word_count_threshold, int) and word_count_threshold <= 0:
@@ -71,7 +73,9 @@ class LostInTheMiddleRanker:
 
         :param documents: List of Documents to reorder.
         :param top_k: The maximum number of documents to return.
-        :param word_count_threshold: The maximum total number of words across all documents selected by the ranker.
+        :param word_count_threshold: The maximum total number of whitespace-separated words across all documents
+            selected by the ranker. This is not a token budget; use a conservative value if the downstream LLM
+            context limit is measured in tokens.
         :returns:
             A dictionary with the following keys:
             - `documents`: Reranked list of Documents
