@@ -82,12 +82,8 @@ class FileToFileContent:
                 continue
 
             base64_data = base64.b64encode(bytestream.data).decode("utf-8")
-            # ``normalize_metadata`` returns the same dict object for every source when ``extra`` is a
-            # single dict (or ``None``), so give each FileContent its own copy. Otherwise mutating one
-            # file's ``extra`` downstream would leak into all the others. The other converters avoid this
-            # implicitly by merging ``extra`` into a fresh ``{**bytestream.meta, ...}`` dict.
             file_content = FileContent(
-                base64_data=base64_data, mime_type=bytestream.mime_type, filename=filename, extra=dict(extra_dict)
+                base64_data=base64_data, mime_type=bytestream.mime_type, filename=filename, extra=extra_dict
             )
             file_contents.append(file_content)
 
