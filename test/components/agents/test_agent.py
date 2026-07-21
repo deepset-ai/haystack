@@ -808,6 +808,8 @@ class TestAgent:
         assert "last_message" in result
         assert isinstance(result["last_message"], ChatMessage)
         assert result["messages"][-1] == result["last_message"]
+        # The exit reason is the tool that triggered the exit, and `last_message` is that tool's result.
+        assert result["exit_reason"] == "weather_tool"
 
     def test_exit_condition_on_tool_provided_at_runtime(self, weather_tool):
         """An exit condition naming a tool absent at init still triggers once that tool is provided at runtime."""
@@ -931,6 +933,8 @@ class TestAgent:
         assert "last_message" in response
         assert isinstance(response["last_message"], ChatMessage)
         assert response["messages"][-1] == response["last_message"]
+        # With no tools the loop always exits after the first reply, reporting the "text" exit reason.
+        assert response["exit_reason"] == "text"
 
     def test_run_with_system_prompt(self, weather_tool):
         chat_generator = MockChatGeneratorWithoutRunAsync()
@@ -1252,26 +1256,6 @@ class TestAgentExitReason:
         agent = Agent(chat_generator=MockChatGenerator("Berlin is sunny."), tools=[weather_tool])
         result = agent.run([ChatMessage.from_user("Weather in Berlin?")])
         assert result["exit_reason"] == "text"
-
-    def test_text_exit_when_agent_has_no_tools(self):
-        """With no tools the loop always exits after the first reply, reporting the `"text"` exit reason."""
-        agent = Agent(chat_generator=MockChatGenerator("Hello"), tools=[])
-        result = agent.run([ChatMessage.from_user("Hi")])
-        assert result["exit_reason"] == "text"
-
-    def test_tool_exit_reason_is_the_tool_name(self, weather_tool):
-        """A tool exit condition reports the name of the tool that triggered it; `last_message` is its result."""
-        tool_call_message = ChatMessage.from_assistant(
-            tool_calls=[ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"})]
-        )
-        agent = Agent(
-            chat_generator=MockChatGenerator(tool_call_message), tools=[weather_tool], exit_conditions=["weather_tool"]
-        )
-        result = agent.run([ChatMessage.from_user("Weather in Berlin?")])
-        assert result["exit_reason"] == "weather_tool"
-        # The last message is the tool result (no assistant text), which is exactly what the exit reason signals.
-        assert result["last_message"].tool_call_result is not None
-        assert not result["last_message"].text
 
     def test_tool_exit_reports_the_first_matching_tool(self, weather_tool, component_tool):
         """When several exit-condition tools are called in one step, the first one encountered is reported."""
