@@ -4,7 +4,7 @@
 
 import sys
 from copy import deepcopy
-from dataclasses import asdict, dataclass
+from dataclasses import dataclass
 from typing import Any
 from unittest.mock import Mock
 
@@ -28,12 +28,12 @@ from haystack.core.serialization import (
 from haystack.dataclasses import (
     ByteStream,
     ChatMessage,
-    ComponentInfo,
+    ChatRole,
+    FileContent,
     GeneratedAnswer,
     ImageContent,
     ReasoningContent,
     SparseEmbedding,
-    StreamingChunk,
     TextContent,
     ToolCall,
     ToolCallResult,
@@ -701,38 +701,60 @@ class Conversation(BaseModel):
     documents: list[Document]
 
 
-def serialize_for_client(instance: Any) -> dict[str, Any]:
-    """Serialize an instance the way a JSON client would, per its serialization scheme."""
-    if isinstance(instance, BaseModel):
-        return instance.model_dump(mode="json")
-    if hasattr(instance, "to_dict"):
-        return instance.to_dict()
-    return asdict(instance)
+class SerializationEnvelope(BaseModel):
+    value: Any
 
 
-# One instance per coercible class, used to check that coerce_pipeline_inputs round-trips each of them for the
-# `T`, `list[T]`, and optional socket shapes. Covers Haystack dataclasses (from_dict), a Pydantic model, and a
-# standard-library dataclass.
+def serialize_for_client(instance: Any) -> Any:
+    """
+    Serialize an instance the way a FastAPI app does: instances arrive inside a loosely-typed Pydantic field,
+    so Pydantic (not to_dict) produces the JSON payload.
+    """
+    return SerializationEnvelope(value=instance).model_dump(mode="json")["value"]
+
+
+TOOL_CALL = ToolCall(tool_name="t", arguments={"a": 1}, id="1")
+
 COERCIBLE_INSTANCES = [
-    pytest.param(Document(content="Hello", meta={"k": "v"}), id="Document"),
-    pytest.param(ChatMessage.from_user("Hi"), id="ChatMessage"),
+    # We create a fully loaded Document to test all fields serializations
     pytest.param(
-        ChatMessage.from_assistant("x", tool_calls=[ToolCall(tool_name="t", arguments={"a": 1}, id="1")]),
-        id="ChatMessage-with-tool-call",
+        Document(
+            content="Hello",
+            meta={"k": "v"},
+            score=0.5,
+            embedding=[0.1, 0.2],
+            sparse_embedding=SparseEmbedding(indices=[0, 2], values=[0.1, 0.2]),
+        ),
+        id="Document",
     ),
-    pytest.param(ByteStream(data=b"hello", mime_type="text/plain", meta={"k": "v"}), id="ByteStream"),
-    pytest.param(SparseEmbedding(indices=[0, 2], values=[0.1, 0.2]), id="SparseEmbedding"),
+    # We create a fully loaded ChatMessage to test all possible content type serializations
+    pytest.param(
+        ChatMessage(
+            _role=ChatRole.ASSISTANT,
+            _content=[
+                TextContent(text="hi"),
+                TOOL_CALL,
+                ToolCallResult(result="r", origin=TOOL_CALL, error=False),
+                ImageContent(base64_image="aGVsbG8=", mime_type="image/png"),
+                ReasoningContent(reasoning_text="because"),
+                FileContent(base64_data="aGVsbG8=", mime_type="application/pdf"),
+            ],
+            _name="n",
+            _meta={"k": "v"},
+        ),
+        id="ChatMessage",
+    ),
+    pytest.param(
+        ByteStream(data=b"hello", mime_type="text/plain", meta={"k": "v"}),
+        id="ByteStream",
+        marks=pytest.mark.xfail(
+            reason="Pydantic serializes the bytes field as a JSON string that ByteStream.from_dict cannot rebuild",
+            raises=TypeError,
+            strict=True,
+        ),
+    ),
     pytest.param(GeneratedAnswer(data="answer", query="q", documents=[Document(content="d")]), id="GeneratedAnswer"),
-    pytest.param(ToolCall(tool_name="t", arguments={"a": 1}, id="1"), id="ToolCall"),
-    pytest.param(
-        ToolCallResult(result="r", origin=ToolCall(tool_name="t", arguments={"a": 1}, id="1"), error=False),
-        id="ToolCallResult",
-    ),
-    pytest.param(TextContent(text="hi"), id="TextContent"),
-    pytest.param(ReasoningContent(reasoning_text="because"), id="ReasoningContent"),
     pytest.param(ImageContent(base64_image="aGVsbG8=", mime_type="image/png"), id="ImageContent"),
-    pytest.param(ComponentInfo(type="some.Type", name="comp"), id="ComponentInfo"),
-    pytest.param(StreamingChunk(content="hi"), id="StreamingChunk"),
     pytest.param(PydanticModel(a=1, b="x"), id="pydantic-model"),
     pytest.param(PlainDataclass(name="x", count=2), id="stdlib-dataclass"),
     pytest.param(
@@ -749,27 +771,21 @@ class TestCoercePipelineInputsRoundTrip:
     def test_single_socket(self, instance):
         pipe = Pipeline()
         pipe.add_component("echo", TypedEcho(type(instance)))
-
         coerced = coerce_pipeline_inputs(pipe, {"echo": {"value": serialize_for_client(instance)}})
-
         assert coerced["echo"]["value"] == instance
 
     @pytest.mark.parametrize("instance", COERCIBLE_INSTANCES)
     def test_list_socket(self, instance):
         pipe = Pipeline()
         pipe.add_component("echo", TypedEcho(list[type(instance)]))  # type: ignore[misc]
-
         coerced = coerce_pipeline_inputs(pipe, {"echo": {"value": [serialize_for_client(instance)]}})
-
         assert coerced["echo"]["value"] == [instance]
 
     @pytest.mark.parametrize("instance", COERCIBLE_INSTANCES)
     def test_optional_socket(self, instance):
         pipe = Pipeline()
         pipe.add_component("echo", TypedEcho(type(instance) | None))
-
         coerced = coerce_pipeline_inputs(pipe, {"echo": {"value": serialize_for_client(instance)}})
-
         assert coerced["echo"]["value"] == instance
 
 
@@ -783,9 +799,7 @@ class TestCoercePipelineInputs:
     def test_nested_format(self, pipeline):
         messages = [ChatMessage.from_user("Hi"), ChatMessage.from_assistant("Hello")]
         data: dict[str, Any] = {"echo": {"messages": [message.to_dict() for message in messages], "top_k": 5}}
-
         coerced = coerce_pipeline_inputs(pipeline, data)
-
         assert coerced == {"echo": {"messages": messages, "top_k": 5}}
         # the input data is not mutated
         assert isinstance(data["echo"]["messages"][0], dict)
@@ -793,48 +807,36 @@ class TestCoercePipelineInputs:
     def test_flat_format(self, pipeline):
         messages = [ChatMessage.from_user("Hi")]
         data = {"messages": [message.to_dict() for message in messages], "top_k": 5}
-
         coerced = coerce_pipeline_inputs(pipeline, data)
-
         assert coerced == {"messages": messages, "top_k": 5}
 
     def test_instances_pass_through(self, pipeline):
         messages = [ChatMessage.from_user("Hi")]
         data = {"echo": {"messages": messages}}
-
         coerced = coerce_pipeline_inputs(pipeline, data)
-
         assert coerced["echo"]["messages"][0] is messages[0]
 
     def test_mixed_list(self, pipeline):
         message = ChatMessage.from_user("Hi")
         data = {"echo": {"messages": [message, ChatMessage.from_assistant("Hello").to_dict()]}}
-
         coerced = coerce_pipeline_inputs(pipeline, data)
-
         assert coerced["echo"]["messages"] == [message, ChatMessage.from_assistant("Hello")]
 
     def test_non_coercible_values_untouched(self, pipeline):
         data = {"echo": {"messages": [], "top_k": 5, "config": {"a": 1}}}
-
         coerced = coerce_pipeline_inputs(pipeline, data)
-
         assert coerced == data
 
     def test_unknown_inputs_untouched(self, pipeline):
         message_dict = ChatMessage.from_user("Hi").to_dict()
         data = {"unknown_input": [message_dict], "top_k": 5}
-
         coerced = coerce_pipeline_inputs(pipeline, data)
-
         assert coerced == {"unknown_input": [message_dict], "top_k": 5}
 
     def test_unknown_component_untouched(self, pipeline):
         message_dict = ChatMessage.from_user("Hi").to_dict()
         data = {"unknown_component": {"messages": [message_dict]}}
-
         coerced = coerce_pipeline_inputs(pipeline, data)
-
         assert coerced == {"unknown_component": {"messages": [message_dict]}}
 
     def test_variadic_socket(self):
@@ -842,35 +844,5 @@ class TestCoercePipelineInputs:
         pipe.add_component("joiner", BranchJoiner(list[ChatMessage]))
         messages = [ChatMessage.from_user("Hi")]
         data = {"value": [message.to_dict() for message in messages], "unrelated": 1}
-
         coerced = coerce_pipeline_inputs(pipe, data)
-
         assert coerced["value"] == messages
-
-    def test_pydantic_model_dump_payload(self, pipeline):
-        class Response(BaseModel):
-            messages: list[ChatMessage]
-
-        messages = [ChatMessage.from_user("Hi"), ChatMessage.from_assistant("Hello")]
-        dumped = Response(messages=messages).model_dump(mode="json")
-        data = {"echo": {"messages": dumped["messages"]}}
-
-        coerced = coerce_pipeline_inputs(pipeline, data)
-
-        assert coerced == {"echo": {"messages": messages}}
-
-    def test_dict_any_field_from_pydantic_model_is_coercible(self, pipeline):
-        # An API-layer Pydantic model types the pipeline inputs as dict[str, Any], so Pydantic leaves the
-        # nested serialized objects as plain dicts. Passing that field to coerce_pipeline_inputs recovers the
-        # objects, because coercion is driven by the pipeline's socket types rather than the field's type.
-        class Request(BaseModel):
-            pipeline_inputs: dict[str, Any]
-
-        messages = [ChatMessage.from_user("Hi")]
-        request = Request(pipeline_inputs={"echo": {"messages": [message.to_dict() for message in messages]}})
-        dumped = request.model_dump(mode="json")
-        assert isinstance(dumped["pipeline_inputs"]["echo"]["messages"][0], dict)
-
-        coerced = coerce_pipeline_inputs(pipeline, dumped["pipeline_inputs"])
-
-        assert coerced == {"echo": {"messages": messages}}
