@@ -100,6 +100,22 @@ Deserializes the component from a dictionary.
 
 - <code>ElasticsearchBM25Retriever</code> – Deserialized component.
 
+#### close
+
+```python
+close() -> None
+```
+
+Release the synchronous resources of the underlying Document Store.
+
+#### close_async
+
+```python
+close_async() -> None
+```
+
+Release the asynchronous resources of the underlying Document Store.
+
 #### run
 
 ```python
@@ -247,6 +263,22 @@ Deserializes the component from a dictionary.
 
 - <code>ElasticsearchEmbeddingRetriever</code> – Deserialized component.
 
+#### close
+
+```python
+close() -> None
+```
+
+Release the synchronous resources of the underlying Document Store.
+
+#### close_async
+
+```python
+close_async() -> None
+```
+
+Release the asynchronous resources of the underlying Document Store.
+
 #### run
 
 ```python
@@ -376,6 +408,22 @@ Deserializes the component from a dictionary.
 **Returns:**
 
 - <code>ElasticsearchSQLRetriever</code> – Deserialized component.
+
+#### close
+
+```python
+close() -> None
+```
+
+Release the synchronous resources of the underlying Document Store.
+
+#### close_async
+
+```python
+close_async() -> None
+```
+
+Release the asynchronous resources of the underlying Document Store.
 
 #### run
 
@@ -557,7 +605,23 @@ Returns the synchronous Elasticsearch client, initializing it if necessary.
 async_client: AsyncElasticsearch
 ```
 
-Returns the asynchronous Elasticsearch client, initializing it if necessary.
+Returns the asynchronous Elasticsearch client, constructing it if necessary.
+
+#### close
+
+```python
+close() -> None
+```
+
+Release the associated synchronous resources.
+
+#### close_async
+
+```python
+close_async() -> None
+```
+
+Release the associated asynchronous resources.
 
 #### to_dict
 
