@@ -4,6 +4,7 @@
 
 import inspect
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Dict, Generic, List, Optional, TypeVar, Union
 
 import pytest
@@ -511,6 +512,13 @@ class TestState:
                 "dict_of_lists": {"numbers": [1, 2, 3]},
             },
         }
+
+    def test_state_to_dict_omits_non_serializable_field(self):
+        # A non-serializable value must not crash serialization: only that field is omitted.
+        state = State({"good": {"type": int}, "bad": {"type": object}}, {"good": 1, "bad": datetime(2024, 1, 1)})
+        state_dict = state.to_dict()
+        assert state_dict["data"]["serialized_data"] == {"good": 1}
+        assert "bad" not in state_dict["data"]["serialization_schema"]["properties"]
 
     def test_state_from_dict_typing_list(self):
         state_dict = {
