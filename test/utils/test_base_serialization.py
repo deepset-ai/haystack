@@ -14,7 +14,7 @@ from haystack.utils.base_serialization import _deserialize_value_with_schema, _s
 
 
 class PlainObject:
-    """An arbitrary object without a ``to_dict`` method (only a ``__dict__``)."""
+    """An arbitrary object without a ``to_dict`` method (only a `__dict__`)."""
 
     def __init__(self, value):
         self.value = value
