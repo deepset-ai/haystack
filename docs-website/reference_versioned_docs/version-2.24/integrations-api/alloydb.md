@@ -109,6 +109,14 @@ Deserializes the component from a dictionary.
 
 - <code>AlloyDBEmbeddingRetriever</code> – Deserialized component.
 
+#### close
+
+```python
+close() -> None
+```
+
+Release the synchronous resources of the underlying Document Store.
+
 ## haystack_integrations.components.retrievers.alloydb.keyword_retriever
 
 ### AlloyDBKeywordRetriever
@@ -193,6 +201,14 @@ Deserializes the component from a dictionary.
 **Returns:**
 
 - <code>AlloyDBKeywordRetriever</code> – Deserialized component.
+
+#### close
+
+```python
+close() -> None
+```
+
+Release the synchronous resources of the underlying Document Store.
 
 ## haystack_integrations.document_stores.alloydb.document_store
 
@@ -356,11 +372,7 @@ Deserializes the component from a dictionary.
 close() -> None
 ```
 
-Closes the database connection and the AlloyDB connector.
-
-Call this when you are done using the document store to release resources.
-For long-lived applications the connector runs a background refresh thread;
-calling `close()` ensures that thread is stopped cleanly.
+Release the associated synchronous resources.
 
 #### delete_table
 
