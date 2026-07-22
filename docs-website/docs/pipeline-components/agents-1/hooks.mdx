@@ -46,6 +46,7 @@ The Agent manages a few state keys that hooks interact with. Like the run-metada
 - `continue_run`: Set by an `on_exit` hook to keep the Agent running.
 - `tools`: The tools available in the current step, for hooks to inspect.
 - `hook_context`: Request-scoped resources passed to `Agent.run(hook_context={...})` / `run_async(hook_context={...})`. Hooks read it with `state.data["hook_context"]` or `state.data.get("hook_context")` — use it for per-request resources such as a user ID, a WebSocket, or a database client. Avoid the plain `state.get("hook_context")` here: `State.get` returns a deep copy of the value, which often fails for the kinds of resources stored in this dict (such as a WebSocket or a database client).
+- `context_tokens`: An approximate count of the tokens currently in the context window, refreshed after each LLM call with that reply's prompt-plus-completion tokens (read it with `state.get("context_tokens")`). Unlike `token_usage`, which accumulates over the run, this is replaced on every call. It's `0` until the first reply that reports usage and doesn't count messages appended after the latest call. A `before_llm` hook can read it to trigger context compaction once it crosses a threshold.
 
 Hooks can also read the automatically tracked run metadata: `step_count`, `token_usage`, and `tool_call_counts`.
 

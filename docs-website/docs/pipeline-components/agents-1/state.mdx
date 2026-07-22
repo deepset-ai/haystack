@@ -71,7 +71,7 @@ If you don't specify a handler, State automatically assigns a default based on t
 The `Agent` manages some state keys itself and rejects them in a user-provided `state_schema` with a `ValueError`:
 
 - The run-metadata keys `step_count`, `token_usage`, `tool_call_counts`, and `exit_reason`, which the Agent populates automatically during a run: tools and hooks can read them from the live `State`, and they are returned in the result dictionary. `exit_reason` reports why the Agent stopped (`"text"`, the name of the tool that triggered a tool exit condition, or `"max_agent_steps"`).
-- The hook-facing keys `continue_run` (set by an `on_exit` hook to keep the Agent running), `tools` (the tools available in the current step, for hooks to inspect), and `hook_context` (the request-scoped resources passed to `Agent.run(hook_context={...})`).
+- The hook-facing keys `continue_run` (set by an `on_exit` hook to keep the Agent running), `tools` (the tools available in the current step, for hooks to inspect), `hook_context` (the request-scoped resources passed to `Agent.run(hook_context={...})`), and `context_tokens` (an approximate count of the tokens currently in the context window, refreshed after each LLM call for hooks to read — for example, to trigger context compaction). Unlike the run-metadata keys, these are not returned in the result dictionary.
 
 If one of your state keys clashes, rename it (for example, `my_token_usage`).
 :::
