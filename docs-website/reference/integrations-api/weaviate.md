@@ -76,6 +76,22 @@ Deserializes the component from a dictionary.
 
 - <code>WeaviateBM25Retriever</code> – Deserialized component.
 
+#### close
+
+```python
+close() -> None
+```
+
+Release the synchronous resources of the underlying Document Store.
+
+#### close_async
+
+```python
+close_async() -> None
+```
+
+Release the asynchronous resources of the underlying Document Store.
+
 #### run
 
 ```python
@@ -186,6 +202,22 @@ Deserializes the component from a dictionary.
 **Returns:**
 
 - <code>WeaviateEmbeddingRetriever</code> – Deserialized component.
+
+#### close
+
+```python
+close() -> None
+```
+
+Release the synchronous resources of the underlying Document Store.
+
+#### close_async
+
+```python
+close_async() -> None
+```
+
+Release the asynchronous resources of the underlying Document Store.
 
 #### run
 
@@ -339,6 +371,22 @@ Deserializes the component from a dictionary.
 **Returns:**
 
 - <code>WeaviateHybridRetriever</code> – Deserialized component.
+
+#### close
+
+```python
+close() -> None
+```
+
+Release the synchronous resources of the underlying Document Store.
+
+#### close_async
+
+```python
+close_async() -> None
+```
+
+Release the asynchronous resources of the underlying Document Store.
 
 #### run
 
@@ -704,7 +752,7 @@ Return the asynchronous Weaviate collection, initializing it via the async clien
 close() -> None
 ```
 
-Close the synchronous Weaviate client connection.
+Release the associated synchronous resources.
 
 #### close_async
 
@@ -712,7 +760,7 @@ Close the synchronous Weaviate client connection.
 close_async() -> None
 ```
 
-Close the asynchronous Weaviate client connection.
+Release the associated asynchronous resources.
 
 #### to_dict
 
