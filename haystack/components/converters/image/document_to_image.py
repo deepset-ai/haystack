@@ -79,7 +79,11 @@ class DocumentToImageContent:
 
         :param file_path_meta_field: The metadata field in the Document that contains the file path to the image or PDF.
         :param root_path: The root directory path where document files are located. If provided, file paths in
-            document metadata will be resolved relative to this path. If None, file paths are treated as absolute paths.
+            document metadata will be resolved relative to this path and are guaranteed to stay within it. If None,
+            file paths are treated as absolute paths with no containment check.
+            Security: this component reads the file referenced by `file_path_meta_field` from the host filesystem. If
+            document metadata may be influenced by untrusted input, set `root_path` to a dedicated data directory so
+            that path-traversal payloads (e.g. absolute paths or `../`) are rejected instead of read.
         :param detail: Optional detail level of the image (only supported by OpenAI). Can be "auto", "high", or "low".
             This will be passed to the created ImageContent objects.
         :param size: If provided, resizes the image to fit within the specified dimensions (width, height) while
