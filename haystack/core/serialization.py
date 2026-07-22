@@ -4,8 +4,10 @@
 
 import inspect
 from collections.abc import Callable, Iterable
-from dataclasses import dataclass
+from dataclasses import dataclass, is_dataclass
 from typing import TYPE_CHECKING, Any, TypeVar, get_args, get_origin
+
+from pydantic import BaseModel, TypeAdapter
 
 from haystack.core.component.component import _hook_component_init
 from haystack.core.errors import DeserializationError, SerializationError
@@ -384,49 +386,72 @@ def import_class_by_name(fully_qualified_name: str) -> type[object]:
     return _import_class_by_name(fully_qualified_name)
 
 
-def _resolve_from_dict_class(type_: Any) -> Any:
+def _resolve_coercible_class(type_: Any) -> Any:
     """
-    Resolve the class whose `from_dict` method can deserialize values of `type_`.
+    Resolve the class that can deserialize values of `type_` from a plain dictionary.
 
-    Handles plain classes, `list[T]`, and optionals/unions of those. In unions, the first arm resolving to a
-    `from_dict`-capable class wins.
+    A class is coercible if it exposes a `from_dict` method (Haystack dataclasses and Components), is a Pydantic
+    model, or is a standard-library dataclass. Handles plain classes, `list[T]`, and optionals/unions of those.
+    In unions, the first arm resolving to a coercible class wins.
 
     :param type_: The type to inspect.
-    :returns: The resolved class, or None if `type_` involves no `from_dict`-capable class.
+    :returns: The resolved class, or None if `type_` involves no coercible class.
     """
     if _is_union_type(type_):
         for arm in get_args(type_):
-            resolved = _resolve_from_dict_class(arm)
+            resolved = _resolve_coercible_class(arm)
             if resolved is not None:
                 return resolved
         return None
     if get_origin(type_) is list:
         args = get_args(type_)
-        return _resolve_from_dict_class(args[0]) if args else None
-    return type_ if hasattr(type_, "from_dict") else None
+        return _resolve_coercible_class(args[0]) if args else None
+    if not isinstance(type_, type):
+        return None
+    if hasattr(type_, "from_dict") or issubclass(type_, BaseModel) or is_dataclass(type_):
+        return type_
+    return None
+
+
+def _deserialize_one(value: dict[str, Any], target_class: Any) -> Any:
+    """
+    Deserialize a single dictionary into an instance of `target_class`.
+
+    `from_dict`-capable classes take priority so Haystack objects keep their native deserialization. Pydantic
+    models and standard-library dataclasses are deserialized with Pydantic.
+
+    :param value: The dictionary to deserialize.
+    :param target_class: The coercible class resolved for the value's socket type.
+    :returns: The deserialized instance.
+    """
+    if hasattr(target_class, "from_dict"):
+        return target_class.from_dict(value)
+    if issubclass(target_class, BaseModel):
+        return target_class.model_validate(value)
+    return TypeAdapter(target_class).validate_python(value)
 
 
 def _deserialize_from_dict(value: Any, target_class: Any) -> Any:
     """
-    Deserialize `value` using `target_class.from_dict`.
+    Deserialize `value` into instances of `target_class`.
 
     Dictionaries are deserialized directly, lists element-wise (leaving non-dictionary items untouched). Any other
     value is returned unchanged.
 
     :param value: The value to deserialize.
-    :param target_class: The class providing the `from_dict` method.
+    :param target_class: The coercible class resolved for the value's socket type.
     :returns: The deserialized value.
     """
     if isinstance(value, dict):
-        return target_class.from_dict(value)
+        return _deserialize_one(value, target_class)
     if isinstance(value, list):
-        return [target_class.from_dict(item) if isinstance(item, dict) else item for item in value]
+        return [_deserialize_one(item, target_class) if isinstance(item, dict) else item for item in value]
     return value
 
 
 def _coerce_input_value(value: Any, socket_types: list[Any]) -> Any:
     for type_ in socket_types:
-        target_class = _resolve_from_dict_class(type_)
+        target_class = _resolve_coercible_class(type_)
         if target_class is not None:
             return _deserialize_from_dict(value, target_class)
     return value
@@ -436,13 +461,17 @@ def coerce_pipeline_inputs(pipeline: "PipelineBase", data: dict[str, Any]) -> di
     """
     Deserialize serialized Haystack objects in pipeline input data, based on the pipeline's input socket types.
 
-    For every provided value whose input socket type involves a class exposing a `from_dict` method
-    (such as `ChatMessage` or `Document`), plain dictionaries are converted into instances of that class.
-    Socket types of the form `T`, `list[T]`, and optionals/unions of those are supported. Values that are
-    already deserialized, or whose socket types involve no `from_dict`-capable class, are returned unchanged.
+    For every provided value whose input socket type involves a coercible class, plain dictionaries are
+    converted into instances of that class. A class is coercible if it exposes a `from_dict` method (such as
+    `ChatMessage` or `Document`), is a Pydantic model, or is a standard-library dataclass. Socket types of the
+    form `T`, `list[T]`, and optionals/unions of those are supported. Values that are already deserialized, or
+    whose socket types involve no coercible class, are returned unchanged.
 
-    The dictionaries are expected to be in the component-native format produced by each object's `to_dict`
-    method.
+    The dictionaries are expected to be in the format produced by the class's serialization: `to_dict` for
+    `from_dict`-capable classes, `model_dump` for Pydantic models, and `dataclasses.asdict` for standard-library
+    dataclasses. A Pydantic model or dataclass may nest `from_dict`-capable Haystack objects: Pydantic
+    (de)serializes them via their fields, so a `model_dump` payload round-trips through `model_validate` without
+    going through `to_dict`/`from_dict`.
 
     Like `Pipeline.run`, `data` accepts the nested format (`{"component_name": {"input_name": value}}`) and
     the flat format (`{"input_name": value}`). The same format detection rules apply and the returned
@@ -458,7 +487,8 @@ def coerce_pipeline_inputs(pipeline: "PipelineBase", data: dict[str, Any]) -> di
     :param pipeline: The pipeline whose input socket types drive the coercion.
     :param data: The pipeline input data, in nested or flat format.
     :returns: A new dictionary with the same structure as `data` and deserialized values.
-    :raises Exception: Any error raised by a `from_dict` method if a dictionary does not match the expected format.
+    :raises Exception: Any error raised while deserializing a dictionary that does not match the expected format,
+        such as a `from_dict` error or a Pydantic `ValidationError`.
     """
     # mirrors the format detection in Pipeline.run: nested if all values are dictionaries
     if all(isinstance(value, dict) for value in data.values()):

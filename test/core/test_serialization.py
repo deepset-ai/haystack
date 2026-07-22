@@ -4,6 +4,7 @@
 
 import sys
 from copy import deepcopy
+from dataclasses import asdict, dataclass
 from typing import Any
 from unittest.mock import Mock
 
@@ -664,7 +665,7 @@ def test_default_from_dict_rejects_unknown_nested_parameter():
 
 
 @component
-class _TypedEcho:
+class TypedEcho:
     """Echoes back a single input whose socket type is set at construction time."""
 
     def __init__(self, type_: Any) -> None:
@@ -676,7 +677,7 @@ class _TypedEcho:
 
 
 @component
-class _MultiInputEcho:
+class MultiInputEcho:
     """A component with one coercible socket alongside plain, non-coercible sockets."""
 
     @component.output_types(messages=list[ChatMessage])
@@ -684,9 +685,35 @@ class _MultiInputEcho:
         return {"messages": messages}
 
 
-# One instance per Haystack dataclass exposing to_dict/from_dict, used to check that coerce_pipeline_inputs
-# round-trips each of them for the `T`, `list[T]`, and optional socket shapes.
-DATACLASS_INSTANCES = [
+@dataclass
+class PlainDataclass:
+    name: str
+    count: int
+
+
+class PydanticModel(BaseModel):
+    a: int
+    b: str
+
+
+class Conversation(BaseModel):
+    messages: list[ChatMessage]
+    documents: list[Document]
+
+
+def serialize_for_client(instance: Any) -> dict[str, Any]:
+    """Serialize an instance the way a JSON client would, per its serialization scheme."""
+    if isinstance(instance, BaseModel):
+        return instance.model_dump(mode="json")
+    if hasattr(instance, "to_dict"):
+        return instance.to_dict()
+    return asdict(instance)
+
+
+# One instance per coercible class, used to check that coerce_pipeline_inputs round-trips each of them for the
+# `T`, `list[T]`, and optional socket shapes. Covers Haystack dataclasses (from_dict), a Pydantic model, and a
+# standard-library dataclass.
+COERCIBLE_INSTANCES = [
     pytest.param(Document(content="Hello", meta={"k": "v"}), id="Document"),
     pytest.param(ChatMessage.from_user("Hi"), id="ChatMessage"),
     pytest.param(
@@ -706,36 +733,42 @@ DATACLASS_INSTANCES = [
     pytest.param(ImageContent(base64_image="aGVsbG8=", mime_type="image/png"), id="ImageContent"),
     pytest.param(ComponentInfo(type="some.Type", name="comp"), id="ComponentInfo"),
     pytest.param(StreamingChunk(content="hi"), id="StreamingChunk"),
+    pytest.param(PydanticModel(a=1, b="x"), id="pydantic-model"),
+    pytest.param(PlainDataclass(name="x", count=2), id="stdlib-dataclass"),
+    pytest.param(
+        Conversation(messages=[ChatMessage.from_user("Hi")], documents=[Document(content="D")]),
+        id="pydantic-model-nesting-haystack",
+    ),
 ]
 
 
 class TestCoercePipelineInputsRoundTrip:
-    """`to_dict()` output is coerced back to an equal instance for every from_dict-capable dataclass."""
+    """Serialized output is coerced back to an equal instance for every coercible class."""
 
-    @pytest.mark.parametrize("instance", DATACLASS_INSTANCES)
+    @pytest.mark.parametrize("instance", COERCIBLE_INSTANCES)
     def test_single_socket(self, instance):
         pipe = Pipeline()
-        pipe.add_component("echo", _TypedEcho(type(instance)))
+        pipe.add_component("echo", TypedEcho(type(instance)))
 
-        coerced = coerce_pipeline_inputs(pipe, {"echo": {"value": instance.to_dict()}})
+        coerced = coerce_pipeline_inputs(pipe, {"echo": {"value": serialize_for_client(instance)}})
 
         assert coerced["echo"]["value"] == instance
 
-    @pytest.mark.parametrize("instance", DATACLASS_INSTANCES)
+    @pytest.mark.parametrize("instance", COERCIBLE_INSTANCES)
     def test_list_socket(self, instance):
         pipe = Pipeline()
-        pipe.add_component("echo", _TypedEcho(list[type(instance)]))
+        pipe.add_component("echo", TypedEcho(list[type(instance)]))  # type: ignore[misc]
 
-        coerced = coerce_pipeline_inputs(pipe, {"echo": {"value": [instance.to_dict()]}})
+        coerced = coerce_pipeline_inputs(pipe, {"echo": {"value": [serialize_for_client(instance)]}})
 
         assert coerced["echo"]["value"] == [instance]
 
-    @pytest.mark.parametrize("instance", DATACLASS_INSTANCES)
+    @pytest.mark.parametrize("instance", COERCIBLE_INSTANCES)
     def test_optional_socket(self, instance):
         pipe = Pipeline()
-        pipe.add_component("echo", _TypedEcho(type(instance) | None))
+        pipe.add_component("echo", TypedEcho(type(instance) | None))
 
-        coerced = coerce_pipeline_inputs(pipe, {"echo": {"value": instance.to_dict()}})
+        coerced = coerce_pipeline_inputs(pipe, {"echo": {"value": serialize_for_client(instance)}})
 
         assert coerced["echo"]["value"] == instance
 
@@ -744,12 +777,12 @@ class TestCoercePipelineInputs:
     @pytest.fixture
     def pipeline(self):
         pipe = Pipeline()
-        pipe.add_component("echo", _MultiInputEcho())
+        pipe.add_component("echo", MultiInputEcho())
         return pipe
 
     def test_nested_format(self, pipeline):
         messages = [ChatMessage.from_user("Hi"), ChatMessage.from_assistant("Hello")]
-        data = {"echo": {"messages": [message.to_dict() for message in messages], "top_k": 5}}
+        data: dict[str, Any] = {"echo": {"messages": [message.to_dict() for message in messages], "top_k": 5}}
 
         coerced = coerce_pipeline_inputs(pipeline, data)
 
@@ -823,5 +856,21 @@ class TestCoercePipelineInputs:
         data = {"echo": {"messages": dumped["messages"]}}
 
         coerced = coerce_pipeline_inputs(pipeline, data)
+
+        assert coerced == {"echo": {"messages": messages}}
+
+    def test_dict_any_field_from_pydantic_model_is_coercible(self, pipeline):
+        # An API-layer Pydantic model types the pipeline inputs as dict[str, Any], so Pydantic leaves the
+        # nested serialized objects as plain dicts. Passing that field to coerce_pipeline_inputs recovers the
+        # objects, because coercion is driven by the pipeline's socket types rather than the field's type.
+        class Request(BaseModel):
+            pipeline_inputs: dict[str, Any]
+
+        messages = [ChatMessage.from_user("Hi")]
+        request = Request(pipeline_inputs={"echo": {"messages": [message.to_dict() for message in messages]}})
+        dumped = request.model_dump(mode="json")
+        assert isinstance(dumped["pipeline_inputs"]["echo"]["messages"][0], dict)
+
+        coerced = coerce_pipeline_inputs(pipeline, dumped["pipeline_inputs"])
 
         assert coerced == {"echo": {"messages": messages}}
