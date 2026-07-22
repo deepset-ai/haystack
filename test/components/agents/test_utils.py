@@ -26,7 +26,7 @@ class TestContextTokensFromUsage:
         },
         "prompt_tokens_details": {"audio_tokens": 0, "cached_tokens": 0},
     }
-    # OpenAI Responses API (core repo): the only Haystack generator using input/output keys.
+    # OpenAI Responses API (core repo).
     OPENAI_RESPONSES_USAGE = {
         "input_tokens": 19,
         "input_tokens_details": {"cached_tokens": 0, "cache_write_tokens": 0},
@@ -49,15 +49,15 @@ class TestContextTokensFromUsage:
     }
     # Amazon Bedrock chat generator (integration).
     BEDROCK_USAGE = {
-        "prompt_tokens": 340,
-        "completion_tokens": 92,
-        "total_tokens": 432,
+        "prompt_tokens": 20,
+        "completion_tokens": 5,
+        "total_tokens": 25,
         "cache_read_input_tokens": 0,
         "cache_write_input_tokens": 0,
         "cache_details": {},
     }
-    # Cohere chat generator (integration): bare prompt/completion pair, no total_tokens.
-    COHERE_USAGE = {"prompt_tokens": 63, "completion_tokens": 118}
+    # Cohere chat generator (integration).
+    COHERE_USAGE = {"prompt_tokens": 15.0, "completion_tokens": 3.0}
     # Mistral chat generator (integration).
     MISTRAL_USAGE = {
         "prompt_tokens": 30,
@@ -92,8 +92,8 @@ class TestContextTokensFromUsage:
             (OPENAI_CHAT_USAGE, 93),
             (OPENAI_RESPONSES_USAGE, 77),
             (ANTHROPIC_USAGE, 112),
-            (BEDROCK_USAGE, 432),
-            (COHERE_USAGE, 181),
+            (BEDROCK_USAGE, 25),
+            (COHERE_USAGE, 18),
             (MISTRAL_USAGE, 34),
             (NVIDIA_USAGE, 50),
             (GOOGLE_GENAI_USAGE, 19),  # 16 + 3, deliberately not the 300 total (which includes 281 thoughts tokens)
