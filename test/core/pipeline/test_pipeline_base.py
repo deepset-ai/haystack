@@ -254,59 +254,30 @@ class TestPipelineBase:
         component_2 = component_class("Type2")()
         component_3 = component_class("Type3")()
         component_4 = component_class("Type4")()
+        isolated = component_class("Isolated")()
 
         pipe.add_component("1", component_1)
         pipe.add_component("2", component_2)
         pipe.add_component("3", component_3)
         pipe.add_component("4", component_4)
+        pipe.add_component("isolated", isolated)
 
         pipe.connect("1", "2")
         pipe.connect("2", "3")
         pipe.connect("3", "4")
 
         pipe.remove_component("2")
+        # Removing a component with no connections at all is a safe no-op over its (empty) edge sets.
+        removed_isolated = pipe.remove_component("isolated")
 
         assert sorted(pipe.graph.nodes) == ["1", "3", "4"]
         assert sorted([(u, v) for (u, v) in pipe.graph.edges()]) == [("3", "4")]
-
-    def test_remove_component_clears_stale_senders_on_downstream_neighbor(self):
-        pipe = PipelineBase()
-        producer_class = component_class("Producer", output_types={"value": int})
-        consumer_class = component_class("Consumer", input_types={"value": int})
-        pipe.add_component("producer", producer_class())
-        pipe.add_component("consumer", consumer_class())
-        pipe.connect("producer.value", "consumer.value")
-
-        pipe.remove_component("producer")
-
-        consumer = pipe.get_component("consumer")
-        consumer_socket = consumer.__haystack_input__._sockets_dict["value"]  # type: ignore[attr-defined]
-        # The surviving neighbor must not keep a dangling reference to the removed component.
-        assert consumer_socket.senders == []
-        # With the stale sender gone, the now-unconnected mandatory input is exposed again.
-        assert pipe.inputs() == {"consumer": {"value": {"type": int, "is_mandatory": True}}}
-        # Feeding it directly must not raise a spurious "already connected" error.
-        pipe.validate_input({"consumer": {"value": 5}})
-
-    def test_remove_component_clears_stale_receivers_on_upstream_neighbor(self):
-        pipe = PipelineBase()
-        producer_class = component_class("Producer", output_types={"value": int})
-        consumer_class = component_class("Consumer", input_types={"value": int})
-        pipe.add_component("producer", producer_class())
-        pipe.add_component("consumer", consumer_class())
-        pipe.connect("producer.value", "consumer.value")
-
-        pipe.remove_component("consumer")
-
-        producer = pipe.get_component("producer")
-        producer_socket = producer.__haystack_output__._sockets_dict["value"]  # type: ignore[attr-defined]
-        # The surviving upstream neighbor must not keep a dangling receiver reference.
-        assert producer_socket.receivers == []
+        assert removed_isolated.__haystack_added_to_pipeline__ is None  # type: ignore[attr-defined]
 
     def test_remove_component_middle_of_chain_removal(self):
         """Removing a component that is both a downstream and an upstream neighbor cleans up both sides."""
         pipe = PipelineBase()
-        producer_class = component_class("Producer", output_types={"value": int})
+        producer_class = component_class("Producer", input_types={}, output_types={"value": int})
         middle_class = component_class("Middle", input_types={"value": int}, output_types={"value": int})
         consumer_class = component_class("Consumer", input_types={"value": int})
         pipe.add_component("producer", producer_class())
@@ -322,6 +293,10 @@ class TestPipelineBase:
         # Both the upstream and the downstream neighbor must be cleaned of the removed component.
         assert producer_socket.receivers == []
         assert consumer_socket.senders == []
+        # With the stale sender gone, the now-unconnected mandatory input is exposed again.
+        assert pipe.inputs() == {"consumer": {"value": {"type": int, "is_mandatory": True}}}
+        # Feeding it directly must not raise a spurious "already connected" error.
+        pipe.validate_input({"consumer": {"value": 5}})
 
     def test_remove_component_fan_out(self):
         """Removing a sender that fans out to multiple receivers cleans up every receiver, not just one."""
@@ -362,17 +337,6 @@ class TestPipelineBase:
         # Every sender of the removed receiver must be cleaned, not just the first one.
         assert producer_a_socket.receivers == []
         assert producer_b_socket.receivers == []
-
-    def test_remove_component_with_no_connections(self):
-        """Removing a component with no connections at all is a safe no-op over its (empty) edge sets."""
-        pipe = PipelineBase()
-        some_class = component_class("Some", input_types={"in": int}, output_types={"out": int})
-        pipe.add_component("isolated", some_class())
-
-        removed = pipe.remove_component("isolated")
-
-        assert "isolated" not in pipe.graph.nodes
-        assert removed.__haystack_added_to_pipeline__ is None  # type: ignore[attr-defined]
 
     def test_remove_component_variadic_multi_sender(self):
         """Removing one sender of a variadic receiver only strips itself, leaving the other senders intact."""
