@@ -14,8 +14,10 @@ on:
 
 permissions:
   contents: read
-  issues: write
-  pull-requests: read
+  # The warning is posted on the PR itself, which counts as a pull request (not
+  # an issue) for token scopes, so this needs pull-requests: write. issues: write
+  # alone yields "Resource not accessible by integration" on the comment.
+  pull-requests: write
 
 jobs:
   guard:
@@ -28,8 +30,24 @@ jobs:
             const { owner, repo } = context.repo;
             const pr = context.payload.pull_request;
 
+            // Team members are exempt. author_association is unreliable for this
+            // (private org members appear as CONTRIBUTOR/NONE in the payload), so
+            // fall back to the effective repository permission. The association
+            // check still short-circuits the common case without an API call.
+            async function isTeamMember(login) {
+              try {
+                const { data } = await github.rest.repos.getCollaboratorPermissionLevel({
+                  owner, repo, username: login,
+                });
+                return ["admin", "write"].includes(data.permission);
+              } catch {
+                return false;
+              }
+            }
+
             if (pr.user?.type === "Bot") return;
             if (["MEMBER", "OWNER", "COLLABORATOR"].includes(pr.author_association)) return;
+            if (await isTeamMember(pr.user.login)) return;
 
             const warnings = [];
 

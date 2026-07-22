@@ -30,6 +30,25 @@ class FileSystemToolResultStore(ToolResultStore):
         """
         self.root = Path(root)
 
+    def _resolve_in_root(self, path_like: str | Path, *, subject: str) -> Path:
+        """
+        Resolve a path-like value and ensure it stays within the configured store root.
+
+        Relative values are interpreted relative to `self.root`; absolute values are used as-is.
+
+        :param path_like: Relative or absolute path-like value to resolve.
+        :param subject: Human-readable label used in the error message.
+        :returns: The resolved absolute path within the store root.
+        :raises ValueError: If the resolved path escapes the store root.
+        """
+        root = self.root.resolve()
+        path = Path(path_like)
+        candidate = path if path.is_absolute() else root / path
+        resolved = candidate.resolve()
+        if not resolved.is_relative_to(root):
+            raise ValueError(f"{subject} '{path_like}' resolves outside the store root '{root}'.")
+        return resolved
+
     def write(self, *, key: str, content: str) -> str:
         """
         Write `content` to `<root>/<key>`, creating parent directories, and return the file path.
@@ -42,10 +61,7 @@ class FileSystemToolResultStore(ToolResultStore):
         :returns: The absolute path the content was written to, as a string, for use with `read`.
         :raises ValueError: If `key` resolves to a location outside the store root.
         """
-        root = self.root.resolve()
-        path = (root / key).resolve()
-        if not path.is_relative_to(root):
-            raise ValueError(f"Result key '{key}' resolves outside the store root '{root}'.")
+        path = self._resolve_in_root(key, subject="Result key")
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(content, encoding="utf-8")
         return str(path)
@@ -54,10 +70,14 @@ class FileSystemToolResultStore(ToolResultStore):
         """
         Read back the content previously written to `reference`.
 
-        :param reference: A path returned by `write`.
+        The resolved reference must stay within the store root: callers must treat it as an opaque
+        store-scoped reference, not as an arbitrary filesystem path.
+
+        :param reference: A store reference returned by `write`.
         :returns: The stored content.
+        :raises ValueError: If `reference` resolves to a location outside the store root.
         """
-        return Path(reference).read_text(encoding="utf-8")
+        return self._resolve_in_root(reference, subject="Result reference").read_text(encoding="utf-8")
 
     def to_dict(self) -> dict[str, Any]:
         """

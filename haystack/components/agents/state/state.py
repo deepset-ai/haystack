@@ -7,7 +7,8 @@ from copy import deepcopy
 from typing import Any, get_args
 
 from haystack.dataclasses import ChatMessage
-from haystack.utils import _deserialize_value_with_schema, _serialize_value_with_schema
+from haystack.utils import _deserialize_value_with_schema
+from haystack.utils.base_serialization import _serialize_with_field_fallback
 from haystack.utils.callable_serialization import deserialize_callable, serialize_callable
 from haystack.utils.type_serialization import deserialize_type, serialize_type
 
@@ -194,7 +195,9 @@ class State:
         """
         serialized = {}
         serialized["schema"] = _schema_to_dict(self.schema)
-        serialized["data"] = _serialize_value_with_schema(self._data)
+        # Field-level fallback so a single non-serializable value omits only that field instead of
+        # failing the whole State serialization.
+        serialized["data"] = _serialize_with_field_fallback(self._data, description="the agent's State data")
         return serialized
 
     @classmethod

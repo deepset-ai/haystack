@@ -155,6 +155,12 @@ class Document(metaclass=_RemoveLegacyFields):  # noqa: PLW1641
         # a document field is a metadata key. We treat legacy fields as document fields, so that
         # `_RemoveLegacyFields` drops them instead of them ending up in `meta`.
         flatten_meta = {}
+        # A non-mapping value under the "meta" key can't be the `meta` parameter (which must be a
+        # dictionary). It can only be a flattened metadata key literally named "meta", produced by
+        # to_dict(flatten=True) for a document whose metadata contains a "meta" key.
+        if not isinstance(meta, dict):
+            flatten_meta["meta"] = meta
+            meta = {}
         document_fields = _LEGACY_FIELDS + [f.name for f in fields(cls)]
         for key in list(data.keys()):
             if key not in document_fields:

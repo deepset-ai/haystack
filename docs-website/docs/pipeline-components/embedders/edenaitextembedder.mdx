@@ -1,0 +1,103 @@
+---
+title: "EdenAITextEmbedder"
+id: edenaitextembedder
+slug: "/edenaitextembedder"
+description: "This component transforms a string into a vector using Eden AI's OpenAI-compatible API. Use it for embedding retrieval to transform your query into an embedding."
+---
+
+# EdenAITextEmbedder
+
+This component transforms a string into a vector using Eden AI's OpenAI-compatible API. Use it for embedding retrieval to transform your query into an embedding.
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | Before an embedding [Retriever](../retrievers.mdx) in a query/RAG pipeline |
+| **Mandatory init variables** | `api_key`: The Eden AI API key. Can be set with `EDENAI_API_KEY` env var. |
+| **Mandatory run variables** | `text`: A string |
+| **Output variables** | `embedding`: A list of float numbers (vectors)  <br /> <br />`meta`: A dictionary of metadata strings |
+| **API reference** | [Eden AI](/reference/integrations-edenai) |
+| **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/edenai |
+| **Package name** | `edenai-haystack` |
+
+</div>
+
+Use `EdenAITextEmbedder` to embed a simple string (such as a query) into a vector. For embedding lists of documents, use the [`EdenAIDocumentEmbedder`](edenaidocumentembedder.mdx), which enriches the document with the computed embedding, also known as vector.
+
+## Overview
+
+`EdenAITextEmbedder` transforms a string into a vector that captures its semantics using an Eden AI embedding model. Models are selected using Eden AI's `provider/model` naming convention, for example `openai/text-embedding-3-small` (default) or `mistral/mistral-embed`. For the full list of available models, see the [Eden AI models catalog](https://www.edenai.co/models).
+
+To start using this integration with Haystack, install it with:
+
+```shell
+pip install edenai-haystack
+```
+
+`EdenAITextEmbedder` needs an Eden AI API key to work. It uses an `EDENAI_API_KEY` environment variable by default. Otherwise, you can pass an API key at initialization with `api_key`:
+
+```python
+from haystack.utils import Secret
+from haystack_integrations.components.embedders.edenai import EdenAITextEmbedder
+
+embedder = EdenAITextEmbedder(
+    api_key=Secret.from_token("<your-api-key>"),
+    model="openai/text-embedding-3-small",
+)
+```
+
+## Usage
+
+### On its own
+
+Remember to set the `EDENAI_API_KEY` as an environment variable first or pass it in directly.
+
+```python
+from haystack.utils import Secret
+from haystack_integrations.components.embedders.edenai import EdenAITextEmbedder
+
+embedder = EdenAITextEmbedder(
+    api_key=Secret.from_token("<your-api-key>"),
+    model="openai/text-embedding-3-small",
+)
+
+result = embedder.run(text="How can I use the Eden AI embedding models with Haystack?")
+
+print(result["embedding"])
+# [-0.0015687942504882812, 0.052154541015625, 0.037109375...]
+```
+
+### In a pipeline
+
+```python
+from haystack import Pipeline
+from haystack.components.retrievers.in_memory import InMemoryEmbeddingRetriever
+from haystack.document_stores.in_memory import InMemoryDocumentStore
+from haystack.dataclasses import Document
+from haystack_integrations.components.embedders.edenai import (
+    EdenAIDocumentEmbedder,
+    EdenAITextEmbedder,
+)
+
+document_store = InMemoryDocumentStore(embedding_similarity_function="cosine")
+
+documents = [
+    Document(content="My name is Wolfgang and I live in Berlin"),
+    Document(content="I saw a black horse running"),
+    Document(content="Germany has many big cities"),
+]
+
+document_embedder = EdenAIDocumentEmbedder(model="openai/text-embedding-3-small")
+documents_with_embeddings = document_embedder.run(documents)["documents"]
+document_store.write_documents(documents_with_embeddings)
+
+query_pipeline = Pipeline()
+query_pipeline.add_component("text_embedder", EdenAITextEmbedder(model="openai/text-embedding-3-small"))
+query_pipeline.add_component("retriever", InMemoryEmbeddingRetriever(document_store=document_store))
+query_pipeline.connect("text_embedder.embedding", "retriever.query_embedding")
+
+result = query_pipeline.run({"text_embedder": {"text": "Who lives in Berlin?"}})
+
+print(result["retriever"]["documents"][0])
+```

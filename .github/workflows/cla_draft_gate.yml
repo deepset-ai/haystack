@@ -6,8 +6,13 @@ name: CLA draft gate
 #    requested reviewers (remembering them in a hidden comment marker), label it
 #    `cla-pending`, and explain why in a comment.
 #  - When the CLA is signed (the `license/cla` commit status turns green), mark
-#    the PR ready for review again and re-request the same reviewers. The
-#    scheduled sweep doubles as a backstop in case a status event is missed.
+#    the PR ready for review again and re-request the same reviewers. This also
+#    covers the case where the contributor marks the PR ready for review
+#    themselves after signing. The scheduled sweep doubles as a backstop in case
+#    a status event is missed.
+#  - Team members are never gated. author_association is unreliable for this
+#    (private org members appear as CONTRIBUTOR/NONE), so effective repository
+#    permission is used instead.
 #  - While a PR stays gated, escalate: remind the contributor 5 days after the
 #    PR was opened, post a final warning after 10 days, and close the PR after
 #    14 days. Each step waits for the previous comment to be a few days old, so
@@ -57,6 +62,21 @@ jobs:
             const WARNING_MARKER = "<!-- cla-warning-10d -->";
             const FIRST_TIMER = new Set(["FIRST_TIME_CONTRIBUTOR", "FIRST_TIMER", "NONE"]);
             const { owner, repo } = context.repo;
+
+            // Team members must never be gated. author_association is unreliable
+            // for this: PRIVATE org members show up as CONTRIBUTOR/NONE in webhook
+            // and API payloads, so check the effective repository permission
+            // instead (write/admin => part of the team).
+            async function isTeamMember(login) {
+              try {
+                const { data } = await github.rest.repos.getCollaboratorPermissionLevel({
+                  owner, repo, username: login,
+                });
+                return ["admin", "write"].includes(data.permission);
+              } catch {
+                return false;
+              }
+            }
 
             async function claSigned(sha) {
               const { data } = await github.rest.repos.getCombinedStatusForRef({
@@ -149,10 +169,14 @@ jobs:
               const comment = await findMarkerComment(pr.number);
               const meta = comment ? parseMarker(comment.body) : { reviewers: [], team_reviewers: [] };
 
-              await github.graphql(
-                "mutation($id: ID!) { markPullRequestReadyForReview(input: { pullRequestId: $id }) { pullRequest { isDraft } } }",
-                { id: pr.node_id },
-              );
+              // The contributor may have marked the PR ready for review themselves
+              // after signing; only run the mutation when it's still a draft.
+              if (pr.draft) {
+                await github.graphql(
+                  "mutation($id: ID!) { markPullRequestReadyForReview(input: { pullRequestId: $id }) { pullRequest { isDraft } } }",
+                  { id: pr.node_id },
+                );
+              }
 
               // Prefer the individual reviewers we removed; re-requesting the team
               // instead would make round-robin pick somebody new.
@@ -253,7 +277,7 @@ jobs:
                 owner, repo, commit_sha: context.payload.sha,
               });
               for (const prLite of prs) {
-                if (prLite.state !== "open" || !prLite.draft) continue;
+                if (prLite.state !== "open") continue;
                 if (!prLite.labels.some((l) => l.name === LABEL)) continue;
                 const { data: pr } = await github.rest.pulls.get({ owner, repo, pull_number: prLite.number });
                 await restore(pr);
@@ -269,18 +293,30 @@ jobs:
               try {
                 if (pr.user?.type === "Bot") continue;
                 const labels = pr.labels.map((l) => l.name);
-                if (pr.draft) {
-                  if (!labels.includes(LABEL) || labels.includes(EXEMPT_LABEL)) continue;
+                if (labels.includes(EXEMPT_LABEL)) continue;
+
+                // Already gated: drive the PR to the right state. Handle the
+                // non-draft case too, since the contributor can mark a gated PR
+                // ready for review themselves.
+                if (labels.includes(LABEL)) {
                   if (await claSigned(pr.head.sha)) {
                     await restore(pr);
+                  } else if (pr.draft) {
+                    await escalate(pr);
                   } else {
+                    // Readied without signing: put it back in draft, then escalate.
+                    await gate(pr);
                     await escalate(pr);
                   }
                   continue;
                 }
+
+                // Not yet gated: only gate fresh, external first-timer PRs.
+                if (pr.draft) continue;
                 if (!FIRST_TIMER.has(pr.author_association)) continue;
                 if (Date.now() - new Date(pr.created_at).getTime() < GRACE_MS) continue;
                 if (await claSigned(pr.head.sha)) continue;
+                if (await isTeamMember(pr.user.login)) continue;
                 await gate(pr);
               } catch (error) {
                 core.warning(`PR #${pr.number}: ${error.message}`);

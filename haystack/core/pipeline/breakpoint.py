@@ -13,9 +13,8 @@ from networkx import MultiDiGraph
 
 from haystack import logging
 from haystack.core.errors import PipelineInvalidPipelineSnapshotError
-from haystack.core.pipeline.utils import _deepcopy_with_exceptions
 from haystack.dataclasses.breakpoints import Breakpoint, PipelineSnapshot, PipelineState
-from haystack.utils.base_serialization import _serialize_value_with_schema
+from haystack.utils.base_serialization import _serialize_with_field_fallback
 
 logger = logging.getLogger(__name__)
 
@@ -292,54 +291,3 @@ def _transform_json_structure(data: dict[str, Any] | list[Any] | Any) -> Any:
 
     # For other data types, just return the value as is.
     return data
-
-
-def _serialize_with_field_fallback(payload: Any, *, description: str) -> dict[str, Any]:
-    """
-    Serialize a payload and, on failure, retry field-by-field to preserve resumable fields.
-
-    If the whole payload serializes, the result is returned as-is. Otherwise, and if the payload is a
-    mapping, each top-level field is serialized individually and only the failing fields are omitted.
-    When the payload is not a mapping, or when every field fails to serialize, the helper returns a
-    structurally valid empty-object payload so that the downstream ``_deserialize_value_with_schema``
-    can still load it back instead of raising ``DeserializationError`` on a bare ``{}``.
-
-    :param payload: The value to serialize.
-    :param description: Short human-readable label used in warning messages, for example
-        ``"the agent's chat_generator inputs"`` or ``"the inputs of the current pipeline state"``.
-    :returns: A dict of the form ``{"serialization_schema": ..., "serialized_data": ...}``.
-    """
-    try:
-        return _serialize_value_with_schema(_deepcopy_with_exceptions(payload))
-    except Exception as error:
-        logger.warning(
-            "Failed to serialize {description}. "
-            "Haystack will omit only the non-serializable fields when possible. Error: {e}",
-            description=description,
-            e=error,
-        )
-
-    serialized_properties: dict[str, Any] = {}
-    serialized_data: dict[str, Any] = {}
-
-    if isinstance(payload, dict):
-        for field_name, value in payload.items():
-            try:
-                serialized_value = _serialize_value_with_schema(_deepcopy_with_exceptions(value))
-            except Exception as field_error:
-                logger.warning(
-                    "Failed to serialize the '{field_name}' field of {description}. "
-                    "The field will be omitted from the snapshot. Error: {e}",
-                    field_name=field_name,
-                    description=description,
-                    e=field_error,
-                )
-                continue
-
-            serialized_properties[field_name] = serialized_value["serialization_schema"]
-            serialized_data[field_name] = serialized_value["serialized_data"]
-
-    return {
-        "serialization_schema": {"type": "object", "properties": serialized_properties},
-        "serialized_data": serialized_data,
-    }

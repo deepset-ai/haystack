@@ -349,19 +349,24 @@ class TestCreatePipelineSnapshot:
 def test_save_pipeline_snapshot_raises_on_failure(tmp_path, caplog, monkeypatch):
     monkeypatch.setenv(HAYSTACK_PIPELINE_SNAPSHOT_SAVE_ENABLED, "true")
 
+    # Point the snapshot directory below an existing file so creating it fails with a filesystem
+    # error, exercising the raise_on_failure contract.
+    blocking_file = tmp_path / "not_a_dir"
+    blocking_file.write_text("i am a file")
+    snapshot_path = blocking_file / "snapshots"
+
     snapshot = _create_pipeline_snapshot(
         inputs={},
         component_inputs={},
-        break_point=Breakpoint(component_name="comp2", snapshot_file_path=str(tmp_path)),
+        break_point=Breakpoint(component_name="comp2", snapshot_file_path=str(snapshot_path)),
         component_visits={"comp1": 1, "comp2": 0},
         original_input_data={},
         ordered_component_names=["comp1", "comp2"],
         include_outputs_from={"comp1"},
-        # We use a non-serializable type (bytes) directly in pipeline outputs to trigger the error
-        pipeline_outputs={"comp1": {"result": b"test"}},
+        pipeline_outputs={"comp1": {"result": "test"}},
     )
 
-    with pytest.raises(TypeError):
+    with pytest.raises(OSError):
         _save_pipeline_snapshot(snapshot)
 
     with caplog.at_level(logging.ERROR):

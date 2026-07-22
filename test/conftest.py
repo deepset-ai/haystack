@@ -15,7 +15,7 @@ from haystack import component, tracing
 from haystack.core.serialization import allow_deserialization_module
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.testing.test_utils import set_all_seeds
-from test.tracing.utils import SpyingTracer
+from test.tracing.utils import EagerSpyingTracer, SpyingTracer
 
 set_all_seeds(0)
 
@@ -101,6 +101,18 @@ def spying_tracer() -> Generator[SpyingTracer, None, None]:
     tracer = SpyingTracer()
     tracing.enable_tracing(tracer)
     tracer.is_content_tracing_enabled = True
+
+    yield tracer
+
+    # Make sure to disable tracing after the test to avoid affecting other tests
+    tracing.disable_tracing()
+
+
+@pytest.fixture()
+def eager_spying_tracer() -> Generator[EagerSpyingTracer, None, None]:
+    # Coerces tags when set, mirroring real backends. Content tracing is left to the test to toggle.
+    tracer = EagerSpyingTracer()
+    tracing.enable_tracing(tracer)
 
     yield tracer
 
