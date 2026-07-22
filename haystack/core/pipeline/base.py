@@ -468,9 +468,8 @@ class PipelineBase:  # noqa: PLW1641
                 ", ".join(n for n in self.graph.nodes),
             ) from exc
 
-        # Strip the removed component's name from the sockets of its neighbors, so no
-        # dangling references remain on the surviving components (this must happen before
-        # remove_node, while the incident edges still carry the socket objects).
+        # Remove this component's name from its neighbors' sockets before the edges are gone,
+        # otherwise the surviving components are left holding dangling references to it.
         for _, _, edge_data in self.graph.in_edges(name, data=True):
             sender_socket = edge_data["from_socket"]
             sender_socket.receivers = [r for r in sender_socket.receivers if r != name]
