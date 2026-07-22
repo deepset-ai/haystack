@@ -1,0 +1,88 @@
+---
+title: "EdenAIDocumentEmbedder"
+id: edenaidocumentembedder
+slug: "/edenaidocumentembedder"
+description: "This component computes the embeddings of a list of documents using Eden AI's OpenAI-compatible API."
+---
+
+# EdenAIDocumentEmbedder
+
+This component computes the embeddings of a list of documents using Eden AI's OpenAI-compatible API.
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | Before a [`DocumentWriter`](../writers/documentwriter.mdx) in an indexing pipeline |
+| **Mandatory init variables** | `api_key`: The Eden AI API key. Can be set with `EDENAI_API_KEY` env var. |
+| **Mandatory run variables** | `documents`: A list of documents to be embedded |
+| **Output variables** | `documents`: A list of documents (enriched with embeddings)  <br /> <br />`meta`: A dictionary of metadata strings |
+| **API reference** | [Eden AI](/reference/integrations-edenai) |
+| **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/edenai |
+| **Package name** | `edenai-haystack` |
+
+</div>
+
+This component should be used to embed a list of Documents. To embed a string, use the [`EdenAITextEmbedder`](edenaitextembedder.mdx).
+
+## Overview
+
+`EdenAIDocumentEmbedder` computes the embeddings of a list of documents and stores the obtained vectors in the embedding field of each document. It uses Eden AI's OpenAI-compatible API. Models are selected using Eden AI's `provider/model` naming convention, for example `openai/text-embedding-3-small` (default) or `mistral/mistral-embed`. For the full list of available models, see the [Eden AI models catalog](https://www.edenai.co/models).
+
+To start using this integration with Haystack, install it with:
+
+```shell
+pip install edenai-haystack
+```
+
+`EdenAIDocumentEmbedder` needs an Eden AI API key to work. It uses an `EDENAI_API_KEY` environment variable by default. Otherwise, you can pass an API key at initialization with `api_key`:
+
+```python
+from haystack.utils import Secret
+from haystack_integrations.components.embedders.edenai import EdenAIDocumentEmbedder
+
+embedder = EdenAIDocumentEmbedder(
+    api_key=Secret.from_token("<your-api-key>"),
+    model="openai/text-embedding-3-small",
+)
+```
+
+## Usage
+
+### On its own
+
+```python
+from haystack.dataclasses import Document
+from haystack_integrations.components.embedders.edenai import EdenAIDocumentEmbedder
+
+doc = Document(content="I love pizza!")
+
+document_embedder = EdenAIDocumentEmbedder(model="openai/text-embedding-3-small")
+
+result = document_embedder.run([doc])
+print(result["documents"][0].embedding)
+
+# [0.017020374536514282, -0.023255806416273117, ...]
+```
+
+### In an indexing pipeline
+
+```python
+from haystack import Pipeline
+from haystack.components.converters import TextFileToDocument
+from haystack.components.writers import DocumentWriter
+from haystack.document_stores.in_memory import InMemoryDocumentStore
+from haystack_integrations.components.embedders.edenai import EdenAIDocumentEmbedder
+
+document_store = InMemoryDocumentStore()
+
+indexing_pipeline = Pipeline()
+indexing_pipeline.add_component("converter", TextFileToDocument())
+indexing_pipeline.add_component("embedder", EdenAIDocumentEmbedder(model="openai/text-embedding-3-small"))
+indexing_pipeline.add_component("writer", DocumentWriter(document_store=document_store))
+
+indexing_pipeline.connect("converter", "embedder")
+indexing_pipeline.connect("embedder", "writer")
+
+indexing_pipeline.run({"converter": {"sources": ["./my_document.txt"]}})
+```
