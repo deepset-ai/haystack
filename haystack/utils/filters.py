@@ -12,15 +12,6 @@ from haystack.dataclasses import ByteStream, Document
 from haystack.errors import FilterError
 
 
-def raise_on_invalid_filter_syntax(filters: dict[str, Any] | None = None) -> None:
-    """
-    Raise an error if the filter syntax is invalid.
-    """
-    if filters and ("operator" not in filters or "conditions" not in filters):
-        msg = "Invalid filter syntax. See https://docs.haystack.deepset.ai/docs/metadata-filtering for details."
-        raise FilterError(msg)
-
-
 def document_matches_filter(filters: dict[str, Any], document: Document | ByteStream) -> bool:
     """
     Return whether `filters` match the Document or the ByteStream.
@@ -63,6 +54,8 @@ def _prepare_ordering_comparison(value: Any, filter_value: Any) -> tuple[Any, An
             value = _parse_date(value)
         if not isinstance(filter_value, datetime):
             filter_value = _parse_date(filter_value)
+
+    if isinstance(value, datetime) and isinstance(filter_value, datetime):
         value, filter_value = _ensure_both_dates_naive_or_aware(value, filter_value)
 
     if isinstance(filter_value, list):

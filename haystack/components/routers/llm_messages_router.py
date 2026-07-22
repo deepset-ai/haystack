@@ -7,6 +7,7 @@ from typing import Any
 
 from haystack import component, default_from_dict, default_to_dict
 from haystack.components.generators.chat.types import ChatGenerator
+from haystack.components.generators.utils import _trace_chat_generator_run
 from haystack.core.serialization import component_to_dict
 from haystack.dataclasses import ChatMessage, ChatRole
 from haystack.utils import deserialize_chatgenerator_inplace
@@ -23,7 +24,7 @@ class LLMMessagesRouter:
     ### Usage example
 
     ```python
-    from haystack.components.generators.chat import HuggingFaceAPIChatGenerator
+    from haystack_integrations.components.generators.huggingface_api import HuggingFaceAPIChatGenerator
     from haystack.components.routers.llm_messages_router import LLMMessagesRouter
     from haystack.dataclasses import ChatMessage
 
@@ -142,7 +143,10 @@ class LLMMessagesRouter:
             messages_for_inference.append(ChatMessage.from_system(self._system_prompt))
         messages_for_inference.extend(messages)
 
-        chat_generator_text = self._chat_generator.run(messages=messages_for_inference)["replies"][0].text
+        with _trace_chat_generator_run(self._chat_generator, {"messages": messages_for_inference}) as span:
+            generator_result = self._chat_generator.run(messages=messages_for_inference)
+            span.set_content_tag("haystack.component.output", generator_result)
+        chat_generator_text = generator_result["replies"][0].text
 
         output = {"chat_generator_text": chat_generator_text}
 
@@ -188,7 +192,9 @@ class LLMMessagesRouter:
             messages_for_inference.append(ChatMessage.from_system(self._system_prompt))
         messages_for_inference.extend(messages)
 
-        generator_result = await _execute_component_async(self._chat_generator, messages=messages_for_inference)
+        with _trace_chat_generator_run(self._chat_generator, {"messages": messages_for_inference}) as span:
+            generator_result = await _execute_component_async(self._chat_generator, messages=messages_for_inference)
+            span.set_content_tag("haystack.component.output", generator_result)
         chat_generator_text = generator_result["replies"][0].text
 
         output = {"chat_generator_text": chat_generator_text}

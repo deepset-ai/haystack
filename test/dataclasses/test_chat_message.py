@@ -5,8 +5,10 @@
 import json
 import warnings
 from collections.abc import Sequence
+from typing import Any
 
 import pytest
+from pydantic import BaseModel
 
 from haystack.dataclasses.chat_message import (
     ChatMessage,
@@ -756,6 +758,85 @@ class TestChatMessageSerde:
         }
 
 
+class MessageEnvelope(BaseModel):
+    message: ChatMessage
+
+
+class TestFromDictPydanticDump:
+    """
+    `ChatMessage.from_dict` supports the format Pydantic produces when it auto-serializes ChatMessage as a plain
+    dataclass: raw dataclass fields (`_role`, `_content`, ...) with unwrapped content parts.
+    """
+
+    def _pydantic_dump(self, message: ChatMessage) -> dict[str, Any]:
+        return MessageEnvelope(message=message).model_dump(mode="json")["message"]
+
+    def test_text_message(self):
+        message = ChatMessage.from_user("What is the answer?", meta={"some": "info"}, name="virginia")
+        assert ChatMessage.from_dict(self._pydantic_dump(message)) == message
+
+    def test_tool_call_message(self):
+        message = ChatMessage.from_assistant(
+            tool_calls=[ToolCall(tool_name="mytool", arguments={"a": 1}, id="123", extra={"call_id": "123"})]
+        )
+        assert ChatMessage.from_dict(self._pydantic_dump(message)) == message
+
+    def test_tool_result_message(self):
+        message = ChatMessage.from_tool(
+            tool_result="42", origin=ToolCall(tool_name="mytool", arguments={"a": 1}, id="123"), error=False
+        )
+        assert ChatMessage.from_dict(self._pydantic_dump(message)) == message
+
+    def test_reasoning_message(self):
+        message = ChatMessage.from_assistant(
+            "Answer", reasoning=ReasoningContent(reasoning_text="Thinking...", extra={"key": "value"})
+        )
+        assert ChatMessage.from_dict(self._pydantic_dump(message)) == message
+
+    def test_image_message(self, base64_image_string):
+        message = ChatMessage.from_user(
+            content_parts=[
+                TextContent(text="What is in this image?"),
+                ImageContent(base64_image=base64_image_string, mime_type="image/png", detail="auto"),
+            ]
+        )
+        assert ChatMessage.from_dict(self._pydantic_dump(message)) == message
+
+    def test_file_message(self):
+        message = ChatMessage.from_user(
+            content_parts=[
+                TextContent(text="Summarize this file."),
+                FileContent(base64_data="aGVsbG8=", mime_type="text/plain", filename="hello.txt"),
+            ]
+        )
+        assert ChatMessage.from_dict(self._pydantic_dump(message)) == message
+
+    def test_multiple_messages(self, base64_image_string):
+        class Response(BaseModel):
+            messages: list[ChatMessage]
+
+        tool_call = ToolCall(id="123", tool_name="mytool", arguments={"a": 1})
+        messages = [
+            ChatMessage.from_user("What is the answer?"),
+            ChatMessage.from_assistant(
+                "Let me check.",
+                meta={"some": "info"},
+                tool_calls=[tool_call],
+                reasoning=ReasoningContent(reasoning_text="Let me think about it..."),
+            ),
+            ChatMessage.from_tool(tool_result="42", origin=tool_call),
+            ChatMessage.from_user(
+                content_parts=[
+                    ImageContent(base64_image=base64_image_string, mime_type="image/png"),
+                    FileContent(base64_data="aGVsbG8=", mime_type="text/plain", filename="hello.txt"),
+                ]
+            ),
+        ]
+
+        dumped = Response(messages=messages).model_dump(mode="json")
+        assert [ChatMessage.from_dict(message) for message in dumped["messages"]] == messages
+
+
 class TestToOpenaiDictFormat:
     def test_to_openai_dict_format_system_message(self):
         message = ChatMessage.from_system("You are good assistant")
@@ -965,6 +1046,28 @@ class TestFromOpenaiDictFormat:
         assert tool_call.id == "call_123"
         assert tool_call.tool_name == "get_weather"
         assert tool_call.arguments == {"location": "Berlin"}
+
+    def test_from_openai_dict_format_tool_call_with_empty_arguments(self):
+        # OpenAI-compatible servers (vLLM, llama.cpp, Ollama, ...) emit an empty
+        # string for a zero-argument tool call; it must not crash.
+        openai_msg = {
+            "role": "assistant",
+            "content": None,
+            "tool_calls": [{"id": "call_1", "function": {"name": "now", "arguments": ""}}],
+        }
+        message = ChatMessage.from_openai_dict_format(openai_msg)
+        assert message.tool_call == ToolCall(id="call_1", tool_name="now", arguments={})
+
+    def test_from_openai_dict_format_tool_call_with_missing_arguments(self):
+        # Some servers omit the `arguments` key entirely for zero-argument calls.
+        openai_msg = {
+            "role": "assistant",
+            "content": None,
+            "tool_calls": [{"id": "call_1", "function": {"name": "now"}}],
+        }
+        message = ChatMessage.from_openai_dict_format(openai_msg)
+        assert message.tool_call is not None
+        assert message.tool_call.arguments == {}
 
     def test_from_openai_dict_format_tool_message(self):
         openai_msg = {"role": "tool", "content": "The weather is sunny", "tool_call_id": "call_123"}

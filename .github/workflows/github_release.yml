@@ -4,9 +4,9 @@ on:
   workflow_dispatch:  # this is useful to re-generate the release page without a new tag being pushed
   push:
     tags:
-      - "v2.[0-9]+.[0-9]+*"
+      - "v[0-9]+.[0-9]+.[0-9]+*"
       # Ignore release versions tagged with -rc0 suffix
-      - "!v2.[0-9]+.[0-9]-rc0"
+      - "!v[0-9]+.[0-9]+.[0-9]-rc0"
 
 permissions:
   contents: read
@@ -19,7 +19,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-tags: true
           fetch-depth: 0  # slow but needed by reno

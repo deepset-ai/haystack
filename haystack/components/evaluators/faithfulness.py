@@ -83,7 +83,8 @@ class FaithfulnessEvaluator(LLMEvaluator):
     # 0.5
     print(result["results"])
     # [{'statements': ['Python is a high-level general-purpose programming language.',
-    # 'Python was created by George Lucas.'], 'statement_scores': [1, 0], 'score': 0.5}]
+    # 'Python was created by George Lucas.'], 'statement_scores': [1, 0], 'score': 0.5,
+    # 'status': 'evaluated'}]
     ```
     """
 
@@ -149,7 +150,9 @@ class FaithfulnessEvaluator(LLMEvaluator):
             progress_bar=progress_bar,
         )
 
-    @component.output_types(individual_scores=list[float], score=float, results=list[dict[str, Any]])
+    @component.output_types(
+        individual_scores=list[float], score=float, results=list[dict[str, Any]], meta=list[dict[str, Any]] | None
+    )
     def run(self, **inputs: Any) -> dict[str, Any]:
         """
         Run the LLM evaluator.
@@ -164,13 +167,16 @@ class FaithfulnessEvaluator(LLMEvaluator):
             A dictionary with the following outputs:
                 - `score`: Mean faithfulness score over all the provided input answers.
                 - `individual_scores`: A list of faithfulness scores for each input answer.
-                - `results`: A list of dictionaries with `statements` and `statement_scores` for each input answer.
+                - `results`: A list of dictionaries with `statements`, `statement_scores`, `score`, and `status` for
+                  each input answer. `status` is `evaluated` for valid results and `error` for failed evaluations.
         """
         result = super(FaithfulnessEvaluator, self).run(**inputs)  # noqa: UP008
         # Post-process the raw results to calculate relevance metrics and scores
         return self._postprocess_results(result)
 
-    @component.output_types(individual_scores=list[float], score=float, results=list[dict[str, Any]])
+    @component.output_types(
+        individual_scores=list[float], score=float, results=list[dict[str, Any]], meta=list[dict[str, Any]] | None
+    )
     async def run_async(self, **inputs: Any) -> dict[str, Any]:
         """
         Run the LLM evaluator asynchronously.
@@ -185,7 +191,8 @@ class FaithfulnessEvaluator(LLMEvaluator):
             A dictionary with the following outputs:
                 - `score`: Mean faithfulness score over all the provided input answers.
                 - `individual_scores`: A list of faithfulness scores for each input answer.
-                - `results`: A list of dictionaries with `statements` and `statement_scores` for each input answer.
+                - `results`: A list of dictionaries with `statements`, `statement_scores`, `score`, and `status` for
+                  each input answer. `status` is `evaluated` for valid results and `error` for failed evaluations.
         """
         result = await super(FaithfulnessEvaluator, self).run_async(**inputs)  # noqa: UP008
         # Post-process the raw results to calculate relevance metrics and scores
@@ -207,8 +214,14 @@ class FaithfulnessEvaluator(LLMEvaluator):
         # calculate average statement faithfulness score per query
         for idx, res in enumerate(result["results"]):
             if res is None:
-                result["results"][idx] = {"statements": [], "statement_scores": [], "score": float("nan")}
+                result["results"][idx] = {
+                    "statements": [],
+                    "statement_scores": [],
+                    "score": float("nan"),
+                    "status": "error",
+                }
                 continue
+            res["status"] = "evaluated"
             if not res["statements"]:
                 res["score"] = 0
             else:

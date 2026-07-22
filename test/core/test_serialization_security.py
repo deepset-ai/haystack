@@ -2,8 +2,10 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import functools
 import io
 import json
+import operator
 import subprocess
 from collections.abc import Callable
 
@@ -300,6 +302,108 @@ class TestDeniedBuiltins:
         # `unsafe=True` disables all deserialization safety checks by design.
         with _deserialization_context(unsafe=True):
             assert deserialize_callable("builtins.eval") is eval
+
+
+class TestModuleAttributeWalkBypass:
+    """
+    The allowlist must be enforced against the module a handle
+    *actually resolves to*, not against a string prefix of the declared handle.
+
+    An allowlisted package can expose another module as an attribute (a module-scope `import os`
+    makes `haystack.utils.auth.os` the standard-library `os` module). A handle like
+    `haystack.utils.auth.os.system` carries the allowlisted `haystack` prefix, so the old
+    prefix-only check accepted it, and the resolver then walked `.os.system` into the un-allowlisted
+    `os` module — a deserialization-allowlist bypass reaching arbitrary command execution.
+    """
+
+    # (handle, module the walk escapes into) — real gadgets present in the default install.
+    _GADGETS = [
+        ("haystack.utils.auth.os.system", "os"),
+        ("haystack.utils.auth.os.popen", "os"),
+        ("haystack.components.converters.output_adapter.ast.literal_eval", "ast"),
+    ]
+
+    @pytest.mark.parametrize("handle, escaped_module", _GADGETS)
+    def test_callable_walk_into_unallowlisted_module_rejected(self, handle, escaped_module):
+        with pytest.raises(DeserializationError, match=f"module '{escaped_module}'"):
+            deserialize_callable(handle)
+
+    def test_class_path_module_leak_rejected(self):
+        # The class path resolves `haystack.utils.auth.os` to the `os` module itself; it must not
+        # leak an un-allowlisted module as if it were a class.
+        with pytest.raises(DeserializationError, match="module 'os'"):
+            import_class_by_name("haystack.utils.auth.os")
+
+    def test_type_path_module_leak_rejected(self):
+        with pytest.raises(DeserializationError, match="module 'os'"):
+            deserialize_type("haystack.utils.auth.os")
+
+    def test_resolved_module_check_covers_plain_attribute(self, monkeypatch):
+        # Defense-in-depth: a dangerous callable bound as a plain (non-module) attribute of an
+        # allowlisted module is not caught by the module-walk check but must still be rejected by
+        # the resolved-`__module__` gate (`subprocess.getoutput.__module__ == "subprocess"`).
+        monkeypatch.setattr("haystack.utils.auth.injected_gadget", subprocess.getoutput, raising=False)
+        with pytest.raises(DeserializationError, match="module 'subprocess'"):
+            deserialize_callable("haystack.utils.auth.injected_gadget")
+
+    def test_legitimate_haystack_callable_still_resolves(self):
+        from haystack.utils.callable_serialization import serialize_callable
+
+        handle = "haystack.utils.callable_serialization.serialize_callable"
+        assert deserialize_callable(handle) is serialize_callable
+
+    def test_pipeline_loads_rejects_gadget_yaml(self):
+        # End-to-end through the public default-safe API: an attacker-supplied pipeline naming the
+        # gadget as an `OutputAdapter` custom filter must be rejected at load time.
+        gadget_yaml = (
+            "components:\n"
+            "  adapter:\n"
+            "    type: haystack.components.converters.output_adapter.OutputAdapter\n"
+            "    init_parameters:\n"
+            '      template: "{{ x }}"\n'
+            "      output_type: str\n"
+            "      custom_filters:\n"
+            '        pwn: "haystack.utils.auth.os.system"\n'
+            "connections: []\n"
+        )
+        with pytest.raises(DeserializationError):
+            Pipeline.loads(gadget_yaml)
+
+
+class TestPrivateBackingModuleCompatibility:
+    """
+    A symbol legitimately exposed by an allowlisted public module can report a *private* C
+    accelerator as its `__module__` (`operator.add.__module__ == "_operator"`,
+    `io.StringIO.__module__ == "_io"`). The resolved-module gate must still accept these when the
+    private module backs the allowlisted module the object was resolved from — otherwise allowing
+    a public module would silently fail to resolve its own members and force users to widen trust
+    to low-level private modules.
+    """
+
+    def test_callable_from_private_backing_module_resolves(self):
+        with _deserialization_context(allowed_modules=["operator"]):
+            assert deserialize_callable("operator.add") is operator.add
+
+    def test_callable_functools_reduce_resolves(self):
+        with _deserialization_context(allowed_modules=["functools"]):
+            assert deserialize_callable("functools.reduce") is functools.reduce
+
+    def test_type_from_private_backing_module_resolves(self):
+        with _deserialization_context(allowed_modules=["io"]):
+            assert deserialize_type("io.StringIO") is io.StringIO
+
+    def test_import_class_from_private_backing_module_resolves(self):
+        with _deserialization_context(allowed_modules=["io"]):
+            assert import_class_by_name("io.StringIO") is io.StringIO
+
+    def test_exemption_is_scoped_to_the_matching_private_module(self, monkeypatch):
+        # The exemption only trusts the private module that backs the *same* allowlisted module.
+        # A symbol whose real module is a different (still un-allowlisted) private module must stay
+        # blocked: here `operator` is allowed but the injected attribute resolves to `_io`.
+        monkeypatch.setattr("operator.injected_gadget", io.StringIO, raising=False)
+        with _deserialization_context(allowed_modules=["operator"]):
+            with pytest.raises(DeserializationError, match="module '_io'"):
+                deserialize_callable("operator.injected_gadget")
 
 
 @pytest.fixture

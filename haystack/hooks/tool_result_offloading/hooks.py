@@ -126,6 +126,7 @@ class ToolResultOffloadHook:
     the full result. Register it on an `Agent` under the `after_tool` hook point. Which tools offload, and under what
     condition, is controlled per tool by `offload_strategies`:
 
+    <!-- test-concept -->
     ```python
     from haystack.components.agents import Agent
     from haystack.components.generators.chat import OpenAIChatGenerator

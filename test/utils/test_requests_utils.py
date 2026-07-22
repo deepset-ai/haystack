@@ -121,6 +121,30 @@ class TestRequestWithRetry:
                 assert mock_request.call_count == 2
                 mock_sleep.assert_called()
 
+    def test_request_with_retry_custom_timeout_preserved_across_retries(self):
+        """A custom timeout must be honored on every attempt, not just the first one.
+
+        Regression test: ``timeout`` used to be popped from the shared ``kwargs`` inside the
+        retried inner function, so after the first attempt it was gone and every subsequent
+        retry silently fell back to the default of 10 seconds.
+        """
+        with patch("time.sleep", return_value=None):
+            success_response = httpx.Response(status_code=200, request=httpx.Request("GET", "https://example.com"))
+
+            with patch("httpx.Client.request") as mock_request:
+                # First attempt fails with a retryable error, second attempt succeeds.
+                mock_request.side_effect = [
+                    httpx.RequestError("boom", request=httpx.Request("GET", "https://example.com")),
+                    success_response,
+                ]
+
+                response = request_with_retry(method="GET", url="https://example.com", attempts=2, timeout=5)
+
+                assert response == success_response
+                assert mock_request.call_count == 2
+                # Both the initial attempt and the retry must use the caller's timeout, not the default.
+                assert [call.kwargs["timeout"] for call in mock_request.call_args_list] == [5, 5]
+
 
 class TestAsyncRequestWithRetry:
     @pytest.mark.asyncio
@@ -234,3 +258,30 @@ class TestAsyncRequestWithRetry:
                 assert response == success_response
                 assert mock_request.call_count == 2
                 mock_sleep.assert_called()
+
+    @pytest.mark.asyncio
+    async def test_async_request_with_retry_custom_timeout_preserved_across_retries(self):
+        """A custom timeout must be honored on every attempt, not just the first one.
+
+        Regression test: ``timeout`` used to be popped from the shared ``kwargs`` inside the
+        retried inner function, so after the first attempt it was gone and every subsequent
+        retry silently fell back to the default of 10 seconds.
+        """
+        with patch("asyncio.sleep", return_value=None):
+            success_response = httpx.Response(status_code=200, request=httpx.Request("GET", "https://example.com"))
+
+            with patch("httpx.AsyncClient.request") as mock_request:
+                # First attempt fails with a retryable error, second attempt succeeds.
+                mock_request.side_effect = [
+                    httpx.RequestError("boom", request=httpx.Request("GET", "https://example.com")),
+                    success_response,
+                ]
+
+                response = await async_request_with_retry(
+                    method="GET", url="https://example.com", attempts=2, timeout=5
+                )
+
+                assert response == success_response
+                assert mock_request.call_count == 2
+                # Both the initial attempt and the retry must use the caller's timeout, not the default.
+                assert [call.kwargs["timeout"] for call in mock_request.call_args_list] == [5, 5]

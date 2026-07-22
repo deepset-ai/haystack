@@ -6,12 +6,14 @@ upgrade:
     removed from ``Agent.__init__``, ``Agent.run``, and ``Agent.run_async``. To migrate, wrap your confirmation
     strategies in the new ``ConfirmationHook``, register it under the ``before_tool`` hook point, and pass any
     request-scoped resources through the generic ``hook_context`` run argument instead of
-    ``confirmation_strategy_context``:
+    ``confirmation_strategy_context``. The Human-in-the-Loop module has also moved from
+    ``haystack.human_in_the_loop`` to ``haystack.hooks.human_in_the_loop``, so that it lives alongside the other
+    built-in hooks (such as tool result offloading); update your imports to the new location:
 
     .. code-block:: python
 
         from haystack.components.agents import Agent
-        from haystack.human_in_the_loop import (
+        from haystack.hooks.human_in_the_loop import (
             AlwaysAskPolicy,
             BlockingConfirmationStrategy,
             ConfirmationHook,

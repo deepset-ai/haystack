@@ -420,6 +420,14 @@ class TestComponentLifecycle:
         generator.warm_up()
         assert generator._tools_warmed_up
 
+    def test_warm_up_with_empty_tools_list_does_not_raise(self, monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "fake-api-key")
+        # An empty list is a valid ``tools`` value (e.g. when built programmatically); warming up
+        # must not index ``tools[0]`` unguarded.
+        generator = OpenAIResponsesChatGenerator(tools=[])
+        generator.warm_up()
+        assert generator._tools_warmed_up
+
     def test_warm_up_with_openai_tools_does_not_raise(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "fake-api-key")
         generator = OpenAIResponsesChatGenerator(
@@ -493,6 +501,21 @@ class TestRun:
             component = OpenAIResponsesChatGenerator(tools=duplicate_tools)
             component.run(chat_messages)
 
+    def test_prepare_api_call_does_not_mutate_tool_parameters(self, monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+        parameters = {"type": "object", "properties": {"city": {"type": "string"}}, "required": ["city"]}
+        tool = Tool(name="weather", description="get the weather", parameters=parameters, function=print)
+
+        generator = OpenAIResponsesChatGenerator(tools_strict=False)
+        api_args = generator._prepare_api_call(messages=[ChatMessage.from_user("hi")], tools=[tool])
+
+        # The tool's own schema must not be modified in place, otherwise the same Tool passed to
+        # another generator (or serialized) would carry an additionalProperties flag it never had.
+        assert "additionalProperties" not in tool.parameters
+        assert tool.parameters == {"type": "object", "properties": {"city": {"type": "string"}}, "required": ["city"]}
+        # ...while the payload actually sent to the API still carries additionalProperties=False.
+        assert api_args["tools"][0]["parameters"]["additionalProperties"] is False
+
     def test_run_with_wrong_model(self):
         mock_client = MagicMock()
         mock_client.responses.create.side_effect = OpenAIError("Invalid model name")
@@ -535,13 +558,81 @@ class TestRun:
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
         chat_messages = [ChatMessage.from_user("What's the capital of France")]
         component = OpenAIResponsesChatGenerator(
-            model="gpt-4",
-            generation_kwargs={"reasoning_effort": "low", "reasoning_summary": "auto", "verbosity": "low"},
+            model="gpt-5.6-luna",
+            generation_kwargs={
+                "reasoning_effort": "low",
+                "reasoning_summary": "auto",
+                "reasoning_mode": "pro",
+                "verbosity": "low",
+            },
         )
         results = component.run(chat_messages)
         assert len(results["replies"]) == 1
-        assert openai_mock_responses.call_args.kwargs["reasoning"] == {"effort": "low", "summary": "auto"}
+        assert openai_mock_responses.call_args.kwargs["reasoning"] == {
+            "effort": "low",
+            "summary": "auto",
+            "mode": "pro",
+        }
         assert openai_mock_responses.call_args.kwargs["text"] == {"verbosity": "low"}
+
+    def test_run_with_reasoning_mode_only(self, openai_mock_responses, monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+        chat_messages = [ChatMessage.from_user("What's the capital of France")]
+        component = OpenAIResponsesChatGenerator(model="gpt-5.6-luna", generation_kwargs={"reasoning_mode": "standard"})
+        results = component.run(chat_messages)
+        assert len(results["replies"]) == 1
+        assert openai_mock_responses.call_args.kwargs["reasoning"] == {"mode": "standard"}
+
+    def test_run_with_reasoning_mode_merges_with_existing_reasoning_dict(self, openai_mock_responses, monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+        chat_messages = [ChatMessage.from_user("What's the capital of France")]
+        component = OpenAIResponsesChatGenerator(
+            model="gpt-5.6-luna", generation_kwargs={"reasoning": {"effort": "high"}, "reasoning_mode": "pro"}
+        )
+        results = component.run(chat_messages)
+        assert len(results["replies"]) == 1
+        assert openai_mock_responses.call_args.kwargs["reasoning"] == {"effort": "high", "mode": "pro"}
+
+    def test_run_with_include_reasoning_encrypted_content(self, openai_mock_responses, monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+        chat_messages = [ChatMessage.from_user("What's the capital of France")]
+        component = OpenAIResponsesChatGenerator(
+            model="gpt-5.6-luna", generation_kwargs={"include_reasoning_encrypted_content": True}
+        )
+        results = component.run(chat_messages)
+        assert len(results["replies"]) == 1
+        assert openai_mock_responses.call_args.kwargs["include"] == ["reasoning.encrypted_content"]
+
+    def test_run_with_include_reasoning_encrypted_content_merges_with_existing_include_list(
+        self, openai_mock_responses, monkeypatch
+    ):
+        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+        chat_messages = [ChatMessage.from_user("What's the capital of France")]
+        component = OpenAIResponsesChatGenerator(
+            model="gpt-5.6-luna",
+            generation_kwargs={
+                "include": ["message.output_text.logprobs"],
+                "include_reasoning_encrypted_content": True,
+            },
+        )
+        results = component.run(chat_messages)
+        assert len(results["replies"]) == 1
+        assert openai_mock_responses.call_args.kwargs["include"] == [
+            "message.output_text.logprobs",
+            "reasoning.encrypted_content",
+        ]
+
+    def test_run_with_include_reasoning_encrypted_content_false_does_not_set_include(
+        self, openai_mock_responses, monkeypatch
+    ):
+        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+        chat_messages = [ChatMessage.from_user("What's the capital of France")]
+        component = OpenAIResponsesChatGenerator(
+            model="gpt-5.6-luna", generation_kwargs={"include_reasoning_encrypted_content": False}
+        )
+        results = component.run(chat_messages)
+        assert len(results["replies"]) == 1
+        assert "include" not in openai_mock_responses.call_args.kwargs
 
     def test_run_with_params_streaming(self, openai_mock_responses_stream_text_delta):
         streaming_callback_called = False

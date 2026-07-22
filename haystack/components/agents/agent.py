@@ -23,7 +23,17 @@ from haystack.components.generators.chat.types import ChatGenerator
 from haystack.core.serialization import component_to_dict, default_from_dict, default_to_dict
 from haystack.dataclasses import ChatMessage, ChatRole, StreamingCallbackT, select_streaming_callback
 from haystack.hooks.invocation import _run_hooks, _run_hooks_async
-from haystack.hooks.protocol import AFTER_TOOL, BEFORE_LLM, BEFORE_TOOL, ON_EXIT, VALID_HOOK_POINTS, Hook, HookPoint
+from haystack.hooks.protocol import (
+    AFTER_RUN,
+    AFTER_TOOL,
+    BEFORE_LLM,
+    BEFORE_RUN,
+    BEFORE_TOOL,
+    ON_EXIT,
+    VALID_HOOK_POINTS,
+    Hook,
+    HookPoint,
+)
 from haystack.hooks.utils import (
     _deserialize_hooks_dictionary,
     _serialize_hooks_dictionary,
@@ -53,12 +63,18 @@ _JINJA2_CHAT_TEMPLATE_RE = re.compile(r"\{%\s*message\s")
 # Regex to extract the role from a Jinja2 message block, e.g. {% message role="user" %}
 _JINJA2_MESSAGE_ROLE_RE = re.compile(r'\{%\s*message\s+role\s*=\s*["\'](\w+)["\']')
 
+# `exit_reason` values the Agent sets when it stops without a tool exit condition: a tool-call-free reply, or the
+# `max_agent_steps` budget running out. A tool exit condition instead reports the tool's name.
+_EXIT_REASON_TEXT = "text"
+_EXIT_REASON_MAX_STEPS = "max_agent_steps"
+
 # Run-metadata state keys the Agent populates automatically during a run. Users may not define them in their own
 # `state_schema`, and they are exposed as Agent outputs only (not inputs).
 _RUN_METADATA_STATE_KEYS: dict[str, dict[str, Any]] = {
     "step_count": {"type": int, "handler": replace_values},
     "token_usage": {"type": dict[str, Any], "handler": replace_values},
     "tool_call_counts": {"type": dict[str, int], "handler": replace_values},
+    "exit_reason": {"type": str, "handler": replace_values},
 }
 
 # Internal state keys the Agent manages for run control and hooks. Like run-metadata keys they are reserved and cannot
@@ -463,7 +479,6 @@ class Agent:
         user_prompt=\"\"\"{% message role="user"%}
     Translate the following document to {{ language }}: {{ document }}
     {% endmessage %}\"\"\",
-        required_variables=["language", "document"],
     )
 
     # The template variables 'language' and 'document' become inputs to the run method
@@ -534,7 +549,7 @@ class Agent:
         tools: ToolsType | None = None,
         system_prompt: str | None = None,
         user_prompt: str | None = None,
-        required_variables: list[str] | Literal["*"] | None = None,
+        required_variables: list[str] | Literal["*"] | None = "*",
         exit_conditions: list[str] | None = None,
         state_schema: dict[str, Any] | None = None,
         max_agent_steps: int = 100,
@@ -559,7 +574,8 @@ class Agent:
         :param required_variables:
             Lists the variables that must be provided as inputs to `user_prompt` or `system_prompt`.
             If a required variable is not provided at run time, an exception is raised.
-            If set to `"*"`, all variables found in the prompts are required. Optional.
+            If set to `"*"`, all variables found in the prompts are required. Defaults to `"*"`.
+            Set to `None` to make all variables optional; missing ones render as empty strings.
         :param exit_conditions: List of conditions that will cause the agent to return.
             Can include "text" if the agent should return when it generates a message without tool calls,
             or tool names that will cause the agent to return once the tool was executed. Defaults to ["text"].
@@ -579,6 +595,9 @@ class Agent:
         :param hooks: A dictionary mapping a hook point to a list of hooks the Agent runs at that point. Each hook
             receives the live `State` and influences the run by mutating it in place; hooks for a hook point run in
             list order. Valid hook points are:
+            - "before_run": Runs once per run, after the state is initialized and before the first chat-generator
+              call. Use it to rewrite the initial messages or seed state (e.g. turn the user query into a task
+              brief) without re-running on every step like "before_llm" does.
             - "before_llm": Runs before each chat-generator call.
             - "before_tool": Runs after the model requests tool calls, before any tools run. After these hooks run,
               the Agent re-reads the current last message from `state.data["messages"]`. If that message contains tool
@@ -592,6 +611,11 @@ class Agent:
               Agent running by setting the `continue_run` control flag (`state.set("continue_run", True)`), usually
               alongside a message telling the model what to do next. "on_exit" hooks run when the Agent stops on an
               exit condition, but not when it stops because `max_agent_steps` is reached.
+            - "after_run": Runs once per run, after the step loop has ended and before the Agent builds its return
+              value — regardless of whether the run stopped on an exit condition or because `max_agent_steps` was
+              reached (unlike "on_exit"). Mutations to the state (e.g. appending a final message) are reflected in
+              the returned `messages` / `last_message` and `state_schema` outputs. Setting `continue_run` here has
+              no effect.
         :raises TypeError: If the chat_generator does not support tools parameter in its run method.
         :raises ValueError: If any `user_prompt` variable overlaps with the `state_schema` or `run` method parameters,
             if a hook is registered under an unknown hook point, or if a hook is registered under a hook point it does
@@ -693,7 +717,7 @@ class Agent:
         prompt_builders = [
             builder for builder in (self._system_chat_prompt_builder, self._user_chat_prompt_builder) if builder
         ]
-        if required_variables is not None and not any(builder.variables for builder in prompt_builders):
+        if isinstance(required_variables, list) and not any(builder.variables for builder in prompt_builders):
             logger.warning(
                 "The parameter required_variables is provided but neither user_prompt nor system_prompt "
                 "contains template variables. Either provide a prompt with Jinja2 template variables "
@@ -915,6 +939,7 @@ class Agent:
         state.set("step_count", 0)
         state.set("token_usage", {})
         state.set("tool_call_counts", {tool.name: 0 for tool in flat_tools})
+        state.set("exit_reason", None)
         state.set("continue_run", False)
         state.set("hook_context", hook_context or {})
 
@@ -1013,6 +1038,10 @@ class Agent:
             - "token_usage": Aggregated token usage from every LLM call in the run, summed from each LLM message's
               `meta["usage"]`.
             - "tool_call_counts": Mapping of tool name to the number of times that tool was invoked.
+            - "exit_reason": Why the Agent stopped, useful for routing the output downstream (e.g. with a
+              `ConditionalRouter`). One of: `"text"` (the model returned a reply with no tool calls), the name of
+              the tool that satisfied a tool exit condition (in which case `last_message` is that tool's result),
+              or `"max_agent_steps"` (the Agent hit `max_agent_steps` before meeting an exit condition).
             - Any additional keys defined in the `state_schema`.
         """
         agent_inputs = {"messages": messages, "streaming_callback": streaming_callback, **kwargs}
@@ -1030,14 +1059,19 @@ class Agent:
 
         with self._create_agent_span(exe_context.tools) as span:
             span.set_content_tag("haystack.agent.input", agent_inputs)
+            _run_hooks(self.hooks, BEFORE_RUN, exe_context.state)
             while exe_context.counter < self.max_agent_steps:
                 if not self._run_step(exe_context, span):
                     break
-            if exe_context.counter >= self.max_agent_steps:
+            else:
+                # Reached only when the loop ends without a `break`. A `break` means a step already set its own
+                # `exit_reason`, so this branch runs only when `max_agent_steps` is why the Agent stopped.
                 logger.warning(
                     "Agent reached maximum agent steps of {max_agent_steps}, stopping.",
                     max_agent_steps=self.max_agent_steps,
                 )
+                exe_context.state.set("exit_reason", _EXIT_REASON_MAX_STEPS)
+            _run_hooks(self.hooks, AFTER_RUN, exe_context.state)
             result = _public_outputs(exe_context.state)
             if msgs := result.get("messages"):
                 result["last_message"] = msgs[-1]
@@ -1085,6 +1119,10 @@ class Agent:
             - "token_usage": Aggregated token usage from every LLM call in the run, summed from each LLM message's
               `meta["usage"]`.
             - "tool_call_counts": Mapping of tool name to the number of times that tool was invoked.
+            - "exit_reason": Why the Agent stopped, useful for routing the output downstream (e.g. with a
+              `ConditionalRouter`). One of: `"text"` (the model returned a reply with no tool calls), the name of
+              the tool that satisfied a tool exit condition (in which case `last_message` is that tool's result),
+              or `"max_agent_steps"` (the Agent hit `max_agent_steps` before meeting an exit condition).
             - Any additional keys defined in the `state_schema`.
         """
         agent_inputs = {"messages": messages, "streaming_callback": streaming_callback, **kwargs}
@@ -1102,14 +1140,19 @@ class Agent:
 
         with self._create_agent_span(exe_context.tools) as span:
             span.set_content_tag("haystack.agent.input", agent_inputs)
+            await _run_hooks_async(self.hooks, BEFORE_RUN, exe_context.state)
             while exe_context.counter < self.max_agent_steps:
                 if not await self._run_step_async(exe_context, span):
                     break
-            if exe_context.counter >= self.max_agent_steps:
+            else:
+                # Reached only when the loop ends without a `break`. A `break` means a step already set its own
+                # `exit_reason`, so this branch runs only when `max_agent_steps` is why the Agent stopped.
                 logger.warning(
                     "Agent reached maximum agent steps of {max_agent_steps}, stopping.",
                     max_agent_steps=self.max_agent_steps,
                 )
+                exe_context.state.set("exit_reason", _EXIT_REASON_MAX_STEPS)
+            await _run_hooks_async(self.hooks, AFTER_RUN, exe_context.state)
             result = _public_outputs(exe_context.state)
             if msgs := result.get("messages"):
                 result["last_message"] = msgs[-1]
@@ -1149,6 +1192,7 @@ class Agent:
             if not current_tools or _is_text_exit(llm_messages):
                 exe_context.counter += 1
                 exe_context.state.set("step_count", exe_context.counter)
+                exe_context.state.set("exit_reason", _EXIT_REASON_TEXT)
                 return self._continue_after_exit_hooks(exe_context)
 
             _run_hooks(self.hooks, BEFORE_TOOL, exe_context.state)
@@ -1169,10 +1213,13 @@ class Agent:
 
             exe_context.counter += 1
             exe_context.state.set("step_count", exe_context.counter)
-            exit_triggered = self.exit_conditions != ["text"] and self._check_exit_conditions(
-                llm_messages=pending_tool_call_messages, tool_messages=tool_messages
+            exit_condition_tool = (
+                None
+                if self.exit_conditions == ["text"]
+                else self._check_exit_conditions(llm_messages=pending_tool_call_messages, tool_messages=tool_messages)
             )
-            if exit_triggered:
+            if exit_condition_tool is not None:
+                exe_context.state.set("exit_reason", exit_condition_tool)
                 return self._continue_after_exit_hooks(exe_context)
             return True
 
@@ -1209,6 +1256,7 @@ class Agent:
             if not current_tools or _is_text_exit(llm_messages):
                 exe_context.counter += 1
                 exe_context.state.set("step_count", exe_context.counter)
+                exe_context.state.set("exit_reason", _EXIT_REASON_TEXT)
                 return await self._continue_after_exit_hooks_async(exe_context)
 
             await _run_hooks_async(self.hooks, BEFORE_TOOL, exe_context.state)
@@ -1229,50 +1277,45 @@ class Agent:
 
             exe_context.counter += 1
             exe_context.state.set("step_count", exe_context.counter)
-            exit_triggered = self.exit_conditions != ["text"] and self._check_exit_conditions(
-                llm_messages=pending_tool_call_messages, tool_messages=tool_messages
+            exit_condition_tool = (
+                None
+                if self.exit_conditions == ["text"]
+                else self._check_exit_conditions(llm_messages=pending_tool_call_messages, tool_messages=tool_messages)
             )
-            if exit_triggered:
+            if exit_condition_tool is not None:
+                exe_context.state.set("exit_reason", exit_condition_tool)
                 return await self._continue_after_exit_hooks_async(exe_context)
             return True
 
-    def _check_exit_conditions(self, llm_messages: list[ChatMessage], tool_messages: list[ChatMessage]) -> bool:
+    def _check_exit_conditions(self, llm_messages: list[ChatMessage], tool_messages: list[ChatMessage]) -> str | None:
         """
-        Decide whether the agent should stop looping.
+        Decide whether the agent should stop looping and, if so, on which tool.
 
-        Returns True when the model called at least one tool listed in `exit_conditions` and
-        that tool did not error. Every tool call in the message is checked, so the order of
-        parallel tool calls does not matter.
+        Returns the name of the tool that triggered an exit condition: the model called at least one tool listed in
+        `exit_conditions` and that tool did not error. Every tool call in the message is checked, so the order of
+        parallel tool calls does not matter. When several exit-condition tools are called in the same step, the first
+        one encountered is returned.
 
         :param llm_messages: List of messages from the LLM
         :param tool_messages: List of messages from tool execution.
-        :return: True if an exit condition is met and there are no errors, False otherwise
+        :return: The name of the tool that satisfied an exit condition, or None if none did (or one errored).
         """
-        matched_exit_conditions: set[str] = set()
-        has_errors = False
+        errored_tools = {
+            tool_msg.tool_call_result.origin.tool_name
+            for tool_msg in tool_messages
+            if tool_msg.tool_call_result is not None and tool_msg.tool_call_result.error
+        }
 
+        first_match: str | None = None
         for msg in llm_messages:
             for tool_call in msg.tool_calls:
                 if tool_call.tool_name not in self.exit_conditions:
                     continue
-                matched_exit_conditions.add(tool_call.tool_name)
-
-                # Check if any error is specifically from the tool matching the exit condition
-                tool_errors = [
-                    tool_msg.tool_call_result.error
-                    for tool_msg in tool_messages
-                    if tool_msg.tool_call_result is not None
-                    and tool_msg.tool_call_result.origin.tool_name == tool_call.tool_name
-                ]
-                if any(tool_errors):
-                    has_errors = True
-                    # No need to check further if we found an error
-                    break
-            if has_errors:
-                break
-
-        # Only return True if at least one exit condition was matched AND none had errors
-        return bool(matched_exit_conditions) and not has_errors
+                # An errored exit-condition tool cancels the exit, even if another exit-condition tool succeeded.
+                if tool_call.tool_name in errored_tools:
+                    return None
+                first_match = first_match or tool_call.tool_name
+        return first_match
 
     def _continue_after_exit_hooks(self, exe_context: _ExecutionContext) -> bool:
         """

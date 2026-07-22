@@ -156,9 +156,17 @@ Usage example:
 
 ```python
 from haystack import Document
-from haystack.components.embedders import SentenceTransformersTextEmbedder
-from haystack_integrations.document_stores.elasticsearch import ElasticsearchDocumentStore
-from haystack_integrations.components.retrievers.elasticsearch import ElasticsearchEmbeddingRetriever
+
+# Requires: pip install sentence-transformers-haystack
+from haystack_integrations.components.embedders.sentence_transformers import (
+    SentenceTransformersTextEmbedder,
+)
+from haystack_integrations.document_stores.elasticsearch import (
+    ElasticsearchDocumentStore,
+)
+from haystack_integrations.components.retrievers.elasticsearch import (
+    ElasticsearchEmbeddingRetriever,
+)
 
 document_store = ElasticsearchDocumentStore(hosts="http://localhost:9200")
 retriever = ElasticsearchEmbeddingRetriever(document_store=document_store)
@@ -173,7 +181,6 @@ documents = [
 document_store.write_documents(documents)
 
 te = SentenceTransformersTextEmbedder()
-te.warm_up()
 query_embeddings = te.run("Who lives in Berlin?")["embedding"]
 
 result = retriever.run(query=query_embeddings)
