@@ -258,6 +258,23 @@ def test_run_with_bad_encoding(tmpdir, caplog):
     assert result == {"documents": []}
 
 
+def test_run_with_malformed_json_and_content_key(tmpdir, caplog):
+    test_file = Path(tmpdir / "test_file.json")
+    test_file.write_text("This is not valid JSON.", "utf-8")
+
+    sources = [test_file]
+    converter = JSONConverter(content_key="motivation")
+
+    caplog.clear()
+    with caplog.at_level(logging.WARNING):
+        result = converter.run(sources=sources)
+
+    records = caplog.records
+    assert len(records) == 1
+    assert records[0].msg.startswith(f"Failed to extract text from {test_file}. Skipping it. Error:")
+    assert result == {"documents": []}
+
+
 def test_run_with_single_meta(tmpdir):
     first_test_file = Path(tmpdir / "first_test_file.json")
     second_test_file = Path(tmpdir / "second_test_file.json")

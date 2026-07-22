@@ -6,7 +6,7 @@ from typing import Any
 
 from haystack import Document, component, default_from_dict, default_to_dict
 from haystack.document_stores.in_memory import InMemoryDocumentStore
-from haystack.document_stores.types import FilterPolicy
+from haystack.document_stores.types import FilterPolicy, apply_filter_policy
 
 
 @component
@@ -163,10 +163,7 @@ class InMemoryEmbeddingRetriever:
         :raises ValueError:
             If the specified DocumentStore is not found or is not an InMemoryDocumentStore instance.
         """
-        if self.filter_policy == FilterPolicy.MERGE and filters:
-            filters = {**(self.filters or {}), **filters}
-        else:
-            filters = filters or self.filters
+        filters = apply_filter_policy(self.filter_policy, self.filters, filters)
         if top_k is None:
             top_k = self.top_k
         if scale_score is None:
@@ -214,10 +211,7 @@ class InMemoryEmbeddingRetriever:
         :raises ValueError:
             If the specified DocumentStore is not found or is not an InMemoryDocumentStore instance.
         """
-        if self.filter_policy == FilterPolicy.MERGE and filters:
-            filters = {**(self.filters or {}), **filters}
-        else:
-            filters = filters or self.filters
+        filters = apply_filter_policy(self.filter_policy, self.filters, filters)
         if top_k is None:
             top_k = self.top_k
         if scale_score is None:

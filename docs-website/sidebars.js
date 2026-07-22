@@ -169,6 +169,18 @@ export default {
               ],
             },
             'pipeline-components/agents-1/state',
+            {
+              type: 'category',
+              label: 'Agent Pack',
+              link: {
+                type: 'doc',
+                id: 'pipeline-components/agents-1/agent-pack',
+              },
+              items: [
+                'pipeline-components/agents-1/agent-pack/advanced-rag-agent',
+                'pipeline-components/agents-1/agent-pack/deep-research-agent',
+              ],
+            },
           ],
         },
         {
@@ -308,6 +320,8 @@ export default {
             'pipeline-components/embedders/coheredocumentembedder',
             'pipeline-components/embedders/coheredocumentimageembedder',
             'pipeline-components/embedders/coheretextembedder',
+            'pipeline-components/embedders/edenaidocumentembedder',
+            'pipeline-components/embedders/edenaitextembedder',
             'pipeline-components/embedders/fastembeddocumentembedder',
             'pipeline-components/embedders/fastembedsparsedocumentembedder',
             'pipeline-components/embedders/fastembedsparsetextembedder',
@@ -432,6 +446,7 @@ export default {
             'pipeline-components/generators/coherechatgenerator',
             'pipeline-components/generators/coheregenerator',
             'pipeline-components/generators/cometapichatgenerator',
+            'pipeline-components/generators/edenaichatgenerator',
             'pipeline-components/generators/fallbackchatgenerator',
             'pipeline-components/generators/googleaigeminichatgenerator',
             'pipeline-components/generators/googleaigeminigenerator',
