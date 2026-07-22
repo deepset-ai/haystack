@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Fixed ``QueryExpander`` returning duplicate queries when the chat generator repeats an
+    expansion. Generated queries are now deduplicated while preserving first-seen order,
+    so repeated expansions no longer trigger redundant retrievals or consume the requested
+    expansion budget. Both ``run`` and ``run_async`` are affected.

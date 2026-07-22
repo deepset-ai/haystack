@@ -1,0 +1,185 @@
+---
+title: "Toolset"
+id: toolset
+slug: "/toolset"
+description: "Group multiple Tools into a single unit."
+---
+
+# Toolset
+
+Group multiple Tools into a single unit.
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Mandatory init variables** | `tools`: A list of tools                                                     |
+| **API reference**            | [Toolset](/reference/tools-api#toolset)      |
+| **GitHub link**              | https://github.com/deepset-ai/haystack/blob/main/haystack/tools/toolset.py |
+| **Package name**             | `haystack-ai` |
+
+</div>
+
+## Overview
+
+A `Toolset` groups multiple Tool instances into a single manageable unit. It simplifies passing tools to components like Chat Generators or [`Agent`](../pipeline-components/agents-1/agent.mdx), and supports filtering, serialization, and reuse.
+
+Additionally, by subclassing `Toolset`, you can create implementations that dynamically load tools from external sources like OpenAPI URLs, MCP servers, or other resources.
+
+### Initializing Toolset
+
+Here’s how to initialize `Toolset` with [Tool](tool.mdx). Alternatively, you can use [ComponentTool](componenttool.mdx) or [MCPTool](mcptool.mdx) in `Toolset` as Tool instances.
+
+```python
+from typing import Annotated
+from haystack.tools import Toolset, tool
+
+
+@tool
+def add_numbers(
+    a: Annotated[int, "first number"],
+    b: Annotated[int, "second number"],
+) -> int:
+    """Add two numbers."""
+    return a + b
+
+
+@tool
+def subtract_numbers(
+    a: Annotated[int, "first number"],
+    b: Annotated[int, "second number"],
+) -> int:
+    """Subtract b from a."""
+    return a - b
+
+
+math_toolset = Toolset([add_numbers, subtract_numbers])
+```
+
+### Adding New Tools to Toolset
+
+```python
+from typing import Annotated
+from haystack.tools import tool
+
+
+@tool
+def multiply_numbers(
+    a: Annotated[int, "first number"],
+    b: Annotated[int, "second number"],
+) -> int:
+    """Multiply two numbers."""
+    return a * b
+
+
+math_toolset.add(multiply_numbers)
+
+# or, you can merge toolsets together
+math_toolset.add(another_toolset)
+```
+
+### Run-Scoped Copies and Tool Selection
+
+A `Toolset` is never mutated in place during an [`Agent`](../pipeline-components/agents-1/agent.mdx) run. Each run operates on an isolated, run-scoped copy of the configured `Toolset`, created with the `spawn()` method. This makes concurrent runs that share the same `Toolset` instance safe: per-run state, such as an active tool-name selection or a [`SearchableToolset`](searchabletoolset.mdx)'s discovered tools, cannot leak or collide across runs.
+
+You can also restrict an `Agent` to a subset of tools at runtime by passing tool names, for example `agent.run(tools=["tool_a", "tool_b"])`. When a `Toolset` is configured, the selection is applied to the live (run-scoped) `Toolset` rather than flattening it into a static list, so dynamic behavior like a `SearchableToolset`'s search and lazy loading keeps working over the selected subset.
+
+Two methods support this and can be overridden when subclassing:
+
+- `get_selectable_tools()`: Returns every tool available for name-based selection, ignoring any active selection restriction. Override it if your subclass's iteration does not surface every selectable tool.
+- `spawn()`: Returns an isolated, run-scoped copy of the `Toolset`. Override it if your subclass holds additional run-scoped state.
+
+## Usage
+
+You can use `Toolset` wherever you can use Tools in Haystack.
+
+:::tip
+The recommended way to use a `Toolset` in Haystack is with the [`Agent`](../pipeline-components/agents-1/agent.mdx) component, which manages the tool call loop for you. The examples below also show how to pass a `Toolset` directly to a `ChatGenerator` for cases where you need fine-grained control.
+:::
+
+### With the Agent
+
+```python
+from haystack.components.agents import Agent
+from haystack.dataclasses import ChatMessage
+from haystack.components.generators.chat import OpenAIChatGenerator
+
+agent = Agent(
+    system_prompt="You are a helpful assistant that can do math using the tools at your disposal.",
+    chat_generator=OpenAIChatGenerator(model="gpt-5.4-nano"),
+    tools=math_toolset,
+)
+
+response = agent.run(messages=[ChatMessage.from_user("What is 4 + 2?")])
+
+print(response["messages"][-1].text)
+```
+
+Output:
+
+```
+4 + 2 equals 6.
+```
+
+### With a ChatGenerator
+
+You can pass a `Toolset` directly to a Chat Generator. The model prepares the tool calls; executing them (for example, with `Tool.invoke`) is up to you:
+
+```python
+from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.dataclasses import ChatMessage
+
+chat_generator = OpenAIChatGenerator(model="gpt-5.4-nano", tools=math_toolset)
+
+user_message = ChatMessage.from_user("What is 10 minus 5?")
+
+replies = chat_generator.run(messages=[user_message])["replies"]
+print(f"assistant message: {replies}")
+
+# If the assistant message contains a tool call, execute it
+if replies[0].tool_calls:
+    tool_call = replies[0].tool_calls[0]
+    tool = next(t for t in math_toolset if t.name == tool_call.tool_name)
+    print(f"tool result: {tool.invoke(**tool_call.arguments)}")
+```
+
+Output:
+
+```
+assistant message: [ChatMessage(
+    _role=<ChatRole.ASSISTANT: 'assistant'>,
+    _content=[ToolCall(tool_name='subtract', arguments={'a': 10, 'b': 5}, id='call_awGa5q7KtQ9BrMGPTj6IgEH1')],
+    _meta={'model': 'gpt-5.4-nano', 'index': 0, 'finish_reason': 'tool_calls', 'usage': {'completion_tokens': 18, 'prompt_tokens': 75, 'total_tokens': 93}}
+)]
+tool result: 5
+```
+
+### In a Pipeline
+
+```python
+from haystack import Pipeline
+from haystack.components.agents import Agent
+from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.dataclasses import ChatMessage
+
+pipeline = Pipeline()
+pipeline.add_component(
+    "agent",
+    Agent(
+        chat_generator=OpenAIChatGenerator(model="gpt-5.4-nano"),
+        tools=math_toolset,
+    ),
+)
+
+user_input_msg = ChatMessage.from_user(text="What is 2+2?")
+
+result = pipeline.run({"agent": {"messages": [user_input_msg]}})
+
+print(result["agent"]["last_message"].text)
+```
+
+Output:
+
+```
+2 + 2 equals 4.
+```

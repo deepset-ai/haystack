@@ -8,6 +8,7 @@ from haystack import default_from_dict, default_to_dict, logging
 from haystack.components.builders.prompt_builder import PromptBuilder
 from haystack.components.generators.chat.openai import OpenAIChatGenerator
 from haystack.components.generators.chat.types import ChatGenerator
+from haystack.components.generators.utils import _trace_chat_generator_run
 from haystack.core.component import component
 from haystack.core.serialization import component_to_dict
 from haystack.dataclasses.chat_message import ChatMessage
@@ -209,7 +210,10 @@ class QueryExpander:
 
         try:
             prompt_result = self._prompt_builder.run(query=query.strip(), n_expansions=expansion_count)
-            generator_result = self.chat_generator.run(messages=[ChatMessage.from_user(prompt_result["prompt"])])
+            messages = [ChatMessage.from_user(prompt_result["prompt"])]
+            with _trace_chat_generator_run(self.chat_generator, {"messages": messages}) as span:
+                generator_result = self.chat_generator.run(messages=messages)
+                span.set_content_tag("haystack.component.output", generator_result)
 
             if not generator_result.get("replies") or len(generator_result["replies"]) == 0:
                 logger.warning("ChatGenerator returned no replies for query: {query}", query=query)
@@ -228,7 +232,7 @@ class QueryExpander:
                 )
                 expanded_queries = expanded_queries[:expansion_count]
 
-            # Add original query if requested and remove duplicates
+            # Add original query if not already present
             if self.include_original_query:
                 expanded_queries_lower = [q.lower() for q in expanded_queries]
                 if query.lower() not in expanded_queries_lower:
@@ -276,9 +280,10 @@ class QueryExpander:
 
         try:
             prompt_result = self._prompt_builder.run(query=query.strip(), n_expansions=expansion_count)
-            generator_result = await _execute_component_async(
-                self.chat_generator, messages=[ChatMessage.from_user(prompt_result["prompt"])]
-            )
+            messages = [ChatMessage.from_user(prompt_result["prompt"])]
+            with _trace_chat_generator_run(self.chat_generator, {"messages": messages}) as span:
+                generator_result = await _execute_component_async(self.chat_generator, messages=messages)
+                span.set_content_tag("haystack.component.output", generator_result)
 
             if not generator_result.get("replies") or len(generator_result["replies"]) == 0:
                 logger.warning("ChatGenerator returned no replies for query: {query}", query=query)
@@ -297,7 +302,7 @@ class QueryExpander:
                 )
                 expanded_queries = expanded_queries[:expansion_count]
 
-            # Add original query if requested and remove duplicates
+            # Add original query if not already present
             if self.include_original_query:
                 expanded_queries_lower = [q.lower() for q in expanded_queries]
                 if query.lower() not in expanded_queries_lower:
@@ -349,7 +354,7 @@ class QueryExpander:
         Parse the generator response to extract individual expanded queries.
 
         :param generator_response: The raw text response from the generator.
-        :return: List of parsed expanded queries.
+        :return: List of parsed expanded queries, deduplicated in first-seen order.
         """
         parsed = _parse_dict_from_json(generator_response, expected_keys=["queries"], raise_on_failure=False)
 
@@ -364,9 +369,13 @@ class QueryExpander:
             return []
 
         queries = []
+        seen: set[str] = set()
         for item in parsed["queries"]:
             if isinstance(item, str) and item.strip():
-                queries.append(item.strip())
+                stripped = item.strip()
+                if stripped not in seen:
+                    seen.add(stripped)
+                    queries.append(stripped)
             else:
                 logger.warning("Skipping non-string or empty query in response: {item}", item=item)
 

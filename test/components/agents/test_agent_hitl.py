@@ -119,7 +119,7 @@ class TestAgent:
                 "raise_on_tool_invocation_failure": False,
                 "tool_concurrency_limit": 4,
                 "tool_streaming_callback_passthrough": False,
-                "required_variables": None,
+                "required_variables": "*",
                 "user_prompt": None,
                 "hooks": {
                     "before_tool": [
