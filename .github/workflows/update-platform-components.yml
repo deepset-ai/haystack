@@ -22,14 +22,14 @@ jobs:
 
     steps:
       - name: Checkout deepset-ai/haystack
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           token: ${{ secrets.HAYSTACK_BOT_TOKEN }}
           # Full history so git diff against HEAD works correctly
           fetch-depth: 0
 
       - name: Checkout deepset-ai/haystack-core-integrations
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: deepset-ai/haystack-core-integrations
           path: haystack-core-integrations
@@ -38,7 +38,7 @@ jobs:
           sparse-checkout-cone-mode: true
 
       - name: Checkout platform repo (sparse — schema file only)
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: ${{ secrets.SCHEMA_REPO }}
           token: ${{ secrets.PLATFORM_REPO_PAT }}
