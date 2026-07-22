@@ -69,7 +69,6 @@ Extend agent behavior with lifecycle hooks (`before_llm`, `before_tool`, `on_exi
 **Built for context engineering**  
 Design flexible systems with explicit control over how information is retrieved, ranked, filtered, combined, structured, and routed before it reaches the model. Define pipelines and agent workflows where retrieval, memory, tools, and generation are transparent and traceable.
 
-**Unified pipelines, sync and async**  
 **Native Async Support**  
 One `Pipeline` runs synchronously or asynchronously and streams token by token. `Agent` can run concurrent tool calls.  
 
