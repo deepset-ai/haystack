@@ -66,7 +66,15 @@ Called automatically on first use. Can be called explicitly to avoid cold-start 
 #### run
 
 ```python
-run(query: str) -> dict[str, list[Document] | list[str]]
+run(
+    query: str,
+    top_k: int | None = None,
+    *,
+    backend: str | None = None,
+    region: str | None = None,
+    safesearch: str | None = None,
+    search_params: dict[str, Any] | None = None
+) -> dict[str, list[Document] | list[str]]
 ```
 
 Use ddgs to search the web.
@@ -74,6 +82,16 @@ Use ddgs to search the web.
 **Parameters:**
 
 - **query** (<code>str</code>) – Search query.
+- **top_k** (<code>int | None</code>) – Optional per-run override of the maximum number of results. If not provided, the
+  init-time `top_k` is used.
+- **backend** (<code>str | None</code>) – Optional per-run override of the ddgs backends. If not provided, the init-time
+  `backend` is used.
+- **region** (<code>str | None</code>) – Optional per-run override of the region/locale. If not provided, the init-time
+  `region` is used.
+- **safesearch** (<code>str | None</code>) – Optional per-run override of the safe-search level. If not provided, the init-time
+  `safesearch` is used.
+- **search_params** (<code>dict\[str, Any\] | None</code>) – Optional per-run override of the extra `DDGS().text()` arguments. If provided, fully
+  replaces the init-time `search_params`.
 
 **Returns:**
 
@@ -84,7 +102,15 @@ Use ddgs to search the web.
 #### run_async
 
 ```python
-run_async(query: str) -> dict[str, list[Document] | list[str]]
+run_async(
+    query: str,
+    top_k: int | None = None,
+    *,
+    backend: str | None = None,
+    region: str | None = None,
+    safesearch: str | None = None,
+    search_params: dict[str, Any] | None = None
+) -> dict[str, list[Document] | list[str]]
 ```
 
 Asynchronously use ddgs to search the web.
@@ -95,6 +121,16 @@ and return values as :meth:`run`.
 **Parameters:**
 
 - **query** (<code>str</code>) – Search query.
+- **top_k** (<code>int | None</code>) – Optional per-run override of the maximum number of results. If not provided, the
+  init-time `top_k` is used.
+- **backend** (<code>str | None</code>) – Optional per-run override of the ddgs backends. If not provided, the init-time
+  `backend` is used.
+- **region** (<code>str | None</code>) – Optional per-run override of the region/locale. If not provided, the init-time
+  `region` is used.
+- **safesearch** (<code>str | None</code>) – Optional per-run override of the safe-search level. If not provided, the init-time
+  `safesearch` is used.
+- **search_params** (<code>dict\[str, Any\] | None</code>) – Optional per-run override of the extra `DDGS().text()` arguments. If provided, fully
+  replaces the init-time `search_params`.
 
 **Returns:**
 
