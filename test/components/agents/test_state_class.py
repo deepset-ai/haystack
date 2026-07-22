@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import inspect
+import logging
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Dict, Generic, List, Optional, TypeVar, Union
@@ -513,12 +514,15 @@ class TestState:
             },
         }
 
-    def test_state_to_dict_omits_non_serializable_field(self):
-        # A non-serializable value must not crash serialization: only that field is omitted.
+    def test_state_to_dict_omits_non_serializable_field(self, caplog):
+        # A non-serializable value must not crash serialization: only that field is omitted,
+        # and a warning is logged.
         state = State({"good": {"type": int}, "bad": {"type": object}}, {"good": 1, "bad": datetime(2024, 1, 1)})
-        state_dict = state.to_dict()
+        with caplog.at_level(logging.WARNING):
+            state_dict = state.to_dict()
         assert state_dict["data"]["serialized_data"] == {"good": 1}
         assert "bad" not in state_dict["data"]["serialization_schema"]["properties"]
+        assert any("Failed to serialize the 'bad' field of the agent's State data" in msg for msg in caplog.messages)
 
     def test_state_from_dict_typing_list(self):
         state_dict = {
