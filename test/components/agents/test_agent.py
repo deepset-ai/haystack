@@ -16,15 +16,10 @@ from openai import Stream
 from openai.types.chat import ChatCompletionChunk, chat_completion_chunk
 
 from haystack import Document, Pipeline, component, tracing
-from haystack.components.agents.agent import (
-    Agent,
-    _accumulate_usage,
-    _context_tokens_from_usage,
-    _record_context_tokens,
-    _select_tools_by_name,
-)
+from haystack.components.agents.agent import Agent, _accumulate_usage, _select_tools_by_name
 from haystack.components.agents.state import State, merge_lists, replace_values
 from haystack.components.agents.tool_calling import _run_tool
+from haystack.components.agents.utils import _context_tokens_from_usage, _record_context_tokens
 from haystack.components.builders.chat_prompt_builder import ChatPromptBuilder
 from haystack.components.builders.prompt_builder import PromptBuilder
 from haystack.components.generators.chat import MockChatGenerator
@@ -235,9 +230,10 @@ class TestAgent:
         assert {"step_count", "token_usage", "tool_call_counts", "exit_reason"}.isdisjoint(
             agent.__haystack_input__._sockets_dict.keys()
         )
-        # context_tokens is internal: exposed as neither an input nor an output socket
-        assert "context_tokens" not in agent.__haystack_input__._sockets_dict
-        assert "context_tokens" not in agent.__haystack_output__._sockets_dict
+        # Internal-only state keys (those that are not also run parameters) are exposed as neither inputs nor outputs.
+        for internal_key in ("continue_run", "context_tokens"):
+            assert internal_key not in agent.__haystack_input__._sockets_dict
+            assert internal_key not in agent.__haystack_output__._sockets_dict
 
     def test_to_dict(self, weather_tool, component_tool, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "fake-key")
