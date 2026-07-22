@@ -347,7 +347,7 @@ def test_from_dict_with_flat_meta():
 
 def test_to_dict_from_dict_roundtrip_with_meta_key_named_meta():
     """
-    Regression test: a metadata key literally named "meta" must survive the default
+    A metadata key literally named "meta" must survive the default
     to_dict(flatten=True)/from_dict() round-trip.
     """
     doc = Document(content="hi", meta={"meta": "value"})
