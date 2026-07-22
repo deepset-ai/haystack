@@ -10,11 +10,7 @@ from haystack.dataclasses import ChatMessage
 
 
 class TestContextTokensFromUsage:
-    """`_context_tokens_from_usage` normalizes real provider `meta["usage"]` shapes to input + output tokens.
-
-    Fixtures below are the actual shapes these providers report (nested detail dicts and all), so the test pins
-    the normalization against reality rather than a simplified stand-in.
-    """
+    """`_context_tokens_from_usage` normalizes real provider `meta["usage"]` shapes to input + output tokens."""
 
     # OpenAI Chat Completions (core repo): `_serialize_object(completion.usage)` -> the full CompletionUsage dump.
     OPENAI_CHAT_USAGE = {
@@ -29,8 +25,7 @@ class TestContextTokensFromUsage:
             "rejected_prediction_tokens": 0,
         },
     }
-    # OpenAI Responses API (core repo): the only Haystack generator that uses input/output keys, each with a
-    # details dict.
+    # OpenAI Responses API (core repo).
     OPENAI_RESPONSES_USAGE = {
         "input_tokens": 75,
         "input_tokens_details": {"cached_tokens": 0},
@@ -38,8 +33,7 @@ class TestContextTokensFromUsage:
         "output_tokens_details": {"reasoning_tokens": 1024},
         "total_tokens": 1261,
     }
-    # Anthropic chat generator (integration): remaps input/output -> prompt/completion and keeps the cache
-    # accounting (incl. the nested cache_creation breakdown).
+    # Anthropic chat generator (integration): remaps input/output -> prompt/completion.
     ANTHROPIC_USAGE = {
         "prompt_tokens": 2095,
         "completion_tokens": 503,
@@ -48,7 +42,7 @@ class TestContextTokensFromUsage:
         "cache_creation": {"ephemeral_5m_input_tokens": 0, "ephemeral_1h_input_tokens": 0},
         "service_tier": "standard",
     }
-    # Amazon Bedrock chat generator (integration): prompt/completion/total plus cache accounting.
+    # Amazon Bedrock chat generator (integration).
     BEDROCK_USAGE = {
         "prompt_tokens": 340,
         "completion_tokens": 92,
@@ -97,20 +91,13 @@ class TestRecordContextTokens:
         state.set("context_tokens", 0)
         return state
 
-    def test_records_latest_reply_usage(self):
+    def test_records_latest_reply_usage_replacing_previous_value(self):
         state = self._state()
+        state.set("context_tokens", 999)
         _record_context_tokens(
             state, [ChatMessage.from_assistant("Hi", meta={"usage": {"prompt_tokens": 12, "completion_tokens": 3}})]
         )
         assert state.get("context_tokens") == 15
-
-    def test_replaces_rather_than_accumulates(self):
-        state = self._state()
-        state.set("context_tokens", 999)
-        _record_context_tokens(
-            state, [ChatMessage.from_assistant("Hi", meta={"usage": {"prompt_tokens": 4, "completion_tokens": 1}})]
-        )
-        assert state.get("context_tokens") == 5
 
     def test_no_messages_leaves_value_untouched(self):
         state = self._state()
@@ -119,7 +106,6 @@ class TestRecordContextTokens:
         assert state.get("context_tokens") == 42
 
     def test_missing_or_empty_usage_leaves_value_untouched(self):
-        # A reply without usage (or with empty usage) must not clobber the previous value, including the initial 0.
         state = self._state()
         _record_context_tokens(state, [ChatMessage.from_assistant("no usage here")])
         _record_context_tokens(state, [ChatMessage.from_assistant("empty", meta={"usage": {}})])

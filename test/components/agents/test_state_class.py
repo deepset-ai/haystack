@@ -351,7 +351,7 @@ class TestState:
 
     def test_schema_to_dict_with_handlers(self, complex_schema):
         expected_dict = {
-            "numbers": {"type": "list", "handler": "test_state_class.numbers_handler"},
+            "numbers": {"type": "list", "handler": "agents.test_state_class.numbers_handler"},
             "metadata": {"type": "dict"},
             "name": {"type": "str"},
         }
@@ -365,7 +365,7 @@ class TestState:
 
     def test_schema_from_dict_with_handlers(self, complex_schema):
         schema_dict = {
-            "numbers": {"type": "list", "handler": "test_state_class.numbers_handler"},
+            "numbers": {"type": "list", "handler": "agents.test_state_class.numbers_handler"},
             "metadata": {"type": "dict"},
             "name": {"type": "str"},
         }
