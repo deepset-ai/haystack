@@ -254,28 +254,136 @@ class TestPipelineBase:
         component_2 = component_class("Type2")()
         component_3 = component_class("Type3")()
         component_4 = component_class("Type4")()
+        isolated = component_class("Isolated")()
 
         pipe.add_component("1", component_1)
         pipe.add_component("2", component_2)
         pipe.add_component("3", component_3)
         pipe.add_component("4", component_4)
+        pipe.add_component("isolated", isolated)
 
         pipe.connect("1", "2")
         pipe.connect("2", "3")
         pipe.connect("3", "4")
 
         pipe.remove_component("2")
+        # Removing a component with no connections at all is a safe no-op over its (empty) edge sets.
+        removed_isolated = pipe.remove_component("isolated")
 
         assert sorted(pipe.graph.nodes) == ["1", "3", "4"]
         assert sorted([(u, v) for (u, v) in pipe.graph.edges()]) == [("3", "4")]
+        assert removed_isolated.__haystack_added_to_pipeline__ is None  # type: ignore[attr-defined]
+
+    def test_remove_component_middle_of_chain_removal(self):
+        """Removing a component that is both a downstream and an upstream neighbor cleans up both sides."""
+        pipe = PipelineBase()
+        producer_class = component_class("Producer", input_types={}, output_types={"value": int})
+        middle_class = component_class("Middle", input_types={"value": int}, output_types={"value": int})
+        consumer_class = component_class("Consumer", input_types={"value": int})
+        pipe.add_component("producer", producer_class())
+        pipe.add_component("middle", middle_class())
+        pipe.add_component("consumer", consumer_class())
+        pipe.connect("producer.value", "middle.value")
+        pipe.connect("middle.value", "consumer.value")
+
+        pipe.remove_component("middle")
+
+        producer_socket = pipe.get_component("producer").__haystack_output__._sockets_dict["value"]  # type: ignore[attr-defined]
+        consumer_socket = pipe.get_component("consumer").__haystack_input__._sockets_dict["value"]  # type: ignore[attr-defined]
+        # Both the upstream and the downstream neighbor must be cleaned of the removed component.
+        assert producer_socket.receivers == []
+        assert consumer_socket.senders == []
+        # With the stale sender gone, the now-unconnected mandatory input is exposed again.
+        assert pipe.inputs() == {"consumer": {"value": {"type": int, "is_mandatory": True}}}
+        # Feeding it directly must not raise a spurious "already connected" error.
+        pipe.validate_input({"consumer": {"value": 5}})
+
+    def test_remove_component_fan_out(self):
+        """Removing a sender that fans out to multiple receivers cleans up every receiver, not just one."""
+        pipe = PipelineBase()
+        producer_class = component_class("Producer", output_types={"value": int})
+        consumer_a_class = component_class("ConsumerA", input_types={"value": int})
+        consumer_b_class = component_class("ConsumerB", input_types={"value": int})
+        pipe.add_component("producer", producer_class())
+        pipe.add_component("consumer_a", consumer_a_class())
+        pipe.add_component("consumer_b", consumer_b_class())
+        pipe.connect("producer.value", "consumer_a.value")
+        pipe.connect("producer.value", "consumer_b.value")
+
+        pipe.remove_component("producer")
+
+        consumer_a_socket = pipe.get_component("consumer_a").__haystack_input__._sockets_dict["value"]  # type: ignore[attr-defined]
+        consumer_b_socket = pipe.get_component("consumer_b").__haystack_input__._sockets_dict["value"]  # type: ignore[attr-defined]
+        # Every receiver of the removed sender's output must be cleaned, not just the first one.
+        assert consumer_a_socket.senders == []
+        assert consumer_b_socket.senders == []
+
+    def test_remove_component_fan_in(self):
+        """Removing a receiver fed by multiple senders cleans up every sender, not just one."""
+        pipe = PipelineBase()
+        producer_a_class = component_class("ProducerA", output_types={"value": int})
+        producer_b_class = component_class("ProducerB", output_types={"value": int})
+        consumer_class = component_class("Consumer", input_types={"value": list[int]})
+        pipe.add_component("producer_a", producer_a_class())
+        pipe.add_component("producer_b", producer_b_class())
+        pipe.add_component("consumer", consumer_class())
+        pipe.connect("producer_a.value", "consumer.value")
+        pipe.connect("producer_b.value", "consumer.value")
+
+        pipe.remove_component("consumer")
+
+        producer_a_socket = pipe.get_component("producer_a").__haystack_output__._sockets_dict["value"]  # type: ignore[attr-defined]
+        producer_b_socket = pipe.get_component("producer_b").__haystack_output__._sockets_dict["value"]  # type: ignore[attr-defined]
+        # Every sender of the removed receiver must be cleaned, not just the first one.
+        assert producer_a_socket.receivers == []
+        assert producer_b_socket.receivers == []
+
+    def test_remove_component_variadic_multi_sender(self):
+        """Removing one sender of a variadic receiver only strips itself, leaving the other senders intact."""
+        pipe = PipelineBase()
+        producer_a_class = component_class("ProducerA", output_types={"value": int})
+        producer_b_class = component_class("ProducerB", output_types={"value": int})
+        consumer_class = component_class("Consumer", input_types={"value": list[int]})
+        pipe.add_component("producer_a", producer_a_class())
+        pipe.add_component("producer_b", producer_b_class())
+        pipe.add_component("consumer", consumer_class())
+        pipe.connect("producer_a.value", "consumer.value")
+        pipe.connect("producer_b.value", "consumer.value")
+
+        consumer_socket = pipe.get_component("consumer").__haystack_input__._sockets_dict["value"]  # type: ignore[attr-defined]
+        assert consumer_socket.is_variadic
+        assert sorted(consumer_socket.senders) == ["producer_a", "producer_b"]
+
+        pipe.remove_component("producer_a")
+
+        # Only the removed sender is stripped; the surviving sender must remain in the list.
+        assert consumer_socket.senders == ["producer_b"]
+
+    def test_remove_component_multiple_connections_to_same_neighbor(self):
+        """Removing a component with several parallel connections to the same neighbor cleans up all of them."""
+        pipe = PipelineBase()
+        producer_class = component_class("Producer", output_types={"first": int, "second": int})
+        consumer_class = component_class("Consumer", input_types={"first": int, "second": int})
+        pipe.add_component("producer", producer_class())
+        pipe.add_component("consumer", consumer_class())
+        pipe.connect("producer.first", "consumer.first")
+        pipe.connect("producer.second", "consumer.second")
+
+        pipe.remove_component("producer")
+
+        consumer_first_socket = pipe.get_component("consumer").__haystack_input__._sockets_dict["first"]  # type: ignore[attr-defined]
+        consumer_second_socket = pipe.get_component("consumer").__haystack_input__._sockets_dict["second"]  # type: ignore[attr-defined]
+        # Both parallel connections between the same pair of components must be cleaned up.
+        assert consumer_first_socket.senders == []
+        assert consumer_second_socket.senders == []
 
     def test_remove_component_allows_you_to_reuse_the_component(self):
         pipe = PipelineBase()
-        Some = component_class("Some", input_types={"in": int}, output_types={"out": int})
+        some = component_class("Some", input_types={"in": int}, output_types={"out": int})
 
-        pipe.add_component("component_1", Some())
-        pipe.add_component("component_2", Some())
-        pipe.add_component("component_3", Some())
+        pipe.add_component("component_1", some())
+        pipe.add_component("component_2", some())
+        pipe.add_component("component_3", some())
         pipe.connect("component_1", "component_2")
         pipe.connect("component_2", "component_3")
         component_2 = pipe.remove_component("component_2")
@@ -289,9 +397,9 @@ class TestPipelineBase:
         }
 
         pipe2 = PipelineBase()
-        pipe2.add_component("component_4", Some())
+        pipe2.add_component("component_4", some())
         pipe2.add_component("component_2", component_2)
-        pipe2.add_component("component_5", Some())
+        pipe2.add_component("component_5", some())
 
         pipe2.connect("component_4", "component_2")
         pipe2.connect("component_2", "component_5")
