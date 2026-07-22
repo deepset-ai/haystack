@@ -167,8 +167,7 @@ class Document(metaclass=_BackwardCompatible):  # noqa: PLW1641
         flatten_meta = {}
         # A non-mapping value under the "meta" key can't be the `meta` parameter (which must be a
         # dictionary). It can only be a flattened metadata key literally named "meta", produced by
-        # to_dict(flatten=True) for a document whose metadata contains a "meta" key. Treat it as such
-        # so the value is preserved instead of being splatted into a `dict`, which would raise.
+        # to_dict(flatten=True) for a document whose metadata contains a "meta" key.
         if not isinstance(meta, dict):
             flatten_meta["meta"] = meta
             meta = {}
