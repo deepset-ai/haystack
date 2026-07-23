@@ -386,31 +386,27 @@ def import_class_by_name(fully_qualified_name: str) -> type[object]:
     return _import_class_by_name(fully_qualified_name)
 
 
-def _resolve_coercible_class(type_: Any) -> Any:
+def _coercible_classes(type_: Any) -> set[type]:
     """
-    Resolve the class that can deserialize values of `type_` from a plain dictionary.
+    Collect the distinct classes involved in `type_` that can deserialize a plain dictionary.
 
     A class is coercible if it exposes a `from_dict` method (Haystack dataclasses and Components), is a Pydantic
-    model, or is a standard-library dataclass. Handles plain classes, `list[T]`, and optionals/unions of those.
-    In unions, the first arm resolving to a coercible class wins.
+    model, or is a standard-library dataclass. Follows `list[T]` and optionals/unions of those.
 
     :param type_: The type to inspect.
-    :returns: The resolved class, or None if `type_` involves no coercible class.
+    :returns: The set of coercible classes `type_` involves (empty if none).
     """
     if _is_union_type(type_):
+        classes: set[type] = set()
         for arm in get_args(type_):
-            resolved = _resolve_coercible_class(arm)
-            if resolved is not None:
-                return resolved
-        return None
+            classes |= _coercible_classes(arm)
+        return classes
     if get_origin(type_) is list:
         args = get_args(type_)
-        return _resolve_coercible_class(args[0]) if args else None
-    if not isinstance(type_, type):
-        return None
-    if hasattr(type_, "from_dict") or issubclass(type_, BaseModel) or is_dataclass(type_):
-        return type_
-    return None
+        return _coercible_classes(args[0]) if args else set()
+    if isinstance(type_, type) and (hasattr(type_, "from_dict") or issubclass(type_, BaseModel) or is_dataclass(type_)):
+        return {type_}
+    return set()
 
 
 def _deserialize_one(value: dict[str, Any], target_class: Any) -> Any:
@@ -449,11 +445,25 @@ def _deserialize_from_dict(value: Any, target_class: Any) -> Any:
     return value
 
 
+def _needs_coercion(value: Any) -> bool:
+    """Whether `value` carries dictionaries that could be deserialized (a dict, or a list containing one)."""
+    return isinstance(value, dict) or (isinstance(value, list) and any(isinstance(item, dict) for item in value))
+
+
 def _coerce_input_value(value: Any, socket_types: list[Any]) -> Any:
+    if not _needs_coercion(value):
+        return value
     for type_ in socket_types:
-        target_class = _resolve_coercible_class(type_)
-        if target_class is not None:
-            return _deserialize_from_dict(value, target_class)
+        classes = _coercible_classes(type_)
+        if len(classes) > 1:
+            names = ", ".join(sorted(cls.__name__ for cls in classes))
+            raise DeserializationError(
+                f"Cannot coerce input for socket type '{type_}': it has multiple deserializable members "
+                f"({names}) and the serialized payload carries no type information to choose between them. "
+                f"Provide this input as an already-deserialized object."
+            )
+        if classes:
+            return _deserialize_from_dict(value, next(iter(classes)))
     return value
 
 
@@ -465,7 +475,9 @@ def coerce_pipeline_inputs(pipeline: "PipelineBase", data: dict[str, Any]) -> di
     converted into instances of that class. A class is coercible if it exposes a `from_dict` method (such as
     `ChatMessage` or `Document`), is a Pydantic model, or is a standard-library dataclass. Socket types of the
     form `T`, `list[T]`, and optionals/unions of those are supported. Values that are already deserialized, or
-    whose socket types involve no coercible class, are returned unchanged.
+    whose socket types involve no coercible class, are returned unchanged. A socket type that involves more than
+    one distinct coercible class (such as `GeneratedAnswer | ExtractedAnswer`) is ambiguous, since the payload
+    carries no type information to select one; coercing a dictionary against it raises a `DeserializationError`.
 
     The dictionaries are expected to be in the format produced by the class's serialization: `to_dict` for
     `from_dict`-capable classes, `model_dump` for Pydantic models, and `dataclasses.asdict` for standard-library
@@ -487,6 +499,8 @@ def coerce_pipeline_inputs(pipeline: "PipelineBase", data: dict[str, Any]) -> di
     :param pipeline: The pipeline whose input socket types drive the coercion.
     :param data: The pipeline input data, in nested or flat format.
     :returns: A new dictionary with the same structure as `data` and deserialized values.
+    :raises DeserializationError: If a socket type involves more than one distinct coercible class and the
+        corresponding value is a serialized dictionary.
     :raises Exception: Any error raised while deserializing a dictionary that does not match the expected format,
         such as a `from_dict` error or a Pydantic `ValidationError`.
     """

@@ -11,8 +11,8 @@ from haystack import logging
 from haystack.components.agents.state.state import State
 from haystack.core.component import Component
 from haystack.core.serialization import (
+    _coercible_classes,
     _deserialize_from_dict,
-    _resolve_coercible_class,
     component_from_dict,
     component_to_dict,
     generate_qualified_class_name,
@@ -392,10 +392,10 @@ class ComponentTool(Tool):
         :returns:
             The converted parameter value.
         """
-        # Types involving a coercible class (e.g. list[ChatMessage] | None) are deserialized element-wise via
-        # that class; everything else is validated with Pydantic.
-        target_class = _resolve_coercible_class(param_type)
-        if target_class is not None:
-            return _deserialize_from_dict(param_value, target_class)
+        # Types involving a single coercible class (e.g. list[ChatMessage] | None) are deserialized element-wise
+        # via that class; everything else is validated with Pydantic.
+        classes = _coercible_classes(param_type)
+        if len(classes) == 1:
+            return _deserialize_from_dict(param_value, next(iter(classes)))
 
         return TypeAdapter(param_type).validate_python(param_value)

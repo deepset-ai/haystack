@@ -12,6 +12,8 @@ import pytest
 from pydantic import BaseModel
 
 from haystack import Document
+from haystack.components.converters.txt import TextFileToDocument
+from haystack.components.generators.chat import OpenAIChatGenerator
 from haystack.components.joiners import BranchJoiner
 from haystack.core.component import component
 from haystack.core.errors import DeserializationError, SerializationError
@@ -29,6 +31,7 @@ from haystack.dataclasses import (
     ByteStream,
     ChatMessage,
     ChatRole,
+    ExtractedAnswer,
     FileContent,
     GeneratedAnswer,
     ImageContent,
@@ -846,3 +849,48 @@ class TestCoercePipelineInputs:
         data = {"value": [message.to_dict() for message in messages], "unrelated": 1}
         coerced = coerce_pipeline_inputs(pipe, data)
         assert coerced["value"] == messages
+
+    def test_chat_generator_messages_socket(self):
+        # OpenAIChatGenerator's `messages` socket is `list[ChatMessage] | str`: the list of serialized messages
+        # is coerced, since ChatMessage is the only coercible member of the union.
+        pipe = Pipeline()
+        pipe.add_component("generator", OpenAIChatGenerator(api_key=Secret.from_token("test-key")))
+        messages = [ChatMessage.from_user("Hi"), ChatMessage.from_system("Sys")]
+        data = {"generator": {"messages": [message.to_dict() for message in messages]}}
+        coerced = coerce_pipeline_inputs(pipe, data)
+        assert coerced == {"generator": {"messages": messages}}
+
+    def test_chat_generator_messages_socket_string_passes_through(self):
+        # The `str` arm of `list[ChatMessage] | str` is not coercible, so a bare string is left untouched.
+        pipe = Pipeline()
+        pipe.add_component("generator", OpenAIChatGenerator(api_key=Secret.from_token("test-key")))
+        data = {"generator": {"messages": "just a string"}}
+        coerced = coerce_pipeline_inputs(pipe, data)
+        assert coerced == {"generator": {"messages": "just a string"}}
+
+    def test_converter_sources_socket(self):
+        # A converter's `sources` socket is `list[str | Path | ByteStream]`: ByteStream is the only coercible
+        # member, so a serialized ByteStream is coerced while plain string paths pass through.
+        pipe = Pipeline()
+        pipe.add_component("converter", TextFileToDocument())
+        byte_stream = ByteStream(data=b"hello", mime_type="text/plain")
+        data = {"converter": {"sources": ["/path/to/file.txt", byte_stream.to_dict()]}}
+        coerced = coerce_pipeline_inputs(pipe, data)
+        assert coerced["converter"]["sources"] == ["/path/to/file.txt", byte_stream]
+
+    def test_ambiguous_union_socket_raises(self):
+        # A socket that involves more than one coercible class cannot be disambiguated from the payload.
+        pipe = Pipeline()
+        pipe.add_component("echo", TypedEcho(GeneratedAnswer | ExtractedAnswer))
+        answer = GeneratedAnswer(data="a", query="q", documents=[])
+        data = {"echo": {"value": answer.to_dict()}}
+        with pytest.raises(DeserializationError, match="multiple deserializable members"):
+            coerce_pipeline_inputs(pipe, data)
+
+    def test_ambiguous_union_socket_passes_through_instances(self):
+        # An already-deserialized value needs no coercion, so an ambiguous socket does not raise for it.
+        pipe = Pipeline()
+        pipe.add_component("echo", TypedEcho(GeneratedAnswer | ExtractedAnswer))
+        answer = GeneratedAnswer(data="a", query="q", documents=[])
+        coerced = coerce_pipeline_inputs(pipe, {"echo": {"value": answer}})
+        assert coerced["echo"]["value"] is answer
