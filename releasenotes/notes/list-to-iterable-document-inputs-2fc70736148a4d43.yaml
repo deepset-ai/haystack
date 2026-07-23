@@ -1,0 +1,7 @@
+---
+enhancements:
+  - |
+    Changed the ``documents`` parameter type from ``list[Document]`` to ``Iterable[Document]`` in the ``run()``
+    and ``run_async()`` methods of ``DocumentWriter``, ``DocumentCleaner``, and ``DocumentLengthRouter``.
+    This allows callers to pass generators or other lazy sequences directly without first materialising them
+    into a list. Components that require list operations internally convert the input with ``list(documents)``.

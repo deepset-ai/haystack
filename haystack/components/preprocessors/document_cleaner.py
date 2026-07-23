@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import re
-from collections.abc import Generator
+from collections.abc import Generator, Iterable
 from copy import deepcopy
 from functools import partial, reduce
 from itertools import chain
@@ -101,19 +101,20 @@ class DocumentCleaner:
             raise ValueError("unicode_normalization must be one of 'NFC', 'NFKC', 'NFD', 'NFKD'.")
 
     @component.output_types(documents=list[Document])
-    def run(self, documents: list[Document]) -> dict[str, list[Document]]:
+    def run(self, documents: Iterable[Document]) -> dict[str, list[Document]]:
         """
         Cleans up the documents.
 
-        :param documents: List of Documents to clean.
+        :param documents: Iterable of Documents to clean.
 
         :returns: A dictionary with the following key:
             - `documents`: List of cleaned Documents.
 
-        :raises TypeError: if documents is not a list of Documents.
+        :raises TypeError: if documents is not an iterable of Documents.
         """
-        if not isinstance(documents, list) or documents and not isinstance(documents[0], Document):
-            raise TypeError("DocumentCleaner expects a List of Documents as input.")
+        documents = list(documents)
+        if documents and not isinstance(documents[0], Document):
+            raise TypeError("DocumentCleaner expects an Iterable of Documents as input.")
 
         cleaned_docs = []
         for doc in documents:
