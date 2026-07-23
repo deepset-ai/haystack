@@ -708,18 +708,28 @@ class SerializationEnvelope(BaseModel):
     value: Any
 
 
-def serialize_for_client(instance: Any) -> Any:
+def serialize_with_haystack(instance: Any) -> Any:
+    """Serialize the way a client using Haystack's own methods does: via `to_dict`."""
+    return instance.to_dict()
+
+
+def serialize_with_pydantic(instance: Any) -> Any:
     """
-    Serialize an instance the way a FastAPI app does: instances arrive inside a loosely-typed Pydantic field,
-    so Pydantic (not to_dict) produces the JSON payload.
+    Serialize the way a FastAPI app does: instances arrive inside a loosely-typed Pydantic field, so Pydantic
+    (not `to_dict`) produces the JSON payload.
     """
     return SerializationEnvelope(value=instance).model_dump(mode="json")["value"]
 
 
 TOOL_CALL = ToolCall(tool_name="t", arguments={"a": 1}, id="1")
 
-COERCIBLE_INSTANCES = [
-    # We create a fully loaded Document to test all fields serializations
+# A fully loaded ByteStream. It round-trips through `to_dict` (a list of ints) but not through Pydantic, which
+# serializes the bytes field as a JSON string that ByteStream.from_dict cannot rebuild.
+BYTE_STREAM = ByteStream(data=b"hello", mime_type="text/plain", meta={"k": "v"})
+
+# Instances serializable by both a Haystack `to_dict` and a Pydantic `model_dump`. Fully loaded where possible:
+# a Document with all non-bytes fields and a ChatMessage with every content-part type.
+SHARED_ROUND_TRIP_INSTANCES = [
     pytest.param(
         Document(
             content="Hello",
@@ -730,7 +740,6 @@ COERCIBLE_INSTANCES = [
         ),
         id="Document",
     ),
-    # We create a fully loaded ChatMessage to test all possible content type serializations
     pytest.param(
         ChatMessage(
             _role=ChatRole.ASSISTANT,
@@ -747,61 +756,57 @@ COERCIBLE_INSTANCES = [
         ),
         id="ChatMessage",
     ),
-    pytest.param(
-        ByteStream(data=b"hello", mime_type="text/plain", meta={"k": "v"}),
-        id="ByteStream",
-        marks=pytest.mark.xfail(
-            reason="Pydantic serializes the bytes field as a JSON string that ByteStream.from_dict cannot rebuild",
-            raises=TypeError,
-            strict=True,
-        ),
-    ),
     pytest.param(GeneratedAnswer(data="answer", query="q", documents=[Document(content="d")]), id="GeneratedAnswer"),
     pytest.param(ImageContent(base64_image="aGVsbG8=", mime_type="image/png"), id="ImageContent"),
-    pytest.param(PydanticModel(a=1, b="x"), id="pydantic-model"),
-    pytest.param(PlainDataclass(name="x", count=2), id="stdlib-dataclass"),
-    pytest.param(
-        Conversation(messages=[ChatMessage.from_user("Hi")], documents=[Document(content="D")]),
-        id="pydantic-model-nesting-haystack",
-    ),
 ]
 
 
-class TestCoercePipelineInputsRoundTrip:
-    """Serialized output is coerced back to an equal instance for every coercible class."""
-
-    @pytest.mark.parametrize("instance", COERCIBLE_INSTANCES)
-    def test_single_socket(self, instance):
-        pipe = Pipeline()
-        pipe.add_component("echo", TypedEcho(type(instance)))
-        coerced = coerce_pipeline_inputs(pipe, {"echo": {"value": serialize_for_client(instance)}})
-        assert coerced["echo"]["value"] == instance
-
-    @pytest.mark.parametrize("instance", COERCIBLE_INSTANCES)
-    def test_list_socket(self, instance):
-        pipe = Pipeline()
-        pipe.add_component("echo", TypedEcho(list[type(instance)]))  # type: ignore[misc]
-        coerced = coerce_pipeline_inputs(pipe, {"echo": {"value": [serialize_for_client(instance)]}})
-        assert coerced["echo"]["value"] == [instance]
-
-    @pytest.mark.parametrize("instance", COERCIBLE_INSTANCES)
-    def test_optional_socket(self, instance):
-        pipe = Pipeline()
-        pipe.add_component("echo", TypedEcho(type(instance) | None))
-        coerced = coerce_pipeline_inputs(pipe, {"echo": {"value": serialize_for_client(instance)}})
-        assert coerced["echo"]["value"] == instance
+def pytest_generate_tests(metafunc):
+    # Drives the round-trip tests off each subclass's `instances` attribute, so the two serialization methods
+    # can cover different sets of instances while sharing the same test bodies.
+    if "coercible_instance" in metafunc.fixturenames and metafunc.cls is not None:
+        metafunc.parametrize("coercible_instance", metafunc.cls.instances)
 
 
-class TestCoercePipelineInputs:
+class CoercePipelineInputsTests:
+    """
+    Shared `coerce_pipeline_inputs` tests. Subclasses set `serialize` (the client-side serialization method) and
+    `instances` (the round-trip cases valid for that method).
+    """
+
+    @staticmethod
+    def serialize(instance: Any) -> Any:
+        raise NotImplementedError
+
+    instances: list[Any] = []
+
     @pytest.fixture
     def pipeline(self):
         pipe = Pipeline()
         pipe.add_component("echo", MultiInputEcho())
         return pipe
 
+    def test_single_socket(self, coercible_instance):
+        pipe = Pipeline()
+        pipe.add_component("echo", TypedEcho(type(coercible_instance)))
+        coerced = coerce_pipeline_inputs(pipe, {"echo": {"value": self.serialize(coercible_instance)}})
+        assert coerced["echo"]["value"] == coercible_instance
+
+    def test_list_socket(self, coercible_instance):
+        pipe = Pipeline()
+        pipe.add_component("echo", TypedEcho(list[type(coercible_instance)]))  # type: ignore[misc]
+        coerced = coerce_pipeline_inputs(pipe, {"echo": {"value": [self.serialize(coercible_instance)]}})
+        assert coerced["echo"]["value"] == [coercible_instance]
+
+    def test_optional_socket(self, coercible_instance):
+        pipe = Pipeline()
+        pipe.add_component("echo", TypedEcho(type(coercible_instance) | None))
+        coerced = coerce_pipeline_inputs(pipe, {"echo": {"value": self.serialize(coercible_instance)}})
+        assert coerced["echo"]["value"] == coercible_instance
+
     def test_nested_format(self, pipeline):
         messages = [ChatMessage.from_user("Hi"), ChatMessage.from_assistant("Hello")]
-        data: dict[str, Any] = {"echo": {"messages": [message.to_dict() for message in messages], "top_k": 5}}
+        data: dict[str, Any] = {"echo": {"messages": [self.serialize(message) for message in messages], "top_k": 5}}
         coerced = coerce_pipeline_inputs(pipeline, data)
         assert coerced == {"echo": {"messages": messages, "top_k": 5}}
         # the input data is not mutated
@@ -809,7 +814,7 @@ class TestCoercePipelineInputs:
 
     def test_flat_format(self, pipeline):
         messages = [ChatMessage.from_user("Hi")]
-        data = {"messages": [message.to_dict() for message in messages], "top_k": 5}
+        data = {"messages": [self.serialize(message) for message in messages], "top_k": 5}
         coerced = coerce_pipeline_inputs(pipeline, data)
         assert coerced == {"messages": messages, "top_k": 5}
 
@@ -821,9 +826,10 @@ class TestCoercePipelineInputs:
 
     def test_mixed_list(self, pipeline):
         message = ChatMessage.from_user("Hi")
-        data = {"echo": {"messages": [message, ChatMessage.from_assistant("Hello").to_dict()]}}
+        other = ChatMessage.from_assistant("Hello")
+        data = {"echo": {"messages": [message, self.serialize(other)]}}
         coerced = coerce_pipeline_inputs(pipeline, data)
-        assert coerced["echo"]["messages"] == [message, ChatMessage.from_assistant("Hello")]
+        assert coerced["echo"]["messages"] == [message, other]
 
     def test_non_coercible_values_untouched(self, pipeline):
         data = {"echo": {"messages": [], "top_k": 5, "config": {"a": 1}}}
@@ -831,22 +837,22 @@ class TestCoercePipelineInputs:
         assert coerced == data
 
     def test_unknown_inputs_untouched(self, pipeline):
-        message_dict = ChatMessage.from_user("Hi").to_dict()
-        data = {"unknown_input": [message_dict], "top_k": 5}
+        message = self.serialize(ChatMessage.from_user("Hi"))
+        data = {"unknown_input": [message], "top_k": 5}
         coerced = coerce_pipeline_inputs(pipeline, data)
-        assert coerced == {"unknown_input": [message_dict], "top_k": 5}
+        assert coerced == {"unknown_input": [message], "top_k": 5}
 
     def test_unknown_component_untouched(self, pipeline):
-        message_dict = ChatMessage.from_user("Hi").to_dict()
-        data = {"unknown_component": {"messages": [message_dict]}}
+        message = self.serialize(ChatMessage.from_user("Hi"))
+        data = {"unknown_component": {"messages": [message]}}
         coerced = coerce_pipeline_inputs(pipeline, data)
-        assert coerced == {"unknown_component": {"messages": [message_dict]}}
+        assert coerced == {"unknown_component": {"messages": [message]}}
 
     def test_variadic_socket(self):
         pipe = Pipeline()
         pipe.add_component("joiner", BranchJoiner(list[ChatMessage]))
         messages = [ChatMessage.from_user("Hi")]
-        data = {"value": [message.to_dict() for message in messages], "unrelated": 1}
+        data = {"value": [self.serialize(message) for message in messages], "unrelated": 1}
         coerced = coerce_pipeline_inputs(pipe, data)
         assert coerced["value"] == messages
 
@@ -856,7 +862,7 @@ class TestCoercePipelineInputs:
         pipe = Pipeline()
         pipe.add_component("generator", OpenAIChatGenerator(api_key=Secret.from_token("test-key")))
         messages = [ChatMessage.from_user("Hi"), ChatMessage.from_system("Sys")]
-        data = {"generator": {"messages": [message.to_dict() for message in messages]}}
+        data = {"generator": {"messages": [self.serialize(message) for message in messages]}}
         coerced = coerce_pipeline_inputs(pipe, data)
         assert coerced == {"generator": {"messages": messages}}
 
@@ -870,7 +876,8 @@ class TestCoercePipelineInputs:
 
     def test_converter_sources_socket(self):
         # A converter's `sources` socket is `list[str | Path | ByteStream]`: ByteStream is the only coercible
-        # member, so a serialized ByteStream is coerced while plain string paths pass through.
+        # member, so a serialized ByteStream is coerced while plain string paths pass through. ByteStream is
+        # serialized with `to_dict` regardless of the client, since it has no lossless Pydantic JSON form.
         pipe = Pipeline()
         pipe.add_component("converter", TextFileToDocument())
         byte_stream = ByteStream(data=b"hello", mime_type="text/plain")
@@ -883,7 +890,7 @@ class TestCoercePipelineInputs:
         pipe = Pipeline()
         pipe.add_component("echo", TypedEcho(GeneratedAnswer | ExtractedAnswer))
         answer = GeneratedAnswer(data="a", query="q", documents=[])
-        data = {"echo": {"value": answer.to_dict()}}
+        data = {"echo": {"value": self.serialize(answer)}}
         with pytest.raises(DeserializationError, match="multiple deserializable members"):
             coerce_pipeline_inputs(pipe, data)
 
@@ -894,3 +901,35 @@ class TestCoercePipelineInputs:
         answer = GeneratedAnswer(data="a", query="q", documents=[])
         coerced = coerce_pipeline_inputs(pipe, {"echo": {"value": answer}})
         assert coerced["echo"]["value"] is answer
+
+
+class TestCoercePipelineInputsHaystackSerialization(CoercePipelineInputsTests):
+    """Inputs serialized with Haystack's own `to_dict`."""
+
+    serialize = staticmethod(serialize_with_haystack)
+    instances = [*SHARED_ROUND_TRIP_INSTANCES, pytest.param(BYTE_STREAM, id="ByteStream")]
+
+
+class TestCoercePipelineInputsPydanticSerialization(CoercePipelineInputsTests):
+    """Inputs serialized with a Pydantic `model_dump`, as a FastAPI app does."""
+
+    serialize = staticmethod(serialize_with_pydantic)
+    instances = [
+        *SHARED_ROUND_TRIP_INSTANCES,
+        pytest.param(
+            BYTE_STREAM,
+            id="ByteStream",
+            marks=pytest.mark.xfail(
+                reason="Pydantic serializes the bytes field as a JSON string that ByteStream.from_dict cannot rebuild",
+                raises=TypeError,
+                strict=True,
+            ),
+        ),
+        # These types have no `to_dict`, so they only arise under Pydantic serialization.
+        pytest.param(PydanticModel(a=1, b="x"), id="pydantic-model"),
+        pytest.param(PlainDataclass(name="x", count=2), id="stdlib-dataclass"),
+        pytest.param(
+            Conversation(messages=[ChatMessage.from_user("Hi")], documents=[Document(content="D")]),
+            id="pydantic-model-nesting-haystack",
+        ),
+    ]
