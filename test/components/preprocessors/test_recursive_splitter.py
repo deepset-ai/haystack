@@ -502,7 +502,7 @@ def test_run_split_by_dot_count_page_breaks_word_unit() -> None:
 
     documents = document_splitter.run(documents=[Document(content=text)])["documents"]
 
-    assert len(documents) == 8
+    assert len(documents) == 7
     assert documents[0].content == "Sentence on page 1."
     assert documents[0].meta["page_number"] == 1
     assert documents[0].meta["split_id"] == 0
@@ -533,15 +533,10 @@ def test_run_split_by_dot_count_page_breaks_word_unit() -> None:
     assert documents[5].meta["split_id"] == 5
     assert documents[5].meta["split_idx_start"] == text.index(documents[5].content)
 
-    assert documents[6].content == "\f\f Sentence on page"
+    assert documents[6].content == "\f\f Sentence on page 5."
     assert documents[6].meta["page_number"] == 5
     assert documents[6].meta["split_id"] == 6
     assert documents[6].meta["split_idx_start"] == text.index(documents[6].content)
-
-    assert documents[7].content == " 5."
-    assert documents[7].meta["page_number"] == 5
-    assert documents[7].meta["split_id"] == 7
-    assert documents[7].meta["split_idx_start"] == text.index(documents[7].content)
 
 
 def test_run_split_by_word_count_page_breaks_word_unit():
@@ -899,9 +894,10 @@ def test_run_custom_split_by_dot_and_overlap_3_char_unit():
     document_splitter = RecursiveDocumentSplitter(separators=["."], split_length=4, split_overlap=0, split_unit="word")
     text = "\x0c\x0c Sentence on page 5."
     chunks = document_splitter._fall_back_to_fixed_chunking(text, split_units="word")
-    assert len(chunks) == 2
-    assert chunks[0] == "\x0c\x0c Sentence on page"
-    assert chunks[1] == " 5."
+    # The leading page breaks are whitespace, not words, so the four real words fit one chunk
+    # instead of being split mid-sentence.
+    assert len(chunks) == 1
+    assert chunks[0] == "\x0c\x0c Sentence on page 5."
 
 
 def test_run_serialization_in_pipeline():
@@ -1136,3 +1132,13 @@ def test_fallback_overlap_token_unit():
     assert len(result) > 1
     for chunk in result:
         assert splitter._chunk_length(chunk.content) <= 4
+
+
+def test_word_fallback_does_not_count_multichar_whitespace_as_words():
+    # The word-mode fixed-size fallback (used when no configured separator matches) must treat any
+    # run of whitespace as a separator; "  " or "\t" must not be counted as a word.
+    splitter = RecursiveDocumentSplitter(split_length=1, split_overlap=0, split_unit="word", separators=["\n\n"])
+    chunks = splitter.run([Document(content="hello  world")])["documents"]
+    # Exactly one real word per chunk and no whitespace-only chunk.
+    assert [chunk.content.strip() for chunk in chunks] == ["hello", "world"]
+    assert all(chunk.content.strip() for chunk in chunks)
