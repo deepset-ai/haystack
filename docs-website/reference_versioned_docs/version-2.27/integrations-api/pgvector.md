@@ -895,7 +895,10 @@ Asynchronously returns the minimum and maximum values for a given metadata field
 
 ```python
 get_metadata_field_unique_values(
-    metadata_field: str, search_term: str | None, from_: int, size: int
+    metadata_field: str,
+    search_term: str | None = None,
+    from_: int = 0,
+    size: int = 10,
 ) -> tuple[list[str], int]
 ```
 
@@ -904,8 +907,8 @@ Returns unique values for a given metadata field, optionally filtered by a searc
 **Parameters:**
 
 - **metadata_field** (<code>str</code>) – The name of the metadata field. Can include or omit the "meta." prefix.
-- **search_term** (<code>str | None</code>) – Optional search term to filter documents by content before extracting unique values.
-  If None, all documents are considered.
+- **search_term** (<code>str | None</code>) – Optional search term to filter unique values by a case-insensitive substring
+  match against the metadata field's own value. If None, all values are considered.
 - **from\_** (<code>int</code>) – The offset for pagination (0-based).
 - **size** (<code>int</code>) – The number of unique values to return.
 
@@ -919,7 +922,10 @@ Returns unique values for a given metadata field, optionally filtered by a searc
 
 ```python
 get_metadata_field_unique_values_async(
-    metadata_field: str, search_term: str | None, from_: int, size: int
+    metadata_field: str,
+    search_term: str | None = None,
+    from_: int = 0,
+    size: int = 10,
 ) -> tuple[list[str], int]
 ```
 
@@ -928,8 +934,8 @@ Asynchronously returns unique values for a given metadata field, optionally filt
 **Parameters:**
 
 - **metadata_field** (<code>str</code>) – The name of the metadata field. Can include or omit the "meta." prefix.
-- **search_term** (<code>str | None</code>) – Optional search term to filter documents by content before extracting unique values.
-  If None, all documents are considered.
+- **search_term** (<code>str | None</code>) – Optional search term to filter unique values by a case-insensitive substring
+  match against the metadata field's own value. If None, all values are considered.
 - **from\_** (<code>int</code>) – The offset for pagination (0-based).
 - **size** (<code>int</code>) – The number of unique values to return.
 
