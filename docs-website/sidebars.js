@@ -416,6 +416,7 @@ export default {
             'pipeline-components/fetchers/googledrivefetcher',
             'pipeline-components/fetchers/linkcontentfetcher',
             'pipeline-components/fetchers/mssharepointfetcher',
+            'pipeline-components/fetchers/tavilyfetcher',
             'pipeline-components/fetchers/external-integrations-fetchers',
           ],
         },
