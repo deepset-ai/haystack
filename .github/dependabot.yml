@@ -6,6 +6,10 @@ updates:
       interval: 'daily'
     cooldown:
       default-days: 1
+    groups:
+      codeql:
+        patterns:
+          - 'github/codeql-action/*'
 
   - package-ecosystem: 'pip'
     directory: '/'
