@@ -225,10 +225,14 @@ class TestAgent:
             "tool_call_counts": OutputSocket(name="tool_call_counts", type=dict[str, int], receivers=[]),
             "exit_reason": OutputSocket(name="exit_reason", type=str, receivers=[]),
         }
-        # Check that the internal-state keys are not set up as input sockets
+        # Check that the run-metadata keys are not set up as input sockets
         assert {"step_count", "token_usage", "tool_call_counts", "exit_reason"}.isdisjoint(
             agent.__haystack_input__._sockets_dict.keys()
         )
+        # Internal-only state keys (those that are not also run parameters) are exposed as neither inputs nor outputs.
+        for internal_key in ("continue_run", "context_tokens"):
+            assert internal_key not in agent.__haystack_input__._sockets_dict
+            assert internal_key not in agent.__haystack_output__._sockets_dict
 
     def test_to_dict(self, weather_tool, component_tool, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "fake-key")
@@ -276,7 +280,7 @@ class TestAgent:
                                 "properties": {"location": {"type": "string"}},
                                 "required": ["location"],
                             },
-                            "function": "test_agent.weather_function",
+                            "function": "agents.test_agent.weather_function",
                             "async_function": None,
                             "outputs_to_string": None,
                             "inputs_from_state": None,
@@ -360,7 +364,7 @@ class TestAgent:
                                         "properties": {"location": {"type": "string"}},
                                         "required": ["location"],
                                     },
-                                    "function": "test_agent.weather_function",
+                                    "function": "agents.test_agent.weather_function",
                                     "async_function": None,
                                     "outputs_to_string": None,
                                     "inputs_from_state": None,
@@ -431,7 +435,7 @@ class TestAgent:
                                 "properties": {"location": {"type": "string"}},
                                 "required": ["location"],
                             },
-                            "function": "test_agent.weather_function",
+                            "function": "agents.test_agent.weather_function",
                             "async_function": None,
                             "outputs_to_string": None,
                             "inputs_from_state": None,
@@ -487,6 +491,7 @@ class TestAgent:
             "continue_run": {"type": bool, "handler": replace_values},
             "tools": {"type": list, "handler": replace_values},
             "hook_context": {"type": dict[str, Any], "handler": replace_values},
+            "context_tokens": {"type": int, "handler": replace_values},
         }
         assert agent.tool_concurrency_limit == 5
         assert agent.tool_streaming_callback_passthrough is True
@@ -526,7 +531,7 @@ class TestAgent:
                                         "properties": {"location": {"type": "string"}},
                                         "required": ["location"],
                                     },
-                                    "function": "test_agent.weather_function",
+                                    "function": "agents.test_agent.weather_function",
                                     "async_function": None,
                                     "outputs_to_string": None,
                                     "inputs_from_state": None,
@@ -598,6 +603,7 @@ class TestAgent:
             "continue_run": {"type": bool, "handler": replace_values},
             "tools": {"type": list, "handler": replace_values},
             "hook_context": {"type": dict[str, Any], "handler": replace_values},
+            "context_tokens": {"type": int, "handler": replace_values},
         }
 
     def test_serde(self, weather_tool, component_tool, monkeypatch):
@@ -619,7 +625,7 @@ class TestAgent:
             init_parameters["chat_generator"]["type"]
             == "haystack.components.generators.chat.openai.OpenAIChatGenerator"
         )
-        assert init_parameters["streaming_callback"] == "test_agent.sync_streaming_callback"
+        assert init_parameters["streaming_callback"] == "agents.test_agent.sync_streaming_callback"
         assert init_parameters["tools"][0]["data"]["function"] == serialize_callable(weather_function)
         assert (
             init_parameters["tools"][1]["data"]["component"]["type"]
@@ -643,6 +649,7 @@ class TestAgent:
             "continue_run": {"type": bool, "handler": replace_values},
             "tools": {"type": list, "handler": replace_values},
             "hook_context": {"type": dict[str, Any], "handler": replace_values},
+            "context_tokens": {"type": int, "handler": replace_values},
         }
         assert deserialized_agent.streaming_callback is sync_streaming_callback
 
@@ -1162,7 +1169,7 @@ class TestAgent:
 
     def test_reserved_state_schema_keys_raise(self, monkeypatch, weather_tool):
         monkeypatch.setenv("OPENAI_API_KEY", "fake-key")
-        for reserved in ("step_count", "token_usage", "tool_call_counts", "exit_reason"):
+        for reserved in ("step_count", "token_usage", "context_tokens", "tool_call_counts", "exit_reason"):
             with pytest.raises(ValueError, match="reserved for Agent internal state"):
                 Agent(
                     chat_generator=OpenAIChatGenerator(), tools=[weather_tool], state_schema={reserved: {"type": int}}
@@ -1246,6 +1253,64 @@ class TestAgent:
         assert result["step_count"] == 1
         assert result["token_usage"] == {}
         assert result["tool_call_counts"] == {"weather_tool": 0}
+
+
+class TestAgentContextTokens:
+    """The Agent refreshes the internal `context_tokens` after each LLM call so a hook can read the current
+    context-window size (e.g. to trigger compaction). It is a per-call snapshot, not accumulated."""
+
+    def test_before_llm_hook_reads_refreshed_context_tokens(self, weather_tool):
+        # Step 1: a tool call (prompt 10 + completion 5 = 15). Step 2: the final text answer.
+        first_step = [
+            _assistant_with_usage(
+                tool_calls=[ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"})],
+                usage={"prompt_tokens": 10, "completion_tokens": 5, "total_tokens": 15},
+            )
+        ]
+        second_step = [_assistant_with_usage("Done.", usage={"prompt_tokens": 20, "completion_tokens": 8})]
+
+        seen: list[int] = []
+
+        @hook
+        def capture(state: State) -> None:
+            seen.append(state.get("context_tokens"))
+
+        agent = Agent(
+            chat_generator=MockChatGenerator(first_step + second_step),
+            tools=[weather_tool],
+            hooks={"before_llm": [capture]},
+        )
+        agent.run([ChatMessage.from_user("Weather in Berlin?")])
+
+        # Before the first call there is no usage yet (0); before the second call it reflects the first call (15),
+        # confirming the recorder runs in the loop and the value is refreshed per call rather than accumulated.
+        assert seen == [0, 15]
+
+
+class TestAgentContextTokensAsync:
+    @pytest.mark.asyncio
+    async def test_before_llm_hook_reads_refreshed_context_tokens_async(self, weather_tool):
+        first_step = [
+            _assistant_with_usage(
+                tool_calls=[ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"})],
+                usage={"prompt_tokens": 10, "completion_tokens": 5, "total_tokens": 15},
+            )
+        ]
+        second_step = [_assistant_with_usage("Done.", usage={"prompt_tokens": 20, "completion_tokens": 8})]
+
+        seen: list[int] = []
+
+        @hook
+        def capture(state: State) -> None:
+            seen.append(state.get("context_tokens"))
+
+        agent = Agent(
+            chat_generator=MockChatGenerator(first_step + second_step),
+            tools=[weather_tool],
+            hooks={"before_llm": [capture]},
+        )
+        await agent.run_async([ChatMessage.from_user("Weather in Berlin?")])
+        assert seen == [0, 15]
 
 
 class TestAgentExitReason:
@@ -1417,7 +1482,7 @@ class TestAgentTracing:
         assert set(llm_tags) == {"haystack.agent.step.llm.input", "haystack.agent.step.llm.output"}
         assert (
             llm_tags["haystack.agent.step.llm.input"]
-            == '{"messages": [{"role": "user", "meta": {}, "name": null, "content": [{"text": "What\'s the weather in Paris?"}]}], "tools": [{"type": "haystack.tools.tool.Tool", "data": {"name": "weather_tool", "description": "Provides weather information for a given location.", "parameters": {"type": "object", "properties": {"location": {"type": "string"}}, "required": ["location"]}, "function": "test_agent.weather_function", "outputs_to_string": null, "inputs_from_state": null, "outputs_to_state": null, "async_function": null}}]}'  # noqa: E501
+            == '{"messages": [{"role": "user", "meta": {}, "name": null, "content": [{"text": "What\'s the weather in Paris?"}]}], "tools": [{"type": "haystack.tools.tool.Tool", "data": {"name": "weather_tool", "description": "Provides weather information for a given location.", "parameters": {"type": "object", "properties": {"location": {"type": "string"}}, "required": ["location"]}, "function": "agents.test_agent.weather_function", "outputs_to_string": null, "inputs_from_state": null, "outputs_to_state": null, "async_function": null}}]}'  # noqa: E501
         )
         assert (
             llm_tags["haystack.agent.step.llm.output"]
@@ -1432,9 +1497,9 @@ class TestAgentTracing:
         _, run_tags = agent_spans[2]
         assert run_tags == {
             "haystack.agent.max_steps": 100,
-            "haystack.agent.tools": '[{"type": "haystack.tools.tool.Tool", "data": {"name": "weather_tool", "description": "Provides weather information for a given location.", "parameters": {"type": "object", "properties": {"location": {"type": "string"}}, "required": ["location"]}, "function": "test_agent.weather_function", "outputs_to_string": null, "inputs_from_state": null, "outputs_to_state": null, "async_function": null}}]',  # noqa: E501
+            "haystack.agent.tools": '[{"type": "haystack.tools.tool.Tool", "data": {"name": "weather_tool", "description": "Provides weather information for a given location.", "parameters": {"type": "object", "properties": {"location": {"type": "string"}}, "required": ["location"]}, "function": "agents.test_agent.weather_function", "outputs_to_string": null, "inputs_from_state": null, "outputs_to_state": null, "async_function": null}}]',  # noqa: E501
             "haystack.agent.exit_conditions": '["text"]',
-            "haystack.agent.state_schema": '{"messages": {"type": "list[haystack.dataclasses.chat_message.ChatMessage]", "handler": "haystack.components.agents.state.state_utils.merge_lists"}, "step_count": {"type": "int", "handler": "haystack.components.agents.state.state_utils.replace_values"}, "token_usage": {"type": "dict[str, typing.Any]", "handler": "haystack.components.agents.state.state_utils.replace_values"}, "tool_call_counts": {"type": "dict[str, int]", "handler": "haystack.components.agents.state.state_utils.replace_values"}, "exit_reason": {"type": "str", "handler": "haystack.components.agents.state.state_utils.replace_values"}, "continue_run": {"type": "bool", "handler": "haystack.components.agents.state.state_utils.replace_values"}, "tools": {"type": "list", "handler": "haystack.components.agents.state.state_utils.replace_values"}, "hook_context": {"type": "dict[str, typing.Any]", "handler": "haystack.components.agents.state.state_utils.replace_values"}}',  # noqa: E501
+            "haystack.agent.state_schema": '{"messages": {"type": "list[haystack.dataclasses.chat_message.ChatMessage]", "handler": "haystack.components.agents.state.state_utils.merge_lists"}, "step_count": {"type": "int", "handler": "haystack.components.agents.state.state_utils.replace_values"}, "token_usage": {"type": "dict[str, typing.Any]", "handler": "haystack.components.agents.state.state_utils.replace_values"}, "tool_call_counts": {"type": "dict[str, int]", "handler": "haystack.components.agents.state.state_utils.replace_values"}, "exit_reason": {"type": "str", "handler": "haystack.components.agents.state.state_utils.replace_values"}, "continue_run": {"type": "bool", "handler": "haystack.components.agents.state.state_utils.replace_values"}, "tools": {"type": "list", "handler": "haystack.components.agents.state.state_utils.replace_values"}, "hook_context": {"type": "dict[str, typing.Any]", "handler": "haystack.components.agents.state.state_utils.replace_values"}, "context_tokens": {"type": "int", "handler": "haystack.components.agents.state.state_utils.replace_values"}}',  # noqa: E501
             "haystack.agent.input": '{"messages": [{"role": "user", "meta": {}, "name": null, "content": [{"text": "What\'s the weather in Paris?"}]}], "streaming_callback": null}',  # noqa: E501
             "haystack.agent.output": '{"messages": [{"role": "user", "meta": {}, "name": null, "content": [{"text": "What\'s the weather in Paris?"}]}, {"role": "assistant", "meta": {}, "name": null, "content": [{"text": "Hello"}]}], "step_count": 1, "token_usage": {}, "tool_call_counts": {"weather_tool": 0}, "exit_reason": "text", "last_message": {"role": "assistant", "meta": {}, "name": null, "content": [{"text": "Hello"}]}}',  # noqa: E501
             "haystack.agent.steps_taken": 1,
@@ -1586,7 +1651,7 @@ class TestAgentTracing:
         assert set(llm_tags) == {"haystack.agent.step.llm.input", "haystack.agent.step.llm.output"}
         assert (
             llm_tags["haystack.agent.step.llm.input"]
-            == '{"messages": [{"role": "user", "meta": {}, "name": null, "content": [{"text": "What\'s the weather in Paris?"}]}], "tools": [{"type": "haystack.tools.tool.Tool", "data": {"name": "weather_tool", "description": "Provides weather information for a given location.", "parameters": {"type": "object", "properties": {"location": {"type": "string"}}, "required": ["location"]}, "function": "test_agent.weather_function", "outputs_to_string": null, "inputs_from_state": null, "outputs_to_state": null, "async_function": null}}]}'  # noqa: E501
+            == '{"messages": [{"role": "user", "meta": {}, "name": null, "content": [{"text": "What\'s the weather in Paris?"}]}], "tools": [{"type": "haystack.tools.tool.Tool", "data": {"name": "weather_tool", "description": "Provides weather information for a given location.", "parameters": {"type": "object", "properties": {"location": {"type": "string"}}, "required": ["location"]}, "function": "agents.test_agent.weather_function", "outputs_to_string": null, "inputs_from_state": null, "outputs_to_state": null, "async_function": null}}]}'  # noqa: E501
         )
         assert (
             llm_tags["haystack.agent.step.llm.output"]
@@ -1599,9 +1664,9 @@ class TestAgentTracing:
         _, run_tags = agent_spans[2]
         assert run_tags == {
             "haystack.agent.max_steps": 100,
-            "haystack.agent.tools": '[{"type": "haystack.tools.tool.Tool", "data": {"name": "weather_tool", "description": "Provides weather information for a given location.", "parameters": {"type": "object", "properties": {"location": {"type": "string"}}, "required": ["location"]}, "function": "test_agent.weather_function", "outputs_to_string": null, "inputs_from_state": null, "outputs_to_state": null, "async_function": null}}]',  # noqa: E501
+            "haystack.agent.tools": '[{"type": "haystack.tools.tool.Tool", "data": {"name": "weather_tool", "description": "Provides weather information for a given location.", "parameters": {"type": "object", "properties": {"location": {"type": "string"}}, "required": ["location"]}, "function": "agents.test_agent.weather_function", "outputs_to_string": null, "inputs_from_state": null, "outputs_to_state": null, "async_function": null}}]',  # noqa: E501
             "haystack.agent.exit_conditions": '["text"]',
-            "haystack.agent.state_schema": '{"messages": {"type": "list[haystack.dataclasses.chat_message.ChatMessage]", "handler": "haystack.components.agents.state.state_utils.merge_lists"}, "step_count": {"type": "int", "handler": "haystack.components.agents.state.state_utils.replace_values"}, "token_usage": {"type": "dict[str, typing.Any]", "handler": "haystack.components.agents.state.state_utils.replace_values"}, "tool_call_counts": {"type": "dict[str, int]", "handler": "haystack.components.agents.state.state_utils.replace_values"}, "exit_reason": {"type": "str", "handler": "haystack.components.agents.state.state_utils.replace_values"}, "continue_run": {"type": "bool", "handler": "haystack.components.agents.state.state_utils.replace_values"}, "tools": {"type": "list", "handler": "haystack.components.agents.state.state_utils.replace_values"}, "hook_context": {"type": "dict[str, typing.Any]", "handler": "haystack.components.agents.state.state_utils.replace_values"}}',  # noqa: E501
+            "haystack.agent.state_schema": '{"messages": {"type": "list[haystack.dataclasses.chat_message.ChatMessage]", "handler": "haystack.components.agents.state.state_utils.merge_lists"}, "step_count": {"type": "int", "handler": "haystack.components.agents.state.state_utils.replace_values"}, "token_usage": {"type": "dict[str, typing.Any]", "handler": "haystack.components.agents.state.state_utils.replace_values"}, "tool_call_counts": {"type": "dict[str, int]", "handler": "haystack.components.agents.state.state_utils.replace_values"}, "exit_reason": {"type": "str", "handler": "haystack.components.agents.state.state_utils.replace_values"}, "continue_run": {"type": "bool", "handler": "haystack.components.agents.state.state_utils.replace_values"}, "tools": {"type": "list", "handler": "haystack.components.agents.state.state_utils.replace_values"}, "hook_context": {"type": "dict[str, typing.Any]", "handler": "haystack.components.agents.state.state_utils.replace_values"}, "context_tokens": {"type": "int", "handler": "haystack.components.agents.state.state_utils.replace_values"}}',  # noqa: E501
             "haystack.agent.input": '{"messages": [{"role": "user", "meta": {}, "name": null, "content": [{"text": "What\'s the weather in Paris?"}]}], "streaming_callback": null}',  # noqa: E501
             "haystack.agent.output": '{"messages": [{"role": "user", "meta": {}, "name": null, "content": [{"text": "What\'s the weather in Paris?"}]}, {"role": "assistant", "meta": {"model": "mock-model", "index": 0, "finish_reason": "stop", "usage": {"prompt_tokens": 5, "completion_tokens": 1, "total_tokens": 6}}, "name": null, "content": [{"text": "Hello"}]}], "step_count": 1, "token_usage": {"prompt_tokens": 5, "completion_tokens": 1, "total_tokens": 6}, "tool_call_counts": {"weather_tool": 0}, "exit_reason": "text", "last_message": {"role": "assistant", "meta": {"model": "mock-model", "index": 0, "finish_reason": "stop", "usage": {"prompt_tokens": 5, "completion_tokens": 1, "total_tokens": 6}}, "name": null, "content": [{"text": "Hello"}]}}',  # noqa: E501
             "haystack.agent.steps_taken": 1,
