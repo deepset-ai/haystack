@@ -259,6 +259,37 @@ def test_output_type_deserialization_legacy_ellipsis_literal():
     assert deserialize_type("typing.Callable[Ellipsis, int]") == Callable[..., int]
 
 
+def test_output_type_serialization_callable_with_parameter_list():
+    # `Callable[[X, Y], R]` returns its parameter list from `typing.get_args` as a Python list ([X, Y]),
+    # not as a type. It must be serialized as "[X, Y]" so the parameters survive the round-trip.
+    assert serialize_type(Callable[[int, str], bool]) == "typing.Callable[[int, str], bool]"
+    assert serialize_type(Callable[[], int]) == "typing.Callable[[], int]"
+    assert serialize_type(Callable[[int], List[str]]) == "typing.Callable[[int], typing.List[str]]"
+    assert serialize_type(Callable[[Union[str, int]], bool]) == "typing.Callable[[typing.Union[str, int]], bool]"
+
+
+def test_output_type_deserialization_callable_with_parameter_list():
+    assert deserialize_type("typing.Callable[[int, str], bool]") == Callable[[int, str], bool]
+    assert deserialize_type("typing.Callable[[], int]") == Callable[[], int]
+    assert deserialize_type("typing.Callable[[int], typing.List[str]]") == Callable[[int], List[str]]
+    assert deserialize_type("typing.Callable[[typing.Union[str, int]], bool]") == Callable[[Union[str, int]], bool]
+
+
+def test_output_type_round_trip_callable_with_parameter_list():
+    for type_ in [
+        Callable[[int, str], bool],
+        Callable[[], int],
+        Callable[[int], List[str]],
+        Callable[[Dict[str, int], str], List[bool]],
+        Callable[[Union[str, int]], bool],
+        List[Callable[[int], str]],
+        Dict[str, Callable[[int, str], bool]],
+        Optional[Callable[[int], str]],
+        Callable[[Callable[[int], str]], bool],
+    ]:
+        assert deserialize_type(serialize_type(type_)) == type_
+
+
 def test_output_type_serialization_haystack_dataclasses():
     # typing
     # Answer

@@ -50,6 +50,21 @@ def _build_pep604_union_type(types: list[type | UnionType]) -> type | UnionType:
     return result
 
 
+def _serialize_type_arg(arg: Any) -> str:
+    """
+    Serialize a single generic argument.
+
+    Almost all arguments are plain types and are handed off to ``serialize_type``. The exception is the
+    parameter list of a ``Callable[[X, Y], R]``, which ``typing.get_args`` returns as a Python ``list``
+    (e.g. ``[X, Y]``) rather than a type. Such a list is rendered as ``[X, Y]`` so it round-trips back to the
+    same ``Callable`` on deserialization. Without this, the list would fall through to ``serialize_type`` and
+    be dropped (its ``str()`` starts with ``[``, which the name handling truncates to an empty string).
+    """
+    if isinstance(arg, list):
+        return f"[{', '.join(serialize_type(a) for a in arg)}]"
+    return serialize_type(arg)
+
+
 def serialize_type(target: Any) -> str:
     """
     Serializes a type or an instance to its string representation, including the module name.
@@ -100,7 +115,7 @@ def serialize_type(target: Any) -> str:
         # Union with more than two members) NoneType is a regular argument and must be kept.
         skip_nonetype = name == "Optional"
         args_str = ", ".join(
-            serialize_type(Union[tuple(get_args(a))] if is_typing_generic and isinstance(a, UnionType) else a)  # noqa: UP007
+            _serialize_type_arg(Union[tuple(get_args(a))] if is_typing_generic and isinstance(a, UnionType) else a)  # noqa: UP007
             for a in args
             if not (skip_nonetype and a is NoneType)
         )
@@ -163,6 +178,24 @@ def _parse_pep604_union_args(union_str: str) -> list[str]:
     return args
 
 
+def _deserialize_type_arg(arg_str: str) -> Any:
+    """
+    Deserialize a single generic argument produced by ``_parse_generic_args``.
+
+    Mirrors ``_serialize_type_arg``: a ``Callable`` parameter list is emitted as ``[X, Y]`` and must be read
+    back as a Python ``list`` of types (so ``Callable`` can be re-subscripted as ``Callable[[X, Y], R]``),
+    not as a single type. An empty parameter list ``[]`` becomes ``[]``. Every other argument is a normal
+    type and is delegated to ``deserialize_type``.
+    """
+    stripped = arg_str.strip()
+    if stripped.startswith("[") and stripped.endswith("]"):
+        inner = stripped[1:-1].strip()
+        if not inner:
+            return []
+        return [deserialize_type(a) for a in _parse_generic_args(inner)]
+    return deserialize_type(arg_str)
+
+
 def deserialize_type(type_str: str) -> Any:
     """
     Deserializes a type given its full import path as a string, including nested generic types.
@@ -202,7 +235,7 @@ def deserialize_type(type_str: str) -> Any:
         generics_str = generics_str[:-1]
 
         main_type = deserialize_type(main_type_str)
-        generic_args = [deserialize_type(arg) for arg in _parse_generic_args(generics_str)]
+        generic_args = [_deserialize_type_arg(arg) for arg in _parse_generic_args(generics_str)]
 
         # Reconstruct
         try:
