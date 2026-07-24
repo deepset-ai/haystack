@@ -606,6 +606,7 @@
             "pipeline-components/retrievers/supabasepgvectorembeddingretriever",
             "pipeline-components/retrievers/supabasepgvectorkeywordretriever",
             "pipeline-components/retrievers/snowflaketableretriever",
+            "pipeline-components/retrievers/sqlalchemytableretriever",
             "pipeline-components/retrievers/textembeddingretriever",
             "pipeline-components/retrievers/valkeyembeddingretriever",
             "pipeline-components/retrievers/vespaembeddingretriever",
