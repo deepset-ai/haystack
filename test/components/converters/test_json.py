@@ -234,7 +234,7 @@ def test_run_with_bad_filter(tmpdir, caplog):
     assert len(records) == 1
     assert (
         records[0].msg
-        == f'Failed to extract text from {test_file}. Skipping it. Error: Cannot index array with string "motivation"'
+        == f'Failed to extract text from {test_file}. Skipping it. Error: Cannot index array with string ("motivation")'
     )
     assert result == {"documents": []}
 

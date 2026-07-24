@@ -641,7 +641,7 @@ class TestOpenAIChatGenerator:
                     completion_tokens_details=CompletionTokensDetails(
                         accepted_prediction_tokens=0, audio_tokens=0, reasoning_tokens=0, rejected_prediction_tokens=0
                     ),
-                    prompt_tokens_details=PromptTokensDetails(audio_tokens=0, cached_tokens=0),
+                    prompt_tokens_details=PromptTokensDetails(audio_tokens=0, cached_tokens=0, cache_write_tokens=0),
                 ),
             )
 
@@ -707,7 +707,7 @@ class TestOpenAIChatGenerator:
                     completion_tokens_details=CompletionTokensDetails(
                         accepted_prediction_tokens=0, audio_tokens=0, reasoning_tokens=0, rejected_prediction_tokens=0
                     ),
-                    prompt_tokens_details=PromptTokensDetails(audio_tokens=0, cached_tokens=0),
+                    prompt_tokens_details=PromptTokensDetails(audio_tokens=0, cached_tokens=0, cache_write_tokens=0),
                 ),
             )
             mock_chat_completion_parse.return_value = completion
@@ -796,7 +796,7 @@ class TestOpenAIChatGenerator:
                     completion_tokens_details=CompletionTokensDetails(
                         accepted_prediction_tokens=0, audio_tokens=0, reasoning_tokens=0, rejected_prediction_tokens=0
                     ),
-                    prompt_tokens_details=PromptTokensDetails(audio_tokens=0, cached_tokens=0),
+                    prompt_tokens_details=PromptTokensDetails(audio_tokens=0, cached_tokens=0, cache_write_tokens=0),
                 ),
             )
 
@@ -1546,7 +1546,7 @@ def chat_completion_chunks():
                 completion_tokens_details=CompletionTokensDetails(
                     accepted_prediction_tokens=0, audio_tokens=0, reasoning_tokens=0, rejected_prediction_tokens=0
                 ),
-                prompt_tokens_details=PromptTokensDetails(audio_tokens=0, cached_tokens=0),
+                prompt_tokens_details=PromptTokensDetails(audio_tokens=0, cached_tokens=0, cache_write_tokens=0),
             ),
         ),
     ]
@@ -1753,7 +1753,7 @@ def streaming_chunks():
                         "reasoning_tokens": 0,
                         "rejected_prediction_tokens": 0,
                     },
-                    "prompt_tokens_details": {"audio_tokens": 0, "cached_tokens": 0},
+                    "prompt_tokens_details": {"audio_tokens": 0, "cached_tokens": 0, "cache_write_tokens": 0},
                 },
             },
         ),
@@ -1854,7 +1854,7 @@ class TestChatCompletionChunkConversion:
                 "reasoning_tokens": 0,
                 "rejected_prediction_tokens": 0,
             },
-            "prompt_tokens_details": {"audio_tokens": 0, "cached_tokens": 0},
+            "prompt_tokens_details": {"audio_tokens": 0, "cached_tokens": 0, "cache_write_tokens": 0},
         }
 
     def test_convert_usage_chunk_to_streaming_chunk(self):
@@ -1873,7 +1873,7 @@ class TestChatCompletionChunkConversion:
                 completion_tokens_details=CompletionTokensDetails(
                     accepted_prediction_tokens=0, audio_tokens=0, reasoning_tokens=0, rejected_prediction_tokens=0
                 ),
-                prompt_tokens_details=PromptTokensDetails(audio_tokens=0, cached_tokens=0),
+                prompt_tokens_details=PromptTokensDetails(audio_tokens=0, cached_tokens=0, cache_write_tokens=0),
             ),
         )
         result = _convert_chat_completion_chunk_to_streaming_chunk(chunk=usage_chunk, previous_chunks=[])
