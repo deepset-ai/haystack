@@ -124,6 +124,41 @@ def test_basic_equality_id():
     assert doc1 != doc2
 
 
+def test_equality_preserves_meta_keys_colliding_with_top_level_fields():
+    """
+    Regression test for #11969.
+
+    Equality must not be reported for two Documents whose `meta` contains keys that collide with
+    top-level Document fields (``id``, ``content``, ``score``). Previously ``Document.__eq__``
+    compared the flattened ``to_dict()`` output, which silently overwrote colliding meta keys
+    with the Document's own field values during comparison.
+    """
+    doc1 = Document(id="same_id", content="hello", meta={"id": "different1"})
+    doc2 = Document(id="same_id", content="hello", meta={"id": "different2"})
+
+    assert doc1 != doc2
+
+    doc3 = Document(content="hello", meta={"score": 0.5})
+    doc4 = Document(content="hello", meta={"score": 0.9})
+    assert doc3 != doc4
+
+    doc5 = Document(content="hello", meta={"content": "from_meta"})
+    doc6 = Document(content="hello", meta={"content": "also_from_meta_but_different"})
+    assert doc5 != doc6
+
+
+def test_equality_with_colliding_meta_keys_when_meta_actually_matches():
+    """
+    Companion to the regression test for #11969.
+
+    When two Documents have the same top-level fields AND the same colliding meta key, they
+    must still be considered equal.
+    """
+    doc1 = Document(id="same_id", content="hello", meta={"id": "x"})
+    doc2 = Document(id="same_id", content="hello", meta={"id": "x"})
+    assert doc1 == doc2
+
+
 def test_id_is_independent_of_meta_key_order():
     doc1 = Document(content="hello", meta={"a": 1, "b": 2})
     doc2 = Document(content="hello", meta={"b": 2, "a": 1})
