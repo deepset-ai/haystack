@@ -9,7 +9,16 @@ from pathlib import Path
 from typing import Any
 
 from haystack import Document, component, default_from_dict, default_to_dict, logging
-from haystack.components.converters.utils import get_bytestream_from_source, normalize_metadata
+from haystack.components.converters.utils import (
+    LinkAnnotation,
+    LinkFormat,
+    format_link_text,
+    get_bytestream_from_source,
+    link_for_bbox,
+    normalize_metadata,
+    normalize_rect,
+    validate_link_format,
+)
 from haystack.dataclasses import ByteStream
 from haystack.lazy_imports import LazyImport
 
@@ -82,6 +91,7 @@ class PyPDFToDocument:
         layout_mode_scale_weight: float = 1.25,
         layout_mode_strip_rotated: bool = True,
         layout_mode_font_height_weight: float = 1.0,
+        link_format: LinkFormat = "none",
         store_full_path: bool = False,
     ) -> None:
         """
@@ -109,6 +119,11 @@ class PyPDFToDocument:
         :param layout_mode_font_height_weight:
             Multiplier for font height when calculating blank line height.
             Ignored if `extraction_mode` is `PyPDFExtractionMode.PLAIN`.
+        :param link_format:
+            The format for link output. Possible options:
+            - `"markdown"`: `[text](url)`
+            - `"plain"`: `text (url)`
+            - `"none"`: Only the text is extracted, link addresses are ignored.
         :param store_full_path:
             If True, the full path of the file is stored in the metadata of the document.
             If False, only the file name is stored.
@@ -116,6 +131,7 @@ class PyPDFToDocument:
         pypdf_import.check()
 
         self.store_full_path = store_full_path
+        self.link_format = validate_link_format(link_format)
 
         if isinstance(extraction_mode, str):
             extraction_mode = PyPDFExtractionMode.from_str(extraction_mode)
@@ -143,6 +159,7 @@ class PyPDFToDocument:
             layout_mode_scale_weight=self.layout_mode_scale_weight,
             layout_mode_strip_rotated=self.layout_mode_strip_rotated,
             layout_mode_font_height_weight=self.layout_mode_font_height_weight,
+            link_format=self.link_format,
             store_full_path=self.store_full_path,
         )
 
@@ -159,18 +176,107 @@ class PyPDFToDocument:
         """
         return default_from_dict(cls, data)
 
+    def _extract_text_from_page(self, page: Any, visitor_text: Any | None = None) -> str:
+        extract_text_kwargs = {
+            "orientations": self.plain_mode_orientations,
+            "extraction_mode": self.extraction_mode.value,
+            "space_width": self.plain_mode_space_width,
+            "layout_mode_space_vertically": self.layout_mode_space_vertically,
+            "layout_mode_scale_weight": self.layout_mode_scale_weight,
+            "layout_mode_strip_rotated": self.layout_mode_strip_rotated,
+            "layout_mode_font_height_weight": self.layout_mode_font_height_weight,
+        }
+        if visitor_text is not None:
+            extract_text_kwargs["visitor_text"] = visitor_text
+        return page.extract_text(**extract_text_kwargs)
+
+    @staticmethod
+    def _extract_link_annotations(page: Any) -> list[LinkAnnotation]:
+        links = []
+        for annotation_reference in page.get("/Annots") or []:
+            annotation = (
+                annotation_reference.get_object()
+                if hasattr(annotation_reference, "get_object")
+                else annotation_reference
+            )
+            if annotation.get("/Subtype") != "/Link":
+                continue
+
+            action = annotation.get("/A")
+            if action is not None and hasattr(action, "get_object"):
+                action = action.get_object()
+            uri = action.get("/URI") if action else None
+            rect = annotation.get("/Rect")
+            if not uri or rect is None:
+                continue
+
+            if isinstance(uri, bytes):
+                uri = uri.decode("utf-8", errors="replace")
+            links.append(LinkAnnotation(rect=normalize_rect(rect), uri=str(uri)))
+        return links
+
+    def _apply_link_formatting(self, text: str, fragments: list[tuple[str, str]]) -> str:
+        formatted_text = text
+        position = 0
+        for fragment_text, uri in fragments:
+            if not fragment_text.strip():
+                continue
+
+            replacement = format_link_text(fragment_text, uri, self.link_format)
+            index = formatted_text.find(fragment_text, position)
+            old_text = fragment_text
+
+            if index == -1:
+                old_text = fragment_text.strip()
+                replacement = format_link_text(old_text, uri, self.link_format)
+                index = formatted_text.find(old_text, position)
+            if index == -1:
+                continue
+
+            formatted_text = formatted_text[:index] + replacement + formatted_text[index + len(old_text) :]
+            position = index + len(replacement)
+
+        return formatted_text
+
+    def _extract_link_fragments(self, page: Any, links: list[LinkAnnotation]) -> list[tuple[str, str]]:
+        linked_fragments: list[tuple[str, str]] = []
+
+        def visitor_text(text: str, _cm: Any, tm: Any, _font_dict: Any, font_size: float) -> None:
+            if not text.strip():
+                return
+
+            x = float(tm[4])
+            y = float(tm[5])
+            estimated_width = max(float(font_size) * len(text) * 0.5, float(font_size))
+            bbox = (x, y - float(font_size) * 0.25, x + estimated_width, y + float(font_size))
+            link = link_for_bbox(bbox, links)
+            if link:
+                linked_fragments.append((text, link.uri))
+
+        page.extract_text(
+            orientations=self.plain_mode_orientations,
+            extraction_mode=PyPDFExtractionMode.PLAIN.value,
+            space_width=self.plain_mode_space_width,
+            visitor_text=visitor_text,
+        )
+        return linked_fragments
+
+    def _convert_page(self, page: Any) -> str:
+        if self.link_format == "none":
+            return self._extract_text_from_page(page)
+
+        links = self._extract_link_annotations(page)
+        if not links:
+            return self._extract_text_from_page(page)
+
+        linked_fragments = self._extract_link_fragments(page, links)
+        extracted_text = self._extract_text_from_page(page)
+        return self._apply_link_formatting(extracted_text or "", linked_fragments)
+
     def _default_convert(self, reader: "PdfReader") -> str:
         texts = []
         for page in reader.pages:
-            extracted_text = page.extract_text(
-                orientations=self.plain_mode_orientations,
-                extraction_mode=self.extraction_mode.value,
-                space_width=self.plain_mode_space_width,
-                layout_mode_space_vertically=self.layout_mode_space_vertically,
-                layout_mode_scale_weight=self.layout_mode_scale_weight,
-                layout_mode_strip_rotated=self.layout_mode_strip_rotated,
-                layout_mode_font_height_weight=self.layout_mode_font_height_weight,
-            )
+            extracted_text = self._convert_page(page)
             texts.append(extracted_text)
         return "\f".join(texts)
 

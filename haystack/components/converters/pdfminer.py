@@ -9,14 +9,25 @@ from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
 
-from haystack import Document, component, logging
-from haystack.components.converters.utils import get_bytestream_from_source, normalize_metadata
+from haystack import Document, component, default_from_dict, default_to_dict, logging
+from haystack.components.converters.utils import (
+    LinkAnnotation,
+    LinkFormat,
+    format_link_text,
+    get_bytestream_from_source,
+    link_for_bbox,
+    normalize_metadata,
+    normalize_rect,
+    validate_link_format,
+)
 from haystack.dataclasses import ByteStream
 from haystack.lazy_imports import LazyImport
 
 with LazyImport("Run 'pip install pdfminer.six'") as pdfminer_import:
     from pdfminer.high_level import extract_pages
-    from pdfminer.layout import LAParams, LTTextContainer
+    from pdfminer.layout import LAParams, LTChar, LTTextContainer
+    from pdfminer.pdfpage import PDFPage
+    from pdfminer.pdftypes import resolve1
 
 logger = logging.getLogger(__name__)
 
@@ -56,6 +67,7 @@ class PDFMinerToDocument:
         detect_vertical: bool = True,
         all_texts: bool = False,
         store_full_path: bool = False,
+        link_format: LinkFormat = "none",
     ) -> None:
         """
         Create a PDFMinerToDocument component.
@@ -91,6 +103,11 @@ class PDFMinerToDocument:
         :param store_full_path:
             If True, the full path of the file is stored in the metadata of the document.
             If False, only the file name is stored.
+        :param link_format:
+            The format for link output. Possible options:
+            - `"markdown"`: `[text](url)`
+            - `"plain"`: `text (url)`
+            - `"none"`: Only the text is extracted, link addresses are ignored.
         """
 
         pdfminer_import.check()
@@ -105,7 +122,41 @@ class PDFMinerToDocument:
             all_texts=all_texts,
         )
         self.store_full_path = store_full_path
+        self.link_format = validate_link_format(link_format)
         self.cid_pattern = re.compile(CID_PATTERN)
+
+    def to_dict(self) -> dict[str, Any]:
+        """
+        Serializes the component to a dictionary.
+
+        :returns:
+            Dictionary with serialized data.
+        """
+        return default_to_dict(
+            self,
+            line_overlap=self.layout_params.line_overlap,
+            char_margin=self.layout_params.char_margin,
+            line_margin=self.layout_params.line_margin,
+            word_margin=self.layout_params.word_margin,
+            boxes_flow=self.layout_params.boxes_flow,
+            detect_vertical=self.layout_params.detect_vertical,
+            all_texts=self.layout_params.all_texts,
+            store_full_path=self.store_full_path,
+            link_format=self.link_format,
+        )
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "PDFMinerToDocument":
+        """
+        Deserializes the component from a dictionary.
+
+        :param data:
+            Dictionary with serialized data.
+
+        :returns:
+            Deserialized component.
+        """
+        return default_from_dict(cls, data)
 
     @staticmethod
     def _converter(lt_page_objs: Iterator) -> str:
@@ -131,6 +182,99 @@ class PDFMinerToDocument:
             pages.append(text)
 
         # Add a page delimiter
+        return "\f".join(pages)
+
+    @staticmethod
+    def _extract_link_annotations(file_content: bytes) -> list[list[LinkAnnotation]]:
+        pages_links = []
+        with io.BytesIO(file_content) as file:
+            for page in PDFPage.get_pages(file):
+                page_links = []
+                annotations = resolve1(page.annots) if page.annots else []
+                for annotation_reference in annotations:
+                    annotation = resolve1(annotation_reference)
+                    subtype = annotation.get("Subtype")
+                    if getattr(subtype, "name", subtype) != "Link":
+                        continue
+
+                    action = resolve1(annotation.get("A")) if annotation.get("A") else None
+                    uri = action.get("URI") if action else None
+                    rect = resolve1(annotation.get("Rect")) if annotation.get("Rect") else None
+                    if not uri or rect is None:
+                        continue
+
+                    if isinstance(uri, bytes):
+                        uri = uri.decode("utf-8", errors="replace")
+                    page_links.append(LinkAnnotation(rect=normalize_rect(rect), uri=str(uri)))
+                pages_links.append(page_links)
+        return pages_links
+
+    @staticmethod
+    def _convert_text_line_with_links(text_line: Any, links: list[LinkAnnotation], link_format: LinkFormat) -> str:
+        parts: list[str] = []
+        current_link: LinkAnnotation | None = None
+        current_text: list[str] = []
+
+        def flush_current_text() -> None:
+            nonlocal current_link, current_text
+            if not current_text:
+                return
+
+            text = "".join(current_text)
+            if current_link:
+                parts.append(format_link_text(text, current_link.uri, link_format))
+            else:
+                parts.append(text)
+            current_link = None
+            current_text = []
+
+        for element in text_line:
+            element_text = element.get_text() if hasattr(element, "get_text") else ""
+            if isinstance(element, LTChar):
+                link = link_for_bbox(element.bbox, links)
+                if link != current_link:
+                    flush_current_text()
+                    current_link = link
+                current_text.append(element_text)
+            elif current_link and element_text not in ("\n", "\r"):
+                current_text.append(element_text)
+            else:
+                flush_current_text()
+                parts.append(element_text)
+
+        flush_current_text()
+        return "".join(parts)
+
+    @staticmethod
+    def _convert_text_container_with_links(
+        container: "LTTextContainer", links: list[LinkAnnotation], link_format: LinkFormat
+    ) -> str:
+        text_parts = []
+        for text_line in container:
+            if hasattr(text_line, "__iter__"):
+                text_parts.append(PDFMinerToDocument._convert_text_line_with_links(text_line, links, link_format))
+            elif hasattr(text_line, "get_text"):
+                text_parts.append(text_line.get_text())
+        return "".join(text_parts)
+
+    @staticmethod
+    def _converter_with_links(
+        lt_page_objs: Iterator, page_links: list[list[LinkAnnotation]], link_format: LinkFormat
+    ) -> str:
+        pages = []
+        for page_index, page in enumerate(lt_page_objs):
+            links = page_links[page_index] if page_index < len(page_links) else []
+            text = ""
+            for container in page:
+                if isinstance(container, LTTextContainer):
+                    container_text = PDFMinerToDocument._convert_text_container_with_links(
+                        container, links, link_format
+                    )
+                    if container_text:
+                        text += "\n\n"
+                    text += container_text
+            pages.append(text)
+
         return "\f".join(pages)
 
     def detect_undecoded_cid_characters(self, text: str) -> dict[str, Any]:
@@ -192,7 +336,11 @@ class PDFMinerToDocument:
                 continue
             try:
                 pages = extract_pages(io.BytesIO(bytestream.data), laparams=self.layout_params)
-                text = self._converter(pages)
+                if self.link_format == "none":
+                    text = self._converter(pages)
+                else:
+                    page_links = self._extract_link_annotations(bytestream.data)
+                    text = self._converter_with_links(pages, page_links, self.link_format)
             except Exception as e:
                 logger.warning(
                     "Could not read {source} and convert it to Document, skipping. {error}", source=source, error=e

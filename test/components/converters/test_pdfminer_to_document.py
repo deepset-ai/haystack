@@ -36,6 +36,40 @@ class TestPDFMinerToDocument:
         assert converter.layout_params.char_margin == 0.5
         assert converter.layout_params.all_texts is True
         assert converter.store_full_path is False
+        assert converter.link_format == "none"
+
+    def test_to_dict(self):
+        converter = PDFMinerToDocument(char_margin=0.5, all_texts=True, store_full_path=True, link_format="markdown")
+        data = converter.to_dict()
+        assert data == {
+            "type": "haystack.components.converters.pdfminer.PDFMinerToDocument",
+            "init_parameters": {
+                "line_overlap": 0.5,
+                "char_margin": 0.5,
+                "line_margin": 0.5,
+                "word_margin": 0.1,
+                "boxes_flow": 0.5,
+                "detect_vertical": True,
+                "all_texts": True,
+                "store_full_path": True,
+                "link_format": "markdown",
+            },
+        }
+
+    def test_from_dict(self):
+        data = {
+            "type": "haystack.components.converters.pdfminer.PDFMinerToDocument",
+            "init_parameters": {"char_margin": 0.5, "all_texts": True, "link_format": "plain"},
+        }
+        converter = PDFMinerToDocument.from_dict(data)
+
+        assert converter.layout_params.char_margin == 0.5
+        assert converter.layout_params.all_texts is True
+        assert converter.link_format == "plain"
+
+    def test_init_invalid_link_format(self):
+        with pytest.raises(ValueError, match="Unknown link format"):
+            PDFMinerToDocument(link_format="invalid")
 
     def test_run_with_store_full_path_false(self, test_files_path):
         """
@@ -51,6 +85,27 @@ class TestPDFMinerToDocument:
             assert "the page 3 is empty" in doc.content
             assert "Page 4 of Sample PDF" in doc.content
             assert doc.meta["file_path"] == "sample_pdf_1.pdf"
+
+    @pytest.mark.parametrize("link_format", ["markdown", "plain"])
+    def test_link_extraction(self, test_files_path, link_format):
+        converter = PDFMinerToDocument(link_format=link_format)
+        sources = [test_files_path / "pdf" / "sample_pdf_with_link.pdf"]
+        results = converter.run(sources=sources)
+        content = results["documents"][0].content
+
+        if link_format == "markdown":
+            assert "[Example](https://example.com)" in content
+        else:
+            assert "Example (https://example.com)" in content
+
+    def test_no_link_extraction(self, test_files_path):
+        converter = PDFMinerToDocument()
+        sources = [test_files_path / "pdf" / "sample_pdf_with_link.pdf"]
+        results = converter.run(sources=sources)
+        content = results["documents"][0].content
+
+        assert "https://example.com" not in content
+        assert "Example" in content
 
     def test_run_wrong_file_type(self, test_files_path, caplog):
         """

@@ -28,6 +28,8 @@ The `PDFMinerToDocument` component converts PDF files into documents using [PD
 
 You can use it in an indexing pipeline to index the contents of a PDF file in a Document Store. It takes a list of file paths or [`ByteStream`](../../concepts/data-classes.mdx#bytestream)objects as input and outputs the converted result as a list of documents. Optionally, you can attach metadata to the documents through the `meta` input parameter.
 
+By default, `PDFMinerToDocument` extracts only the visible text of hyperlinks. To include hyperlink targets in the document content, set `link_format` to `"markdown"` for `[text](url)` output or `"plain"` for `text (url)` output.
+
 When initializing the component, you can adjust several parameters to fit your PDF. See the full parameter list and descriptions in our [API reference](/reference/converters-api#pdfminertodocument).
 
 ## Usage
@@ -53,6 +55,16 @@ documents = results["documents"]
 print(documents[0].content)
 
 # 'This is a text from the PDF file.'
+```
+
+To extract hyperlink targets:
+
+```python
+from haystack.components.converters import PDFMinerToDocument
+
+converter = PDFMinerToDocument(link_format="markdown")
+results = converter.run(sources=["sample.pdf"])
+documents = results["documents"]
 ```
 
 ### In a pipeline
