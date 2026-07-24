@@ -15,6 +15,78 @@ from .parameters_schema_utils import _contains_callable_type, _unwrap_optional
 from .tool import Tool
 
 
+def _create_tool_parameter_schema(
+    function: Callable, inputs_from_state: dict[str, str] | None = None
+) -> dict[str, Any]:
+    """
+    Generate a JSON schema for a Tool's parameters by introspecting a function's signature.
+
+    This is the shared implementation used both by `create_tool_from_function` and by
+    `Tool.__post_init__` (to auto-derive `parameters` when they are not provided explicitly).
+
+    :param function:
+        The function whose typed signature is converted into a JSON schema. Every parameter
+        must include a type hint (except those excluded below).
+    :param inputs_from_state:
+        Optional dictionary mapping state keys to tool parameter names. Parameters that are
+        supplied from state are excluded from the generated schema.
+    :returns:
+        A JSON schema (as a dictionary) describing the function's parameters.
+    :raises ValueError:
+        If any (non-excluded) parameter of the function lacks a type hint.
+    :raises SchemaGenerationError:
+        If there is an error generating the JSON schema for the function.
+    """
+    signature = inspect.signature(function)
+
+    # collect fields (types and defaults) and descriptions from function parameters
+    fields: dict[str, Any] = {}
+    descriptions = {}
+
+    for param_name, param in signature.parameters.items():
+        # Skip adding parameter names that will be passed to the tool from State
+        if inputs_from_state and param_name in inputs_from_state.values():
+            continue
+
+        # Skip State-typed parameters (including Optional[State]) - Agent tool execution injects them at runtime
+        if _unwrap_optional(param.annotation) is State:
+            continue
+
+        if param.annotation is param.empty:
+            raise ValueError(f"Function '{function.__name__}': parameter '{param_name}' does not have a type hint.")
+
+        # Skip Callable types since Pydantic cannot generate JSON schemas for them
+        if _contains_callable_type(param.annotation):
+            continue
+
+        # if the parameter has not a default value, Pydantic requires an Ellipsis (...)
+        # to explicitly indicate that the parameter is required
+        default = param.default if param.default is not param.empty else ...
+        fields[param_name] = (param.annotation, default)
+
+        if hasattr(param.annotation, "__metadata__"):
+            descriptions[param_name] = param.annotation.__metadata__[0]
+
+    # create Pydantic model and generate JSON schema
+    try:
+        model = create_model(function.__name__, **fields)
+        schema = model.model_json_schema()
+    except Exception as e:
+        raise SchemaGenerationError(f"Failed to create JSON schema for function '{function.__name__}'") from e
+
+    # we don't want to include title keywords in the schema, as they contain redundant information
+    # there is no programmatic way to prevent Pydantic from adding them, so we remove them later
+    # see https://github.com/pydantic/pydantic/discussions/8504
+    _remove_title_from_schema(schema)
+
+    # add parameters descriptions to the schema
+    for param_name, param_description in descriptions.items():
+        if param_name in schema["properties"]:
+            schema["properties"][param_name]["description"] = param_description
+
+    return schema
+
+
 def create_tool_from_function(
     function: Callable,
     name: str | None = None,
@@ -132,52 +204,7 @@ def create_tool_from_function(
     """
     tool_description = description if description is not None else (function.__doc__ or "")
 
-    signature = inspect.signature(function)
-
-    # collect fields (types and defaults) and descriptions from function parameters
-    fields: dict[str, Any] = {}
-    descriptions = {}
-
-    for param_name, param in signature.parameters.items():
-        # Skip adding parameter names that will be passed to the tool from State
-        if inputs_from_state and param_name in inputs_from_state.values():
-            continue
-
-        # Skip State-typed parameters (including Optional[State]) - Agent tool execution injects them at runtime
-        if _unwrap_optional(param.annotation) is State:
-            continue
-
-        if param.annotation is param.empty:
-            raise ValueError(f"Function '{function.__name__}': parameter '{param_name}' does not have a type hint.")
-
-        # Skip Callable types since Pydantic cannot generate JSON schemas for them
-        if _contains_callable_type(param.annotation):
-            continue
-
-        # if the parameter has not a default value, Pydantic requires an Ellipsis (...)
-        # to explicitly indicate that the parameter is required
-        default = param.default if param.default is not param.empty else ...
-        fields[param_name] = (param.annotation, default)
-
-        if hasattr(param.annotation, "__metadata__"):
-            descriptions[param_name] = param.annotation.__metadata__[0]
-
-    # create Pydantic model and generate JSON schema
-    try:
-        model = create_model(function.__name__, **fields)
-        schema = model.model_json_schema()
-    except Exception as e:
-        raise SchemaGenerationError(f"Failed to create JSON schema for function '{function.__name__}'") from e
-
-    # we don't want to include title keywords in the schema, as they contain redundant information
-    # there is no programmatic way to prevent Pydantic from adding them, so we remove them later
-    # see https://github.com/pydantic/pydantic/discussions/8504
-    _remove_title_from_schema(schema)
-
-    # add parameters descriptions to the schema
-    for param_name, param_description in descriptions.items():
-        if param_name in schema["properties"]:
-            schema["properties"][param_name]["description"] = param_description
+    schema = _create_tool_parameter_schema(function, inputs_from_state)
 
     is_async = inspect.iscoroutinefunction(function)
 

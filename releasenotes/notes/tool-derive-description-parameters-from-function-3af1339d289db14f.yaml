@@ -1,0 +1,10 @@
+---
+enhancements:
+  - |
+    `Tool` can now derive its `description` and `parameters` directly from its
+    `function` (or `async_function`) when they are not provided explicitly, using the
+    same logic as `create_tool_from_function`. This makes it possible to construct a
+    tool with just `Tool(name="get_weather", function=get_weather)`: the description is
+    taken from the function's docstring and the parameters JSON schema is generated from
+    its type hints. Passing `description` and `parameters` explicitly keeps the previous
+    behavior unchanged.

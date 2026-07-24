@@ -32,9 +32,12 @@ class Tool:
     :param name:
         Name of the Tool.
     :param description:
-        Description of the Tool.
+        Description of the Tool. If not provided, it is derived from the docstring of `function`
+        (or `async_function`). Pass an empty string to intentionally leave the description empty.
     :param parameters:
-        A JSON schema defining the parameters expected by the Tool.
+        A JSON schema defining the parameters expected by the Tool. If not provided, it is
+        generated automatically from the type hints of `function` (or `async_function`), using the
+        same logic as `create_tool_from_function`.
     :param function:
         The synchronous function invoked by `Tool.invoke`. Must be a regular function — coroutine functions should
         be passed to `async_function` instead. Either `function` or `async_function` (or both) must be set.
@@ -100,8 +103,8 @@ class Tool:
     """
 
     name: str
-    description: str
-    parameters: dict[str, Any]
+    description: str | None = None
+    parameters: dict[str, Any] | None = None
     function: Callable | None = None
     outputs_to_string: dict[str, Any] | None = None
     inputs_from_state: dict[str, str] | None = None
@@ -127,6 +130,9 @@ class Tool:
                 f"`async_function` must be a coroutine function defined with `async def`. "
                 f"Got '{getattr(self.async_function, '__name__', repr(self.async_function))}'."
             )
+
+        # Derive `description` and/or `parameters` from the tool's function when not provided.
+        self._derive_description_and_parameters()
 
         # Check that the parameters define a valid JSON schema
         try:
@@ -211,6 +217,32 @@ class Tool:
                         f"Valid parameters are: {valid_inputs}."
                     )
 
+    def _derive_description_and_parameters(self) -> None:
+        """
+        Fill in `description` and/or `parameters` from the tool's function when they are missing.
+
+        Mirrors `create_tool_from_function`, so a Tool can be built directly from a typed function,
+        e.g. `Tool(name="get_weather", function=get_weather)`. Each field is derived only when it is
+        missing, so an explicitly provided value is never regenerated (regenerating could otherwise
+        raise for a function with un-hinted parameters).
+        """
+        if self.description is not None and self.parameters is not None:
+            return
+
+        # At least one of `function`/`async_function` is guaranteed to be set (checked in
+        # `__post_init__`); the `is not None` guard reflects that and narrows the type below.
+        source_function = self.function or self.async_function
+        if source_function is None:
+            return
+
+        if self.description is None:
+            self.description = source_function.__doc__ or ""
+        if self.parameters is None:
+            # Imported lazily to avoid a circular import (`from_function` imports `Tool`).
+            from haystack.tools.from_function import _create_tool_parameter_schema
+
+            self.parameters = _create_tool_parameter_schema(source_function, self.inputs_from_state)
+
     def _get_valid_inputs(self) -> set[str]:
         """
         Return the set of valid input parameter names that this tool accepts.
@@ -241,8 +273,9 @@ class Tool:
             except (ValueError, TypeError):
                 pass  # Introspection failed, will rely on schema
 
-        # Add parameters from schema (union with function params)
-        valid_params.update(self.parameters.get("properties", {}).keys())
+        # Add parameters from schema (union with function params). `parameters` is always
+        # populated by `__post_init__`; `or {}` narrows the Optional type for mypy.
+        valid_params.update((self.parameters or {}).get("properties", {}).keys())
 
         return valid_params
 

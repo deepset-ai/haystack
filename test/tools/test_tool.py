@@ -3,12 +3,12 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import re
-from typing import Any
+from typing import Annotated, Any, Literal
 
 import pytest
 
 from haystack.dataclasses import TextContent
-from haystack.tools import Tool, _check_duplicate_tool_names
+from haystack.tools import Tool, _check_duplicate_tool_names, create_tool_from_function
 from haystack.tools.errors import ToolInvocationError
 from haystack.tools.tool import (
     _deserialize_outputs_to_state,
@@ -360,6 +360,101 @@ class TestTool:
                 function=get_weather_report,
                 outputs_to_state={"result": {"source": "nonexistent"}},
             )
+
+
+def annotated_weather(
+    city: Annotated[str, "the city for which to get the weather"] = "Munich",
+    unit: Annotated[Literal["Celsius", "Fahrenheit"], "the unit for the temperature"] = "Celsius",
+) -> str:
+    """A simple function to get the current weather for a location."""
+    return f"Weather report for {city}: 20 {unit}, sunny"
+
+
+async def annotated_weather_async(city: Annotated[str, "the city"] = "Rome") -> str:
+    """Async weather lookup."""
+    return f"Weather report for {city}"
+
+
+def no_docstring_tool(value: int = 1) -> int:
+    return value
+
+
+class TestToolAutoDeriveFromFunction:
+    def test_derives_description_and_parameters_from_function(self):
+        tool = Tool(name="get_weather", function=annotated_weather)
+
+        # description comes from the docstring
+        assert tool.description == "A simple function to get the current weather for a location."
+        # parameters are generated from the typed signature, identical to create_tool_from_function
+        assert tool.parameters == create_tool_from_function(annotated_weather).parameters
+        assert tool.parameters is not None
+        assert tool.parameters["properties"]["city"]["description"] == "the city for which to get the weather"
+        # the resulting tool is fully functional
+        assert tool.invoke(city="Berlin", unit="Celsius") == "Weather report for Berlin: 20 Celsius, sunny"
+
+    def test_derives_from_async_function(self):
+        tool = Tool(name="get_weather", async_function=annotated_weather_async)
+
+        assert tool.function is None
+        assert tool.description == "Async weather lookup."
+        assert tool.parameters is not None
+        assert "city" in tool.parameters["properties"]
+        assert tool.parameters == create_tool_from_function(annotated_weather_async).parameters
+
+    def test_explicit_values_are_not_overwritten(self):
+        explicit_params = {"type": "object", "properties": {"city": {"type": "string"}}, "required": ["city"]}
+        tool = Tool(
+            name="weather", description="Explicit description", parameters=explicit_params, function=annotated_weather
+        )
+
+        assert tool.description == "Explicit description"
+        assert tool.parameters == explicit_params
+
+    def test_derives_only_missing_parameters(self):
+        tool = Tool(name="weather", description="Explicit description", function=annotated_weather)
+
+        assert tool.description == "Explicit description"
+        assert tool.parameters == create_tool_from_function(annotated_weather).parameters
+
+    def test_derives_only_missing_description(self):
+        explicit_params = {"type": "object", "properties": {"city": {"type": "string"}}, "required": ["city"]}
+        tool = Tool(name="weather", parameters=explicit_params, function=annotated_weather)
+
+        assert tool.description == "A simple function to get the current weather for a location."
+        assert tool.parameters == explicit_params
+
+    def test_derives_empty_description_when_function_has_no_docstring(self):
+        tool = Tool(name="no_doc", function=no_docstring_tool)
+
+        assert tool.description == ""
+        assert tool.parameters == create_tool_from_function(no_docstring_tool).parameters
+
+    def test_derived_schema_excludes_inputs_from_state_params(self):
+        def weather_with_state(city: Annotated[str, "the city"], user_id: str | None = None) -> str:
+            """Weather with a state-provided parameter."""
+            return f"Weather for {city} ({user_id})"
+
+        tool = Tool(name="weather", function=weather_with_state, inputs_from_state={"user_id": "user_id"})
+
+        assert tool.parameters is not None
+        assert "city" in tool.parameters["properties"]
+        assert "user_id" not in tool.parameters["properties"]
+
+    def test_derivation_serialization_round_trip(self):
+        tool = Tool(name="get_weather", function=annotated_weather)
+        restored = Tool.from_dict(tool.to_dict())
+
+        assert restored.name == tool.name
+        assert restored.description == tool.description
+        assert restored.parameters == tool.parameters
+
+    def test_missing_type_hint_raises_when_deriving(self):
+        def bad_tool(city):  # missing type hint (intentionally fully untyped)
+            """Bad tool."""
+            return city
+
+        with pytest.raises(ValueError, match="does not have a type hint"):
+            Tool(name="bad", function=bad_tool)
 
 
 @pytest.fixture
