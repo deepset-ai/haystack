@@ -872,3 +872,26 @@ class TestEdgeCases:
         doc = Document(content="class Broken(\n    pass\n")
         with pytest.raises(SyntaxError):
             splitter.run(documents=[doc])
+
+
+class TestSecondarySplitQualifiedName:
+    def test_first_piece_has_no_prefix(self, oversized_function_source):
+        splitter = PythonCodeSplitter(min_effective_lines=2, max_effective_lines=5, oversized_factor=3)
+        result = splitter.run(documents=[Document(content=oversized_function_source)])
+        secondary = sorted(
+            (c for c in result["documents"] if c.meta.get("secondary_split")),
+            key=lambda c: c.meta["secondary_split_index"],
+        )
+        assert secondary
+        assert not (secondary[0].content or "").startswith("# giant")
+
+    def test_non_first_pieces_are_prefixed_with_qualified_name(self, oversized_function_source):
+        splitter = PythonCodeSplitter(min_effective_lines=2, max_effective_lines=5, oversized_factor=3)
+        result = splitter.run(documents=[Document(content=oversized_function_source)])
+        secondary = sorted(
+            (c for c in result["documents"] if c.meta.get("secondary_split")),
+            key=lambda c: c.meta["secondary_split_index"],
+        )
+        assert len(secondary) >= 2
+        for piece in secondary[1:]:
+            assert (piece.content or "").startswith("# giant")
