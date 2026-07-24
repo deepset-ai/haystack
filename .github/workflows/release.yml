@@ -158,7 +158,9 @@ jobs:
           token: ${{ secrets.HAYSTACK_BOT_TOKEN }}
 
       - name: Update haystack pin
-        run: sed -i "s/haystack-ai>=.*/haystack-ai>=${VERSION}/" requirements-test.txt
+        # 2.31.x maintenance line change
+        # Pin the exact version. ">=${VERSION}" might lead to use the latest 3.x version.
+        run: sed -i "s/haystack-ai>=.*/haystack-ai==${VERSION}/" requirements-test.txt
 
       - name: Create Pull Request
         id: create-pr
