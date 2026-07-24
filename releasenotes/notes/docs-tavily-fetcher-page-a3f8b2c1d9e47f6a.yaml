@@ -1,0 +1,5 @@
+---
+enhancements:
+  - |
+    Added a documentation page for the ``TavilyFetcher`` component, covering setup, installation,
+    basic usage examples, and pipeline integration patterns.
