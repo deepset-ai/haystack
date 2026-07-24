@@ -9,7 +9,7 @@ from typing import Any
 from haystack import Document, component, default_from_dict, default_to_dict
 from haystack.components.retrievers.types import TextRetriever
 from haystack.core.serialization import component_to_dict
-from haystack.utils.async_utils import _execute_component_async
+from haystack.utils.async_utils import _execute_component_async, _gather_tasks_with_cancel
 from haystack.utils.misc import _deduplicate_documents
 
 
@@ -148,7 +148,8 @@ class MultiQueryTextRetriever:
 
         await self.warm_up_async()
 
-        results = await asyncio.gather(*[self._run_one_async(q, retriever_kwargs) for q in queries])
+        tasks = [asyncio.create_task(self._run_one_async(query, retriever_kwargs)) for query in queries]
+        results = await _gather_tasks_with_cancel(tasks)
         docs: list[Document] = [doc for result in results if result for doc in result]
         docs = _deduplicate_documents(docs)
         docs.sort(key=lambda x: x.score or 0.0, reverse=True)

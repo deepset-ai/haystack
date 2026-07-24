@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import asyncio
 from typing import Any
 
 import pytest
@@ -113,6 +114,39 @@ class TestMultiQueryTextRetrieverAsync:
         assert "documents" in result
         assert len(result["documents"]) == 1
         assert result["documents"][0].content == "Renewable energy"
+
+    @pytest.mark.asyncio
+    async def test_run_async_cancels_sibling_queries_when_one_fails(self):
+        slow_started = asyncio.Event()
+        slow_cancelled = False
+
+        @component
+        class MockRetriever:
+            @component.output_types(documents=list[Document])
+            def run(self, query: str, **kwargs: Any) -> dict[str, list[Document]]:
+                return {"documents": []}
+
+            @component.output_types(documents=list[Document])
+            async def run_async(self, query: str, **kwargs: Any) -> dict[str, list[Document]]:
+                nonlocal slow_cancelled
+                if query == "slow":
+                    slow_started.set()
+                    try:
+                        await asyncio.sleep(5)
+                    except asyncio.CancelledError:
+                        slow_cancelled = True
+                        raise
+                    return {"documents": []}
+
+                await slow_started.wait()
+                raise RuntimeError("boom")
+
+        multi_retriever = MultiQueryTextRetriever(retriever=MockRetriever())
+
+        with pytest.raises(RuntimeError):
+            await multi_retriever.run_async(queries=["slow", "failing"])
+
+        assert slow_cancelled is True
 
     @pytest.mark.asyncio
     @pytest.mark.integration

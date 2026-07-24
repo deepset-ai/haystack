@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import asyncio
 from typing import Any
 
 import numpy as np
@@ -126,6 +127,49 @@ class TestMultiQueryEmbeddingRetrieverAsync:
         assert "documents" in result
         assert len(result["documents"]) == 1
         assert result["documents"][0].content == "Solar energy"
+
+    @pytest.mark.asyncio
+    async def test_run_async_cancels_sibling_queries_when_one_fails(self):
+        slow_started = asyncio.Event()
+        slow_cancelled = False
+
+        @component
+        class MockEmbedder:
+            @component.output_types(embedding=list[float])
+            def run(self, text: str) -> dict[str, list[float]]:
+                return {"embedding": [1.0]}
+
+            @component.output_types(embedding=list[float])
+            async def run_async(self, text: str) -> dict[str, list[float]]:
+                nonlocal slow_cancelled
+                if text == "slow":
+                    slow_started.set()
+                    try:
+                        await asyncio.sleep(5)
+                    except asyncio.CancelledError:
+                        slow_cancelled = True
+                        raise
+                    return {"embedding": [1.0]}
+
+                await slow_started.wait()
+                raise RuntimeError("boom")
+
+        @component
+        class MockRetriever:
+            @component.output_types(documents=list[Document])
+            def run(self, query_embedding: list[float], **kwargs: Any) -> dict[str, list[Document]]:
+                return {"documents": []}
+
+            @component.output_types(documents=list[Document])
+            async def run_async(self, query_embedding: list[float], **kwargs: Any) -> dict[str, list[Document]]:
+                return {"documents": []}
+
+        multi_retriever = MultiQueryEmbeddingRetriever(retriever=MockRetriever(), query_embedder=MockEmbedder())
+
+        with pytest.raises(RuntimeError):
+            await multi_retriever.run_async(queries=["slow", "failing"])
+
+        assert slow_cancelled is True
 
     @pytest.fixture
     def document_store_with_categorized_docs(self):
