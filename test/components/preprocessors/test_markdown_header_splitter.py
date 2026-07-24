@@ -838,3 +838,12 @@ def test_page_break_handling_with_multiple_headers(sample_text_with_page_breaks)
     # reconstruct original
     reconstructed_text = "".join(doc.content for doc in split_docs)
     assert reconstructed_text == sample_text_with_page_breaks
+
+
+def test_trailing_header_without_content_is_not_dropped():
+    text = "# Header 1\nContent 1.\n# Header 2\n"
+    docs = MarkdownHeaderSplitter().run(documents=[Document(content=text)])["documents"]
+    assert "".join(doc.content for doc in docs) == text
+    assert docs[-1].content == "# Header 2\n"
+    assert docs[-1].meta["header"] == "Header 2"
+    assert docs[-1].meta["parent_headers"] == []
