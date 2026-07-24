@@ -40,6 +40,7 @@ LOGICAL_OPERATORS = {"NOT": _not, "OR": _or, "AND": _and}
 
 
 def _equal(value: Any, filter_value: Any) -> bool:
+    value, filter_value = _prepare_equality_comparison(value=value, filter_value=filter_value)
     return value == filter_value
 
 
@@ -47,8 +48,24 @@ def _not_equal(value: Any, filter_value: Any) -> bool:
     return not _equal(value=value, filter_value=filter_value)
 
 
-def _prepare_ordering_comparison(value: Any, filter_value: Any) -> tuple[Any, Any]:
-    """Normalize both values for ordering comparisons, parsing strings as dates."""
+def _looks_like_iso_date(value: Any) -> bool:
+    return (
+        isinstance(value, str)
+        and len(value) >= 10
+        and value[:4].isdigit()
+        and value[4] == "-"
+        and value[5:7].isdigit()
+        and value[7] == "-"
+        and value[8:10].isdigit()
+        and (len(value) == 10 or value[10] in {"T", "t", " "})
+    )
+
+
+def _is_datetime_operand(value: Any) -> bool:
+    return isinstance(value, datetime) or _looks_like_iso_date(value)
+
+
+def _normalize_datetime_comparison(value: Any, filter_value: Any) -> tuple[Any, Any]:
     if isinstance(value, str) or isinstance(filter_value, str):
         if not isinstance(value, datetime):
             value = _parse_date(value)
@@ -57,6 +74,23 @@ def _prepare_ordering_comparison(value: Any, filter_value: Any) -> tuple[Any, An
 
     if isinstance(value, datetime) and isinstance(filter_value, datetime):
         value, filter_value = _ensure_both_dates_naive_or_aware(value, filter_value)
+
+    return value, filter_value
+
+
+def _prepare_equality_comparison(value: Any, filter_value: Any) -> tuple[Any, Any]:
+    if not (_is_datetime_operand(value) and _is_datetime_operand(filter_value)):
+        return value, filter_value
+
+    try:
+        return _normalize_datetime_comparison(value=value, filter_value=filter_value)
+    except FilterError:
+        return value, filter_value
+
+
+def _prepare_ordering_comparison(value: Any, filter_value: Any) -> tuple[Any, Any]:
+    """Normalize both values for ordering comparisons, parsing strings as dates."""
+    value, filter_value = _normalize_datetime_comparison(value=value, filter_value=filter_value)
 
     if isinstance(filter_value, list):
         msg = f"Filter value can't be of type {type(filter_value)} using operators '>', '>=', '<', '<='"
