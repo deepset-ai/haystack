@@ -1,0 +1,9 @@
+---
+features:
+  - |
+    Added `CitationConsistencyChecker`, a deterministic (zero-token) validator that checks whether quote-style
+    citations appear verbatim in the retrieved `Document` they are attributed to. It routes each citation to a
+    `consistent` or `inconsistent` output, catching fabricated quotes, frankenquotes (real words stitched into a
+    sentence that was never written), and misattributed quotes without calling a model. Because it is pure string
+    matching, it does not degrade on long contexts and needs no external API, making it a cheap first stage in
+    front of an LLM-based groundedness check.
