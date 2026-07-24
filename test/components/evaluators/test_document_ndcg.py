@@ -334,6 +334,39 @@ def test_unsupported_comparison_field_raises():
         )
 
 
+def test_run_with_duplicate_retrieved_document_does_not_exceed_one():
+    """
+    Regression test: a relevant document appearing more than once in the retrieved
+    list must only be credited once in DCG. Otherwise DCG exceeds IDCG and the
+    resulting NDCG breaches the documented 0.0-1.0 range.
+    """
+    evaluator = DocumentNDCGEvaluator()
+    result = evaluator.run(
+        ground_truth_documents=[[Document(content="A", score=1.0)]],
+        retrieved_documents=[[Document(content="A"), Document(content="A")]],
+    )
+    # Perfect (single) retrieval of the one relevant document scores exactly 1.0;
+    # the duplicate must not push it above 1.0.
+    assert result["individual_scores"] == [1.0]
+    assert result["score"] == 1.0
+
+
+def test_run_with_duplicate_ground_truth_document_can_still_reach_perfect_ndcg():
+    """
+    Regression test: a relevant document appearing more than once in the ground
+    truth must be collapsed to a single relevant item in IDCG. Otherwise IDCG is
+    inflated relative to DCG (which credits each value once) and a perfect
+    retrieval can never reach 1.0.
+    """
+    evaluator = DocumentNDCGEvaluator()
+    result = evaluator.run(
+        ground_truth_documents=[[Document(content="A", score=1.0), Document(content="A", score=1.0)]],
+        retrieved_documents=[[Document(content="A")]],
+    )
+    assert result["individual_scores"] == [1.0]
+    assert result["score"] == 1.0
+
+
 def test_run_with_meta_missing_key_can_still_reach_perfect_ndcg():
     """
     Regression test for the IDCG/DCG inflation bug: ground truth documents that
