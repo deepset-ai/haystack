@@ -50,14 +50,10 @@ jobs:
         with:
           images: $DOCKER_REPO_NAME
 
-      - name: Detect stable version
-        run: |
-          if [[ "${{ steps.meta.outputs.version }}" =~ ^v2\.[0-9]+\.[0-9]+$ ]]; then
-            echo "IS_STABLE=true" >> "$GITHUB_ENV"
-            echo "Stable version detected"
-          else
-            echo "Not a stable version"
-          fi
+      # 2.31.x maintenance line change
+      # The 2.31.x maintenance line must never move the ":stable" Docker tag:
+      # skip stable detection and leave IS_STABLE at its default ("false")
+
       - name: Build base images
         uses: docker/bake-action@d3418bd7d0e9324001bca92fa8ba175ea7e6dc9b # v7.3.0
         env:
