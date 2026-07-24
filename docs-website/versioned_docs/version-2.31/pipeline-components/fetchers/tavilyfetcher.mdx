@@ -1,0 +1,111 @@
+---
+title: "TavilyFetcher"
+id: tavilyfetcher
+slug: "/tavilyfetcher"
+description: "Use Tavily Extract to fetch and parse content from URLs as Haystack Documents. Unlike web search, it retrieves content from the URLs you provide rather than discovering them via a query."
+---
+
+# TavilyFetcher
+
+Use Tavily Extract to fetch and parse content from URLs as Haystack Documents. Unlike web search, it retrieves content from the URLs you provide rather than discovering them via a query.
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | In indexing or query pipelines as the data fetching step |
+| **Mandatory run variables** | `urls`: A list of URLs (strings) to extract content from (max 20 per request) |
+| **Output variables** | `documents`: A list of [Documents](../../concepts/data-classes.mdx)<br />`meta`: Request-level metadata (`response_time`, `usage`, `request_id`, `failed_results`) |
+| **API reference** | [Tavily](/reference/integrations-tavily) |
+| **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/tavily |
+| **Package name** | `tavily-haystack` |
+
+</div>
+
+## Overview
+
+`TavilyFetcher` wraps the [Tavily Extract API](https://docs.tavily.com/documentation/api-reference/endpoint/extract) to retrieve and parse web page content from one or more specified URLs. PDF URLs are also supported. Each successful URL becomes a Haystack `Document` with page content in `content` and metadata such as `url` (and optionally `images`) in `meta`.
+
+This component is complementary to [`TavilyWebSearch`](../websearch/tavilywebsearch.mdx): search discovers URLs from a query, while `TavilyFetcher` extracts full content from URLs you already have.
+
+### Extract parameters
+
+You can control extraction behavior at init time or per `run()` call:
+
+- `extract_depth`: `"basic"` (fast, lower cost) or `"advanced"` (more data including tables; higher latency and cost). Defaults to `"basic"`.
+- `include_images`: When `True`, image URLs are stored on each Document under `meta["images"]`. Defaults to `False`.
+- `extract_params`: Extra kwargs forwarded to the Tavily Extract API (for example `format`, `include_favicon`, `query`, `chunks_per_source`). See the [Tavily Extract API reference](https://docs.tavily.com/documentation/api-reference/endpoint/extract).
+
+### Authorization
+
+`TavilyFetcher` uses the `TAVILY_API_KEY` environment variable by default. You can also pass the key explicitly:
+
+```python
+from haystack.utils import Secret
+from haystack_integrations.components.fetchers.tavily import TavilyFetcher
+
+fetcher = TavilyFetcher(api_key=Secret.from_token("<your-api-key>"))
+```
+
+To get an API key, sign up at [tavily.com](https://tavily.com).
+
+### Installation
+
+Install the Tavily integration with:
+
+```shell
+pip install tavily-haystack
+```
+
+## Usage
+
+### On its own
+
+```python
+from haystack_integrations.components.fetchers.tavily import TavilyFetcher
+
+fetcher = TavilyFetcher(extract_depth="basic")
+
+result = fetcher.run(urls=["https://docs.haystack.deepset.ai/docs/intro"])
+documents = result["documents"]
+meta = result["meta"]
+
+for doc in documents:
+    print(f"{doc.meta.get('url')}: {len(doc.content or '')} chars")
+
+print("failed:", meta.get("failed_results"))
+```
+
+### In a pipeline
+
+Below is an example of an indexing pipeline that uses `TavilyFetcher` to extract documentation pages and store them in an `InMemoryDocumentStore`.
+
+```python
+from haystack import Pipeline
+from haystack.document_stores.in_memory import InMemoryDocumentStore
+from haystack.components.preprocessors import DocumentSplitter
+from haystack.components.writers import DocumentWriter
+from haystack_integrations.components.fetchers.tavily import TavilyFetcher
+
+document_store = InMemoryDocumentStore()
+
+fetcher = TavilyFetcher(extract_depth="basic")
+splitter = DocumentSplitter(split_by="sentence", split_length=5)
+writer = DocumentWriter(document_store=document_store)
+
+indexing_pipeline = Pipeline()
+indexing_pipeline.add_component("fetcher", fetcher)
+indexing_pipeline.add_component("splitter", splitter)
+indexing_pipeline.add_component("writer", writer)
+
+indexing_pipeline.connect("fetcher.documents", "splitter.documents")
+indexing_pipeline.connect("splitter.documents", "writer.documents")
+
+indexing_pipeline.run(
+    data={
+        "fetcher": {
+            "urls": ["https://docs.haystack.deepset.ai/docs/intro"],
+        },
+    },
+)
+```
