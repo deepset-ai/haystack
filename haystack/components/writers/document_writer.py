@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+from collections.abc import Iterable
 from typing import Any
 
 from haystack import Document, component, default_from_dict, default_to_dict
@@ -77,12 +78,12 @@ class DocumentWriter:
         return default_from_dict(cls, data)
 
     @component.output_types(documents_written=int)
-    def run(self, documents: list[Document], policy: DuplicatePolicy | None = None) -> dict[str, int]:
+    def run(self, documents: Iterable[Document], policy: DuplicatePolicy | None = None) -> dict[str, int]:
         """
         Run the DocumentWriter on the given input data.
 
         :param documents:
-            A list of documents to write to the document store.
+            An iterable of documents to write to the document store.
         :param policy:
             The policy to use when encountering duplicate documents.
         :returns:
@@ -94,11 +95,11 @@ class DocumentWriter:
         if policy is None:
             policy = self.policy
 
-        documents_written = self.document_store.write_documents(documents=documents, policy=policy)
+        documents_written = self.document_store.write_documents(documents=list(documents), policy=policy)
         return {"documents_written": documents_written}
 
     @component.output_types(documents_written=int)
-    async def run_async(self, documents: list[Document], policy: DuplicatePolicy | None = None) -> dict[str, int]:
+    async def run_async(self, documents: Iterable[Document], policy: DuplicatePolicy | None = None) -> dict[str, int]:
         """
         Asynchronously run the DocumentWriter on the given input data.
 
@@ -106,7 +107,7 @@ class DocumentWriter:
         but can be used with `await` in async code.
 
         :param documents:
-            A list of documents to write to the document store.
+            An iterable of documents to write to the document store.
         :param policy:
             The policy to use when encountering duplicate documents.
         :returns:
@@ -123,5 +124,5 @@ class DocumentWriter:
         if not hasattr(self.document_store, "write_documents_async"):
             raise TypeError(f"Document store {type(self.document_store).__name__} does not provide async support.")
 
-        documents_written = await self.document_store.write_documents_async(documents=documents, policy=policy)
+        documents_written = await self.document_store.write_documents_async(documents=list(documents), policy=policy)
         return {"documents_written": documents_written}
