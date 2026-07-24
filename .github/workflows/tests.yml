@@ -55,6 +55,7 @@ jobs:
           persist-credentials: false
       - name: Check for changed code
         id: changes
+        if: github.event_name == 'pull_request'
         uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # v4.0.1
         with:
           filters: |
