@@ -1,0 +1,4 @@
+---
+fixes:
+  - |
+    Updated ``Document.__eq__`` to intelligently compare float values (e.g., scores, embeddings, and nested float metadata) using ``math.isclose``, preventing equality checks from failing due to minor floating-point imprecision.
