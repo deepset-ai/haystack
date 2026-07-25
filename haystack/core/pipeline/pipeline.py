@@ -9,7 +9,12 @@ from typing import Any, ClassVar, cast
 
 from haystack import logging, tracing
 from haystack.core.component import Component
-from haystack.core.errors import BreakpointException, PipelineInvalidPipelineSnapshotError, PipelineRuntimeError
+from haystack.core.errors import (
+    BreakpointException,
+    PipelineInvalidPipelineSnapshotError,
+    PipelineMaxComponentRuns,
+    PipelineRuntimeError,
+)
 from haystack.core.pipeline.base import (
     _COMPONENT_INPUT,
     _COMPONENT_OUTPUT,
@@ -21,6 +26,8 @@ from haystack.core.pipeline.base import (
 from haystack.core.pipeline.breakpoint import (
     SnapshotCallback,
     _create_pipeline_snapshot,
+    _pipeline_snapshot_inputs_use_internal_format,
+    _restore_pipeline_snapshot_inputs,
     _save_pipeline_snapshot,
     _validate_break_point_against_pipeline,
     _validate_pipeline_snapshot_against_pipeline,
@@ -347,10 +354,14 @@ class Pipeline(PipelineBase):
             include_outputs_from = set()
 
         pipeline_outputs: dict[str, Any] = {}
+        original_input_data: dict[str, Any]
+        force_legacy_resume_component_name: str | None = None
+        snapshot_inputs_use_internal_format = False
 
         if not pipeline_snapshot:
             # normalize `data`
             data = self._prepare_component_input_data(data)
+            original_input_data = data
 
             # Raise ValueError if input is malformed in some way
             self.validate_input(data)
@@ -369,7 +380,18 @@ class Pipeline(PipelineBase):
             # Handle resuming the pipeline from a snapshot
             component_visits = pipeline_snapshot.pipeline_state.component_visits
             ordered_component_names = pipeline_snapshot.ordered_component_names
-            data = _deserialize_value_with_schema(pipeline_snapshot.pipeline_state.inputs)
+            original_input_data = _deserialize_value_with_schema(pipeline_snapshot.original_input_data)
+            data = original_input_data
+            snapshot_inputs_use_internal_format = _pipeline_snapshot_inputs_use_internal_format(
+                pipeline_snapshot.pipeline_state.inputs
+            )
+            if (
+                not snapshot_inputs_use_internal_format
+                and component_visits[pipeline_snapshot.break_point.component_name] > 0
+            ):
+                # Legacy snapshots lost sender provenance for the paused component, so they can fail the
+                # pre-loop blocked check before resume has a chance to consume the already-paused inputs once.
+                force_legacy_resume_component_name = pipeline_snapshot.break_point.component_name
 
             # include_outputs_from from the snapshot when resuming
             include_outputs_from = pipeline_snapshot.include_outputs_from
@@ -391,14 +413,33 @@ class Pipeline(PipelineBase):
                 "haystack.pipeline.execution_mode": "sync",
             },
         ) as span:
-            inputs = self._convert_to_internal_format(pipeline_inputs=data)
+            if pipeline_snapshot:
+                inputs = _restore_pipeline_snapshot_inputs(pipeline_snapshot.pipeline_state.inputs)
+            else:
+                inputs = self._convert_to_internal_format(pipeline_inputs=data)
             priority_queue = self._fill_queue(ordered_component_names, inputs, component_visits)
 
             # check if pipeline is blocked before execution
-            self.validate_pipeline(priority_queue)
+            if force_legacy_resume_component_name is None:
+                self.validate_pipeline(priority_queue)
 
             while True:
-                candidate = self._get_next_runnable_component(priority_queue, component_visits)
+                candidate: tuple[ComponentPriority, str, dict[str, Any]] | None
+                if force_legacy_resume_component_name is not None:
+                    component_name = force_legacy_resume_component_name
+                    component = self._get_component_with_graph_metadata_and_visits(
+                        component_name, component_visits[component_name]
+                    )
+                    if component["visits"] >= self._max_runs_per_component:
+                        msg = (
+                            f"Maximum run count {self._max_runs_per_component} reached for component '{component_name}'"
+                        )
+                        raise PipelineMaxComponentRuns(msg)
+                    priority = ComponentPriority.READY
+                    force_legacy_resume_component_name = None
+                    candidate = (priority, component_name, component)
+                else:
+                    candidate = self._get_next_runnable_component(priority_queue, component_visits)
 
                 # If there are no runnable components left, we can exit the loop.
                 # In practice this rarely happens because the queue is constantly refilled even with components that
@@ -431,10 +472,11 @@ class Pipeline(PipelineBase):
                         component_name, component_visits[component_name]
                     )
 
-                if pipeline_snapshot:
+                if pipeline_snapshot and not snapshot_inputs_use_internal_format:
                     is_resume = pipeline_snapshot.break_point.component_name == component_name
                 else:
                     is_resume = False
+                component_snapshot_inputs = inputs.get(component_name, {})
                 component_inputs = self._consume_component_inputs(
                     component_name=component_name, component=component, inputs=inputs, is_resume=is_resume
                 )
@@ -443,13 +485,6 @@ class Pipeline(PipelineBase):
                 # might not provide these defaults for components with inputs defined dynamically upon component
                 # initialization
                 component_inputs = self._add_missing_input_defaults(component_inputs, component["input_sockets"])
-
-                # Scenario 1: Pipeline snapshot is provided to resume the pipeline at a specific component
-                # Deserialize the component_inputs if they are passed in the pipeline_snapshot.
-                # this check will prevent other component_inputs generated at runtime from being deserialized
-                if pipeline_snapshot and component_name in pipeline_snapshot.pipeline_state.inputs.keys():
-                    for key, value in component_inputs.items():
-                        component_inputs[key] = _deserialize_value_with_schema(value)
 
                 try:
                     component_outputs = self._run_component(
@@ -474,10 +509,10 @@ class Pipeline(PipelineBase):
                     # Create a snapshot of the state of the pipeline before the error occurred.
                     pipeline_snapshot = _create_pipeline_snapshot(
                         inputs=_deepcopy_with_exceptions(inputs),
-                        component_inputs=_deepcopy_with_exceptions(component_inputs),
+                        component_snapshot_inputs=_deepcopy_with_exceptions(component_snapshot_inputs),
                         break_point=saved_break_point,
                         component_visits=component_visits,
-                        original_input_data=data,
+                        original_input_data=original_input_data,
                         ordered_component_names=ordered_component_names,
                         include_outputs_from=include_outputs_from,
                         pipeline_outputs=pipeline_outputs,
@@ -492,6 +527,11 @@ class Pipeline(PipelineBase):
                     )
                     error.pipeline_snapshot_file_path = full_file_path
                     raise error
+
+                if is_resume:
+                    # Resume-specific input handling only applies to the first resumed execution of the
+                    # breakpoint component. Later loop visits must use the normal consume path.
+                    pipeline_snapshot = None
 
                 # Updates global input state with component outputs and returns outputs that should go to
                 # pipeline outputs.
