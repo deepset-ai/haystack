@@ -13,7 +13,9 @@ from networkx import MultiDiGraph
 
 from haystack import logging
 from haystack.core.errors import PipelineInvalidPipelineSnapshotError
+from haystack.core.pipeline.component_checks import _NO_OUTPUT_PRODUCED
 from haystack.dataclasses.breakpoints import Breakpoint, PipelineSnapshot, PipelineState
+from haystack.utils import _deserialize_value_with_schema
 from haystack.utils.base_serialization import _serialize_with_field_fallback
 
 logger = logging.getLogger(__name__)
@@ -24,6 +26,9 @@ HAYSTACK_PIPELINE_SNAPSHOT_SAVE_ENABLED = "HAYSTACK_PIPELINE_SNAPSHOT_SAVE_ENABL
 # Type alias for snapshot callback function
 # The callback receives a PipelineSnapshot and optionally returns a file path string
 SnapshotCallback = Callable[[PipelineSnapshot], str | None]
+
+_INTERNAL_PIPELINE_INPUTS_MARKER = "__haystack_internal_inputs__"
+_NO_OUTPUT_PRODUCED_MARKER = "__haystack_no_output_produced__"
 
 
 def _is_snapshot_save_enabled() -> bool:
@@ -211,10 +216,91 @@ def _save_pipeline_snapshot(
     return str(full_path)
 
 
+def _wrap_pipeline_snapshot_inputs(inputs: dict[str, Any]) -> dict[str, Any]:
+    """
+    Wrap pipeline-internal inputs so snapshot restore can distinguish them from legacy flattened inputs.
+
+    Legacy snapshots stored plain component input values, which are ambiguous with user payloads containing
+    `sender`/`value` keys. The wrapper keeps restore logic explicit and backward-compatible.
+    """
+
+    return {_INTERNAL_PIPELINE_INPUTS_MARKER: True, **_serialize_snapshot_input_values(inputs)}
+
+
+def _serialize_snapshot_input_values(data: Any) -> Any:
+    """
+    Replace non-serializable internal sentinels in pipeline inputs with serializable markers.
+    """
+
+    if isinstance(data, dict):
+        if "sender" in data and "value" in data and data["value"] is _NO_OUTPUT_PRODUCED:
+            return {"sender": data["sender"], "value": {_NO_OUTPUT_PRODUCED_MARKER: True}}
+        return {key: _serialize_snapshot_input_values(value) for key, value in data.items()}
+
+    if isinstance(data, list):
+        return [_serialize_snapshot_input_values(item) for item in data]
+
+    return data
+
+
+def _restore_snapshot_input_values(data: Any) -> Any:
+    """
+    Restore serializable snapshot markers back to the pipeline's internal sentinels.
+    """
+
+    if isinstance(data, dict):
+        if data == {_NO_OUTPUT_PRODUCED_MARKER: True}:
+            return _NO_OUTPUT_PRODUCED
+        return {key: _restore_snapshot_input_values(value) for key, value in data.items()}
+
+    if isinstance(data, list):
+        return [_restore_snapshot_input_values(item) for item in data]
+
+    return data
+
+
+def _pipeline_snapshot_inputs_use_internal_format(serialized_inputs: dict[str, Any]) -> bool:
+    """
+    Check whether snapshot inputs were stored in the sender-preserving internal format.
+    """
+
+    serialized_data = serialized_inputs.get("serialized_data", {})
+    return isinstance(serialized_data, dict) and serialized_data.get(_INTERNAL_PIPELINE_INPUTS_MARKER) is True
+
+
+def _restore_pipeline_snapshot_inputs(serialized_inputs: dict[str, Any]) -> dict[str, Any]:
+    """
+    Restore snapshot inputs to the pipeline-internal `[{sender, value}]` shape.
+
+    New snapshots preserve sender metadata under an explicit wrapper. Legacy snapshots only stored flattened
+    values, so we conservatively re-wrap those as `sender=None` user inputs.
+    """
+
+    deserialized_inputs = _restore_snapshot_input_values(_deserialize_value_with_schema(serialized_inputs))
+    if isinstance(deserialized_inputs, dict) and deserialized_inputs.get(_INTERNAL_PIPELINE_INPUTS_MARKER) is True:
+        return {
+            component_name: socket_dict
+            for component_name, socket_dict in deserialized_inputs.items()
+            if component_name != _INTERNAL_PIPELINE_INPUTS_MARKER
+        }
+
+    restored_inputs: dict[str, Any] = {}
+    for component_name, socket_dict in deserialized_inputs.items():
+        if not isinstance(socket_dict, dict):
+            restored_inputs[component_name] = socket_dict
+            continue
+
+        restored_inputs[component_name] = {
+            socket_name: [{"sender": None, "value": value}] for socket_name, value in socket_dict.items()
+        }
+
+    return restored_inputs
+
+
 def _create_pipeline_snapshot(
     *,
     inputs: dict[str, Any],
-    component_inputs: dict[str, Any],
+    component_snapshot_inputs: dict[str, Any],
     break_point: Breakpoint,
     component_visits: dict[str, int],
     original_input_data: dict[str, Any],
@@ -226,7 +312,7 @@ def _create_pipeline_snapshot(
     Create a snapshot of the pipeline at the point where the breakpoint was triggered.
 
     :param inputs: The current pipeline snapshot inputs.
-    :param component_inputs: The inputs to the component that triggered the breakpoint.
+    :param component_snapshot_inputs: The pre-consume inputs for the component that triggered the breakpoint.
     :param break_point: The breakpoint that triggered the snapshot.
     :param component_visits: The visit count of the component that triggered the breakpoint.
     :param original_input_data: The original input data.
@@ -239,10 +325,10 @@ def _create_pipeline_snapshot(
     component_name = break_point.component_name
 
     transformed_original_input_data = _transform_json_structure(original_input_data)
-    transformed_inputs = _transform_json_structure({**inputs, component_name: component_inputs})
+    snapshot_inputs = _wrap_pipeline_snapshot_inputs({**inputs, component_name: component_snapshot_inputs})
 
     serialized_inputs = _serialize_with_field_fallback(
-        transformed_inputs, description="the inputs of the current pipeline state"
+        snapshot_inputs, description="the inputs of the current pipeline state"
     )
     serialized_original_input_data = _serialize_with_field_fallback(
         transformed_original_input_data, description="original input data for `pipeline.run`"
