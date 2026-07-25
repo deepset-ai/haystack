@@ -8,21 +8,23 @@ import logging
 import pytest
 
 from haystack import component
+from haystack.components.joiners import BranchJoiner
 from haystack.core.errors import BreakpointException, PipelineInvalidPipelineSnapshotError
 from haystack.core.pipeline import Pipeline
 from haystack.core.pipeline.breakpoint import (
     HAYSTACK_PIPELINE_SNAPSHOT_SAVE_ENABLED,
     _create_pipeline_snapshot,
     _is_snapshot_save_enabled,
+    _restore_pipeline_snapshot_inputs,
     _save_pipeline_snapshot,
     _transform_json_structure,
     load_pipeline_snapshot,
 )
+from haystack.core.pipeline.component_checks import _NO_OUTPUT_PRODUCED
 from haystack.dataclasses import ChatMessage
 from haystack.dataclasses.breakpoints import Breakpoint, PipelineSnapshot, PipelineState
 from haystack.utils import _deserialize_value_with_schema
-
-_EMPTY_OBJECT_PAYLOAD = {"serialization_schema": {"type": "object", "properties": {}}, "serialized_data": {}}
+from haystack.utils.base_serialization import _serialize_with_field_fallback
 
 
 def test_transform_json_structure_unwraps_sender_value():
@@ -80,6 +82,26 @@ def test_load_state_handles_invalid_state(tmp_path):
 
     with pytest.raises(ValueError, match="Invalid pipeline snapshot from"):
         load_pipeline_snapshot(pipeline_snapshot_file)
+
+
+def test_restore_pipeline_snapshot_inputs_wraps_legacy_flattened_inputs():
+    legacy_inputs = {
+        "serialization_schema": {
+            "type": "object",
+            "properties": {
+                "comp1": {"type": "object", "properties": {"input_value": {"type": "string"}}},
+                "comp2": {"type": "object", "properties": {"values": {"type": "array", "items": {"type": "integer"}}}},
+            },
+        },
+        "serialized_data": {"comp1": {"input_value": "test"}, "comp2": {"values": [1, 2]}},
+    }
+
+    restored_inputs = _restore_pipeline_snapshot_inputs(legacy_inputs)
+
+    assert restored_inputs == {
+        "comp1": {"input_value": [{"sender": None, "value": "test"}]},
+        "comp2": {"values": [{"sender": None, "value": [1, 2]}]},
+    }
 
 
 def test_breakpoint_saves_intermediate_outputs(tmp_path, monkeypatch):
@@ -152,6 +174,24 @@ def _three_component_pipeline() -> Pipeline:
     return pipeline
 
 
+@component
+class _LoopOrDone:
+    @component.output_types(retry=str, done=str)
+    def run(self, value: str) -> dict[str, str]:
+        if value == "start":
+            return {"retry": "start-retry"}
+        return {"done": value}
+
+
+def _branch_joiner_loop_pipeline() -> Pipeline:
+    pipeline = Pipeline(max_runs_per_component=5)
+    pipeline.add_component("joiner", BranchJoiner(str))
+    pipeline.add_component("loop", _LoopOrDone())
+    pipeline.connect("joiner.value", "loop.value")
+    pipeline.connect("loop.retry", "joiner.value")
+    return pipeline
+
+
 def test_break_point_with_pipeline_snapshot_steps_through_pipeline():
     pipeline = _three_component_pipeline()
 
@@ -198,6 +238,101 @@ def test_break_point_matching_pipeline_snapshot_break_point_raises():
         pipeline.run(data={}, pipeline_snapshot=snapshot, break_point=Breakpoint(component_name="comp2", visit_count=0))
 
 
+def test_break_point_with_pipeline_snapshot_resumes_mid_loop_visit():
+    pipeline = _branch_joiner_loop_pipeline()
+
+    with pytest.raises(BreakpointException) as exc_info:
+        pipeline.run(
+            data={"joiner": {"value": "start"}}, break_point=Breakpoint(component_name="joiner", visit_count=1)
+        )
+    snapshot = exc_info.value.pipeline_snapshot
+    assert snapshot is not None
+    assert snapshot.pipeline_state.component_visits == {"joiner": 1, "loop": 1}
+    assert _restore_pipeline_snapshot_inputs(snapshot.pipeline_state.inputs)["joiner"] == {
+        "value": [{"sender": "loop", "value": "start-retry"}]
+    }
+
+    result = pipeline.run(data={}, pipeline_snapshot=snapshot)
+    assert result["loop"]["done"] == "start-retry"
+
+
+def test_legacy_pipeline_snapshot_resumes_mid_loop_visit():
+    pipeline = _branch_joiner_loop_pipeline()
+
+    with pytest.raises(BreakpointException) as exc_info:
+        pipeline.run(
+            data={"joiner": {"value": "start"}}, break_point=Breakpoint(component_name="joiner", visit_count=1)
+        )
+    snapshot = exc_info.value.pipeline_snapshot
+    assert snapshot is not None
+
+    legacy_snapshot = PipelineSnapshot(
+        pipeline_state=PipelineState(
+            inputs=_serialize_with_field_fallback(
+                {"joiner": {"value": ["start-retry"]}, "loop": {}}, description="legacy pipeline snapshot inputs"
+            ),
+            component_visits=snapshot.pipeline_state.component_visits,
+            pipeline_outputs=snapshot.pipeline_state.pipeline_outputs,
+        ),
+        timestamp=snapshot.timestamp,
+        break_point=snapshot.break_point,
+        original_input_data=snapshot.original_input_data,
+        ordered_component_names=snapshot.ordered_component_names,
+        include_outputs_from=snapshot.include_outputs_from,
+    )
+
+    result = pipeline.run(data={}, pipeline_snapshot=legacy_snapshot)
+    assert result["loop"]["done"] == "start-retry"
+
+
+def test_break_point_resume_only_uses_resume_mode_once():
+    pipeline = _branch_joiner_loop_pipeline()
+
+    with pytest.raises(BreakpointException) as exc_info:
+        pipeline.run(
+            data={"joiner": {"value": "start"}}, break_point=Breakpoint(component_name="joiner", visit_count=0)
+        )
+    snapshot = exc_info.value.pipeline_snapshot
+    assert snapshot is not None
+
+    result = pipeline.run(data={}, pipeline_snapshot=snapshot)
+    assert result["loop"]["done"] == "start-retry"
+
+
+def test_break_point_with_pipeline_snapshot_preserves_no_output_sentinels():
+    @component
+    class Router:
+        @component.output_types(path1=str, path2=str)
+        def run(self, value: str) -> dict[str, str]:
+            return {"path2": value}
+
+    @component
+    class Sink:
+        @component.output_types(result=str)
+        def run(self, mandatory: str, optional: str | None = None) -> dict[str, str]:
+            return {"result": f"{mandatory}-{optional}"}
+
+    pipeline = Pipeline()
+    pipeline.add_component("router", Router())
+    pipeline.add_component("sink", Sink())
+    pipeline.connect("router.path1", "sink.optional")
+
+    with pytest.raises(BreakpointException) as exc_info:
+        pipeline.run(
+            data={"router": {"value": "hello"}, "sink": {"mandatory": "world"}},
+            break_point=Breakpoint(component_name="sink", visit_count=0),
+        )
+    snapshot = exc_info.value.pipeline_snapshot
+    assert snapshot is not None
+    assert _restore_pipeline_snapshot_inputs(snapshot.pipeline_state.inputs)["sink"] == {
+        "mandatory": [{"sender": None, "value": "world"}],
+        "optional": [{"sender": "router", "value": _NO_OUTPUT_PRODUCED}],
+    }
+
+    result = pipeline.run(data={}, pipeline_snapshot=snapshot)
+    assert result == {"router": {"path2": "hello"}, "sink": {"result": "world-None"}}
+
+
 class TestCreatePipelineSnapshot:
     def test_create_pipeline_snapshot_all_fields(self):
         break_point = Breakpoint(component_name="comp2")
@@ -206,7 +341,7 @@ class TestCreatePipelineSnapshot:
 
         snapshot = _create_pipeline_snapshot(
             inputs={"comp1": {"input_value": [{"sender": None, "value": "test"}]}, "comp2": {}},
-            component_inputs={"input_value": "processed_test"},
+            component_snapshot_inputs={"input_value": [{"sender": "comp1", "value": "processed_test"}]},
             break_point=break_point,
             component_visits={"comp1": 1, "comp2": 0},
             original_input_data={"comp1": {"input_value": "test"}},
@@ -225,31 +360,24 @@ class TestCreatePipelineSnapshot:
         assert snapshot.ordered_component_names == ordered_component_names
         assert snapshot.break_point == break_point
         assert snapshot.include_outputs_from == include_outputs_from
-        assert snapshot.pipeline_state == PipelineState(
-            inputs={
-                "serialization_schema": {
-                    "type": "object",
-                    "properties": {
-                        "comp1": {"type": "object", "properties": {"input_value": {"type": "string"}}},
-                        "comp2": {"type": "object", "properties": {"input_value": {"type": "string"}}},
-                    },
-                },
-                "serialized_data": {"comp1": {"input_value": "test"}, "comp2": {"input_value": "processed_test"}},
+        assert snapshot.pipeline_state.inputs["serialized_data"]["__haystack_internal_inputs__"] is True
+        assert _restore_pipeline_snapshot_inputs(snapshot.pipeline_state.inputs) == {
+            "comp1": {"input_value": [{"sender": None, "value": "test"}]},
+            "comp2": {"input_value": [{"sender": "comp1", "value": "processed_test"}]},
+        }
+        assert snapshot.pipeline_state.component_visits == {"comp1": 1, "comp2": 0}
+        assert snapshot.pipeline_state.pipeline_outputs == {
+            "serialization_schema": {
+                "type": "object",
+                "properties": {"comp1": {"type": "object", "properties": {"result": {"type": "string"}}}},
             },
-            component_visits={"comp1": 1, "comp2": 0},
-            pipeline_outputs={
-                "serialization_schema": {
-                    "type": "object",
-                    "properties": {"comp1": {"type": "object", "properties": {"result": {"type": "string"}}}},
-                },
-                "serialized_data": {"comp1": {"result": "processed_test"}},
-            },
-        )
+            "serialized_data": {"comp1": {"result": "processed_test"}},
+        }
 
     def test_create_pipeline_snapshot_with_dataclasses_in_pipeline_outputs(self):
         snapshot = _create_pipeline_snapshot(
             inputs={},
-            component_inputs={},
+            component_snapshot_inputs={},
             break_point=Breakpoint(component_name="comp2"),
             component_visits={"comp1": 1, "comp2": 0},
             original_input_data={},
@@ -258,30 +386,22 @@ class TestCreatePipelineSnapshot:
             pipeline_outputs={"comp1": {"result": ChatMessage.from_user("hello")}},
         )
 
-        assert snapshot.pipeline_state == PipelineState(
-            inputs={
-                "serialization_schema": {
-                    "type": "object",
-                    "properties": {"comp2": {"type": "object", "properties": {}}},
-                },
-                "serialized_data": {"comp2": {}},
-            },
-            component_visits={"comp1": 1, "comp2": 0},
-            pipeline_outputs={
-                "serialization_schema": {
-                    "type": "object",
-                    "properties": {
-                        "comp1": {
-                            "type": "object",
-                            "properties": {"result": {"type": "haystack.dataclasses.chat_message.ChatMessage"}},
-                        }
-                    },
-                },
-                "serialized_data": {
-                    "comp1": {"result": {"role": "user", "meta": {}, "name": None, "content": [{"text": "hello"}]}}
+        assert _restore_pipeline_snapshot_inputs(snapshot.pipeline_state.inputs) == {"comp2": {}}
+        assert snapshot.pipeline_state.component_visits == {"comp1": 1, "comp2": 0}
+        assert snapshot.pipeline_state.pipeline_outputs == {
+            "serialization_schema": {
+                "type": "object",
+                "properties": {
+                    "comp1": {
+                        "type": "object",
+                        "properties": {"result": {"type": "haystack.dataclasses.chat_message.ChatMessage"}},
+                    }
                 },
             },
-        )
+            "serialized_data": {
+                "comp1": {"result": {"role": "user", "meta": {}, "name": None, "content": [{"text": "hello"}]}}
+            },
+        }
 
     def test_create_pipeline_snapshot_non_serializable_inputs(self, caplog):
         class NonSerializable:
@@ -291,7 +411,7 @@ class TestCreatePipelineSnapshot:
         with caplog.at_level(logging.WARNING):
             _create_pipeline_snapshot(
                 inputs={"comp1": {"input_value": [{"sender": None, "value": NonSerializable()}]}, "comp2": {}},
-                component_inputs={},
+                component_snapshot_inputs={},
                 break_point=Breakpoint(component_name="comp2"),
                 component_visits={"comp1": 1, "comp2": 0},
                 original_input_data={"comp1": {"input_value": NonSerializable()}},
@@ -321,7 +441,7 @@ class TestCreatePipelineSnapshot:
                     "comp1": {"input_value": [{"sender": None, "value": NonSerializable()}]},
                     "comp2": {"input_value": [{"sender": None, "value": "keep me"}]},
                 },
-                component_inputs={},
+                component_snapshot_inputs={},
                 break_point=Breakpoint(component_name="comp3"),
                 component_visits={"comp1": 1, "comp2": 1, "comp3": 0},
                 original_input_data={"comp1": {"input_value": NonSerializable()}},
@@ -331,13 +451,13 @@ class TestCreatePipelineSnapshot:
             )
 
         # No DeserializationError on any of the three pipeline-level payloads.
-        deserialized_inputs = _deserialize_value_with_schema(snapshot.pipeline_state.inputs)
+        deserialized_inputs = _restore_pipeline_snapshot_inputs(snapshot.pipeline_state.inputs)
         deserialized_original_input_data = _deserialize_value_with_schema(snapshot.original_input_data)
         deserialized_outputs = _deserialize_value_with_schema(snapshot.pipeline_state.pipeline_outputs)
 
         # The non-serializable comp1 field is omitted while the serializable siblings are preserved.
         assert "comp1" not in deserialized_inputs
-        assert deserialized_inputs["comp2"] == {"input_value": "keep me"}
+        assert deserialized_inputs["comp2"] == {"input_value": [{"sender": None, "value": "keep me"}]}
         assert deserialized_inputs["comp3"] == {}
         # original_input_data and pipeline_outputs degrade to empty-but-valid payloads.
         assert deserialized_original_input_data == {}
@@ -357,7 +477,7 @@ def test_save_pipeline_snapshot_raises_on_failure(tmp_path, caplog, monkeypatch)
 
     snapshot = _create_pipeline_snapshot(
         inputs={},
-        component_inputs={},
+        component_snapshot_inputs={},
         break_point=Breakpoint(component_name="comp2", snapshot_file_path=str(snapshot_path)),
         component_visits={"comp1": 1, "comp2": 0},
         original_input_data={},
@@ -384,7 +504,7 @@ class TestSnapshotCallback:
 
         snapshot = _create_pipeline_snapshot(
             inputs={},
-            component_inputs={},
+            component_snapshot_inputs={},
             break_point=Breakpoint(component_name="comp2", snapshot_file_path=str(tmp_path)),
             component_visits={"comp1": 1, "comp2": 0},
             original_input_data={},
@@ -411,7 +531,7 @@ class TestSnapshotCallback:
 
         snapshot = _create_pipeline_snapshot(
             inputs={},
-            component_inputs={},
+            component_snapshot_inputs={},
             break_point=Breakpoint(component_name="comp2", snapshot_file_path=str(tmp_path)),
             component_visits={"comp1": 1, "comp2": 0},
             original_input_data={},
@@ -433,7 +553,7 @@ class TestSnapshotCallback:
 
         snapshot = _create_pipeline_snapshot(
             inputs={},
-            component_inputs={},
+            component_snapshot_inputs={},
             break_point=Breakpoint(component_name="comp2", snapshot_file_path=str(tmp_path)),
             component_visits={"comp1": 1, "comp2": 0},
             original_input_data={},
@@ -462,7 +582,7 @@ class TestSnapshotCallback:
 
         snapshot = _create_pipeline_snapshot(
             inputs={},
-            component_inputs={},
+            component_snapshot_inputs={},
             break_point=Breakpoint(component_name="comp2", snapshot_file_path=str(tmp_path)),
             component_visits={"comp1": 1, "comp2": 0},
             original_input_data={},
@@ -571,7 +691,7 @@ class TestSnapshotSaveEnabled:
 
         snapshot = _create_pipeline_snapshot(
             inputs={},
-            component_inputs={},
+            component_snapshot_inputs={},
             break_point=Breakpoint(component_name="comp2", snapshot_file_path=str(tmp_path)),
             component_visits={"comp1": 1, "comp2": 0},
             original_input_data={},
@@ -591,7 +711,7 @@ class TestSnapshotSaveEnabled:
 
         snapshot = _create_pipeline_snapshot(
             inputs={},
-            component_inputs={},
+            component_snapshot_inputs={},
             break_point=Breakpoint(component_name="comp2", snapshot_file_path=str(tmp_path)),
             component_visits={"comp1": 1, "comp2": 0},
             original_input_data={},
@@ -622,7 +742,7 @@ class TestSnapshotSaveEnabled:
 
         snapshot = _create_pipeline_snapshot(
             inputs={},
-            component_inputs={},
+            component_snapshot_inputs={},
             break_point=Breakpoint(component_name="comp2", snapshot_file_path=str(tmp_path)),
             component_visits={"comp1": 1, "comp2": 0},
             original_input_data={},
