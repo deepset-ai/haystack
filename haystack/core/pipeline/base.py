@@ -1264,7 +1264,11 @@ class PipelineBase:  # noqa: PLW1641
         return consumed_inputs
 
     def _fill_queue(
-        self, component_names: list[str], inputs: InputsType, component_visits: dict[str, int]
+        self,
+        component_names: list[str],
+        inputs: InputsType,
+        component_visits: dict[str, int],
+        resume_component_name: str | None = None,
     ) -> FIFOPriorityQueue:
         """
         Calculates the execution priority for each component and inserts it into the priority queue.
@@ -1272,11 +1276,16 @@ class PipelineBase:  # noqa: PLW1641
         :param component_names: Names of the components to put into the queue.
         :param inputs: Inputs to the components.
         :param component_visits: Current state of component visits.
+        :param resume_component_name: When resuming from a snapshot, the name of the component the run
+            resumes at. Its restored inputs look like user inputs, so it is flagged as a resume target
+            to let it trigger once even if it was paused on a later visit inside a loop.
         :returns: A prioritized queue of component names.
         """
         priority_queue = FIFOPriorityQueue()
         for component_name in component_names:
             comp = self._get_component_with_graph_metadata_and_visits(component_name, component_visits[component_name])
+            if component_name == resume_component_name:
+                comp["is_resume"] = True
             priority = self._calculate_priority(comp, inputs.get(component_name, {}))
             priority_queue.push(component_name, priority)
         return priority_queue

@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    Fixed resuming a pipeline from a snapshot when the breakpoint was hit on the second (or a later)
+    visit of a component inside a loop. Previously the resumed run immediately failed with
+    ``PipelineComponentsBlockedError`` because the paused component's restored inputs look like user
+    inputs, which only trigger a component on its first visit. The component the run resumes at is now
+    allowed to trigger once regardless of its visit count.

@@ -45,8 +45,14 @@ def has_any_trigger(component: dict, inputs: dict) -> bool:
     trigger_from_predecessor = any_predecessors_provided_input(component, inputs)
     trigger_from_user = has_user_input(inputs) and component["visits"] == 0
     trigger_without_inputs = can_not_receive_inputs_from_pipeline(component) and component["visits"] == 0
+    # When resuming from a pipeline snapshot, the paused component's inputs are restored as user
+    # inputs (the sender information is not preserved through serialization). If the component was
+    # paused on a second-or-later visit inside a loop, ``visits`` is already > 0, so neither the
+    # user nor the predecessor trigger fires and the resume would be wrongly reported as blocked.
+    # The resume is an explicit, one-time trigger for exactly that component.
+    trigger_from_resume = component.get("is_resume", False) and has_user_input(inputs)
 
-    return trigger_from_predecessor or trigger_from_user or trigger_without_inputs
+    return trigger_from_predecessor or trigger_from_user or trigger_without_inputs or trigger_from_resume
 
 
 def are_all_sockets_ready(component: dict, inputs: dict, only_check_mandatory: bool = False) -> bool:

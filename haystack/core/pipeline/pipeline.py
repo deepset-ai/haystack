@@ -392,7 +392,10 @@ class Pipeline(PipelineBase):
             },
         ) as span:
             inputs = self._convert_to_internal_format(pipeline_inputs=data)
-            priority_queue = self._fill_queue(ordered_component_names, inputs, component_visits)
+            resume_component_name = pipeline_snapshot.break_point.component_name if pipeline_snapshot else None
+            priority_queue = self._fill_queue(
+                ordered_component_names, inputs, component_visits, resume_component_name=resume_component_name
+            )
 
             # check if pipeline is blocked before execution
             self.validate_pipeline(priority_queue)

@@ -134,3 +134,52 @@ class TestPipelineBreakpointsLoops:
         assert cities_data.cities[0].name == "Berlin"
         assert cities_data.cities[1].name == "Paris"
         assert cities_data.cities[2].name == "Lisbon"
+
+
+@component
+class _LoopOrDone:
+    """Emits ``retry`` until it receives a non-``start`` value, then emits ``done``."""
+
+    @component.output_types(retry=str, done=str)
+    def run(self, value: str) -> dict[str, str]:
+        if value == "start":
+            return {"retry": "start-retry"}
+        return {"done": value}
+
+
+def _build_loop_pipeline() -> Pipeline:
+    from haystack.components.joiners import BranchJoiner
+
+    pipe = Pipeline(max_runs_per_component=5)
+    pipe.add_component("joiner", BranchJoiner(str))
+    pipe.add_component("loop", _LoopOrDone())
+    pipe.connect("joiner.value", "loop.value")
+    pipe.connect("loop.retry", "joiner.value")
+    return pipe
+
+
+@pytest.mark.integration
+def test_resume_snapshot_taken_on_a_later_loop_visit():
+    """
+    Resuming from a snapshot that was taken when the breakpoint fired on a second-or-later visit of a
+    component inside a loop must continue the run instead of failing with PipelineComponentsBlockedError.
+
+    Regression test for https://github.com/deepset-ai/haystack/issues/12145
+    """
+    pipe = _build_loop_pipeline()
+
+    # visit_count=1 => the breakpoint fires the second time the joiner is about to run (inside the loop).
+    try:
+        pipe.run({"joiner": {"value": "start"}}, break_point=Breakpoint(component_name="joiner", visit_count=1))
+    except BreakpointException as exc:
+        snapshot = exc.pipeline_snapshot
+    else:
+        pytest.fail("Expected the breakpoint to trigger")
+
+    assert snapshot is not None
+    # The snapshot was taken when the joiner had already been visited once.
+    assert snapshot.pipeline_state.component_visits["joiner"] == 1
+
+    # Resuming must not raise PipelineComponentsBlockedError and must finish the loop.
+    result = _build_loop_pipeline().run(data={}, pipeline_snapshot=snapshot)
+    assert result["loop"]["done"] == "start-retry"
