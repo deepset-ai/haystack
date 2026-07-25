@@ -1,8 +1,9 @@
 ---
 fixes:
   - |
-    Fixed ``PythonCodeSplitter`` secondary-split pieces losing all identifying
-    context after the first piece when a function, method, or class body is
-    oversized and falls back to line-based splitting. Every piece after the
-    first is now prefixed with the unit's qualified name (e.g. ``# ClassName.method_name``)
-    so that retrieval can still associate the chunk with its source function.
+    Fixed ``PythonCodeSplitter`` losing identifying context for oversized
+    functions, methods, or classes. When a unit is too large and falls back
+    to line-based secondary splitting, only the first resulting piece
+    naturally retains the source ``def``/``class`` line; every piece now
+    includes a ``qualified_name`` field in ``meta`` identifying the function,
+    method, or class it came from.

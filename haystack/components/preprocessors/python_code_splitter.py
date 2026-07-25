@@ -556,11 +556,9 @@ class PythonCodeSplitter:
             meta["secondary_split"] = True
             meta["secondary_split_index"] = idx
             meta["secondary_split_total"] = len(intermediate)
+            meta["qualified_name"] = qualified_name
+            results.append(Document(content=piece.content or "", meta=meta))
 
-            # Prepend the unit's qualified name as a comment to non-first pieces,
-            # since only the first piece naturally retains the def/class signature line.
-            content = piece.content or "" if idx == 0 else f"# {qualified_name}\n{piece.content or ''}"
-            results.append(Document(content=content, meta=meta))
         return results
 
     @component.output_types(documents=list[Document])
