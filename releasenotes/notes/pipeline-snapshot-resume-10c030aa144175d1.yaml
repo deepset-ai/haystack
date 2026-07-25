@@ -1,0 +1,9 @@
+---
+fixes:
+  - |
+    Fixed pipeline snapshot resume for breakpoints hit after the first visit of
+    a looping component. Resumed pipelines now preserve the internal input
+    metadata needed to continue the paused component correctly, and they stop
+    applying resume-only input handling after that component has resumed.
+    Older snapshots remain supported on a best-effort basis, but they may still
+    be limited by missing provenance data in the original snapshot format.
