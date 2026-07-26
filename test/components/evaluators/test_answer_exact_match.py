@@ -71,3 +71,12 @@ def test_run_with_different_lengths():
 
     with pytest.raises(ValueError):
         evaluator.run(ground_truth_answers=["Berlin", "Paris"], predicted_answers=["Berlin"])
+
+
+def test_run_with_empty_inputs():
+    evaluator = AnswerExactMatchEvaluator()
+
+    # Empty (equal-length) inputs previously fell through the length check and
+    # crashed with a bare ZeroDivisionError when averaging over zero items.
+    with pytest.raises(ValueError, match="must be provided"):
+        evaluator.run(ground_truth_answers=[], predicted_answers=[])

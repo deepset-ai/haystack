@@ -147,3 +147,12 @@ def test_run_with_different_lengths():
             ground_truth_documents=[[Document(content="Berlin")], [Document(content="Paris")]],
             retrieved_documents=[[Document(content="Berlin")]],
         )
+
+
+def test_run_with_empty_inputs():
+    evaluator = DocumentMAPEvaluator()
+
+    # Empty (equal-length) inputs previously fell through the length check and
+    # crashed with a bare ZeroDivisionError when averaging over zero items.
+    with pytest.raises(ValueError, match="must be provided"):
+        evaluator.run(ground_truth_documents=[], retrieved_documents=[])
