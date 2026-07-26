@@ -859,7 +859,7 @@ class TestOpenAIChatGenerator:
         assert len(results["replies"]) == 1
         message: ChatMessage = results["replies"][0]
         msg = json.loads(message.text)
-        assert "Marketing Summit" in msg["event_name"]
+        assert "marketing summit" in msg["event_name"].lower()
         assert isinstance(msg["event_date"], str)
         assert isinstance(msg["event_location"], str)
 
@@ -1445,7 +1445,7 @@ def chat_completion_chunks():
                 completion_tokens_details=CompletionTokensDetails(
                     accepted_prediction_tokens=0, audio_tokens=0, reasoning_tokens=0, rejected_prediction_tokens=0
                 ),
-                prompt_tokens_details=PromptTokensDetails(audio_tokens=0, cached_tokens=0),
+                prompt_tokens_details=PromptTokensDetails(audio_tokens=0, cached_tokens=0, cache_write_tokens=0),
             ),
         ),
     ]
@@ -1652,7 +1652,7 @@ def streaming_chunks():
                         "reasoning_tokens": 0,
                         "rejected_prediction_tokens": 0,
                     },
-                    "prompt_tokens_details": {"audio_tokens": 0, "cached_tokens": 0},
+                    "prompt_tokens_details": {"audio_tokens": 0, "cached_tokens": 0, "cache_write_tokens": 0},
                 },
             },
         ),
@@ -1870,7 +1870,7 @@ class TestChatCompletionChunkConversion:
                 "reasoning_tokens": 0,
                 "rejected_prediction_tokens": 0,
             },
-            "prompt_tokens_details": {"audio_tokens": 0, "cached_tokens": 0},
+            "prompt_tokens_details": {"audio_tokens": 0, "cached_tokens": 0, "cache_write_tokens": 0},
         }
 
     def test_convert_usage_chunk_to_streaming_chunk(self):

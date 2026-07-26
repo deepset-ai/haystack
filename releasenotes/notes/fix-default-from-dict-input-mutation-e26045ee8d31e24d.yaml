@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Fixed ``default_from_dict`` (and therefore ``component_from_dict``) mutating the caller's ``data``
+    dictionary in place when deserializing nested objects such as ``Secret`` or ``ComponentDevice``.
+    The serialized sub-dictionaries were being replaced by their deserialized instances inside the input
+    dict; the input is now left unchanged, so the same ``data`` can be safely deserialized more than once.

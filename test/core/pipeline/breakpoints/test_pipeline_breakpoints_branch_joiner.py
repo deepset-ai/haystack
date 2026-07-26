@@ -3,30 +3,17 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import json
-from typing import Any
 
 import pytest
 
-from haystack import component
 from haystack.components.converters import OutputAdapter
+from haystack.components.generators.chat import MockChatGenerator
 from haystack.components.joiners import BranchJoiner
 from haystack.components.validators import JsonSchemaValidator
 from haystack.core.errors import BreakpointException
 from haystack.core.pipeline.pipeline import Pipeline
 from haystack.dataclasses import ChatMessage
 from haystack.dataclasses.breakpoints import Breakpoint
-
-
-@component
-class FakeChatGenerator:
-    def __init__(self, content: str):
-        self.content = content
-
-    @component.output_types(replies=list[ChatMessage])
-    def run(
-        self, messages: list[ChatMessage], generation_kwargs: dict | None = None, **kwargs: Any
-    ) -> dict[str, list[ChatMessage]]:
-        return {"replies": [ChatMessage.from_assistant(self.content)]}
 
 
 class TestPipelineBreakpoints:
@@ -46,7 +33,7 @@ class TestPipelineBreakpoints:
 
         pipe = Pipeline()
         pipe.add_component("joiner", BranchJoiner(list[ChatMessage]))
-        pipe.add_component("fc_llm", FakeChatGenerator(content))
+        pipe.add_component("fc_llm", MockChatGenerator(content))
         pipe.add_component("validator", JsonSchemaValidator(json_schema=person_schema))
         pipe.add_component("adapter", OutputAdapter("{{chat_message}}", list[ChatMessage], unsafe=True))
 

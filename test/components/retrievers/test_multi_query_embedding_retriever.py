@@ -6,24 +6,16 @@ import os
 from typing import Any
 from unittest.mock import ANY, AsyncMock, Mock
 
-import numpy as np
 import pytest
 
 from haystack import Document, Pipeline, component
-from haystack.components.embedders import OpenAIDocumentEmbedder, OpenAITextEmbedder
+from haystack.components.embedders import MockTextEmbedder, OpenAIDocumentEmbedder, OpenAITextEmbedder
 from haystack.components.generators.chat import OpenAIChatGenerator
 from haystack.components.query import QueryExpander
 from haystack.components.retrievers import InMemoryEmbeddingRetriever, MultiQueryEmbeddingRetriever
 from haystack.components.writers import DocumentWriter
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.document_stores.types import DuplicatePolicy
-
-
-@component
-class MockQueryEmbedder:
-    @component.output_types(embedding=list[float])
-    def run(self, text: str) -> dict[str, list[float]]:
-        return {"embedding": np.ones(384).tolist()}
 
 
 class TestMultiQueryEmbeddingRetriever:
@@ -74,7 +66,7 @@ class TestMultiQueryEmbeddingRetriever:
 
     def test_init_with_default_parameters(self, in_memory_doc_store):
         embedding_retriever = InMemoryEmbeddingRetriever(document_store=in_memory_doc_store)
-        query_embedder = MockQueryEmbedder()
+        query_embedder = MockTextEmbedder()
         retriever = MultiQueryEmbeddingRetriever(retriever=embedding_retriever, query_embedder=query_embedder)
         assert retriever.retriever == embedding_retriever
         assert retriever.query_embedder == query_embedder
@@ -82,7 +74,7 @@ class TestMultiQueryEmbeddingRetriever:
 
     def test_init_with_custom_parameters(self, in_memory_doc_store):
         embedding_retriever = InMemoryEmbeddingRetriever(document_store=in_memory_doc_store)
-        query_embedder = MockQueryEmbedder()
+        query_embedder = MockTextEmbedder()
         retriever = MultiQueryEmbeddingRetriever(
             retriever=embedding_retriever, query_embedder=query_embedder, max_workers=2
         )
@@ -92,7 +84,7 @@ class TestMultiQueryEmbeddingRetriever:
 
     def test_run_with_empty_queries(self, in_memory_doc_store):
         multi_retriever = MultiQueryEmbeddingRetriever(
-            retriever=InMemoryEmbeddingRetriever(document_store=in_memory_doc_store), query_embedder=MockQueryEmbedder()
+            retriever=InMemoryEmbeddingRetriever(document_store=in_memory_doc_store), query_embedder=MockTextEmbedder()
         )
         result = multi_retriever.run(queries=[])
         assert "documents" in result
@@ -100,7 +92,7 @@ class TestMultiQueryEmbeddingRetriever:
 
     def test_run_with_empty_results(self, in_memory_doc_store):
         multi_retriever = MultiQueryEmbeddingRetriever(
-            retriever=InMemoryEmbeddingRetriever(document_store=in_memory_doc_store), query_embedder=MockQueryEmbedder()
+            retriever=InMemoryEmbeddingRetriever(document_store=in_memory_doc_store), query_embedder=MockTextEmbedder()
         )
         result = multi_retriever.run(queries=["query"])
         assert "documents" in result
@@ -109,7 +101,7 @@ class TestMultiQueryEmbeddingRetriever:
     def test_to_dict(self, in_memory_doc_store):
         multi_retriever = MultiQueryEmbeddingRetriever(
             retriever=InMemoryEmbeddingRetriever(document_store=in_memory_doc_store),
-            query_embedder=MockQueryEmbedder(),
+            query_embedder=MockTextEmbedder(),
             max_workers=2,
         )
         result = multi_retriever.to_dict()
@@ -139,8 +131,16 @@ class TestMultiQueryEmbeddingRetriever:
                     },
                 },
                 "query_embedder": {
-                    "type": "retrievers.test_multi_query_embedding_retriever.MockQueryEmbedder",
-                    "init_parameters": {},
+                    "type": "haystack.components.embedders.mock_text_embedder.MockTextEmbedder",
+                    "init_parameters": {
+                        "embedding": None,
+                        "embedding_fn": None,
+                        "dimension": 768,
+                        "model": "mock-model",
+                        "meta": {},
+                        "prefix": "",
+                        "suffix": "",
+                    },
                 },
                 "max_workers": 2,
             },
@@ -219,7 +219,7 @@ class TestMultiQueryEmbeddingRetriever:
                 return {"documents": [doc3, doc2]}
 
         multi_retriever = MultiQueryEmbeddingRetriever(
-            retriever=MockRetriever(), query_embedder=MockQueryEmbedder(), max_workers=1
+            retriever=MockRetriever(), query_embedder=MockTextEmbedder(), max_workers=1
         )
         result = multi_retriever.run(queries=["query1", "query2"])
 

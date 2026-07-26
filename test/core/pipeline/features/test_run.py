@@ -22,6 +22,7 @@ from haystack.components.converters import (
     OutputAdapter,
     TextFileToDocument,
 )
+from haystack.components.embedders import MockTextEmbedder
 from haystack.components.joiners import AnswerJoiner, BranchJoiner, DocumentJoiner, StringJoiner
 from haystack.components.preprocessors import DocumentCleaner, DocumentSplitter
 from haystack.components.retrievers.in_memory import InMemoryBM25Retriever
@@ -1702,12 +1703,6 @@ def that_is_linear_with_conditional_branching_and_multiple_joins():
             return {"LEGIT": query}
 
     @component
-    class FakeEmbedder:
-        @component.output_types(embeddings=list[float])
-        def run(self, text: str) -> dict[str, list[float]]:
-            return {"embeddings": [1.0, 2.0, 3.0]}
-
-    @component
     class FakeRanker:
         @component.output_types(documents=list[Document])
         def run(self, query: str, documents: list[Document]) -> dict[str, list[Document]]:
@@ -1728,7 +1723,7 @@ def that_is_linear_with_conditional_branching_and_multiple_joins():
             return {"documents": [doc2]}
 
     pipeline.add_component(name="router", instance=FakeRouter())
-    pipeline.add_component(name="text_embedder", instance=FakeEmbedder())
+    pipeline.add_component(name="text_embedder", instance=MockTextEmbedder(embedding=[1.0, 2.0, 3.0]))
     pipeline.add_component(name="retriever", instance=FakeEmbeddingRetriever())
     pipeline.add_component(name="emptyretriever", instance=FakeRetriever())
     pipeline.add_component(name="joinerfinal", instance=DocumentJoiner())
@@ -1752,7 +1747,12 @@ def that_is_linear_with_conditional_branching_and_multiple_joins():
         [
             PipelineRunData(
                 inputs={"router": {"query": "I'm a legit question"}},
-                expected_outputs={"joinerfinal": {"documents": [doc1, doc2]}},
+                expected_outputs={
+                    "text_embedder": {
+                        "meta": {"model": "mock-model", "usage": {"prompt_tokens": 4, "total_tokens": 4}}
+                    },
+                    "joinerfinal": {"documents": [doc1, doc2]},
+                },
                 expected_component_calls={
                     ("router", 1): {"query": "I'm a legit question"},
                     ("text_embedder", 1): {"text": "I'm a legit question"},

@@ -1,0 +1,173 @@
+---
+title: "AnthropicFoundryChatGenerator"
+id: anthropicfoundrychatgenerator
+slug: "/anthropicfoundrychatgenerator"
+description: "This component enables chat completions using Anthropic models served through Azure Foundry."
+---
+
+# AnthropicFoundryChatGenerator
+
+This component enables chat completions using Anthropic models served through Azure Foundry.
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | After a [`ChatPromptBuilder`](../builders/chatpromptbuilder.mdx) |
+| **Mandatory init variables** | `api_key`: Your Azure Foundry API key. Can be set with the `ANTHROPIC_FOUNDRY_API_KEY` env var. Alternatively, pass an `azure_ad_token_provider` callable.  <br /> <br />`resource`: Your Azure Foundry resource name. Can be set with the `ANTHROPIC_FOUNDRY_RESOURCE` env var. Alternatively, pass a full `endpoint` URL. |
+| **Mandatory run variables** | `messages`: A list of [`ChatMessage`](../../concepts/data-classes/chatmessage.mdx) objects |
+| **Output variables** | `replies`: A list of [`ChatMessage`](../../concepts/data-classes/chatmessage.mdx) objects  <br /> <br />`meta`: A dictionary on each reply with metadata such as the model name, finish reason, and token usage |
+| **API reference** | [Anthropic](/reference/integrations-anthropic) |
+| **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/anthropic |
+| **Package name** | `anthropic-haystack` |
+
+</div>
+
+## Overview
+
+`AnthropicFoundryChatGenerator` lets you call Anthropic's Claude models through an [Azure Foundry](https://learn.microsoft.com/en-us/azure/ai-foundry/) deployment. It is a thin subclass of [`AnthropicChatGenerator`](anthropicchatgenerator.mdx) — the request and response shapes match the Anthropic Messages API, but the traffic flows through your Azure resource instead of `api.anthropic.com`.
+
+Use this generator when your organization standardizes on Azure for model hosting (billing, networking, compliance) but still wants to work against Claude. If you don't need Azure, prefer `AnthropicChatGenerator`.
+
+The default model is `claude-sonnet-4-5`. Other models known to work include `claude-opus-4-6`, `claude-sonnet-4-6`, `claude-opus-4-5`, `claude-opus-4-1`, and `claude-haiku-4-5`. This list is not exhaustive — the actual catalog depends on what is deployed in your Foundry resource. See the [Anthropic model overview](https://docs.anthropic.com/en/docs/about-claude/models) for guidance on picking a model.
+
+### Parameters
+
+`AnthropicFoundryChatGenerator` needs two things to talk to Azure: credentials and an endpoint.
+
+**Credentials.** Pick one of:
+
+- The `ANTHROPIC_FOUNDRY_API_KEY` environment variable (recommended).
+- The `api_key` init parameter using the Haystack [Secret](../../concepts/secret-management.mdx) API: `Secret.from_token("your-api-key-here")`.
+- A callable passed as `azure_ad_token_provider` that returns a fresh Azure AD token on demand. Use this for Entra ID / managed-identity setups where a static key isn't appropriate.
+
+**Endpoint.** Pick one of:
+
+- The `resource` init parameter (or the `ANTHROPIC_FOUNDRY_RESOURCE` environment variable) — the short Foundry resource name, used to derive the URL.
+- The `endpoint` init parameter — a full URL, useful for custom domains or non-standard routes.
+
+Once configured, pass any text-generation parameter supported by the Anthropic [Messages API](https://docs.anthropic.com/en/api/messages) through `generation_kwargs`, either at init or per call. Common keys include `system`, `max_tokens`, `temperature`, `top_p`, `top_k`, `stop_sequences`, `metadata`, and `extra_headers`. You can also tune `timeout` and `max_retries` to control client-side resilience.
+
+The component takes a list of `ChatMessage` objects. `ChatMessage` is a data class that holds a message, a role (`user`, `assistant`, `system`, or `function`), and optional metadata. Only text input is supported.
+
+### Tool Support
+
+`AnthropicFoundryChatGenerator` supports function calling through the `tools` parameter, which accepts:
+
+- **A list of Tool objects**: Pass individual tools as a list.
+- **A single Toolset**: Pass an entire Toolset directly.
+- **Mixed Tools and Toolsets**: Combine multiple Toolsets with standalone tools in a single list.
+
+```python
+from haystack.tools import Tool, Toolset
+from haystack_integrations.components.generators.anthropic import AnthropicFoundryChatGenerator
+
+weather_tool = Tool(name="weather", description="Get weather info", ...)
+math_toolset = Toolset([add_tool, subtract_tool, multiply_tool])
+
+generator = AnthropicFoundryChatGenerator(
+    resource="my-resource",
+    tools=[math_toolset, weather_tool],
+)
+```
+
+Tools passed to `run()` override any tools set at init time. For more details, see the [Tool](../../tools/tool.mdx) and [Toolset](../../tools/toolset.mdx) documentation.
+
+### Streaming
+
+You can stream output as it's generated. Pass a callback to `streaming_callback`. The built-in `print_streaming_chunk` prints text tokens and tool events to stdout.
+
+```python
+from haystack.components.generators.utils import print_streaming_chunk
+from haystack.dataclasses import ChatMessage
+from haystack_integrations.components.generators.anthropic import AnthropicFoundryChatGenerator
+
+generator = AnthropicFoundryChatGenerator(
+    resource="my-resource",
+    streaming_callback=print_streaming_chunk,
+)
+generator.run([ChatMessage.from_user("Your question here")])
+```
+
+:::info
+Streaming works only with a single response. If a provider supports multiple candidates, set `n=1`.
+:::
+
+See [Streaming Support](guides-to-generators/choosing-the-right-generator.mdx#streaming-support) for how `StreamingChunk` works and how to write a custom callback. Prefer `print_streaming_chunk` unless you need a specific transport (such as SSE or WebSocket) or custom UI formatting.
+
+### Async
+
+`run_async` mirrors `run` and is wired up automatically — useful inside an async pipeline or web handler.
+
+```python
+import asyncio
+from haystack.dataclasses import ChatMessage
+from haystack_integrations.components.generators.anthropic import AnthropicFoundryChatGenerator
+
+async def main():
+    generator = AnthropicFoundryChatGenerator(resource="my-resource")
+    result = await generator.run_async([ChatMessage.from_user("Hello!")])
+    print(result["replies"][0].text)
+
+asyncio.run(main())
+```
+
+## Usage
+
+Install the `anthropic-haystack` package to use the `AnthropicFoundryChatGenerator`:
+
+```shell
+pip install anthropic-haystack
+```
+
+### On its own
+
+```python
+from haystack.dataclasses import ChatMessage
+from haystack.utils import Secret
+from haystack_integrations.components.generators.anthropic import AnthropicFoundryChatGenerator
+
+generator = AnthropicFoundryChatGenerator(
+    model="claude-sonnet-4-5",
+    api_key=Secret.from_env_var("ANTHROPIC_FOUNDRY_API_KEY"),
+    resource="my-resource",
+)
+
+response = generator.run([ChatMessage.from_user("What's Natural Language Processing?")])
+print(response)
+```
+
+### In a pipeline
+
+```python
+from haystack import Pipeline
+from haystack.components.builders import ChatPromptBuilder
+from haystack.dataclasses import ChatMessage
+from haystack_integrations.components.generators.anthropic import AnthropicFoundryChatGenerator
+
+pipe = Pipeline()
+pipe.add_component("prompt_builder", ChatPromptBuilder())
+pipe.add_component(
+    "llm",
+    AnthropicFoundryChatGenerator(resource="my-resource"),
+)
+pipe.connect("prompt_builder", "llm")
+
+country = "Germany"
+messages = [
+    ChatMessage.from_system(
+        "You are an assistant giving out valuable information to language learners.",
+    ),
+    ChatMessage.from_user("What's the official language of {{ country }}?"),
+]
+
+res = pipe.run(
+    data={
+        "prompt_builder": {
+            "template_variables": {"country": country},
+            "template": messages,
+        },
+    },
+)
+print(res)
+```

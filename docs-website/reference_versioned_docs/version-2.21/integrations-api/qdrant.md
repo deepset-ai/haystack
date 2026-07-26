@@ -357,8 +357,9 @@ Asynchronously run the Sparse Embedding Retriever on the given input data.
 
 ### QdrantHybridRetriever
 
-A component for retrieving documents from an QdrantDocumentStore using both dense and sparse vectors
-and fusing the results using Reciprocal Rank Fusion.
+A component for retrieving documents from a QdrantDocumentStore using both dense and sparse vectors.
+
+Fuses the results using Reciprocal Rank Fusion.
 
 Usage example:
 
@@ -550,8 +551,9 @@ Batch elements of an iterable into fixed-length chunks or blocks.
 
 ### QdrantDocumentStore
 
-A QdrantDocumentStore implementation that you can use with any Qdrant instance: in-memory, disk-persisted,
-Docker-based, and Qdrant Cloud Cluster deployments.
+A QdrantDocumentStore implementation that you can use with any Qdrant instance.
+
+Supports in-memory, disk-persisted, Docker-based, and Qdrant Cloud Cluster deployments.
 
 Usage example by creating an in-memory instance:
 
@@ -736,6 +738,7 @@ write_documents(
 ```
 
 Writes documents to Qdrant using the specified policy.
+
 The QdrantDocumentStore can handle duplicate documents based on the given policy.
 The available policies are:
 
@@ -761,6 +764,7 @@ write_documents_async(
 ```
 
 Asynchronously writes documents to Qdrant using the specified policy.
+
 The QdrantDocumentStore can handle duplicate documents based on the given policy.
 The available policies are:
 
@@ -1042,8 +1046,9 @@ count_unique_metadata_by_filter_async(
 ) -> dict[str, int]
 ```
 
-Asynchronously returns the number of unique values for each specified metadata field among documents that
-match the filters.
+Asynchronously returns the number of unique values for each specified metadata field among documents.
+
+Only documents that match the filters are considered.
 
 **Parameters:**
 

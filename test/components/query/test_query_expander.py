@@ -8,6 +8,7 @@ from unittest.mock import AsyncMock, Mock
 
 import pytest
 
+from haystack.components.generators.chat import MockChatGenerator
 from haystack.components.generators.chat.openai import OpenAIChatGenerator
 from haystack.components.query.query_expander import DEFAULT_PROMPT_TEMPLATE, QueryExpander
 from haystack.dataclasses.chat_message import ChatMessage
@@ -104,12 +105,9 @@ class TestQueryExpander:
         ]
         mock_chat_generator.run.assert_called_once()
 
-    def test_run_without_including_original(self, mock_chat_generator):
-        mock_chat_generator.run.return_value = {
-            "replies": [ChatMessage.from_assistant('{"queries": ["alt1", "alt2"]}')]
-        }
-
-        expander = QueryExpander(chat_generator=mock_chat_generator, include_original_query=False)
+    def test_run_without_including_original(self):
+        chat_generator = MockChatGenerator('{"queries": ["alt1", "alt2"]}')
+        expander = QueryExpander(chat_generator=chat_generator, include_original_query=False)
         result = expander.run("original")
 
         assert result["queries"] == ["alt1", "alt2"]
@@ -149,9 +147,8 @@ class TestQueryExpander:
         result = expander.run("test query")
         assert result["queries"] == ["test query"]
 
-    def test_run_invalid_json_response(self, mock_chat_generator):
-        mock_chat_generator.run.return_value = {"replies": [ChatMessage.from_assistant("invalid json response")]}
-        expander = QueryExpander(chat_generator=mock_chat_generator)
+    def test_run_invalid_json_response(self):
+        expander = QueryExpander(chat_generator=MockChatGenerator("invalid json response"))
         result = expander.run("test query")
         assert result["queries"] == ["test query"]
 
@@ -196,20 +193,28 @@ class TestQueryExpander:
         queries = expander._parse_expanded_queries('{"queries": ["valid query", 123, "", "another valid"]}')
         assert queries == ["valid query", "another valid"]
 
-    def test_run_query_deduplication(self, mock_chat_generator):
-        mock_chat_generator.run.return_value = {
-            "replies": [ChatMessage.from_assistant('{"queries": ["original query", "alt1", "alt2"]}')]
-        }
-        expander = QueryExpander(chat_generator=mock_chat_generator, include_original_query=True)
+    def test_run_query_deduplication(self):
+        chat_generator = MockChatGenerator('{"queries": ["original query", "alt1", "alt2"]}')
+        expander = QueryExpander(chat_generator=chat_generator, include_original_query=True)
         result = expander.run("original query")
         assert result["queries"] == ["original query", "alt1", "alt2"]
         assert len(result["queries"]) == 3
 
-    def test_run_truncates_excess_queries(self, mock_chat_generator, caplog):
-        mock_chat_generator.run.return_value = {
-            "replies": [ChatMessage.from_assistant('{"queries": ["q1", "q2", "q3", "q4", "q5"]}')]
-        }
-        expander = QueryExpander(chat_generator=mock_chat_generator, n_expansions=3, include_original_query=False)
+    def test_run_deduplicates_generated_queries(self):
+        chat_generator = MockChatGenerator('{"queries": ["same query", "same query", "other query"]}')
+        expander = QueryExpander(chat_generator=chat_generator, n_expansions=3, include_original_query=False)
+        result = expander.run("topic")
+        assert result["queries"] == ["same query", "other query"]
+
+    def test_run_deduplicates_before_truncating(self):
+        chat_generator = MockChatGenerator('{"queries": ["a", "a", "b", "c"]}')
+        expander = QueryExpander(chat_generator=chat_generator, n_expansions=3, include_original_query=False)
+        result = expander.run("topic")
+        assert result["queries"] == ["a", "b", "c"]
+
+    def test_run_truncates_excess_queries(self, caplog):
+        chat_generator = MockChatGenerator('{"queries": ["q1", "q2", "q3", "q4", "q5"]}')
+        expander = QueryExpander(chat_generator=chat_generator, n_expansions=3, include_original_query=False)
 
         with caplog.at_level(logging.WARNING):
             result = expander.run("test query")
@@ -244,14 +249,8 @@ class TestQueryExpander:
         assert "Create 2 alternative search queries for: test query" in call_args
         assert "Return as JSON" in call_args
 
-    def test_component_output_types(self, mock_chat_generator, monkeypatch):
-        monkeypatch.setenv("OPENAI_API_KEY", "test-key-12345")
-        expander = QueryExpander()
-
-        mock_chat_generator.run.return_value = {
-            "replies": [ChatMessage.from_assistant('{"queries": ["test1", "test2"]}')]
-        }
-        expander.chat_generator = mock_chat_generator
+    def test_component_output_types(self):
+        expander = QueryExpander(chat_generator=MockChatGenerator('{"queries": ["test1", "test2"]}'))
 
         result = expander.run("test")
         assert "queries" in result
@@ -410,6 +409,20 @@ class TestQueryExpanderAsync:
         ]
         fake_chat_generator.run.assert_called_once()
 
+    @pytest.mark.asyncio
+    async def test_run_async_deduplicates_generated_queries(self):
+        chat_generator = MockChatGenerator('{"queries": ["same query", "same query", "other query"]}')
+        expander = QueryExpander(chat_generator=chat_generator, n_expansions=3, include_original_query=False)
+        result = await expander.run_async("topic")
+        assert result["queries"] == ["same query", "other query"]
+
+    @pytest.mark.asyncio
+    async def test_run_async_deduplicates_before_truncating(self):
+        chat_generator = MockChatGenerator('{"queries": ["a", "a", "b", "c"]}')
+        expander = QueryExpander(chat_generator=chat_generator, n_expansions=3, include_original_query=False)
+        result = await expander.run_async("topic")
+        assert result["queries"] == ["a", "b", "c"]
+
 
 @pytest.mark.integration
 class TestQueryExpanderIntegration:
@@ -520,3 +533,28 @@ class TestComponentLifecycle:
         expander = QueryExpander(chat_generator=chat_generator)
         expander.warm_up()
         expander.close()
+
+
+class TestQueryExpanderTracing:
+    def test_run_traces_chat_generator_token_usage(self, spying_tracer):
+        expander = QueryExpander(chat_generator=MockChatGenerator('{"queries": ["alt1", "alt2"]}'))
+
+        expander.run(query="green energy sources")
+
+        gen_spans = [s for s in spying_tracer.spans if s.operation_name == "haystack.chat_generator.run"]
+        assert len(gen_spans) == 1
+        output = gen_spans[0].tags["haystack.component.output"]
+        assert output["replies"][0].meta["usage"]["total_tokens"] > 0
+
+
+class TestQueryExpanderTracingAsync:
+    @pytest.mark.asyncio
+    async def test_run_async_traces_chat_generator_token_usage(self, spying_tracer):
+        expander = QueryExpander(chat_generator=MockChatGenerator('{"queries": ["alt1", "alt2"]}'))
+
+        await expander.run_async(query="green energy sources")
+
+        gen_spans = [s for s in spying_tracer.spans if s.operation_name == "haystack.chat_generator.run"]
+        assert len(gen_spans) == 1
+        output = gen_spans[0].tags["haystack.component.output"]
+        assert output["replies"][0].meta["usage"]["total_tokens"] > 0

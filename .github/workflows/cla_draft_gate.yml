@@ -1,0 +1,324 @@
+name: CLA draft gate
+
+# Reduce reviewer load from first-time contributor PRs without a signed CLA:
+#  - Scheduled sweep: if a first-time contributor's PR is older than 1 hour and
+#    the `license/cla` status is not green, convert the PR to draft, remove the
+#    requested reviewers (remembering them in a hidden comment marker), label it
+#    `cla-pending`, and explain why in a comment.
+#  - When the CLA is signed (the `license/cla` commit status turns green), mark
+#    the PR ready for review again and re-request the same reviewers. This also
+#    covers the case where the contributor marks the PR ready for review
+#    themselves after signing. The scheduled sweep doubles as a backstop in case
+#    a status event is missed.
+#  - Team members are never gated. author_association is unreliable for this
+#    (private org members appear as CONTRIBUTOR/NONE), so effective repository
+#    permission is used instead.
+#  - While a PR stays gated, escalate: remind the contributor 5 days after the
+#    PR was opened, post a final warning after 10 days, and close the PR after
+#    14 days. Each step waits for the previous comment to be a few days old, so
+#    PRs that are already old when first gated still get the full sequence
+#    instead of being closed right away.
+# Maintainers can opt a PR out by adding the `skip-cla-reminder` label.
+
+on:
+  status:
+  schedule:
+    - cron: "17,47 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
+concurrency:
+  group: cla-draft-gate
+  cancel-in-progress: false
+
+jobs:
+  gate:
+    runs-on: ubuntu-slim
+    # For status events, only react to the CLA check turning green.
+    if: >
+      github.event_name != 'status' ||
+      (github.event.context == 'license/cla' && github.event.state == 'success')
+    steps:
+      - uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          # The convertPullRequestToDraft/markPullRequestReadyForReview GraphQL
+          # mutations require a user token; GITHUB_TOKEN fails with "Resource
+          # not accessible by integration" (seen on #12036). Use the bot PAT,
+          # which also lets the ready_for_review/review_requested events from
+          # restore() trigger the linked_issue_review workflow.
+          github-token: ${{ secrets.HAYSTACK_BOT_TOKEN }}
+          script: |
+            const CLA_CONTEXT = "license/cla";
+            const LABEL = "cla-pending";
+            const EXEMPT_LABEL = "skip-cla-reminder";
+            const GRACE_MS = 60 * 60 * 1000; // 1 hour
+            const DAY_MS = 24 * 60 * 60 * 1000;
+            const MARKER = "<!-- cla-draft-gate ";
+            const REMINDER_MARKER = "<!-- cla-reminder-5d -->";
+            const WARNING_MARKER = "<!-- cla-warning-10d -->";
+            const FIRST_TIMER = new Set(["FIRST_TIME_CONTRIBUTOR", "FIRST_TIMER", "NONE"]);
+            const { owner, repo } = context.repo;
+
+            // Team members must never be gated. author_association is unreliable
+            // for this: PRIVATE org members show up as CONTRIBUTOR/NONE in webhook
+            // and API payloads, so check the effective repository permission
+            // instead (write/admin => part of the team).
+            async function isTeamMember(login) {
+              try {
+                const { data } = await github.rest.repos.getCollaboratorPermissionLevel({
+                  owner, repo, username: login,
+                });
+                return ["admin", "write"].includes(data.permission);
+              } catch {
+                return false;
+              }
+            }
+
+            async function claSigned(sha) {
+              const { data } = await github.rest.repos.getCombinedStatusForRef({
+                owner, repo, ref: sha, per_page: 100,
+              });
+              return data.statuses.find((s) => s.context === CLA_CONTEXT)?.state === "success";
+            }
+
+            async function findMarkerComment(prNumber) {
+              const comments = await github.paginate(github.rest.issues.listComments, {
+                owner, repo, issue_number: prNumber, per_page: 100,
+              });
+              return comments.find((c) => c.body?.includes(MARKER));
+            }
+
+            function parseMarker(body) {
+              try {
+                const start = body.indexOf(MARKER) + MARKER.length;
+                return JSON.parse(body.slice(start, body.indexOf(" -->", start)));
+              } catch {
+                return { reviewers: [], team_reviewers: [] };
+              }
+            }
+
+            async function ensureLabel() {
+              await github.rest.issues
+                .createLabel({
+                  owner, repo, name: LABEL, color: "d93f0b",
+                  description: "PR is in draft until the contributor signs the CLA",
+                })
+                .catch(() => {}); // already exists
+            }
+
+            async function gate(pr) {
+              const labels = pr.labels.map((l) => l.name);
+              if (labels.includes(EXEMPT_LABEL)) return;
+
+              const reviewers = (pr.requested_reviewers ?? []).map((u) => u.login);
+              const teamReviewers = (pr.requested_teams ?? []).map((t) => t.slug);
+
+              const existing = await findMarkerComment(pr.number);
+              if (!existing) {
+                const meta = { reviewers, team_reviewers: teamReviewers };
+                const body = [
+                  `${MARKER}${JSON.stringify(meta)} -->`,
+                  `Hi @${pr.user.login}, thanks a lot for your contribution! :pray:`,
+                  "",
+                  "We noticed that the **Contributor License Agreement (CLA)** check " +
+                    `(\`${CLA_CONTEXT}\`) hasn't passed yet, so we've temporarily moved this ` +
+                    "PR to **draft** and paused the review assignment.",
+                  "",
+                  "To get your PR reviewed, please sign the CLA via the link in the " +
+                    `\`${CLA_CONTEXT}\` check below (or in the CLA bot comment). As soon as ` +
+                    "the check turns green, this PR will automatically be marked ready " +
+                    "for review again and a reviewer will be re-assigned.",
+                ].join("\n");
+                await github.rest.issues.createComment({ owner, repo, issue_number: pr.number, body });
+              } else if (reviewers.length || teamReviewers.length) {
+                // Merge any newly requested reviewers into the stored metadata.
+                const meta = parseMarker(existing.body);
+                meta.reviewers = [...new Set([...(meta.reviewers ?? []), ...reviewers])];
+                meta.team_reviewers = [...new Set([...(meta.team_reviewers ?? []), ...teamReviewers])];
+                const rest = existing.body.slice(existing.body.indexOf(" -->") + 4);
+                await github.rest.issues.updateComment({
+                  owner, repo, comment_id: existing.id,
+                  body: `${MARKER}${JSON.stringify(meta)} -->${rest}`,
+                });
+              }
+
+              if (reviewers.length || teamReviewers.length) {
+                await github.rest.pulls.removeRequestedReviewers({
+                  owner, repo, pull_number: pr.number,
+                  reviewers, team_reviewers: teamReviewers,
+                });
+              }
+              if (!labels.includes(LABEL)) {
+                await ensureLabel();
+                await github.rest.issues.addLabels({
+                  owner, repo, issue_number: pr.number, labels: [LABEL],
+                });
+              }
+              await github.graphql(
+                "mutation($id: ID!) { convertPullRequestToDraft(input: { pullRequestId: $id }) { pullRequest { isDraft } } }",
+                { id: pr.node_id },
+              );
+              core.info(`Gated PR #${pr.number} (CLA not signed)`);
+            }
+
+            async function restore(pr) {
+              const comment = await findMarkerComment(pr.number);
+              const meta = comment ? parseMarker(comment.body) : { reviewers: [], team_reviewers: [] };
+
+              // The contributor may have marked the PR ready for review themselves
+              // after signing; only run the mutation when it's still a draft.
+              if (pr.draft) {
+                await github.graphql(
+                  "mutation($id: ID!) { markPullRequestReadyForReview(input: { pullRequestId: $id }) { pullRequest { isDraft } } }",
+                  { id: pr.node_id },
+                );
+              }
+
+              // Prefer the individual reviewers we removed; re-requesting the team
+              // instead would make round-robin pick somebody new.
+              const reviewers = (meta.reviewers ?? []).filter((r) => r !== pr.user.login);
+              const teamReviewers = reviewers.length ? [] : (meta.team_reviewers ?? []);
+              if (reviewers.length || teamReviewers.length) {
+                await github.rest.pulls.requestReviewers({
+                  owner, repo, pull_number: pr.number,
+                  reviewers, team_reviewers: teamReviewers,
+                });
+              }
+
+              await github.rest.issues
+                .removeLabel({ owner, repo, issue_number: pr.number, name: LABEL })
+                .catch(() => {});
+              await github.rest.issues.createComment({
+                owner, repo, issue_number: pr.number,
+                body:
+                  `Thanks for signing the CLA, @${pr.user.login}! :tada: ` +
+                  "This PR is now ready for review again and the reviewer has been re-assigned.",
+              });
+              core.info(`Restored PR #${pr.number} (CLA signed)`);
+            }
+
+            // Escalation for PRs that stay gated: reminder after 5 days, final
+            // warning after 10 days, auto-close after 14 days. Steps are also
+            // anchored to the previous comment's age so contributors always get
+            // the full sequence, even on PRs that were old when first gated.
+            async function escalate(pr) {
+              const ageMs = Date.now() - new Date(pr.created_at).getTime();
+              if (ageMs < 5 * DAY_MS) return;
+
+              const comments = await github.paginate(github.rest.issues.listComments, {
+                owner, repo, issue_number: pr.number, per_page: 100,
+              });
+              const reminder = comments.find((c) => c.body?.includes(REMINDER_MARKER));
+              const warning = comments.find((c) => c.body?.includes(WARNING_MARKER));
+              const ageOf = (comment) => Date.now() - new Date(comment.created_at).getTime();
+
+              if (!reminder) {
+                await github.rest.issues.createComment({
+                  owner, repo, issue_number: pr.number,
+                  body: [
+                    REMINDER_MARKER,
+                    `Hi @${pr.user.login}, just a friendly reminder: this PR is still in ` +
+                      "draft because the **Contributor License Agreement (CLA)** hasn't " +
+                      "been signed yet. We'd love to review your contribution! Please " +
+                      `sign the CLA via the link in the \`${CLA_CONTEXT}\` check, and this ` +
+                      "PR will automatically be marked ready for review.",
+                  ].join("\n"),
+                });
+                core.info(`Posted 5-day CLA reminder on PR #${pr.number}`);
+                return;
+              }
+
+              if (!warning) {
+                if (ageMs >= 10 * DAY_MS && ageOf(reminder) >= 5 * DAY_MS) {
+                  await github.rest.issues.createComment({
+                    owner, repo, issue_number: pr.number,
+                    body: [
+                      WARNING_MARKER,
+                      `Hi @${pr.user.login}, this PR is still waiting for the ` +
+                        "**Contributor License Agreement (CLA)** to be signed. Please " +
+                        "note that if the CLA isn't signed within the **next 4 days**, " +
+                        "this PR will be automatically closed as stale. Signing only " +
+                        `takes a minute via the link in the \`${CLA_CONTEXT}\` check, and ` +
+                        "the PR will then automatically be marked ready for review.",
+                    ].join("\n"),
+                  });
+                  core.info(`Posted 10-day CLA warning on PR #${pr.number}`);
+                }
+                return;
+              }
+
+              if (ageMs >= 14 * DAY_MS && ageOf(warning) >= 4 * DAY_MS) {
+                await github.rest.issues.createComment({
+                  owner, repo, issue_number: pr.number,
+                  body:
+                    `Hi @${pr.user.login}, we're closing this PR because the ` +
+                    "**Contributor License Agreement (CLA)** wasn't signed within two " +
+                    "weeks. Thanks a lot for your interest in contributing to Haystack! " +
+                    "If you'd still like to see this change merged, please sign the CLA " +
+                    "and reopen this PR — it will then automatically be marked ready " +
+                    "for review.",
+                });
+                await github.rest.pulls.update({
+                  owner, repo, pull_number: pr.number, state: "closed",
+                });
+                core.info(`Closed PR #${pr.number} (CLA not signed after 14 days)`);
+              }
+            }
+
+            // --- Event dispatch -------------------------------------------------
+
+            if (context.eventName === "status") {
+              // CLA turned green on some commit: restore any gated PRs for it.
+              const { data: prs } = await github.rest.repos.listPullRequestsAssociatedWithCommit({
+                owner, repo, commit_sha: context.payload.sha,
+              });
+              for (const prLite of prs) {
+                if (prLite.state !== "open") continue;
+                if (!prLite.labels.some((l) => l.name === LABEL)) continue;
+                const { data: pr } = await github.rest.pulls.get({ owner, repo, pull_number: prLite.number });
+                await restore(pr);
+              }
+              return;
+            }
+
+            // Scheduled sweep (also backstop for missed status events).
+            const prs = await github.paginate(github.rest.pulls.list, {
+              owner, repo, state: "open", per_page: 100,
+            });
+            for (const pr of prs) {
+              try {
+                if (pr.user?.type === "Bot") continue;
+                const labels = pr.labels.map((l) => l.name);
+                if (labels.includes(EXEMPT_LABEL)) continue;
+
+                // Already gated: drive the PR to the right state. Handle the
+                // non-draft case too, since the contributor can mark a gated PR
+                // ready for review themselves.
+                if (labels.includes(LABEL)) {
+                  if (await claSigned(pr.head.sha)) {
+                    await restore(pr);
+                  } else if (pr.draft) {
+                    await escalate(pr);
+                  } else {
+                    // Readied without signing: put it back in draft, then escalate.
+                    await gate(pr);
+                    await escalate(pr);
+                  }
+                  continue;
+                }
+
+                // Not yet gated: only gate fresh, external first-timer PRs.
+                if (pr.draft) continue;
+                if (!FIRST_TIMER.has(pr.author_association)) continue;
+                if (Date.now() - new Date(pr.created_at).getTime() < GRACE_MS) continue;
+                if (await claSigned(pr.head.sha)) continue;
+                if (await isTeamMember(pr.user.login)) continue;
+                await gate(pr);
+              } catch (error) {
+                core.warning(`PR #${pr.number}: ${error.message}`);
+              }
+            }

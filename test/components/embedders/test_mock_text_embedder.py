@@ -60,7 +60,8 @@ class TestMockTextEmbedder:
         assert MockTextEmbedder(embedding_fn=_ones).run("hello")["embedding"] == [1.0, 1.0, 1.0]
 
     def test_embedding_fn_invalid_return_raises(self):
-        embedder = MockTextEmbedder(embedding_fn=lambda text: "not a vector")
+        # embedding_fn deliberately returns a non-vector to exercise the runtime type check
+        embedder = MockTextEmbedder(embedding_fn=lambda text: "not a vector")  # type: ignore[arg-type, return-value]
         with pytest.raises(TypeError, match="must be a sequence of numbers"):
             embedder.run("hello")
 
@@ -79,8 +80,9 @@ class TestMockTextEmbedder:
         assert custom["extra"] == "value"
 
     def test_run_rejects_non_string(self):
+        # a non-string input is passed on purpose to exercise the runtime type check
         with pytest.raises(TypeError, match="expects a string"):
-            MockTextEmbedder().run(["not", "a", "string"])
+            MockTextEmbedder().run(["not", "a", "string"])  # type: ignore[arg-type]
 
     async def test_run_async(self):
         embedder = MockTextEmbedder(dimension=8)

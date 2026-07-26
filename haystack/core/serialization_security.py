@@ -22,6 +22,7 @@ import os
 from collections.abc import Iterable, Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass, field
+from types import ModuleType
 
 from haystack.core.errors import DeserializationError
 
@@ -159,6 +160,65 @@ def _check_module_allowed(module_name: str) -> None:
         f"('{module_name}') or the {DESERIALIZATION_ALLOWLIST_ENV_VAR} environment variable,\n"
         f"  - or bypass the allowlist entirely: Pipeline.load(..., unsafe=True)."
     )
+
+
+def _check_resolved_module_allowed(resolved: object, declared_module: str | None = None) -> None:
+    """
+    Gate on the module a resolved object *actually* comes from, not on the declared handle.
+
+    The allowlist checks that run earlier in deserialization apply to the declared dotted path,
+    which an attacker controls. A crafted handle can name an object re-exported as an attribute of
+    an allowlisted module and thereby escape the allowlist:
+
+    - a module: ``haystack.utils.auth.os`` resolves to the standard-library ``os`` module, because
+      ``haystack.utils.auth`` does ``import os`` at module scope. The handle has the allowlisted
+      ``haystack`` prefix, but the resolved object belongs to the un-allowlisted ``os`` module.
+    - a class or function: ``haystack.<mod>.<Name>`` could resolve a class/function imported into
+      an allowlisted module from an un-allowlisted one (e.g. a re-exported ``subprocess.Popen``).
+
+    Checking the resolved object's real module closes both gaps. Objects without a usable
+    ``__module__`` (e.g. ``functools.partial`` instances) are left to the other gates; they are not
+    reachable as gadgets through an attribute walk that stays entirely inside allowlisted modules.
+
+    :param resolved:
+        The object resolved from the serialized handle.
+    :param declared_module:
+        The allowlisted module the object was actually resolved from (the module that was imported
+        and walked). Used to accept the private implementation module that backs a public module —
+        see below.
+    :raises DeserializationError:
+        If the resolved object's real module is not on the allowlist.
+    """
+    if _get_context().unsafe:
+        return
+    # Builtins are gated separately and authoritatively — by the identity denylist
+    # (`_check_not_denied_builtin`) in the callable path and by the type requirement
+    # (`_check_builtin_is_type`) in the class path. They can also report a private `__module__`
+    # (e.g. `open.__module__ == "_io"`), so exempt any object that is a genuine builtin (reachable
+    # under its own name in the `builtins` module) from the module check to avoid shadowing those
+    # gates. This exemption cannot widen access: a dangerous builtin is still stopped downstream.
+    name = getattr(resolved, "__name__", None)
+    if isinstance(name, str) and getattr(builtins, name, None) is resolved:
+        return
+    # Modules carry their identity in `__name__`, not `__module__`.
+    module_name = resolved.__name__ if isinstance(resolved, ModuleType) else getattr(resolved, "__module__", None)
+    if not (isinstance(module_name, str) and module_name):
+        return
+    if _is_module_allowed(module_name):
+        return
+    # Private implementation module backing an allowlisted public module: a symbol legitimately
+    # exposed by an allowlisted module can report a private `__module__` — e.g. `operator.add`
+    # resolves to `_operator.add`, `io.StringIO` to `_io.StringIO`. Accept it only when the private
+    # module is the C accelerator of the *same* allowlisted module the object was resolved from
+    # (`_operator` backs `operator`, `_io` backs `io`). This never admits a public, un-allowlisted
+    # module such as `os` or `subprocess`, so the escape gadgets stay blocked.
+    if (
+        declared_module is not None
+        and module_name.lstrip("_") == declared_module
+        and _is_module_allowed(declared_module)
+    ):
+        return
+    _check_module_allowed(module_name)
 
 
 def _is_denied_builtin(resolved: object) -> bool:

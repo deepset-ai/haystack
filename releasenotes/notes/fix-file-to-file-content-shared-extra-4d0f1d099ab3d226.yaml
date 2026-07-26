@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Fixed ``FileToFileContent`` sharing a single ``extra`` dictionary across all produced ``FileContent``
+    objects when ``extra`` is passed as one dict (or left as ``None``). Each ``FileContent`` now gets its
+    own copy, so mutating one file's ``extra`` no longer leaks into the others.

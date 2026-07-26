@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import asyncio
+import json
 from dataclasses import replace
 from unittest.mock import ANY
 
@@ -155,6 +156,30 @@ class TestTracing:
                 span_id=ANY,
             ),
         ]
+
+    @pytest.mark.parametrize("run_async", [False, True])
+    @pytest.mark.parametrize("content_tracing", [True, False])
+    def test_pipeline_output_data_trace_tag(
+        self, pipeline, run_async, content_tracing, eager_spying_tracer, monkeypatch
+    ):
+        """
+        output_data holds the final outputs and is gated behind content tracing.
+
+        EagerSpyingTracer coerces tags when set (like real backends), so it catches output_data being set from the
+        still-empty outputs dict at span start.
+        """
+        monkeypatch.setattr(tracer, "is_content_tracing_enabled", content_tracing)
+        if run_async:
+            asyncio.run(pipeline.run_async(data={"word": "world"}))
+        else:
+            pipeline.run(data={"word": "world"})
+
+        tags = eager_spying_tracer.spans[0].tags
+        assert json.loads(tags["haystack.pipeline.input_data"]) == {"hello": {"word": "world"}}
+        if content_tracing:
+            assert json.loads(tags["haystack.pipeline.output_data"]) == {"hello2": {"output": "Hello, Hello, world!!"}}
+        else:
+            assert "haystack.pipeline.output_data" not in tags
 
     @pytest.mark.parametrize("run_async", [False, True])
     def test_span_input_not_affected_by_component_mutation(self, run_async, spying_tracer, monkeypatch):

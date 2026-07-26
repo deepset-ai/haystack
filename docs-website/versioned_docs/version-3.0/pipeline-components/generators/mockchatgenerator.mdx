@@ -1,0 +1,109 @@
+---
+title: "MockChatGenerator"
+id: mockchatgenerator
+slug: "/mockchatgenerator"
+description: "A Chat Generator that returns predefined responses without calling any API, for tests and quick prototypes."
+---
+
+# MockChatGenerator
+
+A Chat Generator that returns predefined responses without calling any API, for tests and quick prototypes.
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | In place of a real Chat Generator, in tests and prototypes |
+| **Mandatory init variables** | None |
+| **Mandatory run variables** | `messages`: A list of [`ChatMessage`](../../concepts/data-classes/chatmessage.mdx) objects |
+| **Output variables** | `replies`: A list of generated `ChatMessage` objects |
+| **API reference** | [Generators](/reference/generators-api) |
+| **GitHub link** | https://github.com/deepset-ai/haystack/blob/main/haystack/components/generators/chat/mock.py |
+| **Package name** | `haystack-ai` |
+
+</div>
+
+## Overview
+
+`MockChatGenerator` is a deterministic, zero-cost drop-in replacement for real Chat Generators such as `OpenAIChatGenerator`. It implements `run`, `run_async`, streaming callbacks, and serialization but never contacts an external service, which makes it ideal for unit tests, smoke tests, and quick prototypes.
+
+The response is selected based on how the component is configured:
+
+- **Fixed response**: Pass a single string or `ChatMessage` via `responses`. The same reply is returned on every call. A `ChatMessage` passed as a response must have the `assistant` role.
+- **Cycling responses**: Pass a list of strings and/or `ChatMessage` objects via `responses`. Each call returns the next item, wrapping around to the start once the list is exhausted. This is useful to drive multi-step flows such as Agents, where the first call returns a tool call and a later call returns the final answer.
+- **Dynamic response**: Pass a `response_fn` callable that receives the input messages and returns the reply as a string or an assistant `ChatMessage`. Use this when the reply should depend on the input. To support serialization, pass a named function.
+- **Echo (default)**: With no configuration, the component echoes back the text of the last message that has text content, so it is usable out of the box.
+
+`responses` and `response_fn` are mutually exclusive.
+
+Further optional parameters:
+
+- `model`: The model name reported in the response metadata. Defaults to `"mock-model"`.
+- `meta`: Additional metadata merged into the `meta` of every returned `ChatMessage`. A per-response `ChatMessage`'s own metadata takes precedence.
+- `streaming_callback`: An optional callback invoked with `StreamingChunk` objects reconstructed from the predefined response. It lets the mock exercise streaming code paths without a real model.
+
+## Usage
+
+### On its own
+
+```python
+from haystack.components.generators.chat import MockChatGenerator
+from haystack.dataclasses import ChatMessage
+
+# Fixed response
+generator = MockChatGenerator(responses="Hello, this is a mock response.")
+result = generator.run([ChatMessage.from_user("Hi!")])
+print(result["replies"][0].text)  # "Hello, this is a mock response."
+
+# Echo mode (default): returns the last message with text content
+generator = MockChatGenerator()
+result = generator.run([ChatMessage.from_user("Repeat after me")])
+print(result["replies"][0].text)  # "Repeat after me"
+```
+
+### Driving an Agent
+
+Pass `ChatMessage` objects (rather than plain strings) to return tool calls or reasoning content. With cycling responses, you can script a full agent loop without a real model:
+
+```python
+from haystack.components.agents import Agent
+from haystack.components.generators.chat import MockChatGenerator
+from haystack.dataclasses import ChatMessage, ToolCall
+from haystack.tools import tool
+
+
+@tool
+def search(query: str) -> str:
+    """Search for information."""
+    return f"Results for: {query}"
+
+
+generator = MockChatGenerator(
+    responses=[
+        ChatMessage.from_assistant(
+            tool_calls=[ToolCall(tool_name="search", arguments={"query": "Haystack"})],
+        ),
+        "Here is the final answer.",
+    ],
+)
+
+agent = Agent(chat_generator=generator, tools=[search])
+result = agent.run(messages=[ChatMessage.from_user("Tell me about Haystack")])
+print(result["last_message"].text)  # "Here is the final answer."
+```
+
+### Input-dependent responses
+
+```python
+from haystack.components.generators.chat import MockChatGenerator
+from haystack.dataclasses import ChatMessage
+
+
+def shout_back(messages: list[ChatMessage]) -> str:
+    return messages[-1].text.upper()
+
+
+generator = MockChatGenerator(response_fn=shout_back)
+result = generator.run([ChatMessage.from_user("hello")])
+print(result["replies"][0].text)  # "HELLO"
+```

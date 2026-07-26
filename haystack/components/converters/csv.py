@@ -163,7 +163,12 @@ class CSVToDocument:
 
             # Create DictReader; if this fails, raise (no fallback)
             try:
-                reader = csv.DictReader(io.StringIO(data), delimiter=self.delimiter, quotechar=self.quotechar)
+                # ``restkey`` ensures surplus fields on ragged rows (rows with more values than the
+                # header, e.g. an unquoted comma inside a value) land under an explicit string key
+                # instead of the default ``None`` key, which would break ``Document`` id generation.
+                reader = csv.DictReader(
+                    io.StringIO(data), delimiter=self.delimiter, quotechar=self.quotechar, restkey="extra_columns"
+                )
             except Exception as e:
                 raise RuntimeError(f"CSVToDocument(row): could not parse CSV rows for {source}: {e}") from e
 

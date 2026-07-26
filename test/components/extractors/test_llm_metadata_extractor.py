@@ -10,7 +10,7 @@ import pytest
 
 from haystack import Document, Pipeline
 from haystack.components.extractors import LLMMetadataExtractor
-from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.components.generators.chat import MockChatGenerator, OpenAIChatGenerator
 from haystack.components.writers import DocumentWriter
 from haystack.dataclasses import ChatMessage
 from haystack.document_stores.in_memory import InMemoryDocumentStore
@@ -569,3 +569,44 @@ class TestComponentLifecycle:
         await extractor.warm_up_async()
         extractor.close()
         await extractor.close_async()
+
+
+class TestLLMMetadataExtractorTracing:
+    def test_run_traces_token_usage_and_nests_per_document_spans(self, spying_tracer):
+        # Two documents are processed on worker threads. Each generator span must expose the reply's token usage and
+        # nest under the span active when run() was called, not under another document's generator span.
+        extractor = LLMMetadataExtractor(
+            prompt="Extract entities from: {{ document.content }}", chat_generator=MockChatGenerator('{"entities": []}')
+        )
+
+        documents = [Document(content="deepset is in Berlin."), Document(content="Paris is in France.")]
+        with spying_tracer.trace("parent") as parent_span:
+            extractor.run(documents=documents)
+
+        gen_spans = [s for s in spying_tracer.spans if s.operation_name == "haystack.chat_generator.run"]
+        assert len(gen_spans) == 2
+        assert all(span.parent_span is parent_span for span in gen_spans)
+        assert all(
+            span.tags["haystack.component.output"]["replies"][0].meta["usage"]["total_tokens"] > 0 for span in gen_spans
+        )
+
+
+class TestLLMMetadataExtractorTracingAsync:
+    @pytest.mark.asyncio
+    async def test_run_async_traces_token_usage_and_nests_per_document_spans(self, spying_tracer):
+        # Two documents are processed concurrently. Each generator span must expose the reply's token usage and nest
+        # under the span active when run_async() was called, not under another document's generator span.
+        extractor = LLMMetadataExtractor(
+            prompt="Extract entities from: {{ document.content }}", chat_generator=MockChatGenerator('{"entities": []}')
+        )
+
+        documents = [Document(content="deepset is in Berlin."), Document(content="Paris is in France.")]
+        with spying_tracer.trace("parent") as parent_span:
+            await extractor.run_async(documents=documents)
+
+        gen_spans = [s for s in spying_tracer.spans if s.operation_name == "haystack.chat_generator.run"]
+        assert len(gen_spans) == 2
+        assert all(span.parent_span is parent_span for span in gen_spans)
+        assert all(
+            span.tags["haystack.component.output"]["replies"][0].meta["usage"]["total_tokens"] > 0 for span in gen_spans
+        )

@@ -144,6 +144,18 @@ document_matches_filter_data = [
         id="> operator with ISO 8601 string filter value and datetime Document value",
     ),
     pytest.param(
+        {"field": "meta.date", "operator": ">", "value": datetime(2023, 1, 1, tzinfo=timezone.utc)},
+        Document(meta={"date": datetime(2024, 1, 1)}),
+        True,
+        id="> operator with aware datetime filter value and naive datetime Document value",
+    ),
+    pytest.param(
+        {"field": "meta.date", "operator": ">", "value": datetime(2023, 1, 1)},
+        Document(meta={"date": datetime(2024, 1, 1, tzinfo=timezone.utc)}),
+        True,
+        id="> operator with naive datetime filter value and aware datetime Document value",
+    ),
+    pytest.param(
         {"field": "meta.page", "operator": ">", "value": 10},
         Document(),
         False,

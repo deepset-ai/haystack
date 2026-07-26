@@ -1,0 +1,197 @@
+---
+title: "VLLMChatGenerator"
+id: vllmchatgenerator
+slug: "/vllmchatgenerator"
+description: "This component enables chat completion using models served with vLLM."
+---
+
+# VLLMChatGenerator
+
+This component enables chat completion using models served with [vLLM](https://docs.vllm.ai/).
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | After a [`ChatPromptBuilder`](../builders/chatpromptbuilder.mdx) |
+| **Mandatory init variables** | `model`: The name of the model served by vLLM |
+| **Mandatory run variables** | `messages`: A list of [`ChatMessage`](../../concepts/data-classes/chatmessage.mdx) objects |
+| **Output variables** | `replies`: A list of [`ChatMessage`](../../concepts/data-classes/chatmessage.mdx) objects |
+| **API reference** | [vLLM](/reference/integrations-vllm) |
+| **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/vllm |
+| **Package name** | `vllm-haystack` |
+
+</div>
+
+## Overview
+
+[vLLM](https://docs.vllm.ai/) is a high-throughput and memory-efficient inference and serving engine for LLMs. It exposes an OpenAI-compatible HTTP server, which `VLLMChatGenerator` uses to run chat completions.
+
+`VLLMChatGenerator` expects a vLLM server to be running and accessible at the `api_base_url` parameter (by default, `http://localhost:8000/v1`). The component needs a list of [`ChatMessage`](../../concepts/data-classes/chatmessage.mdx) objects to operate. `ChatMessage` is a data class that contains a message, a role (who generated the message, such as `user`, `assistant`, `system`, `function`), and optional metadata.
+
+You can pass any text generation parameters valid for the vLLM OpenAI-compatible Chat Completion API directly to this component using the `generation_kwargs` parameter in `__init__` or in the `run` method. vLLM-specific parameters not part of the standard OpenAI API (such as `top_k`, `min_tokens`, `repetition_penalty`) can be passed through `generation_kwargs["extra_body"]`. For more details, see the [vLLM documentation](https://docs.vllm.ai/en/stable/serving/openai_compatible_server/).
+
+If the vLLM server was started with `--api-key`, provide the API key through the `VLLM_API_KEY` environment variable or the `api_key` init parameter using Haystack's [Secret](../../concepts/secret-management.mdx) API.
+
+### Tool Support
+
+`VLLMChatGenerator` supports function calling through the `tools` parameter, which accepts flexible tool configurations:
+
+- **A list of Tool objects**: Pass individual tools as a list
+- **A single Toolset**: Pass an entire Toolset directly
+- **Mixed Tools and Toolsets**: Combine multiple Toolsets with standalone tools in a single list
+
+This allows you to organize related tools into logical groups while also including standalone tools as needed.
+
+For tool calling to work, the vLLM server must be started with `--enable-auto-tool-choice` and `--tool-call-parser`. The available tool call parsers depend on the model. See the [vLLM tool calling docs](https://docs.vllm.ai/en/stable/features/tool_calling/) for the full list.
+
+For more details on working with tools, see the [Tool](../../tools/tool.mdx) and [Toolset](../../tools/toolset.mdx) documentation.
+
+### Streaming
+
+`VLLMChatGenerator` supports [streaming](guides-to-generators/choosing-the-right-generator.mdx#streaming-support) responses from the LLM, allowing tokens to be emitted as they are generated. To enable streaming, pass a callable to the `streaming_callback` parameter during initialization.
+
+### Reasoning models
+
+`VLLMChatGenerator` supports reasoning models. To use them, start the vLLM server with the appropriate `--reasoning-parser`. The reasoning content produced by the model is exposed in the `reasoning` field of the returned `ChatMessage`.
+
+## Usage
+
+Install the `vllm-haystack` package to use the `VLLMChatGenerator`:
+
+```shell
+pip install vllm-haystack
+```
+
+### Starting the vLLM server
+
+Before using this component, start a vLLM server:
+
+```bash
+vllm serve Qwen/Qwen3-4B-Instruct-2507
+```
+
+For reasoning models, start the server with the appropriate reasoning parser:
+
+```bash
+vllm serve Qwen/Qwen3-0.6B --reasoning-parser qwen3
+```
+
+For tool calling, start the server with `--enable-auto-tool-choice` and `--tool-call-parser`:
+
+```bash
+vllm serve Qwen/Qwen3-0.6B --enable-auto-tool-choice --tool-call-parser hermes
+```
+
+For details on server options, see the [vLLM CLI docs](https://docs.vllm.ai/en/stable/cli/serve/).
+
+### On its own
+
+Basic usage:
+
+```python
+from haystack.dataclasses import ChatMessage
+from haystack_integrations.components.generators.vllm import VLLMChatGenerator
+
+generator = VLLMChatGenerator(
+    model="Qwen/Qwen3-4B-Instruct-2507",
+    generation_kwargs={"max_tokens": 512, "temperature": 0.7},
+)
+
+messages = [ChatMessage.from_user("What's Natural Language Processing?")]
+response = generator.run(messages=messages)
+print(response["replies"][0].text)
+```
+
+### With vLLM-specific parameters
+
+Pass vLLM-specific parameters through the `generation_kwargs["extra_body"]` dictionary:
+
+```python
+from haystack_integrations.components.generators.vllm import VLLMChatGenerator
+
+generator = VLLMChatGenerator(
+    model="Qwen/Qwen3-4B-Instruct-2507",
+    generation_kwargs={
+        "max_tokens": 512,
+        "extra_body": {
+            "top_k": 50,
+            "min_tokens": 10,
+            "repetition_penalty": 1.1,
+        },
+    },
+)
+```
+
+### With tool calling
+
+Start the vLLM server with `--enable-auto-tool-choice` and `--tool-call-parser`, then:
+
+```python
+from haystack.dataclasses import ChatMessage
+from haystack.tools import tool
+from haystack_integrations.components.generators.vllm import VLLMChatGenerator
+
+
+@tool
+def weather(city: str) -> str:
+    """Get the weather in a given city."""
+    return f"The weather in {city} is sunny"
+
+
+generator = VLLMChatGenerator(model="Qwen/Qwen3-0.6B", tools=[weather])
+
+messages = [ChatMessage.from_user("What is the weather in Paris?")]
+response = generator.run(messages=messages)
+print(response["replies"][0].tool_calls)
+```
+
+### With reasoning models
+
+Start the vLLM server with `--reasoning-parser`, then:
+
+```python
+from haystack.dataclasses import ChatMessage
+from haystack_integrations.components.generators.vllm import VLLMChatGenerator
+
+generator = VLLMChatGenerator(model="Qwen/Qwen3-0.6B")
+
+messages = [ChatMessage.from_user("Solve step by step: what is 15 * 37?")]
+response = generator.run(messages=messages)
+reply = response["replies"][0]
+if reply.reasoning:
+    print("Reasoning:", reply.reasoning.reasoning_text)
+print("Answer:", reply.text)
+```
+
+### In a pipeline
+
+```python
+from haystack import Pipeline
+from haystack.components.builders import ChatPromptBuilder
+from haystack.dataclasses import ChatMessage
+from haystack_integrations.components.generators.vllm import VLLMChatGenerator
+
+prompt_builder = ChatPromptBuilder()
+llm = VLLMChatGenerator(model="Qwen/Qwen3-4B-Instruct-2507")
+
+pipe = Pipeline()
+pipe.add_component("prompt_builder", prompt_builder)
+pipe.add_component("llm", llm)
+pipe.connect("prompt_builder.prompt", "llm.messages")
+
+messages = [
+    ChatMessage.from_system("Give brief answers."),
+    ChatMessage.from_user("Tell me about {{city}}"),
+]
+
+response = pipe.run(
+    data={
+        "prompt_builder": {
+            "template": messages,
+            "template_variables": {"city": "Berlin"},
+        },
+    },
+)
+print(response)
+```

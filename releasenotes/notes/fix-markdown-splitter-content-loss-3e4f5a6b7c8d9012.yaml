@@ -1,0 +1,9 @@
+---
+fixes:
+  - |
+    Fixed ``MarkdownHeaderSplitter`` dropping content when ``keep_headers=False``.
+    The secondary split re-stripped a leading header with a non-anchored search,
+    which matched the first ``#`` line anywhere in the body (an embedded
+    lower-level header, or a ``#`` comment inside a fenced code block) and
+    discarded everything before it. The match is now anchored to the start of the
+    content, so only a genuine leading header is stripped.

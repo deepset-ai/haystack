@@ -1,7 +1,9 @@
 loaders:
   - search_path: [../haystack/hooks]
-    modules: ["protocol", "from_function", "tool_result_offloading/hooks", "tool_result_offloading/policies",
-      "tool_result_offloading/stores", "tool_result_offloading/types/protocol"]
+    modules: ["protocol", "from_function", "human_in_the_loop/dataclasses", "human_in_the_loop/hooks",
+      "human_in_the_loop/policies", "human_in_the_loop/strategies", "human_in_the_loop/user_interfaces",
+      "tool_result_offloading/hooks", "tool_result_offloading/policies", "tool_result_offloading/stores",
+      "tool_result_offloading/types/protocol"]
 processors:
   - type: filter
     documented_only: true
@@ -10,5 +12,5 @@ renderer:
   title: Hooks
   id: hooks-api
   description: Hooks that run at points in the Agent's run loop and influence it by mutating State, including
-    built-in tool result offloading.
+    built-in tool result offloading and Human-in-the-Loop tool confirmation.
   filename: hooks_api.md

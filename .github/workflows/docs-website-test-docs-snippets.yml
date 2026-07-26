@@ -26,19 +26,17 @@ jobs:
       AZURE_OPENAI_ENDPOINT: ${{ secrets.AZURE_OPENAI_ENDPOINT }}
       AZURE_OPENAI_AD_TOKEN: ${{ secrets.AZURE_OPENAI_AD_TOKEN }}
       AZURE_OPENAI_API_KEY: ${{ secrets.AZURE_OPENAI_API_KEY }}
-      CORE_AZURE_CS_ENDPOINT: ${{ secrets.CORE_AZURE_CS_ENDPOINT }}
       HF_API_TOKEN: ${{ secrets.HUGGINGFACE_API_KEY }}
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-      SERPERDEV_API_KEY: ${{ secrets.SERPERDEV_API_KEY }}
 
     steps:
       - name: Checkout
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
       - name: Setup Python
-        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: "3.11"
 
@@ -61,6 +59,7 @@ jobs:
       - name: Run snippet tests (verbose)
         shell: bash
         run: |
+          hatch -e test env run -- pip install huggingface-api-haystack # required by LLMMessagesRouter docstring example
           hatch -e test env run -- python docs-website/scripts/test_python_snippets.py --verbose tmp_api_reference/
 
   notify-slack-on-failure:

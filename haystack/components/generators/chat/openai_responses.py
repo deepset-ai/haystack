@@ -160,8 +160,21 @@ class OpenAIResponsesChatGenerator:
                 - `summary`: The summary of the reasoning.
                 - `effort`: The level of effort to put into the reasoning. Can be `low`, `medium` or `high`.
                 - `generate_summary`: Whether to generate a summary of the reasoning.
+                - `mode`: The reasoning mode. Can be `standard`, or `pro`. Supported since GPT-5.6.
                 Note: OpenAI does not return the reasoning tokens, but we can view summary if its enabled.
                 For details, see the [OpenAI Reasoning documentation](https://platform.openai.com/docs/guides/reasoning).
+            - `include`: Specify additional output data to include in the model response. Supported values are:
+                - web_search_call.action.sources: Include the sources of the web search tool call.
+                - code_interpreter_call.outputs: Includes the outputs of python code execution in code interpreter tool
+                    call items.
+                - computer_call_output.output.image_url: Include image urls from the computer call output.
+                - file_search_call.results: Include the search results of the file search tool call.
+                - message.input_image.image_url: Include image urls from the input message.
+                - message.output_text.logprobs: Include logprobs with assistant messages.
+                - reasoning.encrypted_content: Includes an encrypted version of reasoning tokens in reasoning item
+                    outputs. This enables reasoning items to be used in multi-turn conversations when using the
+                    Responses API statelessly (like when the store parameter is set to false, or when an organization
+                    is enrolled in the zero data retention program).
         :param timeout:
             Timeout for OpenAI client calls. If not set, it defaults to either the
             `OPENAI_TIMEOUT` environment variable, or 30 seconds.
@@ -215,7 +228,7 @@ class OpenAIResponsesChatGenerator:
 
     def _warm_up_tools(self) -> None:
         if not self._tools_warmed_up:
-            is_openai_tool = isinstance(self.tools, list) and isinstance(self.tools[0], dict)
+            is_openai_tool = isinstance(self.tools, list) and bool(self.tools) and isinstance(self.tools[0], dict)
             # We only warm up Haystack tools, not OpenAI/MCP tools
             # The type ignore is needed because mypy cannot infer the type correctly
             if not is_openai_tool:
@@ -526,7 +539,10 @@ class OpenAIResponsesChatGenerator:
                     function_spec = {**t.tool_spec}
                     if not tools_strict:
                         function_spec["strict"] = False
-                    function_spec["parameters"]["additionalProperties"] = False
+                    # Copy the parameters schema before editing it. tool_spec exposes
+                    # Tool.parameters by reference, so mutating it here would permanently alter
+                    # the user's Tool (and any other generator that shares the same Tool instance).
+                    function_spec["parameters"] = {**function_spec["parameters"], "additionalProperties": False}
                     tool_definitions.append({"type": "function", **function_spec})
 
             openai_tools = {"tools": tool_definitions}
@@ -545,20 +561,32 @@ class OpenAIResponsesChatGenerator:
     def _resolve_flattened_kwargs(self, generation_kwargs: dict[str, Any]) -> dict[str, Any]:
         generation_kwargs = generation_kwargs.copy()
 
+        # avoid mutating the caller's dict
+        reasoning_overrides = {}
         reasoning_effort = generation_kwargs.pop("reasoning_effort", None)
         if reasoning_effort is not None:
-            reasoning = generation_kwargs.setdefault("reasoning", {})
-            reasoning["effort"] = reasoning_effort
+            reasoning_overrides["effort"] = reasoning_effort
 
         reasoning_summary = generation_kwargs.pop("reasoning_summary", None)
         if reasoning_summary is not None:
-            reasoning = generation_kwargs.setdefault("reasoning", {})
-            reasoning["summary"] = reasoning_summary
+            reasoning_overrides["summary"] = reasoning_summary
+
+        reasoning_mode = generation_kwargs.pop("reasoning_mode", None)
+        if reasoning_mode is not None:
+            reasoning_overrides["mode"] = reasoning_mode
+
+        if reasoning_overrides:
+            generation_kwargs["reasoning"] = {**generation_kwargs.get("reasoning", {}), **reasoning_overrides}
+
+        include_reasoning_encrypted_content = generation_kwargs.pop("include_reasoning_encrypted_content", None)
+        if include_reasoning_encrypted_content is True:
+            include = generation_kwargs.get("include", [])
+            if "reasoning.encrypted_content" not in include:
+                generation_kwargs["include"] = [*include, "reasoning.encrypted_content"]
 
         verbosity = generation_kwargs.pop("verbosity", None)
         if verbosity is not None:
-            text = generation_kwargs.setdefault("text", {})
-            text["verbosity"] = verbosity
+            generation_kwargs["text"] = {**generation_kwargs.get("text", {}), "verbosity": verbosity}
 
         return generation_kwargs
 

@@ -1,0 +1,161 @@
+---
+title: "DoclingServeConverter"
+id: doclingserveconverter
+slug: "/doclingserveconverter"
+description: "`DoclingServeConverter` converts PDF, DOCX, HTML, and other document formats to Haystack Documents by calling a remote DoclingServe HTTP server, with no local ML dependencies."
+---
+
+# DoclingServeConverter
+
+`DoclingServeConverter` converts PDF, DOCX, HTML, and other document formats to Haystack Documents by calling a [DoclingServe](https://github.com/docling-project/docling-serve) HTTP server. Unlike the local [`DoclingConverter`](doclingconverter.mdx), this component has no heavy ML dependencies — all document parsing happens on the remote server.
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | Before [PreProcessors](../preprocessors.mdx), or right at the beginning of an indexing pipeline |
+| **Mandatory run variables** | `sources`: A list of file paths, URLs, or [`ByteStream`](../../concepts/data-classes.mdx#bytestream) objects |
+| **Output variables** | `documents`: A list of documents |
+| **API reference** | [Docling Serve](/reference/integrations-docling_serve) |
+| **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/docling_serve |
+| **Package name** | `docling-serve-haystack` |
+
+</div>
+
+## Overview
+
+The `DoclingServeConverter` takes a list of file paths, URLs, or [`ByteStream`](../../concepts/data-classes.mdx#bytestream) objects and sends them to a running DoclingServe instance for parsing. Local files and `ByteStream` objects are uploaded to the `/v1/convert/file` endpoint; URL strings are sent to `/v1/convert/source`.
+
+The component supports three export modes, controlled by the `export_type` parameter:
+
+- **`ExportType.MARKDOWN`** (default): Returns the document content as a Markdown string. Use this mode when you want well-structured text output with formatting preserved.
+- **`ExportType.TEXT`**: Returns plain text extracted from the document. Use this mode when you need clean, unformatted text.
+- **`ExportType.JSON`**: Returns the full Docling document representation as a JSON string. Use this mode when you need access to the complete structured representation.
+
+Each source produces one [`Document`](../../concepts/data-classes.mdx#document) in the output. Sources that fail to convert are skipped with a warning logged.
+
+You can pass additional conversion options to the DoclingServe API via the `convert_options` parameter (for example, `{"do_ocr": True, "ocr_engine": "tesseract"}`). If the DoclingServe instance requires authentication, pass the API key via the `api_key` parameter or set the `DOCLING_SERVE_API_KEY` environment variable.
+
+The component supports both synchronous (`run`) and asynchronous (`run_async`) execution.
+
+## Usage
+
+Install the Docling Serve integration:
+
+```shell
+pip install docling-serve-haystack
+```
+
+Start a DoclingServe instance locally (requires Docker):
+
+```shell
+docker run -p 5001:5001 ghcr.io/docling-project/docling-serve-cpu:latest
+```
+
+### On its own
+
+```python
+from haystack_integrations.components.converters.docling_serve import (
+    DoclingServeConverter,
+)
+
+# Default: Markdown output
+converter = DoclingServeConverter(base_url="http://localhost:5001")
+result = converter.run(sources=["report.pdf", "notes.docx"])
+documents = result["documents"]
+print(documents[0].content[:200])
+
+# Plain text output
+from haystack_integrations.components.converters.docling_serve import ExportType
+
+converter = DoclingServeConverter(
+    base_url="http://localhost:5001",
+    export_type=ExportType.TEXT,
+)
+result = converter.run(sources=["report.pdf"])
+print(result["documents"][0].content)
+```
+
+### In a pipeline
+
+```python
+from haystack import Pipeline
+from haystack.components.preprocessors import DocumentSplitter
+from haystack.components.writers import DocumentWriter
+from haystack.document_stores.in_memory import InMemoryDocumentStore
+from haystack_integrations.components.converters.docling_serve import (
+    DoclingServeConverter,
+)
+
+document_store = InMemoryDocumentStore()
+
+pipeline = Pipeline()
+pipeline.add_component(
+    "converter",
+    DoclingServeConverter(base_url="http://localhost:5001"),
+)
+pipeline.add_component("splitter", DocumentSplitter())
+pipeline.add_component("writer", DocumentWriter(document_store=document_store))
+pipeline.connect("converter", "splitter")
+pipeline.connect("splitter", "writer")
+
+pipeline.run({"converter": {"sources": ["report.pdf", "manual.docx"]}})
+```
+
+## Additional Features
+
+### Converting URLs directly
+
+Pass URL strings to convert remote documents without downloading them first:
+
+```python
+from haystack_integrations.components.converters.docling_serve import (
+    DoclingServeConverter,
+)
+
+converter = DoclingServeConverter(base_url="http://localhost:5001")
+result = converter.run(sources=["https://arxiv.org/pdf/2602.17316"])
+print(result["documents"][0].content[:200])
+```
+
+### Attaching metadata
+
+Pass a single dictionary to apply metadata to all output Documents, or a list to set metadata per source:
+
+```python
+from haystack_integrations.components.converters.docling_serve import (
+    DoclingServeConverter,
+)
+
+converter = DoclingServeConverter(base_url="http://localhost:5001")
+
+# Same metadata for all sources
+result = converter.run(
+    sources=["a.pdf", "b.pdf"],
+    meta={"project": "research"},
+)
+
+# Per-source metadata
+result = converter.run(
+    sources=["a.pdf", "b.pdf"],
+    meta=[{"title": "Report A"}, {"title": "Report B"}],
+)
+```
+
+### Processing in-memory files
+
+Pass [`ByteStream`](../../concepts/data-classes.mdx#bytestream) objects to convert files loaded into memory. Set `file_path` in the ByteStream metadata so DoclingServe can detect the file format:
+
+```python
+from haystack.dataclasses import ByteStream
+from haystack_integrations.components.converters.docling_serve import (
+    DoclingServeConverter,
+)
+
+with open("report.pdf", "rb") as f:
+    data = f.read()
+
+source = ByteStream(data=data, meta={"file_path": "report.pdf"})
+converter = DoclingServeConverter(base_url="http://localhost:5001")
+result = converter.run(sources=[source])
+```

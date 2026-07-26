@@ -11,7 +11,7 @@ import pytest
 from haystack import Document, Pipeline
 from haystack.components.converters.image.document_to_image import DocumentToImageContent
 from haystack.components.extractors.image import LLMDocumentContentExtractor
-from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.components.generators.chat import MockChatGenerator, OpenAIChatGenerator
 from haystack.components.writers import DocumentWriter
 from haystack.core.serialization import component_to_dict
 from haystack.dataclasses.chat_message import ChatMessage, ImageContent
@@ -191,12 +191,10 @@ class TestLLMDocumentContentExtractor:
     @patch.object(DocumentToImageContent, "run")
     def test_run_plain_string_response_goes_to_content(self, mock_doc_to_image_run):
         """When LLM returns plain string (non-JSON), it is written to document content."""
-        mock_chat_generator = Mock(spec=OpenAIChatGenerator)
-        mock_chat_generator.run.return_value = {"replies": [ChatMessage.from_assistant(text="Plain text, not JSON")]}
         mock_doc_to_image_run.return_value = {
             "image_contents": [ImageContent.from_file_path("./test/test_files/images/apple.jpg")]
         }
-        extractor = LLMDocumentContentExtractor(chat_generator=mock_chat_generator)
+        extractor = LLMDocumentContentExtractor(chat_generator=MockChatGenerator("Plain text, not JSON"))
         docs = [Document(content="", meta={"file_path": "/path/to/image.pdf"})]
         result = extractor.run(documents=docs)
         assert len(result["documents"]) == 1
@@ -206,14 +204,10 @@ class TestLLMDocumentContentExtractor:
     @patch.object(DocumentToImageContent, "run")
     def test_run_valid_json_not_object_reports_error(self, mock_doc_to_image_run):
         """When LLM returns valid JSON that is not an object (e.g. array or primitive), report error."""
-        mock_chat_generator = Mock(spec=OpenAIChatGenerator)
-        mock_chat_generator.run.return_value = {
-            "replies": [ChatMessage.from_assistant(text='["array", "not", "object"]')]
-        }
         mock_doc_to_image_run.return_value = {
             "image_contents": [ImageContent.from_file_path("./test/test_files/images/apple.jpg")]
         }
-        extractor = LLMDocumentContentExtractor(chat_generator=mock_chat_generator)
+        extractor = LLMDocumentContentExtractor(chat_generator=MockChatGenerator('["array", "not", "object"]'))
         docs = [Document(content="", meta={"file_path": "/path/to/image.pdf"})]
         result = extractor.run(documents=docs)
         assert len(result["documents"]) == 0
@@ -224,16 +218,12 @@ class TestLLMDocumentContentExtractor:
     @patch.object(DocumentToImageContent, "run")
     def test_run_with_content_and_metadata_extraction(self, mock_doc_to_image_run):
         """When content mode gets JSON with document_content and other keys, other keys are merged into metadata."""
-        mock_chat_generator = Mock(spec=OpenAIChatGenerator)
-        mock_chat_generator.run.return_value = {
-            "replies": [
-                ChatMessage.from_assistant(text='{"document_content": "Main text", "title": "Doc Title", "page": "1"}')
-            ]
-        }
         mock_doc_to_image_run.return_value = {
             "image_contents": [ImageContent.from_file_path("./test/test_files/images/apple.jpg")]
         }
-        extractor = LLMDocumentContentExtractor(chat_generator=mock_chat_generator)
+        extractor = LLMDocumentContentExtractor(
+            chat_generator=MockChatGenerator('{"document_content": "Main text", "title": "Doc Title", "page": "1"}')
+        )
         docs = [Document(content="", meta={"file_path": "/path/to/image.pdf"})]
         result = extractor.run(documents=docs)
         assert len(result["documents"]) == 1
@@ -285,16 +275,14 @@ class TestLLMDocumentContentExtractor:
 
     @patch.object(DocumentToImageContent, "run")
     def test_run_removes_extraction_error_from_previous_runs(self, mock_doc_to_image_run):
-        mock_chat_generator = Mock(spec=OpenAIChatGenerator)
-        mock_chat_generator.run.return_value = {
-            "replies": [ChatMessage.from_assistant(text='{"document_content": "Successfully extracted content"}')]
-        }
         # Mock DocumentToImageContent to return valid image content
         mock_doc_to_image_run.return_value = {
             "image_contents": [ImageContent.from_file_path("./test/test_files/images/apple.jpg")]
         }
 
-        extractor = LLMDocumentContentExtractor(chat_generator=mock_chat_generator)
+        extractor = LLMDocumentContentExtractor(
+            chat_generator=MockChatGenerator('{"document_content": "Successfully extracted content"}')
+        )
 
         # Document with previous extraction error
         docs = [
@@ -356,16 +344,12 @@ class TestLLMDocumentContentExtractor:
     @patch.object(DocumentToImageContent, "run")
     def test_run_json_multiple_keys_metadata_merged(self, mock_doc_to_image_run):
         """When LLM returns JSON with multiple keys and no document_content, all keys are merged into metadata."""
-        mock_chat_generator = Mock(spec=OpenAIChatGenerator)
-        mock_chat_generator.run.return_value = {
-            "replies": [
-                ChatMessage.from_assistant(text='{"title": "Sample Doc", "author": "Test", "document_type": "report"}')
-            ]
-        }
         mock_doc_to_image_run.return_value = {
             "image_contents": [ImageContent.from_file_path("./test/test_files/images/apple.jpg")]
         }
-        extractor = LLMDocumentContentExtractor(chat_generator=mock_chat_generator)
+        extractor = LLMDocumentContentExtractor(
+            chat_generator=MockChatGenerator('{"title": "Sample Doc", "author": "Test", "document_type": "report"}')
+        )
         original_content = "Original content"
         docs = [Document(content=original_content, meta={"file_path": "/path/to/image.pdf"})]
         result = extractor.run(documents=docs)
@@ -692,3 +676,66 @@ class TestComponentLifecycle:
         await extractor.warm_up_async()
         extractor.close()
         await extractor.close_async()
+
+
+class TestLLMDocumentContentExtractorTracing:
+    @patch.object(DocumentToImageContent, "run")
+    def test_run_traces_token_usage_and_nests_per_document_spans(self, mock_doc_to_image_run, spying_tracer):
+        # Two documents are processed on worker threads. Each generator span must expose the reply's token usage and
+        # nest under the span active when run() was called, not under another document's generator span.
+        mock_doc_to_image_run.return_value = {
+            "image_contents": [
+                ImageContent.from_file_path("./test/test_files/images/apple.jpg"),
+                ImageContent.from_file_path("./test/test_files/images/apple.jpg"),
+            ]
+        }
+        extractor = LLMDocumentContentExtractor(
+            chat_generator=MockChatGenerator('{"document_content": "Extracted content"}')
+        )
+
+        documents = [
+            Document(content="", meta={"file_path": "/path/to/a.jpg"}),
+            Document(content="", meta={"file_path": "/path/to/b.jpg"}),
+        ]
+        with spying_tracer.trace("parent") as parent_span:
+            extractor.run(documents=documents)
+
+        gen_spans = [s for s in spying_tracer.spans if s.operation_name == "haystack.chat_generator.run"]
+        assert len(gen_spans) == 2
+        assert all(span.parent_span is parent_span for span in gen_spans)
+        assert all(
+            span.tags["haystack.component.output"]["replies"][0].meta["usage"]["total_tokens"] > 0 for span in gen_spans
+        )
+
+
+class TestLLMDocumentContentExtractorTracingAsync:
+    @pytest.mark.asyncio
+    @patch.object(DocumentToImageContent, "run")
+    async def test_run_async_traces_token_usage_and_nests_per_document_spans(
+        self, mock_doc_to_image_run, spying_tracer
+    ):
+        # Two documents are processed concurrently. Each generator span must expose the reply's token usage and nest
+        # under the span active when run_async() was called, not under another document's generator span.
+        mock_doc_to_image_run.return_value = {
+            "image_contents": [
+                ImageContent.from_file_path("./test/test_files/images/apple.jpg"),
+                ImageContent.from_file_path("./test/test_files/images/apple.jpg"),
+            ]
+        }
+        extractor = LLMDocumentContentExtractor(
+            chat_generator=MockChatGenerator('{"document_content": "Extracted content"}')
+        )
+
+        documents = [
+            Document(content="", meta={"file_path": "/path/to/a.jpg"}),
+            Document(content="", meta={"file_path": "/path/to/b.jpg"}),
+        ]
+        with spying_tracer.trace("parent") as parent_span:
+            await extractor.run_async(documents=documents)
+
+        gen_spans = [s for s in spying_tracer.spans if s.operation_name == "haystack.chat_generator.run"]
+        assert len(gen_spans) == 2
+        assert all(span.parent_span is parent_span for span in gen_spans)
+        assert all(
+            span.tags["haystack.component.output"]["replies"][0].meta["usage"]["total_tokens"] > 0 for span in gen_spans
+        )

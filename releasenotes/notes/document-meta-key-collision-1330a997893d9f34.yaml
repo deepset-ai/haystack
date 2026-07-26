@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    Fixed ``Document.from_dict()`` raising ``TypeError: 'str' object is not a mapping`` when
+    deserializing a document whose metadata contained a non-mapping key named ``meta``
+    (for example ``Document(content="hi", meta={"meta": "value"})``). Such a document is now
+    correctly reconstructed from the default flattened ``to_dict()`` output, so the
+    ``to_dict()``/``from_dict()`` round-trip no longer crashes.

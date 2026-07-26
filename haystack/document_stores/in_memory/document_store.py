@@ -507,6 +507,9 @@ class InMemoryDocumentStore:
             doc_len = doc_stats.doc_len
 
             self._freq_vocab_for_idf.subtract(Counter(freq.keys()))
+            for token in freq:
+                if self._freq_vocab_for_idf[token] <= 0:
+                    del self._freq_vocab_for_idf[token]
             try:
                 self._avg_doc_len = (self._avg_doc_len * (len(self._bm25_attr) + 1) - doc_len) / len(self._bm25_attr)
             except ZeroDivisionError:
