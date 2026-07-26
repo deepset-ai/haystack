@@ -70,6 +70,24 @@ class DocumentNDCGEvaluator:
         )
         raise ValueError(msg)
 
+    def _build_relevance_map(self, gt_docs: list[Document]) -> dict[Any, float]:
+        """
+        Map each ground truth comparison value to its relevance score.
+
+        Documents whose comparison value cannot be determined (e.g. missing meta key) are skipped,
+        since they can never be matched during retrieval either. Documents that share a comparison
+        value are collapsed to a single entry keeping the highest relevance, so `calculate_dcg` and
+        `calculate_idcg` credit the same unique relevant set with the same scores.
+        """
+        relevant_value_to_score: dict[Any, float] = {}
+        for doc in gt_docs:
+            value = self._get_comparison_value(doc)
+            if value is None:
+                continue
+            relevance = doc.score if doc.score is not None else 1
+            relevant_value_to_score[value] = max(relevant_value_to_score.get(value, relevance), relevance)
+        return relevant_value_to_score
+
     def to_dict(self) -> dict[str, Any]:
         """
         Serializes the component to a dictionary.
@@ -153,13 +171,7 @@ class DocumentNDCGEvaluator:
             documents based on the ground truth documents.
         """
         dcg = 0.0
-        # Build lookup from comparison value -> relevance score, skipping documents
-        # whose comparison value cannot be determined (e.g. missing meta key)
-        relevant_value_to_score: dict[Any, float] = {}
-        for doc in gt_docs:
-            value = self._get_comparison_value(doc)
-            if value is not None:
-                relevant_value_to_score[value] = doc.score if doc.score is not None else 1
+        relevant_value_to_score = self._build_relevance_map(gt_docs)
 
         # Track which ground-truth values have already been credited. Each relevant
         # document must contribute at most once, otherwise duplicate retrievals of the
@@ -187,14 +199,7 @@ class DocumentNDCGEvaluator:
         :returns:
             The ideal discounted cumulative gain (IDCG) of the ground truth documents.
         """
-        # Collapse ground truth documents by comparison value, keeping the highest relevance per
-        # value, so the ideal ranking reflects the unique relevant set that calculate_dcg can credit
-        relevant_value_to_score: dict[Any, float] = {}
-        for doc in gt_docs:
-            value = self._get_comparison_value(doc)
-            if value is not None:
-                relevance = doc.score if doc.score is not None else 1
-                relevant_value_to_score[value] = max(relevant_value_to_score.get(value, relevance), relevance)
+        relevant_value_to_score = self._build_relevance_map(gt_docs)
 
         idcg = 0.0
         for i, relevance in enumerate(sorted(relevant_value_to_score.values(), reverse=True)):

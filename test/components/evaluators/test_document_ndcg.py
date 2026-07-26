@@ -367,6 +367,22 @@ def test_run_with_duplicate_ground_truth_document_can_still_reach_perfect_ndcg()
     assert result["score"] == 1.0
 
 
+def test_run_with_duplicate_ground_truth_documents_with_different_scores():
+    """
+    Regression test: duplicate ground truth documents with different scores must resolve
+    to the same relevance (the highest one) in both DCG and IDCG. If DCG resolved
+    duplicates differently (e.g. keeping the last score seen), a perfect retrieval
+    would score below 1.0 whenever the duplicate with the lower score came last.
+    """
+    evaluator = DocumentNDCGEvaluator()
+    result = evaluator.run(
+        ground_truth_documents=[[Document(content="A", score=1.0), Document(content="A", score=0.5)]],
+        retrieved_documents=[[Document(content="A")]],
+    )
+    assert result["individual_scores"] == [1.0]
+    assert result["score"] == 1.0
+
+
 def test_run_with_meta_missing_key_can_still_reach_perfect_ndcg():
     """
     Regression test for the IDCG/DCG inflation bug: ground truth documents that
