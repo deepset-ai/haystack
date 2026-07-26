@@ -8,14 +8,16 @@ from asyncio import Semaphore, gather
 from collections.abc import Iterable
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import replace
+from functools import partial
 from typing import Any
 
 from jinja2 import meta
 from jinja2.sandbox import SandboxedEnvironment
 
-from haystack import Document, component, default_from_dict, default_to_dict, logging
+from haystack import Document, component, default_from_dict, default_to_dict, logging, tracing
 from haystack.components.builders import PromptBuilder
 from haystack.components.generators.chat.types import ChatGenerator
+from haystack.components.generators.utils import _trace_chat_generator_run
 from haystack.components.preprocessors import DocumentSplitter
 from haystack.core.serialization import component_to_dict
 from haystack.dataclasses import ChatMessage
@@ -309,13 +311,17 @@ class LLMMetadataExtractor:
 
         return all_prompts
 
-    def _run_on_thread(self, prompt: ChatMessage | None) -> dict[str, Any]:
+    def _run_on_thread(self, prompt: ChatMessage | None, parent_span: tracing.Span | None = None) -> dict[str, Any]:
         # If prompt is None, return an error dictionary
         if prompt is None:
             return {"error": "Document has no content, skipping LLM call."}
 
         try:
-            result = self._chat_generator.run(messages=[prompt])
+            with _trace_chat_generator_run(
+                self._chat_generator, {"messages": [prompt]}, parent_span=parent_span
+            ) as span:
+                result = self._chat_generator.run(messages=[prompt])
+                span.set_content_tag("haystack.component.output", result)
         except Exception as e:
             if self.raise_on_failure:
                 raise e
@@ -327,13 +333,17 @@ class LLMMetadataExtractor:
             result = {"error": "LLM failed with exception: " + str(e)}
         return result
 
-    async def _run_async(self, prompt: ChatMessage | None) -> dict[str, Any]:
+    async def _run_async(self, prompt: ChatMessage | None, parent_span: tracing.Span | None = None) -> dict[str, Any]:
         # If prompt is None, return an error dictionary
         if prompt is None:
             return {"error": "Document has no content, skipping LLM call."}
 
         try:
-            result = await _execute_component_async(self._chat_generator, messages=[prompt])
+            with _trace_chat_generator_run(
+                self._chat_generator, {"messages": [prompt]}, parent_span=parent_span
+            ) as span:
+                result = await _execute_component_async(self._chat_generator, messages=[prompt])
+                span.set_content_tag("haystack.component.output", result)
         except Exception as e:
             if self.raise_on_failure:
                 raise e
@@ -411,9 +421,12 @@ class LLMMetadataExtractor:
         # Create ChatMessage prompts for each document
         all_prompts = self._prepare_prompts(documents=documents, expanded_range=expanded_range)
 
+        # Capture the current span here so worker threads nest their generator spans under the component span.
+        parent_span = tracing.tracer.current_span()
+
         # Run the LLM on each prompt
         with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
-            results = executor.map(self._run_on_thread, all_prompts)
+            results = executor.map(partial(self._run_on_thread, parent_span=parent_span), all_prompts)
 
         successful_documents, failed_documents = self._process_results(documents, results)
 
@@ -460,12 +473,15 @@ class LLMMetadataExtractor:
         # Create ChatMessage prompts for each document
         all_prompts = self._prepare_prompts(documents=documents, expanded_range=expanded_range)
 
+        # Capture the current span here so concurrent tasks nest their generator spans under the component span.
+        parent_span = tracing.tracer.current_span()
+
         # Run the LLM on each prompt, bounding concurrency per task so max_workers is enforced.
         sem = Semaphore(max(1, self.max_workers))
 
         async def _bounded_run(prompt: ChatMessage | None) -> dict[str, Any]:
             async with sem:
-                return await self._run_async(prompt)
+                return await self._run_async(prompt, parent_span=parent_span)
 
         results = await gather(*[_bounded_run(prompt) for prompt in all_prompts])
 

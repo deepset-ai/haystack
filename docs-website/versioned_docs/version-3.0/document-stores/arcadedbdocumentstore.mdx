@@ -1,0 +1,73 @@
+---
+title: "ArcadeDBDocumentStore"
+id: arcadedbdocumentstore
+slug: "/arcadedbdocumentstore"
+---
+
+# ArcadeDBDocumentStore
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| API reference | [ArcadeDB](/reference/integrations-arcadedb) |
+| GitHub link   | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/arcadedb |
+
+</div>
+
+ArcadeDB is a multi-model database that supports vector search via its LSM_VECTOR (HNSW) index. The `ArcadeDBDocumentStore` uses ArcadeDB's HTTP/JSON API for all operations—no special drivers required. It supports dense embedding retrieval and SQL-based metadata filtering.
+
+For more information, see the [ArcadeDB documentation](https://docs.arcadedb.com/).
+
+## Installation
+
+Run ArcadeDB with Docker and update the password according to your setup:
+
+```shell
+docker run -d -p 2480:2480 \
+  -e JAVA_OPTS="-Darcadedb.server.rootPassword=arcadedb" \
+  arcadedata/arcadedb:latest
+```
+
+Install the Haystack integration:
+
+```shell
+pip install arcadedb-haystack
+```
+
+## Usage
+
+Set credentials via environment variables (recommended) or pass them explicitly:
+
+```shell
+export ARCADEDB_USERNAME=root
+export ARCADEDB_PASSWORD=arcadedb
+```
+
+Initialize the document store and write documents:
+
+```python
+from haystack import Document
+from haystack_integrations.document_stores.arcadedb import ArcadeDBDocumentStore
+
+document_store = ArcadeDBDocumentStore(
+    url="http://localhost:2480",
+    database="haystack",
+    embedding_dimension=768,
+    recreate_type=True,
+)
+
+document_store.write_documents([
+    Document(content="This is first", embedding=[0.0] * 768),
+    Document(content="This is second", embedding=[0.1, 0.2, 0.3] + [0.0] * 765),
+])
+print(document_store.count_documents())
+```
+
+To learn more about the initialization parameters, see the [API docs](/reference/integrations-arcadedb#arcadedbdocumentstore).
+
+Documents without embeddings or with a different dimension are stored with a zero-padded vector so they can be written and filtered; use an [Embedder](../pipeline-components/embedders/sentencetransformersdocumentembedder.mdx) for real embeddings.
+
+### Supported Retrievers
+
+- [ArcadeDBEmbeddingRetriever](../pipeline-components/retrievers/arcadedbembeddingretriever.mdx): An embedding-based Retriever that fetches documents from the Document Store by vector similarity (HNSW).

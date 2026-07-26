@@ -1,0 +1,10 @@
+---
+fixes:
+  - |
+    Fixed serialization of types that contain ``...`` (``Ellipsis``), such as variadic tuples
+    (``tuple[int, ...]``) and ``Callable[..., X]``. Previously ``serialize_type`` rendered the ``...``
+    as the literal string ``"Ellipsis"``, which ``deserialize_type`` then rejected as a non-type
+    builtin, so a component using such a type (for example ``OutputAdapter(output_type=tuple[int, ...])``)
+    could be serialized but not deserialized, breaking ``Pipeline.loads()`` / ``Pipeline.load()``.
+    These types now round-trip correctly, and pipelines serialized by older versions (which emitted
+    ``"Ellipsis"``) can still be loaded.

@@ -4,36 +4,20 @@
 
 import os
 import re
-from typing import Any
 from unittest.mock import AsyncMock, Mock
 
 import pytest
 
+from haystack.components.generators.chat import MockChatGenerator
 from haystack.components.generators.chat.openai import OpenAIChatGenerator
 from haystack.components.routers.llm_messages_router import LLMMessagesRouter
-from haystack.core.serialization import default_from_dict, default_to_dict
 from haystack.dataclasses import ChatMessage
-
-
-class MockChatGenerator:
-    def __init__(self, return_text: str = "safe"):
-        self.return_text = return_text
-
-    def run(self, messages: list[ChatMessage]) -> dict[str, Any]:
-        return {"replies": [ChatMessage.from_assistant(self.return_text)]}
-
-    def to_dict(self) -> dict[str, Any]:
-        return default_to_dict(self, return_text=self.return_text)
-
-    @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "MockChatGenerator":
-        return default_from_dict(cls, data)
 
 
 class TestLLMMessagesRouter:
     def test_init(self):
         system_prompt = "Classify the messages as safe or unsafe."
-        chat_generator = MockChatGenerator()
+        chat_generator = MockChatGenerator("safe")
 
         router = LLMMessagesRouter(
             chat_generator=chat_generator,
@@ -49,7 +33,7 @@ class TestLLMMessagesRouter:
         assert router._compiled_patterns == [re.compile(pattern) for pattern in ["safe", "unsafe"]]
 
     def test_init_errors(self):
-        chat_generator = MockChatGenerator()
+        chat_generator = MockChatGenerator("safe")
 
         with pytest.raises(ValueError):
             LLMMessagesRouter(chat_generator=chat_generator, output_names=[], output_patterns=["pattern1", "pattern2"])
@@ -64,7 +48,9 @@ class TestLLMMessagesRouter:
 
     def test_run_input_errors(self):
         router = LLMMessagesRouter(
-            chat_generator=MockChatGenerator(), output_names=["safe", "unsafe"], output_patterns=["safe", "unsafe"]
+            chat_generator=MockChatGenerator("safe"),
+            output_names=["safe", "unsafe"],
+            output_patterns=["safe", "unsafe"],
         )
 
         with pytest.raises(ValueError):
@@ -74,8 +60,10 @@ class TestLLMMessagesRouter:
             router.run([ChatMessage.from_system("You are a helpful assistant.")])
 
     def test_run_no_warm_up_with_unwarmable_chat_generator(self):
+        chat_generator = Mock(spec=["run"])
+        chat_generator.run.return_value = {"replies": [ChatMessage.from_assistant("safe")]}
         router = LLMMessagesRouter(
-            chat_generator=MockChatGenerator(), output_names=["safe", "unsafe"], output_patterns=["safe", "unsafe"]
+            chat_generator=chat_generator, output_names=["safe", "unsafe"], output_patterns=["safe", "unsafe"]
         )
 
         router.run([ChatMessage.from_user("Hello")])
@@ -94,7 +82,7 @@ class TestLLMMessagesRouter:
 
     def test_run(self):
         router = LLMMessagesRouter(
-            chat_generator=MockChatGenerator(return_text="safe"),
+            chat_generator=MockChatGenerator("safe"),
             output_names=["safe", "unsafe"],
             output_patterns=["safe", "unsafe"],
         )
@@ -127,7 +115,7 @@ class TestLLMMessagesRouter:
 
     def test_run_unmatched_output(self):
         router = LLMMessagesRouter(
-            chat_generator=MockChatGenerator(return_text="irrelevant"),
+            chat_generator=MockChatGenerator("irrelevant"),
             output_names=["safe", "unsafe"],
             output_patterns=["safe", "unsafe"],
         )
@@ -141,7 +129,7 @@ class TestLLMMessagesRouter:
         assert "unsafe" not in result
 
     def test_to_dict(self):
-        chat_generator = MockChatGenerator(return_text="safe")
+        chat_generator = MockChatGenerator("safe")
 
         router = LLMMessagesRouter(
             chat_generator=chat_generator, output_names=["safe", "unsafe"], output_patterns=["safe", "unsafe"]
@@ -156,7 +144,7 @@ class TestLLMMessagesRouter:
         assert result["init_parameters"]["system_prompt"] is None
 
     def test_from_dict(self):
-        chat_generator = MockChatGenerator(return_text="safe")
+        chat_generator = MockChatGenerator("safe")
 
         data = {
             "type": "haystack.components.routers.llm_messages_router.LLMMessagesRouter",
@@ -235,8 +223,9 @@ class TestLLMMessagesRouterAsync:
 
     @pytest.mark.asyncio
     async def test_run_async_fallback_to_sync_run(self):
-        # MockChatGenerator defines only a synchronous `run`, so the utility falls back to it.
-        chat_generator = MockChatGenerator(return_text="safe")
+        # A chat generator that defines only a synchronous `run`, so the utility falls back to it.
+        chat_generator = Mock(spec=["run"])
+        chat_generator.run.return_value = {"replies": [ChatMessage.from_assistant("safe")]}
         assert not hasattr(chat_generator, "run_async")
         router = LLMMessagesRouter(
             chat_generator=chat_generator, output_names=["safe", "unsafe"], output_patterns=["safe", "unsafe"]
@@ -345,3 +334,32 @@ class TestComponentLifecycle:
         router = self._make_router(chat_generator)
         router.warm_up()
         router.close()
+
+
+class TestLLMMessagesRouterTracing:
+    def test_run_traces_chat_generator_token_usage(self, spying_tracer):
+        router = LLMMessagesRouter(
+            chat_generator=MockChatGenerator("safe"), output_names=["safe"], output_patterns=["safe"]
+        )
+
+        router.run(messages=[ChatMessage.from_user("How to bake bread?")])
+
+        gen_spans = [s for s in spying_tracer.spans if s.operation_name == "haystack.chat_generator.run"]
+        assert len(gen_spans) == 1
+        output = gen_spans[0].tags["haystack.component.output"]
+        assert output["replies"][0].meta["usage"]["total_tokens"] > 0
+
+
+class TestLLMMessagesRouterTracingAsync:
+    @pytest.mark.asyncio
+    async def test_run_async_traces_chat_generator_token_usage(self, spying_tracer):
+        router = LLMMessagesRouter(
+            chat_generator=MockChatGenerator("safe"), output_names=["safe"], output_patterns=["safe"]
+        )
+
+        await router.run_async(messages=[ChatMessage.from_user("How to bake bread?")])
+
+        gen_spans = [s for s in spying_tracer.spans if s.operation_name == "haystack.chat_generator.run"]
+        assert len(gen_spans) == 1
+        output = gen_spans[0].tags["haystack.component.output"]
+        assert output["replies"][0].meta["usage"]["total_tokens"] > 0

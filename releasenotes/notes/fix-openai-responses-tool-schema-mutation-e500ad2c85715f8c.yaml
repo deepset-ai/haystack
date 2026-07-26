@@ -1,0 +1,10 @@
+---
+fixes:
+  - |
+    ``OpenAIResponsesChatGenerator`` no longer mutates the ``parameters`` schema of the ``Tool``
+    objects passed to it. Previously every run wrote ``additionalProperties: False`` into the
+    user's live ``Tool.parameters``, silently altering the tool for any other generator that
+    shared the same ``Tool`` instance and making serialization round trips unstable.
+  - |
+    ``OpenAIResponsesChatGenerator`` no longer raises ``IndexError`` when it is warmed up with an
+    empty ``tools`` list.
