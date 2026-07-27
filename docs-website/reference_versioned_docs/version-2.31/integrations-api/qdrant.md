@@ -100,6 +100,22 @@ Deserializes the component from a dictionary.
 
 - <code>QdrantEmbeddingRetriever</code> – Deserialized component.
 
+#### close
+
+```python
+close() -> None
+```
+
+Release the synchronous resources of the underlying Document Store.
+
+#### close_async
+
+```python
+close_async() -> None
+```
+
+Release the asynchronous resources of the underlying Document Store.
+
 #### run
 
 ```python
@@ -268,6 +284,22 @@ Deserializes the component from a dictionary.
 **Returns:**
 
 - <code>QdrantSparseEmbeddingRetriever</code> – Deserialized component.
+
+#### close
+
+```python
+close() -> None
+```
+
+Release the synchronous resources of the underlying Document Store.
+
+#### close_async
+
+```python
+close_async() -> None
+```
+
+Release the asynchronous resources of the underlying Document Store.
 
 #### run
 
@@ -452,6 +484,22 @@ Deserializes the component from a dictionary.
 **Returns:**
 
 - <code>QdrantHybridRetriever</code> – Deserialized component.
+
+#### close
+
+```python
+close() -> None
+```
+
+Release the synchronous resources of the underlying Document Store.
+
+#### close_async
+
+```python
+close_async() -> None
+```
+
+Release the asynchronous resources of the underlying Document Store.
 
 #### run
 
@@ -681,6 +729,22 @@ Initializes a QdrantDocumentStore.
 - **write_batch_size** (<code>int</code>) – The batch size for writing documents.
 - **scroll_size** (<code>int</code>) – The scroll size for reading documents.
 - **payload_fields_to_index** (<code>list\[dict\] | None</code>) – List of payload fields to index.
+
+#### close
+
+```python
+close() -> None
+```
+
+Release the associated synchronous resources.
+
+#### close_async
+
+```python
+close_async() -> None
+```
+
+Release the associated asynchronous resources.
 
 #### count_documents
 
