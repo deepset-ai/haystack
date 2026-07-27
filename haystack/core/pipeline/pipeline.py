@@ -366,6 +366,8 @@ class Pipeline(PipelineBase):
             # We track component visits to decide if a component can run.
             component_visits = dict.fromkeys(ordered_component_names, 0)
 
+            inputs = self._convert_to_internal_format(pipeline_inputs=data)
+
         else:
             # Validate the pipeline snapshot against the current pipeline graph
             _validate_pipeline_snapshot_against_pipeline(pipeline_snapshot, self.graph)
@@ -374,7 +376,15 @@ class Pipeline(PipelineBase):
             component_visits = pipeline_snapshot.pipeline_state.component_visits
             ordered_component_names = pipeline_snapshot.ordered_component_names
             data = _deserialize_value_with_schema(pipeline_snapshot.original_input_data)
-            if pipeline_snapshot.pipeline_state.inputs_format != INTERNAL_INPUTS_FORMAT:
+
+            if pipeline_snapshot.pipeline_state.inputs_format == INTERNAL_INPUTS_FORMAT:
+                inputs = _deserialize_internal_inputs(pipeline_snapshot.pipeline_state.inputs)
+            else:
+                # A legacy snapshot lost the sender of each input, so the only thing we can do is treat them as if
+                # they came from outside the pipeline. The paused component then has to be let through once.
+                inputs = self._convert_to_internal_format(
+                    pipeline_inputs=_deserialize_value_with_schema(pipeline_snapshot.pipeline_state.inputs)
+                )
                 legacy_resume_component = pipeline_snapshot.break_point.component_name
 
             # include_outputs_from from the snapshot when resuming
@@ -397,17 +407,6 @@ class Pipeline(PipelineBase):
                 "haystack.pipeline.execution_mode": "sync",
             },
         ) as span:
-            if pipeline_snapshot is None:
-                inputs = self._convert_to_internal_format(pipeline_inputs=data)
-            elif legacy_resume_component is not None:
-                # Legacy snapshots stored flattened values, so the only thing we can do is treat them as if they
-                # came from outside the pipeline.
-                inputs = self._convert_to_internal_format(
-                    pipeline_inputs=_deserialize_value_with_schema(pipeline_snapshot.pipeline_state.inputs)
-                )
-            else:
-                inputs = _deserialize_internal_inputs(pipeline_snapshot.pipeline_state.inputs)
-
             priority_queue = self._fill_queue(ordered_component_names, inputs, component_visits)
 
             # check if pipeline is blocked before execution

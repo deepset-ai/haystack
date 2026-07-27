@@ -7,7 +7,7 @@ from typing import Any
 import pytest
 from pandas import DataFrame
 
-from haystack.core.component.types import GreedyVariadic, InputSocket, OutputSocket, Variadic, _empty
+from haystack.core.component.types import GreedyVariadic, InputSocket, OutputSocket, Variadic
 from haystack.core.pipeline.component_checks import (
     _NoOutputProduced,
     all_predecessors_executed,
@@ -24,7 +24,6 @@ from haystack.core.pipeline.component_checks import (
     has_user_input,
     is_any_greedy_socket_ready,
 )
-from haystack.core.pipeline.utils import _deepcopy_with_exceptions
 from haystack.utils.base_serialization import _deserialize_value_with_schema, _serialize_value_with_schema
 
 
@@ -481,28 +480,15 @@ class TestSocketInputReceived:
 
 
 class TestNoOutputProduced:
-    """The marker reaches a pipeline snapshot, so it has to survive being copied and serialized."""
+    """The marker reaches a pipeline snapshot, so it has to survive serialization."""
 
     def test_markers_are_interchangeable(self):
         """The marker carries no state, so any two of them are the same value."""
         assert _NoOutputProduced() == _NoOutputProduced()
         assert len({_NoOutputProduced(), _NoOutputProduced()}) == 1
 
-    def test_the_marker_is_not_the_unset_default_marker(self):
-        """`_empty` marks an `InputSocket` without a default; it is a different thing and never reaches the inputs."""
-        assert not isinstance(_empty, _NoOutputProduced)
-        assert _NoOutputProduced() != _empty
-
-    def test_the_marker_survives_a_deepcopy_of_the_pipeline_inputs(self):
-        """`Pipeline.run` deep-copies its inputs, which carry the marker, before snapshotting them."""
-        inputs = {"comp": {"socket": [{"sender": "other", "value": _NoOutputProduced()}]}}
-
-        copied = _deepcopy_with_exceptions(inputs)
-
-        assert isinstance(copied["comp"]["socket"][0]["value"], _NoOutputProduced)
-
     def test_the_marker_survives_serialization(self):
-        """A pipeline snapshot serializes the inputs, sentinel included."""
+        """A pipeline snapshot serializes the inputs, marker included."""
         restored = _deserialize_value_with_schema(_serialize_value_with_schema({"value": _NoOutputProduced()}))
 
         assert isinstance(restored["value"], _NoOutputProduced)

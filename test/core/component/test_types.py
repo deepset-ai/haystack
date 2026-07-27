@@ -8,12 +8,7 @@ from haystack.core.component.types import InputSocket
 
 
 def test_input_socket_with_a_default_that_cannot_be_compared_is_not_mandatory():
-    """
-    `is_mandatory` tests for the sentinel by identity, so it never compares the default it was given.
-
-    Comparing with '==' returns a DataFrame rather than a bool here, which makes `is_mandatory` unusable as a
-    condition.
-    """
+    """`is_mandatory` uses `is`, because comparing a DataFrame with `==` returns a DataFrame, not True or False."""
     socket = InputSocket(name="value", type=DataFrame, default_value=DataFrame.from_dict([{"value": 42}]))
 
     assert socket.is_mandatory is False
