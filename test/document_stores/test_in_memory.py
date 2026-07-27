@@ -343,6 +343,30 @@ class TestMemoryDocumentStore(
         results = document_store.bm25_retrieval(query="doesn't matter, top_k is 10", top_k=10)
         assert len(results) == 0
 
+    def test_get_metadata_field_unique_values_pagination_and_search_term(
+        self, document_store: InMemoryDocumentStore
+    ) -> None:
+        docs = [Document(content="Doc 1", meta={"category": f"category_{i}"}) for i in range(5)]
+        # this must NOT be picked up, since search_term matches the metadata value, not content
+        docs.append(Document(content="mentions category_0 in its content", meta={"category": "other"}))
+        document_store.write_documents(docs)
+
+        # pagination: total count reflects all unique values, but the returned page is limited to `size`
+        page, total = document_store.get_metadata_field_unique_values("category", from_=0, size=2)
+        assert total == 6
+        assert page == sorted({f"category_{i}" for i in range(5)} | {"other"})[:2]
+
+        next_page, total = document_store.get_metadata_field_unique_values("category", from_=2, size=2)
+        assert total == 6
+        assert next_page == sorted({f"category_{i}" for i in range(5)} | {"other"})[2:4]
+
+        # search_term matches against the metadata value itself, not document content
+        filtered, filtered_total = document_store.get_metadata_field_unique_values(
+            "category", search_term="category_", from_=0, size=10
+        )
+        assert filtered_total == 5
+        assert set(filtered) == {f"category_{i}" for i in range(5)}
+
     def test_embedding_retrieval_return_embedding_false_on_store(self):
         # Initialize InMemoryDocumentStore with return_embedding=False
         docstore = InMemoryDocumentStore(embedding_similarity_function="cosine", return_embedding=False)
