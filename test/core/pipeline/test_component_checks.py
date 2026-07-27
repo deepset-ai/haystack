@@ -483,9 +483,6 @@ class TestSocketInputReceived:
 class TestNoOutputProduced:
     """The marker reaches a pipeline snapshot, so it has to survive being copied and serialized."""
 
-    def test_repr_names_the_marker(self):
-        assert repr(_NoOutputProduced()) == "_NoOutputProduced()"
-
     def test_markers_are_interchangeable(self):
         """The marker carries no state, so any two of them are the same value."""
         assert _NoOutputProduced() == _NoOutputProduced()

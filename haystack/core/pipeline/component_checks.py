@@ -18,9 +18,6 @@ class _NoOutputProduced:
     It is serializable because it reaches a pipeline snapshot as part of the pipeline's inputs.
     """
 
-    def __repr__(self) -> str:
-        return "_NoOutputProduced()"
-
     def __eq__(self, other: object) -> bool:
         return isinstance(other, _NoOutputProduced)
 
