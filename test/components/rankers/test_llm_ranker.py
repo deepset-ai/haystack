@@ -466,3 +466,28 @@ class TestComponentLifecycle:
         ranker = LLMRanker(chat_generator=chat_generator)
         ranker.warm_up()
         ranker.close()
+
+
+class TestLLMRankerTracing:
+    def test_run_traces_chat_generator_token_usage(self, spying_tracer):
+        ranker = LLMRanker(chat_generator=MockChatGenerator('{"documents": [{"index": 0}]}'))
+
+        ranker.run(query="capital of Germany", documents=[Document(content="Berlin")])
+
+        gen_spans = [s for s in spying_tracer.spans if s.operation_name == "haystack.chat_generator.run"]
+        assert len(gen_spans) == 1
+        output = gen_spans[0].tags["haystack.component.output"]
+        assert output["replies"][0].meta["usage"]["total_tokens"] > 0
+
+
+class TestLLMRankerTracingAsync:
+    @pytest.mark.asyncio
+    async def test_run_async_traces_chat_generator_token_usage(self, spying_tracer):
+        ranker = LLMRanker(chat_generator=MockChatGenerator('{"documents": [{"index": 0}]}'))
+
+        await ranker.run_async(query="capital of Germany", documents=[Document(content="Berlin")])
+
+        gen_spans = [s for s in spying_tracer.spans if s.operation_name == "haystack.chat_generator.run"]
+        assert len(gen_spans) == 1
+        output = gen_spans[0].tags["haystack.component.output"]
+        assert output["replies"][0].meta["usage"]["total_tokens"] > 0

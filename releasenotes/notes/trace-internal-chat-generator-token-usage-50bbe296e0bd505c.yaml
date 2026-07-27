@@ -1,0 +1,10 @@
+---
+enhancements:
+  - |
+    ``LLMEvaluator``, ``LLMRanker``, ``QueryExpander``, ``LLMMetadataExtractor``,
+    ``LLMDocumentContentExtractor`` and ``LLMMessagesRouter`` now wrap their internal ``ChatGenerator`` calls
+    in a ``haystack.chat_generator.run`` tracing span. These components do not return ``ChatMessage`` objects,
+    so the LLM token usage carried in ``reply.meta["usage"]`` was previously lost to tracers. The new span
+    exposes the generator's replies via the ``haystack.component.output`` tag, so token usage is now visible
+    in traces (requires content tracing to be enabled). When the generator runs across threads, the span is
+    nested under the component's span.

@@ -1,0 +1,138 @@
+---
+title: "DoclingConverter"
+id: doclingconverter
+slug: "/doclingconverter"
+description: "`DoclingConverter` converts PDF, DOCX, HTML, and other document formats to Haystack Documents using Docling, with support for layout-aware chunking, Markdown, and JSON export."
+---
+
+# DoclingConverter
+
+`DoclingConverter` converts PDF, DOCX, HTML, and other document formats to Haystack Documents using [Docling](https://ds4sd.github.io/docling/), a document parsing library that understands document structure including layout, tables, and headings.
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | Before [PreProcessors](../preprocessors.mdx), or right at the beginning of an indexing pipeline |
+| **Mandatory run variables** | `sources`: A list of file paths, URLs, or [`ByteStream`](../../concepts/data-classes.mdx#bytestream) objects |
+| **Output variables** | `documents`: A list of documents |
+| **API reference** | [Docling](/reference/integrations-docling) |
+| **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/docling |
+| **Package name** | `docling-haystack` |
+
+</div>
+
+## Overview
+
+The `DoclingConverter` takes a list of file paths, URLs, or [`ByteStream`](../../concepts/data-classes.mdx#bytestream) objects and uses Docling to parse them into a rich document representation that captures layout, tables, headings, and other structural elements.
+
+The component supports three export modes, controlled by the `export_type` parameter:
+
+- **`ExportType.DOC_CHUNKS`** (default): Chunks each document using Docling's `HybridChunker` and returns one [`Document`](../../concepts/data-classes.mdx#document) per chunk. Chunk metadata includes structural context from Docling. Use this mode for indexing pipelines where downstream retrieval benefits from semantically coherent chunks.
+- **`ExportType.MARKDOWN`**: Exports each input document as a single Markdown string in one [`Document`](../../concepts/data-classes.mdx#document). Use this mode when you want to preserve the full document content as formatted text.
+- **`ExportType.JSON`**: Serializes the full Docling document to a JSON string in one [`Document`](../../concepts/data-classes.mdx#document). Use this mode when you need access to the complete structured representation.
+
+You can customize parsing behavior by passing a pre-configured `DocumentConverter` instance via the `converter` parameter, and pass additional keyword arguments to Docling's conversion step via `convert_kwargs`. For `ExportType.MARKDOWN`, use `md_export_kwargs` to control Markdown rendering options (for example, image placeholder text). For `ExportType.DOC_CHUNKS`, provide a custom `BaseChunker` instance via the `chunker` parameter.
+
+Document metadata is populated by a `MetaExtractor` instance. The default `MetaExtractor` adds Docling-specific metadata (chunk structure or document origin) under the `dl_meta` key. You can supply a custom `BaseMetaExtractor` implementation via the `meta_extractor` parameter. Additional metadata can be attached to all output Documents by passing a dictionary to the `meta` run parameter, or per source by passing a list of dictionaries.
+
+## Usage
+
+Install the Docling integration:
+
+```shell
+pip install docling-haystack
+```
+
+### On its own
+
+```python
+from haystack_integrations.components.converters.docling import (
+    DoclingConverter,
+    ExportType,
+)
+
+# Default: chunk-based output
+converter = DoclingConverter()
+result = converter.run(sources=["report.pdf", "notes.docx"])
+documents = result["documents"]
+
+# Full document as Markdown
+converter = DoclingConverter(export_type=ExportType.MARKDOWN)
+result = converter.run(sources=["report.pdf"])
+documents = result["documents"]
+print(documents[0].content)
+```
+
+### In a pipeline
+
+```python
+from haystack import Pipeline
+from haystack.components.writers import DocumentWriter
+from haystack.document_stores.in_memory import InMemoryDocumentStore
+from haystack_integrations.components.converters.docling import DoclingConverter
+
+document_store = InMemoryDocumentStore()
+
+pipeline = Pipeline()
+pipeline.add_component("converter", DoclingConverter())
+pipeline.add_component("writer", DocumentWriter(document_store=document_store))
+pipeline.connect("converter", "writer")
+
+pipeline.run({"converter": {"sources": ["report.pdf", "manual.docx"]}})
+```
+
+Because `DoclingConverter` with `ExportType.DOC_CHUNKS` already chunks the documents, you typically don't need a separate `DocumentSplitter` in the pipeline.
+
+## Additional Features
+
+### Custom chunking
+
+Provide a custom Docling chunker to control how documents are split:
+
+```python
+from docling.chunking import HybridChunker
+from haystack_integrations.components.converters.docling import DoclingConverter
+
+chunker = HybridChunker(tokenizer="BAAI/bge-small-en-v1.5", max_tokens=256)
+converter = DoclingConverter(chunker=chunker)
+result = converter.run(sources=["report.pdf"])
+```
+
+### Attaching metadata
+
+Pass a single dictionary to apply metadata to all output Documents, or a list to set metadata per source:
+
+```python
+from haystack_integrations.components.converters.docling import DoclingConverter
+
+converter = DoclingConverter()
+
+# Same metadata for all sources
+result = converter.run(
+    sources=["a.pdf", "b.pdf"],
+    meta={"project": "research"},
+)
+
+# Per-source metadata
+result = converter.run(
+    sources=["a.pdf", "b.pdf"],
+    meta=[{"title": "Report A"}, {"title": "Report B"}],
+)
+```
+
+### Processing in-memory files
+
+Pass [`ByteStream`](../../concepts/data-classes.mdx#bytestream) objects to convert files loaded into memory. Set `file_path` in the ByteStream metadata so Docling can detect the file format:
+
+```python
+from haystack.dataclasses import ByteStream
+from haystack_integrations.components.converters.docling import DoclingConverter
+
+with open("report.pdf", "rb") as f:
+    data = f.read()
+
+source = ByteStream(data=data, meta={"file_path": "report.pdf"})
+converter = DoclingConverter()
+result = converter.run(sources=[source])
+```

@@ -468,6 +468,15 @@ class PipelineBase:  # noqa: PLW1641
                 ", ".join(n for n in self.graph.nodes),
             ) from exc
 
+        # Remove this component's name from its neighbors' sockets before the edges are gone,
+        # otherwise the surviving components are left holding dangling references to it.
+        for _, _, edge_data in self.graph.in_edges(name, data=True):
+            sender_socket = edge_data["from_socket"]
+            sender_socket.receivers = [r for r in sender_socket.receivers if r != name]
+        for _, _, edge_data in self.graph.out_edges(name, data=True):
+            receiver_socket = edge_data["to_socket"]
+            receiver_socket.senders = [s for s in receiver_socket.senders if s != name]
+
         # Delete component from the graph, deleting all its connections
         self.graph.remove_node(name)
 
