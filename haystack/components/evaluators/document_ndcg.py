@@ -84,7 +84,7 @@ class DocumentNDCGEvaluator:
             value = self._get_comparison_value(doc)
             if value is None:
                 continue
-            relevance = doc.score if doc.score is not None else 1
+            relevance = doc.score if doc.score is not None else 1.0
             relevant_value_to_score[value] = max(relevant_value_to_score.get(value, relevance), relevance)
         return relevant_value_to_score
 
@@ -173,15 +173,12 @@ class DocumentNDCGEvaluator:
         dcg = 0.0
         relevant_value_to_score = self._build_relevance_map(gt_docs)
 
-        # Track which ground-truth values have already been credited. Each relevant
-        # document must contribute at most once, otherwise duplicate retrievals of the
-        # same relevant document inflate DCG beyond IDCG and push NDCG above 1.0.
-        seen: set[Any] = set()
+        # Credit each relevant value at most once by popping it when first matched. A duplicate
+        # retrieval of the same document then finds nothing, so it cannot inflate DCG past IDCG.
         for i, doc in enumerate(ret_docs):
             value = self._get_comparison_value(doc)
-            if value is not None and value in relevant_value_to_score and value not in seen:
-                seen.add(value)
-                dcg += relevant_value_to_score[value] / log2(i + 2)  # i + 2 because i is 0-indexed
+            if value is not None and value in relevant_value_to_score:
+                dcg += relevant_value_to_score.pop(value) / log2(i + 2)  # i + 2 because i is 0-indexed
         return dcg
 
     def calculate_idcg(self, gt_docs: list[Document]) -> float:
