@@ -28,6 +28,7 @@ from haystack.core.errors import (
 )
 from haystack.core.pipeline.component_checks import (
     _NO_OUTPUT_PRODUCED,
+    _no_output_produced,
     all_predecessors_executed,
     are_all_sockets_ready,
     can_component_run,
@@ -1223,7 +1224,7 @@ class PipelineBase:  # noqa: PLW1641
         greedy_inputs_to_remove = set()
         for socket_name, socket in component["input_sockets"].items():
             socket_inputs = component_inputs.get(socket_name, [])
-            socket_inputs_values = [sock["value"] for sock in socket_inputs if sock["value"] is not _NO_OUTPUT_PRODUCED]
+            socket_inputs_values = [sock["value"] for sock in socket_inputs if not _no_output_produced(sock["value"])]
 
             # if we are resuming a component, the inputs are already consumed, so we just return the first input
             if is_resume:
@@ -1551,7 +1552,7 @@ class PipelineBase:  # noqa: PLW1641
             # This allows us to track if a predecessor already ran but did not produce an output.
             value = component_outputs.get(sender_socket.name, _NO_OUTPUT_PRODUCED)
 
-            if value is not _NO_OUTPUT_PRODUCED and conversion_strategy:
+            if not _no_output_produced(value) and conversion_strategy:
                 try:
                     value = _convert_value(value=value, conversion_strategy=conversion_strategy)
                 except Exception as e:
@@ -1861,5 +1862,5 @@ def _write_to_standard_socket(
     current_value = inputs[receiver_name].get(receiver_socket_name)
 
     # Only overwrite if there's no existing value, or we have a new value to provide
-    if current_value is None or value is not _NO_OUTPUT_PRODUCED:
+    if current_value is None or not _no_output_produced(value):
         inputs[receiver_name][receiver_socket_name] = [{"sender": component_name, "value": value}]

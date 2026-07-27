@@ -4,9 +4,12 @@
 
 from typing import Any
 
-from haystack.core.component.types import InputSocket, _empty
+from haystack.core.component.types import InputSocket, _empty, _is_empty_sentinel
 
 _NO_OUTPUT_PRODUCED = _empty
+
+# A socket input holding the sentinel records that its sender ran without producing a value for that socket.
+_no_output_produced = _is_empty_sentinel
 
 
 def can_component_run(component: dict, inputs: dict) -> bool:
@@ -103,7 +106,7 @@ def any_socket_value_from_predecessor_received(socket_inputs: list[dict[str, Any
     :param socket_inputs: Inputs for the component's socket.
     """
     # When sender is None, the input was provided from outside the pipeline.
-    return any(inp["value"] is not _NO_OUTPUT_PRODUCED and inp["sender"] is not None for inp in socket_inputs)
+    return any(not _no_output_produced(inp["value"]) and inp["sender"] is not None for inp in socket_inputs)
 
 
 def has_user_input(inputs: dict) -> bool:
@@ -142,7 +145,7 @@ def any_socket_input_received(socket_inputs: list[dict]) -> bool:
 
     :param socket_inputs: Inputs for the socket.
     """
-    return any(inp["value"] is not _NO_OUTPUT_PRODUCED for inp in socket_inputs)
+    return any(not _no_output_produced(inp["value"]) for inp in socket_inputs)
 
 
 def has_lazy_variadic_socket_received_all_inputs(socket: InputSocket, socket_inputs: list[dict]) -> bool:
@@ -156,7 +159,7 @@ def has_lazy_variadic_socket_received_all_inputs(socket: InputSocket, socket_inp
     actual_senders = {
         sock["sender"]
         for sock in socket_inputs
-        if sock["value"] is not _NO_OUTPUT_PRODUCED and sock["sender"] is not None
+        if not _no_output_produced(sock["value"]) and sock["sender"] is not None
     }
     return expected_senders == actual_senders
 
@@ -176,7 +179,7 @@ def has_socket_received_all_inputs(socket: InputSocket, socket_inputs: list[dict
     if (
         socket.is_variadic
         and socket.is_greedy
-        and any(sock["value"] is not _NO_OUTPUT_PRODUCED for sock in socket_inputs)
+        and any(not _no_output_produced(sock["value"]) for sock in socket_inputs)
     ):
         return True
 
@@ -185,7 +188,7 @@ def has_socket_received_all_inputs(socket: InputSocket, socket_inputs: list[dict
         return True
 
     # The socket is not variadic and the only expected input is complete.
-    return not socket.is_variadic and socket_inputs[0]["value"] is not _NO_OUTPUT_PRODUCED
+    return not socket.is_variadic and not _no_output_produced(socket_inputs[0]["value"])
 
 
 def all_predecessors_executed(component: dict, inputs: dict) -> bool:

@@ -1,36 +1,47 @@
 ---
 upgrade:
   - |
-    ``PipelineSnapshot.pipeline_state.inputs`` changed shape. It now stores the pipeline's internal inputs,
-    ``{component: {socket: [{"sender": ..., "value": ...}]}}``, instead of the flattened
-    ``{component: {socket: value}}``, and ``PipelineState`` gained an ``inputs_format`` field that records which
-    of the two a snapshot uses. The same change applies to ``BreakpointException.inputs``, which returns that field.
+    ``PipelineSnapshot.pipeline_state.inputs`` changed shape. It used to store one flattened value per socket,
+    ``{component: {socket: value}}``. It now stores the pipeline's internal inputs, keeping the component that sent
+    each one and keying the inputs a socket received by their position:
+    ``{component: {socket: {"0": {"sender": ..., "value": ...}}}}``. Positions are used instead of a list so that
+    each input carries its own type schema, which a list cannot do. ``PipelineState`` gained an ``inputs_format``
+    field recording which of the two shapes a snapshot uses. The same applies to ``BreakpointException.inputs``,
+    which returns that field.
 
     You are affected if you read ``pipeline_state.inputs`` (or ``BreakpointException.inputs``) directly, for example
     to display or post-process a snapshot. Resuming a pipeline with ``Pipeline.run(pipeline_snapshot=...)`` is not
-    affected, and neither is any code that only passes snapshots around or persists them.
+    affected, and neither is code that only passes snapshots around or persists them.
 
-    To adapt, unwrap the sender when reading a value:
+    To adapt, read through the position and unwrap the sender:
 
     .. code-block:: python
 
         from haystack.utils import _deserialize_value_with_schema
 
         inputs = _deserialize_value_with_schema(snapshot.pipeline_state.inputs)
-        value = inputs["my_component"]["my_socket"][0]["value"]
+        value = inputs["my_component"]["my_socket"]["0"]["value"]
 
     Snapshots written by earlier versions of Haystack have ``inputs_format`` set to ``None`` and keep the flattened
     shape, so branch on that field if you need to handle both.
 fixes:
   - |
-    Fixed resuming a ``Pipeline`` from a ``pipeline_snapshot`` that was taken inside a loop. A snapshot used to
-    store only the values of the pipeline's inputs, dropping the information about which component had sent each
-    one. On resume, every restored input therefore looked like it came from outside the pipeline, and such inputs
-    can only trigger a component on its first visit. Resuming from a breakpoint on a second or later visit failed
-    with ``PipelineComponentsBlockedError: Cannot run pipeline - all components are blocked``, and a component that
-    was visited again after the resume could receive its inputs in the wrong shape, for example
-    ``TypeError: object of type 'int' has no len()`` from a ``BranchJoiner``.
-
-    Snapshots now record the sender of each input, and ``PipelineState`` has a new ``inputs_format`` field marking
-    which format the inputs are stored in. Snapshots created by earlier versions of Haystack can still be resumed
-    on a component's first visit, as before; re-create them to resume from a later visit of a loop.
+    Fixed resuming a ``Pipeline`` from a ``pipeline_snapshot`` that was taken on a component's second or later visit,
+    which failed with ``PipelineComponentsBlockedError: Cannot run pipeline - all components are blocked``. A snapshot
+    stored only the values of the pipeline's inputs and dropped the information about which component had sent each
+    one, so on resume every restored input looked like it came from outside the pipeline, and such an input can only
+    trigger a component on its first visit. Snapshots now record the sender of each input. Snapshots created by
+    earlier versions of Haystack can still be resumed on a first visit, as before; re-create them to resume from a
+    later visit of a loop.
+  - |
+    Fixed a resumed ``Pipeline`` passing malformed inputs to the component the snapshot was taken on, whenever that
+    component ran more than once after the resume, for example inside a loop. Every visit after the first reused the
+    handling meant only for the paused visit and skipped the regular input consumption, so a variadic component could
+    receive a bare value where it expected a list, raising errors such as
+    ``TypeError: object of type 'int' has no len()`` from a ``BranchJoiner``. This affected snapshots taken at any
+    visit count, including the first.
+  - |
+    The ``_empty`` sentinel, which marks an unset ``InputSocket.default_value`` and a socket whose sender produced no
+    output, is now recognized by type rather than by identity or equality. Testing for it no longer runs ``__eq__``
+    on the value being checked, which for values such as numpy arrays does not return a bool, and the sentinel now
+    survives ``copy``, ``deepcopy``, ``pickle``, and serialization as the same object.

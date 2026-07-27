@@ -36,10 +36,16 @@ class _Empty:
     Type of the `_empty` sentinel, which marks an `InputSocket.default_value` as not set.
 
     The sentinel is also reused by the pipeline to mark a socket whose sender ran without producing a value for it.
-    It is compared by identity, so `from_dict` returns the singleton rather than a new instance.
+    Use `_is_empty_sentinel` to test for it. The single `_empty` instance is the one to use everywhere, so `from_dict`
+    and `__reduce__` both hand it back rather than building a second one.
     """
 
     def __repr__(self) -> str:
+        return "_empty"
+
+    def __reduce__(self) -> str:
+        # Returning the global's name keeps `copy`, `deepcopy` and `pickle` from building a second instance, which
+        # would silently fail the identity comparisons.
         return "_empty"
 
     def to_dict(self) -> dict[str, Any]:
@@ -57,6 +63,19 @@ class _Empty:
 
 
 _empty = _Empty()
+
+
+def _is_empty_sentinel(value: Any) -> bool:
+    """
+    Check whether a value is the `_empty` sentinel.
+
+    Compares by type rather than by identity or equality. `_Empty` carries no state, so every instance means the same
+    thing, and unlike `==` this never runs `__eq__` on an arbitrary value, which for values such as numpy arrays does
+    not return a bool.
+
+    :param value: The value to check.
+    """
+    return isinstance(value, _Empty)
 
 
 @dataclass
@@ -97,7 +116,7 @@ class InputSocket:
     @property
     def is_mandatory(self) -> bool:
         """Check if the input is mandatory."""
-        return self.default_value == _empty
+        return _is_empty_sentinel(self.default_value)
 
     def __post_init__(self) -> None:
         try:
