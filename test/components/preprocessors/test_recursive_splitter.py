@@ -1051,28 +1051,16 @@ def test_recursive_splitter_generates_unique_ids_and_correct_meta():
     # IDs must be unique
     assert len({c.id for c in chunks}) == len(chunks)
 
-    # parent_id and split_id checks
+    # source_id, parent_id and split_id checks
     for idx, chunk in enumerate(chunks):
+        assert chunk.meta["source_id"] == source_doc.id
         assert chunk.meta["parent_id"] == source_doc.id
         assert chunk.meta["split_id"] == idx
 
 
-def test_recursive_splitter_sets_source_id():
-    """`source_id` is the key the rest of the library uses to tie a chunk back to its document."""
-    source_doc = Document(content="Haystack is awesome. " * 5)
-
-    chunks = RecursiveDocumentSplitter(split_length=3).run([source_doc])["documents"]
-
-    assert chunks
-    for chunk in chunks:
-        assert chunk.meta["source_id"] == source_doc.id
-        # parent_id carried the same value before source_id existed, so it stays.
-        assert chunk.meta["parent_id"] == source_doc.id
-
-
 def test_recursive_splitter_output_works_with_sentence_window_retriever():
     """SentenceWindowRetriever looks up `source_id` by default and raises when it is
-    absent, so chunks from this splitter used to be unusable with it."""
+    absent"""
     source_doc = Document(content="Haystack is awesome. " * 10)
     chunks = RecursiveDocumentSplitter(split_length=3).run([source_doc])["documents"]
     assert len(chunks) > 2

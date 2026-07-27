@@ -426,9 +426,6 @@ class RecursiveDocumentSplitter:
 
         for split_nr, chunk in enumerate(chunks):
             meta = deepcopy(doc.meta)
-            # `source_id` is the key every other splitter writes, and the one components
-            # like SentenceWindowRetriever look for by default. `parent_id` carries the
-            # same value and is kept for callers already reading it.
             meta["source_id"] = doc.id
             meta["parent_id"] = doc.id
             meta["split_id"] = split_nr
