@@ -53,11 +53,14 @@ class PipelineState:
     :param component_visits: A dictionary mapping component names to their visit counts.
     :param inputs: The inputs processed by the pipeline at the time of the snapshot.
     :param pipeline_outputs: Dictionary containing the final outputs of the pipeline up to the breakpoint.
+    :param inputs_format: Which format `inputs` are stored in. `None` marks snapshots taken before Haystack
+        recorded the sender of each input; those can only be resumed on a component's first visit.
     """
 
     inputs: dict[str, Any]
     component_visits: dict[str, int]
     pipeline_outputs: dict[str, Any]
+    inputs_format: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         """

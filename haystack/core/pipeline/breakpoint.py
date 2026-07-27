@@ -14,6 +14,7 @@ from networkx import MultiDiGraph
 from haystack import logging
 from haystack.core.errors import PipelineInvalidPipelineSnapshotError
 from haystack.dataclasses.breakpoints import Breakpoint, PipelineSnapshot, PipelineState
+from haystack.utils import _deserialize_value_with_schema
 from haystack.utils.base_serialization import _serialize_with_field_fallback
 
 logger = logging.getLogger(__name__)
@@ -24,6 +25,11 @@ HAYSTACK_PIPELINE_SNAPSHOT_SAVE_ENABLED = "HAYSTACK_PIPELINE_SNAPSHOT_SAVE_ENABL
 # Type alias for snapshot callback function
 # The callback receives a PipelineSnapshot and optionally returns a file path string
 SnapshotCallback = Callable[[PipelineSnapshot], str | None]
+
+# Value of `PipelineState.inputs_format` for snapshots that store the pipeline's internal inputs state, where each
+# input keeps the component that sent it. Snapshots without it store flattened `{component: {socket: value}}` inputs.
+# See `_serialize_internal_inputs` for the exact shape.
+INTERNAL_INPUTS_FORMAT = "internal"
 
 
 def _is_snapshot_save_enabled() -> bool:
@@ -211,6 +217,48 @@ def _save_pipeline_snapshot(
     return str(full_path)
 
 
+def _serialize_internal_inputs(inputs: dict[str, Any]) -> dict[str, Any]:
+    """
+    Serialize the pipeline's internal inputs state, keeping the `sender` of every input intact.
+
+    The `sender` tells a resumed run which inputs came from a predecessor and which from outside the pipeline, and
+    therefore whether the paused component can be triggered again.
+
+    The inputs a socket received are stored keyed by position rather than as a list, because a list gets a single
+    schema derived from its first item. A socket with several senders can hold values of different types, for
+    example a value from one sender and the `_NO_OUTPUT_PRODUCED` sentinel from another, and those need one schema
+    each to survive the round trip.
+
+    :param inputs: The pipeline's internal inputs state.
+    :returns: A dict of the form `{"serialization_schema": ..., "serialized_data": ...}`.
+    """
+    positional_inputs = {
+        component_name: {
+            socket_name: {str(position): entry for position, entry in enumerate(socket_inputs)}
+            for socket_name, socket_inputs in socket_dict.items()
+        }
+        for component_name, socket_dict in inputs.items()
+    }
+
+    return _serialize_with_field_fallback(positional_inputs, description="the inputs of the current pipeline state")
+
+
+def _deserialize_internal_inputs(serialized_inputs: dict[str, Any]) -> dict[str, Any]:
+    """
+    Restore the pipeline's internal inputs state from a snapshot written by `_serialize_internal_inputs`.
+
+    :param serialized_inputs: The `inputs` of a `PipelineState` whose `inputs_format` is `INTERNAL_INPUTS_FORMAT`.
+    :returns: The pipeline's internal inputs state.
+    """
+    return {
+        component_name: {
+            socket_name: [socket_inputs[position] for position in sorted(socket_inputs, key=int)]
+            for socket_name, socket_inputs in socket_dict.items()
+        }
+        for component_name, socket_dict in _deserialize_value_with_schema(serialized_inputs).items()
+    }
+
+
 def _create_pipeline_snapshot(
     *,
     inputs: dict[str, Any],
@@ -226,7 +274,8 @@ def _create_pipeline_snapshot(
     Create a snapshot of the pipeline at the point where the breakpoint was triggered.
 
     :param inputs: The current pipeline snapshot inputs.
-    :param component_inputs: The inputs to the component that triggered the breakpoint.
+    :param component_inputs: The inputs of the component that triggered the breakpoint, as they were before the
+        component consumed them.
     :param break_point: The breakpoint that triggered the snapshot.
     :param component_visits: The visit count of the component that triggered the breakpoint.
     :param original_input_data: The original input data.
@@ -239,11 +288,8 @@ def _create_pipeline_snapshot(
     component_name = break_point.component_name
 
     transformed_original_input_data = _transform_json_structure(original_input_data)
-    transformed_inputs = _transform_json_structure({**inputs, component_name: component_inputs})
 
-    serialized_inputs = _serialize_with_field_fallback(
-        transformed_inputs, description="the inputs of the current pipeline state"
-    )
+    serialized_inputs = _serialize_internal_inputs({**inputs, component_name: component_inputs})
     serialized_original_input_data = _serialize_with_field_fallback(
         transformed_original_input_data, description="original input data for `pipeline.run`"
     )
@@ -253,7 +299,10 @@ def _create_pipeline_snapshot(
 
     return PipelineSnapshot(
         pipeline_state=PipelineState(
-            inputs=serialized_inputs, component_visits=component_visits, pipeline_outputs=serialized_pipeline_outputs
+            inputs=serialized_inputs,
+            component_visits=component_visits,
+            pipeline_outputs=serialized_pipeline_outputs,
+            inputs_format=INTERNAL_INPUTS_FORMAT,
         ),
         timestamp=datetime.now(),
         break_point=break_point,

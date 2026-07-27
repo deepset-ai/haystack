@@ -31,8 +31,32 @@ Variadic: TypeAlias = Annotated[Iterable[T], HAYSTACK_VARIADIC_ANNOTATION]
 GreedyVariadic: TypeAlias = Annotated[Iterable[T], HAYSTACK_GREEDY_VARIADIC_ANNOTATION]
 
 
-class _empty:
-    """Custom object for marking InputSocket.default_value as not set."""
+class _Empty:
+    """
+    Type of the `_empty` sentinel, which marks an `InputSocket.default_value` as not set.
+
+    The sentinel is also reused by the pipeline to mark a socket whose sender ran without producing a value for it.
+    It is compared by identity, so `from_dict` returns the singleton rather than a new instance.
+    """
+
+    def __repr__(self) -> str:
+        return "_empty"
+
+    def to_dict(self) -> dict[str, Any]:
+        """
+        Serialize the sentinel. It carries no state, so the payload is empty.
+        """
+        return {}
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "_Empty":  # noqa: ARG003
+        """
+        Deserialize the sentinel back to the singleton, so that identity comparisons keep working.
+        """
+        return _empty
+
+
+_empty = _Empty()
 
 
 @dataclass

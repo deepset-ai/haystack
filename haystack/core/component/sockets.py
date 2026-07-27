@@ -46,7 +46,7 @@ class Sockets:  # noqa: PLW1641
     # >>   - documents: Any
 
     inputs.question
-    # >> InputSocket(name='question', type=typing.Any, default_value=<class 'haystack.core.component.types._empty'>, ...
+    # >> InputSocket(name='question', type=typing.Any, default_value=_empty, ...
     ```
     """
 
