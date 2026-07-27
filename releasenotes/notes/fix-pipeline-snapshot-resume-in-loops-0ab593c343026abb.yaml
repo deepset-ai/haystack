@@ -13,14 +13,20 @@ upgrade:
     to display or post-process a snapshot. Resuming a pipeline with ``Pipeline.run(pipeline_snapshot=...)`` is not
     affected, and neither is code that only passes snapshots around or persists them.
 
-    To adapt, read through the position and unwrap the sender:
+    To adapt, read the input through its position and take its ``value``:
 
     .. code-block:: python
 
-        from haystack.utils import _deserialize_value_with_schema
+        inputs = snapshot.pipeline_state.inputs["serialized_data"]
 
-        inputs = _deserialize_value_with_schema(snapshot.pipeline_state.inputs)
+        # before
+        value = inputs["my_component"]["my_socket"]
+
+        # now
         value = inputs["my_component"]["my_socket"]["0"]["value"]
+
+    A socket that received inputs from several senders now has one entry per position, ``"0"``, ``"1"`` and so on,
+    each recording the ``sender`` that produced it.
 
     Snapshots written by earlier versions of Haystack have ``inputs_format`` set to ``None`` and keep the flattened
     shape, so branch on that field if you need to handle both.
