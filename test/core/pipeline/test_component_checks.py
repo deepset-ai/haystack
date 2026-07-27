@@ -7,7 +7,7 @@ from typing import Any
 import pytest
 from pandas import DataFrame
 
-from haystack.core.component.types import GreedyVariadic, InputSocket, OutputSocket, Variadic
+from haystack.core.component.types import GreedyVariadic, InputSocket, OutputSocket, Variadic, _Empty
 from haystack.core.pipeline.component_checks import (
     _NO_OUTPUT_PRODUCED,
     all_predecessors_executed,
@@ -24,6 +24,13 @@ from haystack.core.pipeline.component_checks import (
     has_user_input,
     is_any_greedy_socket_ready,
 )
+
+
+class _IncomparableValue:  # noqa: PLW1641  # __hash__ is irrelevant; this only needs a hostile __eq__
+    """Stands in for values such as numpy arrays, whose `__eq__` does not return a bool."""
+
+    def __eq__(self, other):
+        raise AssertionError("__eq__ must not be called when testing for the sentinel")
 
 
 @pytest.fixture
@@ -476,6 +483,16 @@ class TestSocketInputReceived:
     def test_any_socket_input_received_empty_list(self):
         """Empty list: no input received."""
         assert any_socket_input_received([]) is False
+
+    def test_any_socket_input_received_with_a_separate_sentinel_instance(self):
+        """The sentinel is recognized by type, so a second instance means no output just as the singleton does."""
+        socket_inputs = [{"sender": "component1", "value": _Empty()}]
+        assert any_socket_input_received(socket_inputs) is False
+
+    def test_any_socket_input_received_with_an_incomparable_value(self):
+        """Recognizing the sentinel by type means a value that cannot be compared is still counted as received."""
+        socket_inputs = [{"sender": "component1", "value": _IncomparableValue()}]
+        assert any_socket_input_received(socket_inputs) is True
 
 
 class TestLazyVariadicSocket:

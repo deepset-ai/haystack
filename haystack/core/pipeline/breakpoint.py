@@ -13,7 +13,7 @@ from networkx import MultiDiGraph
 
 from haystack import logging
 from haystack.core.errors import PipelineInvalidPipelineSnapshotError
-from haystack.dataclasses.breakpoints import Breakpoint, PipelineSnapshot, PipelineState
+from haystack.dataclasses.breakpoints import INTERNAL_INPUTS_FORMAT, Breakpoint, PipelineSnapshot, PipelineState
 from haystack.utils import _deserialize_value_with_schema
 from haystack.utils.base_serialization import _serialize_with_field_fallback
 
@@ -25,11 +25,6 @@ HAYSTACK_PIPELINE_SNAPSHOT_SAVE_ENABLED = "HAYSTACK_PIPELINE_SNAPSHOT_SAVE_ENABL
 # Type alias for snapshot callback function
 # The callback receives a PipelineSnapshot and optionally returns a file path string
 SnapshotCallback = Callable[[PipelineSnapshot], str | None]
-
-# Value of `PipelineState.inputs_format` for snapshots that store the pipeline's internal inputs state, where each
-# input keeps the component that sent it. Snapshots without it store flattened `{component: {socket: value}}` inputs.
-# See `_serialize_internal_inputs` for the exact shape.
-INTERNAL_INPUTS_FORMAT = "internal"
 
 
 def _is_snapshot_save_enabled() -> bool:

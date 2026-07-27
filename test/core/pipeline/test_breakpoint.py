@@ -18,7 +18,6 @@ from haystack.core.errors import BreakpointException, PipelineInvalidPipelineSna
 from haystack.core.pipeline import Pipeline
 from haystack.core.pipeline.breakpoint import (
     HAYSTACK_PIPELINE_SNAPSHOT_SAVE_ENABLED,
-    INTERNAL_INPUTS_FORMAT,
     _create_pipeline_snapshot,
     _deserialize_internal_inputs,
     _is_snapshot_save_enabled,
@@ -27,7 +26,7 @@ from haystack.core.pipeline.breakpoint import (
     load_pipeline_snapshot,
 )
 from haystack.dataclasses import ChatMessage
-from haystack.dataclasses.breakpoints import Breakpoint, PipelineSnapshot, PipelineState
+from haystack.dataclasses.breakpoints import INTERNAL_INPUTS_FORMAT, Breakpoint, PipelineSnapshot, PipelineState
 from haystack.utils import _deserialize_value_with_schema
 from haystack.utils.base_serialization import _serialize_value_with_schema
 

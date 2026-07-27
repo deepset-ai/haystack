@@ -19,7 +19,6 @@ from haystack.core.pipeline.base import (
     _validate_component_output_keys,
 )
 from haystack.core.pipeline.breakpoint import (
-    INTERNAL_INPUTS_FORMAT,
     SnapshotCallback,
     _create_pipeline_snapshot,
     _deserialize_internal_inputs,
@@ -29,7 +28,7 @@ from haystack.core.pipeline.breakpoint import (
 )
 from haystack.core.pipeline.utils import _deepcopy_with_exceptions
 from haystack.dataclasses import AsyncStreamingCallbackT, StreamingCallbackT, StreamingChunk, select_streaming_callback
-from haystack.dataclasses.breakpoints import Breakpoint, PipelineSnapshot
+from haystack.dataclasses.breakpoints import INTERNAL_INPUTS_FORMAT, Breakpoint, PipelineSnapshot
 from haystack.dataclasses.streaming_chunk import _invoke_streaming_callback
 from haystack.telemetry import pipeline_running
 from haystack.utils import _deserialize_value_with_schema
