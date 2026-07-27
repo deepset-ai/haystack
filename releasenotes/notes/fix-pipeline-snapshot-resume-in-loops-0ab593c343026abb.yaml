@@ -40,8 +40,3 @@ fixes:
     receive a bare value where it expected a list, raising errors such as
     ``TypeError: object of type 'int' has no len()`` from a ``BranchJoiner``. This affected snapshots taken at any
     visit count, including the first.
-  - |
-    The ``_empty`` sentinel, which marks an unset ``InputSocket.default_value`` and a socket whose sender produced no
-    output, is now recognized by type rather than by identity or equality. Testing for it no longer runs ``__eq__``
-    on the value being checked, which for values such as numpy arrays does not return a bool, and the sentinel now
-    survives ``copy``, ``deepcopy``, ``pickle``, and serialization as the same object.

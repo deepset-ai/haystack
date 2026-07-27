@@ -2,14 +2,17 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import copy
+import pickle
 from typing import Any
 
 import pytest
 from pandas import DataFrame
 
-from haystack.core.component.types import GreedyVariadic, InputSocket, OutputSocket, Variadic, _Empty
+from haystack.core.component.types import GreedyVariadic, InputSocket, OutputSocket, Variadic, _empty
 from haystack.core.pipeline.component_checks import (
     _NO_OUTPUT_PRODUCED,
+    _NoOutputProduced,
     all_predecessors_executed,
     all_socket_predecessors_executed,
     any_predecessors_provided_input,
@@ -24,13 +27,8 @@ from haystack.core.pipeline.component_checks import (
     has_user_input,
     is_any_greedy_socket_ready,
 )
-
-
-class _IncomparableValue:  # noqa: PLW1641  # __hash__ is irrelevant; this only needs a hostile __eq__
-    """Stands in for values such as numpy arrays, whose `__eq__` does not return a bool."""
-
-    def __eq__(self, other):
-        raise AssertionError("__eq__ must not be called when testing for the sentinel")
+from haystack.core.pipeline.utils import _deepcopy_with_exceptions
+from haystack.utils.base_serialization import _deserialize_value_with_schema, _serialize_value_with_schema
 
 
 @pytest.fixture
@@ -155,8 +153,8 @@ class TestCanComponentRun:
         assert can_component_run(basic_component, inputs) is False
 
     # We added these tests because a component that returned a pandas dataframe caused the pipeline to fail.
-    # Previously, we compared the value of the socket using '!=' which leads to an error with dataframes.
-    # Instead, we use 'is not' to compare with the sentinel value.
+    # Comparing the socket value with '!=' errors out on dataframes, so the checks test the sentinel by type
+    # instead, which never compares the value at all.
     def test_sockets_with_ambiguous_truth_value(self, basic_component, greedy_variadic_socket, regular_socket):
         inputs = {"mandatory_input": [{"sender": "previous_component", "value": DataFrame.from_dict([{"value": 42}])}]}
 
@@ -486,13 +484,42 @@ class TestSocketInputReceived:
 
     def test_any_socket_input_received_with_a_separate_sentinel_instance(self):
         """The sentinel is recognized by type, so a second instance means no output just as the singleton does."""
-        socket_inputs = [{"sender": "component1", "value": _Empty()}]
+        socket_inputs = [{"sender": "component1", "value": _NoOutputProduced()}]
         assert any_socket_input_received(socket_inputs) is False
 
-    def test_any_socket_input_received_with_an_incomparable_value(self):
-        """Recognizing the sentinel by type means a value that cannot be compared is still counted as received."""
-        socket_inputs = [{"sender": "component1", "value": _IncomparableValue()}]
-        assert any_socket_input_received(socket_inputs) is True
+
+class TestNoOutputProducedSentinel:
+    """The sentinel reaches a pipeline snapshot, so anything that could duplicate it has to hand it back."""
+
+    def test_repr_names_the_sentinel(self):
+        assert repr(_NO_OUTPUT_PRODUCED) == "_NO_OUTPUT_PRODUCED"
+
+    def test_the_sentinel_is_distinct_from_the_unset_default_marker(self):
+        """`_empty` marks an `InputSocket` without a default; it is a different thing and never reaches the inputs."""
+        assert _NO_OUTPUT_PRODUCED is not _empty
+        assert not isinstance(_empty, _NoOutputProduced)
+
+    @pytest.mark.parametrize(
+        "duplicate",
+        [copy.copy, copy.deepcopy, lambda value: pickle.loads(pickle.dumps(value))],
+        ids=["copy", "deepcopy", "pickle"],
+    )
+    def test_duplicating_the_sentinel_returns_the_singleton(self, duplicate):
+        assert duplicate(_NO_OUTPUT_PRODUCED) is _NO_OUTPUT_PRODUCED
+
+    def test_the_sentinel_survives_a_deepcopy_of_the_pipeline_inputs(self):
+        """`Pipeline.run` deep-copies its inputs, which carry the sentinel, before snapshotting them."""
+        inputs = {"comp": {"socket": [{"sender": "other", "value": _NO_OUTPUT_PRODUCED}]}}
+
+        copied = _deepcopy_with_exceptions(inputs)
+
+        assert copied["comp"]["socket"][0]["value"] is _NO_OUTPUT_PRODUCED
+
+    def test_the_sentinel_survives_serialization(self):
+        """A pipeline snapshot serializes the inputs, sentinel included."""
+        restored = _deserialize_value_with_schema(_serialize_value_with_schema({"value": _NO_OUTPUT_PRODUCED}))
+
+        assert restored["value"] is _NO_OUTPUT_PRODUCED
 
 
 class TestLazyVariadicSocket:

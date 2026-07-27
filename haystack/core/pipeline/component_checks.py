@@ -4,10 +4,45 @@
 
 from typing import Any
 
-from haystack.core.component.types import InputSocket, _Empty, _empty
+from haystack.core.component.types import InputSocket
 
-# A socket input holding this sentinel records that its sender ran without producing a value for that socket.
-_NO_OUTPUT_PRODUCED = _empty
+
+class _NoOutputProduced:
+    """
+    Type of the `_NO_OUTPUT_PRODUCED` sentinel.
+
+    A socket input holds the sentinel when its sender ran without producing a value for that socket.
+
+    Test for it with `isinstance(value, _NoOutputProduced)`. The sentinel carries no state, so every instance means
+    the same thing, and unlike `==` this never runs `__eq__` on the value being checked, which for a value such as a
+    numpy array does not return a bool.
+
+    The sentinel reaches a pipeline snapshot as part of the pipeline's inputs, so it has to serialize and to survive
+    copying as the single `_NO_OUTPUT_PRODUCED` instance.
+    """
+
+    def __repr__(self) -> str:
+        return "_NO_OUTPUT_PRODUCED"
+
+    def __reduce__(self) -> str:
+        # Returning the global's name keeps `copy`, `deepcopy` and `pickle` from building a second instance.
+        return "_NO_OUTPUT_PRODUCED"
+
+    def to_dict(self) -> dict[str, Any]:
+        """
+        Serialize the sentinel. It carries no state, so the payload is empty.
+        """
+        return {}
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "_NoOutputProduced":  # noqa: ARG003
+        """
+        Deserialize the sentinel back to the singleton.
+        """
+        return _NO_OUTPUT_PRODUCED
+
+
+_NO_OUTPUT_PRODUCED = _NoOutputProduced()
 
 
 def can_component_run(component: dict, inputs: dict) -> bool:
@@ -104,7 +139,7 @@ def any_socket_value_from_predecessor_received(socket_inputs: list[dict[str, Any
     :param socket_inputs: Inputs for the component's socket.
     """
     # When sender is None, the input was provided from outside the pipeline.
-    return any(not isinstance(inp["value"], _Empty) and inp["sender"] is not None for inp in socket_inputs)
+    return any(not isinstance(inp["value"], _NoOutputProduced) and inp["sender"] is not None for inp in socket_inputs)
 
 
 def has_user_input(inputs: dict) -> bool:
@@ -143,7 +178,7 @@ def any_socket_input_received(socket_inputs: list[dict]) -> bool:
 
     :param socket_inputs: Inputs for the socket.
     """
-    return any(not isinstance(inp["value"], _Empty) for inp in socket_inputs)
+    return any(not isinstance(inp["value"], _NoOutputProduced) for inp in socket_inputs)
 
 
 def has_lazy_variadic_socket_received_all_inputs(socket: InputSocket, socket_inputs: list[dict]) -> bool:
@@ -155,7 +190,9 @@ def has_lazy_variadic_socket_received_all_inputs(socket: InputSocket, socket_inp
     """
     expected_senders = set(socket.senders)
     actual_senders = {
-        sock["sender"] for sock in socket_inputs if not isinstance(sock["value"], _Empty) and sock["sender"] is not None
+        sock["sender"]
+        for sock in socket_inputs
+        if not isinstance(sock["value"], _NoOutputProduced) and sock["sender"] is not None
     }
     return expected_senders == actual_senders
 
@@ -172,7 +209,11 @@ def has_socket_received_all_inputs(socket: InputSocket, socket_inputs: list[dict
         return False
 
     # The socket is greedy variadic and at least one input was produced, it is complete.
-    if socket.is_variadic and socket.is_greedy and any(not isinstance(sock["value"], _Empty) for sock in socket_inputs):
+    if (
+        socket.is_variadic
+        and socket.is_greedy
+        and any(not isinstance(sock["value"], _NoOutputProduced) for sock in socket_inputs)
+    ):
         return True
 
     # The socket is lazy variadic and all expected inputs were produced.
@@ -180,7 +221,7 @@ def has_socket_received_all_inputs(socket: InputSocket, socket_inputs: list[dict
         return True
 
     # The socket is not variadic and the only expected input is complete.
-    return not socket.is_variadic and not isinstance(socket_inputs[0]["value"], _Empty)
+    return not socket.is_variadic and not isinstance(socket_inputs[0]["value"], _NoOutputProduced)
 
 
 def all_predecessors_executed(component: dict, inputs: dict) -> bool:

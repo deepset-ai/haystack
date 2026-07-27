@@ -13,7 +13,6 @@ from haystack import component
 from haystack.components.joiners import BranchJoiner
 from haystack.components.routers import ConditionalRouter
 from haystack.components.routers.conditional_router import Route
-from haystack.core.component.types import _empty
 from haystack.core.errors import BreakpointException, PipelineInvalidPipelineSnapshotError
 from haystack.core.pipeline import Pipeline
 from haystack.core.pipeline.breakpoint import (
@@ -25,6 +24,7 @@ from haystack.core.pipeline.breakpoint import (
     _transform_json_structure,
     load_pipeline_snapshot,
 )
+from haystack.core.pipeline.component_checks import _NO_OUTPUT_PRODUCED
 from haystack.dataclasses import ChatMessage
 from haystack.dataclasses.breakpoints import INTERNAL_INPUTS_FORMAT, Breakpoint, PipelineSnapshot, PipelineState
 from haystack.utils import _deserialize_value_with_schema
@@ -282,7 +282,7 @@ class TestResumeFromPipelineSnapshot:
         assert snapshot is not None
 
         restored = _deserialize_internal_inputs(snapshot.pipeline_state.inputs)
-        assert restored["collect"]["b"] == [{"sender": "router", "value": _empty}]
+        assert restored["collect"]["b"] == [{"sender": "router", "value": _NO_OUTPUT_PRODUCED}]
 
         assert pipeline.run(data={}, pipeline_snapshot=snapshot) == expected
 

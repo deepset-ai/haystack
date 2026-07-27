@@ -31,40 +31,8 @@ Variadic: TypeAlias = Annotated[Iterable[T], HAYSTACK_VARIADIC_ANNOTATION]
 GreedyVariadic: TypeAlias = Annotated[Iterable[T], HAYSTACK_GREEDY_VARIADIC_ANNOTATION]
 
 
-class _Empty:
-    """
-    Type of the `_empty` sentinel, which marks an `InputSocket.default_value` as not set.
-
-    The sentinel is also reused by the pipeline to mark a socket whose sender ran without producing a value for it.
-    Test for it with `isinstance(value, _Empty)`: the sentinel carries no state, so every instance means the same
-    thing, and unlike `==` this never runs `__eq__` on a value such as a numpy array, which does not return a bool.
-    The single `_empty` instance is still the one to use everywhere, so `from_dict` and `__reduce__` both hand it back
-    rather than building a second one.
-    """
-
-    def __repr__(self) -> str:
-        return "_empty"
-
-    def __reduce__(self) -> str:
-        # Returning the global's name keeps `copy`, `deepcopy` and `pickle` from building a second instance, which
-        # would silently fail the identity comparisons.
-        return "_empty"
-
-    def to_dict(self) -> dict[str, Any]:
-        """
-        Serialize the sentinel. It carries no state, so the payload is empty.
-        """
-        return {}
-
-    @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "_Empty":  # noqa: ARG003
-        """
-        Deserialize the sentinel back to the singleton, so that identity comparisons keep working.
-        """
-        return _empty
-
-
-_empty = _Empty()
+class _empty:
+    """Custom object for marking InputSocket.default_value as not set."""
 
 
 @dataclass
@@ -105,7 +73,9 @@ class InputSocket:
     @property
     def is_mandatory(self) -> bool:
         """Check if the input is mandatory."""
-        return isinstance(self.default_value, _Empty)
+        # Compared by identity so that a default value with a custom `__eq__`, such as a numpy array, is not asked
+        # whether it equals the sentinel.
+        return self.default_value is _empty
 
     def __post_init__(self) -> None:
         try:
