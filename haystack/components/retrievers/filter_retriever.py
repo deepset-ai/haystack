@@ -29,7 +29,8 @@ class FilterRetriever:
     doc_store.write_documents(docs)
     retriever = FilterRetriever(doc_store, filters={"field": "lang", "operator": "==", "value": "en"})
 
-    # if passed in the run method, filters override those provided at initialization
+    # If passed in the run method, filters override those provided at initialization.
+    # Passing an empty dictionary explicitly clears the initialization filters.
     result = retriever.run(filters={"field": "lang", "operator": "==", "value": "de"})
 
     print(result["documents"])
@@ -44,6 +45,7 @@ class FilterRetriever:
             An instance of a Document Store to use with the Retriever.
         :param filters:
             A dictionary with filters to narrow down the search space.
+            Passing an empty dictionary explicitly clears filters provided at initialization.
         """
         self.document_store = document_store
         self.filters = filters
@@ -82,11 +84,12 @@ class FilterRetriever:
 
         :param filters:
             A dictionary with filters to narrow down the search space.
+            Passing an empty dictionary explicitly clears filters provided at initialization.
             If not specified, the FilterRetriever uses the values provided at initialization.
         :returns:
             A list of retrieved documents.
         """
-        return {"documents": self.document_store.filter_documents(filters=filters or self.filters)}
+        return {"documents": self.document_store.filter_documents(filters=self.filters if filters is None else filters)}
 
     @component.output_types(documents=list[Document])
     async def run_async(self, filters: dict[str, Any] | None = None) -> dict[str, Any]:
@@ -100,7 +103,9 @@ class FilterRetriever:
             A list of retrieved documents.
         """
         # 'ignore' since filter_documents_async is not defined in the Protocol but exists in the implementations
-        out_documents = await self.document_store.filter_documents_async(filters=filters or self.filters)  # type: ignore[attr-defined]
+        out_documents = await self.document_store.filter_documents_async(  # type: ignore[attr-defined]
+            filters=self.filters if filters is None else filters
+        )
         return {"documents": out_documents}
 
     def close(self) -> None:

@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    FilterRetriever now treats an explicitly provided empty runtime filter as an override
+    of initialization filters in both synchronous and asynchronous execution.

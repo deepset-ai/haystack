@@ -24,7 +24,7 @@ class TestSentenceWindowRetriever:
         retriever = SentenceWindowRetriever(in_memory_doc_store, window_size=5)
         assert retriever.window_size == 5
 
-    def test_init_with_invalid_window_size_parameter(self, in_memory_doc_store):
+    def test_init_invalid_window_size(self, in_memory_doc_store):
         with pytest.raises(ValueError):
             SentenceWindowRetriever(in_memory_doc_store, window_size=-2)
 
@@ -174,11 +174,20 @@ class TestSentenceWindowRetriever:
             )
             retriever.run(retrieved_documents=docs)
 
-    def test_run_invalid_window_size(self, in_memory_doc_store):
+    def test_init_rejects_zero_window_size(self, in_memory_doc_store):
         docs = [Document(content="This is a text with some words. There is a ", meta={"id": "doc_0", "split_id": 0})]
         with pytest.raises(ValueError):
             retriever = SentenceWindowRetriever(document_store=in_memory_doc_store, window_size=0)
             retriever.run(retrieved_documents=docs)
+
+    def test_run_rejects_zero_runtime_window_size(self, in_memory_doc_store):
+        retriever = SentenceWindowRetriever(document_store=in_memory_doc_store, window_size=3)
+
+        with pytest.raises(ValueError, match="window_size parameter must be greater than 0"):
+            retriever.run(retrieved_documents=[], window_size=0)
+
+        with pytest.raises(ValueError, match="window_size parameter must be greater than 0"):
+            retriever.run(retrieved_documents=[], window_size=-1)
 
     def test_constructor_parameter_does_not_change(self, in_memory_doc_store):
         retriever = SentenceWindowRetriever(in_memory_doc_store, window_size=5)

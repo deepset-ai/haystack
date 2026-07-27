@@ -104,8 +104,7 @@ class SentenceWindowRetriever:
             metadata fields. If False, it will skip retrieving the context for documents that are missing
             the required metadata fields, but will still include the original document in the results.
         """
-        if window_size < 1:
-            raise ValueError("The window_size parameter must be greater than 0.")
+        self._validate_window_size(window_size)
 
         self.window_size = window_size
         self.document_store = document_store
@@ -197,8 +196,8 @@ class SentenceWindowRetriever:
                                       meta field.
 
         """
-        window_size = window_size or self.window_size
-        SentenceWindowRetriever._raise_if_windows_size_is_negative(window_size)
+        window_size = self.window_size if window_size is None else window_size
+        self._validate_window_size(window_size)
         self._raise_if_documents_do_not_have_expected_metadata(retrieved_documents)
 
         context_text = []
@@ -230,8 +229,8 @@ class SentenceWindowRetriever:
                                       meta field.
 
         """
-        window_size = window_size or self.window_size
-        SentenceWindowRetriever._raise_if_windows_size_is_negative(window_size)
+        window_size = self.window_size if window_size is None else window_size
+        self._validate_window_size(window_size)
         self._raise_if_documents_do_not_have_expected_metadata(retrieved_documents)
 
         context_text = []
@@ -244,7 +243,7 @@ class SentenceWindowRetriever:
         return {"context_windows": context_text, "context_documents": context_documents}
 
     @staticmethod
-    def _raise_if_windows_size_is_negative(window_size: int) -> None:
+    def _validate_window_size(window_size: int) -> None:
         if window_size < 1:
             raise ValueError("The window_size parameter must be greater than 0.")
 
