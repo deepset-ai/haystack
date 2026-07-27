@@ -24,7 +24,7 @@ from haystack.core.pipeline.breakpoint import (
     _transform_json_structure,
     load_pipeline_snapshot,
 )
-from haystack.core.pipeline.component_checks import _NO_OUTPUT_PRODUCED
+from haystack.core.pipeline.component_checks import _NoOutputProduced
 from haystack.dataclasses import ChatMessage
 from haystack.dataclasses.breakpoints import INTERNAL_INPUTS_FORMAT, Breakpoint, PipelineSnapshot, PipelineState
 from haystack.utils import _deserialize_value_with_schema
@@ -263,7 +263,7 @@ class TestResumeFromPipelineSnapshot:
         assert restored["comp2"] == {"input_value": [{"sender": "comp1", "value": "test_processed"}]}
 
     def test_snapshot_preserves_sockets_whose_sender_produced_no_output(self):
-        """A router that leaves a branch inactive puts the `_NO_OUTPUT_PRODUCED` sentinel in the pipeline inputs."""
+        """A router that leaves a branch inactive puts the `_NoOutputProduced()` sentinel in the pipeline inputs."""
         routes: list[Route] = [
             {"condition": "{{ n > 5 }}", "output": "{{ 'big' }}", "output_name": "big", "output_type": str},
             {"condition": "{{ n <= 5 }}", "output": "{{ 'small' }}", "output_name": "small", "output_type": str},
@@ -282,7 +282,7 @@ class TestResumeFromPipelineSnapshot:
         assert snapshot is not None
 
         restored = _deserialize_internal_inputs(snapshot.pipeline_state.inputs)
-        assert restored["collect"]["b"] == [{"sender": "router", "value": _NO_OUTPUT_PRODUCED}]
+        assert restored["collect"]["b"] == [{"sender": "router", "value": _NoOutputProduced()}]
 
         assert pipeline.run(data={}, pipeline_snapshot=snapshot) == expected
 

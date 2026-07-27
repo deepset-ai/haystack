@@ -9,40 +9,36 @@ from haystack.core.component.types import InputSocket
 
 class _NoOutputProduced:
     """
-    Type of the `_NO_OUTPUT_PRODUCED` sentinel.
+    Marker a socket input holds when its sender ran without producing a value for that socket.
 
-    A socket input holds the sentinel when its sender ran without producing a value for that socket.
+    Test for it with `isinstance(value, _NoOutputProduced)`, never with `==`: comparing runs `__eq__` on the value
+    being checked, which for a value such as a DataFrame does not return a bool. It carries no state, so instances
+    are interchangeable and every one of them means the same thing.
 
-    Test for it with `isinstance(value, _NoOutputProduced)`. The sentinel carries no state, so every instance means
-    the same thing, and unlike `==` this never runs `__eq__` on the value being checked, which for a value such as a
-    numpy array does not return a bool.
-
-    The sentinel reaches a pipeline snapshot as part of the pipeline's inputs, so it has to serialize and to survive
-    copying as the single `_NO_OUTPUT_PRODUCED` instance.
+    It is serializable because it reaches a pipeline snapshot as part of the pipeline's inputs.
     """
 
     def __repr__(self) -> str:
-        return "_NO_OUTPUT_PRODUCED"
+        return "_NoOutputProduced()"
 
-    def __reduce__(self) -> str:
-        # Returning the global's name keeps `copy`, `deepcopy` and `pickle` from building a second instance.
-        return "_NO_OUTPUT_PRODUCED"
+    def __eq__(self, other: object) -> bool:
+        return isinstance(other, _NoOutputProduced)
+
+    def __hash__(self) -> int:
+        return hash(_NoOutputProduced)
 
     def to_dict(self) -> dict[str, Any]:
         """
-        Serialize the sentinel. It carries no state, so the payload is empty.
+        Serialize the marker. It carries no state, so the payload is empty.
         """
         return {}
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "_NoOutputProduced":  # noqa: ARG003
         """
-        Deserialize the sentinel back to the singleton.
+        Deserialize the marker.
         """
-        return _NO_OUTPUT_PRODUCED
-
-
-_NO_OUTPUT_PRODUCED = _NoOutputProduced()
+        return cls()
 
 
 def can_component_run(component: dict, inputs: dict) -> bool:

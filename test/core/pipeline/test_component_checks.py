@@ -2,8 +2,6 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-import copy
-import pickle
 from typing import Any
 
 import pytest
@@ -11,7 +9,6 @@ from pandas import DataFrame
 
 from haystack.core.component.types import GreedyVariadic, InputSocket, OutputSocket, Variadic, _empty
 from haystack.core.pipeline.component_checks import (
-    _NO_OUTPUT_PRODUCED,
     _NoOutputProduced,
     all_predecessors_executed,
     all_socket_predecessors_executed,
@@ -327,10 +324,10 @@ class TestPredecessorInputDetection:
 
     def test_any_predecessors_provided_input_with_no_output(self, component_with_multiple_sockets):
         """
-        Ensures that _NO_OUTPUT_PRODUCED from a predecessor is ignored in the predecessor detection.
+        Ensures that _NoOutputProduced() from a predecessor is ignored in the predecessor detection.
         """
         inputs = {
-            "socket1": [{"sender": "component1", "value": _NO_OUTPUT_PRODUCED}],
+            "socket1": [{"sender": "component1", "value": _NoOutputProduced()}],
             "socket2": [{"sender": None, "value": "test"}],
         }
         assert any_predecessors_provided_input(component_with_multiple_sockets, inputs) is False
@@ -350,12 +347,12 @@ class TestSocketValueFromPredecessor:
         "socket_inputs, expected_result",
         [
             pytest.param([{"sender": "component1", "value": 42}], True, id="valid_input"),
-            pytest.param([{"sender": "component1", "value": _NO_OUTPUT_PRODUCED}], False, id="no_output"),
+            pytest.param([{"sender": "component1", "value": _NoOutputProduced()}], False, id="no_output"),
             pytest.param([{"sender": None, "value": 42}], False, id="user_input"),
             pytest.param(
                 [
                     {"sender": None, "value": 42},
-                    {"sender": "component1", "value": _NO_OUTPUT_PRODUCED},
+                    {"sender": "component1", "value": _NoOutputProduced()},
                     {"sender": "component2", "value": 100},
                 ],
                 True,
@@ -392,10 +389,10 @@ class TestUserInputDetection:
 
     def test_has_user_input_with_no_output(self):
         """
-        Even if the input value is _NO_OUTPUT_PRODUCED, if sender=None
+        Even if the input value is _NoOutputProduced(), if sender=None
         it still counts as user input being provided.
         """
-        inputs = {"socket1": [{"sender": None, "value": _NO_OUTPUT_PRODUCED}]}
+        inputs = {"socket1": [{"sender": None, "value": _NoOutputProduced()}]}
         assert has_user_input(inputs) is True
 
 
@@ -464,62 +461,54 @@ class TestSocketExecutionStatus:
 
 class TestSocketInputReceived:
     def test_any_socket_input_received_with_value(self):
-        """Checks that if there's a non-_NO_OUTPUT_PRODUCED value, the socket is marked as having input."""
+        """Checks that if there's a non-_NoOutputProduced() value, the socket is marked as having input."""
         socket_inputs = [{"sender": "component1", "value": 42}]
         assert any_socket_input_received(socket_inputs) is True
 
     def test_any_socket_input_received_with_no_output(self):
-        """If all inputs are _NO_OUTPUT_PRODUCED, the socket has no effective input."""
-        socket_inputs = [{"sender": "component1", "value": _NO_OUTPUT_PRODUCED}]
+        """If all inputs are _NoOutputProduced(), the socket has no effective input."""
+        socket_inputs = [{"sender": "component1", "value": _NoOutputProduced()}]
         assert any_socket_input_received(socket_inputs) is False
 
     def test_any_socket_input_received_mixed_inputs(self):
         """A single valid input among many is enough to consider the socket as having input."""
-        socket_inputs = [{"sender": "component1", "value": _NO_OUTPUT_PRODUCED}, {"sender": "component2", "value": 42}]
+        socket_inputs = [{"sender": "component1", "value": _NoOutputProduced()}, {"sender": "component2", "value": 42}]
         assert any_socket_input_received(socket_inputs) is True
 
     def test_any_socket_input_received_empty_list(self):
         """Empty list: no input received."""
         assert any_socket_input_received([]) is False
 
-    def test_any_socket_input_received_with_a_separate_sentinel_instance(self):
-        """The sentinel is recognized by type, so a second instance means no output just as the singleton does."""
-        socket_inputs = [{"sender": "component1", "value": _NoOutputProduced()}]
-        assert any_socket_input_received(socket_inputs) is False
 
+class TestNoOutputProduced:
+    """The marker reaches a pipeline snapshot, so it has to survive being copied and serialized."""
 
-class TestNoOutputProducedSentinel:
-    """The sentinel reaches a pipeline snapshot, so anything that could duplicate it has to hand it back."""
+    def test_repr_names_the_marker(self):
+        assert repr(_NoOutputProduced()) == "_NoOutputProduced()"
 
-    def test_repr_names_the_sentinel(self):
-        assert repr(_NO_OUTPUT_PRODUCED) == "_NO_OUTPUT_PRODUCED"
+    def test_markers_are_interchangeable(self):
+        """The marker carries no state, so any two of them are the same value."""
+        assert _NoOutputProduced() == _NoOutputProduced()
+        assert len({_NoOutputProduced(), _NoOutputProduced()}) == 1
 
-    def test_the_sentinel_is_distinct_from_the_unset_default_marker(self):
+    def test_the_marker_is_not_the_unset_default_marker(self):
         """`_empty` marks an `InputSocket` without a default; it is a different thing and never reaches the inputs."""
-        assert _NO_OUTPUT_PRODUCED is not _empty
         assert not isinstance(_empty, _NoOutputProduced)
+        assert _NoOutputProduced() != _empty
 
-    @pytest.mark.parametrize(
-        "duplicate",
-        [copy.copy, copy.deepcopy, lambda value: pickle.loads(pickle.dumps(value))],
-        ids=["copy", "deepcopy", "pickle"],
-    )
-    def test_duplicating_the_sentinel_returns_the_singleton(self, duplicate):
-        assert duplicate(_NO_OUTPUT_PRODUCED) is _NO_OUTPUT_PRODUCED
-
-    def test_the_sentinel_survives_a_deepcopy_of_the_pipeline_inputs(self):
-        """`Pipeline.run` deep-copies its inputs, which carry the sentinel, before snapshotting them."""
-        inputs = {"comp": {"socket": [{"sender": "other", "value": _NO_OUTPUT_PRODUCED}]}}
+    def test_the_marker_survives_a_deepcopy_of_the_pipeline_inputs(self):
+        """`Pipeline.run` deep-copies its inputs, which carry the marker, before snapshotting them."""
+        inputs = {"comp": {"socket": [{"sender": "other", "value": _NoOutputProduced()}]}}
 
         copied = _deepcopy_with_exceptions(inputs)
 
-        assert copied["comp"]["socket"][0]["value"] is _NO_OUTPUT_PRODUCED
+        assert isinstance(copied["comp"]["socket"][0]["value"], _NoOutputProduced)
 
-    def test_the_sentinel_survives_serialization(self):
+    def test_the_marker_survives_serialization(self):
         """A pipeline snapshot serializes the inputs, sentinel included."""
-        restored = _deserialize_value_with_schema(_serialize_value_with_schema({"value": _NO_OUTPUT_PRODUCED}))
+        restored = _deserialize_value_with_schema(_serialize_value_with_schema({"value": _NoOutputProduced()}))
 
-        assert restored["value"] is _NO_OUTPUT_PRODUCED
+        assert isinstance(restored["value"], _NoOutputProduced)
 
 
 class TestLazyVariadicSocket:
@@ -534,8 +523,8 @@ class TestLazyVariadicSocket:
         assert has_lazy_variadic_socket_received_all_inputs(variadic_socket_with_senders, socket_inputs) is False
 
     def test_lazy_variadic_with_no_output(self, variadic_socket_with_senders):
-        """_NO_OUTPUT_PRODUCED from a sender doesn't count as valid input, so it's not fully received."""
-        socket_inputs = [{"sender": "component1", "value": _NO_OUTPUT_PRODUCED}, {"sender": "component2", "value": 42}]
+        """_NoOutputProduced() from a sender doesn't count as valid input, so it's not fully received."""
+        socket_inputs = [{"sender": "component1", "value": _NoOutputProduced()}, {"sender": "component2", "value": 42}]
         assert has_lazy_variadic_socket_received_all_inputs(variadic_socket_with_senders, socket_inputs) is False
 
     def test_lazy_variadic_with_user_input(self, variadic_socket_with_senders):
@@ -579,8 +568,8 @@ class TestSocketInputCompletion:
         assert has_socket_received_all_inputs(regular_socket, inputs) is True
 
     def test_regular_socket_incomplete(self, regular_socket):
-        """_NO_OUTPUT_PRODUCED means the socket is not complete."""
-        inputs = [{"sender": "component1", "value": _NO_OUTPUT_PRODUCED}]
+        """_NoOutputProduced() means the socket is not complete."""
+        inputs = [{"sender": "component1", "value": _NoOutputProduced()}]
         assert has_socket_received_all_inputs(regular_socket, inputs) is False
 
     def test_regular_socket_no_inputs(self, regular_socket):
@@ -598,8 +587,8 @@ class TestSocketInputCompletion:
         assert has_socket_received_all_inputs(lazy_variadic_socket, inputs) is False
 
     def test_lazy_variadic_socket_with_no_output(self, lazy_variadic_socket):
-        """A sender that produces _NO_OUTPUT_PRODUCED does not fulfill the lazy socket requirement."""
-        inputs = [{"sender": "component1", "value": 42}, {"sender": "component2", "value": _NO_OUTPUT_PRODUCED}]
+        """A sender that produces _NoOutputProduced() does not fulfill the lazy socket requirement."""
+        inputs = [{"sender": "component1", "value": 42}, {"sender": "component2", "value": _NoOutputProduced()}]
         assert has_socket_received_all_inputs(lazy_variadic_socket, inputs) is False
 
     def test_greedy_variadic_socket_one_input(self, greedy_variadic_socket):
@@ -613,8 +602,8 @@ class TestSocketInputCompletion:
         assert has_socket_received_all_inputs(greedy_variadic_socket, inputs) is True
 
     def test_greedy_variadic_socket_no_valid_inputs(self, greedy_variadic_socket):
-        """All _NO_OUTPUT_PRODUCED means the greedy socket is not complete."""
-        inputs = [{"sender": "component1", "value": _NO_OUTPUT_PRODUCED}]
+        """All _NoOutputProduced() means the greedy socket is not complete."""
+        inputs = [{"sender": "component1", "value": _NoOutputProduced()}]
         assert has_socket_received_all_inputs(greedy_variadic_socket, inputs) is False
 
 
@@ -673,8 +662,8 @@ class TestGreedySocketReadiness:
         assert is_any_greedy_socket_ready(complex_component, inputs) is True
 
     def test_greedy_socket_not_ready(self, complex_component):
-        """If the only input is _NO_OUTPUT_PRODUCED, the greedy socket isn't ready."""
-        inputs = {"greedy_var": [{"sender": "component1", "value": _NO_OUTPUT_PRODUCED}]}
+        """If the only input is _NoOutputProduced(), the greedy socket isn't ready."""
+        inputs = {"greedy_var": [{"sender": "component1", "value": _NoOutputProduced()}]}
         assert is_any_greedy_socket_ready(complex_component, inputs) is False
 
     def test_greedy_socket_no_inputs(self, complex_component):

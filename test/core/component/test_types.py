@@ -2,16 +2,18 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+from pandas import DataFrame
+
 from haystack.core.component.types import InputSocket
 
 
-class _IncomparableValue:  # noqa: PLW1641  # __hash__ is irrelevant; this only needs a hostile __eq__
-    """Stands in for values such as numpy arrays, whose `__eq__` does not return a bool."""
+def test_input_socket_with_a_default_that_cannot_be_compared_is_not_mandatory():
+    """
+    `is_mandatory` tests for the sentinel by identity, so it never compares the default it was given.
 
-    def __eq__(self, other):
-        raise AssertionError("__eq__ must not be called when testing for the sentinel")
+    Comparing with '==' returns a DataFrame rather than a bool here, which makes `is_mandatory` unusable as a
+    condition.
+    """
+    socket = InputSocket(name="value", type=DataFrame, default_value=DataFrame.from_dict([{"value": 42}]))
 
-
-def test_input_socket_with_an_incomparable_default_is_not_mandatory():
-    """`is_mandatory` tests for the sentinel by identity, so it never compares the default it was given."""
-    assert not InputSocket(name="value", type=str, default_value=_IncomparableValue()).is_mandatory
+    assert socket.is_mandatory is False

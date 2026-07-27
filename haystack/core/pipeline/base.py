@@ -27,7 +27,6 @@ from haystack.core.errors import (
     PipelineValidationError,
 )
 from haystack.core.pipeline.component_checks import (
-    _NO_OUTPUT_PRODUCED,
     _NoOutputProduced,
     all_predecessors_executed,
     are_all_sockets_ready,
@@ -1549,10 +1548,10 @@ class PipelineBase:  # noqa: PLW1641
         :param include_outputs_from: Set of component names that should always return an output from the pipeline.
         """
         for receiver_name, sender_socket, receiver_socket, conversion_strategy in receivers:
-            # We either get the value that was produced by the actor or we use the _NO_OUTPUT_PRODUCED class to indicate
+            # We either get the value that was produced by the actor or we use a _NoOutputProduced marker to indicate
             # that the sender did not produce an output for this socket.
             # This allows us to track if a predecessor already ran but did not produce an output.
-            value = component_outputs.get(sender_socket.name, _NO_OUTPUT_PRODUCED)
+            value = component_outputs.get(sender_socket.name, _NoOutputProduced())
 
             if not isinstance(value, _NoOutputProduced) and conversion_strategy:
                 try:
@@ -1591,7 +1590,8 @@ class PipelineBase:  # noqa: PLW1641
                 )
             else:
                 # If the receiver socket is not lazy variadic, it is greedy variadic or non-variadic.
-                # We overwrite with the new input if it's not _NO_OUTPUT_PRODUCED or if the current value is None.
+                # We overwrite with the new input if it's not a _NoOutputProduced marker, or if the current value
+                # is None.
                 _write_to_standard_socket(
                     inputs=inputs,
                     receiver_name=receiver_name,

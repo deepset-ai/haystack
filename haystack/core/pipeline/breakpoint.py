@@ -221,7 +221,7 @@ def _serialize_internal_inputs(inputs: dict[str, Any]) -> dict[str, Any]:
 
     The inputs a socket received are stored keyed by position rather than as a list, because a list gets a single
     schema derived from its first item. A socket with several senders can hold values of different types, for
-    example a value from one sender and the `_NO_OUTPUT_PRODUCED` sentinel from another, and those need one schema
+    example a value from one sender and a `_NoOutputProduced` marker from another, and those need one schema
     each to survive the round trip.
 
     :param inputs: The pipeline's internal inputs state.
