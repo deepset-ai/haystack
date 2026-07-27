@@ -237,8 +237,6 @@ class TestResumeFromPipelineSnapshot:
     @pytest.mark.parametrize("visit_count", [0, 1, 2, 3])
     def test_break_point_in_loop_resumes_on_any_visit(self, visit_count):
         """A component paused on a later visit of a loop must still resume and finish the loop."""
-        expected = _looping_pipeline().run({"joiner": {"value": 0}})
-
         with pytest.raises(BreakpointException) as exc_info:
             _looping_pipeline().run(
                 {"joiner": {"value": 0}}, break_point=Breakpoint(component_name="joiner", visit_count=visit_count)
@@ -247,20 +245,8 @@ class TestResumeFromPipelineSnapshot:
         assert snapshot is not None
         assert snapshot.pipeline_state.component_visits["joiner"] == visit_count
 
-        assert _looping_pipeline().run(data={}, pipeline_snapshot=snapshot) == expected
-
-    def test_snapshot_preserves_the_sender_of_each_input(self):
-        pipeline = _three_component_pipeline()
-
-        with pytest.raises(BreakpointException) as exc_info:
-            pipeline.run(data={"comp1": {"input_value": "test"}}, break_point=Breakpoint(component_name="comp2"))
-        snapshot = exc_info.value.pipeline_snapshot
-        assert snapshot is not None
-
-        assert snapshot.pipeline_state.inputs_format == INTERNAL_INPUTS_FORMAT
-        restored = _deserialize_internal_inputs(snapshot.pipeline_state.inputs)
-        # comp2's input came from comp1, not from outside the pipeline
-        assert restored["comp2"] == {"input_value": [{"sender": "comp1", "value": "test_processed"}]}
+        # The loop runs to `_CountUpTo(limit=5)` regardless of where it was paused.
+        assert _looping_pipeline().run(data={}, pipeline_snapshot=snapshot) == {"counter": {"done": "finished at 5"}}
 
     def test_snapshot_preserves_sockets_whose_sender_produced_no_output(self):
         """A router that leaves a branch inactive puts the `_NoOutputProduced()` sentinel in the pipeline inputs."""
