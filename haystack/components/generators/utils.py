@@ -2,13 +2,51 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import contextlib
 import json
+from collections.abc import Iterator
 from typing import Any
 
-from haystack import logging
+from haystack import logging, tracing
 from haystack.dataclasses import ChatMessage, ReasoningContent, StreamingChunk, ToolCall
 
 logger = logging.getLogger(__name__)
+
+
+@contextlib.contextmanager
+def _trace_chat_generator_run(
+    chat_generator: Any, generator_inputs: dict[str, Any], parent_span: tracing.Span | None = None
+) -> Iterator[tracing.Span]:
+    """
+    Open a tracing span around a ChatGenerator call made internally by another component.
+
+    Components that embed a ChatGenerator but do not return its `ChatMessage` replies (for example rankers,
+    extractors or evaluators) would otherwise discard the LLM token usage carried in `reply.meta["usage"]`.
+    Wrapping the internal call in this span re-exposes that usage to tracers via the `haystack.component.output`
+    content tag, mirroring how the `Pipeline` traces its top-level components.
+
+    The caller is responsible for setting the output tag inside the context, so it is skipped when the call fails:
+
+    ```python
+    with _trace_chat_generator_run(self._chat_generator, {"messages": messages}) as span:
+        result = self._chat_generator.run(messages=messages)
+        span.set_content_tag("haystack.component.output", result)
+    ```
+
+    :param chat_generator: The ChatGenerator being invoked.
+    :param generator_inputs: The inputs passed to the generator, recorded as the span input content tag.
+    :param parent_span: Explicit parent span. Defaults to the current span. Pass it explicitly when the generator
+        runs in a worker thread, where the ambient span context does not propagate.
+    """
+    # Fall back to the active span so same-thread callers get correct nesting without passing a parent explicitly.
+    parent_span = parent_span or tracing.tracer.current_span()
+    with tracing.tracer.trace(
+        "haystack.chat_generator.run",
+        tags={"haystack.component.name": "chat_generator", "haystack.component.type": type(chat_generator).__name__},
+        parent_span=parent_span,
+    ) as span:
+        span.set_content_tag("haystack.component.input", generator_inputs)
+        yield span
 
 
 def print_streaming_chunk(chunk: StreamingChunk) -> None:

@@ -100,6 +100,22 @@ Deserializes the component from a dictionary.
 
 - <code>ElasticsearchBM25Retriever</code> – Deserialized component.
 
+#### close
+
+```python
+close() -> None
+```
+
+Release the synchronous resources of the underlying Document Store.
+
+#### close_async
+
+```python
+close_async() -> None
+```
+
+Release the asynchronous resources of the underlying Document Store.
+
 #### run
 
 ```python
@@ -156,9 +172,17 @@ Usage example:
 
 ```python
 from haystack import Document
-from haystack.components.embedders import SentenceTransformersTextEmbedder
-from haystack_integrations.document_stores.elasticsearch import ElasticsearchDocumentStore
-from haystack_integrations.components.retrievers.elasticsearch import ElasticsearchEmbeddingRetriever
+
+# Requires: pip install sentence-transformers-haystack
+from haystack_integrations.components.embedders.sentence_transformers import (
+    SentenceTransformersTextEmbedder,
+)
+from haystack_integrations.document_stores.elasticsearch import (
+    ElasticsearchDocumentStore,
+)
+from haystack_integrations.components.retrievers.elasticsearch import (
+    ElasticsearchEmbeddingRetriever,
+)
 
 document_store = ElasticsearchDocumentStore(hosts="http://localhost:9200")
 retriever = ElasticsearchEmbeddingRetriever(document_store=document_store)
@@ -173,7 +197,6 @@ documents = [
 document_store.write_documents(documents)
 
 te = SentenceTransformersTextEmbedder()
-te.warm_up()
 query_embeddings = te.run("Who lives in Berlin?")["embedding"]
 
 result = retriever.run(query=query_embeddings)
@@ -239,6 +262,22 @@ Deserializes the component from a dictionary.
 **Returns:**
 
 - <code>ElasticsearchEmbeddingRetriever</code> – Deserialized component.
+
+#### close
+
+```python
+close() -> None
+```
+
+Release the synchronous resources of the underlying Document Store.
+
+#### close_async
+
+```python
+close_async() -> None
+```
+
+Release the asynchronous resources of the underlying Document Store.
 
 #### run
 
@@ -369,6 +408,22 @@ Deserializes the component from a dictionary.
 **Returns:**
 
 - <code>ElasticsearchSQLRetriever</code> – Deserialized component.
+
+#### close
+
+```python
+close() -> None
+```
+
+Release the synchronous resources of the underlying Document Store.
+
+#### close_async
+
+```python
+close_async() -> None
+```
+
+Release the asynchronous resources of the underlying Document Store.
 
 #### run
 
@@ -550,7 +605,23 @@ Returns the synchronous Elasticsearch client, initializing it if necessary.
 async_client: AsyncElasticsearch
 ```
 
-Returns the asynchronous Elasticsearch client, initializing it if necessary.
+Returns the asynchronous Elasticsearch client, constructing it if necessary.
+
+#### close
+
+```python
+close() -> None
+```
+
+Release the associated synchronous resources.
+
+#### close_async
+
+```python
+close_async() -> None
+```
+
+Release the associated asynchronous resources.
 
 #### to_dict
 

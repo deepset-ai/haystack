@@ -219,3 +219,26 @@ class TestCSVToDocument:
         monkeypatch.setattr(csv_mod.csv, "DictReader", broken_reader, raising=True)
         with pytest.raises(RuntimeError):
             _ = conv.run(sources=[f], content_column="a")
+
+    def test_row_mode_ragged_row_does_not_crash(self):
+        # A data row with more fields than the header (e.g. an unquoted comma inside a value).
+        # Previously the surplus value landed under the None key, which broke Document id
+        # generation (TypeError sorting None against str keys) and aborted the whole batch.
+        valid = ByteStream(data=b"text,author\r\nfine,Ada\r\n", meta={"file_path": "valid.csv"})
+        ragged = ByteStream(data=b"text,note\r\nhello,city,state\r\n", meta={"file_path": "ragged.csv"})
+
+        conv = CSVToDocument(conversion_mode="row")
+        out = conv.run(sources=[valid, ragged], content_column="text")
+        docs = out["documents"]
+
+        # Both sources yielded a Document; the earlier valid source is not lost.
+        assert len(docs) == 2
+        assert docs[0].content == "fine"
+        assert docs[0].meta["author"] == "Ada"
+
+        ragged_doc = docs[1]
+        assert ragged_doc.content == "hello"
+        assert ragged_doc.meta["note"] == "city"
+        # Surplus value is preserved under an explicit (non-None) string meta key.
+        assert None not in ragged_doc.meta
+        assert "state" in ragged_doc.meta["extra_columns"]

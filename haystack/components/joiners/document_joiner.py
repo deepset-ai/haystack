@@ -79,7 +79,7 @@ class DocumentJoiner:
     p.add_component(instance=DocumentJoiner(), name="joiner")
     p.connect("bm25_retriever", "joiner")
     p.connect("embedding_retriever", "joiner")
-    p.connect("text_embedder", "embedding_retriever")
+    p.connect("text_embedder.embedding", "embedding_retriever.query_embedding")
     query = "What is the capital of France?"
     p.run(data={"query": query, "text": query, "top_k": 1})
     ```

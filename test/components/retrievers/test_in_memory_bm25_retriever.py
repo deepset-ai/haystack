@@ -139,6 +139,47 @@ class TestMemoryBM25Retriever:
         assert len(result["documents"]) == 5
         assert result["documents"][0].content == "PHP is a popular programming language"
 
+    def test_run_with_filter_policy_merge_combines_init_and_runtime_filters(self, in_memory_doc_store):
+        in_memory_doc_store.write_documents(
+            [
+                Document(content="python article current", meta={"type": "article", "year": 2020}),
+                Document(content="python blog current", meta={"type": "blog", "year": 2021}),
+                Document(content="python article archived", meta={"type": "article", "year": 2019}),
+            ]
+        )
+
+        retriever = InMemoryBM25Retriever(
+            in_memory_doc_store,
+            filters={"field": "meta.type", "operator": "==", "value": "article"},
+            filter_policy=FilterPolicy.MERGE,
+        )
+
+        result = retriever.run(query="python", filters={"field": "meta.year", "operator": ">=", "value": 2020})
+
+        assert [doc.content for doc in result["documents"]] == ["python article current"]
+
+    @pytest.mark.asyncio
+    async def test_run_async_with_filter_policy_merge_combines_init_and_runtime_filters(self, in_memory_doc_store):
+        in_memory_doc_store.write_documents(
+            [
+                Document(content="python article current", meta={"type": "article", "year": 2020}),
+                Document(content="python blog current", meta={"type": "blog", "year": 2021}),
+                Document(content="python article archived", meta={"type": "article", "year": 2019}),
+            ]
+        )
+
+        retriever = InMemoryBM25Retriever(
+            in_memory_doc_store,
+            filters={"field": "meta.type", "operator": "==", "value": "article"},
+            filter_policy=FilterPolicy.MERGE,
+        )
+
+        result = await retriever.run_async(
+            query="python", filters={"field": "meta.year", "operator": ">=", "value": 2020}
+        )
+
+        assert [doc.content for doc in result["documents"]] == ["python article current"]
+
     def test_invalid_run_wrong_store_type(self):
         SomeOtherDocumentStore = document_store_class("SomeOtherDocumentStore")
         with pytest.raises(TypeError, match="document_store must be an instance of InMemoryDocumentStore"):

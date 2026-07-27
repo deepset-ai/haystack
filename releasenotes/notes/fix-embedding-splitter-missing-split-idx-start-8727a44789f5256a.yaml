@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    ``EmbeddingBasedDocumentSplitter`` now sets ``split_idx_start`` in the metadata of every
+    output chunk, consistent with ``DocumentSplitter`` and ``RecursiveDocumentSplitter``.
+    Previously the field was absent, causing a ``KeyError`` in any downstream code that
+    reads character offsets from splitter output (e.g. highlighting, provenance tracking,
+    overlap recovery).

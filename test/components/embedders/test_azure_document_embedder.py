@@ -216,6 +216,7 @@ class TestAzureOpenAIDocumentEmbedder:
             embedding_separator=" | ",
         )
         embedder.warm_up()
+        assert embedder.client is not None
 
         fake_texts_to_embed = {"1": "text1", "2": "text2"}
 
@@ -237,6 +238,7 @@ class TestAzureOpenAIDocumentEmbedder:
             raise_on_failure=True,
         )
         embedder.warm_up()
+        assert embedder.client is not None
         fake_texts_to_embed = {"1": "text1", "2": "text2"}
         with patch.object(
             embedder.client.embeddings,
@@ -303,6 +305,7 @@ class TestComponentLifecycle:
         monkeypatch.setenv("AZURE_OPENAI_API_KEY", "fake-api-key")
         embedder = AzureOpenAIDocumentEmbedder(azure_endpoint="https://example-resource.azure.openai.com/")
         embedder.warm_up()
+        assert embedder.client is not None
         assert embedder.client.max_retries == 5
         assert embedder.client.timeout == 30.0
 
@@ -312,6 +315,7 @@ class TestComponentLifecycle:
             azure_endpoint="https://example-resource.azure.openai.com/", timeout=40.0, max_retries=1
         )
         embedder.warm_up()
+        assert embedder.client is not None
         assert embedder.client.max_retries == 1
         assert embedder.client.timeout == 40.0
 
@@ -321,6 +325,7 @@ class TestComponentLifecycle:
         monkeypatch.setenv("OPENAI_MAX_RETRIES", "10")
         embedder = AzureOpenAIDocumentEmbedder(azure_endpoint="https://example-resource.azure.openai.com/")
         embedder.warm_up()
+        assert embedder.client is not None
         assert embedder.client.max_retries == 10
         assert embedder.client.timeout == 100.0
 
@@ -334,6 +339,7 @@ class TestComponentLifecycle:
 
     def test_sync_lifecycle(self, mock_azure_clients):
         sync_cls, _ = mock_azure_clients
+        sync_client = sync_cls.return_value
         embedder = AzureOpenAIDocumentEmbedder(azure_endpoint="https://example-resource.azure.openai.com/")
         assert embedder.client is None
         assert embedder.async_client is None
@@ -343,11 +349,12 @@ class TestComponentLifecycle:
         assert embedder.async_client is None
 
         embedder.close()
-        sync_cls.return_value.close.assert_called_once()
+        sync_client.close.assert_called_once()
         assert embedder.client is None
 
     async def test_async_lifecycle(self, mock_azure_clients):
         _, async_cls = mock_azure_clients
+        async_client = async_cls.return_value
         embedder = AzureOpenAIDocumentEmbedder(azure_endpoint="https://example-resource.azure.openai.com/")
 
         await embedder.warm_up_async()
@@ -355,7 +362,7 @@ class TestComponentLifecycle:
         assert embedder.client is None
 
         await embedder.close_async()
-        async_cls.return_value.close.assert_awaited_once()
+        async_client.close.assert_awaited_once()
         assert embedder.async_client is None
 
     async def test_close_is_safe_without_warm_up(self, mock_azure_clients):

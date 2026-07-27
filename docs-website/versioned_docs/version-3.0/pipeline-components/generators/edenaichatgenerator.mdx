@@ -1,0 +1,126 @@
+---
+title: "EdenAIChatGenerator"
+id: edenaichatgenerator
+slug: "/edenaichatgenerator"
+description: "This component enables chat completion using 500+ models through Eden AI's OpenAI-compatible API."
+---
+
+# EdenAIChatGenerator
+
+This component enables chat completion using 500+ models through Eden AI's OpenAI-compatible API.
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | After a [ChatPromptBuilder](../builders/chatpromptbuilder.mdx) |
+| **Mandatory init variables** | `api_key`: The Eden AI API key. Can be set with `EDENAI_API_KEY` env var. |
+| **Mandatory run variables** | `messages` A list of [`ChatMessage`](../../concepts/data-classes/chatmessage.mdx) objects |
+| **Output variables** | `replies`: A list of [`ChatMessage`](../../concepts/data-classes/chatmessage.mdx) objects  <br /> <br />`meta`: A list of dictionaries with the metadata associated with each reply, such as token count, finish reason, and so on |
+| **API reference** | [Eden AI](/reference/integrations-edenai) |
+| **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/edenai |
+| **Package name** | `edenai-haystack` |
+
+</div>
+
+## Overview
+
+`EdenAIChatGenerator` connects Haystack to [Eden AI](https://www.edenai.co/), a unified, OpenAI-compatible API that gives access to 500+ models from many providers (OpenAI, Anthropic, Mistral, Google, Cohere, and more) through a single API key, with EU data residency.
+
+`EdenAIChatGenerator` needs an Eden AI API key to work. You can write this key in:
+
+- The `api_key` init parameter using [Secret API](../../concepts/secret-management.mdx)
+- The `EDENAI_API_KEY` environment variable (recommended)
+
+Models are selected using Eden AI's `provider/model` naming convention, for example:
+
+- `openai/gpt-4o-mini` (default)
+- `anthropic/claude-sonnet-4-5`
+- `mistral/mistral-large-latest`
+- `google/gemini-2.5-flash`
+
+For the full list of available models, see the [Eden AI models catalog](https://www.edenai.co/models).
+
+This component needs a list of [`ChatMessage`](../../concepts/data-classes/chatmessage.mdx) objects to operate. `ChatMessage` is a data class that contains a message, a role (who generated the message, such as `user`, `assistant`, `system`, `function`), and optional metadata.
+
+Refer to the [Eden AI documentation](https://docs.edenai.co/) for more details on the parameters supported by the API, which you can provide with `generation_kwargs` when running the component.
+
+### Tool Support
+
+`EdenAIChatGenerator` supports function calling through the `tools` parameter, which accepts a list of `Tool` objects, a single `Toolset`, or a mix of both. This lets you organize related tools into logical groups while also including standalone tools as needed.
+
+For more details on working with tools, see the [Tool](../../tools/tool.mdx) and [Toolset](../../tools/toolset.mdx) documentation.
+
+### Streaming
+
+This Generator supports [streaming](guides-to-generators/choosing-the-right-generator.mdx#streaming-support) the tokens from the LLM directly in output. To do so, pass a function to the `streaming_callback` init parameter.
+
+## Usage
+
+Install the `edenai-haystack` package to use the `EdenAIChatGenerator`:
+
+```shell
+pip install edenai-haystack
+```
+
+#### On its own
+
+```python
+from haystack_integrations.components.generators.edenai import EdenAIChatGenerator
+from haystack.components.generators.utils import print_streaming_chunk
+from haystack.dataclasses import ChatMessage
+from haystack.utils import Secret
+
+generator = EdenAIChatGenerator(
+    api_key=Secret.from_env_var("EDENAI_API_KEY"),
+    model="mistral/mistral-large-latest",
+    streaming_callback=print_streaming_chunk,
+)
+message = ChatMessage.from_user("What's Natural Language Processing? Be brief.")
+print(generator.run([message]))
+```
+
+#### In a Pipeline
+
+Below is an example RAG Pipeline where we answer questions based on the contents of a URL. We add the contents of the URL into our `messages` in the `ChatPromptBuilder` and generate an answer with the `EdenAIChatGenerator`.
+
+```python
+from haystack import Pipeline
+from haystack.components.builders import ChatPromptBuilder
+from haystack.components.fetchers import LinkContentFetcher
+from haystack.components.converters import HTMLToDocument
+from haystack.dataclasses import ChatMessage
+
+from haystack_integrations.components.generators.edenai import EdenAIChatGenerator
+
+fetcher = LinkContentFetcher()
+converter = HTMLToDocument()
+prompt_builder = ChatPromptBuilder(variables=["documents"])
+llm = EdenAIChatGenerator(model="mistral/mistral-large-latest")
+
+message_template = """Answer the following question based on the contents of the article: {{query}}\n
+               Article: {{documents[0].content}} \n
+           """
+messages = [ChatMessage.from_user(message_template)]
+
+rag_pipeline = Pipeline()
+rag_pipeline.add_component(name="fetcher", instance=fetcher)
+rag_pipeline.add_component(name="converter", instance=converter)
+rag_pipeline.add_component("prompt_builder", prompt_builder)
+rag_pipeline.add_component("llm", llm)
+
+rag_pipeline.connect("fetcher.streams", "converter.sources")
+rag_pipeline.connect("converter.documents", "prompt_builder.documents")
+rag_pipeline.connect("prompt_builder.prompt", "llm.messages")
+
+question = "What is Eden AI?"
+
+result = rag_pipeline.run(
+    {
+        "fetcher": {"urls": ["https://www.edenai.co/"]},
+        "prompt_builder": {"template_variables": {"query": question}, "template": messages},
+    },
+)
+
+print(result["llm"]["replies"][0].text)
+```

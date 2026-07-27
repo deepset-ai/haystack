@@ -337,7 +337,7 @@ class ComponentTool(Tool):
         :raises SchemaGenerationError: If schema generation fails
         :returns: OpenAI tools schema for the component's run method parameters.
         """
-        component_run_description, param_descriptions = _get_component_param_descriptions(component)
+        param_descriptions = _get_component_param_descriptions(component)
 
         # collect fields (types and defaults) and descriptions from function parameters
         fields: dict[str, Any] = {}
@@ -365,7 +365,9 @@ class ComponentTool(Tool):
 
         parameters_schema: dict[str, Any] = {}
         try:
-            model = create_model(component.run.__name__, __doc__=component_run_description, **fields)
+            # No `__doc__`: it would surface as a top-level `description` on the parameters schema,
+            # which LLM providers ignore. The component description feeds the tool-level description.
+            model = create_model(component.run.__name__, **fields)
             parameters_schema = model.model_json_schema()
         except Exception as e:
             raise SchemaGenerationError(

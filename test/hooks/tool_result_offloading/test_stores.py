@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import sys
 from pathlib import Path
 
 import pytest
@@ -41,6 +42,35 @@ class TestFileSystemToolResultStore:
         store = FileSystemToolResultStore(root=tmp_path)
         reference = store.write(key="a.txt", content="round trip")
         assert store.read(reference) == "round trip"
+
+    def test_read_rejects_parent_traversal_reference(self, tmp_path):
+        store = FileSystemToolResultStore(root=tmp_path / "root")
+        outside = tmp_path / "outside.txt"
+        outside.write_text("secret", encoding="utf-8")
+
+        with pytest.raises(ValueError, match="outside the store root"):
+            store.read("../outside.txt")
+
+    def test_read_rejects_absolute_reference_outside_root(self, tmp_path):
+        store = FileSystemToolResultStore(root=tmp_path / "root")
+        outside = tmp_path / "outside.txt"
+        outside.write_text("secret", encoding="utf-8")
+
+        with pytest.raises(ValueError, match="outside the store root"):
+            store.read(str(outside))
+
+    @pytest.mark.skipif(sys.platform == "win32", reason="symlinks require elevated privileges on Windows")
+    def test_read_rejects_symlink_reference_escaping_root(self, tmp_path):
+        root = tmp_path / "root"
+        root.mkdir()
+        outside = tmp_path / "outside.txt"
+        outside.write_text("secret", encoding="utf-8")
+        link = root / "link.txt"
+        link.symlink_to(outside)
+        store = FileSystemToolResultStore(root=root)
+
+        with pytest.raises(ValueError, match="outside the store root"):
+            store.read(str(link))
 
     def test_to_dict_from_dict_roundtrip(self, tmp_path):
         store = FileSystemToolResultStore(root=tmp_path)

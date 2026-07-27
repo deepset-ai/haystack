@@ -266,6 +266,69 @@ class TestEmbeddingBasedDocumentSplitter:
         # Should be page 2, not 4, because consecutive page breaks at the end are adjusted
         assert documents[1].meta["page_number"] == 2
 
+    def test_create_documents_from_splits_split_idx_start(self):
+        """_create_documents_from_splits must set split_idx_start to the character offset of each chunk."""
+        mock_embedder = Mock()
+        splitter = EmbeddingBasedDocumentSplitter(document_embedder=mock_embedder)
+
+        text = "First chunk. Second chunk. Third chunk."
+        splits = ["First chunk. ", "Second chunk. ", "Third chunk."]
+        original_doc = Document(content=text)
+
+        documents = splitter._create_documents_from_splits(splits, original_doc)
+
+        assert len(documents) == 3
+        assert documents[0].meta["split_idx_start"] == 0
+        assert documents[1].meta["split_idx_start"] == len("First chunk. ")
+        assert documents[2].meta["split_idx_start"] == len("First chunk. ") + len("Second chunk. ")
+        # Cross-check: split_idx_start correctly points into the original text
+        for doc in documents:
+            start = doc.meta["split_idx_start"]
+            assert text[start : start + len(doc.content)] == doc.content
+
+    def test_run_split_idx_start(self):
+        """run() must produce chunks with correct split_idx_start character offsets."""
+        text = "The sky is blue. The grass is green. The sun is yellow."
+
+        # Mock embedder that returns two distinct embedding clusters so the splitter
+        # finds at least one split point
+        def mock_run(documents):
+            from dataclasses import replace as dc_replace
+
+            embeddings = []
+            for i, doc in enumerate(documents):
+                # Two distinct embedding directions — triggers a split
+                if i < len(documents) // 2:
+                    embeddings.append(dc_replace(doc, embedding=[1.0, 0.0, 0.0]))
+                else:
+                    embeddings.append(dc_replace(doc, embedding=[0.0, 1.0, 0.0]))
+            return {"documents": embeddings}
+
+        mock_embedder = Mock()
+        mock_embedder.run = Mock(side_effect=mock_run)
+
+        splitter = EmbeddingBasedDocumentSplitter(
+            document_embedder=mock_embedder, sentences_per_group=1, percentile=0.5, min_length=0, max_length=10000
+        )
+        splitter.warm_up()
+
+        result = splitter.run(documents=[Document(content=text)])
+        chunks = result["documents"]
+
+        # All chunks must have split_idx_start
+        for chunk in chunks:
+            assert "split_idx_start" in chunk.meta
+
+        # split_idx_start must point to the correct position in the original text
+        for chunk in chunks:
+            start = chunk.meta["split_idx_start"]
+            assert text[start : start + len(chunk.content)] == chunk.content
+
+        # Offsets must be strictly increasing (chunks are non-empty and contiguous)
+        starts = [c.meta["split_idx_start"] for c in chunks]
+        assert starts == sorted(starts)
+        assert starts[0] == 0
+
     def test_calculate_embeddings(self):
         mock_embedder = Mock()
 

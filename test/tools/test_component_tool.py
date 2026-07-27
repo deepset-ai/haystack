@@ -15,10 +15,10 @@ from openai.types.chat.chat_completion import Choice
 from haystack import Pipeline, SuperComponent, component
 from haystack.components.agents import Agent, State
 from haystack.components.builders import PromptBuilder
-from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.components.generators.chat import MockChatGenerator, OpenAIChatGenerator
 from haystack.core.pipeline.utils import _deepcopy_with_exceptions
 from haystack.dataclasses import ChatMessage, ChatRole, Document
-from haystack.tools import ComponentTool, ToolsType
+from haystack.tools import ComponentTool
 from test.tools.test_parameters_schema_utils import BYTE_STREAM_SCHEMA, DOCUMENT_SCHEMA, SPARSE_EMBEDDING_SCHEMA
 
 # Component and Model Definitions
@@ -148,22 +148,6 @@ class DocumentProcessor:
         return {"concatenated": "\n".join(doc.content for doc in documents[:top_k] if doc.content)}
 
 
-@component
-class FakeChatGenerator:
-    def __init__(self, messages: list[ChatMessage]):
-        self.messages = messages
-
-    @component.output_types(replies=list[ChatMessage])
-    def run(
-        self,
-        messages: list[ChatMessage],
-        generation_kwargs: dict[str, Any] | None = None,
-        *,
-        tools: ToolsType | None = None,
-    ) -> dict[str, list[ChatMessage]]:
-        return {"replies": self.messages}
-
-
 def output_handler(old, new):
     """
     Output handler to test serialization.
@@ -179,7 +163,6 @@ class TestComponentTool:
         assert tool.description == "A simple component that generates text."
         assert tool.parameters == {
             "type": "object",
-            "description": "A simple component that generates text.",
             "properties": {"text": {"type": "string", "description": "user's name"}},
             "required": ["text"],
         }
@@ -198,21 +181,13 @@ class TestComponentTool:
         tool = ComponentTool(component=SimpleComponent(), inputs_from_state={"text": "text"})
         assert tool.inputs_from_state == {"text": "text"}
         # Inputs should be excluded from schema generation
-        assert tool.parameters == {
-            "type": "object",
-            "properties": {},
-            "description": "A simple component that generates text.",
-        }
+        assert tool.parameters == {"type": "object", "properties": {}}
 
     def test_from_component_with_inputs_from_state_different_names(self):
         tool = ComponentTool(component=SimpleComponent(), inputs_from_state={"state_text": "text"})
         assert tool.inputs_from_state == {"state_text": "text"}
         # Inputs should be excluded from schema generation
-        assert tool.parameters == {
-            "type": "object",
-            "properties": {},
-            "description": "A simple component that generates text.",
-        }
+        assert tool.parameters == {"type": "object", "properties": {}}
 
     def test_from_component_with_invalid_inputs_from_state_nested_dict(self):
         """Test that ComponentTool rejects nested dict format for inputs_from_state"""
@@ -240,7 +215,6 @@ class TestComponentTool:
                     "type": "object",
                 }
             },
-            "description": "A simple component that processes a User.",
             "properties": {"user": {"$ref": "#/$defs/User", "description": "The User object to process."}},
             "required": ["user"],
             "type": "object",
@@ -262,7 +236,6 @@ class TestComponentTool:
 
         assert tool.parameters == {
             "type": "object",
-            "description": "Concatenates a list of strings into a single string.",
             "properties": {
                 "texts": {
                     "type": "array",
@@ -303,7 +276,6 @@ class TestComponentTool:
                     "type": "object",
                 },
             },
-            "description": "Creates information about the person.",
             "properties": {"person": {"$ref": "#/$defs/Person", "description": "The Person to process."}},
             "required": ["person"],
             "type": "object",
@@ -328,7 +300,6 @@ class TestComponentTool:
                 "Document": DOCUMENT_SCHEMA,
                 "SparseEmbedding": SPARSE_EMBEDDING_SCHEMA,
             },
-            "description": "Concatenates the content of multiple documents with newlines.",
             "properties": {
                 "documents": {
                     "description": "List of Documents whose content will be concatenated",
@@ -351,7 +322,6 @@ class TestComponentTool:
         builder = PromptBuilder(template="Hello, {{name}}!")
         tool = ComponentTool(component=builder, name="prompt_builder_tool")
         assert tool.parameters == {
-            "description": "Renders the prompt template with the provided variables.",
             "properties": {
                 "name": {"description": "Input 'name' for the component."},
                 "template": {
@@ -417,10 +387,9 @@ class TestComponentTool:
         # Create ComponentTool from SuperComponent
         tool = ComponentTool(component=super_comp, name="text_processor")
 
-        # Verify that schema includes the docstrings from the original component
+        # Verify that schema includes the per-parameter docstrings from the original component
         assert tool.parameters == {
             "type": "object",
-            "description": "A component that combines: 'processor': Process inputs and return result.",
             "properties": {
                 "input_text": {
                     "type": "string",
@@ -484,11 +453,9 @@ class TestComponentTool:
         # Create ComponentTool from SuperComponent
         tool = ComponentTool(component=super_comp, name="combined_processor")
 
-        # Verify that schema includes combined docstrings from both components
+        # Verify that schema includes combined per-parameter docstrings from both components
         assert tool.parameters == {
             "type": "object",
-            "description": "A component that combines: 'comp_a': Process query in component A., 'comp_b': Process "
-            "text in component B.",
             "properties": {
                 "combined_input": {
                     "type": "string",
@@ -572,7 +539,7 @@ class TestComponentTool:
 
     def test_component_invoker_with_agent(self):
         """Tests that Agent as a ComponentTool can be invoked when calling it with a list of dicts"""
-        agent = Agent(chat_generator=FakeChatGenerator(messages=[ChatMessage.from_assistant("Answer")]))
+        agent = Agent(chat_generator=MockChatGenerator("Answer"))
         tool = ComponentTool(
             component=agent,
             name="agent_tool",
@@ -580,7 +547,7 @@ class TestComponentTool:
             outputs_to_string={"source": "last_message"},
         )
         result = tool.invoke(messages=[{"role": "user", "content": [{"text": "A 4-day trip in the south of France"}]}])
-        assert result["last_message"] == ChatMessage.from_assistant("Answer")
+        assert result["last_message"].text == "Answer"
 
     def test_convert_param_union_with_list_arm(self):
         @component

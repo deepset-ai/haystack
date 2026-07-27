@@ -1,0 +1,161 @@
+name: Linked issue review sync
+
+# When a PR links an issue (via "Fixes #123" & co.), assign the PR's requested
+# reviewer(s) to that issue and move it to the review column of the Open Source
+# GitHub project (https://github.com/orgs/deepset-ai/projects/5). An assigned
+# issue signals other contributors (and their coding agents) that the issue is
+# taken, which prevents duplicate PRs.
+#
+# Uses pull_request_target so it also has write permissions on fork PRs; this
+# is safe because the workflow never checks out or executes PR code.
+
+on:
+  pull_request_target:
+    types: [opened, ready_for_review, review_requested]
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: read
+
+concurrency:
+  group: linked-issue-review-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-slim
+    # Draft PRs (e.g. gated by the CLA draft gate) are handled once they become
+    # ready for review.
+    if: ${{ !github.event.pull_request.draft }}
+    steps:
+      - name: Assign reviewers to linked issues
+        id: link
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            const pr = context.payload.pull_request;
+
+            if (pr.user?.type === "Bot") return;
+            const reviewers = (pr.requested_reviewers ?? []).map((u) => u.login);
+            if (!reviewers.length) {
+              // CODEOWNERS assignment triggers a later review_requested event.
+              core.info("No individual reviewers requested yet, nothing to do.");
+              return;
+            }
+
+            const result = await github.graphql(
+              `query($owner: String!, $repo: String!, $number: Int!) {
+                repository(owner: $owner, name: $repo) {
+                  pullRequest(number: $number) {
+                    closingIssuesReferences(first: 10) {
+                      nodes {
+                        id number repository { nameWithOwner }
+                        assignees(first: 1) { totalCount }
+                      }
+                    }
+                  }
+                }
+              }`,
+              { owner, repo, number: pr.number },
+            );
+            const issues = result.repository.pullRequest.closingIssuesReferences.nodes.filter(
+              (issue) => issue.repository.nameWithOwner === `${owner}/${repo}`,
+            );
+            if (!issues.length) {
+              core.info("PR has no linked issues.");
+              return;
+            }
+
+            for (const issue of issues) {
+              // Don't touch issues somebody is already assigned to.
+              if (issue.assignees.totalCount > 0) {
+                core.info(`Issue #${issue.number} already has an assignee, skipping assignment.`);
+                continue;
+              }
+              await github.rest.issues.addAssignees({
+                owner, repo, issue_number: issue.number, assignees: reviewers,
+              });
+              core.info(`Assigned ${reviewers.join(", ")} to issue #${issue.number}`);
+            }
+            core.setOutput("issue_node_ids", JSON.stringify(issues.map((issue) => issue.id)));
+
+      - name: Move linked issues to review in the project board
+        if: steps.link.outputs.issue_node_ids && steps.link.outputs.issue_node_ids != '[]'
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          ISSUE_NODE_IDS: ${{ steps.link.outputs.issue_node_ids }}
+          PROJECT_ORG: deepset-ai
+          PROJECT_NUMBER: "5"
+          # Name of the Status option to move issues to; matched
+          # case-insensitively, falling back to a substring match
+          # (the actual option is ":eyes: In review").
+          REVIEW_STATUS_NAME: In review
+        with:
+          # The default GITHUB_TOKEN cannot access org-level projects.
+          github-token: ${{ secrets.GH_PROJECT_PAT }}
+          script: |
+            const issueIds = JSON.parse(process.env.ISSUE_NODE_IDS);
+            const statusName = process.env.REVIEW_STATUS_NAME;
+
+            const result = await github.graphql(
+              `query($org: String!, $number: Int!) {
+                organization(login: $org) {
+                  projectV2(number: $number) {
+                    id
+                    field(name: "Status") {
+                      ... on ProjectV2SingleSelectField { id options { id name } }
+                    }
+                  }
+                }
+              }`,
+              { org: process.env.PROJECT_ORG, number: Number(process.env.PROJECT_NUMBER) },
+            );
+            const project = result.organization.projectV2;
+            const field = project.field;
+            const option =
+              field.options.find((o) => o.name.toLowerCase() === statusName.toLowerCase()) ??
+              field.options.find((o) => o.name.toLowerCase().includes(statusName.toLowerCase()));
+            if (!option) {
+              core.warning(
+                `No Status option matching "${statusName}" in project ` +
+                  `${process.env.PROJECT_NUMBER}. Available: ${field.options.map((o) => o.name).join(", ")}`,
+              );
+              return;
+            }
+
+            for (const issueId of issueIds) {
+              const node = await github.graphql(
+                `query($id: ID!) {
+                  node(id: $id) {
+                    ... on Issue { projectItems(first: 50) { nodes { id project { id } } } }
+                  }
+                }`,
+                { id: issueId },
+              );
+              let item = node.node.projectItems.nodes.find((n) => n.project.id === project.id);
+              if (!item) {
+                const added = await github.graphql(
+                  `mutation($projectId: ID!, $contentId: ID!) {
+                    addProjectV2ItemById(input: { projectId: $projectId, contentId: $contentId }) {
+                      item { id }
+                    }
+                  }`,
+                  { projectId: project.id, contentId: issueId },
+                );
+                item = added.addProjectV2ItemById.item;
+              }
+              await github.graphql(
+                `mutation($projectId: ID!, $itemId: ID!, $fieldId: ID!, $optionId: String!) {
+                  updateProjectV2ItemFieldValue(
+                    input: {
+                      projectId: $projectId, itemId: $itemId, fieldId: $fieldId,
+                      value: { singleSelectOptionId: $optionId }
+                    }
+                  ) { projectV2Item { id } }
+                }`,
+                { projectId: project.id, itemId: item.id, fieldId: field.id, optionId: option.id },
+              );
+              core.info(`Moved issue ${issueId} to "${option.name}"`);
+            }

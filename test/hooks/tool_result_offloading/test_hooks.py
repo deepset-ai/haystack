@@ -3,14 +3,14 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from pathlib import Path
-from typing import Annotated, Any
+from typing import Annotated
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from haystack import component
 from haystack.components.agents import Agent
 from haystack.components.agents.state.state import State
+from haystack.components.generators.chat import MockChatGenerator
 from haystack.dataclasses import ChatMessage, ImageContent, TextContent, ToolCall
 from haystack.hooks.tool_result_offloading import (
     RESULT_STORE_CONTEXT_KEY,
@@ -20,20 +20,7 @@ from haystack.hooks.tool_result_offloading import (
     OffloadOverChars,
     ToolResultOffloadHook,
 )
-from haystack.tools import Tool, Toolset, tool
-
-
-@component
-class MockChatGenerator:
-    @component.output_types(replies=list[ChatMessage])
-    def run(self, messages: list[ChatMessage], tools: list[Tool] | Toolset | None = None, **kwargs) -> dict[str, Any]:
-        return {"replies": [ChatMessage.from_assistant("done")]}
-
-    @component.output_types(replies=list[ChatMessage])
-    async def run_async(
-        self, messages: list[ChatMessage], tools: list[Tool] | Toolset | None = None, **kwargs
-    ) -> dict[str, Any]:
-        return {"replies": [ChatMessage.from_assistant("done")]}
+from haystack.tools import tool
 
 
 @tool
@@ -237,7 +224,7 @@ class TestToolResultOffloadHookInAgent:
         hook = ToolResultOffloadHook(
             store=FileSystemToolResultStore(root=tmp_path), offload_strategies={"*": AlwaysOffload()}
         )
-        agent = Agent(chat_generator=MockChatGenerator(), tools=[big_tool], hooks={"after_tool": [hook]})
+        agent = Agent(chat_generator=MockChatGenerator("done"), tools=[big_tool], hooks={"after_tool": [hook]})
         agent.warm_up()
         agent.chat_generator.run = MagicMock(
             side_effect=[
@@ -258,7 +245,7 @@ class TestToolResultOffloadHookInAgentAsync:
         hook = ToolResultOffloadHook(
             store=FileSystemToolResultStore(root=tmp_path), offload_strategies={"*": AlwaysOffload()}
         )
-        agent = Agent(chat_generator=MockChatGenerator(), tools=[big_tool], hooks={"after_tool": [hook]})
+        agent = Agent(chat_generator=MockChatGenerator("done"), tools=[big_tool], hooks={"after_tool": [hook]})
         agent.warm_up()
         agent.chat_generator.run_async = AsyncMock(
             side_effect=[

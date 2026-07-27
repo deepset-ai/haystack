@@ -3,6 +3,8 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import sys
+from copy import deepcopy
+from typing import Any
 from unittest.mock import Mock
 
 import pytest
@@ -142,6 +144,21 @@ def test_component_to_dict_invalid_type():
         component_to_dict(UnserializableClass(1, "s", CustomData(99, "aa")), "invalid_component")
 
 
+@component()
+class NestedNonStringKeyClass:
+    def __init__(self, mapping: dict[Any, Any]) -> None:
+        self.mapping = mapping
+
+    def run(self):
+        pass
+
+
+def test_component_to_dict_nested_non_string_key():
+    # A non-string key nested inside init_parameters must be rejected too, not just at the top level.
+    with pytest.raises(SerializationError, match="non-string key"):
+        component_to_dict(NestedNonStringKeyClass(mapping={1: "a"}), "invalid_component")
+
+
 @component
 class CustomComponentWithSecrets:
     def __init__(self, api_key: Secret | None = None, token: Secret | None = None, regular_param: str | None = None):
@@ -229,6 +246,24 @@ def test_component_from_dict_with_secret():
     assert isinstance(comp.api_key, Secret)
     assert isinstance(comp.token, Secret)
     assert comp.regular_param == "test"
+
+
+def test_component_from_dict_does_not_mutate_input():
+    """default_from_dict must not mutate the caller's data dict when deserializing nested objects."""
+    serialized_secret = Secret.from_env_var("TEST_API_KEY").to_dict()
+    data: dict[str, Any] = {
+        "type": generate_qualified_class_name(CustomComponentWithSecrets),
+        "init_parameters": {"api_key": serialized_secret, "regular_param": "test"},
+    }
+    expected = deepcopy(data)
+
+    comp = component_from_dict(CustomComponentWithSecrets, data, "test_component")
+
+    # the returned component is correctly deserialized ...
+    assert isinstance(comp.api_key, Secret)
+    # ... but the caller's dict is left untouched (the Secret sub-dict is not replaced in place)
+    assert data == expected
+    assert isinstance(data["init_parameters"]["api_key"], dict)
 
 
 def test_component_to_dict_and_from_dict_roundtrip_with_secret():
