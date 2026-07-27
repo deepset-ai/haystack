@@ -31,8 +31,7 @@ fixes:
     stored only the values of the pipeline's inputs and dropped the information about which component had sent each
     one, so on resume every restored input looked like it came from outside the pipeline, and such an input can only
     trigger a component on its first visit. Snapshots now record the sender of each input. Snapshots created by
-    earlier versions of Haystack can still be resumed on a first visit, as before; re-create them to resume from a
-    later visit of a loop.
+    earlier versions of Haystack behave as before, so re-create them to resume anywhere in a looping pipeline.
   - |
     Fixed a resumed ``Pipeline`` passing malformed inputs to the component the snapshot was taken on, whenever that
     component ran more than once after the resume, for example inside a loop. Every visit after the first reused the

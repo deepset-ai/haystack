@@ -272,6 +272,8 @@ class TestResumeFromPipelineSnapshot:
 
         assert pipeline.run(data={}, pipeline_snapshot=snapshot) == expected
 
+
+class TestResumeFromLegacyPipelineSnapshot:
     def test_resume_from_legacy_snapshot_without_sender_information(self):
         """Snapshots taken before the sender was recorded store flattened values and must still resume."""
         pipeline = _three_component_pipeline()
@@ -291,6 +293,33 @@ class TestResumeFromPipelineSnapshot:
 
         result = pipeline.run(data={}, pipeline_snapshot=legacy_snapshot)
         assert result["comp3"]["result"] == "test_processed_processed_processed"
+
+    def test_resume_from_legacy_snapshot_into_a_loop(self):
+        """
+        A legacy snapshot needs its special input handling for the visit it was paused on, and only that visit.
+
+        The loop brings the paused component ordinary inputs again afterwards, which it has to consume the ordinary
+        way. Keeping the special handling re-reads the restored input on every visit, so the loop never advances.
+
+        The snapshot is written out literally rather than derived from a current one, because that is what a snapshot
+        left over from an older Haystack looks like: a greedy socket stored the value it had already consumed.
+        """
+        legacy_snapshot = PipelineSnapshot(
+            pipeline_state=PipelineState(
+                inputs=_serialize_value_with_schema({"joiner": {"value": [0]}, "counter": {}}),
+                component_visits={"joiner": 0, "counter": 0},
+                pipeline_outputs=_serialize_value_with_schema({}),
+                inputs_format=None,
+            ),
+            break_point=Breakpoint(component_name="joiner", visit_count=0),
+            original_input_data=_serialize_value_with_schema({"joiner": {"value": 0}}),
+            ordered_component_names=["counter", "joiner"],
+            include_outputs_from=set(),
+        )
+
+        # The joiner is visited five more times after the resume.
+        result = _looping_pipeline().run(data={}, pipeline_snapshot=legacy_snapshot)
+        assert result == {"counter": {"done": "finished at 5"}}
 
 
 class TestCreatePipelineSnapshot:
