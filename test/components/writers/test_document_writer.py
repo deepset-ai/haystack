@@ -2,6 +2,8 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+from unittest.mock import AsyncMock, Mock
+
 import pytest
 
 from haystack import Document
@@ -107,6 +109,17 @@ class TestDocumentWriter:
         result = writer.run(documents=documents)
         assert result["documents_written"] == 0
 
+    def test_close(self):
+        closable_document_store = Mock(spec=["close"])
+        writer = DocumentWriter(document_store=closable_document_store)
+        writer.close()
+        closable_document_store.close.assert_called_once_with()
+
+        nonclosable_document_store = Mock(spec=[])
+        writer = DocumentWriter(document_store=nonclosable_document_store)
+        writer.close()
+        assert nonclosable_document_store.mock_calls == []
+
     @pytest.mark.asyncio
     async def test_run_async_invalid_docstore(self):
         mocked_docstore_class = document_store_class("MockedDocumentStore")
@@ -144,3 +157,16 @@ class TestDocumentWriter:
 
         result = await writer.run_async(documents=documents)
         assert result["documents_written"] == 0
+
+    @pytest.mark.asyncio
+    async def test_close_async(self):
+        closable_document_store = Mock(spec=["close_async"])
+        closable_document_store.close_async = AsyncMock()
+        writer = DocumentWriter(document_store=closable_document_store)
+        await writer.close_async()
+        closable_document_store.close_async.assert_awaited_once_with()
+
+        nonclosable_document_store = Mock(spec=[])
+        writer = DocumentWriter(document_store=nonclosable_document_store)
+        await writer.close_async()
+        assert nonclosable_document_store.mock_calls == []
