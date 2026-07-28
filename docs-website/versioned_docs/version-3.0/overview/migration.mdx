@@ -27,7 +27,7 @@ pip install --upgrade haystack-ai
 
 Two dependency changes to be aware of:
 
-- **`haystack-experimental` is no longer installed automatically.** If your code imports from `haystack_experimental`, install it explicitly with `pip install haystack-experimental`.
+- **`haystack-experimental` is no longer installed automatically.** The package is now archived and unmaintained: `0.19.0.post1` is its final release. If your code still imports from `haystack_experimental`, install it explicitly and pin it with `pip install "haystack-experimental==0.19.0.post1"`. Most experiments graduated into `haystack-ai` itself, so prefer migrating your imports to the core equivalents.
 - **Several components moved to dedicated integration packages** and now require an extra `pip install`. See [Components Moved to Integration Packages](#components-moved-to-integration-packages) below.
 
 ## Removed and Renamed Components
