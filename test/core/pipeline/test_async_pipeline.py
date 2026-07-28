@@ -11,7 +11,8 @@ import pytest
 
 from haystack import Document, Pipeline, component
 from haystack.components.joiners import BranchJoiner
-from haystack.core.errors import PipelineRuntimeError
+from haystack.core.errors import BreakpointException, PipelineRuntimeError
+from haystack.dataclasses.breakpoints import Breakpoint
 
 _test_context_var: contextvars.ContextVar[str] = contextvars.ContextVar("_test_context_var", default="unset")
 
@@ -550,3 +551,73 @@ async def test_run_async_raises_when_multi_element_list_is_unwrapped_at_runtime(
 
     with pytest.raises(PipelineRuntimeError, match="Cannot unwrap a list of 3 items"):
         await pipe.run_async({})
+
+
+@pytest.mark.asyncio
+async def test_run_component_async_propagates_breakpoint_exception():
+    """
+    Regression test: _run_component_async must re-raise BreakpointException as-is.
+
+    Before the fix, a bare ``except Exception`` in _run_component_async would catch the
+    BreakpointException raised at the start of that method (before _execute_component_async
+    is even called) and wrap it in a PipelineRuntimeError, silently breaking the breakpoint
+    feature for the async path.
+    """
+
+    @component
+    class SimpleComponent:
+        @component.output_types(result=str)
+        def run(self, value: str) -> dict[str, str]:
+            return {"result": f"{value}_processed"}
+
+    pipeline = Pipeline()
+    pipeline.add_component("comp", SimpleComponent())
+
+    break_point = Breakpoint(component_name="comp", visit_count=0)
+    component_visits = {"comp": 0}
+    comp = pipeline._get_component_with_graph_metadata_and_visits("comp", 0)
+
+    # _run_component_async must raise BreakpointException, not wrap it in PipelineRuntimeError.
+    with pytest.raises(BreakpointException) as exc_info:
+        await pipeline._run_component_async(
+            component_name="comp",
+            component=comp,
+            component_inputs={"value": "hello"},
+            component_visits=component_visits,
+            break_point=break_point,
+        )
+
+    # The exception must carry the break_point back to the caller.
+    assert exc_info.value.break_point.component_name == "comp"
+
+
+@pytest.mark.asyncio
+async def test_run_component_async_does_not_rewrap_pipeline_runtime_error():
+    """
+    Regression test: _run_component_async must re-raise PipelineRuntimeError without wrapping it.
+
+    Components such as Agent internally call Pipeline._run_component and may raise a
+    PipelineRuntimeError that already contains a full snapshot / context. The async path must
+    not swallow that and replace it with a freshly constructed PipelineRuntimeError.
+    """
+
+    original_error = PipelineRuntimeError(
+        component_name="inner_comp",
+        component_type=type(None),
+        message="original detailed message",
+    )
+
+    @component
+    class ErroringComponent:
+        @component.output_types(result=str)
+        def run(self, value: str) -> dict[str, str]:
+            raise original_error
+
+    pipeline = Pipeline()
+    pipeline.add_component("erroring", ErroringComponent())
+
+    with pytest.raises(PipelineRuntimeError) as exc_info:
+        await pipeline.run_async({"erroring": {"value": "x"}})
+
+    # Must be the exact same instance — not a freshly constructed wrapper.
+    assert exc_info.value is original_error

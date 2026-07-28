@@ -1,0 +1,10 @@
+---
+fixes:
+  - |
+    Fixed ``_run_component_async`` swallowing ``BreakpointException`` and ``PipelineRuntimeError``
+    instead of re-raising them. Previously, a bare ``except Exception`` clause wrapped both
+    exception types in a new ``PipelineRuntimeError``, which silently broke breakpoints in the
+    async pipeline path (``run_async``, ``run_async_generator``, ``stream``) and caused nested
+    pipeline errors from Agent components to lose their original context. The async path now
+    mirrors the sync ``_run_component`` behavior: ``BreakpointException`` and
+    ``PipelineRuntimeError`` are re-raised as-is, and only unknown exceptions are wrapped.
