@@ -7,7 +7,7 @@ description: "Search engine using the Linkup Search API."
 
 # LinkupWebSearch
 
-Search the web using the Linkup Search API, optimized for LLM and agent applications.
+Search the web using the Linkup Search API.
 
 <div className="key-value-table">
 
@@ -25,17 +25,17 @@ Search the web using the Linkup Search API, optimized for LLM and agent applicat
 
 ## Overview
 
-When you give `LinkupWebSearch` a query, it uses the [Linkup](https://www.linkup.so) Search API to search the web and return the relevant content as Haystack `Document` objects. It also returns a list of the source URLs.
+When you give `LinkupWebSearch` a query, it uses the [Linkup](https://www.linkup.so) Search API to search the web and returns the results as Haystack `Document` objects, together with a list of the source URLs.
 
-Linkup is a search API built for LLM and agent applications. It returns clean, ready-to-use content along with the sources, which makes it a good fit for RAG pipelines.
+Each result becomes a `Document` whose content is the text Linkup returns for that result, with the result title and URL stored in the Document's `meta`.
 
 Use the `depth` parameter to trade latency for thoroughness:
 
-- `"fast"`: sub-second results for keyword-based queries (beta).
-- `"standard"`: a simple search. This is the default.
-- `"deep"`: a more powerful agentic workflow that takes longer but handles complex queries better.
+- `"fast"`: keyword-based queries only, sub-second response (beta).
+- `"standard"`: a single search pass. This is the default.
+- `"deep"`: runs an agentic workflow, which takes longer.
 
-`top_k` limits the number of results and maps to the `max_results` parameter of the Linkup API. To use additional API options, such as `include_images`, `from_date`, `to_date`, `include_domains`, or `exclude_domains`, pass them in `search_params`. See the [Linkup API reference](https://docs.linkup.so/pages/documentation/api-reference/endpoint/post-search) for all available options.
+`top_k` limits the number of results and maps to the `max_results` parameter of the Linkup API. To use additional API options, such as `include_images`, `from_date`, `to_date`, `include_domains`, or `exclude_domains`, pass them in `search_params`. See the [Linkup API reference](https://docs.linkup.so/pages/documentation/api-reference/endpoint/post-search) for all available options. Image results carry no text, so if you enable `include_images`, some of the returned Documents have empty content.
 
 You can override `top_k`, `depth`, and `search_params` for a single search by passing them to `run()`. Note that a `search_params` dictionary passed to `run()` fully replaces the one set at initialization instead of being merged with it.
 
