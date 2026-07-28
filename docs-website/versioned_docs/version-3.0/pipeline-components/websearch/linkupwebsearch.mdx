@@ -35,7 +35,7 @@ Use the `depth` parameter to trade latency for thoroughness:
 - `"standard"`: a single search pass. This is the default.
 - `"deep"`: runs an agentic workflow, which takes longer.
 
-`top_k` limits the number of results and maps to the `max_results` parameter of the Linkup API. To use additional API options, such as `include_images`, `from_date`, `to_date`, `include_domains`, or `exclude_domains`, pass them in `search_params`. See the [Linkup API reference](https://docs.linkup.so/pages/documentation/api-reference/endpoint/post-search) for all available options. Image results carry no text, so if you enable `include_images`, some of the returned Documents have empty content.
+`top_k` limits the number of results and maps to the `max_results` parameter of the Linkup API. To use additional API options, such as `include_images`, `from_date`, `to_date`, `include_domains`, or `exclude_domains`, pass them in `search_params`. See the [Linkup API reference](https://docs.linkup.so/pages/documentation/api-reference/endpoint/post-search) for all available options. Image results carry no text, so enabling `include_images` adds Documents with empty content.
 
 You can override `top_k`, `depth`, and `search_params` for a single search by passing them to `run()`. Note that a `search_params` dictionary passed to `run()` fully replaces the one set at initialization instead of being merged with it.
 
