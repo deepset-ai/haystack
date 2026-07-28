@@ -2,8 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from haystack.dataclasses import ChatMessage, ChatRole, FileContent, ImageContent, TextContent
-from haystack.dataclasses.chat_message import ChatMessageContentT, ToolCallResultContentT
+from haystack.dataclasses import ChatMessage, ChatRole
 
 # Meta key marking a message that a compactor produced (a summary, an omission note, or a rewritten tool result). Its
 # value records which strategy ran and at which step. Compactors both write and read it: it keeps a rewritten message
@@ -56,29 +55,3 @@ def _safe_cut_index(messages: list[ChatMessage], prefix_end: int, keep_last_n: i
     while cut > prefix_end and messages[cut].tool_call_result is not None:
         cut -= 1
     return cut
-
-
-def _non_text_placeholder(content: ChatMessageContentT) -> str:
-    """
-    Return a short stand-in for a piece of message content that has no text form.
-
-    :param content: The content block to describe.
-    :returns: A placeholder such as `<image>`, naming the content so a reader can see something was there.
-    """
-    if isinstance(content, ImageContent):
-        return "<image>"
-    if isinstance(content, FileContent):
-        return f"<file: {content.filename or 'unnamed'}>"
-    return f"<{type(content).__name__}>"
-
-
-def _tool_result_text(result: ToolCallResultContentT) -> str:
-    """
-    Render a tool result as text, substituting placeholders for any non-text parts.
-
-    :param result: The tool result content, either a plain string or a sequence of content blocks.
-    :returns: The result as a single string.
-    """
-    if isinstance(result, str):
-        return result
-    return "".join(block.text if isinstance(block, TextContent) else _non_text_placeholder(block) for block in result)

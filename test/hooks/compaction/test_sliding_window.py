@@ -105,6 +105,24 @@ class TestSlidingWindowCompactor:
         assert sum(_COMPACTION_META_KEY in message.meta for message in second) == 1
         assert second[0].text == "rules"
 
+    def test_returns_none_when_the_note_would_cost_what_it_saves(self):
+        # Dropping one message to add a note in its place gains nothing, and repeating it every step would just swap
+        # one note for the next.
+        # Four messages with a one-message system prefix: keeping the last two leaves exactly one to remove.
+        messages = [
+            ChatMessage.from_system("rules"),
+            ChatMessage.from_user("a"),
+            ChatMessage.from_user("b"),
+            ChatMessage.from_user("c"),
+        ]
+
+        assert SlidingWindowCompactor(keep_last_n_messages=2).compact(_state(messages)) is None
+        # Without a note there is a real saving, so the same cut is worth making.
+        assert SlidingWindowCompactor(keep_last_n_messages=2, omission_note=False).compact(_state(messages)) == [
+            messages[0],
+            *messages[2:],
+        ]
+
     def test_rejects_keeping_no_messages(self):
         with pytest.raises(ValueError, match="`keep_last_n_messages` must be at least 1"):
             SlidingWindowCompactor(keep_last_n_messages=0)

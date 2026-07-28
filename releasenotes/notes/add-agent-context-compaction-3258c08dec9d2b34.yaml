@@ -14,9 +14,7 @@ features:
         from haystack.hooks.compaction import ContextCompactionHook, SlidingWindowCompactor
 
         hook = ContextCompactionHook(
-            compactor=SlidingWindowCompactor(keep_last_n_messages=20),
-            threshold_tokens=100_000,
-            threshold_chars=400_000,
+            compactor=SlidingWindowCompactor(keep_last_n_messages=20), threshold_tokens=100_000
         )
         agent = Agent(
             chat_generator=OpenAIChatGenerator(model="gpt-5.4-nano"),
@@ -24,17 +22,18 @@ features:
             hooks={"before_llm": [hook]},
         )
 
-    At least one threshold must be set, and setting both is the most robust configuration. ``threshold_tokens`` reads
-    the ``context_tokens`` state key, which is the more accurate signal but stays at ``0`` for Chat Generators that do
-    not report token usage - in which case that threshold never fires. ``threshold_chars`` is measured from the
-    messages themselves, so it works with any Chat Generator and accounts for content added since the last call.
+    The trigger is the ``context_tokens`` state key, which the Agent refreshes after each chat-generator call from the
+    reply's reported token usage. **The Agent's Chat Generator must report usage** in ``meta["usage"]``, otherwise
+    ``context_tokens`` stays at ``0``, the threshold is never reached, and the hook never compacts. The hook logs a
+    warning once per run when it detects this. Set the threshold well below the model's context window, since it is
+    checked before the call rather than after, so the reply and the tool results it triggers are added on top of what
+    was measured.
 
     Compaction never leaves a tool result whose originating tool call was removed, which chat-completion APIs reject:
     the boundary of the retained window is moved backwards onto the assistant message holding the call, so slightly
     more may be kept than ``keep_last_n_messages`` asks for. Implement the ``Compactor`` protocol to define your own
-    strategy; the conversation it returns must keep the final message, because the Agent may be mid-step with a pending
-    tool call whose result is appended right after compaction.
+    strategy. Return ``None`` unless the conversation actually gets smaller, and never drop the final message, because
+    the Agent may be mid-step with a pending tool call whose result is appended right after compaction.
 
     Note that compaction is lossy. After it runs the Agent works from a shorter record of the run, and with
-    ``SlidingWindowCompactor`` anything outside the retained window is gone rather than summarized. Set the threshold
-    well below the model's context window, since it is checked before the chat-generator call rather than after.
+    ``SlidingWindowCompactor`` anything outside the retained window is gone rather than summarized.

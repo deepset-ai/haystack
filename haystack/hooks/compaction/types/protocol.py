@@ -20,8 +20,10 @@ class Compactor(Protocol):
 
     Implementations must honor three rules:
 
-    1. **Return `None` when there is nothing to do.** Callers leave the conversation untouched in that case, so a
-       compactor that cannot shrink the conversation any further costs nothing to call repeatedly.
+    1. **Return `None` unless the conversation actually gets smaller.** Callers apply whatever else is returned without
+       second-guessing it, so judging whether compacting was worthwhile is the compactor's job - it is the only party
+       that knows what its own output costs. Returning `None` also makes a compactor free to call repeatedly once it
+       has nothing left to give.
     2. **Do not mutate `state`.** It is read-only context: `messages` to compact, plus `step_count`,
        `context_tokens`, `tools`, and `hook_context` for strategies that want them. The caller writes the returned
        list back into `State`.

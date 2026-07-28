@@ -2,7 +2,6 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-import json
 from typing import Any
 
 from haystack import logging
@@ -11,41 +10,18 @@ from haystack.components.agents.state.state_utils import replace_values
 from haystack.core.serialization import component_to_dict, default_from_dict, default_to_dict
 from haystack.dataclasses import ChatMessage
 from haystack.hooks.compaction.types import Compactor
-from haystack.hooks.compaction.utils import _tool_result_text
 from haystack.utils.deserialization import deserialize_component_inplace
 
 logger = logging.getLogger(__name__)
-
-
-def _conversation_chars(messages: list[ChatMessage]) -> int:
-    """
-    Return the approximate size of a conversation in characters.
-
-    Counts message text, tool-call names and arguments, and tool-result content - everything that grows the prompt. It
-    is measured in characters rather than messages so that a strategy which rewrites messages in place, rather than
-    removing them, still registers as having shrunk the conversation. As a rough guide one token is about four
-    characters, though the ratio varies by tokenizer and content.
-
-    :param messages: The conversation to measure.
-    :returns: The total number of characters.
-    """
-    total = 0
-    for message in messages:
-        total += sum(len(text) for text in message.texts)
-        for call in message.tool_calls:
-            total += len(call.tool_name) + len(json.dumps(call.arguments, default=str, sort_keys=True))
-        for result in message.tool_call_results:
-            total += len(_tool_result_text(result.result))
-    return total
 
 
 class ContextCompactionHook:
     """
     Compacts an Agent's conversation once it grows past a threshold, so a long run does not exhaust the context window.
 
-    This `before_llm` Agent hook checks the size of the conversation before each chat-generator call and, when it is
-    over the threshold, hands it to a `Compactor` to rewrite. Register it on an `Agent` under the `before_llm` hook
-    point:
+    This `before_llm` Agent hook compares the `context_tokens` state key against `threshold_tokens` before each
+    chat-generator call and, when it is over, hands the conversation to a `Compactor` to rewrite. Register it on an
+    `Agent` under the `before_llm` hook point:
 
     ```python
     from haystack.components.agents import Agent
@@ -53,9 +29,7 @@ class ContextCompactionHook:
     from haystack.hooks.compaction import ContextCompactionHook, SlidingWindowCompactor
 
     hook = ContextCompactionHook(
-        compactor=SlidingWindowCompactor(keep_last_n_messages=20),
-        threshold_tokens=100_000,
-        threshold_chars=400_000,
+        compactor=SlidingWindowCompactor(keep_last_n_messages=20), threshold_tokens=100_000
     )
     agent = Agent(
         chat_generator=OpenAIChatGenerator(model="gpt-5.4-nano"),
@@ -65,8 +39,13 @@ class ContextCompactionHook:
     )
     ```
 
-    Set the threshold well below the model's context window: it is checked before the call rather than after, and the
-    reply plus the tool results it triggers are added on top of what was measured.
+    **The Agent's Chat Generator must report token usage.** `context_tokens` is refreshed after each call from the
+    reply's `meta["usage"]`, and stays at `0` for a generator that does not report it - in which case the threshold is
+    never reached and the hook never compacts. The hook logs a warning once per run when it detects this. Most Chat
+    Generators report usage; a custom or mock one may not.
+
+    Set the threshold well below the model's context window: it is checked before the call rather than after, so the
+    reply and the tool results it triggers are added on top of what was measured.
 
     Compaction is lossy by nature, so the Agent works from a shorter record of the run afterwards. What survives is up
     to the compactor.
@@ -74,40 +53,30 @@ class ContextCompactionHook:
 
     allowed_hook_points = ("before_llm",)
 
-    def __init__(
-        self, compactor: Compactor, *, threshold_tokens: int | None = None, threshold_chars: int | None = None
-    ) -> None:
+    def __init__(self, compactor: Compactor, *, threshold_tokens: int) -> None:
         """
-        Initialize the hook with a compactor and the thresholds that trigger it.
+        Initialize the hook with a compactor and the context size that triggers it.
 
-        At least one threshold must be set. Setting both is the most robust configuration: they measure different
-        things and are checked independently, so whichever crosses first triggers compaction.
-
-        :param compactor: The `Compactor` that rewrites the conversation, for example a `SummarizationCompactor`.
-        :param threshold_tokens: Compact once the `context_tokens` state key reaches this value. That key is refreshed
-            after each chat-generator call from the reply's reported token usage, so it is the more accurate trigger -
-            but it stays at `0` for Chat Generators that do not report usage, in which case this threshold never fires.
-            Pair it with `threshold_chars` unless you know your generator reports usage.
-        :param threshold_chars: Compact once the conversation reaches this many characters. Counted from the messages
-            themselves, so it works with any Chat Generator and accounts for content added since the last call. As a
-            rough guide one token is about four characters.
-        :raises ValueError: If neither threshold is set, since the hook would then never compact.
+        :param compactor: The `Compactor` that rewrites the conversation, for example a `SlidingWindowCompactor`.
+        :param threshold_tokens: Compact once the `context_tokens` state key reaches this value. The Agent refreshes
+            that key after each chat-generator call from the reply's reported token usage, so the Agent's Chat
+            Generator must report usage for this to ever fire.
+        :raises ValueError: If `threshold_tokens` is less than 1, which would compact on every step.
         """
-        if threshold_tokens is None and threshold_chars is None:
+        if threshold_tokens < 1:
             raise ValueError(
-                "`ContextCompactionHook` requires at least one of `threshold_tokens` or `threshold_chars` to be set, "
-                "otherwise it would never compact."
+                f"`threshold_tokens` must be at least 1, got {threshold_tokens}. A threshold of 0 is reached before "
+                f"the Agent has done anything, so every step would attempt compaction."
             )
         self.compactor = compactor
         self.threshold_tokens = threshold_tokens
-        self.threshold_chars = threshold_chars
 
     def run(self, state: State) -> None:
         """
-        Compact `state.data["messages"]` if the conversation is over the threshold.
+        Compact `state.data["messages"]` if the context is over the threshold.
 
         :param state: The Agent's live `State`. Read to decide whether to compact, and rewritten in place when the
-            compactor returns a shorter conversation.
+            compactor returns a compacted conversation.
         :returns: None. The hook mutates `state` in place.
         """
         if not self._over_threshold(state):
@@ -116,10 +85,10 @@ class ContextCompactionHook:
 
     async def run_async(self, state: State) -> None:
         """
-        Asynchronously compact `state.data["messages"]` if the conversation is over the threshold.
+        Asynchronously compact `state.data["messages"]` if the context is over the threshold.
 
         :param state: The Agent's live `State`. Read to decide whether to compact, and rewritten in place when the
-            compactor returns a shorter conversation.
+            compactor returns a compacted conversation.
         :returns: None. The hook mutates `state` in place.
         """
         if not self._over_threshold(state):
@@ -128,24 +97,49 @@ class ContextCompactionHook:
 
     def _over_threshold(self, state: State) -> bool:
         """
-        Return whether the conversation has reached either configured threshold.
+        Return whether the context has reached `threshold_tokens`.
 
         :param state: The Agent's `State`.
         :returns: True when compaction should be attempted.
         """
-        if self.threshold_tokens is not None and state.data.get("context_tokens", 0) >= self.threshold_tokens:
-            return True
-        if self.threshold_chars is not None:
-            return _conversation_chars(state.data.get("messages") or []) >= self.threshold_chars
-        return False
+        context_tokens = state.data.get("context_tokens", 0)
+        if context_tokens == 0:
+            self._warn_if_usage_is_never_reported(state)
+            return False
+        return context_tokens >= self.threshold_tokens
+
+    def _warn_if_usage_is_never_reported(self, state: State) -> None:
+        """
+        Warn when `context_tokens` is still unset after the Agent's first chat-generator call.
+
+        `context_tokens` is legitimately `0` before the first call. Still being `0` afterwards means the Chat Generator
+        does not report token usage, so the threshold can never be reached and this hook will silently do nothing for
+        the whole run.
+
+        `step_count` equals 1 at exactly one `before_llm` call per run, so warning only then logs once without the hook
+        having to remember anything - which keeps it safe to share across concurrent runs.
+
+        :param state: The Agent's `State`.
+        :returns: None.
+        """
+        if state.data.get("step_count") != 1:
+            return
+        logger.warning(
+            "The Agent's `context_tokens` is still 0 after the first chat-generator call, which means the Chat "
+            "Generator does not report token usage. `ContextCompactionHook` triggers on `context_tokens`, so it will "
+            "never compact this run. Use a Chat Generator that reports usage in `meta['usage']`."
+        )
 
     def _apply(self, state: State, compacted: list[ChatMessage] | None) -> None:
         """
-        Write a compacted conversation back into `State`, if the compactor actually shrank it.
+        Write a compacted conversation back into `State`.
+
+        A compactor returns None when it has nothing worth changing, so there is no second-guessing here: whatever it
+        returns is applied.
 
         `context_tokens` is reset to `0`, its "not yet measured" value: the count it held describes the conversation
         that was just replaced, and the next chat-generator call refreshes it from real usage. Leaving the old value in
-        place would re-trigger compaction on the next step whenever that call reports no usage.
+        place would re-trigger compaction on the next step.
 
         The cumulative run metadata (`token_usage`, `tool_call_counts`) is deliberately left alone - it records what
         the run has spent and done, which compaction does not change.
@@ -156,35 +150,14 @@ class ContextCompactionHook:
         """
         if compacted is None:
             return
-        messages = state.data.get("messages") or []
-        size_before = _conversation_chars(messages)
-        size_after = _conversation_chars(compacted)
-        if size_after >= size_before:
-            return
-
+        messages_before = len(state.data.get("messages") or [])
         state.set("messages", compacted, handler_override=replace_values)
         state.set("context_tokens", 0)
         logger.debug(
-            "Compacted the Agent's conversation from {before} to {after} characters ({messages_before} to "
-            "{messages_after} messages).",
-            before=size_before,
-            after=size_after,
-            messages_before=len(messages),
-            messages_after=len(compacted),
+            "Compacted the Agent's conversation from {before} to {after} messages.",
+            before=messages_before,
+            after=len(compacted),
         )
-
-        # Only `threshold_chars` can be re-checked here: `context_tokens` was just reset and is not measured again
-        # until the next chat-generator call.
-        if self.threshold_chars is not None and size_after >= self.threshold_chars:
-            logger.warning(
-                "The Agent's conversation is still {after} characters after compaction, at or above the "
-                "`threshold_chars` of {threshold}. The threshold is likely below the size the compactor can reach - "
-                "for example, smaller than the recent messages it keeps verbatim - so compaction will keep being "
-                "attempted without ever getting under it. Raise `threshold_chars` or configure the compactor to "
-                "retain less.",
-                after=size_after,
-                threshold=self.threshold_chars,
-            )
 
     def warm_up(self) -> None:
         """Warm up the compactor, which may hold resources such as a Chat Generator."""
@@ -222,7 +195,6 @@ class ContextCompactionHook:
             self,
             compactor=component_to_dict(obj=self.compactor, name="compactor"),
             threshold_tokens=self.threshold_tokens,
-            threshold_chars=self.threshold_chars,
         )
 
     @classmethod

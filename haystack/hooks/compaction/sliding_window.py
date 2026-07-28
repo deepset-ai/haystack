@@ -24,7 +24,7 @@ class SlidingWindowCompactor(Compactor):
     from haystack.components.generators.chat import OpenAIChatGenerator
     from haystack.hooks.compaction import ContextCompactionHook, SlidingWindowCompactor
 
-    hook = ContextCompactionHook(compactor=SlidingWindowCompactor(keep_last_n_messages=20), threshold_chars=400_000)
+    hook = ContextCompactionHook(compactor=SlidingWindowCompactor(keep_last_n_messages=20), threshold_tokens=100_000)
     agent = Agent(
         chat_generator=OpenAIChatGenerator(model="gpt-5.4-nano"),
         tools=[web_search],
@@ -60,12 +60,16 @@ class SlidingWindowCompactor(Compactor):
 
         :param state: The Agent's `State`, read only. The conversation is `state.data["messages"]`.
         :returns: The leading system messages, an optional omission note, and the retained window; or None when the
-            conversation already fits in the window.
+            conversation already fits in the window, or when the omission note would cost as much as it saves.
         """
         messages = state.data.get("messages") or []
         prefix_end = _preserved_prefix_end(messages)
         cut = _safe_cut_index(messages, prefix_end, self.keep_last_n_messages)
         if cut <= prefix_end:
+            return None
+        # Dropping a single message only to add a note in its place gains nothing, and would then repeat every step,
+        # replacing one note with the next.
+        if self.omission_note and cut - prefix_end < 2:
             return None
 
         compacted = list(messages[:prefix_end])

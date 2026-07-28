@@ -4,26 +4,18 @@
 
 import pytest
 
-from haystack.dataclasses import ChatMessage, ImageContent, TextContent, ToolCall
-from haystack.hooks.compaction.utils import (
-    _COMPACTION_META_KEY,
-    _preserved_prefix_end,
-    _safe_cut_index,
-    _tool_result_text,
-)
+from haystack.dataclasses import ChatMessage, ToolCall
+from haystack.hooks.compaction.utils import _COMPACTION_META_KEY, _preserved_prefix_end, _safe_cut_index
 
-IMAGE = ImageContent(base64_image="Zm9v", mime_type="image/png")
 COMPACTED_META = {_COMPACTION_META_KEY: {"strategy": "sliding_window"}}
 
 
-def _tool_result(name: str, result: str, *, error: bool = False, call_id: str = "c1") -> ChatMessage:
-    return ChatMessage.from_tool(
-        tool_result=result, origin=ToolCall(tool_name=name, arguments={}, id=call_id), error=error
-    )
+def _tool_result(name: str, result: str, *, call_id: str = "c1") -> ChatMessage:
+    return ChatMessage.from_tool(tool_result=result, origin=ToolCall(tool_name=name, arguments={}, id=call_id))
 
 
-def _tool_call(name: str, *, call_id: str = "c1", **arguments) -> ChatMessage:
-    return ChatMessage.from_assistant(tool_calls=[ToolCall(tool_name=name, arguments=arguments, id=call_id)])
+def _tool_call(name: str, *, call_id: str = "c1") -> ChatMessage:
+    return ChatMessage.from_assistant(tool_calls=[ToolCall(tool_name=name, arguments={}, id=call_id)])
 
 
 class TestPreservedPrefixEnd:
@@ -102,16 +94,3 @@ class TestSafeCutIndex:
     )
     def test_cut_index(self, messages, prefix_end, keep_last_n, expected):
         assert _safe_cut_index(messages, prefix_end=prefix_end, keep_last_n=keep_last_n) == expected
-
-
-class TestToolResultText:
-    @pytest.mark.parametrize(
-        ("result", "expected"),
-        [
-            pytest.param("hello", "hello", id="plain-string"),
-            pytest.param([TextContent(text="a"), TextContent(text="b")], "ab", id="text-blocks-concatenated"),
-            pytest.param([TextContent(text="see "), IMAGE], "see <image>", id="non-text-placeholder"),
-        ],
-    )
-    def test_tool_result_text(self, result, expected):
-        assert _tool_result_text(result) == expected
