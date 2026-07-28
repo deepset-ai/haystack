@@ -602,9 +602,7 @@ async def test_run_component_async_does_not_rewrap_pipeline_runtime_error():
     """
 
     original_error = PipelineRuntimeError(
-        component_name="inner_comp",
-        component_type=type(None),
-        message="original detailed message",
+        component_name="inner_comp", component_type=type(None), message="original detailed message"
     )
 
     @component
