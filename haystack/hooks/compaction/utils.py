@@ -2,8 +2,6 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-import json
-
 from haystack.dataclasses import ChatMessage, ChatRole, FileContent, ImageContent, TextContent
 from haystack.dataclasses.chat_message import ChatMessageContentT, ToolCallResultContentT
 
@@ -84,25 +82,3 @@ def _tool_result_text(result: ToolCallResultContentT) -> str:
     if isinstance(result, str):
         return result
     return "".join(block.text if isinstance(block, TextContent) else _non_text_placeholder(block) for block in result)
-
-
-def _conversation_chars(messages: list[ChatMessage]) -> int:
-    """
-    Return the approximate size of a conversation in characters.
-
-    Counts message text, tool-call names and arguments, and tool-result content - everything that grows the prompt. It
-    is measured in characters rather than messages so that a strategy which rewrites messages in place, rather than
-    removing them, still registers as having shrunk the conversation. As a rough guide one token is about four
-    characters, though the ratio varies by tokenizer and content.
-
-    :param messages: The conversation to measure.
-    :returns: The total number of characters.
-    """
-    total = 0
-    for message in messages:
-        total += sum(len(text) for text in message.texts)
-        for call in message.tool_calls:
-            total += len(call.tool_name) + len(json.dumps(call.arguments, default=str, sort_keys=True))
-        for result in message.tool_call_results:
-            total += len(_tool_result_text(result.result))
-    return total

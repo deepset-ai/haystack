@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import json
 from typing import Any
 
 from haystack import logging
@@ -10,10 +11,32 @@ from haystack.components.agents.state.state_utils import replace_values
 from haystack.core.serialization import component_to_dict, default_from_dict, default_to_dict
 from haystack.dataclasses import ChatMessage
 from haystack.hooks.compaction.types import Compactor
-from haystack.hooks.compaction.utils import _conversation_chars
+from haystack.hooks.compaction.utils import _tool_result_text
 from haystack.utils.deserialization import deserialize_component_inplace
 
 logger = logging.getLogger(__name__)
+
+
+def _conversation_chars(messages: list[ChatMessage]) -> int:
+    """
+    Return the approximate size of a conversation in characters.
+
+    Counts message text, tool-call names and arguments, and tool-result content - everything that grows the prompt. It
+    is measured in characters rather than messages so that a strategy which rewrites messages in place, rather than
+    removing them, still registers as having shrunk the conversation. As a rough guide one token is about four
+    characters, though the ratio varies by tokenizer and content.
+
+    :param messages: The conversation to measure.
+    :returns: The total number of characters.
+    """
+    total = 0
+    for message in messages:
+        total += sum(len(text) for text in message.texts)
+        for call in message.tool_calls:
+            total += len(call.tool_name) + len(json.dumps(call.arguments, default=str, sort_keys=True))
+        for result in message.tool_call_results:
+            total += len(_tool_result_text(result.result))
+    return total
 
 
 class ContextCompactionHook:
@@ -24,7 +47,6 @@ class ContextCompactionHook:
     over the threshold, hands it to a `Compactor` to rewrite. Register it on an `Agent` under the `before_llm` hook
     point:
 
-    <!-- test-concept -->
     ```python
     from haystack.components.agents import Agent
     from haystack.components.generators.chat import OpenAIChatGenerator
@@ -143,8 +165,8 @@ class ContextCompactionHook:
         state.set("messages", compacted, handler_override=replace_values)
         state.set("context_tokens", 0)
         logger.debug(
-            "Compacted the Agent's conversation from {before} to {after} characters "
-            "({messages_before} to {messages_after} messages).",
+            "Compacted the Agent's conversation from {before} to {after} characters ({messages_before} to "
+            "{messages_after} messages).",
             before=size_before,
             after=size_after,
             messages_before=len(messages),
@@ -152,7 +174,7 @@ class ContextCompactionHook:
         )
 
         # Only `threshold_chars` can be re-checked here: `context_tokens` was just reset and is not measured again
-        # until the next chat-generator call, so a token-only configuration cannot detect this.
+        # until the next chat-generator call.
         if self.threshold_chars is not None and size_after >= self.threshold_chars:
             logger.warning(
                 "The Agent's conversation is still {after} characters after compaction, at or above the "

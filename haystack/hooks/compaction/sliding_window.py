@@ -19,7 +19,6 @@ class SlidingWindowCompactor(Compactor):
     learned outside the retained window is simply gone. It suits runs whose turns are largely independent, or as a
     last resort behind a strategy that preserves more.
 
-    <!-- test-concept -->
     ```python
     from haystack.components.agents import Agent
     from haystack.components.generators.chat import OpenAIChatGenerator

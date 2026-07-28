@@ -12,6 +12,7 @@ from haystack.components.agents.state.state import State
 from haystack.components.generators.chat import MockChatGenerator
 from haystack.dataclasses import ChatMessage, ToolCall
 from haystack.hooks.compaction import Compactor, ContextCompactionHook, SlidingWindowCompactor
+from haystack.hooks.compaction.hooks import _conversation_chars
 from haystack.hooks.compaction.utils import _COMPACTION_META_KEY
 from haystack.tools import tool
 
@@ -92,6 +93,30 @@ def _assert_every_tool_result_is_answered(messages: list[ChatMessage]) -> None:
             offered_call_ids.add(call.id)
         for result in message.tool_call_results:
             assert result.origin.id in offered_call_ids, f"orphaned tool result: {result.origin}"
+
+
+class TestConversationChars:
+    @pytest.mark.parametrize(
+        ("messages", "expected"),
+        [
+            pytest.param([], 0, id="empty"),
+            pytest.param([ChatMessage.from_user("12345")], 5, id="message-text"),
+            pytest.param(
+                [_tool_call("c1")], len("fetch") + len('{"topic": "haystack"}'), id="tool-call-name-and-arguments"
+            ),
+            pytest.param([_tool_result("R" * 40)], 40, id="tool-result-content"),
+        ],
+    )
+    def test_size(self, messages, expected):
+        assert _conversation_chars(messages) == expected
+
+    def test_shrinks_when_a_result_is_rewritten_in_place(self):
+        # A strategy that replaces a result's content without removing the message must still register as a shrink,
+        # which is why size is measured in characters rather than in messages.
+        before = [_tool_call("c1"), _tool_result("R" * 500)]
+        after = [_tool_call("c1"), _tool_result("[removed]")]
+        assert len(after) == len(before)
+        assert _conversation_chars(after) < _conversation_chars(before)
 
 
 class TestContextCompactionHook:

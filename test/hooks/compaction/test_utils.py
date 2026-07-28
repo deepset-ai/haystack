@@ -7,7 +7,6 @@ import pytest
 from haystack.dataclasses import ChatMessage, ImageContent, TextContent, ToolCall
 from haystack.hooks.compaction.utils import (
     _COMPACTION_META_KEY,
-    _conversation_chars,
     _preserved_prefix_end,
     _safe_cut_index,
     _tool_result_text,
@@ -116,29 +115,3 @@ class TestToolResultText:
     )
     def test_tool_result_text(self, result, expected):
         assert _tool_result_text(result) == expected
-
-
-class TestConversationChars:
-    @pytest.mark.parametrize(
-        ("messages", "expected"),
-        [
-            pytest.param([], 0, id="empty"),
-            pytest.param([ChatMessage.from_user("12345")], 5, id="message-text"),
-            pytest.param(
-                [_tool_call("search", query="haystack")],
-                len("search") + len('{"query": "haystack"}'),
-                id="tool-call-name-and-arguments",
-            ),
-            pytest.param([_tool_result("search", "R" * 40)], 40, id="tool-result-content"),
-        ],
-    )
-    def test_size(self, messages, expected):
-        assert _conversation_chars(messages) == expected
-
-    def test_shrinks_when_a_result_is_rewritten_in_place(self):
-        # A strategy that replaces a result's content without removing the message must still register as a shrink,
-        # which is why size is measured in characters rather than in messages.
-        before = [_tool_call("search"), _tool_result("search", "R" * 500)]
-        after = [_tool_call("search"), _tool_result("search", "[removed]")]
-        assert len(after) == len(before)
-        assert _conversation_chars(after) < _conversation_chars(before)
