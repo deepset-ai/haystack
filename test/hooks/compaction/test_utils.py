@@ -5,92 +5,86 @@
 import pytest
 
 from haystack.dataclasses import ChatMessage, ToolCall
-from haystack.hooks.compaction.utils import _COMPACTION_META_KEY, _preserved_prefix_end, _safe_cut_index
+from haystack.hooks.compaction.utils import _COMPACTION_META_KEY, _compaction_bounds
 
 COMPACTED_META = {_COMPACTION_META_KEY: {"strategy": "sliding_window"}}
 
 
-def _tool_result(name: str, result: str, *, call_id: str = "c1") -> ChatMessage:
-    return ChatMessage.from_tool(tool_result=result, origin=ToolCall(tool_name=name, arguments={}, id=call_id))
+def _tool_result(result: str, *, call_id: str = "c1") -> ChatMessage:
+    return ChatMessage.from_tool(tool_result=result, origin=ToolCall(tool_name="search", arguments={}, id=call_id))
 
 
-def _tool_call(name: str, *, call_id: str = "c1") -> ChatMessage:
-    return ChatMessage.from_assistant(tool_calls=[ToolCall(tool_name=name, arguments={}, id=call_id)])
+def _tool_call(*call_ids: str) -> ChatMessage:
+    return ChatMessage.from_assistant(
+        tool_calls=[ToolCall(tool_name="search", arguments={}, id=call_id) for call_id in call_ids]
+    )
 
 
-class TestPreservedPrefixEnd:
+class TestCompactionBounds:
     @pytest.mark.parametrize(
-        ("messages", "expected"),
+        ("messages", "keep_last_n", "expected"),
         [
-            pytest.param([], 0, id="empty"),
-            pytest.param([ChatMessage.from_user("hi")], 0, id="no-leading-system"),
-            pytest.param([ChatMessage.from_system("a"), ChatMessage.from_system("b")], 2, id="only-system"),
+            pytest.param([], 5, (0, 0), id="empty"),
+            pytest.param([ChatMessage.from_user(f"m{i}") for i in range(6)], 2, (0, 4), id="keeps-requested-count"),
+            pytest.param([ChatMessage.from_user("hi")], 1, (0, 0), id="nothing-to-remove"),
+            # The Agent's standing instructions are never removable.
+            pytest.param([ChatMessage.from_system("a"), ChatMessage.from_system("b")], 1, (2, 2), id="only-system"),
             pytest.param(
                 [ChatMessage.from_system("a"), ChatMessage.from_system("b"), ChatMessage.from_user("hi")],
-                2,
+                1,
+                (2, 2),
                 id="leading-system-block",
             ),
             pytest.param(
-                [ChatMessage.from_user("hi"), ChatMessage.from_system("late rules")], 0, id="system-not-leading"
+                [ChatMessage.from_user("hi"), ChatMessage.from_system("late rules")],
+                1,
+                (0, 1),
+                id="system-not-leading-is-removable",
             ),
-            # A previous summary sits right after the real system prompt. Counting it as prefix would leave it behind on
-            # every future compaction instead of folding it into the next one.
+            # A note or summary an earlier compaction produced is removable, so the next one replaces it.
             pytest.param(
                 [
                     ChatMessage.from_system("rules"),
-                    ChatMessage.from_system("summary", meta=COMPACTED_META),
+                    ChatMessage.from_system("earlier note", meta=COMPACTED_META),
                     ChatMessage.from_user("hi"),
                 ],
                 1,
-                id="stops-at-previous-summary",
+                (1, 2),
+                id="previous-compaction-is-removable",
             ),
-        ],
-    )
-    def test_prefix_end(self, messages, expected):
-        assert _preserved_prefix_end(messages) == expected
-
-
-class TestSafeCutIndex:
-    @pytest.mark.parametrize(
-        ("messages", "prefix_end", "keep_last_n", "expected"),
-        [
-            pytest.param([], 0, 5, 0, id="empty"),
-            pytest.param([ChatMessage.from_user(f"m{i}") for i in range(6)], 0, 2, 4, id="keeps-requested-count"),
-            # Cutting at index 2 would start the tail with a tool result whose call had been removed, so the boundary
-            # walks back onto the assistant message holding that call.
+            # The tail may not start on a tool result whose call is about to be removed, so it grows to include the
+            # assistant message holding the call.
             pytest.param(
-                [ChatMessage.from_user("hi"), _tool_call("search"), _tool_result("search", "found")],
-                0,
+                [ChatMessage.from_user("hi"), _tool_call("c1"), _tool_result("found", call_id="c1")],
                 1,
-                1,
-                id="walks-back-off-tool-result",
+                (0, 1),
+                id="tail-grows-past-tool-result",
             ),
             pytest.param(
                 [
                     ChatMessage.from_user("hi"),
-                    ChatMessage.from_assistant(
-                        tool_calls=[ToolCall(tool_name="search", arguments={}, id=f"c{i}") for i in range(3)]
-                    ),
-                    _tool_result("search", "a", call_id="c0"),
-                    _tool_result("search", "b", call_id="c1"),
-                    _tool_result("search", "c", call_id="c2"),
+                    _tool_call("c0", "c1", "c2"),
+                    _tool_result("a", call_id="c0"),
+                    _tool_result("b", call_id="c1"),
+                    _tool_result("c", call_id="c2"),
                 ],
-                0,
                 1,
-                1,
-                id="walks-back-over-parallel-batch",
+                (0, 1),
+                id="tail-grows-past-parallel-batch",
             ),
             pytest.param(
-                [ChatMessage.from_system("rules"), _tool_result("search", "orphan")],
+                [ChatMessage.from_system("rules"), _tool_result("orphan")],
                 1,
-                1,
-                1,
-                id="never-moves-before-prefix",
+                (1, 1),
+                id="tail-never-grows-into-the-system-block",
             ),
             pytest.param(
-                [ChatMessage.from_system("rules"), ChatMessage.from_user("hi")], 1, 50, 1, id="clamps-to-prefix"
+                [ChatMessage.from_system("rules"), ChatMessage.from_user("hi")],
+                50,
+                (1, 1),
+                id="keeps-more-than-there-is",
             ),
         ],
     )
-    def test_cut_index(self, messages, prefix_end, keep_last_n, expected):
-        assert _safe_cut_index(messages, prefix_end=prefix_end, keep_last_n=keep_last_n) == expected
+    def test_bounds(self, messages, keep_last_n, expected):
+        assert _compaction_bounds(messages, keep_last_n) == expected

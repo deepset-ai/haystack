@@ -8,7 +8,7 @@ from haystack.components.agents.state.state import State
 from haystack.core.serialization import default_to_dict
 from haystack.dataclasses import ChatMessage
 from haystack.hooks.compaction.types import Compactor
-from haystack.hooks.compaction.utils import _COMPACTION_META_KEY, _preserved_prefix_end, _safe_cut_index
+from haystack.hooks.compaction.utils import _COMPACTION_META_KEY, _compaction_bounds
 
 
 class SlidingWindowCompactor(Compactor):
@@ -63,18 +63,15 @@ class SlidingWindowCompactor(Compactor):
             conversation already fits in the window, or when the omission note would cost as much as it saves.
         """
         messages = state.data.get("messages") or []
-        prefix_end = _preserved_prefix_end(messages)
-        cut = _safe_cut_index(messages, prefix_end, self.keep_last_n_messages)
-        if cut <= prefix_end:
-            return None
-        # Dropping a single message only to add a note in its place gains nothing, and would then repeat every step,
-        # replacing one note with the next.
-        if self.omission_note and cut - prefix_end < 2:
+        start, end = _compaction_bounds(messages, self.keep_last_n_messages)
+        removed = end - start
+        # With a note, removing a single message only swaps it for the note and would repeat every step, replacing one
+        # note with the next.
+        if removed < (2 if self.omission_note else 1):
             return None
 
-        compacted = list(messages[:prefix_end])
+        compacted = list(messages[:start])
         if self.omission_note:
-            removed = cut - prefix_end
             subject = "1 earlier message was" if removed == 1 else f"{removed} earlier messages were"
             compacted.append(
                 ChatMessage.from_system(
@@ -84,12 +81,12 @@ class SlidingWindowCompactor(Compactor):
                             "step": state.data.get("step_count", 0),
                             "strategy": "sliding_window",
                             "removed_messages": removed,
-                            "kept_messages": len(messages) - cut,
+                            "kept_messages": len(messages) - end,
                         }
                     },
                 )
             )
-        compacted.extend(messages[cut:])
+        compacted.extend(messages[end:])
         return compacted
 
     def to_dict(self) -> dict[str, Any]:

@@ -44,8 +44,8 @@ class ContextCompactionHook:
     never reached and the hook never compacts. The hook logs a warning once per run when it detects this. Most Chat
     Generators report usage; a custom or mock one may not.
 
-    Set the threshold well below the model's context window: it is checked before the call rather than after, so the
-    reply and the tool results it triggers are added on top of what was measured.
+    Leave headroom between the threshold and the model's context window: `context_tokens` was measured at the previous
+    call, so the tool results appended since and the upcoming reply must still fit within the window.
 
     Compaction is lossy by nature, so the Agent works from a shorter record of the run afterwards. What survives is up
     to the compactor.

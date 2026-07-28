@@ -25,9 +25,9 @@ features:
     The trigger is the ``context_tokens`` state key, which the Agent refreshes after each chat-generator call from the
     reply's reported token usage. **The Agent's Chat Generator must report usage** in ``meta["usage"]``, otherwise
     ``context_tokens`` stays at ``0``, the threshold is never reached, and the hook never compacts. The hook logs a
-    warning once per run when it detects this. Set the threshold well below the model's context window, since it is
-    checked before the call rather than after, so the reply and the tool results it triggers are added on top of what
-    was measured.
+    warning once per run when it detects this. Leave headroom between the threshold and the model's context window:
+    ``context_tokens`` was measured at the previous call, so the tool results appended since and the upcoming reply must
+    still fit within the window.
 
     Compaction never leaves a tool result whose originating tool call was removed, which chat-completion APIs reject:
     the boundary of the retained window is moved backwards onto the assistant message holding the call, so slightly
