@@ -4,20 +4,11 @@
 
 import pytest
 
-from haystack.dataclasses import ChatMessage, ToolCall
+from haystack.dataclasses import ChatMessage
 from haystack.hooks.compaction.utils import _COMPACTION_META_KEY, _compaction_bounds
+from test.hooks.compaction.helpers import tool_call, tool_result
 
 COMPACTED_META = {_COMPACTION_META_KEY: {"strategy": "sliding_window"}}
-
-
-def _tool_result(result: str, *, call_id: str = "c1") -> ChatMessage:
-    return ChatMessage.from_tool(tool_result=result, origin=ToolCall(tool_name="search", arguments={}, id=call_id))
-
-
-def _tool_call(*call_ids: str) -> ChatMessage:
-    return ChatMessage.from_assistant(
-        tool_calls=[ToolCall(tool_name="search", arguments={}, id=call_id) for call_id in call_ids]
-    )
 
 
 class TestCompactionBounds:
@@ -55,7 +46,7 @@ class TestCompactionBounds:
             # The tail may not start on a tool result whose call is about to be removed, so it grows to include the
             # assistant message holding the call.
             pytest.param(
-                [ChatMessage.from_user("hi"), _tool_call("c1"), _tool_result("found", call_id="c1")],
+                [ChatMessage.from_user("hi"), tool_call("c1"), tool_result("found", call_id="c1")],
                 1,
                 (0, 1),
                 id="tail-grows-past-tool-result",
@@ -63,17 +54,17 @@ class TestCompactionBounds:
             pytest.param(
                 [
                     ChatMessage.from_user("hi"),
-                    _tool_call("c0", "c1", "c2"),
-                    _tool_result("a", call_id="c0"),
-                    _tool_result("b", call_id="c1"),
-                    _tool_result("c", call_id="c2"),
+                    tool_call("c0", "c1", "c2"),
+                    tool_result("a", call_id="c0"),
+                    tool_result("b", call_id="c1"),
+                    tool_result("c", call_id="c2"),
                 ],
                 1,
                 (0, 1),
                 id="tail-grows-past-parallel-batch",
             ),
             pytest.param(
-                [ChatMessage.from_system("rules"), _tool_result("orphan")],
+                [ChatMessage.from_system("rules"), tool_result("orphan")],
                 1,
                 (1, 1),
                 id="tail-never-grows-into-the-system-block",

@@ -10,11 +10,11 @@ import pytest
 from haystack.components.agents import Agent
 from haystack.components.agents.state.state import State
 from haystack.components.generators.chat import MockChatGenerator
-from haystack.dataclasses import ChatMessage, ToolCall
+from haystack.dataclasses import ChatMessage
 from haystack.hooks.compaction import Compactor, ContextCompactionHook, SlidingWindowCompactor
 from haystack.hooks.compaction.sliding_window import _DEFAULT_OMISSION_NOTE
-from haystack.hooks.compaction.utils import _COMPACTION_META_KEY
 from haystack.tools import tool
+from test.hooks.compaction.helpers import count_markers, long_conversation, make_state, tool_call
 
 
 @tool
@@ -51,45 +51,15 @@ class _RecordingCompactor(Compactor):
         self.calls.append("close_async")
 
 
-def _tool_result(result: str, *, call_id: str = "c1") -> ChatMessage:
-    return ChatMessage.from_tool(tool_result=result, origin=ToolCall(tool_name="fetch", arguments={}, id=call_id))
-
-
-def _tool_call(call_id: str = "c1") -> ChatMessage:
-    return ChatMessage.from_assistant(
-        tool_calls=[ToolCall(tool_name="fetch", arguments={"topic": "haystack"}, id=call_id)]
-    )
-
-
-def _long_conversation() -> list[ChatMessage]:
-    return [
-        ChatMessage.from_system("rules"),
-        ChatMessage.from_user("start"),
-        _tool_call("c1"),
-        _tool_result("R" * 400, call_id="c1"),
-        _tool_call("c2"),
-        _tool_result("R" * 400, call_id="c2"),
-    ]
-
-
-def _state(messages: list[ChatMessage], **data) -> State:
-    base = {"messages": messages, "step_count": 2, "context_tokens": 900, "token_usage": {}, "tool_call_counts": {}}
-    return State(
-        schema={
-            "messages": {"type": list[ChatMessage]},
-            "step_count": {"type": int},
-            "context_tokens": {"type": int},
-            "token_usage": {"type": dict},
-            "tool_call_counts": {"type": dict},
-        },
-        data={**base, **data},
-    )
+def _fetch_call(call_id: str) -> ChatMessage:
+    """A call to the `fetch` tool, which the Agent-level tests actually have registered."""
+    return tool_call(call_id, name="fetch", arguments={"topic": "haystack"})
 
 
 def _agent(hooks) -> Agent:
     return Agent(
         chat_generator=MockChatGenerator(
-            responses=[_tool_call("c1"), _tool_call("c2"), _tool_call("c3"), "done"],
+            responses=[_fetch_call("c1"), _fetch_call("c2"), _fetch_call("c3"), "done"],
             meta={"usage": {"prompt_tokens": 900, "completion_tokens": 100}},
         ),
         tools=[fetch],
@@ -109,7 +79,7 @@ def _assert_every_tool_result_is_answered(messages: list[ChatMessage]) -> None:
 
 
 class TestContextCompactionHook:
-    def test_rejects_a_threshold_that_is_always_met(self):
+    def test_rejects_invalid_threshold(self):
         with pytest.raises(ValueError, match="`threshold_tokens` must be at least 1"):
             ContextCompactionHook(compactor=SlidingWindowCompactor(), threshold_tokens=0)
 
@@ -126,28 +96,27 @@ class TestContextCompactionHook:
     def test_trigger(self, context_tokens, should_compact):
         compactor = _RecordingCompactor()
         hook = ContextCompactionHook(compactor=compactor, threshold_tokens=100)
-        hook.run(_state(_long_conversation(), context_tokens=context_tokens))
+        hook.run(make_state(long_conversation(), context_tokens=context_tokens))
         assert compactor.calls == (["compact"] if should_compact else [])
 
     def test_rewrites_messages_and_resets_context_tokens(self):
         hook = ContextCompactionHook(compactor=SlidingWindowCompactor(keep_last_n_messages=2), threshold_tokens=100)
-        state = _state(
-            _long_conversation(), context_tokens=900, token_usage={"prompt_tokens": 12}, tool_call_counts={"fetch": 2}
+        state = make_state(
+            long_conversation(), context_tokens=900, token_usage={"prompt_tokens": 12}, tool_call_counts={"fetch": 2}
         )
         hook.run(state)
         messages = state.data["messages"]
         assert len(messages) == 4
-        assert _COMPACTION_META_KEY in messages[1].meta
+        assert count_markers(messages) == 1
         assert state.data["context_tokens"] == 0
         # Cumulative run metadata records what the run spent and did, which compaction does not change.
-        # TODO You could technically argue that compaction if using a chat generator should increment the token usage
         assert state.data["token_usage"] == {"prompt_tokens": 12}
         assert state.data["tool_call_counts"] == {"fetch": 2}
 
     def test_leaves_the_conversation_alone_when_the_compactor_declines(self):
-        messages = _long_conversation()
+        messages = long_conversation()
         hook = ContextCompactionHook(compactor=_RecordingCompactor(result=None), threshold_tokens=100)
-        state = _state(messages, context_tokens=900)
+        state = make_state(messages, context_tokens=900)
         hook.run(state)
         assert state.data["messages"] == messages
         assert state.data["context_tokens"] == 900
@@ -158,7 +127,7 @@ class TestContextCompactionHook:
         hook = ContextCompactionHook(compactor=SlidingWindowCompactor(), threshold_tokens=100)
         with caplog.at_level(logging.WARNING):
             for step_count in (0, 1, 2, 3):
-                hook.run(_state(_long_conversation(), step_count=step_count, context_tokens=0))
+                hook.run(make_state(long_conversation(), step_count=step_count, context_tokens=0))
         assert caplog.text.count("does not report token usage") == 1
 
     @pytest.mark.parametrize(
@@ -172,7 +141,7 @@ class TestContextCompactionHook:
     def test_does_not_warn_about_usage(self, caplog, step_count, context_tokens):
         hook = ContextCompactionHook(compactor=SlidingWindowCompactor(), threshold_tokens=100)
         with caplog.at_level(logging.WARNING):
-            hook.run(_state(_long_conversation(), step_count=step_count, context_tokens=context_tokens))
+            hook.run(make_state(long_conversation(), step_count=step_count, context_tokens=context_tokens))
         assert "does not report token usage" not in caplog.text
 
     def test_lifecycle_delegates_to_the_compactor(self):
@@ -214,7 +183,7 @@ class TestContextCompactionHookInAgent:
         messages = compacted["messages"]
         assert len(messages) < len(uncompacted["messages"])
         # Exactly one omission note: each compaction folds the previous one into the block it drops.
-        assert sum(_COMPACTION_META_KEY in message.meta for message in messages) == 1
+        assert count_markers(messages) == 1
         assert messages[0].text == "rules"
         assert compacted["last_message"].text == "done"
         _assert_every_tool_result_is_answered(messages)
@@ -222,7 +191,7 @@ class TestContextCompactionHookInAgent:
     def test_does_not_compact_below_the_threshold(self):
         hook = ContextCompactionHook(compactor=SlidingWindowCompactor(), threshold_tokens=1_000_000)
         result = _agent({"before_llm": [hook]}).run(messages=[ChatMessage.from_user("start")])
-        assert not any(_COMPACTION_META_KEY in message.meta for message in result["messages"])
+        assert count_markers(result["messages"]) == 0
 
 
 class TestContextCompactionHookAsync:
@@ -230,13 +199,13 @@ class TestContextCompactionHookAsync:
     async def test_run_async_uses_the_async_compaction_path(self):
         compactor = _RecordingCompactor()
         hook = ContextCompactionHook(compactor=compactor, threshold_tokens=100)
-        await hook.run_async(_state(_long_conversation()))
+        await hook.run_async(make_state(long_conversation()))
         assert compactor.calls == ["compact_async"]
 
     @pytest.mark.asyncio
     async def test_run_async_rewrites_messages(self):
         hook = ContextCompactionHook(compactor=SlidingWindowCompactor(keep_last_n_messages=2), threshold_tokens=100)
-        state = _state(_long_conversation(), context_tokens=900)
+        state = make_state(long_conversation(), context_tokens=900)
         await hook.run_async(state)
         assert len(state.data["messages"]) == 4
         assert state.data["context_tokens"] == 0
@@ -253,5 +222,5 @@ class TestContextCompactionHookAsync:
     async def test_compacts_a_multi_step_async_run(self):
         hook = ContextCompactionHook(compactor=SlidingWindowCompactor(keep_last_n_messages=2), threshold_tokens=1000)
         result = await _agent({"before_llm": [hook]}).run_async(messages=[ChatMessage.from_user("start")])
-        assert sum(_COMPACTION_META_KEY in message.meta for message in result["messages"]) == 1
+        assert count_markers(result["messages"]) == 1
         _assert_every_tool_result_is_answered(result["messages"])
