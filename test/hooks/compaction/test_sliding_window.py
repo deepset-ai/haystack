@@ -21,7 +21,6 @@ class TestSlidingWindowCompactor:
     def test_replaces_the_middle_with_an_omission_note(self):
         messages = long_conversation()
         compacted = SlidingWindowCompactor(keep_last_n_messages=2).compact(make_state(messages))
-
         assert compacted is not None
         # The system prefix survives, the note stands in for what was dropped, and the window is kept verbatim.
         assert compacted[0] is messages[0]
@@ -37,7 +36,6 @@ class TestSlidingWindowCompactor:
     def test_omission_note_can_be_turned_off(self):
         messages = long_conversation()
         compacted = SlidingWindowCompactor(keep_last_n_messages=2, omission_note=None).compact(make_state(messages))
-
         assert compacted == [messages[0], *messages[4:]]
 
     @pytest.mark.parametrize(
@@ -53,7 +51,6 @@ class TestSlidingWindowCompactor:
         compacted = SlidingWindowCompactor(keep_last_n_messages=2, omission_note=note).compact(
             make_state(long_conversation())
         )
-
         assert compacted is not None
         assert compacted[1].text == expected
 
@@ -69,12 +66,10 @@ class TestSlidingWindowCompactor:
         assert SlidingWindowCompactor(keep_last_n_messages=20).compact(make_state(messages)) is None
 
     def test_keeps_a_tool_call_together_with_its_results(self):
-        # Keeping exactly one message would start the window at a tool result whose call had been dropped, which
-        # chat-completion APIs reject. The window grows instead.
         messages = long_conversation()
         compacted = SlidingWindowCompactor(keep_last_n_messages=1).compact(make_state(messages))
-
-        assert compacted is not None
+        # 1 system, 1 note, 2 tool messages: the call and its result are kept together.
+        assert len(compacted) == 4
         assert compacted[-2:] == messages[4:]
         assert compacted[-2].tool_calls[0].id == compacted[-1].tool_call_result.origin.id
 
@@ -83,18 +78,15 @@ class TestSlidingWindowCompactor:
         # The Agent may be mid-step with a pending tool call whose result is appended right after compaction returns.
         messages = long_conversation()
         compacted = SlidingWindowCompactor(keep_last_n_messages=keep_last_n_messages).compact(make_state(messages))
-
         assert (compacted or messages)[-1] is messages[-1]
 
     def test_repeated_compaction_folds_the_previous_note(self):
         compactor = SlidingWindowCompactor(keep_last_n_messages=2)
         first = compactor.compact(make_state(long_conversation()))
         assert first is not None
-
         # Simulate two more turns arriving on top of the already-compacted conversation.
         grown = [*first, tool_call("c3"), tool_result("third result", call_id="c3")]
         second = compactor.compact(make_state(grown))
-
         assert second is not None
         # Exactly one note: the earlier one is inside the block that was dropped, not carried along beside the new one.
         assert count_markers(second) == 1
@@ -109,7 +101,6 @@ class TestSlidingWindowCompactor:
             ChatMessage.from_user("b"),
             ChatMessage.from_user("c"),
         ]
-
         assert SlidingWindowCompactor(keep_last_n_messages=2).compact(make_state(messages)) is None
         # Without a note there is a real saving, so the same cut is worth making.
         assert SlidingWindowCompactor(keep_last_n_messages=2, omission_note=None).compact(make_state(messages)) == [
@@ -124,7 +115,6 @@ class TestSlidingWindowCompactor:
     def test_serde_round_trip(self):
         compactor = SlidingWindowCompactor(keep_last_n_messages=7, omission_note="Dropped {num_removed}.")
         data = compactor.to_dict()
-
         assert data == {
             "type": "haystack.hooks.compaction.sliding_window.SlidingWindowCompactor",
             "init_parameters": {"keep_last_n_messages": 7, "omission_note": "Dropped {num_removed}."},
@@ -140,7 +130,6 @@ class TestSlidingWindowCompactorAsync:
         # `SlidingWindowCompactor` does no I/O, so it relies on the protocol's default `compact_async`.
         compactor = SlidingWindowCompactor(keep_last_n_messages=2)
         messages = long_conversation()
-
         assert await compactor.compact_async(make_state(messages)) == compactor.compact(make_state(messages))
 
     @pytest.mark.asyncio
