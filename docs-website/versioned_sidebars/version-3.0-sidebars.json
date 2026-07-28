@@ -93,8 +93,7 @@
         "concepts/device-management",
         "concepts/secret-management",
         "concepts/jinja-templates",
-        "concepts/integrations",
-        "concepts/experimental-package"
+        "concepts/integrations"
       ]
     },
     {

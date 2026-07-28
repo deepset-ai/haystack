@@ -98,7 +98,6 @@ export default {
         'concepts/secret-management',
         'concepts/jinja-templates',
         'concepts/integrations',
-        'concepts/experimental-package',
       ],
     },
     {
