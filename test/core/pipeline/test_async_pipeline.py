@@ -558,10 +558,10 @@ async def test_run_component_async_propagates_breakpoint_exception():
     """
     Regression test: _run_component_async must re-raise BreakpointException as-is.
 
-    Before the fix, a bare ``except Exception`` in _run_component_async would catch the
-    BreakpointException raised at the start of that method (before _execute_component_async
-    is even called) and wrap it in a PipelineRuntimeError, silently breaking the breakpoint
-    feature for the async path.
+    Before the fix, a ``BreakpointException`` raised during component execution (or by a nested pipeline)
+    was caught by the generic ``except Exception`` handler in _run_component_async and wrapped in a
+    new ``PipelineRuntimeError``, preventing callers from handling breakpoints correctly in the
+    async pipeline path.
     """
 
     @component
