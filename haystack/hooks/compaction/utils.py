@@ -32,6 +32,8 @@ def _compaction_bounds(messages: list[ChatMessage], keep_last_n: int) -> tuple[i
     ):
         start += 1
 
+    # We assume that tool calls and their results are always adjacent, so we can step back over a batch of results in
+    # one pass.
     end = max(len(messages) - keep_last_n, start)
     while end > start and messages[end].tool_call_result is not None:
         end -= 1
