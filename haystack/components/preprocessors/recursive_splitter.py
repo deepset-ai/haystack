@@ -38,7 +38,7 @@ class RecursiveDocumentSplitter:
     from haystack import Document
     from haystack.components.preprocessors import RecursiveDocumentSplitter
 
-    chunker = RecursiveDocumentSplitter(split_length=260, split_overlap=0, separators=["\\n\\n", "\\n", ".", " "])
+    chunker = RecursiveDocumentSplitter(split_length=15, split_overlap=0, separators=["\\n\\n", "\\n", ".", " "])
     text = ('''Artificial intelligence (AI) - Introduction
 
     AI, in its broadest sense, is intelligence exhibited by machines, particularly computer systems.
@@ -47,10 +47,11 @@ class RecursiveDocumentSplitter:
     doc_chunks = chunker.run([doc])
     print(doc_chunks["documents"])
     # [
-    # Document(id=..., content: 'Artificial intelligence (AI) - Introduction\\n\\n', meta: {'original_id': '...', 'split_id': 0, 'split_idx_start': 0, '_split_overlap': []})
-    # Document(id=..., content: 'AI, in its broadest sense, is intelligence exhibited by machines, particularly computer systems.\\n', meta: {'original_id': '...', 'split_id': 1, 'split_idx_start': 45, '_split_overlap': []})
-    # Document(id=..., content: 'AI technology is widely used throughout industry, government, and science.', meta: {'original_id': '...', 'split_id': 2, 'split_idx_start': 142, '_split_overlap': []})
-    # Document(id=..., content: ' Some high-profile applications include advanced web search engines; recommendation systems; interac...', meta: {'original_id': '...', 'split_id': 3, 'split_idx_start': 216, '_split_overlap': []})
+    # Document(id=..., content: 'Artificial intelligence (AI) - Introduction\\n\\n', meta: {'source_id': '...', 'parent_id': '...', 'split_id': 0, 'split_idx_start': 0, '_split_overlap': None, 'page_number': 1})
+    # Document(id=..., content: 'AI, in its broadest sense, is intelligence exhibited by machines, particularly computer systems.\\n', meta: {'source_id': '...', 'parent_id': '...', 'split_id': 1, 'split_idx_start': 45, '_split_overlap': None, 'page_number': 1})
+    # Document(id=..., content: 'AI technology is widely used throughout industry, government, and science.', meta: {'source_id': '...', 'parent_id': '...', 'split_id': 2, 'split_idx_start': 142, '_split_overlap': None, 'page_number': 1})
+    # Document(id=..., content: ' Some high-profile applications include advanced web search engines; recommendation systems; interac...', meta: {'source_id': '...', 'parent_id': '...', 'split_id': 3, 'split_idx_start': 216, '_split_overlap': None, 'page_number': 1})
+    # Document(id=..., content: 'vehicles; generative and creative tools; and superhuman play and analysis in strategy games.', meta: {'source_id': '...', 'parent_id': '...', 'split_id': 4, 'split_idx_start': 350, '_split_overlap': None, 'page_number': 1})
     # ]
     ```
     """  # noqa: E501
@@ -425,6 +426,7 @@ class RecursiveDocumentSplitter:
 
         for split_nr, chunk in enumerate(chunks):
             meta = deepcopy(doc.meta)
+            meta["source_id"] = doc.id
             meta["parent_id"] = doc.id
             meta["split_id"] = split_nr
             meta["split_idx_start"] = current_position
