@@ -1,0 +1,40 @@
+---
+features:
+  - |
+    Added context compaction for the ``Agent``: a ``ContextCompactionHook`` that shortens the conversation once it
+    grows past a threshold, and a ``Compactor`` protocol defining how the shortening is done. The first built-in
+    strategy is ``SlidingWindowCompactor``, which keeps the leading system messages and the most recent messages and
+    drops what is in between, leaving a short note in their place. Register the hook under the ``before_llm`` hook
+    point:
+
+    .. code-block:: python
+
+        from haystack.components.agents import Agent
+        from haystack.components.generators.chat import OpenAIChatGenerator
+        from haystack.hooks.compaction import ContextCompactionHook, SlidingWindowCompactor
+
+        hook = ContextCompactionHook(
+            compactor=SlidingWindowCompactor(keep_last_n_messages=20),
+            threshold_tokens=100_000,
+            threshold_chars=400_000,
+        )
+        agent = Agent(
+            chat_generator=OpenAIChatGenerator(model="gpt-5.4-nano"),
+            tools=[web_search],
+            hooks={"before_llm": [hook]},
+        )
+
+    At least one threshold must be set, and setting both is the most robust configuration. ``threshold_tokens`` reads
+    the ``context_tokens`` state key, which is the more accurate signal but stays at ``0`` for Chat Generators that do
+    not report token usage - in which case that threshold never fires. ``threshold_chars`` is measured from the
+    messages themselves, so it works with any Chat Generator and accounts for content added since the last call.
+
+    Compaction never leaves a tool result whose originating tool call was removed, which chat-completion APIs reject:
+    the boundary of the retained window is moved backwards onto the assistant message holding the call, so slightly
+    more may be kept than ``keep_last_n_messages`` asks for. Implement the ``Compactor`` protocol to define your own
+    strategy; the conversation it returns must keep the final message, because the Agent may be mid-step with a pending
+    tool call whose result is appended right after compaction.
+
+    Note that compaction is lossy. After it runs the Agent works from a shorter record of the run, and with
+    ``SlidingWindowCompactor`` anything outside the retained window is gone rather than summarized. Set the threshold
+    well below the model's context window, since it is checked before the chat-generator call rather than after.
