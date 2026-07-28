@@ -127,3 +127,19 @@ but can be used with `await` in async code.
 
 - <code>ValueError</code> – If the specified document store is not found.
 - <code>TypeError</code> – If the specified document store does not implement `write_documents_async`.
+
+#### close
+
+```python
+close() -> None
+```
+
+Release the synchronous resources of the underlying Document Store.
+
+#### close_async
+
+```python
+close_async() -> None
+```
+
+Release the asynchronous resources of the underlying Document Store.
