@@ -18,7 +18,7 @@
 | haystack/components/builders/chat\_prompt\_builder.py                     |      110 |        2 |     98% |  179, 266 |
 | haystack/components/builders/prompt\_builder.py                           |       50 |        0 |    100% |           |
 | haystack/components/caching/\_\_init\_\_.py                               |        5 |        0 |    100% |           |
-| haystack/components/caching/cache\_checker.py                             |       37 |        0 |    100% |           |
+| haystack/components/caching/cache\_checker.py                             |       43 |        0 |    100% |           |
 | haystack/components/converters/\_\_init\_\_.py                            |        5 |        0 |    100% |           |
 | haystack/components/converters/csv.py                                     |       88 |        4 |     95% |161-162, 189-190 |
 | haystack/components/converters/docx.py                                    |      159 |        1 |     99% |       262 |
@@ -108,15 +108,15 @@
 | haystack/components/rankers/meta\_field.py                                |      118 |        0 |    100% |           |
 | haystack/components/rankers/meta\_field\_grouping\_ranker.py              |       38 |        0 |    100% |           |
 | haystack/components/retrievers/\_\_init\_\_.py                            |        5 |        0 |    100% |           |
-| haystack/components/retrievers/auto\_merging\_retriever.py                |       80 |        0 |    100% |           |
-| haystack/components/retrievers/filter\_retriever.py                       |       22 |        1 |     95% |        55 |
+| haystack/components/retrievers/auto\_merging\_retriever.py                |       86 |        0 |    100% |           |
+| haystack/components/retrievers/filter\_retriever.py                       |       28 |        1 |     96% |        55 |
 | haystack/components/retrievers/in\_memory/\_\_init\_\_.py                 |        5 |        0 |    100% |           |
 | haystack/components/retrievers/in\_memory/bm25\_retriever.py              |       44 |        0 |    100% |           |
 | haystack/components/retrievers/in\_memory/embedding\_retriever.py         |       49 |        1 |     98% |       102 |
 | haystack/components/retrievers/multi\_query\_embedding\_retriever.py      |       77 |        2 |     97% |  193, 212 |
 | haystack/components/retrievers/multi\_query\_text\_retriever.py           |       67 |        3 |     96% |123, 169, 184 |
 | haystack/components/retrievers/multi\_retriever.py                        |      114 |        1 |     99% |       135 |
-| haystack/components/retrievers/sentence\_window\_retriever.py             |       98 |        6 |     94% |139, 249, 269-276, 291-298 |
+| haystack/components/retrievers/sentence\_window\_retriever.py             |      104 |        6 |     94% |139, 249, 269-276, 291-298 |
 | haystack/components/retrievers/text\_embedding\_retriever.py              |       52 |        0 |    100% |           |
 | haystack/components/retrievers/types/\_\_init\_\_.py                      |        2 |        0 |    100% |           |
 | haystack/components/retrievers/types/protocol.py                          |        5 |        0 |    100% |           |
@@ -132,7 +132,7 @@
 | haystack/components/validators/\_\_init\_\_.py                            |        5 |        0 |    100% |           |
 | haystack/components/validators/json\_schema.py                            |       71 |        8 |     89% |23-24, 137, 139, 154, 242, 248, 252 |
 | haystack/components/writers/\_\_init\_\_.py                               |        5 |        0 |    100% |           |
-| haystack/components/writers/document\_writer.py                           |       32 |        0 |    100% |           |
+| haystack/components/writers/document\_writer.py                           |       38 |        0 |    100% |           |
 | haystack/core/\_\_init\_\_.py                                             |        2 |        0 |    100% |           |
 | haystack/core/component/\_\_init\_\_.py                                   |        3 |        0 |    100% |           |
 | haystack/core/component/component.py                                      |      185 |        1 |     99% |       355 |
@@ -247,7 +247,7 @@
 | haystack/utils/type\_serialization.py                                     |      123 |        6 |     95% |82, 84, 210-211, 219, 235 |
 | haystack/utils/url\_validation.py                                         |        4 |        0 |    100% |           |
 | haystack/version.py                                                       |        5 |        2 |     60% |      9-10 |
-| **TOTAL**                                                                 | **15942** |  **791** | **95%** |           |
+| **TOTAL**                                                                 | **15972** |  **791** | **95%** |           |
 
 
 ## Setup coverage badge

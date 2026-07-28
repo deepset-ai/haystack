@@ -54,8 +54,8 @@
             </div>
         </aside>
         <h2>
-            <span class="text">98 statements &nbsp;</span>
-            <button type="button" class="run button_toggle_run" value="run" data-shortcut="r" title="Toggle lines run">92<span class="text"> run</span></button>
+            <span class="text">104 statements &nbsp;</span>
+            <button type="button" class="run button_toggle_run" value="run" data-shortcut="r" title="Toggle lines run">98<span class="text"> run</span></button>
             <button type="button" class="mis show_mis button_toggle_mis" value="mis" data-shortcut="m" title="Toggle lines missing">6<span class="text"> missing</span></button>
             <button type="button" class="exc show_exc button_toggle_exc" value="exc" data-shortcut="x" title="Toggle lines excluded">0<span class="text"> excluded</span></button>
         </h2>
@@ -65,7 +65,7 @@
             <a id="nextFileLink" class="nav" href="z_b12fb4765b6fa33a_text_embedding_retriever_py.html">&#xbb; next</a>
             &nbsp; &nbsp; &nbsp;
             <a class="nav" href="https://coverage.readthedocs.io/en/7.15.2">coverage.py v7.15.2</a>,
-            created at 2026-07-27 15:16 +0000
+            created at 2026-07-28 07:47 +0000
         </p>
         <aside class="hidden">
             <button type="button" class="button_next_chunk" data-shortcut="j"></button>
@@ -401,6 +401,20 @@
     <p class="run run2"><span class="n"><a id="t319" href="#t319">319</a></span><span class="t">            <span class="op">*</span><span class="nam">source_id_filters</span><span class="op">,</span>&nbsp;</span><span class="r"></span></p>
     <p class="run run2"><span class="n"><a id="t320" href="#t320">320</a></span><span class="t">        <span class="op">]</span>&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t321" href="#t321">321</a></span><span class="t">        <span class="key">return</span> <span class="op">{</span><span class="str">"operator"</span><span class="op">:</span> <span class="str">"AND"</span><span class="op">,</span> <span class="str">"conditions"</span><span class="op">:</span> <span class="nam">conditions</span><span class="op">}</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t322" href="#t322">322</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t323" href="#t323">323</a></span><span class="t">    <span class="key">def</span> <span class="nam">close</span><span class="op">(</span><span class="nam">self</span><span class="op">)</span> <span class="op">-></span> <span class="key">None</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t324" href="#t324">324</a></span><span class="t">        <span class="str">"""</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t325" href="#t325">325</a></span><span class="t"><span class="str">        Release the synchronous resources of the underlying Document Store.</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t326" href="#t326">326</a></span><span class="t"><span class="str">        """</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t327" href="#t327">327</a></span><span class="t">        <span class="key">if</span> <span class="nam">hasattr</span><span class="op">(</span><span class="nam">self</span><span class="op">.</span><span class="nam">document_store</span><span class="op">,</span> <span class="str">"close"</span><span class="op">)</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t328" href="#t328">328</a></span><span class="t">            <span class="nam">self</span><span class="op">.</span><span class="nam">document_store</span><span class="op">.</span><span class="nam">close</span><span class="op">(</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t329" href="#t329">329</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t330" href="#t330">330</a></span><span class="t">    <span class="key">async</span> <span class="key">def</span> <span class="nam">close_async</span><span class="op">(</span><span class="nam">self</span><span class="op">)</span> <span class="op">-></span> <span class="key">None</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t331" href="#t331">331</a></span><span class="t">        <span class="str">"""</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t332" href="#t332">332</a></span><span class="t"><span class="str">        Release the asynchronous resources of the underlying Document Store.</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t333" href="#t333">333</a></span><span class="t"><span class="str">        """</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t334" href="#t334">334</a></span><span class="t">        <span class="key">if</span> <span class="nam">hasattr</span><span class="op">(</span><span class="nam">self</span><span class="op">.</span><span class="nam">document_store</span><span class="op">,</span> <span class="str">"close_async"</span><span class="op">)</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t335" href="#t335">335</a></span><span class="t">            <span class="key">await</span> <span class="nam">self</span><span class="op">.</span><span class="nam">document_store</span><span class="op">.</span><span class="nam">close_async</span><span class="op">(</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
 </main>
 <footer>
     <div class="content">
@@ -410,7 +424,7 @@
             <a class="nav" href="z_b12fb4765b6fa33a_text_embedding_retriever_py.html">&#xbb; next</a>
             &nbsp; &nbsp; &nbsp;
             <a class="nav" href="https://coverage.readthedocs.io/en/7.15.2">coverage.py v7.15.2</a>,
-            created at 2026-07-27 15:16 +0000
+            created at 2026-07-28 07:47 +0000
         </p>
     </div>
 </footer>
