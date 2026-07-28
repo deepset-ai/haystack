@@ -12,6 +12,7 @@ from haystack.components.agents.state.state import State
 from haystack.components.generators.chat import MockChatGenerator
 from haystack.dataclasses import ChatMessage, ToolCall
 from haystack.hooks.compaction import Compactor, ContextCompactionHook, SlidingWindowCompactor
+from haystack.hooks.compaction.sliding_window import _DEFAULT_OMISSION_NOTE
 from haystack.hooks.compaction.utils import _COMPACTION_META_KEY
 from haystack.tools import tool
 
@@ -219,7 +220,7 @@ class TestContextCompactionHook:
             "init_parameters": {
                 "compactor": {
                     "type": "haystack.hooks.compaction.sliding_window.SlidingWindowCompactor",
-                    "init_parameters": {"keep_last_n_messages": 4, "omission_note": True},
+                    "init_parameters": {"keep_last_n_messages": 4, "omission_note": _DEFAULT_OMISSION_NOTE},
                 },
                 "threshold_tokens": 100_000,
             },

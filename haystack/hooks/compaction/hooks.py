@@ -57,10 +57,8 @@ class ContextCompactionHook:
         """
         Initialize the hook with a compactor and the context size that triggers it.
 
-        :param compactor: The `Compactor` that rewrites the conversation, for example a `SlidingWindowCompactor`.
-        :param threshold_tokens: Compact once the `context_tokens` state key reaches this value. The Agent refreshes
-            that key after each chat-generator call from the reply's reported token usage, so the Agent's Chat
-            Generator must report usage for this to ever fire.
+        :param compactor: The `Compactor` that rewrites the conversation.
+        :param threshold_tokens: Compact once the `context_tokens` state key reaches this value.
         :raises ValueError: If `threshold_tokens` is less than 1, which would compact on every step.
         """
         if threshold_tokens < 1:
@@ -112,12 +110,8 @@ class ContextCompactionHook:
         """
         Warn when `context_tokens` is still unset after the Agent's first chat-generator call.
 
-        `context_tokens` is legitimately `0` before the first call. Still being `0` afterwards means the Chat Generator
-        does not report token usage, so the threshold can never be reached and this hook will silently do nothing for
-        the whole run.
-
-        `step_count` equals 1 at exactly one `before_llm` call per run, so warning only then logs once without the hook
-        having to remember anything - which keeps it safe to share across concurrent runs.
+        `context_tokens` still being `0` after the first step (i.e. `step_count=0`) means the Chat Generator does not
+        report token usage, so we warn the user that the hook will never compact this run.
 
         :param state: The Agent's `State`.
         :returns: None.
@@ -127,31 +121,22 @@ class ContextCompactionHook:
         logger.warning(
             "The Agent's `context_tokens` is still 0 after the first chat-generator call, which means the Chat "
             "Generator does not report token usage. `ContextCompactionHook` triggers on `context_tokens`, so it will "
-            "never compact this run. Use a Chat Generator that reports usage in `meta['usage']`."
+            "never compact this run. Use a Chat Generator that reports usage in `replies[0].meta['usage']`."
         )
 
     def _apply(self, state: State, compacted: list[ChatMessage] | None) -> None:
         """
         Write a compacted conversation back into `State`.
 
-        A compactor returns None when it has nothing worth changing, so there is no second-guessing here: whatever it
-        returns is applied.
-
-        `context_tokens` is reset to `0`, its "not yet measured" value: the count it held describes the conversation
-        that was just replaced, and the next chat-generator call refreshes it from real usage. Leaving the old value in
-        place would re-trigger compaction on the next step.
-
-        The cumulative run metadata (`token_usage`, `tool_call_counts`) is deliberately left alone - it records what
-        the run has spent and done, which compaction does not change.
-
         :param state: The Agent's live `State`.
         :param compacted: The compactor's result, or None when it had nothing to change.
-        :returns: None.
+        :returns: None
         """
         if compacted is None:
             return
         messages_before = len(state.data.get("messages") or [])
         state.set("messages", compacted, handler_override=replace_values)
+        # Reset to "not yet measured" so the next chat-generator call refreshes it from real usage.
         state.set("context_tokens", 0)
         logger.debug(
             "Compacted the Agent's conversation from {before} to {after} messages.",

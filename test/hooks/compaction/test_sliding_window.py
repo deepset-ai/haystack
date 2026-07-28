@@ -7,6 +7,7 @@ import pytest
 from haystack.components.agents.state.state import State
 from haystack.dataclasses import ChatMessage, ToolCall
 from haystack.hooks.compaction import SlidingWindowCompactor
+from haystack.hooks.compaction.sliding_window import _DEFAULT_OMISSION_NOTE
 from haystack.hooks.compaction.utils import _COMPACTION_META_KEY
 
 SCHEMA = {"messages": {"type": list[ChatMessage]}, "step_count": {"type": int}}
@@ -54,13 +55,30 @@ class TestSlidingWindowCompactor:
             "removed_messages": 3,
             "kept_messages": 2,
         }
-        assert "3 earlier messages" in compacted[1].text
+        assert compacted[1].text == _DEFAULT_OMISSION_NOTE.replace("{num_removed}", "3")
 
     def test_omission_note_can_be_turned_off(self):
         messages = _long_conversation()
-        compacted = SlidingWindowCompactor(keep_last_n_messages=2, omission_note=False).compact(_state(messages))
+        compacted = SlidingWindowCompactor(keep_last_n_messages=2, omission_note=None).compact(_state(messages))
 
         assert compacted == [messages[0], *messages[4:]]
+
+    @pytest.mark.parametrize(
+        ("note", "expected"),
+        [
+            pytest.param("Dropped {num_removed} messages.", "Dropped 3 messages.", id="placeholder-substituted"),
+            pytest.param("Some history is missing.", "Some history is missing.", id="no-placeholder-used-as-written"),
+            # A note is arbitrary user text, so braces of its own must not be treated as placeholders.
+            pytest.param("Gone: {other} x{num_removed}", "Gone: {other} x3", id="other-braces-left-alone"),
+        ],
+    )
+    def test_omission_note_can_be_customized(self, note, expected):
+        compacted = SlidingWindowCompactor(keep_last_n_messages=2, omission_note=note).compact(
+            _state(_long_conversation())
+        )
+
+        assert compacted is not None
+        assert compacted[1].text == expected
 
     @pytest.mark.parametrize(
         "messages",
@@ -118,7 +136,7 @@ class TestSlidingWindowCompactor:
 
         assert SlidingWindowCompactor(keep_last_n_messages=2).compact(_state(messages)) is None
         # Without a note there is a real saving, so the same cut is worth making.
-        assert SlidingWindowCompactor(keep_last_n_messages=2, omission_note=False).compact(_state(messages)) == [
+        assert SlidingWindowCompactor(keep_last_n_messages=2, omission_note=None).compact(_state(messages)) == [
             messages[0],
             *messages[2:],
         ]
@@ -128,16 +146,16 @@ class TestSlidingWindowCompactor:
             SlidingWindowCompactor(keep_last_n_messages=0)
 
     def test_serde_round_trip(self):
-        compactor = SlidingWindowCompactor(keep_last_n_messages=7, omission_note=False)
+        compactor = SlidingWindowCompactor(keep_last_n_messages=7, omission_note="Dropped {num_removed}.")
         data = compactor.to_dict()
 
         assert data == {
             "type": "haystack.hooks.compaction.sliding_window.SlidingWindowCompactor",
-            "init_parameters": {"keep_last_n_messages": 7, "omission_note": False},
+            "init_parameters": {"keep_last_n_messages": 7, "omission_note": "Dropped {num_removed}."},
         }
         restored = SlidingWindowCompactor.from_dict(data)
         assert restored.keep_last_n_messages == 7
-        assert restored.omission_note is False
+        assert restored.omission_note == "Dropped {num_removed}."
 
 
 class TestSlidingWindowCompactorAsync:

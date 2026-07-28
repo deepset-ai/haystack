@@ -10,14 +10,21 @@ from haystack.dataclasses import ChatMessage
 from haystack.hooks.compaction.types import Compactor
 from haystack.hooks.compaction.utils import _COMPACTION_META_KEY, _compaction_bounds
 
+# Placeholder a custom omission note may include to have the number of removed messages substituted in.
+_NUM_REMOVED_PLACEHOLDER = "{num_removed}"
+
+_DEFAULT_OMISSION_NOTE = (
+    f"[{_NUM_REMOVED_PLACEHOLDER} earlier messages were removed from this conversation to free up context and cannot "
+    f"be recovered.]"
+)
+
 
 class SlidingWindowCompactor(Compactor):
     """
     Keeps the leading system messages and the most recent messages, dropping everything in between.
 
-    The cheapest strategy and the most lossy: nothing is written in place of what it removes, so anything the Agent
-    learned outside the retained window is simply gone. It suits runs whose turns are largely independent, or as a
-    last resort behind a strategy that preserves more.
+    An `omission_note` is left in place of what was removed. Cheap but lossy: whatever the Agent learned outside the
+    retained window is gone, so it suits runs whose turns are largely independent.
 
     ```python
     from haystack.components.agents import Agent
@@ -33,18 +40,16 @@ class SlidingWindowCompactor(Compactor):
     ```
     """
 
-    def __init__(self, *, keep_last_n_messages: int = 20, omission_note: bool = True) -> None:
+    def __init__(self, *, keep_last_n_messages: int = 20, omission_note: str | None = _DEFAULT_OMISSION_NOTE) -> None:
         """
         Initialize the compactor with the size of the window it retains.
 
-        :param keep_last_n_messages: How many of the most recent messages to keep. The boundary is moved further back
-            when it would otherwise split a tool call from its results, so slightly more may be kept. Must be at least
-            1: the Agent may be mid-step with a pending tool call whose result is appended right after compaction, and
-            dropping the message holding that call would leave the result orphaned.
-        :param omission_note: Whether to leave a short system message in place of what was removed. Keep it on unless
-            you have a reason not to - without it the conversation reads as though the removed turns never happened,
-            and the model may repeat work or answer as if it had context it no longer has.
-        :raises ValueError: If `keep_last_n_messages` is less than 1.
+        :param keep_last_n_messages: How many of the most recent messages to keep. Slightly more may be kept when the
+            boundary would otherwise split a tool call from its results.
+        :param omission_note: The system message left in place of what was removed, or None to remove the messages
+            silently. Include `{num_removed}` to have the number of removed messages substituted in.
+        :raises ValueError: If `keep_last_n_messages` is less than 1, which would drop a pending tool call whose result
+            the Agent appends right after compaction.
         """
         if keep_last_n_messages < 1:
             raise ValueError(
@@ -59,23 +64,22 @@ class SlidingWindowCompactor(Compactor):
         Drop the messages between the leading system block and the retained window.
 
         :param state: The Agent's `State`, read only. The conversation is `state.data["messages"]`.
-        :returns: The leading system messages, an optional omission note, and the retained window; or None when the
-            conversation already fits in the window, or when the omission note would cost as much as it saves.
+        :returns: The system messages, an omission note if one is configured, and the retained window; or None when
+            there is nothing worth removing.
         """
         messages = state.data.get("messages") or []
         start, end = _compaction_bounds(messages, self.keep_last_n_messages)
         removed = end - start
-        # With a note, removing a single message only swaps it for the note and would repeat every step, replacing one
-        # note with the next.
+        # With a note, removing a single message just swaps it for the note.
         if removed < (2 if self.omission_note else 1):
             return None
 
         compacted = list(messages[:start])
         if self.omission_note:
-            subject = "1 earlier message was" if removed == 1 else f"{removed} earlier messages were"
             compacted.append(
                 ChatMessage.from_system(
-                    f"[{subject} removed from this conversation to free up context and cannot be recovered.]",
+                    # `replace` rather than `format`, so a note carrying braces of its own cannot raise.
+                    self.omission_note.replace(_NUM_REMOVED_PLACEHOLDER, str(removed)),
                     meta={
                         _COMPACTION_META_KEY: {
                             "step": state.data.get("step_count", 0),

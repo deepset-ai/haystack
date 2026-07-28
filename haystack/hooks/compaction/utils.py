@@ -12,21 +12,17 @@ def _compaction_bounds(messages: list[ChatMessage], keep_last_n: int) -> tuple[i
     """
     Return the half-open range of messages that compaction may remove.
 
-    Before the range sits the leading block of system messages: the Agent's standing instructions, which stay in context
-    however often the conversation is compacted. That block ends at the first system message carrying
-    `_COMPACTION_META_KEY`, because an earlier compaction produced that one and the next compaction replaces it instead
-    of accumulating beside it.
+    The range starts after the leading block of system messages, the Agent's standing instructions, which stay in
+    context however often the conversation is compacted. That block ends at the first system message carrying
+    `_COMPACTION_META_KEY`, since an earlier compaction produced that one and the next compaction replaces it.
 
-    After the range sits the tail of `keep_last_n` recent messages. The tail's start is moved backwards off any
-    tool-result message: the matching tool call lives in the assistant message before it, which compaction is about to
-    remove, and a tool result whose call is missing is rejected by chat-completion APIs. Moving backwards retains more
-    than `keep_last_n` rather than fewer, and steps over a whole batch of parallel tool results in one pass. Nothing is
-    checked inside the range itself, since it is removed as a block rather than reconnected to anything.
+    The range ends before the tail of `keep_last_n` recent messages, moved back off any tool-result message so that the
+    tail keeps the assistant message holding the matching call - a tool result whose call is missing is rejected by
+    chat-completion APIs. Moving back also steps over a whole batch of parallel tool results in one pass.
 
     :param messages: The conversation, oldest to newest.
     :param keep_last_n: How many trailing messages to retain, before the adjustment described above.
-    :returns: The `(start, end)` indices of the removable range, where `end - start` is how many messages it covers and
-        `0` means there is nothing to remove.
+    :returns: The `(start, end)` indices of the removable range; `end - start` is `0` when there is nothing to remove.
     """
     start = 0
     while (

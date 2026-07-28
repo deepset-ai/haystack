@@ -13,24 +13,19 @@ class Compactor(Protocol):
     """
     Rewrites an Agent's conversation into a shorter one that carries the same working context.
 
-    A compactor is the *how* of context compaction; deciding *when* to compact is the caller's job (the
-    `ContextCompactionHook` compares the context size against a threshold, and `ContextCompactionTool` lets the model
-    ask for it). Strategies differ widely in cost and fidelity: summarizing the older turns with an LLM, replacing
-    stale tool results with a placeholder, or dropping the oldest messages outright.
+    A compactor is the *how* of context compaction; deciding *when* to compact is the caller's job, which
+    `ContextCompactionHook` does by comparing the context size against a threshold. Strategies differ widely in cost
+    and fidelity, from dropping the oldest messages outright to condensing them with an LLM.
 
     Implementations must honor three rules:
 
-    1. **Return `None` unless the conversation actually gets smaller.** Callers apply whatever else is returned without
-       second-guessing it, so judging whether compacting was worthwhile is the compactor's job - it is the only party
-       that knows what its own output costs. Returning `None` also makes a compactor free to call repeatedly once it
-       has nothing left to give.
-    2. **Do not mutate `state`.** It is read-only context: `messages` to compact, plus `step_count`,
-       `context_tokens`, `tools`, and `hook_context` for strategies that want them. The caller writes the returned
-       list back into `State`.
+    1. **Return `None` unless the conversation actually gets smaller.** Callers apply whatever else is returned, so
+       judging whether compacting was worthwhile is the compactor's job.
+    2. **Do not mutate `state`.** It is read-only context: `messages` to compact, plus `step_count`, `context_tokens`,
+       `tools`, and `hook_context` for strategies that want them. The caller writes the returned list back into `State`.
     3. **Never drop the final message.** The Agent may be mid-step with a pending tool call whose result is appended
-       right after compaction returns; dropping the assistant message that holds that call leaves the result orphaned,
-       which chat-completion APIs reject. Keeping a non-empty tail of recent messages, or rewriting messages in place,
-       satisfies this.
+       right after compaction returns, and dropping the assistant message holding that call leaves the result orphaned,
+       which chat-completion APIs reject.
 
     Implement both `to_dict` and `from_dict` to make a custom compactor serializable; the default implementations
     below cover compactors whose constructor takes no arguments.
@@ -49,9 +44,8 @@ class Compactor(Protocol):
         """
         Asynchronously return a compacted replacement for `state.data["messages"]`, or None to leave it unchanged.
 
-        The default implementation calls `compact` directly, which is correct for a strategy that only rearranges
-        messages. Override it when compaction does I/O — for example, calling a Chat Generator to write a summary —
-        so the event loop is not blocked.
+        The default implementation calls `compact` directly. Override it when compaction does I/O, so the event loop is
+        not blocked.
 
         :param state: The Agent's `State`, read-only. The conversation to compact is `state.data["messages"]`.
         :returns: The replacement conversation, or None when this compactor has nothing to change.
