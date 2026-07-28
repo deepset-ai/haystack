@@ -124,6 +124,18 @@ def test_basic_equality_id():
     assert doc1 != doc2
 
 
+def test_equality_with_colliding_meta_keys():
+    # Documents whose metadata contains keys that collide with top-level Document
+    # fields (e.g. "id", "score") must not compare as equal when their metadata
+    # values differ. to_dict(flatten=True) merges meta into the top level, causing
+    # the meta value to overwrite the real field value before comparison; this test
+    # guards against that regression.
+    doc1 = Document(content="text", meta={"id": "meta-id-1"})
+    doc2 = Document(content="text", meta={"id": "meta-id-2"})
+
+    assert doc1 != doc2
+
+
 def test_id_is_independent_of_meta_key_order():
     doc1 = Document(content="hello", meta={"a": 1, "b": 2})
     doc2 = Document(content="hello", meta={"b": 2, "a": 1})

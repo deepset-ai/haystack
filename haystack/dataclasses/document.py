@@ -94,7 +94,7 @@ class Document(metaclass=_RemoveLegacyFields):  # noqa: PLW1641
         """
         if type(self) != type(other):
             return False
-        return self.to_dict() == other.to_dict()
+        return self.to_dict(flatten=False) == other.to_dict(flatten=False)
 
     def _create_id(self) -> str:
         """
