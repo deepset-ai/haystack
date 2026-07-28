@@ -9,6 +9,7 @@ from collections.abc import Iterator
 from typing import Any
 
 from haystack.tracing import Span, Tracer
+from haystack.tracing.utils import coerce_tag_value
 
 
 @dataclasses.dataclass
@@ -46,6 +47,44 @@ class SpyingTracer(Tracer):
         self, operation_name: str, tags: dict[str, Any] | None = None, parent_span: Span | None = None
     ) -> Iterator[Span]:
         new_span = SpyingSpan(operation_name, parent_span)
+        for key, value in (tags or {}).items():
+            new_span.set_tag(key, value)
+
+        self.spans.append(new_span)
+
+        yield new_span
+
+
+@dataclasses.dataclass
+class EagerSpyingSpan(Span):
+    """
+    A span that coerces tag values when `set_tag` is called.
+
+    This mirrors real tracing backends (e.g. OpenTelemetry, Datadog), which serialize a tag value eagerly
+    when it is set instead of holding a live reference to it. It is useful to catch tags that are set from a
+    mutable object before that object has been populated.
+    """
+
+    operation_name: str
+    parent_span: Span | None = None
+    tags: dict[str, Any] = dataclasses.field(default_factory=dict)
+
+    def set_tag(self, key: str, value: Any) -> None:
+        self.tags[key] = coerce_tag_value(value)
+
+
+class EagerSpyingTracer(Tracer):
+    def current_span(self) -> Span | None:
+        return self.spans[-1] if self.spans else None
+
+    def __init__(self) -> None:
+        self.spans: list[EagerSpyingSpan] = []
+
+    @contextlib.contextmanager
+    def trace(
+        self, operation_name: str, tags: dict[str, Any] | None = None, parent_span: Span | None = None
+    ) -> Iterator[Span]:
+        new_span = EagerSpyingSpan(operation_name, parent_span)
         for key, value in (tags or {}).items():
             new_span.set_tag(key, value)
 

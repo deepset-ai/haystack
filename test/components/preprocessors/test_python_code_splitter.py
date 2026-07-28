@@ -836,6 +836,12 @@ class TestOversizedFallback:
         assert chunks_with_short and chunks_with_long
         assert chunks_with_short[0] is not chunks_with_long[0]
 
+    def test_qualified_name_in_meta_for_all_pieces(self, oversized_function_source):
+        splitter = PythonCodeSplitter(min_effective_lines=2, max_effective_lines=5, oversized_factor=3)
+        result = splitter.run(documents=[Document(content=oversized_function_source)])
+        for piece in result["documents"]:
+            assert piece.meta.get("qualified_name") == "giant"
+
 
 class TestEdgeCases:
     def test_module_with_only_docstring(self):

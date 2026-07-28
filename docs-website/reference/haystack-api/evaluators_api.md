@@ -107,17 +107,20 @@ print(result["individual_scores"])
 print(result["results"])
 # [{
 #   'relevant_statements': ['Python, created by Guido van Rossum in the late 1980s.'],
-#    'score': 1.0
+#   'score': 1.0,
+#   'status': 'evaluated'
 #  },
 #  {
 #   'relevant_statements': ['The JVM has two primary functions: to allow Java programs to run on any device or
 #                           operating system (known as the "write once, run anywhere" principle), and to manage and
 #                           optimize program memory'],
-#   'score': 1.0
+#   'score': 1.0,
+#   'status': 'evaluated'
 #  },
 #  {
 #   'relevant_statements': [],
-#   'score': 0.0
+#   'score': 0.0,
+#   'status': 'evaluated'
 #  }]
 ```
 
@@ -180,7 +183,9 @@ Run the LLM evaluator.
 
 - <code>dict\[str, Any\]</code> – A dictionary with the following outputs:
   - `score`: Mean context relevance score over all the provided input questions.
-  - `results`: A list of dictionaries with `relevant_statements` and `score` for each input context.
+  - `individual_scores`: A list of context relevance scores for each input question.
+  - `results`: A list of dictionaries with `relevant_statements`, `score`, and `status` for each input
+    context. `status` is `evaluated` for valid results and `error` for failed evaluations.
 
 #### run_async
 
@@ -199,7 +204,9 @@ Run the LLM evaluator asynchronously.
 
 - <code>dict\[str, Any\]</code> – A dictionary with the following outputs:
   - `score`: Mean context relevance score over all the provided input questions.
-  - `results`: A list of dictionaries with `relevant_statements` and `score` for each input context.
+  - `individual_scores`: A list of context relevance scores for each input question.
+  - `results`: A list of dictionaries with `relevant_statements`, `score`, and `status` for each input
+    context. `status` is `evaluated` for valid results and `error` for failed evaluations.
 
 #### to_dict
 
@@ -538,7 +545,9 @@ calculate_idcg(gt_docs: list[Document]) -> float
 Calculate the ideal discounted cumulative gain (IDCG) of the ground truth documents.
 
 Ground truth documents whose comparison value cannot be determined (e.g. missing meta key)
-are excluded, since they can never be matched in `calculate_dcg` either. Including them here
+are excluded, since they can never be matched in `calculate_dcg` either. Documents that share
+a comparison value are collapsed to a single relevant item, mirroring `calculate_dcg`, which
+credits each relevant value at most once. Including duplicates or unmatchable documents here
 would inflate the IDCG and make it impossible for NDCG to reach 1.0 for a perfect retrieval.
 
 **Parameters:**
@@ -687,7 +696,8 @@ print(result["score"])
 # 0.5
 print(result["results"])
 # [{'statements': ['Python is a high-level general-purpose programming language.',
-# 'Python was created by George Lucas.'], 'statement_scores': [1, 0], 'score': 0.5}]
+# 'Python was created by George Lucas.'], 'statement_scores': [1, 0], 'score': 0.5,
+# 'status': 'evaluated'}]
 ```
 
 #### __init__
@@ -753,7 +763,8 @@ Run the LLM evaluator.
 - <code>dict\[str, Any\]</code> – A dictionary with the following outputs:
   - `score`: Mean faithfulness score over all the provided input answers.
   - `individual_scores`: A list of faithfulness scores for each input answer.
-  - `results`: A list of dictionaries with `statements` and `statement_scores` for each input answer.
+  - `results`: A list of dictionaries with `statements`, `statement_scores`, `score`, and `status` for
+    each input answer. `status` is `evaluated` for valid results and `error` for failed evaluations.
 
 #### run_async
 
@@ -774,7 +785,8 @@ Run the LLM evaluator asynchronously.
 - <code>dict\[str, Any\]</code> – A dictionary with the following outputs:
   - `score`: Mean faithfulness score over all the provided input answers.
   - `individual_scores`: A list of faithfulness scores for each input answer.
-  - `results`: A list of dictionaries with `statements` and `statement_scores` for each input answer.
+  - `results`: A list of dictionaries with `statements`, `statement_scores`, `score`, and `status` for
+    each input answer. `status` is `evaluated` for valid results and `error` for failed evaluations.
 
 #### to_dict
 

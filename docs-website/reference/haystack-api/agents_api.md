@@ -101,7 +101,6 @@ agent = Agent(
     user_prompt="""{% message role="user"%}
 Translate the following document to {{ language }}: {{ document }}
 {% endmessage %}""",
-    required_variables=["language", "document"],
 )
 
 # The template variables 'language' and 'document' become inputs to the run method
@@ -172,7 +171,7 @@ __init__(
     tools: ToolsType | None = None,
     system_prompt: str | None = None,
     user_prompt: str | None = None,
-    required_variables: list[str] | Literal["*"] | None = None,
+    required_variables: list[str] | Literal["*"] | None = "*",
     exit_conditions: list[str] | None = None,
     state_schema: dict[str, Any] | None = None,
     max_agent_steps: int = 100,
@@ -199,7 +198,8 @@ Initialize the agent component.
   [documentation](https://docs.haystack.deepset.ai/docs/chatpromptbuilder#string-templates).
 - **required_variables** (<code>list\[str\] | Literal['\*'] | None</code>) – Lists the variables that must be provided as inputs to `user_prompt` or `system_prompt`.
   If a required variable is not provided at run time, an exception is raised.
-  If set to `"*"`, all variables found in the prompts are required. Optional.
+  If set to `"*"`, all variables found in the prompts are required. Defaults to `"*"`.
+  Set to `None` to make all variables optional; missing ones render as empty strings.
 - **exit_conditions** (<code>list\[str\] | None</code>) – List of conditions that will cause the agent to return.
   Can include "text" if the agent should return when it generates a message without tool calls,
   or tool names that will cause the agent to return once the tool was executed. Defaults to ["text"].
@@ -351,6 +351,10 @@ Process messages and execute tools until an exit condition is met.
 - "token_usage": Aggregated token usage from every LLM call in the run, summed from each LLM message's
   `meta["usage"]`.
 - "tool_call_counts": Mapping of tool name to the number of times that tool was invoked.
+- "exit_reason": Why the Agent stopped, useful for routing the output downstream (e.g. with a
+  `ConditionalRouter`). One of: `"text"` (the model returned a reply with no tool calls), the name of
+  the tool that satisfied a tool exit condition (in which case `last_message` is that tool's result),
+  or `"max_agent_steps"` (the Agent hit `max_agent_steps` before meeting an exit condition).
 - Any additional keys defined in the `state_schema`.
 
 #### run_async
@@ -399,6 +403,10 @@ if available.
 - "token_usage": Aggregated token usage from every LLM call in the run, summed from each LLM message's
   `meta["usage"]`.
 - "tool_call_counts": Mapping of tool name to the number of times that tool was invoked.
+- "exit_reason": Why the Agent stopped, useful for routing the output downstream (e.g. with a
+  `ConditionalRouter`). One of: `"text"` (the model returned a reply with no tool calls), the name of
+  the tool that satisfied a tool exit condition (in which case `last_message` is that tool's result),
+  or `"max_agent_steps"` (the Agent hit `max_agent_steps` before meeting an exit condition).
 - Any additional keys defined in the `state_schema`.
 
 ## state/state

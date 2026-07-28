@@ -33,6 +33,11 @@ def _deepcopy_with_exceptions(obj: Any) -> Any:
     from haystack.tools.tool import Tool
     from haystack.tools.toolset import Toolset
 
+    # namedtuples are tuple subclasses whose __new__ takes the fields positionally,
+    # so they must be rebuilt by unpacking rather than from a single iterable.
+    if isinstance(obj, tuple) and hasattr(obj, "_fields"):
+        return type(obj)(*(_deepcopy_with_exceptions(v) for v in obj))
+
     if isinstance(obj, (list, tuple, set)):
         return type(obj)(_deepcopy_with_exceptions(v) for v in obj)
 

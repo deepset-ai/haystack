@@ -41,11 +41,12 @@ The `Agent` returns a dictionary containing:
 - `step_count`: the number of steps the agent ran,
 - `token_usage`: aggregated token usage summed across every LLM call in the run,
 - `tool_call_counts`: how many times each tool was invoked, keyed by tool name,
+- `exit_reason`: why the agent stopped, useful for routing its output downstream,
 - Additional dynamic keys based on `state_schema`.
 
 ### Run Metadata
 
-The `step_count`, `token_usage`, and `tool_call_counts` outputs are populated automatically during a run. They are added to the agent's `state_schema` behind the scenes, so tools registered with `inputs_from_state` can read them mid-run. They are outputs only — they cannot be passed as inputs to `run()` or `run_async()`, and using them as keys in your own `state_schema` raises a `ValueError`. See [State](./state.mdx#schema-definition) for details.
+The `step_count`, `token_usage`, `tool_call_counts`, and `exit_reason` outputs are populated automatically during a run. They are added to the agent's `state_schema` behind the scenes, so tools registered with `inputs_from_state` and [hooks](./hooks.mdx) can read them from the live `State`. They are outputs only — they cannot be passed as inputs to `run()` or `run_async()`, and using them as keys in your own `state_schema` raises a `ValueError`. See [State](./state.mdx#schema-definition) for details.
 
 ```python
 response = agent.run(messages=[ChatMessage.from_user("What is 7 * (4 + 2)?")])
@@ -55,6 +56,32 @@ print(
     response["token_usage"],
 )  # {"prompt_tokens": 512, "completion_tokens": 86, ...}
 print(response["tool_call_counts"])  # {"calculator": 1}
+print(response["exit_reason"])  # "text"
+```
+
+### Exit reason
+
+The `exit_reason` output tells you why the agent stopped, which makes it easy to route the agent's output downstream — for example, with a [`ConditionalRouter`](../routers/conditionalrouter.mdx). It is one of:
+
+- `"text"`: the model returned a reply with no tool calls.
+- the name of the tool that satisfied a tool exit condition. In this case `last_message` is that tool's result — a tool-result `ChatMessage` whose `text` is empty — so `exit_reason` tells you how to consume it.
+- `"max_agent_steps"`: the agent reached `max_agent_steps` before meeting an exit condition.
+
+Because `exit_reason` is available on the live `State`, an `after_run` [hook](./hooks.mdx) can read it to react to how the run ended — for example, appending a fallback answer when the step budget is exhausted before the agent finished:
+
+```python
+from haystack.components.agents.state import State
+from haystack.dataclasses import ChatMessage
+from haystack.hooks import hook
+
+
+@hook
+def fallback_on_max_steps(state: State) -> None:
+    if state.get("exit_reason") == "max_agent_steps":
+        state.set(
+            "messages",
+            [ChatMessage.from_assistant("Sorry, I ran out of steps before finishing.")],
+        )
 ```
 
 ## Parameters

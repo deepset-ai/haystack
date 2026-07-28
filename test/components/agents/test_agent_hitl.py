@@ -103,7 +103,7 @@ class TestAgent:
                                 "required": ["a", "b"],
                                 "type": "object",
                             },
-                            "function": "test_agent_hitl.addition_tool",
+                            "function": "agents.test_agent_hitl.addition_tool",
                             "async_function": None,
                             "outputs_to_string": None,
                             "inputs_from_state": None,
@@ -119,7 +119,7 @@ class TestAgent:
                 "raise_on_tool_invocation_failure": False,
                 "tool_concurrency_limit": 4,
                 "tool_streaming_callback_passthrough": False,
-                "required_variables": None,
+                "required_variables": "*",
                 "user_prompt": None,
                 "hooks": {
                     "before_tool": [

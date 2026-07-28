@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Declare the ``meta`` output of ``LLMEvaluator``, ``ContextRelevanceEvaluator``, and ``FaithfulnessEvaluator``, and
+    the ``individual_scores`` output of ``ContextRelevanceEvaluator``. These outputs were already returned but not
+    declared, so they could not be connected to other components in a Pipeline.

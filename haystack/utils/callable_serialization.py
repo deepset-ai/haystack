@@ -4,6 +4,7 @@
 
 import inspect
 from collections.abc import Callable
+from types import ModuleType
 from typing import Any
 
 from haystack import logging
@@ -11,6 +12,7 @@ from haystack.core.errors import DeserializationError, SerializationError
 from haystack.core.serialization_security import (
     _check_module_allowed,
     _check_not_denied_builtin,
+    _check_resolved_module_allowed,
     _is_denied_builtin,
     _is_module_allowed,
 )
@@ -84,13 +86,14 @@ def deserialize_callable(callable_handle: str) -> Callable:
 
     parts = callable_handle.split(".")
 
-    # Allow if any prefix is on the allowlist; checking each one individually would wrongly
-    # reject patterns like `j*on` against `json.dumps` (matches `json`, not the full handle).
-    if not any(_is_module_allowed(".".join(parts[:i])) for i in range(1, len(parts) + 1)):
-        _check_module_allowed(callable_handle)  # raises with the standard help message
-
     for i in range(len(parts), 0, -1):
         module_name = ".".join(parts[:i])
+        # Only import modules that are on the allowlist. Gating the import (rather than a mere
+        # string prefix of the handle) means a disallowed module is never imported for its
+        # side effects, and the resolver can only ever start from a trusted module. Shorter
+        # prefixes are tried in turn, so `json.dumps` still resolves when `json` is allowed.
+        if not _is_module_allowed(module_name):
+            continue
         try:
             mod: Any = thread_safe_import(module_name)
         except Exception:
@@ -104,6 +107,12 @@ def deserialize_callable(callable_handle: str) -> Callable:
             except AttributeError as e:
                 container = getattr(attr_value, "__name__", type(attr_value).__name__)
                 raise DeserializationError(f"Could not find attribute '{part}' in {container}") from e
+            # A crafted handle can walk into a *module* re-exported as an attribute of an
+            # allowlisted module (e.g. `haystack.utils.auth.os` -> the `os` module). The declared
+            # path had an allowlisted prefix, but the module's real identity (`__name__`) is not
+            # allowlisted. Re-check every module hop so the walk cannot escape the allowlist.
+            if isinstance(attr_value, ModuleType):
+                _check_module_allowed(attr_value.__name__)
 
         # when the attribute is a classmethod, we need the underlying function
         if isinstance(attr_value, (classmethod, staticmethod)):
@@ -120,11 +129,20 @@ def deserialize_callable(callable_handle: str) -> Callable:
         if not callable(attr_value):
             raise DeserializationError(f"The final attribute is not callable: {attr_value}")
 
+        # Final defense: gate on the module the resolved callable actually comes from, not on the
+        # declared handle. This catches a dangerous callable bound as a plain (non-module) attribute
+        # of an allowlisted object, which the module-walk check above would not see. `module_name`
+        # is the allowlisted module we resolved from, so a private C accelerator backing it (e.g.
+        # `operator.add` -> `_operator`) is still accepted.
+        _check_resolved_module_allowed(attr_value, declared_module=module_name)
+
         # `builtins` is on the allowlist (for `builtins.print` etc.), so the module check
         # above does not stop dangerous builtins like `eval`/`exec` from resolving here. Block them.
         _check_not_denied_builtin(attr_value, callable_handle)
 
         return attr_value
 
-    # Fallback if we never find anything
+    # Nothing on the allowlist was importable. Surface the standard allowlist error when the
+    # top-level module is untrusted; otherwise report a plain resolution failure.
+    _check_module_allowed(callable_handle)
     raise DeserializationError(f"Could not import '{callable_handle}' as a module or callable.")

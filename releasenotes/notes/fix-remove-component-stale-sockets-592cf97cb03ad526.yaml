@@ -1,0 +1,11 @@
+---
+fixes:
+  - |
+    Fixed ``Pipeline.remove_component`` leaving dangling references to the removed
+    component on the sockets of its neighboring components. Previously, removing a
+    component reset only its own sockets, so a surviving neighbor kept the removed
+    component's name in its input socket's ``senders`` (or output socket's
+    ``receivers``). This corrupted introspection and validation: ``Pipeline.inputs()``
+    hid a now-unconnected mandatory input, and feeding that input directly could
+    raise a spurious "already connected" error. The removed component's name is now
+    stripped from its neighbors' sockets as well.

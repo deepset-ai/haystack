@@ -386,7 +386,6 @@ class Pipeline(PipelineBase):
             "haystack.pipeline.run",
             tags={
                 "haystack.pipeline.input_data": data,
-                "haystack.pipeline.output_data": pipeline_outputs,
                 "haystack.pipeline.metadata": self.metadata,
                 "haystack.pipeline.max_runs_per_component": self._max_runs_per_component,
                 "haystack.pipeline.execution_mode": "sync",
@@ -514,8 +513,11 @@ class Pipeline(PipelineBase):
                     "The given breakpoint {break_point} was never triggered. This is because:\n"
                     "1. The provided component is not a part of the pipeline execution path.\n"
                     "2. The component did not reach the visit count specified in the pipeline_breakpoint",
-                    pipeline_breakpoint=break_point,
+                    break_point=break_point,
                 )
+
+            # Set here so the tag reflects the final outputs.
+            span.set_content_tag("haystack.pipeline.output_data", pipeline_outputs)
 
             return pipeline_outputs
 
@@ -907,7 +909,6 @@ class Pipeline(PipelineBase):
             "haystack.pipeline.run",
             tags={
                 "haystack.pipeline.input_data": data,
-                "haystack.pipeline.output_data": pipeline_outputs,
                 "haystack.pipeline.metadata": self.metadata,
                 "haystack.pipeline.max_runs_per_component": self._max_runs_per_component,
                 "haystack.pipeline.execution_mode": "async",
@@ -1050,6 +1051,9 @@ class Pipeline(PipelineBase):
                     running_tasks, scheduled_components, return_when=asyncio.ALL_COMPLETED
                 ):
                     yield partial_outputs
+
+                # Set here so the tag reflects the final outputs.
+                parent_span.set_content_tag("haystack.pipeline.output_data", pipeline_outputs)
 
                 # Yield the final pipeline outputs.
                 yield pipeline_outputs

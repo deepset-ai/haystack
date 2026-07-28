@@ -100,7 +100,7 @@ class LostInTheMiddleRanker:
             return {"documents": documents_to_reorder}
 
         # Raise an error if any document is not textual
-        if any(not doc.content_type == "text" for doc in documents_to_reorder):
+        if any(doc.content is None for doc in documents_to_reorder):
             raise ValueError("Some provided documents are not textual; LostInTheMiddleRanker can process only text.")
 
         # Initialize word count and indices for the "lost in the middle" order
