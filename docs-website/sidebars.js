@@ -688,6 +688,7 @@ export default {
           },
           items: [
             'pipeline-components/websearch/bravewebsearch',
+            'pipeline-components/websearch/ddgswebsearch',
             'pipeline-components/websearch/firecrawlwebsearch',
             'pipeline-components/websearch/perplexitywebsearch',
             'pipeline-components/websearch/searchapiwebsearch',
