@@ -32,8 +32,9 @@ features:
     Compaction never leaves a tool result whose originating tool call was removed, which chat-completion APIs reject:
     the boundary of the retained window is moved backwards onto the assistant message holding the call, so slightly
     more may be kept than ``keep_last_n_messages`` asks for. Implement the ``Compactor`` protocol to define your own
-    strategy. Return ``None`` unless the conversation actually gets smaller, and never drop the final message, because
-    the Agent may be mid-step with a pending tool call whose result is appended right after compaction.
+    strategy: it takes the conversation as a plain list of ``ChatMessage`` and returns a shorter one. Return ``None``
+    unless the conversation actually gets smaller, and never drop the final message, because the Agent may be mid-step
+    with a pending tool call whose result is appended right after compaction.
 
     Note that compaction is lossy. After it runs the Agent works from a shorter record of the run, and with
     ``SlidingWindowCompactor`` anything outside the retained window is gone rather than summarized.

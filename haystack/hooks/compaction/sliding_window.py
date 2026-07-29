@@ -4,7 +4,6 @@
 
 from typing import Any
 
-from haystack.components.agents.state.state import State
 from haystack.core.serialization import default_to_dict
 from haystack.dataclasses import ChatMessage
 from haystack.hooks.compaction.types import Compactor
@@ -46,7 +45,7 @@ class SlidingWindowCompactor(Compactor):
 
         :param keep_last_n_messages: How many of the most recent messages to keep. Slightly more may be kept when the
             boundary would otherwise split a tool call from its results.
-        :param omission_note: The system message left in place of what was removed, or None to remove the messages
+        :param omission_note: The user message left in place of what was removed, or None to remove the messages
             silently. Include `{num_removed}` to have the number of removed messages substituted in.
         :raises ValueError: If `keep_last_n_messages` is less than 1, which would drop a pending tool call whose result
             the Agent appends right after compaction.
@@ -59,15 +58,14 @@ class SlidingWindowCompactor(Compactor):
         self.keep_last_n_messages = keep_last_n_messages
         self.omission_note = omission_note
 
-    def compact(self, state: State) -> list[ChatMessage] | None:
+    def compact(self, messages: list[ChatMessage]) -> list[ChatMessage] | None:
         """
         Drop the messages between the leading system block and the retained window.
 
-        :param state: The Agent's `State`, read only. The conversation is `state.data["messages"]`.
+        :param messages: The conversation to compact, oldest to newest.
         :returns: The system messages, an omission note if one is configured, and the retained window; or None when
             there is nothing worth removing.
         """
-        messages = state.data.get("messages") or []
         start, end = _compaction_bounds(messages, self.keep_last_n_messages)
         removed = end - start
         # With a note, removing a single message just swaps it for the note.
@@ -77,12 +75,13 @@ class SlidingWindowCompactor(Compactor):
         compacted = list(messages[:start])
         if self.omission_note:
             compacted.append(
-                ChatMessage.from_system(
+                # A user message rather than a system one: providers that hoist system messages into a separate
+                # top-level field would move the note away from the point in the conversation it describes.
+                ChatMessage.from_user(
                     # `replace` rather than `format`, so a note carrying braces of its own cannot raise.
                     self.omission_note.replace(_NUM_REMOVED_PLACEHOLDER, str(removed)),
                     meta={
                         _COMPACTION_META_KEY: {
-                            "step": state.data.get("step_count", 0),
                             "strategy": "sliding_window",
                             "removed_messages": removed,
                             "kept_messages": len(messages) - end,

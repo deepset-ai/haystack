@@ -79,7 +79,7 @@ class ContextCompactionHook:
         """
         if not self._over_threshold(state):
             return
-        self._apply(state, self.compactor.compact(state))
+        self._apply(state, self.compactor.compact(state.data.get("messages") or []))
 
     async def run_async(self, state: State) -> None:
         """
@@ -91,7 +91,7 @@ class ContextCompactionHook:
         """
         if not self._over_threshold(state):
             return
-        self._apply(state, await self.compactor.compact_async(state))
+        self._apply(state, await self.compactor.compact_async(state.data.get("messages") or []))
 
     def _over_threshold(self, state: State) -> bool:
         """
@@ -139,7 +139,8 @@ class ContextCompactionHook:
         # Reset to "not yet measured" so the next chat-generator call refreshes it from real usage.
         state.set("context_tokens", 0)
         logger.debug(
-            "Compacted the Agent's conversation from {before} to {after} messages.",
+            "Compacted the Agent's conversation at step {step} from {before} to {after} messages.",
+            step=state.data.get("step_count", 0),
             before=messages_before,
             after=len(compacted),
         )

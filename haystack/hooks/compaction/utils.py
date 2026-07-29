@@ -4,26 +4,23 @@
 
 from haystack.dataclasses import ChatMessage, ChatRole
 
-# Meta key marking a message that a compactor produced. Its value records which strategy ran and at which step.
+# Meta key marking a message that a compactor produced. Its value records which strategy ran.
 _COMPACTION_META_KEY = "context_compaction"
 
 
 def _compaction_bounds(messages: list[ChatMessage], keep_last_n: int) -> tuple[int, int]:
     """
-    Return the half-open range of messages that compaction may remove.
+    Return where the block of messages that compaction may remove starts and ends.
 
-    The range starts after the leading block of system messages, the Agent's standing instructions, which stay in
-    context however often the conversation is compacted. That block ends at the first system message carrying
-    `_COMPACTION_META_KEY`, since an earlier compaction produced that one and the next compaction replaces it.
-
-    The range ends before the tail of `keep_last_n` recent messages, moved back off any tool-result message so that the
-    tail keeps the assistant message holding the matching call - a tool result whose call is missing is rejected by
-    chat-completion APIs. Moving back also steps over a whole batch of parallel tool results in one pass.
+    The block runs from `start` up to but not including `end`, so `messages[start:end]` is what may go. Before it are
+    the Agent's standing instructions and after it is the recent window, both of which are kept.
 
     :param messages: The conversation, oldest to newest.
-    :param keep_last_n: How many trailing messages to retain, before the adjustment described above.
-    :returns: The `(start, end)` indices of the removable range; `end - start` is `0` when there is nothing to remove.
+    :param keep_last_n: How many trailing messages to retain, before the adjustment made below.
+    :returns: The `(start, end)` indices of the removable block; `end - start` is `0` when there is nothing to remove.
     """
+    # Skip the Agent's user-defined system prompt. The marker check guards against a compactor configured to write
+    # system messages of its own - those are removable, so they end the block instead of extending it.
     start = 0
     while (
         start < len(messages)
@@ -32,8 +29,8 @@ def _compaction_bounds(messages: list[ChatMessage], keep_last_n: int) -> tuple[i
     ):
         start += 1
 
-    # We assume that tool calls and their results are always adjacent, so we can step back over a batch of results in
-    # one pass.
+    # Walk the tail's start back off any tool result, so the tail keeps the assistant message holding the matching call:
+    # chat-completion APIs reject a tool result whose call is missing. One pass steps over a whole parallel batch.
     end = max(len(messages) - keep_last_n, start)
     while end > start and messages[end].tool_call_result is not None:
         end -= 1

@@ -8,7 +8,6 @@ from typing import Annotated
 import pytest
 
 from haystack.components.agents import Agent
-from haystack.components.agents.state.state import State
 from haystack.components.generators.chat import MockChatGenerator
 from haystack.dataclasses import ChatMessage
 from haystack.hooks.compaction import Compactor, ContextCompactionHook, SlidingWindowCompactor
@@ -30,11 +29,11 @@ class _RecordingCompactor(Compactor):
         self.result = result
         self.calls: list[str] = []
 
-    def compact(self, state: State) -> list[ChatMessage] | None:
+    def compact(self, messages: list[ChatMessage]) -> list[ChatMessage] | None:
         self.calls.append("compact")
         return self.result
 
-    async def compact_async(self, state: State) -> list[ChatMessage] | None:
+    async def compact_async(self, messages: list[ChatMessage]) -> list[ChatMessage] | None:
         self.calls.append("compact_async")
         return self.result
 
