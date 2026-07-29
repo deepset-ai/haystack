@@ -4,6 +4,7 @@
 
 import hashlib
 import json
+import math
 from dataclasses import asdict, dataclass, field, fields
 from typing import Any
 
@@ -25,6 +26,28 @@ class _RemoveLegacyFields(type):
             kwargs.pop(field_name, None)
 
         return super().__call__(*args, **kwargs)
+
+
+def _recursive_is_close(val1: Any, val2: Any) -> bool:
+    if val1 == val2:
+        return True
+    is_f1 = isinstance(val1, float)
+    is_f2 = isinstance(val2, float)
+    if (
+        (is_f1 or is_f2)
+        and isinstance(val1, (int, float))
+        and isinstance(val2, (int, float))
+        and not isinstance(val1, bool)
+        and not isinstance(val2, bool)
+    ):
+        return math.isclose(float(val1), float(val2), rel_tol=1e-7, abs_tol=1e-7)
+    if isinstance(val1, dict) and isinstance(val2, dict):
+        return len(val1) == len(val2) and all(k in val2 and _recursive_is_close(val1[k], val2[k]) for k in val1)
+    if isinstance(val1, (list, tuple)) and isinstance(val2, (list, tuple)):
+        return len(val1) == len(val2) and all(
+            _recursive_is_close(item1, item2) for item1, item2 in zip(val1, val2, strict=True)
+        )
+    return False
 
 
 @_warn_on_inplace_mutation
@@ -90,11 +113,11 @@ class Document(metaclass=_RemoveLegacyFields):  # noqa: PLW1641
         """
         Compares Documents for equality.
 
-        Two Documents are considered equals if their dictionary representation is identical.
+        Two Documents are considered equal if their dictionary representations are close.
         """
         if type(self) != type(other):
             return False
-        return self.to_dict() == other.to_dict()
+        return _recursive_is_close(self.to_dict(), other.to_dict())
 
     def _create_id(self) -> str:
         """

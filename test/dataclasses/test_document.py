@@ -124,6 +124,64 @@ def test_basic_equality_id():
     assert doc1 != doc2
 
 
+def test_equality_float_precision_score():
+    doc1 = Document(content="test text", score=0.123456782, id="1")
+    doc2 = Document(content="test text", score=0.123456780, id="1")
+    assert doc1 == doc2
+
+    doc3 = Document(content="test text", score=0.123456782, id="1")
+    doc4 = Document(content="test text", score=0.234567890, id="1")
+    assert doc3 != doc4
+
+    doc5 = Document(content="test text", score=None, id="1")
+    doc6 = Document(content="test text", score=0.123456782, id="1")
+    assert doc5 != doc6
+
+
+def test_equality_float_precision_embedding():
+    doc1 = Document(content="test text", embedding=[0.123456782, 0.987654321], id="1")
+    doc2 = Document(content="test text", embedding=[0.123456780, 0.987654320], id="1")
+    assert doc1 == doc2
+
+    doc3 = Document(content="test text", embedding=[0.123456782, 0.987654321], id="1")
+    doc4 = Document(content="test text", embedding=[0.123456782, 0.5], id="1")
+    assert doc3 != doc4
+
+    doc5 = Document(content="test text", embedding=[0.123456782], id="1")
+    doc6 = Document(content="test text", embedding=[0.123456782, 0.987654321], id="1")
+    assert doc5 != doc6
+
+    doc7 = Document(content="test text", embedding=None, id="1")
+    doc8 = Document(content="test text", embedding=[0.123456782], id="1")
+    assert doc7 != doc8
+
+
+def test_equality_float_precision_sparse_embedding():
+    from haystack.dataclasses.sparse_embedding import SparseEmbedding
+
+    se1 = SparseEmbedding(indices=[0, 1], values=[0.123456782, 0.987654321])
+    se2 = SparseEmbedding(indices=[0, 1], values=[0.123456780, 0.987654320])
+    doc1 = Document(content="test text", sparse_embedding=se1, id="1")
+    doc2 = Document(content="test text", sparse_embedding=se2, id="1")
+    assert doc1 == doc2
+
+    se3 = SparseEmbedding(indices=[0, 1], values=[0.123456782, 0.987654321])
+    se4 = SparseEmbedding(indices=[0, 1], values=[0.123456782, 0.5])
+    doc3 = Document(content="test text", sparse_embedding=se3, id="1")
+    doc4 = Document(content="test text", sparse_embedding=se4, id="1")
+    assert doc3 != doc4
+
+
+def test_equality_float_precision_nested_meta():
+    doc1 = Document(content="test text", meta={"float_val": 0.123456782}, id="1")
+    doc2 = Document(content="test text", meta={"float_val": 0.123456780}, id="1")
+    assert doc1 == doc2
+
+    doc3 = Document(content="test text", meta={"float_val": 0.123456782}, id="1")
+    doc4 = Document(content="test text", meta={"float_val": 0.5}, id="1")
+    assert doc3 != doc4
+
+
 def test_id_is_independent_of_meta_key_order():
     doc1 = Document(content="hello", meta={"a": 1, "b": 2})
     doc2 = Document(content="hello", meta={"b": 2, "a": 1})
