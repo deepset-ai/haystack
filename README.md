@@ -135,7 +135,7 @@
 | haystack/components/writers/document\_writer.py                           |       38 |        0 |    100% |           |
 | haystack/core/\_\_init\_\_.py                                             |        2 |        0 |    100% |           |
 | haystack/core/component/\_\_init\_\_.py                                   |        3 |        0 |    100% |           |
-| haystack/core/component/component.py                                      |      185 |        1 |     99% |       355 |
+| haystack/core/component/component.py                                      |      179 |        1 |     99% |       346 |
 | haystack/core/component/sockets.py                                        |       41 |        6 |     85% |82, 117-124, 129-130 |
 | haystack/core/component/types.py                                          |       42 |        3 |     93% |     88-90 |
 | haystack/core/errors.py                                                   |       72 |       10 |     86% |60-67, 127, 142-144, 151-153, 166 |
@@ -152,7 +152,7 @@
 | haystack/core/super\_component/\_\_init\_\_.py                            |        2 |        0 |    100% |           |
 | haystack/core/super\_component/super\_component.py                        |      194 |        7 |     96% |67, 196, 209, 247, 301, 343, 596 |
 | haystack/core/super\_component/utils.py                                   |       95 |        4 |     96% |77, 112, 124, 181 |
-| haystack/core/type\_utils.py                                              |      153 |        5 |     97% |51, 58, 121, 157, 249 |
+| haystack/core/type\_utils.py                                              |      164 |        5 |     97% |83, 90, 153, 189, 281 |
 | haystack/dataclasses/\_\_init\_\_.py                                      |        5 |        0 |    100% |           |
 | haystack/dataclasses/answer.py                                            |       57 |        0 |    100% |           |
 | haystack/dataclasses/breakpoints.py                                       |       39 |        0 |    100% |           |
@@ -177,7 +177,7 @@
 | haystack/evaluation/\_\_init\_\_.py                                       |        5 |        0 |    100% |           |
 | haystack/evaluation/eval\_run\_result.py                                  |       93 |       35 |     62% |72-97, 111-120, 189, 192, 195, 200, 211, 215 |
 | haystack/hooks/\_\_init\_\_.py                                            |        5 |        0 |    100% |           |
-| haystack/hooks/from\_function.py                                          |       50 |        2 |     96% |     29-30 |
+| haystack/hooks/from\_function.py                                          |       45 |        0 |    100% |           |
 | haystack/hooks/human\_in\_the\_loop/\_\_init\_\_.py                       |        5 |        0 |    100% |           |
 | haystack/hooks/human\_in\_the\_loop/dataclasses.py                        |       16 |        0 |    100% |           |
 | haystack/hooks/human\_in\_the\_loop/hooks.py                              |       30 |        1 |     97% |       117 |
@@ -247,7 +247,7 @@
 | haystack/utils/type\_serialization.py                                     |      123 |        6 |     95% |82, 84, 210-211, 219, 235 |
 | haystack/utils/url\_validation.py                                         |        4 |        0 |    100% |           |
 | haystack/version.py                                                       |        5 |        2 |     60% |      9-10 |
-| **TOTAL**                                                                 | **15991** |  **788** | **95%** |           |
+| **TOTAL**                                                                 | **15991** |  **786** | **95%** |           |
 
 
 ## Setup coverage badge
