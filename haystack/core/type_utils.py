@@ -50,7 +50,9 @@ def _resolve_parameter_types(target: Callable) -> dict[str, Any]:
             # TypeError is raised for objects that cannot carry annotations, NameError for names that are not
             # importable at runtime. Either way we fall back to the unresolved annotations.
             hints = {}
-        # Every parameter is always in the returned dict; only its type may stay unresolved, as the raw string.
+        # Non-string annotations are kept as they are written: on Python 3.10 `get_type_hints` widens the annotation
+        # of a parameter defaulting to `None` into an optional. This was changed in Python 3.11, see
+        # https://docs.python.org/3/whatsnew/3.11.html#typing.
         return {
             name: hints.get(name, param.annotation) if isinstance(param.annotation, str) else param.annotation
             for name, param in parameters.items()
