@@ -109,38 +109,48 @@ def test_breakpoint_saves_intermediate_outputs(tmp_path, monkeypatch):
     # breakpoint on comp2
     break_point = Breakpoint(component_name="comp2", visit_count=0, snapshot_file_path=str(tmp_path))
 
-    try:
-        # run with include_outputs_from to capture intermediate outputs
+    # run with include_outputs_from to capture intermediate outputs
+    with pytest.raises(BreakpointException) as exc_info:
         pipeline.run(data={"comp1": {"input_value": "test"}}, include_outputs_from={"comp1"}, break_point=break_point)
-    except BreakpointException as e:
-        # breakpoint should be triggered
-        assert e.component == "comp2"
 
-        # verify snapshot file contains the intermediate outputs
-        snapshot_files = list(tmp_path.glob("comp2_*.json"))
-        assert len(snapshot_files) == 1, f"Expected exactly one snapshot file, found {len(snapshot_files)}"
+    # breakpoint should be triggered
+    assert exc_info.value.component == "comp2"
 
-        snapshot_file = snapshot_files[0]
-        loaded_snapshot = load_pipeline_snapshot(snapshot_file)
+    # verify snapshot file contains the intermediate outputs
+    snapshot_files = list(tmp_path.glob("comp2_*.json"))
+    assert len(snapshot_files) == 1, f"Expected exactly one snapshot file, found {len(snapshot_files)}"
 
-        # verify the snapshot contains the intermediate outputs from comp1
-        assert loaded_snapshot.pipeline_state.pipeline_outputs == (
-            {
-                "serialization_schema": {
-                    "type": "object",
-                    "properties": {"comp1": {"type": "object", "properties": {"result": {"type": "string"}}}},
-                },
-                "serialized_data": {"comp1": {"result": "processed_test"}},
-            }
-        )
+    snapshot_file = snapshot_files[0]
+    loaded_snapshot = load_pipeline_snapshot(snapshot_file)
 
-        # verify the whole pipeline state contains the expected data
-        assert loaded_snapshot.pipeline_state.component_visits["comp1"] == 1
-        assert loaded_snapshot.pipeline_state.component_visits["comp2"] == 0
-        assert "comp1" in loaded_snapshot.include_outputs_from
-        assert isinstance(loaded_snapshot.break_point, Breakpoint)
-        assert loaded_snapshot.break_point.component_name == "comp2"
-        assert loaded_snapshot.break_point.visit_count == 0
+    # verify the snapshot contains the intermediate outputs from comp1
+    assert loaded_snapshot.pipeline_state.pipeline_outputs == (
+        {
+            "serialization_schema": {
+                "type": "object",
+                "properties": {"comp1": {"type": "object", "properties": {"result": {"type": "string"}}}},
+            },
+            "serialized_data": {"comp1": {"result": "processed_test"}},
+        }
+    )
+
+    # verify the saved inputs record which component sent each one, keyed by the position it arrived in.
+    # The accompanying schema is asserted in TestCreatePipelineSnapshot.
+    assert loaded_snapshot.pipeline_state.inputs_format == INTERNAL_INPUTS_FORMAT
+    assert loaded_snapshot.pipeline_state.inputs["serialized_data"] == {
+        # comp1 was given its input from outside the pipeline
+        "comp1": {"input_value": {"0": {"sender": None, "value": "test"}}},
+        # comp2 was given its input by comp1, and had not consumed it yet when the breakpoint hit
+        "comp2": {"input_value": {"0": {"sender": "comp1", "value": "processed_test"}}},
+    }
+
+    # verify the whole pipeline state contains the expected data
+    assert loaded_snapshot.pipeline_state.component_visits["comp1"] == 1
+    assert loaded_snapshot.pipeline_state.component_visits["comp2"] == 0
+    assert "comp1" in loaded_snapshot.include_outputs_from
+    assert isinstance(loaded_snapshot.break_point, Breakpoint)
+    assert loaded_snapshot.break_point.component_name == "comp2"
+    assert loaded_snapshot.break_point.visit_count == 0
 
 
 @component
