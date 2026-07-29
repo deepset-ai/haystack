@@ -137,15 +137,15 @@
 | haystack/core/component/\_\_init\_\_.py                                   |        3 |        0 |    100% |           |
 | haystack/core/component/component.py                                      |      185 |        1 |     99% |       355 |
 | haystack/core/component/sockets.py                                        |       41 |        6 |     85% |82, 117-124, 129-130 |
-| haystack/core/component/types.py                                          |       42 |        3 |     93% |     87-89 |
+| haystack/core/component/types.py                                          |       42 |        3 |     93% |     88-90 |
 | haystack/core/errors.py                                                   |       72 |       10 |     86% |60-67, 127, 142-144, 151-153, 166 |
 | haystack/core/pipeline/\_\_init\_\_.py                                    |        2 |        0 |    100% |           |
-| haystack/core/pipeline/base.py                                            |      596 |       53 |     91% |123, 265-266, 270, 409, 421, 620, 657-667, 832, 900, 1470, 1636, 1640, 1650-1656, 1673-1735 |
-| haystack/core/pipeline/breakpoint.py                                      |      107 |       11 |     90% |52, 71, 80, 88, 115-120, 187 |
-| haystack/core/pipeline/component\_checks.py                               |       57 |        0 |    100% |           |
+| haystack/core/pipeline/base.py                                            |      596 |       53 |     91% |123, 265-266, 270, 409, 421, 620, 657-667, 832, 900, 1472, 1639, 1643, 1653-1659, 1676-1738 |
+| haystack/core/pipeline/breakpoint.py                                      |      112 |       11 |     90% |53, 72, 81, 89, 116-121, 188 |
+| haystack/core/pipeline/component\_checks.py                               |       66 |        0 |    100% |           |
 | haystack/core/pipeline/descriptions.py                                    |        6 |        0 |    100% |           |
 | haystack/core/pipeline/draw.py                                            |      199 |       41 |     79% |35-58, 142, 145, 148, 150, 158, 162-169, 293, 303, 375-377, 382, 390-391, 419-424 |
-| haystack/core/pipeline/pipeline.py                                        |      319 |       21 |     93% |171, 178, 407, 451-452, 552, 575, 743, 936, 941, 958-962, 966-978, 1019-1028, 1053 |
+| haystack/core/pipeline/pipeline.py                                        |      322 |       19 |     94% |172, 179, 422, 565, 588, 756, 949, 954, 971-975, 979-991, 1032-1041, 1066 |
 | haystack/core/pipeline/utils.py                                           |       71 |        1 |     99% |       206 |
 | haystack/core/serialization.py                                            |      127 |        6 |     95% |75, 99, 246, 333, 349-350 |
 | haystack/core/serialization\_security.py                                  |       85 |        2 |     98% |  206, 276 |
@@ -155,7 +155,7 @@
 | haystack/core/type\_utils.py                                              |      153 |        5 |     97% |51, 58, 121, 157, 249 |
 | haystack/dataclasses/\_\_init\_\_.py                                      |        5 |        0 |    100% |           |
 | haystack/dataclasses/answer.py                                            |       57 |        0 |    100% |           |
-| haystack/dataclasses/breakpoints.py                                       |       37 |        0 |    100% |           |
+| haystack/dataclasses/breakpoints.py                                       |       39 |        0 |    100% |           |
 | haystack/dataclasses/byte\_stream.py                                      |       39 |        0 |    100% |           |
 | haystack/dataclasses/chat\_message.py                                     |      341 |        4 |     99% |140, 381, 397, 619 |
 | haystack/dataclasses/document.py                                          |       94 |        4 |     96% |79, 81, 83, 85 |
@@ -247,7 +247,7 @@
 | haystack/utils/type\_serialization.py                                     |      123 |        6 |     95% |82, 84, 210-211, 219, 235 |
 | haystack/utils/url\_validation.py                                         |        4 |        0 |    100% |           |
 | haystack/version.py                                                       |        5 |        2 |     60% |      9-10 |
-| **TOTAL**                                                                 | **15973** |  **791** | **95%** |           |
+| **TOTAL**                                                                 | **15992** |  **789** | **95%** |           |
 
 
 ## Setup coverage badge
