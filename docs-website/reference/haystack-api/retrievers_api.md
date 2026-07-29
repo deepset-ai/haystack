@@ -1318,7 +1318,8 @@ document from the document store.
 
 - **retrieved_documents** (<code>list\[Document\]</code>) – List of retrieved documents from the previous retriever.
 - **window_size** (<code>int | None</code>) – The number of documents to retrieve before and after the relevant one. This will overwrite
-  the `window_size` parameter set in the constructor.
+  the `window_size` parameter set in the constructor. It must be greater than 0; values of
+  0 and negative values are rejected.
 
 **Returns:**
 
@@ -1346,7 +1347,8 @@ document from the document store.
 
 - **retrieved_documents** (<code>list\[Document\]</code>) – List of retrieved documents from the previous retriever.
 - **window_size** (<code>int | None</code>) – The number of documents to retrieve before and after the relevant one. This will overwrite
-  the `window_size` parameter set in the constructor.
+  the `window_size` parameter set in the constructor. It must be greater than 0; values of
+  0 and negative values are rejected.
 
 **Returns:**
 
