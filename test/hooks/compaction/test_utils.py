@@ -30,7 +30,21 @@ class TestCompactionBounds:
                 [ChatMessage.from_user("hi"), ChatMessage.from_system("late rules")],
                 1,
                 (0, 1),
-                id="system-not-leading-is-removable",
+                id="system-not-leading-does-not-extend-the-protected-run",
+            ),
+            # Only the leading run of system messages is protected. One injected mid-conversation, such as a per-step
+            # nudge from a hook, is removable like anything else - keeping every one would pile them up.
+            pytest.param(
+                [
+                    ChatMessage.from_system("rules"),
+                    ChatMessage.from_user("a"),
+                    ChatMessage.from_system("nudge"),
+                    ChatMessage.from_user("b"),
+                    ChatMessage.from_user("c"),
+                ],
+                2,
+                (1, 3),
+                id="mid-conversation-system-is-removable",
             ),
             # A note or summary an earlier compaction produced is removable, so the next one replaces it.
             pytest.param(

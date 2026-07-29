@@ -12,15 +12,16 @@ def _compaction_bounds(messages: list[ChatMessage], keep_last_n: int) -> tuple[i
     """
     Return where the block of messages that compaction may remove starts and ends.
 
-    The block runs from `start` up to but not including `end`, so `messages[start:end]` is what may go. Before it are
-    the Agent's standing instructions and after it is the recent window, both of which are kept.
+    The block runs from `start` up to but not including `end`, so `messages[start:end]` is what may go. Before it is the
+    leading run of system messages and after it is the recent window, both of which are kept.
 
     :param messages: The conversation, oldest to newest.
     :param keep_last_n: How many trailing messages to retain, before the adjustment made below.
     :returns: The `(start, end)` indices of the removable block; `end - start` is `0` when there is nothing to remove.
     """
-    # Skip the Agent's user-defined system prompt. The marker check guards against a compactor configured to write
-    # system messages of its own - those are removable, so they end the block instead of extending it.
+    # Protect only the *leading* run of system messages: the Agent's system prompt and anything a hook prepended. A
+    # system message further along is removed like any other. The marker check ends the run at a message a compactor
+    # produced, since that is removable.
     start = 0
     while (
         start < len(messages)
