@@ -54,6 +54,10 @@ async def async_weather_function(location):
     return weather_function(location)
 
 
+def weather_with_postponed_state_annotation(city: str, state: "State") -> str:
+    return f"Weather in {city}"
+
+
 weather_parameters = {"type": "object", "properties": {"location": {"type": "string"}}, "required": ["location"]}
 
 
@@ -222,6 +226,18 @@ class TestCore:
             function=function_with_optional_state,
         )
         state = State(schema={})
+        args = _inject_state_args(tool=state_tool, llm_args={"city": "Paris"}, state=state)
+        assert args["city"] == "Paris"
+        assert args["state"] is state
+
+    def test_inject_state_args_injects_state_object_for_postponed_state_annotation(self):
+        state_tool = Tool(
+            name="state_tool",
+            description="A tool whose annotations are postponed.",
+            parameters={"type": "object", "properties": {"city": {"type": "string"}}, "required": ["city"]},
+            function=weather_with_postponed_state_annotation,
+        )
+        state = State(schema={"city": {"type": str}}, data={"city": "Berlin"})
         args = _inject_state_args(tool=state_tool, llm_args={"city": "Paris"}, state=state)
         assert args["city"] == "Paris"
         assert args["state"] is state
