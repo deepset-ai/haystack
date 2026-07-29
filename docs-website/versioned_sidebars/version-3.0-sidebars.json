@@ -684,6 +684,7 @@
           },
           "items": [
             "pipeline-components/websearch/bravewebsearch",
+            "pipeline-components/websearch/ddgswebsearch",
             "pipeline-components/websearch/firecrawlwebsearch",
             "pipeline-components/websearch/linkupwebsearch",
             "pipeline-components/websearch/perplexitywebsearch",
