@@ -847,3 +847,26 @@ def test_trailing_header_without_content_is_not_dropped():
     assert docs[-1].content == "# Header 2\n"
     assert docs[-1].meta["header"] == "Header 2"
     assert docs[-1].meta["parent_headers"] == []
+
+
+def test_middle_header_without_content_preserves_blank_lines():
+    # buffered headers are sliced from the original text, so blank lines between a header with no
+    # body and the next contentful header are preserved instead of collapsed to a single newline
+    text = "# Header 1\n\n\n# Header 2\nContent.\n"
+    docs = MarkdownHeaderSplitter().run(documents=[Document(content=text)])["documents"]
+    assert "".join(doc.content for doc in docs) == text
+
+
+def test_header_metadata_is_stripped_but_content_is_byte_exact():
+    text = "# Header 1   \nContent.\n"
+    docs = MarkdownHeaderSplitter().run(documents=[Document(content=text)])["documents"]
+    assert docs[0].meta["header"] == "Header 1"
+    # the chunk content keeps the header line's original trailing whitespace
+    assert "".join(doc.content for doc in docs) == text
+
+
+def test_whitespace_only_trailing_header_has_empty_header_metadata():
+    text = "# Header 1\nContent.\n#   \n"
+    docs = MarkdownHeaderSplitter().run(documents=[Document(content=text)])["documents"]
+    assert "".join(doc.content for doc in docs) == text
+    assert docs[-1].meta["header"] == ""

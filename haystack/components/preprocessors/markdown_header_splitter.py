@@ -147,7 +147,6 @@ class MarkdownHeaderSplitter:
         # process headers and build chunks
         chunks: list[dict] = []
         header_stack: list[str | None] = [None] * 6
-        pending_headers: list[str] = []  # store empty headers to prepend to next content
         pending_start: int | None = None  # start offset in text of the first buffered empty header
         pending_header_text: str | None = None  # text of the last buffered empty header
         pending_level = 0  # level of the last buffered empty header
@@ -156,7 +155,7 @@ class MarkdownHeaderSplitter:
         for i, match in enumerate(matches):
             # extract header info
             header_prefix = match.group(1)
-            header_text = match.group(2)
+            header_text = match.group(2).strip()  # keep surrounding whitespace out of the metadata
             level = len(header_prefix)
 
             # get content
@@ -172,10 +171,10 @@ class MarkdownHeaderSplitter:
             # skip splits w/o content
             if not content.strip():  # this strip is needed to avoid counting whitespace as content
                 if self.keep_headers:
-                    header_line = f"{header_prefix} {header_text}"
-                    if not pending_headers:
+                    # buffer this header so it gets prepended to the next contentful chunk; only the
+                    # offset of the first header in the run is needed since the chunk is sliced from text
+                    if pending_start is None:
                         pending_start = match.start()
-                    pending_headers.append(header_line)
                     pending_header_text = header_text
                     pending_level = level
                 continue
@@ -190,17 +189,13 @@ class MarkdownHeaderSplitter:
             )
 
             if self.keep_headers:
-                header_line = f"{header_prefix} {header_text}"
-                # add pending & current header to content
-                chunk_content = ""
-                if pending_headers:
-                    chunk_content += "\n".join(pending_headers) + "\n"
-                chunk_content += f"{header_line}{content}"
+                # Slice from the first buffered empty header (if any) so the buffered header lines and
+                # the whitespace between them are preserved byte-exactly.
+                chunk_content = text[(pending_start if pending_start is not None else match.start()) : end]
                 chunks.append(
                     {"content": chunk_content, "meta": {"header": header_text, "parent_headers": parent_headers}}
                 )
-                pending_headers = []  # reset pending headers
-                pending_start = None
+                pending_start = None  # reset buffered headers
             else:
                 chunks.append({"content": content, "meta": {"header": header_text, "parent_headers": parent_headers}})
 
@@ -214,7 +209,7 @@ class MarkdownHeaderSplitter:
         # Flush any trailing headers that had no body text of their own. A header at the very end of the
         # document (or a run of such headers) never gets a following content chunk to be prepended to, so
         # without this it would be silently dropped. Slicing the original text keeps reconstruction exact.
-        if pending_headers and pending_start is not None:
+        if pending_start is not None:
             parent_headers = [h for h in header_stack[: pending_level - 1] if h is not None]
             chunks.append(
                 {
