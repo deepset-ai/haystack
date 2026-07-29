@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    SentenceWindowRetriever now validates an explicitly provided runtime ``window_size=0``
+    instead of silently falling back to the constructor value.
