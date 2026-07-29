@@ -140,6 +140,22 @@ continuing up the hierarchy until no more merges are possible.
 
 - <code>dict\[str, list\[Document\]\]</code> – List of documents (could be a mix of different hierarchy levels)
 
+#### close
+
+```python
+close() -> None
+```
+
+Release the synchronous resources of the underlying Document Store.
+
+#### close_async
+
+```python
+close_async() -> None
+```
+
+Release the asynchronous resources of the underlying Document Store.
+
 ## filter_retriever
 
 ### FilterRetriever
@@ -244,6 +260,22 @@ Asynchronously run the FilterRetriever on the given input data.
 **Returns:**
 
 - <code>dict\[str, Any\]</code> – A list of retrieved documents.
+
+#### close
+
+```python
+close() -> None
+```
+
+Release the synchronous resources of the underlying Document Store.
+
+#### close_async
+
+```python
+close_async() -> None
+```
+
+Release the asynchronous resources of the underlying Document Store.
 
 ## in_memory/bm25_retriever
 
@@ -1324,6 +1356,22 @@ document from the document store.
   - `context_documents`: A list `Document` objects, containing the retrieved documents plus the context
     document surrounding them. The documents are sorted by the `split_idx_start`
     meta field.
+
+#### close
+
+```python
+close() -> None
+```
+
+Release the synchronous resources of the underlying Document Store.
+
+#### close_async
+
+```python
+close_async() -> None
+```
+
+Release the asynchronous resources of the underlying Document Store.
 
 ## text_embedding_retriever
 

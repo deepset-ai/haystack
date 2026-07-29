@@ -4,7 +4,7 @@
 
 import random
 import re
-from unittest.mock import ANY
+from unittest.mock import ANY, Mock
 
 import pytest
 
@@ -329,3 +329,14 @@ class TestSentenceWindowRetriever:
         deserialized = Pipeline.from_dict(serialized)
 
         assert deserialized == pipe
+
+    def test_close(self):
+        closable_document_store = Mock(spec=["close"])
+        retriever = SentenceWindowRetriever(document_store=closable_document_store)
+        retriever.close()
+        closable_document_store.close.assert_called_once_with()
+
+        nonclosable_document_store = Mock(spec=[])
+        retriever = SentenceWindowRetriever(document_store=nonclosable_document_store)
+        retriever.close()
+        assert nonclosable_document_store.mock_calls == []

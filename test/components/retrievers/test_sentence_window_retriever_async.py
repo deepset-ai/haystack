@@ -4,6 +4,7 @@
 
 import random
 import re
+from unittest.mock import AsyncMock, Mock
 
 import pytest
 
@@ -224,3 +225,16 @@ class TestSentenceWindowRetrieverAsync:
         deserialized = Pipeline.from_dict(serialized)
 
         assert deserialized == pipe
+
+    @pytest.mark.asyncio
+    async def test_close_async(self):
+        closable_document_store = Mock(spec=["close_async"])
+        closable_document_store.close_async = AsyncMock()
+        retriever = SentenceWindowRetriever(document_store=closable_document_store)
+        await retriever.close_async()
+        closable_document_store.close_async.assert_awaited_once_with()
+
+        nonclosable_document_store = Mock(spec=[])
+        retriever = SentenceWindowRetriever(document_store=nonclosable_document_store)
+        await retriever.close_async()
+        assert nonclosable_document_store.mock_calls == []
