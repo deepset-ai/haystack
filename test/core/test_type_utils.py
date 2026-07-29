@@ -1171,7 +1171,7 @@ class TestConversion:
         assert strategy is None
 
 
-def function_with_unresolvable_annotation(document: "NotImportableAtRuntime") -> None: ...  # type: ignore[name-defined]
+def unresolvable_annotation(document: "Unimportable") -> None: ...  # type: ignore[name-defined]  # noqa: F821
 
 
 class TestResolveParameterTypes:
@@ -1190,7 +1190,7 @@ class TestResolveParameterTypes:
         assert _resolve_parameter_types(function) == {"query": Parameter.empty, "top_k": int}
 
     def test_keeps_unresolvable_annotation_as_string(self):
-        assert _resolve_parameter_types(function_with_unresolvable_annotation) == {"document": "NotImportableAtRuntime"}
+        assert _resolve_parameter_types(unresolvable_annotation) == {"document": "Unimportable"}
 
     def test_keeps_annotations_of_target_that_cannot_carry_them(self):
         # A partial is not a module, class, method or function, so its annotations cannot be resolved at all.
