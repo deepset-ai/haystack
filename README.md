@@ -116,7 +116,7 @@
 | haystack/components/retrievers/multi\_query\_embedding\_retriever.py      |       77 |        2 |     97% |  193, 212 |
 | haystack/components/retrievers/multi\_query\_text\_retriever.py           |       67 |        3 |     96% |123, 169, 184 |
 | haystack/components/retrievers/multi\_retriever.py                        |      114 |        1 |     99% |       135 |
-| haystack/components/retrievers/sentence\_window\_retriever.py             |      104 |        6 |     94% |139, 249, 269-276, 291-298 |
+| haystack/components/retrievers/sentence\_window\_retriever.py             |      103 |        5 |     95% |138, 270-277, 292-299 |
 | haystack/components/retrievers/text\_embedding\_retriever.py              |       52 |        0 |    100% |           |
 | haystack/components/retrievers/types/\_\_init\_\_.py                      |        2 |        0 |    100% |           |
 | haystack/components/retrievers/types/protocol.py                          |        5 |        0 |    100% |           |
@@ -247,7 +247,7 @@
 | haystack/utils/type\_serialization.py                                     |      123 |        6 |     95% |82, 84, 210-211, 219, 235 |
 | haystack/utils/url\_validation.py                                         |        4 |        0 |    100% |           |
 | haystack/version.py                                                       |        5 |        2 |     60% |      9-10 |
-| **TOTAL**                                                                 | **15992** |  **789** | **95%** |           |
+| **TOTAL**                                                                 | **15991** |  **788** | **95%** |           |
 
 
 ## Setup coverage badge
