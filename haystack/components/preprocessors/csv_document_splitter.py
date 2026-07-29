@@ -175,10 +175,16 @@ class CSVDocumentSplitter:
         :param axis: Axis along which to find empty elements. Either "row" or "column".
         :return: List of indices where consecutive empty rows or columns start.
         """
+        # Use positional indices here rather than index/column labels so the split points stay
+        # consistent with the positional ``.iloc`` slicing done in ``_split_dataframe``. On a
+        # sub-table produced by an earlier split the labels no longer match their positions;
+        # feeding those labels back into ``.iloc`` failed to actually remove the empty row/column,
+        # so ``_recursive_split`` kept re-detecting it and recursed forever (RecursionError).
         if axis == "row":
-            empty_elements = df[df.isnull().all(axis=1)].index.tolist()
+            empty_mask = df.isnull().all(axis=1).to_numpy()
         else:
-            empty_elements = df.columns[df.isnull().all(axis=0)].tolist()
+            empty_mask = df.isnull().all(axis=0).to_numpy()
+        empty_elements = [pos for pos, is_empty in enumerate(empty_mask) if is_empty]
 
         # If no empty elements found, return empty list
         if len(empty_elements) == 0:

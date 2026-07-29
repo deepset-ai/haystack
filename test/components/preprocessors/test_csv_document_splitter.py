@@ -211,6 +211,26 @@ P,Q,,,,
             assert table.content == expected_tables[i]
             assert table.meta == expected_meta[i]
 
+    def test_recursive_split_later_block_needs_column_split(self, splitter: CSVDocumentSplitter) -> None:
+        # Regression test: a later row block that itself needs a column split used to make
+        # ``_recursive_split`` recurse forever (RecursionError), because the empty row/column
+        # detection returned index/column labels while the actual slicing was positional. On a
+        # sub-table those no longer match, so the empty section was never removed.
+        csv_content = "A,B,C,D,E,F\n1,2,3,4,5,6\n,,,,,\nP,Q,,,X,Y\n1,2,,,7,8\n,,,,M,N\n,,,,9,10\nR,S,,,,\n3,4,,,,\n"
+        splitter = CSVDocumentSplitter(row_split_threshold=1, column_split_threshold=1)
+        result = splitter.run([Document(content=csv_content, id="test_id")])["documents"]
+        expected_tables = ["A,B,C,D,E,F\n1,2,3,4,5,6\n", "P,Q\n1,2\n", "X,Y\n7,8\nM,N\n9,10\n", "R,S\n3,4\n"]
+        expected_meta = [
+            {"source_id": "test_id", "row_idx_start": 0, "col_idx_start": 0, "split_id": 0},
+            {"source_id": "test_id", "row_idx_start": 3, "col_idx_start": 0, "split_id": 1},
+            {"source_id": "test_id", "row_idx_start": 3, "col_idx_start": 4, "split_id": 2},
+            {"source_id": "test_id", "row_idx_start": 7, "col_idx_start": 0, "split_id": 3},
+        ]
+        assert len(result) == len(expected_tables)
+        for i, table in enumerate(result):
+            assert table.content == expected_tables[i]
+            assert table.meta == expected_meta[i]
+
     def test_csv_with_blank_lines(self, splitter: CSVDocumentSplitter) -> None:
         csv_data = """ID,LeftVal,,,RightVal,Extra
 1,Hello,,,World,Joined
