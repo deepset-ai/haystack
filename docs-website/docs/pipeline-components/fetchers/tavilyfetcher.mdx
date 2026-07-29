@@ -30,11 +30,15 @@ This component is complementary to [`TavilyWebSearch`](../websearch/tavilywebsea
 
 ### Extract parameters
 
-You can control extraction behavior at init time or per `run()` call:
+You can control extraction behavior at initialization:
 
 - `extract_depth`: `"basic"` (fast, lower cost) or `"advanced"` (more data including tables; higher latency and cost). Defaults to `"basic"`.
 - `include_images`: When `True`, image URLs are stored on each Document under `meta["images"]`. Defaults to `False`.
 - `extract_params`: Extra kwargs forwarded to the Tavily Extract API (for example `format`, `include_favicon`, `query`, `chunks_per_source`). See the [Tavily Extract API reference](https://docs.tavily.com/documentation/api-reference/endpoint/extract).
+
+Of these, only `extract_params` can also be passed to `run()` to override it for a single call. Note that an `extract_params` dictionary passed to `run()` fully replaces the one set at initialization instead of being merged with it.
+
+`TavilyFetcher` also supports asynchronous execution through `run_async()`. The underlying clients are created lazily on the first call. To avoid the cold-start latency of the first call, you can call `warm_up()` explicitly.
 
 ### Authorization
 
