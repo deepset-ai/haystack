@@ -14,6 +14,7 @@ Use Tavily Extract to fetch and parse content from URLs as Haystack Documents. U
 |  |  |
 | --- | --- |
 | **Most common position in a pipeline** | In indexing or query pipelines as the data fetching step |
+| **Mandatory init variables** | `api_key`: The Tavily API key. Can be set with the `TAVILY_API_KEY` env var. |
 | **Mandatory run variables** | `urls`: A list of URLs (strings) to extract content from (max 20 per request) |
 | **Output variables** | `documents`: A list of [Documents](../../concepts/data-classes.mdx)<br />`meta`: Request-level metadata (`response_time`, `usage`, `request_id`, `failed_results`) |
 | **API reference** | [Tavily](/reference/integrations-tavily) |
@@ -37,8 +38,6 @@ You can control extraction behavior at initialization:
 - `extract_params`: Extra kwargs forwarded to the Tavily Extract API (for example `format`, `include_favicon`, `query`, `chunks_per_source`). See the [Tavily Extract API reference](https://docs.tavily.com/documentation/api-reference/endpoint/extract).
 
 Of these, only `extract_params` can also be passed to `run()` to override it for a single call. Note that an `extract_params` dictionary passed to `run()` fully replaces the one set at initialization instead of being merged with it.
-
-`TavilyFetcher` also supports asynchronous execution through `run_async()`. The underlying clients are created lazily on the first call. To avoid the cold-start latency of the first call, you can call `warm_up()` explicitly.
 
 ### Authorization
 
@@ -113,3 +112,27 @@ indexing_pipeline.run(
     },
 )
 ```
+
+### Asynchronous execution
+
+`TavilyFetcher` also supports asynchronous execution through `run_async()`:
+
+```python
+import asyncio
+
+from haystack_integrations.components.fetchers.tavily import TavilyFetcher
+
+fetcher = TavilyFetcher()
+
+
+async def fetch():
+    result = await fetcher.run_async(
+        urls=["https://docs.haystack.deepset.ai/docs/intro"],
+    )
+    return result["documents"]
+
+
+documents = asyncio.run(fetch())
+```
+
+The underlying clients are created lazily on the first call. To avoid the cold-start latency of the first call, you can call `warm_up()` explicitly.
