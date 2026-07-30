@@ -146,6 +146,16 @@ class TestAnswerBuilder:
         assert answers[0].documents[0].meta["referenced"] is True
         assert answers[0].documents[0].meta["source_index"] == 2
 
+    def test_run_returns_referenced_documents_in_source_order(self):
+        component = AnswerBuilder(reference_pattern="\\[(\\d+)\\]", return_only_referenced_documents=True)
+        output = component.run(
+            query="test query",
+            replies=["First [3], then [10], and finally [50]."],
+            documents=[Document(content=f"doc{i}") for i in range(1, 51)],
+        )
+        source_indices = [doc.meta["source_index"] for doc in output["answers"][0].documents]
+        assert source_indices == [3, 10, 50]
+
     def test_run_with_documents_with_reference_pattern_return_all_documents(self):
         component = AnswerBuilder(reference_pattern="\\[(\\d+)\\]", return_only_referenced_documents=False)
         output = component.run(
