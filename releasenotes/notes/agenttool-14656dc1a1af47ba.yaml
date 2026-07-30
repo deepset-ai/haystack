@@ -12,13 +12,13 @@ features:
     .. code-block:: python
 
         from haystack.components.agents import Agent
-        from haystack.components.generators.chat import OpenAIChatGenerator
+        from haystack.components.generators.chat import OpenAIResponsesChatGenerator
         from haystack.dataclasses import ChatMessage
         from haystack.tools import AgentTool, ComponentTool
         from haystack_integrations.components.websearch.serperdev import SerperDevWebSearch
 
         researcher = Agent(
-            chat_generator=OpenAIChatGenerator(model="gpt-5.4-mini"),
+            chat_generator=OpenAIResponsesChatGenerator(model="gpt-5.4-mini"),
             system_prompt="You are a research specialist. Investigate the task and report your findings.",
             tools=[
                 ComponentTool(
@@ -38,10 +38,10 @@ features:
         )
 
         coordinator = Agent(
-            chat_generator=OpenAIChatGenerator(model="gpt-5.4"),
+            chat_generator=OpenAIResponsesChatGenerator(model="gpt-5.4"),
             tools=[research],
             system_prompt="You coordinate specialists. Delegate research questions, then answer the user.",
         )
 
-        result = coordinator.run([ChatMessage.from_user("Who was Nikola Tesla?")])
+        result = coordinator.run([ChatMessage.from_user("What are the latest developments in the Haystack framework?")])
         print(result["last_message"].text)
