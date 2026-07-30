@@ -31,5 +31,12 @@ features:
     returned inside its result as well as those a message carries directly. Raise those values if you send large images
     or long documents.
 
+    Tool schemas are sent alongside the messages and consume tokens too, so ``count`` takes an optional ``tools``
+    argument to have them included:
+
+    .. code-block:: python
+
+        counter.count(messages, tools=[my_tool])
+
     Implement ``TokenCounter`` to count differently - for instance against a provider's own token-counting endpoint,
     which is the only way to have images counted exactly.

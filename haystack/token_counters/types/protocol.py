@@ -4,30 +4,34 @@
 
 from typing import Any, Protocol
 
-from haystack.core.serialization import default_from_dict, default_to_dict
+from haystack.core.serialization import default_from_dict
 from haystack.dataclasses import ChatMessage
+from haystack.tools import ToolsType
 
 
 class TokenCounter(Protocol):
     """
     Estimates the number tokens used by a list of messages.
 
-    Override `to_dict` when the counter takes constructor arguments, so that they are serialized; the default emits
-    none. `from_dict` rebuilds the counter from whatever `to_dict` emitted and rarely needs overriding.
+    Implement `to_dict` so the counter's settings survive serialization. The default `from_dict` passes them straight
+    back to the constructor, which is enough for plain values; override it when `to_dict` emitted something that has to
+    be rebuilt first, such as a `Secret` or a nested component.
     """
 
-    def count(self, messages: list[ChatMessage]) -> int:
+    def count(self, messages: list[ChatMessage], tools: ToolsType | None = None) -> int:
         """
         Return the estimated number of tokens in the given messages.
 
         :param messages: The messages to measure.
+        :param tools: Tools whose schemas are sent alongside the messages, and so consume tokens too. Pass them to have
+            them counted; leave as None to measure the messages alone.
         :returns: The estimated token count.
         """
         ...
 
     def to_dict(self) -> dict[str, Any]:
         """Serialize the counter to a dictionary."""
-        return default_to_dict(self)
+        ...
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "TokenCounter":

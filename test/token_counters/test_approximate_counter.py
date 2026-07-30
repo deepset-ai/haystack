@@ -2,11 +2,14 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+from typing import Annotated
+
 import pytest
 
 from haystack.dataclasses import ChatMessage, FileContent, ImageContent, TextContent, ToolCall
 from haystack.token_counters import ApproximateTokenCounter
 from haystack.token_counters.utils import _rendered_conversation
+from haystack.tools import tool
 
 IMAGE = ImageContent(base64_image="Zm9v", mime_type="image/png")
 FILE = FileContent(base64_data="Zm9v", mime_type="application/pdf", filename="report.pdf")
@@ -79,3 +82,25 @@ class TestApproximateTokenCounter:
         restored = ApproximateTokenCounter.from_dict(data)
         assert restored.chars_per_token == 3.5
         assert restored.tokens_per_file == 3000
+
+
+@tool
+def search(query: Annotated[str, "the search query"]) -> str:
+    """Search the web for a query and return the top results."""
+    return "result"
+
+
+class TestApproximateTokenCounterTools:
+    def test_tool_schemas_add_to_the_count(self):
+        # A provider is sent the schemas alongside the messages, so they consume tokens too.
+        counter = ApproximateTokenCounter()
+        messages = [ChatMessage.from_user("hi")]
+
+        assert counter.count(messages, tools=[search]) > counter.count(messages)
+
+    def test_tools_can_be_counted_without_messages(self):
+        assert ApproximateTokenCounter().count([], tools=[search]) > 0
+
+    def test_nothing_to_measure_is_zero(self):
+        assert ApproximateTokenCounter().count([]) == 0
+        assert ApproximateTokenCounter().count([], tools=None) == 0

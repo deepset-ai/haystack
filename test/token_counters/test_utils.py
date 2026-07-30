@@ -2,10 +2,19 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+from typing import Annotated
+
 import pytest
 
-from haystack.dataclasses import ChatMessage, FileContent, ImageContent, TextContent, ToolCall
-from haystack.token_counters.utils import _render_message, _rendered_conversation, _tool_result_text
+from haystack.dataclasses import ChatMessage, FileContent, ImageContent, ReasoningContent, TextContent, ToolCall
+from haystack.token_counters.utils import (
+    _non_text_placeholder,
+    _render_message,
+    _rendered_conversation,
+    _rendered_tools,
+    _tool_result_text,
+)
+from haystack.tools import tool
 
 IMAGE = ImageContent(base64_image="Zm9v", mime_type="image/png")
 FILE = FileContent(base64_data="Zm9v", mime_type="application/pdf", filename="report.pdf")
@@ -65,3 +74,39 @@ class TestRenderedConversation:
 
     def test_empty_conversation(self):
         assert _rendered_conversation([]) == ""
+
+
+@tool
+def search(query: Annotated[str, "the search query"]) -> str:
+    """Search the web for a query."""
+    return "result"
+
+
+class TestNonTextPlaceholder:
+    @pytest.mark.parametrize(
+        ("content", "expected"),
+        [
+            pytest.param(IMAGE, "<image>", id="image"),
+            pytest.param(FILE, "<file: report.pdf>", id="file-with-name"),
+            pytest.param(
+                FileContent(base64_data="Zm9v", mime_type="application/pdf"), "<file: unnamed>", id="file-unnamed"
+            ),
+            # Anything else falls back to naming its type, so an unexpected block still shows up in the text.
+            pytest.param(ReasoningContent(reasoning_text="thinking"), "<ReasoningContent>", id="unknown-type"),
+        ],
+    )
+    def test_placeholder(self, content, expected):
+        assert _non_text_placeholder(content) == expected
+
+
+class TestRenderedTools:
+    def test_no_tools_renders_nothing(self):
+        assert _rendered_tools(None) == ""
+        assert _rendered_tools([]) == ""
+
+    def test_renders_the_schema_a_provider_would_be_sent(self):
+        rendered = _rendered_tools([search])
+
+        assert "search" in rendered
+        assert "Search the web for a query." in rendered
+        assert "the search query" in rendered

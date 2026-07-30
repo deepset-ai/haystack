@@ -7,7 +7,8 @@ from typing import Any
 from haystack.core.serialization import default_to_dict
 from haystack.dataclasses import ChatMessage
 from haystack.token_counters.types import TokenCounter
-from haystack.token_counters.utils import _non_text_tokens, _rendered_conversation
+from haystack.token_counters.utils import _non_text_tokens, _rendered_conversation, _rendered_tools
+from haystack.tools import ToolsType
 
 
 class ApproximateTokenCounter(TokenCounter):
@@ -46,17 +47,21 @@ class ApproximateTokenCounter(TokenCounter):
         self.tokens_per_image = tokens_per_image
         self.tokens_per_file = tokens_per_file
 
-    def count(self, messages: list[ChatMessage]) -> int:
+    def count(self, messages: list[ChatMessage], tools: ToolsType | None = None) -> int:
         """
         Return the estimated number of tokens the given messages occupy.
 
         :param messages: The messages to measure.
-        :returns: The estimated token count, or `0` for an empty list.
+        :param tools: Tools whose schemas are sent alongside the messages, and so consume tokens too.
+        :returns: The estimated token count, or `0` when there is nothing to measure.
         """
-        if not messages:
+        if not messages and not tools:
             return 0
-        text_tokens = int(len(_rendered_conversation(messages)) / self.chars_per_token)
-        return text_tokens + _non_text_tokens(messages, self.tokens_per_image, self.tokens_per_file)
+        text = _rendered_conversation(messages) + _rendered_tools(tools)
+        text_tokens = int(len(text) / self.chars_per_token)
+        return text_tokens + _non_text_tokens(
+            messages, tokens_per_image=self.tokens_per_image, tokens_per_file=self.tokens_per_file
+        )
 
     def to_dict(self) -> dict[str, Any]:
         """

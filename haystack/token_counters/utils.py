@@ -6,6 +6,7 @@ import json
 
 from haystack.dataclasses import ChatMessage, FileContent, ImageContent, TextContent
 from haystack.dataclasses.chat_message import ChatMessageContentT, ToolCallResultContentT
+from haystack.tools import ToolsType, flatten_tools_or_toolsets
 
 
 def _non_text_placeholder(content: ChatMessageContentT) -> str:
@@ -58,7 +59,19 @@ def _rendered_conversation(messages: list[ChatMessage]) -> str:
     return "\n".join(_render_message(message) for message in messages)
 
 
-def _non_text_tokens(messages: list[ChatMessage], tokens_per_image: int, tokens_per_file: int) -> int:
+def _rendered_tools(tools: ToolsType | None) -> str:
+    """
+    Tool schemas as one JSON block, standing in for what a provider sends alongside the messages.
+
+    :param tools: The tools to render, or None.
+    :returns: The rendered schemas, or an empty string when there are none.
+    """
+    if not tools:
+        return ""
+    return json.dumps([tool.tool_spec for tool in flatten_tools_or_toolsets(tools)], default=str, sort_keys=True)
+
+
+def _non_text_tokens(messages: list[ChatMessage], *, tokens_per_image: int, tokens_per_file: int) -> int:
     """
     A flat estimate for the images and files in a conversation, which have no text to measure.
 

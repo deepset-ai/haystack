@@ -2,11 +2,14 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+from typing import Annotated
+
 import pytest
 
 from haystack.dataclasses import ChatMessage, FileContent, ImageContent, ToolCall
 from haystack.token_counters import TiktokenCounter
 from haystack.token_counters import tiktoken_counter as tiktoken_counter_module
+from haystack.tools import tool
 
 IMAGE = ImageContent(base64_image="Zm9v", mime_type="image/png")
 FILE = FileContent(base64_data="Zm9v", mime_type="application/pdf", filename="report.pdf")
@@ -134,3 +137,25 @@ class TestTiktokenCounterIntegration:
         counter = TiktokenCounter(tokens_per_image=85)
 
         assert counter.count([ChatMessage.from_user(content_parts=[IMAGE])]) > 85
+
+
+@tool
+def search(query: Annotated[str, "the search query"]) -> str:
+    """Search the web for a query and return the top results."""
+    return "result"
+
+
+class TestTiktokenCounterTools:
+    def test_tool_schemas_add_to_the_count(self):
+        # A provider is sent the schemas alongside the messages, so they consume tokens too.
+        counter = TiktokenCounter()
+        messages = [ChatMessage.from_user("hi")]
+
+        assert counter.count(messages, tools=[search]) > counter.count(messages)
+
+    def test_tools_can_be_counted_without_messages(self):
+        assert TiktokenCounter().count([], tools=[search]) > 0
+
+    def test_nothing_to_measure_is_zero(self):
+        assert TiktokenCounter().count([]) == 0
+        assert TiktokenCounter().count([], tools=None) == 0
