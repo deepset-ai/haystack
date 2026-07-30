@@ -21,7 +21,8 @@ from haystack.core.errors import (
     PipelineRuntimeError,
 )
 from haystack.core.pipeline import Pipeline
-from haystack.core.pipeline.base import _NO_OUTPUT_PRODUCED, ComponentPriority, PipelineBase
+from haystack.core.pipeline.base import ComponentPriority, PipelineBase
+from haystack.core.pipeline.component_checks import _NoOutputProduced
 from haystack.core.pipeline.utils import FIFOPriorityQueue
 from haystack.core.serialization import DeserializationCallbacks
 from haystack.core.type_utils import ConversionStrategy
@@ -887,7 +888,7 @@ class TestPipelineBase:
                 {
                     "variadic_input": [
                         {"sender": "component1", "value": "test"},
-                        {"sender": "component2", "value": _NO_OUTPUT_PRODUCED},
+                        {"sender": "component2", "value": _NoOutputProduced()},
                     ],
                     "normal_input": [{"sender": "component3", "value": "test"}],
                 },
@@ -1050,7 +1051,7 @@ class TestPipelineBase:
 
     @pytest.mark.parametrize(
         "output_value",
-        [42, None, _NO_OUTPUT_PRODUCED, "string_value", 3.14],
+        [42, None, _NoOutputProduced(), "string_value", 3.14],
         ids=["int", "none", "no-output", "string", "float"],
     )
     def test__write_component_outputs_different_output_values(
@@ -1071,9 +1072,9 @@ class TestPipelineBase:
         assert inputs["receiver1"]["input1"] == [{"sender": "sender1", "value": output_value}]
 
     def test__write_component_outputs_dont_overwrite_with_no_output(self, regular_output_socket, regular_input_socket):
-        """Test that existing inputs are not overwritten with _NO_OUTPUT_PRODUCED"""
+        """Test that existing inputs are not overwritten with _NoOutputProduced()"""
         receivers = [("receiver1", regular_output_socket, regular_input_socket, None)]
-        component_outputs = {"output1": _NO_OUTPUT_PRODUCED}
+        component_outputs = {"output1": _NoOutputProduced()}
         inputs = {"receiver1": {"input1": [{"sender": "sender1", "value": "keep"}]}}
         PipelineBase()._write_component_outputs(
             component_name="sender1",
@@ -1328,17 +1329,17 @@ class TestPipelineBase:
                 {"regular": 42, "greedy": [33], "lazy": [55, 66]},
                 {"regular": [{"sender": None, "value": 24}]},  # Only non-greedy user input remains
             ),
-            # Filtering _NO_OUTPUT_PRODUCED
+            # Filtering _NoOutputProduced()
             (
                 {"input1": InputSocket("input1", int)},
                 {
                     "input1": [
-                        {"sender": "comp1", "value": _NO_OUTPUT_PRODUCED},
+                        {"sender": "comp1", "value": _NoOutputProduced()},
                         {"sender": "comp2", "value": 42},
-                        {"sender": "comp2", "value": _NO_OUTPUT_PRODUCED},
+                        {"sender": "comp2", "value": _NoOutputProduced()},
                     ]
                 },
-                {"input1": 42},  # Should skip _NO_OUTPUT_PRODUCED values
+                {"input1": 42},  # Should skip _NoOutputProduced() values
                 {},  # All inputs consumed
             ),
         ],

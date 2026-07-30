@@ -7,6 +7,56 @@
   ],
   "redirects": [
     {
+      "source": "/docs/experimental-package",
+      "destination": "/docs/intro",
+      "permanent": true
+    },
+    {
+      "source": "/reference/category/experiments-api",
+      "destination": "/reference/",
+      "permanent": true
+    },
+    {
+      "source": "/reference/experimental-agents-api",
+      "destination": "/reference/agents-api",
+      "permanent": true
+    },
+    {
+      "source": "/reference/experimental-mem0-memory-store-api",
+      "destination": "/reference/integrations-mem0",
+      "permanent": true
+    },
+    {
+      "source": "/reference/experimental-chatmessage-store-api",
+      "destination": "/reference/",
+      "permanent": true
+    },
+    {
+      "source": "/reference/experimental-generators-api",
+      "destination": "/reference/",
+      "permanent": true
+    },
+    {
+      "source": "/reference/experimental-preprocessors-api",
+      "destination": "/reference/",
+      "permanent": true
+    },
+    {
+      "source": "/reference/experimental-retrievers-api",
+      "destination": "/reference/",
+      "permanent": true
+    },
+    {
+      "source": "/reference/experimental-summarizers-api",
+      "destination": "/reference/",
+      "permanent": true
+    },
+    {
+      "source": "/reference/experimental-writers-api",
+      "destination": "/reference/",
+      "permanent": true
+    },
+    {
       "source": "/docs/2.21/:slug*",
       "destination": "/docs/:slug*",
       "permanent": true

@@ -123,6 +123,11 @@ A dataclass to hold the state of the pipeline at a specific point in time.
 - **component_visits** (<code>dict\[str, int\]</code>) – A dictionary mapping component names to their visit counts.
 - **inputs** (<code>dict\[str, Any\]</code>) – The inputs processed by the pipeline at the time of the snapshot.
 - **pipeline_outputs** (<code>dict\[str, Any\]</code>) – Dictionary containing the final outputs of the pipeline up to the breakpoint.
+- **inputs_format** (<code>str | None</code>) – Which format `inputs` are stored in. `"internal"` means each input records the component
+  that sent it, keyed by the position it arrived in, as in
+  `{component: {socket: {"0": {"sender": ..., "value": ...}}}}`. `None` marks snapshots taken before Haystack
+  recorded the sender, which hold one flattened value per socket, `{component: {socket: value}}`, and can only
+  be resumed on a component's first visit.
 
 #### to_dict
 
