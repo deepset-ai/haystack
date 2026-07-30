@@ -111,6 +111,14 @@ set during initialisation.
 
 - <code>ValueError</code> – If no query string is provided (both here and at init).
 
+#### close
+
+```python
+close() -> None
+```
+
+Release the synchronous resources of the underlying Document Store.
+
 ## haystack_integrations.components.retrievers.falkordb.embedding_retriever
 
 ### FalkorDBEmbeddingRetriever
@@ -214,6 +222,14 @@ Retrieve documents by vector similarity.
 **Returns:**
 
 - <code>dict\[str, list\[Document\]\]</code> – Dictionary containing a `"documents"` key with the retrieved documents.
+
+#### close
+
+```python
+close() -> None
+```
+
+Release the synchronous resources of the underlying Document Store.
 
 ## haystack_integrations.document_stores.falkordb.document_store
 
@@ -322,6 +338,14 @@ Deserialise a `FalkorDBDocumentStore` produced by `to_dict`.
 **Returns:**
 
 - <code>FalkorDBDocumentStore</code> – Reconstructed `FalkorDBDocumentStore` instance.
+
+#### close
+
+```python
+close() -> None
+```
+
+Release the associated synchronous resources.
 
 #### count_documents
 

@@ -102,3 +102,17 @@ class FilterRetriever:
         # 'ignore' since filter_documents_async is not defined in the Protocol but exists in the implementations
         out_documents = await self.document_store.filter_documents_async(filters=filters or self.filters)  # type: ignore[attr-defined]
         return {"documents": out_documents}
+
+    def close(self) -> None:
+        """
+        Release the synchronous resources of the underlying Document Store.
+        """
+        if hasattr(self.document_store, "close"):
+            self.document_store.close()
+
+    async def close_async(self) -> None:
+        """
+        Release the asynchronous resources of the underlying Document Store.
+        """
+        if hasattr(self.document_store, "close_async"):
+            await self.document_store.close_async()

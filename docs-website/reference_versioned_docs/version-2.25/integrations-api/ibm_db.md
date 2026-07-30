@@ -69,6 +69,14 @@ Retrieve documents by vector similarity.
 
 - <code>dict\[str, list\[Document\]\]</code> – A dictionary with key `documents` containing a list of matching :class:`Document` objects.
 
+#### close
+
+```python
+close() -> None
+```
+
+Release the synchronous resources of the underlying Document Store.
+
 #### to_dict
 
 ```python
@@ -148,6 +156,14 @@ Initialize the IBM Db2 Document Store.
 - **embedding_dim** (<code>int</code>) – Dimension of embedding vectors (default: 768)
 - **distance_metric** (<code>Literal['EUCLIDEAN', 'COSINE', 'MANHATTAN']</code>) – Distance metric for similarity search (default: "COSINE")
 - **recreate_table** (<code>bool</code>) – If True, drop and recreate the table (default: False)
+
+#### close
+
+```python
+close() -> None
+```
+
+Release the associated synchronous resources.
 
 #### count_documents
 

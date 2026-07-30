@@ -98,7 +98,6 @@ export default {
         'concepts/secret-management',
         'concepts/jinja-templates',
         'concepts/integrations',
-        'concepts/experimental-package',
       ],
     },
     {
@@ -416,6 +415,7 @@ export default {
             'pipeline-components/fetchers/googledrivefetcher',
             'pipeline-components/fetchers/linkcontentfetcher',
             'pipeline-components/fetchers/mssharepointfetcher',
+            'pipeline-components/fetchers/tavilyfetcher',
             'pipeline-components/fetchers/external-integrations-fetchers',
           ],
         },
@@ -628,6 +628,7 @@ export default {
             'pipeline-components/retrievers/qdrantsparseembeddingretriever',
             'pipeline-components/retrievers/sentencewindowretriever',
             'pipeline-components/retrievers/snowflaketableretriever',
+            'pipeline-components/retrievers/sqlalchemytableretriever',
             'pipeline-components/retrievers/supabasegroongabm25retriever',
             'pipeline-components/retrievers/supabasepgvectorembeddingretriever',
             'pipeline-components/retrievers/supabasepgvectorkeywordretriever',
@@ -689,7 +690,9 @@ export default {
           },
           items: [
             'pipeline-components/websearch/bravewebsearch',
+            'pipeline-components/websearch/ddgswebsearch',
             'pipeline-components/websearch/firecrawlwebsearch',
+            'pipeline-components/websearch/linkupwebsearch',
             'pipeline-components/websearch/perplexitywebsearch',
             'pipeline-components/websearch/searchapiwebsearch',
             'pipeline-components/websearch/serperdevwebsearch',
