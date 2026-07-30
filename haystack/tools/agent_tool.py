@@ -15,15 +15,18 @@ from haystack.tools.tool import _deserialize_outputs_to_state, _deserialize_outp
 
 def _uncovered_agent_inputs(agent: Agent, inputs_from_state: dict[str, str] | None) -> list[str]:
     """
-    Names of the mandatory Agent inputs that the caller has to supply, such as the variables of a templated prompt.
+    Finds the mandatory Agent inputs the calling LLM has to fill in, such as the variables of a templated prompt.
 
-    :param agent: The Agent wrapped by the tool.
-    :param inputs_from_state: The tool's `inputs_from_state`, whose targets are already covered by the calling Agent.
-    :returns: The mandatory Agent inputs other than `messages` that are not mapped from the calling Agent's state.
+    :param agent: The wrapped Agent.
+    :param inputs_from_state: Maps the calling Agent's state keys to Agent inputs.
+        The inputs it covers are excluded, since the calling Agent provides them.
+    :returns: The mandatory Agent inputs other than `messages`, sorted by name.
     """
     covered = {"messages", *(inputs_from_state or {}).values()}
+    # prompt variables are registered as input sockets in a non-deterministic order, so sort to keep the schema stable
     return sorted(
         name
+        # __haystack_input__ is attached to the instance by the @component decorator, so mypy cannot see it
         for name, socket in agent.__haystack_input__._sockets_dict.items()  # type: ignore[attr-defined]
         if socket.is_mandatory and name not in covered
     )
@@ -33,7 +36,7 @@ def _build_parameters(uncovered: list[str]) -> dict[str, Any]:
     """
     Build the schema the calling LLM fills in: the task to delegate, plus one string per uncovered Agent input.
 
-    :param uncovered: The Agent inputs returned by `_uncovered_agent_inputs`.
+    :param uncovered: Names of the mandatory Agent inputs the calling LLM has to fill in.
     :returns: A JSON schema for the Tool parameters.
     """
     extra = {name: {"type": "string"} for name in uncovered}
@@ -61,26 +64,29 @@ def _build_parameters(uncovered: list[str]) -> dict[str, Any]:
 
 
 def _agent_result_to_string(result: dict[str, Any]) -> str:
-    """
-    Default `outputs_to_string` handler: the text of the agent's final reply.
-
-    :param result: The output of the Agent run.
-    :returns: The text of the final reply, or the whole message if it has none, with a warning appended if the agent
-        ran out of steps.
-    """
+    """Default `outputs_to_string` handler"""
     last_message = result["last_message"]
     text = last_message.text or json.dumps(last_message.to_dict())
     if result["exit_reason"] == _EXIT_REASON_MAX_STEPS:
-        text += "\n\n[The agent reached max_agent_steps and stopped, so this result may be incomplete.]"
+        text += "\n\n[The Agent reached max_agent_steps and stopped, so this result may be incomplete.]"
     return text
 
 
 class AgentTool(ComponentTool):
     """
-    A Tool that wraps an Agent, so that another Agent can delegate work to it.
+    A Tool that wraps a Haystack Agent, allowing it to be used as a tool by another Agent.
+
+    AgentTool is a building block for multi-agent systems: an Agent specialized in one task becomes a tool that
+    other Agents can delegate to. The calling Agent only sees the final reply, so all the steps the wrapped Agent
+    takes stay out of its context. Sensible defaults make this work out of the box: the task is delegated as a
+    single user message and comes back as text.
+
+    To use AgentTool, you first need a Haystack Agent. Below is an example of creating an AgentTool from an Agent
+    that searches the web with a SerperDevWebSearch component from the `serperdev-haystack` integration package
+    (`pip install serperdev-haystack`).
 
     ## Usage Example:
-
+    <!-- test-ignore -->
     ```python
     from haystack.components.agents import Agent
     from haystack.components.generators.chat import OpenAIChatGenerator
@@ -103,9 +109,9 @@ class AgentTool(ComponentTool):
     )
 
     research = AgentTool(
-        researcher,
+        agent=researcher,
         name="research",
-        description="You are a research specialist. Search the web to find information.",
+        description="Research a question on the web and report the findings",
     )
 
     coordinator = Agent(
@@ -132,20 +138,84 @@ class AgentTool(ComponentTool):
     ) -> None:
         """
         Create a Tool instance from a Haystack Agent.
+
+        :param agent: The Haystack Agent to wrap as a tool.
+        :param name: Name of the tool.
+        :param description: Description of the tool. It should tell the calling LLM what the Agent is specialized in
+            and when to delegate to it.
+        :param parameters:
+            A JSON schema defining the parameters expected by the Tool.
+            Will fall back to a schema with the task to delegate as a single user message, plus one string parameter
+            for every other mandatory input of the Agent, if not provided.
+        :param outputs_to_string:
+            Optional dictionary defining how tool outputs should be converted into string(s) or results.
+            If not provided, the tool result is the text of the Agent's final reply, or the serialized message if
+            the reply has no text. A warning is appended if the Agent stopped because it reached `max_agent_steps`.
+
+            `outputs_to_string` supports two formats:
+
+            1. Single output format - use "source", "handler", and/or "raw_result" at the root level:
+                ```python
+                {
+                    "source": "last_message", "handler": format_reply, "raw_result": False
+                }
+                ```
+                - `source`: If provided, only the specified output key is sent to the handler.
+                - `handler`: A function that takes the tool output (or the extracted source value) and returns the
+                  final result.
+                - `raw_result`: If `True`, the result is returned raw without string conversion, but applying the
+                   `handler` if provided. This is intended for tools that return images. In this mode, the `handler`
+                   is required, since the Agent returns a dictionary, and it must return a list of
+                   `TextContent`/`ImageContent` objects to ensure compatibility with Chat Generators.
+
+            2. Multiple output format - map keys to individual configurations:
+                ```python
+                {
+                    "reply": {"source": "last_message", "handler": format_reply},
+                    "steps": {"source": "step_count", "handler": str}
+                }
+                ```
+                Each key maps to a dictionary that can contain "source" and/or "handler".
+                Note that `raw_result` is not supported in the multiple output format.
+        :param inputs_from_state:
+            Optional dictionary mapping the calling Agent's state keys to Agent input names.
+            Example: `{"subject": "topic"}` maps state's "subject" to the Agent's "topic" input.
+            Inputs mapped this way are not added to the generated `parameters` schema, since the calling Agent
+            provides them.
+        :param outputs_to_state:
+            Optional dictionary defining how tool outputs map to keys within state as well as optional handlers.
+            The keys must be declared in the `state_schema` of the calling Agent.
+            Handlers merge the tool output into the state and are called as `handler(current_value, tool_output)`.
+            If the source is provided only the specified output key is sent to the handler.
+            Example:
+            ```python
+            {
+                "notes": {"source": "last_message", "handler": custom_handler}
+            }
+            ```
+            If the source is omitted the whole tool result is sent to the handler.
+            Example:
+            ```python
+            {
+                "notes": {"handler": custom_handler}
+            }
+            ```
+        :raises TypeError: If the object passed is not a Haystack Agent instance.
+        :raises ValueError: If `parameters` is provided but does not cover all the mandatory inputs of the Agent.
         """
         if not isinstance(agent, Agent):
             raise TypeError(f"The 'agent' parameter must be an instance of Agent. Got {type(agent)} instead.")
 
-        uncovered = _uncovered_agent_inputs(agent, inputs_from_state)
+        uncovered = _uncovered_agent_inputs(agent=agent, inputs_from_state=inputs_from_state)
         if parameters is None:
-            parameters = _build_parameters(uncovered)
+            parameters = _build_parameters(uncovered=uncovered)
         else:
             missing = [name for name in uncovered if name not in parameters.get("properties", {})]
             if missing:
                 raise ValueError(
-                    f"The Agent requires the inputs {missing}, which this tool does not provide, so it could never "
-                    f"be invoked. Add them to 'parameters' so that the calling LLM fills them in, or map them from "
-                    f"the calling Agent's state with 'inputs_from_state'."
+                    f"The Agent wrapped by this tool requires the inputs {missing}, but this tool does not supply "
+                    f"them, so it can never run. Add them to 'parameters', the schema that the calling LLM fills "
+                    f"in, or to 'inputs_from_state', which takes them from the calling Agent's state."
                 )
 
         super().__init__(
@@ -179,16 +249,16 @@ class AgentTool(ComponentTool):
             The deserialized AgentTool instance.
         """
         inner_data = data["data"]
-        agent_class = import_class_by_name(inner_data["agent"]["type"])
+        agent_class = import_class_by_name(fully_qualified_name=inner_data["agent"]["type"])
         agent = component_from_dict(cls=agent_class, data=inner_data["agent"], name=inner_data["name"])
 
         outputs_to_state = inner_data.get("outputs_to_state")
         if outputs_to_state:
-            outputs_to_state = _deserialize_outputs_to_state(outputs_to_state)
+            outputs_to_state = _deserialize_outputs_to_state(outputs_to_state=outputs_to_state)
 
         outputs_to_string = inner_data.get("outputs_to_string")
         if outputs_to_string is not None:
-            outputs_to_string = _deserialize_outputs_to_string(outputs_to_string)
+            outputs_to_string = _deserialize_outputs_to_string(outputs_to_string=outputs_to_string)
 
         return cls(
             agent=agent,

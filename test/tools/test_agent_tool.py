@@ -78,7 +78,7 @@ class TestAgentResultToString:
         message = ChatMessage.from_tool(tool_result="42", origin=ToolCall(id="1", tool_name="lookup", arguments={}))
         result = {"last_message": message, "exit_reason": "max_agent_steps"}
         assert _agent_result_to_string(result=result) == json.dumps(message.to_dict()) + (
-            "\n\n[The agent reached max_agent_steps and stopped, so this result may be incomplete.]"
+            "\n\n[The Agent reached max_agent_steps and stopped, so this result may be incomplete.]"
         )
 
 
