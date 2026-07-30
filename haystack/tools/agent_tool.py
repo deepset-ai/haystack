@@ -13,14 +13,16 @@ from haystack.tools.tool import _deserialize_outputs_to_state, _deserialize_outp
 from haystack.utils.deserialization import deserialize_component_inplace
 
 
-def _uncovered_agent_inputs(agent: Agent, inputs_from_state: dict[str, str] | None) -> list[str]:
+def _required_tool_parameters(agent: Agent, inputs_from_state: dict[str, Any] | None) -> list[str]:
     """
-    Finds the mandatory Agent inputs the calling LLM has to fill in, such as the variables of a templated prompt.
+    Return the additional required Tool parameters for the wrapped Agent.
+
+    These are mandatory Agent inputs that are not supplied through `inputs_from_state`.
+    `messages` is excluded because AgentTool always adds it to the generated schema.
 
     :param agent: The wrapped Agent.
     :param inputs_from_state: Maps the calling Agent's state keys to Agent inputs.
-        The inputs it covers are excluded, since the calling Agent provides them.
-    :returns: The mandatory Agent inputs other than `messages`, sorted by name.
+    :returns: Additional required Tool parameters, sorted by name.
     """
     covered = {"messages", *(inputs_from_state or {}).values()}
     # prompt variables are registered as input sockets in a non-deterministic order, so sort to keep the schema stable
@@ -30,37 +32,6 @@ def _uncovered_agent_inputs(agent: Agent, inputs_from_state: dict[str, str] | No
         for name, socket in agent.__haystack_input__._sockets_dict.items()  # type: ignore[attr-defined]
         if socket.is_mandatory and name not in covered
     )
-
-
-def _build_parameters(uncovered: list[str]) -> dict[str, Any]:
-    """
-    Build the schema the calling LLM fills in: the task to delegate, plus one string per uncovered Agent input.
-
-    :param uncovered: Names of the mandatory Agent inputs the calling LLM has to fill in.
-    :returns: A JSON schema for the Tool parameters.
-    """
-    extra = {name: {"type": "string"} for name in uncovered}
-    return {
-        "type": "object",
-        "properties": {
-            "messages": {
-                "type": "array",
-                "description": "Exactly one user message.",
-                "minItems": 1,
-                "maxItems": 1,
-                "items": {
-                    "type": "object",
-                    "properties": {
-                        "role": {"type": "string", "enum": ["user"]},
-                        "content": {"type": "string", "description": "The task to delegate to this tool."},
-                    },
-                    "required": ["role", "content"],
-                },
-            },
-            **extra,
-        },
-        "required": ["messages", *uncovered],
-    }
 
 
 def agent_result_to_string(result: dict[str, Any]) -> str:
@@ -206,17 +177,16 @@ class AgentTool(ComponentTool):
         if not isinstance(agent, Agent):
             raise TypeError(f"The 'agent' parameter must be an instance of Agent. Got {type(agent)} instead.")
 
-        unresolved_parameters = parameters
-        uncovered = _uncovered_agent_inputs(agent=agent, inputs_from_state=inputs_from_state)
-        if parameters is None:
-            parameters = _build_parameters(uncovered=uncovered)
-        else:
-            missing = [name for name in uncovered if name not in parameters.get("properties", {})]
-            if missing:
+        if parameters is not None:
+            required_tool_parameters = _required_tool_parameters(agent=agent, inputs_from_state=inputs_from_state)
+            missing_required_parameters = [
+                name for name in required_tool_parameters if name not in parameters.get("properties", {})
+            ]
+            if missing_required_parameters:
                 raise ValueError(
-                    f"The Agent wrapped by this tool requires the inputs {missing}, but this tool does not supply "
-                    f"them, so it can never run. Add them to 'parameters', the schema that the calling LLM fills "
-                    f"in, or to 'inputs_from_state', which takes them from the calling Agent's state."
+                    f"The Agent wrapped by this tool requires the inputs {missing_required_parameters}, but this tool "
+                    f"does not supply them, so it can never run. Add them to 'parameters', the schema that the calling "
+                    f"LLM fills in, or to 'inputs_from_state', which takes them from the calling Agent's state."
                 )
 
         super().__init__(
@@ -228,8 +198,38 @@ class AgentTool(ComponentTool):
             inputs_from_state=inputs_from_state,
             outputs_to_state=outputs_to_state,
         )
-        # serialization reflects the user-provided schema, not resolved parameters
-        self._unresolved_parameters = unresolved_parameters
+
+    def _create_tool_parameters_schema(self, component: Any, inputs_from_state: dict[str, Any]) -> dict[str, Any]:
+        """
+        Override ComponentTool schema generation for AgentTool defaults.
+
+        ComponentTool calls this when users do not provide an explicit `parameters` schema. The generated schema always
+        includes `messages` for the delegated task, plus one string parameter for each mandatory Agent input not
+        supplied through `inputs_from_state`.
+        """
+        additional_required_parameters = _required_tool_parameters(agent=component, inputs_from_state=inputs_from_state)
+        additional_properties = {name: {"type": "string"} for name in additional_required_parameters}
+        return {
+            "type": "object",
+            "properties": {
+                "messages": {
+                    "type": "array",
+                    "description": "Exactly one user message.",
+                    "minItems": 1,
+                    "maxItems": 1,
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "role": {"type": "string", "enum": ["user"]},
+                            "content": {"type": "string", "description": "The task to delegate to this tool."},
+                        },
+                        "required": ["role", "content"],
+                    },
+                },
+                **additional_properties,
+            },
+            "required": ["messages", *additional_required_parameters],
+        }
 
     def to_dict(self) -> dict[str, Any]:
         """

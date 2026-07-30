@@ -11,7 +11,7 @@ from haystack.components.agents import Agent
 from haystack.components.generators.chat import MockChatGenerator, OpenAIChatGenerator
 from haystack.dataclasses import ChatMessage, ChatRole, ToolCall
 from haystack.tools import AgentTool, tool
-from haystack.tools.agent_tool import _build_parameters, _uncovered_agent_inputs, agent_result_to_string
+from haystack.tools.agent_tool import _required_tool_parameters, agent_result_to_string
 
 
 def _echo_last_message(messages: list[ChatMessage]) -> str:
@@ -34,34 +34,18 @@ MESSAGES_SCHEMA = {
 }
 
 
-class TestUncoveredAgentInputs:
+class TestRequiredToolParameters:
     def test_agent_without_prompt_variables(self):
         agent = Agent(chat_generator=MockChatGenerator(responses=["done"]), system_prompt="You research things.")
-        assert _uncovered_agent_inputs(agent=agent, inputs_from_state=None) == []
+        assert _required_tool_parameters(agent=agent, inputs_from_state=None) == []
 
     def test_agent_with_prompt_variables(self):
         agent = Agent(chat_generator=MockChatGenerator(responses=["done"]), system_prompt="You research {{topic}}.")
-        assert _uncovered_agent_inputs(agent=agent, inputs_from_state=None) == ["topic"]
+        assert _required_tool_parameters(agent=agent, inputs_from_state=None) == ["topic"]
 
     def test_prompt_variable_mapped_from_state(self):
         agent = Agent(chat_generator=MockChatGenerator(responses=["done"]), system_prompt="You research {{topic}}.")
-        assert _uncovered_agent_inputs(agent=agent, inputs_from_state={"subject": "topic"}) == []
-
-
-class TestBuildParameters:
-    def test_without_uncovered_inputs(self):
-        assert _build_parameters(uncovered=[]) == {
-            "type": "object",
-            "properties": {"messages": MESSAGES_SCHEMA},
-            "required": ["messages"],
-        }
-
-    def test_with_uncovered_inputs(self):
-        assert _build_parameters(uncovered=["language", "topic"]) == {
-            "type": "object",
-            "properties": {"messages": MESSAGES_SCHEMA, "language": {"type": "string"}, "topic": {"type": "string"}},
-            "required": ["messages", "language", "topic"],
-        }
+        assert _required_tool_parameters(agent=agent, inputs_from_state={"subject": "topic"}) == []
 
 
 class TestAgentResultToString:
@@ -93,7 +77,11 @@ class TestAgentTool:
         assert agent_tool.name == "research"
         assert agent_tool.description == "Research a question and report the findings."
         assert agent_tool._component is sub_agent
-        assert agent_tool.parameters == _build_parameters(uncovered=[])
+        assert agent_tool.parameters == {
+            "type": "object",
+            "properties": {"messages": MESSAGES_SCHEMA},
+            "required": ["messages"],
+        }
         assert agent_tool.outputs_to_string == {"handler": agent_result_to_string}
 
     def test_init_with_non_agent(self):
@@ -105,7 +93,11 @@ class TestAgentTool:
 
         agent_tool = AgentTool(agent=sub_agent, name="research", description="Research a question.")
 
-        assert agent_tool.parameters == _build_parameters(uncovered=["topic"])
+        assert agent_tool.parameters == {
+            "type": "object",
+            "properties": {"messages": MESSAGES_SCHEMA, "topic": {"type": "string"}},
+            "required": ["messages", "topic"],
+        }
 
     def test_init_with_prompt_template_and_inputs_from_state(self):
         sub_agent = Agent(chat_generator=MockChatGenerator(responses=["done"]), system_prompt="You research {{topic}}.")
@@ -114,7 +106,11 @@ class TestAgentTool:
             agent=sub_agent, name="research", description="Research a question.", inputs_from_state={"subject": "topic"}
         )
 
-        assert agent_tool.parameters == _build_parameters(uncovered=[])
+        assert agent_tool.parameters == {
+            "type": "object",
+            "properties": {"messages": MESSAGES_SCHEMA},
+            "required": ["messages"],
+        }
 
     def test_init_with_custom_parameters(self):
         sub_agent = Agent(chat_generator=MockChatGenerator(responses=["done"]))
@@ -218,9 +214,14 @@ class TestAgentTool:
         assert isinstance(agent_tool._component, Agent)
         assert agent_tool.name == "research"
         assert agent_tool.description == "Research a question."
-        assert agent_tool.parameters == _build_parameters(uncovered=[])
+        assert agent_tool.parameters == {
+            "type": "object",
+            "properties": {"messages": MESSAGES_SCHEMA},
+            "required": ["messages"],
+        }
         assert agent_tool.outputs_to_string == {"handler": agent_result_to_string}
         assert agent_tool.outputs_to_state == {"notes": {"source": "last_message"}}
+        assert agent_tool.to_dict()["data"]["parameters"] is None
 
     def test_from_dict_with_explicit_parameters(self):
         parameters = {
@@ -238,6 +239,7 @@ class TestAgentTool:
         agent_tool = AgentTool.from_dict(data)
 
         assert agent_tool.parameters == parameters
+        assert agent_tool.to_dict()["data"]["parameters"] == parameters
 
     @pytest.mark.skipif(not os.environ.get("OPENAI_API_KEY"), reason="OPENAI_API_KEY not set")
     @pytest.mark.integration
