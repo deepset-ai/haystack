@@ -98,7 +98,6 @@ export default {
         'concepts/secret-management',
         'concepts/jinja-templates',
         'concepts/integrations',
-        'concepts/experimental-package',
       ],
     },
     {
@@ -169,6 +168,18 @@ export default {
               ],
             },
             'pipeline-components/agents-1/state',
+            {
+              type: 'category',
+              label: 'Agent Pack',
+              link: {
+                type: 'doc',
+                id: 'pipeline-components/agents-1/agent-pack',
+              },
+              items: [
+                'pipeline-components/agents-1/agent-pack/advanced-rag-agent',
+                'pipeline-components/agents-1/agent-pack/deep-research-agent',
+              ],
+            },
           ],
         },
         {
@@ -308,6 +319,8 @@ export default {
             'pipeline-components/embedders/coheredocumentembedder',
             'pipeline-components/embedders/coheredocumentimageembedder',
             'pipeline-components/embedders/coheretextembedder',
+            'pipeline-components/embedders/edenaidocumentembedder',
+            'pipeline-components/embedders/edenaitextembedder',
             'pipeline-components/embedders/fastembeddocumentembedder',
             'pipeline-components/embedders/fastembedsparsedocumentembedder',
             'pipeline-components/embedders/fastembedsparsetextembedder',
@@ -402,6 +415,7 @@ export default {
             'pipeline-components/fetchers/googledrivefetcher',
             'pipeline-components/fetchers/linkcontentfetcher',
             'pipeline-components/fetchers/mssharepointfetcher',
+            'pipeline-components/fetchers/tavilyfetcher',
             'pipeline-components/fetchers/external-integrations-fetchers',
           ],
         },
@@ -432,6 +446,7 @@ export default {
             'pipeline-components/generators/coherechatgenerator',
             'pipeline-components/generators/coheregenerator',
             'pipeline-components/generators/cometapichatgenerator',
+            'pipeline-components/generators/edenaichatgenerator',
             'pipeline-components/generators/fallbackchatgenerator',
             'pipeline-components/generators/googleaigeminichatgenerator',
             'pipeline-components/generators/googleaigeminigenerator',
@@ -674,7 +689,9 @@ export default {
           },
           items: [
             'pipeline-components/websearch/bravewebsearch',
+            'pipeline-components/websearch/ddgswebsearch',
             'pipeline-components/websearch/firecrawlwebsearch',
+            'pipeline-components/websearch/linkupwebsearch',
             'pipeline-components/websearch/perplexitywebsearch',
             'pipeline-components/websearch/searchapiwebsearch',
             'pipeline-components/websearch/serperdevwebsearch',

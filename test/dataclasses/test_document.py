@@ -346,6 +346,17 @@ def test_from_dict_with_flat_meta():
     )
 
 
+def test_to_dict_from_dict_roundtrip_with_meta_key_named_meta():
+    """
+    A metadata key literally named "meta" must survive the default
+    to_dict(flatten=True)/from_dict() round-trip.
+    """
+    doc = Document(content="hi", meta={"meta": "value"})
+
+    assert Document.from_dict(doc.to_dict()) == doc
+    assert Document.from_dict(doc.to_dict()).meta == {"meta": "value"}
+
+
 def test_from_dict_with_flat_and_non_flat_meta():
     with pytest.raises(ValueError, match="Pass either the 'meta' parameter or flattened metadata keys"):
         Document.from_dict(

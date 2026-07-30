@@ -2,6 +2,8 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+from unittest.mock import AsyncMock, Mock
+
 import pytest
 
 from haystack import Document
@@ -206,3 +208,16 @@ class TestAutoMergingRetrieverAsync:
 
         assert len(result["documents"]) == 1
         assert result["documents"][0].meta["__level"] == 0  # hit root document
+
+    @pytest.mark.asyncio
+    async def test_close_async(self):
+        closable_document_store = Mock(spec=["close_async"])
+        closable_document_store.close_async = AsyncMock()
+        retriever = AutoMergingRetriever(document_store=closable_document_store)
+        await retriever.close_async()
+        closable_document_store.close_async.assert_awaited_once_with()
+
+        nonclosable_document_store = Mock(spec=[])
+        retriever = AutoMergingRetriever(document_store=nonclosable_document_store)
+        await retriever.close_async()
+        assert nonclosable_document_store.mock_calls == []

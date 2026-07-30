@@ -112,3 +112,19 @@ Asynchronously checks if any document associated with the specified cache field 
 - <code>dict\[str, Any\]</code> – A dictionary with two keys:
 - `hits` - Documents that matched with at least one of the items.
 - `misses` - Items that were not present in any documents.
+
+#### close
+
+```python
+close() -> None
+```
+
+Release the synchronous resources of the underlying Document Store.
+
+#### close_async
+
+```python
+close_async() -> None
+```
+
+Release the asynchronous resources of the underlying Document Store.
