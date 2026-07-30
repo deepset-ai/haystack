@@ -9,7 +9,8 @@ import pytest
 from haystack.components.agents import Agent
 from haystack.components.generators.chat import MockChatGenerator
 from haystack.dataclasses import ChatMessage
-from haystack.hooks.compaction import CompactionBudget, Compactor, ContextCompactionHook, SlidingWindowCompactor
+from haystack.hooks.compaction import Compactor, ContextCompactionHook, SlidingWindowCompactor
+from haystack.token_counters import TokenCounter
 from haystack.tools import tool
 from haystack.utils.experimental import ExperimentalWarning
 from test.hooks.compaction.helpers import FakeCounter, count_markers, long_conversation, make_state, tool_call
@@ -35,16 +36,20 @@ class _RecordingCompactor(Compactor):
     def __init__(self, result: list[ChatMessage] | None = None) -> None:
         self.result = result
         self.calls: list[str] = []
-        self.budgets: list[CompactionBudget] = []
+        self.targets: list[int] = []
 
-    def compact(self, messages: list[ChatMessage], budget: CompactionBudget) -> list[ChatMessage] | None:
+    def compact(
+        self, messages: list[ChatMessage], target_tokens: int, token_counter: TokenCounter
+    ) -> list[ChatMessage] | None:
         self.calls.append("compact")
-        self.budgets.append(budget)
+        self.targets.append(target_tokens)
         return self.result
 
-    async def compact_async(self, messages: list[ChatMessage], budget: CompactionBudget) -> list[ChatMessage] | None:
+    async def compact_async(
+        self, messages: list[ChatMessage], target_tokens: int, token_counter: TokenCounter
+    ) -> list[ChatMessage] | None:
         self.calls.append("compact_async")
-        self.budgets.append(budget)
+        self.targets.append(target_tokens)
         return self.result
 
     def warm_up(self) -> None:
@@ -178,7 +183,7 @@ class TestContextCompactionHook:
 
         hook.run(make_state(messages, context_tokens=counter.count(messages)))
 
-        assert compactor.budgets[0].target_tokens == pytest.approx(int(1000 * 0.4), abs=5)
+        assert compactor.targets[0] == pytest.approx(int(1000 * 0.4), abs=5)
 
     def test_subtracts_provider_overhead_from_the_target(self):
         # The reported count also covers tool schemas and template overhead, which a compactor cannot remove. Here that
@@ -186,7 +191,7 @@ class TestContextCompactionHook:
         compactor = _RecordingCompactor()
         _hook(compactor).run(make_state(long_conversation(), context_tokens=800))
 
-        assert compactor.budgets[0].target_tokens == 0
+        assert compactor.targets[0] == 0
 
     def test_rewrites_messages_and_re_estimates_context_tokens(self):
         hook = _hook()

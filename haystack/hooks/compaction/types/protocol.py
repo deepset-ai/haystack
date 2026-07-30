@@ -2,26 +2,11 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from dataclasses import dataclass
 from typing import Any, Protocol
 
-from haystack.core.serialization import default_from_dict, default_to_dict
+from haystack.core.serialization import default_from_dict
 from haystack.dataclasses import ChatMessage
 from haystack.token_counters import TokenCounter
-
-
-@dataclass(frozen=True)
-class CompactionBudget:
-    """
-    How small a compactor should make the conversation, and the counter to measure it with.
-
-    :param target_tokens: The size the compacted conversation should come in under.
-    :param counter: The `TokenCounter` to measure messages with. The same one the hook used to decide to compact, so a
-        compactor's measurements are consistent with the trigger's.
-    """
-
-    target_tokens: int
-    counter: TokenCounter
 
 
 class Compactor(Protocol):
@@ -41,24 +26,31 @@ class Compactor(Protocol):
        right after compaction returns, and dropping the assistant message holding that call leaves the result orphaned,
        which chat-completion APIs reject.
 
-    `budget.target_tokens` is a goal, not a guarantee: a compactor that cannot reach it should get as close as it can
-    rather than strip the conversation past what the Agent needs to keep working.
+    `target_tokens` is a goal, not a guarantee: a compactor that cannot reach it should get as close as it can rather
+    than strip the conversation past what the Agent needs to keep working.
 
-    Implement both `to_dict` and `from_dict` to make a custom compactor serializable; the default implementations
-    below cover compactors whose constructor takes no arguments.
+    Implement `to_dict` so the compactor's settings survive serialization. The default `from_dict` passes them straight
+    back to the constructor, which is enough for plain values; override it when `to_dict` emitted something that has to
+    be rebuilt first, such as a `Secret` or a nested component.
     """
 
-    def compact(self, messages: list[ChatMessage], budget: CompactionBudget) -> list[ChatMessage] | None:
+    def compact(
+        self, messages: list[ChatMessage], target_tokens: int, token_counter: TokenCounter
+    ) -> list[ChatMessage] | None:
         """
         Return a shorter replacement for `messages`, or None to leave it unchanged.
 
         :param messages: The conversation to compact, oldest to newest.
-        :param budget: The size to aim for and the counter to measure with.
+        :param target_tokens: The size the compacted conversation should come in under.
+        :param token_counter: The `TokenCounter` to measure messages with. The same one the caller sized the context
+            with, so a compactor's measurements are consistent with the decision to compact.
         :returns: The replacement conversation, or None when this compactor has nothing to change.
         """
         ...
 
-    async def compact_async(self, messages: list[ChatMessage], budget: CompactionBudget) -> list[ChatMessage] | None:
+    async def compact_async(
+        self, messages: list[ChatMessage], target_tokens: int, token_counter: TokenCounter
+    ) -> list[ChatMessage] | None:
         """
         Asynchronously return a shorter replacement for `messages`, or None to leave it unchanged.
 
@@ -66,14 +58,16 @@ class Compactor(Protocol):
         not blocked.
 
         :param messages: The conversation to compact, oldest to newest.
-        :param budget: The size to aim for and the counter to measure with.
+        :param target_tokens: The size the compacted conversation should come in under.
+        :param token_counter: The `TokenCounter` to measure messages with. The same one the caller sized the context
+            with, so a compactor's measurements are consistent with the decision to compact.
         :returns: The replacement conversation, or None when this compactor has nothing to change.
         """
-        return self.compact(messages, budget)
+        return self.compact(messages, target_tokens, token_counter)
 
     def to_dict(self) -> dict[str, Any]:
         """Serialize the compactor to a dictionary."""
-        return default_to_dict(self)
+        ...
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "Compactor":

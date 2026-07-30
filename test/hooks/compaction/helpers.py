@@ -6,7 +6,6 @@ from typing import Any
 
 from haystack.components.agents.state.state import State
 from haystack.dataclasses import ChatMessage, ToolCall
-from haystack.hooks.compaction.types import CompactionBudget
 from haystack.hooks.compaction.utils import _COMPACTION_META_KEY
 from haystack.token_counters.utils import _rendered_conversation, _rendered_tools
 from haystack.tools import ToolsType
@@ -40,11 +39,6 @@ class FakeCounter:
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "FakeCounter":
         return cls()
-
-
-def budget(target_tokens: int, *, counter: FakeCounter | None = None) -> CompactionBudget:
-    """A budget aiming for `target_tokens`, measured with a `FakeCounter` unless one is given."""
-    return CompactionBudget(target_tokens=target_tokens, counter=counter or FakeCounter())
 
 
 def tool_call(*call_ids: str, name: str = "search", arguments: dict[str, Any] | None = None) -> ChatMessage:

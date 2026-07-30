@@ -2,6 +2,6 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from .protocol import CompactionBudget, Compactor
+from .protocol import Compactor
 
-__all__ = ["CompactionBudget", "Compactor"]
+__all__ = ["Compactor"]

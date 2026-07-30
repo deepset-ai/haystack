@@ -19,36 +19,32 @@ def _last_assistant_end(messages: list[ChatMessage]) -> int:
     return 0
 
 
-def _estimated_context_tokens(messages: list[ChatMessage], context_tokens: int, counter: TokenCounter) -> int:
+def _estimated_context_tokens(messages: list[ChatMessage], context_tokens: int, token_counter: TokenCounter) -> int:
     """
     Estimate the size of the whole conversation.
 
     :param messages: The conversation, oldest to newest.
     :param context_tokens: The `context_tokens` state key which is computed using the provider's own token counting.
-    :param counter: The counter to measure the unaccounted messages with.
+    :param token_counter: The counter to measure the unaccounted messages with.
     :returns: The estimated total token count.
     """
     # Nothing sent yet, or a generator that reports no usage: there is no anchor, so count the whole conversation.
     if context_tokens == 0:
-        return counter.count(messages)
+        return token_counter.count(messages)
     # We only estimate the messages that arrived after the last assistant message to keep the count as accurate as
     # possible.
-    return context_tokens + counter.count(messages[_last_assistant_end(messages) :])
+    return context_tokens + token_counter.count(messages[_last_assistant_end(messages) :])
 
 
 def _compaction_bounds(
-    messages: list[ChatMessage], target_tokens: int, counter: TokenCounter, min_keep_messages: int
+    messages: list[ChatMessage], target_tokens: int, token_counter: TokenCounter, min_keep_messages: int
 ) -> tuple[int, int]:
     """
     Return where the block of messages that compaction may remove starts and ends.
 
-    The block runs from `start` up to but not including `end`, so `messages[start:end]` is what may go. Before it is the
-    leading run of system messages and after it is the recent window, both of which are kept. The window takes as much
-    recent history as `target_tokens` affords.
-
     :param messages: The conversation, oldest to newest.
     :param target_tokens: The size the conversation should come in under once the block is removed.
-    :param counter: The counter to measure messages with.
+    :param token_counter: The counter to measure messages with.
     :param min_keep_messages: The fewest recent messages to keep, even when the target cannot afford them.
     :returns: The `(start, end)` indices of the removable block; `end - start` is `0` when there is nothing to remove.
     """
@@ -64,10 +60,10 @@ def _compaction_bounds(
         start += 1
 
     # We always keep the system messages so subtract its cost from the target to see what remains for the window.
-    remaining = target_tokens - counter.count(messages[:start])
+    remaining = target_tokens - token_counter.count(messages[:start])
     end = len(messages)
     while end > start:
-        cost = counter.count([messages[end - 1]])
+        cost = token_counter.count([messages[end - 1]])
         if cost > remaining:
             break
         remaining -= cost

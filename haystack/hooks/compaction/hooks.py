@@ -9,7 +9,7 @@ from haystack.components.agents.state.state import State
 from haystack.components.agents.state.state_utils import replace_values
 from haystack.core.serialization import component_to_dict, default_from_dict, default_to_dict
 from haystack.dataclasses import ChatMessage
-from haystack.hooks.compaction.types import CompactionBudget, Compactor
+from haystack.hooks.compaction.types import Compactor
 from haystack.hooks.compaction.utils import _estimated_context_tokens, _last_assistant_end
 from haystack.token_counters import TiktokenCounter, TokenCounter
 from haystack.utils.deserialization import deserialize_component_inplace
@@ -95,11 +95,6 @@ class ContextCompactionHook:
         self.compact_to = compact_to
         self.token_counter = token_counter or TiktokenCounter()
 
-    @property
-    def _target_tokens(self) -> int:
-        """The size compaction aims to bring the conversation down to."""
-        return int(self.context_window * self.compact_to)
-
     def run(self, state: State) -> None:
         """
         Compact `state.data["messages"]` if the conversation fills too much of the window.
@@ -108,9 +103,12 @@ class ContextCompactionHook:
             compactor returns a compacted conversation.
         :returns: None. The hook mutates `state` in place.
         """
-        if not self._over_threshold(state):
+        messages = state.data.get("messages", [])
+        target_tokens = self._target_tokens(messages, context_tokens=state.data.get("context_tokens", 0))
+        if target_tokens is None:
             return
-        self._apply(state, self.compactor.compact(self._messages(state), self._budget(state)))
+        compacted = self.compactor.compact(messages, target_tokens, self.token_counter)
+        self._apply(state, compacted, before=len(messages), target_tokens=target_tokens)
 
     async def run_async(self, state: State) -> None:
         """
@@ -120,35 +118,42 @@ class ContextCompactionHook:
             compactor returns a compacted conversation.
         :returns: None. The hook mutates `state` in place.
         """
-        if not self._over_threshold(state):
+        messages = state.data.get("messages", [])
+        target_tokens = self._target_tokens(messages, context_tokens=state.data.get("context_tokens", 0))
+        if target_tokens is None:
             return
-        self._apply(state, await self.compactor.compact_async(self._messages(state), self._budget(state)))
+        compacted = await self.compactor.compact_async(messages, target_tokens, self.token_counter)
+        self._apply(state, compacted, before=len(messages), target_tokens=target_tokens)
 
-    @staticmethod
-    def _messages(state: State) -> list[ChatMessage]:
-        """The conversation held in `State`, or an empty list."""
-        return state.data.get("messages") or []
+    def _target_tokens(self, messages: list[ChatMessage], context_tokens: int) -> int | None:
+        """
+        The size a compactor should bring `messages` down to.
 
-    def _estimated_tokens(self, state: State) -> int:
-        """The estimated size of the whole context, anchored on what the chat generator reported."""
-        return _estimated_context_tokens(self._messages(state), state.data.get("context_tokens", 0), self.token_counter)
-
-    def _budget(self, state: State) -> CompactionBudget:
-        """The size the messages should come in under, and the counter to measure with."""
+        :param messages: The conversation, oldest to newest.
+        :param context_tokens: The `context_tokens` state key, which anchors the estimate on the chat generator's own
+            count.
+        :returns: The target for the messages alone, or None when the context has not reached `compact_at` of the window
+            and should be left alone.
+        """
+        estimated = _estimated_context_tokens(messages, context_tokens=context_tokens, token_counter=self.token_counter)
+        if estimated < self.context_window * self.compact_at:
+            return None
         # The target covers the whole context, but a compactor can only remove messages. Subtract what it cannot touch -
         # the tool schemas and chat-template overhead the reported count includes - or it would remove far too little.
-        overhead = self._estimated_tokens(state) - self.token_counter.count(self._messages(state))
-        return CompactionBudget(target_tokens=max(self._target_tokens - overhead, 0), counter=self.token_counter)
+        overhead = estimated - self.token_counter.count(messages)
+        return max(int(self.context_window * self.compact_to) - overhead, 0)
 
-    def _over_threshold(self, state: State) -> bool:
-        """Whether the context has reached `compact_at` of the window, so compaction should be attempted."""
-        return self._estimated_tokens(state) >= self.context_window * self.compact_at
+    def _apply(self, state: State, compacted: list[ChatMessage] | None, *, before: int, target_tokens: int) -> None:
+        """
+        Write a compacted conversation back into `State`, or do nothing if the compactor declined.
 
-    def _apply(self, state: State, compacted: list[ChatMessage] | None) -> None:
-        """Write a compacted conversation back into `State`, or do nothing if the compactor declined."""
+        :param state: The Agent's live `State`, rewritten in place.
+        :param compacted: What the compactor returned.
+        :param before: How many messages the conversation held before compaction, for the log line.
+        :param target_tokens: The target the compactor was given, for the log line.
+        """
         if compacted is None:
             return
-        messages_before = len(self._messages(state))
         state.set("messages", compacted, handler_override=replace_values)
         # Re-estimate rather than reset to 0, which would claim the context is empty when its size is roughly known.
         # Counting only through the last assistant message keeps the key's meaning intact, so a later read does not
@@ -158,9 +163,9 @@ class ContextCompactionHook:
             "Compacted the Agent's conversation at step {step} from {before} to {after} messages, targeting {target} "
             "tokens.",
             step=state.data.get("step_count", 0),
-            before=messages_before,
+            before=before,
             after=len(compacted),
-            target=self._target_tokens,
+            target=target_tokens,
         )
 
     def warm_up(self) -> None:

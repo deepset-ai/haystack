@@ -82,7 +82,7 @@ class TestCompactionBounds:
     def test_window_grows_to_fill_the_target(self):
         # Ten messages of ~25 tokens each; a 60-token target should keep roughly the last two.
         messages = [_sized(100) for _ in range(10)]
-        start, end = _compaction_bounds(messages, target_tokens=60, counter=FakeCounter(), min_keep_messages=1)
+        start, end = _compaction_bounds(messages, target_tokens=60, token_counter=FakeCounter(), min_keep_messages=1)
 
         assert start == 0
         kept = len(messages) - end
@@ -90,20 +90,22 @@ class TestCompactionBounds:
 
     def test_a_bigger_target_keeps_more(self):
         messages = [_sized(100) for _ in range(10)]
-        _, tight = _compaction_bounds(messages, target_tokens=60, counter=FakeCounter(), min_keep_messages=1)
-        _, roomy = _compaction_bounds(messages, target_tokens=200, counter=FakeCounter(), min_keep_messages=1)
+        _, tight = _compaction_bounds(messages, target_tokens=60, token_counter=FakeCounter(), min_keep_messages=1)
+        _, roomy = _compaction_bounds(messages, target_tokens=200, token_counter=FakeCounter(), min_keep_messages=1)
 
         assert roomy < tight
 
     def test_returns_an_empty_range_when_it_already_fits(self):
         messages = [_sized(20), _sized(20)]
-        start, end = _compaction_bounds(messages, target_tokens=100_000, counter=FakeCounter(), min_keep_messages=1)
+        start, end = _compaction_bounds(
+            messages, target_tokens=100_000, token_counter=FakeCounter(), min_keep_messages=1
+        )
 
         assert end == start
 
     def test_min_keep_messages_wins_over_an_unaffordable_target(self):
         messages = [_sized(400) for _ in range(6)]
-        _, end = _compaction_bounds(messages, target_tokens=1, counter=FakeCounter(), min_keep_messages=3)
+        _, end = _compaction_bounds(messages, target_tokens=1, token_counter=FakeCounter(), min_keep_messages=3)
 
         assert len(messages) - end == 3
 
@@ -154,4 +156,6 @@ class TestCompactionBounds:
     )
     def test_structural_rules(self, messages, expected):
         # A target of 1 token forces the window as small as the structural rules allow, isolating them from sizing.
-        assert _compaction_bounds(messages, target_tokens=1, counter=FakeCounter(), min_keep_messages=1) == expected
+        assert (
+            _compaction_bounds(messages, target_tokens=1, token_counter=FakeCounter(), min_keep_messages=1) == expected
+        )

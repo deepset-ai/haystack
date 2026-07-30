@@ -6,8 +6,9 @@ from typing import Any
 
 from haystack.core.serialization import default_to_dict
 from haystack.dataclasses import ChatMessage
-from haystack.hooks.compaction.types import CompactionBudget, Compactor
+from haystack.hooks.compaction.types import Compactor
 from haystack.hooks.compaction.utils import _COMPACTION_META_KEY, _compaction_bounds
+from haystack.token_counters import TokenCounter
 from haystack.utils.experimental import _experimental
 
 # Placeholder a custom omission note may include to have the number of removed messages substituted in.
@@ -22,10 +23,9 @@ _DEFAULT_OMISSION_NOTE = (
 @_experimental
 class SlidingWindowCompactor(Compactor):
     """
-    Keeps the leading system messages and as many recent messages as the budget allows, dropping everything in between.
+    Keeps the leading system messages and as many recent messages as the target allows, dropping everything in between.
 
-    An `omission_note` is left in place of what was removed. Cheap but lossy: whatever the Agent learned outside the
-    retained window is gone, so it suits runs whose turns are largely independent.
+    An `omission_note` is left in place of what was removed.
 
     ```python
     from haystack.components.agents import Agent
@@ -47,9 +47,7 @@ class SlidingWindowCompactor(Compactor):
         """
         Initialize the compactor.
 
-        How much is kept comes from the budget the hook supplies, not from here.
-
-        :param min_keep_messages: The fewest recent messages to keep when the budget cannot afford more, so a target set
+        :param min_keep_messages: The fewest recent messages to keep when the target cannot afford more, so a target
             too low still leaves the Agent something to work from. Must be at least 1: the Agent may be mid-step with a
             pending tool call whose result is appended right after compaction.
         :param omission_note: The user message left in place of what was removed, or None to remove the messages
@@ -64,16 +62,21 @@ class SlidingWindowCompactor(Compactor):
         self.min_keep_messages = min_keep_messages
         self.omission_note = omission_note
 
-    def compact(self, messages: list[ChatMessage], budget: CompactionBudget) -> list[ChatMessage] | None:
+    def compact(
+        self, messages: list[ChatMessage], target_tokens: int, token_counter: TokenCounter
+    ) -> list[ChatMessage] | None:
         """
         Drop the messages between the leading system block and the retained window.
 
         :param messages: The conversation to compact, oldest to newest.
-        :param budget: The size to aim for and the counter to measure with.
+        :param target_tokens: The size the retained conversation should come in under.
+        :param token_counter: The `TokenCounter` to measure messages with.
         :returns: The system messages, an omission note if one is configured, and the retained window; or None when
             there is nothing worth removing.
         """
-        start, end = _compaction_bounds(messages, budget.target_tokens, budget.counter, self.min_keep_messages)
+        start, end = _compaction_bounds(
+            messages, target_tokens=target_tokens, token_counter=token_counter, min_keep_messages=self.min_keep_messages
+        )
         removed = end - start
         # With a note, removing a single message just swaps it for the note.
         if removed < (2 if self.omission_note else 1):

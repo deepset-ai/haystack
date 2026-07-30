@@ -10,13 +10,12 @@ from lazy_imports import LazyImporter
 _import_structure = {
     "hooks": ["ContextCompactionHook"],
     "sliding_window": ["SlidingWindowCompactor"],
-    "types": ["CompactionBudget", "Compactor"],
+    "types": ["Compactor"],
 }
 
 if TYPE_CHECKING:
     from .hooks import ContextCompactionHook as ContextCompactionHook
     from .sliding_window import SlidingWindowCompactor as SlidingWindowCompactor
-    from .types import CompactionBudget as CompactionBudget
     from .types import Compactor as Compactor
 else:
     sys.modules[__name__] = LazyImporter(name=__name__, module_file=__file__, import_structure=_import_structure)
