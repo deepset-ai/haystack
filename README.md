@@ -208,6 +208,12 @@
 | haystack/telemetry/\_\_init\_\_.py                                        |        1 |        0 |    100% |           |
 | haystack/telemetry/\_environment.py                                       |       25 |        0 |    100% |           |
 | haystack/telemetry/\_telemetry.py                                         |       83 |       12 |     86% |70-76, 94-95, 114-115, 188 |
+| haystack/token\_counters/\_\_init\_\_.py                                  |        5 |        0 |    100% |           |
+| haystack/token\_counters/approximate\_counter.py                          |       21 |        0 |    100% |           |
+| haystack/token\_counters/tiktoken\_counter.py                             |       28 |        0 |    100% |           |
+| haystack/token\_counters/types/\_\_init\_\_.py                            |        2 |        0 |    100% |           |
+| haystack/token\_counters/types/protocol.py                                |       10 |        0 |    100% |           |
+| haystack/token\_counters/utils.py                                         |       46 |        0 |    100% |           |
 | haystack/tools/\_\_init\_\_.py                                            |        7 |        0 |    100% |           |
 | haystack/tools/component\_tool.py                                         |      100 |        5 |     95% |372-373, 416-418 |
 | haystack/tools/errors.py                                                  |        6 |        0 |    100% |           |
@@ -247,7 +253,7 @@
 | haystack/utils/type\_serialization.py                                     |      135 |        6 |     96% |97, 99, 243-244, 252, 268 |
 | haystack/utils/url\_validation.py                                         |        4 |        0 |    100% |           |
 | haystack/version.py                                                       |        5 |        2 |     60% |      9-10 |
-| **TOTAL**                                                                 | **16006** |  **788** | **95%** |           |
+| **TOTAL**                                                                 | **16118** |  **788** | **95%** |           |
 
 
 ## Setup coverage badge
