@@ -4,10 +4,11 @@
 
 import inspect
 from collections.abc import Awaitable, Callable
-from typing import Any, cast, get_type_hints
+from typing import Any, cast
 
 from haystack.components.agents.state.state import State
 from haystack.core.serialization import default_from_dict, default_to_dict
+from haystack.core.type_utils import _resolve_parameter_types
 from haystack.utils.callable_serialization import deserialize_callable, serialize_callable
 
 
@@ -18,17 +19,8 @@ def _takes_single_state_argument(function: Callable) -> bool:
     :param function: The callable to inspect.
     :returns: True if the signature is a single `State`-annotated parameter, False otherwise.
     """
-    params = list(inspect.signature(function).parameters.values())
-    if len(params) != 1:
-        return False
-
-    try:
-        # get_type_hints resolves postponed annotations, where `State` is stored as a string. If resolution fails, fall
-        # back to the raw annotation so validation still raises the ValueError in FunctionHook.
-        annotation = get_type_hints(function).get(params[0].name, params[0].annotation)
-    except (NameError, TypeError, AttributeError):
-        annotation = params[0].annotation
-    return annotation is State
+    param_types = list(_resolve_parameter_types(function).values())
+    return len(param_types) == 1 and param_types[0] is State
 
 
 class FunctionHook:

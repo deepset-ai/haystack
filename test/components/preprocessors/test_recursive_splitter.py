@@ -11,6 +11,8 @@ from pytest import LogCaptureFixture
 from haystack import Document, Pipeline
 from haystack.components.preprocessors.recursive_splitter import RecursiveDocumentSplitter
 from haystack.components.preprocessors.sentence_tokenizer import SentenceSplitter
+from haystack.components.retrievers.sentence_window_retriever import SentenceWindowRetriever
+from haystack.document_stores.in_memory import InMemoryDocumentStore
 
 
 def test_get_custom_sentence_tokenizer_success():
@@ -1045,10 +1047,28 @@ def test_recursive_splitter_generates_unique_ids_and_correct_meta():
     # IDs must be unique
     assert len({c.id for c in chunks}) == len(chunks)
 
-    # parent_id and split_id checks
+    # source_id, parent_id and split_id checks
     for idx, chunk in enumerate(chunks):
+        assert chunk.meta["source_id"] == source_doc.id
         assert chunk.meta["parent_id"] == source_doc.id
         assert chunk.meta["split_id"] == idx
+
+
+def test_recursive_splitter_output_works_with_sentence_window_retriever():
+    """SentenceWindowRetriever looks up `source_id` by default and raises when it is
+    absent"""
+    source_doc = Document(content="Haystack is awesome. " * 10)
+    chunks = RecursiveDocumentSplitter(split_length=3).run([source_doc])["documents"]
+    assert len(chunks) > 2
+
+    store = InMemoryDocumentStore()
+    store.write_documents(chunks)
+
+    result = SentenceWindowRetriever(document_store=store, window_size=1).run(retrieved_documents=[chunks[1]])
+
+    # The middle chunk plus one neighbour on each side.
+    assert len(result["context_documents"]) == 3
+    assert result["context_windows"]
 
 
 def test_warm_up_is_idempotent_sentence(monkeypatch):
