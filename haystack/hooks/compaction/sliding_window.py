@@ -47,9 +47,9 @@ class SlidingWindowCompactor(Compactor):
         """
         Initialize the compactor.
 
-        :param min_keep_messages: The fewest recent messages to keep when the target cannot afford more, so a target
-            too low still leaves the Agent something to work from. Must be at least 1: the Agent may be mid-step with a
-            pending tool call whose result is appended right after compaction.
+        :param min_keep_messages: The fewest recent messages to keep even when they exceed the target.
+            Must be at least 1: the Agent is mid-step with a pending tool call whose result is appended right
+            after compaction.
         :param omission_note: The user message left in place of what was removed, or None to remove the messages
             silently. Include `{num_removed}` to have the number of removed messages substituted in.
         :raises ValueError: If `min_keep_messages` is less than 1.
@@ -75,7 +75,10 @@ class SlidingWindowCompactor(Compactor):
             there is nothing worth removing.
         """
         start, end = _compaction_bounds(
-            messages, target_tokens=target_tokens, token_counter=token_counter, min_keep_messages=self.min_keep_messages
+            messages=messages,
+            target_tokens=target_tokens,
+            token_counter=token_counter,
+            min_keep_messages=self.min_keep_messages,
         )
         removed = end - start
         # With a note, removing a single message just swaps it for the note.

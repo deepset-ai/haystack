@@ -108,7 +108,7 @@ class ContextCompactionHook:
         if target_tokens is None:
             return
         compacted = self.compactor.compact(messages, target_tokens, self.token_counter)
-        self._apply(state, compacted, before=len(messages), target_tokens=target_tokens)
+        self._apply(state=state, compacted=compacted, before=len(messages), target_tokens=target_tokens)
 
     async def run_async(self, state: State) -> None:
         """
@@ -123,27 +123,30 @@ class ContextCompactionHook:
         if target_tokens is None:
             return
         compacted = await self.compactor.compact_async(messages, target_tokens, self.token_counter)
-        self._apply(state, compacted, before=len(messages), target_tokens=target_tokens)
+        self._apply(state=state, compacted=compacted, before=len(messages), target_tokens=target_tokens)
 
     def _target_tokens(self, messages: list[ChatMessage], context_tokens: int) -> int | None:
         """
         The size a compactor should bring `messages` down to.
 
         :param messages: The conversation, oldest to newest.
-        :param context_tokens: The `context_tokens` state key, which anchors the estimate on the chat generator's own
-            count.
-        :returns: The target for the messages alone, or None when the context has not reached `compact_at` of the window
-            and should be left alone.
+        :param context_tokens: The `context_tokens` state key. It is the current token count of the conversation except
+            for the most recent tool result messages.
+        :returns: The target token amount the messages should be compacted to, or None when the conversation is not
+            yet large enough to compact.
         """
-        estimated = _estimated_context_tokens(messages, context_tokens=context_tokens, token_counter=self.token_counter)
+        estimated = _estimated_context_tokens(
+            messages=messages, context_tokens=context_tokens, token_counter=self.token_counter
+        )
         if estimated < self.context_window * self.compact_at:
+            # The conversation is not yet large enough to compact, so leave it alone.
             return None
-        # The target covers the whole context, but a compactor can only remove messages. Subtract what it cannot touch -
-        # the tool schemas and chat-template overhead the reported count includes - or it would remove far too little.
+        # Calculate an overhead that is not compactable: the system prompt, tool schemas, and chat-template overhead.
         overhead = estimated - self.token_counter.count(messages)
+        # Returns the target token amount the messages should be compacted to
         return max(int(self.context_window * self.compact_to) - overhead, 0)
 
-    def _apply(self, state: State, compacted: list[ChatMessage] | None, *, before: int, target_tokens: int) -> None:
+    def _apply(self, state: State, compacted: list[ChatMessage] | None, before: int, target_tokens: int) -> None:
         """
         Write a compacted conversation back into `State`, or do nothing if the compactor declined.
 
@@ -155,10 +158,11 @@ class ContextCompactionHook:
         if compacted is None:
             return
         state.set("messages", compacted, handler_override=replace_values)
-        # Re-estimate rather than reset to 0, which would claim the context is empty when its size is roughly known.
-        # Counting only through the last assistant message keeps the key's meaning intact, so a later read does not
-        # count the trailing messages a second time.
-        state.set("context_tokens", self.token_counter.count(compacted[: _last_assistant_end(compacted)]))
+        # Re-estimate the size of context window minus the trailing tool result messages.
+        # If we added the estimated size of the tool result messages a second registered hook could double count them.
+        state.set(
+            "context_tokens", self.token_counter.count(messages=compacted[: _last_assistant_end(messages=compacted)])
+        )
         logger.debug(
             "Compacted the Agent's conversation at step {step} from {before} to {after} messages, targeting {target} "
             "tokens.",
