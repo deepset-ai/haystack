@@ -295,7 +295,7 @@ class TestRouter:
         router_dict = router.to_dict()
 
         serialized_output_type = router_dict["init_parameters"]["routes"][0]["output_type"]
-        assert serialized_output_type == "typing.Callable[[int, str], bool]"
+        assert serialized_output_type == "collections.abc.Callable[[int, str], bool]"
 
         new_router = ConditionalRouter.from_dict(router_dict)
         assert router.routes == new_router.routes
