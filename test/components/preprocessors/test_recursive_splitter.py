@@ -1142,3 +1142,11 @@ def test_word_fallback_does_not_count_multichar_whitespace_as_words():
     # Exactly one real word per chunk and no whitespace-only chunk.
     assert [chunk.content.strip() for chunk in chunks] == ["hello", "world"]
     assert all(chunk.content.strip() for chunk in chunks)
+
+
+def test_fallback_word_unit_no_trailing_whitespace_only_chunk():
+    """Trailing whitespace after the last real word must not be emitted as its own whitespace-only chunk."""
+    splitter = RecursiveDocumentSplitter(split_length=1, split_overlap=0, split_unit="word", separators=["\n\n"])
+    result = splitter.run([Document(content="hello world ")])["documents"]
+
+    assert all(doc.content.strip() for doc in result)

@@ -392,8 +392,15 @@ class RecursiveDocumentSplitter:
                 else:
                     current_chunk.append(word)
 
-            if current_chunk:
+            if current_length > 0:
                 chunks.append("".join(current_chunk))
+            elif current_chunk:
+                # Only whitespace is left over (e.g. trailing whitespace): attach it to the
+                # previous chunk instead of emitting a whitespace-only chunk on its own.
+                if chunks:
+                    chunks[-1] += "".join(current_chunk)
+                else:
+                    chunks.append("".join(current_chunk))
         elif split_units == "char":
             for i in range(0, self._chunk_length(text), self.split_length):
                 chunks.append(text[i : i + self.split_length])
