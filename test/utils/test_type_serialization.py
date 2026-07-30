@@ -286,6 +286,11 @@ def test_output_type_round_trip_callable_with_parameter_list():
         Dict[str, Callable[[int, str], bool]],
         Optional[Callable[[int], str]],
         Callable[[Callable[[int], str]], bool],
+        # The Ellipsis form (no parameter list) must still round-trip unaffected by the parameter-list
+        # handling above: `_serialize_type_arg`/`_deserialize_type_arg` only special-case a `list` argument,
+        # so `...` still falls through to the existing Ellipsis handling in serialize_type/deserialize_type.
+        Callable[..., int],
+        Callable[[int], Callable[..., str]],
     ]:
         assert deserialize_type(serialize_type(type_)) == type_
 
