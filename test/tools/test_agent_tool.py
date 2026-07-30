@@ -259,7 +259,7 @@ class TestAgentTool:
             agent=order_lookup_agent, name="order_lookup", description="Look up the status of an order by its ID."
         )
         coordinator = Agent(
-            chat_generator=OpenAIChatGenerator(model="gpt-4.1-nano"),
+            chat_generator=OpenAIChatGenerator(model="gpt-4.1-mini"),
             tools=[order_lookup_agent_as_tool],
             system_prompt="Delegate every order question to the order_lookup tool, then answer the user.",
             max_agent_steps=5,
