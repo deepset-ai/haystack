@@ -60,7 +60,7 @@ class ApproximateTokenCounter(TokenCounter):
         text = _rendered_conversation(messages) + _rendered_tools(tools)
         text_tokens = int(len(text) / self.chars_per_token)
         return text_tokens + _non_text_tokens(
-            messages, tokens_per_image=self.tokens_per_image, tokens_per_file=self.tokens_per_file
+            messages=messages, tokens_per_image=self.tokens_per_image, tokens_per_file=self.tokens_per_file
         )
 
     def to_dict(self) -> dict[str, Any]:
