@@ -145,7 +145,7 @@
 | haystack/core/pipeline/component\_checks.py                               |       66 |        0 |    100% |           |
 | haystack/core/pipeline/descriptions.py                                    |        6 |        0 |    100% |           |
 | haystack/core/pipeline/draw.py                                            |      199 |       41 |     79% |35-58, 142, 145, 148, 150, 158, 162-169, 293, 303, 375-377, 382, 390-391, 419-424 |
-| haystack/core/pipeline/pipeline.py                                        |      322 |       21 |     93% |172, 179, 422, 565, 588, 756, 946-950, 954, 971-975, 979-991, 1032-1041, 1066 |
+| haystack/core/pipeline/pipeline.py                                        |      322 |       19 |     94% |172, 179, 422, 565, 588, 756, 949, 954, 971-975, 979-991, 1032-1041, 1066 |
 | haystack/core/pipeline/utils.py                                           |       71 |        1 |     99% |       206 |
 | haystack/core/serialization.py                                            |      127 |        6 |     95% |75, 99, 246, 333, 349-350 |
 | haystack/core/serialization\_security.py                                  |       85 |        2 |     98% |  206, 276 |
@@ -215,7 +215,8 @@
 | haystack/token\_counters/types/protocol.py                                |       10 |        0 |    100% |           |
 | haystack/token\_counters/utils.py                                         |       46 |        0 |    100% |           |
 | haystack/tools/\_\_init\_\_.py                                            |        7 |        0 |    100% |           |
-| haystack/tools/component\_tool.py                                         |      100 |        5 |     95% |372-373, 416-418 |
+| haystack/tools/agent\_tool.py                                             |       46 |        0 |    100% |           |
+| haystack/tools/component\_tool.py                                         |      100 |        5 |     95% |367-368, 411-413 |
 | haystack/tools/errors.py                                                  |        6 |        0 |    100% |           |
 | haystack/tools/from\_function.py                                          |       57 |        0 |    100% |           |
 | haystack/tools/parameters\_schema\_utils.py                               |       97 |        3 |     97% |95, 135-136 |
@@ -253,7 +254,7 @@
 | haystack/utils/type\_serialization.py                                     |      135 |        6 |     96% |97, 99, 243-244, 252, 268 |
 | haystack/utils/url\_validation.py                                         |        4 |        0 |    100% |           |
 | haystack/version.py                                                       |        5 |        2 |     60% |      9-10 |
-| **TOTAL**                                                                 | **16118** |  **788** | **95%** |           |
+| **TOTAL**                                                                 | **16164** |  **786** | **95%** |           |
 
 
 ## Setup coverage badge
