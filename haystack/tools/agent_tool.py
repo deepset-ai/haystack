@@ -8,9 +8,9 @@ from typing import Any
 
 from haystack.components.agents import Agent
 from haystack.components.agents.agent import _EXIT_REASON_MAX_STEPS
-from haystack.core.serialization import component_from_dict, import_class_by_name
 from haystack.tools.component_tool import ComponentTool
 from haystack.tools.tool import _deserialize_outputs_to_state, _deserialize_outputs_to_string
+from haystack.utils.deserialization import deserialize_component_inplace
 
 
 def _uncovered_agent_inputs(agent: Agent, inputs_from_state: dict[str, str] | None) -> list[str]:
@@ -249,8 +249,7 @@ class AgentTool(ComponentTool):
             The deserialized AgentTool instance.
         """
         inner_data = data["data"]
-        agent_class = import_class_by_name(fully_qualified_name=inner_data["agent"]["type"])
-        agent = component_from_dict(cls=agent_class, data=inner_data["agent"], name=inner_data["name"])
+        deserialize_component_inplace(data=inner_data, key="agent")
 
         outputs_to_state = inner_data.get("outputs_to_state")
         if outputs_to_state:
@@ -261,7 +260,7 @@ class AgentTool(ComponentTool):
             outputs_to_string = _deserialize_outputs_to_string(outputs_to_string=outputs_to_string)
 
         return cls(
-            agent=agent,
+            agent=inner_data["agent"],
             name=inner_data["name"],
             description=inner_data["description"],
             parameters=inner_data.get("parameters"),
