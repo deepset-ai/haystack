@@ -63,7 +63,7 @@ def _build_parameters(uncovered: list[str]) -> dict[str, Any]:
     }
 
 
-def _agent_result_to_string(result: dict[str, Any]) -> str:
+def agent_result_to_string(result: dict[str, Any]) -> str:
     """Default `outputs_to_string` handler"""
     last_message = result["last_message"]
     text = last_message.text or json.dumps(last_message.to_dict())
@@ -206,6 +206,7 @@ class AgentTool(ComponentTool):
         if not isinstance(agent, Agent):
             raise TypeError(f"The 'agent' parameter must be an instance of Agent. Got {type(agent)} instead.")
 
+        unresolved_parameters = parameters
         uncovered = _uncovered_agent_inputs(agent=agent, inputs_from_state=inputs_from_state)
         if parameters is None:
             parameters = _build_parameters(uncovered=uncovered)
@@ -223,10 +224,12 @@ class AgentTool(ComponentTool):
             name=name,
             description=description,
             parameters=parameters,
-            outputs_to_string=outputs_to_string or {"handler": _agent_result_to_string},
+            outputs_to_string=outputs_to_string or {"handler": agent_result_to_string},
             inputs_from_state=inputs_from_state,
             outputs_to_state=outputs_to_state,
         )
+        # serialization reflects the user-provided schema, not resolved parameters
+        self._unresolved_parameters = unresolved_parameters
 
     def to_dict(self) -> dict[str, Any]:
         """

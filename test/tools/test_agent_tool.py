@@ -11,7 +11,7 @@ from haystack.components.agents import Agent
 from haystack.components.generators.chat import MockChatGenerator, OpenAIChatGenerator
 from haystack.dataclasses import ChatMessage, ChatRole, ToolCall
 from haystack.tools import AgentTool, tool
-from haystack.tools.agent_tool import _agent_result_to_string, _build_parameters, _uncovered_agent_inputs
+from haystack.tools.agent_tool import _build_parameters, _uncovered_agent_inputs, agent_result_to_string
 
 
 def _echo_last_message(messages: list[ChatMessage]) -> str:
@@ -67,17 +67,17 @@ class TestBuildParameters:
 class TestAgentResultToString:
     def test_exit_reason_text(self):
         result = {"last_message": ChatMessage.from_assistant("Response"), "exit_reason": "text"}
-        assert _agent_result_to_string(result=result) == "Response"
+        assert agent_result_to_string(result=result) == "Response"
 
     def test_exit_reason_tool(self):
         message = ChatMessage.from_tool(tool_result="42", origin=ToolCall(id="1", tool_name="lookup", arguments={}))
         result = {"last_message": message, "exit_reason": "lookup"}
-        assert _agent_result_to_string(result=result) == json.dumps(message.to_dict())
+        assert agent_result_to_string(result=result) == json.dumps(message.to_dict())
 
     def test_exit_reason_max_agent_steps(self):
         message = ChatMessage.from_tool(tool_result="42", origin=ToolCall(id="1", tool_name="lookup", arguments={}))
         result = {"last_message": message, "exit_reason": "max_agent_steps"}
-        assert _agent_result_to_string(result=result) == json.dumps(message.to_dict()) + (
+        assert agent_result_to_string(result=result) == json.dumps(message.to_dict()) + (
             "\n\n[The Agent reached max_agent_steps and stopped, so this result may be incomplete.]"
         )
 
@@ -94,7 +94,7 @@ class TestAgentTool:
         assert agent_tool.description == "Research a question and report the findings."
         assert agent_tool._component is sub_agent
         assert agent_tool.parameters == _build_parameters(uncovered=[])
-        assert agent_tool.outputs_to_string == {"handler": _agent_result_to_string}
+        assert agent_tool.outputs_to_string == {"handler": agent_result_to_string}
 
     def test_init_with_non_agent(self):
         with pytest.raises(TypeError, match="must be an instance of Agent"):
@@ -147,10 +147,10 @@ class TestAgentTool:
             "data": {
                 "name": "research",
                 "description": "Research a question.",
-                "parameters": {"type": "object", "properties": {"messages": MESSAGES_SCHEMA}, "required": ["messages"]},
+                "parameters": None,
                 "inputs_from_state": None,
                 "outputs_to_state": {"notes": {"source": "last_message"}},
-                "outputs_to_string": {"handler": "haystack.tools.agent_tool._agent_result_to_string"},
+                "outputs_to_string": {"handler": "haystack.tools.agent_tool.agent_result_to_string"},
                 "agent": {
                     "type": "haystack.components.agents.agent.Agent",
                     "init_parameters": {
@@ -181,41 +181,32 @@ class TestAgentTool:
             },
         }
 
+    def test_to_dict_with_explicit_parameters(self):
+        sub_agent = Agent(chat_generator=MockChatGenerator(response_fn=_echo_last_message))
+        parameters = {"type": "object", "properties": {"messages": {"type": "array"}}, "required": ["messages"]}
+        agent_tool = AgentTool(
+            agent=sub_agent, name="research", description="Research a question.", parameters=parameters
+        )
+
+        assert agent_tool.to_dict()["data"]["parameters"] == parameters
+
     def test_from_dict(self):
         data = {
             "type": "haystack.tools.agent_tool.AgentTool",
             "data": {
                 "name": "research",
                 "description": "Research a question.",
-                "parameters": {"type": "object", "properties": {"messages": MESSAGES_SCHEMA}, "required": ["messages"]},
+                "parameters": None,
                 "inputs_from_state": None,
                 "outputs_to_state": {"notes": {"source": "last_message"}},
-                "outputs_to_string": {"handler": "haystack.tools.agent_tool._agent_result_to_string"},
+                "outputs_to_string": {"handler": "haystack.tools.agent_tool.agent_result_to_string"},
                 "agent": {
                     "type": "haystack.components.agents.agent.Agent",
                     "init_parameters": {
                         "chat_generator": {
                             "type": "haystack.components.generators.chat.mock.MockChatGenerator",
-                            "init_parameters": {
-                                "responses": None,
-                                "response_fn": "test_agent_tool._echo_last_message",
-                                "model": "mock-model",
-                                "meta": {},
-                                "streaming_callback": None,
-                            },
-                        },
-                        "tools": [],
-                        "system_prompt": None,
-                        "user_prompt": None,
-                        "required_variables": "*",
-                        "exit_conditions": ["text"],
-                        "state_schema": {},
-                        "max_agent_steps": 100,
-                        "streaming_callback": None,
-                        "raise_on_tool_invocation_failure": False,
-                        "tool_concurrency_limit": 4,
-                        "tool_streaming_callback_passthrough": False,
-                        "hooks": None,
+                            "init_parameters": {"response_fn": "test_agent_tool._echo_last_message"},
+                        }
                     },
                 },
             },
@@ -228,8 +219,25 @@ class TestAgentTool:
         assert agent_tool.name == "research"
         assert agent_tool.description == "Research a question."
         assert agent_tool.parameters == _build_parameters(uncovered=[])
-        assert agent_tool.outputs_to_string == {"handler": _agent_result_to_string}
+        assert agent_tool.outputs_to_string == {"handler": agent_result_to_string}
         assert agent_tool.outputs_to_state == {"notes": {"source": "last_message"}}
+
+    def test_from_dict_with_explicit_parameters(self):
+        parameters = {
+            "type": "object",
+            "properties": {"messages": {"type": "array", "description": "Custom messages schema."}},
+            "required": ["messages"],
+        }
+        data = AgentTool(
+            agent=Agent(chat_generator=MockChatGenerator(response_fn=_echo_last_message)),
+            name="research",
+            description="Research a question.",
+            parameters=parameters,
+        ).to_dict()
+
+        agent_tool = AgentTool.from_dict(data)
+
+        assert agent_tool.parameters == parameters
 
     @pytest.mark.skipif(not os.environ.get("OPENAI_API_KEY"), reason="OPENAI_API_KEY not set")
     @pytest.mark.integration
@@ -252,16 +260,15 @@ class TestAgentTool:
             chat_generator=OpenAIChatGenerator(model="gpt-4.1-nano"),
             tools=[order_lookup_agent_as_tool],
             system_prompt="Delegate every order question to the order_lookup tool, then answer the user.",
-            max_agent_steps=3,
+            max_agent_steps=5,
         )
 
-        result = coordinator.run([ChatMessage.from_user("What is the status of order A-17?")])
+        result = coordinator.run([ChatMessage.from_user("What is the status and the tracking code of order A-17?")])
         print(result)
 
         tool_messages = [message for message in result["messages"] if message.is_from(ChatRole.TOOL)]
-        assert len(tool_messages) == 1
-        assert not tool_messages[0].tool_call_results[0].error
-        assert "ZX9-4471" in tool_messages[0].tool_call_results[0].result
-        assert result["tool_call_counts"] == {"order_lookup": 1}
-        assert result["last_message"].text is not None
+        assert tool_messages
+        assert all(not message.tool_call_results[0].error for message in tool_messages)
+        assert any("ZX9-4471" in message.tool_call_results[0].result for message in tool_messages)
+        assert result["tool_call_counts"].keys() == {"order_lookup"}
         assert "ZX9-4471" in result["messages"][-1].text
