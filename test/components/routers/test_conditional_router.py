@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import copy
+from collections.abc import Callable
 from unittest import mock
 
 import pytest
@@ -278,6 +279,26 @@ class TestRouter:
 
         # check that the result is the same and correct
         assert result1 == result2 and result1 == {"streams": [1, 2, 3]}
+
+    def test_router_de_serialization_with_callable_output_type(self):
+        # Regression test: `output_type=Callable[[int, str], bool]` used to lose its parameter list on
+        # `to_dict` (producing "typing.Callable[, bool]") and then fail to deserialize entirely.
+        routes = [
+            {
+                "condition": "{{True}}",
+                "output": "{{callback}}",
+                "output_type": Callable[[int, str], bool],
+                "output_name": "callback",
+            }
+        ]
+        router = ConditionalRouter(routes)
+        router_dict = router.to_dict()
+
+        serialized_output_type = router_dict["init_parameters"]["routes"][0]["output_type"]
+        assert serialized_output_type == "typing.Callable[[int, str], bool]"
+
+        new_router = ConditionalRouter.from_dict(router_dict)
+        assert router.routes == new_router.routes
 
     def test_router_de_serialization_with_none_argument(self):
         new_router = ConditionalRouter.from_dict(

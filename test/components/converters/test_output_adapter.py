@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import json
-from typing import Any, List
+from typing import Any, Callable, List
 
 import pytest
 
@@ -96,6 +96,18 @@ class TestOutputAdapter:
         adapter_dict = adapter.to_dict()
         deserialized_adapter = OutputAdapter.from_dict(adapter_dict)
 
+        assert adapter.template == deserialized_adapter.template
+        assert adapter.output_type == deserialized_adapter.output_type
+
+    def test_sede_with_callable_output_type(self):
+        # Regression test: `output_type=Callable[[int, str], bool]` used to lose its parameter list on
+        # `to_dict` (producing "typing.Callable[, bool]") and then fail to deserialize entirely.
+        adapter = OutputAdapter(template="{{ callback }}", output_type=Callable[[int, str], bool])
+        adapter_dict = adapter.to_dict()
+
+        assert adapter_dict["init_parameters"]["output_type"] == "typing.Callable[[int, str], bool]"
+
+        deserialized_adapter = OutputAdapter.from_dict(adapter_dict)
         assert adapter.template == deserialized_adapter.template
         assert adapter.output_type == deserialized_adapter.output_type
 
