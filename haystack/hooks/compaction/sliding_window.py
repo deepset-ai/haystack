@@ -81,27 +81,27 @@ class SlidingWindowCompactor(Compactor):
             min_keep_messages=self.min_keep_messages,
         )
         removed = end - start
-        # With a note, removing a single message just swaps it for the note.
-        if removed < (2 if self.omission_note else 1):
+        if removed < 1:
             return None
 
         compacted = list(messages[:start])
         if self.omission_note:
-            compacted.append(
-                # A user message rather than a system one: providers that hoist system messages into a separate
-                # top-level field would move the note away from the point in the conversation it describes.
-                ChatMessage.from_user(
-                    # `replace` rather than `format`, so a note carrying braces of its own cannot raise.
-                    self.omission_note.replace(_NUM_REMOVED_PLACEHOLDER, str(removed)),
-                    meta={
-                        _COMPACTION_META_KEY: {
-                            "strategy": "sliding_window",
-                            "removed_messages": removed,
-                            "kept_messages": len(messages) - end,
-                        }
-                    },
-                )
+            # We prefer user over system since not all providers support multiple system messages
+            note = ChatMessage.from_user(
+                # `replace` rather than `format`, so a note carrying braces of its own cannot raise.
+                self.omission_note.replace(_NUM_REMOVED_PLACEHOLDER, str(removed)),
+                meta={
+                    _COMPACTION_META_KEY: {
+                        "strategy": "sliding_window",
+                        "removed_messages": removed,
+                        "kept_messages": len(messages) - end,
+                    }
+                },
             )
+            # The note costs tokens of its own, so it is only worth leaving behind if what it stands in for is bigger.
+            if token_counter.count([note]) >= token_counter.count(messages[start:end]):
+                return None
+            compacted.append(note)
         compacted.extend(messages[end:])
         return compacted
 

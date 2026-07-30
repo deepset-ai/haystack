@@ -62,14 +62,19 @@ def make_state(messages: list[ChatMessage], **data: Any) -> State:
 
 
 def long_conversation() -> list[ChatMessage]:
-    """Six messages: a system prefix, a user turn, then two tool round-trips."""
+    """
+    Six messages: a system prefix, a user turn, then two tool round-trips.
+
+    The results are padded so that removing them saves more than an omission note costs, which is what a compactor
+    weighs before leaving one behind.
+    """
     return [
         ChatMessage.from_system("rules"),
         ChatMessage.from_user("start"),
         tool_call("c1"),
-        tool_result("first result", call_id="c1"),
+        tool_result("first result " * 12, call_id="c1"),
         tool_call("c2"),
-        tool_result("second result", call_id="c2"),
+        tool_result("second result " * 12, call_id="c2"),
     ]
 
 

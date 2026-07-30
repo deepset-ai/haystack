@@ -128,7 +128,7 @@ class TestContextCompactionHookConfiguration:
         assert data["init_parameters"]["context_window"] == 200_000
         assert data["init_parameters"]["compact_at"] == 0.6
         assert data["init_parameters"]["compactor"]["init_parameters"]["min_keep_messages"] == 4
-        assert data["init_parameters"]["token_counter"]["type"].endswith("TiktokenCounter")
+        assert data["init_parameters"]["token_counter"]["type"].endswith("ApproximateTokenCounter")
 
         restored = ContextCompactionHook.from_dict(data)
         assert isinstance(restored.compactor, SlidingWindowCompactor)

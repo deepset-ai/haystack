@@ -11,7 +11,7 @@ from haystack.core.serialization import component_to_dict, default_from_dict, de
 from haystack.dataclasses import ChatMessage
 from haystack.hooks.compaction.types import Compactor
 from haystack.hooks.compaction.utils import _estimated_context_tokens, _last_assistant_end
-from haystack.token_counters import TiktokenCounter, TokenCounter
+from haystack.token_counters import ApproximateTokenCounter, TokenCounter
 from haystack.utils.deserialization import deserialize_component_inplace
 from haystack.utils.experimental import _experimental
 
@@ -77,7 +77,7 @@ class ContextCompactionHook:
         :param compact_to: The fraction of the window compaction aims to bring the conversation down to. Lower means
             compacting less often but losing more each time.
         :param token_counter: The `TokenCounter` used to size the messages the chat generator has not reported on yet.
-            Defaults to `TiktokenCounter`, which needs `tiktoken` installed.
+            Defaults to `ApproximateTokenCounter`, which needs no extra dependency.
         :raises ValueError: If `context_window` is not positive, or the fractions are not
             `0 < compact_to < compact_at <= 1`.
         """
@@ -93,7 +93,7 @@ class ContextCompactionHook:
         self.context_window = context_window
         self.compact_at = compact_at
         self.compact_to = compact_to
-        self.token_counter = token_counter or TiktokenCounter()
+        self.token_counter = token_counter or ApproximateTokenCounter()
 
     def run(self, state: State) -> None:
         """

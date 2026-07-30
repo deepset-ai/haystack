@@ -115,17 +115,26 @@ class TestSlidingWindowCompactor:
         assert count_markers(second) == 1
         assert second[0].text == "rules"
 
-    def test_returns_none_when_the_note_would_cost_what_it_saves(self):
-        # Four messages with a one-message system prefix: a two-message window leaves exactly one to remove, which a
-        # note would merely replace.
+    @pytest.mark.parametrize(
+        ("removable", "worth_replacing"),
+        [
+            pytest.param("a", False, id="cheaper-than-the-note"),
+            pytest.param("x" * 4000, True, id="dearer-than-the-note"),
+        ],
+    )
+    def test_a_cut_is_made_only_when_the_note_costs_less_than_what_it_replaces(self, removable, worth_replacing):
+        # A note is not free, so what matters is the size of what goes rather than how many messages it is: one long
+        # tool result is worth replacing, one short message is not.
         messages = [
             ChatMessage.from_system("rules"),
-            ChatMessage.from_user("a"),
+            ChatMessage.from_user(removable),
             ChatMessage.from_user("b"),
             ChatMessage.from_user("c"),
         ]
-        assert SlidingWindowCompactor(min_keep_messages=2).compact(messages, SMALLEST, COUNTER) is None
-        # Without a note there is a real saving, so the same cut is worth making.
+        compacted = SlidingWindowCompactor(min_keep_messages=2).compact(messages, SMALLEST, COUNTER)
+
+        assert (compacted is not None) is worth_replacing
+        # Without a note there is nothing to pay for, so the same cut is always worth making.
         assert SlidingWindowCompactor(min_keep_messages=2, omission_note=None).compact(messages, SMALLEST, COUNTER) == [
             messages[0],
             *messages[2:],
