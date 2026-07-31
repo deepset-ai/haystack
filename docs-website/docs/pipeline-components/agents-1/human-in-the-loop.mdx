@@ -296,6 +296,113 @@ The key pattern it demonstrates is a custom `RedisConfirmationStrategy` that rec
 
 This is a good reference if you need non-blocking HITL in a web or server environment where `SimpleConsoleUI` and `RichConsoleUI` are not suitable.
 
+## Example: External approval checkpoint
+
+For side-effecting tools, such as sending email, creating pull requests, or updating records, you can send a stable action object to an external checkpoint before the tool runs.
+The checkpoint can be any internal policy service, approval queue, or governance provider such as OSuite.
+The important part is to compute a deterministic reference for the pending tool call, so retries and audit logs all refer to the same action.
+
+This example uses a custom `ConfirmationUI` and keeps the checkpoint provider-neutral:
+
+```python
+import hashlib
+import json
+from typing import Any
+
+from haystack.hooks.human_in_the_loop import ConfirmationUIResult
+from haystack.hooks.human_in_the_loop.types import ConfirmationUI
+
+
+def stable_digest(payload: dict[str, Any]) -> str:
+    canonical = json.dumps(payload, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+
+
+def build_action(
+    tool_name: str,
+    tool_description: str,
+    tool_params: dict[str, Any],
+) -> dict[str, Any]:
+    action = {
+        "schema_version": 1,
+        "kind": "haystack.tool_call",
+        "tool": {
+            "name": tool_name,
+            "description": tool_description,
+        },
+        "parameters": tool_params,
+    }
+    digest = stable_digest(action)
+    return {
+        **action,
+        "digest": digest,
+        "ref": f"haystack-action:{digest[:16]}",
+    }
+
+
+def call_checkpoint(action: dict[str, Any]) -> dict[str, Any]:
+    # Replace this stub with an HTTP call or SDK request to your checkpoint service.
+    if action["tool"]["name"] == "send_email" and action["parameters"].get("to", "").endswith(
+        "@example.com"
+    ):
+        return {"decision": "allow"}
+    if action["tool"]["name"] == "delete_record":
+        return {"decision": "require_approval", "reason": "Database write requires review"}
+    return {"decision": "deny", "reason": "Tool action is not permitted by policy"}
+
+
+def wait_for_approval(action_ref: str) -> ConfirmationUIResult:
+    # Replace this stub with your queue, ticket, webhook, or chat approval flow.
+    return ConfirmationUIResult(
+        action="reject",
+        feedback=f"Approval was required for {action_ref}, but no approval was recorded.",
+    )
+
+
+class ExternalCheckpointUI(ConfirmationUI):
+    def get_user_confirmation(
+        self,
+        tool_name: str,
+        tool_description: str,
+        tool_params: dict[str, Any],
+    ) -> ConfirmationUIResult:
+        action = build_action(tool_name, tool_description, tool_params)
+        checkpoint_result = call_checkpoint(action)
+        decision = checkpoint_result["decision"]
+
+        if decision == "allow":
+            # Continue: execute the tool call.
+            return ConfirmationUIResult(action="confirm")
+
+        if decision == "require_approval":
+            # Pause: block here until an operator approves or rejects the stable action
+            # ref.
+            return wait_for_approval(action["ref"])
+
+        # Block: skip the side effect and pass the policy reason back to the Agent.
+        return ConfirmationUIResult(
+            action="reject",
+            feedback=checkpoint_result.get("reason", "Tool action denied by policy"),
+        )
+```
+
+Use it with the same `BlockingConfirmationStrategy` shown above:
+
+```python
+strategy = BlockingConfirmationStrategy(
+    confirmation_policy=AlwaysAskPolicy(),
+    confirmation_ui=ExternalCheckpointUI(),
+)
+```
+
+This maps checkpoint decisions to Haystack execution behavior:
+
+| Checkpoint decision | Haystack result |
+| --- | --- |
+| `allow` | Continue by returning `ConfirmationUIResult(action="confirm")` |
+| `require_approval` | Pause while your approval flow resolves the stable action `ref` |
+| `deny` | Block the side effect by returning `ConfirmationUIResult(action="reject")` |
+
 ## Custom UI
 
 Implement `ConfirmationUI` from `haystack.hooks.human_in_the_loop.types` to build your own interface - for example, a web-based approval queue:
