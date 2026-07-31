@@ -2,7 +2,7 @@
 title: "Multi-Agent Systems"
 id: multi-agent-systems
 slug: "/multi-agent-systems"
-description: "Learn how to build multi-agent systems in Haystack by spawning agents as tools. Use the @tool decorator or ComponentTool to connect specialist agents to a coordinator."
+description: "Learn how to build multi-agent systems in Haystack by spawning agents as tools. Use AgentTool to connect specialist agents to a coordinator."
 ---
 
 # Multi-Agent Systems
@@ -16,20 +16,12 @@ Spawning agents as tools is useful when:
 - You want to isolate different capabilities into focused, reusable agents,
 - You need to keep the coordinator's context lean for better decisions and lower token usage.
 
-In Haystack, you spawn a specialist agent as a tool using either the `@tool` decorator (recommended) or `ComponentTool`.
+In Haystack, you spawn a specialist agent as a tool with [`AgentTool`](../../tools/agenttool.mdx).
 
 ## Converting an Agent to a Tool
 
-### `@tool` Decorator (Recommended)
-
-Wrapping an agent inside a `@tool` function gives you full control over what the coordinator LLM sees:
-
-- **Simplified parameters**: define explicit `Annotated` arguments instead of exposing `agent.run()`'s full interface
-- **Formatted output**: extract and return only what the coordinator needs, rather than the full result dict
-- **Error handling**: catch exceptions and return a clean message so the coordinator can recover
-
-This approach works better with smaller LLMs because the tool has a clean, minimal signature.
-The coordinator only needs to provide a query string - all the `ChatMessage` construction and result unpacking is hidden inside the function.
+`AgentTool` wraps a specialist agent so a coordinator can call it.
+The coordinator's model sends the task to delegate as a single user message and receives the specialist's final reply as text, so you never describe the agent's interface or unpack its result dict.
 
 The examples on this page use SerperDev web search component that have moved to the `serperdev-haystack` package. Install it to run the examples:
 
@@ -38,18 +30,17 @@ pip install serperdev-haystack
 ```
 
 ```python
-from typing import Annotated
 from haystack.components.agents import Agent
-from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.components.generators.chat import OpenAIResponsesChatGenerator
 from haystack.components.generators.utils import print_streaming_chunk
 from haystack.dataclasses import ChatMessage
-from haystack.tools import ComponentTool, tool
+from haystack.tools import AgentTool, ComponentTool
 from haystack_integrations.components.websearch.serperdev import SerperDevWebSearch
 from haystack.utils import Secret
 
 
 research_agent = Agent(
-    chat_generator=OpenAIChatGenerator(model="gpt-5.4-nano"),
+    chat_generator=OpenAIResponsesChatGenerator(model="gpt-5.4-nano"),
     tools=[
         ComponentTool(
             component=SerperDevWebSearch(
@@ -64,50 +55,16 @@ research_agent = Agent(
 )
 
 
-@tool
-def research(query: Annotated[str, "The research question to investigate"]) -> str:
-    """Research a topic and return a summary of findings."""
-    try:
-        result = research_agent.run(messages=[ChatMessage.from_user(query)])
-        return result["last_message"].text
-    except Exception as e:
-        return f"Research failed: {e}"
-
-
-coordinator = Agent(
-    chat_generator=OpenAIChatGenerator(model="gpt-5.4-nano"),
-    tools=[research],
-    system_prompt="You are a coordinator. Delegate research tasks to the research tool.",
-    streaming_callback=print_streaming_chunk,
-)
-
-result = coordinator.run(
-    messages=[
-        ChatMessage.from_user("What are the latest developments in Haystack AI?"),
-    ],
-)
-```
-
-### `ComponentTool`
-
-`ComponentTool` wraps an agent directly without a wrapper function.
-Choose it when you want **declarative configuration**: the full specialist setup (model, tools, system prompt) lives in one serializable object alongside the coordinator.
-
-Use `outputs_to_string={"source": "last_message"}` to surface only the specialist's final reply to the coordinator rather than the full result dict.
-
-```python
-from haystack.tools import ComponentTool
-
-research_tool = ComponentTool(
-    component=research_agent,
+research_specialist = AgentTool(
+    agent=research_agent,
     name="research_specialist",
     description="A specialist that researches topics on the web",
-    outputs_to_string={"source": "last_message"},
 )
 
+
 coordinator = Agent(
-    chat_generator=OpenAIChatGenerator(model="gpt-5.4-nano"),
-    tools=[research_tool],
+    chat_generator=OpenAIResponsesChatGenerator(model="gpt-5.4-nano"),
+    tools=[research_specialist],
     system_prompt="You are a coordinator. Delegate research tasks to the research specialist.",
     streaming_callback=print_streaming_chunk,
 )
@@ -146,22 +103,22 @@ components:
           timeout: null
           tools: null
           tools_strict: false
-        type: haystack.components.generators.chat.openai.OpenAIChatGenerator
+        type: haystack.components.generators.chat.openai_responses.OpenAIResponsesChatGenerator
       exit_conditions:
       - text
       hooks: null
       max_agent_steps: 100
       raise_on_tool_invocation_failure: false
-      required_variables: null
+      required_variables: '*'
       state_schema: {}
-      streaming_callback: null
+      streaming_callback: haystack.components.generators.utils.print_streaming_chunk
       system_prompt: You are a coordinator. Delegate research tasks to the research
-        specialist. Keep your final answer concise.
+        specialist.
       tool_concurrency_limit: 4
       tool_streaming_callback_passthrough: false
       tools:
       - data:
-          component:
+          agent:
             init_parameters:
               chat_generator:
                 init_parameters:
@@ -180,17 +137,17 @@ components:
                   timeout: null
                   tools: null
                   tools_strict: false
-                type: haystack.components.generators.chat.openai.OpenAIChatGenerator
+                type: haystack.components.generators.chat.openai_responses.OpenAIResponsesChatGenerator
               exit_conditions:
               - text
               hooks: null
               max_agent_steps: 100
               raise_on_tool_invocation_failure: false
-              required_variables: null
+              required_variables: '*'
               state_schema: {}
               streaming_callback: null
               system_prompt: You are a research specialist. Search the web to find
-                information. Return a concise summary of your findings in 3-5 sentences.
+                information.
               tool_concurrency_limit: 4
               tool_streaming_callback_passthrough: false
               tools:
@@ -221,9 +178,9 @@ components:
           name: research_specialist
           outputs_to_state: null
           outputs_to_string:
-            source: last_message
+            handler: haystack.tools.agent_tool.agent_result_to_string
           parameters: null
-        type: haystack.tools.component_tool.ComponentTool
+        type: haystack.tools.agent_tool.AgentTool
       user_prompt: null
     type: haystack.components.agents.agent.Agent
 connection_type_validation: true
@@ -234,19 +191,25 @@ metadata: {}
 
 </details>
 
+### Alternatives to `AgentTool`
+
+Since `Agent` is a Haystack component, you can also wrap it with [`ComponentTool`](../../tools/componenttool.mdx). However, this exposes the agent's full component interface to the coordinator, including arguments such as `tools`, `generation_kwargs`, and `hook_context`, and the coordinator receives the complete result dictionary. By default, `AgentTool` exposes a single input, `messages`, carrying the task to delegate, plus one parameter for each mandatory prompt variable of the specialist. It returns only the text of the specialist's final reply.
+
+You can also create a similarly narrow interface with the [`@tool`](../../tools/tool.mdx#tool-decorator) decorator. This is useful when you need custom input arguments, want to transform the delegated task, or need to post-process the specialist's response. The trade-off is serialization: a decorated tool serializes as an import path to the function, so the specialist's configuration lives in your Python module rather than in the YAML above.
+
 ## Coordinator / Specialist Pattern
 
 The coordinator/specialist pattern cleanly splits responsibilities: the coordinator handles planning and delegation, while each specialist owns a focused toolset and a targeted system prompt.
 
 This is also a form of **context engineering**: deliberately controlling what each agent sees.
 A specialist accumulates its own tool call trace, but the coordinator only needs the final answer.
-Returning just `result["last_message"].text` (with `@tool`) or using `outputs_to_string` (with `ComponentTool`) surfaces only the specialist's final reply, keeping the coordinator's context lean.
+`AgentTool` surfaces only the specialist's final reply, keeping the coordinator's context lean.
 
 When covering multiple topics, the coordinator can call the same specialist tool several times in a single response.
 All tool calls from one LLM response are executed concurrently using a thread pool.
 Control the level of parallelism with the `tool_concurrency_limit` init parameter (default: `4`).
 
-The example below asks the coordinator about two topics: it calls `research` twice and both specialists run in parallel.
+The example below asks the coordinator about two topics: it calls `research_specialist` twice, and both specialists run in parallel.
 
 `HTMLToDocument` uses [Trafilatura](https://trafilatura.readthedocs.io) to extract clean text from HTML pages.
 Install it before running:
@@ -260,11 +223,11 @@ from typing import Annotated
 from haystack.components.agents import Agent
 from haystack.components.converters import HTMLToDocument
 from haystack.components.fetchers.link_content import LinkContentFetcher
-from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.components.generators.chat import OpenAIResponsesChatGenerator
 from haystack.components.generators.utils import print_streaming_chunk
 from haystack_integrations.components.websearch.serperdev import SerperDevWebSearch
 from haystack.dataclasses import ChatMessage
-from haystack.tools import ComponentTool, tool
+from haystack.tools import AgentTool, ComponentTool, tool
 from haystack.utils import Secret
 
 
@@ -292,7 +255,7 @@ def fetch_page(url: Annotated[str, "The URL of the web page to fetch"]) -> str:
 
 
 research_agent = Agent(
-    chat_generator=OpenAIChatGenerator(model="gpt-5.4-nano"),
+    chat_generator=OpenAIResponsesChatGenerator(model="gpt-5.4-nano"),
     tools=[search_tool, fetch_page],
     system_prompt=(
         "You are a research specialist. Search the web to find relevant pages, "
@@ -302,21 +265,18 @@ research_agent = Agent(
 )
 
 
-@tool
-def research(query: Annotated[str, "The research question to investigate"]) -> str:
-    """Research a topic and return a summary of findings."""
-    try:
-        result = research_agent.run(messages=[ChatMessage.from_user(query)])
-        return result["last_message"].text
-    except Exception as e:
-        return f"Research failed: {e}"
+research_specialist = AgentTool(
+    agent=research_agent,
+    name="research_specialist",
+    description="Research a topic on the web and report a summary of the findings",
+)
 
 
 coordinator = Agent(
-    chat_generator=OpenAIChatGenerator(model="gpt-5.4-nano"),
-    tools=[research],
+    chat_generator=OpenAIResponsesChatGenerator(model="gpt-5.4-nano"),
+    tools=[research_specialist],
     system_prompt=(
-        "You are a coordinator. Delegate research tasks to the research tool. "
+        "You are a coordinator. Delegate research tasks to the research specialist. "
         "For questions covering multiple topics, research each one independently. "
         "Keep your final answer concise."
     ),
@@ -327,7 +287,8 @@ coordinator = Agent(
 result = coordinator.run(
     messages=[
         ChatMessage.from_user(
-            "What are the latest developments in large language models and retrieval-augmented generation?",
+            "What are the latest developments in the Haystack framework, "
+            "and what is the current state of the Model Context Protocol?",
         ),
     ],
 )
@@ -338,6 +299,7 @@ result = coordinator.run(
 📖 Related docs:
 
 - [Agent](../../pipeline-components/agents-1/agent.mdx)
+- [AgentTool](../../tools/agenttool.mdx)
 - [State](../../pipeline-components/agents-1/state.mdx)
 - [ComponentTool](../../tools/componenttool.mdx)
 
