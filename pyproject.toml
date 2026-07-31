@@ -113,7 +113,7 @@ dependencies = [
   "python-oxmsg",                     # MSGToDocument
 
   "nltk>=3.9.1", # NLTKDocumentSplitter, RecursiveDocumentSplitter
-  "tiktoken", # RecursiveDocumentSplitter
+  "tiktoken", # RecursiveDocumentSplitter, TiktokenCounter
 
   # Human in the Loop
   "rich",                 # Console rendering for HITL
