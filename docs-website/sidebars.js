@@ -716,6 +716,7 @@ export default {
       label: 'Tools',
       items: [
         'tools/tool',
+        'tools/agenttool',
         'tools/componenttool',
         'tools/pipelinetool',
         'tools/toolset',
