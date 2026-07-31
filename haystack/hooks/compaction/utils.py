@@ -38,40 +38,43 @@ def _compaction_split(
     messages: list[ChatMessage], target_tokens: int, token_counter: TokenCounter, min_keep_messages: int
 ) -> tuple[list[ChatMessage], list[ChatMessage], list[ChatMessage]]:
     """
-    Split the conversation into what compaction must keep and the block it may remove.
+    Split a conversation into:
 
-    :param messages: The conversation, oldest to newest.
-    :param target_tokens: The size the conversation should come in under once the block is removed.
-    :param token_counter: The counter to measure messages with.
-    :param min_keep_messages: The fewest recent messages to keep, even when the target cannot afford them.
-    :returns: The leading system messages, the removable block, and the retained window. The block is empty when there
-        is nothing to remove.
+    1. Protected leading system messages.
+    2. Older messages that may be compacted.
+    3. Recent messages that must be retained.
     """
-    # Protect only the *leading* run of system messages. A system message further along can be removed even ones added
-    # by a compactor.
-    start = 0
-    while (
-        start < len(messages)
-        and messages[start].is_from(role=ChatRole.SYSTEM)
-        and _COMPACTION_META_KEY not in messages[start].meta
-    ):
-        start += 1
-
-    # We always keep the system messages so subtract its cost from the target to see what remains for the window.
-    remaining_tokens = target_tokens - token_counter.count(messages=messages[:start])
-    end = len(messages)
-    while end > start:
-        cost = token_counter.count(messages=[messages[end - 1]])
-        if cost > remaining_tokens:
+    # Protect the initial run of ordinary system messages. System messages added by a previous compaction are not
+    # protected.
+    protected_end = 0
+    while protected_end < len(messages):
+        message = messages[protected_end]
+        is_protected_system_message = message.is_from(ChatRole.SYSTEM) and _COMPACTION_META_KEY not in message.meta
+        if not is_protected_system_message:
             break
-        remaining_tokens -= cost
-        end -= 1
+        protected_end += 1
 
-    # Hold on to a few recent messages even when the target cannot pay for them, so the Agent keeps enough to carry on.
-    end = min(end, max(len(messages) - min_keep_messages, start))
+    protected_messages = messages[:protected_end]
+    available_tokens = target_tokens - token_counter.count(messages=protected_messages)
 
-    # Walk the window's start back off any tool result, so it keeps the assistant message holding the matching call:
-    # chat-completion APIs reject a tool result whose call is missing.
-    while start < end < len(messages) and messages[end].tool_call_result is not None:
-        end -= 1
-    return messages[:start], messages[start:end], messages[end:]
+    # Starting from the newest message, find how much recent history fits.
+    retained_start = len(messages)
+    while retained_start > protected_end:
+        next_message = messages[retained_start - 1]
+        message_tokens = token_counter.count(messages=[next_message])
+        if message_tokens > available_tokens:
+            break
+        available_tokens -= message_tokens
+        retained_start -= 1
+
+    # Always retain at least the requested number of recent messages, even if they exceed the token target.
+    earliest_allowed_start = max(len(messages) - min_keep_messages, protected_end)
+    retained_start = min(retained_start, earliest_allowed_start)
+
+    # A tool result must not be retained without the assistant message containing its corresponding tool call.
+    while protected_end < retained_start < len(messages) and messages[retained_start].tool_call_result is not None:
+        retained_start -= 1
+
+    compactable_messages = messages[protected_end:retained_start]
+    retained_messages = messages[retained_start:]
+    return protected_messages, compactable_messages, retained_messages
