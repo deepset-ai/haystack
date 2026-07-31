@@ -444,6 +444,23 @@ class TestPipelineBase:
         assert consumer_socket.is_lazy_variadic is False
         assert consumer_socket.wrap_input_in_list is True
 
+    @pytest.mark.parametrize("input_type", [Variadic[int], GreedyVariadic[int]])
+    def test_remove_component_preserves_declared_variadic_socket(self, input_type):
+        pipe = PipelineBase()
+        consumer_class = component_class("Consumer", input_types={"values": input_type})
+        consumer = consumer_class()
+        pipe.add_component("consumer", consumer)
+
+        consumer_socket = consumer.__haystack_input__._sockets_dict["values"]  # type: ignore[attr-defined]
+        expected_lazy_variadic = consumer_socket.is_lazy_variadic
+        expected_greedy = consumer_socket.is_greedy
+
+        pipe.remove_component("consumer")
+
+        assert consumer_socket.is_lazy_variadic is expected_lazy_variadic
+        assert consumer_socket.is_greedy is expected_greedy
+        assert consumer_socket.wrap_input_in_list is True
+
     def test_get_component_name(self):
         pipe = PipelineBase()
         some_component = component_class("Some")()
