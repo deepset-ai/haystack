@@ -193,7 +193,7 @@ metadata: {}
 
 ### Alternatives to `AgentTool`
 
-Since `Agent` is a Haystack component, you can also wrap it with [`ComponentTool`](../../tools/componenttool.mdx). However, this exposes the agent's full component interface to the coordinator, including arguments such as `tools`, `generation_kwargs`, and `hook_context`, and the coordinator receives the complete result dictionary. With `AgentTool`, the agent's configuration and execution details stay hidden behind the tool boundary.
+Since `Agent` is a Haystack component, you can also wrap it with [`ComponentTool`](../../tools/componenttool.mdx). However, this exposes the agent's full component interface to the coordinator, including arguments such as `tools`, `generation_kwargs`, and `hook_context`, and the coordinator receives the complete result dictionary. By default, `AgentTool` exposes a single input, `messages`, carrying the task to delegate, plus one parameter for each mandatory prompt variable of the specialist. It returns only the text of the specialist's final reply.
 
 You can also create a similarly narrow interface with the [`@tool`](../../tools/tool.mdx#tool-decorator) decorator. This is useful when you need custom input arguments, want to transform the delegated task, or need to post-process the specialist's response. The trade-off is serialization: a decorated tool serializes as an import path to the function, so the specialist's configuration lives in your Python module rather than in the YAML above.
 
