@@ -1,11 +1,11 @@
 ---
 features:
   - |
-    Added context compaction for the ``Agent``: a ``ContextCompactionHook`` that shortens the conversation once it fills
-    too much of the model's context window, and a ``Compactor`` protocol defining how the shortening is done. The first
-    built-in strategy is ``SlidingWindowCompactor``, which keeps the leading system messages and as many recent messages
-    as the target allows, dropping what is in between and leaving a short note in their place. Register the hook under
-    the ``before_llm`` hook point:
+    Added experimental context compaction for the ``Agent``. ``ContextCompactionHook`` runs before LLM calls and
+    shortens the conversation when it reaches a configured fraction of the model's context window.
+
+    The first built-in strategy, ``SlidingWindowCompactor``, preserves leading system messages and as much recent
+    history as the target allows. It replaces removed history with a short omission note.
 
     .. code-block:: python
 
@@ -15,9 +15,9 @@ features:
 
         hook = ContextCompactionHook(
             compactor=SlidingWindowCompactor(),
-            context_window=200_000,   # the model's limit
-            compact_at=0.7,           # start compacting at 140k tokens
-            compact_to=0.4,           # bring it down to about 80k
+            context_window=200_000,
+            compact_at=0.7,
+            compact_to=0.4,
         )
         agent = Agent(
             chat_generator=OpenAIChatGenerator(model="gpt-5.4-nano"),
@@ -25,33 +25,12 @@ features:
             hooks={"before_llm": [hook]},
         )
 
-    Declare the model's window once and express everything else as a fraction of it, so moving to a different model
-    means changing one number. Leave headroom between ``compact_at`` and the window: the reply and the tool results it
-    triggers land on top of what was measured.
+    The hook uses provider-reported context usage when available and locally estimates the request otherwise, including
+    tool schemas. Leave headroom above ``compact_at`` for the next reply and its tool results.
 
-    Size is measured by anchoring on the ``context_tokens`` state key - the chat generator's own count of the request it
-    was sent plus its reply, which already covers the system prompt, the tool schemas, and the provider's chat-template
-    overhead - and locally counting only the messages appended since that call. Local counting uses a ``TokenCounter``,
-    of which two ship: ``ApproximateTokenCounter``, the default, which estimates from text length and needs no
-    dependency; and ``TiktokenCounter``, which tokenizes for real and needs ``tiktoken`` installed
-    (``pip install tiktoken``). Implement ``TokenCounter`` to count differently, for instance against a provider's own
-    token-counting endpoint.
+    ``SlidingWindowCompactor`` keeps tool calls together with their results, so it may retain slightly more history
+    than the requested target. Compaction is lossy: removed messages cannot be recovered or summarized by this
+    strategy. Implement the ``Compactor`` protocol to provide a custom strategy.
 
-    Neither counter can measure an image or a file, so both charge a flat ``tokens_per_image`` and ``tokens_per_file``
-    instead - including for images a tool returned, which are nested inside the tool result. Raise those if you send
-    large images or long documents. ``tiktoken`` is also OpenAI's encoder, so counts drift on other providers. None of
-    this affects the bulk of the context, which the chat generator has already counted exactly.
-
-    ``ContextCompactionHook`` and ``SlidingWindowCompactor`` are marked experimental: they emit an
-    ``ExperimentalWarning`` on construction and may change without a deprecation cycle while further compaction
-    strategies land.
-
-    Compaction never leaves a tool result whose originating tool call was removed, which chat-completion APIs reject:
-    the start of the retained window is moved backwards onto the assistant message holding the call, so slightly more
-    may be kept than the target asks for. Implement the ``Compactor`` protocol to define your own strategy: it receives
-    the conversation, the token target to come in under, and a ``TokenCounter`` to measure with, must return ``None``
-    unless the conversation actually gets smaller, and must never drop the final message, because the Agent may be
-    mid-step with a pending tool call whose result is appended right after compaction.
-
-    Note that compaction is lossy. After it runs the Agent works from a shorter record of the run, and with
-    ``SlidingWindowCompactor`` anything outside the retained window is gone rather than summarized.
+    ``ContextCompactionHook`` and ``SlidingWindowCompactor`` emit an ``ExperimentalWarning`` and may change without a
+    deprecation cycle.
