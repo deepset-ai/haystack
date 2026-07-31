@@ -193,7 +193,7 @@ metadata: {}
 
 ### Alternatives to `AgentTool`
 
-Since `Agent` is a Haystack component, you can also wrap it with [`ComponentTool`](../../tools/componenttool.mdx). However, this exposes the agent's full component interface to the coordinator, including arguments such as `tools`, `generation_kwargs`, and `hook_context`, and the coordinator receives the complete result dictionary. You can reduce the output with `outputs_to_string={"source": "last_message"}`, but the returned message still includes its serialized metadata. With `AgentTool`, the agent's configuration and execution details stay hidden behind the tool boundary.
+Since `Agent` is a Haystack component, you can also wrap it with [`ComponentTool`](../../tools/componenttool.mdx). However, this exposes the agent's full component interface to the coordinator, including arguments such as `tools`, `generation_kwargs`, and `hook_context`, and the coordinator receives the complete result dictionary. With `AgentTool`, the agent's configuration and execution details stay hidden behind the tool boundary.
 
 You can also create a similarly narrow interface with the [`@tool`](../../tools/tool.mdx#tool-decorator) decorator. This is useful when you need custom input arguments, want to transform the delegated task, or need to post-process the specialist's response. The trade-off is serialization: a decorated tool serializes as an import path to the function, so the specialist's configuration lives in your Python module rather than in the YAML above.
 
@@ -209,7 +209,7 @@ When covering multiple topics, the coordinator can call the same specialist tool
 All tool calls from one LLM response are executed concurrently using a thread pool.
 Control the level of parallelism with the `tool_concurrency_limit` init parameter (default: `4`).
 
-The example below asks the coordinator about two topics: it calls `research_specialist` twice in a single response, and both specialists run in parallel.
+The example below asks the coordinator about two topics: it calls `research_specialist` twice, and both specialists run in parallel.
 
 `HTMLToDocument` uses [Trafilatura](https://trafilatura.readthedocs.io) to extract clean text from HTML pages.
 Install it before running:
