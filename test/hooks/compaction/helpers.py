@@ -26,10 +26,8 @@ class FakeCounter:
 
     def __init__(self, *, chars_per_token: int = 4) -> None:
         self.chars_per_token = chars_per_token
-        self.calls = 0
 
     def count(self, messages: list[ChatMessage], tools: ToolsType | None = None) -> int:
-        self.calls += 1
         if not messages and not tools:
             return 0
         return len(_rendered_conversation(messages) + _rendered_tools(tools)) // self.chars_per_token

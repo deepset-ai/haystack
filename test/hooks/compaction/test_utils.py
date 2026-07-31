@@ -18,9 +18,6 @@ pytestmark = pytest.mark.filterwarnings("ignore::haystack.utils.experimental.Exp
 
 COMPACTED_META = {_COMPACTION_META_KEY: {"strategy": "sliding_window"}}
 
-# Each message is padded so a `FakeCounter` at 4 chars per token gives it a round, predictable cost.
-TWENTY_FIVE_TOKENS = "x" * 91  # "[user] " + 91 chars -> 98 // 4 = 24, close enough to reason in tens
-
 
 def _sized(chars: int) -> ChatMessage:
     """A user message whose rendered form is roughly `chars` characters."""
@@ -88,21 +85,13 @@ class TestEstimatedContextTokens:
 
 
 class TestCompactionSplit:
-    def test_window_grows_to_fill_the_target(self):
-        # Ten messages of ~25 tokens each; a 60-token target should keep roughly the last two.
-        messages = [_sized(100) for _ in range(10)]
-        kept_prefix, _, kept_window = _compaction_split(
-            messages, target_tokens=60, token_counter=FakeCounter(), min_keep_messages=1
-        )
-
-        assert kept_prefix == []
-        assert 2 <= len(kept_window) <= 3, f"kept {len(kept_window)} messages for a 60-token target"
-
     def test_a_bigger_target_keeps_more(self):
+        # Ten messages of ~25 tokens each; a 60-token target should keep roughly the last two.
         messages = [_sized(100) for _ in range(10)]
         *_, tight = _compaction_split(messages, target_tokens=60, token_counter=FakeCounter(), min_keep_messages=1)
         *_, roomy = _compaction_split(messages, target_tokens=200, token_counter=FakeCounter(), min_keep_messages=1)
 
+        assert 2 <= len(tight) <= 3, f"kept {len(tight)} messages for a 60-token target"
         assert len(roomy) > len(tight)
 
     def test_nothing_is_removable_when_it_already_fits(self):

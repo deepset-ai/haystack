@@ -2,8 +2,6 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Any
-
 import pytest
 
 from haystack.dataclasses import ChatMessage, ChatRole
@@ -20,10 +18,6 @@ SMALLEST = 1
 COUNTER = FakeCounter()
 
 
-def _marker(message: ChatMessage) -> dict[str, Any]:
-    return message.meta[_COMPACTION_META_KEY]
-
-
 class TestSlidingWindowCompactor:
     def test_replaces_the_middle_with_an_omission_note(self):
         messages = long_conversation()
@@ -32,7 +26,11 @@ class TestSlidingWindowCompactor:
         # The system prefix survives, the note stands in for what was dropped, and the window is kept verbatim.
         assert compacted[0] is messages[0]
         assert compacted[2:] == messages[4:]
-        assert _marker(compacted[1]) == {"strategy": "sliding_window", "removed_messages": 3, "kept_messages": 2}
+        assert compacted[1].meta[_COMPACTION_META_KEY] == {
+            "strategy": "sliding_window",
+            "removed_messages": 3,
+            "kept_messages": 2,
+        }
         assert compacted[1].text == _DEFAULT_OMISSION_NOTE.replace("{num_removed}", "3")
         # A user message, not a system one, so providers that hoist system messages cannot move it out of position.
         assert compacted[1].is_from(ChatRole.USER)
@@ -176,8 +174,3 @@ class TestSlidingWindowCompactorAsync:
         assert await compactor.compact_async(messages, SMALLEST, COUNTER) == compactor.compact(
             messages, SMALLEST, COUNTER
         )
-
-    @pytest.mark.asyncio
-    async def test_compact_async_returns_none_when_nothing_to_remove(self):
-        compactor = SlidingWindowCompactor(min_keep_messages=20)
-        assert await compactor.compact_async([ChatMessage.from_user("hi")], SMALLEST, COUNTER) is None

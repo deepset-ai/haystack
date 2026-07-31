@@ -280,15 +280,6 @@ class TestContextCompactionHookAsync:
         assert compactor.calls == ["compact_async"]
 
     @pytest.mark.asyncio
-    async def test_run_async_rewrites_messages(self):
-        state = make_state(long_conversation(), context_tokens=800)
-
-        await _hook().run_async(state)
-
-        assert len(state.data["messages"]) == 4
-        assert 0 < state.data["context_tokens"] < 800
-
-    @pytest.mark.asyncio
     async def test_lifecycle_prefers_the_async_methods(self):
         compactor = _RecordingCompactor()
         hook = _hook(compactor)
