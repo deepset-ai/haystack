@@ -98,7 +98,6 @@ class Document(metaclass=_RemoveLegacyFields):  # noqa: PLW1641
 
     @classmethod
     def _field_names(cls) -> set[str]:
-        """Names that map to Document fields in a serialized dict, including legacy 1.x fields."""
         return set(_LEGACY_FIELDS) | {f.name for f in fields(cls)}
 
     def _create_id(self) -> str:
@@ -123,9 +122,8 @@ class Document(metaclass=_RemoveLegacyFields):  # noqa: PLW1641
         `blob` field is converted to a JSON-serializable type.
 
         :param flatten:
-            Whether to flatten `meta` field or not. Defaults to `True` to be backward-compatible with Haystack 1.x.
-            Metadata keys that collide with document field names are not flattened but kept in a nested `meta`
-            dictionary, so no data is lost and `from_dict` can reconstruct the original document.
+            Whether to flatten the `meta` field. Defaults to `True` to be backward-compatible with Haystack 1.x.
+            Meta keys that clash with document field names are kept in a nested `meta` dictionary.
         """
         data = asdict(self)
 
@@ -138,11 +136,17 @@ class Document(metaclass=_RemoveLegacyFields):  # noqa: PLW1641
         if not flatten:
             return data
 
-        meta = data.pop("meta")
-        document_fields = self._field_names()
-        data = {**{key: value for key, value in meta.items() if key not in document_fields}, **data}
-        # Colliding keys stay nested so no data is lost and from_dict can rebuild the original document.
-        if colliding_meta := {key: value for key, value in meta.items() if key in document_fields}:
+        field_names = self._field_names()
+        flattened_meta: dict[str, Any] = {}
+        colliding_meta: dict[str, Any] = {}
+        for key, value in data.pop("meta").items():
+            if key in field_names:
+                colliding_meta[key] = value  # would clash with a document field: keep it nested
+            else:
+                flattened_meta[key] = value
+
+        data = {**flattened_meta, **data}
+        if colliding_meta:
             data["meta"] = colliding_meta
         return data
 
@@ -151,22 +155,25 @@ class Document(metaclass=_RemoveLegacyFields):  # noqa: PLW1641
         """
         Creates a new Document object from a dictionary.
 
-        The `blob` field is converted to its original type. Metadata is rebuilt by merging the
-        nested "meta" dictionary with any flattened metadata keys (see to_dict).
+        The `blob` field is converted to its original type.
         """
-        document_fields = cls._field_names()
-        # `or {}` guards against an explicit None, e.g. stores that return unset fields as None
-        nested_meta = data.get("meta") or {}
-        flattened_meta = {key: value for key, value in data.items() if key not in document_fields}
+        field_names = cls._field_names()
+        field_data: dict[str, Any] = {}
+        flattened_meta: dict[str, Any] = {}
+        for key, value in data.items():
+            if key == "meta":
+                continue  # merged into meta at the end
+            if key in field_names:
+                field_data[key] = value  # legacy fields included: _RemoveLegacyFields drops them before __init__
+            else:
+                flattened_meta[key] = value
 
-        # Legacy fields are kept here so that `_RemoveLegacyFields` drops them in the constructor
-        # instead of them ending up in `meta`.
-        field_data = {key: value for key, value in data.items() if key in document_fields and key != "meta"}
         if blob := field_data.get("blob"):
             field_data["blob"] = ByteStream.from_dict(blob)
         if sparse_embedding := field_data.get("sparse_embedding"):
             field_data["sparse_embedding"] = SparseEmbedding.from_dict(sparse_embedding)
 
+        nested_meta = data.get("meta") or {}
         return cls(**field_data, meta={**nested_meta, **flattened_meta})
 
     @property
