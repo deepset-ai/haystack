@@ -104,10 +104,12 @@ class ContextCompactionHook:
         :returns: None. The hook mutates `state` in place.
         """
         messages = state.data.get("messages", [])
-        target_tokens = self._target_tokens(messages, context_tokens=state.data.get("context_tokens", 0))
+        target_tokens = self._target_tokens(messages=messages, context_tokens=state.data.get("context_tokens", 0))
         if target_tokens is None:
             return
-        compacted = self.compactor.compact(messages, target_tokens, self.token_counter)
+        compacted = self.compactor.compact(
+            messages=messages, target_tokens=target_tokens, token_counter=self.token_counter
+        )
         self._apply(state=state, compacted=compacted, before=len(messages), target_tokens=target_tokens)
 
     async def run_async(self, state: State) -> None:
@@ -119,10 +121,12 @@ class ContextCompactionHook:
         :returns: None. The hook mutates `state` in place.
         """
         messages = state.data.get("messages", [])
-        target_tokens = self._target_tokens(messages, context_tokens=state.data.get("context_tokens", 0))
+        target_tokens = self._target_tokens(messages=messages, context_tokens=state.data.get("context_tokens", 0))
         if target_tokens is None:
             return
-        compacted = await self.compactor.compact_async(messages, target_tokens, self.token_counter)
+        compacted = await self.compactor.compact_async(
+            messages=messages, target_tokens=target_tokens, token_counter=self.token_counter
+        )
         self._apply(state=state, compacted=compacted, before=len(messages), target_tokens=target_tokens)
 
     def _target_tokens(self, messages: list[ChatMessage], context_tokens: int) -> int | None:
@@ -142,7 +146,7 @@ class ContextCompactionHook:
             # The conversation is not yet large enough to compact, so leave it alone.
             return None
         # Calculate an overhead that is not compactable: the system prompt, tool schemas, and chat-template overhead.
-        overhead = estimated - self.token_counter.count(messages)
+        overhead = estimated - self.token_counter.count(messages=messages)
         # Returns the target token amount the messages should be compacted to
         return max(int(self.context_window * self.compact_to) - overhead, 0)
 
@@ -228,5 +232,5 @@ class ContextCompactionHook:
         init_params = data.get("init_parameters", {})
         for key in ("compactor", "token_counter"):
             if init_params.get(key) is not None:
-                deserialize_component_inplace(init_params, key=key)
-        return default_from_dict(cls, data)
+                deserialize_component_inplace(data=init_params, key=key)
+        return default_from_dict(cls, data=data)

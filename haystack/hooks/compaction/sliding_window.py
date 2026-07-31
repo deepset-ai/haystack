@@ -47,18 +47,12 @@ class SlidingWindowCompactor(Compactor):
         """
         Initialize the compactor.
 
-        :param min_keep_messages: The fewest recent messages to keep even when they exceed the target.
-            Must be at least 1: the Agent is mid-step with a pending tool call whose result is appended right
-            after compaction.
+        :param min_keep_messages: The fewest recent messages to keep even when they exceed the target. Keeping at least
+            1 is recommended, since the caller may be mid-step with a pending tool call whose result is appended right
+            after compaction. `0` removes everything after the leading system messages.
         :param omission_note: The user message left in place of what was removed, or None to remove the messages
             silently. Include `{num_removed}` to have the number of removed messages substituted in.
-        :raises ValueError: If `min_keep_messages` is less than 1.
         """
-        if min_keep_messages < 1:
-            raise ValueError(
-                f"`min_keep_messages` must be at least 1, got {min_keep_messages}. Keeping no messages would drop a "
-                f"pending tool call whose result the Agent appends after compaction, leaving it orphaned."
-            )
         self.min_keep_messages = min_keep_messages
         self.omission_note = omission_note
 

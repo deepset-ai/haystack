@@ -140,9 +140,19 @@ class TestSlidingWindowCompactor:
             *messages[2:],
         ]
 
-    def test_rejects_keeping_no_messages(self):
-        with pytest.raises(ValueError, match="`min_keep_messages` must be at least 1"):
-            SlidingWindowCompactor(min_keep_messages=0)
+    def test_keeping_no_messages_clears_everything_after_the_system_prefix(self):
+        # A compactor cannot know how its caller uses the result, so keeping nothing is allowed rather than rejected.
+        messages = long_conversation()
+
+        compacted = SlidingWindowCompactor(min_keep_messages=0).compact(messages, SMALLEST, COUNTER)
+
+        assert compacted is not None
+        assert compacted == [messages[0], compacted[1]]
+        assert count_markers(compacted) == 1
+        # Nothing is left to stand in for the run without a note either.
+        assert SlidingWindowCompactor(min_keep_messages=0, omission_note=None).compact(messages, SMALLEST, COUNTER) == [
+            messages[0]
+        ]
 
     def test_serde_round_trip(self):
         compactor = SlidingWindowCompactor(min_keep_messages=7, omission_note="Dropped {num_removed}.")

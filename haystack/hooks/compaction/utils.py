@@ -52,19 +52,19 @@ def _compaction_split(
     start = 0
     while (
         start < len(messages)
-        and messages[start].is_from(ChatRole.SYSTEM)
+        and messages[start].is_from(role=ChatRole.SYSTEM)
         and _COMPACTION_META_KEY not in messages[start].meta
     ):
         start += 1
 
     # We always keep the system messages so subtract its cost from the target to see what remains for the window.
-    remaining = target_tokens - token_counter.count(messages[:start])
+    remaining_tokens = target_tokens - token_counter.count(messages=messages[:start])
     end = len(messages)
     while end > start:
-        cost = token_counter.count([messages[end - 1]])
-        if cost > remaining:
+        cost = token_counter.count(messages=[messages[end - 1]])
+        if cost > remaining_tokens:
             break
-        remaining -= cost
+        remaining_tokens -= cost
         end -= 1
 
     # Hold on to a few recent messages even when the target cannot pay for them, so the Agent keeps enough to carry on.
