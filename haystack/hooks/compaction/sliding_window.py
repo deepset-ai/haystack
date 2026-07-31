@@ -7,7 +7,7 @@ from typing import Any
 from haystack.core.serialization import default_to_dict
 from haystack.dataclasses import ChatMessage
 from haystack.hooks.compaction.types import Compactor
-from haystack.hooks.compaction.utils import _COMPACTION_META_KEY, _compaction_bounds
+from haystack.hooks.compaction.utils import _COMPACTION_META_KEY, _compaction_split
 from haystack.token_counters import TokenCounter
 from haystack.utils.experimental import _experimental
 
@@ -74,36 +74,33 @@ class SlidingWindowCompactor(Compactor):
         :returns: The system messages, an omission note if one is configured, and the retained window; or None when
             there is nothing worth removing.
         """
-        start, end = _compaction_bounds(
+        kept_prefix, removable, kept_window = _compaction_split(
             messages=messages,
             target_tokens=target_tokens,
             token_counter=token_counter,
             min_keep_messages=self.min_keep_messages,
         )
-        removed = end - start
-        if removed < 1:
+        if not removable:
             return None
+        if not self.omission_note:
+            return [*kept_prefix, *kept_window]
 
-        compacted = list(messages[:start])
-        if self.omission_note:
-            # We prefer user over system since not all providers support multiple system messages
-            note = ChatMessage.from_user(
-                # `replace` rather than `format`, so a note carrying braces of its own cannot raise.
-                self.omission_note.replace(_NUM_REMOVED_PLACEHOLDER, str(removed)),
-                meta={
-                    _COMPACTION_META_KEY: {
-                        "strategy": "sliding_window",
-                        "removed_messages": removed,
-                        "kept_messages": len(messages) - end,
-                    }
-                },
-            )
-            # The note costs tokens of its own, so it is only worth leaving behind if what it stands in for is bigger.
-            if token_counter.count([note]) >= token_counter.count(messages[start:end]):
-                return None
-            compacted.append(note)
-        compacted.extend(messages[end:])
-        return compacted
+        # We prefer user over system since not all providers support multiple system messages
+        note = ChatMessage.from_user(
+            # `replace` rather than `format`, so a note carrying braces of its own cannot raise.
+            self.omission_note.replace(_NUM_REMOVED_PLACEHOLDER, str(len(removable))),
+            meta={
+                _COMPACTION_META_KEY: {
+                    "strategy": "sliding_window",
+                    "removed_messages": len(removable),
+                    "kept_messages": len(kept_window),
+                }
+            },
+        )
+        # The note costs tokens of its own, so it is only worth leaving behind if what it stands in for is bigger.
+        if token_counter.count([note]) >= token_counter.count(removable):
+            return None
+        return [*kept_prefix, note, *kept_window]
 
     def to_dict(self) -> dict[str, Any]:
         """

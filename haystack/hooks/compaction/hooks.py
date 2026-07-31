@@ -10,7 +10,7 @@ from haystack.components.agents.state.state_utils import replace_values
 from haystack.core.serialization import component_to_dict, default_from_dict, default_to_dict
 from haystack.dataclasses import ChatMessage
 from haystack.hooks.compaction.types import Compactor
-from haystack.hooks.compaction.utils import _estimated_context_tokens, _last_assistant_end
+from haystack.hooks.compaction.utils import _estimated_context_tokens, _last_assistant_index
 from haystack.token_counters import ApproximateTokenCounter, TokenCounter
 from haystack.utils.deserialization import deserialize_component_inplace
 from haystack.utils.experimental import _experimental
@@ -161,7 +161,7 @@ class ContextCompactionHook:
         # Re-estimate the size of context window minus the trailing tool result messages.
         # If we added the estimated size of the tool result messages a second registered hook could double count them.
         state.set(
-            "context_tokens", self.token_counter.count(messages=compacted[: _last_assistant_end(messages=compacted)])
+            "context_tokens", self.token_counter.count(messages=compacted[: _last_assistant_index(compacted) + 1])
         )
         logger.debug(
             "Compacted the Agent's conversation at step {step} from {before} to {after} messages, targeting {target} "

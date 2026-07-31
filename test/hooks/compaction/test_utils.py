@@ -7,9 +7,9 @@ import pytest
 from haystack.dataclasses import ChatMessage
 from haystack.hooks.compaction.utils import (
     _COMPACTION_META_KEY,
-    _compaction_bounds,
+    _compaction_split,
     _estimated_context_tokens,
-    _last_assistant_end,
+    _last_assistant_index,
 )
 from test.hooks.compaction.helpers import FakeCounter, tool_call, tool_result
 
@@ -26,23 +26,23 @@ def _sized(chars: int) -> ChatMessage:
     return ChatMessage.from_user("x" * chars)
 
 
-class TestLastAssistantEnd:
+class TestLastAssistantIndex:
     @pytest.mark.parametrize(
         ("messages", "expected"),
         [
-            pytest.param([], 0, id="empty"),
-            pytest.param([ChatMessage.from_user("hi")], 0, id="no-assistant"),
-            pytest.param([ChatMessage.from_user("hi"), ChatMessage.from_assistant("yo")], 2, id="assistant-is-last"),
-            pytest.param([ChatMessage.from_assistant("yo"), tool_result("r")], 1, id="tool-result-after-assistant"),
+            pytest.param([], -1, id="empty"),
+            pytest.param([ChatMessage.from_user("hi")], -1, id="no-assistant"),
+            pytest.param([ChatMessage.from_user("hi"), ChatMessage.from_assistant("yo")], 1, id="assistant-is-last"),
+            pytest.param([ChatMessage.from_assistant("yo"), tool_result("r")], 0, id="tool-result-after-assistant"),
             pytest.param(
                 [ChatMessage.from_assistant("a"), tool_result("r"), ChatMessage.from_assistant("b"), tool_result("s")],
-                3,
+                2,
                 id="takes-the-most-recent",
             ),
         ],
     )
     def test_boundary(self, messages, expected):
-        assert _last_assistant_end(messages) == expected
+        assert _last_assistant_index(messages) == expected
 
 
 class TestEstimatedContextTokens:
@@ -73,41 +73,42 @@ class TestEstimatedContextTokens:
         counter = FakeCounter()
         messages = [ChatMessage.from_user("start"), ChatMessage.from_assistant("reply"), tool_result("R" * 400)]
 
-        written = counter.count(messages[: _last_assistant_end(messages)])
+        written = counter.count(messages[: _last_assistant_index(messages) + 1])
 
         assert _estimated_context_tokens(messages, written, counter) == pytest.approx(counter.count(messages), abs=2)
 
 
-class TestCompactionBounds:
+class TestCompactionSplit:
     def test_window_grows_to_fill_the_target(self):
         # Ten messages of ~25 tokens each; a 60-token target should keep roughly the last two.
         messages = [_sized(100) for _ in range(10)]
-        start, end = _compaction_bounds(messages, target_tokens=60, token_counter=FakeCounter(), min_keep_messages=1)
+        kept_prefix, _, kept_window = _compaction_split(
+            messages, target_tokens=60, token_counter=FakeCounter(), min_keep_messages=1
+        )
 
-        assert start == 0
-        kept = len(messages) - end
-        assert 2 <= kept <= 3, f"kept {kept} messages for a 60-token target"
+        assert kept_prefix == []
+        assert 2 <= len(kept_window) <= 3, f"kept {len(kept_window)} messages for a 60-token target"
 
     def test_a_bigger_target_keeps_more(self):
         messages = [_sized(100) for _ in range(10)]
-        _, tight = _compaction_bounds(messages, target_tokens=60, token_counter=FakeCounter(), min_keep_messages=1)
-        _, roomy = _compaction_bounds(messages, target_tokens=200, token_counter=FakeCounter(), min_keep_messages=1)
+        *_, tight = _compaction_split(messages, target_tokens=60, token_counter=FakeCounter(), min_keep_messages=1)
+        *_, roomy = _compaction_split(messages, target_tokens=200, token_counter=FakeCounter(), min_keep_messages=1)
 
-        assert roomy < tight
+        assert len(roomy) > len(tight)
 
-    def test_returns_an_empty_range_when_it_already_fits(self):
+    def test_nothing_is_removable_when_it_already_fits(self):
         messages = [_sized(20), _sized(20)]
-        start, end = _compaction_bounds(
+        _, removable, _ = _compaction_split(
             messages, target_tokens=100_000, token_counter=FakeCounter(), min_keep_messages=1
         )
 
-        assert end == start
+        assert removable == []
 
     def test_min_keep_messages_wins_over_an_unaffordable_target(self):
         messages = [_sized(400) for _ in range(6)]
-        _, end = _compaction_bounds(messages, target_tokens=1, token_counter=FakeCounter(), min_keep_messages=3)
+        *_, kept_window = _compaction_split(messages, target_tokens=1, token_counter=FakeCounter(), min_keep_messages=3)
 
-        assert len(messages) - end == 3
+        assert len(kept_window) == 3
 
     @pytest.mark.parametrize(
         ("messages", "expected"),
@@ -156,6 +157,8 @@ class TestCompactionBounds:
     )
     def test_structural_rules(self, messages, expected):
         # A target of 1 token forces the window as small as the structural rules allow, isolating them from sizing.
-        assert (
-            _compaction_bounds(messages, target_tokens=1, token_counter=FakeCounter(), min_keep_messages=1) == expected
-        )
+        start, end = expected
+
+        split = _compaction_split(messages, target_tokens=1, token_counter=FakeCounter(), min_keep_messages=1)
+
+        assert split == (messages[:start], messages[start:end], messages[end:])
