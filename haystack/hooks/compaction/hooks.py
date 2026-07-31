@@ -30,7 +30,7 @@ class ContextCompactionHook:
 
     ```python
     from haystack.components.agents import Agent
-    from haystack.components.generators.chat import OpenAIChatGenerator
+    from haystack.components.generators.chat import OpenAIResponsesChatGenerator
     from haystack.hooks.compaction import ContextCompactionHook, SlidingWindowCompactor
 
     hook = ContextCompactionHook(
@@ -40,7 +40,7 @@ class ContextCompactionHook:
         compact_to=0.4,
     )
     agent = Agent(
-        chat_generator=OpenAIChatGenerator(model="gpt-5.4-nano"),
+        chat_generator=OpenAIResponsesChatGenerator(model="gpt-5.4-nano"),
         tools=[web_search],
         hooks={"before_llm": [hook]},
         max_agent_steps=50,

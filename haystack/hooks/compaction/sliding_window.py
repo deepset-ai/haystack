@@ -29,14 +29,14 @@ class SlidingWindowCompactor(Compactor):
 
     ```python
     from haystack.components.agents import Agent
-    from haystack.components.generators.chat import OpenAIChatGenerator
+    from haystack.components.generators.chat import OpenAIResponsesChatGenerator
     from haystack.hooks.compaction import ContextCompactionHook, SlidingWindowCompactor
 
     hook = ContextCompactionHook(
         compactor=SlidingWindowCompactor(), context_window=200_000, compact_at=0.7, compact_to=0.4
     )
     agent = Agent(
-        chat_generator=OpenAIChatGenerator(model="gpt-5.4-nano"),
+        chat_generator=OpenAIResponsesChatGenerator(model="gpt-5.4-nano"),
         tools=[web_search],
         hooks={"before_llm": [hook]},
     )
