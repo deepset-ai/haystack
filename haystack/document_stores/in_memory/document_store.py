@@ -654,7 +654,7 @@ class InMemoryDocumentStore:
 
     def get_metadata_field_unique_values(
         self, metadata_field: str, search_term: str | None = None, from_: int = 0, size: int = 10
-    ) -> tuple[list[str], int]:
+    ) -> tuple[list[Any], int]:
         """
         Returns unique values for a metadata field, optionally filtered by a search term, with pagination.
 
@@ -666,14 +666,19 @@ class InMemoryDocumentStore:
         :returns: A tuple of (paginated list of unique values, total count of unique values).
         """
         key = metadata_field.removeprefix("meta.") if metadata_field.startswith("meta.") else metadata_field
-        values = {str(doc.meta[key]) for doc in self.storage.values() if key in doc.meta and doc.meta[key] is not None}
+        unique_values: dict[str, Any] = {}
+        for doc in self.storage.values():
+            value = doc.meta.get(key)
+            if value is not None:
+                unique_values.setdefault(str(value), value)
 
         if search_term:
             search_term_lower = search_term.lower()
-            values = {value for value in values if search_term_lower in value.lower()}
+            unique_values = {k: v for k, v in unique_values.items() if search_term_lower in k.lower()}
 
-        sorted_values = sorted(values)
-        return sorted_values[from_ : from_ + size], len(sorted_values)
+        sorted_keys = sorted(unique_values)
+        paginated_keys = sorted_keys[from_ : from_ + size]
+        return [unique_values[k] for k in paginated_keys], len(sorted_keys)
 
     def bm25_retrieval(
         self, query: str, filters: dict[str, Any] | None = None, top_k: int = 10, scale_score: bool = False
@@ -968,7 +973,7 @@ class InMemoryDocumentStore:
 
     async def get_metadata_field_unique_values_async(
         self, metadata_field: str, search_term: str | None = None, from_: int = 0, size: int = 10
-    ) -> tuple[list[str], int]:
+    ) -> tuple[list[Any], int]:
         """
         Returns unique values for a metadata field, optionally filtered by a search term, with pagination.
 
