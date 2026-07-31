@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Fix a bug in ``Document.from_dict`` that caused deserialization failures (ValueError or loss of key)
+    when a flattened serialized document's metadata legitimately contained a key literally named ``"meta"``
+    along with other metadata keys.

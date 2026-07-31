@@ -150,18 +150,25 @@ class Document(metaclass=_RemoveLegacyFields):  # noqa: PLW1641
         # Store metadata for a moment while we try un-flattening allegedly flatten metadata.
         # We don't expect both a `meta=` keyword and flatten metadata keys so we'll raise a
         # ValueError later if this is the case.
+        has_meta = "meta" in data
         meta = data.pop("meta", {})
         # Unflatten metadata if it was flattened. We assume any keyword argument that's not
         # a document field is a metadata key. We treat legacy fields as document fields, so that
         # `_RemoveLegacyFields` drops them instead of them ending up in `meta`.
         flatten_meta = {}
+        document_fields = _LEGACY_FIELDS + [f.name for f in fields(cls)]
+        is_flattened = any(key not in document_fields for key in data)
+
         # A non-mapping value under the "meta" key can't be the `meta` parameter (which must be a
         # dictionary). It can only be a flattened metadata key literally named "meta", produced by
         # to_dict(flatten=True) for a document whose metadata contains a "meta" key.
-        if not isinstance(meta, dict):
+        if is_flattened and has_meta and "id" in data:
             flatten_meta["meta"] = meta
             meta = {}
-        document_fields = _LEGACY_FIELDS + [f.name for f in fields(cls)]
+        elif not isinstance(meta, dict):
+            flatten_meta["meta"] = meta
+            meta = {}
+
         for key in list(data.keys()):
             if key not in document_fields:
                 flatten_meta[key] = data.pop(key)

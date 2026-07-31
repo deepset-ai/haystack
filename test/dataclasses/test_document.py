@@ -357,6 +357,33 @@ def test_to_dict_from_dict_roundtrip_with_meta_key_named_meta():
     assert Document.from_dict(doc.to_dict()).meta == {"meta": "value"}
 
 
+def test_to_dict_from_dict_roundtrip_with_meta_key_named_meta_and_other_keys():
+    """
+    A metadata key literally named "meta" must survive the default
+    to_dict(flatten=True)/from_dict() round-trip when other metadata keys are present.
+    """
+    doc = Document(content="hi", meta={"meta": {"nested": "value"}, "author": "Alice"})
+
+    assert Document.from_dict(doc.to_dict()) == doc
+    assert Document.from_dict(doc.to_dict()).meta == {"meta": {"nested": "value"}, "author": "Alice"}
+
+
+def test_to_dict_from_dict_roundtrip_flatten_false():
+    doc = Document(content="hi", meta={"author": "Alice", "meta": {"nested": "value"}})
+    serialized = doc.to_dict(flatten=False)
+    deserialized = Document.from_dict(serialized)
+    assert deserialized == doc
+    assert deserialized.meta == {"author": "Alice", "meta": {"nested": "value"}}
+
+
+def test_to_dict_from_dict_roundtrip_flatten_true():
+    doc = Document(content="hi", meta={"author": "Alice", "meta": {"nested": "value"}})
+    serialized = doc.to_dict(flatten=True)
+    deserialized = Document.from_dict(serialized)
+    assert deserialized == doc
+    assert deserialized.meta == {"author": "Alice", "meta": {"nested": "value"}}
+
+
 def test_from_dict_with_flat_and_non_flat_meta():
     with pytest.raises(ValueError, match="Pass either the 'meta' parameter or flattened metadata keys"):
         Document.from_dict(
