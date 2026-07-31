@@ -173,6 +173,19 @@ class TestContextCompactionHook:
 
         assert compactor.calls == ["compact"]
 
+    def test_counts_tool_schemas_without_reported_usage(self):
+        counter = FakeCounter()
+        messages = [ChatMessage.from_user("start")]
+        total_tokens = counter.count(messages, tools=[fetch])
+        assert counter.count(messages) < total_tokens
+        compactor = _RecordingCompactor()
+
+        _hook(compactor, token_counter=counter, context_window=total_tokens, compact_at=1.0, compact_to=0.4).run(
+            make_state(messages, context_tokens=0, tools=[fetch])
+        )
+
+        assert compactor.calls == ["compact"]
+
     def test_hands_down_the_raw_target_when_there_is_no_overhead(self):
         # A conversation whose reported size matches what can be counted locally: nothing is held back. It has to end on
         # the assistant reply, which is what `context_tokens` is defined to account for.
@@ -208,6 +221,15 @@ class TestContextCompactionHook:
         # Cumulative run metadata records what the run spent and did, which compaction does not change.
         assert state.data["token_usage"] == {"prompt_tokens": 12}
         assert state.data["tool_call_counts"] == {"fetch": 2}
+
+    def test_preserves_the_no_usage_sentinel_after_compaction(self):
+        compacted = [ChatMessage.from_assistant("kept")]
+        state = make_state([ChatMessage.from_user("x" * 4000)], context_tokens=0)
+
+        _hook(_RecordingCompactor(result=compacted)).run(state)
+
+        assert state.data["messages"] == compacted
+        assert state.data["context_tokens"] == 0
 
     def test_leaves_the_conversation_alone_when_the_compactor_declines(self):
         messages = long_conversation()

@@ -12,6 +12,7 @@ from haystack.dataclasses import ChatMessage
 from haystack.hooks.compaction.types import Compactor
 from haystack.hooks.compaction.utils import _estimated_context_tokens, _last_assistant_index
 from haystack.token_counters import ApproximateTokenCounter, TokenCounter
+from haystack.tools import ToolsType
 from haystack.utils.deserialization import deserialize_component_inplace
 from haystack.utils.experimental import _experimental
 
@@ -104,13 +105,22 @@ class ContextCompactionHook:
         :returns: None. The hook mutates `state` in place.
         """
         messages = state.data.get("messages", [])
-        target_tokens = self._target_tokens(messages=messages, context_tokens=state.data.get("context_tokens", 0))
+        context_tokens = state.data.get("context_tokens", 0)
+        target_tokens = self._target_tokens(
+            messages=messages, context_tokens=context_tokens, tools=state.data.get("tools")
+        )
         if target_tokens is None:
             return
         compacted = self.compactor.compact(
             messages=messages, target_tokens=target_tokens, token_counter=self.token_counter
         )
-        self._apply(state=state, compacted=compacted, before=len(messages), target_tokens=target_tokens)
+        self._apply(
+            state=state,
+            compacted=compacted,
+            before=len(messages),
+            target_tokens=target_tokens,
+            original_context_tokens=context_tokens,
+        )
 
     async def run_async(self, state: State) -> None:
         """
@@ -121,26 +131,38 @@ class ContextCompactionHook:
         :returns: None. The hook mutates `state` in place.
         """
         messages = state.data.get("messages", [])
-        target_tokens = self._target_tokens(messages=messages, context_tokens=state.data.get("context_tokens", 0))
+        context_tokens = state.data.get("context_tokens", 0)
+        target_tokens = self._target_tokens(
+            messages=messages, context_tokens=context_tokens, tools=state.data.get("tools")
+        )
         if target_tokens is None:
             return
         compacted = await self.compactor.compact_async(
             messages=messages, target_tokens=target_tokens, token_counter=self.token_counter
         )
-        self._apply(state=state, compacted=compacted, before=len(messages), target_tokens=target_tokens)
+        self._apply(
+            state=state,
+            compacted=compacted,
+            before=len(messages),
+            target_tokens=target_tokens,
+            original_context_tokens=context_tokens,
+        )
 
-    def _target_tokens(self, messages: list[ChatMessage], context_tokens: int) -> int | None:
+    def _target_tokens(
+        self, messages: list[ChatMessage], context_tokens: int, tools: ToolsType | None = None
+    ) -> int | None:
         """
         The size a compactor should bring `messages` down to.
 
         :param messages: The conversation, oldest to newest.
         :param context_tokens: The `context_tokens` state key. It is the current token count of the conversation except
             for the most recent tool result messages.
+        :param tools: Tools whose schemas are sent alongside the messages.
         :returns: The target token amount the messages should be compacted to, or None when the conversation is not
             yet large enough to compact.
         """
         estimated = _estimated_context_tokens(
-            messages=messages, context_tokens=context_tokens, token_counter=self.token_counter
+            messages=messages, context_tokens=context_tokens, token_counter=self.token_counter, tools=tools
         )
         if estimated < self.context_window * self.compact_at:
             # The conversation is not yet large enough to compact, so leave it alone.
@@ -150,7 +172,14 @@ class ContextCompactionHook:
         # Returns the target token amount the messages should be compacted to
         return max(int(self.context_window * self.compact_to) - overhead, 0)
 
-    def _apply(self, state: State, compacted: list[ChatMessage] | None, before: int, target_tokens: int) -> None:
+    def _apply(
+        self,
+        state: State,
+        compacted: list[ChatMessage] | None,
+        before: int,
+        target_tokens: int,
+        original_context_tokens: int,
+    ) -> None:
         """
         Write a compacted conversation back into `State`, or do nothing if the compactor declined.
 
@@ -158,15 +187,19 @@ class ContextCompactionHook:
         :param compacted: What the compactor returned.
         :param before: How many messages the conversation held before compaction, for the log line.
         :param target_tokens: The target the compactor was given, for the log line.
+        :param original_context_tokens: The provider-reported context count before compaction, or 0 when unavailable.
         """
         if compacted is None:
             return
         state.set("messages", compacted, handler_override=replace_values)
-        # Re-estimate the size of context window minus the trailing tool result messages.
-        # If we added the estimated size of the tool result messages a second registered hook could double count them.
-        state.set(
-            "context_tokens", self.token_counter.count(messages=compacted[: _last_assistant_index(compacted) + 1])
-        )
+        # If the original value was 0, leave it unchanged so later steps keep recounting the full request locally.
+        if original_context_tokens != 0:
+            # Re-estimate the size of context window minus the trailing tool result messages. If we added the estimated
+            # size of the tool result messages, a second registered hook could double count them.
+            state.set(
+                "context_tokens",
+                self.token_counter.count(messages=compacted[: _last_assistant_index(messages=compacted) + 1]),
+            )
         logger.debug(
             "Compacted the Agent's conversation at step {step} from {before} to {after} messages, targeting {target} "
             "tokens.",

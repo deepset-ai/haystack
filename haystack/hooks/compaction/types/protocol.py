@@ -17,14 +17,11 @@ class Compactor(Protocol):
     `ContextCompactionHook` does by comparing the context size against a fraction of the model's window. Strategies
     differ widely in cost and fidelity, from dropping the oldest messages outright to condensing them with an LLM.
 
-    Implementations must honor three rules:
+    Implementations must honor two rules:
 
     1. **Return `None` unless the conversation actually gets smaller.** Callers apply whatever else is returned, so
        judging whether compacting was worthwhile is the compactor's job.
     2. **Return a new list; leave `messages` as it is.** The caller owns that list and writes the returned one back.
-    3. **Never drop the final message.** The Agent may be mid-step with a pending tool call whose result is appended
-       right after compaction returns, and dropping the assistant message holding that call leaves the result orphaned,
-       which chat-completion APIs reject.
 
     `target_tokens` is a goal, not a guarantee: a compactor that cannot reach it should get as close as it can rather
     than strip the conversation past what the Agent needs to keep working.

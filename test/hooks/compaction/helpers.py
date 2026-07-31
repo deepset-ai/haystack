@@ -17,6 +17,7 @@ _SCHEMA = {
     "context_tokens": {"type": int},
     "token_usage": {"type": dict},
     "tool_call_counts": {"type": dict},
+    "tools": {"type": list},
 }
 
 
@@ -57,7 +58,14 @@ def tool_result(result: str, *, call_id: str = "c1", name: str = "search", error
 
 def make_state(messages: list[ChatMessage], **data: Any) -> State:
     """A State shaped like the Agent's, holding `messages` and whatever run metadata a test overrides."""
-    base = {"messages": messages, "step_count": 2, "context_tokens": 0, "token_usage": {}, "tool_call_counts": {}}
+    base = {
+        "messages": messages,
+        "step_count": 2,
+        "context_tokens": 0,
+        "token_usage": {},
+        "tool_call_counts": {},
+        "tools": [],
+    }
     return State(schema=_SCHEMA, data={**base, **data})
 
 

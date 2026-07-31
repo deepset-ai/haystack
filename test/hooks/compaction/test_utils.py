@@ -11,6 +11,7 @@ from haystack.hooks.compaction.utils import (
     _estimated_context_tokens,
     _last_assistant_index,
 )
+from haystack.tools import tool
 from test.hooks.compaction.helpers import FakeCounter, tool_call, tool_result
 
 pytestmark = pytest.mark.filterwarnings("ignore::haystack.utils.experimental.ExperimentalWarning")
@@ -24,6 +25,12 @@ TWENTY_FIVE_TOKENS = "x" * 91  # "[user] " + 91 chars -> 98 // 4 = 24, close eno
 def _sized(chars: int) -> ChatMessage:
     """A user message whose rendered form is roughly `chars` characters."""
     return ChatMessage.from_user("x" * chars)
+
+
+@tool
+def lookup(query: str) -> str:
+    """Look up information relevant to a query."""
+    return query
 
 
 class TestLastAssistantIndex:
@@ -64,7 +71,9 @@ class TestEstimatedContextTokens:
         counter = FakeCounter()
         messages = [ChatMessage.from_user("start"), ChatMessage.from_assistant("reply"), tool_result("R" * 400)]
 
-        assert _estimated_context_tokens(messages, 0, counter) == counter.count(messages)
+        assert _estimated_context_tokens(messages, 0, counter, tools=[lookup]) == counter.count(
+            messages, tools=[lookup]
+        )
 
     def test_the_written_back_value_does_not_double_count(self):
         # After compacting, the hook writes back the count through the last assistant message. Feeding that straight

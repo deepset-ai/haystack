@@ -4,6 +4,7 @@
 
 from haystack.dataclasses import ChatMessage, ChatRole
 from haystack.token_counters import TokenCounter
+from haystack.tools import ToolsType
 
 # Meta key marking a message that a compactor produced. Its value records which strategy ran.
 _COMPACTION_META_KEY = "context_compaction"
@@ -17,20 +18,23 @@ def _last_assistant_index(messages: list[ChatMessage]) -> int:
     return -1
 
 
-def _estimated_context_tokens(messages: list[ChatMessage], context_tokens: int, token_counter: TokenCounter) -> int:
+def _estimated_context_tokens(
+    messages: list[ChatMessage], context_tokens: int, token_counter: TokenCounter, tools: ToolsType | None = None
+) -> int:
     """
     Estimate the size of the whole conversation.
 
     :param messages: The conversation, oldest to newest.
     :param context_tokens: The `context_tokens` state key which is computed using the provider's own token counting.
     :param token_counter: The counter to measure the unaccounted messages with.
+    :param tools: Tools whose schemas are sent alongside the messages. These are counted when provider usage is absent.
     :returns: The estimated total token count.
     """
     # Nothing sent yet, or a generator that reports no usage, so count everything.
     if context_tokens == 0:
-        return token_counter.count(messages=messages)
+        return token_counter.count(messages=messages, tools=tools)
     # Only need to estimate the tool result messages after the last assistant message
-    tool_result_messages = messages[_last_assistant_index(messages) + 1 :]
+    tool_result_messages = messages[_last_assistant_index(messages=messages) + 1 :]
     return context_tokens + token_counter.count(messages=tool_result_messages)
 
 
@@ -49,7 +53,7 @@ def _compaction_split(
     protected_end = 0
     while protected_end < len(messages):
         message = messages[protected_end]
-        is_protected_system_message = message.is_from(ChatRole.SYSTEM) and _COMPACTION_META_KEY not in message.meta
+        is_protected_system_message = message.is_from(role=ChatRole.SYSTEM) and _COMPACTION_META_KEY not in message.meta
         if not is_protected_system_message:
             break
         protected_end += 1
