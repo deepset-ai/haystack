@@ -857,4 +857,4 @@ def test_normalize_messages():
     assert _normalize_messages([ChatMessage.from_user("World")]) == [ChatMessage.from_user("World")]
 
     with pytest.raises(TypeError):
-        _normalize_messages(123)
+        _normalize_messages(123)  # type: ignore

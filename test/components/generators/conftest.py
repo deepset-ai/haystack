@@ -1,3 +1,4 @@
+from typing import Any
 # SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
 #
 # SPDX-License-Identifier: Apache-2.0
@@ -43,7 +44,7 @@ def mock_auto_tokenizer():
 
 
 class OpenAIMockStream(Stream[ChatCompletionChunk]):
-    def __init__(self, mock_chunk: ChatCompletionChunk, client=None, *args, **kwargs):
+    def __init__(self, mock_chunk: ChatCompletionChunk, client: "Any" = None, *args: "Any", **kwargs: "Any") -> None:
         client = client or MagicMock()
         super().__init__(client=client, *args, **kwargs)  # noqa: B026
         self.mock_chunk = mock_chunk
