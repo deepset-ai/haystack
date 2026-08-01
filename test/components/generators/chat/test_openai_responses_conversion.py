@@ -1,3 +1,4 @@
+from typing import Any
 # SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
 #
 # SPDX-License-Identifier: Apache-2.0
@@ -223,11 +224,12 @@ def openai_responses_streaming_chunks_with_tool_call():
 
 class TestConversionToStreamingChunks:
     def test_convert_streaming_chunks_to_chat_message_with_tool_call_empty_reasoning(
-        self, openai_responses_streaming_chunks_with_tool_call
-    ):
+        self: Any, openai_responses_streaming_chunks_with_tool_call
+    : Any) -> None:
+
         chat_message = _convert_streaming_chunks_to_chat_message(openai_responses_streaming_chunks_with_tool_call)
         assert chat_message == ChatMessage(
-            _role="assistant",
+            _role="assistant",  # type: ignore
             _content=[
                 ReasoningContent(
                     reasoning_text="",
@@ -278,7 +280,8 @@ class TestConversionToStreamingChunks:
             },
         )
 
-    def test_convert_only_text(self):
+    def test_convert_only_text(self) -> None:
+
         openai_chunks = [
             ResponseCreatedEvent(
                 response=Response(
@@ -529,7 +532,7 @@ class TestConversionToStreamingChunks:
                 type="response.completed",
             ),
         ]
-        streaming_chunks = []
+        streaming_chunks = []  # type: ignore
         for chunk in openai_chunks:
             streaming_chunk = _convert_response_chunk_to_streaming_chunk(chunk, previous_chunks=streaming_chunks)
             streaming_chunks.append(streaming_chunk)
@@ -878,7 +881,8 @@ class TestConversionToStreamingChunks:
             ),
         ]
 
-    def test_convert_only_function_call(self):
+    def test_convert_only_function_call(self) -> None:
+
         chunks = [
             ResponseCreatedEvent(
                 response=Response(
@@ -1017,7 +1021,7 @@ class TestConversionToStreamingChunks:
             ),
         ]
 
-        streaming_chunks = []
+        streaming_chunks = []  # type: ignore
         for chunk in chunks:
             streaming_chunk = _convert_response_chunk_to_streaming_chunk(chunk, previous_chunks=streaming_chunks)
             streaming_chunks.append(streaming_chunk)
@@ -1223,19 +1227,22 @@ class TestConversionToStreamingChunks:
 
 
 class TestResponseToChatMessage:
-    def test_convert_system_message(self):
+    def test_convert_system_message(self) -> None:
+
         message = ChatMessage.from_system("You are good assistant")
         assert _convert_chat_message_to_responses_api_format(message) == [
             {"role": "system", "content": "You are good assistant"}
         ]
 
-    def test_convert_user_message(self):
+    def test_convert_user_message(self) -> None:
+
         message = ChatMessage.from_user("I have a question")
         assert _convert_chat_message_to_responses_api_format(message) == [
             {"role": "user", "content": [{"type": "input_text", "text": "I have a question"}]}
         ]
 
-    def test_convert_multimodal_user_message(self, base64_image_string):
+    def test_convert_multimodal_user_message(self, base64_image_string: Any) -> None:
+
         message = ChatMessage.from_user(
             content_parts=[
                 TextContent("I have a question"),
@@ -1265,7 +1272,8 @@ class TestResponseToChatMessage:
             ],
         }
 
-    def test_convert_user_message_with_file_content(self, base64_pdf_string):
+    def test_convert_user_message_with_file_content(self, base64_pdf_string: Any) -> None:
+
         message = ChatMessage.from_user(
             content_parts=[FileContent(base64_data=base64_pdf_string, mime_type="application/pdf", filename="test.pdf")]
         )
@@ -1282,7 +1290,8 @@ class TestResponseToChatMessage:
             }
         ]
 
-    def test_convert_user_message_with_file_content_no_filename(self, base64_pdf_string):
+    def test_convert_user_message_with_file_content_no_filename(self, base64_pdf_string: Any) -> None:
+
         message = ChatMessage.from_user(
             content_parts=[FileContent(base64_data=base64_pdf_string, mime_type="application/pdf")]
         )
@@ -1299,13 +1308,15 @@ class TestResponseToChatMessage:
             }
         ]
 
-    def test_convert_assistant_message(self):
+    def test_convert_assistant_message(self) -> None:
+
         message = ChatMessage.from_assistant(text="I have an answer", meta={"finish_reason": "stop"})
         assert _convert_chat_message_to_responses_api_format(message) == [
             {"role": "assistant", "content": "I have an answer"}
         ]
 
-    def test_convert_assistant_message_w_tool_call(self):
+    def test_convert_assistant_message_w_tool_call(self) -> None:
+
         chat_message = ChatMessage(
             _role=ChatRole.ASSISTANT,
             _content=[
@@ -1368,7 +1379,8 @@ class TestResponseToChatMessage:
             {"content": "I need to use the functions.weather tool.", "role": "assistant"},
         ]
 
-    def test_convert_assistant_message_reasoning_strips_invalid_streaming_fields(self):
+    def test_convert_assistant_message_reasoning_strips_invalid_streaming_fields(self) -> None:
+
         chat_message = ChatMessage(
             _role=ChatRole.ASSISTANT,
             _content=[
@@ -1399,7 +1411,8 @@ class TestResponseToChatMessage:
             }
         ]
 
-    def test_convert_tool_message(self):
+    def test_convert_tool_message(self) -> None:
+
         tool_call_result = ChatMessage(
             _role=ChatRole.TOOL,
             _content=[
@@ -1424,13 +1437,14 @@ class TestResponseToChatMessage:
             }
         ]
 
-    def test_convert_tool_message_list_with_image(self, base64_image_string):
+    def test_convert_tool_message_list_with_image(self, base64_image_string: Any) -> None:
+
         tool_result = [
             TextContent(text="first result"),
             ImageContent(base64_image=base64_image_string, mime_type="image/png"),
         ]
         message = ChatMessage.from_tool(
-            tool_result=tool_result,
+            tool_result=tool_result,  # type: ignore
             origin=ToolCall(
                 tool_name="mytool", arguments={}, id="123", extra={"call_id": "call_a82vwFAIzku9SmBuQuecQSRq"}
             ),
@@ -1448,13 +1462,14 @@ class TestResponseToChatMessage:
             }
         ]
 
-    def test_convert_tool_message_list_with_file(self, base64_pdf_string):
+    def test_convert_tool_message_list_with_file(self, base64_pdf_string: Any) -> None:
+
         tool_result = [
             TextContent(text="first result"),
             FileContent(base64_data=base64_pdf_string, mime_type="application/pdf", filename="guide.pdf"),
         ]
         message = ChatMessage.from_tool(
-            tool_result=tool_result,
+            tool_result=tool_result,  # type: ignore
             origin=ToolCall(
                 tool_name="mytool", arguments={}, id="123", extra={"call_id": "call_a82vwFAIzku9SmBuQuecQSRq"}
             ),
@@ -1476,7 +1491,8 @@ class TestResponseToChatMessage:
             }
         ]
 
-    def test_convert_invalid(self):
+    def test_convert_invalid(self) -> None:
+
         message = ChatMessage(_role=ChatRole.ASSISTANT, _content=[])
         with pytest.raises(ValueError):
             _convert_chat_message_to_responses_api_format(message)
@@ -1495,7 +1511,8 @@ class TestResponseToChatMessage:
         with pytest.raises(ValueError):
             _convert_chat_message_to_responses_api_format(message)
 
-    def test_convert_streaming_chunks_to_chat_message_preserves_encrypted_content(self):
+    def test_convert_streaming_chunks_to_chat_message_preserves_encrypted_content(self) -> None:
+
         """Test that encrypted_content in reasoning extra is preserved during streaming conversion."""
         chunks = [
             StreamingChunk(
@@ -1550,7 +1567,8 @@ class TestResponseToChatMessage:
         assert message.reasoning.extra.get("encrypted_content") == "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
         assert message.reasoning.extra.get("status") == "in_progress"
 
-    def test_encrypted_content_preserved_through_full_streaming_pipeline(self):
+    def test_encrypted_content_preserved_through_full_streaming_pipeline(self) -> None:
+
         """
         Feeds real OpenAI event objects through the full pipeline:
 
@@ -1580,7 +1598,7 @@ class TestResponseToChatMessage:
             ),
         ]
 
-        streaming_chunks = []
+        streaming_chunks = []  # type: ignore
         for event in openai_events:
             chunk = _convert_response_chunk_to_streaming_chunk(event, previous_chunks=streaming_chunks)
             streaming_chunks.append(chunk)
