@@ -5,7 +5,9 @@
 from collections.abc import Callable
 from typing import Annotated, Literal
 
+import jsonschema
 import pytest
+from pydantic import BaseModel
 
 from haystack.components.agents.state import State
 from haystack.tools.errors import SchemaGenerationError
@@ -16,6 +18,20 @@ from haystack.tools.tool import Tool
 def function_with_docstring(city: str) -> str:
     """Get weather report for a city."""
     return f"Weather report for {city}: 20°C, sunny"
+
+
+class title(BaseModel):  # noqa: N801 # deliberately lowercase: Pydantic keys '$defs' by class name
+    text: str
+
+
+class Report(BaseModel):
+    heading: title
+    body: str
+
+
+def make_report(report: Report) -> str:
+    """Create a report."""
+    return "ok"
 
 
 def test_from_function_description_from_docstring():
@@ -361,6 +377,146 @@ def test_from_function_with_parameter_named_properties():
         },
         "required": ["entity_id", "properties"],
     }
+
+
+def test_remove_title_from_schema_definition_named_title():
+    """Test that a definition named 'title' is kept, so that '$ref's pointing at it keep resolving."""
+    schema = {
+        "$defs": {
+            "title": {"properties": {"text": {"type": "string", "title": "Text"}}, "title": "title", "type": "object"},
+            "Addr": {"properties": {"city": {"type": "string", "title": "City"}}, "title": "Addr", "type": "object"},
+        },
+        "properties": {"heading": {"$ref": "#/$defs/title"}, "addr": {"$ref": "#/$defs/Addr"}},
+        "title": "make_report",
+        "type": "object",
+    }
+
+    _remove_title_from_schema(schema)
+
+    # The definition names survive; only the 'title' *keywords* inside them are stripped.
+    assert schema == {
+        "$defs": {
+            "title": {"properties": {"text": {"type": "string"}}, "type": "object"},
+            "Addr": {"properties": {"city": {"type": "string"}}, "type": "object"},
+        },
+        "properties": {"heading": {"$ref": "#/$defs/title"}, "addr": {"$ref": "#/$defs/Addr"}},
+        "type": "object",
+    }
+    # The schema is still usable: a dangling '$ref' would make validation raise.
+    jsonschema.Draft202012Validator(schema).validate({"heading": {"text": "hi"}, "addr": {"city": "Berlin"}})
+
+
+def test_remove_title_from_schema_definition_named_title_draft_07_spelling():
+    """Test that the draft-07 'definitions' spelling is handled like '$defs'."""
+    schema = {
+        "definitions": {"title": {"type": "string", "title": "title"}},
+        "properties": {"heading": {"$ref": "#/definitions/title"}},
+        "type": "object",
+    }
+
+    _remove_title_from_schema(schema)
+
+    assert schema == {
+        "definitions": {"title": {"type": "string"}},
+        "properties": {"heading": {"$ref": "#/definitions/title"}},
+        "type": "object",
+    }
+
+
+def test_remove_title_from_schema_keeps_instance_data():
+    """Test that 'title' keys inside instance data ('default', 'const', 'enum') are left untouched."""
+    schema = {
+        "properties": {
+            "cfg": {"type": "object", "default": {"title": "Untitled", "width": 80}, "title": "Cfg"},
+            "mode": {"const": {"title": "fast", "workers": 2}, "title": "Mode"},
+            "choice": {"enum": [{"title": "A", "id": 1}, {"title": "B", "id": 2}], "title": "Choice"},
+        },
+        "title": "configure",
+        "type": "object",
+    }
+
+    _remove_title_from_schema(schema)
+
+    # A 'title' key in a default/const/enum is part of the *value*, not a schema keyword:
+    # removing it would silently change the tool's contract.
+    assert schema == {
+        "properties": {
+            "cfg": {"type": "object", "default": {"title": "Untitled", "width": 80}},
+            "mode": {"const": {"title": "fast", "workers": 2}},
+            "choice": {"enum": [{"title": "A", "id": 1}, {"title": "B", "id": 2}]},
+        },
+        "type": "object",
+    }
+
+
+def test_remove_title_from_schema_keeps_pattern_and_dependent_keys():
+    """Test that keys of 'patternProperties'/'dependentSchemas'/'dependentRequired' are kept."""
+    schema = {
+        "patternProperties": {"title": {"type": "string", "title": "Title"}},
+        "dependentSchemas": {"title": {"required": ["subtitle"], "title": "Dep"}},
+        "dependentRequired": {"title": ["subtitle"]},
+        "title": "annotate",
+        "type": "object",
+    }
+
+    _remove_title_from_schema(schema)
+
+    # These are keyed by regexes and property names, so dropping 'title' would drop a rule.
+    assert schema == {
+        "patternProperties": {"title": {"type": "string"}},
+        "dependentSchemas": {"title": {"required": ["subtitle"]}},
+        "dependentRequired": {"title": ["subtitle"]},
+        "type": "object",
+    }
+
+
+def test_remove_title_from_schema_still_removes_title_in_subschema_keywords():
+    """Test that keywords whose value is a genuine subschema keep losing their 'title'."""
+    schema = {
+        "properties": {
+            "tags": {"items": {"type": "string", "title": "Tag"}, "title": "Tags", "type": "array"},
+            "meta": {
+                "additionalProperties": {"type": "string", "title": "Value"},
+                "propertyNames": {"pattern": "^x-", "title": "Key"},
+                "title": "Meta",
+                "type": "object",
+            },
+        },
+        "title": "index",
+        "type": "object",
+    }
+
+    _remove_title_from_schema(schema)
+
+    assert schema == {
+        "properties": {
+            "tags": {"items": {"type": "string"}, "type": "array"},
+            "meta": {"additionalProperties": {"type": "string"}, "propertyNames": {"pattern": "^x-"}, "type": "object"},
+        },
+        "type": "object",
+    }
+
+
+def test_from_function_with_nested_model_named_title():
+    """Creating a tool from a function whose nested model is named 'title' must not dangle a '$ref'."""
+
+    tool = create_tool_from_function(function=make_report)
+
+    assert "title" in tool.parameters["$defs"]
+    # A dangling '#/$defs/title' would make any validation of a tool call raise.
+    jsonschema.Draft202012Validator(tool.parameters).validate({"report": {"heading": {"text": "hi"}, "body": "b"}})
+
+
+def test_from_function_with_default_containing_title_key():
+    """A default value carrying a 'title' key must reach the model unchanged."""
+
+    def render(options: Annotated[dict, "rendering options"] = {"title": "Untitled", "width": 80}) -> str:  # noqa: B006
+        """Render a report."""
+        return ""
+
+    tool = create_tool_from_function(function=render)
+
+    assert tool.parameters["properties"]["options"]["default"] == {"title": "Untitled", "width": 80}
 
 
 def test_remove_title_from_schema_handle_no_title_in_top_level():
