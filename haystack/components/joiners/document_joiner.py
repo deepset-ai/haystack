@@ -160,9 +160,9 @@ class DocumentJoiner:
                     "score, so those with score=None were sorted as if they had a score of -infinity."
                 )
 
-        if top_k:
+        if top_k is not None:
             output_documents = output_documents[:top_k]
-        elif self.top_k:
+        elif self.top_k is not None:
             output_documents = output_documents[: self.top_k]
 
         return {"documents": output_documents}

@@ -294,6 +294,15 @@ class TestDocumentJoiner:
         output = joiner.run([documents_1, documents_2], top_k=top_k)
         assert len(output["documents"]) == top_k
 
+    def test_run_with_top_k_zero_in_run_method_overrides_init_top_k(self):
+        # A run-time top_k=0 must be honored (return no documents), not treated as "unset"
+        # and fall back to the instance's top_k.
+        joiner = DocumentJoiner(top_k=5)
+        documents_1 = [Document(content="a"), Document(content="b"), Document(content="c")]
+        documents_2 = [Document(content="d"), Document(content="e"), Document(content="f")]
+        output = joiner.run([documents_1, documents_2], top_k=0)
+        assert len(output["documents"]) == 0
+
     def test_sort_by_score_without_scores(self, caplog):
         joiner = DocumentJoiner()
         with caplog.at_level(logging.INFO):
