@@ -826,7 +826,8 @@ Converts Document into a dictionary.
 
 **Parameters:**
 
-- **flatten** (<code>bool</code>) – Whether to flatten `meta` field or not. Defaults to `True` to be backward-compatible with Haystack 1.x.
+- **flatten** (<code>bool</code>) – Whether to flatten the `meta` field. Defaults to `True` to be backward-compatible with Haystack 1.x.
+  Meta keys that clash with document field names are kept in a nested `meta` dictionary.
 
 #### from_dict
 
