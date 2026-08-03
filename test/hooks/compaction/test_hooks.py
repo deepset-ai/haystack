@@ -125,12 +125,10 @@ class TestContextCompactionHookConfiguration:
             compactor=SlidingWindowCompactor(min_keep_steps=4), context_window=200_000, compact_at=0.6
         )
         data = hook.to_dict()
-
         assert data["init_parameters"]["context_window"] == 200_000
         assert data["init_parameters"]["compact_at"] == 0.6
         assert data["init_parameters"]["compactor"]["init_parameters"]["min_keep_steps"] == 4
         assert data["init_parameters"]["token_counter"]["type"].endswith("ApproximateTokenCounter")
-
         restored = ContextCompactionHook.from_dict(data)
         assert isinstance(restored.compactor, SlidingWindowCompactor)
         assert restored.context_window == 200_000
@@ -138,9 +136,7 @@ class TestContextCompactionHookConfiguration:
 
     def test_survives_an_agent_serde_round_trip(self):
         agent = _agent({"before_llm": [_hook()]})
-
         hook = Agent.from_dict(agent.to_dict()).hooks["before_llm"][0]
-
         assert isinstance(hook, ContextCompactionHook)
         assert isinstance(hook.compactor, SlidingWindowCompactor)
         assert hook.context_window == WINDOW
@@ -161,8 +157,7 @@ class TestContextCompactionHook:
     )
     def test_trigger(self, context_tokens, should_compact):
         compactor = _RecordingCompactor()
-        _hook(compactor).run(make_state(long_conversation(), context_tokens=context_tokens))
-
+        _hook(compactor).run(make_state(messages=long_conversation(), context_tokens=context_tokens))
         assert compactor.calls == (["compact"] if should_compact else [])
 
     def test_fires_without_reported_usage_by_counting_locally(self):
@@ -170,21 +165,18 @@ class TestContextCompactionHook:
         # compaction still works - which it did not before token counting.
         compactor = _RecordingCompactor()
         big = [ChatMessage.from_user("x" * 4000)] * 3
-        _hook(compactor).run(make_state(big, context_tokens=0))
-
+        _hook(compactor).run(make_state(messages=big, context_tokens=0))
         assert compactor.calls == ["compact"]
 
     def test_counts_tool_schemas_without_reported_usage(self):
         counter = FakeCounter()
         messages = [ChatMessage.from_user("start")]
-        total_tokens = counter.count(messages, tools=[fetch])
+        total_tokens = counter.count(messages=messages, tools=[fetch])
         assert counter.count(messages) < total_tokens
         compactor = _RecordingCompactor()
-
         _hook(compactor, token_counter=counter, context_window=total_tokens, compact_at=1.0, compact_to=0.4).run(
-            make_state(messages, context_tokens=0, tools=[fetch])
+            make_state(messages=messages, context_tokens=0, tools=[fetch])
         )
-
         assert compactor.calls == ["compact"]
 
     def test_hands_down_the_raw_target_when_there_is_no_overhead(self):
@@ -194,35 +186,31 @@ class TestContextCompactionHook:
         messages = [*(ChatMessage.from_user("x" * 400) for _ in range(9)), ChatMessage.from_assistant("y" * 400)]
         compactor = _RecordingCompactor()
         hook = _hook(compactor, token_counter=counter, context_window=1000)
-
-        hook.run(make_state(messages, context_tokens=counter.count(messages)))
-
+        hook.run(make_state(messages=messages, context_tokens=counter.count(messages)))
         assert compactor.targets[0] == pytest.approx(int(1000 * 0.4), abs=5)
 
     def test_subtracts_provider_overhead_from_the_target(self):
         # The reported count also covers tool schemas and template overhead, which a compactor cannot remove. Here that
         # overhead alone exceeds the target, so the compactor is told to cut the messages as far as it is allowed.
         compactor = _RecordingCompactor()
-        _hook(compactor).run(make_state(long_conversation(), context_tokens=800))
-
+        _hook(compactor).run(make_state(messages=long_conversation(), context_tokens=800))
         assert compactor.targets[0] == 0
 
     def test_warns_when_the_token_counter_exceeds_the_context_estimate(self, caplog):
         messages = [ChatMessage.from_assistant("x" * 4000)]
-
         with caplog.at_level(logging.WARNING):
-            _hook(_RecordingCompactor()).run(make_state(messages, context_tokens=800))
-
+            _hook(_RecordingCompactor()).run(make_state(messages=messages, context_tokens=800))
         assert "TokenCounter estimated more tokens for the messages" in caplog.text
 
     def test_rewrites_messages_and_re_estimates_context_tokens(self):
         hook = _hook()
         state = make_state(
-            long_conversation(), context_tokens=800, token_usage={"prompt_tokens": 12}, tool_call_counts={"fetch": 2}
+            messages=long_conversation(),
+            context_tokens=800,
+            token_usage={"prompt_tokens": 12},
+            tool_call_counts={"fetch": 2},
         )
-
-        hook.run(state)
-
+        hook.run(state=state)
         assert len(state.data["messages"]) == 5
         assert count_markers(state.data["messages"]) == 1
         # Re-estimated rather than reset to 0, which would claim the context is empty.
@@ -234,28 +222,22 @@ class TestContextCompactionHook:
     def test_preserves_the_no_usage_sentinel_after_compaction(self):
         compacted = [ChatMessage.from_assistant("kept")]
         state = make_state([ChatMessage.from_user("x" * 4000)], context_tokens=0)
-
-        _hook(_RecordingCompactor(result=compacted)).run(state)
-
+        _hook(_RecordingCompactor(result=compacted)).run(state=state)
         assert state.data["messages"] == compacted
         assert state.data["context_tokens"] == 0
 
     def test_leaves_the_conversation_alone_when_the_compactor_declines(self):
         messages = long_conversation()
         state = make_state(messages, context_tokens=800)
-
-        _hook(_RecordingCompactor(result=None)).run(state)
-
+        _hook(_RecordingCompactor(result=None)).run(state=state)
         assert state.data["messages"] == messages
         assert state.data["context_tokens"] == 800
 
     def test_lifecycle_delegates_to_the_compactor(self):
         compactor = _RecordingCompactor()
         hook = _hook(compactor)
-
         hook.warm_up()
         hook.close()
-
         assert compactor.calls == ["warm_up", "close"]
 
 
@@ -263,11 +245,10 @@ class TestContextCompactionHookInAgent:
     def test_compacts_a_multi_step_run(self):
         compacted = _agent({"before_llm": [_hook()]}).run(messages=[ChatMessage.from_user("start")])
         uncompacted = _agent(None).run(messages=[ChatMessage.from_user("start")])
-
         messages = compacted["messages"]
         assert len(messages) < len(uncompacted["messages"])
         # Exactly one omission note: each compaction folds the previous one into the block it drops.
-        assert count_markers(messages) == 1
+        assert count_markers(messages=messages) == 1
         assert messages[0].text == "rules"
         assert compacted["last_message"].text == "done"
         _assert_every_tool_result_is_answered(messages)
@@ -276,8 +257,7 @@ class TestContextCompactionHookInAgent:
         result = _agent({"before_llm": [_hook(context_window=10_000_000)]}).run(
             messages=[ChatMessage.from_user("start")]
         )
-
-        assert count_markers(result["messages"]) == 0
+        assert count_markers(messages=result["messages"]) == 0
 
 
 class TestContextCompactionHookAsync:
@@ -285,22 +265,18 @@ class TestContextCompactionHookAsync:
     async def test_run_async_uses_the_async_compaction_path(self):
         compactor = _RecordingCompactor()
         await _hook(compactor).run_async(make_state(long_conversation(), context_tokens=800))
-
         assert compactor.calls == ["compact_async"]
 
     @pytest.mark.asyncio
     async def test_lifecycle_prefers_the_async_methods(self):
         compactor = _RecordingCompactor()
         hook = _hook(compactor)
-
         await hook.warm_up_async()
         await hook.close_async()
-
         assert compactor.calls == ["warm_up_async", "close_async"]
 
     @pytest.mark.asyncio
     async def test_compacts_a_multi_step_async_run(self):
         result = await _agent({"before_llm": [_hook()]}).run_async(messages=[ChatMessage.from_user("start")])
-
         assert count_markers(result["messages"]) == 1
         _assert_every_tool_result_is_answered(result["messages"])

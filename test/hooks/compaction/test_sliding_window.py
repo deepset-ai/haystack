@@ -21,7 +21,7 @@ COUNTER = FakeCounter()
 class TestSlidingWindowCompactor:
     def test_replaces_the_middle_with_an_omission_note(self):
         messages = long_conversation()
-        compacted = SlidingWindowCompactor().compact(messages, SMALLEST, COUNTER)
+        compacted = SlidingWindowCompactor().compact(messages=messages, target_tokens=SMALLEST, token_counter=COUNTER)
         assert compacted is not None
         # The instructions and task survive, the note stands in for the older step, and the latest step stays intact.
         assert compacted[:2] == messages[:2]
@@ -34,29 +34,33 @@ class TestSlidingWindowCompactor:
         }
         assert compacted[2].text == _DEFAULT_OMISSION_NOTE.replace("{num_removed}", "2")
         # A user message, not a system one, so providers that hoist system messages cannot move it out of position.
-        assert compacted[2].is_from(ChatRole.USER)
+        assert compacted[2].is_from(role=ChatRole.USER)
 
     def test_a_roomier_target_keeps_more(self):
-        messages = [ChatMessage.from_system("rules"), ChatMessage.from_user("task")]
+        messages = [ChatMessage.from_system(text="rules"), ChatMessage.from_user(text="task")]
         for index in range(4):
-            messages.extend([tool_call(f"c{index}"), tool_result("x" * 400, call_id=f"c{index}")])
+            messages.extend([tool_call(f"c{index}"), tool_result(result="x" * 400, call_id=f"c{index}")])
         compactor = SlidingWindowCompactor(omission_note=None)
-
-        tight = compactor.compact(messages, 60, COUNTER)
-        roomy = compactor.compact(messages, 350, COUNTER)
-
+        tight = compactor.compact(messages=messages, target_tokens=60, token_counter=COUNTER)
+        roomy = compactor.compact(messages=messages, target_tokens=350, token_counter=COUNTER)
         assert tight is not None
         assert roomy is not None
-        assert sum(message.is_from(ChatRole.ASSISTANT) for message in roomy) > sum(
-            message.is_from(ChatRole.ASSISTANT) for message in tight
-        )
+        assert len(tight) == 4
+        assert len(roomy) == 8
 
     def test_returns_none_when_the_conversation_already_fits(self):
-        assert SlidingWindowCompactor().compact(long_conversation(), 100_000, COUNTER) is None
+        assert (
+            SlidingWindowCompactor().compact(messages=long_conversation(), target_tokens=100_000, token_counter=COUNTER)
+            is None
+        )
 
     def test_omission_note_can_be_turned_off(self):
         messages = long_conversation()
-        compacted = SlidingWindowCompactor(omission_note=None).compact(messages, SMALLEST, COUNTER)
+        compacted = SlidingWindowCompactor(omission_note=None).compact(
+            messages=messages, target_tokens=SMALLEST, token_counter=COUNTER
+        )
+        # System + user + tool_call + tool_result
+        assert len(compacted) == 4
         assert compacted == [*messages[:2], *messages[4:]]
 
     @pytest.mark.parametrize(
@@ -69,7 +73,9 @@ class TestSlidingWindowCompactor:
         ],
     )
     def test_omission_note_can_be_customized(self, note, expected):
-        compacted = SlidingWindowCompactor(omission_note=note).compact(long_conversation(), SMALLEST, COUNTER)
+        compacted = SlidingWindowCompactor(omission_note=note).compact(
+            messages=long_conversation(), target_tokens=SMALLEST, token_counter=COUNTER
+        )
         assert compacted is not None
         assert compacted[2].text == expected
 
@@ -77,27 +83,29 @@ class TestSlidingWindowCompactor:
         "messages",
         [
             pytest.param([], id="empty"),
-            pytest.param([ChatMessage.from_system("a"), ChatMessage.from_system("b")], id="only-system"),
-            pytest.param([ChatMessage.from_system("rules"), ChatMessage.from_user("hi")], id="nothing-outside-window"),
+            pytest.param([ChatMessage.from_system(text="a"), ChatMessage.from_system(text="b")], id="only-system"),
+            pytest.param(
+                [ChatMessage.from_system(text="rules"), ChatMessage.from_user(text="hi")], id="nothing-outside-window"
+            ),
         ],
     )
     def test_returns_none_when_there_is_nothing_to_remove(self, messages):
-        assert SlidingWindowCompactor().compact(messages, SMALLEST, COUNTER) is None
+        assert (
+            SlidingWindowCompactor().compact(messages=messages, target_tokens=SMALLEST, token_counter=COUNTER) is None
+        )
 
     def test_keeps_a_parallel_tool_call_together_with_all_results(self):
         messages = [
-            ChatMessage.from_system("rules"),
-            ChatMessage.from_user("task"),
+            ChatMessage.from_system(text="rules"),
+            ChatMessage.from_user(text="task"),
             tool_call("old"),
-            tool_result("old result " * 40, call_id="old"),
+            tool_result(result="old result " * 40, call_id="old"),
             tool_call("a", "b", "c"),
-            tool_result("first", call_id="a"),
-            tool_result("second", call_id="b"),
-            tool_result("third", call_id="c"),
+            tool_result(result="first", call_id="a"),
+            tool_result(result="second", call_id="b"),
+            tool_result(result="third", call_id="c"),
         ]
-
-        compacted = SlidingWindowCompactor().compact(messages, SMALLEST, COUNTER)
-
+        compacted = SlidingWindowCompactor().compact(messages=messages, target_tokens=SMALLEST, token_counter=COUNTER)
         assert compacted is not None
         assert compacted[-4:] == messages[-4:]
         assert {call.id for call in compacted[-4].tool_calls} == {
@@ -108,11 +116,10 @@ class TestSlidingWindowCompactor:
     def test_min_keep_steps_wins_over_an_unaffordable_target(self, min_keep_steps, expected):
         messages = long_conversation()
         compacted = SlidingWindowCompactor(min_keep_steps=min_keep_steps, omission_note=None).compact(
-            messages, SMALLEST, COUNTER
+            messages=messages, target_tokens=SMALLEST, token_counter=COUNTER
         )
-
         result = compacted or messages
-        assert sum(message.is_from(ChatRole.ASSISTANT) for message in result) == expected
+        assert sum(message.is_from(role=ChatRole.ASSISTANT) for message in result) == expected
 
     def test_rejects_negative_min_keep_steps(self):
         with pytest.raises(ValueError, match="`min_keep_steps` must be at least 0"):
@@ -120,28 +127,26 @@ class TestSlidingWindowCompactor:
 
     def test_preserves_the_latest_user_task_when_compacting_input_history(self):
         messages = [
-            ChatMessage.from_system("rules"),
-            ChatMessage.from_user("old question " * 100),
-            ChatMessage.from_assistant("old answer"),
-            ChatMessage.from_user("current task"),
+            ChatMessage.from_system(text="rules"),
+            ChatMessage.from_user(text="old question " * 100),
+            ChatMessage.from_assistant(text="old answer"),
+            ChatMessage.from_user(text="current task"),
         ]
-
-        compacted = SlidingWindowCompactor(min_keep_steps=0, omission_note=None).compact(messages, SMALLEST, COUNTER)
-
+        compacted = SlidingWindowCompactor(min_keep_steps=0, omission_note=None).compact(
+            messages=messages, target_tokens=SMALLEST, token_counter=COUNTER
+        )
         assert compacted == [messages[0], messages[-1]]
 
     def test_repeated_compaction_folds_the_previous_note(self):
         compactor = SlidingWindowCompactor()
-        first = compactor.compact(long_conversation(), SMALLEST, COUNTER)
+        first = compactor.compact(messages=long_conversation(), target_tokens=SMALLEST, token_counter=COUNTER)
         assert first is not None
-
         # Simulate two more turns arriving on top of the already-compacted conversation.
-        grown = [*first, tool_call("c3"), tool_result("third result", call_id="c3")]
-        second = compactor.compact(grown, SMALLEST, COUNTER)
-
+        grown = [*first, tool_call("c3"), tool_result(result="third result", call_id="c3")]
+        second = compactor.compact(messages=grown, target_tokens=SMALLEST, token_counter=COUNTER)
         assert second is not None
         # The original task stays anchored and the earlier compaction note is folded into the new one.
-        assert count_markers(second) == 1
+        assert count_markers(messages=second) == 1
         assert second[0].text == "rules"
         assert second[1].text == "start"
 
@@ -156,25 +161,23 @@ class TestSlidingWindowCompactor:
         # A note is not free, so what matters is the size of what goes rather than how many messages it is: one long
         # tool result is worth replacing, one short message is not.
         messages = [
-            ChatMessage.from_system("rules"),
-            ChatMessage.from_user("task"),
-            ChatMessage.from_assistant(removable),
-            ChatMessage.from_assistant("latest step"),
+            ChatMessage.from_system(text="rules"),
+            ChatMessage.from_user(text="task"),
+            ChatMessage.from_assistant(text=removable),
+            ChatMessage.from_assistant(text="latest step"),
         ]
-        compacted = SlidingWindowCompactor().compact(messages, SMALLEST, COUNTER)
-
+        compacted = SlidingWindowCompactor().compact(messages=messages, target_tokens=SMALLEST, token_counter=COUNTER)
         assert (compacted is not None) is worth_replacing
         # Without a note there is nothing to pay for, so the same cut is always worth making.
-        assert SlidingWindowCompactor(omission_note=None).compact(messages, SMALLEST, COUNTER) == [
-            *messages[:2],
-            messages[-1],
-        ]
+        assert SlidingWindowCompactor(omission_note=None).compact(
+            messages=messages, target_tokens=SMALLEST, token_counter=COUNTER
+        ) == [*messages[:2], messages[-1]]
 
     def test_keeping_no_steps_still_preserves_the_current_task(self):
         messages = long_conversation()
-
-        compacted = SlidingWindowCompactor(min_keep_steps=0, omission_note=None).compact(messages, SMALLEST, COUNTER)
-
+        compacted = SlidingWindowCompactor(min_keep_steps=0, omission_note=None).compact(
+            messages=messages, target_tokens=SMALLEST, token_counter=COUNTER
+        )
         assert compacted == messages[:2]
 
     def test_serde_round_trip(self):
@@ -184,7 +187,7 @@ class TestSlidingWindowCompactor:
             "type": "haystack.hooks.compaction.sliding_window.SlidingWindowCompactor",
             "init_parameters": {"min_keep_steps": 7, "omission_note": "Dropped {num_removed}."},
         }
-        restored = SlidingWindowCompactor.from_dict(data)
+        restored = SlidingWindowCompactor.from_dict(data=data)
         assert restored.min_keep_steps == 7
         assert restored.omission_note == "Dropped {num_removed}."
 
@@ -195,7 +198,6 @@ class TestSlidingWindowCompactorAsync:
         # `SlidingWindowCompactor` does no I/O, so it relies on the protocol's default `compact_async`.
         compactor = SlidingWindowCompactor()
         messages = long_conversation()
-
-        assert await compactor.compact_async(messages, SMALLEST, COUNTER) == compactor.compact(
-            messages, SMALLEST, COUNTER
-        )
+        assert await compactor.compact_async(
+            messages=messages, target_tokens=SMALLEST, token_counter=COUNTER
+        ) == compactor.compact(messages=messages, target_tokens=SMALLEST, token_counter=COUNTER)
