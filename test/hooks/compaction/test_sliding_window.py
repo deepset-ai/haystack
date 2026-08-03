@@ -178,21 +178,14 @@ class TestSlidingWindowCompactor:
         assert compacted == messages[:2]
 
     def test_serde_round_trip(self):
-        compactor = SlidingWindowCompactor(
-            min_keep_steps=7, preserve_last_user_message=False, omission_note="Dropped {num_removed}."
-        )
+        compactor = SlidingWindowCompactor(min_keep_steps=7, omission_note="Dropped {num_removed}.")
         data = compactor.to_dict()
         assert data == {
             "type": "haystack.hooks.compaction.sliding_window.SlidingWindowCompactor",
-            "init_parameters": {
-                "min_keep_steps": 7,
-                "preserve_last_user_message": False,
-                "omission_note": "Dropped {num_removed}.",
-            },
+            "init_parameters": {"min_keep_steps": 7, "omission_note": "Dropped {num_removed}."},
         }
         restored = SlidingWindowCompactor.from_dict(data)
         assert restored.min_keep_steps == 7
-        assert restored.preserve_last_user_message is False
         assert restored.omission_note == "Dropped {num_removed}."
 
 

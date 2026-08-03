@@ -29,10 +29,14 @@ def _leading_system_end(messages: list[ChatMessage]) -> int:
     return len(messages)
 
 
-def _latest_user_index(messages: list[ChatMessage], start: int) -> int | None:
-    """Return the latest user message not produced by compaction."""
+def _latest_user_index(messages: list[ChatMessage]) -> int | None:
+    """
+    Return the latest user message not produced by compaction.
+
+    :param messages: The conversation to analyze, oldest to newest.
+    """
     # We loop backwards to find the latest user message
-    for index in reversed(range(start, len(messages))):
+    for index in reversed(range(len(messages))):
         message = messages[index]
         # Find the latest user message that was not produced by a previous compaction
         if message.is_from(role=ChatRole.USER) and _COMPACTION_META_KEY not in message.meta:
@@ -41,8 +45,15 @@ def _latest_user_index(messages: list[ChatMessage], start: int) -> int | None:
 
 
 def _agent_step_spans(messages: list[ChatMessage], start: int) -> list[tuple[int, int]]:
-    """Return spans containing an assistant message and all immediately following tool results."""
-    # span is represented as a tuple of (start_index, end_index) where end_index is exclusive
+    """
+    Return spans containing an assistant message and all immediately following tool results.
+
+    :param messages: The conversation to analyze, oldest to newest.
+    :param start: The index to start searching for steps from. We recommend starting after the latest user message, or
+        after the leading system messages when there is no user message. Otherwise, the returned spans may include
+        steps that are not part of the current task.
+    :returns: A list of spans, where each span is a tuple of (start_index, end_index) and end_index is exclusive.
+    """
     # e.g. a span of (2, 5) means messages[2:5] are part of the same step
     spans: list[tuple[int, int]] = []
     index = start
@@ -63,17 +74,13 @@ def _agent_step_spans(messages: list[ChatMessage], start: int) -> list[tuple[int
 
 
 def _task_and_step_split(
-    messages: list[ChatMessage],
-    target_tokens: int,
-    token_counter: TokenCounter,
-    min_keep_steps: int,
-    preserve_last_user_message: bool,
+    messages: list[ChatMessage], target_tokens: int, token_counter: TokenCounter, min_keep_steps: int
 ) -> tuple[list[ChatMessage], list[ChatMessage], list[ChatMessage], int]:
     """Split messages into the protected task context, removable history, and retained Agent steps."""
     # Find the leading system messages that contain the Agent instructions.
     system_end = _leading_system_end(messages=messages)
-    # If configured, find the latest user message to use as the current task anchor.
-    task_index = _latest_user_index(messages=messages, start=system_end) if preserve_last_user_message else None
+    # Find the latest user message to use as the current task anchor.
+    task_index = _latest_user_index(messages=messages)
     task = [messages[task_index]] if task_index is not None else []
     # Find complete Agent steps after the current task, or after the system messages when there is no task anchor.
     steps = _agent_step_spans(messages=messages, start=(task_index + 1) if task_index is not None else system_end)
@@ -136,21 +143,13 @@ class SlidingWindowCompactor(Compactor):
     ```
     """
 
-    def __init__(
-        self,
-        *,
-        min_keep_steps: int = 1,
-        preserve_last_user_message: bool = True,
-        omission_note: str | None = _DEFAULT_OMISSION_NOTE,
-    ) -> None:
+    def __init__(self, *, min_keep_steps: int = 1, omission_note: str | None = _DEFAULT_OMISSION_NOTE) -> None:
         """
         Initialize the compactor.
 
         :param min_keep_steps: The fewest complete recent Agent steps to keep even when they exceed the target. A step
             is an assistant message and all immediately following tool results. `0` allows all completed steps to be
             removed when none fit.
-        :param preserve_last_user_message: Preserve the latest user message not produced by a previous compaction. This
-            normally holds the task the Agent is currently working on, even when its input included older chat history.
         :param omission_note: The user message left in place of what was removed, or None to remove the messages
             silently. Include `{num_removed}` to have the number of removed messages substituted in.
         :raises ValueError: If `min_keep_steps` is negative.
@@ -158,7 +157,6 @@ class SlidingWindowCompactor(Compactor):
         if min_keep_steps < 0:
             raise ValueError(f"`min_keep_steps` must be at least 0, got {min_keep_steps}.")
         self.min_keep_steps = min_keep_steps
-        self.preserve_last_user_message = preserve_last_user_message
         self.omission_note = omission_note
 
     def compact(
@@ -180,7 +178,6 @@ class SlidingWindowCompactor(Compactor):
             target_tokens=target_tokens,
             token_counter=token_counter,
             min_keep_steps=self.min_keep_steps,
-            preserve_last_user_message=self.preserve_last_user_message,
         )
         if not removable:
             return None
@@ -211,9 +208,4 @@ class SlidingWindowCompactor(Compactor):
 
         :returns: A dictionary representation of the compactor.
         """
-        return default_to_dict(
-            self,
-            min_keep_steps=self.min_keep_steps,
-            preserve_last_user_message=self.preserve_last_user_message,
-            omission_note=self.omission_note,
-        )
+        return default_to_dict(self, min_keep_steps=self.min_keep_steps, omission_note=self.omission_note)
