@@ -666,17 +666,17 @@ class InMemoryDocumentStore:
         :returns: A tuple of (paginated list of unique values, total count of unique values).
         """
         key = metadata_field.removeprefix("meta.") if metadata_field.startswith("meta.") else metadata_field
-        unique_values: dict[str, Any] = {}
+        unique_values: dict[tuple[str, str], Any] = {}
         for doc in self.storage.values():
             value = doc.meta.get(key)
             if value is not None:
-                unique_values.setdefault(str(value), value)
+                unique_values.setdefault((type(value).__name__, str(value)), value)
 
         if search_term:
             search_term_lower = search_term.lower()
-            unique_values = {k: v for k, v in unique_values.items() if search_term_lower in k.lower()}
+            unique_values = {k: v for k, v in unique_values.items() if search_term_lower in k[1].lower()}
 
-        sorted_keys = sorted(unique_values)
+        sorted_keys = sorted(unique_values, key=lambda k: (k[1], k[0]))
         paginated_keys = sorted_keys[from_ : from_ + size]
         return [unique_values[k] for k in paginated_keys], len(sorted_keys)
 

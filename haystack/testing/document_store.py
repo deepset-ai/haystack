@@ -1326,6 +1326,39 @@ class GetMetadataFieldUniqueValuesTest:
         assert all(isinstance(value, int) for value in values)
         assert total_count == 2
 
+    @staticmethod
+    def test_get_metadata_field_unique_values_distinct_types(document_store: DocumentStore):
+        """
+        Test get_metadata_field_unique_values() doesn't collapse values that share a string form.
+
+        Example: the int 1, the float 1.0, the str "1" and the bool True must be counted and returned as
+        distinct values.
+        """
+        docs = [
+            Document(content="Doc 1", meta={"priority": 1}),
+            Document(content="Doc 2", meta={"priority": "1"}),
+            Document(content="Doc 3", meta={"priority": 1.0}),
+            Document(content="Doc 4", meta={"priority": True}),
+            Document(content="Doc 5", meta={"priority": 1}),
+        ]
+        document_store.write_documents(docs)
+
+        values, total_count = document_store.get_metadata_field_unique_values(  # type:ignore[attr-defined]
+            metadata_field="priority"
+        )
+
+        assert total_count == 4
+        assert len(values) == 4
+
+        # `1 == 1.0 == True` and `set`/`in` use equality, not identity, so distinctness must be
+        # verified by type instead, otherwise this test could pass even if values collapsed.
+        values_by_type = {type(value): value for value in values}
+        assert values_by_type.keys() == {int, str, float, bool}
+        assert values_by_type[int] == 1
+        assert values_by_type[str] == "1"
+        assert values_by_type[float] == 1.0
+        assert values_by_type[bool] is True
+
 
 class DocumentStoreBaseTests(CountDocumentsTest, DeleteDocumentsTest, FilterDocumentsTest, WriteDocumentsTest):
     @pytest.fixture
