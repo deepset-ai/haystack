@@ -1205,7 +1205,7 @@ class GetMetadataFieldUniqueValuesTest:
     Tests for Document Store get_metadata_field_unique_values().
 
     Only mix in for stores that implement get_metadata_field_unique_values() with the standardized
-    signature: get_metadata_field_unique_values(field, search_term=None, from_=0, size=10) -> (values, total_count).
+    signature: get_metadata_field_unique_values(metadata_field, search_term=None, from_=0, size=10) -> (values, total_count).
     """
 
     @staticmethod
