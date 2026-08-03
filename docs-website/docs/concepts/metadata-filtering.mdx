@@ -41,7 +41,7 @@ Comparison dictionaries must contain the following keys:
 ```
 
 :::info
-The available comparison operators may vary depending on the specific Document Store integration. For example, the `ChromaDocumentStore` supports two additional operators: `contains` and `not contains`. Find the details about the supported filters in the specific integration’s API reference.
+The available comparison operators may vary depending on the specific Document Store integration. For example, the `ChromaDocumentStore` supports two additional operators: `contains` and `not contains`, and the `PgvectorDocumentStore` supports `array_contains` and `array_overlaps` for matching against list-valued meta fields. Find the details about the supported filters in the specific integration’s API reference.
 :::
 
 \-`value`: takes a single value or (in the case of "in" and “not in”) a list of values.
