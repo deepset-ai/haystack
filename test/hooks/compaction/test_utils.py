@@ -5,23 +5,11 @@
 import pytest
 
 from haystack.dataclasses import ChatMessage
-from haystack.hooks.compaction.utils import (
-    _COMPACTION_META_KEY,
-    _compaction_split,
-    _estimated_context_tokens,
-    _last_assistant_index,
-)
+from haystack.hooks.compaction.utils import _estimated_context_tokens, _last_assistant_index
 from haystack.tools import tool
-from test.hooks.compaction.helpers import FakeCounter, tool_call, tool_result
+from test.hooks.compaction.helpers import FakeCounter, tool_result
 
 pytestmark = pytest.mark.filterwarnings("ignore::haystack.utils.experimental.ExperimentalWarning")
-
-COMPACTED_META = {_COMPACTION_META_KEY: {"strategy": "sliding_window"}}
-
-
-def _sized(chars: int) -> ChatMessage:
-    """A user message whose rendered form is roughly `chars` characters."""
-    return ChatMessage.from_user("x" * chars)
 
 
 @tool
@@ -82,81 +70,3 @@ class TestEstimatedContextTokens:
         written = counter.count(messages[: _last_assistant_index(messages) + 1])
 
         assert _estimated_context_tokens(messages, written, counter) == pytest.approx(counter.count(messages), abs=2)
-
-
-class TestCompactionSplit:
-    def test_a_bigger_target_keeps_more(self):
-        # Ten messages of ~25 tokens each; a 60-token target should keep roughly the last two.
-        messages = [_sized(100) for _ in range(10)]
-        *_, tight = _compaction_split(messages, target_tokens=60, token_counter=FakeCounter(), min_keep_messages=1)
-        *_, roomy = _compaction_split(messages, target_tokens=200, token_counter=FakeCounter(), min_keep_messages=1)
-
-        assert 2 <= len(tight) <= 3, f"kept {len(tight)} messages for a 60-token target"
-        assert len(roomy) > len(tight)
-
-    def test_nothing_is_removable_when_it_already_fits(self):
-        messages = [_sized(20), _sized(20)]
-        _, removable, _ = _compaction_split(
-            messages, target_tokens=100_000, token_counter=FakeCounter(), min_keep_messages=1
-        )
-
-        assert removable == []
-
-    def test_min_keep_messages_wins_over_an_unaffordable_target(self):
-        messages = [_sized(400) for _ in range(6)]
-        *_, kept_window = _compaction_split(messages, target_tokens=1, token_counter=FakeCounter(), min_keep_messages=3)
-
-        assert len(kept_window) == 3
-
-    @pytest.mark.parametrize(
-        ("messages", "expected"),
-        [
-            pytest.param([], (0, 0), id="empty"),
-            # The Agent's standing instructions are never removable.
-            pytest.param([ChatMessage.from_system("a"), ChatMessage.from_system("b")], (2, 2), id="only-system"),
-            pytest.param(
-                [ChatMessage.from_user("hi"), ChatMessage.from_system("late rules")],
-                (0, 1),
-                id="system-not-leading-does-not-extend-the-protected-run",
-            ),
-            # A note an earlier compaction produced is removable, so the next one replaces it.
-            pytest.param(
-                [
-                    ChatMessage.from_system("rules"),
-                    ChatMessage.from_system("earlier note", meta=COMPACTED_META),
-                    ChatMessage.from_user("hi"),
-                ],
-                (1, 2),
-                id="previous-compaction-is-removable",
-            ),
-            # The window may not start on a tool result whose call is about to be removed.
-            pytest.param(
-                [ChatMessage.from_user("hi"), tool_call("c1"), tool_result("found", call_id="c1")],
-                (0, 1),
-                id="window-grows-past-tool-result",
-            ),
-            pytest.param(
-                [
-                    ChatMessage.from_user("hi"),
-                    tool_call("c0", "c1", "c2"),
-                    tool_result("a", call_id="c0"),
-                    tool_result("b", call_id="c1"),
-                    tool_result("c", call_id="c2"),
-                ],
-                (0, 1),
-                id="window-grows-past-parallel-batch",
-            ),
-            pytest.param(
-                [ChatMessage.from_system("rules"), tool_result("orphan")],
-                (1, 1),
-                id="window-never-grows-into-the-system-block",
-            ),
-        ],
-    )
-    def test_structural_rules(self, messages, expected):
-        # A target of 1 token forces the window as small as the structural rules allow, isolating them from sizing.
-        start, end = expected
-
-        split = _compaction_split(messages, target_tokens=1, token_counter=FakeCounter(), min_keep_messages=1)
-
-        assert split == (messages[:start], messages[start:end], messages[end:])

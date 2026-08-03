@@ -167,7 +167,7 @@ class ContextCompactionHook:
         if estimated < self.context_window * self.compact_at:
             # The conversation is not yet large enough to compact, so leave it alone.
             return None
-        # Calculate an overhead that is not compactable: the system prompt, tool schemas, and chat-template overhead.
+        # Calculate the non-message overhead, such as tool schemas and the provider's chat-template overhead.
         message_tokens = self.token_counter.count(messages=messages)
         overhead = estimated - message_tokens
         if overhead < 0:

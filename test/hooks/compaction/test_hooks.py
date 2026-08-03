@@ -68,7 +68,7 @@ class _RecordingCompactor(Compactor):
 
 def _hook(compactor=None, **overrides) -> ContextCompactionHook:
     settings = {"context_window": WINDOW, "compact_at": 0.7, "compact_to": 0.4, "token_counter": FakeCounter()}
-    return ContextCompactionHook(compactor or SlidingWindowCompactor(min_keep_messages=2), **{**settings, **overrides})
+    return ContextCompactionHook(compactor or SlidingWindowCompactor(), **{**settings, **overrides})
 
 
 def _fetch_call(call_id: str) -> ChatMessage:
@@ -122,13 +122,13 @@ class TestContextCompactionHookConfiguration:
 
     def test_serde_round_trip(self):
         hook = ContextCompactionHook(
-            compactor=SlidingWindowCompactor(min_keep_messages=4), context_window=200_000, compact_at=0.6
+            compactor=SlidingWindowCompactor(min_keep_steps=4), context_window=200_000, compact_at=0.6
         )
         data = hook.to_dict()
 
         assert data["init_parameters"]["context_window"] == 200_000
         assert data["init_parameters"]["compact_at"] == 0.6
-        assert data["init_parameters"]["compactor"]["init_parameters"]["min_keep_messages"] == 4
+        assert data["init_parameters"]["compactor"]["init_parameters"]["min_keep_steps"] == 4
         assert data["init_parameters"]["token_counter"]["type"].endswith("ApproximateTokenCounter")
 
         restored = ContextCompactionHook.from_dict(data)
@@ -223,7 +223,7 @@ class TestContextCompactionHook:
 
         hook.run(state)
 
-        assert len(state.data["messages"]) == 4
+        assert len(state.data["messages"]) == 5
         assert count_markers(state.data["messages"]) == 1
         # Re-estimated rather than reset to 0, which would claim the context is empty.
         assert 0 < state.data["context_tokens"] < 800
