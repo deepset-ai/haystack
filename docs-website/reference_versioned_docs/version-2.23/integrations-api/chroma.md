@@ -119,6 +119,14 @@ Asynchronous methods are only supported for HTTP connections.
 
 - <code>ValueError</code> – If the specified document store is not found or is not a MemoryDocumentStore instance.
 
+#### close
+
+```python
+close() -> None
+```
+
+Release the synchronous resources of the underlying Document Store.
+
 #### from_dict
 
 ```python
@@ -225,6 +233,14 @@ Asynchronous methods are only supported for HTTP connections.
 - <code>dict\[str, Any\]</code> – a dictionary with the following keys:
 - `documents`: List of documents returned by the search engine.
 
+#### close
+
+```python
+close() -> None
+```
+
+Release the synchronous resources of the underlying Document Store.
+
 #### from_dict
 
 ```python
@@ -311,6 +327,14 @@ embedding function passing a string.
   **Note**: specifying these settings may interfere with standard client initialization parameters.
   This option is intended for advanced customization.
 - **embedding_function_params** (<code>Any</code>) – additional parameters to pass to the embedding function.
+
+#### close
+
+```python
+close() -> None
+```
+
+Release the associated synchronous resources.
 
 #### count_documents
 
@@ -871,14 +895,14 @@ get_metadata_field_unique_values(
 ) -> tuple[list[str], int]
 ```
 
-Return unique metadata field values, optionally filtered by a content search term, with pagination.
+Return unique metadata field values, optionally filtered by a search term, with pagination.
 
 **Parameters:**
 
 - **metadata_field** (<code>str</code>) – The metadata field to get unique values for.
   Can include or omit the "meta." prefix.
-- **search_term** (<code>str | None</code>) – Optional search term to filter documents by matching
-  in the content field.
+- **search_term** (<code>str | None</code>) – Optional search term to filter values, matched as a
+  case-insensitive substring against the metadata field's value.
 - **from\_** (<code>int</code>) – The offset to start returning values from (for pagination).
 - **size** (<code>int</code>) – The maximum number of unique values to return.
 
@@ -897,7 +921,7 @@ get_metadata_field_unique_values_async(
 ) -> tuple[list[str], int]
 ```
 
-Asynchronously return unique metadata field values, optionally filtered by content, with pagination.
+Asynchronously return unique metadata field values, optionally filtered by a search term, with pagination.
 
 Asynchronous methods are only supported for HTTP connections.
 
@@ -905,8 +929,8 @@ Asynchronous methods are only supported for HTTP connections.
 
 - **metadata_field** (<code>str</code>) – The metadata field to get unique values for.
   Can include or omit the "meta." prefix.
-- **search_term** (<code>str | None</code>) – Optional search term to filter documents by matching
-  in the content field.
+- **search_term** (<code>str | None</code>) – Optional search term to filter values, matched as a
+  case-insensitive substring against the metadata field's value.
 - **from\_** (<code>int</code>) – The offset to start returning values from (for pagination).
 - **size** (<code>int</code>) – The maximum number of unique values to return.
 

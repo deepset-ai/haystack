@@ -93,8 +93,7 @@
         "concepts/device-management",
         "concepts/secret-management",
         "concepts/jinja-templates",
-        "concepts/integrations",
-        "concepts/experimental-package"
+        "concepts/integrations"
       ]
     },
     {
@@ -316,6 +315,8 @@
             "pipeline-components/embedders/coheredocumentembedder",
             "pipeline-components/embedders/coheredocumentimageembedder",
             "pipeline-components/embedders/coheretextembedder",
+            "pipeline-components/embedders/edenaidocumentembedder",
+            "pipeline-components/embedders/edenaitextembedder",
             "pipeline-components/embedders/fastembeddocumentembedder",
             "pipeline-components/embedders/fastembedsparsedocumentembedder",
             "pipeline-components/embedders/fastembedsparsetextembedder",
@@ -410,6 +411,7 @@
             "pipeline-components/fetchers/googledrivefetcher",
             "pipeline-components/fetchers/linkcontentfetcher",
             "pipeline-components/fetchers/mssharepointfetcher",
+            "pipeline-components/fetchers/tavilyfetcher",
             "pipeline-components/fetchers/external-integrations-fetchers"
           ]
         },
@@ -440,6 +442,7 @@
             "pipeline-components/generators/coherechatgenerator",
             "pipeline-components/generators/coheregenerator",
             "pipeline-components/generators/cometapichatgenerator",
+            "pipeline-components/generators/edenaichatgenerator",
             "pipeline-components/generators/fallbackchatgenerator",
             "pipeline-components/generators/googleaigeminichatgenerator",
             "pipeline-components/generators/googleaigeminigenerator",
@@ -621,6 +624,7 @@
             "pipeline-components/retrievers/qdrantsparseembeddingretriever",
             "pipeline-components/retrievers/sentencewindowretriever",
             "pipeline-components/retrievers/snowflaketableretriever",
+            "pipeline-components/retrievers/sqlalchemytableretriever",
             "pipeline-components/retrievers/supabasegroongabm25retriever",
             "pipeline-components/retrievers/supabasepgvectorembeddingretriever",
             "pipeline-components/retrievers/supabasepgvectorkeywordretriever",
@@ -682,7 +686,9 @@
           },
           "items": [
             "pipeline-components/websearch/bravewebsearch",
+            "pipeline-components/websearch/ddgswebsearch",
             "pipeline-components/websearch/firecrawlwebsearch",
+            "pipeline-components/websearch/linkupwebsearch",
             "pipeline-components/websearch/perplexitywebsearch",
             "pipeline-components/websearch/searchapiwebsearch",
             "pipeline-components/websearch/serperdevwebsearch",

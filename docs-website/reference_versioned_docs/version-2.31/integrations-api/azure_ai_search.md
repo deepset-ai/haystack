@@ -72,6 +72,14 @@ Deserializes the component from a dictionary.
 
 - <code>AzureAISearchEmbeddingRetriever</code> – Deserialized component.
 
+#### close
+
+```python
+close() -> None
+```
+
+Release the synchronous resources of the underlying Document Store.
+
 #### run
 
 ```python
@@ -205,6 +213,14 @@ Deserializes the component from a dictionary.
 **Returns:**
 
 - <code>AzureAISearchDocumentStore</code> – Deserialized component.
+
+#### close
+
+```python
+close() -> None
+```
+
+Release the associated synchronous resources.
 
 #### count_documents
 

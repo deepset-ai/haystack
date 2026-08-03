@@ -10,12 +10,7 @@ from pydantic import Field, TypeAdapter, create_model
 from haystack import logging
 from haystack.components.agents.state.state import State
 from haystack.core.component import Component
-from haystack.core.serialization import (
-    component_from_dict,
-    component_to_dict,
-    generate_qualified_class_name,
-    import_class_by_name,
-)
+from haystack.core.serialization import component_to_dict, generate_qualified_class_name
 from haystack.tools import Tool
 from haystack.tools.errors import SchemaGenerationError
 from haystack.tools.from_function import _remove_title_from_schema
@@ -31,6 +26,7 @@ from haystack.tools.tool import (
     _serialize_outputs_to_state,
     _serialize_outputs_to_string,
 )
+from haystack.utils.deserialization import deserialize_component_inplace
 from haystack.utils.type_serialization import _is_union_type
 
 logger = logging.getLogger(__name__)
@@ -310,8 +306,7 @@ class ComponentTool(Tool):
         Deserializes the ComponentTool from a dictionary.
         """
         inner_data = data["data"]
-        component_class = import_class_by_name(inner_data["component"]["type"])
-        component = component_from_dict(cls=component_class, data=inner_data["component"], name=inner_data["name"])
+        deserialize_component_inplace(data=inner_data, key="component")
 
         if "outputs_to_state" in inner_data and inner_data["outputs_to_state"]:
             inner_data["outputs_to_state"] = _deserialize_outputs_to_state(inner_data["outputs_to_state"])
@@ -320,7 +315,7 @@ class ComponentTool(Tool):
             inner_data["outputs_to_string"] = _deserialize_outputs_to_string(inner_data["outputs_to_string"])
 
         return cls(
-            component=component,
+            component=inner_data["component"],
             name=inner_data["name"],
             description=inner_data["description"],
             parameters=inner_data.get("parameters", None),
