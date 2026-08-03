@@ -729,7 +729,7 @@ class GetMetadataFieldUniqueValuesAsyncTest:
         assert await document_store.count_documents_async() == 5
 
         values, total_count = await document_store.get_metadata_field_unique_values_async(  # type:ignore[attr-defined]
-            "category"
+            metadata_field="category"
         )
 
         assert isinstance(values, list)
@@ -749,10 +749,10 @@ class GetMetadataFieldUniqueValuesAsyncTest:
         await document_store.write_documents_async(docs)
 
         values, total_count = await document_store.get_metadata_field_unique_values_async(  # type:ignore[attr-defined]
-            "category"
+            metadata_field="category"
         )
         prefixed_values, prefixed_total_count = await document_store.get_metadata_field_unique_values_async(  # type:ignore[attr-defined]
-            "meta.category"
+            metadata_field="meta.category"
         )
 
         assert set(prefixed_values) == set(values)
@@ -771,7 +771,7 @@ class GetMetadataFieldUniqueValuesAsyncTest:
         await document_store.write_documents_async(docs)
 
         values, total_count = await document_store.get_metadata_field_unique_values_async(  # type:ignore[attr-defined]
-            "category", search_term="beaut"
+            metadata_field="category", search_term="beaut"
         )
 
         assert values == ["All_Beauty"]
@@ -787,13 +787,13 @@ class GetMetadataFieldUniqueValuesAsyncTest:
         all_values = sorted(f"category_{i}" for i in range(5))
 
         first_page, total_count = await document_store.get_metadata_field_unique_values_async(  # type:ignore[attr-defined]
-            "category", from_=0, size=2
+            metadata_field="category", from_=0, size=2
         )
         assert first_page == all_values[:2]
         assert total_count == 5
 
         second_page, total_count = await document_store.get_metadata_field_unique_values_async(  # type:ignore[attr-defined]
-            "category", from_=2, size=2
+            metadata_field="category", from_=2, size=2
         )
         assert second_page == all_values[2:4]
         assert total_count == 5
@@ -805,7 +805,7 @@ class GetMetadataFieldUniqueValuesAsyncTest:
         assert await document_store.count_documents_async() == 0
 
         values, total_count = await document_store.get_metadata_field_unique_values_async(  # type:ignore[attr-defined]
-            "category"
+            metadata_field="category"
         )
         assert values == []
         assert total_count == 0
@@ -818,7 +818,7 @@ class GetMetadataFieldUniqueValuesAsyncTest:
         await document_store.write_documents_async(docs)
 
         values, total_count = await document_store.get_metadata_field_unique_values_async(  # type:ignore[attr-defined]
-            "missing_field"
+            metadata_field="missing_field"
         )
         assert values == []
         assert total_count == 0
@@ -835,7 +835,7 @@ class GetMetadataFieldUniqueValuesAsyncTest:
         await document_store.write_documents_async(docs)
 
         values, total_count = await document_store.get_metadata_field_unique_values_async(  # type:ignore[attr-defined]
-            "priority"
+            metadata_field="priority"
         )
 
         assert set(values) == {1, 2}

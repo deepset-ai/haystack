@@ -1205,7 +1205,8 @@ class GetMetadataFieldUniqueValuesTest:
     Tests for Document Store get_metadata_field_unique_values().
 
     Only mix in for stores that implement get_metadata_field_unique_values() with the standardized
-    signature: get_metadata_field_unique_values(metadata_field, search_term=None, from_=0, size=10) -> (values, total_count).
+    signature: get_metadata_field_unique_values(metadata_field, search_term=None, from_=0, size=10)
+        returns (values, total_count).
     """
 
     @staticmethod
@@ -1240,7 +1241,7 @@ class GetMetadataFieldUniqueValuesTest:
 
         values, total_count = document_store.get_metadata_field_unique_values(metadata_field="category")  # type:ignore[attr-defined]
         prefixed_values, prefixed_total_count = document_store.get_metadata_field_unique_values(  # type:ignore[attr-defined]
-            "meta.category"
+            metadata_field="meta.category"
         )
 
         assert set(prefixed_values) == set(values)
@@ -1273,13 +1274,13 @@ class GetMetadataFieldUniqueValuesTest:
         all_values = sorted(f"category_{i}" for i in range(5))
 
         first_page, total_count = document_store.get_metadata_field_unique_values(  # type:ignore[attr-defined]
-            "category", from_=0, size=2
+            metadata_field="category", from_=0, size=2
         )
         assert first_page == all_values[:2]
         assert total_count == 5
 
         second_page, total_count = document_store.get_metadata_field_unique_values(  # type:ignore[attr-defined]
-            "category", from_=2, size=2
+            metadata_field="category", from_=2, size=2
         )
         assert second_page == all_values[2:4]
         assert total_count == 5
@@ -1289,7 +1290,9 @@ class GetMetadataFieldUniqueValuesTest:
         """Test get_metadata_field_unique_values() on an empty store."""
         assert document_store.count_documents() == 0
 
-        values, total_count = document_store.get_metadata_field_unique_values("category")  # type:ignore[attr-defined]
+        values, total_count = document_store.get_metadata_field_unique_values(  # type:ignore[attr-defined]
+            metadata_field="category"
+        )
         assert values == []
         assert total_count == 0
 
@@ -1299,7 +1302,9 @@ class GetMetadataFieldUniqueValuesTest:
         docs = [Document(content="Doc 1", meta={"category": "A"})]
         document_store.write_documents(docs)
 
-        values, total_count = document_store.get_metadata_field_unique_values("missing_field")  # type:ignore[attr-defined]
+        values, total_count = document_store.get_metadata_field_unique_values(  # type:ignore[attr-defined]
+            metadata_field="missing_field"
+        )
         assert values == []
         assert total_count == 0
 
@@ -1313,7 +1318,9 @@ class GetMetadataFieldUniqueValuesTest:
         ]
         document_store.write_documents(docs)
 
-        values, total_count = document_store.get_metadata_field_unique_values("priority")  # type:ignore[attr-defined]
+        values, total_count = document_store.get_metadata_field_unique_values(  # type:ignore[attr-defined]
+            metadata_field="priority"
+        )
 
         assert set(values) == {1, 2}
         assert all(isinstance(value, int) for value in values)
