@@ -710,7 +710,7 @@ class GetMetadataFieldUniqueValuesAsyncTest:
     Tests for Document Store get_metadata_field_unique_values_async().
 
     Only mix in for stores that implement get_metadata_field_unique_values_async() with the standardized
-    signature: get_metadata_field_unique_values_async(field, search_term=None, from_=0, size=10)
+    signature: get_metadata_field_unique_values_async(metadata_field, search_term=None, from_=0, size=10)
     -> (values, total_count).
     """
 
