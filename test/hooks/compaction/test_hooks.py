@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import logging
 from typing import Annotated
 
 import pytest
@@ -205,6 +206,14 @@ class TestContextCompactionHook:
         _hook(compactor).run(make_state(long_conversation(), context_tokens=800))
 
         assert compactor.targets[0] == 0
+
+    def test_warns_when_the_token_counter_exceeds_the_context_estimate(self, caplog):
+        messages = [ChatMessage.from_assistant("x" * 4000)]
+
+        with caplog.at_level(logging.WARNING):
+            _hook(_RecordingCompactor()).run(make_state(messages, context_tokens=800))
+
+        assert "TokenCounter estimated more tokens for the messages" in caplog.text
 
     def test_rewrites_messages_and_re_estimates_context_tokens(self):
         hook = _hook()

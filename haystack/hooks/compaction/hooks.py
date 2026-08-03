@@ -168,7 +168,16 @@ class ContextCompactionHook:
             # The conversation is not yet large enough to compact, so leave it alone.
             return None
         # Calculate an overhead that is not compactable: the system prompt, tool schemas, and chat-template overhead.
-        overhead = estimated - self.token_counter.count(messages=messages)
+        message_tokens = self.token_counter.count(messages=messages)
+        overhead = estimated - message_tokens
+        if overhead < 0:
+            logger.warning(
+                "The TokenCounter estimated more tokens for the messages ({message_tokens}) than the estimated total "
+                "context size ({estimated}). It may be overestimating; consider configuring a more accurate "
+                "TokenCounter.",
+                message_tokens=message_tokens,
+                estimated=estimated,
+            )
         # Returns the target token amount the messages should be compacted to
         return max(int(self.context_window * self.compact_to) - overhead, 0)
 
