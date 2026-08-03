@@ -1238,7 +1238,7 @@ class GetMetadataFieldUniqueValuesTest:
         ]
         document_store.write_documents(docs)
 
-        values, total_count = document_store.get_metadata_field_unique_values("category")  # type:ignore[attr-defined]
+        values, total_count = document_store.get_metadata_field_unique_values(metadata_field="category")  # type:ignore[attr-defined]
         prefixed_values, prefixed_total_count = document_store.get_metadata_field_unique_values(  # type:ignore[attr-defined]
             "meta.category"
         )
