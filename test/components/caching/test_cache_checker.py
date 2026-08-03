@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, Mock
 
 import pytest
 
@@ -92,3 +92,14 @@ class TestCacheChecker:
         checker.run(items=["https://example.com/1"])
         valid_filters_syntax = {"field": "url", "operator": "==", "value": "https://example.com/1"}
         mocked_docstore_class.filter_documents.assert_any_call(filters=valid_filters_syntax)
+
+    def test_close(self):
+        closable_document_store = Mock(spec=["close"])
+        checker = CacheChecker(document_store=closable_document_store, cache_field="url")
+        checker.close()
+        closable_document_store.close.assert_called_once_with()
+
+        nonclosable_document_store = Mock(spec=[])
+        checker = CacheChecker(document_store=nonclosable_document_store, cache_field="url")
+        checker.close()
+        assert nonclosable_document_store.mock_calls == []

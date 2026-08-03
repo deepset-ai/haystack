@@ -34,13 +34,15 @@ It does input type conversion and offers support for components with run methods
 
 If the wrapped component defines a `run_async` method, `ComponentTool` automatically wires an async invoker as well, so the tool supports async invocation (for example, from `Agent.run_async`) without extra configuration. See [Async Tools](tool.mdx#async-tools) for details.
 
+To wrap an [`Agent`](../pipeline-components/agents-1/agent.mdx) as a tool, use [`AgentTool`](agenttool.mdx) instead. It is a specialization of `ComponentTool` with defaults tailored to Agents: the calling LLM is asked for the task to delegate as a single user message, and the tool result is the wrapped Agent's final reply.
+
 ### Parameters
 
 - `component` is mandatory and must be a Haystack component instance, either an existing one or a custom component.
 - `name` is optional and defaults to the component class name in snake case, for example, "serper_dev_web_search" for `SerperDevWebSearch`.
 - `description` is optional and defaults to the component’s docstring. This is what the LLM uses to decide when to call the tool.
 - `parameters` is optional and lets you override the auto-generated JSON schema for the tool’s inputs.
-- `outputs_to_string` is optional and controls how the component’s output is converted to a string for the LLM. By default, the full result dict is serialized. Use `{"source": "key"}` to extract a single output key, or add `"handler"` to apply a custom formatter. When wrapping an `Agent` as a sub-tool, use `{"source": "last_message"}` to surface only the agent’s final reply.
+- `outputs_to_string` is optional and controls how the component’s output is converted to a string for the LLM. By default, the full result dict is serialized. Use `{"source": "key"}` to extract a single output key, or add `"handler"` to apply a custom formatter.
 - `inputs_from_state` is optional and maps agent state keys to component input parameters. Example: `{"repository": "repo"}` passes the state value at `"repository"` as the component’s `"repo"` input.
 - `outputs_to_state` is optional and maps component output keys to agent state keys. Example: `{"documents": {"source": "docs"}}` writes the component’s `"docs"` output to `"documents"` in state.
 
@@ -93,6 +95,7 @@ print(response["messages"][-1].text)
 
 📖 Related docs:
 
+- [AgentTool](agenttool.mdx)
 - [Multi-Agent Systems](../concepts/agents/multi-agent-systems.mdx)
 
 📚 Tutorials:

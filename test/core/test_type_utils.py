@@ -4,6 +4,8 @@
 
 import sys
 from enum import Enum
+from functools import partial
+from inspect import Parameter
 from pathlib import Path
 from typing import Any, Callable, Dict, Iterable, List, Literal, Mapping, Optional, Sequence, Set, Tuple, Union
 
@@ -16,10 +18,12 @@ from haystack.core.type_utils import (
     _contains_type,
     _convert_value,
     _get_first_item,
+    _resolve_parameter_types,
     _type_name,
     _types_are_compatible,
 )
 from haystack.dataclasses import ByteStream, ChatMessage, Document, GeneratedAnswer
+from test.core.future_annotations_functions import retrieve
 
 
 class Class1:
@@ -1165,3 +1169,32 @@ class TestConversion:
         is_compatible, strategy = _types_are_compatible(sender=str | ChatMessage, receiver=str)
         assert not is_compatible
         assert strategy is None
+
+
+def unresolvable_annotation(document: "Unimportable") -> None: ...  # type: ignore[name-defined]  # noqa: F821
+
+
+class TestResolveParameterTypes:
+    def test_resolves_postponed_annotations(self):
+        assert _resolve_parameter_types(retrieve) == {"query": str, "documents": list[Document], "top_k": Optional[int]}
+
+    def test_keeps_eagerly_evaluated_annotations(self):
+        # `top_k` keeps the annotation it was written with, it is not widened to `int | None` because of its default.
+        def function(documents: list[Document], top_k: int = None) -> None: ...  # type: ignore[assignment]
+
+        assert _resolve_parameter_types(function) == {"documents": list[Document], "top_k": int}
+
+    def test_includes_parameters_without_annotation(self):
+        def function(query, top_k: int) -> None: ...  # type: ignore[no-untyped-def]
+
+        assert _resolve_parameter_types(function) == {"query": Parameter.empty, "top_k": int}
+
+    def test_keeps_unresolvable_annotation_as_string(self):
+        assert _resolve_parameter_types(unresolvable_annotation) == {"document": "Unimportable"}
+
+    def test_keeps_annotations_of_target_that_cannot_carry_them(self):
+        # A partial is not a module, class, method or function, so its annotations cannot be resolved at all.
+        assert _resolve_parameter_types(partial(retrieve, "query")) == {
+            "documents": "list[Document]",
+            "top_k": "int | None",
+        }

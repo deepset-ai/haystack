@@ -2259,7 +2259,7 @@ class TestAgentWaitsForBlockedPredecessor:
             @component.output_types(processed_files=list[str])
             def run(self, files: list[str]) -> dict:
                 if not files:
-                    return {}  # _NO_OUTPUT_PRODUCED → blocks AttachmentsBuilder
+                    return {}  # _NoOutputProduced → blocks AttachmentsBuilder
                 return {"processed_files": files}
 
         @component

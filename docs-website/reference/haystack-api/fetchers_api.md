@@ -73,6 +73,8 @@ Initializes the component.
   Requires the 'h2' package to be installed (via `pip install httpx[http2]`).
 - **client_kwargs** (<code>dict | None</code>) – Additional keyword arguments to pass to the httpx client.
   If `None`, default values are used.
+- **request_headers** (<code>dict\[str, str\] | None</code>) – Additional headers to send with every request. These take precedence over the
+  component's default headers but not over the rotating `User-Agent`.
 
 #### warm_up
 

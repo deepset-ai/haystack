@@ -2,6 +2,8 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+from unittest.mock import Mock
+
 import pytest
 
 from haystack import Document, Pipeline
@@ -252,3 +254,14 @@ class TestAutoMergingRetriever:
 
         assert len(result["documents"]) == 1
         assert result["documents"][0].meta["__level"] == 0  # hit root document
+
+    def test_close(self):
+        closable_document_store = Mock(spec=["close"])
+        retriever = AutoMergingRetriever(document_store=closable_document_store)
+        retriever.close()
+        closable_document_store.close.assert_called_once_with()
+
+        nonclosable_document_store = Mock(spec=[])
+        retriever = AutoMergingRetriever(document_store=nonclosable_document_store)
+        retriever.close()
+        assert nonclosable_document_store.mock_calls == []

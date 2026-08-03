@@ -29,12 +29,14 @@ _import_structure = {
     "skills": ["SkillToolset"],
     "component_tool": ["ComponentTool"],
     "pipeline_tool": ["PipelineTool"],
+    "agent_tool": ["AgentTool"],
     "serde_utils": ["deserialize_tools_or_toolset_inplace", "serialize_tools_or_toolset"],
     "utils": ["flatten_tools_or_toolsets", "warm_up_tools"],
     "tool_types": ["ToolsType"],
 }
 
 if TYPE_CHECKING:
+    from haystack.tools.agent_tool import AgentTool as AgentTool
     from haystack.tools.component_tool import ComponentTool as ComponentTool
     from haystack.tools.pipeline_tool import PipelineTool as PipelineTool
     from haystack.tools.searchable_toolset import SearchableToolset as SearchableToolset
