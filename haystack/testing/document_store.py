@@ -1258,7 +1258,7 @@ class GetMetadataFieldUniqueValuesTest:
         document_store.write_documents(docs)
 
         values, total_count = document_store.get_metadata_field_unique_values(  # type:ignore[attr-defined]
-            "category", search_term="beaut"
+            metadata_field="category", search_term="beaut"
         )
 
         assert values == ["All_Beauty"]
