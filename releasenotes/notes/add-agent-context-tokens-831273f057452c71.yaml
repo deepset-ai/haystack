@@ -1,0 +1,11 @@
+---
+enhancements:
+  - |
+    The ``Agent`` now tracks an approximate current context-window size in its internal ``State`` under
+    ``context_tokens``, refreshed after every LLM call with that reply's prompt-plus-completion tokens
+    (normalized across the ``prompt_tokens``/``completion_tokens`` and ``input_tokens``/``output_tokens``
+    key conventions). Unlike ``token_usage``, which accumulates across the whole run, ``context_tokens``
+    is replaced each call. Hooks can read it via ``state.get("context_tokens")`` — for example, a
+    ``before_llm`` hook that triggers context compaction once the value crosses a threshold. It is a
+    best-effort snapshot: it is ``0`` when the generator does not report usage, and does not count
+    messages appended after the latest call until the next call refreshes it.

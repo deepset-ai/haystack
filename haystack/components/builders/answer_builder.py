@@ -222,7 +222,7 @@ class AnswerBuilder:
                     else set(range(len(documents)))
                 )
 
-                for idx in doc_idxs:
+                for idx in sorted(doc_idxs):
                     # An explicit bounds check is needed because references are 1-based: a reference like [0]
                     # yields idx = -1, which Python would otherwise silently resolve to the last document.
                     if not 0 <= idx < len(documents):

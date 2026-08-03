@@ -18,6 +18,7 @@ from haystack.components.agents.state.state import (
 )
 from haystack.components.agents.state.state_utils import merge_lists
 from haystack.components.agents.tool_calling import _run_tool, _run_tool_async
+from haystack.components.agents.utils import _record_context_tokens
 from haystack.components.builders import ChatPromptBuilder
 from haystack.components.generators.chat.types import ChatGenerator
 from haystack.core.serialization import component_to_dict, default_from_dict, default_to_dict
@@ -82,10 +83,14 @@ _RUN_METADATA_STATE_KEYS: dict[str, dict[str, Any]] = {
 # - `continue_run`: set by an `on_exit` hook to keep the Agent running instead of stopping (re-read each exit attempt).
 # - `tools`: the flattened tools available in the current step, so a hook can inspect them (e.g. HITL confirmation).
 # - `hook_context`: per-run request-scoped resources passed to `run`/`run_async` for hooks to read.
+# - `context_tokens`: approximate current context-window size, refreshed after each LLM call, for hooks to read
+#   (e.g. a `before_llm` hook that triggers compaction once the context grows too large). Kept internal rather than
+#   exposed as an output because it is a best-effort snapshot; see `_record_context_tokens`.
 _INTERNAL_STATE_KEYS: dict[str, dict[str, Any]] = {
     "continue_run": {"type": bool, "handler": replace_values},
     "tools": {"type": list, "handler": replace_values},
     "hook_context": {"type": dict[str, Any], "handler": replace_values},
+    "context_tokens": {"type": int, "handler": replace_values},
 }
 
 
@@ -938,6 +943,7 @@ class Agent:
         state.set("messages", messages)
         state.set("step_count", 0)
         state.set("token_usage", {})
+        state.set("context_tokens", 0)
         state.set("tool_call_counts", {tool.name: 0 for tool in flat_tools})
         state.set("exit_reason", None)
         state.set("continue_run", False)
@@ -1187,6 +1193,7 @@ class Agent:
             llm_messages = result["replies"]
             exe_context.state.set("messages", llm_messages)
             _record_llm_usage(exe_context.state, llm_messages)
+            _record_context_tokens(exe_context.state, llm_messages)
 
             # Stop on the "no tool call" exit: no tools available, or a plain assistant text reply (see _is_text_exit).
             if not current_tools or _is_text_exit(llm_messages):
@@ -1251,6 +1258,7 @@ class Agent:
             llm_messages = result["replies"]
             exe_context.state.set("messages", llm_messages)
             _record_llm_usage(exe_context.state, llm_messages)
+            _record_context_tokens(exe_context.state, llm_messages)
 
             # Stop on the "no tool call" exit: no tools available, or a plain assistant text reply (see _is_text_exit).
             if not current_tools or _is_text_exit(llm_messages):

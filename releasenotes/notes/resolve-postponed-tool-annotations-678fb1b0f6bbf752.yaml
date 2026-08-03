@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Tool functions defined in a module using ``from __future__ import annotations`` are now inspected correctly by
+    ``Agent``. Postponed annotations are stored as strings, so a parameter annotated with ``State`` was not recognized
+    and the live ``State`` object was not injected into the tool call. The annotations are now resolved before they
+    are inspected.

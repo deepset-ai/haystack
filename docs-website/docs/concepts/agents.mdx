@@ -43,7 +43,7 @@ Key capabilities include:
 - **State management**: Share typed data between tools, accumulate results across iterations, and surface them in the result dict using `state_schema`. See [State](../pipeline-components/agents-1/state.mdx).
 - **Streaming**: Stream token-by-token output with a `streaming_callback`.
 - **Human-in-the-loop**: Intercept tool calls for human review before execution. See [Human in the Loop](../pipeline-components/agents-1/human-in-the-loop.mdx).
-- **Multi-agent systems**: Wrap an `Agent` as a `ComponentTool` to build coordinator/specialist architectures. See [Multi-Agent Systems](./agents/multi-agent-systems.mdx).
+- **Multi-agent systems**: Wrap an `Agent` as an `AgentTool` to build coordinator/specialist architectures. See [Multi-Agent Systems](./agents/multi-agent-systems.mdx).
 - **MCP server exposure**: Expose your agent as an MCP server using [Hayhooks](../development/hayhooks.mdx), making it callable from any MCP-compatible client such as Claude Desktop or Cursor.
 - **Multimodal inputs**: Pass images alongside text using `ImageContent` in `ChatMessage` content parts, or return `ImageContent` from tools for dynamic image analysis. Requires a vision-capable model such as `gpt-5` or `gemini-2.5-flash`. See [Multimodal Inputs](../pipeline-components/agents-1/agent.mdx#multimodal-inputs).
 
@@ -61,6 +61,7 @@ Haystack provides several ways to create and manage tools:
 - [`Tool`](../tools/tool.mdx) class / [`@tool`](../tools/tool.mdx#tool-decorator) decorator – Define a tool from a Python function. The `@tool` decorator automatically uses the function's name and docstring; the `Tool` class gives full control over the name, description, and schema.
 - [`ComponentTool`](../tools/componenttool.mdx) – Wraps any Haystack component as a callable tool.
 - [`PipelineTool`](../tools/pipelinetool.mdx) – Wraps a full Haystack pipeline as a callable tool.
+- [`AgentTool`](../tools/agenttool.mdx) – Wraps an `Agent` as a callable tool, so another `Agent` can delegate to it.
 - [`MCPTool`](../tools/mcptool.mdx) / [`MCPToolset`](../tools/mcptoolset.mdx) – Connects to Model Context Protocol (MCP) servers to load external tools.
 - [`Toolset`](../tools/toolset.mdx) – Groups multiple tools into a single unit to pass to an Agent or Generator.
 - [`SearchableToolset`](../tools/searchabletoolset.mdx) – Enables keyword-based tool discovery for large catalogs, so the LLM only sees relevant tools at each step.

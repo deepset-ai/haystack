@@ -8,7 +8,7 @@ from typing import Any
 import pydantic
 
 from haystack import logging
-from haystack.core.errors import DeserializationError
+from haystack.core.errors import DeserializationError, SerializationError
 from haystack.core.serialization import generate_qualified_class_name, import_class_by_name
 from haystack.utils import deserialize_callable, serialize_callable
 
@@ -60,7 +60,7 @@ def _serialize_value_with_schema(payload: Any) -> dict[str, Any]:  # noqa: PLR09
         return {"serialization_schema": {"type": "object", "properties": schema}, "serialized_data": data}
 
     # Handle array case - iterate through elements
-    if isinstance(payload, (list, tuple, set)):
+    if isinstance(payload, (list, tuple, set, frozenset)):
         # Serialize each item in the array
         serialized_list = []
         for item in payload:
@@ -76,9 +76,12 @@ def _serialize_value_with_schema(payload: Any) -> dict[str, Any]:  # noqa: PLR09
         else:
             base_schema = {"type": "array", "items": {}}
 
-        # Add JSON Schema properties to infer sets and tuples
-        if isinstance(payload, set):
+        # Add JSON Schema properties to infer sets, frozensets and tuples
+        if isinstance(payload, (set, frozenset)):
             base_schema["uniqueItems"] = True
+            # `frozen` distinguishes frozenset from set on deserialization
+            if isinstance(payload, frozenset):
+                base_schema["frozen"] = True
         elif isinstance(payload, tuple):
             base_schema["minItems"] = len(payload)
             base_schema["maxItems"] = len(payload)
@@ -101,19 +104,71 @@ def _serialize_value_with_schema(payload: Any) -> dict[str, Any]:  # noqa: PLR09
         type_name = generate_qualified_class_name(type(payload))
         return {"serialization_schema": {"type": type_name}, "serialized_data": payload.name}
 
-    # Handle arbitrary objects with __dict__
-    if hasattr(payload, "__dict__"):
-        type_name = generate_qualified_class_name(type(payload))
-        schema = {"type": type_name}
-        serialized_data = {}
-        for key, value in vars(payload).items():
-            serialized_value = _serialize_value_with_schema(value)
-            serialized_data[key] = serialized_value["serialized_data"]
-        return {"serialization_schema": schema, "serialized_data": serialized_data}
-
     # Handle primitives
-    schema = {"type": _primitive_schema_type(payload)}
-    return {"serialization_schema": schema, "serialized_data": payload}
+    if payload is None or isinstance(payload, (bool, int, float, str)):
+        return {"serialization_schema": {"type": _primitive_schema_type(payload)}, "serialized_data": payload}
+
+    # Unsupported type: raise so callers can omit the field (see `_serialize_with_field_fallback`)
+    # instead of embedding a live, non-portable object in the output.
+    raise SerializationError(
+        f"Cannot serialize value of type '{type(payload).__name__}'. Supported values are primitives "
+        f"(str, int, float, bool, None), lists/tuples/sets/frozensets/dicts of supported values, Enums, "
+        f"callables, pydantic models, and objects exposing a 'to_dict' method."
+    )
+
+
+def _serialize_with_field_fallback(payload: Any, *, description: str) -> dict[str, Any]:
+    """
+    Serialize a payload and, on failure, retry field-by-field to preserve serializable fields.
+
+    If the whole payload serializes, the result is returned as-is. Otherwise, and if the payload is a
+    mapping, each top-level field is serialized individually and only the failing fields are omitted.
+    When the payload is not a mapping, or when every field fails to serialize, the helper returns a
+    structurally valid empty-object payload so that the downstream `_deserialize_value_with_schema`
+    can still load it back instead of raising `DeserializationError` on a bare `{}`.
+
+    :param payload: The value to serialize.
+    :param description: Short human-readable label used in warning messages, for example
+        `"the agent's State data"` or `"the inputs of the current pipeline state"`.
+    :returns: A dict of the form `{"serialization_schema": ..., "serialized_data": ...}`.
+    """
+    # Local import to avoid a circular import at module load time.
+    from haystack.core.pipeline.utils import _deepcopy_with_exceptions
+
+    try:
+        return _serialize_value_with_schema(_deepcopy_with_exceptions(payload))
+    except Exception as error:
+        logger.warning(
+            "Failed to serialize {description}. "
+            "Haystack will omit only the non-serializable fields when possible. Error: {e}",
+            description=description,
+            e=error,
+        )
+
+    serialized_properties: dict[str, Any] = {}
+    serialized_data: dict[str, Any] = {}
+
+    if isinstance(payload, dict):
+        for field_name, value in payload.items():
+            try:
+                serialized_value = _serialize_value_with_schema(_deepcopy_with_exceptions(value))
+            except Exception as field_error:
+                logger.warning(
+                    "Failed to serialize the '{field_name}' field of {description}. "
+                    "The field will be omitted from the snapshot. Error: {e}",
+                    field_name=field_name,
+                    description=description,
+                    e=field_error,
+                )
+                continue
+
+            serialized_properties[field_name] = serialized_value["serialization_schema"]
+            serialized_data[field_name] = serialized_value["serialized_data"]
+
+    return {
+        "serialization_schema": {"type": "object", "properties": serialized_properties},
+        "serialized_data": serialized_data,
+    }
 
 
 def _primitive_schema_type(value: Any) -> str:
@@ -183,10 +238,10 @@ def _deserialize_value_with_schema(serialized: dict[str, Any]) -> Any:
             _deserialize_value_with_schema({"serialization_schema": schema["items"], "serialized_data": item})
             for item in data
         ]
-        final_array: list | set | tuple
-        # Is a set if uniqueItems is True
+        final_array: list | set | frozenset | tuple
+        # Is a set or frozenset if uniqueItems is True
         if schema.get("uniqueItems") is True:
-            final_array = set(deserialized_items)
+            final_array = frozenset(deserialized_items) if schema.get("frozen") is True else set(deserialized_items)
         # Is a tuple if minItems and maxItems are set
         elif schema.get("minItems") is not None and schema.get("maxItems") is not None:
             final_array = tuple(deserialized_items)

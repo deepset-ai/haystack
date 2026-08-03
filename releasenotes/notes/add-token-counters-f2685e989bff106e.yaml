@@ -1,0 +1,42 @@
+---
+features:
+  - |
+    Added ``haystack.token_counters``: a ``TokenCounter`` protocol for estimating how many tokens a list of
+    ``ChatMessage`` objects occupies, with two implementations.
+
+    Providers report token usage only after a call, and only for the call as a whole, so anything that needs a size
+    beforehand - deciding whether a conversation still fits a model's context window, or how much of it to drop - has to
+    estimate one.
+
+    .. code-block:: python
+
+        from haystack.dataclasses import ChatMessage
+        from haystack.token_counters import ApproximateTokenCounter, TiktokenCounter
+
+        messages = [ChatMessage.from_user("Hello, how are you?")]
+
+        # No dependencies: estimates from text length.
+        ApproximateTokenCounter(chars_per_token=4.0).count(messages)
+
+        # Closer for OpenAI models; needs: pip install tiktoken
+        TiktokenCounter(encoding="o200k_base").count(messages)
+
+    ``ApproximateTokenCounter`` needs nothing installed and estimates from text length at a configurable
+    ``chars_per_token``. ``TiktokenCounter`` counts with OpenAI's byte-pair encoder, which is closer for OpenAI models
+    but requires ``tiktoken`` and drifts on other providers; it raises at construction when the dependency is missing,
+    and loads its encoding on first use.
+
+    Neither can measure an image or a file, since a tokenizer only sees text and providers derive an image's cost from
+    its dimensions. Both charge a flat ``tokens_per_image`` and ``tokens_per_file`` instead, counting images a tool
+    returned inside its result as well as those a message carries directly. Raise those values if you send large images
+    or long documents.
+
+    Tool schemas are sent alongside the messages and consume tokens too, so ``count`` takes an optional ``tools``
+    argument to have them included:
+
+    .. code-block:: python
+
+        counter.count(messages, tools=[my_tool])
+
+    Implement ``TokenCounter`` to count differently - for instance against a provider's own token-counting endpoint,
+    which is the only way to have images counted exactly.

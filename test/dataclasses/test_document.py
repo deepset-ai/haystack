@@ -124,6 +124,14 @@ def test_basic_equality_id():
     assert doc1 != doc2
 
 
+def test_equality_with_colliding_meta_keys():
+    doc1 = Document(id="same_id", content="hello", meta={"id": "different1"})
+    doc2 = Document(id="same_id", content="hello", meta={"id": "different2"})
+
+    assert doc1 != doc2
+    assert doc1 == Document(id="same_id", content="hello", meta={"id": "different1"})
+
+
 def test_id_is_independent_of_meta_key_order():
     doc1 = Document(content="hello", meta={"a": 1, "b": 2})
     doc2 = Document(content="hello", meta={"b": 2, "a": 1})
@@ -207,23 +215,19 @@ def test_to_dict_with_custom_parameters_without_flattening():
     }
 
 
-def test_to_dict_field_precedence():
-    """
-    Test for Document.to_dict() with flatten=True.
-
-    Test that Document's first-level fields take precedence over meta fields when flattening the dictionary
-    representation.
-    """
-
+def test_to_dict_with_colliding_meta_keys():
     doc = Document(content="from-content", score=0.9, meta={"content": "from-meta", "score": 0.5, "source": "web"})
 
-    flat_dict = doc.to_dict(flatten=True)
-
-    # First-level fields should take precedence
-    assert flat_dict["content"] == "from-content"
-    assert flat_dict["score"] == 0.9
-    # Meta-only fields should be preserved
-    assert flat_dict["source"] == "web"
+    assert doc.to_dict() == {
+        "id": doc.id,
+        "content": "from-content",
+        "blob": None,
+        "score": 0.9,
+        "embedding": None,
+        "sparse_embedding": None,
+        "source": "web",
+        "meta": {"content": "from-meta", "score": 0.5},
+    }
 
 
 def test_from_dict():
@@ -251,37 +255,26 @@ def test_from_dict_with_parameters():
     )
 
 
-def test_from_dict_does_not_mutate_input():
-    blob_data = b"some bytes"
-    data = {
-        "content": "test text",
-        "blob": {"data": list(blob_data), "mime_type": "text/markdown"},
-        "score": 0.812,
-        "embedding": [0.1, 0.2, 0.3],
-        "sparse_embedding": {"indices": [0, 2, 4], "values": [0.1, 0.2, 0.3]},
-        "date": "10-10-2023",
-        "type": "article",
-    }
+@pytest.mark.parametrize(
+    "data",
+    [
+        {
+            "content": "test text",
+            "blob": {"data": list(b"some bytes"), "mime_type": "text/markdown"},
+            "score": 0.812,
+            "embedding": [0.1, 0.2, 0.3],
+            "sparse_embedding": {"indices": [0, 2, 4], "values": [0.1, 0.2, 0.3]},
+            "date": "10-10-2023",
+            "type": "article",
+        },
+        {"content": "test text", "meta": {"date": "10-10-2023", "type": "article"}, "score": 0.812},
+    ],
+)
+def test_from_dict_does_not_mutate_input(data):
     original_data = deepcopy(data)
 
-    assert Document.from_dict(data) == Document(
-        content="test text",
-        blob=ByteStream(blob_data, mime_type="text/markdown"),
-        score=0.812,
-        embedding=[0.1, 0.2, 0.3],
-        sparse_embedding=SparseEmbedding(indices=[0, 2, 4], values=[0.1, 0.2, 0.3]),
-        meta={"date": "10-10-2023", "type": "article"},
-    )
-    assert data == original_data
+    Document.from_dict(data)
 
-
-def test_from_dict_does_not_mutate_input_with_explicit_meta():
-    data = {"content": "test text", "meta": {"date": "10-10-2023", "type": "article"}, "score": 0.812}
-    original_data = deepcopy(data)
-
-    assert Document.from_dict(data) == Document(
-        content="test text", meta={"date": "10-10-2023", "type": "article"}, score=0.812
-    )
     assert data == original_data
 
 
@@ -346,19 +339,38 @@ def test_from_dict_with_flat_meta():
     )
 
 
+@pytest.mark.parametrize(
+    "meta",
+    [
+        {"meta": "value"},
+        {"meta": {"nested": "value"}, "author": "Alice"},
+        {"id": "meta-id", "content": "meta-content", "source": "web"},
+        {"dataframe": "not-a-dataframe"},
+    ],
+)
+def test_flatten_roundtrip_with_colliding_meta_keys(meta):
+    doc = Document(content="hello", meta=meta)
+
+    restored = Document.from_dict(doc.to_dict())
+    assert restored == doc
+    assert restored.meta == meta
+
+
 def test_from_dict_with_flat_and_non_flat_meta():
-    with pytest.raises(ValueError, match="Pass either the 'meta' parameter or flattened metadata keys"):
-        Document.from_dict(
-            {
-                "content": "test text",
-                "blob": {"data": list(b"some bytes"), "mime_type": "text/markdown"},
-                "score": 0.812,
-                "meta": {"test": 10},
-                "embedding": [0.1, 0.2, 0.3],
-                "date": "10-10-2023",
-                "type": "article",
-            }
-        )
+    doc = Document.from_dict(
+        {
+            "content": "test text",
+            "blob": {"data": list(b"some bytes"), "mime_type": "text/markdown"},
+            "score": 0.812,
+            "meta": {"test": 10},
+            "embedding": [0.1, 0.2, 0.3],
+            "date": "10-10-2023",
+            "type": "article",
+        }
+    )
+    assert doc.meta == {"test": 10, "date": "10-10-2023", "type": "article"}
+    assert doc.content == "test text"
+    assert doc.score == 0.812
 
 
 def test_from_dict_with_dataframe():

@@ -92,6 +92,22 @@ Deserializes the component from a dictionary.
 
 - <code>MongoDBAtlasEmbeddingRetriever</code> – Deserialized component.
 
+#### close
+
+```python
+close() -> None
+```
+
+Release the synchronous resources of the underlying Document Store.
+
+#### close_async
+
+```python
+close_async() -> None
+```
+
+Release the asynchronous resources of the underlying Document Store.
+
 #### run
 
 ```python
@@ -222,6 +238,22 @@ Deserializes the component from a dictionary.
 **Returns:**
 
 - <code>MongoDBAtlasFullTextRetriever</code> – Deserialized component.
+
+#### close
+
+```python
+close() -> None
+```
+
+Release the synchronous resources of the underlying Document Store.
+
+#### close_async
+
+```python
+close_async() -> None
+```
+
+Release the asynchronous resources of the underlying Document Store.
 
 #### run
 
@@ -389,6 +421,22 @@ Creates a new MongoDBAtlasDocumentStore instance.
 **Raises:**
 
 - <code>ValueError</code> – If the collection name contains invalid characters.
+
+#### close
+
+```python
+close() -> None
+```
+
+Release the associated synchronous resources.
+
+#### close_async
+
+```python
+close_async() -> None
+```
+
+Release the associated asynchronous resources.
 
 #### connection
 

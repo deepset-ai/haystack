@@ -1,0 +1,9 @@
+---
+fixes:
+  - |
+    Fixed ``PythonCodeSplitter`` losing identifying context for oversized
+    functions, methods, or classes. When a unit is too large and falls back
+    to line-based secondary splitting, only the first resulting piece
+    naturally retains the source ``def``/``class`` line; every piece now
+    includes a ``qualified_name`` field in ``meta`` identifying the function,
+    method, or class it came from.
