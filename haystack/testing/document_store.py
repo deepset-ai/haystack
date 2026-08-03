@@ -1221,7 +1221,7 @@ class GetMetadataFieldUniqueValuesTest:
         document_store.write_documents(docs)
         assert document_store.count_documents() == 5
 
-        values, total_count = document_store.get_metadata_field_unique_values("category")  # type:ignore[attr-defined]
+        values, total_count = document_store.get_metadata_field_unique_values(metadata_field="category")  # type:ignore[attr-defined]
 
         assert isinstance(values, list)
         assert len(values) == 3  # the returned values must not contain duplicates
