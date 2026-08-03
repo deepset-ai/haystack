@@ -92,7 +92,7 @@ class RecordingCallback:
         self.tool_calls = []
         self.counter = 0
 
-    def __call__(self, chunk: StreamingChunk):  # type: ignore
+    def __call__(self, chunk: StreamingChunk):  # type: ignore[no-untyped-def]
         self.counter += 1
         if chunk.content:
             self.content += chunk.content
@@ -104,7 +104,6 @@ class RecordingCallback:
 
 class TestInitialization:
     def test_supported_models(self) -> None:
-
         """SUPPORTED_MODELS is a non-empty list of strings."""
         models = OpenAIResponsesChatGenerator.SUPPORTED_MODELS
         assert isinstance(models, list)
@@ -178,7 +177,6 @@ class TestInitialization:
         assert component.max_retries is None
 
     def test_init_with_toolset(self, tools: Any, monkeypatch: Any) -> None:
-
         """Test that the OpenAIChatGenerator can be initialized with a Toolset."""
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
         toolset = Toolset(tools)
@@ -345,7 +343,6 @@ class TestSerDe:
         assert component.api_key == Secret.from_env_var("OPENAI_API_KEY")
 
     def test_from_dict_with_toolset(self, tools: Any, monkeypatch: Any) -> None:
-
         """Test that the OpenAIChatGenerator can be deserialized from a dictionary with a Toolset."""
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
         toolset = Toolset(tools)
@@ -489,7 +486,7 @@ class TestComponentLifecycle:
         generator.close()
         assert generator.client is not None
 
-        sync_cls.return_value.close.assert_called_once()  # type: ignore
+        sync_cls.return_value.close.assert_called_once()  # type: ignore[attr-defined]
         assert generator.client is None
 
     async def test_async_lifecycle(self, mock_openai_clients: Any) -> None:
@@ -504,7 +501,7 @@ class TestComponentLifecycle:
         await generator.close_async()
         assert generator.async_client is not None
 
-        async_cls.return_value.close.assert_awaited_once()  # type: ignore
+        async_cls.return_value.close.assert_awaited_once()  # type: ignore[union-attr]
         assert generator.async_client is None
 
     async def test_close_is_safe_without_warm_up(self, mock_openai_clients: Any) -> None:
@@ -580,7 +577,8 @@ class TestRun:
         results = component.run(chat_messages)
         assert len(results["replies"]) == 1
         message: ChatMessage = results["replies"][0]
-        assert "Paris" in message.text  # type: ignore
+        assert message.text is not None
+        assert "Paris" in message.text
         assert "gpt-5" in message.meta["model"]
         assert message.meta["usage"]["total_tokens"] > 0
         assert message.meta["id"] is not None
@@ -628,7 +626,9 @@ class TestRun:
         assert len(results["replies"]) == 1
         assert openai_mock_responses.call_args.kwargs["reasoning"] == {"mode": "standard"}
 
-    def test_run_with_reasoning_mode_merges_with_existing_reasoning_dict(self, openai_mock_responses: Any, monkeypatch: Any) -> None:
+    def test_run_with_reasoning_mode_merges_with_existing_reasoning_dict(
+        self, openai_mock_responses: Any, monkeypatch: Any
+    ) -> None:
 
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
         chat_messages = [ChatMessage.from_user("What's the capital of France")]
@@ -651,8 +651,8 @@ class TestRun:
         assert openai_mock_responses.call_args.kwargs["include"] == ["reasoning.encrypted_content"]
 
     def test_run_with_include_reasoning_encrypted_content_merges_with_existing_include_list(
-        self: Any, openai_mock_responses: Any, monkeypatch
-    : Any) -> None:
+        self: Any, openai_mock_responses: Any, monkeypatch: Any
+    ) -> None:
 
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
         chat_messages = [ChatMessage.from_user("What's the capital of France")]
@@ -671,8 +671,8 @@ class TestRun:
         ]
 
     def test_run_with_include_reasoning_encrypted_content_false_does_not_set_include(
-        self: Any, openai_mock_responses: Any, monkeypatch
-    : Any) -> None:
+        self: Any, openai_mock_responses: Any, monkeypatch: Any
+    ) -> None:
 
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
         chat_messages = [ChatMessage.from_user("What's the capital of France")]
@@ -705,9 +705,12 @@ class TestRun:
         assert isinstance(response["replies"], list)
         assert len(response["replies"]) == 1
         assert [isinstance(reply, ChatMessage) for reply in response["replies"]]
-        assert "The capital of France is Paris." in response["replies"][0].text  # type: ignore
+        assert response["replies"][0].text is not None
+        assert "The capital of France is Paris." in response["replies"][0].text
 
-    def test_run_with_params_streaming_reasoning_summary_delta(self, openai_mock_responses_reasoning_summary_delta: Any) -> None:
+    def test_run_with_params_streaming_reasoning_summary_delta(
+        self, openai_mock_responses_reasoning_summary_delta: Any
+    ) -> None:
 
         streaming_callback_called = False
 
@@ -731,7 +734,7 @@ class TestRun:
         assert "replies" in response
         print(response["replies"])
         assert len(response["replies"]) == 1
-        assert "I need to check the capital of France." in response["replies"][0].reasoning.reasoning_text  # type: ignore
+        assert "I need to check the capital of France." in response["replies"][0].reasoning.reasoning_text  # type: ignore[union-attr]
 
 
 @pytest.mark.skipif(
@@ -749,7 +752,8 @@ class TestIntegration:
         results = component.run(chat_messages)
         assert len(results["replies"]) == 1
         message: ChatMessage = results["replies"][0]
-        assert "paris" in message.text.lower()  # type: ignore
+        assert message.text is not None
+        assert "paris" in message.text.lower()
         assert "gpt-4.1-nano" in message.meta["model"]
         assert message.meta["status"] == "completed"
         assert message.meta["usage"]["total_tokens"] > 0
@@ -766,7 +770,8 @@ class TestIntegration:
         assert len(results["replies"]) == 1
         message: ChatMessage = results["replies"][0]
         assert message.reasoning is not None
-        assert any(word in message.text.lower() for word in ["moon", "earth", "debris", "mars"])  # type: ignore
+        assert message.text is not None
+        assert any(word in message.text.lower() for word in ["moon", "earth", "debris", "mars"])
         assert "gpt-5-nano" in message.meta["model"]
         assert message.meta["status"] == "completed"
         assert message.meta["usage"]["output_tokens"] > 0
@@ -784,7 +789,8 @@ class TestIntegration:
         assert len(results["replies"]) == 1
         message: ChatMessage = results["replies"][0]
         print(message.text)
-        msg = json.loads(message.text)  # type: ignore
+        assert message.text is not None
+        msg = json.loads(message.text)
         assert "marketing summit" in msg["event_name"].lower()
         assert isinstance(msg["event_date"], str)
         assert isinstance(msg["event_location"], str)
@@ -813,7 +819,8 @@ class TestIntegration:
         results = component.run(chat_messages)
         assert len(results["replies"]) == 1
         message: ChatMessage = results["replies"][0]
-        msg = json.loads(message.text)  # type: ignore
+        assert message.text is not None
+        msg = json.loads(message.text)
         assert "jane" in msg["name"].lower()
         assert msg["age"] == 54
         assert message.meta["status"] == "completed"
@@ -834,7 +841,8 @@ class TestIntegration:
         results = component.run(chat_messages)
         assert len(results["replies"]) == 1
         message: ChatMessage = results["replies"][0]
-        msg = json.loads(message.text)  # type: ignore
+        assert message.text is not None
+        msg = json.loads(message.text)
         assert "marketing summit" in msg["event_name"].lower()
         assert isinstance(msg["event_date"], str)
         assert isinstance(msg["event_location"], str)
@@ -853,7 +861,8 @@ class TestIntegration:
         assert "replies" in results
         assert len(results["replies"]) == 1
         message: ChatMessage = results["replies"][0]
-        assert "paris" in message.text.lower()  # type: ignore
+        assert message.text is not None
+        assert "paris" in message.text.lower()
         assert isinstance(message.meta, dict)
 
         # Metadata checks
@@ -884,7 +893,7 @@ class TestIntegration:
         results = component.run(chat_messages)
         assert len(results["replies"]) == 1
         message: ChatMessage = results["replies"][0]
-        assert callback.reasoning == message.reasoning.reasoning_text  # type: ignore
+        assert callback.reasoning == message.reasoning.reasoning_text  # type: ignore[union-attr]
         assert any(word in callback.content.lower() for word in ["moon", "earth", "debris", "mars"])
         assert "gpt-5-nano" in message.meta["model"]
         assert message.reasonings is not None
@@ -984,7 +993,6 @@ class TestIntegration:
 
     @pytest.mark.skip(reason="The tool calls time out resulting in failing")
     def test_live_run_with_openai_tools(self) -> None:
-
         """
         Test the use of generator with a list of OpenAI tools and MCP tools.
         """
@@ -1214,7 +1222,8 @@ class TestOpenAIResponsesChatGeneratorAsync:
         results = await component.run_async(chat_messages)
         assert len(results["replies"]) == 1
         message: ChatMessage = results["replies"][0]
-        assert "paris" in message.text.lower()  # type: ignore
+        assert message.text is not None
+        assert "paris" in message.text.lower()
         assert "gpt-4.1-nano" in message.meta["model"]
         assert message.meta["status"] == "completed"
         assert message.meta["usage"]["total_tokens"] > 0

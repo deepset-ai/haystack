@@ -78,7 +78,6 @@ def tools():
 
 class TestAzureOpenAIChatGenerator:
     def test_supported_models(self) -> None:
-
         """SUPPORTED_MODELS is a non-empty list of strings."""
         models = AzureOpenAIChatGenerator.SUPPORTED_MODELS
         assert isinstance(models, list)
@@ -127,7 +126,6 @@ class TestAzureOpenAIChatGenerator:
         assert component.async_client is None
 
     def test_init_with_0_max_retries(self, tools: Any) -> None:
-
         """Tests that the max_retries init param is set correctly if equal 0"""
         component = AzureOpenAIChatGenerator(
             api_key=Secret.from_token("test-api-key"),
@@ -151,7 +149,6 @@ class TestAzureOpenAIChatGenerator:
         assert component.async_client is None
 
     def test_init_with_secret_azure_endpoint_and_api_version(self, monkeypatch: Any) -> None:
-
         """`azure_endpoint` and `api_version` accept a Secret that is resolved from an environment variable."""
         monkeypatch.setenv("AZURE_OPENAI_API_KEY", "test-api-key")
         monkeypatch.setenv("AZURE_OPENAI_ENDPOINT", "https://test-resource.azure.openai.com/")
@@ -165,7 +162,6 @@ class TestAzureOpenAIChatGenerator:
         assert component.api_version == Secret.from_env_var("AZURE_OPENAI_API_VERSION")
 
     def test_init_fail_with_unset_secret_azure_endpoint(self, monkeypatch: Any) -> None:
-
         """A Secret azure_endpoint that resolves to nothing raises the same error as a missing endpoint."""
         monkeypatch.setenv("AZURE_OPENAI_API_KEY", "test-api-key")
         monkeypatch.delenv("AZURE_OPENAI_ENDPOINT", raising=False)
@@ -173,7 +169,6 @@ class TestAzureOpenAIChatGenerator:
             AzureOpenAIChatGenerator(azure_endpoint=Secret.from_env_var("AZURE_OPENAI_ENDPOINT", strict=False))
 
     def test_to_dict_with_secret_azure_endpoint_and_api_version(self, monkeypatch: Any) -> None:
-
         """Secret `azure_endpoint` and `api_version` are serialized as Secret dictionaries."""
         monkeypatch.setenv("AZURE_OPENAI_API_KEY", "test-api-key")
         monkeypatch.setenv("AZURE_OPENAI_ENDPOINT", "https://test-resource.azure.openai.com/")
@@ -195,7 +190,6 @@ class TestAzureOpenAIChatGenerator:
         }
 
     def test_secret_azure_endpoint_and_api_version_roundtrip(self, monkeypatch: Any) -> None:
-
         """Serializing and deserializing a component with Secret endpoint/version restores the Secrets."""
         monkeypatch.setenv("AZURE_OPENAI_API_KEY", "test-api-key")
         monkeypatch.setenv("AZURE_OPENAI_ENDPOINT", "https://test-resource.azure.openai.com/")
@@ -208,11 +202,10 @@ class TestAzureOpenAIChatGenerator:
         assert deserialized.azure_endpoint == Secret.from_env_var("AZURE_OPENAI_ENDPOINT")
         assert deserialized.api_version == Secret.from_env_var("AZURE_OPENAI_API_VERSION")
         deserialized.warm_up()
-        assert str(deserialized.client._azure_endpoint) == "https://test-resource.azure.openai.com/"  # type: ignore
-        assert deserialized.client._api_version == "2024-08-01-preview"  # type: ignore
+        assert str(deserialized.client._azure_endpoint) == "https://test-resource.azure.openai.com/"  # type: ignore[union-attr]
+        assert deserialized.client._api_version == "2024-08-01-preview"  # type: ignore[union-attr]
 
     def test_from_dict_with_secret_azure_endpoint_and_api_version(self, monkeypatch: Any) -> None:
-
         """from_dict deserializes Secret azure_endpoint/api_version dicts and resolves them for the client."""
         monkeypatch.setenv("AZURE_OPENAI_API_KEY", "test-api-key")
         monkeypatch.setenv("AZURE_OPENAI_ENDPOINT", "https://test-resource.azure.openai.com/")
@@ -243,8 +236,8 @@ class TestAzureOpenAIChatGenerator:
         assert generator.api_version == Secret.from_env_var("AZURE_OPENAI_API_VERSION")
         # And they are resolved to the string values the client expects
         generator.warm_up()
-        assert str(generator.client._azure_endpoint) == "https://test-resource.azure.openai.com/"  # type: ignore
-        assert generator.client._api_version == "2024-08-01-preview"  # type: ignore
+        assert str(generator.client._azure_endpoint) == "https://test-resource.azure.openai.com/"  # type: ignore[union-attr]
+        assert generator.client._api_version == "2024-08-01-preview"  # type: ignore[union-attr]
 
     def test_to_dict_default(self, monkeypatch: Any) -> None:
 
@@ -427,7 +420,6 @@ class TestAzureOpenAIChatGenerator:
         assert p.to_dict() == q.to_dict(), "Pipeline serialization/deserialization w/ AzureOpenAIChatGenerator failed."
 
     def test_azure_chat_generator_with_toolset_initialization(self, tools: Any, monkeypatch: Any) -> None:
-
         """Test that the AzureOpenAIChatGenerator can be initialized with a Toolset."""
         monkeypatch.setenv("AZURE_OPENAI_API_KEY", "test-api-key")
         toolset = Toolset(tools)
@@ -435,7 +427,6 @@ class TestAzureOpenAIChatGenerator:
         assert generator.tools == toolset
 
     def test_from_dict_with_toolset(self, tools: Any, monkeypatch: Any) -> None:
-
         """Test that the AzureOpenAIChatGenerator can be deserialized from a dictionary with a Toolset."""
         monkeypatch.setenv("AZURE_OPENAI_API_KEY", "test-api-key")
         toolset = Toolset(tools)
@@ -464,7 +455,8 @@ class TestAzureOpenAIChatGenerator:
         results = component.run(chat_messages)
         assert len(results["replies"]) == 1
         message: ChatMessage = results["replies"][0]
-        assert "Paris" in message.text  # type: ignore
+        assert message.text is not None
+        assert "Paris" in message.text
         assert "gpt-4.1-mini" in message.meta["model"]
         assert message.meta["finish_reason"] == "stop"
 
@@ -515,7 +507,8 @@ class TestAzureOpenAIChatGenerator:
         results = component.run(chat_messages)
         assert len(results["replies"]) == 1
         message: ChatMessage = results["replies"][0]
-        msg = json.loads(message.text)  # type: ignore
+        assert message.text is not None
+        msg = json.loads(message.text)
         assert "marketing summit" in msg["event_name"].lower()
         assert isinstance(msg["event_date"], str)
         assert isinstance(msg["event_location"], str)
@@ -523,7 +516,6 @@ class TestAzureOpenAIChatGenerator:
         assert message.meta["finish_reason"] == "stop"
 
     def test_to_dict_with_toolset(self, tools: Any, monkeypatch: Any) -> None:
-
         """Test that the AzureOpenAIChatGenerator can be serialized to a dictionary with a Toolset."""
         monkeypatch.setenv("AZURE_OPENAI_API_KEY", "test-api-key")
         toolset = Toolset(tools[:1])
@@ -570,7 +562,7 @@ class TestAzureOpenAIChatGeneratorAsync:
         )
         assert component.async_client is None
         await component.warm_up_async()
-        assert component.async_client.api_key == "test-api-key"  # type: ignore
+        assert component.async_client.api_key == "test-api-key"  # type: ignore[attr-defined]
         assert component.client is None
         assert component.azure_deployment == "gpt-4.1-mini"
         assert component.streaming_callback is print_streaming_chunk
@@ -595,7 +587,8 @@ class TestAzureOpenAIChatGeneratorAsync:
         results = await component.run_async(chat_messages)
         assert len(results["replies"]) == 1
         message: ChatMessage = results["replies"][0]
-        assert "Paris" in message.text  # type: ignore
+        assert message.text is not None
+        assert "Paris" in message.text
         assert "gpt-4.1-mini" in message.meta["model"]
         assert message.meta["finish_reason"] == "stop"
         await component.close_async()
@@ -745,7 +738,7 @@ class TestComponentLifecycle:
         generator.close()
         assert generator.client is not None
 
-        sync_cls.return_value.close.assert_called_once()  # type: ignore
+        sync_cls.return_value.close.assert_called_once()  # type: ignore[attr-defined]
         assert generator.client is None
 
     async def test_async_lifecycle(self, mock_azure_clients: Any) -> None:
@@ -760,7 +753,7 @@ class TestComponentLifecycle:
         await generator.close_async()
         assert generator.async_client is not None
 
-        async_cls.return_value.close.assert_awaited_once()  # type: ignore
+        async_cls.return_value.close.assert_awaited_once()  # type: ignore[union-attr]
         assert generator.async_client is None
 
     async def test_close_is_safe_without_warm_up(self, mock_azure_clients: Any) -> None:

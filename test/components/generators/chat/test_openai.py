@@ -189,7 +189,6 @@ def tools():
 
 class TestOpenAIChatGenerator:
     def test_supported_models(self) -> None:
-
         """SUPPORTED_MODELS is a non-empty list of strings."""
         models = OpenAIChatGenerator.SUPPORTED_MODELS
         assert isinstance(models, list)
@@ -524,9 +523,11 @@ class TestOpenAIChatGenerator:
         assert len(response["replies"]) == 1
         assert [isinstance(reply, ChatMessage) for reply in response["replies"]]
         assert response["replies"][0].text is not None
-        assert "Hello" in response["replies"][0].text  # see openai_mock_chat_completion_chunk  # type: ignore
+        assert "Hello" in response["replies"][0].text  # see openai_mock_chat_completion_chunk
 
-    def test_run_with_streaming_callback_in_run_method(self, chat_messages: Any, openai_mock_chat_completion_chunk: Any) -> None:
+    def test_run_with_streaming_callback_in_run_method(
+        self, chat_messages: Any, openai_mock_chat_completion_chunk: Any
+    ) -> None:
 
         streaming_callback_called = False
 
@@ -547,7 +548,7 @@ class TestOpenAIChatGenerator:
         assert len(response["replies"]) == 1
         assert [isinstance(reply, ChatMessage) for reply in response["replies"]]
         assert response["replies"][0].text is not None
-        assert "Hello" in response["replies"][0].text  # see openai_mock_chat_completion_chunk  # type: ignore
+        assert "Hello" in response["replies"][0].text  # see openai_mock_chat_completion_chunk
 
     def test_run_with_response_format(self, chat_messages: Any, mock_parsed_chat_completion: Any) -> None:
 
@@ -561,7 +562,7 @@ class TestOpenAIChatGenerator:
         assert len(response["replies"]) == 1
         assert [isinstance(reply, ChatMessage) for reply in response["replies"]]
         assert response["replies"][0].text is not None
-        assert "Team Meeting" in response["replies"][0].text  # see mock_parsed_chat_completion  # type: ignore
+        assert "Team Meeting" in response["replies"][0].text  # see mock_parsed_chat_completion
 
     def test_run_with_response_format_in_run_method(self, chat_messages: Any, mock_parsed_chat_completion: Any) -> None:
 
@@ -573,7 +574,7 @@ class TestOpenAIChatGenerator:
         assert len(response["replies"]) == 1
         assert [isinstance(reply, ChatMessage) for reply in response["replies"]]
         assert response["replies"][0].text is not None
-        assert "Team Meeting" in response["replies"][0].text  # see mock_parsed_chat_completion  # type: ignore
+        assert "Team Meeting" in response["replies"][0].text  # see mock_parsed_chat_completion
 
     def test_run_with_wrapped_stream_simulation(self, chat_messages: Any, openai_mock_stream: Any) -> None:
 
@@ -602,7 +603,9 @@ class TestOpenAIChatGenerator:
         component.warm_up()
 
         with patch.object(
-            component.client.chat.completions, "create", return_value=wrapped_openai_stream  # type: ignore
+            component.client.chat.completions,
+            "create",
+            return_value=wrapped_openai_stream,  # type: ignore[union-attr]
         ) as mock_create:
             response = component.run(chat_messages, streaming_callback=streaming_callback)
 
@@ -703,7 +706,6 @@ class TestOpenAIChatGenerator:
         assert message.meta["usage"]["completion_tokens"] == 40
 
     def test_run_with_tools_and_response_format(self, tools: Any, mock_parsed_chat_completion: Any) -> None:
-
         """
         Test the run method with tools and response format
             When tools are used, the function call overrides the schema passed in response_format
@@ -868,7 +870,8 @@ class TestOpenAIChatGenerator:
         results = component.run(chat_messages)
         assert len(results["replies"]) == 1
         message: ChatMessage = results["replies"][0]
-        assert "Paris" in message.text  # type: ignore
+        assert message.text is not None
+        assert "Paris" in message.text
         assert "gpt-4.1-nano" in message.meta["model"]
         assert message.meta["finish_reason"] == "stop"
         assert message.meta["usage"]["prompt_tokens"] > 0
@@ -889,7 +892,8 @@ class TestOpenAIChatGenerator:
         results = component.run(chat_messages)
         assert len(results["replies"]) == 1
         message: ChatMessage = results["replies"][0]
-        msg = json.loads(message.text)  # type: ignore
+        assert message.text is not None
+        msg = json.loads(message.text)
         assert "marketing summit" in msg["event_name"].lower()
         assert isinstance(msg["event_date"], str)
         assert isinstance(msg["event_location"], str)
@@ -911,7 +915,8 @@ class TestOpenAIChatGenerator:
         results = comp.run(chat_messages)
         assert len(results["replies"]) == 1
         message: ChatMessage = results["replies"][0]
-        msg = json.loads(message.text)  # type: ignore
+        assert message.text is not None
+        msg = json.loads(message.text)
         assert "paris" in msg["city"].lower()
         assert message.meta["finish_reason"] == "stop"
 
@@ -942,7 +947,8 @@ class TestOpenAIChatGenerator:
         results = comp.run(chat_messages)
         assert len(results["replies"]) == 1
         message: ChatMessage = results["replies"][0]
-        msg = json.loads(message.text)  # type: ignore
+        assert message.text is not None
+        msg = json.loads(message.text)
         assert "paris" in msg["city"].lower()
         assert message.meta["finish_reason"] == "stop"
         assert streaming_callback_called is True
@@ -977,7 +983,8 @@ class TestOpenAIChatGenerator:
         results = comp.run(chat_messages)
         assert len(results["replies"]) == 1
         message: ChatMessage = results["replies"][0]
-        msg = json.loads(message.text)  # type: ignore
+        assert message.text is not None
+        msg = json.loads(message.text)
         assert "Paris" in msg["city"]
         assert isinstance(msg["country"], str)
         assert "France" in msg["country"]
@@ -1023,7 +1030,8 @@ class TestOpenAIChatGenerator:
         results = comp.run(chat_messages)
         assert len(results["replies"]) == 1
         message: ChatMessage = results["replies"][0]
-        msg = json.loads(message.text)  # type: ignore
+        assert message.text is not None
+        msg = json.loads(message.text)
         assert "Paris" in msg["city"]
         assert isinstance(msg["country"], str)
         assert "France" in msg["country"]
@@ -1070,7 +1078,8 @@ class TestOpenAIChatGenerator:
         assert "replies" in results
         assert len(results["replies"]) == 1
         message: ChatMessage = results["replies"][0]
-        assert "Paris" in message.text  # type: ignore
+        assert message.text is not None
+        assert "Paris" in message.text
         assert isinstance(message.meta, dict)
 
         # Metadata checks
@@ -1128,7 +1137,6 @@ class TestOpenAIChatGenerator:
         assert message.meta["finish_reason"] == "tool_calls"
 
     def test_openai_chat_generator_with_toolset_initialization(self, tools: Any, monkeypatch: Any) -> None:
-
         """Test that the OpenAIChatGenerator can be initialized with a Toolset."""
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
         toolset = Toolset(tools)
@@ -1136,7 +1144,6 @@ class TestOpenAIChatGenerator:
         assert generator.tools == toolset
 
     def test_from_dict_with_toolset(self, tools: Any, monkeypatch: Any) -> None:
-
         """Test that the OpenAIChatGenerator can be deserialized from a dictionary with a Toolset."""
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
         toolset = Toolset(tools)
@@ -1228,7 +1235,6 @@ class TestOpenAIChatGenerator:
         assert "no" in message.text.lower()
 
     def test_init_with_list_of_toolsets(self, monkeypatch: Any, tools: Any) -> None:
-
         """Test initialization with a list of Toolsets."""
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
 
@@ -1243,7 +1249,6 @@ class TestOpenAIChatGenerator:
         assert all(isinstance(ts, Toolset) for ts in component.tools)
 
     def test_serde_with_list_of_toolsets(self, monkeypatch: Any, tools: Any) -> None:
-
         """Test serialization and deserialization with a list of Toolsets."""
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
 
@@ -1807,7 +1812,7 @@ class TestComponentLifecycle:
         generator.close()
         assert generator.client is not None
 
-        sync_cls.return_value.close.assert_called_once()  # type: ignore
+        sync_cls.return_value.close.assert_called_once()  # type: ignore[attr-defined]
         assert generator.client is None
 
     async def test_async_lifecycle(self, mock_openai_clients: Any) -> None:
@@ -1822,7 +1827,7 @@ class TestComponentLifecycle:
         await generator.close_async()
         assert generator.async_client is not None
 
-        async_cls.return_value.close.assert_awaited_once()  # type: ignore
+        async_cls.return_value.close.assert_awaited_once()  # type: ignore[union-attr]
         assert generator.async_client is None
 
     async def test_close_is_safe_without_warm_up(self, mock_openai_clients: Any) -> None:
@@ -1848,9 +1853,11 @@ class TestComponentLifecycle:
 
 
 class TestChatCompletionChunkConversion:
-    def test_convert_chat_completion_chunk_to_streaming_chunk(self, chat_completion_chunks: Any, streaming_chunks: Any) -> None:
+    def test_convert_chat_completion_chunk_to_streaming_chunk(
+        self, chat_completion_chunks: Any, streaming_chunks: Any
+    ) -> None:
 
-        previous_chunks = []  # type: ignore
+        previous_chunks = []  # type: ignore[var-annotated]
         for openai_chunk, haystack_chunk in zip(chat_completion_chunks, streaming_chunks, strict=True):
             stream_chunk = _convert_chat_completion_chunk_to_streaming_chunk(
                 chunk=openai_chunk, previous_chunks=previous_chunks
@@ -1886,7 +1893,6 @@ class TestChatCompletionChunkConversion:
         assert result.meta["received_at"] is not None
 
     def test_convert_chat_completion_chunk_with_delta_none(self, chat_completion_chunk_delta_none: Any) -> None:
-
         """
         Test that a chat completion chunk with a delta set to None is converted to a streaming chunk properly.
         This should not happen, but some OpenAI-compatible providers sometimes return a delta set to None.
@@ -2279,8 +2285,8 @@ class TestMakeSchemaStrict:
         message = results["replies"][0]
         assert message.tool_calls
         tool_call = message.tool_call
-        assert tool_call.tool_name == "create_person"  # type: ignore
-        assert "name" in tool_call.arguments  # type: ignore
-        assert "address" in tool_call.arguments  # type: ignore
-        assert "street" in tool_call.arguments["address"]  # type: ignore
-        assert "city" in tool_call.arguments["address"]  # type: ignore
+        assert tool_call.tool_name == "create_person"  # type: ignore[union-attr]
+        assert "name" in tool_call.arguments  # type: ignore[union-attr]
+        assert "address" in tool_call.arguments  # type: ignore[union-attr]
+        assert "street" in tool_call.arguments["address"]  # type: ignore[union-attr]
+        assert "city" in tool_call.arguments["address"]  # type: ignore[union-attr]

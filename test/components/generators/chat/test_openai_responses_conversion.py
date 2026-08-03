@@ -1,8 +1,8 @@
 from typing import Any
+
 # SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
 #
 # SPDX-License-Identifier: Apache-2.0
-
 from unittest.mock import ANY
 
 import pytest
@@ -224,12 +224,12 @@ def openai_responses_streaming_chunks_with_tool_call():
 
 class TestConversionToStreamingChunks:
     def test_convert_streaming_chunks_to_chat_message_with_tool_call_empty_reasoning(
-        self: Any, openai_responses_streaming_chunks_with_tool_call
-    : Any) -> None:
+        self: Any, openai_responses_streaming_chunks_with_tool_call: Any
+    ) -> None:
 
         chat_message = _convert_streaming_chunks_to_chat_message(openai_responses_streaming_chunks_with_tool_call)
         assert chat_message == ChatMessage(
-            _role="assistant",  # type: ignore
+            _role="assistant",  # type: ignore[arg-type]
             _content=[
                 ReasoningContent(
                     reasoning_text="",
@@ -532,7 +532,7 @@ class TestConversionToStreamingChunks:
                 type="response.completed",
             ),
         ]
-        streaming_chunks = []  # type: ignore
+        streaming_chunks = []  # type: ignore[var-annotated]
         for chunk in openai_chunks:
             streaming_chunk = _convert_response_chunk_to_streaming_chunk(chunk, previous_chunks=streaming_chunks)
             streaming_chunks.append(streaming_chunk)
@@ -1021,7 +1021,7 @@ class TestConversionToStreamingChunks:
             ),
         ]
 
-        streaming_chunks = []  # type: ignore
+        streaming_chunks = []  # type: ignore[var-annotated]
         for chunk in chunks:
             streaming_chunk = _convert_response_chunk_to_streaming_chunk(chunk, previous_chunks=streaming_chunks)
             streaming_chunks.append(streaming_chunk)
@@ -1444,7 +1444,7 @@ class TestResponseToChatMessage:
             ImageContent(base64_image=base64_image_string, mime_type="image/png"),
         ]
         message = ChatMessage.from_tool(
-            tool_result=tool_result,  # type: ignore
+            tool_result=tool_result,  # type: ignore[arg-type]
             origin=ToolCall(
                 tool_name="mytool", arguments={}, id="123", extra={"call_id": "call_a82vwFAIzku9SmBuQuecQSRq"}
             ),
@@ -1469,7 +1469,7 @@ class TestResponseToChatMessage:
             FileContent(base64_data=base64_pdf_string, mime_type="application/pdf", filename="guide.pdf"),
         ]
         message = ChatMessage.from_tool(
-            tool_result=tool_result,  # type: ignore
+            tool_result=tool_result,  # type: ignore[arg-type]
             origin=ToolCall(
                 tool_name="mytool", arguments={}, id="123", extra={"call_id": "call_a82vwFAIzku9SmBuQuecQSRq"}
             ),
@@ -1512,7 +1512,6 @@ class TestResponseToChatMessage:
             _convert_chat_message_to_responses_api_format(message)
 
     def test_convert_streaming_chunks_to_chat_message_preserves_encrypted_content(self) -> None:
-
         """Test that encrypted_content in reasoning extra is preserved during streaming conversion."""
         chunks = [
             StreamingChunk(
@@ -1568,7 +1567,6 @@ class TestResponseToChatMessage:
         assert message.reasoning.extra.get("status") == "in_progress"
 
     def test_encrypted_content_preserved_through_full_streaming_pipeline(self) -> None:
-
         """
         Feeds real OpenAI event objects through the full pipeline:
 
@@ -1598,7 +1596,7 @@ class TestResponseToChatMessage:
             ),
         ]
 
-        streaming_chunks = []  # type: ignore
+        streaming_chunks = []  # type: ignore[var-annotated]
         for event in openai_events:
             chunk = _convert_response_chunk_to_streaming_chunk(event, previous_chunks=streaming_chunks)
             streaming_chunks.append(chunk)

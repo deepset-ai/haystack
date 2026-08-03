@@ -39,11 +39,11 @@ class MockChatGeneratorWithTools:
         return cls()
 
     @component.output_types(replies=list[ChatMessage])
-    def run(self, messages: list[ChatMessage], tools: list[Tool] | Toolset | None = None, **kwargs) -> dict[str, Any]:  # type: ignore
+    def run(self, messages: list[ChatMessage], tools: list[Tool] | Toolset | None = None, **kwargs) -> dict[str, Any]:  # type: ignore[no-untyped-def]
         return {"replies": [ChatMessage.from_assistant("Reply with tools support")]}
 
     @component.output_types(replies=list[ChatMessage])
-    async def run_async(  # type: ignore
+    async def run_async(  # type: ignore[no-untyped-def]
         self, messages: list[ChatMessage], tools: list[Tool] | Toolset | None = None, **kwargs
     ) -> dict[str, Any]:
         return {"replies": [ChatMessage.from_assistant("Async reply with tools support")]}
@@ -61,11 +61,11 @@ class MockChatGenerator:
         return cls()
 
     @component.output_types(replies=list[ChatMessage])
-    def run(self, messages: list[ChatMessage], **kwargs) -> dict[str, Any]:  # type: ignore
+    def run(self, messages: list[ChatMessage], **kwargs) -> dict[str, Any]:  # type: ignore[no-untyped-def]
         return {"replies": [ChatMessage.from_assistant("Sync reply")]}
 
     @component.output_types(replies=list[ChatMessage])
-    async def run_async(self, messages: list[ChatMessage], **kwargs) -> dict[str, Any]:  # type: ignore
+    async def run_async(self, messages: list[ChatMessage], **kwargs) -> dict[str, Any]:  # type: ignore[no-untyped-def]
         return {"replies": [ChatMessage.from_assistant("Async reply")]}
 
 
@@ -90,7 +90,7 @@ class TestLLM:
         def test_output_sockets(self) -> None:
 
             llm = LLM(chat_generator=MockChatGenerator(), user_prompt=self.USER_PROMPT)
-            assert llm.__haystack_output__._sockets_dict == {  # type: ignore
+            assert llm.__haystack_output__._sockets_dict == {  # type: ignore[attr-defined]
                 "messages": OutputSocket(name="messages", type=list[ChatMessage], receivers=[]),
                 "last_message": OutputSocket(name="last_message", type=ChatMessage, receivers=[]),
                 "token_usage": OutputSocket(name="token_usage", type=dict[str, Any], receivers=[]),
@@ -111,30 +111,30 @@ class TestLLM:
             llm = LLM(
                 chat_generator=MockChatGenerator(), user_prompt='{% message role="user" %}Hello world{% endmessage %}'
             )
-            messages_socket = llm.__haystack_input__._sockets_dict["messages"]  # type: ignore
+            messages_socket = llm.__haystack_input__._sockets_dict["messages"]  # type: ignore[attr-defined]
             assert isinstance(messages_socket, InputSocket)
             assert messages_socket.is_mandatory
 
         def test_messages_optional_when_prompt_has_variables(self) -> None:
 
             llm = LLM(chat_generator=MockChatGenerator(), user_prompt=self.USER_PROMPT)
-            messages_socket = llm.__haystack_input__._sockets_dict["messages"]  # type: ignore
+            messages_socket = llm.__haystack_input__._sockets_dict["messages"]  # type: ignore[attr-defined]
             assert isinstance(messages_socket, InputSocket)
             assert not messages_socket.is_mandatory
 
         def test_messages_optional_when_plain_prompt_has_variables(self) -> None:
 
             llm = LLM(chat_generator=MockChatGenerator(), user_prompt="Question: {{ query }}")
-            messages_socket = llm.__haystack_input__._sockets_dict["messages"]  # type: ignore
+            messages_socket = llm.__haystack_input__._sockets_dict["messages"]  # type: ignore[attr-defined]
             assert isinstance(messages_socket, InputSocket)
             assert not messages_socket.is_mandatory
-            assert "query" in llm.__haystack_input__._sockets_dict  # type: ignore
+            assert "query" in llm.__haystack_input__._sockets_dict  # type: ignore[attr-defined]
 
         def test_runtime_prompt_overrides_not_component_inputs(self) -> None:
 
             llm = LLM(chat_generator=MockChatGenerator(), user_prompt=self.USER_PROMPT)
-            assert "system_prompt" not in llm.__haystack_input__._sockets_dict  # type: ignore
-            assert "user_prompt" not in llm.__haystack_input__._sockets_dict  # type: ignore
+            assert "system_prompt" not in llm.__haystack_input__._sockets_dict  # type: ignore[attr-defined]
+            assert "user_prompt" not in llm.__haystack_input__._sockets_dict  # type: ignore[attr-defined]
 
         def test_raises_if_required_variables_empty(self) -> None:
 
@@ -352,7 +352,7 @@ class TestLLMNotTriggeredByInjectedInput:
 
         chat_generator = MockChatGenerator()
         llm = LLM(chat_generator=chat_generator)
-        chat_generator.run = MagicMock(return_value={"replies": [ChatMessage.from_assistant("x")]})  # type: ignore
+        chat_generator.run = MagicMock(return_value={"replies": [ChatMessage.from_assistant("x")]})  # type: ignore[method-assign]
 
         router = ConditionalRouter(
             routes=[

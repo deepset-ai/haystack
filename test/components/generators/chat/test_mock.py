@@ -1,9 +1,8 @@
-from typing import Any
 # SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
 #
 # SPDX-License-Identifier: Apache-2.0
-
 import inspect
+from typing import Any
 
 import pytest
 
@@ -129,7 +128,7 @@ class TestMockChatGenerator:
         gen = MockChatGenerator("hello")
         gen.run([ChatMessage.from_user("a b")])
         # the stored response keeps its original (empty) meta, untouched by the per-run meta
-        assert gen._responses[0].meta == {}  # type: ignore
+        assert gen._responses[0].meta == {}  # type: ignore[index]
 
     async def test_run_async(self) -> None:
 

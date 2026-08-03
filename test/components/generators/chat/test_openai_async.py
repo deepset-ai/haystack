@@ -1,12 +1,11 @@
-from typing import Any
 # SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
 #
 # SPDX-License-Identifier: Apache-2.0
-
 import asyncio
 import contextlib
 import os
 from datetime import datetime
+from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -158,7 +157,9 @@ class TestOpenAIChatGeneratorAsync:
         assert [isinstance(reply, ChatMessage) for reply in response["replies"]]
 
     @pytest.mark.asyncio
-    async def test_run_with_params_streaming_async(self, chat_messages: Any, openai_mock_async_chat_completion_chunk: Any) -> None:
+    async def test_run_with_params_streaming_async(
+        self, chat_messages: Any, openai_mock_async_chat_completion_chunk: Any
+    ) -> None:
 
         streaming_callback_called = False
 
@@ -181,12 +182,12 @@ class TestOpenAIChatGeneratorAsync:
         assert len(response["replies"]) == 1
         assert [isinstance(reply, ChatMessage) for reply in response["replies"]]
         assert response["replies"][0].text is not None
-        assert "Hello" in response["replies"][0].text  # see openai_mock_chat_completion_chunk  # type: ignore
+        assert "Hello" in response["replies"][0].text  # see openai_mock_chat_completion_chunk
 
     @pytest.mark.asyncio
     async def test_run_with_streaming_callback_in_run_method_async(
-        self: Any, chat_messages: Any, openai_mock_async_chat_completion_chunk
-    : Any) -> None:
+        self: Any, chat_messages: Any, openai_mock_async_chat_completion_chunk: Any
+    ) -> None:
 
         streaming_callback_called = False
 
@@ -207,7 +208,7 @@ class TestOpenAIChatGeneratorAsync:
         assert len(response["replies"]) == 1
         assert [isinstance(reply, ChatMessage) for reply in response["replies"]]
         assert response["replies"][0].text is not None
-        assert "Hello" in response["replies"][0].text  # see openai_mock_chat_completion_chunk  # type: ignore
+        assert "Hello" in response["replies"][0].text  # see openai_mock_chat_completion_chunk
 
     @pytest.mark.asyncio
     async def test_run_with_tools_async(self, tools: Any) -> None:
@@ -376,12 +377,13 @@ class TestOpenAIChatGeneratorAsync:
         results = await component.run_async(chat_messages)
         assert len(results["replies"]) == 1
         message: ChatMessage = results["replies"][0]
-        assert "Paris" in message.text  # type: ignore
+        assert message.text is not None
+        assert "Paris" in message.text
         assert message.meta["model"]
         assert message.meta["finish_reason"] == "stop"
         # Close async client; suppress RuntimeError if the event loop is already closed
         with contextlib.suppress(RuntimeError):
-            await component.async_client.close()  # type: ignore
+            await component.async_client.close()  # type: ignore[union-attr]
 
     @pytest.mark.asyncio
     async def test_run_with_wrong_model_async(self) -> None:
@@ -407,7 +409,7 @@ class TestOpenAIChatGeneratorAsync:
         counter = 0
         responses = ""
 
-        async def callback(chunk: StreamingChunk):  # type: ignore
+        async def callback(chunk: StreamingChunk):  # type: ignore[no-untyped-def]
             nonlocal counter
             nonlocal responses
             counter += 1
@@ -422,7 +424,8 @@ class TestOpenAIChatGeneratorAsync:
 
         assert len(results["replies"]) == 1
         message: ChatMessage = results["replies"][0]
-        assert "Paris" in message.text  # type: ignore
+        assert message.text is not None
+        assert "Paris" in message.text
 
         assert message.meta["model"]
         assert message.meta["finish_reason"] == "stop"
@@ -441,7 +444,7 @@ class TestOpenAIChatGeneratorAsync:
 
         # Close async client; suppress RuntimeError if the event loop is already closed
         with contextlib.suppress(RuntimeError):
-            await component.async_client.close()  # type: ignore
+            await component.async_client.close()  # type: ignore[union-attr]
 
     @pytest.mark.skipif(
         not os.environ.get("OPENAI_API_KEY", None),
@@ -469,10 +472,12 @@ class TestOpenAIChatGeneratorAsync:
 
         # Close async client; suppress RuntimeError if the event loop is already closed
         with contextlib.suppress(RuntimeError):
-            await component.async_client.close()  # type: ignore
+            await component.async_client.close()  # type: ignore[union-attr]
 
     @pytest.mark.asyncio
-    async def test_run_with_wrapped_stream_simulation_async(self, chat_messages: Any, openai_mock_stream_async: Any) -> None:
+    async def test_run_with_wrapped_stream_simulation_async(
+        self, chat_messages: Any, openai_mock_stream_async: Any
+    ) -> None:
 
         streaming_callback_called = False
 
@@ -500,7 +505,7 @@ class TestOpenAIChatGeneratorAsync:
 
         # Patch the async client's create method
         with patch.object(
-            component.async_client.chat.completions,  # type: ignore
+            component.async_client.chat.completions,  # type: ignore[union-attr]
             "create",
             return_value=wrapped_openai_async_stream,
             new_callable=AsyncMock,
