@@ -129,6 +129,22 @@ Deserializes the component from a dictionary.
 
 - <code>OpenSearchBM25Retriever</code> – Deserialized component.
 
+#### close
+
+```python
+close() -> None
+```
+
+Release the synchronous resources of the underlying Document Store.
+
+#### close_async
+
+```python
+close_async() -> None
+```
+
+Release the asynchronous resources of the underlying Document Store.
+
 #### run
 
 ```python
@@ -375,6 +391,22 @@ Deserializes the component from a dictionary.
 **Returns:**
 
 - <code>OpenSearchEmbeddingRetriever</code> – Deserialized component.
+
+#### close
+
+```python
+close() -> None
+```
+
+Release the synchronous resources of the underlying Document Store.
+
+#### close_async
+
+```python
+close_async() -> None
+```
+
+Release the asynchronous resources of the underlying Document Store.
 
 #### run
 
@@ -703,6 +735,22 @@ Deserializes the component from a dictionary.
 
 - <code>OpenSearchMetadataRetriever</code> – Deserialized component.
 
+#### close
+
+```python
+close() -> None
+```
+
+Release the synchronous resources of the underlying Document Store.
+
+#### close_async
+
+```python
+close_async() -> None
+```
+
+Release the asynchronous resources of the underlying Document Store.
+
 #### run
 
 ```python
@@ -884,7 +932,9 @@ docker run -d --name opensearch-nosec -p 9200:9200 -p 9600:9600 -e "discovery.ty
 
 ```python
 from haystack import Document
-from haystack.components.embedders import SentenceTransformersTextEmbedder, SentenceTransformersDocumentEmbedder
+# Requires: pip install sentence-transformers-haystack
+from haystack_integrations.components.embedders.sentence_transformers import SentenceTransformersTextEmbedder
+from haystack_integrations.components.embedders.sentence_transformers import SentenceTransformersDocumentEmbedder
 from haystack_integrations.components.retrievers.opensearch import OpenSearchHybridRetriever
 from haystack_integrations.document_stores.opensearch import OpenSearchDocumentStore
 
@@ -906,7 +956,6 @@ docs = [
 
 # Embed the documents and add them to the document store
 doc_embedder = SentenceTransformersDocumentEmbedder(model="sentence-transformers/all-MiniLM-L6-v2")
-doc_embedder.warm_up()
 docs = doc_embedder.run(docs)
 doc_store.write_documents(docs['documents'])
 
@@ -1042,6 +1091,22 @@ from_dict(data: dict[str, Any]) -> OpenSearchHybridRetriever
 
 Deserialize an OpenSearchHybridRetriever from a dictionary.
 
+#### close
+
+```python
+close() -> None
+```
+
+Release the synchronous resources of the underlying Document Store.
+
+#### close_async
+
+```python
+close_async() -> None
+```
+
+Release the asynchronous resources of the underlying Document Store.
+
 ## haystack_integrations.components.retrievers.opensearch.sql_retriever
 
 ### OpenSearchSQLRetriever
@@ -1104,6 +1169,22 @@ Deserializes the component from a dictionary.
 **Returns:**
 
 - <code>OpenSearchSQLRetriever</code> – Deserialized component.
+
+#### close
+
+```python
+close() -> None
+```
+
+Release the synchronous resources of the underlying Document Store.
+
+#### close_async
+
+```python
+close_async() -> None
+```
+
+Release the asynchronous resources of the underlying Document Store.
 
 #### run
 
@@ -1318,6 +1399,22 @@ Deserializes the component from a dictionary.
 **Returns:**
 
 - <code>OpenSearchDocumentStore</code> – Deserialized component.
+
+#### close
+
+```python
+close() -> None
+```
+
+Release the associated synchronous resources.
+
+#### close_async
+
+```python
+close_async() -> None
+```
+
+Release the associated asynchronous resources.
 
 #### count_documents
 

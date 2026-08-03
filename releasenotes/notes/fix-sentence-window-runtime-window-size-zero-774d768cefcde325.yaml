@@ -1,0 +1,22 @@
+---
+upgrade:
+  - |
+    Passing ``window_size=0`` to ``SentenceWindowRetriever.run`` or ``SentenceWindowRetriever.run_async``
+    now raises a ``ValueError`` instead of silently using the ``window_size`` set in the constructor. You are
+    affected if you pass ``window_size=0`` at runtime, either directly or from an upstream component in a
+    pipeline. If you were relying on ``0`` to mean "use the value from the constructor", omit the argument
+    (or pass ``None``) instead:
+
+    .. code:: python
+
+      retriever = SentenceWindowRetriever(document_store=document_store, window_size=3)
+
+      # Before: silently used window_size=3
+      retriever.run(retrieved_documents=docs, window_size=0)
+
+      # After: omit the argument to use the constructor value
+      retriever.run(retrieved_documents=docs)
+fixes:
+  - |
+    ``SentenceWindowRetriever.run`` and ``SentenceWindowRetriever.run_async`` now validate an explicitly
+    provided ``window_size=0`` instead of treating it as unset and falling back to the constructor value.

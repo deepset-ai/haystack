@@ -28,7 +28,9 @@ Usage example:
 from haystack.document_stores.types import DuplicatePolicy
 from haystack import Document
 from haystack import Pipeline
-from haystack.components.embedders import SentenceTransformersTextEmbedder, SentenceTransformersDocumentEmbedder
+# Requires: pip install sentence-transformers-haystack
+from haystack_integrations.components.embedders.sentence_transformers import SentenceTransformersTextEmbedder
+from haystack_integrations.components.embedders.sentence_transformers import SentenceTransformersDocumentEmbedder
 from haystack_integrations.components.retrievers.valkey import ValkeyEmbeddingRetriever
 from haystack_integrations.document_stores.valkey import ValkeyDocumentStore
 
@@ -39,7 +41,6 @@ documents = [Document(content="There are over 7,000 languages spoken around the 
              Document(content="In certain places, you can witness the phenomenon of bioluminescent waves.")]
 
 document_embedder = SentenceTransformersDocumentEmbedder()
-document_embedder.warm_up()
 documents_with_embeddings = document_embedder.run(documents)
 
 document_store.write_documents(documents_with_embeddings.get("documents"), policy=DuplicatePolicy.OVERWRITE)
@@ -107,6 +108,22 @@ Deserializes the component from a dictionary.
 **Returns:**
 
 - <code>ValkeyEmbeddingRetriever</code> – Deserialized component.
+
+#### close
+
+```python
+close() -> None
+```
+
+Release the synchronous resources of the underlying Document Store.
+
+#### close_async
+
+```python
+close_async() -> None
+```
+
+Release the asynchronous resources of the underlying Document Store.
 
 #### run
 
@@ -274,7 +291,7 @@ Creates a new ValkeyDocumentStore instance.
 close() -> None
 ```
 
-Close the synchronous Valkey client connection.
+Release the associated synchronous resources.
 
 #### close_async
 
@@ -282,7 +299,7 @@ Close the synchronous Valkey client connection.
 close_async() -> None
 ```
 
-Close the asynchronous Valkey client connection.
+Release the associated asynchronous resources.
 
 #### to_dict
 

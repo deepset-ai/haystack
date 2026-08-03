@@ -4,7 +4,6 @@
 
 import asyncio
 import contextvars
-import inspect
 import json
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
@@ -13,6 +12,7 @@ from typing import Any
 from haystack import logging, tracing
 from haystack.components.agents.state.state import State
 from haystack.core.component.sockets import Sockets
+from haystack.core.type_utils import _resolve_parameter_types
 from haystack.dataclasses import ChatMessage, ToolCall
 from haystack.dataclasses.streaming_chunk import StreamingCallbackT, StreamingChunk, _invoke_streaming_callback
 from haystack.tools import ComponentTool, Tool, ToolsType, _check_duplicate_tool_names, flatten_tools_or_toolsets
@@ -271,7 +271,7 @@ def _get_func_params(tool: Tool) -> dict[str, Any]:
         return {name: socket.type for name, socket in tool._component.__haystack_input__._sockets_dict.items()}
     # Tool.__post_init__ guarantees that at least one of `function` / `async_function` is set.
     target = tool.function if tool.function is not None else tool.async_function
-    return {name: param.annotation for name, param in inspect.signature(target).parameters.items()}  # type: ignore[arg-type]
+    return _resolve_parameter_types(target)  # type: ignore[arg-type]
 
 
 def _inject_state_args(tool: Tool, llm_args: dict[str, Any], state: State) -> dict[str, Any]:

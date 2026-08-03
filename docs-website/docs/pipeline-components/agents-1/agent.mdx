@@ -88,7 +88,7 @@ def fallback_on_max_steps(state: State) -> None:
 
 `chat_generator` is the only mandatory parameter — an instance of a Chat Generator that supports tools. All other parameters are optional.
 
-- `tools`: A list of tool or toolset instances the agent can call. Supported types: [`Tool`](../../tools/tool.mdx), [`ComponentTool`](../../tools/componenttool.mdx), [`PipelineTool`](../../tools/pipelinetool.mdx), [`MCPTool`](../../tools/mcptool.mdx), [`Toolset`](../../tools/toolset.mdx), [`MCPToolset`](../../tools/mcptoolset.mdx), [`SearchableToolset`](../../tools/searchabletoolset.mdx). Tool names must be unique; duplicate names are detected at the start of each agent step, before the chat generator is called.
+- `tools`: A list of tool or toolset instances the agent can call. Supported types: [`Tool`](../../tools/tool.mdx), [`ComponentTool`](../../tools/componenttool.mdx), [`PipelineTool`](../../tools/pipelinetool.mdx), [`AgentTool`](../../tools/agenttool.mdx), [`MCPTool`](../../tools/mcptool.mdx), [`Toolset`](../../tools/toolset.mdx), [`MCPToolset`](../../tools/mcptoolset.mdx), [`SearchableToolset`](../../tools/searchabletoolset.mdx). Tool names must be unique; duplicate names are detected at the start of each agent step, before the chat generator is called.
 - `system_prompt`: A plain string or Jinja2 template used as the system message for every run. If the template contains Jinja2 variables, those variables become additional inputs to `run()`.
 - `user_prompt`: A Jinja2 template appended to the user-provided messages on each run. Template variables become additional inputs to `run()`. Use `required_variables` to enforce which variables must be provided.
 - `exit_conditions`: List of conditions that cause the agent to stop. Use `”text”` to stop when the LLM replies without a tool call, or a tool name to stop once that tool has been executed. Defaults to `[“text”]`. Exit conditions are evaluated at runtime rather than validated at initialization, so a condition can name a tool that is only loaded later — for example, a tool passed at runtime via `run(tools=...)` or one discovered by a [`SearchableToolset`](../../tools/searchabletoolset.mdx).
@@ -488,7 +488,9 @@ See these cookbooks for complete multimodal agent examples:
 
 You can wrap an `Agent` as a tool to build multi-agent systems where specialist agents handle focused subtasks and a coordinator agent plans and delegates.
 
-See [Multi-Agent Systems](../../concepts/agents/multi-agent-systems.mdx) for a full guide, including the recommended `@tool` decorator approach for full interface control and `ComponentTool` for declarative configuration.
+The simplest way is [`AgentTool`](../../tools/agenttool.mdx), which wraps an `Agent` and delegates a task to it as a single user message, returning only its final reply.
+
+See [Multi-Agent Systems](../../concepts/agents/multi-agent-systems.mdx) for a full guide.
 
 ## MCP Integration
 

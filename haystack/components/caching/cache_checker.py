@@ -121,3 +121,17 @@ class CacheChecker:
             else:
                 misses.append(item)
         return {"hits": found_documents, "misses": misses}
+
+    def close(self) -> None:
+        """
+        Release the synchronous resources of the underlying Document Store.
+        """
+        if hasattr(self.document_store, "close"):
+            self.document_store.close()
+
+    async def close_async(self) -> None:
+        """
+        Release the asynchronous resources of the underlying Document Store.
+        """
+        if hasattr(self.document_store, "close_async"):
+            await self.document_store.close_async()

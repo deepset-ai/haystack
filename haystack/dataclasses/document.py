@@ -94,7 +94,11 @@ class Document(metaclass=_RemoveLegacyFields):  # noqa: PLW1641
         """
         if type(self) != type(other):
             return False
-        return self.to_dict() == other.to_dict()
+        return self.to_dict(flatten=False) == other.to_dict(flatten=False)
+
+    @classmethod
+    def _field_names(cls) -> set[str]:
+        return set(_LEGACY_FIELDS) | {f.name for f in fields(cls)}
 
     def _create_id(self) -> str:
         """
@@ -118,7 +122,8 @@ class Document(metaclass=_RemoveLegacyFields):  # noqa: PLW1641
         `blob` field is converted to a JSON-serializable type.
 
         :param flatten:
-            Whether to flatten `meta` field or not. Defaults to `True` to be backward-compatible with Haystack 1.x.
+            Whether to flatten the `meta` field. Defaults to `True` to be backward-compatible with Haystack 1.x.
+            Meta keys that clash with document field names are kept in a nested `meta` dictionary.
         """
         data = asdict(self)
 
@@ -128,10 +133,21 @@ class Document(metaclass=_RemoveLegacyFields):  # noqa: PLW1641
         if self.sparse_embedding is not None:
             data["sparse_embedding"] = self.sparse_embedding.to_dict()
 
-        if flatten:
-            meta = data.pop("meta")
-            return {**meta, **data}
+        if not flatten:
+            return data
 
+        field_names = self._field_names()
+        flattened_meta: dict[str, Any] = {}
+        colliding_meta: dict[str, Any] = {}
+        for key, value in data.pop("meta").items():
+            if key in field_names:
+                colliding_meta[key] = value  # would clash with a document field: keep it nested
+            else:
+                flattened_meta[key] = value
+
+        data = {**flattened_meta, **data}
+        if colliding_meta:
+            data["meta"] = colliding_meta
         return data
 
     @classmethod
@@ -141,34 +157,24 @@ class Document(metaclass=_RemoveLegacyFields):  # noqa: PLW1641
 
         The `blob` field is converted to its original type.
         """
-        data = data.copy()
-        if blob := data.get("blob"):
-            data["blob"] = ByteStream.from_dict(blob)
-        if sparse_embedding := data.get("sparse_embedding"):
-            data["sparse_embedding"] = SparseEmbedding.from_dict(sparse_embedding)
+        field_names = cls._field_names()
+        field_data: dict[str, Any] = {}
+        flattened_meta: dict[str, Any] = {}
+        for key, value in data.items():
+            if key == "meta":
+                continue  # merged into meta at the end
+            if key in field_names:
+                field_data[key] = value  # legacy fields included: _RemoveLegacyFields drops them before __init__
+            else:
+                flattened_meta[key] = value
 
-        # Store metadata for a moment while we try un-flattening allegedly flatten metadata.
-        # We don't expect both a `meta=` keyword and flatten metadata keys so we'll raise a
-        # ValueError later if this is the case.
-        meta = data.pop("meta", {})
-        # Unflatten metadata if it was flattened. We assume any keyword argument that's not
-        # a document field is a metadata key. We treat legacy fields as document fields, so that
-        # `_RemoveLegacyFields` drops them instead of them ending up in `meta`.
-        flatten_meta = {}
-        document_fields = _LEGACY_FIELDS + [f.name for f in fields(cls)]
-        for key in list(data.keys()):
-            if key not in document_fields:
-                flatten_meta[key] = data.pop(key)
+        if blob := field_data.get("blob"):
+            field_data["blob"] = ByteStream.from_dict(blob)
+        if sparse_embedding := field_data.get("sparse_embedding"):
+            field_data["sparse_embedding"] = SparseEmbedding.from_dict(sparse_embedding)
 
-        # We don't support passing both flatten keys and the `meta` keyword parameter
-        if meta and flatten_meta:
-            raise ValueError(
-                "You can pass either the 'meta' parameter or flattened metadata keys as keyword arguments, "
-                "but currently you're passing both. Pass either the 'meta' parameter or flattened metadata keys."
-            )
-
-        # Finally put back all the metadata
-        return cls(**data, meta={**meta, **flatten_meta})
+        nested_meta = data.get("meta") or {}
+        return cls(**field_data, meta={**nested_meta, **flattened_meta})
 
     @property
     def content_type(self) -> str:
