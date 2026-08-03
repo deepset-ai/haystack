@@ -123,9 +123,9 @@ class SlidingWindowCompactor(Compactor):
     """
     Keeps the Agent's instructions, current task, and as many complete recent steps as the target allows.
 
-    Leading system messages and, by default, the latest user message are protected. Recent history is retained in
-    complete Agent steps, where a step is an assistant message together with all immediately following tool results.
-    An `omission_note` is left in place of what was removed.
+    Leading system messages and the latest user message are protected. Recent history is retained in complete Agent
+    steps, where a step is an assistant message together with all immediately following tool results. An
+    `omission_note` is left in place of what was removed.
 
     ```python
     from haystack.components.agents import Agent

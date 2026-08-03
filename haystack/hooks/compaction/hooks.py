@@ -106,11 +106,10 @@ class ContextCompactionHook:
         """
         messages = state.data.get("messages", [])
         context_tokens = state.data.get("context_tokens", 0)
-        target_tokens = self._target_tokens(
-            messages=messages, context_tokens=context_tokens, tools=state.data.get("tools")
-        )
-        if target_tokens is None:
+        target = self._target_tokens(messages=messages, context_tokens=context_tokens, tools=state.data.get("tools"))
+        if target is None:
             return
+        target_tokens, estimated_overhead = target
         compacted = self.compactor.compact(
             messages=messages, target_tokens=target_tokens, token_counter=self.token_counter
         )
@@ -120,6 +119,7 @@ class ContextCompactionHook:
             before=len(messages),
             target_tokens=target_tokens,
             original_context_tokens=context_tokens,
+            estimated_overhead=estimated_overhead,
         )
 
     async def run_async(self, state: State) -> None:
@@ -132,11 +132,10 @@ class ContextCompactionHook:
         """
         messages = state.data.get("messages", [])
         context_tokens = state.data.get("context_tokens", 0)
-        target_tokens = self._target_tokens(
-            messages=messages, context_tokens=context_tokens, tools=state.data.get("tools")
-        )
-        if target_tokens is None:
+        target = self._target_tokens(messages=messages, context_tokens=context_tokens, tools=state.data.get("tools"))
+        if target is None:
             return
+        target_tokens, estimated_overhead = target
         compacted = await self.compactor.compact_async(
             messages=messages, target_tokens=target_tokens, token_counter=self.token_counter
         )
@@ -146,11 +145,12 @@ class ContextCompactionHook:
             before=len(messages),
             target_tokens=target_tokens,
             original_context_tokens=context_tokens,
+            estimated_overhead=estimated_overhead,
         )
 
     def _target_tokens(
         self, messages: list[ChatMessage], context_tokens: int, tools: ToolsType | None = None
-    ) -> int | None:
+    ) -> tuple[int, int] | None:
         """
         The size a compactor should bring `messages` down to.
 
@@ -158,8 +158,8 @@ class ContextCompactionHook:
         :param context_tokens: The `context_tokens` state key. It is the current token count of the conversation except
             for the most recent tool result messages.
         :param tools: Tools whose schemas are sent alongside the messages.
-        :returns: The target token amount the messages should be compacted to, or None when the conversation is not
-            yet large enough to compact.
+        :returns: The target token amount the messages should be compacted to and the estimated non-message overhead,
+            or None when the conversation is not yet large enough to compact.
         """
         estimated = _estimated_context_tokens(
             messages=messages, context_tokens=context_tokens, token_counter=self.token_counter, tools=tools
@@ -178,8 +178,9 @@ class ContextCompactionHook:
                 message_tokens=message_tokens,
                 estimated=estimated,
             )
-        # Returns the target token amount the messages should be compacted to
-        return max(int(self.context_window * self.compact_to) - overhead, 0)
+        # Return the target token amount the messages should be compacted to and the overhead needed to re-estimate the
+        # context size after compaction.
+        return max(int(self.context_window * self.compact_to) - overhead, 0), overhead
 
     def _apply(
         self,
@@ -188,6 +189,7 @@ class ContextCompactionHook:
         before: int,
         target_tokens: int,
         original_context_tokens: int,
+        estimated_overhead: int,
     ) -> None:
         """
         Write a compacted conversation back into `State`, or do nothing if the compactor declined.
@@ -197,17 +199,19 @@ class ContextCompactionHook:
         :param before: How many messages the conversation held before compaction, for the log line.
         :param target_tokens: The target the compactor was given, for the log line.
         :param original_context_tokens: The provider-reported context count before compaction, or 0 when unavailable.
+        :param estimated_overhead: The estimated non-message overhead to include in the updated context count.
         """
         if compacted is None:
             return
         state.set("messages", compacted, handler_override=replace_values)
         # If the original value was 0, leave it unchanged so later steps keep recounting the full request locally.
         if original_context_tokens != 0:
-            # Re-estimate the size of context window minus the trailing tool result messages. If we added the estimated
-            # size of the tool result messages, a second registered hook could double count them.
+            # Re-estimate the provider-accounted context through the last assistant message, including overhead. If we
+            # added the trailing tool results, a second registered hook could double count them.
             state.set(
                 "context_tokens",
-                self.token_counter.count(messages=compacted[: _last_assistant_index(messages=compacted) + 1]),
+                self.token_counter.count(messages=compacted[: _last_assistant_index(messages=compacted) + 1])
+                + estimated_overhead,
             )
         logger.debug(
             "Compacted the Agent's conversation at step {step} from {before} to {after} messages, targeting {target} "

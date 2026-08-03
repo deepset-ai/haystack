@@ -11,6 +11,7 @@ from haystack.components.agents import Agent
 from haystack.components.generators.chat import MockChatGenerator
 from haystack.dataclasses import ChatMessage
 from haystack.hooks.compaction import Compactor, ContextCompactionHook, SlidingWindowCompactor
+from haystack.hooks.compaction.utils import _estimated_context_tokens, _last_assistant_index
 from haystack.token_counters import TokenCounter
 from haystack.tools import tool
 from haystack.utils.experimental import ExperimentalWarning
@@ -203,18 +204,27 @@ class TestContextCompactionHook:
         assert "TokenCounter estimated more tokens for the messages" in caplog.text
 
     def test_rewrites_messages_and_re_estimates_context_tokens(self):
-        hook = _hook()
+        counter = FakeCounter()
+        hook = _hook(token_counter=counter)
+        messages = long_conversation()
+        original_context_tokens = 800
+        estimated = _estimated_context_tokens(
+            messages=messages, context_tokens=original_context_tokens, token_counter=counter
+        )
+        estimated_overhead = estimated - counter.count(messages=messages)
         state = make_state(
-            messages=long_conversation(),
-            context_tokens=800,
+            messages=messages,
+            context_tokens=original_context_tokens,
             token_usage={"prompt_tokens": 12},
             tool_call_counts={"fetch": 2},
         )
         hook.run(state=state)
         assert len(state.data["messages"]) == 5
         assert count_markers(state.data["messages"]) == 1
-        # Re-estimated rather than reset to 0, which would claim the context is empty.
-        assert 0 < state.data["context_tokens"] < 800
+        last_assistant = _last_assistant_index(messages=state.data["messages"])
+        expected = counter.count(messages=state.data["messages"][: last_assistant + 1]) + estimated_overhead
+        assert state.data["context_tokens"] == expected
+        assert 0 < state.data["context_tokens"] < original_context_tokens
         # Cumulative run metadata records what the run spent and did, which compaction does not change.
         assert state.data["token_usage"] == {"prompt_tokens": 12}
         assert state.data["tool_call_counts"] == {"fetch": 2}
