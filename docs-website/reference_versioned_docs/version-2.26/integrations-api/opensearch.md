@@ -1888,19 +1888,22 @@ Asynchronously returns the minimum and maximum values for the given metadata fie
 get_metadata_field_unique_values(
     metadata_field: str,
     search_term: str | None = None,
-    size: int | None = 10000,
+    size: int | None = 10,
     after: dict[str, Any] | None = None,
 ) -> tuple[list[str], dict[str, Any] | None]
 ```
 
-Returns unique values for a metadata field, optionally filtered by a search term in the content.
+Returns unique values for a metadata field, optionally filtered by a search term.
 
 Uses composite aggregations for proper pagination beyond 10k results.
 
 **Parameters:**
 
 - **metadata_field** (<code>str</code>) – The metadata field to get unique values for.
-- **search_term** (<code>str | None</code>) – Optional search term to filter documents by matching in the content field.
+- **search_term** (<code>str | None</code>) – Optional term to filter the returned values by, matching as a case-insensitive substring
+  of the metadata field's own value (not the document content). NOTE: The matching is done with a server-side
+  script to accomplish the substring matching on the value of the field and this operation is quite expensive
+  for a large corpus.
 - **size** (<code>int | None</code>) – The number of unique values to return per page. Defaults to 10000.
 - **after** (<code>dict\[str, Any\] | None</code>) – Optional pagination key from the previous response. Use None for the first page.
   For subsequent pages, pass the `after_key` from the previous response.
@@ -1922,14 +1925,17 @@ get_metadata_field_unique_values_async(
 ) -> tuple[list[str], dict[str, Any] | None]
 ```
 
-Asynchronously returns unique values for a metadata field, optionally filtered by a search term in the content.
+Asynchronously returns unique values for a metadata field, optionally filtered by a search term.
 
 Uses composite aggregations for proper pagination beyond 10k results.
 
 **Parameters:**
 
 - **metadata_field** (<code>str</code>) – The metadata field to get unique values for.
-- **search_term** (<code>str | None</code>) – Optional search term to filter documents by matching in the content field.
+- **search_term** (<code>str | None</code>) – Optional term to filter the returned values by, matching as a case-insensitive substring
+  of the metadata field's own value (not the document content). NOTE: The matching is done with a server-side
+  script to accomplish the substring matching on the value of the field and this operation is quite expensive
+  for a large corpus.
 - **size** (<code>int | None</code>) – The number of unique values to return per page. Defaults to 10000.
 - **after** (<code>dict\[str, Any\] | None</code>) – Optional pagination key from the previous response. Use None for the first page.
   For subsequent pages, pass the `after_key` from the previous response.
