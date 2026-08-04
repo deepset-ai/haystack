@@ -229,6 +229,12 @@ class TestToolsetWrapperToolSelection:
         assert [tool.name for tool in wrapper] == ["add", "subtract"]
         assert len(wrapper) == 2
 
+    def test_filter_restricts_getitem(self, add_tool, multiply_tool, subtract_tool):
+        wrapper = Toolset([add_tool, multiply_tool]) + Toolset([subtract_tool])
+        wrapper._selected_tool_names = {"add", "subtract"}
+        assert wrapper[0].name == "add"
+        assert wrapper[-1].name == "subtract"
+
     def test_spawn_isolates_own_and_child_state(self, add_tool, multiply_tool):
         ts1 = Toolset([add_tool])
         ts2 = Toolset([multiply_tool])
