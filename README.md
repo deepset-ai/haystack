@@ -168,7 +168,7 @@
 | haystack/document\_stores/errors/\_\_init\_\_.py                          |        2 |        0 |    100% |           |
 | haystack/document\_stores/errors/errors.py                                |        6 |        0 |    100% |           |
 | haystack/document\_stores/in\_memory/\_\_init\_\_.py                      |        5 |        0 |    100% |           |
-| haystack/document\_stores/in\_memory/document\_store.py                   |      424 |       16 |     96% |411-412, 421, 521, 584, 623, 625, 652-653, 668, 692, 828, 830, 848, 853-854 |
+| haystack/document\_stores/in\_memory/document\_store.py                   |      430 |       15 |     97% |411-412, 421, 521, 584, 623, 625, 652-653, 701, 837, 839, 857, 862-863 |
 | haystack/document\_stores/types/\_\_init\_\_.py                           |        4 |        0 |    100% |           |
 | haystack/document\_stores/types/filter\_policy.py                         |       65 |       11 |     83% |25, 38-39, 166, 174-181, 224-229, 233-239 |
 | haystack/document\_stores/types/policy.py                                 |        6 |        0 |    100% |           |
@@ -260,7 +260,7 @@
 | haystack/utils/type\_serialization.py                                     |      135 |        6 |     96% |97, 99, 243-244, 252, 268 |
 | haystack/utils/url\_validation.py                                         |        4 |        0 |    100% |           |
 | haystack/version.py                                                       |        5 |        2 |     60% |      9-10 |
-| **TOTAL**                                                                 | **16384** |  **792** | **95%** |           |
+| **TOTAL**                                                                 | **16390** |  **791** | **95%** |           |
 
 
 ## Setup coverage badge
