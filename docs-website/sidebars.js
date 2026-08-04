@@ -163,6 +163,18 @@ export default {
                 id: 'pipeline-components/agents-1/hooks',
               },
               items: [
+                {
+                  type: 'category',
+                  label: 'Context Compaction',
+                  link: {
+                    type: 'doc',
+                    id: 'pipeline-components/agents-1/compaction',
+                  },
+                  items: [
+                    'pipeline-components/agents-1/compaction/context-compaction-hook',
+                    'pipeline-components/agents-1/compaction/sliding-window-compactor',
+                  ],
+                },
                 'pipeline-components/agents-1/human-in-the-loop',
                 'pipeline-components/agents-1/tool-result-offloading',
               ],
@@ -755,6 +767,7 @@ export default {
       items: [
         'token-counters/approximatetokencounter',
         'token-counters/tiktokencounter',
+        'token-counters/openaitokencounter',
       ],
     },
     {
