@@ -13,7 +13,7 @@ from networkx import MultiDiGraph
 
 from haystack import logging
 from haystack.core.errors import PipelineInvalidPipelineSnapshotError
-from haystack.dataclasses.breakpoints import Breakpoint, PipelineSnapshot, PipelineState
+from haystack.dataclasses.breakpoints import INTERNAL_INPUTS_FORMAT, Breakpoint, PipelineSnapshot, PipelineState
 from haystack.utils.base_serialization import _serialize_with_field_fallback
 
 logger = logging.getLogger(__name__)
@@ -226,7 +226,8 @@ def _create_pipeline_snapshot(
     Create a snapshot of the pipeline at the point where the breakpoint was triggered.
 
     :param inputs: The current pipeline snapshot inputs.
-    :param component_inputs: The inputs to the component that triggered the breakpoint.
+    :param component_inputs: The inputs of the component that triggered the breakpoint, as they were before the
+        component consumed them.
     :param break_point: The breakpoint that triggered the snapshot.
     :param component_visits: The visit count of the component that triggered the breakpoint.
     :param original_input_data: The original input data.
@@ -239,10 +240,9 @@ def _create_pipeline_snapshot(
     component_name = break_point.component_name
 
     transformed_original_input_data = _transform_json_structure(original_input_data)
-    transformed_inputs = _transform_json_structure({**inputs, component_name: component_inputs})
 
     serialized_inputs = _serialize_with_field_fallback(
-        transformed_inputs, description="the inputs of the current pipeline state"
+        {**inputs, component_name: component_inputs}, description="the inputs of the current pipeline state"
     )
     serialized_original_input_data = _serialize_with_field_fallback(
         transformed_original_input_data, description="original input data for `pipeline.run`"
@@ -253,7 +253,10 @@ def _create_pipeline_snapshot(
 
     return PipelineSnapshot(
         pipeline_state=PipelineState(
-            inputs=serialized_inputs, component_visits=component_visits, pipeline_outputs=serialized_pipeline_outputs
+            inputs=serialized_inputs,
+            component_visits=component_visits,
+            pipeline_outputs=serialized_pipeline_outputs,
+            inputs_format=INTERNAL_INPUTS_FORMAT,
         ),
         timestamp=datetime.now(),
         break_point=break_point,

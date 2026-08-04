@@ -21,7 +21,8 @@ from haystack.core.errors import (
     PipelineRuntimeError,
 )
 from haystack.core.pipeline import Pipeline
-from haystack.core.pipeline.base import _NO_OUTPUT_PRODUCED, ComponentPriority, PipelineBase
+from haystack.core.pipeline.base import ComponentPriority, PipelineBase
+from haystack.core.pipeline.component_checks import _NoOutputProduced
 from haystack.core.pipeline.utils import FIFOPriorityQueue
 from haystack.core.serialization import DeserializationCallbacks
 from haystack.core.type_utils import ConversionStrategy
@@ -410,6 +411,55 @@ class TestPipelineBase:
         assert component_2.__haystack_output__._sockets_dict == {
             "out": OutputSocket(name="out", type=int, receivers=["component_5"])
         }
+
+    def test_remove_component_resets_auto_variadic_socket_mutation(self):
+        pipe = PipelineBase()
+        producer_a_class = component_class("ProducerA", output_types={"value": list[int]})
+        producer_b_class = component_class("ProducerB", output_types={"value": list[int]})
+        consumer_class = component_class("Consumer", input_types={"values": list[int]})
+
+        consumer = consumer_class()
+        pipe.add_component("producer_a", producer_a_class())
+        pipe.add_component("producer_b", producer_b_class())
+        pipe.add_component("consumer", consumer)
+
+        pipe.connect("producer_a.value", "consumer.values")
+        pipe.connect("producer_b.value", "consumer.values")
+
+        consumer_socket = consumer.__haystack_input__._sockets_dict["values"]  # type: ignore[attr-defined]
+        assert consumer_socket.is_lazy_variadic is True
+        assert consumer_socket.wrap_input_in_list is False
+
+        pipe.remove_component("consumer")
+
+        assert consumer_socket.is_lazy_variadic is False
+        assert consumer_socket.wrap_input_in_list is True
+        assert consumer_socket.senders == []
+
+        pipe2 = PipelineBase()
+        pipe2.add_component("producer_a", producer_a_class())
+        pipe2.add_component("consumer", consumer)
+        pipe2.connect("producer_a.value", "consumer.values")
+
+        assert consumer_socket.is_lazy_variadic is False
+        assert consumer_socket.wrap_input_in_list is True
+
+    @pytest.mark.parametrize("input_type", [Variadic[int], GreedyVariadic[int]])
+    def test_remove_component_preserves_declared_variadic_socket(self, input_type):
+        pipe = PipelineBase()
+        consumer_class = component_class("Consumer", input_types={"values": input_type})
+        consumer = consumer_class()
+        pipe.add_component("consumer", consumer)
+
+        consumer_socket = consumer.__haystack_input__._sockets_dict["values"]  # type: ignore[attr-defined]
+        expected_lazy_variadic = consumer_socket.is_lazy_variadic
+        expected_greedy = consumer_socket.is_greedy
+
+        pipe.remove_component("consumer")
+
+        assert consumer_socket.is_lazy_variadic is expected_lazy_variadic
+        assert consumer_socket.is_greedy is expected_greedy
+        assert consumer_socket.wrap_input_in_list is True
 
     def test_get_component_name(self):
         pipe = PipelineBase()
@@ -887,7 +937,7 @@ class TestPipelineBase:
                 {
                     "variadic_input": [
                         {"sender": "component1", "value": "test"},
-                        {"sender": "component2", "value": _NO_OUTPUT_PRODUCED},
+                        {"sender": "component2", "value": _NoOutputProduced()},
                     ],
                     "normal_input": [{"sender": "component3", "value": "test"}],
                 },
@@ -1050,7 +1100,7 @@ class TestPipelineBase:
 
     @pytest.mark.parametrize(
         "output_value",
-        [42, None, _NO_OUTPUT_PRODUCED, "string_value", 3.14],
+        [42, None, _NoOutputProduced(), "string_value", 3.14],
         ids=["int", "none", "no-output", "string", "float"],
     )
     def test__write_component_outputs_different_output_values(
@@ -1071,9 +1121,9 @@ class TestPipelineBase:
         assert inputs["receiver1"]["input1"] == [{"sender": "sender1", "value": output_value}]
 
     def test__write_component_outputs_dont_overwrite_with_no_output(self, regular_output_socket, regular_input_socket):
-        """Test that existing inputs are not overwritten with _NO_OUTPUT_PRODUCED"""
+        """Test that existing inputs are not overwritten with _NoOutputProduced()"""
         receivers = [("receiver1", regular_output_socket, regular_input_socket, None)]
-        component_outputs = {"output1": _NO_OUTPUT_PRODUCED}
+        component_outputs = {"output1": _NoOutputProduced()}
         inputs = {"receiver1": {"input1": [{"sender": "sender1", "value": "keep"}]}}
         PipelineBase()._write_component_outputs(
             component_name="sender1",
@@ -1328,17 +1378,17 @@ class TestPipelineBase:
                 {"regular": 42, "greedy": [33], "lazy": [55, 66]},
                 {"regular": [{"sender": None, "value": 24}]},  # Only non-greedy user input remains
             ),
-            # Filtering _NO_OUTPUT_PRODUCED
+            # Filtering _NoOutputProduced()
             (
                 {"input1": InputSocket("input1", int)},
                 {
                     "input1": [
-                        {"sender": "comp1", "value": _NO_OUTPUT_PRODUCED},
+                        {"sender": "comp1", "value": _NoOutputProduced()},
                         {"sender": "comp2", "value": 42},
-                        {"sender": "comp2", "value": _NO_OUTPUT_PRODUCED},
+                        {"sender": "comp2", "value": _NoOutputProduced()},
                     ]
                 },
-                {"input1": 42},  # Should skip _NO_OUTPUT_PRODUCED values
+                {"input1": 42},  # Should skip _NoOutputProduced() values
                 {},  # All inputs consumed
             ),
         ],

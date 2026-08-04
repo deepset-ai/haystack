@@ -98,7 +98,6 @@ export default {
         'concepts/secret-management',
         'concepts/jinja-templates',
         'concepts/integrations',
-        'concepts/experimental-package',
       ],
     },
     {
@@ -164,6 +163,18 @@ export default {
                 id: 'pipeline-components/agents-1/hooks',
               },
               items: [
+                {
+                  type: 'category',
+                  label: 'Context Compaction',
+                  link: {
+                    type: 'doc',
+                    id: 'pipeline-components/agents-1/compaction',
+                  },
+                  items: [
+                    'pipeline-components/agents-1/compaction/context-compaction-hook',
+                    'pipeline-components/agents-1/compaction/sliding-window-compactor',
+                  ],
+                },
                 'pipeline-components/agents-1/human-in-the-loop',
                 'pipeline-components/agents-1/tool-result-offloading',
               ],
@@ -416,6 +427,7 @@ export default {
             'pipeline-components/fetchers/googledrivefetcher',
             'pipeline-components/fetchers/linkcontentfetcher',
             'pipeline-components/fetchers/mssharepointfetcher',
+            'pipeline-components/fetchers/tavilyfetcher',
             'pipeline-components/fetchers/external-integrations-fetchers',
           ],
         },
@@ -628,6 +640,7 @@ export default {
             'pipeline-components/retrievers/qdrantsparseembeddingretriever',
             'pipeline-components/retrievers/sentencewindowretriever',
             'pipeline-components/retrievers/snowflaketableretriever',
+            'pipeline-components/retrievers/sqlalchemytableretriever',
             'pipeline-components/retrievers/supabasegroongabm25retriever',
             'pipeline-components/retrievers/supabasepgvectorembeddingretriever',
             'pipeline-components/retrievers/supabasepgvectorkeywordretriever',
@@ -689,7 +702,9 @@ export default {
           },
           items: [
             'pipeline-components/websearch/bravewebsearch',
+            'pipeline-components/websearch/ddgswebsearch',
             'pipeline-components/websearch/firecrawlwebsearch',
+            'pipeline-components/websearch/linkupwebsearch',
             'pipeline-components/websearch/perplexitywebsearch',
             'pipeline-components/websearch/searchapiwebsearch',
             'pipeline-components/websearch/serperdevwebsearch',
@@ -713,6 +728,7 @@ export default {
       label: 'Tools',
       items: [
         'tools/tool',
+        'tools/agenttool',
         'tools/componenttool',
         'tools/pipelinetool',
         'tools/toolset',
@@ -739,6 +755,18 @@ export default {
             'tools/ready-made-tools/tavilywebsearchtool',
           ],
         },
+      ],
+    },
+    {
+      type: 'category',
+      label: 'Token Counters',
+      link: {
+        type: 'doc',
+        id: 'token-counters'
+      },
+      items: [
+        'token-counters/approximatetokencounter',
+        'token-counters/tiktokencounter',
       ],
     },
     {

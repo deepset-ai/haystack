@@ -71,6 +71,7 @@ __init__(
     local_files_only: bool = False,
     meta_fields_to_embed: list[str] | None = None,
     embedding_separator: str = "\n",
+    model_kwargs: dict[str, Any] | None = None,
 ) -> None
 ```
 
@@ -94,6 +95,8 @@ Create an FastembedDocumentEmbedder component.
 - **local_files_only** (<code>bool</code>) – If `True`, only use the model files in the `cache_dir`.
 - **meta_fields_to_embed** (<code>list\[str\] | None</code>) – List of meta fields that should be embedded along with the Document content.
 - **embedding_separator** (<code>str</code>) – Separator used to concatenate the meta fields to the Document content.
+- **model_kwargs** (<code>dict\[str, Any\] | None</code>) – Dictionary containing additional keyword arguments to pass to the Fastembed model,
+  such as `providers` (e.g. `["CUDAExecutionProvider"]` to run on GPU), `cuda`, or `device_ids`.
 
 #### to_dict
 
@@ -198,7 +201,7 @@ __init__(
 ) -> None
 ```
 
-Create an FastembedDocumentEmbedder component.
+Create a FastembedSparseDocumentEmbedder component.
 
 **Parameters:**
 
@@ -346,7 +349,7 @@ Embeds text using the Fastembed model.
 **Returns:**
 
 - <code>dict\[str, SparseEmbedding\]</code> – A dictionary with the following keys:
-- `embedding`: A list of floats representing the embedding of the input text.
+- `sparse_embedding`: The `SparseEmbedding` of the input text.
 
 **Raises:**
 
@@ -385,6 +388,7 @@ __init__(
     progress_bar: bool = True,
     parallel: int | None = None,
     local_files_only: bool = False,
+    model_kwargs: dict[str, Any] | None = None,
 ) -> None
 ```
 
@@ -404,6 +408,8 @@ Create a FastembedTextEmbedder component.
   If 0, use all available cores.
   If None, don't use data-parallel processing, use default onnxruntime threading instead.
 - **local_files_only** (<code>bool</code>) – If `True`, only use the model files in the `cache_dir`.
+- **model_kwargs** (<code>dict\[str, Any\] | None</code>) – Dictionary containing additional keyword arguments to pass to the Fastembed model,
+  such as `providers` (e.g. `["CUDAExecutionProvider"]` to run on GPU), `cuda`, or `device_ids`.
 
 #### to_dict
 

@@ -1,0 +1,46 @@
+---
+upgrade:
+  - |
+    ``PipelineSnapshot.pipeline_state.inputs`` changed shape. It used to store one flattened value per socket,
+    ``{component: {socket: value}}``. It now stores the pipeline's internal inputs, keeping the component that sent
+    each one in the order it arrived:
+    ``{component: {socket: [{"sender": ..., "value": ...}]}}``. ``PipelineState`` gained an ``inputs_format`` field
+    recording which of the two shapes a snapshot uses. The same applies to ``BreakpointException.inputs``, which
+    returns that field.
+
+    You are affected if you read ``pipeline_state.inputs`` (or ``BreakpointException.inputs``) directly, for example
+    to display or post-process a snapshot. Resuming a pipeline with ``Pipeline.run(pipeline_snapshot=...)`` is not
+    affected, and neither is code that only passes snapshots around or persists them.
+
+    To adapt, read the input from the list and take its ``value``:
+
+    .. code-block:: python
+
+        inputs = snapshot.pipeline_state.inputs["serialized_data"]
+
+        # before
+        value = inputs["my_component"]["my_socket"]
+
+        # now
+        value = inputs["my_component"]["my_socket"][0]["value"]
+
+    A socket that received inputs from several senders has one list item per input, each recording the ``sender``
+    that produced it.
+
+    Snapshots written by earlier versions of Haystack have ``inputs_format`` set to ``None`` and keep the flattened
+    shape, so branch on that field if you need to handle both.
+fixes:
+  - |
+    Fixed resuming a ``Pipeline`` from a ``pipeline_snapshot`` that was taken on a component's second or later visit,
+    which failed with ``PipelineComponentsBlockedError: Cannot run pipeline - all components are blocked``. A snapshot
+    stored only the values of the pipeline's inputs and dropped the information about which component had sent each
+    one, so on resume every restored input looked like it came from outside the pipeline, and such an input can only
+    trigger a component on its first visit. Snapshots now record the sender of each input. Snapshots created by
+    earlier versions of Haystack behave as before, so re-create them to resume anywhere in a looping pipeline.
+  - |
+    Fixed a resumed ``Pipeline`` passing malformed inputs to the component the snapshot was taken on, whenever that
+    component ran more than once after the resume, for example inside a loop. Every visit after the first reused the
+    handling meant only for the paused visit and skipped the regular input consumption, so a variadic component could
+    receive a bare value where it expected a list, raising errors such as
+    ``TypeError: object of type 'int' has no len()`` from a ``BranchJoiner``. This affected snapshots taken at any
+    visit count, including the first.

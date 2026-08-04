@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from typing import Any
+from unittest.mock import AsyncMock, Mock
 
 import pytest
 
@@ -94,3 +95,16 @@ class TestFilterRetrieverAsync:
         results_docs = result["retriever"]["documents"]
         assert results_docs
         assert TestFilterRetrieverAsync._documents_equal(results_docs, sample_docs["en_docs"])
+
+    @pytest.mark.asyncio
+    async def test_close_async(self):
+        closable_document_store = Mock(spec=["close_async"])
+        closable_document_store.close_async = AsyncMock()
+        retriever = FilterRetriever(document_store=closable_document_store)
+        await retriever.close_async()
+        closable_document_store.close_async.assert_awaited_once_with()
+
+        nonclosable_document_store = Mock(spec=[])
+        retriever = FilterRetriever(document_store=nonclosable_document_store)
+        await retriever.close_async()
+        assert nonclosable_document_store.mock_calls == []

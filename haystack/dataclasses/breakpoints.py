@@ -8,6 +8,10 @@ from typing import Any
 
 from haystack.utils.dataclasses import _warn_on_inplace_mutation
 
+# Value of `PipelineState.inputs_format` used by every snapshot Haystack creates now. See that field for the shape
+# each format implies.
+INTERNAL_INPUTS_FORMAT = "internal"
+
 
 @dataclass(frozen=True)
 class Breakpoint:
@@ -53,11 +57,16 @@ class PipelineState:
     :param component_visits: A dictionary mapping component names to their visit counts.
     :param inputs: The inputs processed by the pipeline at the time of the snapshot.
     :param pipeline_outputs: Dictionary containing the final outputs of the pipeline up to the breakpoint.
+    :param inputs_format: Which format `inputs` are stored in. `"internal"` means each input records the component
+        that sent it, in the order it arrived, as in `{component: {socket: [{"sender": ..., "value": ...}]}}`.
+        `None` marks snapshots taken before Haystack recorded the sender, which hold one flattened value per socket,
+        `{component: {socket: value}}`, and can only be resumed on a component's first visit.
     """
 
     inputs: dict[str, Any]
     component_visits: dict[str, int]
     pipeline_outputs: dict[str, Any]
+    inputs_format: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         """
