@@ -82,6 +82,103 @@ Serialize the counter.
 
 - <code>dict\[str, Any\]</code> – A dictionary representation of the counter.
 
+## openai_counter
+
+### OpenAITokenCounter
+
+Bases: <code>TokenCounter</code>
+
+Counts tokens with OpenAI's input token counting API.
+
+Unlike local token counters, this counter sends the input to OpenAI's
+`POST /v1/responses/input_tokens` endpoint. The returned count includes the model-specific formatting used for
+messages and tool schemas, as well as supported non-text content such as images and files.
+
+## Usage Example:
+
+```python
+from haystack.dataclasses import ChatMessage
+from haystack.token_counters import OpenAITokenCounter
+
+counter = OpenAITokenCounter("gpt-5-mini")
+messages = [ChatMessage.from_user("Hello, how are you?")]
+token_count = counter.count(messages)
+print(f"Token count: {token_count}")
+```
+
+#### __init__
+
+```python
+__init__(
+    model: str,
+    *,
+    api_key: Secret = Secret.from_env_var("OPENAI_API_KEY"),
+    api_base_url: str | None = None,
+    organization: str | None = None,
+    timeout: float | None = None,
+    max_retries: int | None = None,
+    http_client_kwargs: dict[str, Any] | None = None
+) -> None
+```
+
+Initialize the counter.
+
+**Parameters:**
+
+- **model** (<code>str</code>) – The model whose tokenization should be used.
+- **api_key** (<code>Secret</code>) – The OpenAI API key. You can set it with the `OPENAI_API_KEY` environment variable or pass it
+  explicitly.
+- **api_base_url** (<code>str | None</code>) – An optional base URL for the OpenAI API.
+- **organization** (<code>str | None</code>) – Your OpenAI organization ID.
+- **timeout** (<code>float | None</code>) – Timeout for OpenAI client calls. If unset, uses `OPENAI_TIMEOUT` or 30 seconds.
+- **max_retries** (<code>int | None</code>) – Maximum retries for OpenAI client calls. If unset, uses `OPENAI_MAX_RETRIES` or 5.
+- **http_client_kwargs** (<code>dict\[str, Any\] | None</code>) – Keyword arguments used to configure the underlying HTTPX client.
+
+#### warm_up
+
+```python
+warm_up() -> None
+```
+
+Initialize the OpenAI client.
+
+#### count
+
+```python
+count(messages: list[ChatMessage], tools: ToolsType | None = None) -> int
+```
+
+Return the exact number of input tokens OpenAI will use for the given messages and tools.
+
+**Parameters:**
+
+- **messages** (<code>list\[ChatMessage\]</code>) – The messages to measure.
+- **tools** (<code>ToolsType | None</code>) – Tools whose schemas are sent alongside the messages, and so consume tokens too.
+
+**Returns:**
+
+- <code>int</code> – The token count, or `0` when there is nothing to measure.
+
+#### close
+
+```python
+close() -> None
+```
+
+Close the OpenAI client and its underlying HTTP resources.
+
+#### to_dict
+
+```python
+to_dict() -> dict[str, Any]
+```
+
+Serialize the counter.
+
+**Returns:**
+
+- <code>dict\[str, Any\]</code> – A dictionary representation of the counter.
+
 ## tiktoken_counter
 
 ### TiktokenCounter
