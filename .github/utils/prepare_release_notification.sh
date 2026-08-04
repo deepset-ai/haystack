@@ -65,10 +65,10 @@ if [[ "${IS_RC:-}" == "true" ]]; then
   PLATFORM_PRS=""
   platform_line() {
     local result="$1" url="$2" label="$3"
-    if [[ "${result}" == "failure" ]]; then
-      PLATFORM_PRS+=$'\n'"- ${label}: :warning: bump failed, see <${RUN_URL}|workflow logs>"
-    elif [[ -n "${url}" ]]; then
+    if [[ -n "${url}" ]]; then
       PLATFORM_PRS+=$'\n'"- <${url}|${label}>"
+    elif [[ "${result}" != "success" ]]; then
+      PLATFORM_PRS+=$'\n'"- ${label}: :warning: PR not found, something might have failed, see <${RUN_URL}|workflow logs>"
     fi
   }
   platform_line "${DC_PIPELINE_TEMPLATES_RESULT:-}" "${DC_PIPELINE_TEMPLATES_PR_URL:-}" "dc-pipeline-templates"

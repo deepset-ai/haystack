@@ -144,76 +144,53 @@ jobs:
             echo "docker_url=https://hub.docker.com/r/deepset/haystack/tags?name=base-v${{ env.VERSION }}"
           } >> "$GITHUB_OUTPUT"
 
-  # The three bump jobs dispatch a workflow owned by each platform repo, which
-  # updates its own Haystack pin and opens a PR (branch "bump/hs<version>").
-  bump-dc-pipeline-templates:
+  bump-platform-repos:
     needs: ["parse-validate-version", "check-artifacts"]
     if: always() && needs.check-artifacts.result == 'success' && needs.parse-validate-version.outputs.is_rc == 'true'
     runs-on: ubuntu-slim
     outputs:
-      pr_url: ${{ steps.trigger.outputs.pr_url }}
+      dc_pipeline_templates_pr_url: ${{ steps.dc-pipeline-templates.outputs.pr_url }}
+      dc_pipeline_templates_result: ${{ steps.dc-pipeline-templates.outcome }}
+      dc_custom_nodes_pr_url: ${{ steps.deepset-cloud-custom-nodes.outputs.pr_url }}
+      dc_custom_nodes_result: ${{ steps.deepset-cloud-custom-nodes.outcome }}
+      haystack_runtime_pr_url: ${{ steps.haystack-runtime.outputs.pr_url }}
+      haystack_runtime_result: ${{ steps.haystack-runtime.outcome }}
     env:
+      GH_TOKEN: ${{ secrets.HAYSTACK_BOT_TOKEN }}
       VERSION: ${{ needs.parse-validate-version.outputs.version }}
     steps:
       - name: Checkout haystack (for utils)
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          sparse-checkout: .github/utils/trigger_platform_update.sh
+          sparse-checkout: .github/utils/wait_for_platform_pr.sh
           sparse-checkout-cone-mode: false
 
-      - name: Trigger update workflow and wait for PR
-        id: trigger
-        env:
-          GH_TOKEN: ${{ secrets.HAYSTACK_BOT_TOKEN }}
+      - name: Trigger platform update workflows
         run: |
-          .github/utils/trigger_platform_update.sh \
-            deepset-ai/dc-pipeline-templates update-haystack-version.yaml "$VERSION"
+          gh workflow run update-haystack-version.yaml -R deepset-ai/dc-pipeline-templates -f haystack_version="$VERSION"
+          gh workflow run update-haystack-version.yaml -R deepset-ai/deepset-cloud-custom-nodes -f haystack_version="$VERSION"
+          gh workflow run update-package-version.yaml -R deepset-ai/haystack-runtime -f haystack_version="$VERSION"
 
-  bump-deepset-cloud-custom-nodes:
-    needs: ["parse-validate-version", "check-artifacts"]
-    if: always() && needs.check-artifacts.result == 'success' && needs.parse-validate-version.outputs.is_rc == 'true'
-    runs-on: ubuntu-slim
-    outputs:
-      pr_url: ${{ steps.trigger.outputs.pr_url }}
-    env:
-      VERSION: ${{ needs.parse-validate-version.outputs.version }}
-    steps:
-      - name: Checkout haystack (for utils)
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          sparse-checkout: .github/utils/trigger_platform_update.sh
-          sparse-checkout-cone-mode: false
+      - name: Wait for dc-pipeline-templates PR
+        id: dc-pipeline-templates
+        continue-on-error: true
+        run: .github/utils/wait_for_platform_pr.sh deepset-ai/dc-pipeline-templates "$VERSION"
 
-      - name: Trigger update workflow and wait for PR
-        id: trigger
-        env:
-          GH_TOKEN: ${{ secrets.HAYSTACK_BOT_TOKEN }}
+      - name: Wait for deepset-cloud-custom-nodes PR
+        id: deepset-cloud-custom-nodes
+        continue-on-error: true
+        run: .github/utils/wait_for_platform_pr.sh deepset-ai/deepset-cloud-custom-nodes "$VERSION"
+
+      - name: Wait for haystack-runtime PR
+        id: haystack-runtime
+        continue-on-error: true
+        run: .github/utils/wait_for_platform_pr.sh deepset-ai/haystack-runtime "$VERSION"
+
+      - name: Fail if any platform PR is missing
+        if: steps.dc-pipeline-templates.outcome == 'failure' || steps.deepset-cloud-custom-nodes.outcome == 'failure' || steps.haystack-runtime.outcome == 'failure'
         run: |
-          .github/utils/trigger_platform_update.sh \
-            deepset-ai/deepset-cloud-custom-nodes update-haystack-version.yaml "$VERSION"
-
-  bump-haystack-runtime:
-    needs: ["parse-validate-version", "check-artifacts"]
-    if: always() && needs.check-artifacts.result == 'success' && needs.parse-validate-version.outputs.is_rc == 'true'
-    runs-on: ubuntu-slim
-    outputs:
-      pr_url: ${{ steps.trigger.outputs.pr_url }}
-    env:
-      VERSION: ${{ needs.parse-validate-version.outputs.version }}
-    steps:
-      - name: Checkout haystack (for utils)
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          sparse-checkout: .github/utils/trigger_platform_update.sh
-          sparse-checkout-cone-mode: false
-
-      - name: Trigger update workflow and wait for PR
-        id: trigger
-        env:
-          GH_TOKEN: ${{ secrets.HAYSTACK_BOT_TOKEN }}
-        run: |
-          .github/utils/trigger_platform_update.sh \
-            deepset-ai/haystack-runtime update-package-version.yaml "$VERSION"
+          echo "::error::One or more platform PRs were not found. Something might have failed; check the logs above."
+          exit 1
 
   notify:
     needs:
@@ -221,9 +198,7 @@ jobs:
       - "branch-off"
       - "create-release-tag"
       - "check-artifacts"
-      - "bump-dc-pipeline-templates"
-      - "bump-deepset-cloud-custom-nodes"
-      - "bump-haystack-runtime"
+      - "bump-platform-repos"
     if: always()
     runs-on: ubuntu-slim
     steps:
@@ -235,8 +210,7 @@ jobs:
           VERSION: ${{ inputs.version }}
           GH_TOKEN: ${{ github.token }}
           RUN_URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
-          # Bump jobs are excluded: they run after the artifacts are out, so their
-          # failure must not report the release itself as failed (reported per repo instead)
+          # HAS_FAILURE = the release failed. Failing PRs on Platform repos are reported on Slack but do not mean the release failed.
           HAS_FAILURE: ${{ needs.parse-validate-version.result == 'failure' || needs.branch-off.result == 'failure' || needs.create-release-tag.result == 'failure' || needs.check-artifacts.result == 'failure' }}
           IS_RC: ${{ needs.parse-validate-version.outputs.is_rc }}
           IS_FIRST_RC: ${{ needs.parse-validate-version.outputs.is_first_rc }}
@@ -245,12 +219,12 @@ jobs:
           PYPI_URL: ${{ needs.check-artifacts.outputs.pypi_url }}
           DOCKER_URL: ${{ needs.check-artifacts.outputs.docker_url }}
           BUMP_VERSION_PR_URL: ${{ needs.branch-off.outputs.bump_version_pr_url }}
-          DC_PIPELINE_TEMPLATES_PR_URL: ${{ needs.bump-dc-pipeline-templates.outputs.pr_url }}
-          DC_CUSTOM_NODES_PR_URL: ${{ needs.bump-deepset-cloud-custom-nodes.outputs.pr_url }}
-          HAYSTACK_RUNTIME_PR_URL: ${{ needs.bump-haystack-runtime.outputs.pr_url }}
-          DC_PIPELINE_TEMPLATES_RESULT: ${{ needs.bump-dc-pipeline-templates.result }}
-          DC_CUSTOM_NODES_RESULT: ${{ needs.bump-deepset-cloud-custom-nodes.result }}
-          HAYSTACK_RUNTIME_RESULT: ${{ needs.bump-haystack-runtime.result }}
+          DC_PIPELINE_TEMPLATES_PR_URL: ${{ needs.bump-platform-repos.outputs.dc_pipeline_templates_pr_url }}
+          DC_CUSTOM_NODES_PR_URL: ${{ needs.bump-platform-repos.outputs.dc_custom_nodes_pr_url }}
+          HAYSTACK_RUNTIME_PR_URL: ${{ needs.bump-platform-repos.outputs.haystack_runtime_pr_url }}
+          DC_PIPELINE_TEMPLATES_RESULT: ${{ needs.bump-platform-repos.outputs.dc_pipeline_templates_result }}
+          DC_CUSTOM_NODES_RESULT: ${{ needs.bump-platform-repos.outputs.dc_custom_nodes_result }}
+          HAYSTACK_RUNTIME_RESULT: ${{ needs.bump-platform-repos.outputs.haystack_runtime_result }}
         run: .github/utils/prepare_release_notification.sh
 
       - name: Send release notification to Slack
