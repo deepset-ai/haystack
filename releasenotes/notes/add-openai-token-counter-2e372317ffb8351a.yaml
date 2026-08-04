@@ -4,7 +4,7 @@ features:
     Haystack ``ChatMessage`` objects and optional tool schemas. Unlike local estimates, it supports OpenAI's exact
     accounting for request formatting, images, files, and tools.
 
-    The model is a required positional argument:
+    Here is an example:
 
     .. code-block:: python
 
