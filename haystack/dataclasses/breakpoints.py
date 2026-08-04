@@ -58,10 +58,9 @@ class PipelineState:
     :param inputs: The inputs processed by the pipeline at the time of the snapshot.
     :param pipeline_outputs: Dictionary containing the final outputs of the pipeline up to the breakpoint.
     :param inputs_format: Which format `inputs` are stored in. `"internal"` means each input records the component
-        that sent it, keyed by the position it arrived in, as in
-        `{component: {socket: {"0": {"sender": ..., "value": ...}}}}`. `None` marks snapshots taken before Haystack
-        recorded the sender, which hold one flattened value per socket, `{component: {socket: value}}`, and can only
-        be resumed on a component's first visit.
+        that sent it, in the order it arrived, as in `{component: {socket: [{"sender": ..., "value": ...}]}}`.
+        `None` marks snapshots taken before Haystack recorded the sender, which hold one flattened value per socket,
+        `{component: {socket: value}}`, and can only be resumed on a component's first visit.
     """
 
     inputs: dict[str, Any]
