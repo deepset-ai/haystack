@@ -156,7 +156,6 @@ jobs:
       haystack_runtime_pr_url: ${{ steps.haystack-runtime.outputs.pr_url }}
       haystack_runtime_result: ${{ steps.haystack-runtime.outcome }}
     env:
-      GH_TOKEN: ${{ secrets.HAYSTACK_BOT_TOKEN }}
       VERSION: ${{ needs.parse-validate-version.outputs.version }}
     steps:
       - name: Checkout haystack (for utils)
@@ -166,6 +165,8 @@ jobs:
           sparse-checkout-cone-mode: false
 
       - name: Trigger platform update workflows
+        env:
+          GH_TOKEN: ${{ secrets.HAYSTACK_BOT_TOKEN }}
         run: |
           gh workflow run update-haystack-version.yaml -R deepset-ai/dc-pipeline-templates -f haystack_version="$VERSION"
           gh workflow run update-haystack-version.yaml -R deepset-ai/deepset-cloud-custom-nodes -f haystack_version="$VERSION"
@@ -174,16 +175,22 @@ jobs:
       - name: Wait for dc-pipeline-templates PR
         id: dc-pipeline-templates
         continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.HAYSTACK_BOT_TOKEN }}
         run: .github/utils/wait_for_platform_pr.sh deepset-ai/dc-pipeline-templates "$VERSION"
 
       - name: Wait for deepset-cloud-custom-nodes PR
         id: deepset-cloud-custom-nodes
         continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.HAYSTACK_BOT_TOKEN }}
         run: .github/utils/wait_for_platform_pr.sh deepset-ai/deepset-cloud-custom-nodes "$VERSION"
 
       - name: Wait for haystack-runtime PR
         id: haystack-runtime
         continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.HAYSTACK_BOT_TOKEN }}
         run: .github/utils/wait_for_platform_pr.sh deepset-ai/haystack-runtime "$VERSION"
 
       - name: Fail if any platform PR is missing
