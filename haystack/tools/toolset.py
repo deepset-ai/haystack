@@ -359,9 +359,6 @@ class _ToolsetWrapper(Toolset):
                 if self._selected_tool_names is None or tool.name in self._selected_tool_names:
                     yield tool
 
-    # `__len__` and `__getitem__` are deliberately not overridden: Toolset's implementations go through
-    # `__iter__` above, so they already flatten all wrapped toolsets and index like a list of Tools.
-
     def get_selectable_tools(self) -> list[Tool]:
         """Return every selectable tool across all wrapped toolsets, ignoring any active filter."""
         return [tool for toolset in self.toolsets for tool in toolset.get_selectable_tools()]
