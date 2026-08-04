@@ -113,9 +113,9 @@
 | haystack/components/retrievers/in\_memory/\_\_init\_\_.py                 |        5 |        0 |    100% |           |
 | haystack/components/retrievers/in\_memory/bm25\_retriever.py              |       44 |        0 |    100% |           |
 | haystack/components/retrievers/in\_memory/embedding\_retriever.py         |       49 |        1 |     98% |       102 |
-| haystack/components/retrievers/multi\_query\_embedding\_retriever.py      |       77 |        2 |     97% |  193, 212 |
-| haystack/components/retrievers/multi\_query\_text\_retriever.py           |       67 |        3 |     96% |123, 169, 184 |
-| haystack/components/retrievers/multi\_retriever.py                        |      114 |        1 |     99% |       135 |
+| haystack/components/retrievers/multi\_query\_embedding\_retriever.py      |       78 |        2 |     97% |  194, 213 |
+| haystack/components/retrievers/multi\_query\_text\_retriever.py           |       68 |        3 |     96% |123, 170, 185 |
+| haystack/components/retrievers/multi\_retriever.py                        |      115 |        1 |     99% |       135 |
 | haystack/components/retrievers/sentence\_window\_retriever.py             |      103 |        5 |     95% |138, 270-277, 292-299 |
 | haystack/components/retrievers/text\_embedding\_retriever.py              |       52 |        0 |    100% |           |
 | haystack/components/retrievers/types/\_\_init\_\_.py                      |        2 |        0 |    100% |           |
@@ -240,7 +240,7 @@
 | haystack/tracing/tracer.py                                                |       54 |        4 |     93% |28, 74, 94, 103 |
 | haystack/tracing/utils.py                                                 |       26 |        0 |    100% |           |
 | haystack/utils/\_\_init\_\_.py                                            |        5 |        0 |    100% |           |
-| haystack/utils/async\_utils.py                                            |       10 |        0 |    100% |           |
+| haystack/utils/async\_utils.py                                            |       19 |        0 |    100% |           |
 | haystack/utils/auth.py                                                    |      105 |       11 |     90% |22, 116, 124, 128, 133, 161, 234-238 |
 | haystack/utils/azure.py                                                   |        6 |        2 |     67% |     15-16 |
 | haystack/utils/base\_serialization.py                                     |      136 |        9 |     93% |186-189, 210, 221, 331-335 |
@@ -260,7 +260,7 @@
 | haystack/utils/type\_serialization.py                                     |      135 |        6 |     96% |97, 99, 243-244, 252, 268 |
 | haystack/utils/url\_validation.py                                         |        4 |        0 |    100% |           |
 | haystack/version.py                                                       |        5 |        2 |     60% |      9-10 |
-| **TOTAL**                                                                 | **16432** |  **791** | **95%** |           |
+| **TOTAL**                                                                 | **16444** |  **791** | **95%** |           |
 
 
 ## Setup coverage badge
