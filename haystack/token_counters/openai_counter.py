@@ -105,11 +105,13 @@ class OpenAITokenCounter(TokenCounter):
 
         openai_input: list[dict[str, Any]] = []
         for message in messages:
-            openai_input.extend(_convert_chat_message_to_responses_api_format(message))
+            openai_input.extend(_convert_chat_message_to_responses_api_format(message=message))
 
         request: dict[str, Any] = {"model": self.model, "input": openai_input}
         if tools:
-            request["tools"] = [{"type": "function", **tool.tool_spec} for tool in flatten_tools_or_toolsets(tools)]
+            request["tools"] = [
+                {"type": "function", **tool.tool_spec} for tool in flatten_tools_or_toolsets(tools=tools)
+            ]
 
         response = client.responses.input_tokens.count(**request)
         return response.input_tokens
