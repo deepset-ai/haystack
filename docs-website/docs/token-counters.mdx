@@ -48,21 +48,12 @@ You can also count tool schemas without messages by calling `counter.count([], t
 
 ## Images and files
 
-Local text tokenizers cannot determine the exact token cost of images or files. Both built-in counters therefore add a flat estimate for each item:
+Images and files do not have a portable text-based token count. Each token counter can handle them differently depending on the tokenizer or provider it uses.
 
-- `tokens_per_image=85`
-- `tokens_per_file=1000`
+See the documentation for the counter you use to understand how it counts non-text content and whether you need to configure it:
 
-These defaults are rough estimates. Providers can calculate image costs from details such as dimensions and quality, while file costs depend on their contents. Increase the values when your application sends large images or long documents:
-
-```python
-from haystack.token_counters import ApproximateTokenCounter
-
-counter = ApproximateTokenCounter(
-    tokens_per_image=765,
-    tokens_per_file=4000,
-)
-```
+- [`ApproximateTokenCounter`](token-counters/approximatetokencounter.mdx)
+- [`TiktokenCounter`](token-counters/tiktokencounter.mdx)
 
 ## Creating a custom token counter
 

@@ -64,8 +64,6 @@ To include the context consumed by tool schemas, pass the tools to `count()`:
 token_count = counter.count(messages, tools=[search_tool])
 ```
 
-See [Token Counters](../token-counters.mdx) for details about tool schemas, images, files, and custom implementations.
-
 ## Non-text content
 
 The tokenizer cannot measure images or files, so the counter adds a flat estimate for each item. Change the defaults when your application sends large images or long documents:
