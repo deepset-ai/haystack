@@ -421,18 +421,6 @@ class _ToolsetWrapper(Toolset):
 
         return cls(toolsets=toolsets)
 
-    def __len__(self) -> int:
-        """Return total number of tools across all toolsets (respecting any active name filter)."""
-        return sum(1 for _ in self)
-
-    def __getitem__(self, index: int) -> Tool:
-        """Get a tool by index across all toolsets."""
-        # Leverage iteration instead of manual index tracking
-        for i, tool in enumerate(self):
-            if i == index:
-                return tool
-        raise IndexError("ToolsetWrapper index out of range")
-
     def __add__(self, other: Toolset | Tool | list[Tool]) -> "_ToolsetWrapper":
         """Add another toolset or tool to this wrapper."""
         if isinstance(other, Toolset):

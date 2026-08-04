@@ -432,6 +432,8 @@ __init__(
     score_threshold: float | None = None,
     group_by: str | None = None,
     group_size: int | None = None,
+    rrf_k: int | None = None,
+    rrf_weights: list[float] | None = None,
 ) -> None
 ```
 
@@ -452,6 +454,12 @@ Create a QdrantHybridRetriever component.
 - **group_by** (<code>str | None</code>) – Payload field to group by, must be a string or number field. If the field contains more than 1
   value, all values will be used for grouping. One point can be in multiple groups.
 - **group_size** (<code>int | None</code>) – Maximum amount of points to return per group. Default is 3.
+- **rrf_k** (<code>int | None</code>) – The `k` constant for Reciprocal Rank Fusion. Controls ranking formula smoothing.
+  See https://qdrant.tech/documentation/search/hybrid-queries/#setting-rrf-constant-k.
+  Requires Qdrant server >= 1.16.0.
+- **rrf_weights** (<code>list\[float\] | None</code>) – Per-prefetch weights for RRF fusion — `[sparse_weight, dense_weight]`.
+  See https://qdrant.tech/documentation/search/hybrid-queries/#setting-rrf-weights.
+  Requires Qdrant server >= 1.17.0.
 
 **Raises:**
 
@@ -513,6 +521,8 @@ run(
     score_threshold: float | None = None,
     group_by: str | None = None,
     group_size: int | None = None,
+    rrf_k: int | None = None,
+    rrf_weights: list[float] | None = None,
 ) -> dict[str, list[Document]]
 ```
 
@@ -535,6 +545,12 @@ Run the Sparse Embedding Retriever on the given input data.
 - **group_by** (<code>str | None</code>) – Payload field to group by, must be a string or number field. If the field contains more than 1
   value, all values will be used for grouping. One point can be in multiple groups.
 - **group_size** (<code>int | None</code>) – Maximum amount of points to return per group. Default is 3.
+- **rrf_k** (<code>int | None</code>) – Override the init-time `rrf_k` for this run.
+  See https://qdrant.tech/documentation/search/hybrid-queries/#setting-rrf-constant-k.
+  Requires Qdrant server >= 1.16.0.
+- **rrf_weights** (<code>list\[float\] | None</code>) – Override the init-time `rrf_weights` for this run.
+  See https://qdrant.tech/documentation/search/hybrid-queries/#setting-rrf-weights.
+  Requires Qdrant server >= 1.17.0.
 
 **Returns:**
 
@@ -556,6 +572,8 @@ run_async(
     score_threshold: float | None = None,
     group_by: str | None = None,
     group_size: int | None = None,
+    rrf_k: int | None = None,
+    rrf_weights: list[float] | None = None,
 ) -> dict[str, list[Document]]
 ```
 
@@ -578,6 +596,12 @@ Asynchronously run the Sparse Embedding Retriever on the given input data.
 - **group_by** (<code>str | None</code>) – Payload field to group by, must be a string or number field. If the field contains more than 1
   value, all values will be used for grouping. One point can be in multiple groups.
 - **group_size** (<code>int | None</code>) – Maximum amount of points to return per group. Default is 3.
+- **rrf_k** (<code>int | None</code>) – Override the init-time `rrf_k` for this run.
+  See https://qdrant.tech/documentation/search/hybrid-queries/#setting-rrf-constant-k.
+  Requires Qdrant server >= 1.16.0.
+- **rrf_weights** (<code>list\[float\] | None</code>) – Override the init-time `rrf_weights` for this run.
+  See https://qdrant.tech/documentation/search/hybrid-queries/#setting-rrf-weights.
+  Requires Qdrant server >= 1.17.0.
 
 **Returns:**
 
@@ -1130,54 +1154,64 @@ Only documents that match the filters are considered.
 ```python
 get_metadata_field_unique_values(
     metadata_field: str,
+    search_term: str | None = None,
+    from_: int = 0,
+    size: int = 10,
     filters: dict[str, Any] | None = None,
-    limit: int = 100,
-    offset: int = 0,
-) -> list[Any]
+) -> tuple[list[Any], int]
 ```
 
-Returns unique values for a metadata field, with optional filters and offset/limit pagination.
+Returns unique values for a metadata field, with optional filters, search term and pagination.
 
-Unique values are ordered by first occurrence during scroll. Pagination is offset-based over that order.
+Unique values are ordered by first occurrence during scroll.
+
+**Note**: This operation can be expensive for metadata fields with many unique values, since all
+matching documents must be scrolled through to compute the total count.
 
 **Parameters:**
 
 - **metadata_field** (<code>str</code>) – The metadata field key (inside `meta`) to get unique values for.
+- **search_term** (<code>str | None</code>) – Optional case-insensitive substring filter applied to the metadata field's own value.
+- **from\_** (<code>int</code>) – The offset for pagination (0-based). Defaults to 0.
+- **size** (<code>int</code>) – The maximum number of unique values to return. Defaults to 10.
 - **filters** (<code>dict\[str, Any\] | None</code>) – Optional filters to restrict the documents considered.
   For filter syntax, see [Haystack metadata filtering](https://docs.haystack.deepset.ai/docs/metadata-filtering)
-- **limit** (<code>int</code>) – Maximum number of unique values to return per page. Defaults to 100.
-- **offset** (<code>int</code>) – Number of unique values to skip (for pagination). Defaults to 0.
 
 **Returns:**
 
-- <code>list\[Any\]</code> – A list of unique values for the field (at most `limit` items, starting at `offset`).
+- <code>tuple\[list\[Any\], int\]</code> – A tuple containing (list of unique values, total count of unique matching values).
 
 #### get_metadata_field_unique_values_async
 
 ```python
 get_metadata_field_unique_values_async(
     metadata_field: str,
+    search_term: str | None = None,
+    from_: int = 0,
+    size: int = 10,
     filters: dict[str, Any] | None = None,
-    limit: int = 100,
-    offset: int = 0,
-) -> list[Any]
+) -> tuple[list[Any], int]
 ```
 
-Asynchronously returns unique values for a metadata field, with optional filters and offset/limit pagination.
+Asynchronously returns unique values for a metadata field, with optional filters, search term and pagination.
 
-Unique values are ordered by first occurrence during scroll. Pagination is offset-based over that order.
+Unique values are ordered by first occurrence during scroll.
+
+**Note**: This operation can be expensive for metadata fields with many unique values, since all
+matching documents must be scrolled through to compute the total count.
 
 **Parameters:**
 
 - **metadata_field** (<code>str</code>) – The metadata field key (inside `meta`) to get unique values for.
+- **search_term** (<code>str | None</code>) – Optional case-insensitive substring filter applied to the metadata field's own value.
+- **from\_** (<code>int</code>) – The offset for pagination (0-based). Defaults to 0.
+- **size** (<code>int</code>) – The maximum number of unique values to return. Defaults to 10.
 - **filters** (<code>dict\[str, Any\] | None</code>) – Optional filters to restrict the documents considered.
   For filter syntax, see [Haystack metadata filtering](https://docs.haystack.deepset.ai/docs/metadata-filtering)
-- **limit** (<code>int</code>) – Maximum number of unique values to return per page. Defaults to 100.
-- **offset** (<code>int</code>) – Number of unique values to skip (for pagination). Defaults to 0.
 
 **Returns:**
 
-- <code>list\[Any\]</code> – A list of unique values for the field (at most `limit` items, starting at `offset`).
+- <code>tuple\[list\[Any\], int\]</code> – A tuple containing (list of unique values, total count of unique matching values).
 
 #### from_dict
 
