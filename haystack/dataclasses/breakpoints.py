@@ -60,7 +60,7 @@ class PipelineState:
     :param inputs_format: Which format `inputs` are stored in. `"internal"` means each input records the component
         that sent it, in the order it arrived, as in `{component: {socket: [{"sender": ..., "value": ...}]}}`.
         `None` marks snapshots taken before Haystack recorded the sender, which hold one flattened value per socket,
-        {component: {socket: value}}`, and can only be resumed on a component's first visit.
+        `{component: {socket: value}}`, and can only be resumed on a component's first visit.
     """
 
     inputs: dict[str, Any]
