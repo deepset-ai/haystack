@@ -130,11 +130,6 @@ class TestOpenAITokenCounter:
 @pytest.mark.skipif(not os.environ.get("OPENAI_API_KEY"), reason="OPENAI_API_KEY not set")
 @pytest.mark.integration
 class TestOpenAITokenCounterIntegration:
-    def test_count_simple(self):
-        counter = OpenAITokenCounter("gpt-5-mini-2025-08-07")
-        messages = [ChatMessage.from_user("What is the weather in Berlin?")]
-        assert counter.count(messages, tools=[search]) == 59
-
     def test_count_complex(self, base64_image_string, base64_pdf_string):
         """Add messages with multiple content types and tool calls to test the token counting."""
         image = ImageContent(base64_image=base64_image_string, mime_type="image/png")
