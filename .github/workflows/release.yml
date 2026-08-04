@@ -83,19 +83,21 @@ jobs:
       - name: Update VERSION.txt and create tag
         env:
           GITHUB_TOKEN: ${{ secrets.HAYSTACK_BOT_TOKEN }}
+          VERSION: ${{ needs.parse-validate-version.outputs.version }}
+          RELEASE_BRANCH: ${{ needs.parse-validate-version.outputs.release_branch }}
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
 
-          git checkout ${{ needs.parse-validate-version.outputs.release_branch }}
-          git pull origin ${{ needs.parse-validate-version.outputs.release_branch }}
+          git checkout "$RELEASE_BRANCH"
+          git pull origin "$RELEASE_BRANCH"
 
-          echo "${{ needs.parse-validate-version.outputs.version }}" > VERSION.txt
+          echo "$VERSION" > VERSION.txt
           git add VERSION.txt
-          git commit -m "bump version to ${{ needs.parse-validate-version.outputs.version }}"
-          git push origin ${{ needs.parse-validate-version.outputs.release_branch }}
+          git commit -m "bump version to $VERSION"
+          git push origin "$RELEASE_BRANCH"
 
-          TAG="v${{ needs.parse-validate-version.outputs.version }}"
+          TAG="v$VERSION"
           git tag -m "$TAG" "$TAG"
           git push origin "$TAG"
 
