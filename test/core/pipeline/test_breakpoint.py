@@ -18,7 +18,6 @@ from haystack.core.pipeline import Pipeline
 from haystack.core.pipeline.breakpoint import (
     HAYSTACK_PIPELINE_SNAPSHOT_SAVE_ENABLED,
     _create_pipeline_snapshot,
-    _deserialize_internal_inputs,
     _is_snapshot_save_enabled,
     _save_pipeline_snapshot,
     _transform_json_structure,
@@ -134,14 +133,14 @@ def test_breakpoint_saves_intermediate_outputs(tmp_path, monkeypatch):
         }
     )
 
-    # verify the saved inputs record which component sent each one, keyed by the position it arrived in.
+    # verify the saved inputs record which component sent each one, in the order it arrived.
     # The accompanying schema is asserted in TestCreatePipelineSnapshot.
     assert loaded_snapshot.pipeline_state.inputs_format == INTERNAL_INPUTS_FORMAT
     assert loaded_snapshot.pipeline_state.inputs["serialized_data"] == {
         # comp1 was given its input from outside the pipeline
-        "comp1": {"input_value": {"0": {"sender": None, "value": "test"}}},
+        "comp1": {"input_value": [{"sender": None, "value": "test"}]},
         # comp2 was given its input by comp1, and had not consumed it yet when the breakpoint hit
-        "comp2": {"input_value": {"0": {"sender": "comp1", "value": "processed_test"}}},
+        "comp2": {"input_value": [{"sender": "comp1", "value": "processed_test"}]},
     }
 
     # verify the whole pipeline state contains the expected data
@@ -277,9 +276,8 @@ class TestResumeFromPipelineSnapshot:
         snapshot = exc_info.value.pipeline_snapshot
         assert snapshot is not None
 
-        restored = _deserialize_internal_inputs(snapshot.pipeline_state.inputs)
+        restored = _deserialize_value_with_schema(snapshot.pipeline_state.inputs)
         assert restored["collect"]["b"] == [{"sender": "router", "value": _NoOutputProduced()}]
-
         assert pipeline.run(data={}, pipeline_snapshot=snapshot) == expected
 
 
@@ -294,7 +292,7 @@ class TestResumeFromLegacyPipelineSnapshot:
         assert snapshot is not None
 
         legacy_inputs = _serialize_value_with_schema(
-            _transform_json_structure(_deserialize_internal_inputs(snapshot.pipeline_state.inputs))
+            _transform_json_structure(_deserialize_value_with_schema(snapshot.pipeline_state.inputs))
         )
         assert legacy_inputs["serialized_data"]["comp2"] == {"input_value": "test_processed"}
         legacy_snapshot = replace(
@@ -360,15 +358,13 @@ class TestCreatePipelineSnapshot:
         assert snapshot.break_point == break_point
         assert snapshot.include_outputs_from == include_outputs_from
 
-        # Each input a socket received is stored under its position, so that it carries its own schema.
+        # Each input a socket received is stored in a list. Mixed-type lists carry one schema per position.
         def socket_schema(sender_type: str) -> dict[str, Any]:
             return {
-                "type": "object",
-                "properties": {
-                    "0": {
-                        "type": "object",
-                        "properties": {"sender": {"type": sender_type}, "value": {"type": "string"}},
-                    }
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {"sender": {"type": sender_type}, "value": {"type": "string"}},
                 },
             }
 
@@ -382,8 +378,8 @@ class TestCreatePipelineSnapshot:
                     },
                 },
                 "serialized_data": {
-                    "comp1": {"input_value": {"0": {"sender": None, "value": "test"}}},
-                    "comp2": {"input_value": {"0": {"sender": "comp1", "value": "processed_test"}}},
+                    "comp1": {"input_value": [{"sender": None, "value": "test"}]},
+                    "comp2": {"input_value": [{"sender": "comp1", "value": "processed_test"}]},
                 },
             },
             component_visits={"comp1": 1, "comp2": 0},
@@ -396,6 +392,39 @@ class TestCreatePipelineSnapshot:
             },
             inputs_format=INTERNAL_INPUTS_FORMAT,
         )
+
+    def test_internal_inputs_with_mixed_socket_values_round_trip(self):
+        inputs = {
+            "joiner": {"value": [{"sender": "counter", "value": 1}, {"sender": "router", "value": _NoOutputProduced()}]}
+        }
+
+        snapshot = _create_pipeline_snapshot(
+            inputs={},
+            component_inputs=inputs["joiner"],
+            break_point=Breakpoint(component_name="joiner"),
+            component_visits={"joiner": 0},
+            original_input_data={},
+            ordered_component_names=["joiner"],
+            include_outputs_from=set(),
+            pipeline_outputs={},
+        )
+        serialized_inputs = snapshot.pipeline_state.inputs
+
+        socket_schema = serialized_inputs["serialization_schema"]["properties"]["joiner"]["properties"]["value"]
+        assert socket_schema == {
+            "type": "array",
+            "prefixItems": [
+                {"type": "object", "properties": {"sender": {"type": "string"}, "value": {"type": "integer"}}},
+                {
+                    "type": "object",
+                    "properties": {
+                        "sender": {"type": "string"},
+                        "value": {"type": "haystack.core.pipeline.component_checks._NoOutputProduced"},
+                    },
+                },
+            ],
+        }
+        assert _deserialize_value_with_schema(serialized_inputs) == inputs
 
     def test_create_pipeline_snapshot_with_dataclasses_in_pipeline_outputs(self):
         snapshot = _create_pipeline_snapshot(
@@ -489,7 +518,7 @@ class TestCreatePipelineSnapshot:
 
         # The non-serializable comp1 field is omitted while the serializable siblings are preserved.
         assert "comp1" not in deserialized_inputs
-        assert deserialized_inputs["comp2"] == {"input_value": {"0": {"sender": None, "value": "keep me"}}}
+        assert deserialized_inputs["comp2"] == {"input_value": [{"sender": None, "value": "keep me"}]}
         assert deserialized_inputs["comp3"] == {}
         # original_input_data and pipeline_outputs degrade to empty-but-valid payloads.
         assert deserialized_original_input_data == {}
