@@ -4,7 +4,8 @@
 # Requires: VERSION, RUN_URL, HAS_FAILURE, GH_TOKEN, GITHUB_REPOSITORY
 # Optional: IS_RC, IS_FIRST_RC, MAJOR_MINOR, GITHUB_URL, PYPI_URL, DOCKER_URL,
 #           BUMP_VERSION_PR_URL, DC_PIPELINE_TEMPLATES_PR_URL, DC_CUSTOM_NODES_PR_URL,
-#           HAYSTACK_RUNTIME_PR_URL, GITHUB_WORKSPACE
+#           HAYSTACK_RUNTIME_PR_URL, DC_PIPELINE_TEMPLATES_RESULT, DC_CUSTOM_NODES_RESULT,
+#           HAYSTACK_RUNTIME_RESULT, GITHUB_WORKSPACE
 # Output: slack_payload.json
 #
 # This script is used in the release.yml workflow to prepare the notification payload
@@ -59,12 +60,20 @@ if [[ "${IS_FIRST_RC:-}" == "true" && -n "${BUMP_VERSION_PR_URL:-}" ]]; then
   TXT+=$'\n'"- <${BUMP_VERSION_PR_URL}|Bump unstable version and create unstable docs>"
 fi
 
-# For RCs, include Platform test PRs
+# For RCs, include Platform test PRs (or a warning for repos whose bump job failed)
 if [[ "${IS_RC:-}" == "true" ]]; then
   PLATFORM_PRS=""
-  [[ -n "${DC_PIPELINE_TEMPLATES_PR_URL:-}" ]] && PLATFORM_PRS+=$'\n'"- <${DC_PIPELINE_TEMPLATES_PR_URL}|dc-pipeline-templates>"
-  [[ -n "${DC_CUSTOM_NODES_PR_URL:-}" ]] && PLATFORM_PRS+=$'\n'"- <${DC_CUSTOM_NODES_PR_URL}|deepset-cloud-custom-nodes>"
-  [[ -n "${HAYSTACK_RUNTIME_PR_URL:-}" ]] && PLATFORM_PRS+=$'\n'"- <${HAYSTACK_RUNTIME_PR_URL}|haystack-runtime>"
+  platform_line() {
+    local result="$1" url="$2" label="$3"
+    if [[ "${result}" == "failure" ]]; then
+      PLATFORM_PRS+=$'\n'"- ${label}: :warning: bump failed, see <${RUN_URL}|workflow logs>"
+    elif [[ -n "${url}" ]]; then
+      PLATFORM_PRS+=$'\n'"- <${url}|${label}>"
+    fi
+  }
+  platform_line "${DC_PIPELINE_TEMPLATES_RESULT:-}" "${DC_PIPELINE_TEMPLATES_PR_URL:-}" "dc-pipeline-templates"
+  platform_line "${DC_CUSTOM_NODES_RESULT:-}" "${DC_CUSTOM_NODES_PR_URL:-}" "deepset-cloud-custom-nodes"
+  platform_line "${HAYSTACK_RUNTIME_RESULT:-}" "${HAYSTACK_RUNTIME_PR_URL:-}" "haystack-runtime"
   if [[ -n "${PLATFORM_PRS}" ]]; then
     TXT+=$'\n\n'":factory: *Test PRs opened on Platform:*${PLATFORM_PRS}"
   fi
