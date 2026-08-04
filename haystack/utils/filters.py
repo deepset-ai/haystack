@@ -40,8 +40,9 @@ LOGICAL_OPERATORS = {"NOT": _not, "OR": _or, "AND": _and}
 
 
 def _equal(value: Any, filter_value: Any) -> bool:
-    value, filter_value = _prepare_equality_comparison(value=value, filter_value=filter_value)
-    return value == filter_value
+    if value == filter_value:
+        return True
+    return _dates_are_equal(value=value, filter_value=filter_value)
 
 
 def _not_equal(value: Any, filter_value: Any) -> bool:
@@ -49,6 +50,12 @@ def _not_equal(value: Any, filter_value: Any) -> bool:
 
 
 def _looks_like_iso_date(value: Any) -> bool:
+    """
+    Cheaply reject values that can't be a full ISO 8601 date, before paying for a real parse.
+
+    Deliberately conservative: a complete `YYYY-MM-DD` prefix is required, so partial dates such as
+    "2025" are not read as dates, and the ISO 8601 basic format ("20250203") is not recognised.
+    """
     return (
         isinstance(value, str)
         and len(value) >= 10
@@ -61,11 +68,47 @@ def _looks_like_iso_date(value: Any) -> bool:
     )
 
 
-def _is_datetime_operand(value: Any) -> bool:
-    return isinstance(value, datetime) or _looks_like_iso_date(value)
+def _parse_iso_date(value: str) -> datetime | None:
+    """Parse a strict ISO 8601 string, returning None if it isn't one."""
+    try:
+        return datetime.fromisoformat(value)
+    except ValueError:
+        # Python 3.10's fromisoformat rejects valid ISO 8601 spellings that later versions accept,
+        # most notably a trailing "Z".
+        try:
+            return dateutil.parser.isoparse(value)
+        except (ValueError, OverflowError):
+            return None
 
 
-def _normalize_datetime_comparison(value: Any, filter_value: Any) -> tuple[Any, Any]:
+def _dates_are_equal(value: Any, filter_value: Any) -> bool:
+    """
+    Return whether both values are ISO 8601 datetimes denoting the same point in time.
+
+    Only strict ISO 8601 strings and `datetime` objects are considered, and a naive value is never
+    compared to an aware one: guessing a timezone would risk reporting two different instants as equal.
+    Returns False for anything that isn't a pair of comparable datetimes, so that `==` stays total.
+    """
+    parsed: list[datetime] = []
+    for candidate in (value, filter_value):
+        if isinstance(candidate, datetime):
+            parsed.append(candidate)
+            continue
+        if not _looks_like_iso_date(candidate):
+            return False
+        date = _parse_iso_date(candidate)
+        if date is None:
+            return False
+        parsed.append(date)
+
+    first, second = parsed
+    if (first.tzinfo is None) != (second.tzinfo is None):
+        return False
+    return first == second
+
+
+def _prepare_ordering_comparison(value: Any, filter_value: Any) -> tuple[Any, Any]:
+    """Normalize both values for ordering comparisons, parsing strings as dates."""
     if isinstance(value, str) or isinstance(filter_value, str):
         if not isinstance(value, datetime):
             value = _parse_date(value)
@@ -74,23 +117,6 @@ def _normalize_datetime_comparison(value: Any, filter_value: Any) -> tuple[Any, 
 
     if isinstance(value, datetime) and isinstance(filter_value, datetime):
         value, filter_value = _ensure_both_dates_naive_or_aware(value, filter_value)
-
-    return value, filter_value
-
-
-def _prepare_equality_comparison(value: Any, filter_value: Any) -> tuple[Any, Any]:
-    if not (_is_datetime_operand(value) and _is_datetime_operand(filter_value)):
-        return value, filter_value
-
-    try:
-        return _normalize_datetime_comparison(value=value, filter_value=filter_value)
-    except FilterError:
-        return value, filter_value
-
-
-def _prepare_ordering_comparison(value: Any, filter_value: Any) -> tuple[Any, Any]:
-    """Normalize both values for ordering comparisons, parsing strings as dates."""
-    value, filter_value = _normalize_datetime_comparison(value=value, filter_value=filter_value)
 
     if isinstance(filter_value, list):
         msg = f"Filter value can't be of type {type(filter_value)} using operators '>', '>=', '<', '<='"

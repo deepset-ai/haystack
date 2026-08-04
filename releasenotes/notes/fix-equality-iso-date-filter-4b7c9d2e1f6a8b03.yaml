@@ -1,9 +1,10 @@
 ---
 fixes:
   - |
-    Fixed the ``==``, ``!=``, ``in``, and ``not in`` metadata filter operators to
-    normalize ISO 8601 datetime values before comparing them. Equivalent values
-    such as ``"2025-02-03T12:45:46Z"`` and ``"2025-02-03T12:45:46+00:00"`` now
-    match consistently across ISO strings and ``datetime`` objects, aligning
-    equality-style filters with the ordering operators and preventing silent
-    misses in components that rely on ``document_matches_filter``.
+    The ``==``, ``!=``, ``in`` and ``not in`` metadata filter operators now normalize ISO 8601 datetime
+    values before comparing them, so equivalent values such as ``"2025-02-03T12:45:46Z"`` and
+    ``"2025-02-03T12:45:46+00:00"`` match consistently. This aligns equality with the ordering operators.
+    A timezone-naive value is still never considered equal to a timezone-aware one, since that would
+    require guessing a timezone. This affects ``document_matches_filter``, and therefore
+    ``InMemoryDocumentStore`` and ``MetadataRouter``; document store integrations delegate equality to
+    their backend and are unchanged.

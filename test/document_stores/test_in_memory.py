@@ -86,6 +86,9 @@ class TestMemoryDocumentStore(
     def test_filter_documents_date_equality_with_equivalent_iso_formats(
         self, document_store: InMemoryDocumentStore
     ) -> None:
+        # Deliberately kept here rather than in the shared FilterDocumentsTest suite: normalizing ISO dates
+        # for '==' is specific to document_matches_filter, while the integrations hand equality straight to
+        # their backend. Promoting this to the shared suite would break every document store integration.
         docs = [Document(id="1", content="doc", meta={"date": "2025-02-03T12:45:46Z"})]
         document_store.write_documents(docs)
 
