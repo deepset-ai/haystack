@@ -39,9 +39,11 @@ jobs:
       # This ensures release notes are correctly aggregated for the current version.
       # This is a workaround. Can be removed if the release process is fully aligned with reno.
       - name: Delete next version rc0 tag in the CI environment
+        env:
+          CURRENT_RELEASE: ${{ steps.version.outputs.current_release }}
         run: |
           # Parse version X.Y.Z and increment Y for next minor version
-          IFS='.' read -r MAJOR MINOR _ <<< "${{ steps.version.outputs.current_release }}"
+          IFS='.' read -r MAJOR MINOR _ <<< "$CURRENT_RELEASE"
           NEXT_MINOR=$((MINOR + 1))
           NEXT_TAG="v${MAJOR}.${NEXT_MINOR}.0-rc0"
 
