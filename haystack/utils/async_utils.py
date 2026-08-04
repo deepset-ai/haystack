@@ -3,11 +3,30 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import asyncio
-from typing import Any
+from typing import Any, TypeVar
 
 from haystack import logging
 
 logger = logging.getLogger(__name__)
+
+T = TypeVar("T")
+
+
+async def _gather_tasks_with_cancel(tasks: list[asyncio.Task[T]]) -> list[T]:
+    """
+    Wait for all tasks, cancelling and draining unfinished siblings if one fails.
+
+    :param tasks: Tasks to wait for.
+    :returns:
+        The task results in input order.
+    """
+    try:
+        return await asyncio.gather(*tasks)
+    except Exception:
+        for task in tasks:
+            task.cancel()
+        await asyncio.gather(*tasks, return_exceptions=True)
+        raise
 
 
 async def _execute_component_async(component_instance: Any, **kwargs: Any) -> dict[str, Any]:

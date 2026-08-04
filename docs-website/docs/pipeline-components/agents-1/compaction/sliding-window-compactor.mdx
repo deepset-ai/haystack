@@ -1,0 +1,91 @@
+---
+title: "SlidingWindowCompactor"
+id: sliding-window-compactor
+slug: "/sliding-window-compactor"
+description: "Use SlidingWindowCompactor to remove older Agent history while preserving the current task and recent complete steps."
+---
+
+# SlidingWindowCompactor
+
+`SlidingWindowCompactor` removes older conversation history while preserving the Agent's instructions, current task, and as many recent complete Agent steps as the token target allows.
+
+:::warning[Experimental]
+
+`SlidingWindowCompactor` is experimental and may change without a deprecation cycle. Compaction is lossy: messages removed by this strategy cannot be recovered or summarized.
+:::
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Used by** | [`ContextCompactionHook`](context-compaction-hook.mdx) |
+| **Mandatory init variables** | None |
+| **Import path** | `haystack.hooks.compaction.SlidingWindowCompactor` |
+| **API reference** | [Hooks](/reference/hooks-api) |
+| **GitHub link** | https://github.com/deepset-ai/haystack/blob/main/haystack/hooks/compaction/sliding_window.py |
+| **Package name** | `haystack-ai` |
+
+</div>
+
+## Usage
+
+Pass the compactor to a `ContextCompactionHook`:
+
+```python
+from haystack.hooks.compaction import ContextCompactionHook, SlidingWindowCompactor
+
+compaction_hook = ContextCompactionHook(
+    compactor=SlidingWindowCompactor(
+        min_keep_steps=1,
+        omission_note=(
+            "[{num_removed} earlier messages were removed to free up context.]"
+        ),
+    ),
+    context_window=200_000,
+    compact_at=0.7,
+    compact_to=0.4,
+)
+```
+
+`ContextCompactionHook` determines when compaction runs and provides the target token count. `SlidingWindowCompactor` determines which messages to retain.
+
+## How the sliding window is selected
+
+The compactor divides a conversation into protected context, removable history, and recent Agent steps:
+
+1. It preserves all leading system messages as the Agent's instructions.
+2. It preserves the latest user message as the current task.
+3. It groups each assistant message and all immediately following tool-result messages into one complete Agent step.
+4. Working backwards from the latest step, it keeps as many complete steps as fit within the target.
+5. It replaces the removable middle history with an omission note, unless the note is disabled.
+
+Keeping complete steps ensures that an assistant tool call is not separated from its results, including batches of parallel tool calls. Incomplete tool-call exchanges are rejected by chat-completion providers.
+
+The target is a goal rather than a guarantee. Protected messages and the configured minimum number of recent steps take precedence when they already exceed the available token budget.
+
+## Configuration
+
+| Parameter | Default | Description |
+| --- | --- | --- |
+| `min_keep_steps` | `1` | The minimum number of complete recent Agent steps to preserve, even if they exceed the target. Set it to `0` to allow all completed steps to be removed. |
+| `omission_note` | `"[{num_removed} earlier messages were removed from this conversation to free up context and cannot be recovered.]"` | A user message inserted where history was removed. Use `{num_removed}` to include the number of removed messages, provide custom text without the placeholder, or set it to `None` to remove history silently. |
+
+`min_keep_steps` cannot be negative.
+
+### Omission notes
+
+An omission note tells the model that earlier context is missing. Without one, the shortened conversation can appear complete and the model may repeat work or behave as though it still has the removed information.
+
+The compactor only inserts the note when it costs fewer tokens than the messages it replaces. Otherwise, it returns `None` and leaves the conversation unchanged. Repeated compactions fold the previous note into the newly removed block, leaving a single current note.
+
+Compaction metadata is stored on the note, including the strategy name and the numbers of removed messages, retained messages, and retained steps.
+
+## When the conversation is unchanged
+
+The compactor returns `None` without changing the conversation when:
+
+- The conversation already fits within `target_tokens`.
+- There is no removable history outside the protected messages and retained steps.
+- The configured omission note would cost at least as many tokens as the history it replaces.
+
+Setting `omission_note=None` removes the final condition because no replacement note needs to fit.

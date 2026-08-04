@@ -1,6 +1,6 @@
 loaders:
   - search_path: [../haystack/token_counters]
-    modules: ["types/protocol", "approximate_counter", "tiktoken_counter"]
+    modules: ["types/protocol", "approximate_counter", "tiktoken_counter", "openai_counter"]
 processors:
   - type: filter
     documented_only: true

@@ -373,6 +373,86 @@ def test_serialize_and_deserialize_value_with_schema_with_various_types():
     assert _deserialize_value_with_schema(expected) == data
 
 
+class TestMixedTypeArrays:
+    """Mixed-type arrays keep one schema per position under `prefixItems`."""
+
+    def test_serialize_mixed_primitives(self):
+        assert _serialize_value_with_schema({"y": [1, "a", {"k": 2}]}) == {
+            "serialization_schema": {
+                "type": "object",
+                "properties": {
+                    "y": {
+                        "type": "array",
+                        "prefixItems": [
+                            {"type": "integer"},
+                            {"type": "string"},
+                            {"type": "object", "properties": {"k": {"type": "integer"}}},
+                        ],
+                    }
+                },
+            },
+            "serialized_data": {"y": [1, "a", {"k": 2}]},
+        }
+
+    @pytest.mark.parametrize(
+        "value",
+        [
+            pytest.param({"y": [1, "a", {"k": 2}]}, id="mixed-primitives"),
+            pytest.param({"x": [Document(content="a", id="1"), "plain string", 3]}, id="object-and-primitives"),
+            pytest.param({"t": (1, "a", Document(content="a", id="1"))}, id="mixed-tuple"),
+            pytest.param({"n": [[1, "a"], [Document(content="a", id="1"), None]]}, id="nested-mixed-lists"),
+            pytest.param({"e": []}, id="empty-list"),
+            pytest.param({"m": [1, None, True, 2.5, "s"]}, id="all-primitive-kinds"),
+        ],
+    )
+    def test_round_trip_mixed_arrays(self, value):
+        deserialized = _deserialize_value_with_schema(_serialize_value_with_schema(value))
+        assert deserialized == value
+        for key, original in value.items():
+            assert type(deserialized[key]) is type(original)
+
+    def test_round_trip_mixed_set(self):
+        value = {1, "a", None}
+        deserialized = _deserialize_value_with_schema(_serialize_value_with_schema(value))
+        assert deserialized == value
+        assert type(deserialized) is set
+
+    def test_round_trip_mixed_frozenset(self):
+        value = frozenset({1, "a", None})
+        deserialized = _deserialize_value_with_schema(_serialize_value_with_schema(value))
+        assert deserialized == value
+        assert type(deserialized) is frozenset
+
+    def test_homogeneous_output_is_unchanged(self):
+        # Backward compatibility: homogeneous arrays keep the historical `items` envelope.
+        document = Document(content="a", id="1")
+        assert _serialize_value_with_schema({"docs": [document], "nums": (1, 2)}) == {
+            "serialization_schema": {
+                "type": "object",
+                "properties": {
+                    "docs": {"type": "array", "items": {"type": "haystack.dataclasses.document.Document"}},
+                    "nums": {"type": "array", "items": {"type": "integer"}, "minItems": 2, "maxItems": 2},
+                },
+            },
+            "serialized_data": {"docs": [document.to_dict()], "nums": [1, 2]},
+        }
+
+    def test_deserialize_old_format_with_only_items(self):
+        # Payloads written before `prefixItems` existed still deserialize through `items`.
+        assert _deserialize_value_with_schema(
+            {"serialization_schema": {"type": "array", "items": {"type": "integer"}}, "serialized_data": [1, 2, 3]}
+        ) == [1, 2, 3]
+
+    def test_deserialize_prefix_items_length_mismatch_raises(self):
+        with pytest.raises(DeserializationError, match="'prefixItems' declares 2 element schemas"):
+            _deserialize_value_with_schema(
+                {
+                    "serialization_schema": {"type": "array", "prefixItems": [{"type": "integer"}, {"type": "string"}]},
+                    "serialized_data": [1],
+                }
+            )
+
+
 class TestErrorHandling:
     @pytest.mark.parametrize(
         "value",

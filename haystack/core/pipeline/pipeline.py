@@ -21,7 +21,6 @@ from haystack.core.pipeline.base import (
 from haystack.core.pipeline.breakpoint import (
     SnapshotCallback,
     _create_pipeline_snapshot,
-    _deserialize_internal_inputs,
     _save_pipeline_snapshot,
     _validate_break_point_against_pipeline,
     _validate_pipeline_snapshot_against_pipeline,
@@ -378,7 +377,7 @@ class Pipeline(PipelineBase):
             data = _deserialize_value_with_schema(pipeline_snapshot.original_input_data)
 
             if pipeline_snapshot.pipeline_state.inputs_format == INTERNAL_INPUTS_FORMAT:
-                inputs = _deserialize_internal_inputs(pipeline_snapshot.pipeline_state.inputs)
+                inputs = _deserialize_value_with_schema(pipeline_snapshot.pipeline_state.inputs)
             else:
                 # A legacy snapshot lost the sender of each input, so the only thing we can do is treat them as if
                 # they came from outside the pipeline. The paused component then has to be let through once.
