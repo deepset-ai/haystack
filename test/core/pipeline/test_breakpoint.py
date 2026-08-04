@@ -10,7 +10,7 @@ from typing import Any
 import pytest
 
 from haystack import component
-from haystack.components.joiners import BranchJoiner
+from haystack.components.joiners import BranchJoiner, ListJoiner
 from haystack.components.routers import ConditionalRouter
 from haystack.components.routers.conditional_router import Route
 from haystack.core.errors import BreakpointException, PipelineInvalidPipelineSnapshotError
@@ -171,13 +171,6 @@ class _CountUpTo:
         return {"done": f"finished at {value}"}
 
 
-@component
-class _CollectBranches:
-    @component.output_types(result=str)
-    def run(self, a: str | None = None, b: str | None = None) -> dict[str, str]:
-        return {"result": f"a={a} b={b}"}
-
-
 def _three_component_pipeline() -> Pipeline:
     pipeline = Pipeline()
     pipeline.add_component("comp1", _AppendingComponent())
@@ -258,16 +251,21 @@ class TestResumeFromPipelineSnapshot:
         assert _looping_pipeline().run(data={}, pipeline_snapshot=snapshot) == {"counter": {"done": "finished at 5"}}
 
     def test_snapshot_preserves_sockets_whose_sender_produced_no_output(self):
-        """A router that leaves a branch inactive puts the `_NoOutputProduced()` sentinel in the pipeline inputs."""
+        """A mixed socket queue containing a value and `_NoOutputProduced()` survives a snapshot and resume."""
         routes: list[Route] = [
-            {"condition": "{{ n > 5 }}", "output": "{{ 'big' }}", "output_name": "big", "output_type": str},
-            {"condition": "{{ n <= 5 }}", "output": "{{ 'small' }}", "output_name": "small", "output_type": str},
+            {"condition": "{{ n > 5 }}", "output": "{{ ['big'] }}", "output_name": "big", "output_type": list[str]},
+            {
+                "condition": "{{ n <= 5 }}",
+                "output": "{{ ['small'] }}",
+                "output_name": "small",
+                "output_type": list[str],
+            },
         ]
         pipeline = Pipeline()
         pipeline.add_component("router", ConditionalRouter(routes=routes))
-        pipeline.add_component("collect", _CollectBranches())
-        pipeline.connect("router.big", "collect.a")
-        pipeline.connect("router.small", "collect.b")
+        pipeline.add_component("collect", ListJoiner(list[str]))
+        pipeline.connect("router.big", "collect.values")
+        pipeline.connect("router.small", "collect.values")
 
         expected = pipeline.run({"router": {"n": 9}})
 
@@ -276,8 +274,15 @@ class TestResumeFromPipelineSnapshot:
         snapshot = exc_info.value.pipeline_snapshot
         assert snapshot is not None
 
+        socket_schema = snapshot.pipeline_state.inputs["serialization_schema"]["properties"]["collect"]["properties"][
+            "values"
+        ]
+        assert "prefixItems" in socket_schema
+
         restored = _deserialize_value_with_schema(snapshot.pipeline_state.inputs)
-        assert restored["collect"]["b"] == [{"sender": "router", "value": _NoOutputProduced()}]
+        restored_values = [entry["value"] for entry in restored["collect"]["values"]]
+        assert ["big"] in restored_values
+        assert any(isinstance(value, _NoOutputProduced) for value in restored_values)
         assert pipeline.run(data={}, pipeline_snapshot=snapshot) == expected
 
 
@@ -392,39 +397,6 @@ class TestCreatePipelineSnapshot:
             },
             inputs_format=INTERNAL_INPUTS_FORMAT,
         )
-
-    def test_internal_inputs_with_mixed_socket_values_round_trip(self):
-        inputs = {
-            "joiner": {"value": [{"sender": "counter", "value": 1}, {"sender": "router", "value": _NoOutputProduced()}]}
-        }
-
-        snapshot = _create_pipeline_snapshot(
-            inputs={},
-            component_inputs=inputs["joiner"],
-            break_point=Breakpoint(component_name="joiner"),
-            component_visits={"joiner": 0},
-            original_input_data={},
-            ordered_component_names=["joiner"],
-            include_outputs_from=set(),
-            pipeline_outputs={},
-        )
-        serialized_inputs = snapshot.pipeline_state.inputs
-
-        socket_schema = serialized_inputs["serialization_schema"]["properties"]["joiner"]["properties"]["value"]
-        assert socket_schema == {
-            "type": "array",
-            "prefixItems": [
-                {"type": "object", "properties": {"sender": {"type": "string"}, "value": {"type": "integer"}}},
-                {
-                    "type": "object",
-                    "properties": {
-                        "sender": {"type": "string"},
-                        "value": {"type": "haystack.core.pipeline.component_checks._NoOutputProduced"},
-                    },
-                },
-            ],
-        }
-        assert _deserialize_value_with_schema(serialized_inputs) == inputs
 
     def test_create_pipeline_snapshot_with_dataclasses_in_pipeline_outputs(self):
         snapshot = _create_pipeline_snapshot(
