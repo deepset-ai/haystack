@@ -233,7 +233,7 @@
 | haystack/tools/skills/skill\_toolset.py                                   |       61 |        0 |    100% |           |
 | haystack/tools/tool.py                                                    |      150 |        5 |     97% |174, 197, 241-242, 376 |
 | haystack/tools/tool\_types.py                                             |        5 |        0 |    100% |           |
-| haystack/tools/toolset.py                                                 |      126 |       13 |     90% |119, 193, 249, 301, 431-434, 440-444 |
+| haystack/tools/toolset.py                                                 |      119 |        9 |     92% |119, 193, 249, 301, 428-432 |
 | haystack/tools/utils.py                                                   |       29 |        0 |    100% |           |
 | haystack/tracing/\_\_init\_\_.py                                          |        1 |        0 |    100% |           |
 | haystack/tracing/logging\_tracer.py                                       |       36 |        0 |    100% |           |
@@ -260,7 +260,7 @@
 | haystack/utils/type\_serialization.py                                     |      135 |        6 |     96% |97, 99, 243-244, 252, 268 |
 | haystack/utils/url\_validation.py                                         |        4 |        0 |    100% |           |
 | haystack/version.py                                                       |        5 |        2 |     60% |      9-10 |
-| **TOTAL**                                                                 | **16444** |  **791** | **95%** |           |
+| **TOTAL**                                                                 | **16437** |  **787** | **95%** |           |
 
 
 ## Setup coverage badge
