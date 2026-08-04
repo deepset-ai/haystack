@@ -3,17 +3,18 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import pytest
-from jinja2 import TemplateSyntaxError
 
-from haystack.components.agents.agent import Agent
 from haystack.components.agents.state import State, replace_values
 from haystack.components.agents.utils import (
     _accumulate_usage,
     _context_tokens_from_usage,
     _record_context_tokens,
+    _render_prompt_messages,
     _select_tools_by_name,
+    _template_for_role,
+    _validate_prompt_message_blocks,
 )
-from haystack.components.generators.chat import MockChatGenerator
+from haystack.components.builders import ChatPromptBuilder
 from haystack.dataclasses import ChatMessage
 from haystack.dataclasses.chat_message import ChatRole
 from haystack.tools import Tool
@@ -26,36 +27,6 @@ def _user_msg(text: str) -> str:
 
 def _sys_msg(text: str) -> str:
     return f'{{% message role="system" %}}{text}{{% endmessage %}}'
-
-
-def weather_function(location):
-    weather_info = {
-        "berlin": {"weather": "mostly sunny", "temperature": 7, "unit": "celsius"},
-        "paris": {"weather": "mostly cloudy", "temperature": 8, "unit": "celsius"},
-        "rome": {"weather": "sunny", "temperature": 14, "unit": "celsius"},
-    }
-    for city, result in weather_info.items():
-        if city in location.lower():
-            return result
-    return {"weather": "unknown", "temperature": 0, "unit": "celsius"}
-
-
-@pytest.fixture
-def weather_tool():
-    return Tool(
-        name="weather_tool",
-        description="Provides weather information for a given location.",
-        parameters={"type": "object", "properties": {"location": {"type": "string"}}, "required": ["location"]},
-        function=weather_function,
-    )
-
-
-@pytest.fixture
-def make_agent(weather_tool):
-    def _factory(**kwargs):
-        return Agent(chat_generator=MockChatGenerator("Hello"), tools=[weather_tool], **kwargs)
-
-    return _factory
 
 
 def _tool_function(value: str) -> str:
@@ -279,130 +250,97 @@ class TestRecordContextTokens:
 
 
 class TestPrompts:
-    def test_system_prompt_incorrect_jinja2_syntax_raises(self, make_agent):
-        with pytest.raises(TemplateSyntaxError):
-            make_agent(system_prompt="{% message role='system' %}Incomplete syntax.")
-
-    def test_system_prompt_plain_string(self, make_agent):
-        agent = make_agent(system_prompt="You are a helpful assistant.")
-        assert agent._system_chat_prompt_builder is not None
-        result = agent.run(messages=[ChatMessage.from_user("Hi")])
-        assert result["messages"][0].is_from(ChatRole.SYSTEM)
-        assert result["messages"][0].text == "You are a helpful assistant."
-
-    def test_system_prompt_plain_string_with_template_variables(self, make_agent):
-        agent = make_agent(system_prompt="You are an assistant for {{company}}. Your role is {{role}}.")
-        assert agent._system_chat_prompt_builder is not None
-        assert set(agent._system_chat_prompt_builder.variables) == {"company", "role"}
-
-        result = agent.run(messages=[ChatMessage.from_user("Hi")], company="Acme", role="support agent")
-        sys_msg = result["messages"][0]
-        assert sys_msg.is_from(ChatRole.SYSTEM)
-        assert sys_msg.text == "You are an assistant for Acme. Your role is support agent."
-
-        input_names = set(agent.__haystack_input__._sockets_dict.keys())
-        assert "company" in input_names
-        assert "role" in input_names
-
-    def test_system_prompt_with_template_variables(self, make_agent):
-        agent = make_agent(system_prompt=_sys_msg("You are an assistant for {{company}}. Your role is {{role}}."))
-        assert agent._system_chat_prompt_builder is not None
-        assert set(agent._system_chat_prompt_builder.variables) == {"company", "role"}
-
-        result = agent.run(messages=[ChatMessage.from_user("Hi")], company="Acme", role="support agent")
-        sys_msg = result["messages"][0]
-        assert sys_msg.is_from(ChatRole.SYSTEM)
-        assert sys_msg.text == "You are an assistant for Acme. Your role is support agent."
-
-        input_names = set(agent.__haystack_input__._sockets_dict.keys())
-        assert "company" in input_names
-        assert "role" in input_names
-
-    def test_system_prompt_with_meta(self, make_agent):
-        agent = make_agent(
-            system_prompt="{% message role='system' meta={'key': 'value'} %}System message with meta{% endmessage %}"
+    def test_system_prompt_plain_string(self):
+        prompt_builder = ChatPromptBuilder(template=_template_for_role("You are a helpful assistant.", "system"))
+        messages = _render_prompt_messages(
+            prompt_builder=prompt_builder, expected_role=ChatRole.SYSTEM, prompt_label="system_prompt", kwargs={}
         )
-        assert agent._system_chat_prompt_builder is not None
+        assert messages[0].is_from(ChatRole.SYSTEM)
+        assert messages[0].text == "You are a helpful assistant."
 
-        result = agent.run(messages=[ChatMessage.from_user("Hi")])
-        messages = result["messages"]
+    def test_system_prompt_with_template_variables(self):
+        prompt_builder = ChatPromptBuilder(
+            template=_template_for_role(
+                _sys_msg("You are an assistant for {{company}}. Your role is {{role}}."), "system"
+            )
+        )
+        messages = _render_prompt_messages(
+            prompt_builder=prompt_builder,
+            expected_role=ChatRole.SYSTEM,
+            prompt_label="system_prompt",
+            kwargs={"company": "Acme", "role": "support agent"},
+        )
+        sys_msg = messages[0]
+        assert sys_msg.is_from(ChatRole.SYSTEM)
+        assert sys_msg.text == "You are an assistant for Acme. Your role is support agent."
+
+    def test_system_prompt_with_meta(self):
+        prompt_builder = ChatPromptBuilder(
+            template="{% message role='system' meta={'key': 'value'} %}System message with meta{% endmessage %}"
+        )
+        messages = _render_prompt_messages(
+            prompt_builder=prompt_builder, expected_role=ChatRole.SYSTEM, prompt_label="system_prompt", kwargs={}
+        )
         assert messages[0].is_from(ChatRole.SYSTEM)
         assert messages[0].text == "System message with meta"
         assert messages[0].meta == {"key": "value"}
 
-    def test_user_prompt_only_variables_forwarded_to_builder(self, make_agent):
-        agent = make_agent(user_prompt=_user_msg("Question: {{question}}"))
+    def test_user_prompt_only_variables_forwarded_to_builder(self):
+        prompt_builder = ChatPromptBuilder(template=_user_msg("Question: {{question}}"))
         # 'irrelevant_kwarg' is not a template variable — must not raise
-        result = agent.run(messages=[], question="Will it snow?", irrelevant_kwarg="unused")
-        assert "messages" in result
+        messages = _render_prompt_messages(
+            prompt_builder=prompt_builder,
+            expected_role=ChatRole.USER,
+            prompt_label="user_prompt",
+            kwargs={"question": "Will it snow?", "irrelevant_kwarg": "unused"},
+        )
+        assert messages[0].text == "Question: Will it snow?"
 
-    def test_user_prompt_plain_string_with_template_variables(self, make_agent):
-        agent = make_agent(user_prompt="Question: {{question}}")
-        result = agent.run(messages=[], question="Will it snow?")
-        user_messages = [m for m in result["messages"] if m.is_from(ChatRole.USER)]
-        assert user_messages[0].text == "Question: Will it snow?"
-
-        input_names = set(agent.__haystack_input__._sockets_dict.keys())
-        assert "question" in input_names
-
-    def test_user_prompt_with_template_variables(self, make_agent):
-        agent = make_agent(
-            user_prompt=_user_msg(
+    def test_user_prompt_with_template_variables(self):
+        prompt_builder = ChatPromptBuilder(
+            template=_user_msg(
                 "Hello {{name|upper}}, check weather for: "
                 + "{% for c in cities %}{{c}}{% if not loop.last %}, {% endif %}{% endfor %}"
                 + " on {{date}}?"
             )
         )
-        result = agent.run(messages=[], name="Alice", cities=["Berlin", "Paris", "Rome"], date="2024-01-15")
-        user_messages = [m for m in result["messages"] if m.is_from(ChatRole.USER)]
-        assert user_messages[0].text == "Hello ALICE, check weather for: Berlin, Paris, Rome on 2024-01-15?"
-
-        input_names = set(agent.__haystack_input__._sockets_dict.keys())
-        assert "name" in input_names
-        assert "cities" in input_names
-        assert "date" in input_names
-
-    def test_user_prompt_appended_after_initial_messages(self, make_agent):
-        agent = make_agent(user_prompt=_user_msg("And now: {{query}}"))
-        initial_messages = [ChatMessage.from_user("First message")]
-        result = agent.run(messages=initial_messages, query="What is the weather?")
-        user_messages = [m for m in result["messages"] if m.is_from(ChatRole.USER)]
-        assert user_messages[0].text == "First message"
-        assert user_messages[1].text == "And now: What is the weather?"
-
-    def test_system_prompt_and_user_prompt(self, make_agent):
-        agent = make_agent(
-            system_prompt=_sys_msg("You help users of {{project}}."),
-            user_prompt=_user_msg("Tell me about {{topic}} in the {{project}} context."),
+        messages = _render_prompt_messages(
+            prompt_builder=prompt_builder,
+            expected_role=ChatRole.USER,
+            prompt_label="user_prompt",
+            kwargs={"name": "Alice", "cities": ["Berlin", "Paris", "Rome"], "date": "2024-01-15"},
         )
-        assert agent._system_chat_prompt_builder is not None
-        assert agent._user_chat_prompt_builder is not None
+        assert messages[0].text == "Hello ALICE, check weather for: Berlin, Paris, Rome on 2024-01-15?"
 
-        result = agent.run(messages=[], project="Haystack", topic="pipelines")
-        messages = result["messages"]
-        assert messages[0].is_from(ChatRole.SYSTEM)
-        assert messages[0].text == "You help users of Haystack."
-        user_messages = [m for m in messages if m.is_from(ChatRole.USER)]
-        assert user_messages[0].text == "Tell me about pipelines in the Haystack context."
-
-    def test_prompt_wrong_role_raises_at_init(self, make_agent):
+    def test_prompt_wrong_role_raises(self):
         with pytest.raises(ValueError, match="system_prompt message block must have role 'system'"):
-            make_agent(system_prompt=_user_msg("This is a user message, not system."))
+            _validate_prompt_message_blocks(
+                user_prompt=None, system_prompt=_user_msg("This is a user message, not system.")
+            )
 
         with pytest.raises(ValueError, match="user_prompt message block must have role 'user'"):
-            make_agent(user_prompt=_sys_msg("This is a system message, not user."))
+            _validate_prompt_message_blocks(
+                user_prompt=_sys_msg("This is a system message, not user."), system_prompt=None
+            )
 
-    def test_dynamic_prompt_role_raises_at_runtime(self, make_agent):
-        agent = make_agent(user_prompt="{% message role=role_name %}Question: {{question}}{% endmessage %}")
+    def test_dynamic_prompt_role_raises(self):
+        prompt_builder = ChatPromptBuilder(
+            template="{% message role=role_name %}Question: {{question}}{% endmessage %}"
+        )
         with pytest.raises(ValueError, match="user_prompt must render to a user message"):
-            agent.run(messages=[], role_name="assistant", question="Will it snow?")
+            _render_prompt_messages(
+                prompt_builder=prompt_builder,
+                expected_role=ChatRole.USER,
+                prompt_label="user_prompt",
+                kwargs={"role_name": "assistant", "question": "Will it snow?"},
+            )
 
-    def test_prompt_multiple_message_blocks_raises_at_init(self, make_agent):
+    def test_prompt_multiple_message_blocks_raises(self):
         multi_message_prompt = """{% message role='system' %}You are a helpful assistant.{% endmessage %}
         {% message role='user' %}How are you?{% endmessage %}"""
 
         with pytest.raises(ValueError, match="system_prompt must define exactly one message block"):
-            make_agent(system_prompt=multi_message_prompt)
+            _validate_prompt_message_blocks(user_prompt=None, system_prompt=multi_message_prompt)
 
         with pytest.raises(ValueError, match="user_prompt must define exactly one message block"):
-            make_agent(user_prompt=multi_message_prompt)
+            _validate_prompt_message_blocks(user_prompt=multi_message_prompt, system_prompt=None)

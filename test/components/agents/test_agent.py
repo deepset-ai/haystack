@@ -11,6 +11,7 @@ from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from jinja2 import TemplateSyntaxError
 from openai import Stream
 from openai.types.chat import ChatCompletionChunk, chat_completion_chunk
 
@@ -40,6 +41,10 @@ from haystack.utils import Secret, serialize_callable
 
 def _user_msg(text: str) -> str:
     return f'{{% message role="user" %}}{text}{{% endmessage %}}'
+
+
+def _sys_msg(text: str) -> str:
+    return f'{{% message role="system" %}}{text}{{% endmessage %}}'
 
 
 def _assistant_with_usage(text: str | None = None, *, tool_calls=None, usage: dict[str, Any] | None = None):
@@ -1844,6 +1849,58 @@ class TestAgentToolSelection:
         assert isinstance(deserialized_agent.tools, list)
         assert len(deserialized_agent.tools) == 2
         assert all(isinstance(ts, Toolset) for ts in deserialized_agent.tools)
+
+
+class TestPrompts:
+    def test_system_prompt_incorrect_jinja2_syntax_raises(self, make_agent):
+        with pytest.raises(TemplateSyntaxError):
+            make_agent(system_prompt="{% message role='system' %}Incomplete syntax.")
+
+    def test_system_prompt_plain_string_with_template_variables(self, make_agent):
+        agent = make_agent(system_prompt="You are an assistant for {{company}}. Your role is {{role}}.")
+        assert agent._system_chat_prompt_builder is not None
+        assert set(agent._system_chat_prompt_builder.variables) == {"company", "role"}
+
+        result = agent.run(messages=[ChatMessage.from_user("Hi")], company="Acme", role="support agent")
+        sys_msg = result["messages"][0]
+        assert sys_msg.is_from(ChatRole.SYSTEM)
+        assert sys_msg.text == "You are an assistant for Acme. Your role is support agent."
+
+        input_names = set(agent.__haystack_input__._sockets_dict.keys())
+        assert "company" in input_names
+        assert "role" in input_names
+
+    def test_user_prompt_plain_string_with_template_variables(self, make_agent):
+        agent = make_agent(user_prompt="Question: {{question}}")
+        result = agent.run(messages=[], question="Will it snow?")
+        user_messages = [m for m in result["messages"] if m.is_from(ChatRole.USER)]
+        assert user_messages[0].text == "Question: Will it snow?"
+
+        input_names = set(agent.__haystack_input__._sockets_dict.keys())
+        assert "question" in input_names
+
+    def test_user_prompt_appended_after_initial_messages(self, make_agent):
+        agent = make_agent(user_prompt=_user_msg("And now: {{query}}"))
+        initial_messages = [ChatMessage.from_user("First message")]
+        result = agent.run(messages=initial_messages, query="What is the weather?")
+        user_messages = [m for m in result["messages"] if m.is_from(ChatRole.USER)]
+        assert user_messages[0].text == "First message"
+        assert user_messages[1].text == "And now: What is the weather?"
+
+    def test_system_prompt_and_user_prompt(self, make_agent):
+        agent = make_agent(
+            system_prompt=_sys_msg("You help users of {{project}}."),
+            user_prompt=_user_msg("Tell me about {{topic}} in the {{project}} context."),
+        )
+        assert agent._system_chat_prompt_builder is not None
+        assert agent._user_chat_prompt_builder is not None
+
+        result = agent.run(messages=[], project="Haystack", topic="pipelines")
+        messages = result["messages"]
+        assert messages[0].is_from(ChatRole.SYSTEM)
+        assert messages[0].text == "You help users of Haystack."
+        user_messages = [m for m in messages if m.is_from(ChatRole.USER)]
+        assert user_messages[0].text == "Tell me about pipelines in the Haystack context."
 
 
 class TestRegisterPromptVariables:
