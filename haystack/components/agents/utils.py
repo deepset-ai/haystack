@@ -2,15 +2,162 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import re
+from copy import deepcopy
 from typing import Any
 
 from haystack.components.agents.state.state import State
-from haystack.dataclasses import ChatMessage
+from haystack.components.builders.chat_prompt_builder import ChatPromptBuilder
+from haystack.dataclasses import ChatMessage, ChatRole
+from haystack.tools import Tool, Toolset, ToolsType
 
 # Input/output token key conventions across chat generators: most report OpenAI-style
 # `prompt_tokens`/`completion_tokens`; OpenAIResponsesChatGenerator reports `input_tokens`/`output_tokens`.
 _INPUT_TOKEN_KEYS = ("prompt_tokens", "input_tokens")
 _OUTPUT_TOKEN_KEYS = ("completion_tokens", "output_tokens")
+
+
+# ---------------------------
+# Run metadata helpers
+# ---------------------------
+
+
+def _accumulate_usage(current: Any, new: Any) -> Any:
+    """
+    Recursively sum numeric leaf values across two usage-like dicts.
+
+    Used to aggregate `ChatMessage.meta["usage"]` payloads across LLM calls in a run. Nested dicts (e.g. OpenAI's
+    `completion_tokens_details`) are merged recursively; numeric leaves are summed; other types fall back to the new
+    value.
+
+    :param current: The current accumulated usage data.
+    :param new: The new usage data to merge in.
+    """
+    if isinstance(current, dict) and isinstance(new, dict):
+        result = dict(current)
+        for k, v in new.items():
+            result[k] = _accumulate_usage(result[k], v) if k in result else deepcopy(v)
+        return result
+    if isinstance(current, (int, float)) and isinstance(new, (int, float)):
+        return current + new
+    return new
+
+
+def _record_llm_usage(state: State, llm_messages: list[ChatMessage]) -> None:
+    """
+    Aggregate token usage from the latest LLM messages into the State.
+
+    Only writes when at least one message reports `meta["usage"]`, so generators that don't surface usage data
+    leave `token_usage` at its default empty dict rather than overwriting it.
+
+    :param state: The Agent's State, used to read the running `token_usage` total and write back the new total.
+    :param llm_messages: The ChatMessage objects returned from the latest LLM call. Token usage is read from each
+        message's `meta["usage"]` field, if present.
+    """
+    current = state.data.get("token_usage")
+    updated = False
+    for msg in llm_messages:
+        usage = msg.meta.get("usage")
+        if isinstance(usage, dict):
+            current = _accumulate_usage(current or {}, usage)
+            updated = True
+    if updated:
+        state.set("token_usage", current)
+
+
+def _record_tool_calls(state: State, tool_messages: list[ChatMessage]) -> None:
+    """
+    Increment per-tool call counts in the State for every successfully dispatched tool.
+
+    :param state: The Agent's State, used to read the running `tool_call_counts` map and write back the new totals.
+    :param tool_messages: The ChatMessage objects returned from the latest tool execution. Per-tool counts are
+        incremented based on each message's `tool_call_result.origin.tool_name`.
+    """
+    counts = state.data.get("tool_call_counts") or {}
+    updated = False
+    for tm in tool_messages:
+        if tm.tool_call_result is None:
+            continue
+        name = tm.tool_call_result.origin.tool_name
+        counts[name] = counts.get(name, 0) + 1
+        updated = True
+    if updated:
+        state.set("tool_call_counts", counts)
+
+
+# ---------------------------
+# Tool helpers
+# ---------------------------
+
+
+def _select_tools_by_name(configured_tools: ToolsType, names: list[str]) -> list[Tool | Toolset]:
+    """
+    Select configured tools by name for a single run.
+
+    Standalone Tools are kept when their name is requested. A Toolset that exposes a requested name is replaced by a
+    per-run `spawn()` (an isolated copy) with the requested names registered as its `_selected_tool_names`, so
+    dynamic toolsets such as SearchableToolset preserve their behavior (search/lazy-loading) over the selected subset
+    without mutating the shared, configured Toolset.
+
+    :param configured_tools: The tools configured on the Agent.
+    :param names: The requested tool names.
+    :returns: The selected standalone Tools and/or spawned, selection-scoped Toolsets.
+    :raises ValueError: If no tools were configured, or if any requested name is not a valid tool name.
+    """
+    if not configured_tools:
+        raise ValueError("No tools were configured for the Agent at initialization.")
+
+    requested_names = set(names)
+    items: list[Tool | Toolset] = (
+        [configured_tools] if isinstance(configured_tools, Toolset) else list(configured_tools)
+    )
+
+    # Resolve selectable names per item. For Toolsets we use get_selectable_tools() so dynamic toolsets
+    # (e.g. SearchableToolset) offer their full catalog by name, not just the tools exposed by iteration.
+    selectable_per_item: list[tuple[Tool | Toolset, set[str]]] = []
+    valid_tool_names: set[str] = set()
+    for item in items:
+        item_names = {tool.name for tool in item.get_selectable_tools()} if isinstance(item, Toolset) else {item.name}
+        selectable_per_item.append((item, item_names))
+        valid_tool_names |= item_names
+
+    invalid_tool_names = requested_names - valid_tool_names
+    if invalid_tool_names:
+        raise ValueError(
+            f"The following tool names are not valid: {invalid_tool_names}. Valid tool names are: {valid_tool_names}."
+        )
+
+    selected: list[Tool | Toolset] = []
+    for item, item_names in selectable_per_item:
+        matched = requested_names & item_names
+        if not matched:
+            continue
+        if isinstance(item, Toolset):
+            # Apply the selection to a per-run copy so the shared, configured Toolset is never mutated.
+            spawned = item.spawn()
+            spawned._selected_tool_names = matched
+            selected.append(spawned)
+        else:
+            selected.append(item)
+    return selected
+
+
+def _spawn_tools(tools: ToolsType) -> ToolsType:
+    """
+    Return per-run copies of `tools`, replacing each Toolset with an isolated `spawn()` (Tools are passed through).
+
+    This isolates run-scoped Toolset state (e.g. a SearchableToolset's discovered tools and any active name
+    selection) so that concurrent runs sharing the same configured Toolset — such as parallel sub-agent tool calls
+    or concurrent requests against one Agent — don't corrupt each other.
+    """
+    if isinstance(tools, Toolset):
+        return tools.spawn()
+    return [item.spawn() if isinstance(item, Toolset) else item for item in tools]
+
+
+# ---------------------------
+# Context token helpers
+# ---------------------------
 
 
 def _first_numeric(usage: dict[str, Any], keys: tuple[str, ...]) -> int:
@@ -60,3 +207,79 @@ def _record_context_tokens(state: State, llm_messages: list[ChatMessage]) -> Non
         tokens = _context_tokens_from_usage(usage)
         if tokens:
             state.set("context_tokens", tokens)
+
+
+# ---------------------------
+# Prompt helpers
+# ---------------------------
+
+# Regex to detect the Jinja2 chat template syntax
+_JINJA2_CHAT_TEMPLATE_RE = re.compile(r"\{%\s*message\s")
+# Regex to extract the role from a Jinja2 message block, e.g. {% message role="user" %}
+_JINJA2_MESSAGE_ROLE_RE = re.compile(r'\{%\s*message\s+role\s*=\s*["\'](\w+)["\']')
+
+
+def _validate_prompt_message_blocks(user_prompt: str | None, system_prompt: str | None) -> None:
+    """
+    Validate explicit Jinja2 message blocks in Agent prompts.
+
+    :param user_prompt: Optional user prompt template.
+    :param system_prompt: Optional system prompt template.
+    :raises ValueError: If a prompt contains multiple message blocks or a literal block role is invalid.
+    """
+    if user_prompt is not None:
+        message_blocks = _JINJA2_CHAT_TEMPLATE_RE.findall(user_prompt)
+        roles = _JINJA2_MESSAGE_ROLE_RE.findall(user_prompt)
+        if len(message_blocks) > 1:
+            raise ValueError(f"user_prompt must define exactly one message block, found {len(message_blocks)}.")
+        if roles and roles[0] != "user":
+            raise ValueError(f"user_prompt message block must have role 'user', found role '{roles[0]}'.")
+
+    if system_prompt is not None and _JINJA2_CHAT_TEMPLATE_RE.search(system_prompt):
+        message_blocks = _JINJA2_CHAT_TEMPLATE_RE.findall(system_prompt)
+        roles = _JINJA2_MESSAGE_ROLE_RE.findall(system_prompt)
+        if len(message_blocks) > 1:
+            raise ValueError(f"system_prompt must define exactly one message block, found {len(message_blocks)}.")
+        if roles and roles[0] != "system":
+            raise ValueError(f"system_prompt message block must have role 'system', found role '{roles[0]}'.")
+
+
+def _template_for_role(prompt: str, role: str) -> str:
+    """
+    Convert a prompt into a ChatPromptBuilder string template for the expected role.
+
+    :param prompt: Prompt template, with or without an explicit Jinja2 message block.
+    :param role: Role to use when wrapping a plain string prompt.
+    :returns: The original message-block template, or a plain string prompt wrapped in one message block.
+    """
+    if _JINJA2_CHAT_TEMPLATE_RE.search(prompt):
+        return prompt
+    return f'{{% message role="{role}" %}}{prompt}{{% endmessage %}}'
+
+
+def _render_prompt_messages(
+    *, prompt_builder: ChatPromptBuilder, expected_role: ChatRole, prompt_label: str, kwargs: dict[str, Any]
+) -> list[ChatMessage]:
+    """
+    Render one Agent prompt and validate the rendered message.
+
+    :param prompt_builder: Builder configured with the prompt template.
+    :param expected_role: Role the rendered message must have.
+    :param prompt_label: Prompt name used in error messages.
+    :param kwargs: Runtime values available to the prompt template.
+    :returns: A single rendered prompt message.
+    :raises ValueError: If the prompt renders to zero, multiple, or wrong-role messages.
+    """
+    prompt_kwargs = {var: kwargs[var] for var in prompt_builder.variables if var in kwargs}
+    prompt_messages = prompt_builder.run(**prompt_kwargs)["prompt"]
+    if len(prompt_messages) != 1:
+        raise ValueError(
+            f"{prompt_label} must render to exactly one {expected_role.value} message. "
+            f"Got {len(prompt_messages)} messages."
+        )
+    if not prompt_messages[0].is_from(expected_role):
+        raise ValueError(
+            f"{prompt_label} must render to a {expected_role.value} message. "
+            f"Got a message with role {prompt_messages[0].role}."
+        )
+    return prompt_messages
