@@ -133,7 +133,7 @@ class SlidingWindowCompactor(Compactor):
     from haystack.hooks.compaction import ContextCompactionHook, SlidingWindowCompactor
 
     hook = ContextCompactionHook(
-        compactor=SlidingWindowCompactor(), context_window=200_000, compact_at=0.7, compact_to=0.4
+        compactor=SlidingWindowCompactor(), context_window=400_000, compact_at=0.7, compact_to=0.4
     )
     agent = Agent(
         chat_generator=OpenAIResponsesChatGenerator(model="gpt-5.4-nano"),
