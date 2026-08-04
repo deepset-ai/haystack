@@ -424,12 +424,13 @@ def test_remove_title_from_schema_definition_named_title_draft_07_spelling():
 
 
 def test_remove_title_from_schema_keeps_instance_data():
-    """Test that 'title' keys inside instance data ('default', 'const', 'enum') are left untouched."""
+    """Test that 'title' keys inside instance data are left untouched."""
     schema = {
         "properties": {
             "cfg": {"type": "object", "default": {"title": "Untitled", "width": 80}, "title": "Cfg"},
             "mode": {"const": {"title": "fast", "workers": 2}, "title": "Mode"},
             "choice": {"enum": [{"title": "A", "id": 1}, {"title": "B", "id": 2}], "title": "Choice"},
+            "example": {"examples": [{"title": "Example", "id": 1}], "title": "Example"},
         },
         "title": "configure",
         "type": "object",
@@ -437,13 +438,14 @@ def test_remove_title_from_schema_keeps_instance_data():
 
     _remove_title_from_schema(schema)
 
-    # A 'title' key in a default/const/enum is part of the *value*, not a schema keyword:
+    # A 'title' key in a default/const/enum/examples is part of the *value*, not a schema keyword:
     # removing it would silently change the tool's contract.
     assert schema == {
         "properties": {
             "cfg": {"type": "object", "default": {"title": "Untitled", "width": 80}},
             "mode": {"const": {"title": "fast", "workers": 2}},
             "choice": {"enum": [{"title": "A", "id": 1}, {"title": "B", "id": 2}]},
+            "example": {"examples": [{"title": "Example", "id": 1}]},
         },
         "type": "object",
     }
