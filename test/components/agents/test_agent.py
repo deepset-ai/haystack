@@ -1851,6 +1851,56 @@ class TestAgentToolSelection:
         assert all(isinstance(ts, Toolset) for ts in deserialized_agent.tools)
 
 
+class TestRegisterPromptVariables:
+    def test_register_prompt_variables_warning_when_no_prompt_and_required_variables(self, make_agent, caplog):
+        make_agent(required_variables=["name"])
+        assert "The parameter required_variables is provided but neither" in caplog.text
+
+    def test_register_prompt_variables_no_warning_when_no_prompt_and_default(self, make_agent, caplog):
+        make_agent()
+        assert "The parameter required_variables is provided but neither" not in caplog.text
+
+    def test_register_prompt_variables_all_required_by_default(self, make_agent):
+        agent = make_agent(user_prompt=_user_msg("Question: {{question}}"))
+        assert agent._user_chat_prompt_builder.required_variables == "*"
+
+        socket = agent.__haystack_input__._sockets_dict["question"]
+        assert socket.is_mandatory
+
+    def test_register_prompt_variables_all_optional_with_none(self, make_agent):
+        agent = make_agent(user_prompt=_user_msg("Question: {{question}}"), required_variables=None)
+
+        socket = agent.__haystack_input__._sockets_dict["question"]
+        assert not socket.is_mandatory
+
+    def test_register_prompt_variables_set_all_variables_as_required(self, make_agent):
+        agent = make_agent(user_prompt=_user_msg("Question: {{question}}"), required_variables="*")
+        assert agent._user_chat_prompt_builder.required_variables == "*"
+
+        input_names = set(agent.__haystack_input__._sockets_dict.keys())
+        assert "question" in input_names
+
+    def test_register_prompt_variables_set_required_variables_on_builder(self, make_agent):
+        agent = make_agent(user_prompt=_user_msg("Question: {{question}}"), required_variables=["question"])
+        assert agent._user_chat_prompt_builder.required_variables == ["question"]
+
+        input_names = set(agent.__haystack_input__._sockets_dict.keys())
+        assert "question" in input_names
+
+    def test_register_prompt_variables_raises_on_state_schema_conflict(self, make_agent):
+        with pytest.raises(
+            ValueError, match="Variable 'question' from user_prompt is already defined in the state schema."
+        ):
+            make_agent(user_prompt=_user_msg("Question: {{question}}"), state_schema={"question": {"type": str}})
+
+    def test_register_prompt_variables_raises_on_run_param_conflict(self, make_agent):
+        with pytest.raises(
+            ValueError,
+            match="Variable 'streaming_callback' from user_prompt conflicts with input names in the run method.",
+        ):
+            make_agent(user_prompt=_user_msg("{{streaming_callback}} is already a run parameter."))
+
+
 class TestPrompts:
     def test_system_prompt_incorrect_jinja2_syntax_raises(self, make_agent):
         with pytest.raises(TemplateSyntaxError):
@@ -1901,56 +1951,6 @@ class TestPrompts:
         assert messages[0].text == "You help users of Haystack."
         user_messages = [m for m in messages if m.is_from(ChatRole.USER)]
         assert user_messages[0].text == "Tell me about pipelines in the Haystack context."
-
-
-class TestRegisterPromptVariables:
-    def test_register_prompt_variables_warning_when_no_prompt_and_required_variables(self, make_agent, caplog):
-        make_agent(required_variables=["name"])
-        assert "The parameter required_variables is provided but neither" in caplog.text
-
-    def test_register_prompt_variables_no_warning_when_no_prompt_and_default(self, make_agent, caplog):
-        make_agent()
-        assert "The parameter required_variables is provided but neither" not in caplog.text
-
-    def test_register_prompt_variables_all_required_by_default(self, make_agent):
-        agent = make_agent(user_prompt=_user_msg("Question: {{question}}"))
-        assert agent._user_chat_prompt_builder.required_variables == "*"
-
-        socket = agent.__haystack_input__._sockets_dict["question"]
-        assert socket.is_mandatory
-
-    def test_register_prompt_variables_all_optional_with_none(self, make_agent):
-        agent = make_agent(user_prompt=_user_msg("Question: {{question}}"), required_variables=None)
-
-        socket = agent.__haystack_input__._sockets_dict["question"]
-        assert not socket.is_mandatory
-
-    def test_register_prompt_variables_set_all_variables_as_required(self, make_agent):
-        agent = make_agent(user_prompt=_user_msg("Question: {{question}}"), required_variables="*")
-        assert agent._user_chat_prompt_builder.required_variables == "*"
-
-        input_names = set(agent.__haystack_input__._sockets_dict.keys())
-        assert "question" in input_names
-
-    def test_register_prompt_variables_set_required_variables_on_builder(self, make_agent):
-        agent = make_agent(user_prompt=_user_msg("Question: {{question}}"), required_variables=["question"])
-        assert agent._user_chat_prompt_builder.required_variables == ["question"]
-
-        input_names = set(agent.__haystack_input__._sockets_dict.keys())
-        assert "question" in input_names
-
-    def test_register_prompt_variables_raises_on_state_schema_conflict(self, make_agent):
-        with pytest.raises(
-            ValueError, match="Variable 'question' from user_prompt is already defined in the state schema."
-        ):
-            make_agent(user_prompt=_user_msg("Question: {{question}}"), state_schema={"question": {"type": str}})
-
-    def test_register_prompt_variables_raises_on_run_param_conflict(self, make_agent):
-        with pytest.raises(
-            ValueError,
-            match="Variable 'streaming_callback' from user_prompt conflicts with input names in the run method.",
-        ):
-            make_agent(user_prompt=_user_msg("{{streaming_callback}} is already a run parameter."))
 
 
 @pytest.mark.integration
