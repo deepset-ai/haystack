@@ -65,7 +65,7 @@
             <a id="nextFileLink" class="nav" href="z_6d562fb38bfc5ee6_markdown_py.html">&#xbb; next</a>
             &nbsp; &nbsp; &nbsp;
             <a class="nav" href="https://coverage.readthedocs.io/en/7.15.2">coverage.py v7.15.2</a>,
-            created at 2026-08-04 06:48 +0000
+            created at 2026-08-04 07:07 +0000
         </p>
         <aside class="hidden">
             <button type="button" class="button_next_chunk" data-shortcut="j"></button>
@@ -273,7 +273,7 @@
     <p class="run"><span class="n"><a id="t191" href="#t191">191</a></span><span class="t">        <span class="key">except</span> <span class="nam">UnicodeError</span> <span class="key">as</span> <span class="nam">exc</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t192" href="#t192">192</a></span><span class="t">            <span class="nam">logger</span><span class="op">.</span><span class="nam">warning</span><span class="op">(</span>&nbsp;</span><span class="r"></span></p>
     <p class="run run2"><span class="n"><a id="t193" href="#t193">193</a></span><span class="t">                <span class="str">"Failed to extract text from {source}. Skipping it. Error: {error}"</span><span class="op">,</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run run2"><span class="n"><a id="t194" href="#t194">194</a></span><span class="t">                <span class="nam">source</span><span class="op">=</span><span class="nam">source</span><span class="op">.</span><span class="nam">meta</span><span class="op">[</span><span class="str">"file_path"</span><span class="op">]</span><span class="op">,</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run run2"><span class="n"><a id="t194" href="#t194">194</a></span><span class="t">                <span class="nam">source</span><span class="op">=</span><span class="nam">source</span><span class="op">.</span><span class="nam">meta</span><span class="op">.</span><span class="nam">get</span><span class="op">(</span><span class="str">"file_path"</span><span class="op">,</span> <span class="str">"unknown"</span><span class="op">)</span><span class="op">,</span>&nbsp;</span><span class="r"></span></p>
     <p class="run run2"><span class="n"><a id="t195" href="#t195">195</a></span><span class="t">                <span class="nam">error</span><span class="op">=</span><span class="nam">exc</span><span class="op">,</span>&nbsp;</span><span class="r"></span></p>
     <p class="run run2"><span class="n"><a id="t196" href="#t196">196</a></span><span class="t">            <span class="op">)</span>&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t197" href="#t197">197</a></span><span class="t">            <span class="key">return</span> <span class="op">[</span><span class="op">]</span>&nbsp;</span><span class="r"></span></p>
@@ -286,7 +286,7 @@
     <p class="run"><span class="n"><a id="t204" href="#t204">204</a></span><span class="t">            <span class="key">except</span> <span class="nam">Exception</span> <span class="key">as</span> <span class="nam">exc</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t205" href="#t205">205</a></span><span class="t">                <span class="nam">logger</span><span class="op">.</span><span class="nam">warning</span><span class="op">(</span>&nbsp;</span><span class="r"></span></p>
     <p class="run run2"><span class="n"><a id="t206" href="#t206">206</a></span><span class="t">                    <span class="str">"Failed to extract text from {source}. Skipping it. Error: {error}"</span><span class="op">,</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run run2"><span class="n"><a id="t207" href="#t207">207</a></span><span class="t">                    <span class="nam">source</span><span class="op">=</span><span class="nam">source</span><span class="op">.</span><span class="nam">meta</span><span class="op">[</span><span class="str">"file_path"</span><span class="op">]</span><span class="op">,</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run run2"><span class="n"><a id="t207" href="#t207">207</a></span><span class="t">                    <span class="nam">source</span><span class="op">=</span><span class="nam">source</span><span class="op">.</span><span class="nam">meta</span><span class="op">.</span><span class="nam">get</span><span class="op">(</span><span class="str">"file_path"</span><span class="op">,</span> <span class="str">"unknown"</span><span class="op">)</span><span class="op">,</span>&nbsp;</span><span class="r"></span></p>
     <p class="run run2"><span class="n"><a id="t208" href="#t208">208</a></span><span class="t">                    <span class="nam">error</span><span class="op">=</span><span class="nam">exc</span><span class="op">,</span>&nbsp;</span><span class="r"></span></p>
     <p class="run run2"><span class="n"><a id="t209" href="#t209">209</a></span><span class="t">                <span class="op">)</span>&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t210" href="#t210">210</a></span><span class="t">                <span class="key">return</span> <span class="op">[</span><span class="op">]</span>&nbsp;</span><span class="r"></span></p>
@@ -298,7 +298,7 @@
     <p class="run"><span class="n"><a id="t216" href="#t216">216</a></span><span class="t">            <span class="key">except</span> <span class="nam">json</span><span class="op">.</span><span class="nam">JSONDecodeError</span> <span class="key">as</span> <span class="nam">exc</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t217" href="#t217">217</a></span><span class="t">                <span class="nam">logger</span><span class="op">.</span><span class="nam">warning</span><span class="op">(</span>&nbsp;</span><span class="r"></span></p>
     <p class="run run2"><span class="n"><a id="t218" href="#t218">218</a></span><span class="t">                    <span class="str">"Failed to extract text from {source}. Skipping it. Error: {error}"</span><span class="op">,</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run run2"><span class="n"><a id="t219" href="#t219">219</a></span><span class="t">                    <span class="nam">source</span><span class="op">=</span><span class="nam">source</span><span class="op">.</span><span class="nam">meta</span><span class="op">[</span><span class="str">"file_path"</span><span class="op">]</span><span class="op">,</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run run2"><span class="n"><a id="t219" href="#t219">219</a></span><span class="t">                    <span class="nam">source</span><span class="op">=</span><span class="nam">source</span><span class="op">.</span><span class="nam">meta</span><span class="op">.</span><span class="nam">get</span><span class="op">(</span><span class="str">"file_path"</span><span class="op">,</span> <span class="str">"unknown"</span><span class="op">)</span><span class="op">,</span>&nbsp;</span><span class="r"></span></p>
     <p class="run run2"><span class="n"><a id="t220" href="#t220">220</a></span><span class="t">                    <span class="nam">error</span><span class="op">=</span><span class="nam">exc</span><span class="op">,</span>&nbsp;</span><span class="r"></span></p>
     <p class="run run2"><span class="n"><a id="t221" href="#t221">221</a></span><span class="t">                <span class="op">)</span>&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t222" href="#t222">222</a></span><span class="t">                <span class="key">return</span> <span class="op">[</span><span class="op">]</span>&nbsp;</span><span class="r"></span></p>
@@ -386,7 +386,7 @@
             <a class="nav" href="z_6d562fb38bfc5ee6_markdown_py.html">&#xbb; next</a>
             &nbsp; &nbsp; &nbsp;
             <a class="nav" href="https://coverage.readthedocs.io/en/7.15.2">coverage.py v7.15.2</a>,
-            created at 2026-08-04 06:48 +0000
+            created at 2026-08-04 07:07 +0000
         </p>
     </div>
 </footer>
