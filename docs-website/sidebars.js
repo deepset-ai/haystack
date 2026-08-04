@@ -747,6 +747,18 @@ export default {
     },
     {
       type: 'category',
+      label: 'Token Counters',
+      link: {
+        type: 'doc',
+        id: 'token-counters'
+      },
+      items: [
+        'token-counters/approximatetokencounter',
+        'token-counters/tiktokencounter',
+      ],
+    },
+    {
+      type: 'category',
       label: 'Memory Stores',
       items: [
         'memory-stores/cogneememorystore',
