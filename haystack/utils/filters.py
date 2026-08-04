@@ -40,11 +40,71 @@ LOGICAL_OPERATORS = {"NOT": _not, "OR": _or, "AND": _and}
 
 
 def _equal(value: Any, filter_value: Any) -> bool:
-    return value == filter_value
+    if value == filter_value:
+        return True
+    return _dates_are_equal(value=value, filter_value=filter_value)
 
 
 def _not_equal(value: Any, filter_value: Any) -> bool:
     return not _equal(value=value, filter_value=filter_value)
+
+
+def _looks_like_iso_date(value: Any) -> bool:
+    """
+    Cheaply reject values that can't be a full ISO 8601 date, before paying for a real parse.
+
+    Deliberately conservative: a complete `YYYY-MM-DD` prefix is required, so partial dates such as
+    "2025" are not read as dates, and the ISO 8601 basic format ("20250203") is not recognised.
+    """
+    return (
+        isinstance(value, str)
+        and len(value) >= 10
+        and value[:4].isdigit()
+        and value[4] == "-"
+        and value[5:7].isdigit()
+        and value[7] == "-"
+        and value[8:10].isdigit()
+        and (len(value) == 10 or value[10] in {"T", "t", " "})
+    )
+
+
+def _parse_iso_date(value: str) -> datetime | None:
+    """Parse a strict ISO 8601 string, returning None if it isn't one."""
+    try:
+        return datetime.fromisoformat(value)
+    except ValueError:
+        # Python 3.10's fromisoformat rejects valid ISO 8601 spellings that later versions accept,
+        # most notably a trailing "Z".
+        try:
+            return dateutil.parser.isoparse(value)
+        except (ValueError, OverflowError):
+            return None
+
+
+def _dates_are_equal(value: Any, filter_value: Any) -> bool:
+    """
+    Return whether both values are ISO 8601 datetimes denoting the same point in time.
+
+    Only strict ISO 8601 strings and `datetime` objects are considered, and a naive value is never
+    compared to an aware one: guessing a timezone would risk reporting two different instants as equal.
+    Returns False for anything that isn't a pair of comparable datetimes, so that `==` stays total.
+    """
+    parsed: list[datetime] = []
+    for candidate in (value, filter_value):
+        if isinstance(candidate, datetime):
+            parsed.append(candidate)
+            continue
+        if not _looks_like_iso_date(candidate):
+            return False
+        date = _parse_iso_date(candidate)
+        if date is None:
+            return False
+        parsed.append(date)
+
+    first, second = parsed
+    if (first.tzinfo is None) != (second.tzinfo is None):
+        return False
+    return first == second
 
 
 def _prepare_ordering_comparison(value: Any, filter_value: Any) -> tuple[Any, Any]:
