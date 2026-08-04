@@ -716,6 +716,7 @@ export default {
       label: 'Tools',
       items: [
         'tools/tool',
+        'tools/agenttool',
         'tools/componenttool',
         'tools/pipelinetool',
         'tools/toolset',
@@ -742,6 +743,18 @@ export default {
             'tools/ready-made-tools/tavilywebsearchtool',
           ],
         },
+      ],
+    },
+    {
+      type: 'category',
+      label: 'Token Counters',
+      link: {
+        type: 'doc',
+        id: 'token-counters'
+      },
+      items: [
+        'token-counters/approximatetokencounter',
+        'token-counters/tiktokencounter',
       ],
     },
     {

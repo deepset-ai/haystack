@@ -308,21 +308,26 @@ Returns the minimum and maximum values for the given metadata field across all d
 
 ```python
 get_metadata_field_unique_values(
-    metadata_field: str, search_term: str | None = None
-) -> tuple[list[str], int]
+    metadata_field: str,
+    search_term: str | None = None,
+    from_: int = 0,
+    size: int = 10,
+) -> tuple[list[Any], int]
 ```
 
-Returns unique values for a metadata field, optionally filtered by a search term in content.
+Returns unique values for a metadata field, optionally filtered by a search term, with pagination.
 
 **Parameters:**
 
 - **metadata_field** (<code>str</code>) – The metadata field name. Can include or omit the "meta." prefix.
-- **search_term** (<code>str | None</code>) – If set, only documents whose content contains this term (case-insensitive)
-  are considered.
+- **search_term** (<code>str | None</code>) – Optional search term to filter values, matched as a case-insensitive substring
+  against the metadata field's value.
+- **from\_** (<code>int</code>) – The offset to start returning values from (for pagination).
+- **size** (<code>int</code>) – The maximum number of unique values to return.
 
 **Returns:**
 
-- <code>tuple\[list\[str\], int\]</code> – A tuple of (list of unique values, total count of unique values).
+- <code>tuple\[list\[Any\], int\]</code> – A tuple of (paginated list of unique values, total count of unique values).
 
 #### bm25_retrieval
 
@@ -523,21 +528,26 @@ Returns the minimum and maximum values for the given metadata field across all d
 
 ```python
 get_metadata_field_unique_values_async(
-    metadata_field: str, search_term: str | None = None
-) -> tuple[list[str], int]
+    metadata_field: str,
+    search_term: str | None = None,
+    from_: int = 0,
+    size: int = 10,
+) -> tuple[list[Any], int]
 ```
 
-Returns unique values for a metadata field, optionally filtered by a search term in content.
+Returns unique values for a metadata field, optionally filtered by a search term, with pagination.
 
 **Parameters:**
 
 - **metadata_field** (<code>str</code>) – The metadata field name. Can include or omit the "meta." prefix.
-- **search_term** (<code>str | None</code>) – If set, only documents whose content contains this term (case-insensitive)
-  are considered.
+- **search_term** (<code>str | None</code>) – Optional search term to filter values, matched as a case-insensitive substring
+  against the metadata field's value.
+- **from\_** (<code>int</code>) – The offset to start returning values from (for pagination).
+- **size** (<code>int</code>) – The maximum number of unique values to return.
 
 **Returns:**
 
-- <code>tuple\[list\[str\], int\]</code> – A tuple of (list of unique values, total count of unique values).
+- <code>tuple\[list\[Any\], int\]</code> – A tuple of (paginated list of unique values, total count of unique values).
 
 #### delete_all_documents_async
 

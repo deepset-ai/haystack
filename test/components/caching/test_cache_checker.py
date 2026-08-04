@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from unittest.mock import MagicMock, Mock
+from unittest.mock import Mock, patch
 
 import pytest
 
@@ -87,11 +87,11 @@ class TestCacheChecker:
 
     def test_filters_syntax(self):
         mocked_docstore_class = document_store_class("MockedDocumentStore")
-        mocked_docstore_class.filter_documents = MagicMock()
-        checker = CacheChecker(document_store=mocked_docstore_class(), cache_field="url")
-        checker.run(items=["https://example.com/1"])
-        valid_filters_syntax = {"field": "url", "operator": "==", "value": "https://example.com/1"}
-        mocked_docstore_class.filter_documents.assert_any_call(filters=valid_filters_syntax)
+        with patch.object(mocked_docstore_class, "filter_documents") as filter_documents:
+            checker = CacheChecker(document_store=mocked_docstore_class(), cache_field="url")
+            checker.run(items=["https://example.com/1"])
+            valid_filters_syntax = {"field": "url", "operator": "==", "value": "https://example.com/1"}
+            filter_documents.assert_any_call(filters=valid_filters_syntax)
 
     def test_close(self):
         closable_document_store = Mock(spec=["close"])
