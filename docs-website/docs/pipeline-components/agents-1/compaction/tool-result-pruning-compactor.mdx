@@ -93,7 +93,7 @@ The complete conversation is counted once. For each eligible result, the counter
 
 [`ToolResultOffloadHook`](../tool-result-offloading.mdx) stores a tool result outside the conversation and replaces it with a reference. Pruning that reference would prevent the model from retrieving the stored content.
 
-By default, `ToolResultPruningCompactor` skips messages with `tool_result_offloaded` metadata. Add other metadata keys to `skip_meta_keys` when another hook or application feature leaves references that must remain available.
+By default, `ToolResultPruningCompactor` skips messages with `tool_result_offloaded` metadata. These pointer messages are already small, so pruning them would save little context while removing the model's only reference to the full stored result. Add other metadata keys to `skip_meta_keys` when another hook or application feature leaves references that must remain available.
 
 ## When the conversation is unchanged
 
