@@ -95,44 +95,48 @@ class ToolResultPruningCompactor(Compactor):
         :param token_counter: The `TokenCounter` used to measure the conversation before and after each replacement.
         :returns: The conversation with older tool results replaced, or None when no result was prunable.
         """
-        current_tokens = token_counter.count(messages)
+        current_tokens = token_counter.count(messages=messages)
         if current_tokens <= target_tokens:
             return None
 
-        # Always protect trailing batch of results even when it is larger than `min_keep_results`, b/c the model has not
-        # acted on those results yet.
+        # The model has not acted on the current step's results yet, so protect the complete trailing batch even when
+        # it is larger than `min_keep_results`.
         trailing_result_count = 0
         for message in reversed(messages):
             if message.tool_call_result is None:
                 break
             trailing_result_count += 1
-        # The number of results to protect is the larger of the configured minimum and the trailing batch.
         protected_result_count = max(self.min_keep_results, trailing_result_count)
 
-        # Only consider results that are not in the protected set, and stop when the target is reached.
+        # Taking candidates from the front lets pruning stop at the target while leaving as much recent output intact
+        # as possible.
         result_positions = [index for index, message in enumerate(messages) if message.tool_call_result is not None]
         candidates = result_positions[:-protected_result_count]
         if not candidates:
             return None
 
+        # Work on copies because the Compactor contract requires leaving the caller-owned input list unchanged.
         compacted = list(messages)
         changed = False
         for index in candidates:
-            pruned = self._prune(messages[index], token_counter)
+            pruned = self._prune(message=messages[index], token_counter=token_counter)
             if pruned is None:
                 continue
 
+            # Trial the replacement on another copy so a non-saving custom placeholder can be discarded safely.
             candidate = list(compacted)
             candidate[index] = pruned
-            candidate_tokens = token_counter.count(candidate)
-            # A custom placeholder can be larger than the result. Compactors must only return a shorter conversation,
-            # so retain the original in that case.
+            # Recount the complete conversation: tokenization is not additive, and counters may charge separately for
+            # images or files, so subtracting two isolated message counts would not reliably measure the new context.
+            candidate_tokens = token_counter.count(messages=candidate)
+            # Compactors must only return a shorter conversation; a custom placeholder can be larger than the result.
             if candidate_tokens >= current_tokens:
                 continue
 
             compacted = candidate
             current_tokens = candidate_tokens
             changed = True
+            # Stopping at the first target hit preserves every newer candidate in its original form.
             if current_tokens <= target_tokens:
                 break
         return compacted if changed else None
@@ -154,7 +158,7 @@ class ToolResultPruningCompactor(Compactor):
         if any(key in message.meta for key in self.skip_meta_keys):
             return None
 
-        original_tokens = token_counter.count([message])
+        original_tokens = token_counter.count(messages=[message])
         if original_tokens <= self.min_tokens:
             return None
 

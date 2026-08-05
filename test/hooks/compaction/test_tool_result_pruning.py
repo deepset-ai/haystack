@@ -29,12 +29,12 @@ class TestToolResultPruningCompactor:
         messages = _conversation("a" * 400, "b" * 400, "c" * 400)
         compactor = ToolResultPruningCompactor(min_keep_results=1, min_tokens=0)
         one_pruned = list(messages)
-        pruned = compactor._prune(messages[2], COUNTER)
+        pruned = compactor._prune(message=messages[2], token_counter=COUNTER)
         assert pruned is not None
         one_pruned[2] = pruned
-        target = COUNTER.count(one_pruned)
+        target = COUNTER.count(messages=one_pruned)
 
-        compacted = compactor.compact(messages, target_tokens=target, token_counter=COUNTER)
+        compacted = compactor.compact(messages=messages, target_tokens=target, token_counter=COUNTER)
 
         assert compacted is not None
         assert compacted[2].tool_call_result is not None
@@ -47,7 +47,7 @@ class TestToolResultPruningCompactor:
         messages = _conversation("a" * 400, "b" * 400, "c" * 400)
 
         compacted = ToolResultPruningCompactor(min_keep_results=2, min_tokens=0).compact(
-            messages, target_tokens=1, token_counter=COUNTER
+            messages=messages, target_tokens=1, token_counter=COUNTER
         )
 
         assert compacted is not None
@@ -66,7 +66,7 @@ class TestToolResultPruningCompactor:
         ]
 
         compacted = ToolResultPruningCompactor(min_keep_results=1, min_tokens=0).compact(
-            messages, target_tokens=1, token_counter=COUNTER
+            messages=messages, target_tokens=1, token_counter=COUNTER
         )
 
         assert compacted is not None
@@ -78,7 +78,7 @@ class TestToolResultPruningCompactor:
 
         assert (
             ToolResultPruningCompactor(min_keep_results=1, min_tokens=0).compact(
-                messages, target_tokens=COUNTER.count(messages), token_counter=COUNTER
+                messages=messages, target_tokens=COUNTER.count(messages=messages), token_counter=COUNTER
             )
             is None
         )
@@ -88,7 +88,7 @@ class TestToolResultPruningCompactor:
 
         assert (
             ToolResultPruningCompactor(min_keep_results=1, min_tokens=0).compact(
-                messages, target_tokens=1, token_counter=COUNTER
+                messages=messages, target_tokens=1, token_counter=COUNTER
             )
             is None
         )
@@ -99,7 +99,7 @@ class TestToolResultPruningCompactor:
             min_keep_results=1, min_tokens=0, placeholder="a placeholder much longer than the result"
         )
 
-        assert compactor.compact(messages, target_tokens=1, token_counter=COUNTER) is None
+        assert compactor.compact(messages=messages, target_tokens=1, token_counter=COUNTER) is None
 
     def test_min_tokens_accounts_for_non_text_tool_results(self):
         image = ImageContent(base64_image="Zm9v", mime_type="image/png")
@@ -114,7 +114,7 @@ class TestToolResultPruningCompactor:
         counter = ApproximateTokenCounter(tokens_per_image=500)
 
         compacted = ToolResultPruningCompactor(min_keep_results=1, min_tokens=100).compact(
-            messages, target_tokens=1, token_counter=counter
+            messages=messages, target_tokens=1, token_counter=counter
         )
 
         assert compacted is not None and compacted[2].tool_call_result is not None
@@ -144,7 +144,9 @@ class TestToolResultPruningCompactor:
         ]
 
         assert (
-            ToolResultPruningCompactor(min_keep_results=1).compact(messages, target_tokens=1, token_counter=COUNTER)
+            ToolResultPruningCompactor(min_keep_results=1).compact(
+                messages=messages, target_tokens=1, token_counter=COUNTER
+            )
             is None
         )
 
@@ -153,7 +155,7 @@ class TestToolResultPruningCompactor:
         messages[2].meta["custom"] = "value"
 
         compacted = ToolResultPruningCompactor(min_keep_results=1, min_tokens=0).compact(
-            messages, target_tokens=1, token_counter=COUNTER
+            messages=messages, target_tokens=1, token_counter=COUNTER
         )
 
         assert compacted is not None
@@ -164,7 +166,10 @@ class TestToolResultPruningCompactor:
         assert pruned_result.error == original_result.error
         assert compacted[2].meta == {
             "custom": "value",
-            _COMPACTION_META_KEY: {"strategy": "tool_result_pruning", "original_tokens": COUNTER.count([messages[2]])},
+            _COMPACTION_META_KEY: {
+                "strategy": "tool_result_pruning",
+                "original_tokens": COUNTER.count(messages=[messages[2]]),
+            },
         }
 
     def test_custom_placeholder_replaces_tool_name_and_preserves_literal_braces(self):
@@ -173,7 +178,7 @@ class TestToolResultPruningCompactor:
             min_keep_results=1, min_tokens=0, placeholder='Run {tool_name} again with {"query": "..."}.'
         )
 
-        compacted = compactor.compact(messages, target_tokens=1, token_counter=COUNTER)
+        compacted = compactor.compact(messages=messages, target_tokens=1, token_counter=COUNTER)
 
         assert compacted is not None and compacted[2].tool_call_result is not None
         assert compacted[2].tool_call_result.result == 'Run search again with {"query": "..."}.'
@@ -194,7 +199,7 @@ class TestToolResultPruningCompactor:
             min_keep_results=2, min_tokens=12, placeholder="", skip_meta_keys=("stored", "cached")
         )
 
-        restored = ToolResultPruningCompactor.from_dict(compactor.to_dict())
+        restored = ToolResultPruningCompactor.from_dict(data=compactor.to_dict())
 
         assert isinstance(restored, ToolResultPruningCompactor)
         assert restored.min_keep_results == 2
@@ -205,7 +210,7 @@ class TestToolResultPruningCompactor:
     def test_survives_a_hook_serialization_round_trip(self):
         hook = ContextCompactionHook(compactor=ToolResultPruningCompactor(min_keep_results=2), context_window=10_000)
 
-        restored = ContextCompactionHook.from_dict(hook.to_dict())
+        restored = ContextCompactionHook.from_dict(data=hook.to_dict())
 
         assert isinstance(restored.compactor, ToolResultPruningCompactor)
         assert restored.compactor.min_keep_results == 2
