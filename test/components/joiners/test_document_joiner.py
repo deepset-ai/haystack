@@ -31,6 +31,20 @@ class TestDocumentJoiner:
         with pytest.raises(ValueError, match="must not sum to zero"):
             DocumentJoiner(join_mode="merge", weights=[0.0, 0.0, 0.0])
 
+    def test_init_with_top_k_none_is_valid(self):
+        joiner = DocumentJoiner(top_k=None)
+        assert joiner.top_k is None
+
+    @pytest.mark.parametrize("top_k", [1, 5])
+    def test_init_with_positive_top_k_is_valid(self, top_k):
+        joiner = DocumentJoiner(top_k=top_k)
+        assert joiner.top_k == top_k
+
+    @pytest.mark.parametrize("top_k", [0, -1])
+    def test_init_with_non_positive_top_k_raises(self, top_k):
+        with pytest.raises(ValueError, match="top_k must be greater than 0"):
+            DocumentJoiner(top_k=top_k)
+
     def test_to_dict(self):
         joiner = DocumentJoiner()
         data = joiner.to_dict()
@@ -302,6 +316,13 @@ class TestDocumentJoiner:
         documents_2 = [Document(content="d"), Document(content="e"), Document(content="f")]
         output = joiner.run([documents_1, documents_2], top_k=0)
         assert len(output["documents"]) == 0
+
+    def test_run_with_negative_top_k_in_run_method_raises(self):
+        joiner = DocumentJoiner(top_k=5)
+        documents_1 = [Document(content="a"), Document(content="b"), Document(content="c")]
+        documents_2 = [Document(content="d"), Document(content="e"), Document(content="f")]
+        with pytest.raises(ValueError, match="top_k must not be negative"):
+            joiner.run([documents_1, documents_2], top_k=-1)
 
     def test_sort_by_score_without_scores(self, caplog):
         joiner = DocumentJoiner()
