@@ -49,7 +49,7 @@ class TransformersSimilarityRanker:
     ```
     """
 
-    def __init__(  # noqa: PLR0913
+    def __init__(  # noqa: PLR0913, PLR0917 (too-many-arguments, too-many-positional-arguments)
         self,
         model: str | Path = "cross-encoder/ms-marco-MiniLM-L-6-v2",
         device: ComponentDevice | None = None,

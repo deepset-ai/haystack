@@ -116,7 +116,7 @@ class SentenceTransformersDiversityRanker:
     ```
     """
 
-    def __init__(  # noqa: PLR0913
+    def __init__(  # noqa: PLR0913, PLR0917 (too-many-arguments, too-many-positional-arguments)
         self,
         model: str = "sentence-transformers/all-MiniLM-L6-v2",
         top_k: int = 10,

@@ -36,7 +36,7 @@ class SentenceTransformersTextEmbedder:
     ```
     """
 
-    def __init__(  # noqa: PLR0913
+    def __init__(  # noqa: PLR0913, PLR0917 (too-many-arguments, too-many-positional-arguments)
         self,
         model: str = "sentence-transformers/all-mpnet-base-v2",
         device: ComponentDevice | None = None,
