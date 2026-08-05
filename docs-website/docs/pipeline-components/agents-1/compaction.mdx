@@ -18,7 +18,7 @@ Context compaction separates three responsibilities:
 | Responsibility | Abstraction | Purpose |
 | --- | --- | --- |
 | Decide when to compact | [`ContextCompactionHook`](compaction/context-compaction-hook.mdx) | Monitors the Agent's context before LLM calls and invokes a compactor after a configured threshold is reached. |
-| Decide how to compact | `Compactor` protocol | Defines how a conversation is rewritten. Haystack includes [`SlidingWindowCompactor`](compaction/sliding-window-compactor.mdx). |
+| Decide how to compact | `Compactor` protocol | Defines how a conversation is rewritten. Haystack includes [`SlidingWindowCompactor`](compaction/sliding-window-compactor.mdx) and [`ToolResultPruningCompactor`](compaction/tool-result-pruning-compactor.mdx). |
 | Measure the conversation | [`TokenCounter`](../../token-counters.mdx) protocol | Estimates the size of messages and tool schemas before they are sent to a model. |
 
 This separation lets you combine a standard trigger with different compaction strategies and token counters. For example, a local sliding window can remove old history without making an additional model call, while a custom compactor could summarize the same history with an LLM.
@@ -73,6 +73,7 @@ Compactors receive the current messages, a target token count, and the same toke
 | Compactor | Strategy | Trade-off |
 | --- | --- | --- |
 | [`SlidingWindowCompactor`](compaction/sliding-window-compactor.mdx) | Preserves the Agent's instructions, latest user task, and recent complete Agent steps while removing older history. | Fast and local, but discarded information is not summarized. |
+| [`ToolResultPruningCompactor`](compaction/tool-result-pruning-compactor.mdx) | Replaces older, large tool results with short placeholders while preserving tool-call/result structure. | Retains the shape of the run and recent results, but removes the content of pruned results. |
 
 ### Creating a custom compactor
 
@@ -122,3 +123,5 @@ Token counters can also include tool schemas and non-text content in the estimat
 [Tool result offloading](./tool-result-offloading.mdx) solves an adjacent problem: it writes large tool results to a store and leaves a pointer in the conversation. The two approaches work well together — offloading keeps individual results small as they arrive, while compaction bounds the conversation as a whole.
 
 An offloaded result is represented by a reference to the stored content. If a compactor removes or rewrites that message, the model loses the reference it needs to read the content again.
+
+`ToolResultPruningCompactor` skips results marked as offloaded by default, preserving their stored-content references.
