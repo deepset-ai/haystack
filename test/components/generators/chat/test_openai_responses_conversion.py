@@ -283,7 +283,7 @@ class TestConversionToStreamingChunks:
 
         openai_chunks = [
             ResponseCreatedEvent(
-                response=Response(
+                response=Response(  # type: ignore[call-arg]
                     id="resp_0a8811e62a95217b00690c5ff62c14819596eae387d116f285",
                     created_at=1762418678.0,
                     metadata={},
@@ -309,7 +309,7 @@ class TestConversionToStreamingChunks:
                 type="response.created",
             ),
             ResponseInProgressEvent(
-                response=Response(
+                response=Response(  # type: ignore[call-arg]
                     id="resp_0a8811e62a95217b00690c5ff62c14819596eae387d116f285",
                     created_at=1762418678.0,
                     metadata={},
@@ -370,7 +370,7 @@ class TestConversionToStreamingChunks:
                 sequence_number=5,
                 type="response.content_part.added",
             ),
-            ResponseTextDeltaEvent(
+            ResponseTextDeltaEvent(  # type: ignore[call-arg]
                 content_index=0,
                 delta="Germany",
                 item_id="msg_0a8811e62a95217b00690c5ff88f6c8195b037e57d327a1ee0",
@@ -380,7 +380,7 @@ class TestConversionToStreamingChunks:
                 type="response.output_text.delta",
                 obfuscation="EV5gCoyiD",
             ),
-            ResponseTextDeltaEvent(
+            ResponseTextDeltaEvent(  # type: ignore[call-arg]
                 content_index=0,
                 delta=":",
                 item_id="msg_0a8811e62a95217b00690c5ff88f6c8195b037e57d327a1ee0",
@@ -390,7 +390,7 @@ class TestConversionToStreamingChunks:
                 type="response.output_text.delta",
                 obfuscation="EkdNXp1EE2Cgj8z",
             ),
-            ResponseTextDeltaEvent(
+            ResponseTextDeltaEvent(  # type: ignore[call-arg]
                 content_index=0,
                 delta=" Berlin",
                 item_id="msg_0a8811e62a95217b00690c5ff88f6c8195b037e57d327a1ee0",
@@ -400,7 +400,7 @@ class TestConversionToStreamingChunks:
                 type="response.output_text.delta",
                 obfuscation="1eS0q9aye",
             ),
-            ResponseTextDeltaEvent(
+            ResponseTextDeltaEvent(  # type: ignore[call-arg]
                 content_index=0,
                 delta="\n",
                 item_id="msg_0a8811e62a95217b00690c5ff88f6c8195b037e57d327a1ee0",
@@ -410,7 +410,7 @@ class TestConversionToStreamingChunks:
                 type="response.output_text.delta",
                 obfuscation="H9Ict3F41DwGS4a",
             ),
-            ResponseTextDeltaEvent(
+            ResponseTextDeltaEvent(  # type: ignore[call-arg]
                 content_index=0,
                 delta="France",
                 item_id="msg_0a8811e62a95217b00690c5ff88f6c8195b037e57d327a1ee0",
@@ -420,7 +420,7 @@ class TestConversionToStreamingChunks:
                 type="response.output_text.delta",
                 obfuscation="4vxrblWURx",
             ),
-            ResponseTextDeltaEvent(
+            ResponseTextDeltaEvent(  # type: ignore[call-arg]
                 content_index=0,
                 delta=":",
                 item_id="msg_0a8811e62a95217b00690c5ff88f6c8195b037e57d327a1ee0",
@@ -430,7 +430,7 @@ class TestConversionToStreamingChunks:
                 type="response.output_text.delta",
                 obfuscation="B1CMJsNGhhqIz5K",
             ),
-            ResponseTextDeltaEvent(
+            ResponseTextDeltaEvent(  # type: ignore[call-arg]
                 content_index=0,
                 delta=" Paris",
                 item_id="msg_0a8811e62a95217b00690c5ff88f6c8195b037e57d327a1ee0",
@@ -476,7 +476,7 @@ class TestConversionToStreamingChunks:
                 type="response.output_item.done",
             ),
             ResponseCompletedEvent(
-                response=Response(
+                response=Response(  # type: ignore[call-arg]
                     id="resp_0a8811e62a95217b00690c5ff62c14819596eae387d116f285",
                     created_at=1762418678.0,
                     error=None,
@@ -533,7 +533,7 @@ class TestConversionToStreamingChunks:
         ]
         streaming_chunks = []  # type: ignore[var-annotated]
         for chunk in openai_chunks:
-            streaming_chunk = _convert_response_chunk_to_streaming_chunk(chunk, previous_chunks=streaming_chunks)
+            streaming_chunk = _convert_response_chunk_to_streaming_chunk(chunk, previous_chunks=streaming_chunks)  # type: ignore[arg-type]
             streaming_chunks.append(streaming_chunk)
 
         assert streaming_chunks == [
@@ -943,7 +943,7 @@ class TestConversionToStreamingChunks:
                 sequence_number=4,
                 type="response.output_item.added",
             ),
-            ResponseFunctionCallArgumentsDeltaEvent(
+            ResponseFunctionCallArgumentsDeltaEvent(  # type: ignore[call-arg]
                 delta='{"city":',
                 item_id="fc_095b57053855eac100690491f6a224819680e2f9c7cbc5a531",
                 output_index=1,
@@ -951,7 +951,7 @@ class TestConversionToStreamingChunks:
                 type="response.function_call_arguments.delta",
                 obfuscation="PySUcQ59ZZRkOm",
             ),
-            ResponseFunctionCallArgumentsDeltaEvent(
+            ResponseFunctionCallArgumentsDeltaEvent(  # type: ignore[call-arg]
                 delta='"Paris"}',
                 item_id="fc_095b57053855eac100690491f6a224819680e2f9c7cbc5a531",
                 output_index=1,
@@ -968,7 +968,7 @@ class TestConversionToStreamingChunks:
                 type="response.function_call_arguments.done",
             ),
             ResponseCompletedEvent(
-                response=Response(
+                response=Response(  # type: ignore[call-arg]
                     id="resp_095b57053855eac100690491f4e22c8196ac124365e8c70424",
                     created_at=1761907188.0,
                     metadata={},
@@ -1022,7 +1022,7 @@ class TestConversionToStreamingChunks:
 
         streaming_chunks = []  # type: ignore[var-annotated]
         for chunk in chunks:
-            streaming_chunk = _convert_response_chunk_to_streaming_chunk(chunk, previous_chunks=streaming_chunks)
+            streaming_chunk = _convert_response_chunk_to_streaming_chunk(chunk, previous_chunks=streaming_chunks)  # type: ignore[arg-type]
             streaming_chunks.append(streaming_chunk)
 
         assert streaming_chunks == [
@@ -1597,7 +1597,7 @@ class TestResponseToChatMessage:
 
         streaming_chunks = []  # type: ignore[var-annotated]
         for event in openai_events:
-            chunk = _convert_response_chunk_to_streaming_chunk(event, previous_chunks=streaming_chunks)
+            chunk = _convert_response_chunk_to_streaming_chunk(event, previous_chunks=streaming_chunks)  # type: ignore[arg-type]
             streaming_chunks.append(chunk)
 
         # The done chunk must carry reasoning so encrypted_content reaches the assembly step

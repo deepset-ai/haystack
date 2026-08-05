@@ -612,9 +612,9 @@ class TestOpenAIChatGenerator:
         component.warm_up()
 
         with patch.object(
-            component.client.chat.completions,
+            component.client.chat.completions,  # type: ignore[union-attr]
             "create",
-            return_value=wrapped_openai_stream,  # type: ignore[union-attr]
+            return_value=wrapped_openai_stream,
         ) as mock_create:
             response = component.run(chat_messages, streaming_callback=streaming_callback)
 
@@ -1524,7 +1524,7 @@ def chat_completion_chunk_delta_none():
         object="chat.completion.chunk",
     )
     # pydantic complains if we set delta to None at initialization
-    chunk.choices[0].delta = None
+    chunk.choices[0].delta = None  # type: ignore[assignment]
     return chunk
 
 
@@ -1937,7 +1937,7 @@ class TestChatCompletionChunkConversion:
 
         openai_chunks = [chat_completion_chunk_delta_none] + chat_completion_chunks
         comp = OpenAIChatGenerator(api_key=Secret.from_token("test-api-key"))
-        result = comp._handle_stream_response(openai_chunks, callback=lambda _: None)[0]
+        result = comp._handle_stream_response(openai_chunks, callback=lambda _: None)[0]  # type: ignore[arg-type]
 
         assert not result.texts
         assert not result.text
