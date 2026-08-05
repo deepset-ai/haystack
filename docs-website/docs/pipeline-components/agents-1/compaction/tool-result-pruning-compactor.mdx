@@ -66,7 +66,7 @@ The target is a goal rather than a guarantee. Protected recent results and resul
 | --- | --- | --- |
 | `min_keep_steps` | `1` | The minimum number of recent tool-calling Agent steps whose results remain intact regardless of the target. Parallel results from one step are protected together. |
 | `min_tokens` | `200` | Only prune a tool-result message when it uses more than this many tokens, as measured by the configured token counter. |
-| `placeholder` | `"[Tool result removed to free up context. Call `{tool_name}` again if you need it.]"` | Text that replaces a pruned result. Use `{tool_name}` to insert the originating tool's name. Other braces are preserved literally. |
+| `placeholder` | ``"[Tool result removed to free up context. Call `{tool_name}` again if you need it.]"`` | Text that replaces a pruned result. Use `{tool_name}` to insert the originating tool's name. Other braces are preserved literally. |
 | `skip_meta_keys` | `("tool_result_offloaded",)` | Leave a result unchanged when its metadata contains any listed key. The default protects pointers created by `ToolResultOffloadHook`. |
 
 `min_keep_steps` must be at least `1`, and `min_tokens` cannot be negative.
