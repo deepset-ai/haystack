@@ -104,6 +104,7 @@ class ToolResultPruningCompactor(Compactor):
         result_steps = [
             list(range(start + 1, end))
             for start, end in _agent_step_spans(messages=messages, start=0)
+            # An assistant-only span has no result to protect and must not consume one of `min_keep_steps`.
             if end > start + 1
         ]
 
@@ -121,7 +122,7 @@ class ToolResultPruningCompactor(Compactor):
         if not candidates:
             return None
 
-        # Work on copies because the Compactor contract requires leaving the caller-owned input list unchanged.
+        # Replace entries in a new list so the caller-owned input list remains unchanged.
         compacted = list(messages)
         changed = False
         for index in candidates:
@@ -130,18 +131,22 @@ class ToolResultPruningCompactor(Compactor):
                 continue
             pruned, original_tokens = replacement
 
-            # Count only the small replacement rather than sending the full conversation through the counter again.
+            # Count the tokens of the pruned message
             pruned_tokens = token_counter.count(messages=[pruned])
-            # Compactors must only return a shorter conversation; a custom placeholder can be larger than the result.
+            # If the pruned message has more tokens than the original, skip it to avoid increasing the token count.
             if pruned_tokens >= original_tokens:
                 continue
 
+            # Update the compacted list and the running token count
             compacted[index] = pruned
             current_tokens -= original_tokens - pruned_tokens
             changed = True
-            # Stopping at the first target hit preserves every newer candidate in its original form.
+
+            # Once we reach the target, stop pruning to preserve as much recent output as possible.
             if current_tokens <= target_tokens:
                 break
+
+        # If no candidates were pruned, return None to indicate no change.
         return compacted if changed else None
 
     def _prune(self, message: ChatMessage, token_counter: TokenCounter) -> tuple[ChatMessage, int] | None:
@@ -156,12 +161,16 @@ class ToolResultPruningCompactor(Compactor):
         :returns: The rewritten message and original token count, or None when this result is not prunable.
         """
         result = message.tool_call_result
+        # Guard against messages that are not tool results, have already been compacted.
         if result is None or _COMPACTION_META_KEY in message.meta:
             return None
+
+        # Guard against messages that have meta keys indicating they should be skipped.
         if any(key in message.meta for key in self.skip_meta_keys):
             return None
 
         original_tokens = token_counter.count(messages=[message])
+        # If the result is small enough, leave it alone.
         if original_tokens <= self.min_tokens:
             return None
 

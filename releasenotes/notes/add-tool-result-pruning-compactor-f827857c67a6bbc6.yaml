@@ -2,5 +2,20 @@
 features:
   - |
     Added the experimental ``ToolResultPruningCompactor``. It reduces Agent context usage by replacing older,
-    successful tool results with short placeholders while preserving tool-call/result structure and keeping a
-    configurable minimum number of recent results intact.
+    large tool results with short placeholders while preserving tool-call/result structure. Results from a
+    configurable number of recent tool-calling Agent steps remain intact, including parallel results from those
+    steps.
+
+    .. code-block:: python
+
+        from haystack.hooks.compaction import ContextCompactionHook, ToolResultPruningCompactor
+
+        compaction_hook = ContextCompactionHook(
+            compactor=ToolResultPruningCompactor(
+                min_keep_steps=2,
+                min_tokens=200,
+            ),
+            context_window=400_000,
+            compact_at=0.7,
+            compact_to=0.4,
+        )
