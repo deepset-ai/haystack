@@ -10,8 +10,9 @@ from haystack.dataclasses import ChatMessage, ImageContent
 from haystack.hooks.compaction import ContextCompactionHook, ToolResultPruningCompactor
 from haystack.hooks.compaction.tool_result_pruning import _DEFAULT_PLACEHOLDER
 from haystack.hooks.compaction.utils import _COMPACTION_META_KEY
+from haystack.hooks.tool_result_offloading import AlwaysOffload, FileSystemToolResultStore, ToolResultOffloadHook
 from haystack.token_counters import ApproximateTokenCounter
-from test.hooks.compaction.helpers import FakeCounter, tool_call, tool_result
+from test.hooks.compaction.helpers import FakeCounter, make_state, tool_call, tool_result
 
 pytestmark = pytest.mark.filterwarnings("ignore::haystack.utils.experimental.ExperimentalWarning")
 
@@ -122,19 +123,13 @@ class TestToolResultPruningCompactor:
         assert compacted is not None and compacted[2].tool_call_result is not None
         assert compacted[2].tool_call_result.result == _DEFAULT_PLACEHOLDER.replace("{tool_name}", "search")
 
-    def test_skips_small_error_offloaded_and_previously_compacted_results(self):
+    def test_skips_small_error_and_previously_compacted_results(self):
         messages = [
             ChatMessage.from_user("task"),
             tool_call("small"),
             tool_result("small", call_id="small"),
             tool_call("error"),
             tool_result("x" * 400, call_id="error", error=True),
-            tool_call("offloaded"),
-            ChatMessage.from_tool(
-                tool_result="x" * 400,
-                origin=tool_call("offloaded").tool_calls[0],
-                meta={"tool_result_offloaded": "result.txt"},
-            ),
             tool_call("compacted"),
             ChatMessage.from_tool(
                 tool_result="x" * 400,
@@ -147,6 +142,28 @@ class TestToolResultPruningCompactor:
         assert (
             ToolResultPruningCompactor(min_keep_results=1).compact(
                 messages=messages, target_tokens=1, token_counter=COUNTER
+            )
+            is None
+        )
+
+    def test_skips_result_rewritten_by_tool_result_offloading(self, tmp_path):
+        messages = [ChatMessage.from_user("task"), tool_call("offloaded"), tool_result("x" * 400, call_id="offloaded")]
+        state = make_state(messages)
+        # The after_tool hook only rewrites the trailing batch, which represents results from the current Agent step.
+        offload_hook = ToolResultOffloadHook(
+            store=FileSystemToolResultStore(root=tmp_path), offload_strategies={"*": AlwaysOffload()}
+        )
+        offload_hook.run(state)
+        offloaded_result = state.data["messages"][-1]
+        assert offloaded_result.tool_call_result is not None
+        assert offloaded_result.tool_call_result.result.startswith("Tool result offloaded")
+        assert "tool_result_offloaded" in offloaded_result.meta
+        # A subsequent Agent step turns the offloaded pointer into an old result that pruning would normally consider.
+        history = [*state.data["messages"], tool_call("newest"), tool_result("newest", call_id="newest")]
+        # Disable the size threshold so only the offloading marker prevents the old pointer from being pruned.
+        assert (
+            ToolResultPruningCompactor(min_keep_results=1, min_tokens=0).compact(
+                messages=history, target_tokens=1, token_counter=COUNTER
             )
             is None
         )
