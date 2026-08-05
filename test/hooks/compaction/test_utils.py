@@ -5,9 +5,9 @@
 import pytest
 
 from haystack.dataclasses import ChatMessage
-from haystack.hooks.compaction.utils import _estimated_context_tokens, _last_assistant_index
+from haystack.hooks.compaction.utils import _agent_step_spans, _estimated_context_tokens, _last_assistant_index
 from haystack.tools import tool
-from test.hooks.compaction.helpers import FakeCounter, tool_result
+from test.hooks.compaction.helpers import FakeCounter, tool_call, tool_result
 
 pytestmark = pytest.mark.filterwarnings("ignore::haystack.utils.experimental.ExperimentalWarning")
 
@@ -44,6 +44,31 @@ class TestLastAssistantIndex:
     )
     def test_boundary(self, messages, expected):
         assert _last_assistant_index(messages=messages) == expected
+
+
+class TestAgentStepSpans:
+    def test_single_assistant_message_is_one_step(self):
+        messages = [ChatMessage.from_user("task"), ChatMessage.from_assistant("plain answer")]
+        # A text-only assistant turn has no tool results to extend its span, so the step contains one message.
+        assert _agent_step_spans(messages=messages, start=0) == [(1, 2)]
+
+    def test_complex_agent_steps(self):
+        messages = [
+            ChatMessage.from_user("task"),
+            tool_call("parallel-1", "parallel-2"),
+            tool_result("first", call_id="parallel-1"),
+            tool_result("second", call_id="parallel-2"),
+            ChatMessage.from_user("next task"),
+            ChatMessage.from_assistant("plain answer"),
+            ChatMessage.from_user("follow-up task"),
+            tool_call("later"),
+            tool_result("later result", call_id="later"),
+        ]
+        assert _agent_step_spans(messages=messages, start=0) == [(1, 4), (5, 6), (7, 9)]
+
+    def test_starts_at_the_requested_message(self):
+        messages = [tool_call("old"), tool_result("old result", call_id="old"), tool_call("current")]
+        assert _agent_step_spans(messages=messages, start=2) == [(2, 3)]
 
 
 class TestEstimatedContextTokens:
