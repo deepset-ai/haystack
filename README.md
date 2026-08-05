@@ -82,9 +82,9 @@
 | haystack/components/generators/openai\_image\_generator.py                |       78 |        0 |    100% |           |
 | haystack/components/generators/utils.py                                   |       93 |        9 |     90% |69, 83, 129, 162-163, 195, 211, 213, 215 |
 | haystack/components/joiners/\_\_init\_\_.py                               |        5 |        0 |    100% |           |
-| haystack/components/joiners/answer\_joiner.py                             |       49 |        1 |     98% |       140 |
+| haystack/components/joiners/answer\_joiner.py                             |       54 |        1 |     98% |       152 |
 | haystack/components/joiners/branch.py                                     |       20 |        3 |     85% |105, 116-117 |
-| haystack/components/joiners/document\_joiner.py                           |       97 |        0 |    100% |           |
+| haystack/components/joiners/document\_joiner.py                           |      101 |        0 |    100% |           |
 | haystack/components/joiners/list\_joiner.py                               |       23 |        0 |    100% |           |
 | haystack/components/joiners/string\_joiner.py                             |        8 |        0 |    100% |           |
 | haystack/components/preprocessors/\_\_init\_\_.py                         |        5 |        0 |    100% |           |
@@ -145,7 +145,7 @@
 | haystack/core/pipeline/component\_checks.py                               |       66 |        0 |    100% |           |
 | haystack/core/pipeline/descriptions.py                                    |        6 |        0 |    100% |           |
 | haystack/core/pipeline/draw.py                                            |      199 |       41 |     79% |35-58, 142, 145, 148, 150, 158, 162-169, 293, 303, 375-377, 382, 390-391, 419-424 |
-| haystack/core/pipeline/pipeline.py                                        |      322 |       19 |     94% |171, 178, 421, 564, 587, 755, 948, 953, 970-974, 978-990, 1031-1040, 1065 |
+| haystack/core/pipeline/pipeline.py                                        |      322 |       21 |     93% |171, 178, 421, 564, 587, 755, 945-949, 953, 970-974, 978-990, 1031-1040, 1065 |
 | haystack/core/pipeline/utils.py                                           |       71 |        1 |     99% |       206 |
 | haystack/core/serialization.py                                            |      127 |        6 |     95% |75, 99, 246, 333, 349-350 |
 | haystack/core/serialization\_security.py                                  |       85 |        2 |     98% |  206, 276 |
@@ -261,7 +261,7 @@
 | haystack/utils/type\_serialization.py                                     |      135 |        6 |     96% |97, 99, 243-244, 252, 268 |
 | haystack/utils/url\_validation.py                                         |        4 |        0 |    100% |           |
 | haystack/version.py                                                       |        5 |        2 |     60% |      9-10 |
-| **TOTAL**                                                                 | **16484** |  **788** | **95%** |           |
+| **TOTAL**                                                                 | **16493** |  **790** | **95%** |           |
 
 
 ## Setup coverage badge
