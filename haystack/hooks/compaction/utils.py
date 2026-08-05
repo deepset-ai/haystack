@@ -18,6 +18,35 @@ def _last_assistant_index(messages: list[ChatMessage]) -> int:
     return -1
 
 
+def _agent_step_spans(messages: list[ChatMessage], start: int) -> list[tuple[int, int]]:
+    """
+    Return spans containing an assistant message and all immediately following tool results.
+
+    :param messages: The conversation to analyze, oldest to newest.
+    :param start: The index to start searching for steps from. We recommend starting after the latest user message, or
+        after the leading system messages when there is no user message. Otherwise, the returned spans may include
+        steps that are not part of the current task.
+    :returns: A list of spans, where each span is a tuple of (start_index, end_index) and end_index is exclusive.
+    """
+    # e.g. a span of (2, 5) means messages[2:5] are part of the same step
+    spans: list[tuple[int, int]] = []
+    index = start
+    while index < len(messages):
+        # Only assistant messages can start a step; skip any other messages.
+        if not messages[index].is_from(role=ChatRole.ASSISTANT):
+            index += 1
+            continue
+        # Find the end of the step by looking for the first message that is not a tool result.
+        end = index + 1
+        while end < len(messages) and messages[end].tool_call_results:
+            end += 1
+        # Record the span and continue searching for the next step.
+        spans.append((index, end))
+        # Reset the index to the end of the current step to avoid overlapping spans.
+        index = end
+    return spans
+
+
 def _estimated_context_tokens(
     messages: list[ChatMessage], context_tokens: int, token_counter: TokenCounter, tools: ToolsType | None = None
 ) -> int:

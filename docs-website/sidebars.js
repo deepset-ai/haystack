@@ -173,6 +173,7 @@ export default {
                   items: [
                     'pipeline-components/agents-1/compaction/context-compaction-hook',
                     'pipeline-components/agents-1/compaction/sliding-window-compactor',
+                    'pipeline-components/agents-1/compaction/tool-result-pruning-compactor',
                   ],
                 },
                 'pipeline-components/agents-1/human-in-the-loop',

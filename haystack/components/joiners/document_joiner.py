@@ -108,11 +108,16 @@ class DocumentJoiner:
             `concatenate` or `distribution_based_rank_fusion` join modes.
             Weight for each list of documents must match the number of inputs.
         :param top_k:
-            The maximum number of documents to return.
+            The maximum number of documents to return. Must be `None` or greater than 0.
         :param sort_by_score:
             If `True`, sorts the documents by score in descending order.
             If a document has no score, it is handled as if its score is -infinity.
+
+        :raises ValueError:
+            If `top_k` is not `None` and is less than or equal to 0.
         """
+        if top_k is not None and top_k <= 0:
+            raise ValueError("top_k must be greater than 0.")
         if isinstance(join_mode, str):
             join_mode = JoinMode.from_str(join_mode)
         join_mode_functions = {
@@ -142,10 +147,14 @@ class DocumentJoiner:
             List of list of documents to be merged.
         :param top_k:
             The maximum number of documents to return. Overrides the instance's `top_k` if provided.
+            A value of 0 returns no documents. Must not be negative.
 
         :returns:
             A dictionary with the following keys:
             - `documents`: Merged list of Documents
+
+        :raises ValueError:
+            If `top_k` is negative.
         """
         documents = list(documents)
         output_documents = self.join_mode_function(documents)
@@ -160,9 +169,11 @@ class DocumentJoiner:
                     "score, so those with score=None were sorted as if they had a score of -infinity."
                 )
 
-        if top_k:
+        if top_k is not None:
+            if top_k < 0:
+                raise ValueError("top_k must not be negative.")
             output_documents = output_documents[:top_k]
-        elif self.top_k:
+        elif self.top_k is not None:
             output_documents = output_documents[: self.top_k]
 
         return {"documents": output_documents}

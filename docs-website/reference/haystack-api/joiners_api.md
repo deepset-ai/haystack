@@ -82,9 +82,13 @@ Creates an AnswerJoiner component.
 
 - **join_mode** (<code>str | JoinMode</code>) – Specifies the join mode to use. Available modes:
 - `concatenate`: Concatenates multiple lists of Answers into a single list.
-- **top_k** (<code>int | None</code>) – The maximum number of Answers to return.
+- **top_k** (<code>int | None</code>) – The maximum number of Answers to return. Must be `None` or greater than 0.
 - **sort_by_score** (<code>bool</code>) – If `True`, sorts the documents by score in descending order.
   If a document has no score, it is handled as if its score is -infinity.
+
+**Raises:**
+
+- <code>ValueError</code> – If `top_k` is not `None` and is less than or equal to 0.
 
 #### run
 
@@ -100,11 +104,16 @@ Joins multiple lists of Answers into a single list depending on the `join_mode` 
 
 - **answers** (<code>Variadic\[list\[AnswerType\]\]</code>) – Nested list of Answers to be merged.
 - **top_k** (<code>int | None</code>) – The maximum number of Answers to return. Overrides the instance's `top_k` if provided.
+  A value of 0 returns no answers. Must not be negative.
 
 **Returns:**
 
 - <code>dict\[str, Any\]</code> – A dictionary with the following keys:
 - `answers`: Merged list of Answers
+
+**Raises:**
+
+- <code>ValueError</code> – If `top_k` is negative.
 
 #### to_dict
 
@@ -351,9 +360,13 @@ Creates a DocumentJoiner component.
   This parameter is ignored for
   `concatenate` or `distribution_based_rank_fusion` join modes.
   Weight for each list of documents must match the number of inputs.
-- **top_k** (<code>int | None</code>) – The maximum number of documents to return.
+- **top_k** (<code>int | None</code>) – The maximum number of documents to return. Must be `None` or greater than 0.
 - **sort_by_score** (<code>bool</code>) – If `True`, sorts the documents by score in descending order.
   If a document has no score, it is handled as if its score is -infinity.
+
+**Raises:**
+
+- <code>ValueError</code> – If `top_k` is not `None` and is less than or equal to 0.
 
 #### run
 
@@ -369,11 +382,16 @@ Joins multiple lists of Documents into a single list depending on the `join_mode
 
 - **documents** (<code>Variadic\[list\[Document\]\]</code>) – List of list of documents to be merged.
 - **top_k** (<code>int | None</code>) – The maximum number of documents to return. Overrides the instance's `top_k` if provided.
+  A value of 0 returns no documents. Must not be negative.
 
 **Returns:**
 
 - <code>dict\[str, Any\]</code> – A dictionary with the following keys:
 - `documents`: Merged list of Documents
+
+**Raises:**
+
+- <code>ValueError</code> – If `top_k` is negative.
 
 #### to_dict
 
