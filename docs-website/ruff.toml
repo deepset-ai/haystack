@@ -9,7 +9,7 @@ extension = { "mdx" = "markdown" }
 
 line-length = 88
 
-extend-exclude = ["node_modules", "build", ".docusaurus"]
+extend-exclude = ["node_modules", "build", ".docusaurus", "scripts"]
 
 [format]
 skip-magic-trailing-comma = false

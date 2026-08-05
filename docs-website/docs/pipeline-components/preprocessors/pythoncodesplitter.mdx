@@ -112,7 +112,11 @@ result = splitter.run(
 )
 
 for chunk in result["documents"]:
-    print(chunk.meta["start_line"], chunk.meta["end_line"], chunk.meta.get("include_classes"))
+    print(
+        chunk.meta["start_line"],
+        chunk.meta["end_line"],
+        chunk.meta.get("include_classes"),
+    )
 ```
 
 ### With docstring stripping for RAG
@@ -145,7 +149,9 @@ splitter = PythonCodeSplitter(
     max_effective_lines=100,
     strip_docstrings=True,
 )
-result = splitter.run(documents=[Document(content=source, meta={"file_name": "my_module.py"})])
+result = splitter.run(
+    documents=[Document(content=source, meta={"file_name": "my_module.py"})]
+)
 for chunk in result["documents"]:
     print(chunk.content)
     print(chunk.meta.get("docstrings"))
