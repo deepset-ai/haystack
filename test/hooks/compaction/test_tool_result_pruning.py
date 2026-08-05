@@ -36,9 +36,7 @@ class TestToolResultPruningCompactor:
         pruned, _ = replacement
         one_pruned[2] = pruned
         target = COUNTER.count(messages=one_pruned)
-
         compacted = compactor.compact(messages=messages, target_tokens=target, token_counter=COUNTER)
-
         assert compacted is not None
         assert compacted[2].tool_call_result is not None
         assert compacted[2].tool_call_result.result == _DEFAULT_PLACEHOLDER.replace("{tool_name}", "search")
@@ -49,22 +47,18 @@ class TestToolResultPruningCompactor:
     def test_counts_the_full_conversation_only_once(self):
         messages = _conversation("a" * 400, "b" * 400, "c" * 400)
         counter = Mock(wraps=COUNTER)
-
         compacted = ToolResultPruningCompactor(min_keep_results=1, min_tokens=0).compact(
             messages=messages, target_tokens=1, token_counter=counter
         )
-
         assert compacted is not None
         counted_message_lengths = [len(call.kwargs["messages"]) for call in counter.count.call_args_list]
         assert counted_message_lengths == [len(messages), 1, 1, 1, 1]
 
     def test_keeps_the_minimum_number_of_recent_results(self):
         messages = _conversation("a" * 400, "b" * 400, "c" * 400)
-
         compacted = ToolResultPruningCompactor(min_keep_results=2, min_tokens=0).compact(
             messages=messages, target_tokens=1, token_counter=COUNTER
         )
-
         assert compacted is not None
         assert compacted[2] != messages[2]
         assert compacted[4:] == messages[4:]
@@ -79,18 +73,15 @@ class TestToolResultPruningCompactor:
             tool_result("second" * 200, call_id="fresh-2"),
             tool_result("third" * 200, call_id="fresh-3"),
         ]
-
         compacted = ToolResultPruningCompactor(min_keep_results=1, min_tokens=0).compact(
             messages=messages, target_tokens=1, token_counter=COUNTER
         )
-
         assert compacted is not None
         assert compacted[2] != messages[2]
         assert compacted[3:] == messages[3:]
 
     def test_returns_none_when_the_conversation_already_fits(self):
         messages = _conversation("a" * 400, "b" * 400)
-
         assert (
             ToolResultPruningCompactor(min_keep_results=1, min_tokens=0).compact(
                 messages=messages, target_tokens=COUNTER.count(messages=messages), token_counter=COUNTER
@@ -100,7 +91,6 @@ class TestToolResultPruningCompactor:
 
     def test_returns_none_when_there_are_no_old_results(self):
         messages = _conversation("only result")
-
         assert (
             ToolResultPruningCompactor(min_keep_results=1, min_tokens=0).compact(
                 messages=messages, target_tokens=1, token_counter=COUNTER
@@ -113,7 +103,6 @@ class TestToolResultPruningCompactor:
         compactor = ToolResultPruningCompactor(
             min_keep_results=1, min_tokens=0, placeholder="a placeholder much longer than the result"
         )
-
         assert compactor.compact(messages=messages, target_tokens=1, token_counter=COUNTER) is None
 
     def test_min_tokens_accounts_for_non_text_tool_results(self):
@@ -127,11 +116,9 @@ class TestToolResultPruningCompactor:
             tool_result("newest", call_id="newest"),
         ]
         counter = ApproximateTokenCounter(tokens_per_image=500)
-
         compacted = ToolResultPruningCompactor(min_keep_results=1, min_tokens=100).compact(
             messages=messages, target_tokens=1, token_counter=counter
         )
-
         assert compacted is not None and compacted[2].tool_call_result is not None
         assert compacted[2].tool_call_result.result == _DEFAULT_PLACEHOLDER.replace("{tool_name}", "search")
 
@@ -157,7 +144,6 @@ class TestToolResultPruningCompactor:
             tool_call("newest"),
             tool_result("x" * 400, call_id="newest"),
         ]
-
         assert (
             ToolResultPruningCompactor(min_keep_results=1).compact(
                 messages=messages, target_tokens=1, token_counter=COUNTER
@@ -168,11 +154,9 @@ class TestToolResultPruningCompactor:
     def test_preserves_origin_error_and_meta_and_records_compaction(self):
         messages = _conversation("result " * 100, "newest")
         messages[2].meta["custom"] = "value"
-
         compacted = ToolResultPruningCompactor(min_keep_results=1, min_tokens=0).compact(
             messages=messages, target_tokens=1, token_counter=COUNTER
         )
-
         assert compacted is not None
         original_result = messages[2].tool_call_result
         pruned_result = compacted[2].tool_call_result
@@ -192,9 +176,7 @@ class TestToolResultPruningCompactor:
         compactor = ToolResultPruningCompactor(
             min_keep_results=1, min_tokens=0, placeholder='Run {tool_name} again with {"query": "..."}.'
         )
-
         compacted = compactor.compact(messages=messages, target_tokens=1, token_counter=COUNTER)
-
         assert compacted is not None and compacted[2].tool_call_result is not None
         assert compacted[2].tool_call_result.result == 'Run search again with {"query": "..."}.'
 
@@ -213,9 +195,7 @@ class TestToolResultPruningCompactor:
         compactor = ToolResultPruningCompactor(
             min_keep_results=2, min_tokens=12, placeholder="", skip_meta_keys=("stored", "cached")
         )
-
         restored = ToolResultPruningCompactor.from_dict(data=compactor.to_dict())
-
         assert isinstance(restored, ToolResultPruningCompactor)
         assert restored.min_keep_results == 2
         assert restored.min_tokens == 12
@@ -224,8 +204,6 @@ class TestToolResultPruningCompactor:
 
     def test_survives_a_hook_serialization_round_trip(self):
         hook = ContextCompactionHook(compactor=ToolResultPruningCompactor(min_keep_results=2), context_window=10_000)
-
         restored = ContextCompactionHook.from_dict(data=hook.to_dict())
-
         assert isinstance(restored.compactor, ToolResultPruningCompactor)
         assert restored.compactor.min_keep_results == 2
