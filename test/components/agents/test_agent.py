@@ -1906,6 +1906,17 @@ class TestPrompts:
         with pytest.raises(TemplateSyntaxError):
             make_agent(system_prompt="{% message role='system' %}Incomplete syntax.")
 
+    def test_prompt_wrong_role_raises_at_init(self, make_agent):
+        with pytest.raises(ValueError, match="system_prompt message block must have role 'system'"):
+            make_agent(system_prompt=_user_msg("This is a user message, not system."))
+        with pytest.raises(ValueError, match="user_prompt message block must have role 'user'"):
+            make_agent(user_prompt=_sys_msg("This is a system message, not user."))
+
+    def test_dynamic_prompt_role_raises_at_runtime(self, make_agent):
+        agent = make_agent(user_prompt="{% message role=role_name %}Q: {{question}}{% endmessage %}")
+        with pytest.raises(ValueError, match="user_prompt must render to a user message"):
+            agent.run(messages=[], role_name="assistant", question="Will it snow?")
+
     def test_system_prompt_plain_string_with_template_variables(self, make_agent):
         agent = make_agent(system_prompt="You are an assistant for {{company}}. Your role is {{role}}.")
         assert agent._system_chat_prompt_builder is not None
