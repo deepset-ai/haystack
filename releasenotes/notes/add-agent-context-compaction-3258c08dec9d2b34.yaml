@@ -1,0 +1,38 @@
+---
+features:
+  - |
+    Added experimental context compaction for the ``Agent``. ``ContextCompactionHook`` runs before LLM calls and
+    shortens the conversation when it reaches a configured fraction of the model's context window.
+
+    The first built-in strategy, ``SlidingWindowCompactor``, preserves leading system messages, the latest user task,
+    and as many complete recent Agent steps as the target allows. It replaces removed history with a short omission
+    note.
+
+    .. code-block:: python
+
+        from haystack.components.agents import Agent
+        from haystack.components.generators.chat import OpenAIResponsesChatGenerator
+        from haystack.hooks.compaction import ContextCompactionHook, SlidingWindowCompactor
+
+        hook = ContextCompactionHook(
+            compactor=SlidingWindowCompactor(),
+            context_window=400_000,
+            compact_at=0.7,
+            compact_to=0.4,
+        )
+        agent = Agent(
+            chat_generator=OpenAIResponsesChatGenerator(model="gpt-5.4-nano"),
+            tools=[web_search],
+            hooks={"before_llm": [hook]},
+        )
+
+    The hook uses provider-reported context usage when available and locally estimates the request otherwise, including
+    tool schemas. Leave headroom above ``compact_at`` for the next reply and its tool results.
+
+    ``SlidingWindowCompactor`` treats an assistant message and its following tool results as one step, so a tool call is
+    never separated from its results. It may retain slightly more history than the requested target when preserving the
+    current task or the configured minimum number of steps. Compaction is lossy: removed messages cannot be recovered
+    or summarized by this strategy. Implement the ``Compactor`` protocol to provide a custom strategy.
+
+    ``ContextCompactionHook`` and ``SlidingWindowCompactor`` emit an ``ExperimentalWarning`` and may change without a
+    deprecation cycle.

@@ -163,6 +163,18 @@ export default {
                 id: 'pipeline-components/agents-1/hooks',
               },
               items: [
+                {
+                  type: 'category',
+                  label: 'Context Compaction',
+                  link: {
+                    type: 'doc',
+                    id: 'pipeline-components/agents-1/compaction',
+                  },
+                  items: [
+                    'pipeline-components/agents-1/compaction/context-compaction-hook',
+                    'pipeline-components/agents-1/compaction/sliding-window-compactor',
+                  ],
+                },
                 'pipeline-components/agents-1/human-in-the-loop',
                 'pipeline-components/agents-1/tool-result-offloading',
               ],
@@ -743,6 +755,19 @@ export default {
             'tools/ready-made-tools/tavilywebsearchtool',
           ],
         },
+      ],
+    },
+    {
+      type: 'category',
+      label: 'Token Counters',
+      link: {
+        type: 'doc',
+        id: 'token-counters'
+      },
+      items: [
+        'token-counters/approximatetokencounter',
+        'token-counters/tiktokencounter',
+        'token-counters/openaitokencounter',
       ],
     },
     {

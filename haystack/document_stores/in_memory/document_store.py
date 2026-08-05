@@ -653,23 +653,32 @@ class InMemoryDocumentStore:
             return {"min": None, "max": None}
 
     def get_metadata_field_unique_values(
-        self, metadata_field: str, search_term: str | None = None
-    ) -> tuple[list[str], int]:
+        self, metadata_field: str, search_term: str | None = None, from_: int = 0, size: int = 10
+    ) -> tuple[list[Any], int]:
         """
-        Returns unique values for a metadata field, optionally filtered by a search term in content.
+        Returns unique values for a metadata field, optionally filtered by a search term, with pagination.
 
         :param metadata_field: The metadata field name. Can include or omit the "meta." prefix.
-        :param search_term: If set, only documents whose content contains this term (case-insensitive)
-            are considered.
-        :returns: A tuple of (list of unique values, total count of unique values).
+        :param search_term: Optional search term to filter values, matched as a case-insensitive substring
+            against the metadata field's value.
+        :param from_: The offset to start returning values from (for pagination).
+        :param size: The maximum number of unique values to return.
+        :returns: A tuple of (paginated list of unique values, total count of unique values).
         """
         key = metadata_field.removeprefix("meta.") if metadata_field.startswith("meta.") else metadata_field
+        unique_values: dict[tuple[str, str], Any] = {}
+        for doc in self.storage.values():
+            value = doc.meta.get(key)
+            if value is not None:
+                unique_values.setdefault((type(value).__name__, str(value)), value)
+
         if search_term:
-            docs = [doc for doc in self.storage.values() if doc.content and search_term.lower() in doc.content.lower()]
-        else:
-            docs = list(self.storage.values())
-        values = sorted({str(doc.meta[key]) for doc in docs if key in doc.meta and doc.meta[key] is not None}, key=str)
-        return values, len(values)
+            search_term_lower = search_term.lower()
+            unique_values = {k: v for k, v in unique_values.items() if search_term_lower in k[1].lower()}
+
+        sorted_keys = sorted(unique_values, key=lambda k: (k[1], k[0]))
+        paginated_keys = sorted_keys[from_ : from_ + size]
+        return [unique_values[k] for k in paginated_keys], len(sorted_keys)
 
     def bm25_retrieval(
         self, query: str, filters: dict[str, Any] | None = None, top_k: int = 10, scale_score: bool = False
@@ -963,19 +972,23 @@ class InMemoryDocumentStore:
         )
 
     async def get_metadata_field_unique_values_async(
-        self, metadata_field: str, search_term: str | None = None
-    ) -> tuple[list[str], int]:
+        self, metadata_field: str, search_term: str | None = None, from_: int = 0, size: int = 10
+    ) -> tuple[list[Any], int]:
         """
-        Returns unique values for a metadata field, optionally filtered by a search term in content.
+        Returns unique values for a metadata field, optionally filtered by a search term, with pagination.
 
         :param metadata_field: The metadata field name. Can include or omit the "meta." prefix.
-        :param search_term: If set, only documents whose content contains this term (case-insensitive)
-            are considered.
-        :returns: A tuple of (list of unique values, total count of unique values).
+        :param search_term: Optional search term to filter values, matched as a case-insensitive substring
+            against the metadata field's value.
+        :param from_: The offset to start returning values from (for pagination).
+        :param size: The maximum number of unique values to return.
+        :returns: A tuple of (paginated list of unique values, total count of unique values).
         """
         return await asyncio.get_running_loop().run_in_executor(
             self.executor,
-            lambda: self.get_metadata_field_unique_values(metadata_field=metadata_field, search_term=search_term),
+            lambda: self.get_metadata_field_unique_values(
+                metadata_field=metadata_field, search_term=search_term, from_=from_, size=size
+            ),
         )
 
     async def delete_all_documents_async(self) -> None:
