@@ -52,10 +52,9 @@ compaction_hook = ContextCompactionHook(
 The compactor processes tool results from oldest to newest:
 
 1. It leaves the conversation unchanged when it already fits within the target.
-2. It protects at least the configured minimum number of recent results.
-3. It protects the complete trailing batch of results from the current Agent step, even when the batch is larger than the configured minimum. The model has not acted on these results yet.
-4. It skips errors, results already marked by context compaction, results below the token threshold, and results carrying protected metadata such as an offloaded-result reference.
-5. It replaces eligible results with the configured placeholder until the estimated conversation size reaches the target.
+2. It always protects the complete trailing batch of results from the current Agent step because the model has not acted on them yet. If `min_keep_results` is higher than the number of results in that batch, it protects enough additional recent results to reach that minimum.
+3. It skips errors, results already marked by context compaction, results below the token threshold, and results carrying protected metadata such as an offloaded-result reference.
+4. It replaces eligible results with the configured placeholder until the estimated conversation size reaches the target.
 
 The replacement preserves the originating tool call, error flag, and message metadata. This keeps the tool-call exchange valid for chat-completion providers while discarding the expensive result content.
 
@@ -66,7 +65,7 @@ The target is a goal rather than a guarantee. Protected recent results and resul
 | Parameter | Default | Description |
 | --- | --- | --- |
 | `min_keep_results` | `3` | The minimum number of recent tool results to preserve regardless of the target. More results remain intact when fewer replacements are sufficient. The complete current-step result batch is always protected. |
-| `min_tokens` | `200` | Only prune a tool-result message when it uses more than this many tokens. The configured token counter includes its estimates for image and file content. |
+| `min_tokens` | `200` | Only prune a tool-result message when it uses more than this many tokens, as measured by the configured token counter. |
 | `placeholder` | `"[Tool result removed to free up context. Call {tool_name} again if you need it.]"` | Text that replaces a pruned result. Use `{tool_name}` to insert the originating tool's name. Other braces are preserved literally. |
 | `skip_meta_keys` | `("tool_result_offloaded",)` | Leave a result unchanged when its metadata contains any listed key. The default protects pointers created by `ToolResultOffloadHook`. |
 
@@ -86,9 +85,9 @@ The compactor records `context_compaction` metadata on each rewritten result wit
 
 ## Token counting
 
-The compactor uses the [`TokenCounter`](../../../token-counters.mdx) supplied by `ContextCompactionHook`. This means `min_tokens` follows the same text, image, and file estimates used to measure the Agent's context.
+The compactor uses the [`TokenCounter`](../../../token-counters.mdx) supplied by `ContextCompactionHook` to determine whether a result exceeds `min_tokens` and whether replacing it saves context.
 
-The complete conversation is counted once. For each eligible result, the counter then measures only the original result message and its short replacement. The compactor updates its running total using the difference between those two counts. This avoids repeatedly sending the complete conversation when using a remote counter such as `OpenAITokenCounter`.
+The complete conversation is counted once. For each eligible result, the counter then measures only the original result message and its short replacement. The compactor updates its running total using the difference between those two counts.
 
 ## Interaction with tool result offloading
 
