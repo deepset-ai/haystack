@@ -52,7 +52,7 @@ compaction_hook = ContextCompactionHook(
 The compactor processes tool results from oldest to newest:
 
 1. It leaves the conversation unchanged when it already fits within the target.
-2. It protects results from at least the configured number of recent tool-calling Agent steps. The complete trailing batch from the current step is always protected because the model has not acted on it yet.
+2. It protects results from at least the configured number of recent tool-calling Agent steps. Since at least one step must be kept, the current result batch remains intact until the model has acted on it.
 3. It skips results already marked by context compaction, results below the token threshold, and results carrying protected metadata such as an offloaded-result reference.
 4. It replaces eligible results with the configured placeholder until the estimated conversation size reaches the target.
 
@@ -64,7 +64,7 @@ The target is a goal rather than a guarantee. Protected recent results and resul
 
 | Parameter | Default | Description |
 | --- | --- | --- |
-| `min_keep_steps` | `1` | The minimum number of recent tool-calling Agent steps whose results remain intact regardless of the target. Parallel results from one step are protected together. The complete current-step result batch is always protected. |
+| `min_keep_steps` | `1` | The minimum number of recent tool-calling Agent steps whose results remain intact regardless of the target. Parallel results from one step are protected together. |
 | `min_tokens` | `200` | Only prune a tool-result message when it uses more than this many tokens, as measured by the configured token counter. |
 | `placeholder` | `"[Tool result removed to free up context. Call {tool_name} again if you need it.]"` | Text that replaces a pruned result. Use `{tool_name}` to insert the originating tool's name. Other braces are preserved literally. |
 | `skip_meta_keys` | `("tool_result_offloaded",)` | Leave a result unchanged when its metadata contains any listed key. The default protects pointers created by `ToolResultOffloadHook`. |
@@ -100,6 +100,6 @@ By default, `ToolResultPruningCompactor` skips messages with `tool_result_offloa
 The compactor returns `None` without changing the conversation when:
 
 - The conversation already fits within `target_tokens`.
-- There are no results older than the protected steps or current-step batch.
+- There are no results older than the protected steps.
 - Every older result is already compacted, protected by metadata, or no larger than `min_tokens`.
 - A replacement would not reduce the result's measured token count.

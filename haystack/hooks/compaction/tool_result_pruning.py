@@ -54,8 +54,8 @@ class ToolResultPruningCompactor(Compactor):
         Initialize the compactor with the rules deciding which results it prunes.
 
         :param min_keep_steps: The minimum number of recent tool-calling Agent steps whose results remain untouched,
-            even when they exceed the target. Must be at least 1. The entire trailing batch of results from the current
-            Agent step is always kept because the model has not acted on those results yet.
+            even when they exceed the target. Must be at least 1, which ensures the current result batch remains intact
+            until the model has acted on it.
         :param min_tokens: Only prune tool-result messages that use more than this many tokens. Small results cost
             little and are often the ones worth keeping.
         :param placeholder: The text left in place of a pruned result, replacing the built-in one. May contain
@@ -86,8 +86,7 @@ class ToolResultPruningCompactor(Compactor):
 
         Results are considered oldest first and pruning stops as soon as the conversation reaches `target_tokens`.
         This keeps as much original output as possible. Results from the most recent `min_keep_steps` tool-calling
-        Agent steps are never considered, even when the target cannot otherwise be reached. The trailing batch of tool
-        results is also protected in full because the model has not acted on it yet. After measuring the initial
+        Agent steps are never considered, even when the target cannot otherwise be reached. After measuring the initial
         conversation, the running total is updated with per-result token deltas to avoid repeatedly counting the full
         context.
 
@@ -109,11 +108,6 @@ class ToolResultPruningCompactor(Compactor):
         ]
 
         protected_positions = {position for step in result_steps[-self.min_keep_steps :] for position in step}
-        # Also protect a trailing result batch if its initiating call is absent from the retained history.
-        for index in reversed(range(len(messages))):
-            if messages[index].tool_call_result is None:
-                break
-            protected_positions.add(index)
 
         # Taking candidates from the front lets pruning stop at the target while leaving as much recent output intact
         # as possible.

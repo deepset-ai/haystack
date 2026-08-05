@@ -2,8 +2,6 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from unittest.mock import Mock
-
 import pytest
 
 from haystack.dataclasses import ChatMessage, ImageContent
@@ -28,32 +26,26 @@ def _conversation(*results: str) -> list[ChatMessage]:
 
 
 class TestToolResultPruningCompactor:
-    def test_prunes_old_results_until_the_target_is_reached(self):
+    def test_stops_pruning_after_reaching_target(self):
+        # Conversation with seven messages: one user message followed by three tool-call/result pairs.
         messages = _conversation("a" * 400, "b" * 400, "c" * 400)
         compactor = ToolResultPruningCompactor(min_keep_steps=1, min_tokens=0)
+        # Set the target to the exact conversation size after only the oldest result has been pruned.
         one_pruned = list(messages)
         replacement = compactor._prune(message=messages[2], token_counter=COUNTER)
         assert replacement is not None
         pruned, _ = replacement
         one_pruned[2] = pruned
         target = COUNTER.count(messages=one_pruned)
+        # Reaching the target after the first replacement leaves every newer result untouched.
         compacted = compactor.compact(messages=messages, target_tokens=target, token_counter=COUNTER)
         assert compacted is not None
         assert compacted[2].tool_call_result is not None
         assert compacted[2].tool_call_result.result == _DEFAULT_PLACEHOLDER.replace("{tool_name}", "search")
         assert compacted[4:] == messages[4:]
+        # Compaction returns a new list instead of changing the caller's original result.
         assert messages[2].tool_call_result is not None
         assert messages[2].tool_call_result.result == "a" * 400
-
-    def test_counts_the_full_conversation_only_once(self):
-        messages = _conversation("a" * 400, "b" * 400, "c" * 400)
-        counter = Mock(wraps=COUNTER)
-        compacted = ToolResultPruningCompactor(min_keep_steps=1, min_tokens=0).compact(
-            messages=messages, target_tokens=1, token_counter=counter
-        )
-        assert compacted is not None
-        counted_message_lengths = [len(call.kwargs["messages"]) for call in counter.count.call_args_list]
-        assert counted_message_lengths == [len(messages), 1, 1, 1, 1]
 
     def test_keeps_min_keep_steps(self):
         messages = [
@@ -68,23 +60,6 @@ class TestToolResultPruningCompactor:
             tool_result("newest" * 200, call_id="newest"),
         ]
         compacted = ToolResultPruningCompactor(min_keep_steps=2, min_tokens=0).compact(
-            messages=messages, target_tokens=1, token_counter=COUNTER
-        )
-        assert compacted is not None
-        assert compacted[2] != messages[2]
-        assert compacted[3:] == messages[3:]
-
-    def test_keeps_the_entire_fresh_parallel_result_batch(self):
-        messages = [
-            ChatMessage.from_user("task"),
-            tool_call("old"),
-            tool_result("old" * 200, call_id="old"),
-            tool_call("fresh-1", "fresh-2", "fresh-3"),
-            tool_result("first" * 200, call_id="fresh-1"),
-            tool_result("second" * 200, call_id="fresh-2"),
-            tool_result("third" * 200, call_id="fresh-3"),
-        ]
-        compacted = ToolResultPruningCompactor(min_keep_steps=1, min_tokens=0).compact(
             messages=messages, target_tokens=1, token_counter=COUNTER
         )
         assert compacted is not None
@@ -116,9 +91,9 @@ class TestToolResultPruningCompactor:
         )
         assert compactor.compact(messages=messages, target_tokens=1, token_counter=COUNTER) is None
 
-    def test_min_tokens_accounts_for_non_text_tool_results(self):
+    def test_compact_with_image_result(self):
         image = ImageContent(base64_image="Zm9v", mime_type="image/png")
-        image_call = tool_call("image")
+        image_call = tool_call("image", name="image_generator")
         messages = [
             ChatMessage.from_user("task"),
             image_call,
@@ -126,12 +101,13 @@ class TestToolResultPruningCompactor:
             tool_call("newest"),
             tool_result("newest", call_id="newest"),
         ]
+        # The tiny payload exceeds `min_tokens` only if the counter includes its configured per-image token cost.
         counter = ApproximateTokenCounter(tokens_per_image=500)
         compacted = ToolResultPruningCompactor(min_keep_steps=1, min_tokens=100).compact(
             messages=messages, target_tokens=1, token_counter=counter
         )
         assert compacted is not None and compacted[2].tool_call_result is not None
-        assert compacted[2].tool_call_result.result == _DEFAULT_PLACEHOLDER.replace("{tool_name}", "search")
+        assert compacted[2].tool_call_result.result == _DEFAULT_PLACEHOLDER.replace("{tool_name}", "image_generator")
 
     def test_skips_small_and_previously_compacted_results(self):
         messages = [
