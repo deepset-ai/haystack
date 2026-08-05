@@ -303,7 +303,7 @@ class TestComponentLifecycle:
         assert generator.async_client is None
 
         generator.close()
-        sync_cls.return_value.close.assert_called_once()  # type: ignore
+        sync_cls.return_value.close.assert_called_once()  # type: ignore[attr-defined]
         assert generator.client is None
 
     async def test_async_lifecycle(self, mock_openai_clients: tuple[MagicMock, MagicMock]) -> None:
@@ -315,7 +315,7 @@ class TestComponentLifecycle:
         assert generator.client is None
 
         await generator.close_async()
-        async_cls.return_value.close.assert_awaited_once()  # type: ignore
+        async_cls.return_value.close.assert_awaited_once()  # type: ignore[union-attr]
         assert generator.async_client is None
 
     async def test_close_is_safe_without_warm_up(self, mock_openai_clients: tuple[MagicMock, MagicMock]) -> None:
