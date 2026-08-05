@@ -211,14 +211,20 @@ If your pipeline seems stuck or runs longer than expected, here are common cause
 
    ```python
    # Problematic: user input goes directly to a component inside the loop
-   result = pipe.run({
-       "generator": {"prompt": query},  # This input persists and may retrigger the loop
-   })
+   result = pipe.run(
+       {
+           "generator": {
+               "prompt": query
+           },  # This input persists and may retrigger the loop
+       }
+   )
 
    # Better: use an entry-point component outside the loop
-   result = pipe.run({
-       "prompt_builder": {"query": query},  # Entry point feeds into the loop once
-   })
+   result = pipe.run(
+       {
+           "prompt_builder": {"query": query},  # Entry point feeds into the loop once
+       }
+   )
    ```
 
    See [Greedy vs. Lazy Variadic Sockets](#greedy-vs-lazy-variadic-sockets-in-loops) for details on how inputs are consumed.

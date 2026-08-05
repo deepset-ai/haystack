@@ -79,7 +79,9 @@ Mem0 supports narrowing the scope of reads and writes with `user_id`, `run_id`, 
 
 ```python
 store.add_memories(
-    messages=[ChatMessage.from_user("Alice is working on a documentation search system.")],
+    messages=[
+        ChatMessage.from_user("Alice is working on a documentation search system.")
+    ],
     user_id="alice",
     run_id="docs-assistant-session-1",
     infer=True,
