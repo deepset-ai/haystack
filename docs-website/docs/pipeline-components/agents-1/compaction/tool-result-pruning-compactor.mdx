@@ -36,7 +36,7 @@ from haystack.hooks.compaction import ContextCompactionHook, ToolResultPruningCo
 
 compaction_hook = ContextCompactionHook(
     compactor=ToolResultPruningCompactor(
-        min_keep_results=3,
+        min_keep_steps=1,
         min_tokens=200,
     ),
     context_window=200_000,
@@ -52,8 +52,8 @@ compaction_hook = ContextCompactionHook(
 The compactor processes tool results from oldest to newest:
 
 1. It leaves the conversation unchanged when it already fits within the target.
-2. It always protects the complete trailing batch of results from the current Agent step because the model has not acted on them yet. If `min_keep_results` is higher than the number of results in that batch, it protects enough additional recent results to reach that minimum.
-3. It skips errors, results already marked by context compaction, results below the token threshold, and results carrying protected metadata such as an offloaded-result reference.
+2. It protects results from at least the configured number of recent tool-calling Agent steps. The complete trailing batch from the current step is always protected because the model has not acted on it yet.
+3. It skips results already marked by context compaction, results below the token threshold, and results carrying protected metadata such as an offloaded-result reference.
 4. It replaces eligible results with the configured placeholder until the estimated conversation size reaches the target.
 
 The replacement preserves the originating tool call, error flag, and message metadata. This keeps the tool-call exchange valid for chat-completion providers while discarding the expensive result content.
@@ -64,12 +64,12 @@ The target is a goal rather than a guarantee. Protected recent results and resul
 
 | Parameter | Default | Description |
 | --- | --- | --- |
-| `min_keep_results` | `3` | The minimum number of recent tool results to preserve regardless of the target. More results remain intact when fewer replacements are sufficient. The complete current-step result batch is always protected. |
+| `min_keep_steps` | `1` | The minimum number of recent tool-calling Agent steps whose results remain intact regardless of the target. Parallel results from one step are protected together. The complete current-step result batch is always protected. |
 | `min_tokens` | `200` | Only prune a tool-result message when it uses more than this many tokens, as measured by the configured token counter. |
 | `placeholder` | `"[Tool result removed to free up context. Call {tool_name} again if you need it.]"` | Text that replaces a pruned result. Use `{tool_name}` to insert the originating tool's name. Other braces are preserved literally. |
 | `skip_meta_keys` | `("tool_result_offloaded",)` | Leave a result unchanged when its metadata contains any listed key. The default protects pointers created by `ToolResultOffloadHook`. |
 
-`min_keep_results` must be at least `1`, and `min_tokens` cannot be negative.
+`min_keep_steps` must be at least `1`, and `min_tokens` cannot be negative.
 
 ### Custom placeholders
 
@@ -100,6 +100,6 @@ By default, `ToolResultPruningCompactor` skips messages with `tool_result_offloa
 The compactor returns `None` without changing the conversation when:
 
 - The conversation already fits within `target_tokens`.
-- There are no results older than the protected minimum or current-step batch.
-- Every older result is an error, already compacted, protected by metadata, or no larger than `min_tokens`.
+- There are no results older than the protected steps or current-step batch.
+- Every older result is already compacted, protected by metadata, or no larger than `min_tokens`.
 - A replacement would not reduce the result's measured token count.

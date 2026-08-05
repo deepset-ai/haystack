@@ -7,7 +7,7 @@ from typing import Any
 from haystack.core.serialization import default_to_dict
 from haystack.dataclasses import ChatMessage
 from haystack.hooks.compaction.types import Compactor
-from haystack.hooks.compaction.utils import _COMPACTION_META_KEY
+from haystack.hooks.compaction.utils import _COMPACTION_META_KEY, _agent_step_spans
 from haystack.token_counters import TokenCounter
 from haystack.utils.experimental import _experimental
 
@@ -29,7 +29,7 @@ class ToolResultPruningCompactor(Compactor):
     from haystack.hooks.compaction import ContextCompactionHook, ToolResultPruningCompactor
 
     hook = ContextCompactionHook(
-        compactor=ToolResultPruningCompactor(min_keep_results=3),
+        compactor=ToolResultPruningCompactor(min_keep_steps=1),
         context_window=400_000,
         compact_at=0.7,
         compact_to=0.4,
@@ -45,7 +45,7 @@ class ToolResultPruningCompactor(Compactor):
     def __init__(
         self,
         *,
-        min_keep_results: int = 3,
+        min_keep_steps: int = 1,
         min_tokens: int = 200,
         placeholder: str = _DEFAULT_PLACEHOLDER,
         skip_meta_keys: tuple[str, ...] = ("tool_result_offloaded",),
@@ -53,27 +53,26 @@ class ToolResultPruningCompactor(Compactor):
         """
         Initialize the compactor with the rules deciding which results it prunes.
 
-        :param min_keep_results: The minimum number of recent tool results to leave untouched, even when they exceed
-            the target. More results remain intact when the target can be reached without pruning them. Must be at
-            least 1. The entire trailing batch of results from the current Agent step is always kept, even when it is
-            larger than this minimum, because the model has not acted on those results yet.
+        :param min_keep_steps: The minimum number of recent tool-calling Agent steps whose results remain untouched,
+            even when they exceed the target. Must be at least 1. The entire trailing batch of results from the current
+            Agent step is always kept because the model has not acted on those results yet.
         :param min_tokens: Only prune tool-result messages that use more than this many tokens. Small results cost
-            little and are often the ones worth keeping. Token-based sizing also accounts for image and file content.
+            little and are often the ones worth keeping.
         :param placeholder: The text left in place of a pruned result, replacing the built-in one. May contain
             `{tool_name}`, which is filled in with the name of the tool that produced the result.
         :param skip_meta_keys: Results whose `meta` contains any of these keys are left alone. The default covers
             results that a `ToolResultOffloadHook` already replaced with a reference to stored content: pruning one of
             those would destroy the reference the model needs to read it back.
-        :raises ValueError: If `min_keep_results` is less than 1 or `min_tokens` is negative.
+        :raises ValueError: If `min_keep_steps` is less than 1 or `min_tokens` is negative.
         """
-        if min_keep_results < 1:
+        if min_keep_steps < 1:
             raise ValueError(
-                f"`min_keep_results` must be at least 1, got {min_keep_results}. The most recent tool result is "
-                f"the one the model is about to act on."
+                f"`min_keep_steps` must be at least 1, got {min_keep_steps}. The most recent tool-calling step "
+                f"contains results the model may still need."
             )
         if min_tokens < 0:
             raise ValueError(f"`min_tokens` must be at least 0, got {min_tokens}.")
-        self.min_keep_results = min_keep_results
+        self.min_keep_steps = min_keep_steps
         self.min_tokens = min_tokens
         self.placeholder = placeholder
         # Normalized to a tuple so a round trip through `to_dict`, which has to emit a list, restores the same type.
@@ -86,9 +85,9 @@ class ToolResultPruningCompactor(Compactor):
         Replace the content of prunable tool results with a placeholder.
 
         Results are considered oldest first and pruning stops as soon as the conversation reaches `target_tokens`.
-        This keeps as much original output as possible. The most recent `min_keep_results` results are never
-        considered, even when the target cannot otherwise be reached. The trailing batch of tool results is also
-        protected in full because all of those results belong to the current Agent step. After measuring the initial
+        This keeps as much original output as possible. Results from the most recent `min_keep_steps` tool-calling
+        Agent steps are never considered, even when the target cannot otherwise be reached. The trailing batch of tool
+        results is also protected in full because the model has not acted on it yet. After measuring the initial
         conversation, the running total is updated with per-result token deltas to avoid repeatedly counting the full
         context.
 
@@ -101,19 +100,24 @@ class ToolResultPruningCompactor(Compactor):
         if current_tokens <= target_tokens:
             return None
 
-        # The model has not acted on the current step's results yet, so protect the complete trailing batch even when
-        # it is larger than `min_keep_results`.
-        trailing_result_count = 0
-        for message in reversed(messages):
-            if message.tool_call_result is None:
+        # Filter the shared Agent-step spans to tool-calling steps; parallel results remain grouped in one span.
+        result_steps = [
+            list(range(start + 1, end))
+            for start, end in _agent_step_spans(messages=messages, start=0)
+            if end > start + 1
+        ]
+
+        protected_positions = {position for step in result_steps[-self.min_keep_steps :] for position in step}
+        # Also protect a trailing result batch if its initiating call is absent from the retained history.
+        for index in reversed(range(len(messages))):
+            if messages[index].tool_call_result is None:
                 break
-            trailing_result_count += 1
-        protected_result_count = max(self.min_keep_results, trailing_result_count)
+            protected_positions.add(index)
 
         # Taking candidates from the front lets pruning stop at the target while leaving as much recent output intact
         # as possible.
         result_positions = [index for index, message in enumerate(messages) if message.tool_call_result is not None]
-        candidates = result_positions[:-protected_result_count]
+        candidates = [index for index in result_positions if index not in protected_positions]
         if not candidates:
             return None
 
@@ -145,14 +149,14 @@ class ToolResultPruningCompactor(Compactor):
         Rewrite one tool-result message with a placeholder, or return None to leave it as it is.
 
         The result's `origin` is carried over so the message keeps pointing at the tool call it answers, and its error
-        flag is preserved. Errors are left alone: they are short and tell the model something it needs.
+        flag is preserved.
 
         :param message: The tool-result message to consider.
         :param token_counter: The `TokenCounter` used to determine whether the result exceeds `min_tokens`.
         :returns: The rewritten message and original token count, or None when this result is not prunable.
         """
         result = message.tool_call_result
-        if result is None or result.error or _COMPACTION_META_KEY in message.meta:
+        if result is None or _COMPACTION_META_KEY in message.meta:
             return None
         if any(key in message.meta for key in self.skip_meta_keys):
             return None
@@ -184,7 +188,7 @@ class ToolResultPruningCompactor(Compactor):
         """
         return default_to_dict(
             self,
-            min_keep_results=self.min_keep_results,
+            min_keep_steps=self.min_keep_steps,
             min_tokens=self.min_tokens,
             placeholder=self.placeholder,
             skip_meta_keys=list(self.skip_meta_keys),

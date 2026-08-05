@@ -266,7 +266,7 @@ class TestContextCompactionHook:
         ]
         settings = {"context_window": 2000, "compact_at": 0.5, "compact_to": 0.1, "token_counter": counter}
         pruning_hook = ContextCompactionHook(
-            compactor=ToolResultPruningCompactor(min_keep_results=1, min_tokens=0), **settings
+            compactor=ToolResultPruningCompactor(min_keep_steps=1, min_tokens=0), **settings
         )
         sliding_window_hook = ContextCompactionHook(compactor=SlidingWindowCompactor(), **settings)
         # Provider usage covers through the last assistant call plus request overhead; the trailing result is local.
