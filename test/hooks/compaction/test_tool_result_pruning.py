@@ -2,6 +2,8 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+from unittest.mock import Mock
+
 import pytest
 
 from haystack.dataclasses import ChatMessage, ImageContent
@@ -29,8 +31,9 @@ class TestToolResultPruningCompactor:
         messages = _conversation("a" * 400, "b" * 400, "c" * 400)
         compactor = ToolResultPruningCompactor(min_keep_results=1, min_tokens=0)
         one_pruned = list(messages)
-        pruned = compactor._prune(message=messages[2], token_counter=COUNTER)
-        assert pruned is not None
+        replacement = compactor._prune(message=messages[2], token_counter=COUNTER)
+        assert replacement is not None
+        pruned, _ = replacement
         one_pruned[2] = pruned
         target = COUNTER.count(messages=one_pruned)
 
@@ -42,6 +45,18 @@ class TestToolResultPruningCompactor:
         assert compacted[4:] == messages[4:]
         assert messages[2].tool_call_result is not None
         assert messages[2].tool_call_result.result == "a" * 400
+
+    def test_counts_the_full_conversation_only_once(self):
+        messages = _conversation("a" * 400, "b" * 400, "c" * 400)
+        counter = Mock(wraps=COUNTER)
+
+        compacted = ToolResultPruningCompactor(min_keep_results=1, min_tokens=0).compact(
+            messages=messages, target_tokens=1, token_counter=counter
+        )
+
+        assert compacted is not None
+        counted_message_lengths = [len(call.kwargs["messages"]) for call in counter.count.call_args_list]
+        assert counted_message_lengths == [len(messages), 1, 1, 1, 1]
 
     def test_keeps_the_minimum_number_of_recent_results(self):
         messages = _conversation("a" * 400, "b" * 400, "c" * 400)

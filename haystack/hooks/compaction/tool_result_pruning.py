@@ -88,7 +88,9 @@ class ToolResultPruningCompactor(Compactor):
         Results are considered oldest first and pruning stops as soon as the conversation reaches `target_tokens`.
         This keeps as much original output as possible. The most recent `min_keep_results` results are never
         considered, even when the target cannot otherwise be reached. The trailing batch of tool results is also
-        protected in full because all of those results belong to the current Agent step.
+        protected in full because all of those results belong to the current Agent step. After measuring the initial
+        conversation, the running total is updated with per-result token deltas to avoid repeatedly counting the full
+        context.
 
         :param messages: The conversation to compact, oldest to newest.
         :param target_tokens: The size the compacted conversation should come in under.
@@ -119,29 +121,26 @@ class ToolResultPruningCompactor(Compactor):
         compacted = list(messages)
         changed = False
         for index in candidates:
-            pruned = self._prune(message=messages[index], token_counter=token_counter)
-            if pruned is None:
+            replacement = self._prune(message=messages[index], token_counter=token_counter)
+            if replacement is None:
                 continue
+            pruned, original_tokens = replacement
 
-            # Trial the replacement on another copy so a non-saving custom placeholder can be discarded safely.
-            candidate = list(compacted)
-            candidate[index] = pruned
-            # Recount the complete conversation: tokenization is not additive, and counters may charge separately for
-            # images or files, so subtracting two isolated message counts would not reliably measure the new context.
-            candidate_tokens = token_counter.count(messages=candidate)
+            # Count only the small replacement rather than sending the full conversation through the counter again.
+            pruned_tokens = token_counter.count(messages=[pruned])
             # Compactors must only return a shorter conversation; a custom placeholder can be larger than the result.
-            if candidate_tokens >= current_tokens:
+            if pruned_tokens >= original_tokens:
                 continue
 
-            compacted = candidate
-            current_tokens = candidate_tokens
+            compacted[index] = pruned
+            current_tokens -= original_tokens - pruned_tokens
             changed = True
             # Stopping at the first target hit preserves every newer candidate in its original form.
             if current_tokens <= target_tokens:
                 break
         return compacted if changed else None
 
-    def _prune(self, message: ChatMessage, token_counter: TokenCounter) -> ChatMessage | None:
+    def _prune(self, message: ChatMessage, token_counter: TokenCounter) -> tuple[ChatMessage, int] | None:
         """
         Rewrite one tool-result message with a placeholder, or return None to leave it as it is.
 
@@ -150,7 +149,7 @@ class ToolResultPruningCompactor(Compactor):
 
         :param message: The tool-result message to consider.
         :param token_counter: The `TokenCounter` used to determine whether the result exceeds `min_tokens`.
-        :returns: The rewritten message, or None when this result is not pruned.
+        :returns: The rewritten message and original token count, or None when this result is not prunable.
         """
         result = message.tool_call_result
         if result is None or result.error or _COMPACTION_META_KEY in message.meta:
@@ -164,14 +163,17 @@ class ToolResultPruningCompactor(Compactor):
 
         # `replace` permits custom placeholders to contain unrelated braces, such as JSON examples.
         placeholder = self.placeholder.replace("{tool_name}", result.origin.tool_name)
-        return ChatMessage.from_tool(
-            tool_result=placeholder,
-            origin=result.origin,
-            error=result.error,
-            meta={
-                **message.meta,
-                _COMPACTION_META_KEY: {"strategy": "tool_result_pruning", "original_tokens": original_tokens},
-            },
+        return (
+            ChatMessage.from_tool(
+                tool_result=placeholder,
+                origin=result.origin,
+                error=result.error,
+                meta={
+                    **message.meta,
+                    _COMPACTION_META_KEY: {"strategy": "tool_result_pruning", "original_tokens": original_tokens},
+                },
+            ),
+            original_tokens,
         )
 
     def to_dict(self) -> dict[str, Any]:
