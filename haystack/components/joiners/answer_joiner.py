@@ -94,11 +94,16 @@ class AnswerJoiner:
             Specifies the join mode to use. Available modes:
             - `concatenate`: Concatenates multiple lists of Answers into a single list.
         :param top_k:
-            The maximum number of Answers to return.
+            The maximum number of Answers to return. Must be `None` or greater than 0.
         :param sort_by_score:
             If `True`, sorts the documents by score in descending order.
             If a document has no score, it is handled as if its score is -infinity.
+
+        :raises ValueError:
+            If `top_k` is not `None` and is less than or equal to 0.
         """
+        if top_k is not None and top_k <= 0:
+            raise ValueError("top_k must be greater than 0.")
         if isinstance(join_mode, str):
             join_mode = JoinMode.from_str(join_mode)
         join_mode_functions: dict[JoinMode, Callable[[list[list[AnswerType]]], list[AnswerType]]] = {
@@ -119,10 +124,14 @@ class AnswerJoiner:
 
         :param top_k:
             The maximum number of Answers to return. Overrides the instance's `top_k` if provided.
+            A value of 0 returns no answers. Must not be negative.
 
         :returns:
             A dictionary with the following keys:
             - `answers`: Merged list of Answers
+
+        :raises ValueError:
+            If `top_k` is negative.
         """
         answers_list = list(answers)
         join_function = self.join_mode_function
@@ -135,9 +144,12 @@ class AnswerJoiner:
                 reverse=True,
             )
 
-        top_k = top_k or self.top_k
-        if top_k:
+        if top_k is not None:
+            if top_k < 0:
+                raise ValueError("top_k must not be negative.")
             output_answers = output_answers[:top_k]
+        elif self.top_k is not None:
+            output_answers = output_answers[: self.top_k]
         return {"answers": output_answers}
 
     def _concatenate(self, answer_lists: list[list[AnswerType]]) -> list[AnswerType]:
