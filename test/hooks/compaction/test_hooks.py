@@ -269,8 +269,9 @@ class TestContextCompactionHook:
             compactor=ToolResultPruningCompactor(min_keep_results=1, min_tokens=0), **settings
         )
         sliding_window_hook = ContextCompactionHook(compactor=SlidingWindowCompactor(), **settings)
-        # Provider usage covers through the last assistant call; the trailing result is counted locally by each hook.
-        state = make_state(messages, context_tokens=counter.count(messages=messages[:-1]))
+        # Provider usage covers through the last assistant call plus request overhead; the trailing result is local.
+        reported_context_tokens = counter.count(messages=messages[:-1]) + 100
+        state = make_state(messages, context_tokens=reported_context_tokens)
 
         pruning_hook.run(state=state)
         after_pruning = state.data["messages"]
