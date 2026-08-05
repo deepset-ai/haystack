@@ -1,0 +1,6 @@
+---
+features:
+  - |
+    Added the experimental ``ToolResultPruningCompactor``. It reduces Agent context usage by replacing older,
+    successful tool results with short placeholders while preserving tool-call/result structure and keeping a
+    configurable minimum number of recent results intact.
