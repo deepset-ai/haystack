@@ -10,12 +10,24 @@ import pytest
 from haystack.components.agents import Agent
 from haystack.components.generators.chat import MockChatGenerator
 from haystack.dataclasses import ChatMessage
-from haystack.hooks.compaction import Compactor, ContextCompactionHook, SlidingWindowCompactor
-from haystack.hooks.compaction.utils import _estimated_context_tokens, _last_assistant_index
+from haystack.hooks.compaction import (
+    Compactor,
+    ContextCompactionHook,
+    SlidingWindowCompactor,
+    ToolResultPruningCompactor,
+)
+from haystack.hooks.compaction.utils import _COMPACTION_META_KEY, _estimated_context_tokens, _last_assistant_index
 from haystack.token_counters import TokenCounter
 from haystack.tools import tool
 from haystack.utils.experimental import ExperimentalWarning
-from test.hooks.compaction.helpers import FakeCounter, count_markers, long_conversation, make_state, tool_call
+from test.hooks.compaction.helpers import (
+    FakeCounter,
+    count_markers,
+    long_conversation,
+    make_state,
+    tool_call,
+    tool_result,
+)
 
 pytestmark = pytest.mark.filterwarnings("ignore::haystack.utils.experimental.ExperimentalWarning")
 
@@ -242,6 +254,39 @@ class TestContextCompactionHook:
         _hook(_RecordingCompactor(result=None)).run(state=state)
         assert state.data["messages"] == messages
         assert state.data["context_tokens"] == 800
+
+    def test_chains_tool_result_pruning_before_sliding_window(self):
+        counter = FakeCounter(chars_per_token=1)
+        messages = [
+            ChatMessage.from_user("task"),
+            tool_call("old"),
+            tool_result("old result " * 400, call_id="old"),
+            tool_call("recent"),
+            tool_result("recent result " * 400, call_id="recent"),
+        ]
+        settings = {"context_window": 2000, "compact_at": 0.5, "compact_to": 0.1, "token_counter": counter}
+        pruning_hook = ContextCompactionHook(
+            compactor=ToolResultPruningCompactor(min_keep_steps=1, min_tokens=0), **settings
+        )
+        sliding_window_hook = ContextCompactionHook(compactor=SlidingWindowCompactor(), **settings)
+        # Provider usage covers through the last assistant call plus request overhead; the trailing result is local.
+        reported_context_tokens = counter.count(messages=messages[:-1]) + 100
+        state = make_state(messages, context_tokens=reported_context_tokens)
+
+        pruning_hook.run(state=state)
+        after_pruning = state.data["messages"]
+        assert after_pruning[2].meta[_COMPACTION_META_KEY]["strategy"] == "tool_result_pruning"
+        assert len(after_pruning) == len(messages)
+
+        # Pruning cannot reach the target while retaining the recent result, so the next hook sees the smaller history
+        # but remains above its trigger and falls back to dropping the old step.
+        sliding_window_hook.run(state=state)
+        compacted = state.data["messages"]
+        assert len(compacted) < len(after_pruning)
+        assert any(
+            message.meta.get(_COMPACTION_META_KEY, {}).get("strategy") == "sliding_window" for message in compacted
+        )
+        assert compacted[-2:] == messages[-2:]
 
     def test_lifecycle_delegates_to_the_compactor(self):
         compactor = _RecordingCompactor()
