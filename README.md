@@ -225,7 +225,7 @@
 | haystack/tools/agent\_tool.py                                             |       46 |        0 |    100% |           |
 | haystack/tools/component\_tool.py                                         |      100 |        5 |     95% |367-368, 411-413 |
 | haystack/tools/errors.py                                                  |        6 |        0 |    100% |           |
-| haystack/tools/from\_function.py                                          |       57 |        0 |    100% |           |
+| haystack/tools/from\_function.py                                          |       61 |        0 |    100% |           |
 | haystack/tools/parameters\_schema\_utils.py                               |       97 |        3 |     97% |95, 135-136 |
 | haystack/tools/pipeline\_tool.py                                          |       30 |        2 |     93% |  240, 243 |
 | haystack/tools/searchable\_toolset.py                                     |      120 |        2 |     98% |  191, 214 |
@@ -261,7 +261,7 @@
 | haystack/utils/type\_serialization.py                                     |      135 |        6 |     96% |97, 99, 243-244, 252, 268 |
 | haystack/utils/url\_validation.py                                         |        4 |        0 |    100% |           |
 | haystack/version.py                                                       |        5 |        2 |     60% |      9-10 |
-| **TOTAL**                                                                 | **16480** |  **788** | **95%** |           |
+| **TOTAL**                                                                 | **16484** |  **788** | **95%** |           |
 
 
 ## Setup coverage badge
