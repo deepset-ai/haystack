@@ -142,7 +142,7 @@ class TestLLM:
                 LLM(chat_generator=MockChatGenerator(), user_prompt=self.USER_PROMPT, required_variables=[])
 
     class TestSerialization:
-        def test_to_dict_excludes_agent_only_params(self, monkeypatch: Any) -> None:
+        def test_to_dict_excludes_agent_only_params(self, monkeypatch: pytest.MonkeyPatch) -> None:
 
             monkeypatch.setenv("OPENAI_API_KEY", "fake-key")
             user_prompt = '{% message role="user" %}{{ query }}{% endmessage %}'
@@ -169,7 +169,7 @@ class TestLLM:
                     f"Agent-only param '{param}' should not be serialized"
                 )
 
-        def test_to_dict_includes_llm_params(self, monkeypatch: Any) -> None:
+        def test_to_dict_includes_llm_params(self, monkeypatch: pytest.MonkeyPatch) -> None:
 
             monkeypatch.setenv("OPENAI_API_KEY", "fake-key")
             llm = LLM(
@@ -186,7 +186,7 @@ class TestLLM:
             assert serialized["init_parameters"]["required_variables"] == ["query"]
             assert serialized["init_parameters"]["streaming_callback"] is None
 
-        def test_from_dict(self, monkeypatch: Any) -> None:
+        def test_from_dict(self, monkeypatch: pytest.MonkeyPatch) -> None:
 
             monkeypatch.setenv("OPENAI_API_KEY", "fake-key")
             data = {
@@ -222,7 +222,7 @@ class TestLLM:
             assert llm.system_prompt == "You are helpful."
             assert llm.tools == []
 
-        def test_roundtrip(self, monkeypatch: Any) -> None:
+        def test_roundtrip(self, monkeypatch: pytest.MonkeyPatch) -> None:
 
             monkeypatch.setenv("OPENAI_API_KEY", "fake-key")
             user_prompt = '{% message role="user" %}{{ query }}{% endmessage %}'
@@ -286,7 +286,7 @@ class TestLLM:
             )
             return store
 
-        def test_rag_pipeline(self, document_store_with_docs: Any) -> None:
+        def test_rag_pipeline(self, document_store_with_docs: InMemoryDocumentStore) -> None:
 
             user_prompt = (
                 '{% message role="user" %}'

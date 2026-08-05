@@ -88,7 +88,9 @@ def tools():
 
 
 class TestOpenAIChatGeneratorAsync:
-    async def test_warm_up_async_should_create_async_client_with_same_args(self, monkeypatch: Any) -> None:
+    async def test_warm_up_async_should_create_async_client_with_same_args(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
 
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
         component = OpenAIChatGenerator(
@@ -108,7 +110,9 @@ class TestOpenAIChatGeneratorAsync:
         assert component.async_client.max_retries == 5
 
     @pytest.mark.asyncio
-    async def test_run_async(self, chat_messages: Any, openai_mock_async_chat_completion: Any) -> None:
+    async def test_run_async(
+        self, chat_messages: list[ChatMessage], openai_mock_async_chat_completion: MagicMock
+    ) -> None:
 
         component = OpenAIChatGenerator(api_key=Secret.from_token("test-api-key"))
         response = await component.run_async(chat_messages)
@@ -120,7 +124,7 @@ class TestOpenAIChatGeneratorAsync:
         assert len(response["replies"]) == 1
         assert [isinstance(reply, ChatMessage) for reply in response["replies"]]
 
-    async def test_run_async_with_string_input(self, openai_mock_async_chat_completion: Any) -> None:
+    async def test_run_async_with_string_input(self, openai_mock_async_chat_completion: MagicMock) -> None:
 
         component = OpenAIChatGenerator(api_key=Secret.from_token("test-api-key"))
         response = await component.run_async("What's the capital of France?")
@@ -133,7 +137,9 @@ class TestOpenAIChatGeneratorAsync:
         assert isinstance(response["replies"][0], ChatMessage)
 
     @pytest.mark.asyncio
-    async def test_run_with_params_async(self, chat_messages: Any, openai_mock_async_chat_completion: Any) -> None:
+    async def test_run_with_params_async(
+        self, chat_messages: list[ChatMessage], openai_mock_async_chat_completion: MagicMock
+    ) -> None:
 
         component = OpenAIChatGenerator(
             api_key=Secret.from_token("test-api-key"),
@@ -158,7 +164,7 @@ class TestOpenAIChatGeneratorAsync:
 
     @pytest.mark.asyncio
     async def test_run_with_params_streaming_async(
-        self, chat_messages: Any, openai_mock_async_chat_completion_chunk: Any
+        self, chat_messages: list[ChatMessage], openai_mock_async_chat_completion_chunk: MagicMock
     ) -> None:
 
         streaming_callback_called = False
@@ -186,7 +192,7 @@ class TestOpenAIChatGeneratorAsync:
 
     @pytest.mark.asyncio
     async def test_run_with_streaming_callback_in_run_method_async(
-        self: Any, chat_messages: Any, openai_mock_async_chat_completion_chunk: Any
+        self, chat_messages: list[ChatMessage], openai_mock_async_chat_completion_chunk: MagicMock
     ) -> None:
 
         streaming_callback_called = False
@@ -211,7 +217,7 @@ class TestOpenAIChatGeneratorAsync:
         assert "Hello" in response["replies"][0].text  # see openai_mock_chat_completion_chunk
 
     @pytest.mark.asyncio
-    async def test_run_with_tools_async(self, tools: Any) -> None:
+    async def test_run_with_tools_async(self, tools: list[Tool]) -> None:
 
         with patch(
             "openai.resources.chat.completions.AsyncCompletions.create", new_callable=AsyncMock
@@ -275,7 +281,9 @@ class TestOpenAIChatGeneratorAsync:
         assert message.meta["usage"]["completion_tokens"] == 40
 
     @pytest.mark.asyncio
-    async def test_run_with_tools_streaming_async(self, mock_chat_completion_chunk_with_tools: Any, tools: Any) -> None:
+    async def test_run_with_tools_streaming_async(
+        self, mock_chat_completion_chunk_with_tools: Any, tools: list[Tool]
+    ) -> None:
 
         streaming_callback_called = False
 
@@ -309,7 +317,7 @@ class TestOpenAIChatGeneratorAsync:
         assert message.meta["finish_reason"] == "tool_calls"
 
     @pytest.mark.asyncio
-    async def test_async_stream_closes_on_cancellation(self, monkeypatch: Any) -> None:
+    async def test_async_stream_closes_on_cancellation(self, monkeypatch: pytest.MonkeyPatch) -> None:
 
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
         generator = OpenAIChatGenerator(
@@ -452,7 +460,7 @@ class TestOpenAIChatGeneratorAsync:
     )
     @pytest.mark.integration
     @pytest.mark.asyncio
-    async def test_live_run_with_tools_async(self, tools: Any) -> None:
+    async def test_live_run_with_tools_async(self, tools: list[Tool]) -> None:
 
         component = OpenAIChatGenerator(model="gpt-4.1-nano", tools=tools)
         chat_messages = [ChatMessage.from_user("What's the weather like in Paris?")]
@@ -476,7 +484,7 @@ class TestOpenAIChatGeneratorAsync:
 
     @pytest.mark.asyncio
     async def test_run_with_wrapped_stream_simulation_async(
-        self, chat_messages: Any, openai_mock_stream_async: Any
+        self, chat_messages: list[ChatMessage], openai_mock_stream_async: MagicMock
     ) -> None:
 
         streaming_callback_called = False

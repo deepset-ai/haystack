@@ -3,7 +3,6 @@
 # SPDX-License-Identifier: Apache-2.0
 import base64
 import os
-from typing import Any
 from unittest.mock import AsyncMock, MagicMock, Mock, patch
 
 import pytest
@@ -27,7 +26,7 @@ def mock_image_response():
 
 
 class TestOpenAIImageGenerator:
-    def test_init_default(self, monkeypatch: Any) -> None:
+    def test_init_default(self, monkeypatch: pytest.MonkeyPatch) -> None:
         component = OpenAIImageGenerator()
         assert component.model == "gpt-image-2"
         assert component.quality == "auto"
@@ -41,7 +40,7 @@ class TestOpenAIImageGenerator:
         assert component.client is None
         assert component.async_client is None
 
-    def test_init_with_params(self, monkeypatch: Any) -> None:
+    def test_init_with_params(self, monkeypatch: pytest.MonkeyPatch) -> None:
         component = OpenAIImageGenerator(
             model="gpt-image-1",
             quality="high",
@@ -63,16 +62,16 @@ class TestOpenAIImageGenerator:
         assert component.client is None
         assert component.async_client is None
 
-    def test_init_max_retries_0(self, monkeypatch: Any) -> None:
+    def test_init_max_retries_0(self, monkeypatch: pytest.MonkeyPatch) -> None:
         component = OpenAIImageGenerator(max_retries=0)
         assert component.max_retries == 0
 
-    def test_init_invalid_quality_falls_back_to_auto(self, caplog: Any) -> None:
+    def test_init_invalid_quality_falls_back_to_auto(self, caplog: pytest.LogCaptureFixture) -> None:
         component = OpenAIImageGenerator(quality="hd")  # type: ignore[arg-type]
         assert component.quality == "auto"
         assert "Invalid quality" in caplog.text
 
-    def test_init_non_default_response_format_warns(self, caplog: Any) -> None:
+    def test_init_non_default_response_format_warns(self, caplog: pytest.LogCaptureFixture) -> None:
         OpenAIImageGenerator(response_format="url")  # type: ignore[arg-type]
         assert "response_format is ignored" in caplog.text
 
@@ -154,7 +153,7 @@ class TestOpenAIImageGenerator:
         assert generator.max_retries is None
         assert generator.http_client_kwargs is None
 
-    def test_run(self, mock_image_response: Any) -> None:
+    def test_run(self, mock_image_response: MagicMock) -> None:
         generator = OpenAIImageGenerator(api_key=Secret.from_token("test-api-key"))
         response = generator.run("Show me a picture of a black cat.")
         assert generator.client is not None
@@ -183,13 +182,13 @@ class TestOpenAIImageGenerator:
 
 
 class TestOpenAIImageGeneratorAsync:
-    def test_async_client_none_before_warm_up(self, monkeypatch: Any) -> None:
+    def test_async_client_none_before_warm_up(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
         component = OpenAIImageGenerator()
         assert component.async_client is None
 
     @pytest.mark.asyncio
-    async def test_async_client_after_warm_up_async(self, monkeypatch: Any) -> None:
+    async def test_async_client_after_warm_up_async(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
         component = OpenAIImageGenerator()
         await component.warm_up_async()
@@ -215,7 +214,7 @@ class TestOpenAIImageGeneratorAsync:
         mock_async_client.images.generate.assert_awaited_once()
 
     @pytest.mark.asyncio
-    async def test_run_async_triggers_warm_up(self, monkeypatch: Any) -> None:
+    async def test_run_async_triggers_warm_up(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
         generator = OpenAIImageGenerator()
         assert generator.async_client is None
@@ -263,7 +262,7 @@ def mock_openai_clients(monkeypatch):
 
 
 class TestComponentLifecycle:
-    def test_warm_up_uses_default_timeout_and_max_retries(self, monkeypatch: Any) -> None:
+    def test_warm_up_uses_default_timeout_and_max_retries(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setenv("OPENAI_API_KEY", "fake-api-key")
         generator = OpenAIImageGenerator()
         generator.warm_up()
@@ -278,7 +277,7 @@ class TestComponentLifecycle:
         assert generator.client.max_retries == 1
         assert generator.client.timeout == 40.0
 
-    def test_warm_up_uses_timeout_and_max_retries_from_env_vars(self, monkeypatch: Any) -> None:
+    def test_warm_up_uses_timeout_and_max_retries_from_env_vars(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setenv("OPENAI_TIMEOUT", "100")
         monkeypatch.setenv("OPENAI_MAX_RETRIES", "10")
         generator = OpenAIImageGenerator(api_key=Secret.from_token("fake-api-key"))
@@ -287,13 +286,13 @@ class TestComponentLifecycle:
         assert generator.client.max_retries == 10
         assert generator.client.timeout == 100.0
 
-    def test_key_resolved_at_warm_up_not_init(self, monkeypatch: Any) -> None:
+    def test_key_resolved_at_warm_up_not_init(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.delenv("OPENAI_API_KEY", raising=False)
         generator = OpenAIImageGenerator()
         with pytest.raises(ValueError, match="None of the .* environment variables are set"):
             generator.warm_up()
 
-    def test_sync_lifecycle(self, mock_openai_clients: Any) -> None:
+    def test_sync_lifecycle(self, mock_openai_clients: tuple[MagicMock, MagicMock]) -> None:
         sync_cls, _ = mock_openai_clients
         generator = OpenAIImageGenerator()
         assert generator.client is None
@@ -304,11 +303,10 @@ class TestComponentLifecycle:
         assert generator.async_client is None
 
         generator.close()
-        assert generator.client is not None
         sync_cls.return_value.close.assert_called_once()  # type: ignore
         assert generator.client is None
 
-    async def test_async_lifecycle(self, mock_openai_clients: Any) -> None:
+    async def test_async_lifecycle(self, mock_openai_clients: tuple[MagicMock, MagicMock]) -> None:
         _, async_cls = mock_openai_clients
         generator = OpenAIImageGenerator()
 
@@ -317,18 +315,19 @@ class TestComponentLifecycle:
         assert generator.client is None
 
         await generator.close_async()
-        assert generator.async_client is not None
         async_cls.return_value.close.assert_awaited_once()  # type: ignore
         assert generator.async_client is None
 
-    async def test_close_is_safe_without_warm_up(self, mock_openai_clients: Any) -> None:
+    async def test_close_is_safe_without_warm_up(self, mock_openai_clients: tuple[MagicMock, MagicMock]) -> None:
         generator = OpenAIImageGenerator()
         generator.close()
         await generator.close_async()
         assert generator.client is None
         assert generator.async_client is None
 
-    async def test_close_and_close_async_are_independent(self, mock_openai_clients: Any) -> None:
+    async def test_close_and_close_async_are_independent(
+        self, mock_openai_clients: tuple[MagicMock, MagicMock]
+    ) -> None:
         generator = OpenAIImageGenerator()
         generator.warm_up()
         await generator.warm_up_async()

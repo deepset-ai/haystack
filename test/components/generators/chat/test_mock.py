@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 import inspect
-from typing import Any
+from collections.abc import Callable
 
 import pytest
 
@@ -36,7 +36,9 @@ class TestMockChatGenerator:
             ((ChatMessage.from_user("hi"),), {}, ValueError, "must have the 'assistant' role"),
         ],
     )
-    def test_init_rejects_invalid_config(self, args: Any, kwargs: Any, exception: Any, match: Any) -> None:
+    def test_init_rejects_invalid_config(
+        self, args: tuple, kwargs: dict, exception: type[Exception], match: str
+    ) -> None:
 
         with pytest.raises(exception, match=match):
             MockChatGenerator(*args, **kwargs)
@@ -66,7 +68,7 @@ class TestMockChatGenerator:
             ([], None),  # nothing to echo
         ],
     )
-    def test_echo_default(self, messages: Any, expected: Any) -> None:
+    def test_echo_default(self, messages: list[ChatMessage], expected: str | None) -> None:
 
         replies = MockChatGenerator().run(messages)["replies"]
         if expected is None:
@@ -75,7 +77,7 @@ class TestMockChatGenerator:
             assert replies[0].text == expected
 
     @pytest.mark.parametrize(("fn", "expected"), [(_exclaim, "hello!"), (_assistant_reply, "canned message")])
-    def test_response_fn(self, fn: Any, expected: Any) -> None:
+    def test_response_fn(self, fn: Callable, expected: str | None) -> None:
 
         result = MockChatGenerator(response_fn=fn).run([ChatMessage.from_user("hello")])
         assert result["replies"][0].text == expected
@@ -87,7 +89,7 @@ class TestMockChatGenerator:
             (lambda messages: ChatMessage.from_user("nope"), ValueError, "must return an assistant ChatMessage"),
         ],
     )
-    def test_response_fn_invalid_return_raises(self, fn: Any, exception: Any, match: Any) -> None:
+    def test_response_fn_invalid_return_raises(self, fn: Callable, exception: type[Exception], match: str) -> None:
 
         with pytest.raises(exception, match=match):
             MockChatGenerator(response_fn=fn).run([ChatMessage.from_user("hi")])
@@ -206,7 +208,7 @@ class TestMockChatGenerator:
         ],
         ids=["responses", "response_fn", "echo", "streaming_callback"],
     )
-    def test_serialization_roundtrip(self, generator: Any) -> None:
+    def test_serialization_roundtrip(self, generator: MockChatGenerator) -> None:
 
         restored = MockChatGenerator.from_dict(generator.to_dict())
         assert isinstance(restored, MockChatGenerator)

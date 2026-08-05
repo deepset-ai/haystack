@@ -1,9 +1,7 @@
-from typing import Any
-
 # SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
 #
 # SPDX-License-Identifier: Apache-2.0
-from unittest.mock import ANY
+from unittest.mock import ANY, MagicMock
 
 import pytest
 from openai.types import Reasoning, ResponseFormatText
@@ -224,7 +222,7 @@ def openai_responses_streaming_chunks_with_tool_call():
 
 class TestConversionToStreamingChunks:
     def test_convert_streaming_chunks_to_chat_message_with_tool_call_empty_reasoning(
-        self: Any, openai_responses_streaming_chunks_with_tool_call: Any
+        self, openai_responses_streaming_chunks_with_tool_call: MagicMock
     ) -> None:
 
         chat_message = _convert_streaming_chunks_to_chat_message(openai_responses_streaming_chunks_with_tool_call)
@@ -1241,7 +1239,7 @@ class TestResponseToChatMessage:
             {"role": "user", "content": [{"type": "input_text", "text": "I have a question"}]}
         ]
 
-    def test_convert_multimodal_user_message(self, base64_image_string: Any) -> None:
+    def test_convert_multimodal_user_message(self, base64_image_string: str) -> None:
 
         message = ChatMessage.from_user(
             content_parts=[
@@ -1272,7 +1270,7 @@ class TestResponseToChatMessage:
             ],
         }
 
-    def test_convert_user_message_with_file_content(self, base64_pdf_string: Any) -> None:
+    def test_convert_user_message_with_file_content(self, base64_pdf_string: str) -> None:
 
         message = ChatMessage.from_user(
             content_parts=[FileContent(base64_data=base64_pdf_string, mime_type="application/pdf", filename="test.pdf")]
@@ -1290,7 +1288,7 @@ class TestResponseToChatMessage:
             }
         ]
 
-    def test_convert_user_message_with_file_content_no_filename(self, base64_pdf_string: Any) -> None:
+    def test_convert_user_message_with_file_content_no_filename(self, base64_pdf_string: str) -> None:
 
         message = ChatMessage.from_user(
             content_parts=[FileContent(base64_data=base64_pdf_string, mime_type="application/pdf")]
@@ -1437,7 +1435,7 @@ class TestResponseToChatMessage:
             }
         ]
 
-    def test_convert_tool_message_list_with_image(self, base64_image_string: Any) -> None:
+    def test_convert_tool_message_list_with_image(self, base64_image_string: str) -> None:
 
         tool_result = [
             TextContent(text="first result"),
@@ -1462,7 +1460,7 @@ class TestResponseToChatMessage:
             }
         ]
 
-    def test_convert_tool_message_list_with_file(self, base64_pdf_string: Any) -> None:
+    def test_convert_tool_message_list_with_file(self, base64_pdf_string: str) -> None:
 
         tool_result = [
             TextContent(text="first result"),

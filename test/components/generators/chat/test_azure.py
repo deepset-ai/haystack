@@ -1,9 +1,9 @@
 # SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
 #
 # SPDX-License-Identifier: Apache-2.0
-
 import json
 import os
+from pathlib import Path
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 
@@ -84,7 +84,7 @@ class TestAzureOpenAIChatGenerator:
         assert len(models) > 0
         assert all(isinstance(m, str) for m in models)
 
-    def test_init_default(self, monkeypatch: Any) -> None:
+    def test_init_default(self, monkeypatch: pytest.MonkeyPatch) -> None:
 
         monkeypatch.setenv("AZURE_OPENAI_API_KEY", "test-api-key")
         component = AzureOpenAIChatGenerator(azure_endpoint="some-non-existing-endpoint")
@@ -95,7 +95,7 @@ class TestAzureOpenAIChatGenerator:
         assert component.client is None
         assert component.async_client is None
 
-    def test_init_does_not_fail_wo_api_key(self, monkeypatch: Any) -> None:
+    def test_init_does_not_fail_wo_api_key(self, monkeypatch: pytest.MonkeyPatch) -> None:
 
         monkeypatch.delenv("AZURE_OPENAI_API_KEY", raising=False)
         monkeypatch.delenv("AZURE_OPENAI_AD_TOKEN", raising=False)
@@ -103,7 +103,7 @@ class TestAzureOpenAIChatGenerator:
         assert component.client is None
         assert component.async_client is None
 
-    def test_init_with_parameters(self, tools: Any) -> None:
+    def test_init_with_parameters(self, tools: list[Tool]) -> None:
 
         component = AzureOpenAIChatGenerator(
             api_key=Secret.from_token("test-api-key"),
@@ -125,7 +125,7 @@ class TestAzureOpenAIChatGenerator:
         assert component.client is None
         assert component.async_client is None
 
-    def test_init_with_0_max_retries(self, tools: Any) -> None:
+    def test_init_with_0_max_retries(self, tools: list[Tool]) -> None:
         """Tests that the max_retries init param is set correctly if equal 0"""
         component = AzureOpenAIChatGenerator(
             api_key=Secret.from_token("test-api-key"),
@@ -148,7 +148,7 @@ class TestAzureOpenAIChatGenerator:
         assert component.client is None
         assert component.async_client is None
 
-    def test_init_with_secret_azure_endpoint_and_api_version(self, monkeypatch: Any) -> None:
+    def test_init_with_secret_azure_endpoint_and_api_version(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """`azure_endpoint` and `api_version` accept a Secret that is resolved from an environment variable."""
         monkeypatch.setenv("AZURE_OPENAI_API_KEY", "test-api-key")
         monkeypatch.setenv("AZURE_OPENAI_ENDPOINT", "https://test-resource.azure.openai.com/")
@@ -161,14 +161,14 @@ class TestAzureOpenAIChatGenerator:
         assert component.azure_endpoint == Secret.from_env_var("AZURE_OPENAI_ENDPOINT")
         assert component.api_version == Secret.from_env_var("AZURE_OPENAI_API_VERSION")
 
-    def test_init_fail_with_unset_secret_azure_endpoint(self, monkeypatch: Any) -> None:
+    def test_init_fail_with_unset_secret_azure_endpoint(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """A Secret azure_endpoint that resolves to nothing raises the same error as a missing endpoint."""
         monkeypatch.setenv("AZURE_OPENAI_API_KEY", "test-api-key")
         monkeypatch.delenv("AZURE_OPENAI_ENDPOINT", raising=False)
         with pytest.raises(ValueError, match="Azure endpoint"):
             AzureOpenAIChatGenerator(azure_endpoint=Secret.from_env_var("AZURE_OPENAI_ENDPOINT", strict=False))
 
-    def test_to_dict_with_secret_azure_endpoint_and_api_version(self, monkeypatch: Any) -> None:
+    def test_to_dict_with_secret_azure_endpoint_and_api_version(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """Secret `azure_endpoint` and `api_version` are serialized as Secret dictionaries."""
         monkeypatch.setenv("AZURE_OPENAI_API_KEY", "test-api-key")
         monkeypatch.setenv("AZURE_OPENAI_ENDPOINT", "https://test-resource.azure.openai.com/")
@@ -189,7 +189,7 @@ class TestAzureOpenAIChatGenerator:
             "strict": True,
         }
 
-    def test_secret_azure_endpoint_and_api_version_roundtrip(self, monkeypatch: Any) -> None:
+    def test_secret_azure_endpoint_and_api_version_roundtrip(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """Serializing and deserializing a component with Secret endpoint/version restores the Secrets."""
         monkeypatch.setenv("AZURE_OPENAI_API_KEY", "test-api-key")
         monkeypatch.setenv("AZURE_OPENAI_ENDPOINT", "https://test-resource.azure.openai.com/")
@@ -205,7 +205,7 @@ class TestAzureOpenAIChatGenerator:
         assert str(deserialized.client._azure_endpoint) == "https://test-resource.azure.openai.com/"  # type: ignore[union-attr]
         assert deserialized.client._api_version == "2024-08-01-preview"  # type: ignore[union-attr]
 
-    def test_from_dict_with_secret_azure_endpoint_and_api_version(self, monkeypatch: Any) -> None:
+    def test_from_dict_with_secret_azure_endpoint_and_api_version(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """from_dict deserializes Secret azure_endpoint/api_version dicts and resolves them for the client."""
         monkeypatch.setenv("AZURE_OPENAI_API_KEY", "test-api-key")
         monkeypatch.setenv("AZURE_OPENAI_ENDPOINT", "https://test-resource.azure.openai.com/")
@@ -239,7 +239,7 @@ class TestAzureOpenAIChatGenerator:
         assert str(generator.client._azure_endpoint) == "https://test-resource.azure.openai.com/"  # type: ignore[union-attr]
         assert generator.client._api_version == "2024-08-01-preview"  # type: ignore[union-attr]
 
-    def test_to_dict_default(self, monkeypatch: Any) -> None:
+    def test_to_dict_default(self, monkeypatch: pytest.MonkeyPatch) -> None:
 
         monkeypatch.setenv("AZURE_OPENAI_API_KEY", "test-api-key")
         component = AzureOpenAIChatGenerator(azure_endpoint="some-non-existing-endpoint")
@@ -265,7 +265,7 @@ class TestAzureOpenAIChatGenerator:
             },
         }
 
-    def test_to_dict_with_parameters(self, monkeypatch: Any, calendar_event_model: Any) -> None:
+    def test_to_dict_with_parameters(self, monkeypatch: pytest.MonkeyPatch, calendar_event_model: type) -> None:
 
         monkeypatch.setenv("ENV_VAR", "test-api-key")
         component = AzureOpenAIChatGenerator(
@@ -326,7 +326,7 @@ class TestAzureOpenAIChatGenerator:
             },
         }
 
-    def test_from_dict(self, monkeypatch: Any) -> None:
+    def test_from_dict(self, monkeypatch: pytest.MonkeyPatch) -> None:
 
         monkeypatch.setenv("AZURE_OPENAI_API_KEY", "test-api-key")
         monkeypatch.setenv("AZURE_OPENAI_AD_TOKEN", "test-ad-token")
@@ -380,7 +380,7 @@ class TestAzureOpenAIChatGenerator:
         assert generator.tools_strict is False
         assert generator.http_client_kwargs is None
 
-    def test_pipeline_serialization_deserialization(self, tmp_path: Any, monkeypatch: Any) -> None:
+    def test_pipeline_serialization_deserialization(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
 
         monkeypatch.setenv("AZURE_OPENAI_API_KEY", "test-api-key")
         generator = AzureOpenAIChatGenerator(azure_endpoint="some-non-existing-endpoint")
@@ -419,14 +419,16 @@ class TestAzureOpenAIChatGenerator:
         q = Pipeline.loads(p_str)
         assert p.to_dict() == q.to_dict(), "Pipeline serialization/deserialization w/ AzureOpenAIChatGenerator failed."
 
-    def test_azure_chat_generator_with_toolset_initialization(self, tools: Any, monkeypatch: Any) -> None:
+    def test_azure_chat_generator_with_toolset_initialization(
+        self, tools: list[Tool], monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         """Test that the AzureOpenAIChatGenerator can be initialized with a Toolset."""
         monkeypatch.setenv("AZURE_OPENAI_API_KEY", "test-api-key")
         toolset = Toolset(tools)
         generator = AzureOpenAIChatGenerator(azure_endpoint="some-non-existing-endpoint", tools=toolset)
         assert generator.tools == toolset
 
-    def test_from_dict_with_toolset(self, tools: Any, monkeypatch: Any) -> None:
+    def test_from_dict_with_toolset(self, tools: list[Tool], monkeypatch: pytest.MonkeyPatch) -> None:
         """Test that the AzureOpenAIChatGenerator can be deserialized from a dictionary with a Toolset."""
         monkeypatch.setenv("AZURE_OPENAI_API_KEY", "test-api-key")
         toolset = Toolset(tools)
@@ -469,7 +471,7 @@ class TestAzureOpenAIChatGenerator:
             "the Azure OpenAI endpoint URL to run this test."
         ),
     )
-    def test_live_run_with_tools(self, tools: Any) -> None:
+    def test_live_run_with_tools(self, tools: list[Tool]) -> None:
 
         chat_messages = [ChatMessage.from_user("What's the weather like in Paris?")]
         component = AzureOpenAIChatGenerator(organization="HaystackCI", tools=tools)
@@ -515,7 +517,7 @@ class TestAzureOpenAIChatGenerator:
 
         assert message.meta["finish_reason"] == "stop"
 
-    def test_to_dict_with_toolset(self, tools: Any, monkeypatch: Any) -> None:
+    def test_to_dict_with_toolset(self, tools: list[Tool], monkeypatch: pytest.MonkeyPatch) -> None:
         """Test that the AzureOpenAIChatGenerator can be serialized to a dictionary with a Toolset."""
         monkeypatch.setenv("AZURE_OPENAI_API_KEY", "test-api-key")
         toolset = Toolset(tools[:1])
@@ -550,7 +552,7 @@ class TestAzureOpenAIChatGenerator:
 
 
 class TestAzureOpenAIChatGeneratorAsync:
-    async def test_warm_up_async_builds_async_client(self, tools: Any) -> None:
+    async def test_warm_up_async_builds_async_client(self, tools: list[Tool]) -> None:
 
         component = AzureOpenAIChatGenerator(
             api_key=Secret.from_token("test-api-key"),
@@ -603,7 +605,7 @@ class TestAzureOpenAIChatGeneratorAsync:
         ),
     )
     @pytest.mark.asyncio
-    async def test_live_run_with_tools_async(self, tools: Any) -> None:
+    async def test_live_run_with_tools_async(self, tools: list[Tool]) -> None:
 
         component = AzureOpenAIChatGenerator(tools=tools)
         chat_messages = [ChatMessage.from_user("What's the weather like in Paris?")]
@@ -637,7 +639,7 @@ def mock_azure_clients(monkeypatch):
 
 
 class TestComponentLifecycle:
-    def test_warm_up_uses_default_timeout_and_max_retries(self, monkeypatch: Any) -> None:
+    def test_warm_up_uses_default_timeout_and_max_retries(self, monkeypatch: pytest.MonkeyPatch) -> None:
 
         monkeypatch.setenv("AZURE_OPENAI_API_KEY", "fake-api-key")
         generator = AzureOpenAIChatGenerator(azure_endpoint="some-non-existing-endpoint")
@@ -665,7 +667,7 @@ class TestComponentLifecycle:
 
         assert generator.client.timeout == 40.0
 
-    def test_warm_up_uses_timeout_and_max_retries_from_env_vars(self, monkeypatch: Any) -> None:
+    def test_warm_up_uses_timeout_and_max_retries_from_env_vars(self, monkeypatch: pytest.MonkeyPatch) -> None:
 
         monkeypatch.setenv("OPENAI_TIMEOUT", "100")
         monkeypatch.setenv("OPENAI_MAX_RETRIES", "10")
@@ -680,7 +682,7 @@ class TestComponentLifecycle:
 
         assert generator.client.timeout == 100.0
 
-    def test_key_resolved_at_warm_up_not_init(self, monkeypatch: Any) -> None:
+    def test_key_resolved_at_warm_up_not_init(self, monkeypatch: pytest.MonkeyPatch) -> None:
 
         monkeypatch.delenv("AZURE_OPENAI_API_KEY", raising=False)
         monkeypatch.delenv("AZURE_OPENAI_AD_TOKEN", raising=False)
@@ -688,7 +690,7 @@ class TestComponentLifecycle:
         with pytest.raises(OpenAIError):
             generator.warm_up()
 
-    def test_warm_up_warms_tools_once(self, monkeypatch: Any) -> None:
+    def test_warm_up_warms_tools_once(self, monkeypatch: pytest.MonkeyPatch) -> None:
 
         monkeypatch.setenv("AZURE_OPENAI_API_KEY", "fake-api-key")
         warm_up_calls = []
@@ -717,14 +719,14 @@ class TestComponentLifecycle:
         generator.warm_up()
         assert sorted(warm_up_calls) == ["tool1", "tool2"]
 
-    def test_warm_up_with_no_tools_does_not_raise(self, monkeypatch: Any) -> None:
+    def test_warm_up_with_no_tools_does_not_raise(self, monkeypatch: pytest.MonkeyPatch) -> None:
 
         monkeypatch.setenv("AZURE_OPENAI_API_KEY", "fake-api-key")
         generator = AzureOpenAIChatGenerator(azure_endpoint="some-non-existing-endpoint")
         generator.warm_up()
         assert generator._tools_warmed_up
 
-    def test_sync_lifecycle(self, mock_azure_clients: Any) -> None:
+    def test_sync_lifecycle(self, mock_azure_clients: tuple[MagicMock, MagicMock]) -> None:
 
         sync_cls, _ = mock_azure_clients
         generator = AzureOpenAIChatGenerator(azure_endpoint="some-non-existing-endpoint")
@@ -736,12 +738,11 @@ class TestComponentLifecycle:
         assert generator.async_client is None
 
         generator.close()
-        assert generator.client is not None
 
         sync_cls.return_value.close.assert_called_once()  # type: ignore[attr-defined]
         assert generator.client is None
 
-    async def test_async_lifecycle(self, mock_azure_clients: Any) -> None:
+    async def test_async_lifecycle(self, mock_azure_clients: tuple[MagicMock, MagicMock]) -> None:
 
         _, async_cls = mock_azure_clients
         generator = AzureOpenAIChatGenerator(azure_endpoint="some-non-existing-endpoint")
@@ -751,12 +752,11 @@ class TestComponentLifecycle:
         assert generator.client is None
 
         await generator.close_async()
-        assert generator.async_client is not None
 
         async_cls.return_value.close.assert_awaited_once()  # type: ignore[union-attr]
         assert generator.async_client is None
 
-    async def test_close_is_safe_without_warm_up(self, mock_azure_clients: Any) -> None:
+    async def test_close_is_safe_without_warm_up(self, mock_azure_clients: tuple[MagicMock, MagicMock]) -> None:
 
         generator = AzureOpenAIChatGenerator(azure_endpoint="some-non-existing-endpoint")
         generator.close()
@@ -764,7 +764,7 @@ class TestComponentLifecycle:
         assert generator.client is None
         assert generator.async_client is None
 
-    async def test_close_and_close_async_are_independent(self, mock_azure_clients: Any) -> None:
+    async def test_close_and_close_async_are_independent(self, mock_azure_clients: tuple[MagicMock, MagicMock]) -> None:
 
         generator = AzureOpenAIChatGenerator(azure_endpoint="some-non-existing-endpoint")
         generator.warm_up()
