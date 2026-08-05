@@ -6,4 +6,4 @@ fixes:
     auto-generated ``title`` keywords no longer deletes entries of ``$defs``, ``definitions``,
     ``patternProperties``, ``dependentSchemas`` or ``dependentRequired`` (which would leave a ``$ref``
     dangling or silently drop a validation rule), and no longer edits ``title`` keys inside ``default``,
-    ``const`` or ``enum`` values, which are instance data and part of the tool's contract.
+    ``const``, ``enum`` or ``examples`` values, which are instance data and part of the tool's contract.
