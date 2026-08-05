@@ -48,6 +48,7 @@ class TestToolResultPruningCompactor:
         assert messages[2].tool_call_result.result == "a" * 400
 
     def test_keeps_min_keep_steps(self):
+        # Three tool-calling steps, with three parallel results in the middle step.
         messages = [
             ChatMessage.from_user("task"),
             tool_call("old"),
@@ -59,6 +60,7 @@ class TestToolResultPruningCompactor:
             tool_call("newest"),
             tool_result("newest" * 200, call_id="newest"),
         ]
+        # Keeping two steps protects the complete parallel step and the newest step, leaving only `old` eligible.
         compacted = ToolResultPruningCompactor(min_keep_steps=2, min_tokens=0).compact(
             messages=messages, target_tokens=1, token_counter=COUNTER
         )
@@ -75,7 +77,7 @@ class TestToolResultPruningCompactor:
             is None
         )
 
-    def test_returns_none_when_there_are_no_old_results(self):
+    def test_returns_none_when_all_steps_are_protected(self):
         messages = _conversation("only result")
         assert (
             ToolResultPruningCompactor(min_keep_steps=1, min_tokens=0).compact(
@@ -109,28 +111,35 @@ class TestToolResultPruningCompactor:
         assert compacted is not None and compacted[2].tool_call_result is not None
         assert compacted[2].tool_call_result.result == _DEFAULT_PLACEHOLDER.replace("{tool_name}", "image_generator")
 
-    def test_skips_small_and_previously_compacted_results(self):
+    def test_skips_results_below_min_tokens(self):
+        messages = _conversation("small", "newest")
+        compacted = ToolResultPruningCompactor(min_keep_steps=1, min_tokens=200).compact(
+            messages=messages, target_tokens=1, token_counter=COUNTER
+        )
+        assert compacted is None
+
+    def test_skips_previously_compacted_results(self):
+        compacted_call = tool_call("compacted")
         messages = [
             ChatMessage.from_user("task"),
-            tool_call("small"),
-            tool_result("small", call_id="small"),
-            tool_call("compacted"),
+            compacted_call,
             ChatMessage.from_tool(
                 tool_result="x" * 400,
-                origin=tool_call("compacted").tool_calls[0],
+                origin=compacted_call.tool_calls[0],
                 meta={_COMPACTION_META_KEY: {"strategy": "other"}},
             ),
             tool_call("newest"),
             tool_result("x" * 400, call_id="newest"),
         ]
+        # With target_tokens=1 and min_tokens=0, the compaction marker is the only reason the old result is skipped.
         assert (
-            ToolResultPruningCompactor(min_keep_steps=1).compact(
+            ToolResultPruningCompactor(min_keep_steps=1, min_tokens=0).compact(
                 messages=messages, target_tokens=1, token_counter=COUNTER
             )
             is None
         )
 
-    def test_skips_result_rewritten_by_tool_result_offloading(self, tmp_path):
+    def test_skips_offloaded_result(self, tmp_path):
         messages = [ChatMessage.from_user("task"), tool_call("offloaded"), tool_result("x" * 400, call_id="offloaded")]
         state = make_state(messages)
         # The after_tool hook only rewrites the trailing batch, which represents results from the current Agent step.
@@ -152,13 +161,21 @@ class TestToolResultPruningCompactor:
             is None
         )
 
-    def test_preserves_origin_error_and_meta_and_records_compaction(self):
-        messages = _conversation("result " * 100, "newest")
-        original_result = messages[2].tool_call_result
-        assert original_result is not None
-        messages[2] = ChatMessage.from_tool(
-            tool_result=original_result.result, origin=original_result.origin, error=True, meta={"custom": "value"}
-        )
+    def test_pruned_result_preserves_properties_and_records_metadata(self):
+        failed_call = tool_call("failed", name="failing_tool")
+        messages = [
+            ChatMessage.from_user("task"),
+            failed_call,
+            ChatMessage.from_tool(
+                tool_result="error details " * 100,
+                origin=failed_call.tool_calls[0],
+                error=True,
+                meta={"custom": "value"},
+            ),
+            tool_call("newest"),
+            tool_result("newest", call_id="newest"),
+        ]
+        # Old errors are prunable, but their origin, error state, and existing metadata must survive the rewrite.
         compacted = ToolResultPruningCompactor(min_keep_steps=1, min_tokens=0).compact(
             messages=messages, target_tokens=1, token_counter=COUNTER
         )
@@ -176,14 +193,20 @@ class TestToolResultPruningCompactor:
             },
         }
 
-    def test_custom_placeholder_replaces_tool_name_and_preserves_literal_braces(self):
-        messages = _conversation("abcdefghij" * 40, "newest")
+    def test_custom_placeholder(self):
+        messages = [
+            ChatMessage.from_user("task"),
+            tool_call("old", name="database_query"),
+            tool_result("abcdefghij" * 40, call_id="old", name="database_query"),
+            tool_call("newest"),
+            tool_result("newest", call_id="newest"),
+        ]
         compactor = ToolResultPruningCompactor(
             min_keep_steps=1, min_tokens=0, placeholder='Run {tool_name} again with {"query": "..."}.'
         )
         compacted = compactor.compact(messages=messages, target_tokens=1, token_counter=COUNTER)
         assert compacted is not None and compacted[2].tool_call_result is not None
-        assert compacted[2].tool_call_result.result == 'Run search again with {"query": "..."}.'
+        assert compacted[2].tool_call_result.result == 'Run database_query again with {"query": "..."}.'
 
     @pytest.mark.parametrize(
         ("kwargs", "message"),
@@ -207,7 +230,7 @@ class TestToolResultPruningCompactor:
         assert restored.placeholder == ""
         assert restored.skip_meta_keys == ("stored", "cached")
 
-    def test_survives_a_hook_serialization_round_trip(self):
+    def test_hook_serialization_round_trip(self):
         hook = ContextCompactionHook(compactor=ToolResultPruningCompactor(min_keep_steps=2), context_window=10_000)
         restored = ContextCompactionHook.from_dict(data=hook.to_dict())
         assert isinstance(restored.compactor, ToolResultPruningCompactor)
