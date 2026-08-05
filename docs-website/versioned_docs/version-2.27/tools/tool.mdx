@@ -131,9 +131,7 @@ By default, a tool's return value is converted to a string using a default handl
 You can use `outputs_to_string` to customize this behavior using one of two formats:
 1. **Single output format**: Use `source`, `handler`, and/or `raw_result` at the root level.
     ```python
-    {
-        "source": "docs", "handler": format_documents, "raw_result": False
-    }
+    {"source": "docs", "handler": format_documents, "raw_result": False}
     ```
     - `source`: (Optional) Specifies the key to extract from the tool's output dictionary. If omitted, the entire result is passed to the handler.
     - `handler`: (Optional) A function that takes the output (or the extracted source value) and returns the final result.
@@ -145,7 +143,7 @@ You can use `outputs_to_string` to customize this behavior using one of two form
     ```python
     {
         "formatted_docs": {"source": "docs", "handler": format_documents},
-        "summary": {"source": "summary_text", "handler": str.upper}
+        "summary": {"source": "summary_text", "handler": str.upper},
     }
     ```
     Each entry defines a `source` key and can optionally include a `handler`. The individual outputs are processed,

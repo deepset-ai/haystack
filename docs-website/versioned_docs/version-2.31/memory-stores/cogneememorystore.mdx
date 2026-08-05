@@ -102,7 +102,9 @@ store.add_memories(
 
 # Write transient session context to the session cache.
 store.add_memories(
-    messages=[ChatMessage.from_user("Alice is currently debugging a vector store issue.")],
+    messages=[
+        ChatMessage.from_user("Alice is currently debugging a vector store issue.")
+    ],
     session_id="alice_session_1",
 )
 

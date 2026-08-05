@@ -74,7 +74,9 @@ from haystack_integrations.document_stores.opensearch import (
 )
 from haystack.document_stores.types import DuplicatePolicy
 
-document_store = OpenSearchDocumentStore(hosts="http://localhost:9200", index="my_index")
+document_store = OpenSearchDocumentStore(
+    hosts="http://localhost:9200", index="my_index"
+)
 
 documents = [
     Document(content="There are over 7,000 languages spoken around the world today."),

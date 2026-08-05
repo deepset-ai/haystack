@@ -132,12 +132,12 @@ Use [Jaeger](https://www.jaegertracing.io/docs/1.6/getting-started/) as a lightw
    from haystack_integrations.tracing.opentelemetry import OpenTelemetryTracer
 
    # Service name is required for most backends
-   resource = Resource(attributes={
-       ResourceAttributes.SERVICE_NAME: "haystack"
-   })
+   resource = Resource(attributes={ResourceAttributes.SERVICE_NAME: "haystack"})
 
    tracer_provider = TracerProvider(resource=resource)
-   processor = BatchSpanProcessor(OTLPSpanExporter(endpoint="http://localhost:4318/v1/traces"))
+   processor = BatchSpanProcessor(
+       OTLPSpanExporter(endpoint="http://localhost:4318/v1/traces")
+   )
    tracer_provider.add_span_processor(processor)
    trace.set_tracer_provider(tracer_provider)
 
