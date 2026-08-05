@@ -71,7 +71,7 @@ toolset = MCPToolset(
 ```python
 from haystack_integrations.tools.mcp import MCPToolset, StreamableHttpServerInfo
 
-server_info = SSEServerInfo(url="http://localhost:8000/mcp")
+server_info = StreamableHttpServerInfo(url="http://localhost:8000/mcp")
 toolset = MCPToolset(server_info=server_info, tool_names=["get_current_time"])
 ```
 
