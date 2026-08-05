@@ -30,22 +30,27 @@ class TestToolResultPruningCompactor:
         # Conversation with seven messages: one user message followed by three tool-call/result pairs.
         messages = _conversation("a" * 400, "b" * 400, "c" * 400)
         compactor = ToolResultPruningCompactor(min_keep_steps=1, min_tokens=0)
-        # Set the target to the exact conversation size after only the oldest result has been pruned.
-        one_pruned = list(messages)
-        replacement = compactor._prune(message=messages[2], token_counter=COUNTER)
-        assert replacement is not None
-        pruned, _ = replacement
-        one_pruned[2] = pruned
-        target = COUNTER.count(messages=one_pruned)
-        # Reaching the target after the first replacement leaves every newer result untouched.
-        compacted = compactor.compact(messages=messages, target_tokens=target, token_counter=COUNTER)
+        # We pre-calculated the target token count to just be enough to only remove the oldest tool result based on the
+        # count from the FakeCounter.
+        target_tokens = 1041
+        compacted = compactor.compact(messages=messages, target_tokens=target_tokens, token_counter=COUNTER)
         assert compacted is not None
         assert compacted[2].tool_call_result is not None
         assert compacted[2].tool_call_result.result == _DEFAULT_PLACEHOLDER.replace("{tool_name}", "search")
         assert compacted[4:] == messages[4:]
-        # Compaction returns a new list instead of changing the caller's original result.
-        assert messages[2].tool_call_result is not None
-        assert messages[2].tool_call_result.result == "a" * 400
+        # Ensure compaction returns new messages instead of changing the input.
+        assert [messages[index].tool_call_result.result for index in (2, 4, 6)] == ["a" * 400, "b" * 400, "c" * 400]
+
+    def test_prunes_multiple_results_in_one_call(self):
+        messages = _conversation("a" * 400, "b" * 400, "newest")
+        compacted = ToolResultPruningCompactor(min_keep_steps=1, min_tokens=0).compact(
+            messages=messages, target_tokens=1, token_counter=COUNTER
+        )
+        assert compacted is not None
+        for index in (2, 4):
+            assert compacted[index].tool_call_result is not None
+            assert compacted[index].tool_call_result.result == _DEFAULT_PLACEHOLDER.replace("{tool_name}", "search")
+        assert compacted[5:] == messages[5:]
 
     def test_keeps_min_keep_steps(self):
         # Three tool-calling steps, with three parallel results in the middle step.

@@ -109,31 +109,21 @@ class ToolResultPruningCompactor(Compactor):
 
         protected_positions = {position for step in result_steps[-self.min_keep_steps :] for position in step}
 
-        # Taking candidates from the front lets pruning stop at the target while leaving as much recent output intact
-        # as possible.
-        result_positions = [index for index, message in enumerate(messages) if message.tool_call_result is not None]
-        candidates = [index for index in result_positions if index not in protected_positions]
-        if not candidates:
-            return None
-
         # Replace entries in a new list so the caller-owned input list remains unchanged.
         compacted = list(messages)
         changed = False
-        for index in candidates:
-            replacement = self._prune(message=messages[index], token_counter=token_counter)
+        # Iterate oldest-first so we can stop at the target while leaving as much recent output intact as possible.
+        for index, message in enumerate(messages):
+            if message.tool_call_result is None or index in protected_positions:
+                continue
+            replacement = self._prune(message=message, token_counter=token_counter)
             if replacement is None:
                 continue
-            pruned, original_tokens = replacement
-
-            # Count the tokens of the pruned message
-            pruned_tokens = token_counter.count(messages=[pruned])
-            # If the pruned message has more tokens than the original, skip it to avoid increasing the token count.
-            if pruned_tokens >= original_tokens:
-                continue
+            pruned, saved_tokens = replacement
 
             # Update the compacted list and the running token count
             compacted[index] = pruned
-            current_tokens -= original_tokens - pruned_tokens
+            current_tokens -= saved_tokens
             changed = True
 
             # Once we reach the target, stop pruning to preserve as much recent output as possible.
@@ -152,10 +142,10 @@ class ToolResultPruningCompactor(Compactor):
 
         :param message: The tool-result message to consider.
         :param token_counter: The `TokenCounter` used to determine whether the result exceeds `min_tokens`.
-        :returns: The rewritten message and original token count, or None when this result is not prunable.
+        :returns: The rewritten message and number of tokens it saves, or None when this result is not prunable.
         """
         result = message.tool_call_result
-        # Guard against messages that are not tool results, have already been compacted.
+        # Guard against messages that are not tool results or have already been compacted.
         if result is None or _COMPACTION_META_KEY in message.meta:
             return None
 
@@ -170,18 +160,18 @@ class ToolResultPruningCompactor(Compactor):
 
         # `replace` permits custom placeholders to contain unrelated braces, such as JSON examples.
         placeholder = self.placeholder.replace("{tool_name}", result.origin.tool_name)
-        return (
-            ChatMessage.from_tool(
-                tool_result=placeholder,
-                origin=result.origin,
-                error=result.error,
-                meta={
-                    **message.meta,
-                    _COMPACTION_META_KEY: {"strategy": "tool_result_pruning", "original_tokens": original_tokens},
-                },
-            ),
-            original_tokens,
+        pruned = ChatMessage.from_tool(
+            tool_result=placeholder,
+            origin=result.origin,
+            error=result.error,
+            meta={
+                **message.meta,
+                _COMPACTION_META_KEY: {"strategy": "tool_result_pruning", "original_tokens": original_tokens},
+            },
         )
+        saved_tokens = original_tokens - token_counter.count(messages=[pruned])
+        # A custom placeholder can be larger than the original result; only return replacements that reduce context.
+        return (pruned, saved_tokens) if saved_tokens > 0 else None
 
     def to_dict(self) -> dict[str, Any]:
         """
