@@ -35,7 +35,7 @@ class ContextCompactionHook:
 
     hook = ContextCompactionHook(
         compactor=SlidingWindowCompactor(),
-        context_window=200_000,
+        context_window=400_000,
         compact_at=0.7,
         compact_to=0.4,
     )

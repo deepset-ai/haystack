@@ -191,7 +191,7 @@ class JSONConverter:
         except UnicodeError as exc:
             logger.warning(
                 "Failed to extract text from {source}. Skipping it. Error: {error}",
-                source=source.meta["file_path"],
+                source=source.meta.get("file_path", "unknown"),
                 error=exc,
             )
             return []
@@ -204,7 +204,7 @@ class JSONConverter:
             except Exception as exc:
                 logger.warning(
                     "Failed to extract text from {source}. Skipping it. Error: {error}",
-                    source=source.meta["file_path"],
+                    source=source.meta.get("file_path", "unknown"),
                     error=exc,
                 )
                 return []
@@ -216,7 +216,7 @@ class JSONConverter:
             except json.JSONDecodeError as exc:
                 logger.warning(
                     "Failed to extract text from {source}. Skipping it. Error: {error}",
-                    source=source.meta["file_path"],
+                    source=source.meta.get("file_path", "unknown"),
                     error=exc,
                 )
                 return []
