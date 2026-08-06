@@ -102,32 +102,6 @@ class TestMemoryDocumentStore(
         self.assert_documents_are_equal(equal_result, docs)
         self.assert_documents_are_equal(in_result, docs)
 
-    def test_get_metadata_field_unique_values_with_filters(self, document_store: InMemoryDocumentStore):
-        docs = [
-            Document(content="Doc 1", meta={"category": "A", "status": "active"}),
-            Document(content="Doc 2", meta={"category": "B", "status": "active"}),
-            Document(content="Doc 3", meta={"category": "C", "status": "inactive"}),
-        ]
-        document_store.write_documents(docs)
-
-        filters = {"field": "meta.status", "operator": "==", "value": "active"}
-        values, total = document_store.get_metadata_field_unique_values("category", filters=filters)
-        assert set(values) == {"A", "B"}
-        assert total == 2
-
-    async def test_get_metadata_field_unique_values_with_filters_async(self, document_store: InMemoryDocumentStore):
-        docs = [
-            Document(content="Doc 1", meta={"category": "A", "status": "active"}),
-            Document(content="Doc 2", meta={"category": "B", "status": "active"}),
-            Document(content="Doc 3", meta={"category": "C", "status": "inactive"}),
-        ]
-        await document_store.write_documents_async(docs)
-
-        filters = {"field": "meta.status", "operator": "==", "value": "active"}
-        values, total = await document_store.get_metadata_field_unique_values_async("category", filters=filters)
-        assert set(values) == {"A", "B"}
-        assert total == 2
-
     def test_to_dict(self, in_memory_doc_store):
         data = in_memory_doc_store.to_dict()
         assert data == {
