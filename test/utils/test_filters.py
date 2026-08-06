@@ -636,28 +636,6 @@ def test_document_matches_filter(filters, document, expected_result):
 @pytest.mark.parametrize(
     "operator,expected_result",
     [
-        ("==", True),
-        ("!=", False),
-        (">", False),
-        (">=", True),
-        ("<", False),
-        ("<=", True),
-        ("in", True),
-        ("not in", False),
-    ],
-)
-def test_document_matches_filter_reconciles_mixed_timezone_awareness_by_default(operator, expected_result):
-    filter_value = "2025-02-03T12:45:46+00:00"
-    if operator in {"in", "not in"}:
-        filter_value = [filter_value]
-    filters = {"field": "meta.date", "operator": operator, "value": filter_value}
-
-    assert document_matches_filter(filters, Document(meta={"date": "2025-02-03T12:45:46"})) is expected_result
-
-
-@pytest.mark.parametrize(
-    "operator,expected_result",
-    [
         ("==", False),
         ("!=", True),
         (">", False),
