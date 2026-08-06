@@ -97,7 +97,7 @@ Basic usage:
 
 ```python
 import os
-from haystack.dataclasses import Document
+from haystack import Document
 from haystack_integrations.components.embedders.amazon_bedrock import (
     AmazonBedrockDocumentEmbedder,
 )
@@ -113,7 +113,7 @@ embedder = AmazonBedrockDocumentEmbedder(
     input_type="search_document",
 )
 
-result = embedder.run([doc])
+result = embedder.run(documents=[doc])
 print(result["documents"][0].embedding)
 
 # [0.017020374536514282, -0.023255806416273117, ...]
@@ -124,8 +124,7 @@ print(result["documents"][0].embedding)
 In a RAG pipeline:
 
 ```python
-from haystack import Document
-from haystack import Pipeline
+from haystack import Document, Pipeline
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack_integrations.components.embedders.amazon_bedrock import (
     AmazonBedrockDocumentEmbedder,

@@ -72,8 +72,9 @@ See `DocumentWriter` component [docs](../pipeline-components/writers/documentwri
 
 ### DuplicatePolicy
 
-The `DuplicatePolicy` is a class that defines the different options for handling documents with the same ID in a `DocumentStore`. It has three possible values:
+The `DuplicatePolicy` is a class that defines the different options for handling documents with the same ID in a `DocumentStore`. It has four possible values:
 
+- **NONE**: The default used by `DocumentWriter`. It relies on the `DocumentStore` settings, so each store applies its own policy.
 - **OVERWRITE**: Indicates that if a document with the same ID already exists in the `DocumentStore`, it should be overwritten with the new document.
 - **SKIP**: If a document with the same ID already exists, the new document will be skipped and not added to the `DocumentStore`.
 - **FAIL**: Raises an error if a document with the same ID already exists in the `DocumentStore`. It prevents duplicate documents from being added.

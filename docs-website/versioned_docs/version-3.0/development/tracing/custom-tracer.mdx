@@ -31,7 +31,8 @@ If your tracing backend isn't supported out of the box, you can connect it to Ha
 
    ```python
    import contextlib
-   from typing import Optional, Dict, Any, Iterator
+   from collections.abc import Iterator
+   from typing import Any
 
    from opentelemetry import trace
    from opentelemetry.trace import NonRecordingSpan
@@ -59,7 +60,10 @@ If your tracing backend isn't supported out of the box, you can connect it to Ha
 
        @contextlib.contextmanager
        def trace(
-           self, operation_name: str, tags: Optional[Dict[str, Any]] = None
+           self,
+           operation_name: str,
+           tags: dict[str, Any] | None = None,
+           parent_span: Span | None = None,
        ) -> Iterator[Span]:
            with self._tracer.start_as_current_span(operation_name) as span:
                span = OpenTelemetrySpan(span)
@@ -68,7 +72,7 @@ If your tracing backend isn't supported out of the box, you can connect it to Ha
 
                yield span
 
-       def current_span(self) -> Optional[Span]:
+       def current_span(self) -> Span | None:
            current_span = trace.get_current_span()
            if isinstance(current_span, NonRecordingSpan):
                return None

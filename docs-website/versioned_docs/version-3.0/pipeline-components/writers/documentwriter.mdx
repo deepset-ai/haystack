@@ -70,7 +70,7 @@ pip install sentence-transformers-haystack
 ```
 
 ```python
-from haystack.pipeline import Pipeline
+from haystack import Document, Pipeline
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.document_stores.types import DuplicatePolicy
 from haystack_integrations.components.embedders.sentence_transformers import (
