@@ -46,6 +46,11 @@ def record_before_run(state: State) -> None:
 
 
 @hook
+def restore_step_count(state: State) -> None:
+    state.set("step_count", 5)
+
+
+@hook
 def record_on_exit(state: State) -> None:
     state.set("trace", ["on_exit"])
 
@@ -224,6 +229,14 @@ class TestBeforeRunHook:
         agent.chat_generator.run = MagicMock(return_value={"replies": [ChatMessage.from_assistant("done")]})
         result = agent.run(messages=[ChatMessage.from_user("hi")])
         assert result["trace"] == ["a", "b"]
+
+    def test_restored_step_count_is_used_by_execution_context(self):
+        agent = _agent(MockChatGenerator(), max_agent_steps=10, hooks={"before_run": [restore_step_count]})
+        agent.chat_generator.run = MagicMock(return_value={"replies": [ChatMessage.from_assistant("done")]})
+
+        result = agent.run(messages=[ChatMessage.from_user("hi")])
+
+        assert result["step_count"] == 6
 
 
 class TestAfterRunHook:
@@ -579,6 +592,15 @@ class TestAgentHooksAsync:
         agent.chat_generator.run_async = AsyncMock(return_value={"replies": [ChatMessage.from_assistant("done")]})
         result = await agent.run_async(messages=[ChatMessage.from_user("hi")])
         assert result["trace"] == ["before_run", "after_run"]
+
+    @pytest.mark.asyncio
+    async def test_restored_step_count_is_used_by_execution_context(self):
+        agent = _agent(MockChatGenerator(), max_agent_steps=10, hooks={"before_run": [restore_step_count]})
+        agent.chat_generator.run_async = AsyncMock(return_value={"replies": [ChatMessage.from_assistant("done")]})
+
+        result = await agent.run_async(messages=[ChatMessage.from_user("hi")])
+
+        assert result["step_count"] == 6
 
     @pytest.mark.asyncio
     async def test_async_after_run_hook_runs_when_max_agent_steps_is_exhausted(self):

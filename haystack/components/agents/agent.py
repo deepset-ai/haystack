@@ -573,7 +573,7 @@ class Agent:
         """Warm up the configured tools once."""
         if not self._tools_warmed_up:
             if self.tools:
-                warm_up_tools(self.tools)
+                warm_up_tools(tools=self.tools)
             self._tools_warmed_up = True
 
     def _warm_up_hooks(self) -> None:
@@ -737,8 +737,8 @@ class Agent:
         if all(m.is_from(ChatRole.SYSTEM) for m in messages):
             logger.warning("All messages provided to the Agent component are system messages. This is not recommended.")
 
-        selected_tools = self._select_tools(tools)
-        flat_tools = flatten_tools_or_toolsets(selected_tools)
+        selected_tools = self._select_tools(tools=tools)
+        flat_tools = flatten_tools_or_toolsets(tools=selected_tools)
         # Validate tool support once for the run (covers both init-time and runtime tools)
         if flat_tools and not self._chat_generator_supports_tools:
             raise TypeError(
@@ -794,7 +794,7 @@ class Agent:
         # Toolsets are spawned into per-run copies (see _spawn_tools / _select_tools_by_name) so concurrent runs
         # sharing the same configured Toolset don't corrupt each other's run-scoped state.
         if tools is None:
-            return _spawn_tools(self.tools)
+            return _spawn_tools(tools=self.tools)
 
         if isinstance(tools, list) and all(isinstance(t, str) for t in tools):
             return _select_tools_by_name(self.tools, cast(list[str], tools))
@@ -802,15 +802,15 @@ class Agent:
         if isinstance(tools, Toolset):
             # Per-run tools are not covered by the Agent's own warm_up(), so warm them up here.
             # warm_up() is expected to be idempotent, so re-warming on every run is cheap.
-            warm_up_tools(tools)
-            return _spawn_tools(tools)
+            warm_up_tools(tools=tools)
+            return _spawn_tools(tools=tools)
 
         if isinstance(tools, list):
             selected = cast(list[Tool | Toolset], tools)  # mypy can't narrow the Union type from isinstance check
             # Per-run tools are not covered by the Agent's own warm_up(), so warm them up here.
             # warm_up() is expected to be idempotent, so re-warming on every run is cheap.
-            warm_up_tools(selected)
-            return _spawn_tools(selected)
+            warm_up_tools(tools=selected)
+            return _spawn_tools(tools=selected)
 
         raise TypeError(
             "tools must be a list of Tool and/or Toolset objects, a Toolset, or a list of tool names (strings)."
@@ -871,11 +871,13 @@ class Agent:
             **kwargs,
         )
 
-        with self._create_agent_span(exe_context.tools) as span:
+        with self._create_agent_span(tools=exe_context.tools) as span:
             span.set_content_tag("haystack.agent.input", agent_inputs)
-            _run_hooks(self.hooks, BEFORE_RUN, exe_context.state)
+            _run_hooks(hooks=self.hooks, hook_point=BEFORE_RUN, state=exe_context.state)
+            # A before_run hook can restore a saved State, so resume the execution counter from its step count.
+            exe_context.counter = exe_context.state.data.get("step_count", 0)
             while exe_context.counter < self.max_agent_steps:
-                if not self._run_step(exe_context, span):
+                if not self._run_step(exe_context=exe_context, agent_span=span):
                     break
             else:
                 # Reached only when the loop ends without a `break`. A `break` means a step already set its own
@@ -885,8 +887,8 @@ class Agent:
                     max_agent_steps=self.max_agent_steps,
                 )
                 exe_context.state.set("exit_reason", _EXIT_REASON_MAX_STEPS)
-            _run_hooks(self.hooks, AFTER_RUN, exe_context.state)
-            result = _public_outputs(exe_context.state)
+            _run_hooks(hooks=self.hooks, hook_point=AFTER_RUN, state=exe_context.state)
+            result = _public_outputs(state=exe_context.state)
             if msgs := result.get("messages"):
                 result["last_message"] = msgs[-1]
             span.set_content_tag("haystack.agent.output", result)
@@ -952,11 +954,13 @@ class Agent:
             **kwargs,
         )
 
-        with self._create_agent_span(exe_context.tools) as span:
+        with self._create_agent_span(tools=exe_context.tools) as span:
             span.set_content_tag("haystack.agent.input", agent_inputs)
-            await _run_hooks_async(self.hooks, BEFORE_RUN, exe_context.state)
+            await _run_hooks_async(hooks=self.hooks, hook_point=BEFORE_RUN, state=exe_context.state)
+            # A before_run hook can restore a saved State, so resume the execution counter from its step count.
+            exe_context.counter = exe_context.state.data.get("step_count", 0)
             while exe_context.counter < self.max_agent_steps:
-                if not await self._run_step_async(exe_context, span):
+                if not await self._run_step_async(exe_context=exe_context, agent_span=span):
                     break
             else:
                 # Reached only when the loop ends without a `break`. A `break` means a step already set its own
@@ -966,8 +970,8 @@ class Agent:
                     max_agent_steps=self.max_agent_steps,
                 )
                 exe_context.state.set("exit_reason", _EXIT_REASON_MAX_STEPS)
-            await _run_hooks_async(self.hooks, AFTER_RUN, exe_context.state)
-            result = _public_outputs(exe_context.state)
+            await _run_hooks_async(hooks=self.hooks, hook_point=AFTER_RUN, state=exe_context.state)
+            result = _public_outputs(state=exe_context.state)
             if msgs := result.get("messages"):
                 result["last_message"] = msgs[-1]
             span.set_content_tag("haystack.agent.output", result)
@@ -982,12 +986,12 @@ class Agent:
         ) as step_span:
             # Re-flatten the tools every step so dynamic toolsets (e.g. SearchableToolset) surface tools discovered in
             # earlier steps. Validate names here so duplicates fail before starting the step.
-            current_tools = flatten_tools_or_toolsets(exe_context.tools)
-            _check_duplicate_tool_names(current_tools)
+            current_tools = flatten_tools_or_toolsets(tools=exe_context.tools)
+            _check_duplicate_tool_names(tools=current_tools)
             # Expose the current tools to hooks (e.g. ConfirmationHook) via State.
             exe_context.state.set("tools", current_tools, handler_override=replace_values)
 
-            _run_hooks(self.hooks, BEFORE_LLM, exe_context.state)
+            _run_hooks(hooks=self.hooks, hook_point=BEFORE_LLM, state=exe_context.state)
             chat_generator_inputs = {
                 "messages": exe_context.state.data["messages"],
                 **exe_context.chat_generator_inputs,
@@ -1000,17 +1004,17 @@ class Agent:
                 llm_span.set_content_tag("haystack.agent.step.llm.output", result)
             llm_messages = result["replies"]
             exe_context.state.set("messages", llm_messages)
-            _record_llm_usage(exe_context.state, llm_messages)
-            _record_context_tokens(exe_context.state, llm_messages)
+            _record_llm_usage(state=exe_context.state, llm_messages=llm_messages)
+            _record_context_tokens(state=exe_context.state, llm_messages=llm_messages)
 
             # Stop on the "no tool call" exit: no tools available, or a plain assistant text reply (see _is_text_exit).
-            if not current_tools or _is_text_exit(llm_messages):
+            if not current_tools or _is_text_exit(messages=llm_messages):
                 exe_context.counter += 1
                 exe_context.state.set("step_count", exe_context.counter)
                 exe_context.state.set("exit_reason", _EXIT_REASON_TEXT)
-                return self._continue_after_exit_hooks(exe_context)
+                return self._continue_after_exit_hooks(exe_context=exe_context)
 
-            _run_hooks(self.hooks, BEFORE_TOOL, exe_context.state)
+            _run_hooks(hooks=self.hooks, hook_point=BEFORE_TOOL, state=exe_context.state)
             # Re-read the pending tool calls from State so that any rewrites a before_tool hook made (e.g.
             # ConfirmationHook rejecting or modifying calls) are honored by the executor.
             pending_tool_call_messages = _pending_tool_call_messages_from_state(exe_context.state)
@@ -1023,8 +1027,8 @@ class Agent:
             }
             tool_messages, exe_context.state = _run_tool(**tool_execution_inputs)
             exe_context.state.set("messages", tool_messages)
-            _record_tool_calls(exe_context.state, tool_messages)
-            _run_hooks(self.hooks, AFTER_TOOL, exe_context.state)
+            _record_tool_calls(state=exe_context.state, tool_messages=tool_messages)
+            _run_hooks(hooks=self.hooks, hook_point=AFTER_TOOL, state=exe_context.state)
 
             exe_context.counter += 1
             exe_context.state.set("step_count", exe_context.counter)
@@ -1035,7 +1039,7 @@ class Agent:
             )
             if exit_condition_tool is not None:
                 exe_context.state.set("exit_reason", exit_condition_tool)
-                return self._continue_after_exit_hooks(exe_context)
+                return self._continue_after_exit_hooks(exe_context=exe_context)
             return True
 
     async def _run_step_async(self, exe_context: _ExecutionContext, agent_span: tracing.Span) -> bool:
@@ -1045,12 +1049,12 @@ class Agent:
         ) as step_span:
             # Re-flatten the tools every step so dynamic toolsets (e.g. SearchableToolset) surface tools discovered in
             # earlier steps. Validate names here so duplicates fail before starting the step.
-            current_tools = flatten_tools_or_toolsets(exe_context.tools)
-            _check_duplicate_tool_names(current_tools)
+            current_tools = flatten_tools_or_toolsets(tools=exe_context.tools)
+            _check_duplicate_tool_names(tools=current_tools)
             # Expose the current tools to hooks (e.g. ConfirmationHook) via State.
             exe_context.state.set("tools", current_tools, handler_override=replace_values)
 
-            await _run_hooks_async(self.hooks, BEFORE_LLM, exe_context.state)
+            await _run_hooks_async(hooks=self.hooks, hook_point=BEFORE_LLM, state=exe_context.state)
             chat_generator_inputs = {
                 "messages": exe_context.state.data["messages"],
                 **exe_context.chat_generator_inputs,
@@ -1065,17 +1069,17 @@ class Agent:
                 llm_span.set_content_tag("haystack.agent.step.llm.output", result)
             llm_messages = result["replies"]
             exe_context.state.set("messages", llm_messages)
-            _record_llm_usage(exe_context.state, llm_messages)
-            _record_context_tokens(exe_context.state, llm_messages)
+            _record_llm_usage(state=exe_context.state, llm_messages=llm_messages)
+            _record_context_tokens(state=exe_context.state, llm_messages=llm_messages)
 
             # Stop on the "no tool call" exit: no tools available, or a plain assistant text reply (see _is_text_exit).
-            if not current_tools or _is_text_exit(llm_messages):
+            if not current_tools or _is_text_exit(messages=llm_messages):
                 exe_context.counter += 1
                 exe_context.state.set("step_count", exe_context.counter)
                 exe_context.state.set("exit_reason", _EXIT_REASON_TEXT)
-                return await self._continue_after_exit_hooks_async(exe_context)
+                return await self._continue_after_exit_hooks_async(exe_context=exe_context)
 
-            await _run_hooks_async(self.hooks, BEFORE_TOOL, exe_context.state)
+            await _run_hooks_async(hooks=self.hooks, hook_point=BEFORE_TOOL, state=exe_context.state)
             # Re-read the pending tool calls from State so that any rewrites a before_tool hook made (e.g.
             # ConfirmationHook rejecting or modifying calls) are honored by the executor.
             pending_tool_call_messages = _pending_tool_call_messages_from_state(exe_context.state)
@@ -1088,8 +1092,8 @@ class Agent:
             }
             tool_messages, exe_context.state = await _run_tool_async(**tool_execution_inputs)
             exe_context.state.set("messages", tool_messages)
-            _record_tool_calls(exe_context.state, tool_messages)
-            await _run_hooks_async(self.hooks, AFTER_TOOL, exe_context.state)
+            _record_tool_calls(state=exe_context.state, tool_messages=tool_messages)
+            await _run_hooks_async(hooks=self.hooks, hook_point=AFTER_TOOL, state=exe_context.state)
 
             exe_context.counter += 1
             exe_context.state.set("step_count", exe_context.counter)
@@ -1100,7 +1104,7 @@ class Agent:
             )
             if exit_condition_tool is not None:
                 exe_context.state.set("exit_reason", exit_condition_tool)
-                return await self._continue_after_exit_hooks_async(exe_context)
+                return await self._continue_after_exit_hooks_async(exe_context=exe_context)
             return True
 
     def _check_exit_conditions(self, llm_messages: list[ChatMessage], tool_messages: list[ChatMessage]) -> str | None:
@@ -1144,7 +1148,7 @@ class Agent:
         if not self.hooks.get(ON_EXIT):
             return False
         exe_context.state.set("continue_run", False)
-        _run_hooks(self.hooks, ON_EXIT, exe_context.state)
+        _run_hooks(hooks=self.hooks, hook_point=ON_EXIT, state=exe_context.state)
         return _consume_continue_run(exe_context.state)
 
     async def _continue_after_exit_hooks_async(self, exe_context: _ExecutionContext) -> bool:
@@ -1152,5 +1156,5 @@ class Agent:
         if not self.hooks.get(ON_EXIT):
             return False
         exe_context.state.set("continue_run", False)
-        await _run_hooks_async(self.hooks, ON_EXIT, exe_context.state)
+        await _run_hooks_async(hooks=self.hooks, hook_point=ON_EXIT, state=exe_context.state)
         return _consume_continue_run(exe_context.state)
