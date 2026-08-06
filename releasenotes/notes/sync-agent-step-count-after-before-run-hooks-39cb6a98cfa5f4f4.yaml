@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    Keep an Agent's execution counter in sync with ``step_count`` restored by a ``before_run`` hook, so restarted
+    Agents continue from the saved step instead of resetting the count.

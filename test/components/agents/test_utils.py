@@ -232,20 +232,23 @@ class TestRecordContextTokens:
         state = self._state()
         state.set("context_tokens", 999)
         _record_context_tokens(
-            state, [ChatMessage.from_assistant("Hi", meta={"usage": {"prompt_tokens": 12, "completion_tokens": 3}})]
+            state=state,
+            llm_messages=[
+                ChatMessage.from_assistant("Hi", meta={"usage": {"prompt_tokens": 12, "completion_tokens": 3}})
+            ],
         )
         assert state.get("context_tokens") == 15
 
     def test_no_messages_leaves_value_untouched(self):
         state = self._state()
         state.set("context_tokens", 42)
-        _record_context_tokens(state, [])
+        _record_context_tokens(state=state, llm_messages=[])
         assert state.get("context_tokens") == 42
 
     def test_missing_or_empty_usage_leaves_value_untouched(self):
         state = self._state()
-        _record_context_tokens(state, [ChatMessage.from_assistant("no usage here")])
-        _record_context_tokens(state, [ChatMessage.from_assistant("empty", meta={"usage": {}})])
+        _record_context_tokens(state=state, llm_messages=[ChatMessage.from_assistant("no usage here")])
+        _record_context_tokens(state=state, llm_messages=[ChatMessage.from_assistant("empty", meta={"usage": {}})])
         assert state.get("context_tokens") == 0
 
 
