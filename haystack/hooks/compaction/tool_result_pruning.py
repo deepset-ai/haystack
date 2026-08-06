@@ -26,9 +26,9 @@ class ToolResultPruningCompactor(Compactor):
     ```python
     from haystack.components.agents import Agent
     from haystack.components.generators.chat import OpenAIResponsesChatGenerator
-    from haystack.hooks.compaction import ContextCompactionHook, ToolResultPruningCompactor
+    from haystack.hooks.compaction import CompactionHook, ToolResultPruningCompactor
 
-    hook = ContextCompactionHook(
+    hook = CompactionHook(
         compactor=ToolResultPruningCompactor(min_keep_steps=1),
         context_window=400_000,
         compact_at=0.7,

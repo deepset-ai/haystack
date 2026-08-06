@@ -101,9 +101,9 @@ class SlidingWindowCompactor(Compactor):
     ```python
     from haystack.components.agents import Agent
     from haystack.components.generators.chat import OpenAIResponsesChatGenerator
-    from haystack.hooks.compaction import ContextCompactionHook, SlidingWindowCompactor
+    from haystack.hooks.compaction import CompactionHook, SlidingWindowCompactor
 
-    hook = ContextCompactionHook(
+    hook = CompactionHook(
         compactor=SlidingWindowCompactor(), context_window=400_000, compact_at=0.7, compact_to=0.4
     )
     agent = Agent(

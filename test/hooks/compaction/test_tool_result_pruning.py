@@ -5,7 +5,7 @@
 import pytest
 
 from haystack.dataclasses import ChatMessage, ImageContent
-from haystack.hooks.compaction import ContextCompactionHook, ToolResultPruningCompactor
+from haystack.hooks.compaction import CompactionHook, ToolResultPruningCompactor
 from haystack.hooks.compaction.tool_result_pruning import _DEFAULT_PLACEHOLDER
 from haystack.hooks.compaction.utils import _COMPACTION_META_KEY
 from haystack.hooks.tool_result_offloading import AlwaysOffload, FileSystemToolResultStore, ToolResultOffloadHook
@@ -236,7 +236,7 @@ class TestToolResultPruningCompactor:
         assert restored.skip_meta_keys == ("stored", "cached")
 
     def test_hook_serialization_round_trip(self):
-        hook = ContextCompactionHook(compactor=ToolResultPruningCompactor(min_keep_steps=2), context_window=10_000)
-        restored = ContextCompactionHook.from_dict(data=hook.to_dict())
+        hook = CompactionHook(compactor=ToolResultPruningCompactor(min_keep_steps=2), context_window=10_000)
+        restored = CompactionHook.from_dict(data=hook.to_dict())
         assert isinstance(restored.compactor, ToolResultPruningCompactor)
         assert restored.compactor.min_keep_steps == 2
