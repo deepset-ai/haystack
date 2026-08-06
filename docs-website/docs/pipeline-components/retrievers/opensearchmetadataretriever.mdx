@@ -121,6 +121,7 @@ document_store.write_documents(documents=documents, policy=DuplicatePolicy.SKIP)
 retriever = OpenSearchMetadataRetriever(
     document_store=document_store,
     metadata_fields=["category", "status"],
+    mode="strict",
     top_k=10,
 )
 
@@ -131,14 +132,13 @@ print(result)
 #     "metadata": [
 #         {"category": "Python", "status": "active"},
 #         {"category": "Python", "status": "inactive"},
-#         {"category": "Java", "status": "active"},
 #     ]
 # }
 ```
 
 Only the fields listed in `metadata_fields` appear in each result dictionary. The `author` metadata and the document content are excluded.
 
-The Java document is in the list because the default `fuzzy` mode is deliberately permissive: it combines the fuzzy match, a wildcard, and a wildcard `query_string` clause in a `dis_max` query with no minimum-match requirement, so any document that has the searched fields can become a candidate. Relevance is what separates them, and the Java entry is ranked last. Use `mode="strict"` when you only want documents that actually match the query, or lower `top_k`.
+This example uses `mode="strict"` to return only the documents that match the query. See [Strict mode](#strict-mode) for how it differs from the default `fuzzy` mode.
 
 ### Multi-part queries
 

@@ -29,9 +29,10 @@ The vectors computed by this component are necessary to perform embedding retrie
 
 `CohereDocumentEmbedder` enriches the metadata of documents with an embedding of their content. To embed a string, you should use the [`CohereTextEmbedder`](coheretextembedder.mdx).
 
-The component supports Cohere models such as
-`"embed-v4.0"`, `"embed-english-v3.0"`, `"embed-english-light-v3.0"`, `"embed-multilingual-v3.0"`, and
-`"embed-multilingual-light-v3.0"`. The default model is `embed-v4.0`. The list of all supported models can be found in Cohere’s [model documentation](https://docs.cohere.com/docs/models#embed).
+The component supports the following Cohere models:
+`"embed-v4.0"`, `"embed-english-v3.0"`, `"embed-english-light-v3.0"`, `"embed-multilingual-v3.0"`,
+`"embed-multilingual-light-v3.0"`, `"embed-english-v2.0"`, `"embed-english-light-v2.0"`,
+`"embed-multilingual-v2.0"`. The default model is `embed-v4.0`. This list of all supported models can be found in Cohere’s [model documentation](https://docs.cohere.com/docs/models#representation).
 
 To start using this integration with Haystack, install it with:
 
