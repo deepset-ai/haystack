@@ -98,6 +98,8 @@ class InMemoryDocumentStore:
         :param return_embedding: Whether to return the embedding of the retrieved Documents. Default is True.
         :param strict_datetime_comparison:
             If `True`, timezone-naive and timezone-aware datetimes never match each other in filters.
+            If `False` (the default), the timezone from the aware datetime is copied to the naive one before
+            comparing.
         """
         self.bm25_tokenization_regex = bm25_tokenization_regex
         self.tokenizer = re.compile(bm25_tokenization_regex).findall

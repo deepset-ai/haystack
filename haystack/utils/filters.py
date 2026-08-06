@@ -23,7 +23,7 @@ def document_matches_filter(
 
     :param strict_datetime_comparison:
         If `True`, timezone-naive and timezone-aware datetimes never match each other.
-        If `False`, the timezone from the aware datetime is copied to the naive one before comparing.
+        If `False` (the default), the timezone from the aware datetime is copied to the naive one before comparing.
     """
     if "field" in filters:
         return _comparison_condition(
