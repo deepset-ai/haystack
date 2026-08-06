@@ -17,7 +17,7 @@ Context compaction separates three responsibilities:
 
 | Responsibility | Abstraction | Purpose |
 | --- | --- | --- |
-| Decide when to compact | [`ContextCompactionHook`](compaction/context-compaction-hook.mdx) | Monitors the Agent's context before LLM calls and invokes a compactor after a configured threshold is reached. |
+| Decide when to compact | [`CompactionHook`](compaction/compaction-hook.mdx) | Monitors the Agent's context before LLM calls and invokes a compactor after a configured threshold is reached. |
 | Decide how to compact | `Compactor` protocol | Defines how a conversation is rewritten. Haystack includes [`SlidingWindowCompactor`](compaction/sliding-window-compactor.mdx) and [`ToolResultPruningCompactor`](compaction/tool-result-pruning-compactor.mdx). |
 | Measure the conversation | [`TokenCounter`](../../token-counters.mdx) protocol | Estimates the size of messages and tool schemas before they are sent to a model. |
 
@@ -25,7 +25,7 @@ This separation lets you combine a standard trigger with different compaction st
 
 ## Basic setup
 
-The following example registers a `ContextCompactionHook` under the Agent's `before_llm` [hook point](./hooks.mdx). It starts compacting at 70% of the model's context window and asks the compactor to reduce the context to approximately 40%.
+The following example registers a `CompactionHook` under the Agent's `before_llm` [hook point](./hooks.mdx). It starts compacting at 70% of the model's context window and asks the compactor to reduce the context to approximately 40%.
 
 <!-- test-concept -->
 ```python
@@ -34,7 +34,7 @@ from typing import Annotated
 from haystack.components.agents import Agent
 from haystack.components.generators.chat import OpenAIResponsesChatGenerator
 from haystack.dataclasses import ChatMessage
-from haystack.hooks.compaction import ContextCompactionHook, SlidingWindowCompactor
+from haystack.hooks.compaction import CompactionHook, SlidingWindowCompactor
 from haystack.tools import tool
 
 
@@ -44,7 +44,7 @@ def fetch_page(url: Annotated[str, "The URL to fetch"]) -> str:
     return "Fusion startups reported net-energy-gain milestones this year. " * 500
 
 
-compaction_hook = ContextCompactionHook(
+compaction_hook = CompactionHook(
     compactor=SlidingWindowCompactor(),
     context_window=400_000,  # gpt-5.4-nano's context window
     compact_at=0.7,
@@ -64,7 +64,7 @@ result = agent.run(
 print(result["last_message"].text)
 ```
 
-See [`ContextCompactionHook`](compaction/context-compaction-hook.mdx) for threshold configuration, context measurement, lifecycle, and serialization.
+See [`CompactionHook`](compaction/compaction-hook.mdx) for threshold configuration, context measurement, lifecycle, and serialization.
 
 ## Compaction strategies
 
@@ -77,24 +77,24 @@ Compactors receive the current messages, a target token count, and the same toke
 
 ## Combining compaction strategies
 
-Register multiple `ContextCompactionHook` instances at `before_llm` to apply progressively more aggressive strategies. Hooks run in list order against the same Agent state, so each hook measures the messages left by the previous one.
+Register multiple `CompactionHook` instances at `before_llm` to apply progressively more aggressive strategies. Hooks run in list order against the same Agent state, so each hook measures the messages left by the previous one.
 
 For example, prune large tool results first and use a sliding window as a fallback:
 
 ```python
 from haystack.hooks.compaction import (
-    ContextCompactionHook,
+    CompactionHook,
     SlidingWindowCompactor,
     ToolResultPruningCompactor,
 )
 
-prune_tool_results = ContextCompactionHook(
+prune_tool_results = CompactionHook(
     compactor=ToolResultPruningCompactor(),
     context_window=400_000,
     compact_at=0.7,
     compact_to=0.4,
 )
-drop_old_steps = ContextCompactionHook(
+drop_old_steps = CompactionHook(
     compactor=SlidingWindowCompactor(),
     context_window=400_000,
     compact_at=0.7,

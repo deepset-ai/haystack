@@ -8,9 +8,9 @@ features:
 
     .. code-block:: python
 
-        from haystack.hooks.compaction import ContextCompactionHook, ToolResultPruningCompactor
+        from haystack.hooks.compaction import CompactionHook, ToolResultPruningCompactor
 
-        compaction_hook = ContextCompactionHook(
+        compaction_hook = CompactionHook(
             compactor=ToolResultPruningCompactor(
                 min_keep_steps=2,
                 min_tokens=200,

@@ -18,7 +18,7 @@ description: "Use ToolResultPruningCompactor to replace older tool results with 
 
 |  |  |
 | --- | --- |
-| **Used by** | [`ContextCompactionHook`](context-compaction-hook.mdx) |
+| **Used by** | [`CompactionHook`](compaction-hook.mdx) |
 | **Mandatory init variables** | None |
 | **Import path** | `haystack.hooks.compaction.ToolResultPruningCompactor` |
 | **API reference** | [Hooks](/reference/hooks-api) |
@@ -29,12 +29,12 @@ description: "Use ToolResultPruningCompactor to replace older tool results with 
 
 ## Usage
 
-Pass the compactor to a `ContextCompactionHook`:
+Pass the compactor to a `CompactionHook`:
 
 ```python
-from haystack.hooks.compaction import ContextCompactionHook, ToolResultPruningCompactor
+from haystack.hooks.compaction import CompactionHook, ToolResultPruningCompactor
 
-compaction_hook = ContextCompactionHook(
+compaction_hook = CompactionHook(
     compactor=ToolResultPruningCompactor(
         min_keep_steps=1,
         min_tokens=200,
@@ -45,7 +45,7 @@ compaction_hook = ContextCompactionHook(
 )
 ```
 
-`ContextCompactionHook` determines when compaction runs and provides the target token count. `ToolResultPruningCompactor` replaces only as many eligible results as needed to reach that target.
+`CompactionHook` determines when compaction runs and provides the target token count. `ToolResultPruningCompactor` replaces only as many eligible results as needed to reach that target.
 
 ## How pruning works
 
@@ -85,7 +85,7 @@ The compactor records `context_compaction` metadata on each rewritten result wit
 
 ## Token counting
 
-The compactor uses the [`TokenCounter`](../../../token-counters.mdx) supplied by `ContextCompactionHook` to determine whether a result exceeds `min_tokens` and whether replacing it saves context.
+The compactor uses the [`TokenCounter`](../../../token-counters.mdx) supplied by `CompactionHook` to determine whether a result exceeds `min_tokens` and whether replacing it saves context.
 
 The complete conversation is counted once. For each eligible result, the counter then measures only the original result message and its short replacement. The compactor updates its running total using the difference between those two counts.
 
