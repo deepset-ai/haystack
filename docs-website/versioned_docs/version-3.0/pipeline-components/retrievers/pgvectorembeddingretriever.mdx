@@ -81,7 +81,7 @@ retriever.run(query_embedding=[0.1] * 768)
 
 ```python
 import os
-from haystack.document_stores import DuplicatePolicy
+from haystack.document_stores.types import DuplicatePolicy
 from haystack import Document, Pipeline
 from haystack_integrations.components.embedders.sentence_transformers import (
     SentenceTransformersTextEmbedder,
