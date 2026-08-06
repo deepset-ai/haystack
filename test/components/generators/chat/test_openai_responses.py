@@ -93,7 +93,7 @@ class RecordingCallback:
         self.tool_calls = []
         self.counter = 0
 
-    def __call__(self, chunk: StreamingChunk):  # type: ignore[no-untyped-def]
+    def __call__(self, chunk: StreamingChunk) -> None:
         self.counter += 1
         if chunk.content:
             self.content += chunk.content
@@ -741,7 +741,8 @@ class TestRun:
         assert "replies" in response
         print(response["replies"])
         assert len(response["replies"]) == 1
-        assert "I need to check the capital of France." in response["replies"][0].reasoning.reasoning_text  # type: ignore[union-attr]
+        assert response["replies"][0].reasoning is not None
+        assert "I need to check the capital of France." in response["replies"][0].reasoning.reasoning_text
 
 
 @pytest.mark.skipif(
@@ -900,7 +901,8 @@ class TestIntegration:
         results = component.run(chat_messages)
         assert len(results["replies"]) == 1
         message: ChatMessage = results["replies"][0]
-        assert callback.reasoning == message.reasoning.reasoning_text  # type: ignore[union-attr]
+        assert message.reasoning is not None
+        assert callback.reasoning == message.reasoning.reasoning_text
         assert any(word in callback.content.lower() for word in ["moon", "earth", "debris", "mars"])
         assert "gpt-5-nano" in message.meta["model"]
         assert message.reasonings is not None

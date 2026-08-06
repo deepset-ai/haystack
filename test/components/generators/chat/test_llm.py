@@ -39,12 +39,14 @@ class MockChatGeneratorWithTools:
         return cls()
 
     @component.output_types(replies=list[ChatMessage])
-    def run(self, messages: list[ChatMessage], tools: list[Tool] | Toolset | None = None, **kwargs) -> dict[str, Any]:  # type: ignore[no-untyped-def]
+    def run(
+        self, messages: list[ChatMessage], tools: list[Tool] | Toolset | None = None, **kwargs: Any
+    ) -> dict[str, Any]:
         return {"replies": [ChatMessage.from_assistant("Reply with tools support")]}
 
     @component.output_types(replies=list[ChatMessage])
-    async def run_async(  # type: ignore[no-untyped-def]
-        self, messages: list[ChatMessage], tools: list[Tool] | Toolset | None = None, **kwargs
+    async def run_async(
+        self, messages: list[ChatMessage], tools: list[Tool] | Toolset | None = None, **kwargs: Any
     ) -> dict[str, Any]:
         return {"replies": [ChatMessage.from_assistant("Async reply with tools support")]}
 
@@ -61,11 +63,11 @@ class MockChatGenerator:
         return cls()
 
     @component.output_types(replies=list[ChatMessage])
-    def run(self, messages: list[ChatMessage], **kwargs) -> dict[str, Any]:  # type: ignore[no-untyped-def]
+    def run(self, messages: list[ChatMessage], **kwargs: Any) -> dict[str, Any]:
         return {"replies": [ChatMessage.from_assistant("Sync reply")]}
 
     @component.output_types(replies=list[ChatMessage])
-    async def run_async(self, messages: list[ChatMessage], **kwargs) -> dict[str, Any]:  # type: ignore[no-untyped-def]
+    async def run_async(self, messages: list[ChatMessage], **kwargs: Any) -> dict[str, Any]:
         return {"replies": [ChatMessage.from_assistant("Async reply")]}
 
 

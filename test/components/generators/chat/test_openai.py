@@ -611,8 +611,9 @@ class TestOpenAIChatGenerator:
         component = OpenAIChatGenerator(api_key=Secret.from_token("test-api-key"))
         component.warm_up()
 
+        assert component.client is not None
         with patch.object(
-            component.client.chat.completions,  # type: ignore[union-attr]
+            component.client.chat.completions,
             "create",
             return_value=wrapped_openai_stream,
         ) as mock_create:
@@ -1870,7 +1871,7 @@ class TestChatCompletionChunkConversion:
         self, chat_completion_chunks: MagicMock, streaming_chunks: Any
     ) -> None:
 
-        previous_chunks = []  # type: ignore[var-annotated]
+        previous_chunks: list[StreamingChunk] = []
         for openai_chunk, haystack_chunk in zip(chat_completion_chunks, streaming_chunks, strict=True):
             stream_chunk = _convert_chat_completion_chunk_to_streaming_chunk(
                 chunk=openai_chunk, previous_chunks=previous_chunks
@@ -2300,8 +2301,9 @@ class TestMakeSchemaStrict:
         message = results["replies"][0]
         assert message.tool_calls
         tool_call = message.tool_call
-        assert tool_call.tool_name == "create_person"  # type: ignore[union-attr]
-        assert "name" in tool_call.arguments  # type: ignore[union-attr]
-        assert "address" in tool_call.arguments  # type: ignore[union-attr]
-        assert "street" in tool_call.arguments["address"]  # type: ignore[union-attr]
-        assert "city" in tool_call.arguments["address"]  # type: ignore[union-attr]
+        assert tool_call is not None
+        assert tool_call.tool_name == "create_person"
+        assert "name" in tool_call.arguments
+        assert "address" in tool_call.arguments
+        assert "street" in tool_call.arguments["address"]
+        assert "city" in tool_call.arguments["address"]

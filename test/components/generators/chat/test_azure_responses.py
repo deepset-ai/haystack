@@ -571,8 +571,8 @@ class TestAzureOpenAIResponsesChatGeneratorAsync:
         assert component.async_client is None
 
         await component.warm_up_async()
-
-        assert component.async_client.api_key == "test-api-key"  # type: ignore[attr-defined]
+        assert component.async_client is not None
+        assert component.async_client.api_key == "test-api-key"
         assert component._azure_deployment == "gpt-5-mini"
         assert component.streaming_callback is print_streaming_chunk
         assert component.generation_kwargs == {"max_completion_tokens": 10, "some_test_param": "test-params"}

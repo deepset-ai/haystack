@@ -531,7 +531,7 @@ class TestConversionToStreamingChunks:
                 type="response.completed",
             ),
         ]
-        streaming_chunks = []  # type: ignore[var-annotated]
+        streaming_chunks: list[StreamingChunk] = []
         for chunk in openai_chunks:
             streaming_chunk = _convert_response_chunk_to_streaming_chunk(chunk, previous_chunks=streaming_chunks)  # type: ignore[arg-type]
             streaming_chunks.append(streaming_chunk)
@@ -1020,7 +1020,7 @@ class TestConversionToStreamingChunks:
             ),
         ]
 
-        streaming_chunks = []  # type: ignore[var-annotated]
+        streaming_chunks: list[StreamingChunk] = []
         for chunk in chunks:
             streaming_chunk = _convert_response_chunk_to_streaming_chunk(chunk, previous_chunks=streaming_chunks)  # type: ignore[arg-type]
             streaming_chunks.append(streaming_chunk)
@@ -1595,7 +1595,7 @@ class TestResponseToChatMessage:
             ),
         ]
 
-        streaming_chunks = []  # type: ignore[var-annotated]
+        streaming_chunks: list[StreamingChunk] = []
         for event in openai_events:
             chunk = _convert_response_chunk_to_streaming_chunk(event, previous_chunks=streaming_chunks)  # type: ignore[arg-type]
             streaming_chunks.append(chunk)

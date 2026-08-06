@@ -392,7 +392,8 @@ class TestOpenAIChatGeneratorAsync:
         assert message.meta["finish_reason"] == "stop"
         # Close async client; suppress RuntimeError if the event loop is already closed
         with contextlib.suppress(RuntimeError):
-            await component.async_client.close()  # type: ignore[union-attr]
+            assert component.async_client is not None
+            await component.async_client.close()
 
     @pytest.mark.asyncio
     async def test_run_with_wrong_model_async(self) -> None:
@@ -418,7 +419,7 @@ class TestOpenAIChatGeneratorAsync:
         counter = 0
         responses = ""
 
-        async def callback(chunk: StreamingChunk):  # type: ignore[no-untyped-def]
+        async def callback(chunk: StreamingChunk) -> None:
             nonlocal counter
             nonlocal responses
             counter += 1
@@ -453,7 +454,8 @@ class TestOpenAIChatGeneratorAsync:
 
         # Close async client; suppress RuntimeError if the event loop is already closed
         with contextlib.suppress(RuntimeError):
-            await component.async_client.close()  # type: ignore[union-attr]
+            assert component.async_client is not None
+            await component.async_client.close()
 
     @pytest.mark.skipif(
         not os.environ.get("OPENAI_API_KEY", None),
@@ -481,7 +483,8 @@ class TestOpenAIChatGeneratorAsync:
 
         # Close async client; suppress RuntimeError if the event loop is already closed
         with contextlib.suppress(RuntimeError):
-            await component.async_client.close()  # type: ignore[union-attr]
+            assert component.async_client is not None
+            await component.async_client.close()
 
     @pytest.mark.asyncio
     async def test_run_with_wrapped_stream_simulation_async(
@@ -513,8 +516,9 @@ class TestOpenAIChatGeneratorAsync:
         await component.warm_up_async()
 
         # Patch the async client's create method
+        assert component.async_client is not None
         with patch.object(
-            component.async_client.chat.completions,  # type: ignore[union-attr]
+            component.async_client.chat.completions,
             "create",
             return_value=wrapped_openai_async_stream,
             new_callable=AsyncMock,

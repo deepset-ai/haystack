@@ -203,8 +203,9 @@ class TestAzureOpenAIChatGenerator:
         assert deserialized.azure_endpoint == Secret.from_env_var("AZURE_OPENAI_ENDPOINT")
         assert deserialized.api_version == Secret.from_env_var("AZURE_OPENAI_API_VERSION")
         deserialized.warm_up()
-        assert str(deserialized.client._azure_endpoint) == "https://test-resource.azure.openai.com/"  # type: ignore[union-attr]
-        assert deserialized.client._api_version == "2024-08-01-preview"  # type: ignore[union-attr]
+        assert deserialized.client is not None
+        assert str(deserialized.client._azure_endpoint) == "https://test-resource.azure.openai.com/"
+        assert deserialized.client._api_version == "2024-08-01-preview"
 
     def test_from_dict_with_secret_azure_endpoint_and_api_version(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """from_dict deserializes Secret azure_endpoint/api_version dicts and resolves them for the client."""
@@ -237,8 +238,9 @@ class TestAzureOpenAIChatGenerator:
         assert generator.api_version == Secret.from_env_var("AZURE_OPENAI_API_VERSION")
         # And they are resolved to the string values the client expects
         generator.warm_up()
-        assert str(generator.client._azure_endpoint) == "https://test-resource.azure.openai.com/"  # type: ignore[union-attr]
-        assert generator.client._api_version == "2024-08-01-preview"  # type: ignore[union-attr]
+        assert generator.client is not None
+        assert str(generator.client._azure_endpoint) == "https://test-resource.azure.openai.com/"
+        assert generator.client._api_version == "2024-08-01-preview"
 
     def test_to_dict_default(self, monkeypatch: pytest.MonkeyPatch) -> None:
 
@@ -565,7 +567,8 @@ class TestAzureOpenAIChatGeneratorAsync:
         )
         assert component.async_client is None
         await component.warm_up_async()
-        assert component.async_client.api_key == "test-api-key"  # type: ignore[attr-defined]
+        assert component.async_client is not None
+        assert component.async_client.api_key == "test-api-key"
         assert component.client is None
         assert component.azure_deployment == "gpt-4.1-mini"
         assert component.streaming_callback is print_streaming_chunk
