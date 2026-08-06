@@ -27,7 +27,7 @@ The vectors computed by this component are necessary to perform embedding retrie
 
 ## Overview
 
-To see the list of compatible OpenAI embedding models, head over to OpenAI [documentation](https://platform.openai.com/docs/guides/embeddings/embedding-models). The default model for `OpenAIDocumentEmbedder` is `text-embedding-ada-002`. You can specify another model with the `model` parameter when initializing this component.
+To see the list of compatible OpenAI embedding models, head over to OpenAI [documentation](https://platform.openai.com/docs/guides/embeddings). The default model for `OpenAIDocumentEmbedder` is `text-embedding-ada-002`. You can specify another model with the `model` parameter when initializing this component.
 
 This component should be used to embed a list of documents. To embed a string, use the [OpenAITextEmbedder](openaitextembedder.mdx).
 
@@ -61,6 +61,8 @@ docs_w_embeddings = embedder.run(documents=[doc])["documents"]
 Here is how you can use the component on its own:
 
 ```python
+from haystack import Document
+from haystack.utils import Secret
 from haystack.components.embedders import OpenAIDocumentEmbedder
 
 doc = Document(content="I love pizza!")
@@ -80,7 +82,7 @@ We recommend setting OPENAI_API_KEY as an environment variable instead of settin
 ### In a pipeline
 
 ```python
-from haystack import Pipeline
+from haystack import Document, Pipeline
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.components.embedders import OpenAITextEmbedder, OpenAIDocumentEmbedder
 from haystack.components.writers import DocumentWriter
@@ -115,6 +117,5 @@ result = query_pipeline.run({"text_embedder": {"text": query}})
 
 print(result["retriever"]["documents"][0])
 
-# Document(id=..., mimetype: 'text/plain',
-# text: 'My name is Wolfgang and I live in Berlin')
+# Document(id=..., content: 'My name is Wolfgang and I live in Berlin', score: ...)
 ```

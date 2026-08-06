@@ -29,7 +29,7 @@ This component should be used to embed a list of Documents. To embed a string, u
 
 `MistralDocumentEmbedder` computes the embeddings of a list of documents and stores the obtained vectors in the embedding field of each document. It uses the Mistral API and its embedding models.
 
-The component currently supports the `mistral-embed` embedding model. The list of all supported models can be found in Mistral’s [embedding models documentation](https://docs.mistral.ai/platform/endpoints/#embedding-models).
+The component supports the `mistral-embed` (default), `mistral-embed-2312`, `codestral-embed`, and `codestral-embed-2505` embedding models. The list of all supported models can be found in Mistral’s [models documentation](https://docs.mistral.ai/models/overview).
 
 To start using this integration with Haystack, install it with:
 
@@ -56,6 +56,7 @@ Here is how you can use the component on its own:
 
 ```python
 from haystack import Document
+from haystack.utils import Secret
 from haystack_integrations.components.embedders.mistral.document_embedder import (
     MistralDocumentEmbedder,
 )

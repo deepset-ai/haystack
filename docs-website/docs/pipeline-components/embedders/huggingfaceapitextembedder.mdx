@@ -95,7 +95,7 @@ from haystack.utils import Secret
 
 text_embedder = HuggingFaceAPITextEmbedder(
     api_type="inference_endpoints",
-    api_params={"model": "BAAI/bge-small-en-v1.5"},
+    api_params={"url": "<your-inference-endpoint-url>"},
     token=Secret.from_token("<your-api-key>"),
 )
 
@@ -137,7 +137,7 @@ text_embedder = HuggingFaceAPITextEmbedder(
 
 print(text_embedder.run("I love pizza!"))
 
-# {'embedding': [0.017020374536514282, -0.023255806416273117, ...],
+# {'embedding': [0.017020374536514282, -0.023255806416273117, ...]}
 ```
 
 ### In a pipeline

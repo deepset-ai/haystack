@@ -15,7 +15,7 @@ The `ContextRelevanceEvaluator` uses an LLM to evaluate whether contexts are rel
 | --- | --- |
 | **Most common position in a pipeline** | On its own or in an evaluation pipeline. To be used after a separate pipeline that has generated the inputs for the Evaluator. |
 | **Mandatory run variables** | `questions`: A list of questions  <br /> <br />`contexts`: A list of a list of contexts, which are the contents of documents. This accounts for one list of contexts per question. |
-| **Output variables** | A dictionary containing:  <br /> <br />\- `score`: A number from 0.0 to 1.0 that represents the mean average precision  <br /> <br />- `individual_scores`: A list of the individual average precision scores ranging from 0.0 to 1.0 for each input pair of a list of retrieved documents and a list of ground truth documents  <br /> <br />- `results`:  A list of dictionaries with keys `statements` and `statement_scores`. They contain the statements extracted by an LLM from each context and the corresponding context relevance scores per statement, which are either 0 or 1. |
+| **Output variables** | A dictionary containing:  <br /> <br />\- `score`: A number from 0.0 to 1.0 that represents the mean context relevance score over all input questions  <br /> <br />- `individual_scores`: A list of the individual context relevance scores, each either 0 or 1, for each input pair of a question and a list of contexts  <br /> <br />- `results`:  A list of dictionaries with keys `relevant_statements`, `score`, and `status`. They contain the statements that an LLM found relevant in each context, the binary score for that context, and `evaluated` for valid results or `error` for failed evaluations. |
 | **API reference** | [Evaluators](/reference/evaluators-api) |
 | **GitHub link** | https://github.com/deepset-ai/haystack/blob/main/haystack/components/evaluators/context_relevance.py |
 | **Package name** | `haystack-ai` |
@@ -24,11 +24,11 @@ The `ContextRelevanceEvaluator` uses an LLM to evaluate whether contexts are rel
 
 ## Overview
 
-You can use the `ContextRelevanceEvaluator` component to evaluate documents retrieved by a Haystack pipeline, such as a RAG pipeline, without ground truth labels. The component breaks up the context into multiple statements and checks whether each statement is relevant for answering a question. The final score for the context relevance is a number from 0.0 to 1.0 and represents the proportion of statements that are relevant to the provided question.
+You can use the `ContextRelevanceEvaluator` component to evaluate documents retrieved by a Haystack pipeline, such as a RAG pipeline, without ground truth labels. The component breaks up the context into multiple statements and checks whether each statement is relevant for answering a question. The score for each context is binary: 1 if the LLM found at least one relevant statement in it, 0 otherwise. The overall `score` is the mean of these binary scores over all input questions, so it is a number from 0.0 to 1.0.
 
 ### Parameters
 
-The default model for this Evaluator is `gpt-4o-mini`. You can override the model using the `chat_generator` parameter during initialization. This needs to be a Chat Generator instance configured to return a JSON object. For example, when using the [`OpenAIChatGenerator`](../generators/openaichatgenerator.mdx), you should pass `{"response_format": {"type": "json_object"}}` in its `generation_kwargs`.
+The default model for this Evaluator is `gpt-5-mini`. You can override the model using the `chat_generator` parameter during initialization. This needs to be a Chat Generator instance configured to return a JSON object. For example, when using the [`OpenAIChatGenerator`](../generators/openaichatgenerator.mdx), you should pass `{"response_format": {"type": "json_object"}}` in its `generation_kwargs`.
 
 If you are not initializing the Evaluator with your own Chat Generator other than OpenAI, a valid OpenAI API key must be set as an `OPENAI_API_KEY` environment variable. For details, see our [documentation page on secret management](../../concepts/secret-management.mdx).
 
@@ -41,7 +41,7 @@ Two optional initialization parameters are:
 
 Each example must be a dictionary with keys `inputs` and `outputs`.
 `inputs` must be a dictionary with keys `questions` and `contexts`.
-`outputs` must be a dictionary with `statements` and `statement_scores`.
+`outputs` must be a dictionary with `relevant_statements`.
 Here is the expected format:
 
 ```python
@@ -52,11 +52,7 @@ Here is the expected format:
             "contexts": ["Rome is the capital of Italy."],
         },
         "outputs": {
-            "statements": [
-                "Rome is the capital of Italy.",
-                "Rome has more than 4 million inhabitants.",
-            ],
-            "statement_scores": [1, 0],
+            "relevant_statements": ["Rome is the capital of Italy."],
         },
     },
 ]
@@ -66,7 +62,7 @@ Here is the expected format:
 
 ### On its own
 
-Below is an example where we use a `ContextRelevanceEvaluator` component to evaluate a response generated based on a provided question and context. The `ContextRelevanceEvaluator` returns a score of 1.0 because it detects one statement in the context, which is relevant to the question.
+Below is an example where we use a `ContextRelevanceEvaluator` component to evaluate a response generated based on a provided question and context. The `ContextRelevanceEvaluator` returns a score of 1 because it finds a statement in the context that is relevant to the question.
 
 ```python
 from haystack.components.evaluators import ContextRelevanceEvaluator
@@ -81,11 +77,11 @@ contexts = [
 evaluator = ContextRelevanceEvaluator()
 result = evaluator.run(questions=questions, contexts=contexts)
 print(result["score"])
-# 1.0
+# 1
 print(result["individual_scores"])
-# [1.0]
+# [1]
 print(result["results"])
-# [{'statements': ['Python, created by Guido van Rossum in the late 1980s.'], 'statement_scores': [1], 'score': 1.0}]
+# [{'relevant_statements': ['Python, created by Guido van Rossum in the late 1980s, is a high-level general-purpose programming language.'], 'status': 'evaluated', 'score': 1}]
 ```
 
 ### In a pipeline
@@ -111,7 +107,7 @@ contexts = [
         "Python, created by Guido van Rossum in the late 1980s, is a high-level general-purpose programming language. Its design philosophy emphasizes code readability, and its language constructs aim to help programmers write clear, logical code for both small and large-scale software projects.",
     ],
 ]
-responses = [
+predicted_answers = [
     "Python is a high-level general-purpose programming language that was created by George Lucas.",
 ]
 
@@ -121,17 +117,17 @@ result = pipeline.run(
         "faithfulness_evaluator": {
             "questions": questions,
             "contexts": contexts,
-            "responses": responses,
+            "predicted_answers": predicted_answers,
         },
     },
 )
 
 for evaluator in result:
     print(result[evaluator]["individual_scores"])
-# [1.0]
+# [1]
 # [0.5]
 for evaluator in result:
     print(result[evaluator]["score"])
-# 1.0
+# 1
 # 0.5
 ```

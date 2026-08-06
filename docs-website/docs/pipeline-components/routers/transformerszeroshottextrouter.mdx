@@ -16,7 +16,7 @@ Use this component to route text input to various output connections based on it
 | **Most common position in a pipeline** | Flexible |
 | **Mandatory init variables** | `labels`: A list of labels for classification  <br /> <br />`token`: The Hugging Face API token. Can be set with `HF_API_TOKEN` or `HF_TOKEN` env var. |
 | **Mandatory run variables** | `text`: The text to be routed to one of the specified outputs based on which label it has been categorized into |
-| **Output variables** | `documents`: A dictionary with the label as key and the text as value |
+| **Output variables** | `<label>`: The input text, on the output connection named after the label the model assigned to it. There's one output per label you define. |
 | **API reference** | [Transformers](/reference/integrations-transformers) |
 | **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/transformers |
 | **Package name** | `transformers-haystack` |
@@ -55,7 +55,7 @@ We then create a retrieving pipeline with the `TransformersZeroShotTextRouter` t
 
 Finally, the pipeline is executed with a sample text: "What is the capital of Germany?” which categorizes this input text as “query” and routes it to Query Embedder and subsequently Query Retriever to return the relevant results.
 
-The examples on this page use Sentence Transformers embedders that have moved to the `sentence-transformers-haystack` package. Install it to run the examples:
+The examples on this page use Sentence Transformers embedders from the `sentence-transformers-haystack` package. Install it to run the examples:
 
 ```shell
 pip install sentence-transformers-haystack

@@ -27,7 +27,7 @@ This component computes embeddings for documents using models through Amazon Bed
 
 [Amazon Bedrock](https://docs.aws.amazon.com/bedrock/latest/userguide/what-is-bedrock.html) is a fully managed service that makes language models from leading AI startups and Amazon available for your use through a unified API.
 
-Supported models are `amazon.titan-embed-text-v1`, `cohere.embed-english-v3`,  `cohere.embed-multilingual-v3`, and `amazon.titan-embed-text-v2:0`.
+Amazon Titan and Cohere embedding models are supported, for example `amazon.titan-embed-text-v1`, `amazon.titan-embed-text-v2:0`, `amazon.titan-embed-image-v1`, `cohere.embed-english-v3`, `cohere.embed-multilingual-v3`, and `cohere.embed-v4:0`. To find all supported models, see the [Amazon Bedrock documentation](https://docs.aws.amazon.com/bedrock/latest/userguide/models-supported.html), filter for "embedding", and select models from the Amazon Titan and Cohere series.
 
 :::info[Batch Inference]
 
@@ -39,7 +39,7 @@ This component should be used to embed a list of documents. To embed a string, y
 ### Authentication
 
 `AmazonBedrockDocumentEmbedder` uses AWS for authentication. You can either provide credentials as parameters directly to the component or use the AWS CLI and authenticate through your IAM. For more information on how to set up an IAM identity-based policy, see the [official documentation](https://docs.aws.amazon.com/bedrock/latest/userguide/security_iam_id-based-policy-examples.html).
-To initialize `AmazonBedrockDocumentEmbedder` and authenticate by providing credentials, provide the `model_name`, as well as `aws_access_key_id`, `aws_secret_access_key` and `aws_region_name`. Other parameters are optional. You can check them out in our [API reference](/reference/integrations-amazon-bedrock#amazonbedrockdocumentembedder).
+To initialize `AmazonBedrockDocumentEmbedder` and authenticate by providing credentials, provide the `model` name, as well as `aws_access_key_id`, `aws_secret_access_key` and `aws_region_name`. Other parameters are optional. You can check them out in our [API reference](/reference/integrations-amazon-bedrock#amazonbedrockdocumentembedder).
 
 ### Model-specific parameters
 
@@ -85,7 +85,7 @@ docs_w_embeddings = embedder.run(documents=[doc])["documents"]
 
 ### Installation
 
-You need to install `amazon-bedrock-haystack` package to use the  `AmazonBedrockTextEmbedder`:
+You need to install `amazon-bedrock-haystack` package to use the  `AmazonBedrockDocumentEmbedder`:
 
 ```shell
 pip install amazon-bedrock-haystack
@@ -97,20 +97,24 @@ Basic usage:
 
 ```python
 import os
-from haystack_integrations.components.embedders.amazon_bedrock import AmazonBedrockDocumentEmbedder
-from haystack.dataclasses import DOcument
+from haystack.dataclasses import Document
+from haystack_integrations.components.embedders.amazon_bedrock import (
+    AmazonBedrockDocumentEmbedder,
+)
 
 os.environ["AWS_ACCESS_KEY_ID"] = "..."
 os.environ["AWS_SECRET_ACCESS_KEY"] = "..."
-os.environ["AWS_DEFAULT_REGION"] = "us-east-1" # just an example
+os.environ["AWS_DEFAULT_REGION"] = "us-east-1"  # just an example
 
 doc = Document(content="I love pizza!")
 
-embedder = AmazonBedrockDocumentEmbedder(model="cohere.embed-english-v3",
-																					input_type="search_document"
+embedder = AmazonBedrockDocumentEmbedder(
+    model="cohere.embed-english-v3",
+    input_type="search_document",
+)
 
-result = document_embedder.run([doc])
-print(result['documents'][0].embedding)
+result = embedder.run([doc])
+print(result["documents"][0].embedding)
 
 # [0.017020374536514282, -0.023255806416273117, ...]
 ```
@@ -128,6 +132,7 @@ from haystack_integrations.components.embedders.amazon_bedrock import (
     AmazonBedrockTextEmbedder,
 )
 from haystack.components.retrievers.in_memory import InMemoryEmbeddingRetriever
+from haystack.components.writers import DocumentWriter
 
 document_store = InMemoryDocumentStore(embedding_similarity_function="cosine")
 

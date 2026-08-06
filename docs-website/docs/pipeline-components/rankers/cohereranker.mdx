@@ -15,7 +15,7 @@ Use this component to rank documents based on their similarity to the query usin
 | --- | --- |
 | **Most common position in a pipeline** | In a query pipeline, after a component that returns a list of documents such as a [Retriever](../retrievers.mdx) |
 | **Mandatory init variables** | `api_key`: The Cohere API key. Can be set with `COHERE_API_KEY` or `CO_API_KEY` env var. |
-| **Mandatory run variables** | `documents`: A list of document objects  <br /> <br />`query`: A query string  <br /> <br />`top_k`: The maximum number of documents to return |
+| **Mandatory run variables** | `documents`: A list of document objects  <br /> <br />`query`: A query string |
 | **Output variables** | `documents`: A list of document objects |
 | **API reference** | [Cohere](/reference/integrations-cohere) |
 | **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/cohere |
@@ -25,7 +25,7 @@ Use this component to rank documents based on their similarity to the query usin
 
 ## Overview
 
-`CohereRanker` ranks `Documents` based on semantic relevance to a specified query. It uses Cohere rerank models for ranking. This list of all supported models can be found in Cohere’s [documentation](https://docs.cohere.com/docs/rerank-2). The default model for this Ranker is `rerank-english-v2.0`.
+`CohereRanker` ranks `Documents` based on semantic relevance to a specified query. It uses Cohere rerank models for ranking. This list of all supported models can be found in Cohere’s [documentation](https://docs.cohere.com/docs/rerank-2). The default model for this Ranker is `rerank-v3.5`.
 
 You can also specify the `top_k` parameter to set the maximum number of documents to return.
 

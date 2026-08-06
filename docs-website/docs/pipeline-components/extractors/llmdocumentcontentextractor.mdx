@@ -14,7 +14,8 @@ Extracts textual content and metadata (if applicable) from image-based documents
 |  |  |
 | --- | --- |
 | **Most common position in a pipeline** | After [Converters](../converters.mdx) in an indexing pipeline to extract text from image-based documents |
-| **Mandatory init variables** | `chat_generator`: A ChatGenerator instance that supports vision-based input  <br /> <br />`prompt`: Instructional text for the LLM on how to extract content (no Jinja variables allowed) |
+| **Mandatory init variables** | `chat_generator`: A ChatGenerator instance that supports vision-based input |
+| **Optional init variables** | `prompt`: Instructional text for the LLM on how to extract content (no Jinja variables allowed). Defaults to a built-in extraction prompt. |
 | **Mandatory run variables** | `documents`: A list of documents with file paths in metadata |
 | **Output variables** | `documents`: Successfully processed documents with extracted content  <br /> <br />`failed_documents`: Documents that failed processing with error metadata |
 | **API reference** | [Extractors](/reference/extractors-api) |

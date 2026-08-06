@@ -30,7 +30,7 @@ The component uses a chat-based LLM to generate expanded queries. By default, it
 
 ```python
 from haystack.components.query import QueryExpander
-from haystack.components.generators.chat import AnthropicChatGenerator
+from haystack_integrations.components.generators.anthropic import AnthropicChatGenerator
 
 expander = QueryExpander(
     chat_generator=AnthropicChatGenerator(model="claude-sonnet-4-20250514"),

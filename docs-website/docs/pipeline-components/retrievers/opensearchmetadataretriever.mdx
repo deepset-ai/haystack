@@ -48,8 +48,8 @@ The matching engine only operates on metadata fields that OpenSearch indexes as 
 If you have Docker set up, the easiest way to run OpenSearch is to pull and run the Docker image.
 
 ```bash
-docker pull opensearchproject/opensearch:2
-docker run -p 9200:9200 -p 9600:9600 -e "discovery.type=single-node" -e "OPENSEARCH_INITIAL_ADMIN_PASSWORD=<custom-admin-password>" opensearchproject/opensearch:2
+docker pull opensearchproject/opensearch:3
+docker run -p 9200:9200 -p 9600:9600 -e "discovery.type=single-node" -e "OPENSEARCH_INITIAL_ADMIN_PASSWORD=<custom-admin-password>" opensearchproject/opensearch:3
 ```
 
 As an alternative, you can go to the [OpenSearch integration GitHub](https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/opensearch) and start a Docker container using the provided `docker-compose.yml`:
@@ -81,6 +81,9 @@ from haystack.document_stores.types import DuplicatePolicy
 document_store = OpenSearchDocumentStore(
     hosts="http://localhost:9200",
     index="my_index",
+    use_ssl=True,
+    verify_certs=False,
+    http_auth=("admin", "<custom-admin-password>"),
 )
 
 documents = [
@@ -128,11 +131,14 @@ print(result)
 #     "metadata": [
 #         {"category": "Python", "status": "active"},
 #         {"category": "Python", "status": "inactive"},
+#         {"category": "Java", "status": "active"},
 #     ]
 # }
 ```
 
 Only the fields listed in `metadata_fields` appear in each result dictionary. The `author` metadata and the document content are excluded.
+
+The Java document is in the list because the default `fuzzy` mode is deliberately permissive: it combines the fuzzy match, a wildcard, and a wildcard `query_string` clause in a `dis_max` query with no minimum-match requirement, so any document that has the searched fields can become a candidate. Relevance is what separates them, and the Java entry is ranked last. Use `mode="strict"` when you only want documents that actually match the query, or lower `top_k`.
 
 ### Multi-part queries
 
@@ -140,7 +146,8 @@ The `query` string can contain several comma-separated parts. Each part is searc
 
 ```python
 result = retriever.run(query="Python, active")
-# Returns the metadata of documents whose fields match both "Python" and "active".
+# Returns the metadata of documents matching either part, with the documents that
+# match both "Python" and "active" ranked first.
 ```
 
 ### Strict mode
