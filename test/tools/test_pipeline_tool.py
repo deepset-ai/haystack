@@ -75,6 +75,7 @@ def sample_pipeline_dict():
                             "index": ANY,
                             "shared": True,
                             "return_embedding": True,
+                            "strict_datetime_comparison": False,
                         },
                     },
                     "filters": None,
