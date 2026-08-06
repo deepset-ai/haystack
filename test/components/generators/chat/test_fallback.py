@@ -311,6 +311,7 @@ def test_failover_trigger_429_rate_limit():
 
     assert isinstance(result["replies"], list)
     replies: list[ChatMessage] = result["replies"]
+    assert isinstance(result["meta"], dict)
     meta: dict[str, Any] = result["meta"]
     assert replies[0].text == "success_after_rate_limit"
     assert meta["successful_chat_generator_index"] == 1
@@ -326,6 +327,7 @@ def test_failover_trigger_401_authentication():
 
     assert isinstance(result["replies"], list)
     replies: list[ChatMessage] = result["replies"]
+    assert isinstance(result["meta"], dict)
     meta: dict[str, Any] = result["meta"]
     assert replies[0].text == "success_after_auth"
     assert meta["successful_chat_generator_index"] == 1
@@ -341,6 +343,7 @@ def test_failover_trigger_400_bad_request():
 
     assert isinstance(result["replies"], list)
     replies: list[ChatMessage] = result["replies"]
+    assert isinstance(result["meta"], dict)
     meta: dict[str, Any] = result["meta"]
     assert replies[0].text == "success_after_bad_request"
     assert meta["successful_chat_generator_index"] == 1
@@ -356,6 +359,7 @@ def test_failover_trigger_500_server_error():
 
     assert isinstance(result["replies"], list)
     replies: list[ChatMessage] = result["replies"]
+    assert isinstance(result["meta"], dict)
     meta: dict[str, Any] = result["meta"]
     assert replies[0].text == "success_after_server_error"
     assert meta["successful_chat_generator_index"] == 1
@@ -373,6 +377,7 @@ def test_failover_trigger_multiple_errors():
 
     assert isinstance(result["replies"], list)
     replies: list[ChatMessage] = result["replies"]
+    assert isinstance(result["meta"], dict)
     meta: dict[str, Any] = result["meta"]
     assert replies[0].text == "success_after_all_errors"
     assert meta["successful_chat_generator_index"] == 3
@@ -404,6 +409,7 @@ async def test_failover_trigger_429_rate_limit_async():
 
     assert isinstance(result["replies"], list)
     replies: list[ChatMessage] = result["replies"]
+    assert isinstance(result["meta"], dict)
     meta: dict[str, Any] = result["meta"]
     assert replies[0].text == "success_after_rate_limit"
     assert meta["successful_chat_generator_index"] == 1
@@ -420,6 +426,7 @@ async def test_failover_trigger_401_authentication_async():
 
     assert isinstance(result["replies"], list)
     replies: list[ChatMessage] = result["replies"]
+    assert isinstance(result["meta"], dict)
     meta: dict[str, Any] = result["meta"]
     assert replies[0].text == "success_after_auth"
     assert meta["successful_chat_generator_index"] == 1
