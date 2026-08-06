@@ -129,7 +129,14 @@ def _dates_are_equal(value: Any, filter_value: Any, strict: bool) -> bool:
 def _prepare_ordering_comparison(
     value: Any, filter_value: Any, strict_datetime_comparison: bool
 ) -> tuple[Any, Any, bool]:
-    """Normalize both values for ordering comparisons, parsing strings as dates."""
+    """
+    Normalize both values for ordering comparisons, parsing strings as dates.
+
+    :returns:
+        A tuple containing the normalized value, normalized filter value, and whether the values are comparable.
+        The boolean is `False` when strict datetime comparison is enabled and one datetime is timezone-naive while
+        the other is timezone-aware; otherwise it is `True`.
+    """
     if isinstance(value, str) or isinstance(filter_value, str):
         if not isinstance(value, datetime):
             value = _parse_date(value)
