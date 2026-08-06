@@ -1438,12 +1438,12 @@ class TestResponseToChatMessage:
 
     def test_convert_tool_message_list_with_image(self, base64_image_string: str) -> None:
 
-        tool_result = [
+        tool_result: list[TextContent | ImageContent] = [
             TextContent(text="first result"),
             ImageContent(base64_image=base64_image_string, mime_type="image/png"),
         ]
         message = ChatMessage.from_tool(
-            tool_result=tool_result,  # type: ignore[arg-type]
+            tool_result=tool_result,
             origin=ToolCall(
                 tool_name="mytool", arguments={}, id="123", extra={"call_id": "call_a82vwFAIzku9SmBuQuecQSRq"}
             ),
@@ -1463,12 +1463,12 @@ class TestResponseToChatMessage:
 
     def test_convert_tool_message_list_with_file(self, base64_pdf_string: str) -> None:
 
-        tool_result = [
+        tool_result: list[TextContent | FileContent] = [
             TextContent(text="first result"),
             FileContent(base64_data=base64_pdf_string, mime_type="application/pdf", filename="guide.pdf"),
         ]
         message = ChatMessage.from_tool(
-            tool_result=tool_result,  # type: ignore[arg-type]
+            tool_result=tool_result,
             origin=ToolCall(
                 tool_name="mytool", arguments={}, id="123", extra={"call_id": "call_a82vwFAIzku9SmBuQuecQSRq"}
             ),
