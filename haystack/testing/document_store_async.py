@@ -710,8 +710,8 @@ class GetMetadataFieldUniqueValuesAsyncTest:
     Tests for Document Store get_metadata_field_unique_values_async().
 
     Only mix in for stores that implement get_metadata_field_unique_values_async() with the standardized
-    signature: get_metadata_field_unique_values_async(metadata_field, search_term=None, from_=0, size=10)
-    -> (values, total_count).
+    signature: get_metadata_field_unique_values_async(metadata_field, search_term=None, from_=0, size=10,
+    filters=None) -> (values, total_count).
     """
 
     @staticmethod
@@ -840,6 +840,25 @@ class GetMetadataFieldUniqueValuesAsyncTest:
 
         assert set(values) == {1, 2}
         assert all(isinstance(value, int) for value in values)
+        assert total_count == 2
+
+    @staticmethod
+    @pytest.mark.asyncio
+    async def test_get_metadata_field_unique_values_with_filters_async(document_store: AsyncDocumentStore):
+        """Test get_metadata_field_unique_values_async() restricts documents using the filters param."""
+        docs = [
+            Document(content="Doc 1", meta={"category": "A", "status": "active"}),
+            Document(content="Doc 2", meta={"category": "B", "status": "active"}),
+            Document(content="Doc 3", meta={"category": "C", "status": "inactive"}),
+        ]
+        await document_store.write_documents_async(docs)
+
+        filters = {"field": "meta.status", "operator": "==", "value": "active"}
+        values, total_count = await document_store.get_metadata_field_unique_values_async(  # type:ignore[attr-defined]
+            metadata_field="category", filters=filters
+        )
+
+        assert set(values) == {"A", "B"}
         assert total_count == 2
 
 
