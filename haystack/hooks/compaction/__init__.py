@@ -8,14 +8,14 @@ from typing import TYPE_CHECKING
 from lazy_imports import LazyImporter
 
 _import_structure = {
-    "hooks": ["ContextCompactionHook"],
+    "hooks": ["CompactionHook"],
     "sliding_window": ["SlidingWindowCompactor"],
     "tool_result_pruning": ["ToolResultPruningCompactor"],
     "types": ["Compactor"],
 }
 
 if TYPE_CHECKING:
-    from .hooks import ContextCompactionHook as ContextCompactionHook
+    from .hooks import CompactionHook as CompactionHook
     from .sliding_window import SlidingWindowCompactor as SlidingWindowCompactor
     from .tool_result_pruning import ToolResultPruningCompactor as ToolResultPruningCompactor
     from .types import Compactor as Compactor

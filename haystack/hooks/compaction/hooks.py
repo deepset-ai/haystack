@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 
 @_experimental
-class ContextCompactionHook:
+class CompactionHook:
     """
     Compacts an Agent's conversation once it fills too much of the model's context window.
 
@@ -31,9 +31,9 @@ class ContextCompactionHook:
     ```python
     from haystack.components.agents import Agent
     from haystack.components.generators.chat import OpenAIResponsesChatGenerator
-    from haystack.hooks.compaction import ContextCompactionHook, SlidingWindowCompactor
+    from haystack.hooks.compaction import CompactionHook, SlidingWindowCompactor
 
-    hook = ContextCompactionHook(
+    hook = CompactionHook(
         compactor=SlidingWindowCompactor(),
         context_window=400_000,
         compact_at=0.7,
@@ -268,12 +268,12 @@ class ContextCompactionHook:
         )
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "ContextCompactionHook":
+    def from_dict(cls, data: dict[str, Any]) -> "CompactionHook":
         """
         Deserialize the hook, reconstructing its compactor and token counter.
 
         :param data: A dictionary representation produced by `to_dict`.
-        :returns: The deserialized `ContextCompactionHook`.
+        :returns: The deserialized `CompactionHook`.
         """
         init_params = data.get("init_parameters", {})
         for key in ("compactor", "token_counter"):

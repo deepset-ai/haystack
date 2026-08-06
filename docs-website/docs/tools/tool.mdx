@@ -28,7 +28,7 @@ The `Tool` class is used in Chat Generators and provides a consistent experience
 class Tool:
     name: str
     description: str
-    parameters: Dict[str, Any]
+    parameters: dict[str, Any]
     function: Callable | None = None
     outputs_to_string: dict[str, Any] | None = None
     inputs_from_state: dict[str, str] | None = None
@@ -205,11 +205,16 @@ Use them to format structured outputs for the LLM while keeping raw data availab
 ```python
 from haystack.tools import Tool
 
+
 def format_documents(documents):
-    return "\n".join(f"{i+1}. Document: {doc.content}" for i, doc in enumerate(documents))
+    return "\n".join(
+        f"{i + 1}. Document: {doc.content}" for i, doc in enumerate(documents)
+    )
+
 
 def format_summary(metadata):
     return f"Found {metadata['count']} results"
+
 
 tool = Tool(
     name="search",
@@ -218,9 +223,11 @@ tool = Tool(
     function=search_func,  # Returns {"documents": [Document(...)], "metadata": {"count": 5}, "debug_info": {...}}
     outputs_to_string={
         "formatted_docs": {"source": "documents", "handler": format_documents},
-        "summary": {"source": "metadata", "handler": format_summary}
-    }
-    outputs_to_state={"documents": {"source": "documents"}}, # Save Documents into Agent's state
+        "summary": {"source": "metadata", "handler": format_summary},
+    },
+    outputs_to_state={
+        "documents": {"source": "documents"}
+    },  # Save Documents into Agent's state
 )
 
 # After the tool invocation, the tool result includes:

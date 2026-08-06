@@ -653,7 +653,12 @@ class InMemoryDocumentStore:
             return {"min": None, "max": None}
 
     def get_metadata_field_unique_values(
-        self, metadata_field: str, search_term: str | None = None, from_: int = 0, size: int = 10
+        self,
+        metadata_field: str,
+        search_term: str | None = None,
+        from_: int = 0,
+        size: int = 10,
+        filters: dict[str, Any] | None = None,
     ) -> tuple[list[Any], int]:
         """
         Returns unique values for a metadata field, optionally filtered by a search term, with pagination.
@@ -663,11 +668,12 @@ class InMemoryDocumentStore:
             against the metadata field's value.
         :param from_: The offset to start returning values from (for pagination).
         :param size: The maximum number of unique values to return.
+        :param filters: Optional filters to restrict the documents considered.
         :returns: A tuple of (paginated list of unique values, total count of unique values).
         """
         key = metadata_field.removeprefix("meta.") if metadata_field.startswith("meta.") else metadata_field
         unique_values: dict[tuple[str, str], Any] = {}
-        for doc in self.storage.values():
+        for doc in self.filter_documents(filters=filters):
             value = doc.meta.get(key)
             if value is not None:
                 unique_values.setdefault((type(value).__name__, str(value)), value)
@@ -972,7 +978,12 @@ class InMemoryDocumentStore:
         )
 
     async def get_metadata_field_unique_values_async(
-        self, metadata_field: str, search_term: str | None = None, from_: int = 0, size: int = 10
+        self,
+        metadata_field: str,
+        search_term: str | None = None,
+        from_: int = 0,
+        size: int = 10,
+        filters: dict[str, Any] | None = None,
     ) -> tuple[list[Any], int]:
         """
         Returns unique values for a metadata field, optionally filtered by a search term, with pagination.
@@ -982,12 +993,13 @@ class InMemoryDocumentStore:
             against the metadata field's value.
         :param from_: The offset to start returning values from (for pagination).
         :param size: The maximum number of unique values to return.
+        :param filters: Optional filters to restrict the documents considered.
         :returns: A tuple of (paginated list of unique values, total count of unique values).
         """
         return await asyncio.get_running_loop().run_in_executor(
             self.executor,
             lambda: self.get_metadata_field_unique_values(
-                metadata_field=metadata_field, search_term=search_term, from_=from_, size=size
+                metadata_field=metadata_field, search_term=search_term, from_=from_, size=size, filters=filters
             ),
         )
 

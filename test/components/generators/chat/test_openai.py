@@ -6,6 +6,7 @@ import json
 import logging
 import os
 from datetime import datetime
+from pathlib import Path
 from typing import Any
 from unittest.mock import ANY, AsyncMock, MagicMock, patch
 
@@ -188,14 +189,15 @@ def tools():
 
 
 class TestOpenAIChatGenerator:
-    def test_supported_models(self):
+    def test_supported_models(self) -> None:
         """SUPPORTED_MODELS is a non-empty list of strings."""
         models = OpenAIChatGenerator.SUPPORTED_MODELS
         assert isinstance(models, list)
         assert len(models) > 0
         assert all(isinstance(m, str) for m in models)
 
-    def test_init_default(self, monkeypatch):
+    def test_init_default(self, monkeypatch: pytest.MonkeyPatch) -> None:
+
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
         component = OpenAIChatGenerator()
         assert component.api_key.resolve_value() == "test-api-key"
@@ -210,14 +212,16 @@ class TestOpenAIChatGenerator:
         assert component.client is None
         assert component.async_client is None
 
-    def test_init_fail_with_duplicate_tool_names(self, monkeypatch, tools):
+    def test_init_fail_with_duplicate_tool_names(self, monkeypatch: pytest.MonkeyPatch, tools: list[Tool]) -> None:
+
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
 
         duplicate_tools = [tools[0], tools[0]]
         with pytest.raises(ValueError):
             OpenAIChatGenerator(tools=duplicate_tools)
 
-    def test_init_with_parameters(self, monkeypatch):
+    def test_init_with_parameters(self, monkeypatch: pytest.MonkeyPatch) -> None:
+
         tool = Tool(name="name", description="description", parameters={"x": {"type": "string"}}, function=lambda x: x)
 
         monkeypatch.setenv("OPENAI_TIMEOUT", "100")
@@ -245,7 +249,8 @@ class TestOpenAIChatGenerator:
         assert component.client is None
         assert component.async_client is None
 
-    def test_init_with_parameters_and_env_vars(self, monkeypatch):
+    def test_init_with_parameters_and_env_vars(self, monkeypatch: pytest.MonkeyPatch) -> None:
+
         monkeypatch.setenv("OPENAI_TIMEOUT", "100")
         monkeypatch.setenv("OPENAI_MAX_RETRIES", "10")
         component = OpenAIChatGenerator(
@@ -263,7 +268,8 @@ class TestOpenAIChatGenerator:
         assert component.client is None
         assert component.async_client is None
 
-    def test_to_dict_default(self, monkeypatch):
+    def test_to_dict_default(self, monkeypatch: pytest.MonkeyPatch) -> None:
+
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
         component = OpenAIChatGenerator()
         data = component.to_dict()
@@ -284,7 +290,8 @@ class TestOpenAIChatGenerator:
             },
         }
 
-    def test_to_dict_with_parameters(self, monkeypatch, calendar_event_model):
+    def test_to_dict_with_parameters(self, monkeypatch: pytest.MonkeyPatch, calendar_event_model: type) -> None:
+
         tool = Tool(name="name", description="description", parameters={"x": {"type": "string"}}, function=print)
 
         monkeypatch.setenv("ENV_VAR", "test-api-key")
@@ -359,7 +366,8 @@ class TestOpenAIChatGenerator:
             },
         }
 
-    def test_to_dict_with_response_format_json_object(self, monkeypatch):
+    def test_to_dict_with_response_format_json_object(self, monkeypatch: pytest.MonkeyPatch) -> None:
+
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
         component = OpenAIChatGenerator(
             api_key=Secret.from_env_var("OPENAI_API_KEY"),
@@ -383,7 +391,8 @@ class TestOpenAIChatGenerator:
             },
         }
 
-    def test_from_dict(self, monkeypatch):
+    def test_from_dict(self, monkeypatch: pytest.MonkeyPatch) -> None:
+
         monkeypatch.setenv("OPENAI_API_KEY", "fake-api-key")
         data = {
             "type": "haystack.components.generators.chat.openai.OpenAIChatGenerator",
@@ -426,7 +435,8 @@ class TestOpenAIChatGenerator:
         assert component.max_retries == 10
         assert component.http_client_kwargs == {"proxy": "http://example.com:8080", "verify": False}
 
-    def test_from_dict_wo_env_var_does_not_fail(self, monkeypatch):
+    def test_from_dict_wo_env_var_does_not_fail(self, monkeypatch: pytest.MonkeyPatch) -> None:
+
         monkeypatch.delenv("OPENAI_API_KEY", raising=False)
         data = {
             "type": "haystack.components.generators.chat.openai.OpenAIChatGenerator",
@@ -444,7 +454,8 @@ class TestOpenAIChatGenerator:
         assert component.client is None
         assert component.async_client is None
 
-    def test_run(self, chat_messages, openai_mock_chat_completion):
+    def test_run(self, chat_messages: list[ChatMessage], openai_mock_chat_completion: MagicMock) -> None:
+
         component = OpenAIChatGenerator(api_key=Secret.from_token("test-api-key"))
         response = component.run(chat_messages)
 
@@ -455,7 +466,8 @@ class TestOpenAIChatGenerator:
         assert len(response["replies"]) == 1
         assert [isinstance(reply, ChatMessage) for reply in response["replies"]]
 
-    def test_run_with_string_input(self, openai_mock_chat_completion):
+    def test_run_with_string_input(self, openai_mock_chat_completion: MagicMock) -> None:
+
         component = OpenAIChatGenerator(api_key=Secret.from_token("test-api-key"))
         response = component.run("What's the capital of France?")
 
@@ -466,7 +478,8 @@ class TestOpenAIChatGenerator:
         assert len(response["replies"]) == 1
         assert isinstance(response["replies"][0], ChatMessage)
 
-    def test_run_with_params(self, chat_messages, openai_mock_chat_completion):
+    def test_run_with_params(self, chat_messages: list[ChatMessage], openai_mock_chat_completion: MagicMock) -> None:
+
         component = OpenAIChatGenerator(
             api_key=Secret.from_token("test-api-key"),
             generation_kwargs={"max_completion_tokens": 10, "temperature": 0.5},
@@ -488,7 +501,10 @@ class TestOpenAIChatGenerator:
         assert len(response["replies"]) == 1
         assert [isinstance(reply, ChatMessage) for reply in response["replies"]]
 
-    def test_run_with_params_streaming(self, chat_messages, openai_mock_chat_completion_chunk):
+    def test_run_with_params_streaming(
+        self, chat_messages: list[ChatMessage], openai_mock_chat_completion_chunk: MagicMock
+    ) -> None:
+
         streaming_callback_called = False
 
         def streaming_callback(chunk: StreamingChunk) -> None:
@@ -509,9 +525,13 @@ class TestOpenAIChatGenerator:
         assert isinstance(response["replies"], list)
         assert len(response["replies"]) == 1
         assert [isinstance(reply, ChatMessage) for reply in response["replies"]]
+        assert response["replies"][0].text is not None
         assert "Hello" in response["replies"][0].text  # see openai_mock_chat_completion_chunk
 
-    def test_run_with_streaming_callback_in_run_method(self, chat_messages, openai_mock_chat_completion_chunk):
+    def test_run_with_streaming_callback_in_run_method(
+        self, chat_messages: list[ChatMessage], openai_mock_chat_completion_chunk: MagicMock
+    ) -> None:
+
         streaming_callback_called = False
 
         def streaming_callback(chunk: StreamingChunk) -> None:
@@ -530,9 +550,13 @@ class TestOpenAIChatGenerator:
         assert isinstance(response["replies"], list)
         assert len(response["replies"]) == 1
         assert [isinstance(reply, ChatMessage) for reply in response["replies"]]
+        assert response["replies"][0].text is not None
         assert "Hello" in response["replies"][0].text  # see openai_mock_chat_completion_chunk
 
-    def test_run_with_response_format(self, chat_messages, mock_parsed_chat_completion):
+    def test_run_with_response_format(
+        self, chat_messages: list[ChatMessage], mock_parsed_chat_completion: MagicMock
+    ) -> None:
+
         component = OpenAIChatGenerator(
             api_key=Secret.from_token("test-api-key"), generation_kwargs={"response_format": CalendarEvent}
         )
@@ -542,9 +566,13 @@ class TestOpenAIChatGenerator:
         assert isinstance(response["replies"], list)
         assert len(response["replies"]) == 1
         assert [isinstance(reply, ChatMessage) for reply in response["replies"]]
+        assert response["replies"][0].text is not None
         assert "Team Meeting" in response["replies"][0].text  # see mock_parsed_chat_completion
 
-    def test_run_with_response_format_in_run_method(self, chat_messages, mock_parsed_chat_completion):
+    def test_run_with_response_format_in_run_method(
+        self, chat_messages: list[ChatMessage], mock_parsed_chat_completion: MagicMock
+    ) -> None:
+
         component = OpenAIChatGenerator(api_key=Secret.from_token("test-api-key"))
         response = component.run(chat_messages, generation_kwargs={"response_format": CalendarEvent})
         assert isinstance(response, dict)
@@ -552,9 +580,13 @@ class TestOpenAIChatGenerator:
         assert isinstance(response["replies"], list)
         assert len(response["replies"]) == 1
         assert [isinstance(reply, ChatMessage) for reply in response["replies"]]
+        assert response["replies"][0].text is not None
         assert "Team Meeting" in response["replies"][0].text  # see mock_parsed_chat_completion
 
-    def test_run_with_wrapped_stream_simulation(self, chat_messages, openai_mock_stream):
+    def test_run_with_wrapped_stream_simulation(
+        self, chat_messages: list[ChatMessage], openai_mock_stream: type
+    ) -> None:
+
         streaming_callback_called = False
 
         def streaming_callback(chunk: StreamingChunk) -> None:
@@ -579,6 +611,7 @@ class TestOpenAIChatGenerator:
         component = OpenAIChatGenerator(api_key=Secret.from_token("test-api-key"))
         component.warm_up()
 
+        assert component.client is not None
         with patch.object(
             component.client.chat.completions, "create", return_value=wrapped_openai_stream
         ) as mock_create:
@@ -587,9 +620,11 @@ class TestOpenAIChatGenerator:
             mock_create.assert_called_once()
             assert streaming_callback_called
             assert "replies" in response
+            assert response["replies"][0].text is not None
             assert "Hello" in response["replies"][0].text
 
-    def test_check_abnormal_completions(self, caplog):
+    def test_check_abnormal_completions(self, caplog: pytest.LogCaptureFixture) -> None:
+
         caplog.set_level(logging.INFO)
         messages = [
             ChatMessage.from_assistant(
@@ -615,7 +650,8 @@ class TestOpenAIChatGenerator:
         for index in [0, 2]:
             assert caplog.records[index].message == message_template.format(index=index)
 
-    def test_run_with_tools(self, tools):
+    def test_run_with_tools(self, tools: list[Tool]) -> None:
+
         with patch("openai.resources.chat.completions.Completions.create") as mock_chat_completion_create:
             completion = ChatCompletion(
                 id="foo",
@@ -677,7 +713,9 @@ class TestOpenAIChatGenerator:
         assert message.meta["finish_reason"] == "tool_calls"
         assert message.meta["usage"]["completion_tokens"] == 40
 
-    def test_run_with_tools_and_response_format(self, tools, mock_parsed_chat_completion):
+    def test_run_with_tools_and_response_format(
+        self, tools: list[Tool], mock_parsed_chat_completion: MagicMock
+    ) -> None:
         """
         Test the run method with tools and response format
             When tools are used, the function call overrides the schema passed in response_format
@@ -737,7 +775,8 @@ class TestOpenAIChatGenerator:
         assert message_with_format.meta["finish_reason"] == "tool_calls"
         assert message_with_format.meta["usage"]["completion_tokens"] == 40
 
-    def test_run_with_tools_streaming(self, mock_chat_completion_chunk_with_tools, tools):
+    def test_run_with_tools_streaming(self, mock_chat_completion_chunk_with_tools: Any, tools: list[Tool]) -> None:
+
         streaming_callback_called = False
 
         def streaming_callback(chunk: StreamingChunk) -> None:
@@ -769,7 +808,8 @@ class TestOpenAIChatGenerator:
         assert tool_call.arguments == {"city": "Paris"}
         assert message.meta["finish_reason"] == "tool_calls"
 
-    def test_invalid_tool_call_json(self, tools, caplog):
+    def test_invalid_tool_call_json(self, tools: list[Tool], caplog: pytest.LogCaptureFixture) -> None:
+
         caplog.set_level(logging.WARNING)
 
         with patch("openai.resources.chat.completions.Completions.create") as mock_create:
@@ -815,7 +855,8 @@ class TestOpenAIChatGenerator:
         assert message.meta["finish_reason"] == "tool_calls"
         assert message.meta["usage"]["completion_tokens"] == 47
 
-    def test_run_with_response_format_and_streaming_pydantic_model(self, calendar_event_model):
+    def test_run_with_response_format_and_streaming_pydantic_model(self, calendar_event_model: type) -> None:
+
         chat_messages = [
             ChatMessage.from_user("The marketing summit takes place on October12th at the Hilton Hotel downtown.")
         ]
@@ -832,12 +873,14 @@ class TestOpenAIChatGenerator:
         reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
     )
     @pytest.mark.integration
-    def test_live_run(self):
+    def test_live_run(self) -> None:
+
         chat_messages = [ChatMessage.from_user("What's the capital of France")]
         component = OpenAIChatGenerator(model="gpt-4.1-nano", generation_kwargs={"n": 1})
         results = component.run(chat_messages)
         assert len(results["replies"]) == 1
         message: ChatMessage = results["replies"][0]
+        assert message.text is not None
         assert "Paris" in message.text
         assert "gpt-4.1-nano" in message.meta["model"]
         assert message.meta["finish_reason"] == "stop"
@@ -848,7 +891,8 @@ class TestOpenAIChatGenerator:
         reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
     )
     @pytest.mark.integration
-    def test_live_run_with_response_format_pydantic_model(self, calendar_event_model):
+    def test_live_run_with_response_format_pydantic_model(self, calendar_event_model: type) -> None:
+
         chat_messages = [
             ChatMessage.from_user("The marketing summit takes place on October12th at the Hilton Hotel downtown.")
         ]
@@ -858,6 +902,7 @@ class TestOpenAIChatGenerator:
         results = component.run(chat_messages)
         assert len(results["replies"]) == 1
         message: ChatMessage = results["replies"][0]
+        assert message.text is not None
         msg = json.loads(message.text)
         assert "marketing summit" in msg["event_name"].lower()
         assert isinstance(msg["event_date"], str)
@@ -868,7 +913,8 @@ class TestOpenAIChatGenerator:
         reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
     )
     @pytest.mark.integration
-    def test_live_run_with_response_format_json_object(self):
+    def test_live_run_with_response_format_json_object(self) -> None:
+
         chat_messages = [
             ChatMessage.from_user(
                 'Answer in JSON: What\'s the capital of France? Please respond with a JSON object with the key "city". '
@@ -879,6 +925,7 @@ class TestOpenAIChatGenerator:
         results = comp.run(chat_messages)
         assert len(results["replies"]) == 1
         message: ChatMessage = results["replies"][0]
+        assert message.text is not None
         msg = json.loads(message.text)
         assert "paris" in msg["city"].lower()
         assert message.meta["finish_reason"] == "stop"
@@ -888,7 +935,8 @@ class TestOpenAIChatGenerator:
         reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
     )
     @pytest.mark.integration
-    def test_live_run_with_response_format_json_object_streaming(self):
+    def test_live_run_with_response_format_json_object_streaming(self) -> None:
+
         streaming_callback_called = False
 
         def streaming_callback(chunk: StreamingChunk) -> None:
@@ -909,6 +957,7 @@ class TestOpenAIChatGenerator:
         results = comp.run(chat_messages)
         assert len(results["replies"]) == 1
         message: ChatMessage = results["replies"][0]
+        assert message.text is not None
         msg = json.loads(message.text)
         assert "paris" in msg["city"].lower()
         assert message.meta["finish_reason"] == "stop"
@@ -919,7 +968,8 @@ class TestOpenAIChatGenerator:
         reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
     )
     @pytest.mark.integration
-    def test_live_run_with_response_format_json_schema(self):
+    def test_live_run_with_response_format_json_schema(self) -> None:
+
         response_schema = {
             "type": "json_schema",
             "json_schema": {
@@ -943,6 +993,7 @@ class TestOpenAIChatGenerator:
         results = comp.run(chat_messages)
         assert len(results["replies"]) == 1
         message: ChatMessage = results["replies"][0]
+        assert message.text is not None
         msg = json.loads(message.text)
         assert "Paris" in msg["city"]
         assert isinstance(msg["country"], str)
@@ -954,7 +1005,8 @@ class TestOpenAIChatGenerator:
         reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
     )
     @pytest.mark.integration
-    def test_live_run_with_response_format_json_schema_streaming(self):
+    def test_live_run_with_response_format_json_schema_streaming(self) -> None:
+
         streaming_callback_called = False
 
         def streaming_callback(chunk: StreamingChunk) -> None:
@@ -988,6 +1040,7 @@ class TestOpenAIChatGenerator:
         results = comp.run(chat_messages)
         assert len(results["replies"]) == 1
         message: ChatMessage = results["replies"][0]
+        assert message.text is not None
         msg = json.loads(message.text)
         assert "Paris" in msg["city"]
         assert isinstance(msg["country"], str)
@@ -995,7 +1048,8 @@ class TestOpenAIChatGenerator:
         assert message.meta["finish_reason"] == "stop"
         assert streaming_callback_called is True
 
-    def test_run_with_wrong_model(self):
+    def test_run_with_wrong_model(self) -> None:
+
         mock_client = MagicMock()
         mock_client.chat.completions.create.side_effect = OpenAIError("Invalid model name")
 
@@ -1011,7 +1065,8 @@ class TestOpenAIChatGenerator:
         reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
     )
     @pytest.mark.integration
-    def test_live_run_streaming(self):
+    def test_live_run_streaming(self) -> None:
+
         class Callback:
             def __init__(self):
                 self.responses = ""
@@ -1033,6 +1088,7 @@ class TestOpenAIChatGenerator:
         assert "replies" in results
         assert len(results["replies"]) == 1
         message: ChatMessage = results["replies"][0]
+        assert message.text is not None
         assert "Paris" in message.text
         assert isinstance(message.meta, dict)
 
@@ -1060,7 +1116,8 @@ class TestOpenAIChatGenerator:
         reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
     )
     @pytest.mark.integration
-    def test_live_run_with_tools_streaming(self, tools):
+    def test_live_run_with_tools_streaming(self, tools: list[Tool]) -> None:
+
         chat_messages = [ChatMessage.from_user("What's the weather like in Paris and Berlin?")]
         component = OpenAIChatGenerator(
             model="gpt-4.1-nano",
@@ -1089,14 +1146,16 @@ class TestOpenAIChatGenerator:
         assert any("paris" in city for city in city_values)
         assert message.meta["finish_reason"] == "tool_calls"
 
-    def test_openai_chat_generator_with_toolset_initialization(self, tools, monkeypatch):
+    def test_openai_chat_generator_with_toolset_initialization(
+        self, tools: list[Tool], monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         """Test that the OpenAIChatGenerator can be initialized with a Toolset."""
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
         toolset = Toolset(tools)
         generator = OpenAIChatGenerator(tools=toolset)
         assert generator.tools == toolset
 
-    def test_from_dict_with_toolset(self, tools, monkeypatch):
+    def test_from_dict_with_toolset(self, tools: list[Tool], monkeypatch: pytest.MonkeyPatch) -> None:
         """Test that the OpenAIChatGenerator can be deserialized from a dictionary with a Toolset."""
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
         toolset = Toolset(tools)
@@ -1114,7 +1173,8 @@ class TestOpenAIChatGenerator:
         reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
     )
     @pytest.mark.integration
-    def test_live_run_with_toolset(self, tools):
+    def test_live_run_with_toolset(self, tools: list[Tool]) -> None:
+
         chat_messages = [ChatMessage.from_user("What's the weather like in Paris?")]
         toolset = Toolset(tools)
         component = OpenAIChatGenerator(model="gpt-4.1-nano", tools=toolset)
@@ -1136,7 +1196,8 @@ class TestOpenAIChatGenerator:
         reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
     )
     @pytest.mark.integration
-    def test_live_run_multimodal(self, test_files_path):
+    def test_live_run_multimodal(self, test_files_path: Path) -> None:
+
         image_path = test_files_path / "images" / "apple.jpg"
 
         # we resize the image to keep this test fast (around 1s) - increase the size in case of errors
@@ -1162,7 +1223,8 @@ class TestOpenAIChatGenerator:
         reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
     )
     @pytest.mark.integration
-    def test_live_run_with_file_content(self, test_files_path):
+    def test_live_run_with_file_content(self, test_files_path: Path) -> None:
+
         pdf_path = test_files_path / "pdf" / "sample_pdf_3.pdf"
 
         file_content = FileContent.from_file_path(file_path=pdf_path)
@@ -1184,7 +1246,7 @@ class TestOpenAIChatGenerator:
         assert message.text
         assert "no" in message.text.lower()
 
-    def test_init_with_list_of_toolsets(self, monkeypatch, tools):
+    def test_init_with_list_of_toolsets(self, monkeypatch: pytest.MonkeyPatch, tools: list[Tool]) -> None:
         """Test initialization with a list of Toolsets."""
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
 
@@ -1198,7 +1260,7 @@ class TestOpenAIChatGenerator:
         assert len(component.tools) == 2
         assert all(isinstance(ts, Toolset) for ts in component.tools)
 
-    def test_serde_with_list_of_toolsets(self, monkeypatch, tools):
+    def test_serde_with_list_of_toolsets(self, monkeypatch: pytest.MonkeyPatch, tools: list[Tool]) -> None:
         """Test serialization and deserialization with a list of Toolsets."""
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
 
@@ -1461,7 +1523,7 @@ def chat_completion_chunk_delta_none():
         object="chat.completion.chunk",
     )
     # pydantic complains if we set delta to None at initialization
-    chunk.choices[0].delta = None
+    chunk.choices[0].delta = None  # type: ignore[assignment]
     return chunk
 
 
@@ -1671,34 +1733,51 @@ def mock_openai_clients(monkeypatch):
 
 
 class TestComponentLifecycle:
-    def test_warm_up_uses_default_timeout_and_max_retries(self, monkeypatch):
+    def test_warm_up_uses_default_timeout_and_max_retries(self, monkeypatch: pytest.MonkeyPatch) -> None:
+
         monkeypatch.setenv("OPENAI_API_KEY", "fake-api-key")
         generator = OpenAIChatGenerator()
         generator.warm_up()
+        assert generator.client is not None
+
         assert generator.client.max_retries == 5
+        assert generator.client is not None
+
         assert generator.client.timeout == 30.0
 
-    def test_warm_up_uses_timeout_and_max_retries_from_parameters(self):
+    def test_warm_up_uses_timeout_and_max_retries_from_parameters(self) -> None:
+
         generator = OpenAIChatGenerator(api_key=Secret.from_token("fake-api-key"), timeout=40.0, max_retries=1)
         generator.warm_up()
+        assert generator.client is not None
+
         assert generator.client.max_retries == 1
+        assert generator.client is not None
+
         assert generator.client.timeout == 40.0
 
-    def test_warm_up_uses_timeout_and_max_retries_from_env_vars(self, monkeypatch):
+    def test_warm_up_uses_timeout_and_max_retries_from_env_vars(self, monkeypatch: pytest.MonkeyPatch) -> None:
+
         monkeypatch.setenv("OPENAI_TIMEOUT", "100")
         monkeypatch.setenv("OPENAI_MAX_RETRIES", "10")
         generator = OpenAIChatGenerator(api_key=Secret.from_token("fake-api-key"))
         generator.warm_up()
+        assert generator.client is not None
+
         assert generator.client.max_retries == 10
+        assert generator.client is not None
+
         assert generator.client.timeout == 100.0
 
-    def test_key_resolved_at_warm_up_not_init(self, monkeypatch):
+    def test_key_resolved_at_warm_up_not_init(self, monkeypatch: pytest.MonkeyPatch) -> None:
+
         monkeypatch.delenv("OPENAI_API_KEY", raising=False)
         generator = OpenAIChatGenerator()
         with pytest.raises(ValueError, match="None of the .* environment variables are set"):
             generator.warm_up()
 
-    def test_warm_up_warms_tools_once(self, monkeypatch):
+    def test_warm_up_warms_tools_once(self, monkeypatch: pytest.MonkeyPatch) -> None:
+
         monkeypatch.setenv("OPENAI_API_KEY", "fake-api-key")
         warm_up_calls = []
 
@@ -1724,13 +1803,15 @@ class TestComponentLifecycle:
         generator.warm_up()
         assert sorted(warm_up_calls) == ["tool1", "tool2"]
 
-    def test_warm_up_with_no_tools_does_not_raise(self, monkeypatch):
+    def test_warm_up_with_no_tools_does_not_raise(self, monkeypatch: pytest.MonkeyPatch) -> None:
+
         monkeypatch.setenv("OPENAI_API_KEY", "fake-api-key")
         generator = OpenAIChatGenerator()
         generator.warm_up()
         assert generator._tools_warmed_up
 
-    def test_sync_lifecycle(self, mock_openai_clients):
+    def test_sync_lifecycle(self, mock_openai_clients: tuple[MagicMock, MagicMock]) -> None:
+
         sync_cls, _ = mock_openai_clients
         generator = OpenAIChatGenerator()
         assert generator.client is None
@@ -1741,10 +1822,12 @@ class TestComponentLifecycle:
         assert generator.async_client is None
 
         generator.close()
-        sync_cls.return_value.close.assert_called_once()
+
+        sync_cls.return_value.close.assert_called_once()  # type: ignore[attr-defined]
         assert generator.client is None
 
-    async def test_async_lifecycle(self, mock_openai_clients):
+    async def test_async_lifecycle(self, mock_openai_clients: tuple[MagicMock, MagicMock]) -> None:
+
         _, async_cls = mock_openai_clients
         generator = OpenAIChatGenerator()
 
@@ -1753,17 +1836,22 @@ class TestComponentLifecycle:
         assert generator.client is None
 
         await generator.close_async()
-        async_cls.return_value.close.assert_awaited_once()
+
+        async_cls.return_value.close.assert_awaited_once()  # type: ignore[union-attr]
         assert generator.async_client is None
 
-    async def test_close_is_safe_without_warm_up(self, mock_openai_clients):
+    async def test_close_is_safe_without_warm_up(self, mock_openai_clients: tuple[MagicMock, MagicMock]) -> None:
+
         generator = OpenAIChatGenerator()
         generator.close()
         await generator.close_async()
         assert generator.client is None
         assert generator.async_client is None
 
-    async def test_close_and_close_async_are_independent(self, mock_openai_clients):
+    async def test_close_and_close_async_are_independent(
+        self, mock_openai_clients: tuple[MagicMock, MagicMock]
+    ) -> None:
+
         generator = OpenAIChatGenerator()
         generator.warm_up()
         await generator.warm_up_async()
@@ -1777,8 +1865,11 @@ class TestComponentLifecycle:
 
 
 class TestChatCompletionChunkConversion:
-    def test_convert_chat_completion_chunk_to_streaming_chunk(self, chat_completion_chunks, streaming_chunks):
-        previous_chunks = []
+    def test_convert_chat_completion_chunk_to_streaming_chunk(
+        self, chat_completion_chunks: MagicMock, streaming_chunks: Any
+    ) -> None:
+
+        previous_chunks: list[StreamingChunk] = []
         for openai_chunk, haystack_chunk in zip(chat_completion_chunks, streaming_chunks, strict=True):
             stream_chunk = _convert_chat_completion_chunk_to_streaming_chunk(
                 chunk=openai_chunk, previous_chunks=previous_chunks
@@ -1786,7 +1877,8 @@ class TestChatCompletionChunkConversion:
             assert stream_chunk == haystack_chunk
             previous_chunks.append(stream_chunk)
 
-    def test_convert_chat_completion_chunk_with_empty_tool_calls(self):
+    def test_convert_chat_completion_chunk_with_empty_tool_calls(self) -> None:
+
         # This can happen with some LLM providers where tool calls are not present but the pydantic models are still
         # initialized.
         chunk = ChatCompletionChunk(
@@ -1812,7 +1904,7 @@ class TestChatCompletionChunkConversion:
         assert result.meta["model"] == "gpt-5-mini"
         assert result.meta["received_at"] is not None
 
-    def test_convert_chat_completion_chunk_with_delta_none(self, chat_completion_chunk_delta_none):
+    def test_convert_chat_completion_chunk_with_delta_none(self, chat_completion_chunk_delta_none: MagicMock) -> None:
         """
         Test that a chat completion chunk with a delta set to None is converted to a streaming chunk properly.
         This should not happen, but some OpenAI-compatible providers sometimes return a delta set to None.
@@ -1838,10 +1930,13 @@ class TestChatCompletionChunkConversion:
         assert result.meta["usage"] is None
         assert result.meta["tool_calls"] is None
 
-    def test_handle_stream_response(self, chat_completion_chunks, chat_completion_chunk_delta_none):
+    def test_handle_stream_response(
+        self, chat_completion_chunks: MagicMock, chat_completion_chunk_delta_none: MagicMock
+    ) -> None:
+
         openai_chunks = [chat_completion_chunk_delta_none] + chat_completion_chunks
         comp = OpenAIChatGenerator(api_key=Secret.from_token("test-api-key"))
-        result = comp._handle_stream_response(openai_chunks, callback=lambda _: None)[0]  # type: ignore
+        result = comp._handle_stream_response(openai_chunks, callback=lambda _: None)[0]  # type: ignore[arg-type]
 
         assert not result.texts
         assert not result.text
@@ -1873,7 +1968,8 @@ class TestChatCompletionChunkConversion:
             "prompt_tokens_details": {"audio_tokens": 0, "cached_tokens": 0, "cache_write_tokens": 0},
         }
 
-    def test_convert_usage_chunk_to_streaming_chunk(self):
+    def test_convert_usage_chunk_to_streaming_chunk(self) -> None:
+
         usage_chunk = ChatCompletionChunk(
             id="chatcmpl-BC1y4wqIhe17R8sv3lgLcWlB4tXCw",
             choices=[],
@@ -1902,7 +1998,8 @@ class TestChatCompletionChunkConversion:
 
 
 class TestMakeSchemaStrict:
-    def test_flat_object(self):
+    def test_flat_object(self) -> None:
+
         schema = {"type": "object", "properties": {"name": {"type": "string"}}}
         result = _make_schema_strict(schema)
         assert result == {
@@ -1912,7 +2009,8 @@ class TestMakeSchemaStrict:
             "required": ["name"],
         }
 
-    def test_nested_object(self):
+    def test_nested_object(self) -> None:
+
         schema = {
             "type": "object",
             "properties": {
@@ -1934,7 +2032,8 @@ class TestMakeSchemaStrict:
             "required": ["person"],
         }
 
-    def test_defs_and_ref(self):
+    def test_defs_and_ref(self) -> None:
+
         schema = {
             "type": "object",
             "properties": {"address": {"$ref": "#/$defs/Address"}},
@@ -1958,7 +2057,8 @@ class TestMakeSchemaStrict:
             "required": ["address"],
         }
 
-    def test_array_items(self):
+    def test_array_items(self) -> None:
+
         schema = {
             "type": "object",
             "properties": {
@@ -1983,7 +2083,8 @@ class TestMakeSchemaStrict:
             "required": ["people"],
         }
 
-    def test_anyof(self):
+    def test_anyof(self) -> None:
+
         schema = {
             "type": "object",
             "properties": {
@@ -2010,7 +2111,8 @@ class TestMakeSchemaStrict:
             "required": ["value"],
         }
 
-    def test_does_not_mutate_original(self):
+    def test_does_not_mutate_original(self) -> None:
+
         schema = {"type": "object", "properties": {"a": {"type": "string"}}}
         result = _make_schema_strict(schema)
         assert "additionalProperties" not in schema
@@ -2022,7 +2124,8 @@ class TestMakeSchemaStrict:
             "required": ["a"],
         }
 
-    def test_preserves_existing_required(self):
+    def test_preserves_existing_required(self) -> None:
+
         schema = {
             "type": "object",
             "properties": {"a": {"type": "string"}, "b": {"type": "integer"}},
@@ -2036,7 +2139,8 @@ class TestMakeSchemaStrict:
             "required": ["a", "b"],
         }
 
-    def test_complex_schema_with_defs_and_combinators(self):
+    def test_complex_schema_with_defs_and_combinators(self) -> None:
+
         schema = {
             "type": "object",
             "properties": {
@@ -2123,7 +2227,8 @@ class TestMakeSchemaStrict:
             "required": ["messages", "config"],
         }
 
-    def test_prepare_api_call_strict_nested_tool(self):
+    def test_prepare_api_call_strict_nested_tool(self) -> None:
+
         nested_tool = Tool(
             name="create_person",
             description="Create a person record",
@@ -2166,7 +2271,8 @@ class TestMakeSchemaStrict:
         reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
     )
     @pytest.mark.integration
-    def test_live_run_strict_nested_tool(self):
+    def test_live_run_strict_nested_tool(self) -> None:
+
         tool = Tool(
             name="create_person",
             description="Create a person record with an address",
@@ -2193,6 +2299,7 @@ class TestMakeSchemaStrict:
         message = results["replies"][0]
         assert message.tool_calls
         tool_call = message.tool_call
+        assert tool_call is not None
         assert tool_call.tool_name == "create_person"
         assert "name" in tool_call.arguments
         assert "address" in tool_call.arguments

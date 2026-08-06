@@ -97,20 +97,24 @@ Basic usage:
 
 ```python
 import os
-from haystack_integrations.components.embedders.amazon_bedrock import AmazonBedrockDocumentEmbedder
-from haystack.dataclasses import DOcument
+from haystack import Document
+from haystack_integrations.components.embedders.amazon_bedrock import (
+    AmazonBedrockDocumentEmbedder,
+)
 
 os.environ["AWS_ACCESS_KEY_ID"] = "..."
 os.environ["AWS_SECRET_ACCESS_KEY"] = "..."
-os.environ["AWS_DEFAULT_REGION"] = "us-east-1" # just an example
+os.environ["AWS_DEFAULT_REGION"] = "us-east-1"  # just an example
 
 doc = Document(content="I love pizza!")
 
-embedder = AmazonBedrockDocumentEmbedder(model="cohere.embed-english-v3",
-																					input_type="search_document"
+embedder = AmazonBedrockDocumentEmbedder(
+    model="cohere.embed-english-v3",
+    input_type="search_document",
+)
 
-result = document_embedder.run([doc])
-print(result['documents'][0].embedding)
+result = embedder.run(documents=[doc])
+print(result["documents"][0].embedding)
 
 # [0.017020374536514282, -0.023255806416273117, ...]
 ```
@@ -120,14 +124,14 @@ print(result['documents'][0].embedding)
 In a RAG pipeline:
 
 ```python
-from haystack import Document
-from haystack import Pipeline
+from haystack import Document, Pipeline
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack_integrations.components.embedders.amazon_bedrock import (
     AmazonBedrockDocumentEmbedder,
     AmazonBedrockTextEmbedder,
 )
 from haystack.components.retrievers.in_memory import InMemoryEmbeddingRetriever
+from haystack.components.writers import DocumentWriter
 
 document_store = InMemoryDocumentStore(embedding_similarity_function="cosine")
 

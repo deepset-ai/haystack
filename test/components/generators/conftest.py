@@ -4,6 +4,7 @@
 
 from collections.abc import Iterator
 from datetime import datetime
+from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -43,7 +44,7 @@ def mock_auto_tokenizer():
 
 
 class OpenAIMockStream(Stream[ChatCompletionChunk]):
-    def __init__(self, mock_chunk: ChatCompletionChunk, client=None, *args, **kwargs):
+    def __init__(self, mock_chunk: ChatCompletionChunk, client: "Any" = None, *args: "Any", **kwargs: "Any") -> None:
         client = client or MagicMock()
         super().__init__(client=client, *args, **kwargs)  # noqa: B026
         self.mock_chunk = mock_chunk
@@ -94,7 +95,7 @@ def openai_mock_chat_completion():
             model="gpt-4",
             object="chat.completion",
             choices=[
-                {
+                {  # type: ignore[list-item]
                     "finish_reason": "stop",
                     "logprobs": None,
                     "index": 0,
@@ -102,7 +103,7 @@ def openai_mock_chat_completion():
                 }
             ],
             created=int(datetime.now().timestamp()),
-            usage={"prompt_tokens": 57, "completion_tokens": 40, "total_tokens": 97},
+            usage={"prompt_tokens": 57, "completion_tokens": 40, "total_tokens": 97},  # type: ignore[arg-type]
         )
 
         mock_chat_completion_create.return_value = completion
@@ -122,7 +123,7 @@ async def openai_mock_async_chat_completion():
             model="gpt-4",
             object="chat.completion",
             choices=[
-                {
+                {  # type: ignore[list-item]
                     "finish_reason": "stop",
                     "logprobs": None,
                     "index": 0,
@@ -130,7 +131,7 @@ async def openai_mock_async_chat_completion():
                 }
             ],
             created=int(datetime.now().timestamp()),
-            usage={"prompt_tokens": 57, "completion_tokens": 40, "total_tokens": 97},
+            usage={"prompt_tokens": 57, "completion_tokens": 40, "total_tokens": 97},  # type: ignore[arg-type]
         )
 
         mock_chat_completion_create.return_value = completion
@@ -201,7 +202,7 @@ def openai_mock_responses():
 
     with patch("openai.resources.responses.Responses.create") as mock_create:
         # Build the Response object exactly like the one you provided
-        mock_response = Response(
+        mock_response = Response(  # type: ignore[call-arg]
             id="resp_mock_123",
             created_at=float(datetime.now().timestamp()),
             metadata={},
@@ -267,7 +268,7 @@ def openai_mock_async_responses():
 
     with patch("openai.resources.responses.AsyncResponses.create") as mock_create:
         # Build the Response object exactly like the one you provided
-        mock_response = Response(
+        mock_response = Response(  # type: ignore[call-arg]
             id="resp_mock_123",
             created_at=float(datetime.now().timestamp()),
             metadata={},
@@ -344,7 +345,7 @@ def openai_mock_responses_stream_text_delta():
         )
 
         # Your OpenAIMockStream should iterate over this event
-        mock_responses_create.return_value = OpenAIMockStream(event, cast_to=None, response=None, client=None)
+        mock_responses_create.return_value = OpenAIMockStream(event, cast_to=None, response=None, client=None)  # type: ignore[arg-type]
         yield mock_responses_create
 
 
@@ -366,7 +367,7 @@ async def openai_mock_async_responses_stream_text_delta():
             type="response.output_text.delta",
         )
 
-        mock_responses_create.return_value = OpenAIAsyncMockStream(event)
+        mock_responses_create.return_value = OpenAIAsyncMockStream(event)  # type: ignore[arg-type]
         yield mock_responses_create
 
 
@@ -391,7 +392,7 @@ def openai_mock_responses_reasoning_summary_delta():
             type="response.output_item.added",
         )
 
-        event = ResponseReasoningSummaryTextDeltaEvent(
+        event = ResponseReasoningSummaryTextDeltaEvent(  # type: ignore[call-arg]
             delta="I need to check the capital of France.",
             item_id="rs_01e88f7d57f9a2f70069284d2170c48193918c04f85244cf7c",
             output_index=0,
@@ -405,7 +406,7 @@ def openai_mock_responses_reasoning_summary_delta():
         class MultiEventMockStream(OpenAIMockStream):
             def __init__(self, *events, **kwargs):
                 self.events = events
-                super().__init__(events[0] if events else None, **kwargs)
+                super().__init__(events[0] if events else None, **kwargs)  # type: ignore[arg-type]
 
             def __stream__(self):
                 yield from self.events

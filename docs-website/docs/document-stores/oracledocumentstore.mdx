@@ -135,7 +135,7 @@ document_store = OracleDocumentStore(
         password=Secret.from_env_var("ORACLE_PASSWORD"),
         dsn=Secret.from_env_var("ORACLE_DSN"),
     ),
-    embedding_dim=768,
+    embedding_dim=384,
 )
 
 # Index documents

@@ -312,6 +312,7 @@ get_metadata_field_unique_values(
     search_term: str | None = None,
     from_: int = 0,
     size: int = 10,
+    filters: dict[str, Any] | None = None,
 ) -> tuple[list[Any], int]
 ```
 
@@ -324,6 +325,7 @@ Returns unique values for a metadata field, optionally filtered by a search term
   against the metadata field's value.
 - **from\_** (<code>int</code>) – The offset to start returning values from (for pagination).
 - **size** (<code>int</code>) – The maximum number of unique values to return.
+- **filters** (<code>dict\[str, Any\] | None</code>) – Optional filters to restrict the documents considered.
 
 **Returns:**
 
@@ -532,6 +534,7 @@ get_metadata_field_unique_values_async(
     search_term: str | None = None,
     from_: int = 0,
     size: int = 10,
+    filters: dict[str, Any] | None = None,
 ) -> tuple[list[Any], int]
 ```
 
@@ -544,6 +547,7 @@ Returns unique values for a metadata field, optionally filtered by a search term
   against the metadata field's value.
 - **from\_** (<code>int</code>) – The offset to start returning values from (for pagination).
 - **size** (<code>int</code>) – The maximum number of unique values to return.
+- **filters** (<code>dict\[str, Any\] | None</code>) – Optional filters to restrict the documents considered.
 
 **Returns:**
 

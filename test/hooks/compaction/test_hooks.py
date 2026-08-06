@@ -10,12 +10,7 @@ import pytest
 from haystack.components.agents import Agent
 from haystack.components.generators.chat import MockChatGenerator
 from haystack.dataclasses import ChatMessage
-from haystack.hooks.compaction import (
-    Compactor,
-    ContextCompactionHook,
-    SlidingWindowCompactor,
-    ToolResultPruningCompactor,
-)
+from haystack.hooks.compaction import CompactionHook, Compactor, SlidingWindowCompactor, ToolResultPruningCompactor
 from haystack.hooks.compaction.utils import _COMPACTION_META_KEY, _estimated_context_tokens, _last_assistant_index
 from haystack.token_counters import TokenCounter
 from haystack.tools import tool
@@ -79,9 +74,9 @@ class _RecordingCompactor(Compactor):
         self.calls.append("close_async")
 
 
-def _hook(compactor=None, **overrides) -> ContextCompactionHook:
+def _hook(compactor=None, **overrides) -> CompactionHook:
     settings = {"context_window": WINDOW, "compact_at": 0.7, "compact_to": 0.4, "token_counter": FakeCounter()}
-    return ContextCompactionHook(compactor or SlidingWindowCompactor(), **{**settings, **overrides})
+    return CompactionHook(compactor or SlidingWindowCompactor(), **{**settings, **overrides})
 
 
 def _fetch_call(call_id: str) -> ChatMessage:
@@ -110,7 +105,7 @@ def _assert_every_tool_result_is_answered(messages: list[ChatMessage]) -> None:
             assert result.origin.id in offered_call_ids, f"orphaned tool result: {result.origin}"
 
 
-class TestContextCompactionHookConfiguration:
+class TestCompactionHookConfiguration:
     @pytest.mark.parametrize(
         ("compact_at", "compact_to"),
         [
@@ -126,7 +121,7 @@ class TestContextCompactionHookConfiguration:
 
     @pytest.mark.filterwarnings("always::haystack.utils.experimental.ExperimentalWarning")
     def test_warns_that_the_feature_is_experimental(self):
-        with pytest.warns(ExperimentalWarning, match="ContextCompactionHook.*experimental"):
+        with pytest.warns(ExperimentalWarning, match="CompactionHook.*experimental"):
             _hook()
 
     def test_rejects_a_non_positive_window(self):
@@ -134,7 +129,7 @@ class TestContextCompactionHookConfiguration:
             _hook(context_window=0)
 
     def test_serde_round_trip(self):
-        hook = ContextCompactionHook(
+        hook = CompactionHook(
             compactor=SlidingWindowCompactor(min_keep_steps=4), context_window=200_000, compact_at=0.6
         )
         data = hook.to_dict()
@@ -142,7 +137,7 @@ class TestContextCompactionHookConfiguration:
         assert data["init_parameters"]["compact_at"] == 0.6
         assert data["init_parameters"]["compactor"]["init_parameters"]["min_keep_steps"] == 4
         assert data["init_parameters"]["token_counter"]["type"].endswith("ApproximateTokenCounter")
-        restored = ContextCompactionHook.from_dict(data)
+        restored = CompactionHook.from_dict(data)
         assert isinstance(restored.compactor, SlidingWindowCompactor)
         assert restored.context_window == 200_000
         assert restored.compact_at == 0.6
@@ -150,7 +145,7 @@ class TestContextCompactionHookConfiguration:
     def test_survives_an_agent_serde_round_trip(self):
         agent = _agent({"before_llm": [_hook()]})
         hook = Agent.from_dict(agent.to_dict()).hooks["before_llm"][0]
-        assert isinstance(hook, ContextCompactionHook)
+        assert isinstance(hook, CompactionHook)
         assert isinstance(hook.compactor, SlidingWindowCompactor)
         assert hook.context_window == WINDOW
 
@@ -159,7 +154,7 @@ class TestContextCompactionHookConfiguration:
             Agent(chat_generator=MockChatGenerator(), tools=[fetch], hooks={"after_tool": [_hook()]})
 
 
-class TestContextCompactionHook:
+class TestCompactionHook:
     @pytest.mark.parametrize(
         ("context_tokens", "should_compact"),
         [
@@ -265,10 +260,8 @@ class TestContextCompactionHook:
             tool_result("recent result " * 400, call_id="recent"),
         ]
         settings = {"context_window": 2000, "compact_at": 0.5, "compact_to": 0.1, "token_counter": counter}
-        pruning_hook = ContextCompactionHook(
-            compactor=ToolResultPruningCompactor(min_keep_steps=1, min_tokens=0), **settings
-        )
-        sliding_window_hook = ContextCompactionHook(compactor=SlidingWindowCompactor(), **settings)
+        pruning_hook = CompactionHook(compactor=ToolResultPruningCompactor(min_keep_steps=1, min_tokens=0), **settings)
+        sliding_window_hook = CompactionHook(compactor=SlidingWindowCompactor(), **settings)
         # Provider usage covers through the last assistant call plus request overhead; the trailing result is local.
         reported_context_tokens = counter.count(messages=messages[:-1]) + 100
         state = make_state(messages, context_tokens=reported_context_tokens)
@@ -296,7 +289,7 @@ class TestContextCompactionHook:
         assert compactor.calls == ["warm_up", "close"]
 
 
-class TestContextCompactionHookInAgent:
+class TestCompactionHookInAgent:
     def test_compacts_a_multi_step_run(self):
         compacted = _agent({"before_llm": [_hook()]}).run(messages=[ChatMessage.from_user("start")])
         uncompacted = _agent(None).run(messages=[ChatMessage.from_user("start")])
@@ -315,7 +308,7 @@ class TestContextCompactionHookInAgent:
         assert count_markers(messages=result["messages"]) == 0
 
 
-class TestContextCompactionHookAsync:
+class TestCompactionHookAsync:
     @pytest.mark.asyncio
     async def test_run_async_uses_the_async_compaction_path(self):
         compactor = _RecordingCompactor()
