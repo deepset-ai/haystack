@@ -113,7 +113,9 @@ def test_init_validation():
 def test_sequential_first_success():
     gen = FallbackChatGenerator(chat_generators=[_DummySuccessGen(text="A")])
     res = gen.run([ChatMessage.from_user("hi")])
+    assert isinstance(res["replies"], list)
     replies: list[ChatMessage] = res["replies"]
+    assert isinstance(res["meta"], dict)
     meta: dict[str, Any] = res["meta"]
     assert replies[0].text == "A"
     assert meta["successful_chat_generator_index"] == 0
@@ -124,6 +126,7 @@ def test_run_with_string_input():
     inner = _DummySuccessGen()
     gen = FallbackChatGenerator(chat_generators=[inner])
     res = gen.run("hi")
+    assert isinstance(res["replies"], list)
     replies: list[ChatMessage] = res["replies"]
     assert inner.received_messages[0] == [ChatMessage.from_user("hi")]
     assert isinstance(replies[0], ChatMessage)
@@ -133,6 +136,7 @@ async def test_run_async_with_string_input():
     inner = _DummySuccessGen()
     gen = FallbackChatGenerator(chat_generators=[inner])
     res = await gen.run_async("hi")
+    assert isinstance(res["replies"], list)
     replies: list[ChatMessage] = res["replies"]
     assert inner.received_messages[0] == [ChatMessage.from_user("hi")]
     assert isinstance(replies[0], ChatMessage)
@@ -141,7 +145,9 @@ async def test_run_async_with_string_input():
 def test_sequential_second_success_after_failure():
     gen = FallbackChatGenerator(chat_generators=[_DummyFailGen(), _DummySuccessGen(text="B")])
     res = gen.run([ChatMessage.from_user("hi")])
+    assert isinstance(res["replies"], list)
     replies: list[ChatMessage] = res["replies"]
+    assert isinstance(res["meta"], dict)
     meta: dict[str, Any] = res["meta"]
     assert replies[0].text == "B"
     assert meta["successful_chat_generator_index"] == 1
@@ -159,6 +165,7 @@ def test_timeout_handling_sync():
     fast = _DummySuccessGen(text="fast", delay=0.0)
     gen = FallbackChatGenerator(chat_generators=[slow, fast])
     res = gen.run([ChatMessage.from_user("hi")])
+    assert isinstance(res["replies"], list)
     replies: list[ChatMessage] = res["replies"]
     assert replies[0].text == "slow"
 
@@ -169,6 +176,7 @@ async def test_timeout_handling_async():
     fast = _DummySuccessGen(text="fast", delay=0.0)
     gen = FallbackChatGenerator(chat_generators=[slow, fast])
     res = await gen.run_async([ChatMessage.from_user("hi")])
+    assert isinstance(res["replies"], list)
     replies: list[ChatMessage] = res["replies"]
     assert replies[0].text == "slow"
 
@@ -203,6 +211,7 @@ def test_serialization_roundtrip():
     assert isinstance(restored, FallbackChatGenerator)
     assert len(restored.chat_generators) == 1
     res = restored.run([ChatMessage.from_user("hi")])
+    assert isinstance(res["replies"], list)
     replies: list[ChatMessage] = res["replies"]
     assert replies[0].text == "hello"
 
@@ -212,6 +221,7 @@ def test_serialization_roundtrip():
     assert isinstance(restored, FallbackChatGenerator)
     assert len(restored.chat_generators) == 2
     res = restored.run([ChatMessage.from_user("hi")])
+    assert isinstance(res["replies"], list)
     replies2: list[ChatMessage] = res["replies"]
     assert replies2[0].text == "hello"
 
@@ -219,7 +229,9 @@ def test_serialization_roundtrip():
 def test_automatic_completion_mode_without_streaming():
     gen = FallbackChatGenerator(chat_generators=[_DummySuccessGen(text="completion")])
     res = gen.run([ChatMessage.from_user("hi")])
+    assert isinstance(res["replies"], list)
     replies: list[ChatMessage] = res["replies"]
+    assert isinstance(res["meta"], dict)
     meta: dict[str, Any] = res["meta"]
     assert replies[0].text == "completion"
     assert meta["successful_chat_generator_index"] == 0
@@ -233,6 +245,7 @@ def test_automatic_ttft_mode_with_streaming():
 
     gen = FallbackChatGenerator(chat_generators=[_DummySuccessGen(text="streaming")])
     res = gen.run([ChatMessage.from_user("hi")], streaming_callback=cb)
+    assert isinstance(res["replies"], list)
     replies: list[ChatMessage] = res["replies"]
     assert replies[0].text == "streaming"
     assert calls
@@ -247,6 +260,7 @@ async def test_automatic_ttft_mode_with_streaming_async():
 
     gen = FallbackChatGenerator(chat_generators=[_DummySuccessGen(text="streaming_async")])
     res = await gen.run_async([ChatMessage.from_user("hi")], streaming_callback=cb)
+    assert isinstance(res["replies"], list)
     replies: list[ChatMessage] = res["replies"]
     assert replies[0].text == "streaming_async"
     assert calls
@@ -295,6 +309,7 @@ def test_failover_trigger_429_rate_limit():
     fallback = FallbackChatGenerator(chat_generators=[rate_limit_gen, success_gen])
     result = fallback.run([ChatMessage.from_user("test")])
 
+    assert isinstance(result["replies"], list)
     replies: list[ChatMessage] = result["replies"]
     meta: dict[str, Any] = result["meta"]
     assert replies[0].text == "success_after_rate_limit"
@@ -309,6 +324,7 @@ def test_failover_trigger_401_authentication():
     fallback = FallbackChatGenerator(chat_generators=[auth_error_gen, success_gen])
     result = fallback.run([ChatMessage.from_user("test")])
 
+    assert isinstance(result["replies"], list)
     replies: list[ChatMessage] = result["replies"]
     meta: dict[str, Any] = result["meta"]
     assert replies[0].text == "success_after_auth"
@@ -323,6 +339,7 @@ def test_failover_trigger_400_bad_request():
     fallback = FallbackChatGenerator(chat_generators=[bad_request_gen, success_gen])
     result = fallback.run([ChatMessage.from_user("test")])
 
+    assert isinstance(result["replies"], list)
     replies: list[ChatMessage] = result["replies"]
     meta: dict[str, Any] = result["meta"]
     assert replies[0].text == "success_after_bad_request"
@@ -337,6 +354,7 @@ def test_failover_trigger_500_server_error():
     fallback = FallbackChatGenerator(chat_generators=[server_error_gen, success_gen])
     result = fallback.run([ChatMessage.from_user("test")])
 
+    assert isinstance(result["replies"], list)
     replies: list[ChatMessage] = result["replies"]
     meta: dict[str, Any] = result["meta"]
     assert replies[0].text == "success_after_server_error"
@@ -353,6 +371,7 @@ def test_failover_trigger_multiple_errors():
     fallback = FallbackChatGenerator(chat_generators=[rate_limit_gen, auth_error_gen, server_error_gen, success_gen])
     result = fallback.run([ChatMessage.from_user("test")])
 
+    assert isinstance(result["replies"], list)
     replies: list[ChatMessage] = result["replies"]
     meta: dict[str, Any] = result["meta"]
     assert replies[0].text == "success_after_all_errors"
@@ -383,6 +402,7 @@ async def test_failover_trigger_429_rate_limit_async():
     fallback = FallbackChatGenerator(chat_generators=[rate_limit_gen, success_gen])
     result = await fallback.run_async([ChatMessage.from_user("test")])
 
+    assert isinstance(result["replies"], list)
     replies: list[ChatMessage] = result["replies"]
     meta: dict[str, Any] = result["meta"]
     assert replies[0].text == "success_after_rate_limit"
@@ -398,6 +418,7 @@ async def test_failover_trigger_401_authentication_async():
     fallback = FallbackChatGenerator(chat_generators=[auth_error_gen, success_gen])
     result = await fallback.run_async([ChatMessage.from_user("test")])
 
+    assert isinstance(result["replies"], list)
     replies: list[ChatMessage] = result["replies"]
     meta: dict[str, Any] = result["meta"]
     assert replies[0].text == "success_after_auth"
@@ -516,6 +537,7 @@ def test_serialization_with_custom_generators_without_to_dict():
 
     # Verify pipeline execution on the restored instance
     res = restored.run([ChatMessage.from_user("hi")])
+    assert isinstance(res["replies"], list)
     replies: list[ChatMessage] = res["replies"]
     assert replies[0].text == "dummy_has_dict"
 
