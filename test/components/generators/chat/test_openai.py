@@ -613,9 +613,7 @@ class TestOpenAIChatGenerator:
 
         assert component.client is not None
         with patch.object(
-            component.client.chat.completions,
-            "create",
-            return_value=wrapped_openai_stream,
+            component.client.chat.completions, "create", return_value=wrapped_openai_stream
         ) as mock_create:
             response = component.run(chat_messages, streaming_callback=streaming_callback)
 
