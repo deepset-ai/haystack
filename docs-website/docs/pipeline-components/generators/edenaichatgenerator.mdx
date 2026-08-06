@@ -118,7 +118,10 @@ question = "What is Eden AI?"
 result = rag_pipeline.run(
     {
         "fetcher": {"urls": ["https://www.edenai.co/"]},
-        "prompt_builder": {"template_variables": {"query": question}, "template": messages},
+        "prompt_builder": {
+            "template_variables": {"query": question},
+            "template": messages,
+        },
     },
 )
 

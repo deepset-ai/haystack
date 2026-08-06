@@ -78,7 +78,9 @@ document_store = InMemoryDocumentStore()
 
 indexing_pipeline = Pipeline()
 indexing_pipeline.add_component("converter", TextFileToDocument())
-indexing_pipeline.add_component("embedder", EdenAIDocumentEmbedder(model="openai/text-embedding-3-small"))
+indexing_pipeline.add_component(
+    "embedder", EdenAIDocumentEmbedder(model="openai/text-embedding-3-small")
+)
 indexing_pipeline.add_component("writer", DocumentWriter(document_store=document_store))
 
 indexing_pipeline.connect("converter", "embedder")

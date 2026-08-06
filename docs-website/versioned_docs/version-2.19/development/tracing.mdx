@@ -66,17 +66,22 @@ To use OpenTelemetry as your tracing backend, follow these steps:
      from opentelemetry.semconv.resource import ResourceAttributes
 
      # Service name is required for most backends
-     resource = Resource(attributes={
-         ResourceAttributes.SERVICE_NAME: "haystack"  # Correct constant
-     })
+     resource = Resource(
+         attributes={
+             ResourceAttributes.SERVICE_NAME: "haystack"  # Correct constant
+         }
+     )
 
      tracer_provider = TracerProvider(resource=resource)
-     processor = BatchSpanProcessor(OTLPSpanExporter(endpoint="http://localhost:4318/v1/traces"))
+     processor = BatchSpanProcessor(
+         OTLPSpanExporter(endpoint="http://localhost:4318/v1/traces")
+     )
      tracer_provider.add_span_processor(processor)
      trace.set_tracer_provider(tracer_provider)
 
      # Tell Haystack to auto-detect the configured tracer
      import haystack.tracing
+
      haystack.tracing.auto_enable_tracing()
 
      # Explicitly tell Haystack to use your tracer
@@ -156,36 +161,40 @@ To use your custom tracing backend with Haystack, follow these steps:
    from haystack.tracing import utils as tracing_utils
    import opentelemetry.trace
 
-   class OpenTelemetrySpan(Span):
-      def __init__(self, span: opentelemetry.trace.Span) -> None:
-          self._span = span
 
-      def set_tag(self, key: str, value: Any) -> None:
-   			 # Tracing backends usually don't support any tag value
-   			 # `coerce_tag_value` forces the value to either be a Python
-   			 # primitive (int, float, boolean, str) or tries to dump it as string.
-          coerced_value = tracing_utils.coerce_tag_value(value)
-          self._span.set_attribute(key, coerced_value)
+   class OpenTelemetrySpan(Span):
+       def __init__(self, span: opentelemetry.trace.Span) -> None:
+           self._span = span
+
+       def set_tag(self, key: str, value: Any) -> None:
+           # Tracing backends usually don't support any tag value
+           # `coerce_tag_value` forces the value to either be a Python
+           # primitive (int, float, boolean, str) or tries to dump it as string.
+           coerced_value = tracing_utils.coerce_tag_value(value)
+           self._span.set_attribute(key, coerced_value)
+
 
    class OpenTelemetryTracer(Tracer):
-      def __init__(self, tracer: opentelemetry.trace.Tracer) -> None:
-          self._tracer = tracer
+       def __init__(self, tracer: opentelemetry.trace.Tracer) -> None:
+           self._tracer = tracer
 
-      @contextlib.contextmanager
-      def trace(self, operation_name: str, tags: Optional[Dict[str, Any]] = None) -> Iterator[Span]:
-          with self._tracer.start_as_current_span(operation_name) as span:
-              span = OpenTelemetrySpan(span)
-              if tags:
-                  span.set_tags(tags)
+       @contextlib.contextmanager
+       def trace(
+           self, operation_name: str, tags: Optional[Dict[str, Any]] = None
+       ) -> Iterator[Span]:
+           with self._tracer.start_as_current_span(operation_name) as span:
+               span = OpenTelemetrySpan(span)
+               if tags:
+                   span.set_tags(tags)
 
-              yield span
+               yield span
 
-      def current_span(self) -> Optional[Span]:
-          current_span = trace.get_current_span()
-          if isinstance(current_span, NonRecordingSpan):
-              return None
+       def current_span(self) -> Optional[Span]:
+           current_span = trace.get_current_span()
+           if isinstance(current_span, NonRecordingSpan):
+               return None
 
-          return OpenTelemetrySpan(current_span)
+           return OpenTelemetrySpan(current_span)
    ```
 
 2. Tell Haystack to use your custom tracer:
@@ -279,12 +288,12 @@ Use [Jaeger](https://www.jaegertracing.io/docs/1.6/getting-started/) as a lightw
    from opentelemetry.sdk.trace.export import BatchSpanProcessor
 
    # Service name is required for most backends
-   resource = Resource(attributes={
-       ResourceAttributes.SERVICE_NAME: "haystack"
-   })
+   resource = Resource(attributes={ResourceAttributes.SERVICE_NAME: "haystack"})
 
    tracer_provider = TracerProvider(resource=resource)
-   processor = BatchSpanProcessor(OTLPSpanExporter(endpoint="http://localhost:4318/v1/traces"))
+   processor = BatchSpanProcessor(
+       OTLPSpanExporter(endpoint="http://localhost:4318/v1/traces")
+   )
    tracer_provider.add_span_processor(processor)
    trace.set_tracer_provider(tracer_provider)
    ```

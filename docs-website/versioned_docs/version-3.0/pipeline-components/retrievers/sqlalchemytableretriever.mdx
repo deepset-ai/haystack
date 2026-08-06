@@ -63,7 +63,9 @@ pip install psycopg2-binary
 A self-contained example using an in-memory SQLite database seeded via `init_script`:
 
 ```python
-from haystack_integrations.components.retrievers.sqlalchemy import SQLAlchemyTableRetriever
+from haystack_integrations.components.retrievers.sqlalchemy import (
+    SQLAlchemyTableRetriever,
+)
 
 retriever = SQLAlchemyTableRetriever(
     drivername="sqlite",
@@ -83,7 +85,9 @@ Connecting to a real backend looks the same — swap the driver and pass connect
 
 ```python
 from haystack.utils import Secret
-from haystack_integrations.components.retrievers.sqlalchemy import SQLAlchemyTableRetriever
+from haystack_integrations.components.retrievers.sqlalchemy import (
+    SQLAlchemyTableRetriever,
+)
 
 retriever = SQLAlchemyTableRetriever(
     drivername="postgresql+psycopg2",
@@ -105,7 +109,9 @@ from haystack.utils import Secret
 from haystack.components.builders import ChatPromptBuilder
 from haystack.components.generators.chat import OpenAIChatGenerator
 from haystack.dataclasses import ChatMessage
-from haystack_integrations.components.retrievers.sqlalchemy import SQLAlchemyTableRetriever
+from haystack_integrations.components.retrievers.sqlalchemy import (
+    SQLAlchemyTableRetriever,
+)
 
 retriever = SQLAlchemyTableRetriever(
     drivername="postgresql+psycopg2",

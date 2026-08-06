@@ -18,7 +18,7 @@ description: "Use SlidingWindowCompactor to remove older Agent history while pre
 
 |  |  |
 | --- | --- |
-| **Used by** | [`ContextCompactionHook`](context-compaction-hook.mdx) |
+| **Used by** | [`CompactionHook`](compaction-hook.mdx) |
 | **Mandatory init variables** | None |
 | **Import path** | `haystack.hooks.compaction.SlidingWindowCompactor` |
 | **API reference** | [Hooks](/reference/hooks-api) |
@@ -29,12 +29,12 @@ description: "Use SlidingWindowCompactor to remove older Agent history while pre
 
 ## Usage
 
-Pass the compactor to a `ContextCompactionHook`:
+Pass the compactor to a `CompactionHook`:
 
 ```python
-from haystack.hooks.compaction import ContextCompactionHook, SlidingWindowCompactor
+from haystack.hooks.compaction import CompactionHook, SlidingWindowCompactor
 
-compaction_hook = ContextCompactionHook(
+compaction_hook = CompactionHook(
     compactor=SlidingWindowCompactor(
         min_keep_steps=1,
         omission_note=(
@@ -47,7 +47,7 @@ compaction_hook = ContextCompactionHook(
 )
 ```
 
-`ContextCompactionHook` determines when compaction runs and provides the target token count. `SlidingWindowCompactor` determines which messages to retain.
+`CompactionHook` determines when compaction runs and provides the target token count. `SlidingWindowCompactor` determines which messages to retain.
 
 ## How the sliding window is selected
 
