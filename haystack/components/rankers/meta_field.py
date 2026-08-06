@@ -234,7 +234,7 @@ class MetaFieldRanker:
         if not documents:
             return {"documents": []}
 
-        top_k = top_k or self.top_k
+        top_k = self.top_k if top_k is None else top_k
         weight = weight if weight is not None else self.weight
         ranking_mode = ranking_mode or self.ranking_mode
         sort_order = sort_order or self.sort_order
