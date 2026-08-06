@@ -11,9 +11,11 @@ Haystack relies on anonymous usage statistics to continuously improve. That's wh
 
 ## What Information Is Shared?
 
-Telemetry in Haystack comprises anonymous usage statistics of base components, such as `DocumentStore`, `Retriever`, `Reader`, or any other pipeline component. We receive an event every time these components are initialized. This way, we know which components are most relevant to our community. For the same reason, an event is also sent when one of the tutorials is executed.
+Telemetry in Haystack comprises anonymous usage statistics about the pipelines you run. An event is sent when a pipeline runs, listing the class name of each component in it. This way, we know which components are most relevant to our community.
 
-Each event contains an anonymous, randomly generated user ID (`uuid`)  and a collection of properties about your execution environment. They **never** contain properties that can be used to identify you, such as:
+Events are rate-limited: a given pipeline sends at most one event per minute, no matter how often you call `run()`.
+
+Each event contains an anonymous, randomly generated user ID (`uuid`) and a collection of properties about your execution environment. The user ID is stored locally in `~/.haystack/config.yaml`. Events **never** contain properties that can be used to identify you, such as:
 
 - IP addresses
 - Hostnames
@@ -23,27 +25,39 @@ Each event contains an anonymous, randomly generated user ID (`uuid`)  and a col
 
 By taking the above steps, we ensure that only anonymized data is transmitted to our telemetry server.
 
-Here is an exemplary event that is sent when tutorial 1 is executed by running `Tutorial1_Basic_QA_Pipeline.py`:
+Here is an exemplary event that is sent when a pipeline runs:
 
 ```json
 {
-    "event": "tutorial 1 executed",
+    "event": "Pipeline run (2.x)",
     "distinct_id": "9baab867-3bc8-438c-9974-a192c9d53cd1",
     "properties": {
-        "os_family": "Darwin",
-        "os_machine": "arm64",
-        "os_version": "21.3.0",
-        "haystack_version": "1.0.0",
-        "python_version": "3.9.6",
-        "torch_version": "1.9.0",
-        "transformers_version": "4.13.0",
-        "execution_env": "script",
-        "n_gpu": 0,
-    },
+        "pipeline_id": "140234891234567",
+        "pipeline_type": "haystack.core.pipeline.pipeline.Pipeline",
+        "runs": 1,
+        "components": {
+            "haystack.components.retrievers.in_memory.bm25_retriever.InMemoryBM25Retriever": [
+                { "name": "retriever" }
+            ],
+            "haystack.components.generators.chat.openai.OpenAIChatGenerator": [
+                { "name": "llm", "model": "gpt-4o-mini" }
+            ]
+        },
+        "libraries.haystack": "3.0.0",
+        "os.containerized": false,
+        "os.family": "Darwin",
+        "os.machine": "arm64",
+        "os.version": "25.6.0",
+        "python.version": "3.12.9",
+        "hardware.cpus": 14,
+        "libraries.pytest": false,
+        "libraries.ipython": false,
+        "libraries.colab": false
+    }
 }
 ```
 
-Our telemetry code can be directly inspected on [GitHub](https://github.com/deepset-ai/haystack/blob/5d66d040cc303ab49225587cd61290f1987a5d1f/haystack/telemetry/_telemetry.py).
+Our telemetry code can be directly inspected on [GitHub](https://github.com/deepset-ai/haystack/blob/main/haystack/telemetry/_telemetry.py).
 
 ## How Does Telemetry Help?
 

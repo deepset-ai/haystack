@@ -40,7 +40,7 @@ Cognee configuration (LLM provider, database, vector store) is read from environ
 - `top_k` is *optional* and defaults to `5`. Sets the default maximum number of memories returned per search.
 - `dataset_name` is *optional* and defaults to `"haystack_memory"`. Names the Cognee dataset backing this store.
 - `session_id` is *optional* and defaults to `None`. When set, reads and writes target the session-cache tier. When `None`, the permanent knowledge graph is used.
-- `self_improvement` is *optional* and defaults to `True`. When `True`, Cognee runs graph improvement inline after every write. Set to `False` when you want `improve()` to be the sole improvement trigger.
+- `self_improvement` is *optional* and defaults to `True`. When `True`, Cognee runs graph improvement after every write: inline on the permanent knowledge graph, and as a fire-and-forget background task on the session cache. Set to `False` when you want `improve()` to be the sole improvement trigger.
 - `timeout` is *optional* and defaults to `300`. Per-call timeout in seconds for any Cognee operation.
 
 ### Installation
