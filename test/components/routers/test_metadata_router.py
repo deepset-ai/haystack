@@ -103,6 +103,23 @@ class TestMetadataRouter:
         assert output["matched"] == []
         assert output["unmatched"] == [document]
 
+    def test_datetime_equality_and_ordering_are_consistent_for_mixed_timezone_awareness(self):
+        """Regression test for https://github.com/deepset-ai/haystack/issues/12246."""
+        filter_value = "2023-01-01T00:00:00+00:00"
+        rules = {
+            operator: {"field": "meta.created_at", "operator": operator, "value": filter_value}
+            for operator in ["==", ">=", "<="]
+        }
+        router = MetadataRouter(rules=rules)
+        document = Document(meta={"created_at": "2023-01-01T00:00:00"})
+
+        output = router.run(documents=[document])
+
+        assert output["=="] == [document]
+        assert output[">="] == [document]
+        assert output["<="] == [document]
+        assert output["unmatched"] == []
+
     def test_to_dict(self):
         rules = {
             "edge_1": {
