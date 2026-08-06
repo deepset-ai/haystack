@@ -8,7 +8,7 @@ slug: "/hooks-api"
 
 ## compaction/hooks
 
-### ContextCompactionHook
+### CompactionHook
 
 Compacts an Agent's conversation once it fills too much of the model's context window.
 
@@ -19,9 +19,9 @@ reaches `compact_at` of the window, hands it to a `Compactor` to bring back down
 ```python
 from haystack.components.agents import Agent
 from haystack.components.generators.chat import OpenAIResponsesChatGenerator
-from haystack.hooks.compaction import ContextCompactionHook, SlidingWindowCompactor
+from haystack.hooks.compaction import CompactionHook, SlidingWindowCompactor
 
-hook = ContextCompactionHook(
+hook = CompactionHook(
     compactor=SlidingWindowCompactor(),
     context_window=400_000,
     compact_at=0.7,
@@ -156,7 +156,7 @@ Serialize the hook, including its compactor and token counter.
 #### from_dict
 
 ```python
-from_dict(data: dict[str, Any]) -> ContextCompactionHook
+from_dict(data: dict[str, Any]) -> CompactionHook
 ```
 
 Deserialize the hook, reconstructing its compactor and token counter.
@@ -167,7 +167,7 @@ Deserialize the hook, reconstructing its compactor and token counter.
 
 **Returns:**
 
-- <code>ContextCompactionHook</code> – The deserialized `ContextCompactionHook`.
+- <code>CompactionHook</code> – The deserialized `CompactionHook`.
 
 ## compaction/sliding_window
 
@@ -184,9 +184,9 @@ steps, where a step is an assistant message together with all immediately follow
 ```python
 from haystack.components.agents import Agent
 from haystack.components.generators.chat import OpenAIResponsesChatGenerator
-from haystack.hooks.compaction import ContextCompactionHook, SlidingWindowCompactor
+from haystack.hooks.compaction import CompactionHook, SlidingWindowCompactor
 
-hook = ContextCompactionHook(
+hook = CompactionHook(
     compactor=SlidingWindowCompactor(), context_window=400_000, compact_at=0.7, compact_to=0.4
 )
 agent = Agent(
@@ -268,9 +268,9 @@ result and the model can see what it ran and re-run it if needed.
 ```python
 from haystack.components.agents import Agent
 from haystack.components.generators.chat import OpenAIResponsesChatGenerator
-from haystack.hooks.compaction import ContextCompactionHook, ToolResultPruningCompactor
+from haystack.hooks.compaction import CompactionHook, ToolResultPruningCompactor
 
-hook = ContextCompactionHook(
+hook = CompactionHook(
     compactor=ToolResultPruningCompactor(min_keep_steps=1),
     context_window=400_000,
     compact_at=0.7,
@@ -361,7 +361,7 @@ Bases: <code>Protocol</code>
 Rewrites an Agent's conversation into a shorter one that carries the same working context.
 
 A compactor is the *how* of context compaction; deciding *when* to compact is the caller's job, which
-`ContextCompactionHook` does by comparing the context size against a fraction of the model's window. Strategies
+`CompactionHook` does by comparing the context size against a fraction of the model's window. Strategies
 differ widely in cost and fidelity, from dropping the oldest messages outright to condensing them with an LLM.
 
 Implementations must honor three rules:

@@ -14,7 +14,7 @@ class Compactor(Protocol):
     Rewrites an Agent's conversation into a shorter one that carries the same working context.
 
     A compactor is the *how* of context compaction; deciding *when* to compact is the caller's job, which
-    `ContextCompactionHook` does by comparing the context size against a fraction of the model's window. Strategies
+    `CompactionHook` does by comparing the context size against a fraction of the model's window. Strategies
     differ widely in cost and fidelity, from dropping the oldest messages outright to condensing them with an LLM.
 
     Implementations must honor three rules:
