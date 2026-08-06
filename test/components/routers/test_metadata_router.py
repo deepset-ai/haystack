@@ -104,7 +104,7 @@ class TestMetadataRouter:
         assert output["unmatched"] == [document]
 
     def test_datetime_equality_and_ordering_are_consistent_for_mixed_timezone_awareness(self):
-        """Regression test for https://github.com/deepset-ai/haystack/issues/12246."""
+        """Test that equality and inclusive ordering agree for mixed-awareness datetimes."""
         filter_value = "2023-01-01T00:00:00+00:00"
         rules = {
             operator: {"field": "meta.created_at", "operator": operator, "value": filter_value}
