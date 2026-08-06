@@ -119,11 +119,9 @@ class DocumentMAPEvaluator:
             average_precision_numerator = 0.0
             retrieved_relevant_documents = 0
 
-            ground_truth_values = []
-            for doc in ground_truth:
-                value = self._get_comparison_value(doc)
-                if value is not None and value not in ground_truth_values:
-                    ground_truth_values.append(value)
+            ground_truth_values = {
+                value for doc in ground_truth if (value := self._get_comparison_value(doc)) is not None
+            }
             total_relevant_documents = len(ground_truth_values)
             for rank, retrieved_document in enumerate(retrieved):
                 retrieved_value = self._get_comparison_value(retrieved_document)
@@ -131,7 +129,7 @@ class DocumentMAPEvaluator:
                     continue
 
                 if retrieved_value in ground_truth_values:
-                    ground_truth_values.remove(retrieved_value)
+                    ground_truth_values.discard(retrieved_value)
                     retrieved_relevant_documents += 1
                     average_precision_numerator += retrieved_relevant_documents / (rank + 1)
             if total_relevant_documents:

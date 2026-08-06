@@ -138,10 +138,10 @@ def test_run_with_complex_data():
         "individual_scores": [
             1.0,
             pytest.approx(0.8333333333333333),
-            0.5,
+            0.5,  # Only one of two relevant documents was retrieved.
             pytest.approx(0.5833333333333333),
             0.0,
-            pytest.approx(0.8333333333333333),
+            pytest.approx(0.8333333333333333),  # The duplicate retrieval is not credited again.
         ],
         "score": pytest.approx(0.625),
     }
