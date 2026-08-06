@@ -548,17 +548,15 @@ document_matches_filter_data = [
         id="== operator with datetime filter value and ISO 8601 string Document value",
     ),
     pytest.param(
-        # A naive value is never compared to an aware one: the two only denote the same instant if the
-        # naive one happens to be UTC, and assuming that would silently match different points in time.
         {"field": "meta.date", "operator": "==", "value": datetime(2025, 2, 3, 12, 45, 46, tzinfo=timezone.utc)},
         Document(meta={"date": datetime(2025, 2, 3, 12, 45, 46)}),
-        False,
+        True,
         id="== operator with aware datetime filter value and naive datetime Document value",
     ),
     pytest.param(
         {"field": "meta.date", "operator": "==", "value": "2025-02-03T12:45:46+05:00"},
         Document(meta={"date": "2025-02-03T12:45:46"}),
-        False,
+        True,
         id="== operator with aware ISO 8601 filter value and naive ISO 8601 Document value",
     ),
     pytest.param(
@@ -633,6 +631,72 @@ document_matches_filter_data = [
 @pytest.mark.parametrize("filters, document, expected_result", document_matches_filter_data)
 def test_document_matches_filter(filters, document, expected_result):
     assert document_matches_filter(filters, document) == expected_result
+
+
+@pytest.mark.parametrize(
+    "operator,expected_result",
+    [
+        ("==", True),
+        ("!=", False),
+        (">", False),
+        (">=", True),
+        ("<", False),
+        ("<=", True),
+        ("in", True),
+        ("not in", False),
+    ],
+)
+def test_document_matches_filter_reconciles_mixed_timezone_awareness_by_default(operator, expected_result):
+    filter_value = "2025-02-03T12:45:46+00:00"
+    if operator in {"in", "not in"}:
+        filter_value = [filter_value]
+    filters = {"field": "meta.date", "operator": operator, "value": filter_value}
+
+    assert document_matches_filter(filters, Document(meta={"date": "2025-02-03T12:45:46"})) is expected_result
+
+
+@pytest.mark.parametrize(
+    "operator,expected_result",
+    [
+        ("==", False),
+        ("!=", True),
+        (">", False),
+        (">=", False),
+        ("<", False),
+        ("<=", False),
+        ("in", False),
+        ("not in", True),
+    ],
+)
+@pytest.mark.parametrize(
+    "document_value,filter_value",
+    [
+        ("2025-02-03T12:45:46", "2025-02-03T12:45:46+00:00"),
+        ("2025-02-03T12:45:46+00:00", "2025-02-03T12:45:46"),
+        (datetime(2025, 2, 3, 12, 45, 46), datetime(2025, 2, 3, 12, 45, 46, tzinfo=timezone.utc)),
+        (datetime(2025, 2, 3, 12, 45, 46, tzinfo=timezone.utc), datetime(2025, 2, 3, 12, 45, 46)),
+    ],
+)
+def test_document_matches_filter_strict_datetime_comparison(operator, expected_result, document_value, filter_value):
+    if operator in {"in", "not in"}:
+        filter_value = [filter_value]
+    filters = {"field": "meta.date", "operator": operator, "value": filter_value}
+
+    assert (
+        document_matches_filter(filters, Document(meta={"date": document_value}), strict_datetime_comparison=True)
+        is expected_result
+    )
+
+
+def test_document_matches_filter_strict_datetime_comparison_in_nested_condition():
+    filters = {
+        "operator": "AND",
+        "conditions": [{"field": "meta.date", "operator": ">=", "value": "2025-02-03T12:45:46+00:00"}],
+    }
+
+    assert not document_matches_filter(
+        filters, Document(meta={"date": "2025-02-03T12:45:46"}), strict_datetime_comparison=True
+    )
 
 
 document_matches_filter_raises_error_data = [

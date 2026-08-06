@@ -93,6 +93,16 @@ class TestMetadataRouter:
         assert output["edge_1"][1].meta["created_at"] == "2025-02-01T12:45:46.435816Z"
         assert output["unmatched"][0].meta["created_at"] == "2025-01-03T12:45:46.435816Z"
 
+    def test_run_with_strict_datetime_comparison(self):
+        rules = {"matched": {"field": "meta.created_at", "operator": ">=", "value": "2025-02-01"}}
+        router = MetadataRouter(rules=rules, strict_datetime_comparison=True)
+        document = Document(meta={"created_at": "2025-02-03T12:45:46Z"})
+
+        output = router.run(documents=[document])
+
+        assert output["matched"] == []
+        assert output["unmatched"] == [document]
+
     def test_to_dict(self):
         rules = {
             "edge_1": {
@@ -103,7 +113,11 @@ class TestMetadataRouter:
         router = MetadataRouter(rules=rules)
         expected_dict = {
             "type": "haystack.components.routers.metadata_router.MetadataRouter",
-            "init_parameters": {"rules": rules, "output_type": "list[haystack.dataclasses.document.Document]"},
+            "init_parameters": {
+                "rules": rules,
+                "output_type": "list[haystack.dataclasses.document.Document]",
+                "strict_datetime_comparison": False,
+            },
         }
         assert router.to_dict() == expected_dict
 
@@ -114,13 +128,14 @@ class TestMetadataRouter:
                 "conditions": [{"field": "meta.created_at", "operator": ">=", "value": "2025-02-01"}],
             }
         }
-        router = MetadataRouter(rules=rules, output_type=list[ByteStream | Document])
+        router = MetadataRouter(rules=rules, output_type=list[ByteStream | Document], strict_datetime_comparison=True)
         expected_dict = {
             "type": "haystack.components.routers.metadata_router.MetadataRouter",
             "init_parameters": {
                 "rules": rules,
                 "output_type": "list[haystack.dataclasses.byte_stream.ByteStream "
                 "| haystack.dataclasses.document.Document]",
+                "strict_datetime_comparison": True,
             },
         }
         assert router.to_dict() == expected_dict
