@@ -23,25 +23,27 @@ This method of using an LLM as the evaluator is very flexible as it exposes a nu
 
 ### Using Local LLMs
 
-To use the model-based Evaluators with a local model, pass a Chat Generator pointed at your local endpoint through the `chat_generator` parameter when initializing the Evaluator. The Chat Generator must be configured to return a JSON object.
+To use the model-based Evaluators with a local model, pass a Chat Generator pointed at your local model through the `chat_generator` parameter when initializing the Evaluator. The Chat Generator must be configured to return a JSON object.
 
-The following example shows how this would work with an Ollama model.
+The following example uses [Ollama](https://ollama.com/) through the [`OllamaChatGenerator`](../../pipeline-components/generators/ollamachatgenerator.mdx).
 
-First, make sure that Ollama is running locally:
+[Download and install Ollama](https://ollama.com/download), then pull the model you want to evaluate with. Ollama serves it on `http://localhost:11434` by default, which is where `OllamaChatGenerator` looks:
 
-```curl
-curl http://localhost:11434/api/generate -d '{
-  "model": "llama3",
-  "prompt":"Why is the sky blue?"
-}'
+```shell
+ollama pull qwen3:1.7b
 ```
 
-Then, your pipeline would look like this:
+Then install the integration:
+
+```shell
+pip install ollama-haystack
+```
+
+`OllamaChatGenerator` takes a `response_format` parameter, so setting it to `"json"` is all you need to satisfy the Evaluator's JSON requirement:
 
 ```python
 from haystack.components.evaluators import FaithfulnessEvaluator
-from haystack.components.generators.chat import OpenAIChatGenerator
-from haystack.utils import Secret
+from haystack_integrations.components.generators.ollama import OllamaChatGenerator
 
 questions = ["Who created the Python language?"]
 contexts = [
@@ -56,15 +58,9 @@ contexts = [
 predicted_answers = [
     "Python is a high-level general-purpose programming language that was created by George Lucas.",
 ]
-local_endpoint = "http://localhost:11434/v1"
 
 evaluator = FaithfulnessEvaluator(
-    chat_generator=OpenAIChatGenerator(
-        api_key=Secret.from_token("just-a-placeholder"),
-        model="llama3",
-        api_base_url=local_endpoint,
-        generation_kwargs={"response_format": {"type": "json_object"}},
-    ),
+    chat_generator=OllamaChatGenerator(model="qwen3:1.7b", response_format="json"),
 )
 
 result = evaluator.run(
@@ -72,7 +68,16 @@ result = evaluator.run(
     contexts=contexts,
     predicted_answers=predicted_answers,
 )
+print(result["score"])
+print(result["results"][0]["statement_scores"])
 ```
+
+```text
+0.5
+[1, 0]
+```
+
+The Evaluator splits the answer into two statements, and only the first one is supported by the context, so the answer scores 0.5.
 
 ### Using Small Cross-Encoder Models for Evaluation
 
