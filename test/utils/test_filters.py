@@ -143,18 +143,7 @@ document_matches_filter_data = [
         True,
         id="> operator with ISO 8601 string filter value and datetime Document value",
     ),
-    pytest.param(
-        {"field": "meta.date", "operator": ">", "value": datetime(2023, 1, 1, tzinfo=timezone.utc)},
-        Document(meta={"date": datetime(2024, 1, 1)}),
-        True,
-        id="> operator with aware datetime filter value and naive datetime Document value",
-    ),
-    pytest.param(
-        {"field": "meta.date", "operator": ">", "value": datetime(2023, 1, 1)},
-        Document(meta={"date": datetime(2024, 1, 1, tzinfo=timezone.utc)}),
-        True,
-        id="> operator with naive datetime filter value and aware datetime Document value",
-    ),
+
     pytest.param(
         {"field": "meta.page", "operator": ">", "value": 10},
         Document(),
@@ -622,10 +611,10 @@ document_matches_filter_data = [
         id="in operator with numeric string filter value and numeric Document value",
     ),
     pytest.param(
-        {"field": "meta.date", "operator": ">=", "value": "2025-02-01"},
+        {"field": "meta.date", "operator": ">=", "value": "2025-02-03T12:45:46.435816Z"},
         Document(meta={"date": "2025-02-03T12:45:46.435816Z"}),
         True,
-        id=">= operator with naive and aware ISO 8601 datetime Document value",
+        id=">= operator with equal aware ISO 8601 datetime Document value",
     ),
 ]
 
@@ -695,6 +684,19 @@ def test_document_matches_filter_raises_error(filters):
     with pytest.raises(FilterError):
         document = Document(meta={"page": 10})
         document_matches_filter(filters, document)
+
+
+def test_ordering_and_equality_consistent_for_mixed_timezone_awareness():
+    """Regression test for #12246: ordering and equality must agree on mixed-awareness datetimes.
+
+    Before the fix, >= and <= both returned True (tzinfo was copied) while == returned False,
+    making a >= b and a <= b without a == b - a contradiction.
+    """
+    doc = Document(content="c", meta={"d": "2023-01-01T00:00:00"})
+    filter_value = "2023-01-01T00:00:00+00:00"
+    for op in [">", ">=", "<", "<="]:
+        with pytest.raises(FilterError, match="timezone-naive"):
+            document_matches_filter({"field": "meta.d", "operator": op, "value": filter_value}, doc)
 
 
 @pytest.mark.parametrize(

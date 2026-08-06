@@ -149,7 +149,7 @@ def _parse_date(value: str) -> datetime:
 
 
 def _ensure_both_dates_naive_or_aware(date1: datetime, date2: datetime) -> tuple[datetime, datetime]:
-    """Ensure that both dates are either naive or aware."""
+    """Ensure that both dates are either naive or aware, raising FilterError when they differ."""
     # Both naive
     if date1.tzinfo is None and date2.tzinfo is None:
         return date1, date2
@@ -158,12 +158,14 @@ def _ensure_both_dates_naive_or_aware(date1: datetime, date2: datetime) -> tuple
     if date1.tzinfo is not None and date2.tzinfo is not None:
         return date1, date2
 
-    # One naive, one aware
-    if date1.tzinfo is None:
-        date1 = date1.replace(tzinfo=date2.tzinfo)
-    else:
-        date2 = date2.replace(tzinfo=date1.tzinfo)
-    return date1, date2
+    # One naive, one aware: guessing the timezone would silently compare different instants.
+    # Raise FilterError to match the policy already in place for == and !=.
+    msg = (
+        "Cannot compare a timezone-naive datetime with a timezone-aware one using ordering operators. "
+        "Ensure both the document value and the filter value are either both naive (no timezone) "
+        "or both aware (with a timezone)."
+    )
+    raise FilterError(msg)
 
 
 def _greater_than_equal(value: Any, filter_value: Any) -> bool:

@@ -1,0 +1,12 @@
+---
+fixes:
+  - |
+    Fixed an inconsistency in metadata filter ordering operators (``>``, ``>=``, ``<``, ``<=``)
+    when comparing a timezone-naive datetime value from a document with a timezone-aware filter
+    value (or vice versa). Previously, the ordering operators would silently copy the timezone
+    from one side to the other and return a result, while the equality operator (``==``) already
+    raised a ``FilterError`` for the same mixed-awareness pair. This made ``a >= b`` and
+    ``a <= b`` both return ``True`` while ``a == b`` was ``False`` — a logical contradiction.
+    Now all ordering operators raise ``FilterError`` with a clear message when the two datetimes
+    differ in timezone awareness, consistent with the behaviour already in place for ``==`` and
+    ``!=``.
