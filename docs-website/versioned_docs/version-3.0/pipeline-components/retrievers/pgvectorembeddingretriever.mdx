@@ -38,7 +38,7 @@ Some relevant parameters that impact the embedding retrieval must be defined whe
 To quickly set up a PostgreSQL database with pgvector, you can use Docker:
 
 ```shell
-docker run -d -p 5432:5432 -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=postgres ankane/pgvector
+docker run -d -p 5432:5432 -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=postgres pgvector/pgvector:pg17
 ```
 
 For more information on installing pgvector, visit the [pgvector GitHub repository](https://github.com/pgvector/pgvector).
@@ -49,7 +49,7 @@ To use pgvector with Haystack, install the `pgvector-haystack` integration:
 pip install pgvector-haystack
 ```
 
-The examples on this page use Sentence Transformers embedders that have moved to the `sentence-transformers-haystack` package. Install it to run the examples:
+The examples on this page use Sentence Transformers embedders from the `sentence-transformers-haystack` package. Install it to run the examples:
 
 ```shell
 pip install sentence-transformers-haystack

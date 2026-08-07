@@ -29,7 +29,7 @@ Based on ONXX Runtime, FastEmbed provides a fast experience on standard CPU mach
 
 `FastembedRanker` is most useful in query pipelines such as a retrieval-augmented generation (RAG) pipeline or a document search pipeline to ensure the retrieved documents are ordered by relevance. You can use it after a Retriever (such as the [`InMemoryEmbeddingRetriever`](../retrievers/inmemoryembeddingretriever.mdx)) to improve the search results. When using `FastembedRanker` with a Retriever, consider setting the Retriever's `top_k` to a small number. This way, the Ranker will have fewer documents to process, which can help make your pipeline faster.
 
-By default, this component uses the `Xenova/ms-marco-MiniLM-L-6-v2` model, but you can switch to a different model by adjusting the `model` parameter when initializing the Ranker. For details on different initialization settings, check out the [API reference](/reference/fastembed-embedders) page.
+By default, this component uses the `Xenova/ms-marco-MiniLM-L-6-v2` model, but you can switch to a different model by adjusting the `model_name` parameter when initializing the Ranker. For details on different initialization settings, check out the [API reference](/reference/fastembed-embedders) page.
 
 ### Compatible Models
 
@@ -50,7 +50,7 @@ You can set the path where the model is stored in a cache directory. You can als
 ```python
 cache_dir = "/your_cacheDirectory"
 ranker = FastembedRanker(
-    model="Xenova/ms-marco-MiniLM-L-6-v2",
+    model_name="Xenova/ms-marco-MiniLM-L-6-v2",
     cache_dir=cache_dir,
     threads=2,
 )

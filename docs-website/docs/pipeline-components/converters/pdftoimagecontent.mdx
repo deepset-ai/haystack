@@ -52,7 +52,7 @@ image_contents = converter.run(sources=sources)["image_contents"]
 print(image_contents)
 
 # [ImageContent(base64_image='...',
-# mime_type='application/pdf',
+# mime_type='image/jpeg',
 # detail=None,
 # meta={'file_path': 'file.pdf', 'page_number': 1}),
 # ...]
@@ -60,7 +60,7 @@ print(image_contents)
 
 ### In a pipeline
 
-Use `ImageFileToImageContent` to supply image data to a `ChatPromptBuilder` for multimodal QA or captioning with an LLM.
+Use `PDFToImageContent` to supply page images to a `ChatPromptBuilder` for multimodal QA or captioning with an LLM.
 
 ```python
 from haystack import Pipeline
@@ -102,7 +102,7 @@ result = pipeline.run(
         "chat_prompt_builder": {"question": "What is the main takeaway of Figure 6?"},
     },
 )
-print(result["replies"][0].text)
+print(result["llm"]["replies"][0].text)
 
 # ('The main takeaway of Figure 6 is that Flan-PaLM demonstrates improved '
 # 'performance in zero-shot reasoning tasks when utilizing chain-of-thought '

@@ -49,11 +49,11 @@ pip install fastembed-haystack
 You can set the path where the model will be stored in a cache directory. Also, you can set the number of threads a single `onnxruntime` session can use.
 
 ```python
-cache_dir= "/your_cacheDirectory"
+cache_dir = "/your_cacheDirectory"
 embedder = FastembedDocumentEmbedder(
-	*model="*BAAI/bge-large-en-v1.5",
-	cache_dir=cache_dir,
-	threads=2
+    model="BAAI/bge-large-en-v1.5",
+    cache_dir=cache_dir,
+    threads=2,
 )
 ```
 

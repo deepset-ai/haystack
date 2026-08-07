@@ -42,8 +42,8 @@ If you want more flexible matching of a query to Documents, you can use the `Ope
 If you have Docker set up, we recommend pulling the Docker image and running it.
 
 ```shell
-docker pull opensearchproject/opensearch:2.11.0
-docker run -p 9200:9200 -p 9600:9600 -e "discovery.type=single-node" -e "ES_JAVA_OPTS=-Xms1024m -Xmx1024m" opensearchproject/opensearch:2.11.0
+docker pull opensearchproject/opensearch:3.5.0
+docker run -p 9200:9200 -p 9600:9600 -e "discovery.type=single-node" -e "ES_JAVA_OPTS=-Xms1024m -Xmx1024m" -e "OPENSEARCH_INITIAL_ADMIN_PASSWORD=<custom-admin-password>" opensearchproject/opensearch:3.5.0
 ```
 
 As an alternative, you can go to [OpenSearch integration GitHub](https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/opensearch) and start a Docker container running OpenSearch using the provided `docker-compose.yml`:
@@ -103,7 +103,7 @@ document_store = OpenSearchDocumentStore(
     hosts="http://localhost:9200",
     use_ssl=True,
     verify_certs=False,
-    http_auth=("admin", "admin"),
+    http_auth=("admin", "<custom-admin-password>"),
 )
 
 # Add Documents
@@ -152,9 +152,14 @@ Here’s an example output:
 #   data='Over 7,000 languages are spoken around the world today.',
 #   query='How many languages are spoken around the world today?',
 #   documents=[
-#     Document(id=cfe93bc1c274908801e6670440bf2bbba54fad792770d57421f85ffa2a4fcc94, content: 'There are over 7,000 languages spoken around the world today.', score: 7.179112),
-#     Document(id=7f225626ad1019b273326fbaf11308edfca6d663308a4a3533ec7787367d59a2, content: 'In certain parts of the world, like the Maldives, Puerto Rico, and San Diego, you can witness the ph...', score: 1.1426818)],
-#   meta={'model': 'gpt-5-mini', 'index': 0, 'finish_reason': 'stop', 'usage': {'prompt_tokens': 86, 'completion_tokens': 13, 'total_tokens': 99}})
+#     Document(id=cfe93bc1c274908801e6670440bf2bbba54fad792770d57421f85ffa2a4fcc94, content: 'There are over 7,000 languages spoken around the world today.', meta: {'source_index': 1}, score: 3.263233),
+#     Document(id=7f225626ad1019b273326fbaf11308edfca6d663308a4a3533ec7787367d59a2, content: 'In certain parts of the world, like the Maldives, Puerto Rico, and San Diego, you can witness the ph...', meta: {'source_index': 2}, score: 0.51940084)],
+#   meta={'model': 'gpt-5-mini-2025-08-07', 'index': 0, 'finish_reason': 'stop',
+#     'usage': {'completion_tokens': 86, 'prompt_tokens': 85, 'total_tokens': 171,
+#       'completion_tokens_details': {'accepted_prediction_tokens': 0, 'audio_tokens': 0,
+#         'reasoning_tokens': 64, 'rejected_prediction_tokens': 0},
+#       'prompt_tokens_details': {'audio_tokens': 0, 'cache_write_tokens': None, 'cached_tokens': 0}},
+#     'all_messages': [ChatMessage(_role=<ChatRole.ASSISTANT: 'assistant'>, ...)]})
 ```
 
 ## Additional References

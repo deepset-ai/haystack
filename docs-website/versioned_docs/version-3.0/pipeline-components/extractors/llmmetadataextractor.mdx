@@ -35,7 +35,7 @@ If the LLM fails to extract metadata from a document, it will be added to the `f
 
 These documents can be re-run with another extractor to extract metadata using the `metadata_extraction_response` and `metadata_extraction_error` in the prompt.
 
-The current implementation supports the following Haystack Generators:
+`chat_generator` accepts any Haystack Chat Generator configured to return a JSON object, for example:
 
 - [OpenAIChatGenerator](../generators/openaichatgenerator.mdx)
 - [AzureOpenAIChatGenerator](../generators/azureopenaichatgenerator.mdx)
@@ -115,8 +115,7 @@ Now, define a simple indexing pipeline that uses the `LLMMetadataExtractor` to e
 ```python
 chat_generator = OpenAIChatGenerator(
   generation_kwargs={
-    "max_tokens": 500,
-    "temperature": 0.0,
+    "max_completion_tokens": 500,
     "seed": 0,
     "response_format": {"type": "json_object"},
   },
@@ -126,7 +125,7 @@ chat_generator = OpenAIChatGenerator(
 
 extractor = LLMMetadataExtractor(
   prompt=NER_PROMPT,
-  chat_generator=generator,
+  chat_generator=chat_generator,
   expected_keys=["entities"],
   raise_on_failure=False,
 )
@@ -135,14 +134,14 @@ extractor.run(documents=docs)
 
 >> {'documents': [
   Document(id=.., content: 'deepset was founded in 2018 in Berlin, and is known for its Haystack framework',
-           meta: {'entities': [{'entity': 'deepset', 'entity_type': 'company'}, {'entity': 'Berlin', 'entity_type': 'city'},
+           meta: {'entities': [{'entity': 'deepset', 'entity_type': 'company'},
                                {'entity': 'Haystack', 'entity_type': 'product'}]}),
-  Document(id=.., content: 'Hugging Face is a company that was founded in New York, USA and is known for its Transformers library',
+  Document(id=.., content: 'Hugging Face is a company founded in New York, USA and is known for its Transformers library',
            meta: {'entities': [
-             {'entity': 'Hugging Face', 'entity_type': 'company'}, {'entity': 'New York', 'entity_type': 'city'},
-             {'entity': 'USA', 'entity_type': 'country'}, {'entity': 'Transformers', 'entity_type': 'product'}
+             {'entity': 'Hugging Face', 'entity_type': 'company'}, {'entity': 'USA', 'entity_type': 'country'},
+             {'entity': 'Transformers Library', 'entity_type': 'product'}
            ]})
-]
+   ],
     'failed_documents': []
    }
 >>

@@ -63,7 +63,7 @@ retriever.run(query_embedding=[0.1] * 384)
 
 ### In a Pipeline
 
-The examples on this page use Sentence Transformers embedders that have moved to the `sentence-transformers-haystack` package. Install it to run the examples:
+The examples on this page use Sentence Transformers embedders from the `sentence-transformers-haystack` package. Install it to run the examples:
 
 ```shell
 pip install sentence-transformers-haystack
@@ -83,7 +83,7 @@ from haystack_integrations.components.embedders.sentence_transformers import (
 from haystack_integrations.document_stores.mongodb_atlas import (
     MongoDBAtlasDocumentStore,
 )
-from haystack_integrations.components.embedders.mongodb_atlas import (
+from haystack_integrations.components.retrievers.mongodb_atlas import (
     MongoDBAtlasEmbeddingRetriever,
 )
 
@@ -94,7 +94,6 @@ documents = [
     Document(content="My name is Giorgio and I live in Rome."),
 ]
 
-# We support many different databases. Here we load a simple and lightweight in-memory document store.
 document_store = MongoDBAtlasDocumentStore()
 
 # Define some more components

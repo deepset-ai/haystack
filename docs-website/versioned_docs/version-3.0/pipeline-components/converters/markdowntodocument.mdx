@@ -32,7 +32,7 @@ If your Markdown files start with YAML frontmatter, set `extract_frontmatter=Tru
 
 ## Usage
 
-You need to install `markdown-it-py` and `mdit_plain packages` to use the `MarkdownToDocument` component:
+You need to install the `markdown-it-py` and `mdit_plain` packages to use the `MarkdownToDocument` component:
 
 ```shell
 pip install markdown-it-py mdit_plain
@@ -45,7 +45,7 @@ from haystack.components.converters import MarkdownToDocument
 
 converter = MarkdownToDocument()
 
-docs = converter.run(sources=Path("my_file.md"))
+docs = converter.run(sources=[Path("my_file.md")])
 ```
 
 ### With YAML frontmatter

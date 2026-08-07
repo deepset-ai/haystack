@@ -25,7 +25,7 @@ Use this component to rank documents based on their similarity to the query usin
 
 ## Overview
 
-`NvidiaRanker` ranks `Documents` based on semantic relevance to a specified query. It uses ranking models provided by [NVIDIA NIMs](https://ai.nvidia.com). The default model for this Ranker is `nvidia/nv-rerankqa-mistral-4b-v3`.
+`NvidiaRanker` ranks `Documents` based on semantic relevance to a specified query. It uses ranking models provided by [NVIDIA NIMs](https://ai.nvidia.com). If you don't set the `model` parameter, the hosted default `nv-rerank-qa-mistral-4b:1` is used.
 
 You can also specify the `top_k` parameter to set the maximum number of documents to return.
 
@@ -50,24 +50,24 @@ ranker = NvidiaRanker(api_key=Secret.from_token("<your-api-key>"))
 This example uses `NvidiaRanker` to rank two simple documents. To run the Ranker, pass a `query`, provide the `documents`, and set the number of documents to return in the `top_k` parameter.
 
 ```python
-    from haystack_integrations.components.rankers.nvidia import NvidiaRanker
-    from haystack import Document
-    from haystack.utils import Secret
+from haystack_integrations.components.rankers.nvidia import NvidiaRanker
+from haystack import Document
+from haystack.utils import Secret
 
-    ranker = NvidiaRanker(
-        model="nvidia/nv-rerankqa-mistral-4b-v3",
-        api_key=Secret.from_env_var("NVIDIA_API_KEY"),
-    )
+ranker = NvidiaRanker(
+    model="nvidia/nv-rerankqa-mistral-4b-v3",
+    api_key=Secret.from_env_var("NVIDIA_API_KEY"),
+)
 
-    query = "What is the capital of Germany?"
-    documents = [
-        Document(content="Berlin is the capital of Germany."),
-        Document(content="The capital of Germany is Berlin."),
-        Document(content="Germany's capital is Berlin."),
-    ]
+query = "What is the capital of Germany?"
+documents = [
+    Document(content="Berlin is the capital of Germany."),
+    Document(content="The capital of Germany is Berlin."),
+    Document(content="Germany's capital is Berlin."),
+]
 
-    result = ranker.run(query, documents, top_k=2)
-    print(result["documents"])
+result = ranker.run(query, documents, top_k=2)
+print(result["documents"])
 ```
 
 ### In a pipeline

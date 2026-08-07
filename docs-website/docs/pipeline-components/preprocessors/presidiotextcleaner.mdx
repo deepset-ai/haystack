@@ -24,7 +24,7 @@ description: "Use `PresidioTextCleaner` to replace PII in plain strings, powered
 
 ## Overview
 
-[Microsoft Presidio](https://microsoft.github.io/presidio/) is an open-source framework for PII detection and anonymization. `PresidioTextCleaner` uses Presidio's Analyzer and Anonymizer engines to scan plain text strings and replace detected entities with type placeholders such as `<PERSON>` or `<US_SSN>`.
+[Microsoft Presidio](https://data-privacy-stack.github.io/presidio/) is an open-source framework for PII detection and anonymization. `PresidioTextCleaner` uses Presidio's Analyzer and Anonymizer engines to scan plain text strings and replace detected entities with type placeholders such as `<PERSON>` or `<US_SSN>`.
 
 This is useful when you want to sanitize user queries before sending them to an LLM, ensuring that no personally identifiable information is passed to the model.
 
@@ -34,8 +34,8 @@ For sanitizing Haystack `Document` objects rather than plain strings, see [`Pres
 
 | Parameter | Default | Description |
 | --- | --- | --- |
-| `language` | `"en"` | ISO 639-1 language code for PII detection. The appropriate spaCy model is selected automatically for [supported languages](#non-english-languages). See [Presidio supported languages](https://microsoft.github.io/presidio/analyzer/languages/). |
-| `entities` | `None` | List of PII entity types to detect and anonymize (e.g. `["PERSON", "EMAIL_ADDRESS"]`). If `None`, all supported types are detected. See [supported entities](https://microsoft.github.io/presidio/supported_entities/). |
+| `language` | `"en"` | ISO 639-1 language code for PII detection. The appropriate spaCy model is selected automatically for [supported languages](#non-english-languages). See [Presidio supported languages](https://data-privacy-stack.github.io/presidio/analyzer/languages/). |
+| `entities` | `None` | List of PII entity types to detect and anonymize (e.g. `["PERSON", "EMAIL_ADDRESS"]`). If `None`, all supported types are detected. See [supported entities](https://data-privacy-stack.github.io/presidio/supported_entities/). |
 | `score_threshold` | `0.35` | Minimum confidence score (0–1) for a detected entity to be anonymized. |
 | `models` | `None` | Advanced override: explicit list of spaCy model configs, e.g. `[{"lang_code": "fr", "model_name": "fr_core_news_md"}]`. Use this only when you need a specific model variant or a language not in the built-in mapping. If `None`, the model is selected automatically based on `language`. |
 

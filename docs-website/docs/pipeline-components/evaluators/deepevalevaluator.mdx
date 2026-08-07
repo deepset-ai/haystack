@@ -84,7 +84,7 @@ evaluator = DeepEvalEvaluator(
 pipeline.add_component("evaluator", evaluator)
 ```
 
-To run the evaluation pipeline, you should have the _expected inputs_ for the metric ready at hand. This metric expects a list of `questions` and `contexts`. These should come from the results of the pipeline you want to evaluate.
+To run the evaluation pipeline, you should have the _expected inputs_ for the metric ready at hand. This metric expects a list of `questions`, a list of `contexts`, and a list of `responses`. These should come from the results of the pipeline you want to evaluate.
 
 ```python
 results = pipeline.run(

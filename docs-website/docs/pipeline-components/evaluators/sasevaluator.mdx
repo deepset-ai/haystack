@@ -14,7 +14,7 @@ The `SASEvaluator` evaluates answers predicted by Haystack pipelines using groun
 |  |  |
 | --- | --- |
 | **Most common position in a pipeline** | On its own or in an evaluation pipeline. To be used after a separate pipeline that has generated the inputs for the Evaluator. |
-| **Mandatory init variables** | `token`: A HF API token. Can be set with `HF_API_TOKEN` or `HF_TOKEN` env var. |
+| **Mandatory init variables** | None |
 | **Mandatory run variables** | `ground_truth_answers`: A list of strings containing the ground truth answers  <br /> <br />`predicted_answers`: A list of strings containing the predicted answers to be evaluated |
 | **Output variables** | A dictionary containing:  <br /> <br />\- `score`: A number from 0.0 to 1.0 representing the mean SAS score for all pairs of predicted answers and ground truth answers  <br /> <br />- `individual_scores`: A list of the SAS scores ranging from 0.0 to 1.0 of all pairs of predicted answers and ground truth answers |
 | **API reference** | [Evaluators](/reference/evaluators-api) |
@@ -46,9 +46,9 @@ result = sas_evaluator.run(
     predicted_answers=["Berlin", "Lyon"],
 )
 print(result["individual_scores"])
-# [[array([[0.99999994]], dtype=float32), array([[0.51747656]], dtype=float32)]
+# [1.0, 0.5174766182899475]
 print(result["score"])
-# 0.7587383
+# 0.7587383091449738
 ```
 
 ### In a pipeline
@@ -84,12 +84,12 @@ result = pipeline.run(
 for evaluator in result:
     print(result[evaluator]["individual_scores"])
 # [1, 0]
-# [array([[0.99999994]], dtype=float32), array([[0.51747656]], dtype=float32)]
+# [1.0, 0.5174766182899475]
 
 for evaluator in result:
     print(result[evaluator]["score"])
 # 0.5
-# 0.7587383
+# 0.7587383091449738
 ```
 
 ## Additional References

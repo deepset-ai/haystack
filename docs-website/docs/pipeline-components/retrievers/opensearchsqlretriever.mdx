@@ -25,10 +25,13 @@ Executes raw OpenSearch SQL queries against an OpenSearch Document Store and ret
 
 This is useful when you need structured access to your index at runtime, for example to fetch specific fields, filter on metadata, or compute aggregations such as counts and averages.
 
-Unlike the other OpenSearch retrievers, this component does not return a list of `Document` objects. The output is a single `result` dictionary, where `result["result"]` holds the raw OpenSearch response. Depending on the query:
+Unlike the other OpenSearch retrievers, this component does not return a list of `Document` objects. The output is a single `result` dictionary, where `result["result"]` holds the raw response of the OpenSearch SQL plugin in its default JDBC format:
 
-- For regular queries, `result["result"]["hits"]["hits"]` contains the matching documents.
-- For aggregate queries, `result["result"]["aggregations"]` contains the aggregations.
+- `schema` is a list of column descriptors, one per selected column, each with `name`, an optional `alias`, and `type`.
+- `datarows` is a list of rows, each row a list of values ordered to match `schema`.
+- `total`, `size`, and `status` describe the number of matching rows, the number of rows returned, and the HTTP status of the SQL call.
+
+The same shape is returned for regular and aggregate queries: an aggregate such as `COUNT(*)` comes back as a single row in `datarows`.
 
 The component accepts two optional parameters at initialization:
 
@@ -42,8 +45,8 @@ Install OpenSearch and then start an instance.
 If you have Docker set up, we recommend pulling the Docker image and running it.
 
 ```bash
-docker pull opensearchproject/opensearch:2
-docker run -p 9200:9200 -p 9600:9600 -e "discovery.type=single-node" -e "OPENSEARCH_INITIAL_ADMIN_PASSWORD=<custom-admin-password>" opensearchproject/opensearch:2
+docker pull opensearchproject/opensearch:3
+docker run -p 9200:9200 -p 9600:9600 -e "discovery.type=single-node" -e "OPENSEARCH_INITIAL_ADMIN_PASSWORD=<custom-admin-password>" opensearchproject/opensearch:3
 ```
 
 As an alternative, you can go to [OpenSearch integration GitHub](https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/opensearch) and start a Docker container running OpenSearch using the provided `docker-compose.yml`:
@@ -75,7 +78,11 @@ from haystack_integrations.document_stores.opensearch import (
 from haystack.document_stores.types import DuplicatePolicy
 
 document_store = OpenSearchDocumentStore(
-    hosts="http://localhost:9200", index="my_index"
+    hosts="http://localhost:9200",
+    index="my_index",
+    use_ssl=True,
+    verify_certs=False,
+    http_auth=("admin", "<custom-admin-password>"),
 )
 
 documents = [
@@ -95,9 +102,15 @@ retriever = OpenSearchSQLRetriever(document_store=document_store)
 output = retriever.run(query="SELECT content FROM my_index LIMIT 10")
 
 result = output["result"]
-# Regular queries return matching documents under hits
-for hit in result["hits"]["hits"]:
-    print(hit["_source"])
+for row in result["datarows"]:
+    print(row)
+```
+
+The `schema` entry tells you which column each position in a row corresponds to:
+
+```python
+print(result["schema"])
+# [{'name': 'content', 'type': 'text'}]
 ```
 
 ### Running an aggregation query
@@ -109,8 +122,9 @@ retriever = OpenSearchSQLRetriever(document_store=document_store)
 output = retriever.run(query="SELECT COUNT(*) AS doc_count FROM my_index")
 
 result = output["result"]
-# Aggregate queries expose their results under aggregations
-print(result["aggregations"])
+print(result)
+# {'schema': [{'name': 'COUNT(*)', 'alias': 'doc_count', 'type': 'long'}],
+#  'datarows': [[3]], 'total': 1, 'size': 1, 'status': 200}
 ```
 
 To avoid raising an exception on a malformed or failing query, initialize the component with `raise_on_failure=False`. In that case, a failed query logs a warning and returns an empty result instead.

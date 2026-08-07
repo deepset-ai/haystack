@@ -31,7 +31,7 @@ The component uses an `AZURE_AI_API_KEY` environment variable by default. Other
 
 When you initialize the component, you can optionally set the `model_id`, which refers to the model you want to use. Please refer to [Azure documentation](https://learn.microsoft.com/en-us/azure/ai-services/document-intelligence/choose-model-feature) for a list of available models. The default model is `"prebuilt-read"`.
 
-The `AzureOCRDocumentConverter` doesn’t extract the tables from a file as plain text but generates separate `Document` objects of type `table` that maintain the two-dimensional structure of the tables.
+The `AzureOCRDocumentConverter` doesn’t leave tables inline in the page text. It creates a separate `Document` for each table, with the table rendered as CSV in the document content and `preceding_context`, `following_context`, and `page` added to its metadata.
 
 ## Usage
 

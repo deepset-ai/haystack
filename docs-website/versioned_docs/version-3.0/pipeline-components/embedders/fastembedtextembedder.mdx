@@ -54,8 +54,9 @@ This is how it works with `FastembedTextEmbedder`:
 ```python
 instruction = "passage:"
 embedder = FastembedTextEmbedder(
-	*model="*BAAI/bge-large-en-v1.5",
-	prefix=instruction)
+    model="BAAI/bge-large-en-v1.5",
+    prefix=instruction,
+)
 ```
 
 ### Parameters
@@ -63,11 +64,11 @@ embedder = FastembedTextEmbedder(
 You can set the path where the model will be stored in a cache directory. Also, you can set the number of threads a single `onnxruntime` session can use.
 
 ```python
-cache_dir= "/your_cacheDirectory"
+cache_dir = "/your_cacheDirectory"
 embedder = FastembedTextEmbedder(
-	*model="*BAAI/bge-large-en-v1.5",
-	cache_dir=cache_dir,
-	threads=2
+    model="BAAI/bge-large-en-v1.5",
+    cache_dir=cache_dir,
+    threads=2,
 )
 ```
 
@@ -134,7 +135,7 @@ result = query_pipeline.run({"text_embedder": {"text": query}})
 print(result["retriever"]["documents"][0])  # noqa: T201
 
 # Document(id=...,
-# content: 'FastEmbed is supported by and maintained by Qdrant.',
+# content: 'fastembed is supported by and maintained by Qdrant.',
 # score: 0.758..)
 ```
 

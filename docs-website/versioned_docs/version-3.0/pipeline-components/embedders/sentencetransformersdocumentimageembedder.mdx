@@ -14,7 +14,7 @@ description: "`SentenceTransformersDocumentImageEmbedder` computes the image emb
 |  |  |
 | --- | --- |
 | **Most common position in a pipeline** | Before a [`DocumentWriter`](../writers/documentwriter.mdx) in an indexing pipeline                                                          |
-| **Mandatory init variables**           | `token` (only for private models): The Hugging Face API token. Can be set with `HF_API_TOKEN` or `HF_TOKEN` env var.               |
+| **Mandatory init variables**           | None                                                                                                              |
 | **Mandatory run variables**            | `documents`: A list of documents, with a meta field containing an image file path                                                  |
 | **Output variables**                   | `documents`: A list of documents (enriched with embeddings)                                                                        |
 | **API reference**                      | [Sentence Transformers](/reference/integrations-sentence-transformers)                                                                                                     |
@@ -33,7 +33,7 @@ The embedder efficiently loads the images, computes the embeddings using a Sente
 
 You can set the `device` parameter to use HF models on your CPU or GPU.
 
-Additionally, you can select the backend to use for the Sentence Transformers mode with the `backend` parameterl: `torch` (default), `onnx`, or `openvino`. ONNX and OpenVINO allow specific speed optimizations; for more information, read the [Sentence Transformers documentation](https://sbert.net/docs/sentence_transformer/usage/efficiency.html).
+Additionally, you can select the backend to use for the Sentence Transformers mode with the `backend` parameter: `torch` (default), `onnx`, or `openvino`. ONNX and OpenVINO allow specific speed optimizations; for more information, read the [Sentence Transformers documentation](https://sbert.net/docs/sentence_transformer/usage/efficiency.html).
 
 ### Authentication
 
