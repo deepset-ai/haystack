@@ -169,9 +169,9 @@ def _first_turn_and_step_to_keep(
 
 def _task_and_step_split(
     messages: list[ChatMessage], target_tokens: int, token_counter: TokenCounter, min_keep_steps: int
-) -> tuple[list[ChatMessage], list[ChatMessage], list[ChatMessage]]:
+) -> tuple[list[ChatMessage], int, list[ChatMessage]]:
     """
-    Split a conversation into the messages kept before and after an omission note and the messages to remove.
+    Split a conversation into the messages to keep and the messages to remove.
 
     Leading system messages and the latest real user message are always kept. Historical user turns are kept whole when
     they fit. If the current task itself exceeds the available budget, its oldest Agent steps are removed one at a time
@@ -184,13 +184,10 @@ def _task_and_step_split(
         budget.
     :returns: A tuple containing:
 
-        1. Messages kept before the omission-note position.
-        2. Messages kept after the omission-note position.
+        1. The messages to keep, ordered oldest to newest.
+        2. The position in that list where an omission note belongs, immediately before the current task when only
+           historical turns were removed and immediately before the surviving steps when the task itself was trimmed.
         3. Every message selected for removal.
-
-        When only historical turns are removed, the first two elements place the note immediately before the current
-        task. When current-task steps are also removed, they place it after the latest user message and before the
-        current-task steps that survived.
     """
     # Find the leading system messages that contain the Agent instructions.
     system_end = _leading_system_end(messages=messages)
@@ -224,6 +221,9 @@ def _task_and_step_split(
     )
     kept_turn_indices = _flatten(groups=turn_groups[first_kept_turn:])
     kept_step_indices = _flatten(groups=step_groups[first_kept_step:])
+    kept_turns = _messages_at(messages=messages, indices=kept_turn_indices)
+    kept_steps = _messages_at(messages=messages, indices=kept_step_indices)
+    kept = [*messages[:system_end], *kept_turns, *task, *kept_steps]
 
     # A message survives only by being protected or by falling in a group we are keeping; everything else goes.
     kept_indices = {*range(system_end), *kept_turn_indices, *kept_step_indices}
@@ -231,16 +231,10 @@ def _task_and_step_split(
         kept_indices.add(task_index)
     removable = [message for index, message in enumerate(messages) if index not in kept_indices]
 
-    if first_kept_step == 0:
-        # The current task is untouched, so the note stands in for the older turns and belongs in front of the task.
-        kept_before_note = [*messages[:system_end], *_messages_at(messages=messages, indices=kept_turn_indices)]
-        kept_after_note = [*task, *_messages_at(messages=messages, indices=kept_step_indices)]
-    else:
-        # Steps were cut from the current task, which means every historical turn was already dropped, so the note
-        # goes between the task and the steps that survived it.
-        kept_before_note = [*messages[:system_end], *task]
-        kept_after_note = _messages_at(messages=messages, indices=kept_step_indices)
-    return kept_before_note, kept_after_note, removable
+    # The note stands in for the newest thing that was dropped. That is the current task's own steps when those were
+    # cut, in which case every historical turn went too and `kept_turns` is empty; otherwise it is the older turns.
+    note_index = system_end + len(kept_turns) + (len(task) if first_kept_step > 0 else 0)
+    return kept, note_index, removable
 
 
 @_experimental
@@ -291,14 +285,14 @@ class SlidingWindowCompactor(Compactor):
         Drop older history while preserving the task anchor and a complete recent conversation window.
 
         :param messages: The conversation to compact, oldest to newest.
-        :param target_tokens: The size the retained conversation should come in under.
+        :param target_tokens: The size the kept conversation should come in under.
         :param token_counter: The `TokenCounter` to measure messages with.
-        :returns: The protected context, an omission note if configured, and the retained steps; or None when there is
-            nothing worth removing.
+        :returns: The protected context, an omission note if configured, and the steps that survived; or None when
+            there is nothing to remove.
         """
-        if token_counter.count(messages) <= target_tokens:
+        if token_counter.count(messages=messages) <= target_tokens:
             return None
-        kept_before_note, kept_after_note, removable = _task_and_step_split(
+        kept, note_index, removable = _task_and_step_split(
             messages=messages,
             target_tokens=target_tokens,
             token_counter=token_counter,
@@ -307,7 +301,7 @@ class SlidingWindowCompactor(Compactor):
         if not removable:
             return None
         if not self.omission_note:
-            return [*kept_before_note, *kept_after_note]
+            return kept
 
         # We prefer user over system since not all providers support multiple system messages
         note = ChatMessage.from_user(
@@ -317,14 +311,11 @@ class SlidingWindowCompactor(Compactor):
                 _COMPACTION_META_KEY: {
                     "strategy": "sliding_window",
                     "removed_messages": len(removable),
-                    "kept_messages": len(kept_before_note) + len(kept_after_note),
+                    "kept_messages": len(kept),
                 }
             },
         )
-        # The note costs tokens of its own, so it is only worth leaving behind if what it stands in for is bigger.
-        if token_counter.count([note]) >= token_counter.count(removable):
-            return None
-        return [*kept_before_note, note, *kept_after_note]
+        return [*kept[:note_index], note, *kept[note_index:]]
 
     def to_dict(self) -> dict[str, Any]:
         """

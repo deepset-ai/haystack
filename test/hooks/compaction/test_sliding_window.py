@@ -268,29 +268,6 @@ class TestSlidingWindowCompactor:
         assert second[0].text == "rules"
         assert second[1].text == "start"
 
-    @pytest.mark.parametrize(
-        ("removable", "worth_replacing"),
-        [
-            pytest.param("a", False, id="cheaper-than-the-note"),
-            pytest.param("x" * 4000, True, id="dearer-than-the-note"),
-        ],
-    )
-    def test_a_cut_is_made_only_when_the_note_costs_less_than_what_it_replaces(self, removable, worth_replacing):
-        # A note is not free, so what matters is the size of what goes rather than how many messages it is: one long
-        # tool result is worth replacing, one short message is not.
-        messages = [
-            ChatMessage.from_system(text="rules"),
-            ChatMessage.from_user(text="task"),
-            ChatMessage.from_assistant(text=removable),
-            ChatMessage.from_assistant(text="latest step"),
-        ]
-        compacted = SlidingWindowCompactor().compact(messages=messages, target_tokens=SMALLEST, token_counter=COUNTER)
-        assert (compacted is not None) is worth_replacing
-        # Without a note there is nothing to pay for, so the same cut is always worth making.
-        assert SlidingWindowCompactor(omission_note=None).compact(
-            messages=messages, target_tokens=SMALLEST, token_counter=COUNTER
-        ) == [*messages[:2], messages[-1]]
-
     def test_keeping_no_steps_still_preserves_the_current_task(self):
         messages = long_conversation()
         compacted = SlidingWindowCompactor(min_keep_steps=0, omission_note=None).compact(
