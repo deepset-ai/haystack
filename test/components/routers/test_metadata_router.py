@@ -74,11 +74,31 @@ class TestMetadataRouter:
         with pytest.raises(ValueError):
             MetadataRouter(rules=rules)
 
-    def test_run_datetime_with_timezone(self):
+    def test_run_datetime_with_timezone_raises_filter_error(self):
+        """Mixing a naive filter value with timezone-aware document values must raise FilterError."""
+        from haystack.errors import FilterError
+
         rules = {
             "edge_1": {
                 "operator": "AND",
                 "conditions": [{"field": "meta.created_at", "operator": ">=", "value": "2025-02-01"}],
+            }
+        }
+        router = MetadataRouter(rules=rules)
+        documents = [
+            Document(meta={"created_at": "2025-02-03T12:45:46.435816Z"}),
+            Document(meta={"created_at": "2025-02-01T12:45:46.435816Z"}),
+            Document(meta={"created_at": "2025-01-03T12:45:46.435816Z"}),
+        ]
+        with pytest.raises(FilterError, match="timezone-naive"):
+            router.run(documents=documents)
+
+    def test_run_datetime_with_matching_timezone(self):
+        """Filter and document values both timezone-aware must compare without error."""
+        rules = {
+            "edge_1": {
+                "operator": "AND",
+                "conditions": [{"field": "meta.created_at", "operator": ">=", "value": "2025-02-01T00:00:00Z"}],
             }
         }
         router = MetadataRouter(rules=rules)
