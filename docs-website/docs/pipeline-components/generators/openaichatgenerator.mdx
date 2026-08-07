@@ -39,6 +39,8 @@ You can pass any chat completion parameters valid for the `openai.ChatCompletion
 
 `OpenAIChatGenerator` can support custom deployments of your OpenAI models through the `api_base_url` init parameter.
 
+> **Tip:** The same `api_base_url` pattern works with OpenAI-compatible multi-model gateways — for example [DaoXE](https://daoxe.com/?utm_source=github&utm_medium=organic&utm_campaign=haystack&utm_content=openaichatgenerator) at `https://api.daoxe.com/v1`.
+
 ### Structured Output
 
 `OpenAIChatGenerator` supports structured output generation, allowing you to receive responses in a predictable format. You can use Pydantic models or JSON schemas to define the structure of the output through the `response_format` parameter in `generation_kwargs`.
