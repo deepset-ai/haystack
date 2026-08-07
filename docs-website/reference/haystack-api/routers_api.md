@@ -811,7 +811,12 @@ result = router.run(documents=streams)
 #### __init__
 
 ```python
-__init__(rules: dict[str, dict], output_type: type = list[Document]) -> None
+__init__(
+    rules: dict[str, dict],
+    output_type: type = list[Document],
+    *,
+    strict_datetime_comparison: bool = False
+) -> None
 ```
 
 Initializes the MetadataRouter component.
@@ -856,7 +861,9 @@ Initializes the MetadataRouter component.
 }
 ```
 
-:param output_type: The type of the output produced. Lists of Documents or ByteStreams can be specified.
+- **output_type** (<code>type</code>) – The type of the output produced. Lists of Documents or ByteStreams can be specified.
+- **strict_datetime_comparison** (<code>bool</code>) – If `True`, timezone-naive and timezone-aware datetimes never match each other.
+  If `False` (the default), the timezone from the aware datetime is copied to the naive one before comparing.
 
 #### run
 
