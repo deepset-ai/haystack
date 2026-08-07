@@ -90,18 +90,49 @@ def _record_tool_calls(state: State, tool_messages: list[ChatMessage]) -> None:
 # ---------------------------
 
 
+def _copy_toolset_for_run(toolset: Toolset, selected_tool_names: set[str] | None = None) -> Toolset:
+    """
+    Return a per-run copy of a Toolset with run-scoped state; plain Toolsets are returned unchanged.
+
+    A Toolset signals run-scoped state by defining `_copy_for_run()` (e.g. SearchableToolset, whose
+    discovered tools and name selection are per-run). Plain Toolsets are read-only at run time and can be shared
+    across runs directly. Note: passing `selected_tool_names` to a plain Toolset is unsupported here; callers
+    filter plain Toolsets externally.
+    """
+    copy_for_run = getattr(toolset, "_copy_for_run", None)
+    if callable(copy_for_run):
+        return copy_for_run(selected_tool_names=selected_tool_names)
+    return toolset
+
+
+def _selectable_names(item: Tool | Toolset) -> set[str]:
+    """
+    Resolve the tool names an item offers for name-based selection.
+
+    A Toolset providing a `get_selectable_tools()` method (e.g. SearchableToolset, whose iteration does not
+    surface the full catalog) is asked through it; any other Toolset is warmed up and iterated.
+    """
+    if not isinstance(item, Toolset):
+        return {item.name}
+    if hasattr(item, "get_selectable_tools"):
+        return {tool.name for tool in item.get_selectable_tools()}
+    item.warm_up()
+    return {tool.name for tool in item}
+
+
 def _select_tools_by_name(configured_tools: ToolsType, names: list[str]) -> list[Tool | Toolset]:
     """
     Select configured tools by name for a single run.
 
-    Standalone Tools are kept when their name is requested. A Toolset that exposes a requested name is replaced by a
-    per-run `spawn()` (an isolated copy) with the requested names registered as its `_selected_tool_names`, so
-    dynamic toolsets such as SearchableToolset preserve their behavior (search/lazy-loading) over the selected subset
-    without mutating the shared, configured Toolset.
+    Standalone Tools are kept when their name is requested. A plain Toolset that exposes requested names is
+    warmed up and reduced to the matching Tools. A Toolset with run-scoped state (one defining
+    `_copy_for_run()`, such as SearchableToolset) is replaced by a per-run copy carrying the requested
+    names, so its dynamic behavior (search/lazy-loading) is preserved without mutating the shared, configured
+    Toolset.
 
     :param configured_tools: The tools configured on the Agent.
     :param names: The requested tool names.
-    :returns: The selected standalone Tools and/or spawned, selection-scoped Toolsets.
+    :returns: The selected Tools and/or selection-scoped Toolset copies.
     :raises ValueError: If no tools were configured, or if any requested name is not a valid tool name.
     """
     if not configured_tools:
@@ -112,14 +143,8 @@ def _select_tools_by_name(configured_tools: ToolsType, names: list[str]) -> list
         [configured_tools] if isinstance(configured_tools, Toolset) else list(configured_tools)
     )
 
-    # Resolve selectable names per item. For Toolsets we use get_selectable_tools() so dynamic toolsets
-    # (e.g. SearchableToolset) offer their full catalog by name, not just the tools exposed by iteration.
-    selectable_per_item: list[tuple[Tool | Toolset, set[str]]] = []
-    valid_tool_names: set[str] = set()
-    for item in items:
-        item_names = {tool.name for tool in item.get_selectable_tools()} if isinstance(item, Toolset) else {item.name}
-        selectable_per_item.append((item, item_names))
-        valid_tool_names |= item_names
+    selectable_per_item = [(item, _selectable_names(item)) for item in items]
+    valid_tool_names = {name for _, item_names in selectable_per_item for name in item_names}
 
     invalid_tool_names = requested_names - valid_tool_names
     if invalid_tool_names:
@@ -132,27 +157,28 @@ def _select_tools_by_name(configured_tools: ToolsType, names: list[str]) -> list
         matched = requested_names & item_names
         if not matched:
             continue
-        if isinstance(item, Toolset):
-            # Apply the selection to a per-run copy so the shared, configured Toolset is never mutated.
-            spawned = item.spawn()
-            spawned._selected_tool_names = matched
-            selected.append(spawned)
+        if isinstance(item, Toolset) and hasattr(item, "_copy_for_run"):
+            # The selection is applied to the per-run copy, so the shared, configured Toolset is never mutated.
+            selected.append(_copy_toolset_for_run(item, selected_tool_names=matched))
+        elif isinstance(item, Toolset):
+            selected.extend(tool for tool in item if tool.name in matched)
         else:
             selected.append(item)
     return selected
 
 
-def _spawn_tools(tools: ToolsType) -> ToolsType:
+def _copy_tools_for_run(tools: ToolsType) -> ToolsType:
     """
-    Return per-run copies of `tools`, replacing each Toolset with an isolated `spawn()` (Tools are passed through).
+    Return per-run copies of the Toolsets in `tools` that carry run-scoped state.
 
-    This isolates run-scoped Toolset state (e.g. a SearchableToolset's discovered tools and any active name
-    selection) so that concurrent runs sharing the same configured Toolset — such as parallel sub-agent tool calls
-    or concurrent requests against one Agent — don't corrupt each other.
+    A Toolset defining `_copy_for_run()` (e.g. SearchableToolset, whose discovered tools and name
+    selection are per-run) is replaced by an isolated copy, so concurrent runs sharing the same configured
+    Toolset — such as parallel sub-agent tool calls or concurrent requests against one Agent — don't corrupt
+    each other. Plain Toolsets and standalone Tools are read-only at run time and are passed through unchanged.
     """
     if isinstance(tools, Toolset):
-        return tools.spawn()
-    return [item.spawn() if isinstance(item, Toolset) else item for item in tools]
+        return _copy_toolset_for_run(tools)
+    return [_copy_toolset_for_run(item) if isinstance(item, Toolset) else item for item in tools]
 
 
 # ---------------------------

@@ -2202,13 +2202,14 @@ class TestAgentWarmUp:
         agent.warm_up()
         assert toolset.was_warmed_up
 
-    def test_warm_up_mixed_toolsets(self):
+    def test_warm_up_list_of_toolsets(self):
+        # Toolsets are combined by passing them as a list; each keeps its own warm_up.
         tool1 = self._make_tracking_tool("tool1")
         toolset1 = self._make_tracking_toolset([tool1])
         tool2 = self._make_tracking_tool("tool2")
         toolset2 = self._make_tracking_toolset([tool2])
 
-        agent = Agent(chat_generator=MockChatGenerator("Hello"), tools=toolset1 + toolset2)
+        agent = Agent(chat_generator=MockChatGenerator("Hello"), tools=[toolset1, toolset2])
 
         assert not toolset1.was_warmed_up
         assert not toolset2.was_warmed_up

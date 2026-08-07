@@ -121,20 +121,6 @@ class WarmUpCountingTool(Tool):
         self.warm_up_count += 1
 
 
-class WarmUpCountingToolset(Toolset):
-    """A Toolset that records how many times its own warm_up() did real work."""
-
-    def __init__(self, tools):
-        super().__init__(tools)
-        self.warm_up_count = 0
-
-    def warm_up(self) -> None:
-        if self._is_warmed_up:
-            return
-        self.warm_up_count += 1
-        super().warm_up()
-
-
 class TestToolset:
     def test_toolset_with_multiple_tools(self, add_tool, multiply_tool):
         """Test that a Toolset with multiple tools works properly."""
@@ -181,42 +167,21 @@ class TestToolset:
         assert "multiply" not in toolset
         assert "non_existent_tool" not in toolset
 
-    def test_toolset_addition(self, add_tool, multiply_tool, subtract_tool):
-        """Test that the __add__ method combines toolsets with various operand types."""
-        base = Toolset([add_tool])
-
-        # Toolset + Tool
-        result = base + multiply_tool
-        assert isinstance(result, Toolset)
-        assert [t.name for t in result] == ["add", "multiply"]
-
-        # Toolset + Toolset
-        result = base + Toolset([subtract_tool])
-        assert isinstance(result, Toolset)
-        assert [t.name for t in result] == ["add", "subtract"]
-
-        # Toolset + list[Tool]
-        result = base + [multiply_tool, subtract_tool]
-        assert isinstance(result, Toolset)
-        assert [t.name for t in result] == ["add", "multiply", "subtract"]
-
-        # Unsupported operand types raise TypeError
-        with pytest.raises(TypeError):
-            base + "not_a_tool"  # type: ignore[operator]
-        with pytest.raises(TypeError):
-            base + 123  # type: ignore[operator]
+    def test_combining_toolsets_via_unpacking(self, add_tool, multiply_tool, subtract_tool):
+        """Explicit unpacking is the supported way to build a merged Toolset."""
+        combined = Toolset([*Toolset([add_tool, subtract_tool]), multiply_tool])
+        assert [t.name for t in combined] == ["add", "subtract", "multiply"]
 
         # The combined tools remain invocable
         message = ChatMessage.from_assistant(
             tool_calls=[
                 ToolCall(tool_name="add", arguments={"a": 10, "b": 5}),
                 ToolCall(tool_name="multiply", arguments={"a": 10, "b": 5}),
-                ToolCall(tool_name="subtract", arguments={"a": 10, "b": 5}),
             ]
         )
-        tool_messages = _run_tool_messages(messages=[message], tools=result)
+        tool_messages = _run_tool_messages(messages=[message], tools=combined)
         tool_results = [tcr.result for message in tool_messages for tcr in message.tool_call_results]
-        assert tool_results == ["15", "50", "5"]
+        assert tool_results == ["15", "50"]
 
     def test_toolset_serialization(self, add_tool):
         """Test that a Toolset can be serialized and deserialized."""
@@ -244,9 +209,8 @@ class TestToolset:
         with pytest.raises(ValueError, match="Duplicate tool names found"):
             toolset.add(add_tool)
 
-        toolset2 = Toolset([add_tool])
         with pytest.raises(ValueError, match="Duplicate tool names found"):
-            _ = toolset + toolset2
+            Toolset([*toolset, *Toolset([add_tool])])
 
 
 class TestToolsetWithAgent:
@@ -364,10 +328,6 @@ class TestToolsetWithAgent:
 class TestToolsetWarmUp:
     """Stress tests for Toolset warm_up behavior."""
 
-    def test_new_toolset_is_not_warmed_up(self):
-        toolset = Toolset([WarmUpCountingTool("a")])
-        assert toolset._is_warmed_up is False
-
     def test_warm_up_warms_all_tools(self):
         t1, t2 = WarmUpCountingTool("a"), WarmUpCountingTool("b")
         toolset = Toolset([t1, t2])
@@ -376,15 +336,16 @@ class TestToolsetWarmUp:
         toolset.warm_up()
         assert t1.warm_up_count == 1
         assert t2.warm_up_count == 1
-        assert toolset._is_warmed_up is True
 
-    def test_warm_up_is_idempotent(self):
+    def test_warm_up_can_be_called_multiple_times(self):
+        # Per the framework-wide convention, warm_up() may be called before every run; the Toolset delegates to
+        # the tools' own warm_up(), which are responsible for their own idempotence.
         t1 = WarmUpCountingTool("a")
         toolset = Toolset([t1])
         toolset.warm_up()
         toolset.warm_up()
         toolset.warm_up()
-        assert t1.warm_up_count == 1
+        assert t1.warm_up_count == 3
 
     def test_add_before_warm_up_does_not_warm_tools(self):
         existing = WarmUpCountingTool("a")
@@ -398,148 +359,20 @@ class TestToolsetWarmUp:
         assert existing.warm_up_count == 1
         assert new_tool.warm_up_count == 1
 
-    def test_add_tool_after_warm_up_warms_only_new_tool(self):
+    def test_add_tool_after_warm_up_warms_it_on_next_warm_up(self):
         existing = WarmUpCountingTool("a")
         toolset = Toolset([existing])
         toolset.warm_up()
-        assert existing.warm_up_count == 1
         new_tool = WarmUpCountingTool("b")
         toolset.add(new_tool)
-        # The new tool is warmed immediately, the already-warmed tool is not re-warmed.
-        assert new_tool.warm_up_count == 1
-        assert existing.warm_up_count == 1
-
-    def test_add_toolset_after_warm_up_warms_added_toolset(self):
-        toolset = Toolset([WarmUpCountingTool("a")])
-        toolset.warm_up()
-        added_tools = [WarmUpCountingTool("b"), WarmUpCountingTool("c")]
-        added = WarmUpCountingToolset(added_tools)
-        toolset.add(added)
-        # The added toolset's own warm_up() is invoked, warming its tools.
-        assert added.warm_up_count == 1
-        assert all(tool.warm_up_count == 1 for tool in added_tools)
-
-    def test_plus_returns_new_unwarmed_toolset(self):
-        ts1 = Toolset([WarmUpCountingTool("a")])
-        ts1.warm_up()
-        assert ts1._is_warmed_up is True
-        new_tool = WarmUpCountingTool("b")
-        ts2 = ts1 + new_tool
-        # `+` returns a brand new Toolset object that has not been warmed up yet.
-        assert ts2 is not ts1
-        assert ts2._is_warmed_up is False
+        # add() does not warm the new tool; the next warm_up() call does.
         assert new_tool.warm_up_count == 0
-        ts2.warm_up()
+        toolset.warm_up()
         assert new_tool.warm_up_count == 1
 
-
-class TestToolsetToolSelection:
-    """Tests for get_selectable_tools(), the name filter, and spawn()."""
-
-    def test_no_filter_yields_all_tools(self, add_tool, multiply_tool):
-        toolset = Toolset([add_tool, multiply_tool])
-        assert toolset._selected_tool_names is None
-        assert [tool.name for tool in toolset] == ["add", "multiply"]
-        assert len(toolset) == 2
-
-    def test_get_selectable_tools_returns_all_tools(self, add_tool, multiply_tool):
-        toolset = Toolset([add_tool, multiply_tool])
-        assert toolset.get_selectable_tools() == [add_tool, multiply_tool]
-
-    def test_get_selectable_tools_ignores_active_filter(self, add_tool, multiply_tool):
-        toolset = Toolset([add_tool, multiply_tool])
-        toolset._selected_tool_names = {"add"}
-        # Iteration is filtered, but get_selectable_tools still returns the full set.
-        assert [tool.name for tool in toolset] == ["add"]
-        assert {tool.name for tool in toolset.get_selectable_tools()} == {"add", "multiply"}
-
-    def test_get_selectable_tools_warms_up_lazy_toolset(self, add_tool, multiply_tool):
-        """get_selectable_tools() warms up a lazy toolset so its lazily loaded tools are available for selection."""
-
-        class LazyToolset(Toolset):
-            def __init__(self):
-                super().__init__([])  # no tools until warm_up
-
-            def warm_up(self):
-                if self._is_warmed_up:
-                    return
-                self.tools = [add_tool, multiply_tool]
-                self._is_warmed_up = True
-
-        toolset = LazyToolset()
-        assert toolset._is_warmed_up is False
-        assert toolset.tools == []  # not loaded yet
-
-        selectable = toolset.get_selectable_tools()
-
-        assert toolset._is_warmed_up is True  # get_selectable_tools triggered warm_up
-        assert [tool.name for tool in selectable] == ["add", "multiply"]
-
-    def test_filter_restricts_iteration(self, add_tool, multiply_tool, subtract_tool):
-        toolset = Toolset([add_tool, multiply_tool, subtract_tool])
-        toolset._selected_tool_names = {"add", "subtract"}
-        assert [tool.name for tool in toolset] == ["add", "subtract"]
-
-    def test_filter_restricts_len(self, add_tool, multiply_tool, subtract_tool):
-        toolset = Toolset([add_tool, multiply_tool, subtract_tool])
-        toolset._selected_tool_names = {"add"}
-        assert len(toolset) == 1
-
-    def test_filter_restricts_getitem(self, add_tool, multiply_tool, subtract_tool):
-        toolset = Toolset([add_tool, multiply_tool, subtract_tool])
-        toolset._selected_tool_names = {"subtract"}
-        assert toolset[0].name == "subtract"
-
-    def test_filter_restricts_contains(self, add_tool, multiply_tool):
-        toolset = Toolset([add_tool, multiply_tool])
-        toolset._selected_tool_names = {"add"}
-        assert "add" in toolset
-        assert "multiply" not in toolset
-        assert add_tool in toolset
-        assert multiply_tool not in toolset
-
-    def test_spawn_returns_isolated_copy(self, add_tool, multiply_tool):
-        toolset = Toolset([add_tool, multiply_tool])
-
-        spawned = toolset.spawn()
-
-        assert spawned is not toolset
-        assert spawned._selected_tool_names is None
-        # The copy shares the same (read-only) tools.
-        assert list(spawned.tools) == list(toolset.tools)
-
-    def test_spawn_selection_does_not_leak_to_original(self, add_tool, multiply_tool):
-        """A per-run selection set on a spawn must not affect the configured toolset or other spawns."""
-        toolset = Toolset([add_tool, multiply_tool])
-
-        spawn_a = toolset.spawn()
-        spawn_b = toolset.spawn()
-        spawn_a._selected_tool_names = {"add"}
-
-        # Each run sees only its own selection; the configured toolset stays unfiltered.
-        assert [tool.name for tool in spawn_a] == ["add"]
-        assert [tool.name for tool in spawn_b] == ["add", "multiply"]
-        assert [tool.name for tool in toolset] == ["add", "multiply"]
-        assert toolset._selected_tool_names is None
-
-    def test_spawn_warms_up_lazy_toolset(self, add_tool, multiply_tool):
-        """spawn() warms up a lazy toolset so the copy shares the warmed state."""
-
-        class LazyToolset(Toolset):
-            def __init__(self):
-                super().__init__([])
-
-            def warm_up(self):
-                if self._is_warmed_up:
-                    return
-                self.tools = [add_tool, multiply_tool]
-                self._is_warmed_up = True
-
-        toolset = LazyToolset()
-        assert toolset._is_warmed_up is False
-
-        spawned = toolset.spawn()
-
-        assert toolset._is_warmed_up is True  # spawn triggered warm_up
-        assert spawned._is_warmed_up is True
-        assert [tool.name for tool in spawned] == ["add", "multiply"]
+    def test_add_toolset_raises(self):
+        # add() accepts only Tools: to combine Toolsets, pass them as a list, e.g. Agent(tools=[ts_a, ts_b]).
+        toolset = Toolset([WarmUpCountingTool("a")])
+        not_a_tool: Any = Toolset([WarmUpCountingTool("b")])
+        with pytest.raises(TypeError, match="Expected Tool"):
+            toolset.add(not_a_tool)

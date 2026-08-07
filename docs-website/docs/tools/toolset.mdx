@@ -73,21 +73,25 @@ def multiply_numbers(
 
 
 math_toolset.add(multiply_numbers)
-
-# or, you can merge toolsets together
-math_toolset.add(another_toolset)
 ```
 
-### Run-Scoped Copies and Tool Selection
+### Combining Toolsets
 
-A `Toolset` is never mutated in place during an [`Agent`](../pipeline-components/agents-1/agent.mdx) run. Each run operates on an isolated, run-scoped copy of the configured `Toolset`, created with the `spawn()` method. This makes concurrent runs that share the same `Toolset` instance safe: per-run state, such as an active tool-name selection or a [`SearchableToolset`](searchabletoolset.mdx)'s discovered tools, cannot leak or collide across runs.
+To use multiple Toolsets together, pass them as a list wherever tools are accepted. This keeps each Toolset intact, preserving its own lifecycle and serialization:
 
-You can also restrict an `Agent` to a subset of tools at runtime by passing tool names, for example `agent.run(tools=["tool_a", "tool_b"])`. When a `Toolset` is configured, the selection is applied to the live (run-scoped) `Toolset` rather than flattening it into a static list, so dynamic behavior like a `SearchableToolset`'s search and lazy loading keeps working over the selected subset.
+```python
+agent = Agent(
+    chat_generator=OpenAIChatGenerator(), tools=[math_toolset, another_toolset]
+)
+```
 
-Two methods support this and can be overridden when subclassing:
+To deliberately merge simple Toolsets into one, unpack them explicitly: `Toolset([*math_toolset, *another_toolset])`. Avoid this for Toolsets that manage resources or load tools lazily (such as an `MCPToolset`): pass them as a list instead.
 
-- `get_selectable_tools()`: Returns every tool available for name-based selection, ignoring any active selection restriction. Override it if your subclass's iteration does not surface every selectable tool.
-- `spawn()`: Returns an isolated, run-scoped copy of the `Toolset`. Override it if your subclass holds additional run-scoped state.
+### Tool Selection at Runtime
+
+A `Toolset` is never mutated in place during an [`Agent`](../pipeline-components/agents-1/agent.mdx) run, so concurrent runs sharing the same `Toolset` instance are safe.
+
+You can restrict an `Agent` to a subset of tools at runtime by passing tool names, for example `agent.run(tools=["tool_a", "tool_b"])`. This also works with a [`SearchableToolset`](searchabletoolset.mdx): the `Agent` internally gives each run an isolated copy carrying the selection, so dynamic behavior like search and lazy loading keeps working over the selected subset.
 
 ## Usage
 

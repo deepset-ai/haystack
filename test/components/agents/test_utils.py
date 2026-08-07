@@ -99,23 +99,40 @@ class TestSelectToolsByName:
         with pytest.raises(ValueError, match="No tools were configured for the Agent at initialization."):
             _select_tools_by_name([], [first_tool.name])
 
-    def test_spawns_toolsets_without_mutating_them(self, first_tool: Tool, second_tool: Tool):
+    def test_reduces_plain_toolsets_to_matching_tools(self, first_tool: Tool, second_tool: Tool):
         toolset = Toolset([first_tool, second_tool])
         selected = _select_tools_by_name([toolset], [first_tool.name])
-        spawned = selected[0]
-        assert isinstance(spawned, Toolset)
-        assert spawned is not toolset
-        assert spawned._selected_tool_names == {first_tool.name}
-        assert toolset._selected_tool_names is None
+        assert selected == [first_tool]
+        # The configured toolset is untouched.
+        assert list(toolset) == [first_tool, second_tool]
 
     def test_selects_standalone_tools_and_toolsets(self, first_tool: Tool, second_tool: Tool):
         toolset = Toolset([first_tool])
         selected = _select_tools_by_name([second_tool, toolset], [first_tool.name, second_tool.name])
-        assert second_tool in selected
-        spawned = next(item for item in selected if isinstance(item, Toolset))
-        assert spawned is not toolset
-        assert spawned._selected_tool_names == {first_tool.name}
-        assert toolset._selected_tool_names is None
+        assert selected == [second_tool, first_tool]
+
+    def test_copies_run_scoped_toolsets_for_run_with_the_selection(self, first_tool: Tool, second_tool: Tool):
+        class RunScopedToolset(Toolset):
+            """A Toolset defining _copy_for_run(), signaling run-scoped state."""
+
+            def __init__(self, tools):
+                super().__init__(tools)
+                self.selected: set[str] | None = None
+
+            def _copy_for_run(self, selected_tool_names: set[str] | None = None) -> "RunScopedToolset":
+                new = RunScopedToolset(list(self.tools))
+                new.selected = set(selected_tool_names) if selected_tool_names is not None else None
+                return new
+
+        toolset = RunScopedToolset([first_tool, second_tool])
+        selected = _select_tools_by_name([toolset], [first_tool.name])
+
+        run_copy = selected[0]
+        assert isinstance(run_copy, RunScopedToolset)
+        assert run_copy is not toolset
+        assert run_copy.selected == {first_tool.name}
+        # The configured toolset is untouched.
+        assert toolset.selected is None
 
 
 class TestContextTokensFromUsage:
