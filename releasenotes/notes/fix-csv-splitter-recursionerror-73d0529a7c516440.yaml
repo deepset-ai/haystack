@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    Fixed a `RecursionError` in `CSVDocumentSplitter` that could occur when both
+    `row_split_threshold` and `column_split_threshold` were set and a later row block
+    still required a column split. Empty rows/columns are now detected by position
+    instead of by index/column label, keeping the detection consistent with the
+    positional slicing used to actually split the sub-tables.
