@@ -40,7 +40,7 @@ If you run against a self-hosted LiteLLM proxy or a custom endpoint, set the `ap
 
 You can pass any parameter supported by [`litellm.completion()`](https://docs.litellm.ai/docs/completion/input) through the `generation_kwargs` parameter, both at initialization and when running the component. LiteLLM normalizes these parameters across providers and drops the ones a given provider does not support.
 
-Finally, the component needs a list of `ChatMessage` objects to operate. `ChatMessage` is a data class that contains a message, a role (who generated the message, such as `user`, `assistant`, `system`, `function`), and optional metadata.
+Finally, the component needs a list of `ChatMessage` objects to operate. `ChatMessage` is a data class that contains a message, a role (who generated the message, such as `user`, `assistant`, `system`, `tool`), and optional metadata.
 
 ### Tool Support
 

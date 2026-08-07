@@ -16,7 +16,7 @@ CometAPIChatGenerator enables chat completion using AI models through the Comet 
 | **Most common position in a pipeline** | After a [ChatPromptBuilder](../builders/chatpromptbuilder.mdx) |
 | **Mandatory init variables** | `api_key`: The Comet API key. Can be set with `COMET_API_KEY` env var. |
 | **Mandatory run variables** | `messages` A list of [`ChatMessage`](../../concepts/data-classes/chatmessage.mdx)  objects |
-| **Output variables** | `replies`: A list of [`ChatMessage`](../../concepts/data-classes/chatmessage.mdx)  objects  <br /> <br />`meta`: A list of dictionaries with the metadata associated with each reply, such as token count, finish reason, and so on |
+| **Output variables** | `replies`: A list of [`ChatMessage`](../../concepts/data-classes/chatmessage.mdx)  objects |
 | **API reference** | [Comet API](/reference/integrations-cometapi) |
 | **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/cometapi |
 | **Package name** | `cometapi-haystack` |
@@ -25,21 +25,21 @@ CometAPIChatGenerator enables chat completion using AI models through the Comet 
 
 ## Overview
 
-`CometAPIChatGenerator` provides access to over 500 AI models through the Comet API, a unified API gateway for models from providers like OpenAI, Anthropic, Google, Meta, Mistral, and many more. You can use different models from different providers within a single pipeline with a consistent interface.
+`CometAPIChatGenerator` provides access to over 500 AI models through the Comet API, a unified API gateway for models from providers like OpenAI, Anthropic, Google, xAI, DeepSeek, and many more. You can use different models from different providers within a single pipeline with a consistent interface.
 
 Comet API uses a single API key for all providers, which allows you to switch between or combine different models without managing multiple credentials.
 
 The range of models supported by Comet API include:
 
-- OpenAI models: `gpt-4o`, `gpt-4o-mini` (default), `gpt-4-turbo`, and more
-- Anthropic models: `claude-3-5-sonnet`, `claude-3-opus`, and more
-- Google models: `gemini-1.5-pro`, `gemini-1.5-flash`, and more
-- Meta models: `llama-3.3-70b`, `llama-3.1-405b`, and more
-- Mistral models: `mistral-large-latest`, `mistral-small`, and more
+- OpenAI models: `gpt-5-mini` (default), `gpt-4o`, `gpt-4o-mini`, and more
+- Anthropic models: `claude-sonnet-4-5`, `claude-opus-4-5-20251101`, and more
+- Google models: `gemini-2.5-pro`, `gemini-2.5-flash`, and more
+- xAI models: `grok-4.3`, and more
+- DeepSeek models: `deepseek-chat`, and more
 
 For a complete list of available models, check the [Comet API documentation](https://apidoc.cometapi.com/).
 
-The component needs a list of [`ChatMessage`](../../concepts/data-classes/chatmessage.mdx) objects to operate. `ChatMessage` is a data class that contains a message, a role (who generated the message, such as `user`, `assistant`, `system`, `function`), and optional metadata.
+The component needs a list of [`ChatMessage`](../../concepts/data-classes/chatmessage.mdx) objects to operate. `ChatMessage` is a data class that contains a message, a role (who generated the message, such as `user`, `assistant`, `system`, `tool`), and optional metadata.
 
 You can pass any chat completion parameters valid for the underlying model directly to `CometAPIChatGenerator` using the `generation_kwargs` parameter, both at initialization and to the `run()` method.
 
@@ -125,6 +125,7 @@ You can stream output as it's generated. Pass a callback to `streaming_callback`
 
 ```python
 from haystack.components.generators.utils import print_streaming_chunk
+from haystack_integrations.components.generators.cometapi import CometAPIChatGenerator
 
 # Configure the generator with a streaming callback
 component = CometAPIChatGenerator(streaming_callback=print_streaming_chunk)
@@ -231,7 +232,7 @@ pipe.run(data={"prompt_builder": {"template_variables": {"location": location}, 
 >> Vergangenheit, die stark von der Teilung zwischen Ost- und Westberlin während
 >> des Kalten Krieges geprägt war. Die Berliner Mauer, die von 1961 bis 1989 die
 >> Stadt teilte, ist heute ein Symbol für die Wiedervereinigung und die Freiheit.')],
->> _name=None, _meta={'model': 'gpt-4o-mini-2024-07-18', 'index': 0,
+>> _name=None, _meta={'model': 'gpt-5-mini-2025-08-07', 'index': 0,
 >> 'finish_reason': 'stop', 'usage': {'completion_tokens': 260,
 >> 'prompt_tokens': 29, 'total_tokens': 289}})]}
 ```
@@ -247,7 +248,7 @@ from haystack import Pipeline
 # Create a pipeline that uses different models for different tasks
 prompt_builder = ChatPromptBuilder()
 # Use Claude for complex reasoning
-claude_llm = CometAPIChatGenerator(model="claude-3-5-sonnet-20241022")
+claude_llm = CometAPIChatGenerator(model="claude-sonnet-4-5")
 # Use GPT-4o-mini for simple tasks
 gpt_llm = CometAPIChatGenerator(model="gpt-4o-mini")
 
