@@ -103,21 +103,22 @@ def _first_group_to_keep(
     messages: list[ChatMessage], groups: list[list[int]], available_tokens: int, token_counter: TokenCounter
 ) -> int:
     """
-    Return the oldest group that the budget can still pay for, working backwards from the newest.
+    Return the position in `groups` to start keeping from.
 
-    Groups are added up from newest to oldest and counting stops at the first group that does not fit, so what is kept
-    is always a run of groups at the end of the list. An older group is never kept once a newer one has been dropped,
-    which would leave a hole in the conversation.
+    Groups are added up from newest to oldest and counting stops at the first group that does not fit.
 
     :param messages: The full conversation containing the messages referenced by `groups`.
-    :param groups: Ordered index groups to choose from, oldest group first.
+    :param groups: Ordered index groups to choose from, the oldest group first is at position 0.
     :param available_tokens: The token budget available for these groups.
     :param token_counter: The `TokenCounter` used to measure each group.
     :returns: The position in `groups` to start keeping from: `len(groups)` when nothing fits, `0` when it all fits.
     """
+    # We count backwards so first_kept starts such that nothing would be kept
     first_kept = len(groups)
     while first_kept > 0:
+        # Calculate the tokens consumed by the group that would be kept next
         group_tokens = token_counter.count(messages=_messages_at(messages=messages, indices=groups[first_kept - 1]))
+        # If this group does not fit, we stop
         if group_tokens > available_tokens:
             break
         available_tokens -= group_tokens
@@ -149,8 +150,8 @@ def _first_turn_and_step_to_keep(
         messages=_messages_at(messages=messages, indices=_flatten(groups=step_groups))
     )
     if current_task_tokens > available_tokens:
-        # The current task alone overruns the budget, so every historical turn is dropped and
-        # the current task's own oldest steps trimmed until what remains fits.
+        # The current task alone overruns the budget, so every historical turn is dropped and the current task's own
+        # oldest steps trimmed until what remains fits.
         first_kept_step = _first_group_to_keep(
             messages=messages, groups=step_groups, available_tokens=available_tokens, token_counter=token_counter
         )

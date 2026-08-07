@@ -32,9 +32,11 @@ features:
 
     ``SlidingWindowCompactor`` treats an assistant message and its following tool results as one step, so a tool call is
     never separated from its results. Historical turns are also kept whole, so an assistant reply is not retained
-    without the user message it answers. It may retain slightly more history than the requested target when preserving
-    the current task or the configured minimum number of steps. Compaction is lossy: removed messages cannot be
-    recovered or summarized by this strategy. Implement the ``Compactor`` protocol to provide a custom strategy.
+    without the user message it answers. It can also land above the requested target rather than under it, because
+    leading system messages and the current task are never removed and ``min_keep_steps`` holds on to the newest Agent
+    steps whatever their size, so a long system prompt or one large tool result can leave the conversation well over
+    the target. Compaction is lossy: removed messages cannot be recovered or summarized by this strategy. Implement
+    the ``Compactor`` protocol to provide a custom strategy.
 
     ``CompactionHook`` and ``SlidingWindowCompactor`` emit an ``ExperimentalWarning`` and may change without a
     deprecation cycle.
