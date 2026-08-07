@@ -74,7 +74,7 @@ def _historical_turn_spans(messages: list[ChatMessage], start: int, end: int) ->
 
 
 def _messages_from_spans(
-    messages: list[ChatMessage], spans: list[tuple[int, int]], *, skip_compaction_notes: bool = False
+    messages: list[ChatMessage], spans: list[tuple[int, int]], skip_compaction_notes: bool = False
 ) -> list[ChatMessage]:
     """Flatten message spans, optionally excluding messages produced by an earlier compaction."""
     return [
@@ -90,8 +90,7 @@ def _fitting_suffix_start(
     spans: list[tuple[int, int]],
     available_tokens: int,
     token_counter: TokenCounter,
-    *,
-    skip_compaction_notes: bool = False,
+    skip_compaction_notes: bool,
 ) -> int:
     """
     Return the first span in the newest contiguous suffix that fits the token budget.
@@ -124,14 +123,11 @@ def _fitting_suffix_start(
 def _get_turn_start(
     messages: list[ChatMessage],
     available_tokens: int,
+    all_current_agent_step_tokens: int,
     historical_turns: list[tuple[int, int]],
-    current_agent_steps: list[tuple[int, int]],
     token_counter: TokenCounter,
 ) -> int:
     """Return the start of the retained historical turns, or `len(historical_turns)` if none fit."""
-    all_current_agent_step_tokens = token_counter.count(
-        messages=_messages_from_spans(messages=messages, spans=current_agent_steps, skip_compaction_notes=False)
-    )
     kept_turn_start = len(historical_turns)
     if all_current_agent_step_tokens <= available_tokens:
         # Historical turns are considered only when the entire current task fits. This ensures that compaction removes
@@ -149,14 +145,12 @@ def _get_turn_start(
 def _get_step_start(
     messages: list[ChatMessage],
     available_tokens: int,
+    all_current_agent_step_tokens: int,
     current_agent_steps: list[tuple[int, int]],
     token_counter: TokenCounter,
     min_keep_steps: int,
 ) -> int:
     """Return the start of the retained current-task steps, or `len(current_agent_steps)` if none fit."""
-    all_current_agent_step_tokens = token_counter.count(
-        messages=_messages_from_spans(messages=messages, spans=current_agent_steps, skip_compaction_notes=False)
-    )
     if all_current_agent_step_tokens <= available_tokens:
         # Since all current-task steps fit, we can retain all of them.
         return 0
@@ -216,38 +210,44 @@ def _task_and_step_split(
     # Calculate the token count of the protected context (leading system messages and current task)
     protected_tokens = token_counter.count(messages=[*messages[:system_end], *task])
 
+    # Calculate the size of the current task's Agent steps
+    all_current_agent_step_tokens = token_counter.count(
+        messages=_messages_from_spans(messages=messages, spans=current_agent_steps, skip_compaction_notes=False)
+    )
+
     # Get the start of where we should retain historical turns.
     # If no turns are kept the value of this is `len(historical_turns)`, which is the same as `historical_end`.
     kept_turn_start = _get_turn_start(
         messages=messages,
         available_tokens=target_tokens - protected_tokens,
+        all_current_agent_step_tokens=all_current_agent_step_tokens,
         historical_turns=historical_turns,
-        current_agent_steps=current_agent_steps,
         token_counter=token_counter,
     )
     kept_turn_spans = historical_turns[kept_turn_start:]
+    kept_turns = _messages_from_spans(messages=messages, spans=kept_turn_spans, skip_compaction_notes=True)
 
     # Get the start of where we should retain current-task steps
     kept_step_start = _get_step_start(
         messages=messages,
         available_tokens=target_tokens - protected_tokens,
+        all_current_agent_step_tokens=all_current_agent_step_tokens,
         current_agent_steps=current_agent_steps,
         token_counter=token_counter,
         min_keep_steps=min_keep_steps,
     )
     kept_step_spans = current_agent_steps[kept_step_start:]
+    kept_steps = _messages_from_spans(messages=messages, spans=kept_step_spans, skip_compaction_notes=False)
 
-    # Record every protected or retained message index; equal ChatMessages can appear more than once in the list.
+    # Record every index that we are keeping
     kept_indices = {*range(system_end)}
     if task_index is not None:
         kept_indices.add(task_index)
     for start, end in [*kept_turn_spans, *kept_step_spans]:
-        kept_indices.update(index for index in range(start, end) if _COMPACTION_META_KEY not in messages[index].meta)
-
-    # Everything outside the protected context and retained steps can be removed.
+        kept_indices.update(index for index in range(start, end))
+    # Remove everything else that's not in the kept indices
     removable = [message for index, message in enumerate(messages) if index not in kept_indices]
-    kept_turns = _messages_from_spans(messages=messages, spans=kept_turn_spans, skip_compaction_notes=True)
-    kept_steps = _messages_from_spans(messages=messages, spans=kept_step_spans, skip_compaction_notes=False)
+
     if kept_step_start == 0:
         kept_before_note = [*messages[:system_end], *kept_turns]
         kept_after_note = [*task, *kept_steps]
