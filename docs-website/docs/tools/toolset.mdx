@@ -77,7 +77,7 @@ math_toolset.add(multiply_numbers)
 
 ### Combining Toolsets
 
-To use multiple Toolsets together, pass them as a list wherever tools are accepted. This keeps each Toolset intact, preserving its own lifecycle and serialization:
+To use multiple Toolsets together, pass them as a list wherever tools are accepted:
 
 ```python
 agent = Agent(
@@ -87,9 +87,9 @@ agent = Agent(
 
 ### Run-Scoped Copies and Tool Selection
 
-A `Toolset` is never mutated in place during an [`Agent`](../pipeline-components/agents-1/agent.mdx) run. A `Toolset` with run-scoped state, such as a [`SearchableToolset`](searchabletoolset.mdx), is replaced in each run by an isolated, run-scoped copy created with the `spawn()` method. This makes concurrent runs that share the same `Toolset` instance safe: per-run state, such as a `SearchableToolset`'s discovered tools or active tool-name selection, cannot leak or collide across runs. A plain `Toolset` has no run-scoped state and is used as is; just avoid adding or removing tools while runs are in progress.
+An [`Agent`](../pipeline-components/agents-1/agent.mdx) run never modifies your configured `Toolset`. A `Toolset` with per-run state, such as a [`SearchableToolset`](searchabletoolset.mdx), is copied for each run through its `spawn()` method, so concurrent runs cannot leak state (like discovered tools) into each other. A plain `Toolset` has no per-run state and is shared as is; just avoid adding or removing tools while runs are in progress.
 
-You can also restrict an `Agent` to a subset of tools at runtime by passing tool names, for example `agent.run(tools=["tool_a", "tool_b"])`. When the configured `Toolset` overrides `spawn()`, the selection is applied to the live (run-scoped) copy rather than flattening it into a static list, so dynamic behavior like a `SearchableToolset`'s search and lazy loading keeps working over the selected subset.
+You can also restrict an `Agent` to a subset of tools at runtime by passing tool names, for example `agent.run(tools=["tool_a", "tool_b"])`. The selection applies only to that run, and dynamic behavior like a `SearchableToolset`'s search keeps working over the selected subset.
 
 Two methods support this and can be overridden when subclassing:
 
