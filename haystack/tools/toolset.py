@@ -112,9 +112,39 @@ class Toolset:
         """
         Return an iterator over the Tools in this Toolset.
 
+        This allows the Toolset to be used wherever a list of Tools is expected.
+
         :returns: An iterator yielding Tool instances
         """
         return iter(self.tools)
+
+    def get_selectable_tools(self) -> list[Tool]:
+        """
+        Return the tools available for name-based selection (e.g. via `Agent.run(tools=["tool_name"])`).
+
+        Warms up the Toolset first, so lazily loaded tools are selectable too. Subclasses whose iteration does
+        not surface every selectable tool (e.g. SearchableToolset) override this to return the full set.
+
+        :returns: The list of tools available for name-based selection.
+        """
+        self.warm_up()
+        return list(self.tools)
+
+    def spawn(self, selected_tool_names: set[str] | None = None) -> "Toolset":  # noqa: ARG002
+        """
+        Return an isolated instance of this Toolset for a single run.
+
+        A plain Toolset has no run-scoped state, so the default implementation returns `self` unchanged and
+        ignores `selected_tool_names` (the Agent materializes name selections itself in that case). Subclasses
+        with additional run-scoped state (e.g. SearchableToolset) should override this to return a copy that
+        shares the read-only state (its tools and any warmed-up resources) but gets fresh run-scoped state and
+        carries the selection, so concurrent runs that share the same configured Toolset don't corrupt each
+        other (for example, one run's discovered tools leaking into another).
+
+        :param selected_tool_names: Optional tool names this run is restricted to. None means no restriction.
+        :returns: This Toolset, or a run-scoped copy of it.
+        """
+        return self
 
     def __contains__(self, item: str | Tool) -> bool:
         """
@@ -181,34 +211,6 @@ class Toolset:
         for tool in self.tools:
             if hasattr(tool, "warm_up"):
                 tool.warm_up()
-
-    def get_selectable_tools(self) -> list[Tool]:
-        """
-        Return the tools available for name-based selection (e.g. via `Agent.run(tools=["tool_name"])`).
-
-        Warms up the Toolset first, so lazily loaded tools are selectable too. Subclasses whose iteration does
-        not surface every selectable tool (e.g. SearchableToolset) override this to return the full set.
-
-        :returns: The list of tools available for name-based selection.
-        """
-        self.warm_up()
-        return list(self.tools)
-
-    def spawn(self, selected_tool_names: set[str] | None = None) -> "Toolset":  # noqa: ARG002
-        """
-        Return an isolated instance of this Toolset for a single run.
-
-        A plain Toolset has no run-scoped state, so the default implementation returns `self` unchanged and
-        ignores `selected_tool_names` (the Agent materializes name selections itself in that case). Subclasses
-        with additional run-scoped state (e.g. SearchableToolset) should override this to return a copy that
-        shares the read-only state (its tools and any warmed-up resources) but gets fresh run-scoped state and
-        carries the selection, so concurrent runs that share the same configured Toolset don't corrupt each
-        other (for example, one run's discovered tools leaking into another).
-
-        :param selected_tool_names: Optional tool names this run is restricted to. None means no restriction.
-        :returns: This Toolset, or a run-scoped copy of it.
-        """
-        return self
 
     def add(self, tool: Tool) -> None:
         """

@@ -791,9 +791,8 @@ class Agent:
             or if any provided tool name is not valid.
         :raises TypeError: If tools is not a list of Tool objects, a Toolset, or a list of tool names (strings).
         """
-        # Toolsets with run-scoped state (those overriding spawn(), e.g. SearchableToolset) are replaced
-        # by per-run copies (see _spawn_tools / _select_tools_by_name) so concurrent runs sharing the
-        # same configured Toolset don't corrupt each other's run-scoped state.
+        # Toolsets are spawned per run (see _spawn_tools / _select_tools_by_name) so concurrent runs
+        # sharing the same configured Toolset don't corrupt each other's run-scoped state.
         if tools is None:
             return _spawn_tools(tools=self.tools)
 

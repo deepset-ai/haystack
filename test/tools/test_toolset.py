@@ -366,25 +366,13 @@ class TestToolsetWarmUp:
         toolset.warm_up()
         assert t1.warm_up_count == 3
 
-    def test_add_before_warm_up_does_not_warm_tools(self):
-        existing = WarmUpCountingTool("a")
-        toolset = Toolset([existing])
-        new_tool = WarmUpCountingTool("b")
-        toolset.add(new_tool)
-        # Nothing is warmed until warm_up() is called explicitly.
-        assert existing.warm_up_count == 0
-        assert new_tool.warm_up_count == 0
-        toolset.warm_up()
-        assert existing.warm_up_count == 1
-        assert new_tool.warm_up_count == 1
-
-    def test_add_tool_after_warm_up_warms_it_on_next_warm_up(self):
+    def test_add_never_warms_the_new_tool(self):
+        # add() is stateless: it never warms the added tool; the next warm_up() call warms whatever is present.
         existing = WarmUpCountingTool("a")
         toolset = Toolset([existing])
         toolset.warm_up()
         new_tool = WarmUpCountingTool("b")
         toolset.add(new_tool)
-        # add() does not warm the new tool; the next warm_up() call does.
         assert new_tool.warm_up_count == 0
         toolset.warm_up()
         assert new_tool.warm_up_count == 1
@@ -401,13 +389,10 @@ class TestToolsetSpawn:
     """Tests for spawn(), the run-scoping hook."""
 
     def test_spawn_returns_self_for_plain_toolset(self, add_tool, multiply_tool):
-        """A plain Toolset has no run-scoped state, so spawn() returns the same instance."""
+        """A plain Toolset has no run-scoped state: spawn() returns the same instance, with or without a
+        selection (which it ignores, since the Agent materializes it), and never mutates the toolset."""
         toolset = Toolset([add_tool, multiply_tool])
         assert toolset.spawn() is toolset
-
-    def test_spawn_ignores_selection_for_plain_toolset(self, add_tool, multiply_tool):
-        """The base spawn() ignores the selection (the Agent materializes it) and does not mutate the toolset."""
-        toolset = Toolset([add_tool, multiply_tool])
         assert toolset.spawn(selected_tool_names={"add"}) is toolset
         assert [tool.name for tool in toolset] == ["add", "multiply"]
 

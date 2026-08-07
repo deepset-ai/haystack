@@ -95,13 +95,10 @@ class TestSelectToolsByName:
         with pytest.raises(ValueError, match="The following tool names are not valid"):
             _select_tools_by_name([first_tool], ["unknown"])
 
-    def test_raises_when_no_tools_configured(self, first_tool: Tool):
+    @pytest.mark.parametrize("configured_tools", [[], Toolset([])], ids=["empty_list", "empty_toolset"])
+    def test_raises_when_no_tools_configured(self, configured_tools, first_tool: Tool):
         with pytest.raises(ValueError, match="No tools were configured for the Agent at initialization."):
-            _select_tools_by_name([], [first_tool.name])
-
-    def test_raises_when_configured_toolset_is_empty(self, first_tool: Tool):
-        with pytest.raises(ValueError, match="No tools were configured for the Agent at initialization."):
-            _select_tools_by_name(Toolset([]), [first_tool.name])
+            _select_tools_by_name(configured_tools, [first_tool.name])
 
     def test_reduces_plain_toolsets_to_matching_tools(self, first_tool: Tool, second_tool: Tool):
         toolset = Toolset([first_tool, second_tool])
