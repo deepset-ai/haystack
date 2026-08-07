@@ -143,7 +143,6 @@ document_matches_filter_data = [
         True,
         id="> operator with ISO 8601 string filter value and datetime Document value",
     ),
-
     pytest.param(
         {"field": "meta.page", "operator": ">", "value": 10},
         Document(),
