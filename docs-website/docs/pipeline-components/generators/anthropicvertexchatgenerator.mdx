@@ -30,7 +30,7 @@ A variety of Claude models (Opus, Sonnet, Haiku, and others) are accessible thro
 
 ### Parameters
 
-To use the `AnthropicVertexChatGenerator`, ensure you have a GCP project with Vertex AI enabled. You need to pass your GCP `project_id` and `region` as init parameters.
+To use the `AnthropicVertexChatGenerator`, ensure you have a GCP project with Vertex AI enabled. You need to pass your GCP `project_id` and `region` as init parameters. If you pass `None` for both, the component falls back to the `PROJECT_ID` and `REGION` environment variables.
 
 Before making requests, you may need to authenticate with GCP using `gcloud auth login`.
 
