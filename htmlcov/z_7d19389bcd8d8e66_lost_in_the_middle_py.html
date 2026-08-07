@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-    <title>Coverage for haystack/components/rankers/lost_in_the_middle.py: 91%</title>
+    <title>Coverage for haystack/components/rankers/lost_in_the_middle.py: 95%</title>
     <link rel="icon" sizes="32x32" href="favicon_32_cb_c827f16f.png">
     <link rel="stylesheet" href="style_cb_4667309f.css" type="text/css">
     <script src="coverage_html_cb_dd2e7eb5.js" defer></script>
@@ -12,7 +12,7 @@
     <div class="content">
         <h1>
             <span class="text">Coverage for </span><b>haystack<span class="sep">/</span>components<span class="sep">/</span>rankers<span class="sep">/</span>lost_in_the_middle.py</b>:
-            <span class="pc_cov">91%</span>
+            <span class="pc_cov">95%</span>
         </h1>
         <aside id="help_panel_wrapper">
             <input id="help_panel_state" type="checkbox">
@@ -55,8 +55,8 @@
         </aside>
         <h2>
             <span class="text">43 statements &nbsp;</span>
-            <button type="button" class="run button_toggle_run" value="run" data-shortcut="r" title="Toggle lines run">39<span class="text"> run</span></button>
-            <button type="button" class="mis show_mis button_toggle_mis" value="mis" data-shortcut="m" title="Toggle lines missing">4<span class="text"> missing</span></button>
+            <button type="button" class="run button_toggle_run" value="run" data-shortcut="r" title="Toggle lines run">41<span class="text"> run</span></button>
+            <button type="button" class="mis show_mis button_toggle_mis" value="mis" data-shortcut="m" title="Toggle lines missing">2<span class="text"> missing</span></button>
             <button type="button" class="exc show_exc button_toggle_exc" value="exc" data-shortcut="x" title="Toggle lines excluded">0<span class="text"> excluded</span></button>
         </h2>
         <p class="text">
@@ -65,7 +65,7 @@
             <a id="nextFileLink" class="nav" href="z_7d19389bcd8d8e66_meta_field_py.html">&#xbb; next</a>
             &nbsp; &nbsp; &nbsp;
             <a class="nav" href="https://coverage.readthedocs.io/en/7.15.2">coverage.py v7.15.2</a>,
-            created at 2026-08-07 07:36 +0000
+            created at 2026-08-07 11:41 +0000
         </p>
         <aside class="hidden">
             <button type="button" class="button_next_chunk" data-shortcut="j"></button>
@@ -136,7 +136,7 @@
     <p class="run run2"><span class="n"><a id="t54" href="#t54">54</a></span><span class="t">                <span class="fst">f"</span><span class="fst">Invalid value for word_count_threshold: </span><span class="op">{</span><span class="nam">word_count_threshold</span><span class="op">}</span><span class="fst">. word_count_threshold must be > 0.</span><span class="fst">"</span>&nbsp;</span><span class="r"></span></p>
     <p class="run run2"><span class="n"><a id="t55" href="#t55">55</a></span><span class="t">            <span class="op">)</span>&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t56" href="#t56">56</a></span><span class="t">        <span class="key">if</span> <span class="nam">isinstance</span><span class="op">(</span><span class="nam">top_k</span><span class="op">,</span> <span class="nam">int</span><span class="op">)</span> <span class="key">and</span> <span class="nam">top_k</span> <span class="op">&lt;=</span> <span class="num">0</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
-    <p class="mis show_mis"><span class="n"><a id="t57" href="#t57">57</a></span><span class="t">            <span class="key">raise</span> <span class="nam">ValueError</span><span class="op">(</span><span class="fst">f"</span><span class="fst">top_k must be > 0, but got </span><span class="op">{</span><span class="nam">top_k</span><span class="op">}</span><span class="fst">"</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t57" href="#t57">57</a></span><span class="t">            <span class="key">raise</span> <span class="nam">ValueError</span><span class="op">(</span><span class="fst">f"</span><span class="fst">top_k must be > 0, but got </span><span class="op">{</span><span class="nam">top_k</span><span class="op">}</span><span class="fst">"</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t58" href="#t58">58</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t59" href="#t59">59</a></span><span class="t">        <span class="nam">self</span><span class="op">.</span><span class="nam">word_count_threshold</span> <span class="op">=</span> <span class="nam">word_count_threshold</span>&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t60" href="#t60">60</a></span><span class="t">        <span class="nam">self</span><span class="op">.</span><span class="nam">top_k</span> <span class="op">=</span> <span class="nam">top_k</span>&nbsp;</span><span class="r"></span></p>
@@ -166,7 +166,7 @@
     <p class="mis mis2 show_mis"><span class="n"><a id="t84" href="#t84">84</a></span><span class="t">                <span class="fst">f"</span><span class="fst">Invalid value for word_count_threshold: </span><span class="op">{</span><span class="nam">word_count_threshold</span><span class="op">}</span><span class="fst">. word_count_threshold must be > 0.</span><span class="fst">"</span>&nbsp;</span><span class="r"></span></p>
     <p class="mis mis2 show_mis"><span class="n"><a id="t85" href="#t85">85</a></span><span class="t">            <span class="op">)</span>&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t86" href="#t86">86</a></span><span class="t">        <span class="key">if</span> <span class="nam">isinstance</span><span class="op">(</span><span class="nam">top_k</span><span class="op">,</span> <span class="nam">int</span><span class="op">)</span> <span class="key">and</span> <span class="nam">top_k</span> <span class="op">&lt;=</span> <span class="num">0</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
-    <p class="mis show_mis"><span class="n"><a id="t87" href="#t87">87</a></span><span class="t">            <span class="key">raise</span> <span class="nam">ValueError</span><span class="op">(</span><span class="fst">f"</span><span class="fst">top_k must be > 0, but got </span><span class="op">{</span><span class="nam">top_k</span><span class="op">}</span><span class="fst">"</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t87" href="#t87">87</a></span><span class="t">            <span class="key">raise</span> <span class="nam">ValueError</span><span class="op">(</span><span class="fst">f"</span><span class="fst">top_k must be > 0, but got </span><span class="op">{</span><span class="nam">top_k</span><span class="op">}</span><span class="fst">"</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t88" href="#t88">88</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t89" href="#t89">89</a></span><span class="t">        <span class="key">if</span> <span class="key">not</span> <span class="nam">documents</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t90" href="#t90">90</a></span><span class="t">            <span class="key">return</span> <span class="op">{</span><span class="str">"documents"</span><span class="op">:</span> <span class="op">[</span><span class="op">]</span><span class="op">}</span>&nbsp;</span><span class="r"></span></p>
@@ -226,7 +226,7 @@
             <a class="nav" href="z_7d19389bcd8d8e66_meta_field_py.html">&#xbb; next</a>
             &nbsp; &nbsp; &nbsp;
             <a class="nav" href="https://coverage.readthedocs.io/en/7.15.2">coverage.py v7.15.2</a>,
-            created at 2026-08-07 07:36 +0000
+            created at 2026-08-07 11:41 +0000
         </p>
     </div>
 </footer>
