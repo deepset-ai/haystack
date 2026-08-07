@@ -85,8 +85,6 @@ agent = Agent(
 )
 ```
 
-To deliberately merge simple Toolsets into one, unpack them explicitly: `Toolset([*math_toolset, *another_toolset])`. Avoid this for Toolsets that manage resources or load tools lazily (such as an `MCPToolset`): pass them as a list instead.
-
 ### Tool Selection at Runtime
 
 You can restrict an [`Agent`](../pipeline-components/agents-1/agent.mdx) to a subset of tools at runtime by passing tool names, for example `agent.run(tools=["tool_a", "tool_b"])`. This also works with a [`SearchableToolset`](searchabletoolset.mdx): search and lazy loading keep working over the selected subset.

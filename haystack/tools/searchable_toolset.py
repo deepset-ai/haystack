@@ -198,16 +198,12 @@ class SearchableToolset(Toolset):
 
     def _copy_for_run(self, selected_tool_names: set[str] | None = None) -> "SearchableToolset":
         """
-        Return a copy of this toolset to be used for a single Agent run.
+        Return an isolated copy for a single Agent run, carrying the given name selection.
 
-        This is the internal method through which the Agent isolates run-scoped Toolset state: a Toolset that
-        defines it is replaced by a per-run copy at run start, so concurrent runs sharing the same configured
-        Toolset don't share discovered tools or collide on the active selection.
-
-        The copy shares the read-only configuration (catalog, BM25 index) but starts with fresh run state:
-        no discovered tools, a bootstrap search tool bound to the copy, and the given selection. The selection
-        is fixed for the copy's lifetime: iteration only yields selected tools (the bootstrap search tool stays
-        exposed) and search is scoped to them.
+        The copy shares the read-only catalog and BM25 index but gets fresh discovered tools and a bootstrap
+        search tool bound to the copy; the selection is fixed for the copy's lifetime and scopes both iteration
+        and search. This way concurrent runs sharing the same configured SearchableToolset don't share
+        discovered tools or collide on the active selection.
 
         :param selected_tool_names: Optional catalog tool names this run is restricted to. None means no
             restriction.

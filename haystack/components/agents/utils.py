@@ -92,33 +92,14 @@ def _record_tool_calls(state: State, tool_messages: list[ChatMessage]) -> None:
 
 def _copy_toolset_for_run(toolset: Toolset, selected_tool_names: set[str] | None = None) -> Toolset:
     """
-    Return a per-run copy of a Toolset with run-scoped state; a plain Toolset is returned as is.
+    Return a per-run copy of a Toolset that defines `_copy_for_run()` (e.g. SearchableToolset).
 
-    A Toolset signals run-scoped state by defining `_copy_for_run()` (e.g. SearchableToolset, whose discovered
-    tools and name selection are per-run); the copy carries the given name selection. Plain Toolsets are
-    read-only at run time and can be shared across runs directly, so no copy is made (and any selection is
-    applied externally by the caller).
+    The copy carries the given name selection. A plain Toolset has no run-scoped state and is returned as is.
     """
     copy_for_run = getattr(toolset, "_copy_for_run", None)
     if callable(copy_for_run):
         return copy_for_run(selected_tool_names=selected_tool_names)
     return toolset
-
-
-def _selectable_names(item: Tool | Toolset) -> set[str]:
-    """
-    Resolve the tool names an item offers for name-based selection.
-
-    A Toolset providing a `get_selectable_tools()` method (e.g. SearchableToolset, whose iteration does not
-    surface the full catalog) is asked through it; any other Toolset is warmed up first, so lazily loaded
-    tools are selectable too.
-    """
-    if not isinstance(item, Toolset):
-        return {item.name}
-    if hasattr(item, "get_selectable_tools"):
-        return {tool.name for tool in item.get_selectable_tools()}
-    item.warm_up()
-    return {tool.name for tool in item}
 
 
 def _select_tools_by_name(configured_tools: ToolsType, names: list[str]) -> list[Tool | Toolset]:
@@ -136,7 +117,7 @@ def _select_tools_by_name(configured_tools: ToolsType, names: list[str]) -> list
     :returns: The selected Tools and/or selection-scoped Toolset copies.
     :raises ValueError: If no tools were configured, or if any requested name is not a valid tool name.
     """
-    if not configured_tools:
+    if configured_tools is None or (not isinstance(configured_tools, Toolset) and not configured_tools):
         raise ValueError("No tools were configured for the Agent at initialization.")
 
     requested_names = set(names)
@@ -144,7 +125,10 @@ def _select_tools_by_name(configured_tools: ToolsType, names: list[str]) -> list
         [configured_tools] if isinstance(configured_tools, Toolset) else list(configured_tools)
     )
 
-    selectable_per_item = [(item, _selectable_names(item)) for item in items]
+    selectable_per_item = [
+        (item, {tool.name for tool in item.get_selectable_tools()} if isinstance(item, Toolset) else {item.name})
+        for item in items
+    ]
     valid_tool_names = {name for _, item_names in selectable_per_item for name in item_names}
 
     invalid_tool_names = requested_names - valid_tool_names

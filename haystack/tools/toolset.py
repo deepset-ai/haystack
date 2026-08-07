@@ -154,26 +154,49 @@ class Toolset:
         """
         Prepare the Toolset for use.
 
-        By default, this method warms up all tools in the Toolset. Subclasses that load tools dynamically
-        (e.g. from an MCP server or an OpenAPI spec) should override this method to fetch their tools and assign
-        them to `self.tools`.
+        By default, this method iterates through and warms up all tools in the Toolset.
+        Subclasses can override this method to customize initialization behavior, such as:
 
-        Following the framework-wide convention, `warm_up()` may be called multiple times (e.g. before every run)
-        and implementations are responsible for making it idempotent. The default implementation delegates to the
-        tools' own idempotent `warm_up()`. Subclasses should guard on their own state, for example
-        `if self._client is not None: return`.
+        - Setting up shared resources (database connections, HTTP sessions) instead of
+          warming individual tools
+        - Loading tools dynamically from an external source and assigning them to `self.tools`
+        - Controlling when and how tools are initialized
+
+        For example, a Toolset that manages tools from an external service (like MCPToolset)
+        might override this to initialize a shared connection and load the tools through it:
+
+        ```python
+        class MCPToolset(Toolset):
+            def warm_up(self) -> None:
+                if self.mcp_connection is not None:
+                    return
+                self.mcp_connection = establish_connection(self.server_url)
+                self.tools = self.mcp_connection.fetch_tools()
+        ```
+
+        Following the framework-wide convention, this method may be called multiple times (e.g. before every
+        run): implementations are responsible for their own idempotence, guarding on their own state as in the
+        example above. The default implementation delegates to the tools' own idempotent `warm_up()`.
         """
         for tool in self.tools:
             if hasattr(tool, "warm_up"):
                 tool.warm_up()
 
+    def get_selectable_tools(self) -> list[Tool]:
+        """
+        Return the tools available for name-based selection (e.g. via `Agent.run(tools=["tool_name"])`).
+
+        Warms up the Toolset first, so lazily loaded tools are selectable too. Subclasses whose iteration does
+        not surface every selectable tool (e.g. SearchableToolset) override this to return the full set.
+
+        :returns: The list of tools available for name-based selection.
+        """
+        self.warm_up()
+        return list(self.tools)
+
     def add(self, tool: Tool) -> None:
         """
         Add a new Tool to this Toolset.
-
-        To combine whole Toolsets, pass them as a list wherever tools are accepted instead, e.g.
-        `Agent(tools=[toolset_a, toolset_b])`. This keeps each Toolset as a unit, preserving its lifecycle
-        and serialization.
 
         :param tool: A Tool instance to add
         :raises ValueError: If adding the tool would result in duplicate tool names

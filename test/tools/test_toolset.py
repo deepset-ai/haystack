@@ -168,7 +168,7 @@ class TestToolset:
         assert "non_existent_tool" not in toolset
 
     def test_combining_toolsets_via_unpacking(self, add_tool, multiply_tool, subtract_tool):
-        """Explicit unpacking is the supported way to build a merged Toolset."""
+        """A Toolset can be built from the tools of existing ones; the combined tools remain invocable."""
         combined = Toolset([*Toolset([add_tool, subtract_tool]), multiply_tool])
         assert [t.name for t in combined] == ["add", "subtract", "multiply"]
 
@@ -395,3 +395,32 @@ class TestToolsetWarmUp:
         not_a_tool: Any = Toolset([WarmUpCountingTool("b")])
         with pytest.raises(TypeError, match="Expected Tool"):
             toolset.add(not_a_tool)
+
+
+class TestToolsetToolSelection:
+    """Tests for get_selectable_tools()."""
+
+    def test_get_selectable_tools_returns_all_tools(self, add_tool, multiply_tool):
+        toolset = Toolset([add_tool, multiply_tool])
+        assert toolset.get_selectable_tools() == [add_tool, multiply_tool]
+
+    def test_get_selectable_tools_warms_up_lazy_toolset(self, add_tool, multiply_tool):
+        """get_selectable_tools() warms up a lazy toolset so its lazily loaded tools are available for selection."""
+
+        class LazyToolset(Toolset):
+            def __init__(self):
+                self._loaded = False
+                super().__init__([])  # no tools until warm_up
+
+            def warm_up(self):
+                if self._loaded:
+                    return
+                self._loaded = True
+                self.tools = [add_tool, multiply_tool]
+
+        toolset = LazyToolset()
+        assert toolset.tools == []  # not loaded yet
+
+        selectable = toolset.get_selectable_tools()
+
+        assert [tool.name for tool in selectable] == ["add", "multiply"]

@@ -571,7 +571,7 @@ class Agent:
     def _warm_up_tools(self) -> None:
         """Warm up the configured tools once."""
         if not self._tools_warmed_up:
-            if self.tools:
+            if self.tools is not None:
                 warm_up_tools(tools=self.tools)
             self._tools_warmed_up = True
 
