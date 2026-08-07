@@ -5,8 +5,9 @@ features:
     shortens the conversation when it reaches a configured fraction of the model's context window.
 
     The first built-in strategy, ``SlidingWindowCompactor``, preserves leading system messages, the latest user task,
-    and as many complete recent Agent steps as the target allows. It replaces removed history with a short omission
-    note.
+    and as much complete recent conversation as the target allows. It removes earlier user/assistant turns as whole
+    units first. Only when removing all earlier turns is insufficient does it remove individual Agent steps from the
+    current task. It replaces removed history with a short omission note.
 
     .. code-block:: python
 
@@ -30,9 +31,10 @@ features:
     tool schemas. Leave headroom above ``compact_at`` for the next reply and its tool results.
 
     ``SlidingWindowCompactor`` treats an assistant message and its following tool results as one step, so a tool call is
-    never separated from its results. It may retain slightly more history than the requested target when preserving the
-    current task or the configured minimum number of steps. Compaction is lossy: removed messages cannot be recovered
-    or summarized by this strategy. Implement the ``Compactor`` protocol to provide a custom strategy.
+    never separated from its results. Historical turns are also kept whole, so an assistant reply is not retained
+    without the user message it answers. It may retain slightly more history than the requested target when preserving
+    the current task or the configured minimum number of steps. Compaction is lossy: removed messages cannot be
+    recovered or summarized by this strategy. Implement the ``Compactor`` protocol to provide a custom strategy.
 
     ``CompactionHook`` and ``SlidingWindowCompactor`` emit an ``ExperimentalWarning`` and may change without a
     deprecation cycle.

@@ -6,7 +6,7 @@ import pytest
 
 from haystack.dataclasses import ChatMessage, ChatRole
 from haystack.hooks.compaction import SlidingWindowCompactor
-from haystack.hooks.compaction.sliding_window import _DEFAULT_OMISSION_NOTE
+from haystack.hooks.compaction.sliding_window import _DEFAULT_OMISSION_NOTE, _historical_turn_spans
 from haystack.hooks.compaction.utils import _COMPACTION_META_KEY
 from test.hooks.compaction.helpers import FakeCounter, count_markers, long_conversation, tool_call, tool_result
 
@@ -16,6 +16,46 @@ pytestmark = pytest.mark.filterwarnings("ignore::haystack.utils.experimental.Exp
 SMALLEST = 1
 # A fixed, obvious rate, so the tests that do exercise sizing can reason in round numbers.
 COUNTER = FakeCounter()
+
+
+class TestHistoricalTurnSpans:
+    def test_groups_each_user_message_with_its_assistant_steps_and_tool_results(self):
+        messages = [
+            ChatMessage.from_system("rules"),
+            ChatMessage.from_user("first task"),
+            tool_call("c1"),
+            tool_result("first result", call_id="c1"),
+            ChatMessage.from_assistant("first answer"),
+            ChatMessage.from_user("second task"),
+            ChatMessage.from_assistant("second answer"),
+        ]
+        spans = _historical_turn_spans(messages=messages, start=1, end=len(messages))
+        assert spans == [(1, 5), (5, 7)]
+        assert messages[slice(*spans[0])] == messages[1:5]
+        assert messages[slice(*spans[1])] == messages[5:7]
+
+    def test_only_returns_turns_within_the_requested_bounds(self):
+        messages = [
+            ChatMessage.from_user("outside"),
+            ChatMessage.from_assistant("outside answer"),
+            ChatMessage.from_user("inside"),
+            ChatMessage.from_assistant("inside answer"),
+            ChatMessage.from_user("current task"),
+        ]
+        assert _historical_turn_spans(messages=messages, start=2, end=4) == [(2, 4)]
+
+    def test_compaction_note_does_not_start_a_new_turn(self):
+        note = ChatMessage.from_user(
+            "Earlier messages were removed.", meta={_COMPACTION_META_KEY: {"strategy": "sliding_window"}}
+        )
+        messages = [
+            ChatMessage.from_user("task"),
+            ChatMessage.from_assistant("first step"),
+            note,
+            ChatMessage.from_assistant("second step"),
+            ChatMessage.from_user("next task"),
+        ]
+        assert _historical_turn_spans(messages=messages, start=0, end=len(messages)) == [(0, 4), (4, 5)]
 
 
 class TestSlidingWindowCompactor:
@@ -47,6 +87,47 @@ class TestSlidingWindowCompactor:
         assert roomy is not None
         assert len(tight) == 4
         assert len(roomy) == 8
+
+    def test_keeps_complete_recent_user_assistant_turns_that_fit(self):
+        messages = [
+            ChatMessage.from_system(text="rules"),
+            ChatMessage.from_user(text="old question"),
+            ChatMessage.from_assistant(text="old answer"),
+            ChatMessage.from_user(text="recent question"),
+            ChatMessage.from_assistant(text="recent answer"),
+            ChatMessage.from_user(text="current task"),
+            ChatMessage.from_assistant(text="current step"),
+        ]
+        # Drops one historical turn
+        expected = [messages[0], *messages[3:]]
+        target_tokens = COUNTER.count(expected)
+        compacted = SlidingWindowCompactor(omission_note=None).compact(
+            messages=messages, target_tokens=target_tokens, token_counter=COUNTER
+        )
+        assert compacted == expected
+
+    def test_drops_historical_context_and_one_current_task_step_to_reach_target(self):
+        system_message = ChatMessage.from_system(text="rules")
+        historical_turn = [
+            ChatMessage.from_user(text="old question"),
+            tool_call("old-call"),
+            tool_result(result="old result", call_id="old-call"),
+            ChatMessage.from_assistant(text="old final answer"),
+        ]
+        current_task = [
+            ChatMessage.from_user(text="current task"),
+            tool_call("current-call-1"),
+            tool_result(result="large intermediate result " * 100, call_id="current-call-1"),
+            tool_call("current-call-2"),
+            tool_result(result="latest result", call_id="current-call-2"),
+        ]
+        messages = [system_message, *historical_turn, *current_task]
+        # The target is small enough that the historical context and one step in the current task must be removed.
+        target_tokens = 52
+        compacted = SlidingWindowCompactor(omission_note=None).compact(
+            messages=messages, target_tokens=target_tokens, token_counter=COUNTER
+        )
+        assert compacted == [system_message, current_task[0], *current_task[-2:]]
 
     def test_returns_none_when_the_conversation_already_fits(self):
         assert (
