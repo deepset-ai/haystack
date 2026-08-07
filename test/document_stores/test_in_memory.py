@@ -102,6 +102,16 @@ class TestMemoryDocumentStore(
         self.assert_documents_are_equal(equal_result, docs)
         self.assert_documents_are_equal(in_result, docs)
 
+    def test_filter_documents_with_strict_datetime_comparison(self) -> None:
+        store = InMemoryDocumentStore(strict_datetime_comparison=True)
+        document = Document(content="doc", meta={"date": "2025-02-03T12:45:46Z"})
+        store.write_documents([document])
+
+        result = store.filter_documents(filters={"field": "meta.date", "operator": ">=", "value": "2025-02-01"})
+
+        assert result == []
+        store.shutdown()
+
     def test_to_dict(self, in_memory_doc_store):
         data = in_memory_doc_store.to_dict()
         assert data == {
@@ -114,6 +124,7 @@ class TestMemoryDocumentStore(
                 "index": in_memory_doc_store.index,
                 "shared": True,
                 "return_embedding": True,
+                "strict_datetime_comparison": False,
             },
         }
 
@@ -125,6 +136,7 @@ class TestMemoryDocumentStore(
             embedding_similarity_function="cosine",
             index="my_cool_index",
             return_embedding=True,
+            strict_datetime_comparison=True,
         )
         data = store.to_dict()
         assert data == {
@@ -137,6 +149,7 @@ class TestMemoryDocumentStore(
                 "index": "my_cool_index",
                 "shared": True,
                 "return_embedding": True,
+                "strict_datetime_comparison": True,
             },
         }
 

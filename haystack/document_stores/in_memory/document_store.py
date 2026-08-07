@@ -72,6 +72,8 @@ class InMemoryDocumentStore:
         shared: bool = True,
         async_executor: ThreadPoolExecutor | None = None,
         return_embedding: bool = True,
+        *,
+        strict_datetime_comparison: bool = False,
     ) -> None:
         """
         Initializes the DocumentStore.
@@ -94,6 +96,10 @@ class InMemoryDocumentStore:
             Optional ThreadPoolExecutor to use for async calls. If not provided, a single-threaded
             executor will be initialized and used.
         :param return_embedding: Whether to return the embedding of the retrieved Documents. Default is True.
+        :param strict_datetime_comparison:
+            If `True`, timezone-naive and timezone-aware datetimes never match each other in filters.
+            If `False` (the default), the timezone from the aware datetime is copied to the naive one before
+            comparing.
         """
         self.bm25_tokenization_regex = bm25_tokenization_regex
         self.tokenizer = re.compile(bm25_tokenization_regex).findall
@@ -129,6 +135,7 @@ class InMemoryDocumentStore:
             else async_executor
         )
         self.return_embedding = return_embedding
+        self.strict_datetime_comparison = strict_datetime_comparison
 
     def __del__(self) -> None:
         """
@@ -371,6 +378,7 @@ class InMemoryDocumentStore:
             index=self.index,
             shared=self._shared,
             return_embedding=self.return_embedding,
+            strict_datetime_comparison=self.strict_datetime_comparison,
         )
 
     @classmethod
@@ -436,7 +444,13 @@ class InMemoryDocumentStore:
         """
         if filters:
             InMemoryDocumentStore._validate_filters(filters)
-            docs = [doc for doc in self.storage.values() if document_matches_filter(filters=filters, document=doc)]
+            docs = [
+                doc
+                for doc in self.storage.values()
+                if document_matches_filter(
+                    filters=filters, document=doc, strict_datetime_comparison=self.strict_datetime_comparison
+                )
+            ]
         else:
             docs = list(self.storage.values())
 
@@ -548,7 +562,13 @@ class InMemoryDocumentStore:
         :raises ValueError: if filters have invalid syntax.
         """
         InMemoryDocumentStore._validate_filters(filters)
-        matching = [doc for doc in self.storage.values() if document_matches_filter(filters=filters, document=doc)]
+        matching = [
+            doc
+            for doc in self.storage.values()
+            if document_matches_filter(
+                filters=filters, document=doc, strict_datetime_comparison=self.strict_datetime_comparison
+            )
+        ]
         for doc in matching:
             doc.meta.update(meta)
             self.storage[doc.id] = doc
@@ -564,7 +584,13 @@ class InMemoryDocumentStore:
         :raises ValueError: if filters have invalid syntax.
         """
         InMemoryDocumentStore._validate_filters(filters)
-        matching = [doc for doc in self.storage.values() if document_matches_filter(filters=filters, document=doc)]
+        matching = [
+            doc
+            for doc in self.storage.values()
+            if document_matches_filter(
+                filters=filters, document=doc, strict_datetime_comparison=self.strict_datetime_comparison
+            )
+        ]
         doc_ids = [doc.id for doc in matching]
         self.delete_documents(doc_ids)
         return len(doc_ids)
@@ -580,7 +606,13 @@ class InMemoryDocumentStore:
         """
         if filters:
             InMemoryDocumentStore._validate_filters(filters)
-            return sum(1 for doc in self.storage.values() if document_matches_filter(filters=filters, document=doc))
+            return sum(
+                1
+                for doc in self.storage.values()
+                if document_matches_filter(
+                    filters=filters, document=doc, strict_datetime_comparison=self.strict_datetime_comparison
+                )
+            )
         return len(self.storage)
 
     def count_unique_metadata_by_filter(self, filters: dict[str, Any], metadata_fields: list[str]) -> dict[str, int]:
@@ -597,7 +629,13 @@ class InMemoryDocumentStore:
         """
         if filters:
             InMemoryDocumentStore._validate_filters(filters)
-            docs = [doc for doc in self.storage.values() if document_matches_filter(filters=filters, document=doc)]
+            docs = [
+                doc
+                for doc in self.storage.values()
+                if document_matches_filter(
+                    filters=filters, document=doc, strict_datetime_comparison=self.strict_datetime_comparison
+                )
+            ]
         else:
             docs = list(self.storage.values())
 
@@ -780,7 +818,11 @@ class InMemoryDocumentStore:
         if filters:
             InMemoryDocumentStore._validate_filters(filters)
             all_documents = [
-                doc for doc in self.storage.values() if document_matches_filter(filters=filters, document=doc)
+                doc
+                for doc in self.storage.values()
+                if document_matches_filter(
+                    filters=filters, document=doc, strict_datetime_comparison=self.strict_datetime_comparison
+                )
             ]
         else:
             all_documents = list(self.storage.values())
