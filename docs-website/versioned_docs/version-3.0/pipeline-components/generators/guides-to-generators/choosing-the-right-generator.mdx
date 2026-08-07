@@ -161,7 +161,7 @@ These providers host their own models behind a dedicated API. Haystack supports 
 Several providers expose many models through a single API, so one Generator lets you switch between models from different vendors. Some of these providers focus on open-weights models, while others also include proprietary ones:
 
 - [Amazon Bedrock](../amazonbedrockgenerator.mdx) provides access to proprietary models from the Amazon Titan family, AI21 Labs, Anthropic, and Cohere, plus several open models, such as Llama from Meta.
-- [Hugging Face Inference Providers](https://huggingface.co/docs/inference-providers/index), available through the Hugging Face API Generators, give access to hundreds of LLMs from different providers through a unified interface.
+- [Hugging Face Inference Providers](https://huggingface.co/docs/inference-providers/index), available through the [`HuggingFaceAPIChatGenerator`](../huggingfaceapichatgenerator.mdx), give access to hundreds of LLMs from different providers through a unified interface.
 - [AIMLAPI](../aimllapichatgenerator.mdx), [Comet API](../cometapichatgenerator.mdx), [NVIDIA](../nvidiachatgenerator.mdx), [OpenRouter](../openrouterchatgenerator.mdx), [STACKIT](../stackitchatgenerator.mdx), [Together AI](../togetheraichatgenerator.mdx), and [WatsonX](../watsonxchatgenerator.mdx) each have a dedicated Haystack integration.
 - DeepInfra, Fireworks, FuturMix and other cloud providers offer OpenAI-compatible interfaces and can be used through the OpenAI Generators.
 
@@ -188,7 +188,7 @@ In this case, a private instance of the model is deployed by the provider, and y
 Here are the components that support this in Haystack:
 
 - Amazon [SagemakerGenerator](../sagemakergenerator.mdx)
-- HuggingFace API Generators, when used to query [HuggingFace Inference endpoints](https://huggingface.co/inference-endpoints).
+- [`HuggingFaceAPIChatGenerator`](../huggingfaceapichatgenerator.mdx), when used to query [HuggingFace Inference endpoints](https://huggingface.co/inference-endpoints).
 
 ### Provider-hosted API vs Dedicated Cloud Instance
 
@@ -219,4 +219,4 @@ The following solutions are suitable if you want to run Language Models in produ
 
 - vLLM is a high-throughput and memory-efficient inference and serving engine for LLMs. Haystack supports vLLM through [vLLMChatGenerator](../vllmchatgenerator.mdx).
 - SGLang is a similar high-performance LLM serving framework. Haystack supports it through the OpenAI Generators.
-- Hugging Face API Generators, when used to query a TGI instance deployed on-premise. Hugging Face Text Generation Inference is a toolkit for efficiently deploying and serving LLMs. **This project is now in maintenance mode**.
+- [`HuggingFaceAPIChatGenerator`](../huggingfaceapichatgenerator.mdx), when used to query a TGI instance deployed on-premise. Hugging Face Text Generation Inference is a toolkit for efficiently deploying and serving LLMs. **This project is now in maintenance mode**.
