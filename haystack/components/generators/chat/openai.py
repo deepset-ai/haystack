@@ -624,16 +624,13 @@ def _make_schema_strict(schema: dict[str, Any]) -> dict[str, Any]:
 def _check_finish_reason(meta: dict[str, Any]) -> None:
     if meta["finish_reason"] == "length":
         logger.warning(
-            "The completion for index {index} has been truncated before reaching a natural stopping point. "
+            "The completion has been truncated before reaching a natural stopping point. "
             "Increase the max_completion_tokens parameter to allow for longer completions.",
-            index=meta["index"],
             finish_reason=meta["finish_reason"],
         )
     if meta["finish_reason"] == "content_filter":
         logger.warning(
-            "The completion for index {index} has been truncated due to the content filter.",
-            index=meta["index"],
-            finish_reason=meta["finish_reason"],
+            "The completion has been truncated due to the content filter.", finish_reason=meta["finish_reason"]
         )
 
 
@@ -672,7 +669,6 @@ def _convert_chat_completion_to_chat_message(
     logprobs = _serialize_object(choice.logprobs) if choice.logprobs else None
     meta = {
         "model": completion.model,
-        "index": choice.index,
         "finish_reason": choice.finish_reason,
         "usage": _serialize_object(completion.usage),
     }
@@ -710,7 +706,7 @@ def _convert_chat_completion_chunk_to_streaming_chunk(
             content="",
             component_info=component_info,
             # Index is None since it's only set to an int when a content block is present
-            index=None,
+            chunk_index=None,
             finish_reason=None,
             meta={
                 "model": chunk.model,
@@ -728,7 +724,7 @@ def _convert_chat_completion_chunk_to_streaming_chunk(
             function = tool_call.function
             tool_calls_deltas.append(
                 ToolCallDelta(
-                    index=tool_call.index,
+                    tool_call_index=tool_call.index,
                     id=tool_call.id,
                     tool_name=function.name if function else None,
                     arguments=function.arguments if function and function.arguments else None,
@@ -737,14 +733,13 @@ def _convert_chat_completion_chunk_to_streaming_chunk(
         return StreamingChunk(
             content=choice.delta.content or "",
             component_info=component_info,
-            # We adopt the first tool_calls_deltas.index as the overall index of the chunk.
-            index=tool_calls_deltas[0].index,
+            # We adopt the first tool_calls_deltas.tool_call_index as the overall index of the chunk.
+            chunk_index=tool_calls_deltas[0].tool_call_index,
             tool_calls=tool_calls_deltas,
             start=tool_calls_deltas[0].tool_name is not None,
             finish_reason=finish_reason_mapping.get(choice.finish_reason) if choice.finish_reason else None,
             meta={
                 "model": chunk.model,
-                "index": choice.index,
                 "tool_calls": choice.delta.tool_calls,
                 "finish_reason": choice.finish_reason,
                 "received_at": datetime.now().isoformat(),
@@ -766,7 +761,6 @@ def _convert_chat_completion_chunk_to_streaming_chunk(
     # Initialize meta dictionary
     meta = {
         "model": chunk.model,
-        "index": choice.index,
         "tool_calls": choice.delta.tool_calls if choice.delta and choice.delta.tool_calls else None,
         "finish_reason": choice.finish_reason,
         "received_at": datetime.now().isoformat(),
@@ -786,7 +780,7 @@ def _convert_chat_completion_chunk_to_streaming_chunk(
     return StreamingChunk(
         content=content,
         component_info=component_info,
-        index=resolved_index,
+        chunk_index=resolved_index,
         # The first chunk is always a start message chunk that only contains role information, so if we reach here
         # and previous_chunks is length 1 then this is the start of text content.
         start=len(previous_chunks) == 1,

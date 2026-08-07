@@ -627,9 +627,7 @@ class TestOpenAIChatGenerator:
 
         caplog.set_level(logging.INFO)
         messages = [
-            ChatMessage.from_assistant(
-                "", meta={"finish_reason": "content_filter" if i % 2 == 0 else "length", "index": i}
-            )
+            ChatMessage.from_assistant("", meta={"finish_reason": "content_filter" if i % 2 == 0 else "length"})
             for i, _ in enumerate(range(4))
         ]
 
@@ -638,17 +636,17 @@ class TestOpenAIChatGenerator:
 
         # check truncation warning
         message_template = (
-            "The completion for index {index} has been truncated before reaching a natural stopping point. "
+            "The completion has been truncated before reaching a natural stopping point. "
             "Increase the max_completion_tokens parameter to allow for longer completions."
         )
 
-        for index in [1, 3]:
-            assert caplog.records[index].message == message_template.format(index=index)
+        for i in [1, 3]:
+            assert caplog.records[i].message == message_template
 
         # check content filter warning
-        message_template = "The completion for index {index} has been truncated due to the content filter."
-        for index in [0, 2]:
-            assert caplog.records[index].message == message_template.format(index=index)
+        message_template = "The completion has been truncated due to the content filter."
+        for i in [0, 2]:
+            assert caplog.records[i].message == message_template
 
     def test_run_with_tools(self, tools: list[Tool]) -> None:
 
@@ -1532,20 +1530,12 @@ def streaming_chunks():
     return [
         StreamingChunk(
             content="",
-            meta={
-                "model": "gpt-5-mini",
-                "index": 0,
-                "tool_calls": None,
-                "finish_reason": None,
-                "received_at": ANY,
-                "usage": None,
-            },
+            meta={"model": "gpt-5-mini", "tool_calls": None, "finish_reason": None, "received_at": ANY, "usage": None},
         ),
         StreamingChunk(
             content="",
             meta={
                 "model": "gpt-5-mini",
-                "index": 0,
                 "tool_calls": [
                     ChoiceDeltaToolCall(
                         index=0,
@@ -1566,7 +1556,6 @@ def streaming_chunks():
             content="",
             meta={
                 "model": "gpt-5-mini",
-                "index": 0,
                 "tool_calls": [ChoiceDeltaToolCall(index=0, function=ChoiceDeltaToolCallFunction(arguments='{"ci'))],
                 "finish_reason": None,
                 "received_at": ANY,
@@ -1579,7 +1568,6 @@ def streaming_chunks():
             content="",
             meta={
                 "model": "gpt-5-mini",
-                "index": 0,
                 "tool_calls": [ChoiceDeltaToolCall(index=0, function=ChoiceDeltaToolCallFunction(arguments='ty": '))],
                 "finish_reason": None,
                 "received_at": ANY,
@@ -1592,7 +1580,6 @@ def streaming_chunks():
             content="",
             meta={
                 "model": "gpt-5-mini",
-                "index": 0,
                 "tool_calls": [ChoiceDeltaToolCall(index=0, function=ChoiceDeltaToolCallFunction(arguments='"Paris'))],
                 "finish_reason": None,
                 "received_at": ANY,
@@ -1605,7 +1592,6 @@ def streaming_chunks():
             content="",
             meta={
                 "model": "gpt-5-mini",
-                "index": 0,
                 "tool_calls": [ChoiceDeltaToolCall(index=0, function=ChoiceDeltaToolCallFunction(arguments='"}'))],
                 "finish_reason": None,
                 "received_at": ANY,
@@ -1618,7 +1604,6 @@ def streaming_chunks():
             content="",
             meta={
                 "model": "gpt-5-mini",
-                "index": 0,
                 "tool_calls": [
                     ChoiceDeltaToolCall(
                         index=1,
@@ -1639,7 +1624,6 @@ def streaming_chunks():
             content="",
             meta={
                 "model": "gpt-5-mini",
-                "index": 0,
                 "tool_calls": [ChoiceDeltaToolCall(index=1, function=ChoiceDeltaToolCallFunction(arguments='{"ci'))],
                 "finish_reason": None,
                 "received_at": ANY,
@@ -1652,7 +1636,6 @@ def streaming_chunks():
             content="",
             meta={
                 "model": "gpt-5-mini",
-                "index": 0,
                 "tool_calls": [ChoiceDeltaToolCall(index=1, function=ChoiceDeltaToolCallFunction(arguments='ty": '))],
                 "finish_reason": None,
                 "received_at": ANY,
@@ -1665,7 +1648,6 @@ def streaming_chunks():
             content="",
             meta={
                 "model": "gpt-5-mini",
-                "index": 0,
                 "tool_calls": [ChoiceDeltaToolCall(index=1, function=ChoiceDeltaToolCallFunction(arguments='"Berli'))],
                 "finish_reason": None,
                 "received_at": ANY,
@@ -1678,7 +1660,6 @@ def streaming_chunks():
             content="",
             meta={
                 "model": "gpt-5-mini",
-                "index": 0,
                 "tool_calls": [ChoiceDeltaToolCall(index=1, function=ChoiceDeltaToolCallFunction(arguments='n"}'))],
                 "finish_reason": None,
                 "received_at": ANY,
@@ -1691,7 +1672,6 @@ def streaming_chunks():
             content="",
             meta={
                 "model": "gpt-5-mini",
-                "index": 0,
                 "tool_calls": None,
                 "finish_reason": "tool_calls",
                 "received_at": ANY,
@@ -1898,7 +1878,7 @@ class TestChatCompletionChunkConversion:
         result = _convert_chat_completion_chunk_to_streaming_chunk(chunk=chunk, previous_chunks=[])
         assert result.content == ""
         assert result.start is False
-        assert result.tool_calls == [ToolCallDelta(index=0)]
+        assert result.tool_calls == [ToolCallDelta(tool_call_index=0)]
         assert result.tool_call_result is None
         assert result.index == 0
         assert result.meta["model"] == "gpt-5-mini"
@@ -1925,7 +1905,6 @@ class TestChatCompletionChunkConversion:
 
         assert result.meta["model"] == "gpt-5-mini"
         assert result.meta["received_at"] is not None
-        assert result.meta["index"] == 0
         assert result.meta["finish_reason"] is None
         assert result.meta["usage"] is None
         assert result.meta["tool_calls"] is None
@@ -1953,7 +1932,6 @@ class TestChatCompletionChunkConversion:
         # Verify meta information
         assert result.meta["model"] == "gpt-5-mini"
         assert result.meta["finish_reason"] == "tool_calls"
-        assert result.meta["index"] == 0
         assert result.meta["completion_start_time"] is not None
         assert result.meta["usage"] == {
             "completion_tokens": 42,

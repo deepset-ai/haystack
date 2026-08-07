@@ -1,0 +1,28 @@
+---
+highlights: >
+    Rename the generic ``index`` field in ``StreamingChunk`` and ``ToolCallDelta``
+    to explicit names that make their purpose clear.
+features:
+  - |
+    **StreamingChunk** now exposes a dedicated ``chunk_index`` field instead of the
+    generic ``index``. Access via ``chunk.index`` still works for backward
+    compatibility.
+  - |
+    **ToolCallDelta** now exposes a dedicated ``tool_call_index`` field instead of
+    the generic ``index``. Access via ``tool_call.index`` still works for
+    backward compatibility.
+enhancements:
+  - |
+    Removed the redundant ``"index": 0`` entry from response metadata dicts in
+    ``OpenAIChatGenerator``, ``OpenAIResponsesChatGenerator`` and
+    ``MockChatGenerator`` — the value was always ``0`` and never meaningful.
+  - |
+    The error message when ``chunk_index`` is missing alongside a tool call,
+    tool call result, or reasoning block now references ``chunk_index``
+    explicitly instead of the former generic ``index``.
+issues:
+  - |
+    If ``meta`` dicts from OpenAI response generators are inspected directly,
+    the ``"index"`` key is no longer present. Code that relied on
+    ``meta["index"]`` should be updated to use ``meta["model"]`` or another
+    stable field instead.

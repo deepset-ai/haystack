@@ -64,7 +64,9 @@ class TestStreamingChunk:
             StreamingChunk(
                 content="Test content",
                 meta={"key": "value"},
-                tool_calls=[ToolCallDelta(id="123", tool_name="test_tool", arguments='{"arg1": "value1"}', index=0)],
+                tool_calls=[
+                    ToolCallDelta(call_id="123", tool_name="test_tool", arguments='{"arg1": "value1"}', index=0)
+                ],
             )
 
     def test_create_chunk_with_content_and_tool_call_result(self):
@@ -88,7 +90,8 @@ class TestStreamingChunk:
 
     def test_reasoning_and_no_index(self):
         with pytest.raises(
-            ValueError, match="If `tool_call`, `tool_call_result` or `reasoning` is set, `index` must also be set."
+            ValueError,
+            match="If `tool_call`, `tool_call_result` or `reasoning` is set, `chunk_index` must also be set.",
         ):
             StreamingChunk(content="", meta={"key": "value"}, reasoning=ReasoningContent(reasoning_text="thinking"))
 
@@ -105,11 +108,65 @@ class TestStreamingChunk:
         assert component_info.name == "pipeline_component"
 
     def test_tool_call_delta(self):
-        tool_call = ToolCallDelta(id="123", tool_name="test_tool", arguments='{"arg1": "value1"}', index=0)
+        tool_call = ToolCallDelta(call_id="123", tool_name="test_tool", arguments='{"arg1": "value1"}', index=0)
         assert tool_call.id == "123"
         assert tool_call.tool_name == "test_tool"
         assert tool_call.arguments == '{"arg1": "value1"}'
         assert tool_call.index == 0
+
+    def test_tool_call_delta_new_field_name(self):
+        """Test that the new tool_call_index field works and index is a backward-compatible alias."""
+        tool_call = ToolCallDelta(tool_call_index=1, tool_name="test_tool", arguments="{}")
+        assert tool_call.tool_call_index == 1
+        assert tool_call.index == 1
+
+    def test_tool_call_delta_to_dict_uses_index_key(self):
+        """to_dict must serialize as 'index' for backward compatibility."""
+        tool_call = ToolCallDelta(tool_call_index=2, tool_name="t", arguments='{"a": 1}')
+        d = tool_call.to_dict()
+        assert d["index"] == 2
+        assert "tool_call_index" not in d
+
+    def test_tool_call_delta_from_dict_accepts_legacy_index(self):
+        """from_dict must accept the legacy 'index' key."""
+        tc = ToolCallDelta.from_dict({"index": 3, "tool_name": "t"})
+        assert tc.tool_call_index == 3
+        assert tc.index == 3
+
+    def test_tool_call_delta_from_dict_accepts_new_field(self):
+        """from_dict must also accept the new 'tool_call_index' key."""
+        tc = ToolCallDelta.from_dict({"tool_call_index": 4, "tool_name": "t"})
+        assert tc.tool_call_index == 4
+        assert tc.index == 4
+
+    def test_streaming_chunk_chunk_index_field(self):
+        """Test that chunk_index is the primary field and index is a backward-compatible alias."""
+        chunk = StreamingChunk(content="", chunk_index=5)
+        assert chunk.chunk_index == 5
+        assert chunk.index == 5
+        chunk.index = 7
+        assert chunk.chunk_index == 7
+
+    def test_streaming_chunk_from_dict_legacy_index(self):
+        """from_dict must accept the legacy 'index' key on StreamingChunk."""
+        data = {"content": "hello", "index": 2}
+        chunk = StreamingChunk.from_dict(data)
+        assert chunk.chunk_index == 2
+        assert chunk.index == 2
+
+    def test_streaming_chunk_from_dict_new_chunk_index(self):
+        """from_dict must accept the new 'chunk_index' key."""
+        data = {"content": "hello", "chunk_index": 3}
+        chunk = StreamingChunk.from_dict(data)
+        assert chunk.chunk_index == 3
+        assert chunk.index == 3
+
+    def test_streaming_chunk_to_dict_uses_index_key(self):
+        """to_dict must serialize chunk_index as 'index' for backward compatibility."""
+        chunk = StreamingChunk(content="hello", chunk_index=6)
+        d = chunk.to_dict()
+        assert d["index"] == 6
+        assert "chunk_index" not in d
 
     def test_create_chunk_with_finish_reason(self):
         """Test creating a chunk with the new finish_reason field."""
@@ -181,8 +238,8 @@ class TestStreamingChunk:
         """Test the to_dict method for StreamingChunk with tool_calls."""
         component_info = ComponentInfo.from_component(ExampleComponent())
         tool_calls = [
-            ToolCallDelta(id="123", tool_name="test_tool", arguments='{"arg1": "value1"}', index=0),
-            ToolCallDelta(id="456", tool_name="another_tool", arguments='{"arg2": "value2"}', index=1),
+            ToolCallDelta(call_id="123", tool_name="test_tool", arguments='{"arg1": "value1"}', index=0),
+            ToolCallDelta(call_id="456", tool_name="another_tool", arguments='{"arg2": "value2"}', index=1),
         ]
 
         chunk = StreamingChunk(

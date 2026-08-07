@@ -25,7 +25,7 @@ class ToolCallDelta:
     """
     Represents a Tool call prepared by the model, usually contained in an assistant message.
 
-    :param index: The index of the Tool call in the list of Tool calls.
+    :param tool_call_index: The index of the Tool call in the list of Tool calls.
     :param tool_name: The name of the Tool to call.
     :param arguments: Either the full arguments in JSON format or a delta of the arguments.
     :param id: The ID of the Tool call.
@@ -33,19 +33,49 @@ class ToolCallDelta:
         information. To avoid serialization issues, values should be JSON serializable.
     """
 
-    index: int
+    tool_call_index: int
     tool_name: str | None = field(default=None)
     arguments: str | None = field(default=None)
     id: str | None = field(default=None)
     extra: dict[str, Any] | None = field(default=None)
 
+    @property
+    def index(self) -> int:
+        """Backward-compatible access to :attr:`tool_call_index`."""
+        return self.tool_call_index
+
+    @index.setter
+    def index(self, value: int) -> None:
+        self.tool_call_index = value
+
+    def __init__(
+        self,
+        index: int | None = None,
+        tool_name: str | None = None,
+        arguments: str | None = None,
+        call_id: str | None = None,
+        extra: dict[str, Any] | None = None,
+        tool_call_index: int | None = None,
+        id: str | None = None,  # noqa: A002
+    ) -> None:
+        resolved_index = tool_call_index if tool_call_index is not None else index
+        if resolved_index is None:
+            raise ValueError("ToolCallDelta requires an index")
+        self.tool_call_index = resolved_index
+        self.tool_name = tool_name
+        self.arguments = arguments
+        self.id = call_id or id  # type: ignore[assignment]
+        self.extra = extra
+
     def to_dict(self) -> dict[str, Any]:
         """
         Returns a dictionary representation of the ToolCallDelta.
 
-        :returns: A dictionary with keys 'index', 'tool_name', 'arguments', 'id', and 'extra'.
+        :returns: A dictionary with keys 'tool_call_index', 'tool_name', 'arguments', 'id', and 'extra'.
         """
-        return asdict(self)
+        result = asdict(self)
+        result["index"] = result.pop("tool_call_index")
+        return result
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "ToolCallDelta":
@@ -55,6 +85,11 @@ class ToolCallDelta:
         :param data: Dictionary containing ToolCallDelta's attributes.
         :returns: A ToolCallDelta instance.
         """
+        if "index" in data and "tool_call_index" not in data:
+            data = {**data, "tool_call_index": data.pop("index")}
+        elif "index" in data:
+            # data already has both; drop the legacy one
+            data.pop("index", None)
         return ToolCallDelta(**data)
 
 
@@ -117,7 +152,7 @@ class StreamingChunk:
     :param meta: A dictionary containing metadata related to the message chunk.
     :param component_info: A `ComponentInfo` object containing information about the component that generated the chunk,
         such as the component name and type.
-    :param index: An optional integer index representing which content block this chunk belongs to.
+    :param chunk_index: An optional integer index representing which content block this chunk belongs to.
     :param tool_calls: An optional list of ToolCallDelta object representing a tool call associated with the message
         chunk.
     :param tool_call_result: An optional ToolCallResult object representing the result of a tool call.
@@ -132,12 +167,39 @@ class StreamingChunk:
     content: str
     meta: dict[str, Any] = field(default_factory=dict, hash=False)
     component_info: ComponentInfo | None = field(default=None)
-    index: int | None = field(default=None)
+    chunk_index: int | None = field(default=None)
     tool_calls: list[ToolCallDelta] | None = field(default=None)
     tool_call_result: ToolCallResult | None = field(default=None)
     start: bool = field(default=False)
     finish_reason: FinishReason | None = field(default=None)
     reasoning: ReasoningContent | None = field(default=None)
+
+    def __init__(
+        self,
+        content: str = "",
+        meta: dict[str, Any] | None = None,
+        component_info: ComponentInfo | None = None,
+        index: int | None = None,
+        chunk_index: int | None = None,
+        tool_calls: list[ToolCallDelta] | None = None,
+        tool_call_result: ToolCallResult | None = None,
+        start: bool = False,
+        finish_reason: FinishReason | None = None,
+        reasoning: ReasoningContent | None = None,
+    ) -> None:
+        if index is not None and chunk_index is not None:
+            raise ValueError("Cannot specify both 'index' and 'chunk_index'")
+        resolved_chunk_index = chunk_index if chunk_index is not None else index
+        self.content = content
+        self.meta = meta if meta is not None else {}
+        self.component_info = component_info
+        self.chunk_index = resolved_chunk_index
+        self.tool_calls = tool_calls
+        self.tool_call_result = tool_call_result
+        self.start = start
+        self.finish_reason = finish_reason
+        self.reasoning = reasoning
+        self.__post_init__()
 
     def __post_init__(self) -> None:
         fields_set = sum(bool(x) for x in (self.content, self.tool_calls, self.tool_call_result, self.reasoning))
@@ -149,8 +211,19 @@ class StreamingChunk:
             )
 
         # NOTE: We don't enforce this for self.content otherwise it would be a breaking change
-        if (self.tool_calls or self.tool_call_result or self.reasoning) and self.index is None:
-            raise ValueError("If `tool_call`, `tool_call_result` or `reasoning` is set, `index` must also be set.")
+        if (self.tool_calls or self.tool_call_result or self.reasoning) and self.chunk_index is None:
+            raise ValueError(
+                "If `tool_call`, `tool_call_result` or `reasoning` is set, `chunk_index` must also be set."
+            )
+
+    @property
+    def index(self) -> int | None:
+        """Backward-compatible access to :attr:`chunk_index`."""
+        return self.chunk_index
+
+    @index.setter
+    def index(self, value: int | None) -> None:
+        self.chunk_index = value
 
     def to_dict(self) -> dict[str, Any]:
         """
@@ -162,7 +235,7 @@ class StreamingChunk:
             "content": self.content,
             "meta": self.meta,
             "component_info": self.component_info.to_dict() if self.component_info else None,
-            "index": self.index,
+            "index": self.chunk_index,
             "tool_calls": [tc.to_dict() for tc in self.tool_calls] if self.tool_calls else None,
             "tool_call_result": self.tool_call_result.to_dict() if self.tool_call_result else None,
             "start": self.start,
@@ -181,11 +254,12 @@ class StreamingChunk:
         if "content" not in data:
             raise ValueError("Missing required field `content` in StreamingChunk deserialization.")
 
+        chunk_index = data.get("chunk_index", data.get("index"))
         return StreamingChunk(
             content=data["content"],
             meta=data.get("meta", {}),
             component_info=ComponentInfo.from_dict(data["component_info"]) if data.get("component_info") else None,
-            index=data.get("index"),
+            chunk_index=chunk_index,
             tool_calls=[ToolCallDelta.from_dict(tc) for tc in data["tool_calls"]] if data.get("tool_calls") else None,
             tool_call_result=ToolCallResult.from_dict(data["tool_call_result"])
             if data.get("tool_call_result")

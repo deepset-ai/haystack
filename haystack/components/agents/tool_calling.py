@@ -171,7 +171,7 @@ def _create_tool_result_streaming_chunk(tool_message: ChatMessage, tool_call: To
     """
     return StreamingChunk(
         content="",
-        index=index,
+        chunk_index=index,
         tool_call_result=tool_message.tool_call_results[0],
         start=True,
         meta={"tool_result": tool_message.tool_call_results[0].result, "tool_call": tool_call},

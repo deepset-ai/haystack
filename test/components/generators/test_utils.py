@@ -326,7 +326,6 @@ def test_convert_streaming_chunks_to_chat_message_tool_calls_in_any_chunk():
     # Verify meta information
     assert result.meta["model"] == "gpt-4o-mini-2024-07-18"
     assert result.meta["finish_reason"] == "tool_calls"
-    assert result.meta["index"] == 0
     assert result.meta["completion_start_time"] == "2025-02-19T16:02:55.910076"
     assert result.meta["usage"] == {
         "completion_tokens": 42,

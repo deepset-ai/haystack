@@ -33,7 +33,7 @@ description: "`OpenAIChatGenerator` enables chat completion using OpenAI’s lar
 generator = OpenAIChatGenerator(model="gpt-4o-mini")
 ```
 
-Then, the component needs a list of `ChatMessage` objects to operate. `ChatMessage` is a data class that contains a message, a role (who generated the message, such as `user`, `assistant`, `system`, `function`), and optional metadata. See the [usage](#usage) section for an example. If a string is passed, it is converted into a list containing a single `ChatMessage` with the `user` role.
+Then, the component needs a list of `ChatMessage` objects to operate. `ChatMessage` is a data class that contains a message, a role (who generated the message, such as `user`, `assistant`, `system`, `tool`), and optional metadata. See the [usage](#usage) section for an example. If a string is passed, it is converted into a list containing a single `ChatMessage` with the `user` role.
 
 You can pass any chat completion parameters valid for the `openai.ChatCompletion.create` method directly to `OpenAIChatGenerator` using the `generation_kwargs` parameter, both at initialization and to `run()` method. For more details on the parameters supported by the OpenAI API, refer to the [OpenAI documentation](https://platform.openai.com/docs/api-reference/chat).
 
@@ -138,7 +138,7 @@ print(response)
 # natural language. It involves enabling machines to understand, interpret, and
 # generate human language in a meaningful way, facilitating tasks such as
 # language translation, sentiment analysis, and text summarization.')],
-# _name=None, _meta={'model': 'gpt-4o-mini-2024-07-18', 'index': 0,
+# _name=None, _meta={'model': 'gpt-5-mini-2025-08-07', 'index': 0,
 # 'finish_reason': 'stop', 'usage': {'completion_tokens': 59, 'prompt_tokens': 15,
 #  'total_tokens': 74, 'completion_tokens_details': {'accepted_prediction_tokens':
 #  0, 'audio_tokens': 0, 'reasoning_tokens': 0, 'rejected_prediction_tokens': 0},
@@ -171,7 +171,7 @@ print(response)
 # interpret, and generate human language in a way that is both meaningful and
 # useful. NLP encompasses various tasks, including speech recognition, language
 # translation, sentiment analysis, and text summarization.')], _name=None, _meta={'
-# model': 'gpt-4o-mini-2024-07-18', 'index': 0, 'finish_reason': 'stop',
+# model': 'gpt-5-mini-2025-08-07', 'index': 0, 'finish_reason': 'stop',
 # 'completion_start_time': '2025-05-15T13:32:16.572912', 'usage': None})]}
 ```
 
@@ -274,7 +274,7 @@ components:
     type: haystack.components.generators.chat.openai.OpenAIChatGenerator
   prompt_builder:
     init_parameters:
-      required_variables: null
+      required_variables: '*'
       template: null
       variables: null
     type: haystack.components.builders.chat_prompt_builder.ChatPromptBuilder

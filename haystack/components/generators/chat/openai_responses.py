@@ -712,7 +712,7 @@ def _convert_response_chunk_to_streaming_chunk(  # noqa: PLR0911
             return StreamingChunk(
                 content="",
                 component_info=component_info,
-                index=chunk.output_index,
+                chunk_index=chunk.output_index,
                 reasoning=reasoning,
                 start=True,
                 meta={"received_at": datetime.now().isoformat()},
@@ -721,12 +721,15 @@ def _convert_response_chunk_to_streaming_chunk(  # noqa: PLR0911
         # the function name is only streamed at the start and end of the function call
         if chunk.item.type == "function_call":
             tool_call = ToolCallDelta(
-                index=chunk.output_index, id=chunk.item.id, tool_name=chunk.item.name, extra=chunk.item.to_dict()
+                tool_call_index=chunk.output_index,
+                id=chunk.item.id,
+                tool_name=chunk.item.name,
+                extra=chunk.item.to_dict(),
             )
             return StreamingChunk(
                 content="",
                 component_info=component_info,
-                index=chunk.output_index,
+                chunk_index=chunk.output_index,
                 tool_calls=[tool_call],
                 start=True,
                 meta={"received_at": datetime.now().isoformat()},
@@ -751,7 +754,7 @@ def _convert_response_chunk_to_streaming_chunk(  # noqa: PLR0911
             return StreamingChunk(
                 content="",
                 component_info=component_info,
-                index=chunk.output_index,
+                chunk_index=chunk.output_index,
                 reasoning=reasoning,
                 meta={"received_at": datetime.now().isoformat()},
             )
@@ -772,13 +775,13 @@ def _convert_response_chunk_to_streaming_chunk(  # noqa: PLR0911
         # 1) Check if all previous chunks have different output_index
         # 2) If any chunks do have the same output_index, check if they have content
         # If none of them have content, this is the start of a new text output
-        start = all(c.index != chunk.output_index for c in previous_chunks) or all(
-            c.content == "" for c in previous_chunks if c.index == chunk.output_index
+        start = all(c.chunk_index != chunk.output_index for c in previous_chunks) or all(
+            c.content == "" for c in previous_chunks if c.chunk_index == chunk.output_index
         )
         return StreamingChunk(
             content=chunk.delta,
             component_info=component_info,
-            index=chunk.output_index,
+            chunk_index=chunk.output_index,
             start=start,
             meta={**chunk.to_dict(), "received_at": datetime.now().isoformat()},
         )
@@ -792,7 +795,7 @@ def _convert_response_chunk_to_streaming_chunk(  # noqa: PLR0911
         return StreamingChunk(
             content="",
             component_info=component_info,
-            index=chunk.output_index,
+            chunk_index=chunk.output_index,
             reasoning=reasoning,
             meta={"received_at": datetime.now().isoformat()},
         )
@@ -804,11 +807,13 @@ def _convert_response_chunk_to_streaming_chunk(  # noqa: PLR0911
         extra = chunk.to_dict()
         extra.pop("delta")
         # in delta of tool calls there is no call_id so we use the item_id which is the function call id
-        tool_call = ToolCallDelta(index=chunk.output_index, id=chunk.item_id, arguments=arguments, extra=extra)
+        tool_call = ToolCallDelta(
+            tool_call_index=chunk.output_index, id=chunk.item_id, arguments=arguments, extra=extra
+        )
         return StreamingChunk(
             content="",
             component_info=component_info,
-            index=chunk.output_index,
+            chunk_index=chunk.output_index,
             tool_calls=[tool_call],
             meta={"received_at": datetime.now().isoformat()},
         )
@@ -817,7 +822,7 @@ def _convert_response_chunk_to_streaming_chunk(  # noqa: PLR0911
     return StreamingChunk(
         content="",
         component_info=component_info,
-        index=getattr(chunk, "output_index", None),
+        chunk_index=getattr(chunk, "output_index", None),
         meta={**chunk.to_dict(), "received_at": datetime.now().isoformat()},
     )
 

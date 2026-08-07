@@ -253,7 +253,11 @@ class MockChatGenerator:
         for idx, part in enumerate(parts):
             chunks.append(
                 StreamingChunk(
-                    content=part, component_info=component_info, index=0, start=(idx == 0), meta={"model": self.model}
+                    content=part,
+                    component_info=component_info,
+                    chunk_index=0,
+                    start=(idx == 0),
+                    meta={"model": self.model},
                 )
             )
 
@@ -264,11 +268,11 @@ class MockChatGenerator:
                 StreamingChunk(
                     content="",
                     component_info=component_info,
-                    index=block_index,
+                    chunk_index=block_index,
                     start=True,
                     tool_calls=[
                         ToolCallDelta(
-                            index=block_index,
+                            tool_call_index=block_index,
                             tool_name=tool_call.tool_name,
                             arguments=json.dumps(tool_call.arguments),
                             id=tool_call.id,
@@ -281,7 +285,7 @@ class MockChatGenerator:
 
         if not chunks:
             chunks.append(
-                StreamingChunk(content="", component_info=component_info, index=0, meta={"model": self.model})
+                StreamingChunk(content="", component_info=component_info, chunk_index=0, meta={"model": self.model})
             )
 
         finish_reason: FinishReason = "tool_calls" if reply.tool_calls else "stop"
