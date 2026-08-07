@@ -39,7 +39,8 @@ To run Oracle Database 23ai locally with Docker:
 docker run -d --name oracle23ai \
   -p 1521:1521 \
   -e ORACLE_PASSWORD=oracle \
-  container-registry.oracle.com/database/free:latest
+  -e ORACLE_INIT_PARAMS=vector_memory_size=512M \
+  gvenzl/oracle-free:23-slim
 ```
 
 Install the Oracle integration for Haystack:
@@ -48,7 +49,7 @@ Install the Oracle integration for Haystack:
 pip install oracle-haystack
 ```
 
-The examples on this page use Sentence Transformers embedders that have moved to the `sentence-transformers-haystack` package. Install it to run the examples:
+The examples on this page use Sentence Transformers embedders from the `sentence-transformers-haystack` package. Install it to run the examples:
 
 ```shell
 pip install sentence-transformers-haystack

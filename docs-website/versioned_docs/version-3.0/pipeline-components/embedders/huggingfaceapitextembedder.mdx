@@ -14,7 +14,7 @@ Use this component to embed strings using various Hugging Face APIs.
 |  |  |
 | --- | --- |
 | **Most common position in a pipeline** | Before an embedding [Retriever](../retrievers.mdx)  in a query/RAG pipeline |
-| **Mandatory init variables** | `api_type`: The type of Hugging Face API to use  <br /> <br />`api_params`: A dictionary with one of the following keys:  <br /> <br />- `model`: Hugging Face model ID. Required when `api_type` is `SERVERLESS_INFERENCE_API`.**OR** - `url`: URL of the inference endpoint. Required when `api_type` is `INFERENCE_ENDPOINTS` or `TEXT_EMBEDDINGS_INFERENCE`.  <br /> <br />`token`: The Hugging Face API token. Can be set with `HF_API_TOKEN` or `HF_TOKEN` env var. |
+| **Mandatory init variables** | `api_type`: The type of Hugging Face API to use  <br /> <br />`api_params`: A dictionary with one of the following keys:  <br /> <br />- `model`: Hugging Face model ID. Required when `api_type` is `SERVERLESS_INFERENCE_API`.**OR** - `url`: URL of the inference endpoint. Required when `api_type` is `INFERENCE_ENDPOINTS` or `TEXT_EMBEDDINGS_INFERENCE`. |
 | **Mandatory run variables** | `text`: A string |
 | **Output variables** | `embedding`: A list of float numbers |
 | **API reference** | [Hugging Face API](/reference/integrations-huggingface-api) |
@@ -95,7 +95,7 @@ from haystack.utils import Secret
 
 text_embedder = HuggingFaceAPITextEmbedder(
     api_type="inference_endpoints",
-    api_params={"model": "BAAI/bge-small-en-v1.5"},
+    api_params={"url": "<your-inference-endpoint-url>"},
     token=Secret.from_token("<your-api-key>"),
 )
 
@@ -137,7 +137,7 @@ text_embedder = HuggingFaceAPITextEmbedder(
 
 print(text_embedder.run("I love pizza!"))
 
-# {'embedding': [0.017020374536514282, -0.023255806416273117, ...],
+# {'embedding': [0.017020374536514282, -0.023255806416273117, ...]}
 ```
 
 ### In a pipeline

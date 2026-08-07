@@ -7,7 +7,7 @@ description: "`DoclingConverter` converts PDF, DOCX, HTML, and other document fo
 
 # DoclingConverter
 
-`DoclingConverter` converts PDF, DOCX, HTML, and other document formats to Haystack Documents using [Docling](https://ds4sd.github.io/docling/), a document parsing library that understands document structure including layout, tables, and headings.
+`DoclingConverter` converts PDF, DOCX, HTML, and other document formats to Haystack Documents using [Docling](https://docling-project.github.io/docling/), a document parsing library that understands document structure including layout, tables, and headings.
 
 <div className="key-value-table">
 
@@ -28,8 +28,8 @@ The `DoclingConverter` takes a list of file paths, URLs, or [`ByteStream`](../..
 
 The component supports three export modes, controlled by the `export_type` parameter:
 
-- **`ExportType.DOC_CHUNKS`** (default): Chunks each document using Docling's `HybridChunker` and returns one [`Document`](../../concepts/data-classes.mdx#document) per chunk. Chunk metadata includes structural context from Docling. Use this mode for indexing pipelines where downstream retrieval benefits from semantically coherent chunks.
-- **`ExportType.MARKDOWN`**: Exports each input document as a single Markdown string in one [`Document`](../../concepts/data-classes.mdx#document). Use this mode when you want to preserve the full document content as formatted text.
+- **`ExportType.MARKDOWN`** (default): Exports each input document as a single Markdown string in one [`Document`](../../concepts/data-classes.mdx#document). Use this mode when you want to preserve the full document content as formatted text.
+- **`ExportType.DOC_CHUNKS`**: Chunks each document using Docling's `HybridChunker` and returns one [`Document`](../../concepts/data-classes.mdx#document) per chunk. Chunk metadata includes structural context from Docling. Use this mode for indexing pipelines where downstream retrieval benefits from semantically coherent chunks.
 - **`ExportType.JSON`**: Serializes the full Docling document to a JSON string in one [`Document`](../../concepts/data-classes.mdx#document). Use this mode when you need access to the complete structured representation.
 
 You can customize parsing behavior by passing a pre-configured `DocumentConverter` instance via the `converter` parameter, and pass additional keyword arguments to Docling's conversion step via `convert_kwargs`. For `ExportType.MARKDOWN`, use `md_export_kwargs` to control Markdown rendering options (for example, image placeholder text). For `ExportType.DOC_CHUNKS`, provide a custom `BaseChunker` instance via the `chunker` parameter.
@@ -52,16 +52,16 @@ from haystack_integrations.components.converters.docling import (
     ExportType,
 )
 
-# Default: chunk-based output
+# Default: full document as Markdown
 converter = DoclingConverter()
 result = converter.run(sources=["report.pdf", "notes.docx"])
 documents = result["documents"]
+print(documents[0].content)
 
-# Full document as Markdown
-converter = DoclingConverter(export_type=ExportType.MARKDOWN)
+# One document per chunk
+converter = DoclingConverter(export_type=ExportType.DOC_CHUNKS)
 result = converter.run(sources=["report.pdf"])
 documents = result["documents"]
-print(documents[0].content)
 ```
 
 ### In a pipeline
@@ -82,20 +82,23 @@ pipeline.connect("converter", "writer")
 pipeline.run({"converter": {"sources": ["report.pdf", "manual.docx"]}})
 ```
 
-Because `DoclingConverter` with `ExportType.DOC_CHUNKS` already chunks the documents, you typically don't need a separate `DocumentSplitter` in the pipeline.
+When you set `export_type=ExportType.DOC_CHUNKS`, `DoclingConverter` already chunks the documents, so you typically don't need a separate `DocumentSplitter` in the pipeline.
 
 ## Additional Features
 
 ### Custom chunking
 
-Provide a custom Docling chunker to control how documents are split:
+Provide a custom Docling chunker to control how documents are split. The `chunker` parameter only takes effect with `ExportType.DOC_CHUNKS`:
 
 ```python
 from docling.chunking import HybridChunker
-from haystack_integrations.components.converters.docling import DoclingConverter
+from haystack_integrations.components.converters.docling import (
+    DoclingConverter,
+    ExportType,
+)
 
 chunker = HybridChunker(tokenizer="BAAI/bge-small-en-v1.5", max_tokens=256)
-converter = DoclingConverter(chunker=chunker)
+converter = DoclingConverter(export_type=ExportType.DOC_CHUNKS, chunker=chunker)
 result = converter.run(sources=["report.pdf"])
 ```
 

@@ -35,7 +35,7 @@ Each document includes rich metadata such as the path, type, size, and URL.
 
 The component can work without authentication for public repositories, but for private repositories or to avoid rate limiting, you can provide a GitHub personal access token.
 
-You can set the token using the `GITHUB_TOKEN` environment variable, or pass it directly during initialization via the `github_token` parameter.
+Pass the token during initialization via the `github_token` parameter, for example `github_token=Secret.from_env_var("GITHUB_TOKEN")`. This component has no default environment variable for the token.
 
 To create a personal access token, visit [GitHub's token settings page](https://github.com/settings/tokens).
 
