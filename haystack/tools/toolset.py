@@ -94,15 +94,18 @@ class Toolset:
     serialization.
     """
 
+    # Use field() with default_factory to initialize the list
     tools: list[Tool] = field(default_factory=list)
 
     def __post_init__(self) -> None:
         """
         Validate the tools provided during initialization.
         """
+        # If initialization was done a single Tool, raise an error
         if isinstance(self.tools, Tool):
             raise TypeError("A single Tool cannot be directly passed to Toolset. Please use a list: Toolset([tool])")
 
+        # Check for duplicate tool names in the initial set
         _check_duplicate_tool_names(self.tools)
 
     def __iter__(self) -> Iterator[Tool]:
@@ -179,6 +182,7 @@ class Toolset:
         if not isinstance(tool, Tool):
             raise TypeError(f"Expected Tool, got {type(tool).__name__}")
 
+        # Check for duplicates before adding
         _check_duplicate_tool_names(self.tools + [tool])
         self.tools.append(tool)
 

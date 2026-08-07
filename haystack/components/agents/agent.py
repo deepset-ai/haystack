@@ -51,7 +51,6 @@ from haystack.hooks.utils import (
     warm_up_hooks_async,
 )
 from haystack.tools import (
-    Tool,
     Toolset,
     ToolsType,
     _check_duplicate_tool_names,
@@ -800,14 +799,8 @@ class Agent:
         if isinstance(tools, list) and all(isinstance(t, str) for t in tools):
             return _select_tools_by_name(self.tools, cast(list[str], tools))
 
-        if isinstance(tools, Toolset):
-            # Per-run tools are not covered by the Agent's own warm_up(), so warm them up here.
-            # warm_up() is expected to be idempotent, so re-warming on every run is cheap.
-            warm_up_tools(tools=tools)
-            return _copy_tools_for_run(tools=tools)
-
-        if isinstance(tools, list):
-            selected = cast(list[Tool | Toolset], tools)  # mypy can't narrow the Union type from isinstance check
+        if isinstance(tools, (Toolset, list)):
+            selected = cast(ToolsType, tools)  # mypy can't narrow the Union type from the isinstance checks
             # Per-run tools are not covered by the Agent's own warm_up(), so warm them up here.
             # warm_up() is expected to be idempotent, so re-warming on every run is cheap.
             warm_up_tools(tools=selected)

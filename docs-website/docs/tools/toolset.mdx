@@ -89,9 +89,9 @@ To deliberately merge simple Toolsets into one, unpack them explicitly: `Toolset
 
 ### Tool Selection at Runtime
 
-A `Toolset` is never mutated in place during an [`Agent`](../pipeline-components/agents-1/agent.mdx) run, so concurrent runs sharing the same `Toolset` instance are safe.
+You can restrict an [`Agent`](../pipeline-components/agents-1/agent.mdx) to a subset of tools at runtime by passing tool names, for example `agent.run(tools=["tool_a", "tool_b"])`. This also works with a [`SearchableToolset`](searchabletoolset.mdx): search and lazy loading keep working over the selected subset.
 
-You can restrict an `Agent` to a subset of tools at runtime by passing tool names, for example `agent.run(tools=["tool_a", "tool_b"])`. This also works with a [`SearchableToolset`](searchabletoolset.mdx): the `Agent` internally gives each run an isolated copy carrying the selection, so dynamic behavior like search and lazy loading keeps working over the selected subset.
+Runtime selection never modifies your configured `Toolset`, and neither do a `SearchableToolset`'s discoveries. You can safely share the same `Toolset` instance across runs, including concurrent ones; just avoid adding or removing tools while runs are in progress.
 
 ## Usage
 

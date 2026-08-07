@@ -92,12 +92,12 @@ def _record_tool_calls(state: State, tool_messages: list[ChatMessage]) -> None:
 
 def _copy_toolset_for_run(toolset: Toolset, selected_tool_names: set[str] | None = None) -> Toolset:
     """
-    Return a per-run copy of a Toolset with run-scoped state; plain Toolsets are returned unchanged.
+    Return a per-run copy of a Toolset with run-scoped state; a plain Toolset is returned as is.
 
-    A Toolset signals run-scoped state by defining `_copy_for_run()` (e.g. SearchableToolset, whose
-    discovered tools and name selection are per-run). Plain Toolsets are read-only at run time and can be shared
-    across runs directly. Note: passing `selected_tool_names` to a plain Toolset is unsupported here; callers
-    filter plain Toolsets externally.
+    A Toolset signals run-scoped state by defining `_copy_for_run()` (e.g. SearchableToolset, whose discovered
+    tools and name selection are per-run); the copy carries the given name selection. Plain Toolsets are
+    read-only at run time and can be shared across runs directly, so no copy is made (and any selection is
+    applied externally by the caller).
     """
     copy_for_run = getattr(toolset, "_copy_for_run", None)
     if callable(copy_for_run):
@@ -110,7 +110,8 @@ def _selectable_names(item: Tool | Toolset) -> set[str]:
     Resolve the tool names an item offers for name-based selection.
 
     A Toolset providing a `get_selectable_tools()` method (e.g. SearchableToolset, whose iteration does not
-    surface the full catalog) is asked through it; any other Toolset is warmed up and iterated.
+    surface the full catalog) is asked through it; any other Toolset is warmed up first, so lazily loaded
+    tools are selectable too.
     """
     if not isinstance(item, Toolset):
         return {item.name}
@@ -157,13 +158,13 @@ def _select_tools_by_name(configured_tools: ToolsType, names: list[str]) -> list
         matched = requested_names & item_names
         if not matched:
             continue
-        if isinstance(item, Toolset) and hasattr(item, "_copy_for_run"):
-            # The selection is applied to the per-run copy, so the shared, configured Toolset is never mutated.
-            selected.append(_copy_toolset_for_run(item, selected_tool_names=matched))
-        elif isinstance(item, Toolset):
-            selected.extend(tool for tool in item if tool.name in matched)
-        else:
+        if not isinstance(item, Toolset):
             selected.append(item)
+        elif (run_copy := _copy_toolset_for_run(item, selected_tool_names=matched)) is not item:
+            # The selection is carried by the per-run copy, so the shared, configured Toolset is never mutated.
+            selected.append(run_copy)
+        else:
+            selected.extend(tool for tool in item if tool.name in matched)
     return selected
 
 

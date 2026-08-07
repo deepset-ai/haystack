@@ -276,6 +276,25 @@ class TestToolsetWithAgent:
         assert len(deserialized_agent.tools) == 2
         assert all(isinstance(ts, Toolset) for ts in deserialized_agent.tools)
 
+    def test_agent_serde_with_list_containing_custom_toolset(self, multiply_tool, monkeypatch):
+        """A custom-serde Toolset inside a list roundtrips through its own to_dict/from_dict."""
+        monkeypatch.setenv("OPENAI_API_KEY", "test")
+        agent = Agent(chat_generator=OpenAIChatGenerator(), tools=[DynamicToolset(), Toolset([multiply_tool])])
+        data = agent.to_dict()
+
+        tools_data = data["init_parameters"]["tools"]
+        assert tools_data[0]["type"] == "test_toolset.DynamicToolset"
+        assert tools_data[0]["data"] == {}
+        assert tools_data[1]["type"] == "haystack.tools.toolset.Toolset"
+
+        deserialized_agent = Agent.from_dict(data)
+        custom_toolset, plain_toolset = deserialized_agent.tools[0], deserialized_agent.tools[1]
+        assert isinstance(custom_toolset, DynamicToolset)
+        assert isinstance(plain_toolset, Toolset)
+        # The custom toolset rebuilt its tools via its own from_dict.
+        assert [tool.name for tool in custom_toolset] == ["add"]
+        assert [tool.name for tool in plain_toolset] == ["multiply"]
+
     def test_list_of_toolsets_runtime_override(self, weather_tool, add_tool, multiply_tool):
         """Test that list of Toolsets can be passed as runtime override to Agent.run()."""
         toolset2 = Toolset([add_tool])

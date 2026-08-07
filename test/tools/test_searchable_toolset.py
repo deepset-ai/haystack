@@ -127,7 +127,7 @@ class TestSearchableToolset:
                 )
             )
 
-    def test_add_is_not_supported(self):
+    def test_not_implemented_methods(self):
         toolset = SearchableToolset(catalog=[])
         with pytest.raises(NotImplementedError):
             toolset.add(

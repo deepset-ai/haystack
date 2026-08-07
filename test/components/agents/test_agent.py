@@ -1772,6 +1772,25 @@ class TestAgentTracing:
 
 
 class TestAgentToolSelection:
+    def test_run_raises_on_duplicate_tool_names_across_toolsets(self):
+        # Duplicate names across combined sources are caught by the per-step validation, since no check at
+        # composition time can see the tools of lazily-loading Toolsets.
+        def make_tool(description: str) -> Tool:
+            return Tool(
+                name="same_name",
+                description=description,
+                parameters={"type": "object", "properties": {}},
+                function=lambda: None,
+            )
+
+        agent = Agent(
+            chat_generator=MockChatGenerator("Hello"),
+            tools=[Toolset([make_tool("first")]), Toolset([make_tool("second")])],
+        )
+        agent.warm_up()
+        with pytest.raises(ValueError, match="Duplicate tool names"):
+            agent.run(messages=[ChatMessage.from_user("hi")])
+
     def test_tool_selection_new_tool(self, weather_tool: Tool, component_tool: Tool):
         chat_generator = MockChatGenerator("Hello")
         agent = Agent(chat_generator=chat_generator, tools=[weather_tool], system_prompt="This is a system prompt.")
