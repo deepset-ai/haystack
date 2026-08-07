@@ -76,6 +76,20 @@ class TestSlidingWindowCompactor:
         # A user message, not a system one, so providers that hoist system messages cannot move it out of position.
         assert compacted[2].is_from(role=ChatRole.USER)
 
+    def test_places_omission_note_before_current_task_when_only_historical_turns_are_removed(self):
+        messages = [
+            ChatMessage.from_system(text="rules"),
+            ChatMessage.from_user(text="old question"),
+            ChatMessage.from_assistant(text="old answer " * 100),
+            ChatMessage.from_user(text="current task"),
+            ChatMessage.from_assistant(text="current answer"),
+        ]
+        compacted = SlidingWindowCompactor().compact(messages=messages, target_tokens=20, token_counter=COUNTER)
+        assert compacted is not None
+        assert compacted[0] == messages[0]
+        assert _COMPACTION_META_KEY in compacted[1].meta
+        assert compacted[2:] == messages[3:]
+
     def test_a_roomier_target_keeps_more(self):
         messages = [ChatMessage.from_system(text="rules"), ChatMessage.from_user(text="task")]
         for index in range(4):
