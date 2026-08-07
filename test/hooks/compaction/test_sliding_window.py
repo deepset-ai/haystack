@@ -70,7 +70,6 @@ class TestSlidingWindowCompactor:
             "strategy": "sliding_window",
             "removed_messages": 2,
             "kept_messages": 4,
-            "kept_steps": 1,
         }
         assert compacted[2].text == _DEFAULT_OMISSION_NOTE.replace("{num_removed}", "2")
         # A user message, not a system one, so providers that hoist system messages cannot move it out of position.
@@ -142,6 +141,30 @@ class TestSlidingWindowCompactor:
             messages=messages, target_tokens=target_tokens, token_counter=COUNTER
         )
         assert compacted == [system_message, current_task[0], *current_task[-2:]]
+
+    def test_folds_an_earlier_note_inside_a_retained_turn_and_counts_it_as_removed(self):
+        note = ChatMessage.from_user(
+            "Earlier messages were removed.", meta={_COMPACTION_META_KEY: {"strategy": "sliding_window"}}
+        )
+        messages = [
+            ChatMessage.from_system(text="rules"),
+            ChatMessage.from_user(text="old question " * 200),
+            ChatMessage.from_assistant(text="old answer"),
+            ChatMessage.from_user(text="recent question"),
+            ChatMessage.from_assistant(text="recent answer"),
+            note,
+            ChatMessage.from_user(text="current task"),
+            ChatMessage.from_assistant(text="current step"),
+        ]
+        # Room for everything but the oldest turn, so the turn holding the earlier note is retained around it.
+        compacted = SlidingWindowCompactor().compact(
+            messages=messages, target_tokens=COUNTER.count([messages[0], *messages[3:]]), token_counter=COUNTER
+        )
+        assert compacted is not None
+        # The earlier note is replaced by the new one rather than surviving alongside it, and it counts as removed.
+        assert count_markers(messages=compacted) == 1
+        assert compacted == [messages[0], *messages[3:5], compacted[3], *messages[6:]]
+        assert compacted[3].meta[_COMPACTION_META_KEY]["removed_messages"] == 3
 
     def test_returns_none_when_the_conversation_already_fits(self):
         assert (

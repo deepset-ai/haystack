@@ -73,124 +73,124 @@ def _historical_turn_spans(messages: list[ChatMessage], start: int, end: int) ->
     ]
 
 
-def _messages_from_spans(
+def _index_groups(
     messages: list[ChatMessage], spans: list[tuple[int, int]], skip_compaction_notes: bool = False
-) -> list[ChatMessage]:
-    """Flatten message spans, optionally excluding messages produced by an earlier compaction."""
+) -> list[list[int]]:
+    """
+    Expand each span into the message indices it covers, optionally dropping messages an earlier compaction produced.
+    """
     return [
-        message
+        [
+            index
+            for index in range(start, end)
+            if not skip_compaction_notes or _COMPACTION_META_KEY not in messages[index].meta
+        ]
         for start, end in spans
-        for message in messages[start:end]
-        if not skip_compaction_notes or _COMPACTION_META_KEY not in message.meta
     ]
 
 
-def _fitting_suffix_start(
-    messages: list[ChatMessage],
-    spans: list[tuple[int, int]],
-    available_tokens: int,
-    token_counter: TokenCounter,
-    skip_compaction_notes: bool,
+def _messages_at(messages: list[ChatMessage], indices: list[int]) -> list[ChatMessage]:
+    """Return the messages at the given indices, in conversation order."""
+    return [messages[index] for index in indices]
+
+
+def _flatten(groups: list[list[int]]) -> list[int]:
+    """Join index groups into a single ordered list of indices."""
+    return [index for group in groups for index in group]
+
+
+def _first_group_to_keep(
+    messages: list[ChatMessage], groups: list[list[int]], available_tokens: int, token_counter: TokenCounter
 ) -> int:
     """
-    Return the first span in the newest contiguous suffix that fits the token budget.
+    Return the oldest group that the budget can still pay for, working backwards from the newest.
 
-    Spans are measured from newest to oldest. Retention stops as soon as a span does not fit, ensuring that an older
-    span is never kept after a newer one has been removed.
+    Groups are added up from newest to oldest and counting stops at the first group that does not fit, so what is kept
+    is always a run of groups at the end of the list. An older group is never kept once a newer one has been dropped,
+    which would leave a hole in the conversation.
 
-    :param messages: The full conversation containing the messages referenced by `spans`.
-    :param spans: Ordered `(start_index, end_index)` pairs to consider for retention. Both indices refer to `messages`,
-        and `end_index` is exclusive.
-    :param available_tokens: The token budget available for retaining messages from `spans`.
-    :param token_counter: The `TokenCounter` used to measure each span.
-    :param skip_compaction_notes: Whether messages produced by an earlier compaction are excluded from token counting.
-    :returns: The index in `spans` at which the retained suffix begins. If no span fits, returns `len(spans)`; if every
-        span fits, returns `0`.
+    :param messages: The full conversation containing the messages referenced by `groups`.
+    :param groups: Ordered index groups to choose from, oldest group first.
+    :param available_tokens: The token budget available for these groups.
+    :param token_counter: The `TokenCounter` used to measure each group.
+    :returns: The position in `groups` to start keeping from: `len(groups)` when nothing fits, `0` when it all fits.
     """
-    kept_start = len(spans)
-    while kept_start > 0:
-        span_messages = _messages_from_spans(
-            messages=messages, spans=[spans[kept_start - 1]], skip_compaction_notes=skip_compaction_notes
-        )
-        span_tokens = token_counter.count(messages=span_messages)
-        if span_tokens > available_tokens:
+    first_kept = len(groups)
+    while first_kept > 0:
+        group_tokens = token_counter.count(messages=_messages_at(messages=messages, indices=groups[first_kept - 1]))
+        if group_tokens > available_tokens:
             break
-        available_tokens -= span_tokens
-        kept_start -= 1
-    return kept_start
+        available_tokens -= group_tokens
+        first_kept -= 1
+    return first_kept
 
 
-def _get_turn_start(
+def _first_turn_and_step_to_keep(
     messages: list[ChatMessage],
+    turn_groups: list[list[int]],
+    step_groups: list[list[int]],
     available_tokens: int,
-    all_current_agent_step_tokens: int,
-    historical_turns: list[tuple[int, int]],
-    token_counter: TokenCounter,
-) -> int:
-    """Return the start of the retained historical turns, or `len(historical_turns)` if none fit."""
-    kept_turn_start = len(historical_turns)
-    if all_current_agent_step_tokens <= available_tokens:
-        # Historical turns are considered only when the entire current task fits. This ensures that compaction removes
-        # every older turn before it starts trimming individual steps from the task the Agent is actively working on.
-        kept_turn_start = _fitting_suffix_start(
-            messages=messages,
-            spans=historical_turns,
-            available_tokens=available_tokens - all_current_agent_step_tokens,
-            token_counter=token_counter,
-            skip_compaction_notes=True,
-        )
-    return kept_turn_start
-
-
-def _get_step_start(
-    messages: list[ChatMessage],
-    available_tokens: int,
-    all_current_agent_step_tokens: int,
-    current_agent_steps: list[tuple[int, int]],
     token_counter: TokenCounter,
     min_keep_steps: int,
-) -> int:
-    """Return the start of the retained current-task steps, or `len(current_agent_steps)` if none fit."""
-    if all_current_agent_step_tokens <= available_tokens:
-        # Since all current-task steps fit, we can retain all of them.
-        return 0
-    # Even after dropping every historical turn, the current task is too large. Retain the most recent complete
-    # suffix of Agent steps that fits.
-    kept_step_start = _fitting_suffix_start(
-        messages=messages,
-        spans=current_agent_steps,
-        available_tokens=available_tokens,
-        token_counter=token_counter,
-        skip_compaction_notes=False,
+) -> tuple[int, int]:
+    """
+    Return which historical turn and which Agent step of the current task to start keeping from.
+
+    :param messages: The full conversation containing the messages referenced by both group lists.
+    :param turn_groups: Index groups for the complete historical turns preceding the current task, oldest first.
+    :param step_groups: Index groups for the current task's Agent steps, oldest first.
+    :param available_tokens: The token budget left once the protected context is paid for.
+    :param token_counter: The `TokenCounter` used to measure the groups.
+    :param min_keep_steps: The fewest recent Agent steps to keep, even when they exceed the budget.
+    :returns: The position in `turn_groups` and the position in `step_groups` to start keeping from. Either is the
+        length of its list when nothing from it is kept.
+    """
+    current_task_tokens = token_counter.count(
+        messages=_messages_at(messages=messages, indices=_flatten(groups=step_groups))
     )
-    return min(kept_step_start, max(len(current_agent_steps) - min_keep_steps, 0))
+    if current_task_tokens > available_tokens:
+        # The current task alone overruns the budget, so every historical turn is dropped and
+        # the current task's own oldest steps trimmed until what remains fits.
+        first_kept_step = _first_group_to_keep(
+            messages=messages, groups=step_groups, available_tokens=available_tokens, token_counter=token_counter
+        )
+        # The newest steps are kept regardless of the budget.
+        return len(turn_groups), min(first_kept_step, max(len(step_groups) - min_keep_steps, 0))
+
+    # The whole current task fits, so every step stays and the rest of the budget goes on the newest turns that fit.
+    first_kept_turn = _first_group_to_keep(
+        messages=messages,
+        groups=turn_groups,
+        available_tokens=available_tokens - current_task_tokens,
+        token_counter=token_counter,
+    )
+    return first_kept_turn, 0
 
 
 def _task_and_step_split(
     messages: list[ChatMessage], target_tokens: int, token_counter: TokenCounter, min_keep_steps: int
-) -> tuple[list[ChatMessage], list[ChatMessage], list[ChatMessage], int]:
+) -> tuple[list[ChatMessage], list[ChatMessage], list[ChatMessage]]:
     """
     Split a conversation into the messages kept before and after an omission note and the messages to remove.
 
-    Leading system messages and the latest real user message are always retained. Historical user turns are retained
-    whole when they fit. If the current task itself exceeds the available budget, its oldest Agent steps are removed
-    individually while preserving complete assistant/tool-result groups.
+    Leading system messages and the latest real user message are always kept. Historical user turns are kept whole when
+    they fit. If the current task itself exceeds the available budget, its oldest Agent steps are removed one at a time
+    while keeping each assistant message together with its tool results.
 
     :param messages: The full conversation to split, ordered oldest to newest.
-    :param target_tokens: The target token budget for the retained messages.
+    :param target_tokens: The token budget for the messages that are kept.
     :param token_counter: The `TokenCounter` used to decide which historical turns and current-task steps fit.
-    :param min_keep_steps: The minimum number of recent current-task Agent steps to retain, even if they exceed the
-        target token budget.
+    :param min_keep_steps: The fewest recent current-task Agent steps to keep, even if they exceed the target token
+        budget.
     :returns: A tuple containing:
 
-        1. Messages retained before the omission-note position.
-        2. Every message selected for removal.
-        3. Messages retained after the omission-note position.
-        4. The number of retained current-task Agent steps.
+        1. Messages kept before the omission-note position.
+        2. Messages kept after the omission-note position.
+        3. Every message selected for removal.
 
-        When only historical turns are removed, the first and third elements place the note immediately before the
-        current task. When current-task steps are also removed, they place it after the latest user message and before
-        the retained current-task steps.
+        When only historical turns are removed, the first two elements place the note immediately before the current
+        task. When current-task steps are also removed, they place it after the latest user message and before the
+        current-task steps that survived.
     """
     # Find the leading system messages that contain the Agent instructions.
     system_end = _leading_system_end(messages=messages)
@@ -199,62 +199,48 @@ def _task_and_step_split(
     task_index = _latest_user_index(messages=messages)
     task = [messages[task_index]] if task_index is not None else []
 
-    # Find the complete Agent steps that follow the current task anchor.
-    current_task_step_start = (task_index + 1) if task_index is not None else system_end
-    current_agent_steps = _agent_step_spans(messages=messages, start=current_task_step_start)
+    # Group the complete Agent steps that follow the current task anchor.
+    step_start_index = (task_index + 1) if task_index is not None else system_end
+    step_groups = _index_groups(messages=messages, spans=_agent_step_spans(messages=messages, start=step_start_index))
 
-    # Find all complete historical turns (i.e. user-assistant) that precede the current task.
+    # Group the complete historical turns (i.e. user-assistant) that precede the current task. An earlier compaction's
+    # note is left out of its turn, so keeping the turn folds that note into the note this compaction leaves behind.
     historical_end = task_index if task_index is not None else system_end
-    historical_turns = _historical_turn_spans(messages=messages, start=system_end, end=historical_end)
+    turn_groups = _index_groups(
+        messages=messages,
+        spans=_historical_turn_spans(messages=messages, start=system_end, end=historical_end),
+        skip_compaction_notes=True,
+    )
 
-    # Calculate the token count of the protected context (leading system messages and current task)
+    # The Agent instructions and the current task are never removed, so they are paid for out of the target first.
     protected_tokens = token_counter.count(messages=[*messages[:system_end], *task])
-
-    # Calculate the size of the current task's Agent steps
-    all_current_agent_step_tokens = token_counter.count(
-        messages=_messages_from_spans(messages=messages, spans=current_agent_steps, skip_compaction_notes=False)
-    )
-
-    # Get the start of where we should retain historical turns.
-    # If no turns are kept the value of this is `len(historical_turns)`, which is the same as `historical_end`.
-    kept_turn_start = _get_turn_start(
+    first_kept_turn, first_kept_step = _first_turn_and_step_to_keep(
         messages=messages,
+        turn_groups=turn_groups,
+        step_groups=step_groups,
         available_tokens=target_tokens - protected_tokens,
-        all_current_agent_step_tokens=all_current_agent_step_tokens,
-        historical_turns=historical_turns,
-        token_counter=token_counter,
-    )
-    kept_turn_spans = historical_turns[kept_turn_start:]
-    kept_turns = _messages_from_spans(messages=messages, spans=kept_turn_spans, skip_compaction_notes=True)
-
-    # Get the start of where we should retain current-task steps
-    kept_step_start = _get_step_start(
-        messages=messages,
-        available_tokens=target_tokens - protected_tokens,
-        all_current_agent_step_tokens=all_current_agent_step_tokens,
-        current_agent_steps=current_agent_steps,
         token_counter=token_counter,
         min_keep_steps=min_keep_steps,
     )
-    kept_step_spans = current_agent_steps[kept_step_start:]
-    kept_steps = _messages_from_spans(messages=messages, spans=kept_step_spans, skip_compaction_notes=False)
+    kept_turn_indices = _flatten(groups=turn_groups[first_kept_turn:])
+    kept_step_indices = _flatten(groups=step_groups[first_kept_step:])
 
-    # Record every index that we are keeping
-    kept_indices = {*range(system_end)}
+    # A message survives only by being protected or by falling in a group we are keeping; everything else goes.
+    kept_indices = {*range(system_end), *kept_turn_indices, *kept_step_indices}
     if task_index is not None:
         kept_indices.add(task_index)
-    for start, end in [*kept_turn_spans, *kept_step_spans]:
-        kept_indices.update(index for index in range(start, end))
-    # Remove everything else that's not in the kept indices
     removable = [message for index, message in enumerate(messages) if index not in kept_indices]
 
-    if kept_step_start == 0:
-        kept_before_note = [*messages[:system_end], *kept_turns]
-        kept_after_note = [*task, *kept_steps]
+    if first_kept_step == 0:
+        # The current task is untouched, so the note stands in for the older turns and belongs in front of the task.
+        kept_before_note = [*messages[:system_end], *_messages_at(messages=messages, indices=kept_turn_indices)]
+        kept_after_note = [*task, *_messages_at(messages=messages, indices=kept_step_indices)]
     else:
+        # Steps were cut from the current task, which means every historical turn was already dropped, so the note
+        # goes between the task and the steps that survived it.
         kept_before_note = [*messages[:system_end], *task]
-        kept_after_note = kept_steps
-    return kept_before_note, removable, kept_after_note, len(current_agent_steps) - kept_step_start
+        kept_after_note = _messages_at(messages=messages, indices=kept_step_indices)
+    return kept_before_note, kept_after_note, removable
 
 
 @_experimental
@@ -312,7 +298,7 @@ class SlidingWindowCompactor(Compactor):
         """
         if token_counter.count(messages) <= target_tokens:
             return None
-        kept_before_note, removable, kept_after_note, kept_step_count = _task_and_step_split(
+        kept_before_note, kept_after_note, removable = _task_and_step_split(
             messages=messages,
             target_tokens=target_tokens,
             token_counter=token_counter,
@@ -332,7 +318,6 @@ class SlidingWindowCompactor(Compactor):
                     "strategy": "sliding_window",
                     "removed_messages": len(removable),
                     "kept_messages": len(kept_before_note) + len(kept_after_note),
-                    "kept_steps": kept_step_count,
                 }
             },
         )
