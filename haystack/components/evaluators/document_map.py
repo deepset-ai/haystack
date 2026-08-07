@@ -117,19 +117,23 @@ class DocumentMAPEvaluator:
         for ground_truth, retrieved in zip(ground_truth_documents, retrieved_documents, strict=True):
             average_precision = 0.0
             average_precision_numerator = 0.0
-            relevant_documents = 0
+            retrieved_relevant_documents = 0
 
-            ground_truth_values = [val for doc in ground_truth if (val := self._get_comparison_value(doc)) is not None]
+            ground_truth_values = {
+                value for doc in ground_truth if (value := self._get_comparison_value(doc)) is not None
+            }
+            total_relevant_documents = len(ground_truth_values)
             for rank, retrieved_document in enumerate(retrieved):
                 retrieved_value = self._get_comparison_value(retrieved_document)
                 if retrieved_value is None:
                     continue
 
                 if retrieved_value in ground_truth_values:
-                    relevant_documents += 1
-                    average_precision_numerator += relevant_documents / (rank + 1)
-            if relevant_documents > 0:
-                average_precision = average_precision_numerator / relevant_documents
+                    ground_truth_values.discard(retrieved_value)
+                    retrieved_relevant_documents += 1
+                    average_precision_numerator += retrieved_relevant_documents / (rank + 1)
+            if total_relevant_documents:
+                average_precision = average_precision_numerator / total_relevant_documents
             individual_scores.append(average_precision)
 
         score = sum(individual_scores) / len(ground_truth_documents)

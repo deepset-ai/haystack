@@ -95,6 +95,20 @@ def test_run_with_partial_matching():
     assert result == {"individual_scores": [1.0, 0.0], "score": 0.5}
 
 
+@pytest.mark.parametrize(
+    "retrieved_documents",
+    [[Document(content="A")], [Document(content="A"), Document(content="A")]],
+)
+def test_run_with_missed_and_duplicate_relevant_documents(retrieved_documents):
+    evaluator = DocumentMAPEvaluator()
+    result = evaluator.run(
+        ground_truth_documents=[[Document(content="A"), Document(content="B")]],
+        retrieved_documents=[retrieved_documents],
+    )
+
+    assert result == {"individual_scores": [0.5], "score": 0.5}
+
+
 def test_run_with_complex_data():
     evaluator = DocumentMAPEvaluator()
     result = evaluator.run(
@@ -124,12 +138,12 @@ def test_run_with_complex_data():
         "individual_scores": [
             1.0,
             pytest.approx(0.8333333333333333),
-            1.0,
+            0.5,  # Only one of two relevant documents was retrieved.
             pytest.approx(0.5833333333333333),
             0.0,
-            pytest.approx(0.8055555555555555),
+            pytest.approx(0.8333333333333333),  # The duplicate retrieval is not credited again.
         ],
-        "score": pytest.approx(0.7037037037037037),
+        "score": pytest.approx(0.625),
     }
 
 
