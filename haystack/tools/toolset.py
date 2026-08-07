@@ -194,6 +194,22 @@ class Toolset:
         self.warm_up()
         return list(self.tools)
 
+    def spawn(self, selected_tool_names: set[str] | None = None) -> "Toolset":  # noqa: ARG002
+        """
+        Return an isolated instance of this Toolset for a single run.
+
+        A plain Toolset has no run-scoped state, so the default implementation returns `self` unchanged and
+        ignores `selected_tool_names` (the Agent materializes name selections itself in that case). Subclasses
+        with additional run-scoped state (e.g. SearchableToolset) should override this to return a copy that
+        shares the read-only state (its tools and any warmed-up resources) but gets fresh run-scoped state and
+        carries the selection, so concurrent runs that share the same configured Toolset don't corrupt each
+        other (for example, one run's discovered tools leaking into another).
+
+        :param selected_tool_names: Optional tool names this run is restricted to. None means no restriction.
+        :returns: This Toolset, or a run-scoped copy of it.
+        """
+        return self
+
     def add(self, tool: Tool) -> None:
         """
         Add a new Tool to this Toolset.

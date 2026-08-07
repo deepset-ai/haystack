@@ -2295,7 +2295,8 @@ class TestAgentWarmUp:
         assert toolset1.was_warmed_up
         assert toolset2.was_warmed_up
 
-    def test_warm_up_is_idempotent(self):
+    def test_warm_up_rewarms_tools_on_every_call(self):
+        """Tools are warmed on every warm_up() so tools added to a Toolset after the first run get warmed too."""
         call_count = {"n": 0}
         tool = Tool(
             name="counting_tool",
@@ -2316,7 +2317,7 @@ class TestAgentWarmUp:
         agent.warm_up()
         agent.warm_up()
 
-        assert call_count["n"] == 1
+        assert call_count["n"] == 3
 
     def test_warm_up_refreshes_toolset(self):
         """Agent.warm_up() must warm up lazy toolsets (e.g. MCPToolset) so the actual tools are available at runtime."""
@@ -2459,7 +2460,6 @@ class TestComponentLifecycle:
 
         chat_generator.warm_up.reset_mock()
         agent.run([ChatMessage.from_user("What is the weather in Berlin?")])
-        assert agent._tools_warmed_up is True
         # warm_up runs twice here: the Agent delegates to the generator, and the generator's own run() self-warms
         assert chat_generator.warm_up.call_count == 2
 

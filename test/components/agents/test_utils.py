@@ -99,6 +99,10 @@ class TestSelectToolsByName:
         with pytest.raises(ValueError, match="No tools were configured for the Agent at initialization."):
             _select_tools_by_name([], [first_tool.name])
 
+    def test_raises_when_configured_toolset_is_empty(self, first_tool: Tool):
+        with pytest.raises(ValueError, match="No tools were configured for the Agent at initialization."):
+            _select_tools_by_name(Toolset([]), [first_tool.name])
+
     def test_reduces_plain_toolsets_to_matching_tools(self, first_tool: Tool, second_tool: Tool):
         toolset = Toolset([first_tool, second_tool])
         selected = _select_tools_by_name([toolset], [first_tool.name])
@@ -130,15 +134,15 @@ class TestSelectToolsByName:
         selected = _select_tools_by_name([toolset], [first_tool.name])
         assert selected == [first_tool]
 
-    def test_copies_run_scoped_toolsets_for_run_with_the_selection(self, first_tool: Tool, second_tool: Tool):
+    def test_spawns_toolsets_without_mutating_them(self, first_tool: Tool, second_tool: Tool):
         class RunScopedToolset(Toolset):
-            """A Toolset defining _copy_for_run(), signaling run-scoped state."""
+            """A Toolset overriding spawn(), signaling run-scoped state."""
 
             def __init__(self, tools):
                 super().__init__(tools)
                 self.selected: set[str] | None = None
 
-            def _copy_for_run(self, selected_tool_names: set[str] | None = None) -> "RunScopedToolset":
+            def spawn(self, selected_tool_names: set[str] | None = None) -> "RunScopedToolset":
                 new = RunScopedToolset(list(self.tools))
                 new.selected = set(selected_tool_names) if selected_tool_names is not None else None
                 return new
@@ -152,6 +156,25 @@ class TestSelectToolsByName:
         assert run_copy.selected == {first_tool.name}
         # The configured toolset is untouched.
         assert toolset.selected is None
+
+    def test_selects_tools_not_surfaced_by_iteration(self, first_tool: Tool, second_tool: Tool):
+        class DiscoveryToolset(Toolset):
+            """A dynamic Toolset without a spawn() override: iteration yields less than get_selectable_tools()."""
+
+            def __init__(self, catalog):
+                self._catalog = catalog
+                super().__init__([])
+
+            def __iter__(self):
+                yield from []  # nothing discovered yet
+
+            def get_selectable_tools(self) -> list[Tool]:
+                return list(self._catalog)
+
+        toolset = DiscoveryToolset([first_tool, second_tool])
+        # The requested tool must be selected even though iteration does not surface it.
+        selected = _select_tools_by_name([toolset], [first_tool.name])
+        assert selected == [first_tool]
 
 
 class TestContextTokensFromUsage:

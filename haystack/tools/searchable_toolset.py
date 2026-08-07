@@ -130,14 +130,14 @@ class SearchableToolset(Toolset):
         self._document_store: InMemoryDocumentStore | None = None
         self._passthrough: bool | None = None
 
-        # Optional per-run name filter, set on the copies returned by _copy_for_run(). When set, iteration only
+        # Optional per-run name filter, set on the copies returned by spawn(). When set, iteration only
         # yields tools whose name is in this set, and search is scoped to it. None means no filtering.
         self._selected_tool_names: set[str] | None = None
 
         # Initialize parent with empty tools list - we manage tools dynamically
         super().__init__(tools=[])
 
-    def add(self, tool: Tool | Toolset) -> None:
+    def add(self, tool: Tool) -> None:
         """Adding new tools after initialization is not supported for SearchableToolset."""
         raise NotImplementedError("SearchableToolset does not support adding new tools after initialization.")
 
@@ -196,14 +196,14 @@ class SearchableToolset(Toolset):
         """
         self._discovered_tools.clear()
 
-    def _copy_for_run(self, selected_tool_names: set[str] | None = None) -> "SearchableToolset":
+    def spawn(self, selected_tool_names: set[str] | None = None) -> "SearchableToolset":
         """
-        Return an isolated copy for a single Agent run, carrying the given name selection.
+        Return an isolated copy for a single run, carrying the given name selection.
 
-        The copy shares the read-only catalog and BM25 index but gets fresh discovered tools and a bootstrap
-        search tool bound to the copy; the selection is fixed for the copy's lifetime and scopes both iteration
-        and search. This way concurrent runs sharing the same configured SearchableToolset don't share
-        discovered tools or collide on the active selection.
+        The copy shares the read-only catalog and BM25 index but gets fresh discovered tools and name selection,
+        plus a bootstrap search tool bound to the copy; the selection is fixed for the copy's lifetime and scopes
+        both iteration and search. This way concurrent runs sharing the same configured SearchableToolset don't
+        share discovered tools or collide on the active selection.
 
         :param selected_tool_names: Optional catalog tool names this run is restricted to. None means no
             restriction.
@@ -316,11 +316,6 @@ class SearchableToolset(Toolset):
                 yield self._bootstrap_tool
             yield from (tool for tool in self._discovered_tools.values() if self._is_selected(tool.name))
 
-    def __len__(self) -> int:
-        """Return the number of currently available tools."""
-        # the number of tools is computed by invoking __iter__ on the toolset
-        return sum(1 for _ in self)
-
     def __contains__(self, item: str | Tool) -> bool:
         """
         Check if a tool is available by Tool instance or tool name string.
@@ -333,16 +328,6 @@ class SearchableToolset(Toolset):
         if isinstance(item, Tool):
             return any(tool == item for tool in self)
         raise TypeError(f"Invalid item type: {type(item)}. Must be Tool or str.")
-
-    def __getitem__(self, index: int) -> Tool:
-        """
-        Get a tool by index.
-
-        :param index: Index of the tool to retrieve.
-        :returns: The tool at the given index.
-        :raises IndexError: If the index is out of range.
-        """
-        return list(self)[index]
 
     def to_dict(self) -> dict[str, Any]:
         """

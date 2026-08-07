@@ -825,8 +825,8 @@ class TestSearchableToolsetAgentToolSelection:
         # The catalog, however, is fully available for name-based selection.
         assert {tool.name for tool in toolset.get_selectable_tools()} == {tool.name for tool in large_catalog}
 
-    def test_runtime_tool_names_return_isolated_copy_and_preserve_search(self, large_catalog, monkeypatch):
-        """Selecting catalog tool names returns an isolated per-run copy carrying the selection, with search active."""
+    def test_runtime_tool_names_select_isolated_spawn_and_preserve_search(self, large_catalog, monkeypatch):
+        """Selecting catalog tool names returns an isolated spawn carrying the selection, with search active."""
         monkeypatch.setenv("OPENAI_API_KEY", "fake-key")
         toolset = SearchableToolset(catalog=large_catalog, search_threshold=3)  # 8 tools -> search mode
         agent = Agent(chat_generator=OpenAIChatGenerator(), tools=toolset)
@@ -849,13 +849,13 @@ class TestSearchableToolsetAgentToolSelection:
         # The configured toolset's discovered tools are untouched.
         assert toolset._discovered_tools == {}
 
-    def test_run_copies_have_independent_discovered_tools_and_selection(self, large_catalog):
-        """Per-run copies of one SearchableToolset don't share discovered tools or collide on the selection."""
+    def test_spawns_have_independent_discovered_tools_and_selection(self, large_catalog):
+        """Spawns of one SearchableToolset don't share discovered tools or collide on the selection."""
         toolset = SearchableToolset(catalog=large_catalog, search_threshold=3)
         toolset.warm_up()
 
-        copy_a = toolset._copy_for_run(selected_tool_names={"get_weather"})
-        copy_b = toolset._copy_for_run()
+        copy_a = toolset.spawn(selected_tool_names={"get_weather"})
+        copy_b = toolset.spawn()
 
         assert copy_a is not copy_b
         assert copy_a is not toolset

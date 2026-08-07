@@ -17,12 +17,12 @@ from haystack.components.agents.state.state import (
 from haystack.components.agents.state.state_utils import merge_lists
 from haystack.components.agents.tool_calling import _run_tool, _run_tool_async
 from haystack.components.agents.utils import (
-    _copy_tools_for_run,
     _record_context_tokens,
     _record_llm_usage,
     _record_tool_calls,
     _render_prompt_messages,
     _select_tools_by_name,
+    _spawn_tools,
     _template_for_role,
     _validate_prompt_message_blocks,
 )
@@ -477,7 +477,6 @@ class Agent:
         self.tool_concurrency_limit = tool_concurrency_limit
         self.tool_streaming_callback_passthrough = tool_streaming_callback_passthrough
         self.hooks = hooks
-        self._tools_warmed_up = False
         self._hooks_warmed_up = False
 
         # --- State schema ---
@@ -569,11 +568,13 @@ class Agent:
                 component.set_input_type(self, name=var_name, type=Any, default=None)
 
     def _warm_up_tools(self) -> None:
-        """Warm up the configured tools once."""
-        if not self._tools_warmed_up:
-            if self.tools is not None:
-                warm_up_tools(tools=self.tools)
-            self._tools_warmed_up = True
+        """
+        Warm up the configured tools.
+
+        Called on every warm_up() (and therefore every run), so tools added to a Toolset after the first run are
+        warmed too. Tools' warm_up() is expected to be idempotent, making repeated warming cheap.
+        """
+        warm_up_tools(tools=self.tools)
 
     def _warm_up_hooks(self) -> None:
         """Warm up the configured hooks once."""
@@ -790,11 +791,11 @@ class Agent:
             or if any provided tool name is not valid.
         :raises TypeError: If tools is not a list of Tool objects, a Toolset, or a list of tool names (strings).
         """
-        # Toolsets with run-scoped state (those defining _copy_for_run(), e.g. SearchableToolset) are replaced
-        # by per-run copies (see _copy_tools_for_run / _select_tools_by_name) so concurrent runs sharing the
+        # Toolsets with run-scoped state (those overriding spawn(), e.g. SearchableToolset) are replaced
+        # by per-run copies (see _spawn_tools / _select_tools_by_name) so concurrent runs sharing the
         # same configured Toolset don't corrupt each other's run-scoped state.
         if tools is None:
-            return _copy_tools_for_run(tools=self.tools)
+            return _spawn_tools(tools=self.tools)
 
         if isinstance(tools, list) and all(isinstance(t, str) for t in tools):
             return _select_tools_by_name(self.tools, cast(list[str], tools))
@@ -804,7 +805,7 @@ class Agent:
             # Per-run tools are not covered by the Agent's own warm_up(), so warm them up here.
             # warm_up() is expected to be idempotent, so re-warming on every run is cheap.
             warm_up_tools(tools=selected)
-            return _copy_tools_for_run(tools=selected)
+            return _spawn_tools(tools=selected)
 
         raise TypeError(
             "tools must be a list of Tool and/or Toolset objects, a Toolset, or a list of tool names (strings)."
