@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import re
+from copy import deepcopy
 from typing import Literal
 
 from haystack import Document, component, logging
@@ -325,7 +326,7 @@ class MarkdownHeaderSplitter:
                 page_breaks=total_page_breaks,
             )
             for split_idx, split in enumerate(splits):
-                meta = doc.meta.copy() if doc.meta else {}
+                meta = deepcopy(doc.meta) if doc.meta else {}
                 meta.update({"source_id": doc.id, "page_number": current_page, "split_id": split_idx})
                 if split.get("meta"):
                     meta.update(split["meta"])
