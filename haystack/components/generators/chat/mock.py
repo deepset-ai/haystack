@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+import inspect
 import json
 import re
 from collections.abc import Callable, Sequence
@@ -27,9 +28,14 @@ from haystack.utils import deserialize_callable, serialize_callable
 
 logger = logging.getLogger(__name__)
 
-# A callable that derives a response from the input messages. It receives the (normalized) list of input
-# `ChatMessage` objects and returns either the text of the assistant reply or a full `ChatMessage`.
-ResponseFn = Callable[[list[ChatMessage]], str | ChatMessage]
+# A callable that derives a response from the input messages, and optionally from the tools passed to `run`. It
+# returns either the text of the assistant reply or a full `ChatMessage`. Two shapes are supported and picked
+# automatically from the callable's signature:
+#   - `response_fn(messages)` — receives only the (normalized) list of input `ChatMessage` objects.
+#   - `response_fn(messages, tools)` — additionally receives the `tools` passed to `run` (a `ToolsType` or `None`),
+#     so the reply can depend on the runtime tool schema (for example, to build a tool call whose arguments follow
+#     the tool's parameter names, or to route between the available tools).
+ResponseFn = Callable[..., str | ChatMessage]
 
 
 @component
@@ -49,7 +55,9 @@ class MockChatGenerator:
       wrapping around to the start once the list is exhausted. This is useful to drive multi-step flows such as
       Agents, where the first call returns a tool call and a later call returns the final answer.
     - **Dynamic response**: pass a `response_fn` callable that receives the input messages and returns the reply.
-      This is useful when the reply should depend on the input, for example to echo back part of the prompt.
+      This is useful when the reply should depend on the input, for example to echo back part of the prompt. If the
+      callable declares a second parameter, it also receives the `tools` passed to `run` (a `ToolsType` or `None`),
+      so the reply can depend on the runtime tool schema — handy for exercising Agents whose tool set varies.
     - **Echo (default)**: with no configuration, the component echoes back the text of the last message that has
       text content. This makes it usable out of the box for quick prototyping.
 
@@ -74,6 +82,16 @@ class MockChatGenerator:
             "Here is the final answer.",
         ]
     )
+
+    # Dynamic, tool-aware response: build a tool call from the tools passed to run()
+    def call_first_tool(messages, tools):
+        if not tools:
+            return "No tools available."
+        return ChatMessage.from_assistant(
+            tool_calls=[ToolCall(tool_name=tools[0].name, arguments={})]
+        )
+
+    generator = MockChatGenerator(response_fn=call_first_tool)
     ```
     """
 
@@ -94,9 +112,11 @@ class MockChatGenerator:
             cycling back to the start once exhausted. Strings are wrapped into assistant `ChatMessage` objects, and any
             `ChatMessage` passed must have the `assistant` role. Mutually exclusive with `response_fn`. If neither is
             provided, the component echoes the last message with text content.
-        :param response_fn: An optional callable that receives the input messages and returns the reply as a string or
-            an assistant `ChatMessage`. Use this for input-dependent responses. Mutually exclusive with `responses`. To
-            support serialization, pass a named function (lambdas and nested functions cannot be serialized).
+        :param response_fn: An optional callable that returns the reply as a string or an assistant `ChatMessage`. It
+            receives the input messages; if it declares a second parameter, it also receives the `tools` passed to
+            `run` (a `ToolsType` or `None`), letting the reply depend on the runtime tool schema. Use this for
+            input-dependent responses. Mutually exclusive with `responses`. To support serialization, pass a named
+            function (lambdas and nested functions cannot be serialized).
         :param model: The model name reported in the response metadata. Purely cosmetic; no model is loaded.
         :param meta: Additional metadata merged into the `meta` of every returned `ChatMessage`. A per-response
             `ChatMessage`'s own metadata takes precedence over this value.
@@ -110,6 +130,7 @@ class MockChatGenerator:
 
         self._responses = self._normalize_responses(responses)
         self.response_fn = response_fn
+        self._response_fn_wants_tools = response_fn is not None and self._response_fn_accepts_tools(response_fn)
         self.model = model
         self.meta = meta or {}
         self.streaming_callback = streaming_callback
@@ -191,6 +212,28 @@ class MockChatGenerator:
         return None
 
     @staticmethod
+    def _response_fn_accepts_tools(response_fn: ResponseFn) -> bool:
+        """
+        Return True if `response_fn` should be called as `response_fn(messages, tools)`.
+
+        A callable is considered tool-aware when it can accept a second positional argument (it declares at least two
+        positional parameters, or a `*args`). Otherwise it is called as `response_fn(messages)`, keeping the original
+        single-argument contract fully backward compatible.
+        """
+        try:
+            parameters = inspect.signature(response_fn).parameters
+        except (TypeError, ValueError):
+            # Some builtins/C callables don't expose a signature; fall back to the messages-only contract.
+            return False
+        positional = 0
+        for parameter in parameters.values():
+            if parameter.kind is inspect.Parameter.VAR_POSITIONAL:
+                return True
+            if parameter.kind in (inspect.Parameter.POSITIONAL_ONLY, inspect.Parameter.POSITIONAL_OR_KEYWORD):
+                positional += 1
+        return positional >= 2
+
+    @staticmethod
     def _coerce_to_message(result: str | ChatMessage) -> ChatMessage:
         """Turn the output of `response_fn` into a `ChatMessage`, wrapping strings and requiring the assistant role."""
         if isinstance(result, str):
@@ -228,10 +271,11 @@ class MockChatGenerator:
         meta.update(base.meta)
         return meta
 
-    def _build_reply(self, messages: list[ChatMessage]) -> ChatMessage | None:
+    def _build_reply(self, messages: list[ChatMessage], tools: ToolsType | None = None) -> ChatMessage | None:
         """Select and finalize the reply for the given input messages. Returns `None` when there is nothing to echo."""
         if self.response_fn is not None:
-            base = self._coerce_to_message(self.response_fn(messages))
+            raw = self.response_fn(messages, tools) if self._response_fn_wants_tools else self.response_fn(messages)
+            base = self._coerce_to_message(raw)
         elif self._responses is not None:
             base = self._responses[self._call_count % len(self._responses)]
             self._call_count += 1
@@ -296,7 +340,7 @@ class MockChatGenerator:
         streaming_callback: StreamingCallbackT | None = None,
         generation_kwargs: dict[str, Any] | None = None,  # noqa: ARG002
         *,
-        tools: ToolsType | None = None,  # noqa: ARG002
+        tools: ToolsType | None = None,
         tools_strict: bool | None = None,  # noqa: ARG002
     ) -> dict[str, list[ChatMessage]]:
         """
@@ -308,7 +352,8 @@ class MockChatGenerator:
         :param streaming_callback: An optional callback invoked with reconstructed `StreamingChunk` objects. Overrides
             the callback set at initialization.
         :param generation_kwargs: Accepted for interface compatibility and ignored.
-        :param tools: Accepted for interface compatibility and ignored.
+        :param tools: Passed to a tool-aware `response_fn` (one that declares a second parameter); otherwise accepted
+            for interface compatibility and ignored.
         :param tools_strict: Accepted for interface compatibility and ignored.
         :returns: A dictionary with a single key `replies` containing the predefined reply as a list of one
             `ChatMessage` (empty in echo mode when there is no message to echo).
@@ -320,7 +365,7 @@ class MockChatGenerator:
             init_callback=self.streaming_callback, runtime_callback=streaming_callback, requires_async=False
         )
 
-        reply = self._build_reply(messages)
+        reply = self._build_reply(messages, tools)
         if reply is None:
             return {"replies": []}
 
@@ -337,7 +382,7 @@ class MockChatGenerator:
         streaming_callback: StreamingCallbackT | None = None,
         generation_kwargs: dict[str, Any] | None = None,  # noqa: ARG002
         *,
-        tools: ToolsType | None = None,  # noqa: ARG002
+        tools: ToolsType | None = None,
         tools_strict: bool | None = None,  # noqa: ARG002
     ) -> dict[str, list[ChatMessage]]:
         """
@@ -350,7 +395,8 @@ class MockChatGenerator:
         :param streaming_callback: An optional callback invoked with reconstructed `StreamingChunk` objects. Overrides
             the callback set at initialization.
         :param generation_kwargs: Accepted for interface compatibility and ignored.
-        :param tools: Accepted for interface compatibility and ignored.
+        :param tools: Passed to a tool-aware `response_fn` (one that declares a second parameter); otherwise accepted
+            for interface compatibility and ignored.
         :param tools_strict: Accepted for interface compatibility and ignored.
         :returns: A dictionary with a single key `replies` containing the predefined reply as a list of one
             `ChatMessage` (empty in echo mode when there is no message to echo).
@@ -363,7 +409,7 @@ class MockChatGenerator:
             init_callback=self.streaming_callback, runtime_callback=streaming_callback, requires_async=True
         )
 
-        reply = self._build_reply(messages)
+        reply = self._build_reply(messages, tools)
         if reply is None:
             return {"replies": []}
 
