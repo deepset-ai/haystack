@@ -389,8 +389,6 @@ class TestToolsetSpawn:
     """Tests for spawn(), the run-scoping hook."""
 
     def test_spawn_returns_self_for_plain_toolset(self, add_tool, multiply_tool):
-        """A plain Toolset has no run-scoped state: spawn() returns the same instance, with or without a
-        selection (which it ignores, since the Agent materializes it), and never mutates the toolset."""
         toolset = Toolset([add_tool, multiply_tool])
         assert toolset.spawn() is toolset
         assert toolset.spawn(selected_tool_names={"add"}) is toolset

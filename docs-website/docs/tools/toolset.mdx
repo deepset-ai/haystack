@@ -85,11 +85,16 @@ agent = Agent(
 )
 ```
 
-### Tool Selection at Runtime
+### Run-Scoped Copies and Tool Selection
 
-You can restrict an [`Agent`](../pipeline-components/agents-1/agent.mdx) to a subset of tools at runtime by passing tool names, for example `agent.run(tools=["tool_a", "tool_b"])`. This also works with a [`SearchableToolset`](searchabletoolset.mdx): search and lazy loading keep working over the selected subset.
+A `Toolset` is never mutated in place during an [`Agent`](../pipeline-components/agents-1/agent.mdx) run. A `Toolset` with run-scoped state, such as a [`SearchableToolset`](searchabletoolset.mdx), is replaced in each run by an isolated, run-scoped copy created with the `spawn()` method. This makes concurrent runs that share the same `Toolset` instance safe: per-run state, such as a `SearchableToolset`'s discovered tools or active tool-name selection, cannot leak or collide across runs. A plain `Toolset` has no run-scoped state and is used as is; just avoid adding or removing tools while runs are in progress.
 
-Runtime selection never modifies your configured `Toolset`, and neither do a `SearchableToolset`'s discoveries. You can safely share the same `Toolset` instance across runs, including concurrent ones; just avoid adding or removing tools while runs are in progress.
+You can also restrict an `Agent` to a subset of tools at runtime by passing tool names, for example `agent.run(tools=["tool_a", "tool_b"])`. When the configured `Toolset` overrides `spawn()`, the selection is applied to the live (run-scoped) copy rather than flattening it into a static list, so dynamic behavior like a `SearchableToolset`'s search and lazy loading keeps working over the selected subset.
+
+Two methods support this and can be overridden when subclassing:
+
+- `get_selectable_tools()`: Returns every tool available for name-based selection. Override it if your subclass's iteration does not surface every selectable tool.
+- `spawn()`: Returns the `Toolset` itself, which has no run-scoped state to isolate. Override it to return an isolated, run-scoped copy if your subclass holds run-scoped state.
 
 ## Usage
 

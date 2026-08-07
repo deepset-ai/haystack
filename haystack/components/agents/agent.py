@@ -568,12 +568,7 @@ class Agent:
                 component.set_input_type(self, name=var_name, type=Any, default=None)
 
     def _warm_up_tools(self) -> None:
-        """
-        Warm up the configured tools.
-
-        Called on every warm_up() (and therefore every run), so tools added to a Toolset after the first run are
-        warmed too. Tools' warm_up() is expected to be idempotent, making repeated warming cheap.
-        """
+        """Warm up the configured tools. Called on every warm_up(), so late-added tools are warmed too."""
         warm_up_tools(tools=self.tools)
 
     def _warm_up_hooks(self) -> None:

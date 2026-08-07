@@ -118,7 +118,7 @@ toolset = SearchableToolset(
 
 ### Reusing the toolset across multiple agent runs
 
-You can safely reuse the same `SearchableToolset` instance across multiple agent runs, including concurrent ones. The `Agent` internally gives each run an isolated copy of the toolset, so tools discovered in one run do not persist into, or collide with, other runs — every run starts fresh from the catalog:
+You can safely reuse the same `SearchableToolset` instance across multiple agent runs, including concurrent ones. Each `Agent` run operates on an isolated, run-scoped copy of the toolset (created with [`spawn()`](toolset.mdx#run-scoped-copies-and-tool-selection)), so tools discovered in one run do not persist into, or collide with, other runs — every run starts fresh from the catalog:
 
 ```python
 agent = Agent(

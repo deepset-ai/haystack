@@ -116,8 +116,7 @@ def _select_tools_by_name(configured_tools: ToolsType, names: list[str]) -> list
         (item, item.get_selectable_tools() if isinstance(item, Toolset) else [item]) for item in items
     ]
     valid_tool_names = {tool.name for _, selectable in selectable_per_item for tool in selectable}
-    # Emptiness is only detectable here: a dynamic Toolset may look empty before get_selectable_tools() has
-    # resolved its real catalog.
+    # A dynamic Toolset may look empty before its catalog is resolved, so emptiness is checked here.
     if not valid_tool_names:
         raise ValueError("No tools were configured for the Agent at initialization.")
 
@@ -138,8 +137,7 @@ def _select_tools_by_name(configured_tools: ToolsType, names: list[str]) -> list
             # The selection is carried by the per-run copy, so the shared, configured Toolset is never mutated.
             selected.append(run_copy)
         else:
-            # Select from the same list validation used (get_selectable_tools), not from iteration: a dynamic
-            # toolset that doesn't override spawn() may not surface every selectable tool via __iter__.
+            # Select from the same list validation used: iteration may not surface every selectable tool.
             selected.extend(tool for tool in selectable if tool.name in matched)
     return selected
 

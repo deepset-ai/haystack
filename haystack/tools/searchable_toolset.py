@@ -201,9 +201,9 @@ class SearchableToolset(Toolset):
         Return an isolated copy for a single run, carrying the given name selection.
 
         The copy shares the read-only catalog and BM25 index but gets fresh discovered tools and name selection,
-        plus a bootstrap search tool bound to the copy; the selection is fixed for the copy's lifetime and scopes
-        both iteration and search. This way concurrent runs sharing the same configured SearchableToolset don't
-        share discovered tools or collide on the active selection.
+        plus a bootstrap search tool bound to the copy; the selection scopes both iteration and search. This way
+        concurrent runs sharing the same configured SearchableToolset don't share discovered tools or collide on
+        the active selection.
 
         :param selected_tool_names: Optional catalog tool names this run is restricted to. None means no
             restriction.
