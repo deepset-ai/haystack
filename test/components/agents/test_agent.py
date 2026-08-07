@@ -1772,6 +1772,37 @@ class TestAgentTracing:
 
 
 class TestAgentToolSelection:
+    @staticmethod
+    def _agent_with_duplicate_tool_names() -> Agent:
+        def make_tool(description: str) -> Tool:
+            return Tool(
+                name="same_name",
+                description=description,
+                parameters={"type": "object", "properties": {}},
+                function=lambda: None,
+            )
+
+        agent = Agent(
+            chat_generator=MockChatGenerator("Hello"),
+            tools=[Toolset([make_tool("first")]), Toolset([make_tool("second")])],
+        )
+        agent.warm_up()
+        return agent
+
+    def test_run_raises_on_duplicate_tool_names_across_toolsets(self):
+        # Duplicate names across combined sources are caught by the per-step validation, since no check at
+        # composition time can see the tools of lazily-loading Toolsets.
+        agent = self._agent_with_duplicate_tool_names()
+        with pytest.raises(ValueError, match="Duplicate tool names"):
+            agent.run(messages=[ChatMessage.from_user("hi")])
+
+    @pytest.mark.asyncio
+    async def test_run_async_raises_on_duplicate_tool_names_across_toolsets(self):
+        # The async step loop performs its own per-step validation, on a separate code path from the sync one.
+        agent = self._agent_with_duplicate_tool_names()
+        with pytest.raises(ValueError, match="Duplicate tool names"):
+            await agent.run_async(messages=[ChatMessage.from_user("hi")])
+
     def test_tool_selection_new_tool(self, weather_tool: Tool, component_tool: Tool):
         chat_generator = MockChatGenerator("Hello")
         agent = Agent(chat_generator=chat_generator, tools=[weather_tool], system_prompt="This is a system prompt.")
@@ -2202,13 +2233,41 @@ class TestAgentWarmUp:
         agent.warm_up()
         assert toolset.was_warmed_up
 
-    def test_warm_up_mixed_toolsets(self):
+    def test_warm_up_covers_empty_lazy_toolset(self):
+        # A Toolset that only loads its tools on warm_up() has len 0 before warming: the Agent must warm it
+        # anyway (a truthiness check on the toolset would skip it and permanently mark tools as warmed).
+        class LazyToolset(Toolset):
+            def __init__(self):
+                self.loaded = False
+                super().__init__(tools=[])
+
+            def warm_up(self):
+                if self.loaded:
+                    return
+                self.loaded = True
+                self.tools = [
+                    Tool(
+                        name="lazy_tool",
+                        description="d",
+                        parameters={"type": "object", "properties": {}},
+                        function=lambda: None,
+                    )
+                ]
+
+        toolset = LazyToolset()
+        agent = Agent(chat_generator=MockChatGenerator("Hello"), tools=toolset)
+        agent.warm_up()
+        assert toolset.loaded
+        assert [tool.name for tool in toolset] == ["lazy_tool"]
+
+    def test_warm_up_list_of_toolsets(self):
+        # Toolsets are combined by passing them as a list; each keeps its own warm_up.
         tool1 = self._make_tracking_tool("tool1")
         toolset1 = self._make_tracking_toolset([tool1])
         tool2 = self._make_tracking_tool("tool2")
         toolset2 = self._make_tracking_toolset([tool2])
 
-        agent = Agent(chat_generator=MockChatGenerator("Hello"), tools=toolset1 + toolset2)
+        agent = Agent(chat_generator=MockChatGenerator("Hello"), tools=[toolset1, toolset2])
 
         assert not toolset1.was_warmed_up
         assert not toolset2.was_warmed_up
@@ -2236,7 +2295,8 @@ class TestAgentWarmUp:
         assert toolset1.was_warmed_up
         assert toolset2.was_warmed_up
 
-    def test_warm_up_is_idempotent(self):
+    def test_warm_up_rewarms_tools_on_every_call(self):
+        """Tools are warmed on every warm_up() so tools added to a Toolset after the first run get warmed too."""
         call_count = {"n": 0}
         tool = Tool(
             name="counting_tool",
@@ -2257,7 +2317,7 @@ class TestAgentWarmUp:
         agent.warm_up()
         agent.warm_up()
 
-        assert call_count["n"] == 1
+        assert call_count["n"] == 3
 
     def test_warm_up_refreshes_toolset(self):
         """Agent.warm_up() must warm up lazy toolsets (e.g. MCPToolset) so the actual tools are available at runtime."""
@@ -2400,7 +2460,6 @@ class TestComponentLifecycle:
 
         chat_generator.warm_up.reset_mock()
         agent.run([ChatMessage.from_user("What is the weather in Berlin?")])
-        assert agent._tools_warmed_up is True
         # warm_up runs twice here: the Agent delegates to the generator, and the generator's own run() self-warms
         assert chat_generator.warm_up.call_count == 2
 

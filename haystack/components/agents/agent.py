@@ -51,7 +51,6 @@ from haystack.hooks.utils import (
     warm_up_hooks_async,
 )
 from haystack.tools import (
-    Tool,
     Toolset,
     ToolsType,
     _check_duplicate_tool_names,
@@ -478,7 +477,6 @@ class Agent:
         self.tool_concurrency_limit = tool_concurrency_limit
         self.tool_streaming_callback_passthrough = tool_streaming_callback_passthrough
         self.hooks = hooks
-        self._tools_warmed_up = False
         self._hooks_warmed_up = False
 
         # --- State schema ---
@@ -570,11 +568,8 @@ class Agent:
                 component.set_input_type(self, name=var_name, type=Any, default=None)
 
     def _warm_up_tools(self) -> None:
-        """Warm up the configured tools once."""
-        if not self._tools_warmed_up:
-            if self.tools:
-                warm_up_tools(tools=self.tools)
-            self._tools_warmed_up = True
+        """Warm up the configured tools. Called on every warm_up(), so late-added tools are warmed too."""
+        warm_up_tools(tools=self.tools)
 
     def _warm_up_hooks(self) -> None:
         """Warm up the configured hooks once."""
@@ -791,7 +786,7 @@ class Agent:
             or if any provided tool name is not valid.
         :raises TypeError: If tools is not a list of Tool objects, a Toolset, or a list of tool names (strings).
         """
-        # Toolsets are spawned into per-run copies (see _spawn_tools / _select_tools_by_name) so concurrent runs
+        # Toolsets are spawned per run (see _spawn_tools / _select_tools_by_name) so concurrent runs
         # sharing the same configured Toolset don't corrupt each other's run-scoped state.
         if tools is None:
             return _spawn_tools(tools=self.tools)
@@ -799,14 +794,8 @@ class Agent:
         if isinstance(tools, list) and all(isinstance(t, str) for t in tools):
             return _select_tools_by_name(self.tools, cast(list[str], tools))
 
-        if isinstance(tools, Toolset):
-            # Per-run tools are not covered by the Agent's own warm_up(), so warm them up here.
-            # warm_up() is expected to be idempotent, so re-warming on every run is cheap.
-            warm_up_tools(tools=tools)
-            return _spawn_tools(tools=tools)
-
-        if isinstance(tools, list):
-            selected = cast(list[Tool | Toolset], tools)  # mypy can't narrow the Union type from isinstance check
+        if isinstance(tools, (Toolset, list)):
+            selected = cast(ToolsType, tools)  # mypy can't narrow the Union type from the isinstance checks
             # Per-run tools are not covered by the Agent's own warm_up(), so warm them up here.
             # warm_up() is expected to be idempotent, so re-warming on every run is cheap.
             warm_up_tools(tools=selected)

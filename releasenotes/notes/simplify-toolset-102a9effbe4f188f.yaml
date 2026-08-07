@@ -1,0 +1,13 @@
+---
+upgrade:
+  - |
+    Combining Toolsets with ``+`` or ``Toolset.add(toolset)`` is no longer supported. Pass Toolsets as a list
+    wherever tools are accepted instead: ``Agent(tools=[toolset_a, toolset_b])``. Pipelines serialized with a
+    ``+``-combined Toolset cannot be loaded anymore (their YAML references the removed internal
+    ``_ToolsetWrapper`` class): recreate them with the list form and serialize them again.
+  - |
+    Haystack can call ``warm_up()`` on Tools and Toolsets more than once, for example before every run.
+    Previously ``Toolset`` absorbed repeated calls with an internal ``_is_warmed_up`` flag; that flag is gone
+    and every call now reaches your ``warm_up()``. If your custom Tool or Toolset does expensive work there
+    (connecting to a server, loading a model), or relied on the ``_is_warmed_up`` attribute, guard with your
+    own state and return early, for example ``if self._client is not None: return``.
