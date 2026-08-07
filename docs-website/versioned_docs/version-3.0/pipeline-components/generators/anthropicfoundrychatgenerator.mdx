@@ -16,7 +16,7 @@ This component enables chat completions using Anthropic models served through Az
 | **Most common position in a pipeline** | After a [`ChatPromptBuilder`](../builders/chatpromptbuilder.mdx) |
 | **Mandatory init variables** | `api_key`: Your Azure Foundry API key. Can be set with the `ANTHROPIC_FOUNDRY_API_KEY` env var. Alternatively, pass an `azure_ad_token_provider` callable.  <br /> <br />`resource`: Your Azure Foundry resource name. Can be set with the `ANTHROPIC_FOUNDRY_RESOURCE` env var. Alternatively, pass a full `endpoint` URL. |
 | **Mandatory run variables** | `messages`: A list of [`ChatMessage`](../../concepts/data-classes/chatmessage.mdx) objects |
-| **Output variables** | `replies`: A list of [`ChatMessage`](../../concepts/data-classes/chatmessage.mdx) objects  <br /> <br />`meta`: A dictionary on each reply with metadata such as the model name, finish reason, and token usage |
+| **Output variables** | `replies`: A list of [`ChatMessage`](../../concepts/data-classes/chatmessage.mdx) objects |
 | **API reference** | [Anthropic](/reference/integrations-anthropic) |
 | **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/anthropic |
 | **Package name** | `anthropic-haystack` |
@@ -48,7 +48,7 @@ The default model is `claude-sonnet-4-5`. Other models known to work include `cl
 
 Once configured, pass any text-generation parameter supported by the Anthropic [Messages API](https://docs.anthropic.com/en/api/messages) through `generation_kwargs`, either at init or per call. Common keys include `system`, `max_tokens`, `temperature`, `top_p`, `top_k`, `stop_sequences`, `metadata`, and `extra_headers`. You can also tune `timeout` and `max_retries` to control client-side resilience.
 
-The component takes a list of `ChatMessage` objects. `ChatMessage` is a data class that holds a message, a role (`user`, `assistant`, `system`, or `function`), and optional metadata. Only text input is supported.
+The component takes a list of `ChatMessage` objects. `ChatMessage` is a data class that holds a message, a role (`user`, `assistant`, `system`, or `tool`), and optional metadata. Only text input is supported.
 
 ### Tool Support
 
