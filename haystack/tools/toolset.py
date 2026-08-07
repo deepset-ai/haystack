@@ -248,9 +248,9 @@ class Toolset:
         if not isinstance(tool, (Tool, Toolset)):
             raise TypeError(f"Expected Tool or Toolset, got {type(tool).__name__}")
 
-        # Warm up the source before flattening so that lazily-loaded toolsets (e.g. MCPToolset)
-        # expose their tools, and so newly added tools are ready to use right away.
-        if self._is_warmed_up and hasattr(tool, "warm_up"):
+        # Toolsets must be warmed before flattening so lazily loaded tools are not lost.
+        # Plain tools are still only warmed immediately when this Toolset is already warm.
+        if isinstance(tool, Toolset) or (self._is_warmed_up and hasattr(tool, "warm_up")):
             tool.warm_up()
 
         new_tools = [tool] if isinstance(tool, Tool) else list(tool)

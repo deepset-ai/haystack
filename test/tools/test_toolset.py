@@ -135,6 +135,22 @@ class WarmUpCountingToolset(Toolset):
         super().warm_up()
 
 
+class LazyWarmUpToolset(Toolset):
+    """A Toolset that only exposes its tools during warm_up()."""
+
+    def __init__(self, tools):
+        super().__init__([])
+        self._tools_to_load = tools
+        self.warm_up_count = 0
+
+    def warm_up(self) -> None:
+        if self._is_warmed_up:
+            return
+        self.warm_up_count += 1
+        self.tools.extend(self._tools_to_load)
+        super().warm_up()
+
+
 class TestToolset:
     def test_toolset_with_multiple_tools(self, add_tool, multiply_tool):
         """Test that a Toolset with multiple tools works properly."""
@@ -418,6 +434,31 @@ class TestToolsetWarmUp:
         # The added toolset's own warm_up() is invoked, warming its tools.
         assert added.warm_up_count == 1
         assert all(tool.warm_up_count == 1 for tool in added_tools)
+
+    def test_add_lazy_toolset_before_warm_up_preserves_loaded_tools(self):
+        toolset = Toolset()
+        added_tools = [WarmUpCountingTool("a"), WarmUpCountingTool("b")]
+        added = LazyWarmUpToolset(added_tools)
+
+        toolset.add(added)
+
+        assert added.warm_up_count == 1
+        assert [tool.name for tool in toolset] == ["a", "b"]
+        assert all(tool.warm_up_count == 1 for tool in added_tools)
+        assert toolset._is_warmed_up is False
+
+        added.warm_up()
+        assert added.warm_up_count == 1
+
+    def test_add_lazy_toolset_checks_loaded_tool_names_for_duplicates(self):
+        existing = WarmUpCountingTool("duplicate")
+        toolset = Toolset([existing])
+        added = LazyWarmUpToolset([WarmUpCountingTool("duplicate")])
+
+        with pytest.raises(ValueError, match="duplicate"):
+            toolset.add(added)
+
+        assert toolset.tools == [existing]
 
     def test_plus_returns_new_unwarmed_toolset(self):
         ts1 = Toolset([WarmUpCountingTool("a")])

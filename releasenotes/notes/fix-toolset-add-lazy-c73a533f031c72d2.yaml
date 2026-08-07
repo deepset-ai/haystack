@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    Ensure ``Toolset.add()`` warms lazy child toolsets before flattening them so dynamically loaded tools are
+    preserved.
