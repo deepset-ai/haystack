@@ -126,7 +126,7 @@
 | haystack/components/routers/document\_type\_router.py                     |       46 |        0 |    100% |           |
 | haystack/components/routers/file\_type\_router.py                         |       72 |        6 |     92% |   182-187 |
 | haystack/components/routers/llm\_messages\_router.py                      |       87 |        1 |     99% |       192 |
-| haystack/components/routers/metadata\_router.py                           |       35 |        0 |    100% |           |
+| haystack/components/routers/metadata\_router.py                           |       36 |        0 |    100% |           |
 | haystack/components/samplers/\_\_init\_\_.py                              |        5 |        0 |    100% |           |
 | haystack/components/samplers/top\_p.py                                    |       65 |        0 |    100% |           |
 | haystack/components/validators/\_\_init\_\_.py                            |        5 |        0 |    100% |           |
@@ -168,7 +168,7 @@
 | haystack/document\_stores/errors/\_\_init\_\_.py                          |        2 |        0 |    100% |           |
 | haystack/document\_stores/errors/errors.py                                |        6 |        0 |    100% |           |
 | haystack/document\_stores/in\_memory/\_\_init\_\_.py                      |        5 |        0 |    100% |           |
-| haystack/document\_stores/in\_memory/document\_store.py                   |      430 |       15 |     97% |411-412, 421, 521, 584, 623, 625, 652-653, 707, 843, 845, 863, 868-869 |
+| haystack/document\_stores/in\_memory/document\_store.py                   |      431 |       15 |     97% |419-420, 429, 535, 616, 661, 663, 690-691, 745, 885, 887, 905, 910-911 |
 | haystack/document\_stores/types/\_\_init\_\_.py                           |        4 |        0 |    100% |           |
 | haystack/document\_stores/types/filter\_policy.py                         |       65 |       11 |     83% |25, 38-39, 166, 174-181, 224-229, 233-239 |
 | haystack/document\_stores/types/policy.py                                 |        6 |        0 |    100% |           |
@@ -251,7 +251,7 @@
 | haystack/utils/deserialization.py                                         |       18 |        1 |     94% |        54 |
 | haystack/utils/device.py                                                  |      214 |       17 |     92% |237-239, 325-327, 364, 403, 447, 468, 484, 512-515, 539-540 |
 | haystack/utils/experimental.py                                            |       14 |        0 |    100% |           |
-| haystack/utils/filters.py                                                 |      147 |        0 |    100% |           |
+| haystack/utils/filters.py                                                 |      158 |        0 |    100% |           |
 | haystack/utils/hf.py                                                      |       61 |       15 |     75% |23-31, 40-51 |
 | haystack/utils/http\_client.py                                            |       14 |        0 |    100% |           |
 | haystack/utils/jinja2\_chat\_extension.py                                 |      146 |        1 |     99% |       405 |
@@ -262,7 +262,7 @@
 | haystack/utils/type\_serialization.py                                     |      135 |        6 |     96% |97, 99, 243-244, 252, 268 |
 | haystack/utils/url\_validation.py                                         |        4 |        0 |    100% |           |
 | haystack/version.py                                                       |        5 |        2 |     60% |      9-10 |
-| **TOTAL**                                                                 | **16553** |  **788** | **95%** |           |
+| **TOTAL**                                                                 | **16566** |  **788** | **95%** |           |
 
 
 ## Setup coverage badge
