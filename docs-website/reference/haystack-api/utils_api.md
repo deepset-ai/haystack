@@ -683,7 +683,10 @@ Create a component device representation from a JSON-serialized dictionary.
 
 ```python
 document_matches_filter(
-    filters: dict[str, Any], document: Document | ByteStream
+    filters: dict[str, Any],
+    document: Document | ByteStream,
+    *,
+    strict_datetime_comparison: bool = False
 ) -> bool
 ```
 
@@ -691,6 +694,11 @@ Return whether `filters` match the Document or the ByteStream.
 
 For a detailed specification of the filters, refer to the
 `DocumentStore.filter_documents()` protocol documentation.
+
+**Parameters:**
+
+- **strict_datetime_comparison** (<code>bool</code>) – If `True`, timezone-naive and timezone-aware datetimes never match each other.
+  If `False` (the default), the timezone from the aware datetime is copied to the naive one before comparing.
 
 ## http_client
 

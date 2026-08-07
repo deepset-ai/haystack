@@ -79,6 +79,7 @@ class TestSentenceWindowRetriever:
                         "index": ANY,
                         "shared": True,
                         "return_embedding": True,
+                        "strict_datetime_comparison": False,
                     },
                 },
                 "window_size": 3,

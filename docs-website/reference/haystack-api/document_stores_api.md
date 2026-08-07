@@ -35,6 +35,8 @@ __init__(
     shared: bool = True,
     async_executor: ThreadPoolExecutor | None = None,
     return_embedding: bool = True,
+    *,
+    strict_datetime_comparison: bool = False
 ) -> None
 ```
 
@@ -59,6 +61,9 @@ Initializes the DocumentStore.
 - **async_executor** (<code>ThreadPoolExecutor | None</code>) – Optional ThreadPoolExecutor to use for async calls. If not provided, a single-threaded
   executor will be initialized and used.
 - **return_embedding** (<code>bool</code>) – Whether to return the embedding of the retrieved Documents. Default is True.
+- **strict_datetime_comparison** (<code>bool</code>) – If `True`, timezone-naive and timezone-aware datetimes never match each other in filters.
+  If `False` (the default), the timezone from the aware datetime is copied to the naive one before
+  comparing.
 
 #### shutdown
 
