@@ -98,11 +98,10 @@ class MetadataRouter:
             },
             }
             ```
-            :param output_type: The type of the output produced. Lists of Documents or ByteStreams can be specified.
-            :param strict_datetime_comparison:
-                If `True`, timezone-naive and timezone-aware datetimes never match each other.
-                If `False` (the default), the timezone from the aware datetime is copied to the naive one before
-                comparing.
+        :param output_type: The type of the output produced. Lists of Documents or ByteStreams can be specified.
+        :param strict_datetime_comparison:
+            If `True`, timezone-naive and timezone-aware datetimes never match each other.
+            If `False` (the default), the timezone from the aware datetime is copied to the naive one before comparing.
         """
         self.rules = rules
         self.output_type = output_type
