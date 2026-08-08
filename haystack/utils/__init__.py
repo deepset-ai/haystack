@@ -14,6 +14,7 @@ _import_structure = {
     "callable_serialization": ["deserialize_callable", "serialize_callable"],
     "device": ["ComponentDevice", "Device", "DeviceMap", "DeviceType"],
     "deserialization": ["deserialize_chatgenerator_inplace", "deserialize_component_inplace"],
+    "filter_builder": ["FilterBuilder"],
     "filters": ["document_matches_filter"],
     "jinja2_extensions": ["Jinja2TimeExtension"],
     "jupyter": ["is_in_jupyter"],
@@ -36,6 +37,7 @@ if TYPE_CHECKING:
     from .device import Device as Device
     from .device import DeviceMap as DeviceMap
     from .device import DeviceType as DeviceType
+    from .filter_builder import FilterBuilder as FilterBuilder
     from .filters import document_matches_filter as document_matches_filter
     from .jinja2_extensions import Jinja2TimeExtension as Jinja2TimeExtension
     from .jupyter import is_in_jupyter as is_in_jupyter

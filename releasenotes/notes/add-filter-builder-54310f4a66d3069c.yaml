@@ -1,0 +1,6 @@
+---
+features:
+  - |
+    Added a ``FilterBuilder`` utility class that constructs metadata filters with
+    a fluent interface, producing the same filter dictionaries that Haystack Document
+    Stores and ``document_matches_filter`` already understand.
