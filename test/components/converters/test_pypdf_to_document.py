@@ -9,6 +9,7 @@ import pytest
 
 from haystack import Document
 from haystack.components.converters.pypdf import PyPDFExtractionMode, PyPDFToDocument
+from haystack.components.converters.utils import LinkFormat
 from haystack.components.preprocessors import DocumentSplitter
 from haystack.dataclasses import ByteStream
 
@@ -27,6 +28,7 @@ class TestPyPDFToDocument:
         assert pypdf_component.layout_mode_scale_weight == 1.25
         assert pypdf_component.layout_mode_strip_rotated is True
         assert pypdf_component.layout_mode_font_height_weight == 1.0
+        assert pypdf_component.link_format == LinkFormat.NONE
 
     def test_init_custom_params(self):
         pypdf_component = PyPDFToDocument(
@@ -37,6 +39,7 @@ class TestPyPDFToDocument:
             layout_mode_scale_weight=2.0,
             layout_mode_strip_rotated=False,
             layout_mode_font_height_weight=0.5,
+            link_format="markdown",
         )
 
         assert pypdf_component.extraction_mode == PyPDFExtractionMode.LAYOUT
@@ -46,6 +49,7 @@ class TestPyPDFToDocument:
         assert pypdf_component.layout_mode_scale_weight == 2.0
         assert pypdf_component.layout_mode_strip_rotated is False
         assert pypdf_component.layout_mode_font_height_weight == 0.5
+        assert pypdf_component.link_format == LinkFormat.MARKDOWN
 
     def test_init_invalid_extraction_mode(self):
         with pytest.raises(ValueError):
@@ -64,6 +68,7 @@ class TestPyPDFToDocument:
                 "layout_mode_strip_rotated": True,
                 "layout_mode_font_height_weight": 1.0,
                 "store_full_path": False,
+                "link_format": "none",
             },
         }
 
@@ -78,6 +83,7 @@ class TestPyPDFToDocument:
                 "layout_mode_scale_weight": 1.25,
                 "layout_mode_strip_rotated": True,
                 "layout_mode_font_height_weight": 1.0,
+                "link_format": "markdown",
             },
         }
 
@@ -90,6 +96,7 @@ class TestPyPDFToDocument:
         assert instance.layout_mode_scale_weight == 1.25
         assert instance.layout_mode_strip_rotated is True
         assert instance.layout_mode_font_height_weight == 1.0
+        assert instance.link_format == LinkFormat.MARKDOWN
 
     def test_from_dict_defaults(self):
         data = {"type": "haystack.components.converters.pypdf.PyPDFToDocument", "init_parameters": {}}
@@ -129,6 +136,31 @@ class TestPyPDFToDocument:
         }
         for mock_page in mock_reader.pages:
             mock_page.extract_text.assert_called_once_with(**expected_params)
+
+    def test_default_convert_with_link_format(self):
+        from unittest.mock import MagicMock
+
+        mock_page1 = MagicMock()
+        mock_page1.extract_text.return_value = "Page 1 content"
+
+        mock_annot1 = MagicMock()
+        mock_annot1_obj = {"/Subtype": "/Link", "/A": {"/S": "/URI", "/URI": "https://example.com"}}
+        mock_annot1.get_object.return_value = mock_annot1_obj
+
+        mock_page1.__contains__.side_effect = lambda key: key == "/Annots"
+        mock_page1.__getitem__.side_effect = lambda key: [mock_annot1] if key == "/Annots" else None
+
+        mock_reader = Mock()
+        mock_reader.pages = [mock_page1]
+
+        converter_md = PyPDFToDocument(link_format="markdown")
+        text_md = converter_md._default_convert(mock_reader)
+        assert "Page 1 content" in text_md
+        assert "[https://example.com](https://example.com)" in text_md
+
+        converter_plain = PyPDFToDocument(link_format="plain")
+        text_plain = converter_plain._default_convert(mock_reader)
+        assert "https://example.com (https://example.com)" in text_plain
 
     @pytest.mark.integration
     def test_run(self, test_files_path, pypdf_component):

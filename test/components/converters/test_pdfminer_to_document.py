@@ -9,6 +9,7 @@ import pytest
 
 from haystack import Document
 from haystack.components.converters.pdfminer import PDFMinerToDocument
+from haystack.components.converters.utils import LinkFormat
 from haystack.components.preprocessors import DocumentSplitter
 from haystack.dataclasses import ByteStream
 
@@ -32,10 +33,50 @@ class TestPDFMinerToDocument:
         """
         Test if init arguments are passed successfully to PDFMinerToDocument layout parameters
         """
-        converter = PDFMinerToDocument(char_margin=0.5, all_texts=True, store_full_path=False)
+        converter = PDFMinerToDocument(char_margin=0.5, all_texts=True, store_full_path=False, link_format="markdown")
         assert converter.layout_params.char_margin == 0.5
         assert converter.layout_params.all_texts is True
         assert converter.store_full_path is False
+        assert converter.link_format == LinkFormat.MARKDOWN
+
+    def test_to_dict(self):
+        converter = PDFMinerToDocument(char_margin=0.5, all_texts=True, store_full_path=False, link_format="markdown")
+        data = converter.to_dict()
+        assert data == {
+            "type": "haystack.components.converters.pdfminer.PDFMinerToDocument",
+            "init_parameters": {
+                "line_overlap": 0.5,
+                "char_margin": 0.5,
+                "line_margin": 0.5,
+                "word_margin": 0.1,
+                "boxes_flow": 0.5,
+                "detect_vertical": True,
+                "all_texts": True,
+                "store_full_path": False,
+                "link_format": "markdown",
+            },
+        }
+
+    def test_from_dict(self):
+        data = {
+            "type": "haystack.components.converters.pdfminer.PDFMinerToDocument",
+            "init_parameters": {
+                "line_overlap": 0.5,
+                "char_margin": 0.5,
+                "line_margin": 0.5,
+                "word_margin": 0.1,
+                "boxes_flow": 0.5,
+                "detect_vertical": True,
+                "all_texts": True,
+                "store_full_path": False,
+                "link_format": "markdown",
+            },
+        }
+        converter = PDFMinerToDocument.from_dict(data)
+        assert converter.layout_params.char_margin == 0.5
+        assert converter.layout_params.all_texts is True
+        assert converter.store_full_path is False
+        assert converter.link_format == LinkFormat.MARKDOWN
 
     def test_run_with_store_full_path_false(self, test_files_path):
         """
@@ -234,9 +275,39 @@ class TestPDFMinerToDocument:
         def mock_extract_pages(*args, **kwargs):
             return ["mocked page"]
 
-        with patch("haystack.components.converters.pdfminer.extract_pages", side_effect=mock_extract_pages):
-            with patch.object(PDFMinerToDocument, "_converter", side_effect=mock_converter):
-                with caplog.at_level(logging.WARNING):
-                    converter = PDFMinerToDocument()
-                    converter.run(sources=[test_data])
-                    assert "Detected 18 undecoded CID characters in 52 characters (34.62%)" in caplog.text
+        with patch("haystack.components.converters.pdfminer.PDFPage.get_pages", return_value=[]):
+            with patch("haystack.components.converters.pdfminer.PDFPageInterpreter"):
+                with patch("haystack.components.converters.pdfminer.PDFPageAggregator"):
+                    with patch.object(PDFMinerToDocument, "_converter", side_effect=mock_converter):
+                        with caplog.at_level(logging.WARNING):
+                            converter = PDFMinerToDocument()
+                            converter.run(sources=[test_data])
+                            assert "Detected 18 undecoded CID characters in 52 characters (34.62%)" in caplog.text
+
+    def test_converter_with_link_format(self):
+        from unittest.mock import MagicMock
+
+        from pdfminer.layout import LTTextContainer
+
+        mock_container = MagicMock(spec=LTTextContainer)
+        mock_container.get_text.return_value = "Page content"
+        mock_lt_page = [mock_container]
+
+        mock_subtype = MagicMock()
+        mock_subtype.name = "Link"
+        mock_s = MagicMock()
+        mock_s.name = "URI"
+        mock_pdf_page = MagicMock()
+        mock_pdf_page.annots = [{"Subtype": mock_subtype, "A": {"S": mock_s, "URI": b"https://example.com"}}]
+
+        with patch("pdfminer.pdftypes.resolve1", side_effect=lambda x: x):
+            # Test Markdown
+            converter_md = PDFMinerToDocument(link_format="markdown")
+            text_md = converter_md._converter([mock_lt_page], [mock_pdf_page])
+            assert "Page content" in text_md
+            assert "[https://example.com](https://example.com)" in text_md
+
+            # Test Plain
+            converter_plain = PDFMinerToDocument(link_format="plain")
+            text_plain = converter_plain._converter([mock_lt_page], [mock_pdf_page])
+            assert "https://example.com (https://example.com)" in text_plain
