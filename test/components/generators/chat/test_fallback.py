@@ -113,33 +113,45 @@ def test_init_validation():
 def test_sequential_first_success():
     gen = FallbackChatGenerator(chat_generators=[_DummySuccessGen(text="A")])
     res = gen.run([ChatMessage.from_user("hi")])
-    assert res["replies"][0].text == "A"
-    assert res["meta"]["successful_chat_generator_index"] == 0
-    assert res["meta"]["total_attempts"] == 1
+    assert isinstance(res["replies"], list)
+    replies: list[ChatMessage] = res["replies"]
+    assert isinstance(res["meta"], dict)
+    meta: dict[str, Any] = res["meta"]
+    assert replies[0].text == "A"
+    assert meta["successful_chat_generator_index"] == 0
+    assert meta["total_attempts"] == 1
 
 
 def test_run_with_string_input():
     inner = _DummySuccessGen()
     gen = FallbackChatGenerator(chat_generators=[inner])
     res = gen.run("hi")
+    assert isinstance(res["replies"], list)
+    replies: list[ChatMessage] = res["replies"]
     assert inner.received_messages[0] == [ChatMessage.from_user("hi")]
-    assert isinstance(res["replies"][0], ChatMessage)
+    assert isinstance(replies[0], ChatMessage)
 
 
 async def test_run_async_with_string_input():
     inner = _DummySuccessGen()
     gen = FallbackChatGenerator(chat_generators=[inner])
     res = await gen.run_async("hi")
+    assert isinstance(res["replies"], list)
+    replies: list[ChatMessage] = res["replies"]
     assert inner.received_messages[0] == [ChatMessage.from_user("hi")]
-    assert isinstance(res["replies"][0], ChatMessage)
+    assert isinstance(replies[0], ChatMessage)
 
 
 def test_sequential_second_success_after_failure():
     gen = FallbackChatGenerator(chat_generators=[_DummyFailGen(), _DummySuccessGen(text="B")])
     res = gen.run([ChatMessage.from_user("hi")])
-    assert res["replies"][0].text == "B"
-    assert res["meta"]["successful_chat_generator_index"] == 1
-    assert res["meta"]["failed_chat_generators"]
+    assert isinstance(res["replies"], list)
+    replies: list[ChatMessage] = res["replies"]
+    assert isinstance(res["meta"], dict)
+    meta: dict[str, Any] = res["meta"]
+    assert replies[0].text == "B"
+    assert meta["successful_chat_generator_index"] == 1
+    assert meta["failed_chat_generators"]
 
 
 def test_all_fail_raises():
@@ -153,7 +165,9 @@ def test_timeout_handling_sync():
     fast = _DummySuccessGen(text="fast", delay=0.0)
     gen = FallbackChatGenerator(chat_generators=[slow, fast])
     res = gen.run([ChatMessage.from_user("hi")])
-    assert res["replies"][0].text == "slow"
+    assert isinstance(res["replies"], list)
+    replies: list[ChatMessage] = res["replies"]
+    assert replies[0].text == "slow"
 
 
 @pytest.mark.asyncio
@@ -162,7 +176,9 @@ async def test_timeout_handling_async():
     fast = _DummySuccessGen(text="fast", delay=0.0)
     gen = FallbackChatGenerator(chat_generators=[slow, fast])
     res = await gen.run_async([ChatMessage.from_user("hi")])
-    assert res["replies"][0].text == "slow"
+    assert isinstance(res["replies"], list)
+    replies: list[ChatMessage] = res["replies"]
+    assert replies[0].text == "slow"
 
 
 def test_streaming_callback_forwarding_sync():
@@ -195,7 +211,9 @@ def test_serialization_roundtrip():
     assert isinstance(restored, FallbackChatGenerator)
     assert len(restored.chat_generators) == 1
     res = restored.run([ChatMessage.from_user("hi")])
-    assert res["replies"][0].text == "hello"
+    assert isinstance(res["replies"], list)
+    replies: list[ChatMessage] = res["replies"]
+    assert replies[0].text == "hello"
 
     original = FallbackChatGenerator(chat_generators=[_DummySuccessGen(text="hello"), _DummySuccessGen(text="world")])
     data = original.to_dict()
@@ -203,14 +221,20 @@ def test_serialization_roundtrip():
     assert isinstance(restored, FallbackChatGenerator)
     assert len(restored.chat_generators) == 2
     res = restored.run([ChatMessage.from_user("hi")])
-    assert res["replies"][0].text == "hello"
+    assert isinstance(res["replies"], list)
+    replies2: list[ChatMessage] = res["replies"]
+    assert replies2[0].text == "hello"
 
 
 def test_automatic_completion_mode_without_streaming():
     gen = FallbackChatGenerator(chat_generators=[_DummySuccessGen(text="completion")])
     res = gen.run([ChatMessage.from_user("hi")])
-    assert res["replies"][0].text == "completion"
-    assert res["meta"]["successful_chat_generator_index"] == 0
+    assert isinstance(res["replies"], list)
+    replies: list[ChatMessage] = res["replies"]
+    assert isinstance(res["meta"], dict)
+    meta: dict[str, Any] = res["meta"]
+    assert replies[0].text == "completion"
+    assert meta["successful_chat_generator_index"] == 0
 
 
 def test_automatic_ttft_mode_with_streaming():
@@ -221,7 +245,9 @@ def test_automatic_ttft_mode_with_streaming():
 
     gen = FallbackChatGenerator(chat_generators=[_DummySuccessGen(text="streaming")])
     res = gen.run([ChatMessage.from_user("hi")], streaming_callback=cb)
-    assert res["replies"][0].text == "streaming"
+    assert isinstance(res["replies"], list)
+    replies: list[ChatMessage] = res["replies"]
+    assert replies[0].text == "streaming"
     assert calls
 
 
@@ -234,12 +260,14 @@ async def test_automatic_ttft_mode_with_streaming_async():
 
     gen = FallbackChatGenerator(chat_generators=[_DummySuccessGen(text="streaming_async")])
     res = await gen.run_async([ChatMessage.from_user("hi")], streaming_callback=cb)
-    assert res["replies"][0].text == "streaming_async"
+    assert isinstance(res["replies"], list)
+    replies: list[ChatMessage] = res["replies"]
+    assert replies[0].text == "streaming_async"
     assert calls
 
 
 def create_http_error(status_code: int, message: str) -> URLLibHTTPError:
-    return URLLibHTTPError("", status_code, message, {}, None)
+    return URLLibHTTPError("", status_code, message, {}, None)  # type: ignore[arg-type]
 
 
 @component
@@ -281,9 +309,13 @@ def test_failover_trigger_429_rate_limit():
     fallback = FallbackChatGenerator(chat_generators=[rate_limit_gen, success_gen])
     result = fallback.run([ChatMessage.from_user("test")])
 
-    assert result["replies"][0].text == "success_after_rate_limit"
-    assert result["meta"]["successful_chat_generator_index"] == 1
-    assert result["meta"]["failed_chat_generators"] == ["_DummyHTTPErrorGen"]
+    assert isinstance(result["replies"], list)
+    replies: list[ChatMessage] = result["replies"]
+    assert isinstance(result["meta"], dict)
+    meta: dict[str, Any] = result["meta"]
+    assert replies[0].text == "success_after_rate_limit"
+    assert meta["successful_chat_generator_index"] == 1
+    assert meta["failed_chat_generators"] == ["_DummyHTTPErrorGen"]
 
 
 def test_failover_trigger_401_authentication():
@@ -293,9 +325,13 @@ def test_failover_trigger_401_authentication():
     fallback = FallbackChatGenerator(chat_generators=[auth_error_gen, success_gen])
     result = fallback.run([ChatMessage.from_user("test")])
 
-    assert result["replies"][0].text == "success_after_auth"
-    assert result["meta"]["successful_chat_generator_index"] == 1
-    assert result["meta"]["failed_chat_generators"] == ["_DummyHTTPErrorGen"]
+    assert isinstance(result["replies"], list)
+    replies: list[ChatMessage] = result["replies"]
+    assert isinstance(result["meta"], dict)
+    meta: dict[str, Any] = result["meta"]
+    assert replies[0].text == "success_after_auth"
+    assert meta["successful_chat_generator_index"] == 1
+    assert meta["failed_chat_generators"] == ["_DummyHTTPErrorGen"]
 
 
 def test_failover_trigger_400_bad_request():
@@ -305,9 +341,13 @@ def test_failover_trigger_400_bad_request():
     fallback = FallbackChatGenerator(chat_generators=[bad_request_gen, success_gen])
     result = fallback.run([ChatMessage.from_user("test")])
 
-    assert result["replies"][0].text == "success_after_bad_request"
-    assert result["meta"]["successful_chat_generator_index"] == 1
-    assert result["meta"]["failed_chat_generators"] == ["_DummyHTTPErrorGen"]
+    assert isinstance(result["replies"], list)
+    replies: list[ChatMessage] = result["replies"]
+    assert isinstance(result["meta"], dict)
+    meta: dict[str, Any] = result["meta"]
+    assert replies[0].text == "success_after_bad_request"
+    assert meta["successful_chat_generator_index"] == 1
+    assert meta["failed_chat_generators"] == ["_DummyHTTPErrorGen"]
 
 
 def test_failover_trigger_500_server_error():
@@ -317,9 +357,13 @@ def test_failover_trigger_500_server_error():
     fallback = FallbackChatGenerator(chat_generators=[server_error_gen, success_gen])
     result = fallback.run([ChatMessage.from_user("test")])
 
-    assert result["replies"][0].text == "success_after_server_error"
-    assert result["meta"]["successful_chat_generator_index"] == 1
-    assert result["meta"]["failed_chat_generators"] == ["_DummyHTTPErrorGen"]
+    assert isinstance(result["replies"], list)
+    replies: list[ChatMessage] = result["replies"]
+    assert isinstance(result["meta"], dict)
+    meta: dict[str, Any] = result["meta"]
+    assert replies[0].text == "success_after_server_error"
+    assert meta["successful_chat_generator_index"] == 1
+    assert meta["failed_chat_generators"] == ["_DummyHTTPErrorGen"]
 
 
 def test_failover_trigger_multiple_errors():
@@ -331,9 +375,13 @@ def test_failover_trigger_multiple_errors():
     fallback = FallbackChatGenerator(chat_generators=[rate_limit_gen, auth_error_gen, server_error_gen, success_gen])
     result = fallback.run([ChatMessage.from_user("test")])
 
-    assert result["replies"][0].text == "success_after_all_errors"
-    assert result["meta"]["successful_chat_generator_index"] == 3
-    assert len(result["meta"]["failed_chat_generators"]) == 3
+    assert isinstance(result["replies"], list)
+    replies: list[ChatMessage] = result["replies"]
+    assert isinstance(result["meta"], dict)
+    meta: dict[str, Any] = result["meta"]
+    assert replies[0].text == "success_after_all_errors"
+    assert meta["successful_chat_generator_index"] == 3
+    assert len(meta["failed_chat_generators"]) == 3
 
 
 def test_failover_trigger_all_generators_fail():
@@ -359,9 +407,13 @@ async def test_failover_trigger_429_rate_limit_async():
     fallback = FallbackChatGenerator(chat_generators=[rate_limit_gen, success_gen])
     result = await fallback.run_async([ChatMessage.from_user("test")])
 
-    assert result["replies"][0].text == "success_after_rate_limit"
-    assert result["meta"]["successful_chat_generator_index"] == 1
-    assert result["meta"]["failed_chat_generators"] == ["_DummyHTTPErrorGen"]
+    assert isinstance(result["replies"], list)
+    replies: list[ChatMessage] = result["replies"]
+    assert isinstance(result["meta"], dict)
+    meta: dict[str, Any] = result["meta"]
+    assert replies[0].text == "success_after_rate_limit"
+    assert meta["successful_chat_generator_index"] == 1
+    assert meta["failed_chat_generators"] == ["_DummyHTTPErrorGen"]
 
 
 @pytest.mark.asyncio
@@ -372,61 +424,72 @@ async def test_failover_trigger_401_authentication_async():
     fallback = FallbackChatGenerator(chat_generators=[auth_error_gen, success_gen])
     result = await fallback.run_async([ChatMessage.from_user("test")])
 
-    assert result["replies"][0].text == "success_after_auth"
-    assert result["meta"]["successful_chat_generator_index"] == 1
-    assert result["meta"]["failed_chat_generators"] == ["_DummyHTTPErrorGen"]
+    assert isinstance(result["replies"], list)
+    replies: list[ChatMessage] = result["replies"]
+    assert isinstance(result["meta"], dict)
+    meta: dict[str, Any] = result["meta"]
+    assert replies[0].text == "success_after_auth"
+    assert meta["successful_chat_generator_index"] == 1
+    assert meta["failed_chat_generators"] == ["_DummyHTTPErrorGen"]
 
 
 class TestComponentLifecycle:
-    def test_warm_up_delegates_to_every_generator(self):
+    def test_warm_up_delegates_to_every_generator(self) -> None:
+
         gens = [Mock(spec=["run", "warm_up"]) for _ in range(3)]
-        fallback = FallbackChatGenerator(chat_generators=gens)
+        fallback = FallbackChatGenerator(chat_generators=gens)  # type: ignore[arg-type]
         fallback.warm_up()
         for gen in gens:
             gen.warm_up.assert_called_once()
 
-    async def test_warm_up_async_delegates_to_every_generator(self):
+    async def test_warm_up_async_delegates_to_every_generator(self) -> None:
+
         gens = [Mock(spec=["run", "warm_up_async"]) for _ in range(3)]
         for gen in gens:
             gen.warm_up_async = AsyncMock()
-        fallback = FallbackChatGenerator(chat_generators=gens)
+        fallback = FallbackChatGenerator(chat_generators=gens)  # type: ignore[arg-type]
         await fallback.warm_up_async()
         for gen in gens:
             gen.warm_up_async.assert_awaited_once()
 
-    async def test_warm_up_async_falls_back_to_sync_warm_up(self):
+    async def test_warm_up_async_falls_back_to_sync_warm_up(self) -> None:
+
         gens = [Mock(spec=["run", "warm_up"]) for _ in range(3)]
-        fallback = FallbackChatGenerator(chat_generators=gens)
+        fallback = FallbackChatGenerator(chat_generators=gens)  # type: ignore[arg-type]
         await fallback.warm_up_async()
         for gen in gens:
             gen.warm_up.assert_called_once()
 
-    def test_close_delegates_to_every_generator(self):
+    def test_close_delegates_to_every_generator(self) -> None:
+
         gens = [Mock(spec=["run", "close"]) for _ in range(3)]
-        fallback = FallbackChatGenerator(chat_generators=gens)
+        fallback = FallbackChatGenerator(chat_generators=gens)  # type: ignore[arg-type]
         fallback.close()
         for gen in gens:
             gen.close.assert_called_once()
 
-    async def test_close_async_delegates_to_every_generator(self):
+    async def test_close_async_delegates_to_every_generator(self) -> None:
+
         gens = [Mock(spec=["run", "close_async"]) for _ in range(3)]
         for gen in gens:
             gen.close_async = AsyncMock()
-        fallback = FallbackChatGenerator(chat_generators=gens)
+        fallback = FallbackChatGenerator(chat_generators=gens)  # type: ignore[arg-type]
         await fallback.close_async()
         for gen in gens:
             gen.close_async.assert_awaited_once()
 
-    async def test_close_async_falls_back_to_sync_close(self):
+    async def test_close_async_falls_back_to_sync_close(self) -> None:
+
         gens = [Mock(spec=["run", "close"]) for _ in range(3)]
-        fallback = FallbackChatGenerator(chat_generators=gens)
+        fallback = FallbackChatGenerator(chat_generators=gens)  # type: ignore[arg-type]
         await fallback.close_async()
         for gen in gens:
             gen.close.assert_called_once()
 
-    def test_lifecycle_is_safe_when_generators_lack_methods(self):
+    def test_lifecycle_is_safe_when_generators_lack_methods(self) -> None:
+
         gens = [Mock(spec=["run"]) for _ in range(3)]
-        fallback = FallbackChatGenerator(chat_generators=gens)
+        fallback = FallbackChatGenerator(chat_generators=gens)  # type: ignore[arg-type]
         fallback.warm_up()
         fallback.close()
 
@@ -473,15 +536,17 @@ def test_serialization_with_custom_generators_without_to_dict():
     assert len(restored.chat_generators) == 3
 
     # Assert fallback order is exactly preserved
-    assert restored.chat_generators[0].text == "dummy_has_dict"
-    assert restored.chat_generators[1].text == "custom_no_dict_1"
-    assert restored.chat_generators[2].text == "custom_no_dict_2"
+    assert restored.chat_generators[0].text == "dummy_has_dict"  # type: ignore[attr-defined]
+    assert restored.chat_generators[1].text == "custom_no_dict_1"  # type: ignore[attr-defined]
+    assert restored.chat_generators[2].text == "custom_no_dict_2"  # type: ignore[attr-defined]
     assert isinstance(restored.chat_generators[1], CustomGeneratorWithoutSerDe)
     assert isinstance(restored.chat_generators[2], CustomGeneratorWithoutSerDe)
 
     # Verify pipeline execution on the restored instance
     res = restored.run([ChatMessage.from_user("hi")])
-    assert res["replies"][0].text == "dummy_has_dict"
+    assert isinstance(res["replies"], list)
+    replies: list[ChatMessage] = res["replies"]
+    assert replies[0].text == "dummy_has_dict"
 
     # 2. Test failure path (fail loud) when a component is not serializable
     non_serializable_fallback = FallbackChatGenerator(chat_generators=[NonSerializableGenerator(object())])

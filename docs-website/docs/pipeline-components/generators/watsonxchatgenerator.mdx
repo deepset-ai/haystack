@@ -2,12 +2,12 @@
 title: "WatsonxChatGenerator"
 id: watsonxchatgenerator
 slug: "/watsonxchatgenerator"
-description: "Use this component with IBM watsonx models like `granite-3-2b-instruct` for chat generation."
+description: "Use this component with IBM watsonx models like `granite-4-h-small` for chat generation."
 ---
 
 # WatsonxChatGenerator
 
-Use this component with IBM watsonx models like `granite-3-2b-instruct` for chat generation.
+Use this component with IBM watsonx models like `granite-4-h-small` for chat generation.
 
 <div className="key-value-table">
 
@@ -23,7 +23,7 @@ Use this component with IBM watsonx models like `granite-3-2b-instruct` for chat
 
 </div>
 
-This integration supports IBM watsonx.ai foundation models such as `ibm/granite-13b-chat-v2`, `ibm/llama-2-70b-chat`, `ibm/llama-3-70b-instruct`, and similar. These models provide high-quality chat completion capabilities through IBM's cloud platform. Check out the most recent full list in the [IBM watsonx.ai documentation](https://dataplatform.cloud.ibm.com/docs/content/wsj/analyze-data/fm-models-ibm.html?context=wx).
+This integration supports IBM watsonx.ai foundation models such as `ibm/granite-4-h-small`, `meta-llama/llama-3-3-70b-instruct`, `mistralai/mistral-small-3-1-24b-instruct-2503`, and similar. These models provide high-quality chat completion capabilities through IBM's cloud platform. Check out the most recent full list in the [IBM watsonx.ai documentation](https://dataplatform.cloud.ibm.com/docs/content/wsj/analyze-data/fm-models-ibm.html?context=wx).
 
 ## Overview
 
@@ -34,7 +34,7 @@ This integration supports IBM watsonx.ai foundation models such as `ibm/granite-
 
 Then, the component needs a prompt to operate, but you can pass any text generation parameters valid for the IBM watsonx.ai API directly to this component using the `generation_kwargs` parameter, both at initialization and to `run()` method. For more details on the parameters supported by the IBM watsonx.ai API, refer to the [IBM watsonx.ai documentation](https://cloud.ibm.com/apidocs/watsonx-ai).
 
-Finally, the component needs a list of `ChatMessage` objects to operate. `ChatMessage` is a data class that contains a message, a role (who generated the message, such as `user`, `assistant`, `system`, `function`), and optional metadata.
+Finally, the component needs a list of `ChatMessage` objects to operate. `ChatMessage` is a data class that contains a message, a role (who generated the message, such as `user`, `assistant`, `system`, `tool`), and optional metadata.
 
 ### Streaming
 
@@ -60,11 +60,11 @@ from haystack.utils import Secret
 generator = WatsonxChatGenerator(
     api_key=Secret.from_env_var("WATSONX_API_KEY"),
     project_id=Secret.from_env_var("WATSONX_PROJECT_ID"),
-    model="ibm/granite-13b-instruct-v2",
+    model="ibm/granite-4-h-small",
 )
 
 message = ChatMessage.from_user("What's Natural Language Processing? Be brief.")
-print(generator.run([message]))
+print(generator.run(messages=[message]))
 ```
 
 With multimodal inputs:
@@ -83,7 +83,7 @@ user_message = ChatMessage.from_user(
     content_parts=["What does the image show? Max 5 words.", image],
 )
 
-response = llm.run([user_message])["replies"][0].text
+response = llm.run(messages=[user_message])["replies"][0].text
 print(response)
 
 # Red apple on straw.
@@ -109,7 +109,7 @@ pipe.add_component(
     WatsonxChatGenerator(
         api_key=Secret.from_env_var("WATSONX_API_KEY"),
         project_id=Secret.from_env_var("WATSONX_PROJECT_ID"),
-        model="ibm/granite-13b-instruct-v2",
+        model="ibm/granite-4-h-small",
     ),
 )
 pipe.connect("prompt_builder", "llm")

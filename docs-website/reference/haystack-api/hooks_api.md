@@ -8,7 +8,7 @@ slug: "/hooks-api"
 
 ## compaction/hooks
 
-### ContextCompactionHook
+### CompactionHook
 
 Compacts an Agent's conversation once it fills too much of the model's context window.
 
@@ -19,9 +19,9 @@ reaches `compact_at` of the window, hands it to a `Compactor` to bring back down
 ```python
 from haystack.components.agents import Agent
 from haystack.components.generators.chat import OpenAIResponsesChatGenerator
-from haystack.hooks.compaction import ContextCompactionHook, SlidingWindowCompactor
+from haystack.hooks.compaction import CompactionHook, SlidingWindowCompactor
 
-hook = ContextCompactionHook(
+hook = CompactionHook(
     compactor=SlidingWindowCompactor(),
     context_window=400_000,
     compact_at=0.7,
@@ -156,7 +156,7 @@ Serialize the hook, including its compactor and token counter.
 #### from_dict
 
 ```python
-from_dict(data: dict[str, Any]) -> ContextCompactionHook
+from_dict(data: dict[str, Any]) -> CompactionHook
 ```
 
 Deserialize the hook, reconstructing its compactor and token counter.
@@ -167,7 +167,7 @@ Deserialize the hook, reconstructing its compactor and token counter.
 
 **Returns:**
 
-- <code>ContextCompactionHook</code> – The deserialized `ContextCompactionHook`.
+- <code>CompactionHook</code> – The deserialized `CompactionHook`.
 
 ## compaction/sliding_window
 
@@ -184,9 +184,9 @@ steps, where a step is an assistant message together with all immediately follow
 ```python
 from haystack.components.agents import Agent
 from haystack.components.generators.chat import OpenAIResponsesChatGenerator
-from haystack.hooks.compaction import ContextCompactionHook, SlidingWindowCompactor
+from haystack.hooks.compaction import CompactionHook, SlidingWindowCompactor
 
-hook = ContextCompactionHook(
+hook = CompactionHook(
     compactor=SlidingWindowCompactor(), context_window=400_000, compact_at=0.7, compact_to=0.4
 )
 agent = Agent(
@@ -253,6 +253,105 @@ Serialize the compactor.
 
 - <code>dict\[str, Any\]</code> – A dictionary representation of the compactor.
 
+## compaction/tool_result_pruning
+
+### ToolResultPruningCompactor
+
+Bases: <code>Compactor</code>
+
+Replaces the content of older tool results with a short placeholder, keeping the conversation's shape intact.
+
+Tool output usually dominates a long Agent run, and most of it stops being useful once the model has acted on it.
+This compactor rewrites those results in place rather than removing messages, so every tool call keeps its matching
+result and the model can see what it ran and re-run it if needed.
+
+```python
+from haystack.components.agents import Agent
+from haystack.components.generators.chat import OpenAIResponsesChatGenerator
+from haystack.hooks.compaction import CompactionHook, ToolResultPruningCompactor
+
+hook = CompactionHook(
+    compactor=ToolResultPruningCompactor(min_keep_steps=1),
+    context_window=400_000,
+    compact_at=0.7,
+    compact_to=0.4,
+)
+agent = Agent(
+    chat_generator=OpenAIResponsesChatGenerator(model="gpt-5.4-nano"),
+    tools=[web_search],
+    hooks={"before_llm": [hook]},
+)
+```
+
+#### __init__
+
+```python
+__init__(
+    *,
+    min_keep_steps: int = 1,
+    min_tokens: int = 200,
+    placeholder: str = _DEFAULT_PLACEHOLDER,
+    skip_meta_keys: tuple[str, ...] = ("tool_result_offloaded",)
+) -> None
+```
+
+Initialize the compactor with the rules deciding which results it prunes.
+
+**Parameters:**
+
+- **min_keep_steps** (<code>int</code>) – The minimum number of recent tool-calling Agent steps whose results remain untouched,
+  even when they exceed the target. Must be at least 1, which ensures the current result batch remains intact
+  until the model has acted on it.
+- **min_tokens** (<code>int</code>) – Only prune tool-result messages that use more than this many tokens. Small results cost
+  little and are often the ones worth keeping.
+- **placeholder** (<code>str</code>) – The text left in place of a pruned result, replacing the built-in one. May contain
+  `{tool_name}`, which is filled in with the name of the tool that produced the result.
+- **skip_meta_keys** (<code>tuple\[str, ...\]</code>) – Results whose `meta` contains any of these keys are left alone. The default covers
+  results that a `ToolResultOffloadHook` already replaced with a reference to stored content: pruning one of
+  those would destroy the reference the model needs to read it back.
+
+**Raises:**
+
+- <code>ValueError</code> – If `min_keep_steps` is less than 1 or `min_tokens` is negative.
+
+#### compact
+
+```python
+compact(
+    messages: list[ChatMessage], target_tokens: int, token_counter: TokenCounter
+) -> list[ChatMessage] | None
+```
+
+Replace the content of prunable tool results with a placeholder.
+
+Results are considered oldest first and pruning stops as soon as the conversation reaches `target_tokens`.
+This keeps as much original output as possible. Results from the most recent `min_keep_steps` tool-calling
+Agent steps are never considered, even when the target cannot otherwise be reached. After measuring the initial
+conversation, the running total is updated with per-result token deltas to avoid repeatedly counting the full
+context.
+
+**Parameters:**
+
+- **messages** (<code>list\[ChatMessage\]</code>) – The conversation to compact, oldest to newest.
+- **target_tokens** (<code>int</code>) – The size the compacted conversation should come in under.
+- **token_counter** (<code>TokenCounter</code>) – The `TokenCounter` used to measure the conversation before and after each replacement.
+
+**Returns:**
+
+- <code>list\[ChatMessage\] | None</code> – The conversation with older tool results replaced, or None when no result was prunable.
+
+#### to_dict
+
+```python
+to_dict() -> dict[str, Any]
+```
+
+Serialize the compactor.
+
+**Returns:**
+
+- <code>dict\[str, Any\]</code> – A dictionary representation of the compactor.
+
 ## compaction/types/protocol
 
 ### Compactor
@@ -262,7 +361,7 @@ Bases: <code>Protocol</code>
 Rewrites an Agent's conversation into a shorter one that carries the same working context.
 
 A compactor is the *how* of context compaction; deciding *when* to compact is the caller's job, which
-`ContextCompactionHook` does by comparing the context size against a fraction of the model's window. Strategies
+`CompactionHook` does by comparing the context size against a fraction of the model's window. Strategies
 differ widely in cost and fidelity, from dropping the oldest messages outright to condensing them with an LLM.
 
 Implementations must honor three rules:

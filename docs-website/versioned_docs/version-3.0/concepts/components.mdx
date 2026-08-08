@@ -26,18 +26,17 @@ To connect components in a pipeline, you need to know the names of the inputs an
 The mandatory inputs and outputs are listed in a table at the top of each component's documentation page so that you can quickly check them:
 <ClickableImage src="/img/3a53f3e-inputs_and_outputs.png" alt="DocumentWriter component specification table showing Name, Folder Path, Position in Pipeline, Inputs (documents list), and Outputs (documents_written integer)" />
 
-You can also look them up in the code in the component`run()` method. Here's an example of the inputs and outputs of `TransformerSimilarityRanker`:
+You can also look them up in the code in the component`run()` method. Here's an example of the inputs and outputs of `MetaFieldRanker`:
 
 ```python
-@component.output_types(documents=List[Document]) # "documents" is the output name you need when connecting components in a pipeline
-def run(self, query: str, documents: List[Document], top_k: Optional[int] = None):# "query" and "documents" are the mandatory inputs, additionally you can also specify the optional top_k parameter
+@component.output_types(documents=list[Document]) # "documents" is the output name you need when connecting components in a pipeline
+def run(self, documents: list[Document], top_k: int | None = None): # "documents" is the mandatory input, additionally you can also specify the optional top_k parameter
 """
-Returns a list of Documents ranked by their similarity to the given query.
+Ranks a list of Documents based on the selected meta field.
 
-:param query: Query string.
 :param documents: List of Documents.
 :param top_k: The maximum number of Documents you want the Ranker to return.
-:return: List of Documents sorted by their similarity to the query with the most similar Documents appearing first.
+:return: List of Documents sorted by the value of their meta field.
 """
 ```
 

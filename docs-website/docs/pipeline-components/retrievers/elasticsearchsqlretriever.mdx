@@ -42,8 +42,8 @@ Install Elasticsearch and then start an instance. Haystack supports Elasticsearc
 If you have Docker set up, we recommend pulling the Docker image and running it.
 
 ```bash
-docker pull docker.elastic.co/elasticsearch/elasticsearch:8.11.1
-docker run -p 9200:9200 -e "discovery.type=single-node" -e "ES_JAVA_OPTS=-Xms1024m -Xmx1024m" -e "xpack.security.enabled=false" elasticsearch:8.11.1
+docker pull docker.elastic.co/elasticsearch/elasticsearch:8.19.7
+docker run -p 9200:9200 -e "discovery.type=single-node" -e "ES_JAVA_OPTS=-Xms1024m -Xmx1024m" -e "xpack.security.enabled=false" elasticsearch:8.19.7
 ```
 
 As an alternative, you can go to [Elasticsearch integration GitHub](https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/elasticsearch) and start a Docker container running Elasticsearch using the provided `docker-compose.yml`:

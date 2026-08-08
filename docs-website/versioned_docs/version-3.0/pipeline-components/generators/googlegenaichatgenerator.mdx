@@ -71,7 +71,7 @@ To use this component with the Vertex AI API, visit [Google Cloud > Vertex AI](h
 The component uses a `GOOGLE_API_KEY` or `GEMINI_API_KEY` environment variable by default. Otherwise, you can pass an API key at initialization with a [Secret](../../concepts/secret-management.mdx) and `Secret.from_token` static method:
 
 ```python
-embedder = GoogleGenAITextEmbedder(api_key=Secret.from_token("<your-api-key>"))
+chat_generator = GoogleGenAIChatGenerator(api_key=Secret.from_token("<your-api-key>"))
 ```
 
 The following examples show how to use the component with the Gemini Developer API and the Vertex AI API.
@@ -159,7 +159,7 @@ print(response)
 # Red apple on straw.
 ```
 
-You can also easily use function calls. First, define the function locally and convert into a [Tool](https://www.notion.so/docs/tool):
+You can also easily use function calls. First, define the function locally and convert into a [Tool](../../tools/tool.mdx):
 
 ```python
 from typing import Annotated
@@ -203,7 +203,7 @@ replies = genai_chat.run(messages=messages)["replies"]
 
 print(replies[0].tool_calls)
 >>> [ToolCall(tool_name='get_current_weather',
->>>           arguments={'unit': 'celsius', 'location': 'Berlin'}, id=None)]
+>>>           arguments={'unit': 'celsius', 'location': 'Berlin'}, id=None, extra=None)]
 
 tool_messages = []
 for tool_call in replies[0].tool_calls:

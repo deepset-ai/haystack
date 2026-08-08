@@ -27,7 +27,7 @@ This component computes embeddings for text (such as a query) using models throu
 
 [Amazon Bedrock](https://docs.aws.amazon.com/bedrock/latest/userguide/what-is-bedrock.html) is a fully managed service that makes language models from leading AI startups and Amazon available for your use through a unified API.
 
-Supported models are `amazon.titan-embed-text-v1`, `cohere.embed-english-v3` and `cohere.embed-multilingual-v3`.
+Amazon Titan and Cohere embedding models are supported, for example `amazon.titan-embed-text-v1`, `amazon.titan-embed-text-v2:0`, `amazon.titan-embed-image-v1`, `cohere.embed-english-v3`, `cohere.embed-multilingual-v3`, and `cohere.embed-v4:0`. To find all supported models, see the [Amazon Bedrock documentation](https://docs.aws.amazon.com/bedrock/latest/userguide/models-supported.html), filter for "embedding", and select models from the Amazon Titan and Cohere series.
 
 Use `AmazonBedrockTextEmbedder` to embed a simple string (such as a query) into a vector. Use the [`AmazonBedrockDocumentEmbedder`](amazonbedrockdocumentembedder.mdx) to enrich the documents with the computed embedding, also known as vector.
 

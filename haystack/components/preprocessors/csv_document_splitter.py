@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+from copy import deepcopy
 from io import StringIO
 from typing import Any, Literal, get_args
 
@@ -152,7 +153,7 @@ class CSVDocumentSplitter:
                     Document(
                         content=split_df.to_csv(index=False, header=False, lineterminator="\n"),
                         meta={
-                            **document.meta.copy(),
+                            **deepcopy(document.meta),
                             "source_id": document.id,
                             "row_idx_start": int(split_df.index[0]),
                             "col_idx_start": int(split_df.columns[0]),

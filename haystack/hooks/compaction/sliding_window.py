@@ -7,7 +7,7 @@ from typing import Any
 from haystack.core.serialization import default_to_dict
 from haystack.dataclasses import ChatMessage, ChatRole
 from haystack.hooks.compaction.types import Compactor
-from haystack.hooks.compaction.utils import _COMPACTION_META_KEY
+from haystack.hooks.compaction.utils import _COMPACTION_META_KEY, _agent_step_spans
 from haystack.token_counters import TokenCounter
 from haystack.utils.experimental import _experimental
 
@@ -42,35 +42,6 @@ def _latest_user_index(messages: list[ChatMessage]) -> int | None:
         if message.is_from(role=ChatRole.USER) and _COMPACTION_META_KEY not in message.meta:
             return index
     return None
-
-
-def _agent_step_spans(messages: list[ChatMessage], start: int) -> list[tuple[int, int]]:
-    """
-    Return spans containing an assistant message and all immediately following tool results.
-
-    :param messages: The conversation to analyze, oldest to newest.
-    :param start: The index to start searching for steps from. We recommend starting after the latest user message, or
-        after the leading system messages when there is no user message. Otherwise, the returned spans may include
-        steps that are not part of the current task.
-    :returns: A list of spans, where each span is a tuple of (start_index, end_index) and end_index is exclusive.
-    """
-    # e.g. a span of (2, 5) means messages[2:5] are part of the same step
-    spans: list[tuple[int, int]] = []
-    index = start
-    while index < len(messages):
-        # Only assistant messages can start a step; skip any other messages.
-        if not messages[index].is_from(role=ChatRole.ASSISTANT):
-            index += 1
-            continue
-        # Find the end of the step by looking for the first message that is not a tool result.
-        end = index + 1
-        while end < len(messages) and messages[end].tool_call_results:
-            end += 1
-        # Record the span and continue searching for the next step.
-        spans.append((index, end))
-        # Reset the index to the end of the current step to avoid overlapping spans.
-        index = end
-    return spans
 
 
 def _task_and_step_split(
@@ -130,9 +101,9 @@ class SlidingWindowCompactor(Compactor):
     ```python
     from haystack.components.agents import Agent
     from haystack.components.generators.chat import OpenAIResponsesChatGenerator
-    from haystack.hooks.compaction import ContextCompactionHook, SlidingWindowCompactor
+    from haystack.hooks.compaction import CompactionHook, SlidingWindowCompactor
 
-    hook = ContextCompactionHook(
+    hook = CompactionHook(
         compactor=SlidingWindowCompactor(), context_window=400_000, compact_at=0.7, compact_to=0.4
     )
     agent = Agent(

@@ -85,7 +85,7 @@ print(result["documents"][0].embedding)
 ### In a pipeline
 
 ```python
-from haystack import Pipeline
+from haystack import Document, Pipeline
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.components.embedders import (
     AzureOpenAITextEmbedder,
@@ -123,6 +123,5 @@ result = query_pipeline.run({"text_embedder": {"text": query}})
 
 print(result["retriever"]["documents"][0])
 
-# Document(id=..., mimetype: 'text/plain',
-# text: 'My name is Wolfgang and I live in Berlin')
+# Document(id=..., content: 'My name is Wolfgang and I live in Berlin', score: ...)
 ```

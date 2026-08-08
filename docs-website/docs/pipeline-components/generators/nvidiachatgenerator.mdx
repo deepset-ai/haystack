@@ -76,7 +76,7 @@ You can use `NvidiaChatGenerator` with all the LLMs available in the [NVIDIA API
 
 ### On its own
 
-To use LLMs from the NVIDIA API Catalog, specify the `api_url` if needed (the default is `https://integrate.api.nvidia.com/v1`) and your API key. You can get your API key from the [NVIDIA API Catalog](https://build.nvidia.com/explore/discover).
+To use LLMs from the NVIDIA API Catalog, specify the `api_base_url` if needed (the default is `https://integrate.api.nvidia.com/v1`) and your API key. You can get your API key from the [NVIDIA API Catalog](https://build.nvidia.com/explore/discover).
 
 ```python
 from haystack.dataclasses import ChatMessage
@@ -91,7 +91,6 @@ generator = NvidiaChatGenerator(
 messages = [ChatMessage.from_user("What's Natural Language Processing? Be brief.")]
 result = generator.run(messages)
 print(result["replies"])
-print(result["meta"])
 ```
 
 With multimodal inputs:

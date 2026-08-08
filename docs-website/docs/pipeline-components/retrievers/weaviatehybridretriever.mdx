@@ -33,7 +33,7 @@ The `alpha` parameter controls how much each search method contributes to the fi
 - `alpha = 1.0`: only vector similarity scoring is used,
 - Values in between blend the two; higher values favor the vector score, lower values favor BM25.
 
-If you don't specify `alpha`, the Weaviate server default is used.
+If you don't specify `alpha`, it defaults to `0.7`, which is also the Weaviate server default.
 
 You can also use the `max_vector_distance` parameter to set a threshold for the vector component. Candidates with a distance larger than this threshold are excluded from the vector portion before blending.
 
@@ -75,7 +75,7 @@ retriever.run(query="How many languages are there?", query_embedding=[0.1] * 768
 
 ### In a pipeline
 
-The examples on this page use Sentence Transformers embedders that have moved to the `sentence-transformers-haystack` package. Install it to run the examples:
+The examples on this page use Sentence Transformers embedders from the `sentence-transformers-haystack` package. Install it to run the examples:
 
 ```shell
 pip install sentence-transformers-haystack

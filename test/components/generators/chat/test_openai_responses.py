@@ -4,6 +4,7 @@
 
 import json
 import os
+from pathlib import Path
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 
@@ -92,7 +93,7 @@ class RecordingCallback:
         self.tool_calls = []
         self.counter = 0
 
-    def __call__(self, chunk: StreamingChunk):
+    def __call__(self, chunk: StreamingChunk) -> None:
         self.counter += 1
         if chunk.content:
             self.content += chunk.content
@@ -103,14 +104,15 @@ class RecordingCallback:
 
 
 class TestInitialization:
-    def test_supported_models(self):
+    def test_supported_models(self) -> None:
         """SUPPORTED_MODELS is a non-empty list of strings."""
         models = OpenAIResponsesChatGenerator.SUPPORTED_MODELS
         assert isinstance(models, list)
         assert len(models) > 0
         assert all(isinstance(m, str) for m in models)
 
-    def test_init_default(self, monkeypatch):
+    def test_init_default(self, monkeypatch: pytest.MonkeyPatch) -> None:
+
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
         component = OpenAIResponsesChatGenerator()
         assert component.client is None
@@ -125,7 +127,8 @@ class TestInitialization:
         assert not component.tools_strict
         assert component.http_client_kwargs is None
 
-    def test_init_with_parameters(self, monkeypatch):
+    def test_init_with_parameters(self, monkeypatch: pytest.MonkeyPatch) -> None:
+
         tool = Tool(name="name", description="description", parameters={"x": {"type": "string"}}, function=lambda x: x)
 
         monkeypatch.setenv("OPENAI_TIMEOUT", "100")
@@ -154,7 +157,8 @@ class TestInitialization:
         assert component.tools_strict
         assert component.http_client_kwargs == {"proxy": "http://example.com:8080", "verify": False}
 
-    def test_init_with_parameters_and_env_vars(self, monkeypatch):
+    def test_init_with_parameters_and_env_vars(self, monkeypatch: pytest.MonkeyPatch) -> None:
+
         monkeypatch.setenv("OPENAI_TIMEOUT", "100")
         monkeypatch.setenv("OPENAI_MAX_RETRIES", "10")
         component = OpenAIResponsesChatGenerator(
@@ -173,7 +177,7 @@ class TestInitialization:
         assert component.timeout is None
         assert component.max_retries is None
 
-    def test_init_with_toolset(self, tools, monkeypatch):
+    def test_init_with_toolset(self, tools: list[Tool], monkeypatch: pytest.MonkeyPatch) -> None:
         """Test that the OpenAIChatGenerator can be initialized with a Toolset."""
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
         toolset = Toolset(tools)
@@ -182,7 +186,8 @@ class TestInitialization:
 
 
 class TestSerDe:
-    def test_to_dict_default(self, monkeypatch):
+    def test_to_dict_default(self, monkeypatch: pytest.MonkeyPatch) -> None:
+
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
         component = OpenAIResponsesChatGenerator()
         data = component.to_dict()
@@ -203,7 +208,8 @@ class TestSerDe:
             },
         }
 
-    def test_to_dict_with_parameters(self, monkeypatch, calendar_event_model):
+    def test_to_dict_with_parameters(self, monkeypatch: pytest.MonkeyPatch, calendar_event_model: type) -> None:
+
         tool = Tool(name="name", description="description", parameters={"x": {"type": "string"}}, function=print)
 
         monkeypatch.setenv("ENV_VAR", "test-api-key")
@@ -273,7 +279,8 @@ class TestSerDe:
             },
         }
 
-    def test_from_dict(self, monkeypatch):
+    def test_from_dict(self, monkeypatch: pytest.MonkeyPatch) -> None:
+
         monkeypatch.setenv("OPENAI_API_KEY", "fake-api-key")
         data = {
             "type": "haystack.components.generators.chat.openai_responses.OpenAIResponsesChatGenerator",
@@ -316,7 +323,8 @@ class TestSerDe:
         assert component.max_retries == 10
         assert component.http_client_kwargs == {"proxy": "http://example.com:8080", "verify": False}
 
-    def test_from_dict_wo_env_var_does_not_fail(self, monkeypatch):
+    def test_from_dict_wo_env_var_does_not_fail(self, monkeypatch: pytest.MonkeyPatch) -> None:
+
         monkeypatch.delenv("OPENAI_API_KEY", raising=False)
         data = {
             "type": "haystack.components.generators.chat.openai_responses.OpenAIResponsesChatGenerator",
@@ -335,7 +343,7 @@ class TestSerDe:
         assert component.async_client is None
         assert component.api_key == Secret.from_env_var("OPENAI_API_KEY")
 
-    def test_from_dict_with_toolset(self, tools, monkeypatch):
+    def test_from_dict_with_toolset(self, tools: list[Tool], monkeypatch: pytest.MonkeyPatch) -> None:
         """Test that the OpenAIChatGenerator can be deserialized from a dictionary with a Toolset."""
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
         toolset = Toolset(tools)
@@ -361,34 +369,51 @@ def mock_openai_clients(monkeypatch):
 
 
 class TestComponentLifecycle:
-    def test_warm_up_uses_default_timeout_and_max_retries(self, monkeypatch):
+    def test_warm_up_uses_default_timeout_and_max_retries(self, monkeypatch: pytest.MonkeyPatch) -> None:
+
         monkeypatch.setenv("OPENAI_API_KEY", "fake-api-key")
         generator = OpenAIResponsesChatGenerator()
         generator.warm_up()
+        assert generator.client is not None
+
         assert generator.client.max_retries == 5
+        assert generator.client is not None
+
         assert generator.client.timeout == 30.0
 
-    def test_warm_up_uses_timeout_and_max_retries_from_parameters(self):
+    def test_warm_up_uses_timeout_and_max_retries_from_parameters(self) -> None:
+
         generator = OpenAIResponsesChatGenerator(api_key=Secret.from_token("fake-api-key"), timeout=40.0, max_retries=1)
         generator.warm_up()
+        assert generator.client is not None
+
         assert generator.client.max_retries == 1
+        assert generator.client is not None
+
         assert generator.client.timeout == 40.0
 
-    def test_warm_up_uses_timeout_and_max_retries_from_env_vars(self, monkeypatch):
+    def test_warm_up_uses_timeout_and_max_retries_from_env_vars(self, monkeypatch: pytest.MonkeyPatch) -> None:
+
         monkeypatch.setenv("OPENAI_TIMEOUT", "100")
         monkeypatch.setenv("OPENAI_MAX_RETRIES", "10")
         generator = OpenAIResponsesChatGenerator(api_key=Secret.from_token("fake-api-key"))
         generator.warm_up()
+        assert generator.client is not None
+
         assert generator.client.max_retries == 10
+        assert generator.client is not None
+
         assert generator.client.timeout == 100.0
 
-    def test_key_resolved_at_warm_up_not_init(self, monkeypatch):
+    def test_key_resolved_at_warm_up_not_init(self, monkeypatch: pytest.MonkeyPatch) -> None:
+
         monkeypatch.delenv("OPENAI_API_KEY", raising=False)
         generator = OpenAIResponsesChatGenerator()
         with pytest.raises(ValueError, match="None of the .* environment variables are set"):
             generator.warm_up()
 
-    def test_warm_up_warms_tools_once(self, monkeypatch):
+    def test_warm_up_warms_tools_once(self, monkeypatch: pytest.MonkeyPatch) -> None:
+
         monkeypatch.setenv("OPENAI_API_KEY", "fake-api-key")
         warm_up_calls = []
 
@@ -414,13 +439,15 @@ class TestComponentLifecycle:
         generator.warm_up()
         assert sorted(warm_up_calls) == ["tool1", "tool2"]
 
-    def test_warm_up_with_no_tools_does_not_raise(self, monkeypatch):
+    def test_warm_up_with_no_tools_does_not_raise(self, monkeypatch: pytest.MonkeyPatch) -> None:
+
         monkeypatch.setenv("OPENAI_API_KEY", "fake-api-key")
         generator = OpenAIResponsesChatGenerator()
         generator.warm_up()
         assert generator._tools_warmed_up
 
-    def test_warm_up_with_empty_tools_list_does_not_raise(self, monkeypatch):
+    def test_warm_up_with_empty_tools_list_does_not_raise(self, monkeypatch: pytest.MonkeyPatch) -> None:
+
         monkeypatch.setenv("OPENAI_API_KEY", "fake-api-key")
         # An empty list is a valid ``tools`` value (e.g. when built programmatically); warming up
         # must not index ``tools[0]`` unguarded.
@@ -428,7 +455,8 @@ class TestComponentLifecycle:
         generator.warm_up()
         assert generator._tools_warmed_up
 
-    def test_warm_up_with_openai_tools_does_not_raise(self, monkeypatch):
+    def test_warm_up_with_openai_tools_does_not_raise(self, monkeypatch: pytest.MonkeyPatch) -> None:
+
         monkeypatch.setenv("OPENAI_API_KEY", "fake-api-key")
         generator = OpenAIResponsesChatGenerator(
             tools=[
@@ -445,7 +473,8 @@ class TestComponentLifecycle:
         generator.warm_up()
         assert generator._tools_warmed_up
 
-    def test_sync_lifecycle(self, mock_openai_clients):
+    def test_sync_lifecycle(self, mock_openai_clients: tuple[MagicMock, MagicMock]) -> None:
+
         sync_cls, _ = mock_openai_clients
         generator = OpenAIResponsesChatGenerator()
         assert generator.client is None
@@ -456,10 +485,12 @@ class TestComponentLifecycle:
         assert generator.async_client is None
 
         generator.close()
-        sync_cls.return_value.close.assert_called_once()
+
+        sync_cls.return_value.close.assert_called_once()  # type: ignore[attr-defined]
         assert generator.client is None
 
-    async def test_async_lifecycle(self, mock_openai_clients):
+    async def test_async_lifecycle(self, mock_openai_clients: tuple[MagicMock, MagicMock]) -> None:
+
         _, async_cls = mock_openai_clients
         generator = OpenAIResponsesChatGenerator()
 
@@ -468,17 +499,22 @@ class TestComponentLifecycle:
         assert generator.client is None
 
         await generator.close_async()
-        async_cls.return_value.close.assert_awaited_once()
+
+        async_cls.return_value.close.assert_awaited_once()  # type: ignore[union-attr]
         assert generator.async_client is None
 
-    async def test_close_is_safe_without_warm_up(self, mock_openai_clients):
+    async def test_close_is_safe_without_warm_up(self, mock_openai_clients: tuple[MagicMock, MagicMock]) -> None:
+
         generator = OpenAIResponsesChatGenerator()
         generator.close()
         await generator.close_async()
         assert generator.client is None
         assert generator.async_client is None
 
-    async def test_close_and_close_async_are_independent(self, mock_openai_clients):
+    async def test_close_and_close_async_are_independent(
+        self, mock_openai_clients: tuple[MagicMock, MagicMock]
+    ) -> None:
+
         generator = OpenAIResponsesChatGenerator()
         generator.warm_up()
         await generator.warm_up_async()
@@ -492,7 +528,8 @@ class TestComponentLifecycle:
 
 
 class TestRun:
-    def test_run_fail_with_duplicate_tool_names(self, monkeypatch, tools):
+    def test_run_fail_with_duplicate_tool_names(self, monkeypatch: pytest.MonkeyPatch, tools: list[Tool]) -> None:
+
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
 
         duplicate_tools = [tools[0], tools[0]]
@@ -501,7 +538,8 @@ class TestRun:
             component = OpenAIResponsesChatGenerator(tools=duplicate_tools)
             component.run(chat_messages)
 
-    def test_prepare_api_call_does_not_mutate_tool_parameters(self, monkeypatch):
+    def test_prepare_api_call_does_not_mutate_tool_parameters(self, monkeypatch: pytest.MonkeyPatch) -> None:
+
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
         parameters = {"type": "object", "properties": {"city": {"type": "string"}}, "required": ["city"]}
         tool = Tool(name="weather", description="get the weather", parameters=parameters, function=print)
@@ -516,7 +554,8 @@ class TestRun:
         # ...while the payload actually sent to the API still carries additionalProperties=False.
         assert api_args["tools"][0]["parameters"]["additionalProperties"] is False
 
-    def test_run_with_wrong_model(self):
+    def test_run_with_wrong_model(self) -> None:
+
         mock_client = MagicMock()
         mock_client.responses.create.side_effect = OpenAIError("Invalid model name")
 
@@ -529,7 +568,8 @@ class TestRun:
         with pytest.raises(OpenAIError):
             generator.run([ChatMessage.from_user("irrelevant")])
 
-    def test_run(self, openai_mock_responses, monkeypatch):
+    def test_run(self, openai_mock_responses: MagicMock, monkeypatch: pytest.MonkeyPatch) -> None:
+
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
         chat_messages = [ChatMessage.from_user("What's the capital of France")]
         component = OpenAIResponsesChatGenerator(
@@ -538,12 +578,14 @@ class TestRun:
         results = component.run(chat_messages)
         assert len(results["replies"]) == 1
         message: ChatMessage = results["replies"][0]
+        assert message.text is not None
         assert "Paris" in message.text
         assert "gpt-5" in message.meta["model"]
         assert message.meta["usage"]["total_tokens"] > 0
         assert message.meta["id"] is not None
 
-    def test_run_with_string_input(self, openai_mock_responses):
+    def test_run_with_string_input(self, openai_mock_responses: MagicMock) -> None:
+
         component = OpenAIResponsesChatGenerator(api_key=Secret.from_token("test-api-key"))
         response = component.run("What's the capital of France?")
 
@@ -554,7 +596,10 @@ class TestRun:
         assert len(response["replies"]) == 1
         assert isinstance(response["replies"][0], ChatMessage)
 
-    def test_run_with_flattened_generation_kwargs(self, openai_mock_responses, monkeypatch):
+    def test_run_with_flattened_generation_kwargs(
+        self, openai_mock_responses: MagicMock, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
         chat_messages = [ChatMessage.from_user("What's the capital of France")]
         component = OpenAIResponsesChatGenerator(
@@ -575,7 +620,10 @@ class TestRun:
         }
         assert openai_mock_responses.call_args.kwargs["text"] == {"verbosity": "low"}
 
-    def test_run_with_reasoning_mode_only(self, openai_mock_responses, monkeypatch):
+    def test_run_with_reasoning_mode_only(
+        self, openai_mock_responses: MagicMock, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
         chat_messages = [ChatMessage.from_user("What's the capital of France")]
         component = OpenAIResponsesChatGenerator(model="gpt-5.6-luna", generation_kwargs={"reasoning_mode": "standard"})
@@ -583,7 +631,10 @@ class TestRun:
         assert len(results["replies"]) == 1
         assert openai_mock_responses.call_args.kwargs["reasoning"] == {"mode": "standard"}
 
-    def test_run_with_reasoning_mode_merges_with_existing_reasoning_dict(self, openai_mock_responses, monkeypatch):
+    def test_run_with_reasoning_mode_merges_with_existing_reasoning_dict(
+        self, openai_mock_responses: MagicMock, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
         chat_messages = [ChatMessage.from_user("What's the capital of France")]
         component = OpenAIResponsesChatGenerator(
@@ -593,7 +644,10 @@ class TestRun:
         assert len(results["replies"]) == 1
         assert openai_mock_responses.call_args.kwargs["reasoning"] == {"effort": "high", "mode": "pro"}
 
-    def test_run_with_include_reasoning_encrypted_content(self, openai_mock_responses, monkeypatch):
+    def test_run_with_include_reasoning_encrypted_content(
+        self, openai_mock_responses: MagicMock, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
         chat_messages = [ChatMessage.from_user("What's the capital of France")]
         component = OpenAIResponsesChatGenerator(
@@ -604,8 +658,9 @@ class TestRun:
         assert openai_mock_responses.call_args.kwargs["include"] == ["reasoning.encrypted_content"]
 
     def test_run_with_include_reasoning_encrypted_content_merges_with_existing_include_list(
-        self, openai_mock_responses, monkeypatch
-    ):
+        self, openai_mock_responses: MagicMock, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
         chat_messages = [ChatMessage.from_user("What's the capital of France")]
         component = OpenAIResponsesChatGenerator(
@@ -623,8 +678,9 @@ class TestRun:
         ]
 
     def test_run_with_include_reasoning_encrypted_content_false_does_not_set_include(
-        self, openai_mock_responses, monkeypatch
-    ):
+        self, openai_mock_responses: MagicMock, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
         chat_messages = [ChatMessage.from_user("What's the capital of France")]
         component = OpenAIResponsesChatGenerator(
@@ -634,7 +690,8 @@ class TestRun:
         assert len(results["replies"]) == 1
         assert "include" not in openai_mock_responses.call_args.kwargs
 
-    def test_run_with_params_streaming(self, openai_mock_responses_stream_text_delta):
+    def test_run_with_params_streaming(self, openai_mock_responses_stream_text_delta: MagicMock) -> None:
+
         streaming_callback_called = False
 
         def streaming_callback(chunk: StreamingChunk) -> None:
@@ -655,9 +712,13 @@ class TestRun:
         assert isinstance(response["replies"], list)
         assert len(response["replies"]) == 1
         assert [isinstance(reply, ChatMessage) for reply in response["replies"]]
+        assert response["replies"][0].text is not None
         assert "The capital of France is Paris." in response["replies"][0].text
 
-    def test_run_with_params_streaming_reasoning_summary_delta(self, openai_mock_responses_reasoning_summary_delta):
+    def test_run_with_params_streaming_reasoning_summary_delta(
+        self, openai_mock_responses_reasoning_summary_delta: MagicMock
+    ) -> None:
+
         streaming_callback_called = False
 
         def streaming_callback(chunk: StreamingChunk) -> None:
@@ -680,6 +741,7 @@ class TestRun:
         assert "replies" in response
         print(response["replies"])
         assert len(response["replies"]) == 1
+        assert response["replies"][0].reasoning is not None
         assert "I need to check the capital of France." in response["replies"][0].reasoning.reasoning_text
 
 
@@ -689,7 +751,8 @@ class TestRun:
 )
 @pytest.mark.integration
 class TestIntegration:
-    def test_live_run(self):
+    def test_live_run(self) -> None:
+
         chat_messages = [ChatMessage.from_user("What's the capital of France")]
         component = OpenAIResponsesChatGenerator(
             model="gpt-4.1-nano", generation_kwargs={"include": ["message.output_text.logprobs"]}
@@ -697,6 +760,7 @@ class TestIntegration:
         results = component.run(chat_messages)
         assert len(results["replies"]) == 1
         message: ChatMessage = results["replies"][0]
+        assert message.text is not None
         assert "paris" in message.text.lower()
         assert "gpt-4.1-nano" in message.meta["model"]
         assert message.meta["status"] == "completed"
@@ -704,7 +768,8 @@ class TestIntegration:
         assert message.meta["id"] is not None
         assert message.meta["logprobs"] is not None
 
-    def test_live_run_with_reasoning(self):
+    def test_live_run_with_reasoning(self) -> None:
+
         chat_messages = [ChatMessage.from_user("Explain in 2 lines why is there a Moon?")]
         component = OpenAIResponsesChatGenerator(
             model="gpt-5-nano", generation_kwargs={"reasoning": {"summary": "auto", "effort": "low"}}
@@ -713,13 +778,15 @@ class TestIntegration:
         assert len(results["replies"]) == 1
         message: ChatMessage = results["replies"][0]
         assert message.reasoning is not None
+        assert message.text is not None
         assert any(word in message.text.lower() for word in ["moon", "earth", "debris", "mars"])
         assert "gpt-5-nano" in message.meta["model"]
         assert message.meta["status"] == "completed"
         assert message.meta["usage"]["output_tokens"] > 0
         assert "reasoning_tokens" in message.meta["usage"]["output_tokens_details"]
 
-    def test_live_run_with_text_format(self, calendar_event_model):
+    def test_live_run_with_text_format(self, calendar_event_model: type) -> None:
+
         chat_messages = [
             ChatMessage.from_user("The marketing summit takes place on October 12th at the Hilton Hotel downtown.")
         ]
@@ -730,13 +797,15 @@ class TestIntegration:
         assert len(results["replies"]) == 1
         message: ChatMessage = results["replies"][0]
         print(message.text)
+        assert message.text is not None
         msg = json.loads(message.text)
         assert "marketing summit" in msg["event_name"].lower()
         assert isinstance(msg["event_date"], str)
         assert isinstance(msg["event_location"], str)
 
     # So far from documentation, responses.parse only supports BaseModel
-    def test_live_run_with_text_format_json_schema(self):
+    def test_live_run_with_text_format_json_schema(self) -> None:
+
         json_schema = {
             "format": {
                 "type": "json_schema",
@@ -758,6 +827,7 @@ class TestIntegration:
         results = component.run(chat_messages)
         assert len(results["replies"]) == 1
         message: ChatMessage = results["replies"][0]
+        assert message.text is not None
         msg = json.loads(message.text)
         assert "jane" in msg["name"].lower()
         assert msg["age"] == 54
@@ -768,7 +838,8 @@ class TestIntegration:
         reason="Streaming plus pydantic based model does not work due to known issue in openai python "
         "sdk https://github.com/openai/openai-python/issues/2305"
     )
-    def test_live_run_with_text_format_and_streaming(self, calendar_event_model):
+    def test_live_run_with_text_format_and_streaming(self, calendar_event_model: type) -> None:
+
         chat_messages = [
             ChatMessage.from_user("The marketing summit takes place on October12th at the Hilton Hotel downtown.")
         ]
@@ -778,12 +849,14 @@ class TestIntegration:
         results = component.run(chat_messages)
         assert len(results["replies"]) == 1
         message: ChatMessage = results["replies"][0]
+        assert message.text is not None
         msg = json.loads(message.text)
         assert "marketing summit" in msg["event_name"].lower()
         assert isinstance(msg["event_date"], str)
         assert isinstance(msg["event_location"], str)
 
-    def test_live_run_streaming(self):
+    def test_live_run_streaming(self) -> None:
+
         callback = RecordingCallback()
         component = OpenAIResponsesChatGenerator(
             model="gpt-4.1-nano",
@@ -796,6 +869,7 @@ class TestIntegration:
         assert "replies" in results
         assert len(results["replies"]) == 1
         message: ChatMessage = results["replies"][0]
+        assert message.text is not None
         assert "paris" in message.text.lower()
         assert isinstance(message.meta, dict)
 
@@ -815,7 +889,8 @@ class TestIntegration:
         assert callback.counter > 1
         assert "paris" in callback.content.lower()
 
-    def test_live_run_with_reasoning_and_streaming(self):
+    def test_live_run_with_reasoning_and_streaming(self) -> None:
+
         callback = RecordingCallback()
         chat_messages = [ChatMessage.from_user("Explain in 2 lines why is there a Moon?")]
         component = OpenAIResponsesChatGenerator(
@@ -826,6 +901,7 @@ class TestIntegration:
         results = component.run(chat_messages)
         assert len(results["replies"]) == 1
         message: ChatMessage = results["replies"][0]
+        assert message.reasoning is not None
         assert callback.reasoning == message.reasoning.reasoning_text
         assert any(word in callback.content.lower() for word in ["moon", "earth", "debris", "mars"])
         assert "gpt-5-nano" in message.meta["model"]
@@ -834,7 +910,8 @@ class TestIntegration:
         assert message.meta["usage"]["output_tokens"] > 0
         assert "reasoning_tokens" in message.meta["usage"]["output_tokens_details"]
 
-    def test_live_run_with_tools_streaming(self, tools):
+    def test_live_run_with_tools_streaming(self, tools: list[Tool]) -> None:
+
         chat_messages = [ChatMessage.from_user("What's the weather like in Paris and Berlin?")]
 
         component = OpenAIResponsesChatGenerator(
@@ -860,7 +937,8 @@ class TestIntegration:
         assert "berlin" in city_values and "paris" in city_values
         assert len(city_values) == 2
 
-    def test_live_run_with_toolset(self, tools):
+    def test_live_run_with_toolset(self, tools: list[Tool]) -> None:
+
         chat_messages = [ChatMessage.from_user("What's the weather like in Paris?")]
         toolset = Toolset(tools)
         component = OpenAIResponsesChatGenerator(model="gpt-5-nano", tools=toolset)
@@ -877,7 +955,8 @@ class TestIntegration:
         assert tool_call.arguments.keys() == {"city"}
         assert "paris" in tool_call.arguments["city"].lower()
 
-    def test_live_run_multimodal(self, test_files_path):
+    def test_live_run_multimodal(self, test_files_path: Path) -> None:
+
         image_path = test_files_path / "images" / "apple.jpg"
 
         # we resize the image to keep this test fast (around 1s) - increase the size in case of errors
@@ -898,7 +977,8 @@ class TestIntegration:
         assert not message.tool_calls
         assert not message.tool_call_results
 
-    def test_live_run_with_file_content(self, test_files_path):
+    def test_live_run_with_file_content(self, test_files_path: Path) -> None:
+
         pdf_path = test_files_path / "pdf" / "sample_pdf_3.pdf"
 
         file_content = FileContent.from_file_path(file_path=pdf_path)
@@ -921,7 +1001,7 @@ class TestIntegration:
         assert "no" in message.text.lower()
 
     @pytest.mark.skip(reason="The tool calls time out resulting in failing")
-    def test_live_run_with_openai_tools(self):
+    def test_live_run_with_openai_tools(self) -> None:
         """
         Test the use of generator with a list of OpenAI tools and MCP tools.
         """
@@ -950,7 +1030,8 @@ class TestIntegration:
         message = results["replies"][0]
         assert message.meta["status"] == "completed"
 
-    def test_live_run_with_tools_streaming_and_reasoning(self, tools):
+    def test_live_run_with_tools_streaming_and_reasoning(self, tools: list[Tool]) -> None:
+
         chat_messages = [
             ChatMessage.from_user("What's the weather like in Paris and Berlin? Make sure to use the provided tool.")
         ]
@@ -982,7 +1063,8 @@ class TestIntegration:
         assert sorted(arguments, key=lambda x: x["city"]) == [{"city": "Berlin"}, {"city": "Paris"}]
 
     @pytest.mark.flaky(reruns=3, reruns_delay=5)
-    def test_live_run_with_agent_streaming_and_reasoning(self):
+    def test_live_run_with_agent_streaming_and_reasoning(self) -> None:
+
         # Tool Definition
         calculator_tool = Tool(
             name="calculator",
@@ -1032,7 +1114,8 @@ class TestIntegration:
         assert "calc_result" in response
         assert response["messages"][-1].text is not None
 
-    def test_live_run_agent_with_images_in_tool_result(self, test_files_path):
+    def test_live_run_agent_with_images_in_tool_result(self, test_files_path: Path) -> None:
+
         def retrieve_image():
             return [
                 TextContent("Here is the retrieved image."),
@@ -1057,7 +1140,8 @@ class TestIntegration:
 
         assert any(word in result["last_message"].text.lower() for word in ["apple", "fruit"])
 
-    def test_live_run_agent_with_file_in_tool_result(self, test_files_path):
+    def test_live_run_agent_with_file_in_tool_result(self, test_files_path: Path) -> None:
+
         def retrieve_document():
             return [
                 TextContent("Here is the retrieved document."),
@@ -1086,7 +1170,8 @@ class TestIntegration:
 
 
 class TestOpenAIResponsesChatGeneratorAsync:
-    async def test_warm_up_async_creates_async_client_with_expected_args(self, monkeypatch):
+    async def test_warm_up_async_creates_async_client_with_expected_args(self, monkeypatch: pytest.MonkeyPatch) -> None:
+
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
         component = OpenAIResponsesChatGenerator(
             api_key=Secret.from_token("test-api-key"),
@@ -1107,7 +1192,8 @@ class TestOpenAIResponsesChatGeneratorAsync:
         assert component.async_client.max_retries == 5
 
     @pytest.mark.asyncio
-    async def test_run_async(self, openai_mock_async_responses):
+    async def test_run_async(self, openai_mock_async_responses: MagicMock) -> None:
+
         component = OpenAIResponsesChatGenerator(api_key=Secret.from_token("test-api-key"))
         response = await component.run_async([ChatMessage.from_user("What's the capital of France")])
 
@@ -1118,7 +1204,8 @@ class TestOpenAIResponsesChatGeneratorAsync:
         assert len(response["replies"]) == 1
         assert [isinstance(reply, ChatMessage) for reply in response["replies"]]
 
-    async def test_run_async_with_string_input(self, openai_mock_async_responses):
+    async def test_run_async_with_string_input(self, openai_mock_async_responses: MagicMock) -> None:
+
         component = OpenAIResponsesChatGenerator(api_key=Secret.from_token("test-api-key"))
         response = await component.run_async("What's the capital of France?")
 
@@ -1135,7 +1222,8 @@ class TestOpenAIResponsesChatGeneratorAsync:
         reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
     )
     @pytest.mark.integration
-    async def test_live_run_async(self):
+    async def test_live_run_async(self) -> None:
+
         chat_messages = [ChatMessage.from_user("What's the capital of France")]
         component = OpenAIResponsesChatGenerator(
             model="gpt-4.1-nano", generation_kwargs={"include": ["message.output_text.logprobs"]}
@@ -1143,6 +1231,7 @@ class TestOpenAIResponsesChatGeneratorAsync:
         results = await component.run_async(chat_messages)
         assert len(results["replies"]) == 1
         message: ChatMessage = results["replies"][0]
+        assert message.text is not None
         assert "paris" in message.text.lower()
         assert "gpt-4.1-nano" in message.meta["model"]
         assert message.meta["status"] == "completed"

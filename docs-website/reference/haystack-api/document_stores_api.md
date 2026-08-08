@@ -35,6 +35,8 @@ __init__(
     shared: bool = True,
     async_executor: ThreadPoolExecutor | None = None,
     return_embedding: bool = True,
+    *,
+    strict_datetime_comparison: bool = False
 ) -> None
 ```
 
@@ -59,6 +61,9 @@ Initializes the DocumentStore.
 - **async_executor** (<code>ThreadPoolExecutor | None</code>) – Optional ThreadPoolExecutor to use for async calls. If not provided, a single-threaded
   executor will be initialized and used.
 - **return_embedding** (<code>bool</code>) – Whether to return the embedding of the retrieved Documents. Default is True.
+- **strict_datetime_comparison** (<code>bool</code>) – If `True`, timezone-naive and timezone-aware datetimes never match each other in filters.
+  If `False` (the default), the timezone from the aware datetime is copied to the naive one before
+  comparing.
 
 #### shutdown
 
@@ -312,6 +317,7 @@ get_metadata_field_unique_values(
     search_term: str | None = None,
     from_: int = 0,
     size: int = 10,
+    filters: dict[str, Any] | None = None,
 ) -> tuple[list[Any], int]
 ```
 
@@ -324,6 +330,7 @@ Returns unique values for a metadata field, optionally filtered by a search term
   against the metadata field's value.
 - **from\_** (<code>int</code>) – The offset to start returning values from (for pagination).
 - **size** (<code>int</code>) – The maximum number of unique values to return.
+- **filters** (<code>dict\[str, Any\] | None</code>) – Optional filters to restrict the documents considered.
 
 **Returns:**
 
@@ -532,6 +539,7 @@ get_metadata_field_unique_values_async(
     search_term: str | None = None,
     from_: int = 0,
     size: int = 10,
+    filters: dict[str, Any] | None = None,
 ) -> tuple[list[Any], int]
 ```
 
@@ -544,6 +552,7 @@ Returns unique values for a metadata field, optionally filtered by a search term
   against the metadata field's value.
 - **from\_** (<code>int</code>) – The offset to start returning values from (for pagination).
 - **size** (<code>int</code>) – The maximum number of unique values to return.
+- **filters** (<code>dict\[str, Any\] | None</code>) – Optional filters to restrict the documents considered.
 
 **Returns:**
 

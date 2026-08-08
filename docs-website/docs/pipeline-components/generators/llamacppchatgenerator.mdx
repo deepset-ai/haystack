@@ -2,12 +2,12 @@
 title: "LlamaCppChatGenerator"
 id: llamacppchatgenerator
 slug: "/llamacppchatgenerator"
-description: "`LlamaCppGenerator` enables chat completion using an LLM running on Llama.cpp."
+description: "`LlamaCppChatGenerator` enables chat completion using an LLM running on Llama.cpp."
 ---
 
 # LlamaCppChatGenerator
 
-`LlamaCppGenerator` enables chat completion using an LLM running on Llama.cpp.
+`LlamaCppChatGenerator` enables chat completion using an LLM running on Llama.cpp.
 
 <div className="key-value-table">
 
@@ -82,7 +82,7 @@ CMAKE_ARGS="-DGGML_CUDA=on" pip install llama-cpp-python
 pip install llama-cpp-haystack
 ```
 
-The examples on this page use Sentence Transformers embedders that have moved to the `sentence-transformers-haystack` package. Install it to run the examples:
+The examples on this page use Sentence Transformers embedders from the `sentence-transformers-haystack` package. Install it to run the examples:
 
 ```shell
 pip install sentence-transformers-haystack
@@ -95,6 +95,7 @@ pip install sentence-transformers-haystack
 
 ```python
 from haystack_integrations.components.generators.llama_cpp import LlamaCppChatGenerator
+from haystack.dataclasses import ChatMessage
 
 generator = LlamaCppChatGenerator(
     model="/content/openchat-3.5-1210.Q3_K_S.gguf",

@@ -56,7 +56,9 @@ class MetadataRouter:
     ```
     """
 
-    def __init__(self, rules: dict[str, dict], output_type: type = list[Document]) -> None:
+    def __init__(
+        self, rules: dict[str, dict], output_type: type = list[Document], *, strict_datetime_comparison: bool = False
+    ) -> None:
         """
         Initializes the MetadataRouter component.
 
@@ -96,10 +98,14 @@ class MetadataRouter:
             },
             }
             ```
-            :param output_type: The type of the output produced. Lists of Documents or ByteStreams can be specified.
+        :param output_type: The type of the output produced. Lists of Documents or ByteStreams can be specified.
+        :param strict_datetime_comparison:
+            If `True`, timezone-naive and timezone-aware datetimes never match each other.
+            If `False` (the default), the timezone from the aware datetime is copied to the naive one before comparing.
         """
         self.rules = rules
         self.output_type = output_type
+        self.strict_datetime_comparison = strict_datetime_comparison
         for rule in self.rules.values():
             if "operator" not in rule:
                 raise ValueError(
@@ -125,7 +131,9 @@ class MetadataRouter:
         for doc_or_bytestream in documents:
             current_obj_matched = False
             for edge, rule in self.rules.items():
-                if document_matches_filter(filters=rule, document=doc_or_bytestream):
+                if document_matches_filter(
+                    filters=rule, document=doc_or_bytestream, strict_datetime_comparison=self.strict_datetime_comparison
+                ):
                     # we need to ignore the arg-type here because the underlying
                     # filter methods use type Union[Document, ByteStream]
                     output[edge].append(doc_or_bytestream)  # type: ignore[arg-type]
@@ -144,7 +152,12 @@ class MetadataRouter:
         :returns:
             The serialized component as a dictionary.
         """
-        return default_to_dict(self, rules=self.rules, output_type=serialize_type(self.output_type))
+        return default_to_dict(
+            self,
+            rules=self.rules,
+            output_type=serialize_type(self.output_type),
+            strict_datetime_comparison=self.strict_datetime_comparison,
+        )
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "MetadataRouter":

@@ -16,7 +16,7 @@ Use this component to join different branches of a pipeline into a single output
 |  |  |
 | --- | --- |
 | **Most common position in a pipeline** | Flexible: Can appear at the beginning of a pipeline or at the start of loops.                                                                           |
-| **Mandatory init variables**           | `type`: The type of data expected from preceding components                                                                                             |
+| **Mandatory init variables**           | `type_`: The type of data expected from preceding components                                                                                             |
 | **Mandatory run variables**            | `**kwargs`: Any input data type defined at the initialization. This input is variadic, meaning you can connect a variable number of components to it. |
 | **Output variables**                   | `value`: The first value received from the connected components.                                                                                        |
 | **API reference**                      | [Joiners](/reference/joiners-api)                                                                                                                              |
@@ -130,7 +130,7 @@ print(json.loads(result["validator"]["validated"][0].text))
 
 In this example, the `TextLanguageRouter` component directs the query to one of three language-specific Retrievers. The next component would be a `PromptBuilder`, but we cannot connect multiple Retrievers to a single `PromptBuilder` directly. Instead, we connect all the Retrievers to the `BranchJoiner` component. The `BranchJoiner`  then takes the output from the Retriever that was actually called and passes it as a single list of documents to the `PromptBuilder`. The `BranchJoiner` ensures that the pipeline can handle multiple languages seamlessly by consolidating different outputs from the Retrievers into a unified connection for further processing.
 
-The examples on this page use language classification components that have moved to the `langdetect-haystack` package. Install it to run the examples:
+The examples on this page use language classification components from the `langdetect-haystack` package. Install it to run the examples:
 
 ```shell
 pip install langdetect-haystack

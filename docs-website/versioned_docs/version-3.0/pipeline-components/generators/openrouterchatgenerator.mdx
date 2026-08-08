@@ -25,7 +25,7 @@ This component enables chat completion with any model hosted on [OpenRouter](htt
 
 ## Overview
 
-The `OpenRouterChatGenerator` enables you to use models from multiple providers (such as `openai/gpt-4o`, `anthropic/claude-3.5-sonnet`, and others) by making chat completion calls to the [OpenRouter API](https://openrouter.ai/docs/quickstart).
+The `OpenRouterChatGenerator` enables you to use models from multiple providers (such as `openai/gpt-4o`, `anthropic/claude-sonnet-4.5`, and others) by making chat completion calls to the [OpenRouter API](https://openrouter.ai/docs/quickstart).
 
 This generator also supports OpenRouter-specific features such as:
 
@@ -119,7 +119,7 @@ from haystack_integrations.components.generators.openrouter import (
     OpenRouterChatGenerator,
 )
 
-llm = OpenRouterChatGenerator(model="anthropic/claude-3-5-sonnet")
+llm = OpenRouterChatGenerator(model="anthropic/claude-sonnet-4.5")
 
 image = ImageContent.from_file_path("apple.jpg")
 user_message = ChatMessage.from_user(

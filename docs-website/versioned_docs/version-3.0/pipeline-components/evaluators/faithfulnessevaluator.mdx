@@ -15,7 +15,7 @@ The `FaithfulnessEvaluator` uses an LLM to evaluate whether a generated answer c
 | --- | --- |
 | **Most common position in a pipeline** | On its own or in an evaluation pipeline. To be used after a separate pipeline that has generated the inputs for the Evaluator. |
 | **Mandatory run variables** | `questions`: A list of questions  <br /> <br />`contexts`: A list of a list of contexts, which are the contents of documents. This accounts for one list of contexts per question.  <br /> <br />`predicted_answers`: A list of predicted answers, for example, the outputs of a Generator in a RAG pipeline |
-| **Output variables** | A dictionary containing:  <br /> <br />- `score`: A number from 0.0 to 1.0 that represents the average faithfulness score across all questions  <br /> <br />- `individual_scores`: A list of the individual faithfulness scores ranging from 0.0 to 1.0 for each input triple of a question, a list of contexts, and a predicted answer.  <br /> <br />- `results`:  A list of dictionaries with `statements` and `statement_scores` keys. They contain the statements extracted by an LLM from each predicted answer and the corresponding faithfulness scores per statement, which are either 0 or 1. |
+| **Output variables** | A dictionary containing:  <br /> <br />- `score`: A number from 0.0 to 1.0 that represents the average faithfulness score across all questions  <br /> <br />- `individual_scores`: A list of the individual faithfulness scores ranging from 0.0 to 1.0 for each input triple of a question, a list of contexts, and a predicted answer.  <br /> <br />- `results`:  A list of dictionaries with `statements`, `statement_scores`, `score`, and `status` keys. They contain the statements extracted by an LLM from each predicted answer, the corresponding faithfulness scores per statement (either 0 or 1), the mean score for that answer, and `evaluated` for valid results or `error` for failed evaluations. |
 | **API reference** | [Evaluators](/reference/evaluators-api) |
 | **GitHub link** | https://github.com/deepset-ai/haystack/blob/main/haystack/components/evaluators/faithfulness.py |
 | **Package name** | `haystack-ai` |
@@ -26,7 +26,7 @@ You can use the `FaithfulnessEvaluator` component to evaluate documents retrieve
 
 ### Parameters
 
-The default model for this Evaluator is `gpt-4o-mini`. You can override the model using the `chat_generator` parameter during initialization. This needs to be a Chat Generator instance configured to return a JSON object. For example, when using the [`OpenAIChatGenerator`](../generators/openaichatgenerator.mdx), you should pass `{"response_format": {"type": "json_object"}}` in its `generation_kwargs`.
+The default model for this Evaluator is `gpt-5-mini`. You can override the model using the `chat_generator` parameter during initialization. This needs to be a Chat Generator instance configured to return a JSON object. For example, when using the [`OpenAIChatGenerator`](../generators/openaichatgenerator.mdx), you should pass `{"response_format": {"type": "json_object"}}` in its `generation_kwargs`.
 
 If you are not initializing the Evaluator with your own Chat Generator other than OpenAI, a valid OpenAI API key must be set as an `OPENAI_API_KEY` environment variable. For details, see our [documentation page on secret management](../../concepts/secret-management.mdx).
 
@@ -92,7 +92,7 @@ print(result["score"])
 # 0.5
 print(result["results"])
 # [{'statements': ['Python is a high-level general-purpose programming language.',
-# 'Python was created by George Lucas.'], 'statement_scores': [1, 0], 'score': 0.5}]
+# 'Python was created by George Lucas.'], 'statement_scores': [1, 0], 'status': 'evaluated', 'score': 0.5}]
 ```
 
 ### In a pipeline

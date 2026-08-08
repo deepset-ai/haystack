@@ -49,7 +49,7 @@ Below is an example of using `LLMMessagesRouter` to route Chat Messages to two 
 
 We use Llama Guard 4 for content moderation. To use this model with the Hugging Face API, you need to [request access](https://huggingface.co/meta-llama/Llama-Guard-4-12B) and set the `HF_TOKEN` environment variable.
 
-The examples on this page use Hugging Face API components that have moved to the `huggingface-api-haystack` package. Install it to run the examples:
+The examples on this page use Hugging Face API components from the `huggingface-api-haystack` package. Install it to run the examples:
 
 ```shell
 pip install huggingface-api-haystack
@@ -116,7 +116,7 @@ print(router.run(messages))
 
 # {
 # 'chat_generator_text': 'animals',
-# 'unsafe': [
+# 'animals': [
 # ChatMessage(
 # _role=<ChatRole.USER: 'user'>,
 # _content=[TextContent(text='You are a crazy gorilla!')],

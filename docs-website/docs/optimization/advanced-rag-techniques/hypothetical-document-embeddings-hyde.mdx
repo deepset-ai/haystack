@@ -37,7 +37,6 @@ pip install sentence-transformers-haystack
 ```python
 import os
 from numpy import array, mean
-from typing import List
 
 from haystack.components.generators.chat import OpenAIChatGenerator
 from haystack.components.builders import ChatPromptBuilder
@@ -53,7 +52,7 @@ os.environ["OPENAI_API_KEY"] = "YOUR_OPENAI_KEY"
 
 # Initializing standard Haystack components
 generator = OpenAIChatGenerator(
-    model="gpt-3.5-turbo",
+    model="gpt-4o-mini",
     generation_kwargs={"n": 5, "temperature": 0.75, "max_tokens": 400},
 )
 prompt_builder = ChatPromptBuilder(
@@ -69,7 +68,7 @@ prompt_builder = ChatPromptBuilder(
 # unsafe=True lets the adapter return actual Document objects instead of a string.
 adapter = OutputAdapter(
     template="{{answers | build_doc}}",
-    output_type=List[Document],
+    output_type=list[Document],
     custom_filters={"build_doc": lambda data: [Document(content=d.text) for d in data]},
     unsafe=True,
 )
@@ -82,8 +81,8 @@ embedder = SentenceTransformersDocumentEmbedder(
 # Adding one custom component that returns one, "average" embedding from multiple (hypothetical) document embeddings
 @component
 class HypotheticalDocumentEmbedder:
-    @component.output_types(hypothetical_embedding=List[float])
-    def run(self, documents: List[Document]):
+    @component.output_types(hypothetical_embedding=list[float])
+    def run(self, documents: list[Document]):
         stacked_embeddings = array([doc.embedding for doc in documents])
         avg_embeddings = mean(stacked_embeddings, axis=0)
         hyde_vector = avg_embeddings.reshape((1, len(avg_embeddings)))
