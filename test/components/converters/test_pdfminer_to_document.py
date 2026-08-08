@@ -286,8 +286,9 @@ class TestPDFMinerToDocument:
 
     def test_converter_with_link_format(self):
         from unittest.mock import MagicMock
+
         from pdfminer.layout import LTTextContainer
-        
+
         mock_container = MagicMock(spec=LTTextContainer)
         mock_container.get_text.return_value = "Page content"
         mock_lt_page = [mock_container]
@@ -298,7 +299,7 @@ class TestPDFMinerToDocument:
         mock_s.name = "URI"
         mock_pdf_page = MagicMock()
         mock_pdf_page.annots = [{"Subtype": mock_subtype, "A": {"S": mock_s, "URI": b"https://example.com"}}]
-        
+
         with patch("pdfminer.pdftypes.resolve1", side_effect=lambda x: x):
             # Test Markdown
             converter_md = PDFMinerToDocument(link_format="markdown")
@@ -310,4 +311,3 @@ class TestPDFMinerToDocument:
             converter_plain = PDFMinerToDocument(link_format="plain")
             text_plain = converter_plain._converter([mock_lt_page], [mock_pdf_page])
             assert "https://example.com (https://example.com)" in text_plain
-

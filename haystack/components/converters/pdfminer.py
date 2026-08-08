@@ -164,7 +164,7 @@ class PDFMinerToDocument:
             PDF text converted to single str
         """
         pages = []
-        for lt_page, pdf_page in zip(lt_page_objs, pdf_page_objs):
+        for lt_page, pdf_page in zip(lt_page_objs, pdf_page_objs, strict=False):
             text = ""
             for container in lt_page:
                 # Keep text only
@@ -176,16 +176,25 @@ class PDFMinerToDocument:
 
             if self.link_format != LinkFormat.NONE and getattr(pdf_page, "annots", None):
                 from pdfminer.pdftypes import resolve1
+
                 page_links = []
                 annots = resolve1(pdf_page.annots)
                 if annots:
                     for annot in annots:
                         annot_obj = resolve1(annot)
-                        if isinstance(annot_obj, dict) and annot_obj.get("Subtype") and resolve1(annot_obj.get("Subtype")).name == "Link":
+                        if (
+                            isinstance(annot_obj, dict)
+                            and annot_obj.get("Subtype")
+                            and resolve1(annot_obj.get("Subtype")).name == "Link"
+                        ):
                             a = annot_obj.get("A")
                             if a:
                                 a_obj = resolve1(a)
-                                if isinstance(a_obj, dict) and a_obj.get("S") and resolve1(a_obj.get("S")).name == "URI":
+                                if (
+                                    isinstance(a_obj, dict)
+                                    and a_obj.get("S")
+                                    and resolve1(a_obj.get("S")).name == "URI"
+                                ):
                                     uri = a_obj.get("URI")
                                     if uri:
                                         # Decode bytes if needed (pdfminer sometimes returns bytes for strings)
@@ -264,13 +273,13 @@ class PDFMinerToDocument:
                 rsrcmgr = PDFResourceManager(caching=True)
                 device = PDFPageAggregator(rsrcmgr, laparams=self.layout_params)
                 interpreter = PDFPageInterpreter(rsrcmgr, device)
-                
+
                 pdf_pages = list(PDFPage.get_pages(fp, caching=True))
                 lt_pages = []
                 for page in pdf_pages:
                     interpreter.process_page(page)
                     lt_pages.append(device.get_result())
-                
+
                 text = self._converter(iter(lt_pages), iter(pdf_pages))
             except Exception as e:
                 logger.warning(

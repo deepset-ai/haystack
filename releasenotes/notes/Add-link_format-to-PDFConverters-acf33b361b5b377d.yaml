@@ -1,9 +1,9 @@
 ---
 features:
   - |
-    Added a `link_format` parameter to both `PyPDFToDocument` and `PDFMinerToDocument` components, matching the existing functionality in `DOCXToDocument`.
+    Added a ``link_format`` parameter to both ``PyPDFToDocument`` and ``PDFMinerToDocument`` components, matching the existing functionality in ``DOCXToDocument``.
     Links are parsed from PDF annotations and appended at the bottom of the page content.
 enhancements:
   - |
-    Extracted `DOCXLinkFormat` to a reusable `LinkFormat` Enum in `haystack/components/converters/utils.py`.
-    `DOCXLinkFormat` is now an alias for backward compatibility.
+    Extracted ``DOCXLinkFormat`` to a reusable ``LinkFormat`` Enum in ``haystack/components/converters/utils.py``.
+    ``DOCXLinkFormat`` is now an alias for backward compatibility.

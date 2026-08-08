@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import Any
 
 from haystack import Document, component, default_from_dict, default_to_dict, logging
-from haystack.components.converters.utils import get_bytestream_from_source, normalize_metadata
+from haystack.components.converters.utils import LinkFormat, get_bytestream_from_source, normalize_metadata
 from haystack.dataclasses import ByteStream
 from haystack.lazy_imports import LazyImport
 
@@ -90,8 +90,6 @@ class DOCXTableFormat(Enum):
             raise ValueError(msg)
         return table_format
 
-
-from haystack.components.converters.utils import LinkFormat
 
 DOCXLinkFormat = LinkFormat
 

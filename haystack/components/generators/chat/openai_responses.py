@@ -738,7 +738,7 @@ def _convert_response_chunk_to_streaming_chunk(  # noqa: PLR0911
         # event falls through to the generic default and reasoning=None, so encrypted_content
         # is never available for multi-turn conversations.
         if chunk.item.type == "reasoning":
-            if chunk.item.content:
+            if getattr(chunk.item, "content", None):
                 logger.warning(
                     "OpenAI returned a non-empty 'content' field on a reasoning item ({_id}). "
                     "This field is currently undocumented and was never observed in practice. "

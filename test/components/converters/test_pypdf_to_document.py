@@ -139,13 +139,14 @@ class TestPyPDFToDocument:
 
     def test_default_convert_with_link_format(self):
         from unittest.mock import MagicMock
+
         mock_page1 = MagicMock()
         mock_page1.extract_text.return_value = "Page 1 content"
-        
+
         mock_annot1 = MagicMock()
         mock_annot1_obj = {"/Subtype": "/Link", "/A": {"/S": "/URI", "/URI": "https://example.com"}}
         mock_annot1.get_object.return_value = mock_annot1_obj
-        
+
         mock_page1.__contains__.side_effect = lambda key: key == "/Annots"
         mock_page1.__getitem__.side_effect = lambda key: [mock_annot1] if key == "/Annots" else None
 
