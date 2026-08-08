@@ -9,14 +9,16 @@ from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
 
-from haystack import Document, component, logging
-from haystack.components.converters.utils import get_bytestream_from_source, normalize_metadata
+from haystack import Document, component, default_from_dict, default_to_dict, logging
+from haystack.components.converters.utils import LinkFormat, get_bytestream_from_source, normalize_metadata
 from haystack.dataclasses import ByteStream
 from haystack.lazy_imports import LazyImport
 
 with LazyImport("Run 'pip install pdfminer.six'") as pdfminer_import:
-    from pdfminer.high_level import extract_pages
+    from pdfminer.converter import PDFPageAggregator
     from pdfminer.layout import LAParams, LTTextContainer
+    from pdfminer.pdfinterp import PDFPageInterpreter, PDFResourceManager
+    from pdfminer.pdfpage import PDFPage
 
 logger = logging.getLogger(__name__)
 
@@ -56,6 +58,7 @@ class PDFMinerToDocument:
         detect_vertical: bool = True,
         all_texts: bool = False,
         store_full_path: bool = False,
+        link_format: str | LinkFormat = LinkFormat.NONE,
     ) -> None:
         """
         Create a PDFMinerToDocument component.
@@ -91,6 +94,11 @@ class PDFMinerToDocument:
         :param store_full_path:
             If True, the full path of the file is stored in the metadata of the document.
             If False, only the file name is stored.
+        :param link_format:
+            The format for link output. Can be either:
+            `LinkFormat.MARKDOWN` or `"markdown"` to get `[text](address)`,
+            `LinkFormat.PLAIN` or `"plain"` to get text (address),
+            `LinkFormat.NONE` or `"none"` to get text without links.
         """
 
         pdfminer_import.check()
@@ -105,29 +113,90 @@ class PDFMinerToDocument:
             all_texts=all_texts,
         )
         self.store_full_path = store_full_path
+        self.link_format = LinkFormat.from_str(link_format) if isinstance(link_format, str) else link_format
         self.cid_pattern = re.compile(CID_PATTERN)
 
-    @staticmethod
-    def _converter(lt_page_objs: Iterator) -> str:
+    def to_dict(self) -> dict[str, Any]:
+        """
+        Serializes the component to a dictionary.
+
+        :returns:
+            Dictionary with serialized data.
+        """
+        return default_to_dict(
+            self,
+            line_overlap=self.layout_params.line_overlap,
+            char_margin=self.layout_params.char_margin,
+            line_margin=self.layout_params.line_margin,
+            word_margin=self.layout_params.word_margin,
+            boxes_flow=self.layout_params.boxes_flow,
+            detect_vertical=self.layout_params.detect_vertical,
+            all_texts=self.layout_params.all_texts,
+            store_full_path=self.store_full_path,
+            link_format=str(self.link_format),
+        )
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "PDFMinerToDocument":
+        """
+        Deserializes the component from a dictionary.
+
+        :param data:
+            Dictionary with serialized data.
+
+        :returns:
+            Deserialized component.
+        """
+        if "link_format" in data.get("init_parameters", {}):
+            data["init_parameters"]["link_format"] = LinkFormat.from_str(data["init_parameters"]["link_format"])
+        return default_from_dict(cls, data)
+
+    def _converter(self, lt_page_objs: Iterator, pdf_page_objs: Iterator) -> str:
         """
         Extracts text from PDF pages then converts the text into a single str
 
         :param lt_page_objs:
-            Python generator that yields PDF pages.
+            Python generator that yields PDF pages layout objects (LTPage).
+        :param pdf_page_objs:
+            Python generator that yields PDF pages (PDFPage).
 
         :returns:
             PDF text converted to single str
         """
         pages = []
-        for page in lt_page_objs:
+        for lt_page, pdf_page in zip(lt_page_objs, pdf_page_objs):
             text = ""
-            for container in page:
+            for container in lt_page:
                 # Keep text only
                 if isinstance(container, LTTextContainer):
                     container_text = container.get_text()
                     if container_text:
                         text += "\n\n"
                     text += container_text
+
+            if self.link_format != LinkFormat.NONE and getattr(pdf_page, "annots", None):
+                from pdfminer.pdftypes import resolve1
+                page_links = []
+                annots = resolve1(pdf_page.annots)
+                if annots:
+                    for annot in annots:
+                        annot_obj = resolve1(annot)
+                        if isinstance(annot_obj, dict) and annot_obj.get("Subtype") and resolve1(annot_obj.get("Subtype")).name == "Link":
+                            a = annot_obj.get("A")
+                            if a:
+                                a_obj = resolve1(a)
+                                if isinstance(a_obj, dict) and a_obj.get("S") and resolve1(a_obj.get("S")).name == "URI":
+                                    uri = a_obj.get("URI")
+                                    if uri:
+                                        # Decode bytes if needed (pdfminer sometimes returns bytes for strings)
+                                        uri_str = uri.decode("utf-8") if isinstance(uri, bytes) else str(uri)
+                                        if self.link_format == LinkFormat.MARKDOWN:
+                                            page_links.append(f"[{uri_str}]({uri_str})")
+                                        else:  # PLAIN
+                                            page_links.append(f"{uri_str} ({uri_str})")
+                if page_links:
+                    text += "\n\n" + "\n".join(page_links)
+
             pages.append(text)
 
         # Add a page delimiter
@@ -191,8 +260,18 @@ class PDFMinerToDocument:
                 logger.warning("Could not read {source}. Skipping it. Error: {error}", source=source, error=e)
                 continue
             try:
-                pages = extract_pages(io.BytesIO(bytestream.data), laparams=self.layout_params)
-                text = self._converter(pages)
+                fp = io.BytesIO(bytestream.data)
+                rsrcmgr = PDFResourceManager(caching=True)
+                device = PDFPageAggregator(rsrcmgr, laparams=self.layout_params)
+                interpreter = PDFPageInterpreter(rsrcmgr, device)
+                
+                pdf_pages = list(PDFPage.get_pages(fp, caching=True))
+                lt_pages = []
+                for page in pdf_pages:
+                    interpreter.process_page(page)
+                    lt_pages.append(device.get_result())
+                
+                text = self._converter(iter(lt_pages), iter(pdf_pages))
             except Exception as e:
                 logger.warning(
                     "Could not read {source} and convert it to Document, skipping. {error}", source=source, error=e

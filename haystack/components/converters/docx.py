@@ -91,29 +91,9 @@ class DOCXTableFormat(Enum):
         return table_format
 
 
-class DOCXLinkFormat(Enum):
-    """
-    Supported formats for storing DOCX link information in a Document.
-    """
+from haystack.components.converters.utils import LinkFormat
 
-    MARKDOWN = "markdown"
-    PLAIN = "plain"
-    NONE = "none"
-
-    def __str__(self) -> str:
-        return self.value
-
-    @staticmethod
-    def from_str(string: str) -> "DOCXLinkFormat":
-        """
-        Convert a string to a DOCXLinkFormat enum.
-        """
-        enum_map = {e.value: e for e in DOCXLinkFormat}
-        link_format = enum_map.get(string.lower())
-        if link_format is None:
-            msg = f"Unknown link format '{string}'. Supported formats are: {list(enum_map.keys())}"
-            raise ValueError(msg)
-        return link_format
+DOCXLinkFormat = LinkFormat
 
 
 @component

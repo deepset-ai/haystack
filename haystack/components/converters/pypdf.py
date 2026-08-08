@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Any
 
 from haystack import Document, component, default_from_dict, default_to_dict, logging
-from haystack.components.converters.utils import get_bytestream_from_source, normalize_metadata
+from haystack.components.converters.utils import LinkFormat, get_bytestream_from_source, normalize_metadata
 from haystack.dataclasses import ByteStream
 from haystack.lazy_imports import LazyImport
 
@@ -83,6 +83,7 @@ class PyPDFToDocument:
         layout_mode_strip_rotated: bool = True,
         layout_mode_font_height_weight: float = 1.0,
         store_full_path: bool = False,
+        link_format: str | LinkFormat = LinkFormat.NONE,
     ) -> None:
         """
         Create an PyPDFToDocument component.
@@ -112,6 +113,11 @@ class PyPDFToDocument:
         :param store_full_path:
             If True, the full path of the file is stored in the metadata of the document.
             If False, only the file name is stored.
+        :param link_format:
+            The format for link output. Can be either:
+            `LinkFormat.MARKDOWN` or `"markdown"` to get `[text](address)`,
+            `LinkFormat.PLAIN` or `"plain"` to get text (address),
+            `LinkFormat.NONE` or `"none"` to get text without links.
         """
         pypdf_import.check()
 
@@ -126,6 +132,7 @@ class PyPDFToDocument:
         self.layout_mode_scale_weight = layout_mode_scale_weight
         self.layout_mode_strip_rotated = layout_mode_strip_rotated
         self.layout_mode_font_height_weight = layout_mode_font_height_weight
+        self.link_format = LinkFormat.from_str(link_format) if isinstance(link_format, str) else link_format
 
     def to_dict(self) -> dict[str, Any]:
         """
@@ -144,6 +151,7 @@ class PyPDFToDocument:
             layout_mode_strip_rotated=self.layout_mode_strip_rotated,
             layout_mode_font_height_weight=self.layout_mode_font_height_weight,
             store_full_path=self.store_full_path,
+            link_format=str(self.link_format),
         )
 
     @classmethod
@@ -157,6 +165,8 @@ class PyPDFToDocument:
         :returns:
             Deserialized component.
         """
+        if "link_format" in data.get("init_parameters", {}):
+            data["init_parameters"]["link_format"] = LinkFormat.from_str(data["init_parameters"]["link_format"])
         return default_from_dict(cls, data)
 
     def _default_convert(self, reader: "PdfReader") -> str:
@@ -171,6 +181,23 @@ class PyPDFToDocument:
                 layout_mode_strip_rotated=self.layout_mode_strip_rotated,
                 layout_mode_font_height_weight=self.layout_mode_font_height_weight,
             )
+
+            if self.link_format != LinkFormat.NONE and "/Annots" in page:
+                page_links = []
+                for annot in page["/Annots"]:
+                    annot_obj = annot.get_object()
+                    if annot_obj.get("/Subtype") == "/Link":
+                        a = annot_obj.get("/A")
+                        if a and a.get("/S") == "/URI":
+                            uri = a.get("/URI")
+                            if uri:
+                                if self.link_format == LinkFormat.MARKDOWN:
+                                    page_links.append(f"[{uri}]({uri})")
+                                else:  # PLAIN
+                                    page_links.append(f"{uri} ({uri})")
+                if page_links:
+                    extracted_text += "\n\n" + "\n".join(page_links)
+
             texts.append(extracted_text)
         return "\f".join(texts)
 
