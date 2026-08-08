@@ -646,7 +646,7 @@ def _convert_response_to_chat_message(responses: Response | ParsedResponse) -> C
             extra = output.to_dict()
             # we dont need the summary in the extra
             extra.pop("summary")
-            if output.content:
+            if getattr(output, "content", None):
                 logger.warning(
                     "OpenAI returned a non-empty 'content' field on a reasoning item ({_id}). "
                     "The content is preserved in ReasoningContent.extra['content'] but is NOT "

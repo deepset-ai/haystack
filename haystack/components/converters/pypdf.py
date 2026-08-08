@@ -184,7 +184,7 @@ class PyPDFToDocument:
 
             if self.link_format != LinkFormat.NONE and "/Annots" in page:
                 page_links = []
-                for annot in page["/Annots"]:
+                for annot in page["/Annots"].get_object():  # type: ignore[attr-defined]
                     annot_obj = annot.get_object()
                     if annot_obj.get("/Subtype") == "/Link":
                         a = annot_obj.get("/A")

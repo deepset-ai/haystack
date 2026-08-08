@@ -123,7 +123,7 @@ def weather_function(city: str) -> dict[str, Any]:
 # mock chat completions with structured outputs
 @pytest.fixture
 def mock_parsed_chat_completion():
-    with patch("openai.resources.chat.completions.Completions.parse") as mock_chat_completion_parse:
+    with patch("openai.resources.beta.chat.completions.Completions.parse") as mock_chat_completion_parse:
         completion = ParsedChatCompletion[CalendarEvent](
             id="json_foo",
             model="gpt-5-mini",
@@ -720,7 +720,7 @@ class TestOpenAIChatGenerator:
         Test the run method with tools and response format
             When tools are used, the function call overrides the schema passed in response_format
         """
-        with patch("openai.resources.chat.completions.Completions.parse") as mock_chat_completion_parse:
+        with patch("openai.resources.beta.chat.completions.Completions.parse") as mock_chat_completion_parse:
             completion = ParsedChatCompletion[CalendarEvent](
                 id="foo",
                 model="gpt-4",

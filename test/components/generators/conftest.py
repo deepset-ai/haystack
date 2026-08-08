@@ -266,7 +266,7 @@ def openai_mock_async_responses():
     OpenAI Responses API (client.responses.create).
     """
 
-    with patch("openai.resources.responses.AsyncResponses.create") as mock_create:
+    with patch("openai.resources.responses.AsyncResponses.create", new_callable=AsyncMock) as mock_create:
         # Build the Response object exactly like the one you provided
         mock_response = Response(  # type: ignore[call-arg]
             id="resp_mock_123",
