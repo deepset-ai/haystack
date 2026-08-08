@@ -646,7 +646,7 @@ def _convert_response_to_chat_message(responses: Response | ParsedResponse) -> C
             extra = output.to_dict()
             # we dont need the summary in the extra
             extra.pop("summary")
-            if getattr(output, "content", None):
+            if output.content:
                 logger.warning(
                     "OpenAI returned a non-empty 'content' field on a reasoning item ({_id}). "
                     "The content is preserved in ReasoningContent.extra['content'] but is NOT "
@@ -738,7 +738,7 @@ def _convert_response_chunk_to_streaming_chunk(  # noqa: PLR0911
         # event falls through to the generic default and reasoning=None, so encrypted_content
         # is never available for multi-turn conversations.
         if chunk.item.type == "reasoning":
-            if getattr(chunk.item, "content", None):
+            if chunk.item.content:
                 logger.warning(
                     "OpenAI returned a non-empty 'content' field on a reasoning item ({_id}). "
                     "This field is currently undocumented and was never observed in practice. "

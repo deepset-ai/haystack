@@ -14,6 +14,7 @@ from openai.types.chat import (
     ChatCompletion,
     ChatCompletionChunk,
     ChatCompletionMessage,
+    ChatCompletionMessageCustomToolCall,
     ParsedChatCompletion,
     ParsedChatCompletionMessage,
 )
@@ -382,10 +383,8 @@ class OpenAIChatGenerator:
             tools_strict=tools_strict,
         )
         openai_endpoint = api_args.pop("openai_endpoint")
-        if openai_endpoint == "parse":
-            openai_endpoint_method = getattr(self.client.beta.chat.completions, openai_endpoint)  # type: ignore
-        else:
-            openai_endpoint_method = getattr(self.client.chat.completions, openai_endpoint)  # type: ignore
+        assert self.client is not None  # mypy: client is built by warm_up above
+        openai_endpoint_method = getattr(self.client.chat.completions, openai_endpoint)
         chat_completion = openai_endpoint_method(**api_args)
 
         if streaming_callback is not None:
@@ -468,10 +467,7 @@ class OpenAIChatGenerator:
 
         openai_endpoint = api_args.pop("openai_endpoint")
         assert self.async_client is not None  # mypy: async_client is built by warm_up_async above
-        if openai_endpoint == "parse":
-            openai_endpoint_method = getattr(self.async_client.beta.chat.completions, openai_endpoint)
-        else:
-            openai_endpoint_method = getattr(self.async_client.chat.completions, openai_endpoint)
+        openai_endpoint_method = getattr(self.async_client.chat.completions, openai_endpoint)
         chat_completion = await openai_endpoint_method(**api_args)
 
         if streaming_callback is not None:
@@ -657,21 +653,19 @@ def _convert_chat_completion_to_chat_message(
     if message.tool_calls:
         # we currently only support function tools (not custom tools)
         # https://platform.openai.com/docs/guides/function-calling#custom-tools
-        openai_tool_calls = [tc for tc in message.tool_calls if getattr(tc, "type", "function") == "function"]
+        openai_tool_calls = [tc for tc in message.tool_calls if not isinstance(tc, ChatCompletionMessageCustomToolCall)]
         for openai_tc in openai_tool_calls:
-            arguments_str = openai_tc.function.arguments  # type: ignore[union-attr]
+            arguments_str = openai_tc.function.arguments
             try:
                 arguments = json.loads(arguments_str)
-                tool_calls.append(
-                    ToolCall(id=openai_tc.id, tool_name=openai_tc.function.name, arguments=arguments)  # type: ignore[union-attr]
-                )
+                tool_calls.append(ToolCall(id=openai_tc.id, tool_name=openai_tc.function.name, arguments=arguments))
             except json.JSONDecodeError:
                 logger.warning(
                     "OpenAI returned a malformed JSON string for tool call arguments. This tool call "
                     "will be skipped. To always generate a valid JSON, set `tools_strict` to `True`. "
                     "Tool call ID: {_id}, Tool name: {_name}, Arguments: {_arguments}",
                     _id=openai_tc.id,
-                    _name=openai_tc.function.name,  # type: ignore[union-attr]
+                    _name=openai_tc.function.name,
                     _arguments=arguments_str,
                 )
 
