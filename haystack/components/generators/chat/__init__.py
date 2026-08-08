@@ -9,6 +9,7 @@ from lazy_imports import LazyImporter
 
 _import_structure = {
     "openai": ["OpenAIChatGenerator"],
+    "openai_batch": ["OpenAIBatchChatGenerator"],
     "openai_responses": ["OpenAIResponsesChatGenerator"],
     "azure": ["AzureOpenAIChatGenerator"],
     "azure_responses": ["AzureOpenAIResponsesChatGenerator"],
@@ -24,6 +25,7 @@ if TYPE_CHECKING:
     from .llm import LLM as LLM
     from .mock import MockChatGenerator as MockChatGenerator
     from .openai import OpenAIChatGenerator as OpenAIChatGenerator
+    from .openai_batch import OpenAIBatchChatGenerator as OpenAIBatchChatGenerator
     from .openai_responses import OpenAIResponsesChatGenerator as OpenAIResponsesChatGenerator
 
 else:

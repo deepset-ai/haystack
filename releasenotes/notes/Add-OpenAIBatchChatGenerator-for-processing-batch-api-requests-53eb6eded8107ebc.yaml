@@ -1,0 +1,4 @@
+---
+features:
+  - |
+    Added ``OpenAIBatchChatGenerator``, a new component that allows users to submit multiple chat completion requests to OpenAI's Batch API for asynchronous processing, enabling up to 50% cost savings for high-throughput, latency-insensitive workloads.
