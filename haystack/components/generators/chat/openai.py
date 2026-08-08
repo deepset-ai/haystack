@@ -383,9 +383,9 @@ class OpenAIChatGenerator:
         )
         openai_endpoint = api_args.pop("openai_endpoint")
         if openai_endpoint == "parse":
-            openai_endpoint_method = getattr(self.client.beta.chat.completions, openai_endpoint)
+            openai_endpoint_method = getattr(self.client.beta.chat.completions, openai_endpoint)  # type: ignore
         else:
-            openai_endpoint_method = getattr(self.client.chat.completions, openai_endpoint)
+            openai_endpoint_method = getattr(self.client.chat.completions, openai_endpoint)  # type: ignore
         chat_completion = openai_endpoint_method(**api_args)
 
         if streaming_callback is not None:
