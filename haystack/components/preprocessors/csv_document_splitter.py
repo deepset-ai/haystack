@@ -176,10 +176,11 @@ class CSVDocumentSplitter:
         :param axis: Axis along which to find empty elements. Either "row" or "column".
         :return: List of indices where consecutive empty rows or columns start.
         """
-        if axis == "row":
-            empty_elements = df[df.isnull().all(axis=1)].index.tolist()
-        else:
-            empty_elements = df.columns[df.isnull().all(axis=0)].tolist()
+        # Return positional indices, not index/column labels: ``_split_dataframe`` slices with
+        # ``iloc``, so a sub-table that no longer has a zero-based index would otherwise recurse
+        # forever on itself (see https://github.com/deepset-ai/haystack/issues/12190).
+        empty_mask = df.isnull().all(axis=1 if axis == "row" else 0)
+        empty_elements = [position for position, is_empty in enumerate(empty_mask) if is_empty]
 
         # If no empty elements found, return empty list
         if len(empty_elements) == 0:

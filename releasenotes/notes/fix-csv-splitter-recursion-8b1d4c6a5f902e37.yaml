@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    Fixed a `RecursionError` in `CSVDocumentSplitter` that occurred when both `row_split_threshold`
+    and `column_split_threshold` were set and a later row block also required a column split.
+    `_find_split_indices` returned index labels while `_split_dataframe` sliced by position, so a
+    sub-table that no longer had a zero-based index recursed forever on itself. `_find_split_indices`
+    now returns positional indices.

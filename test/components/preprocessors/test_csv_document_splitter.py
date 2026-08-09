@@ -211,6 +211,25 @@ P,Q,,,,
             assert table.content == expected_tables[i]
             assert table.meta == expected_meta[i]
 
+    def test_recursive_split_later_row_block_needing_a_column_split(self, splitter: CSVDocumentSplitter) -> None:
+        # Regression test for https://github.com/deepset-ai/haystack/issues/12190: a later row block
+        # that also needs a column split used to recurse forever and raise RecursionError.
+        csv_content = "A,B,C,D,E,F\n1,2,3,4,5,6\n,,,,,\nP,Q,,,X,Y\n1,2,,,7,8\n,,,,M,N\n,,,,9,10\nR,S,,,,\n3,4,,,,\n"
+        splitter = CSVDocumentSplitter(row_split_threshold=1, column_split_threshold=1)
+        doc = Document(content=csv_content, id="test_id")
+        result = splitter.run([doc])["documents"]
+        assert len(result) == 4
+        expected_tables = ["A,B,C,D,E,F\n1,2,3,4,5,6\n", "P,Q\n1,2\n", "X,Y\n7,8\nM,N\n9,10\n", "R,S\n3,4\n"]
+        expected_meta = [
+            {"source_id": "test_id", "row_idx_start": 0, "col_idx_start": 0, "split_id": 0},
+            {"source_id": "test_id", "row_idx_start": 3, "col_idx_start": 0, "split_id": 1},
+            {"source_id": "test_id", "row_idx_start": 3, "col_idx_start": 4, "split_id": 2},
+            {"source_id": "test_id", "row_idx_start": 7, "col_idx_start": 0, "split_id": 3},
+        ]
+        for i, table in enumerate(result):
+            assert table.content == expected_tables[i]
+            assert table.meta == expected_meta[i]
+
     def test_csv_with_blank_lines(self, splitter: CSVDocumentSplitter) -> None:
         csv_data = """ID,LeftVal,,,RightVal,Extra
 1,Hello,,,World,Joined
