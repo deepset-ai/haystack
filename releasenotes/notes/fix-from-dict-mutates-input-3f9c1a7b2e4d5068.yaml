@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Fixed `from_dict` in `OutputAdapter`, `ConditionalRouter`, `BranchJoiner`, `ListJoiner` and
+    `MetadataRouter` so it no longer mutates the input dictionary. These components deserialized their
+    type parameters in place, which left the input dict holding live `type` objects. The dict was then
+    no longer JSON-serializable and calling `from_dict` a second time on the same dict raised an error.

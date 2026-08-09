@@ -36,6 +36,14 @@ class TestListJoiner:
             "init_parameters": {"list_type_": None},
         }
 
+    def test_from_dict_does_not_mutate_input(self):
+        joiner = ListJoiner(list_type_=list)
+        data = joiner.to_dict()
+        ListJoiner.from_dict(data)
+        # from_dict must not mutate its input, so the same dict stays serializable and reusable
+        assert data == joiner.to_dict()
+        ListJoiner.from_dict(data)
+
     def test_to_dict_non_default(self):
         joiner = ListJoiner(list[ChatMessage])
         data = joiner.to_dict()

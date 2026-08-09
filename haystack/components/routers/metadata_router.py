@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import copy
 from typing import Any
 
 from haystack import Document, component, default_from_dict, default_to_dict
@@ -169,6 +170,7 @@ class MetadataRouter:
         :returns:
             The deserialized component instance.
         """
+        data = copy.deepcopy(data)
         init_params = data.get("init_parameters", {})
         if "output_type" in init_params:
             # Deserialize the output_type to its original type

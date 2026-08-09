@@ -678,6 +678,17 @@ class TestRouter:
         assert new_router.routes[0]["output_type"] is str
         assert new_router.routes[0]["output_type"] is original_output_type
 
+    def test_from_dict_does_not_mutate_input(self):
+        routes = [
+            {"condition": "{{streams|length < 2}}", "output": "{{query}}", "output_type": str, "output_name": "query"}
+        ]
+        router = ConditionalRouter(routes)
+        data = router.to_dict()
+        ConditionalRouter.from_dict(data)
+        # from_dict must not mutate its input, so the same dict stays serializable and reusable
+        assert data == router.to_dict()
+        ConditionalRouter.from_dict(data)
+
     def test_multiple_outputs_per_route(self):
         """Test that router handles multiple outputs per route correctly"""
         routes = [

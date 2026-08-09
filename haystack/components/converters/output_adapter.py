@@ -4,6 +4,7 @@
 
 import ast
 import contextlib
+import copy
 from collections.abc import Callable
 from typing import Any, TypeAlias
 
@@ -167,6 +168,7 @@ class OutputAdapter:
         :returns:
             The deserialized component.
         """
+        data = copy.deepcopy(data)
         init_params = data.get("init_parameters", {})
         init_params["output_type"] = deserialize_type(init_params["output_type"])
 

@@ -157,6 +157,14 @@ class TestMetadataRouter:
         }
         assert router.to_dict() == expected_dict
 
+    def test_from_dict_does_not_mutate_input(self):
+        router = MetadataRouter(rules={"g": {"field": "meta.k", "operator": "==", "value": 1}})
+        data = router.to_dict()
+        MetadataRouter.from_dict(data)
+        # from_dict must not mutate its input, so the same dict stays serializable and reusable
+        assert data == router.to_dict()
+        MetadataRouter.from_dict(data)
+
     def test_from_dict(self):
         router_dict = {
             "type": "haystack.components.routers.metadata_router.MetadataRouter",

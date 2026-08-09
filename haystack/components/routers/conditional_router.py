@@ -4,6 +4,7 @@
 
 import ast
 import contextlib
+import copy
 from collections.abc import Callable, Mapping, Sequence
 from typing import Any, TypedDict, get_args, get_origin
 
@@ -362,6 +363,7 @@ class ConditionalRouter:
         :returns:
             The deserialized component.
         """
+        data = copy.deepcopy(data)
         init_params = data.get("init_parameters", {})
         routes = init_params.get("routes")
         for route in routes:

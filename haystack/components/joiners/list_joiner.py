@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import copy
 from itertools import chain
 from typing import Any
 
@@ -96,6 +97,7 @@ class ListJoiner:
         :param data: Dictionary to deserialize from.
         :returns: Deserialized component.
         """
+        data = copy.deepcopy(data)
         init_parameters = data.get("init_parameters")
         if init_parameters is not None and init_parameters.get("list_type_") is not None:
             data["init_parameters"]["list_type_"] = deserialize_type(data["init_parameters"]["list_type_"])

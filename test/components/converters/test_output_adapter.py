@@ -185,6 +185,14 @@ class TestOutputAdapter:
         assert component.custom_filters == {}
         assert not component._unsafe
 
+    def test_from_dict_does_not_mutate_input(self):
+        adapter = OutputAdapter(template="{{ documents[0].content }}", output_type=str)
+        data = adapter.to_dict()
+        OutputAdapter.from_dict(data)
+        # from_dict must not mutate its input, so the same dict stays serializable and reusable
+        assert data == adapter.to_dict()
+        OutputAdapter.from_dict(data)
+
     def test_output_adapter_in_pipeline(self):
         @component
         class DocumentProducer:

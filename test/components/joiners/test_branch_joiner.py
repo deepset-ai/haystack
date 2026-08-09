@@ -34,3 +34,11 @@ class TestBranchJoiner:
         joiner = BranchJoiner(int)
         with pytest.raises(ValueError, match="BranchJoiner expects only one input, but 0 were received."):
             joiner.run(value=[])
+
+    def test_from_dict_does_not_mutate_input(self):
+        joiner = BranchJoiner(int)
+        data = joiner.to_dict()
+        BranchJoiner.from_dict(data)
+        # from_dict must not mutate its input, so the same dict stays serializable and reusable
+        assert data == joiner.to_dict()
+        BranchJoiner.from_dict(data)
