@@ -8,12 +8,12 @@ from collections.abc import Callable
 from typing import Any
 
 from haystack.errors import FilterError
-from haystack.utils.filters import COMPARISON_OPERATORS
 
-# The operator strings come from the keys of COMPARISON_OPERATORS, the single source of truth
-# used by `document_matches_filter`, so the emitted conditions are always valid filter dicts.
-# This also fails loudly if the set of operators in `haystack.utils.filters` ever changes.
-_EQ, _NE, _GT, _GTE, _LT, _LTE, _IN, _NOT_IN = COMPARISON_OPERATORS
+# Operator strings are spelled out rather than unpacked from COMPARISON_OPERATORS, whose
+# iteration order is an implementation detail: reordering that dict must not silently
+# remap `gt` onto "<". test_filter_builder.py asserts this list stays in sync with
+# COMPARISON_OPERATORS, the single source of truth used by `document_matches_filter`.
+_EQ, _NE, _GT, _GTE, _LT, _LTE, _IN, _NOT_IN = ("==", "!=", ">", ">=", "<", "<=", "in", "not in")
 
 
 class FilterBuilder:
