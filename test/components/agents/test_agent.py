@@ -1790,15 +1790,12 @@ class TestAgentToolSelection:
         return agent
 
     def test_run_raises_on_duplicate_tool_names_across_toolsets(self):
-        # Duplicate names across combined sources are caught by the per-step validation, since no check at
-        # composition time can see the tools of lazily-loading Toolsets.
         agent = self._agent_with_duplicate_tool_names()
         with pytest.raises(ValueError, match="Duplicate tool names"):
             agent.run(messages=[ChatMessage.from_user("hi")])
 
     @pytest.mark.asyncio
     async def test_run_async_raises_on_duplicate_tool_names_across_toolsets(self):
-        # The async step loop performs its own per-step validation, on a separate code path from the sync one.
         agent = self._agent_with_duplicate_tool_names()
         with pytest.raises(ValueError, match="Duplicate tool names"):
             await agent.run_async(messages=[ChatMessage.from_user("hi")])
@@ -2233,33 +2230,6 @@ class TestAgentWarmUp:
         agent.warm_up()
         assert toolset.was_warmed_up
 
-    def test_warm_up_covers_empty_lazy_toolset(self):
-        # A Toolset that only loads its tools on warm_up() has len 0 before warming: the Agent must warm it
-        # anyway (a truthiness check on the toolset would skip it and permanently mark tools as warmed).
-        class LazyToolset(Toolset):
-            def __init__(self):
-                self.loaded = False
-                super().__init__(tools=[])
-
-            def warm_up(self):
-                if self.loaded:
-                    return
-                self.loaded = True
-                self.tools = [
-                    Tool(
-                        name="lazy_tool",
-                        description="d",
-                        parameters={"type": "object", "properties": {}},
-                        function=lambda: None,
-                    )
-                ]
-
-        toolset = LazyToolset()
-        agent = Agent(chat_generator=MockChatGenerator("Hello"), tools=toolset)
-        agent.warm_up()
-        assert toolset.loaded
-        assert [tool.name for tool in toolset] == ["lazy_tool"]
-
     def test_warm_up_list_of_toolsets(self):
         # Toolsets are combined by passing them as a list; each keeps its own warm_up.
         tool1 = self._make_tracking_tool("tool1")
@@ -2296,7 +2266,6 @@ class TestAgentWarmUp:
         assert toolset2.was_warmed_up
 
     def test_warm_up_rewarms_tools_on_every_call(self):
-        """Tools are warmed on every warm_up() so tools added to a Toolset after the first run get warmed too."""
         call_count = {"n": 0}
         tool = Tool(
             name="counting_tool",
@@ -2319,14 +2288,26 @@ class TestAgentWarmUp:
 
         assert call_count["n"] == 3
 
-    def test_warm_up_refreshes_toolset(self):
-        """Agent.warm_up() must warm up lazy toolsets (e.g. MCPToolset) so the actual tools are available at runtime."""
-        placeholder_tool = Tool(
-            name="mcp_not_connected_placeholder_123",
-            description="Placeholder tool before connection",
-            parameters={"type": "object", "properties": {}},
-            function=lambda: "placeholder",
-        )
+    @pytest.mark.parametrize(
+        "initial_tools",
+        [
+            pytest.param([], id="empty"),
+            pytest.param(
+                [
+                    Tool(
+                        name="mcp_not_connected_placeholder_123",
+                        description="Placeholder tool before connection",
+                        parameters={"type": "object", "properties": {}},
+                        function=lambda: "placeholder",
+                    )
+                ],
+                id="placeholder",
+            ),
+        ],
+    )
+    def test_warm_up_loads_lazy_toolset(self, initial_tools):
+        # A lazy toolset (e.g. MCPToolset) loads its real tools on warm_up(). Before that it may be empty
+        # (a truthiness check would skip it) or expose a placeholder: warm_up must load the real tools either way.
         actual_tool = Tool(
             name="get_time",
             description="Get the current time in ISO format",
@@ -2334,21 +2315,21 @@ class TestAgentWarmUp:
             function=lambda: "2024-12-01T12:00:00Z",
         )
 
-        class MockMCPToolset(Toolset):
+        class LazyToolset(Toolset):
             def __init__(self):
-                super().__init__([placeholder_tool])
                 self._connected = False
+                super().__init__(list(initial_tools))
 
             def warm_up(self):
                 if not self._connected:
                     self.tools = [actual_tool]
                     self._connected = True
 
-        mcp_toolset = MockMCPToolset()
-        agent = Agent(chat_generator=MockChatGenerator("Hello"), tools=mcp_toolset)
-        assert mcp_toolset.tools == [placeholder_tool]
+        toolset = LazyToolset()
+        agent = Agent(chat_generator=MockChatGenerator("Hello"), tools=toolset)
+        assert toolset.tools == initial_tools
         agent.warm_up()
-        assert mcp_toolset.tools == [actual_tool]
+        assert toolset.tools == [actual_tool]
 
     def test_run_warms_lazy_toolset_before_tool_selection(self):
         """

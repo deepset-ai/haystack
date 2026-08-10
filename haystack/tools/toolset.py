@@ -51,9 +51,8 @@ class Toolset:
        OpenAPI URLs, MCP servers, or other resources.
 
        When implementing a custom Toolset subclass for dynamic tool loading:
-       - Load the tools in `warm_up()` and assign them to `self.tools`. Following the framework-wide `warm_up()`
-         convention, make it idempotent by guarding on your own state (e.g. `if self._client is not None: return`),
-         as it may be called before every run.
+       - Load the tools in `warm_up()` and assign them to `self.tools`. Since `warm_up()` may be called before
+         every run, make it idempotent by guarding on your own state (e.g. `if self._client is not None: return`).
        - Override `to_dict()` and `from_dict()` to serialize the endpoint descriptor (URL, server info) rather than
          the dynamically loaded Tool instances.
 
@@ -198,9 +197,9 @@ class Toolset:
                 self.tools = self.mcp_connection.fetch_tools()
         ```
 
-        Following the framework-wide convention, this method may be called multiple times (e.g. before every
-        run): implementations are responsible for their own idempotence, guarding on their own state as in the
-        example above. The default implementation delegates to the tools' own idempotent `warm_up()`.
+        This method may be called multiple times (e.g. before every run): implementations are responsible for
+        their own idempotence, guarding on their own state as in the example above. The default implementation delegates
+        to the tools' own idempotent `warm_up()`.
         """
         for tool in self.tools:
             if hasattr(tool, "warm_up"):
