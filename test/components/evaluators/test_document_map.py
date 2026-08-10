@@ -65,6 +65,18 @@ def test_run_with_nested_meta_comparison():
     assert result == {"individual_scores": [1.0, 0.0], "score": 0.5}
 
 
+def test_run_with_unhashable_meta_comparison():
+    evaluator = DocumentMAPEvaluator(document_comparison_field="meta.tags")
+    result = evaluator.run(
+        ground_truth_documents=[
+            [Document(content="x", meta={"tags": ["a"]}), Document(content="y", meta={"tags": ["b"]})]
+        ],
+        retrieved_documents=[[Document(content="z", meta={"tags": ["a"]})]],
+    )
+
+    assert result == {"individual_scores": [0.5], "score": 0.5}
+
+
 def test_run_with_all_matching():
     evaluator = DocumentMAPEvaluator()
     result = evaluator.run(

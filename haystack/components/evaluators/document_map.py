@@ -119,17 +119,22 @@ class DocumentMAPEvaluator:
             average_precision_numerator = 0.0
             retrieved_relevant_documents = 0
 
-            ground_truth_values = {
-                value for doc in ground_truth if (value := self._get_comparison_value(doc)) is not None
-            }
-            total_relevant_documents = len(ground_truth_values)
+            # A list keeps the deduplication working for unhashable comparison values, for example when
+            # document_comparison_field points to a meta key holding a list.
+            uncredited_ground_truth_values: list[Any] = []
+            for doc in ground_truth:
+                value = self._get_comparison_value(doc)
+                if value is not None and value not in uncredited_ground_truth_values:
+                    uncredited_ground_truth_values.append(value)
+
+            total_relevant_documents = len(uncredited_ground_truth_values)
             for rank, retrieved_document in enumerate(retrieved):
                 retrieved_value = self._get_comparison_value(retrieved_document)
                 if retrieved_value is None:
                     continue
 
-                if retrieved_value in ground_truth_values:
-                    ground_truth_values.discard(retrieved_value)
+                if retrieved_value in uncredited_ground_truth_values:
+                    uncredited_ground_truth_values.remove(retrieved_value)
                     retrieved_relevant_documents += 1
                     average_precision_numerator += retrieved_relevant_documents / (rank + 1)
             if total_relevant_documents:
