@@ -1,6 +1,6 @@
 ---
 fixes:
   - |
-    Fixed an issue where `RecursiveDocumentSplitter` applied the overlap at every recursion level when
+    Fixed an issue where ``RecursiveDocumentSplitter`` applied the overlap at every recursion level when
     chunking text with multiple separators, producing chunks that were not substrings of the source text.
     The overlap is now applied exactly once, on the final chunk list.
