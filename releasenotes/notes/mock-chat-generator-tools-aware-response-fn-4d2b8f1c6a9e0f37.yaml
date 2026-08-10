@@ -1,0 +1,8 @@
+---
+enhancements:
+  - |
+    ``MockChatGenerator``'s ``response_fn`` can now be tool-aware. If the callable accepts a second positional
+    argument, it also receives the ``tools`` passed to ``run``/``run_async`` (a ``ToolsType`` or ``None``), so a
+    dynamic mock can build tool calls whose arguments follow the tool's parameter schema or route between the
+    available tools. Existing single-argument ``response_fn`` callables are unaffected and keep receiving only the
+    messages.
