@@ -10,6 +10,23 @@ import pytest
 from haystack import Pipeline
 from haystack.components.generators.chat import MockChatGenerator
 from haystack.dataclasses import ChatMessage, StreamingChunk, ToolCall
+from haystack.tools import Tool
+
+
+def _add(a: float, b: float) -> float:
+    return a + b
+
+
+ADD_TOOL = Tool(
+    name="add",
+    description="Add two numbers.",
+    parameters={
+        "type": "object",
+        "properties": {"a": {"type": "number"}, "b": {"type": "number"}},
+        "required": ["a", "b"],
+    },
+    function=_add,
+)
 
 
 def _exclaim(messages: list[ChatMessage]) -> str:
@@ -20,6 +37,19 @@ def _exclaim(messages: list[ChatMessage]) -> str:
 def _assistant_reply(messages: list[ChatMessage]) -> ChatMessage:
     """Module-level response function that returns a full ChatMessage."""
     return ChatMessage.from_assistant("canned message")
+
+
+def _call_first_tool(messages: list[ChatMessage], tools: "list[Tool] | None") -> ChatMessage:
+    """
+    Tool-aware response function: builds a tool call from the runtime tool schema passed to run().
+
+    Its `tools` annotation is deferred (a string) to check that tool-awareness detection does not resolve annotations.
+    """
+    if not tools:
+        return ChatMessage.from_assistant("no tools available")
+    tool = tools[0]
+    argument = next(iter(tool.parameters["properties"]))
+    return ChatMessage.from_assistant(tool_calls=[ToolCall(tool_name=tool.name, arguments={argument: 1})])
 
 
 def _noop_callback(chunk: StreamingChunk) -> None:
@@ -99,6 +129,27 @@ class TestMockChatGenerator:
 
         gen = MockChatGenerator(response_fn=_exclaim)
         assert gen.run("plain string")["replies"][0].text == "plain string!"
+
+    def test_response_fn_receives_tools(self) -> None:
+
+        # a response_fn taking a second argument builds a tool call from the tool schema passed to run()
+        gen = MockChatGenerator(response_fn=_call_first_tool)
+        reply = gen.run([ChatMessage.from_user("add 2 and 3")], tools=[ADD_TOOL])["replies"][0]
+        assert reply.tool_calls == [ToolCall(tool_name="add", arguments={"a": 1})]
+        # the same response_fn is still called when no tools are passed; it receives None
+        assert gen.run([ChatMessage.from_user("hi")])["replies"][0].text == "no tools available"
+
+    def test_messages_only_response_fn_ignores_tools(self) -> None:
+
+        # passing tools to run() must not break a response_fn that only accepts the messages
+        gen = MockChatGenerator(response_fn=_exclaim)
+        assert gen.run([ChatMessage.from_user("hi")], tools=[ADD_TOOL])["replies"][0].text == "hi!"
+
+    async def test_response_fn_receives_tools_async(self) -> None:
+
+        gen = MockChatGenerator(response_fn=_call_first_tool)
+        result = await gen.run_async([ChatMessage.from_user("add")], tools=[ADD_TOOL])
+        assert result["replies"][0].tool_calls == [ToolCall(tool_name="add", arguments={"a": 1})]
 
     def test_tool_call_response(self) -> None:
 
