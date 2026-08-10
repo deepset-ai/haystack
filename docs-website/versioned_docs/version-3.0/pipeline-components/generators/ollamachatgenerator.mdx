@@ -14,6 +14,7 @@ This component enables chat completion using an LLM running on Ollama.
 |  |  |
 | --- | --- |
 | **Most common position in a pipeline** | After a [ChatPromptBuilder](../builders/chatpromptbuilder.mdx)                                                 |
+| **Mandatory init variables**           | None                                                                                                 |
 | **Mandatory run variables**            | `messages`: A list of [`ChatMessage`](../../concepts/data-classes/chatmessage.mdx)  objects representing the chat |
 | **Output variables**                   | `replies`: A list of LLM’s alternative replies                                                       |
 | **API reference**                      | [Ollama](/reference/integrations-ollama)                                                                    |
@@ -28,9 +29,9 @@ This component enables chat completion using an LLM running on Ollama.
 
 `OllamaChatGenerator` supports models running on Ollama, such as `llama2` and `mixtral`. Find the full list of supported models [here](https://ollama.ai/library).
 
-`OllamaChatGenerator`  needs a `model`  name and a `url` to work. By default, it uses `"orca-mini"` model and `"http://localhost:11434"` url.
+`OllamaChatGenerator`  needs a `model`  name and a `url` to work. By default, it uses `"qwen3:0.6b"` model and `"http://localhost:11434"` url.
 
-The way to operate with `OllamaChatGenerator` is by using  `ChatMessage` objects. [ChatMessage](../../concepts/data-classes/chatmessage.mdx)  is a data class that contains a message, a role (who generated the message, such as `user`, `assistant`, `system`, `function`), and optional metadata. See the [usage](#usage) section for an example.
+The way to operate with `OllamaChatGenerator` is by using  `ChatMessage` objects. [ChatMessage](../../concepts/data-classes/chatmessage.mdx)  is a data class that contains a message, a role (who generated the message, such as `user`, `assistant`, `system`, `tool`), and optional metadata. See the [usage](#usage) section for an example.
 
 ### Tool Support
 

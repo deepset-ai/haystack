@@ -14,7 +14,7 @@ This generator enables chat completion using various Hugging Face APIs.
 |  |  |
 | --- | --- |
 | **Most common position in a pipeline** | After a [`ChatPromptBuilder`](../builders/chatpromptbuilder.mdx) |
-| **Mandatory init variables** | `api_type`: The type of Hugging Face API to use  <br /> <br />`api_params`: A dictionary with one of the following keys:  <br /> <br />- `model`: Hugging Face model ID. Required when `api_type` is `SERVERLESS_INFERENCE_API`.**OR** - `url`: URL of the inference endpoint. Required when `api_type` is `INFERENCE_ENDPOINTS` or `TEXT_EMBEDDINGS_INFERENCE`. |
+| **Mandatory init variables** | `api_type`: The type of Hugging Face API to use  <br /> <br />`api_params`: A dictionary with one of the following keys:  <br /> <br />- `model`: Hugging Face model ID. Required when `api_type` is `SERVERLESS_INFERENCE_API`.**OR** - `url`: URL of the inference endpoint. Required when `api_type` is `INFERENCE_ENDPOINTS` or `TEXT_GENERATION_INFERENCE`. |
 | **Mandatory run variables** | `messages`: A list of [`ChatMessage`](../../concepts/data-classes/chatmessage.mdx) objects representing the chat or a plain string |
 | **Output variables** | `replies`: A list of replies of the LLM to the input chat |
 | **API reference** | [Hugging Face API](/reference/integrations-huggingface-api) |
@@ -31,9 +31,9 @@ This generator enables chat completion using various Hugging Face APIs.
 - [Paid Inference Endpoints](https://huggingface.co/inference-endpoints)
 - [Self-hosted Text Generation Inference](https://github.com/huggingface/text-generation-inference)
 
-This component's main input is a list of `ChatMessage` objects. `ChatMessage` is a data class that contains a message, a role (who generated the message, such as `user`, `assistant`, `system`, `function`), and optional metadata. If a string is passed, it is converted into a list containing a single `ChatMessage` with the `user` role. For more information, check out our [`ChatMessage` docs](../../concepts/data-classes/chatmessage.mdx).
+This component's main input is a list of `ChatMessage` objects. `ChatMessage` is a data class that contains a message, a role (who generated the message, such as `user`, `assistant`, `system`, `tool`), and optional metadata. If a string is passed, it is converted into a list containing a single `ChatMessage` with the `user` role. For more information, check out our [`ChatMessage` docs](../../concepts/data-classes/chatmessage.mdx).
 
-The component uses a `HF_API_TOKEN` environment variable by default. Otherwise, you can pass a Hugging Face API token at initialization with `token` – see code examples below.
+The component reads the `HF_API_TOKEN` or `HF_TOKEN` environment variable by default. Otherwise, you can pass a Hugging Face API token at initialization with `token` – see code examples below.
 The token is needed:
 
 - If you use the Serverless Inference API, or
@@ -66,9 +66,7 @@ from haystack_integrations.components.generators.huggingface_api import (
 )
 from haystack.dataclasses import ChatMessage
 from haystack.utils import Secret
-from haystack_integrations.components.common.huggingface_api.utils import (
-    HFGenerationAPIType,
-)
+from haystack_integrations.common.huggingface_api.utils import HFGenerationAPIType
 
 messages = [
     ChatMessage.from_system("\\nYou are a helpful, respectful and honest assistant"),
@@ -130,9 +128,7 @@ from haystack_integrations.components.generators.huggingface_api import (
 )
 from haystack.dataclasses import ChatMessage, ImageContent
 from haystack.utils import Secret
-from haystack_integrations.components.common.huggingface_api.utils import (
-    HFGenerationAPIType,
-)
+from haystack_integrations.common.huggingface_api.utils import HFGenerationAPIType
 
 # Create an image from file path, URL, or base64
 image = ImageContent.from_file_path("path/to/your/image.jpg")
@@ -145,8 +141,8 @@ messages = [
 generator = HuggingFaceAPIChatGenerator(
     api_type=HFGenerationAPIType.SERVERLESS_INFERENCE_API,
     api_params={
-        "model": "Qwen/Qwen2.5-VL-7B-Instruct",  # Vision Language Model
-        "provider": "hyperbolic",
+        "model": "Qwen/Qwen3.5-9B",
+        "provider": "together",
     },
     token=Secret.from_token("<your-api-key>"),
 )
@@ -204,9 +200,7 @@ from haystack_integrations.components.generators.huggingface_api import (
 from haystack.dataclasses import ChatMessage
 from haystack import Pipeline
 from haystack.utils import Secret
-from haystack_integrations.components.common.huggingface_api.utils import (
-    HFGenerationAPIType,
-)
+from haystack_integrations.common.huggingface_api.utils import HFGenerationAPIType
 
 # no parameter init, we don't use any runtime template variables
 prompt_builder = ChatPromptBuilder()

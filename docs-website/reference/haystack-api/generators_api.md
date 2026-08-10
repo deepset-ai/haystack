@@ -764,7 +764,9 @@ The response is selected based on how the component is configured:
   wrapping around to the start once the list is exhausted. This is useful to drive multi-step flows such as
   Agents, where the first call returns a tool call and a later call returns the final answer.
 - **Dynamic response**: pass a `response_fn` callable that receives the input messages and returns the reply.
-  This is useful when the reply should depend on the input, for example to echo back part of the prompt.
+  This is useful when the reply should depend on the input, for example to echo back part of the prompt. If the
+  callable accepts a second positional argument, it also receives the `tools` passed to `run` (a `ToolsType` or
+  `None`), so the reply can depend on the runtime tool schema — handy for exercising Agents whose tool set varies.
 - **Echo (default)**: with no configuration, the component echoes back the text of the last message that has
   text content. This makes it usable out of the box for quick prototyping.
 
@@ -789,6 +791,16 @@ generator = MockChatGenerator(
         "Here is the final answer.",
     ]
 )
+
+# Dynamic, tool-aware response: build a tool call from the tools passed to run()
+def call_first_tool(messages, tools):
+    if not tools:
+        return "No tools available."
+    return ChatMessage.from_assistant(
+        tool_calls=[ToolCall(tool_name=tools[0].name, arguments={})]
+    )
+
+generator = MockChatGenerator(response_fn=call_first_tool)
 ```
 
 #### __init__
@@ -813,9 +825,11 @@ Creates an instance of MockChatGenerator.
   cycling back to the start once exhausted. Strings are wrapped into assistant `ChatMessage` objects, and any
   `ChatMessage` passed must have the `assistant` role. Mutually exclusive with `response_fn`. If neither is
   provided, the component echoes the last message with text content.
-- **response_fn** (<code>ResponseFn | None</code>) – An optional callable that receives the input messages and returns the reply as a string or
-  an assistant `ChatMessage`. Use this for input-dependent responses. Mutually exclusive with `responses`. To
-  support serialization, pass a named function (lambdas and nested functions cannot be serialized).
+- **response_fn** (<code>ResponseFn | None</code>) – An optional callable that returns the reply as a string or an assistant `ChatMessage`. It
+  receives the input messages; if it accepts a second positional argument, it also receives the `tools`
+  passed to `run` (a `ToolsType` or `None`), letting the reply depend on the runtime tool schema. Use this
+  for input-dependent responses. Mutually exclusive with `responses`. To support serialization, pass a named
+  function (lambdas and nested functions cannot be serialized).
 - **model** (<code>str</code>) – The model name reported in the response metadata. Purely cosmetic; no model is loaded.
 - **meta** (<code>dict\[str, Any\] | None</code>) – Additional metadata merged into the `meta` of every returned `ChatMessage`. A per-response
   `ChatMessage`'s own metadata takes precedence over this value.
@@ -874,7 +888,8 @@ The signature mirrors `OpenAIChatGenerator.run` so the mock can be used as a pos
 - **streaming_callback** (<code>StreamingCallbackT | None</code>) – An optional callback invoked with reconstructed `StreamingChunk` objects. Overrides
   the callback set at initialization.
 - **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Accepted for interface compatibility and ignored.
-- **tools** (<code>ToolsType | None</code>) – Accepted for interface compatibility and ignored.
+- **tools** (<code>ToolsType | None</code>) – Passed to a tool-aware `response_fn` (one that accepts a second positional argument); otherwise
+  accepted for interface compatibility and ignored.
 - **tools_strict** (<code>bool | None</code>) – Accepted for interface compatibility and ignored.
 
 **Returns:**
@@ -906,7 +921,8 @@ replacement.
 - **streaming_callback** (<code>StreamingCallbackT | None</code>) – An optional callback invoked with reconstructed `StreamingChunk` objects. Overrides
   the callback set at initialization.
 - **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Accepted for interface compatibility and ignored.
-- **tools** (<code>ToolsType | None</code>) – Accepted for interface compatibility and ignored.
+- **tools** (<code>ToolsType | None</code>) – Passed to a tool-aware `response_fn` (one that accepts a second positional argument); otherwise
+  accepted for interface compatibility and ignored.
 - **tools_strict** (<code>bool | None</code>) – Accepted for interface compatibility and ignored.
 
 **Returns:**
