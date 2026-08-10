@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Fixed a non-deterministic conversion strategy selection when a `Union` receiver admits several
+    applicable conversion strategies: the strategy is now chosen deterministically, honoring the order
+    in which the union members were declared.
