@@ -101,13 +101,49 @@ def _index_groups(
 
 
 def _messages_at(messages: list[ChatMessage], indices: list[int]) -> list[ChatMessage]:
-    """Return the messages at the given indices, in conversation order."""
+    """Return the messages at the given indices, in the order the indices are given."""
     return [messages[index] for index in indices]
+
+
+def _messages_except(messages: list[ChatMessage], indices: list[int]) -> list[ChatMessage]:
+    """Return the messages the given indices leave out, in conversation order."""
+    left_out = set(indices)
+    return [message for index, message in enumerate(messages) if index not in left_out]
 
 
 def _flatten(groups: list[list[int]]) -> list[int]:
     """Join index groups into a single ordered list of indices."""
     return [index for group in groups for index in group]
+
+
+def _removable_groups(
+    messages: list[ChatMessage], system_end: int, task_index: int | None
+) -> tuple[list[list[int]], list[list[int]]]:
+    """
+    Group the two stretches of conversation compaction is allowed to remove.
+
+    :param messages: The full conversation, ordered oldest to newest.
+    :param system_end: The end of the leading system-message block.
+    :param task_index: The index of the user message anchoring the current task, or None when there is none.
+    :returns: Index groups for the complete historical turns preceding the current task, and index groups for the
+        current task's own Agent steps. Both are ordered oldest group first. A group is the unit of removal: it is
+        kept or removed entire, which is what keeps a tool call with its results and an assistant reply with the user
+        message it answers.
+    """
+    # Steps belong to the current task, so they start after its anchor, or after the instructions when the
+    # conversation has no user message to anchor on.
+    step_start = (task_index + 1) if task_index is not None else system_end
+    step_groups = _index_groups(messages=messages, spans=_agent_step_spans(messages=messages, start=step_start))
+
+    # An earlier compaction's note is left out of its turn, so keeping the turn folds that note into the note this
+    # compaction leaves behind.
+    historical_end = task_index if task_index is not None else system_end
+    historical_groups = _index_groups(
+        messages=messages,
+        spans=_historical_turn_spans(messages=messages, start=system_end, end=historical_end),
+        skip_compaction_notes=True,
+    )
+    return historical_groups, step_groups
 
 
 def _first_group_to_keep(
@@ -202,53 +238,38 @@ def _task_and_step_split(
            user message anchoring the current task when the task's own steps were removed.
         3. Every message selected for removal.
     """
-    # Find the leading system messages that contain the Agent instructions.
+    # The landmarks the split is built around: the Agent instructions, and the user message anchoring the current task.
     system_end = _leading_system_end(messages=messages)
-
-    # Find the latest user message to use as the current task anchor.
     task_index = _latest_user_index(messages=messages)
-    task = [messages[task_index]] if task_index is not None else []
+    task_indices = [task_index] if task_index is not None else []
 
-    # Group the complete Agent steps that follow the current task anchor.
-    step_start_index = (task_index + 1) if task_index is not None else system_end
-    step_groups = _index_groups(messages=messages, spans=_agent_step_spans(messages=messages, start=step_start_index))
+    # The two stretches compaction may remove. A group is the unit of removal, so a turn or a step is never split.
+    historical_groups, step_groups = _removable_groups(messages=messages, system_end=system_end, task_index=task_index)
 
-    # Group the complete historical turns (i.e. user-assistant) that precede the current task. An earlier compaction's
-    # note is left out of its turn, so keeping the turn folds that note into the note this compaction leaves behind.
-    historical_end = task_index if task_index is not None else system_end
-    historical_groups = _index_groups(
-        messages=messages,
-        spans=_historical_turn_spans(messages=messages, start=system_end, end=historical_end),
-        skip_compaction_notes=True,
-    )
-
-    # The Agent instructions and the current task are never removed, so they are paid for out of the target first.
-    protected_tokens = token_counter.count(messages=[*messages[:system_end], *task])
+    # The instructions and the current task are never removed, so they come off the budget first.
+    protected = _messages_at(messages=messages, indices=[*range(system_end), *task_indices])
     first_kept_turn, first_kept_step = _first_turn_and_step_to_keep(
         messages=messages,
         historical_groups=historical_groups,
         step_groups=step_groups,
-        available_tokens=target_tokens - protected_tokens,
+        available_tokens=target_tokens - token_counter.count(messages=protected),
         token_counter=token_counter,
         min_keep_steps=min_keep_steps,
     )
+
+    # What survives, laid out in conversation order: the instructions, the turns that fit, the task, then its steps.
     kept_turn_indices = _flatten(groups=historical_groups[first_kept_turn:])
     kept_step_indices = _flatten(groups=step_groups[first_kept_step:])
-    kept_turns = _messages_at(messages=messages, indices=kept_turn_indices)
-    kept_steps = _messages_at(messages=messages, indices=kept_step_indices)
-    kept = [*messages[:system_end], *kept_turns, *task, *kept_steps]
+    kept_indices = [*range(system_end), *kept_turn_indices, *task_indices, *kept_step_indices]
 
-    # A message survives only by being protected or by falling in a group we are keeping; everything else goes.
-    kept_indices = {*range(system_end), *kept_turn_indices, *kept_step_indices}
-    if task_index is not None:
-        kept_indices.add(task_index)
-    removable = [message for index, message in enumerate(messages) if index not in kept_indices]
-
-    # The note stands in for what was dropped, so it goes where the dropped messages used to sit. Either right after
-    # the leading system messages when the historical turns were trimmed, or right after the user message that anchors
-    # the current task when its own Agent steps were trimmed. Both positions are counted off the layout of `kept`.
-    note_index = system_end if first_kept_step == 0 else system_end + len(kept_turns) + len(task)
-    return kept, note_index, removable
+    # The note stands in for what was dropped, so it goes where those messages used to sit. Either right after the
+    # instructions when the historical turns were trimmed, or right after the task anchor when its own steps were.
+    note_index = system_end if first_kept_step == 0 else system_end + len(kept_turn_indices) + len(task_indices)
+    return (
+        _messages_at(messages=messages, indices=kept_indices),
+        note_index,
+        _messages_except(messages=messages, indices=kept_indices),
+    )
 
 
 @_experimental
