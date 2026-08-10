@@ -14,7 +14,7 @@ This is a Diversity Ranker based on Sentence Transformers.
 |  |  |
 | --- | --- |
 | **Most common position in a pipeline** | In a query pipeline, after a component that returns a list of documents such as a [Retriever](../retrievers.mdx) |
-| **Mandatory init variables** | `token`: The Hugging Face API token. Can be set with `HF_API_TOKEN` or `HF_TOKEN` env var. |
+| **Mandatory init variables** | None |
 | **Mandatory run variables** | `documents`: A list of documents  <br /> <br />`query`: A query string |
 | **Output variables** | `documents`: A list of documents |
 | **API reference** | [Sentence Transformers](/reference/integrations-sentence-transformers) |
@@ -29,7 +29,9 @@ The `SentenceTransformersDiversityRanker` uses a ranking algorithm to order docu
 
 This Ranker’s default model is `sentence-transformers/all-MiniLM-L6-v2`.
 
-You can optionally set the `top_k` parameter, which specifies the maximum number of documents to return. If you don’t set this parameter, the component returns all documents it receives.
+You can optionally set the `top_k` parameter, which specifies the maximum number of documents to return. It defaults to 10.
+
+Authentication with a Hugging Face API token is only required to access private or gated models. You can pass the token at initialization with `token`, or set the `HF_API_TOKEN` or `HF_TOKEN` environment variable.
 
 Find the full list of optional initialization parameters in our [API reference](/reference/integrations-sentence-transformers#sentencetransformersdiversityranker).
 
@@ -91,7 +93,7 @@ document_store = InMemoryDocumentStore()
 document_store.write_documents(docs)
 
 retriever = InMemoryBM25Retriever(document_store=document_store)
-ranker = SentenceTransformersDiversityRanker(meta_field="rating")
+ranker = SentenceTransformersDiversityRanker()
 
 document_ranker_pipeline = Pipeline()
 document_ranker_pipeline.add_component(instance=retriever, name="retriever")

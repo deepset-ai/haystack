@@ -105,6 +105,5 @@ result = query_pipeline.run({"text_embedder": {"text": query}})
 
 print(result["retriever"]["documents"][0])
 
-# Document(id=..., mimetype: 'text/plain',
-# text: 'My name is Wolfgang and I live in Berlin')
+# Document(id=..., content: 'My name is Wolfgang and I live in Berlin', score: ...)
 ```

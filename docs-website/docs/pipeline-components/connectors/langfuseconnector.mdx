@@ -15,7 +15,7 @@ Learn how to work with Langfuse in Haystack.
 | --- | --- |
 | **Most common position in a pipeline** | Anywhere, as it’s not connected to other components |
 | **Mandatory init variables** | `name`: The name of the pipeline or component to identify the tracing run |
-| **Output variables** | `name`: The name of the tracing component  <br /> <br />`trace_url`: A link to the tracing data |
+| **Output variables** | `name`: The name of the tracing component  <br /> <br />`trace_url`: A link to the tracing data  <br /> <br />`trace_id`: The ID of the trace |
 | **API reference** | [langfuse](/reference/integrations-langfuse) |
 | **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/langfuse |
 | **Package name** | `langfuse-haystack` |
@@ -212,11 +212,8 @@ By extending `SpanHandler` or its default implementation, `DefaultSpanHandler`, 
 Here's an example:
 
 ```python
-from haystack_integrations.tracing.langfuse import (
-    LangfuseConnector,
-    DefaultSpanHandler,
-    LangfuseSpan,
-)
+from haystack_integrations.components.connectors.langfuse import LangfuseConnector
+from haystack_integrations.tracing.langfuse import DefaultSpanHandler, LangfuseSpan
 from typing import Optional
 
 
@@ -230,5 +227,7 @@ class CustomSpanHandler(DefaultSpanHandler):
 
 
 # Add the custom handler to the LangfuseConnector
-connector = LangfuseConnector(span_handler=CustomSpanHandler())
+connector = LangfuseConnector(
+    "Custom Handler Example", span_handler=CustomSpanHandler()
+)
 ```

@@ -34,7 +34,7 @@ The component uses `http://localhost:11434` as the default URL as most available
 
 ### Compatible Models
 
-Unless specified otherwise while initializing this component, the default embedding model is "nomic-embed-text". See other possible pre-built models in Ollama's [library](https://ollama.ai/library). To load your own custom model, follow the [instructions](https://github.com/ollama/ollama/blob/main/docs/modelfile.md) from Ollama.
+Unless specified otherwise while initializing this component, the default embedding model is "nomic-embed-text". See other possible pre-built models in Ollama's [library](https://ollama.com/library). To load your own custom model, follow the [instructions](https://docs.ollama.com/modelfile) from Ollama.
 
 ### Installation
 
@@ -48,7 +48,7 @@ Make sure that you have a running Ollama model (either through a docker containe
 
 ### Embedding Metadata
 
-Most embedded metadata contains information about the model name and type. You can pass [optional arguments](https://github.com/jmorganca/ollama/blob/main/docs/modelfile.md#valid-parameters-and-values), such as temperature, top_p, and others, to the Ollama generation endpoint.
+Most embedded metadata contains information about the model name and type. You can pass [optional arguments](https://docs.ollama.com/modelfile#valid-parameters-and-values), such as temperature, top_p, and others, to the Ollama generation endpoint.
 
 The name of the model used will be automatically appended as part of the document metadata. An example payload using the nomic-embed-text model will look like this:
 

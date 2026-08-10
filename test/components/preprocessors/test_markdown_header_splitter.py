@@ -250,6 +250,17 @@ def test_preserve_document_metadata():
     assert split_docs[0].content == "\nContent"
 
 
+def test_nested_metadata_is_not_shared_between_splits():
+    """Each split gets its own copy of nested metadata, so editing one does not reach its siblings."""
+    doc = Document(content="# Setup\nInstall it.\n# Usage\nRun it.", meta={"tags": ["docs"]})
+
+    split_docs = MarkdownHeaderSplitter().run(documents=[doc])["documents"]
+    split_docs[0].meta["tags"].append("install")
+
+    assert split_docs[1].meta["tags"] == ["docs"]
+    assert doc.meta["tags"] == ["docs"]
+
+
 def test_secondary_split_keeps_content_before_embedded_header():
     """With keep_headers=False, prose before an embedded lower-level header must
     not be dropped during the secondary split."""

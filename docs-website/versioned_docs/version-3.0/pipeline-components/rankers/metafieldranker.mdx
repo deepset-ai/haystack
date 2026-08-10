@@ -39,7 +39,7 @@ By default, `MetaFieldRanker` sorts documents only based on the meta field. You 
 
 You can use this Ranker outside of a pipeline to sort documents.
 
-This example uses the `MetaFieldRanker` to rank two simple documents. When running the Ranker, you pass the  `query`, provide the `documents` and set the number of documents to rank using the `top_k` parameter.
+This example uses the `MetaFieldRanker` to rank two simple documents. When running the Ranker, you provide the `documents` and set the number of documents to rank using the `top_k` parameter.
 
 ```python
 from haystack import Document
@@ -52,7 +52,7 @@ docs = [
 
 ranker = MetaFieldRanker(meta_field="rating")
 
-ranker.run(query="City in France", documents=docs, top_k=1)
+ranker.run(documents=docs, top_k=1)
 ```
 
 ### In a pipeline
@@ -86,7 +86,7 @@ query = "Cities in France"
 document_ranker_pipeline.run(
     data={
         "retriever": {"query": query, "top_k": 3},
-        "ranker": {"query": query, "top_k": 2},
+        "ranker": {"top_k": 2},
     },
 )
 ```

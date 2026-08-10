@@ -80,7 +80,7 @@ In the indexing pipeline, the documents are passed to the Document Embedder and 
 
 Then, in the querying pipeline, we use a Text Embedder to get the vector representation of the input query that will be then passed to the `AzureAISearchEmbeddingRetriever` to get the results.
 
-The examples on this page use Sentence Transformers embedders that have moved to the `sentence-transformers-haystack` package. Install it to run the examples:
+The examples on this page use Sentence Transformers embedders from the `sentence-transformers-haystack` package. Install it to run the examples:
 
 ```shell
 pip install sentence-transformers-haystack

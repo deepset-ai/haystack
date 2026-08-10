@@ -103,7 +103,7 @@ embedder = OptimumDocumentEmbedder(
 pipeline = Pipeline()
 pipeline.add_component("embedder", embedder)
 
-pipeline.run({"embedder": {"documents": documents}})
+results = pipeline.run({"embedder": {"documents": documents}})
 
-print(results["embedder"]["embedding"])
+print(results["embedder"]["documents"][0].embedding)
 ```

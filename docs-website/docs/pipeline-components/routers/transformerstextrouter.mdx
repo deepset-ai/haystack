@@ -14,9 +14,9 @@ Use this component to route text input to various output connections based on a 
 |  |  |
 | --- | --- |
 | **Most common position in a pipeline** | Flexible |
-| **Mandatory init variables** | `model`: The name or path of a Hugging Face model for text classification  <br /> <br />`token`: The Hugging Face API token. Can be set with `HF_API_TOKEN` or `HF_TOKEN` env var. |
+| **Mandatory init variables** | `model`: The name or path of a Hugging Face model for text classification |
 | **Mandatory run variables** | `text`: The text to be routed to one of the specified outputs based on which label it has been categorized into |
-| **Output variables** | `documents`: A dictionary with the label as key and the text as value |
+| **Output variables** | `<label>`: The input text, on the output connection named after the label the model assigned to it. There's one output per label. |
 | **API reference** | [Transformers](/reference/integrations-transformers) |
 | **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/transformers |
 | **Package name** | `transformers-haystack` |
@@ -30,6 +30,8 @@ Use this component to route text input to various output connections based on a 
 First, you need to set a selected model with a `model` parameter when initializing the component. The selected model then provides the set of labels for categorization.
 
 You can additionally provide the `labels` parameter – a list of strings of possible class labels to classify each sequence into. If not provided, the component fetches the labels from the model configuration file hosted on the HuggingFace Hub using `transformers.AutoConfig.from_pretrained`.
+
+Authentication with a Hugging Face API token is only required to access private or gated models. You can pass the token at initialization with `token`, or set the `HF_API_TOKEN` or `HF_TOKEN` environment variable.
 
 To see the full list of parameters, check out our [API reference](/reference/integrations-transformers#transformerstextrouter).
 

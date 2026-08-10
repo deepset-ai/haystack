@@ -60,7 +60,7 @@ from haystack_integrations.components.embedders.google_genai import (
 )
 
 # set the environment variable (GOOGLE_API_KEY or GEMINI_API_KEY)
-chat_generator = GoogleGenAITextEmbedder()
+embedder = GoogleGenAITextEmbedder()
 ```
 
 #### Vertex AI (Application Default Credentials)
@@ -71,7 +71,7 @@ from haystack_integrations.components.embedders.google_genai import (
 )
 
 # Using Application Default Credentials (requires gcloud auth setup)
-chat_generator = GoogleGenAITextEmbedder(
+embedder = GoogleGenAITextEmbedder(
     api="vertex",
     vertex_ai_project="my-project",
     vertex_ai_location="us-central1",
@@ -86,7 +86,7 @@ from haystack_integrations.components.embedders.google_genai import (
 )
 
 # set the environment variable (GOOGLE_API_KEY or GEMINI_API_KEY)
-chat_generator = GoogleGenAITextEmbedder(api="vertex")
+embedder = GoogleGenAITextEmbedder(api="vertex")
 ```
 
 ## Usage

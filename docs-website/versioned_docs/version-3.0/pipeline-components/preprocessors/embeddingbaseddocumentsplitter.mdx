@@ -36,7 +36,7 @@ This component is inspired by [5 Levels of Text Splitting](https://github.com/Fu
 
 ### On its own
 
-The examples on this page use Sentence Transformers embedders that have moved to the `sentence-transformers-haystack` package. Install it to run the examples:
+The examples on this page use Sentence Transformers embedders from the `sentence-transformers-haystack` package. Install it to run the examples:
 
 ```shell
 pip install sentence-transformers-haystack
@@ -87,19 +87,33 @@ from haystack.components.converters.txt import TextFileToDocument
 from haystack.components.preprocessors import DocumentCleaner
 from haystack.components.preprocessors import EmbeddingBasedDocumentSplitter
 from haystack.components.writers import DocumentWriter
+from haystack_integrations.components.embedders.sentence_transformers import (
+    SentenceTransformersDocumentEmbedder,
+)
 
 document_store = InMemoryDocumentStore()
 
-Pipeline = Pipeline()
-Pipeline.add_component(instance=TextFileToDocument(), name="text_file_converter")
-Pipeline.add_component(instance=DocumentCleaner(), name="cleaner")
-Pipeline.add_component(instance=EmbeddingBasedDocumentSplitter(document_embedder=embedder, sentences_per_group=2, percentile=0.95, min_length=50,max_length=1000)
-Pipeline.add_component(instance=DocumentWriter(document_store=document_store), name="writer")
-Pipeline.connect("text_file_converter.documents", "cleaner.documents")
-Pipeline.connect("cleaner.documents", "splitter.documents")
-Pipeline.connect("splitter.documents", "writer.documents")
+pipeline = Pipeline()
+pipeline.add_component(instance=TextFileToDocument(), name="text_file_converter")
+pipeline.add_component(instance=DocumentCleaner(), name="cleaner")
+pipeline.add_component(
+    instance=EmbeddingBasedDocumentSplitter(
+        document_embedder=SentenceTransformersDocumentEmbedder(),
+        sentences_per_group=2,
+        percentile=0.95,
+        min_length=50,
+        max_length=1000,
+    ),
+    name="splitter",
+)
+pipeline.add_component(
+    instance=DocumentWriter(document_store=document_store), name="writer"
+)
+pipeline.connect("text_file_converter.documents", "cleaner.documents")
+pipeline.connect("cleaner.documents", "splitter.documents")
+pipeline.connect("splitter.documents", "writer.documents")
 
 path = "path/to/your/files"
 files = list(Path(path).glob("*.md"))
-Pipeline.run({"text_file_converter": {"sources": files}})
+pipeline.run({"text_file_converter": {"sources": files}})
 ```

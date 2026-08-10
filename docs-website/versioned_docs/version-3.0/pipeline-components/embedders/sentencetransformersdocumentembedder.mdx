@@ -42,7 +42,7 @@ document_embedder = SentenceTransformersDocumentEmbedder(
 
 ### Compatible Models
 
-The default embedding model is [\`sentence-transformers/all-mpnet-base-v2](https://huggingface.co/sentence-transformers/all-mpnet-base-v2)\`. You can specify another model with the `model` parameter when initializing this component.
+The default embedding model is [`sentence-transformers/all-mpnet-base-v2`](https://huggingface.co/sentence-transformers/all-mpnet-base-v2). You can specify another model with the `model` parameter when initializing this component.
 
 See the original models in the Sentence Transformers [documentation](https://www.sbert.net/docs/pretrained_models.html).
 
@@ -52,14 +52,14 @@ You can look for compatibility in the model card: [an example related to BGE mod
 ### Instructions
 
 Some recent models that you can find in MTEB require prepending the text with an instruction to work better for retrieval.
-For example, if you use [intfloat/e5-large-v2](https://huggingface.co/BAAI/bge-large-en-v1.5#model-list), you should prefix your document with the following instruction: “passage:”
+For example, if you use [intfloat/e5-large-v2](https://huggingface.co/intfloat/e5-large-v2), you should prefix your document with the following instruction: “passage:”
 
 This is how it works with `SentenceTransformersDocumentEmbedder`:
 
 ```python
 embedder = SentenceTransformersDocumentEmbedder(
     model="intfloat/e5-large-v2",
-    prefix="passage",
+    prefix="passage: ",
 )
 ```
 
@@ -148,6 +148,5 @@ result = query_pipeline.run({"text_embedder": {"text": query}})
 
 print(result["retriever"]["documents"][0])
 
-# Document(id=..., mimetype: 'text/plain',
-# text: 'My name is Wolfgang and I live in Berlin')
+# Document(id=..., content: 'My name is Wolfgang and I live in Berlin', score: ...)
 ```

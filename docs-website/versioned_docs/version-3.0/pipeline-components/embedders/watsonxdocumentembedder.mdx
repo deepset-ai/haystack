@@ -27,7 +27,7 @@ The vectors computed by this component are necessary to perform embedding retrie
 
 `WatsonxDocumentEmbedder` enriches the metadata of documents with an embedding of their content. To embed a string, you should use the [`WatsonxTextEmbedder`](watsonxtextembedder.mdx).
 
-The component supports IBM watsonx.ai embedding models such as `ibm/slate-30m-english-rtrvr` and similar. The default model is `ibm/slate-30m-english-rtrvr`. This list of all supported models can be found in IBM's [model documentation](https://dataplatform.cloud.ibm.com/docs/content/wsj/analyze-data/fm-models-embed.html?context=wx).
+The component supports IBM watsonx.ai embedding models such as `ibm/slate-30m-english-rtrvr-v2` and similar. The default model is `ibm/slate-30m-english-rtrvr-v2`. This list of all supported models can be found in IBM's [model documentation](https://dataplatform.cloud.ibm.com/docs/content/wsj/analyze-data/fm-models-embed.html?context=wx).
 
 To start using this integration with Haystack, install it with:
 
@@ -102,7 +102,7 @@ print(result["documents"][0].embedding)
 ### In a pipeline
 
 ```python
-from haystack import Pipeline
+from haystack import Document, Pipeline
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.components.writers import DocumentWriter
 from haystack.components.retrievers.in_memory import InMemoryEmbeddingRetriever
@@ -143,5 +143,5 @@ result = query_pipeline.run({"text_embedder": {"text": query}})
 
 print(result["retriever"]["documents"][0])
 
-# Document(id=..., text: 'My name is Wolfgang and I live in Berlin')
+# Document(id=..., content: 'My name is Wolfgang and I live in Berlin', score: ...)
 ```

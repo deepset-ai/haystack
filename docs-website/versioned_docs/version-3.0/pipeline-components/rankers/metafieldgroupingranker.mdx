@@ -104,7 +104,7 @@ ranker = MetaFieldGroupingRanker(
 )
 
 chat_generator = OpenAIChatGenerator(
-    generation_kwargs={"temperature": 0.7, "max_tokens": 500},
+    generation_kwargs={"max_completion_tokens": 500},
 )
 
 # First run the ranker

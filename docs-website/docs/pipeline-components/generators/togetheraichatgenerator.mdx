@@ -25,9 +25,9 @@ This component enables chat completion using models hosted on Together AI.
 
 ## Overview
 
-`TogetherAIChatGenerator` supports models hosted on [Together AI](https://docs.together.ai/intro), such as `meta-llama/Llama-3.3-70B-Instruct-Turbo`. For the full list of supported models, see [Together AI documentation](https://docs.together.ai/docs/chat-models).
+`TogetherAIChatGenerator` supports models hosted on [Together AI](https://docs.together.ai/intro), such as `meta-llama/Llama-3.3-70B-Instruct-Turbo`. For the full list of supported models, see [Together AI documentation](https://docs.together.ai/docs/serverless/models).
 
-This component needs a list of [`ChatMessage`](../../concepts/data-classes/chatmessage.mdx) objects to operate. `ChatMessage` is a data class that contains a message, a role (who generated the message, such as `user`, `assistant`, `system`, `function`), and optional metadata.
+This component needs a list of [`ChatMessage`](../../concepts/data-classes/chatmessage.mdx) objects to operate. `ChatMessage` is a data class that contains a message, a role (who generated the message, such as `user`, `assistant`, `system`, `tool`), and optional metadata.
 
 You can pass any text generation parameters valid for the Together AI chat completion API directly to this component using the `generation_kwargs` parameter in `__init__` or the `generation_kwargs` parameter in `run` method. For more details on the parameters supported by the Together AI API, see [Together AI API documentation](https://docs.together.ai/reference/chat-completions-1).
 

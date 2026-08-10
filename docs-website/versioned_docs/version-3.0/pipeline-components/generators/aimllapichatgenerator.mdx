@@ -16,7 +16,7 @@ AIMLAPIChatGenerator enables chat completion using AI models through the AIMLAPI
 | **Most common position in a pipeline** | After a [ChatPromptBuilder](../builders/chatpromptbuilder.mdx) |
 | **Mandatory init variables** | `api_key`: The AIMLAPI API key. Can be set with `AIMLAPI_API_KEY` env var. |
 | **Mandatory run variables** | `messages` A list of [`ChatMessage`](../../concepts/data-classes/chatmessage.mdx)  objects |
-| **Output variables** | `replies`: A list of [`ChatMessage`](../../concepts/data-classes/chatmessage.mdx)  objects  <br /> <br />`meta`: A list of dictionaries with the metadata associated with each reply, such as token count, finish reason, and so on |
+| **Output variables** | `replies`: A list of [`ChatMessage`](../../concepts/data-classes/chatmessage.mdx)  objects |
 | **API reference** | [AIMLAPI](/reference/integrations-aimlapi) |
 | **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/aimlapi |
 | **Package name** | `aimlapi-haystack` |
@@ -31,7 +31,7 @@ AIMLAPI uses a single API key for all providers, which allows you to switch betw
 
 For a complete list of available models, check the [AIMLAPI documentation](https://docs.aimlapi.com/).
 
-The component needs a list of [`ChatMessage`](../../concepts/data-classes/chatmessage.mdx) objects to operate. `ChatMessage` is a data class that contains a message, a role (who generated the message, such as `user`, `assistant`, `system`, `function`), and optional metadata.
+The component needs a list of [`ChatMessage`](../../concepts/data-classes/chatmessage.mdx) objects to operate. `ChatMessage` is a data class that contains a message, a role (who generated the message, such as `user`, `assistant`, `system`, `tool`), and optional metadata.
 
 You can pass any chat completion parameters valid for the underlying model directly to `AIMLAPIChatGenerator` using the `generation_kwargs` parameter, both at initialization and to the `run()` method.
 
@@ -117,6 +117,7 @@ You can stream output as it's generated. Pass a callback to `streaming_callback`
 
 ```python
 from haystack.components.generators.utils import print_streaming_chunk
+from haystack_integrations.components.generators.aimlapi import AIMLAPIChatGenerator
 
 # Configure the generator with a streaming callback
 component = AIMLAPIChatGenerator(streaming_callback=print_streaming_chunk)

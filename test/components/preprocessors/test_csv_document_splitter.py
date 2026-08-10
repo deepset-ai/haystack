@@ -262,6 +262,17 @@ E,F,,,G,H
         result = splitter.run([])["documents"]
         assert len(result) == 0
 
+    def test_nested_metadata_is_not_shared_between_splits(
+        self, splitter: CSVDocumentSplitter, two_tables_sep_by_two_empty_rows: str
+    ) -> None:
+        doc = Document(content=two_tables_sep_by_two_empty_rows, meta={"sheet": {"name": "Q3"}})
+
+        result = splitter.run([doc])["documents"]
+        result[0].meta["sheet"]["name"] = "Q4"
+
+        assert result[1].meta["sheet"] == {"name": "Q3"}
+        assert doc.meta["sheet"] == {"name": "Q3"}
+
     def test_to_dict_with_defaults(self) -> None:
         splitter = CSVDocumentSplitter()
         config_serialized = component_to_dict(splitter, name="CSVDocumentSplitter")

@@ -24,7 +24,7 @@ description: "Use `PresidioEntityExtractor` to detect PII in Documents and store
 
 ## Overview
 
-[Microsoft Presidio](https://microsoft.github.io/presidio/) is an open-source framework for PII detection and anonymization. `PresidioEntityExtractor` uses Presidio's Analyzer Engine to scan document text and identify entities such as names, email addresses, phone numbers, and more.
+[Microsoft Presidio](https://data-privacy-stack.github.io/presidio/) is an open-source framework for PII detection and anonymization. `PresidioEntityExtractor` uses Presidio's Analyzer Engine to scan document text and identify entities such as names, email addresses, phone numbers, and more.
 
 The extractor does **not** modify the document text. Instead, it adds the detected entities as structured metadata, letting you inspect or act on PII findings without altering the original content. This is useful when you want to audit what PII is present before deciding how to handle it — for example, routing documents to a review queue, logging PII findings, or conditionally applying anonymization.
 
@@ -34,8 +34,8 @@ If you want to replace PII directly rather than annotate it, see [`PresidioDocum
 
 | Parameter | Default | Description |
 | --- | --- | --- |
-| `language` | `"en"` | ISO 639-1 language code for PII detection. The appropriate spaCy model is selected automatically for [supported languages](#non-english-languages). See [Presidio supported languages](https://microsoft.github.io/presidio/analyzer/languages/). |
-| `entities` | `None` | List of PII entity types to detect (e.g. `["PERSON", "EMAIL_ADDRESS"]`). If `None`, all supported types are detected. See [supported entities](https://microsoft.github.io/presidio/supported_entities/). |
+| `language` | `"en"` | ISO 639-1 language code for PII detection. The appropriate spaCy model is selected automatically for [supported languages](#non-english-languages). See [Presidio supported languages](https://data-privacy-stack.github.io/presidio/analyzer/languages/). |
+| `entities` | `None` | List of PII entity types to detect (e.g. `["PERSON", "EMAIL_ADDRESS"]`). If `None`, all supported types are detected. See [supported entities](https://data-privacy-stack.github.io/presidio/supported_entities/). |
 | `score_threshold` | `0.35` | Minimum confidence score (0–1) for a detected entity to be included. |
 | `models` | `None` | Advanced override: explicit list of spaCy model configs, e.g. `[{"lang_code": "fr", "model_name": "fr_core_news_md"}]`. Use this only when you need a specific model variant or a language not in the built-in mapping. If `None`, the model is selected automatically based on `language`. |
 
