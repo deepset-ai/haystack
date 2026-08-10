@@ -21,7 +21,7 @@
 | haystack/components/caching/cache\_checker.py                             |       43 |        0 |    100% |           |
 | haystack/components/converters/\_\_init\_\_.py                            |        5 |        0 |    100% |           |
 | haystack/components/converters/csv.py                                     |       88 |        4 |     95% |161-162, 189-190 |
-| haystack/components/converters/docx.py                                    |      159 |        1 |     99% |       262 |
+| haystack/components/converters/docx.py                                    |      146 |        1 |     99% |       240 |
 | haystack/components/converters/file\_to\_file\_content.py                 |       32 |        0 |    100% |           |
 | haystack/components/converters/html.py                                    |       50 |        0 |    100% |           |
 | haystack/components/converters/image/\_\_init\_\_.py                      |        5 |        0 |    100% |           |
@@ -35,11 +35,11 @@
 | haystack/components/converters/msg.py                                     |       77 |        5 |     94% |91, 165-167, 179 |
 | haystack/components/converters/multi\_file\_converter.py                  |       50 |        0 |    100% |           |
 | haystack/components/converters/output\_adapter.py                         |       65 |        1 |     98% |       129 |
-| haystack/components/converters/pdfminer.py                                |       68 |        0 |    100% |           |
+| haystack/components/converters/pdfminer.py                                |      105 |        0 |    100% |           |
 | haystack/components/converters/pptx.py                                    |       69 |        2 |     97% |     89-90 |
-| haystack/components/converters/pypdf.py                                   |       74 |        3 |     96% |   209-213 |
+| haystack/components/converters/pypdf.py                                   |      103 |        6 |     94% |192, 209-211, 267-271 |
 | haystack/components/converters/txt.py                                     |       34 |        3 |     91% |     87-91 |
-| haystack/components/converters/utils.py                                   |       22 |        0 |    100% |           |
+| haystack/components/converters/utils.py                                   |       37 |        0 |    100% |           |
 | haystack/components/converters/xlsx.py                                    |      113 |        3 |     97% |83, 183, 185 |
 | haystack/components/embedders/\_\_init\_\_.py                             |        5 |        0 |    100% |           |
 | haystack/components/embedders/azure\_document\_embedder.py                |       67 |        2 |     97% |  121, 124 |
@@ -262,7 +262,7 @@
 | haystack/utils/type\_serialization.py                                     |      140 |        6 |     96% |103, 105, 256-257, 265, 281 |
 | haystack/utils/url\_validation.py                                         |        4 |        0 |    100% |           |
 | haystack/version.py                                                       |        5 |        2 |     60% |      9-10 |
-| **TOTAL**                                                                 | **16587** |  **785** | **95%** |           |
+| **TOTAL**                                                                 | **16655** |  **788** | **95%** |           |
 
 
 ## Setup coverage badge
