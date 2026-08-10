@@ -353,8 +353,7 @@ class RecursiveDocumentSplitter:
                 return chunks
 
         # if no separator worked, fall back to word- or character-level chunking
-        chunks = self._fall_back_to_fixed_chunking(text, self.split_units)
-        return chunks
+        return self._fall_back_to_fixed_chunking(text, self.split_units)
 
     def _fall_back_to_fixed_chunking(self, text: str, split_units: Literal["word", "char", "token"]) -> list[str]:
         """
