@@ -88,6 +88,8 @@ class TestOpenAIImageGenerator:
                 "api_key": {"type": "env_var", "env_vars": ["OPENAI_API_KEY"], "strict": True},
                 "api_base_url": None,
                 "organization": None,
+                "timeout": None,
+                "max_retries": None,
                 "http_client_kwargs": None,
             },
         }
@@ -114,6 +116,8 @@ class TestOpenAIImageGenerator:
                 "api_key": {"type": "env_var", "env_vars": ["EXAMPLE_API_KEY"], "strict": True},
                 "api_base_url": "https://api.openai.com",
                 "organization": "test-org",
+                "timeout": 60.0,
+                "max_retries": 10,
                 "http_client_kwargs": {"proxy": "http://localhost:8080"},
             },
         }
@@ -128,6 +132,8 @@ class TestOpenAIImageGenerator:
                 "api_key": {"type": "env_var", "env_vars": ["OPENAI_API_KEY"], "strict": True},
                 "api_base_url": None,
                 "organization": None,
+                "timeout": 60.0,
+                "max_retries": 10,
                 "http_client_kwargs": None,
             },
         }
@@ -136,6 +142,8 @@ class TestOpenAIImageGenerator:
         assert generator.quality == "auto"
         assert generator.size == "1024x1024"
         assert generator.api_key.to_dict() == {"type": "env_var", "env_vars": ["OPENAI_API_KEY"], "strict": True}
+        assert pytest.approx(generator.timeout) == 60.0
+        assert generator.max_retries == 10
         assert generator.http_client_kwargs is None
 
     def test_from_dict_default_params(self):
@@ -162,6 +170,12 @@ class TestOpenAIImageGenerator:
         assert "images" in response and "revised_prompt" in response
         assert response["images"] == ["test-b64-json"]
         assert response["revised_prompt"] == "test-prompt"
+
+    def test_to_dict_from_dict_roundtrip_keeps_client_kwargs(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+        generator = OpenAIImageGenerator(timeout=60.0, max_retries=10)
+        deserialized = OpenAIImageGenerator.from_dict(generator.to_dict())
+        assert deserialized._client_kwargs() == generator._client_kwargs()
 
     @pytest.mark.skipif(
         not os.environ.get("OPENAI_API_KEY", None),
