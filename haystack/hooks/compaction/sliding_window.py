@@ -48,13 +48,7 @@ def _latest_user_index(messages: list[ChatMessage]) -> int | None:
 
 
 def _is_compaction_note(message: ChatMessage) -> bool:
-    """
-    Whether a message is an omission note this strategy left in place of removed history.
-
-    Every compactor marks what it produces with the same meta key, including the tool results
-    `ToolResultPruningCompactor` rewrites into a placeholder. Matching on the role and the strategy keeps those out:
-    they are still part of the conversation and have to travel with the turn they belong to.
-    """
+    """Whether a message is an omission note this strategy left in place of removed history."""
     marker = message.meta.get(_COMPACTION_META_KEY)
     return message.is_from(role=ChatRole.USER) and isinstance(marker, dict) and marker.get("strategy") == _STRATEGY
 
@@ -72,8 +66,8 @@ def _historical_turn_spans(messages: list[ChatMessage], start: int, end: int) ->
     :returns: Ordered `(start_index, end_index)` pairs for each complete historical turn. Both indices refer to
         `messages`, and `end_index` is exclusive, so a returned pair can be used directly as `messages[start:end]`.
     """
-    # Compaction notes use the user role for provider compatibility, but they do not begin a new conversation turn.
-    # Ignoring marked messages here also lets a subsequent compaction fold an old note into its replacement.
+    # Reject any user-role message an earlier compaction produced, whichever strategy made it: none of them are user
+    # requests, so none of them begin a turn. Leaving them out also lets this compaction fold an old note away.
     user_indices = [
         index
         for index in range(start, end)
