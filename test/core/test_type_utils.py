@@ -1030,6 +1030,18 @@ class TestConversion:
             ConversionStrategy.STR_TO_CHAT_MESSAGE,
         )
 
+        # Regression test: when a Union receiver admits several non-WRAP/non-UNWRAP conversion strategies,
+        # the selection must be deterministic and honor the declared union member order
+        # (see https://github.com/deepset-ai/haystack/issues/12282).
+        assert _types_are_compatible(sender=ChatMessage, receiver=str | list[str]) == (
+            True,
+            ConversionStrategy.CHAT_MESSAGE_TO_STR,
+        )
+        assert _types_are_compatible(sender=ChatMessage, receiver=list[str] | str) == (
+            True,
+            ConversionStrategy.WRAP_CHAT_MESSAGE_TO_STR,
+        )
+
         assert _types_are_compatible(sender=int, receiver=str | ChatMessage) == (False, None)
 
         assert _types_are_compatible(sender=ChatMessage, receiver=list[ChatMessage] | None) == (

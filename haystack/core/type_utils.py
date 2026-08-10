@@ -219,7 +219,15 @@ def _get_conversion_strategy(sender: Any, receiver: Any) -> ConversionStrategyTy
         for preferred in (ConversionStrategy.WRAP, ConversionStrategy.UNWRAP):
             if preferred in strategies:
                 return preferred
-        return strategies.pop() if strategies else None
+        # A set of enum members has no inherent order (enum members hash by identity),
+        # so `set.pop()` would select a strategy non-deterministically across processes.
+        # Pick the strategy of the first receiver member that yields one instead, honoring
+        # the order in which the user declared the union members.
+        for arg in get_args(receiver):
+            strategy = _get_conversion_strategy(sender, arg)
+            if strategy in strategies:
+                return strategy
+        return None
 
     # ChatMessage -> str
     if sender is ChatMessage and receiver is str:
