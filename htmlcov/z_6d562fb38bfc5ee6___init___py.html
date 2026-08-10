@@ -64,8 +64,8 @@
             <a id="indexLink" class="nav" href="index.html">&Hat; index</a> &nbsp; &nbsp;
             <a id="nextFileLink" class="nav" href="z_6d562fb38bfc5ee6_csv_py.html">&#xbb; next</a>
             &nbsp; &nbsp; &nbsp;
-            <a class="nav" href="https://coverage.readthedocs.io/en/7.15.2">coverage.py v7.15.2</a>,
-            created at 2026-08-07 11:41 +0000
+            <a class="nav" href="https://coverage.readthedocs.io/en/7.15.4">coverage.py v7.15.4</a>,
+            created at 2026-08-10 05:47 +0000
         </p>
         <aside class="hidden">
             <button type="button" class="button_next_chunk" data-shortcut="j"></button>
@@ -80,7 +80,7 @@
     </div>
 </header>
 <main id="source">
-    <p class="pln"><span class="n"><a id="t1" href="#t1">1</a></span><span class="t"><span class="com"># SPDX-FileCopyrightText: 2022-present deepset GmbH &lt;info@deepset.ai></span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t1" href="#t1">1</a></span><span class="t"><span class="com"># SPDX-FileCopyrightText: 2022-present deepset GmbH &lt;info@deepset.ai&gt;</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t2" href="#t2">2</a></span><span class="t"><span class="com">#</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t3" href="#t3">3</a></span><span class="t"><span class="com"># SPDX-License-Identifier: Apache-2.0</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t4" href="#t4">4</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
@@ -90,20 +90,20 @@
     <p class="run"><span class="n"><a id="t8" href="#t8">8</a></span><span class="t"><span class="key">from</span> <span class="nam">lazy_imports</span> <span class="key">import</span> <span class="nam">LazyImporter</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t9" href="#t9">9</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t10" href="#t10">10</a></span><span class="t"><span class="nam">_import_structure</span> <span class="op">=</span> <span class="op">{</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run run2"><span class="n"><a id="t11" href="#t11">11</a></span><span class="t">    <span class="str">"csv"</span><span class="op">:</span> <span class="op">[</span><span class="str">"CSVToDocument"</span><span class="op">]</span><span class="op">,</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run run2"><span class="n"><a id="t12" href="#t12">12</a></span><span class="t">    <span class="str">"docx"</span><span class="op">:</span> <span class="op">[</span><span class="str">"DOCXToDocument"</span><span class="op">]</span><span class="op">,</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run run2"><span class="n"><a id="t13" href="#t13">13</a></span><span class="t">    <span class="str">"file_to_file_content"</span><span class="op">:</span> <span class="op">[</span><span class="str">"FileToFileContent"</span><span class="op">]</span><span class="op">,</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run run2"><span class="n"><a id="t14" href="#t14">14</a></span><span class="t">    <span class="str">"html"</span><span class="op">:</span> <span class="op">[</span><span class="str">"HTMLToDocument"</span><span class="op">]</span><span class="op">,</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run run2"><span class="n"><a id="t15" href="#t15">15</a></span><span class="t">    <span class="str">"json"</span><span class="op">:</span> <span class="op">[</span><span class="str">"JSONConverter"</span><span class="op">]</span><span class="op">,</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run run2"><span class="n"><a id="t16" href="#t16">16</a></span><span class="t">    <span class="str">"markdown"</span><span class="op">:</span> <span class="op">[</span><span class="str">"MarkdownToDocument"</span><span class="op">]</span><span class="op">,</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run run2"><span class="n"><a id="t17" href="#t17">17</a></span><span class="t">    <span class="str">"msg"</span><span class="op">:</span> <span class="op">[</span><span class="str">"MSGToDocument"</span><span class="op">]</span><span class="op">,</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run run2"><span class="n"><a id="t18" href="#t18">18</a></span><span class="t">    <span class="str">"multi_file_converter"</span><span class="op">:</span> <span class="op">[</span><span class="str">"MultiFileConverter"</span><span class="op">]</span><span class="op">,</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run run2"><span class="n"><a id="t19" href="#t19">19</a></span><span class="t">    <span class="str">"output_adapter"</span><span class="op">:</span> <span class="op">[</span><span class="str">"OutputAdapter"</span><span class="op">]</span><span class="op">,</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run run2"><span class="n"><a id="t20" href="#t20">20</a></span><span class="t">    <span class="str">"pdfminer"</span><span class="op">:</span> <span class="op">[</span><span class="str">"PDFMinerToDocument"</span><span class="op">]</span><span class="op">,</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run run2"><span class="n"><a id="t21" href="#t21">21</a></span><span class="t">    <span class="str">"pptx"</span><span class="op">:</span> <span class="op">[</span><span class="str">"PPTXToDocument"</span><span class="op">]</span><span class="op">,</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run run2"><span class="n"><a id="t22" href="#t22">22</a></span><span class="t">    <span class="str">"pypdf"</span><span class="op">:</span> <span class="op">[</span><span class="str">"PyPDFToDocument"</span><span class="op">]</span><span class="op">,</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run run2"><span class="n"><a id="t23" href="#t23">23</a></span><span class="t">    <span class="str">"txt"</span><span class="op">:</span> <span class="op">[</span><span class="str">"TextFileToDocument"</span><span class="op">]</span><span class="op">,</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run run2"><span class="n"><a id="t24" href="#t24">24</a></span><span class="t">    <span class="str">"xlsx"</span><span class="op">:</span> <span class="op">[</span><span class="str">"XLSXToDocument"</span><span class="op">]</span><span class="op">,</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run run2"><span class="n"><a id="t11" href="#t11">11</a></span><span class="t">    <span class="str">&quot;csv&quot;</span><span class="op">:</span> <span class="op">[</span><span class="str">&quot;CSVToDocument&quot;</span><span class="op">]</span><span class="op">,</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run run2"><span class="n"><a id="t12" href="#t12">12</a></span><span class="t">    <span class="str">&quot;docx&quot;</span><span class="op">:</span> <span class="op">[</span><span class="str">&quot;DOCXToDocument&quot;</span><span class="op">]</span><span class="op">,</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run run2"><span class="n"><a id="t13" href="#t13">13</a></span><span class="t">    <span class="str">&quot;file_to_file_content&quot;</span><span class="op">:</span> <span class="op">[</span><span class="str">&quot;FileToFileContent&quot;</span><span class="op">]</span><span class="op">,</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run run2"><span class="n"><a id="t14" href="#t14">14</a></span><span class="t">    <span class="str">&quot;html&quot;</span><span class="op">:</span> <span class="op">[</span><span class="str">&quot;HTMLToDocument&quot;</span><span class="op">]</span><span class="op">,</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run run2"><span class="n"><a id="t15" href="#t15">15</a></span><span class="t">    <span class="str">&quot;json&quot;</span><span class="op">:</span> <span class="op">[</span><span class="str">&quot;JSONConverter&quot;</span><span class="op">]</span><span class="op">,</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run run2"><span class="n"><a id="t16" href="#t16">16</a></span><span class="t">    <span class="str">&quot;markdown&quot;</span><span class="op">:</span> <span class="op">[</span><span class="str">&quot;MarkdownToDocument&quot;</span><span class="op">]</span><span class="op">,</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run run2"><span class="n"><a id="t17" href="#t17">17</a></span><span class="t">    <span class="str">&quot;msg&quot;</span><span class="op">:</span> <span class="op">[</span><span class="str">&quot;MSGToDocument&quot;</span><span class="op">]</span><span class="op">,</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run run2"><span class="n"><a id="t18" href="#t18">18</a></span><span class="t">    <span class="str">&quot;multi_file_converter&quot;</span><span class="op">:</span> <span class="op">[</span><span class="str">&quot;MultiFileConverter&quot;</span><span class="op">]</span><span class="op">,</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run run2"><span class="n"><a id="t19" href="#t19">19</a></span><span class="t">    <span class="str">&quot;output_adapter&quot;</span><span class="op">:</span> <span class="op">[</span><span class="str">&quot;OutputAdapter&quot;</span><span class="op">]</span><span class="op">,</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run run2"><span class="n"><a id="t20" href="#t20">20</a></span><span class="t">    <span class="str">&quot;pdfminer&quot;</span><span class="op">:</span> <span class="op">[</span><span class="str">&quot;PDFMinerToDocument&quot;</span><span class="op">]</span><span class="op">,</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run run2"><span class="n"><a id="t21" href="#t21">21</a></span><span class="t">    <span class="str">&quot;pptx&quot;</span><span class="op">:</span> <span class="op">[</span><span class="str">&quot;PPTXToDocument&quot;</span><span class="op">]</span><span class="op">,</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run run2"><span class="n"><a id="t22" href="#t22">22</a></span><span class="t">    <span class="str">&quot;pypdf&quot;</span><span class="op">:</span> <span class="op">[</span><span class="str">&quot;PyPDFToDocument&quot;</span><span class="op">]</span><span class="op">,</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run run2"><span class="n"><a id="t23" href="#t23">23</a></span><span class="t">    <span class="str">&quot;txt&quot;</span><span class="op">:</span> <span class="op">[</span><span class="str">&quot;TextFileToDocument&quot;</span><span class="op">]</span><span class="op">,</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run run2"><span class="n"><a id="t24" href="#t24">24</a></span><span class="t">    <span class="str">&quot;xlsx&quot;</span><span class="op">:</span> <span class="op">[</span><span class="str">&quot;XLSXToDocument&quot;</span><span class="op">]</span><span class="op">,</span>&nbsp;</span><span class="r"></span></p>
     <p class="run run2"><span class="n"><a id="t25" href="#t25">25</a></span><span class="t"><span class="op">}</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t26" href="#t26">26</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
     <p class="exc show_exc"><span class="n"><a id="t27" href="#t27">27</a></span><span class="t"><span class="key">if</span> <span class="nam">TYPE_CHECKING</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
@@ -132,8 +132,8 @@
             <a class="nav" href="index.html">&Hat; index</a> &nbsp; &nbsp;
             <a class="nav" href="z_6d562fb38bfc5ee6_csv_py.html">&#xbb; next</a>
             &nbsp; &nbsp; &nbsp;
-            <a class="nav" href="https://coverage.readthedocs.io/en/7.15.2">coverage.py v7.15.2</a>,
-            created at 2026-08-07 11:41 +0000
+            <a class="nav" href="https://coverage.readthedocs.io/en/7.15.4">coverage.py v7.15.4</a>,
+            created at 2026-08-10 05:47 +0000
         </p>
     </div>
 </footer>

@@ -64,8 +64,8 @@
             <a id="indexLink" class="nav" href="index.html">&Hat; index</a> &nbsp; &nbsp;
             <a id="nextFileLink" class="nav" href="z_cd8d1179d631fe92_agent_tool_py.html">&#xbb; next</a>
             &nbsp; &nbsp; &nbsp;
-            <a class="nav" href="https://coverage.readthedocs.io/en/7.15.2">coverage.py v7.15.2</a>,
-            created at 2026-08-07 11:41 +0000
+            <a class="nav" href="https://coverage.readthedocs.io/en/7.15.4">coverage.py v7.15.4</a>,
+            created at 2026-08-10 05:47 +0000
         </p>
         <aside class="hidden">
             <button type="button" class="button_next_chunk" data-shortcut="j"></button>
@@ -80,7 +80,7 @@
     </div>
 </header>
 <main id="source">
-    <p class="pln"><span class="n"><a id="t1" href="#t1">1</a></span><span class="t"><span class="com"># SPDX-FileCopyrightText: 2022-present deepset GmbH &lt;info@deepset.ai></span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t1" href="#t1">1</a></span><span class="t"><span class="com"># SPDX-FileCopyrightText: 2022-present deepset GmbH &lt;info@deepset.ai&gt;</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t2" href="#t2">2</a></span><span class="t"><span class="com">#</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t3" href="#t3">3</a></span><span class="t"><span class="com"># SPDX-License-Identifier: Apache-2.0</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t4" href="#t4">4</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
@@ -90,12 +90,12 @@
     <p class="run"><span class="n"><a id="t8" href="#t8">8</a></span><span class="t"><span class="key">from</span> <span class="nam">lazy_imports</span> <span class="key">import</span> <span class="nam">LazyImporter</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t9" href="#t9">9</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t10" href="#t10">10</a></span><span class="t"><span class="com"># The `tool` decorator (from `from_function`) shares its name with the `tool` submodule (`tool.py`).</span>&nbsp;</span><span class="r"></span></p>
-    <p class="pln"><span class="n"><a id="t11" href="#t11">11</a></span><span class="t"><span class="com"># `LazyImporter` registers every key in `import_structure` as a submodule symbol, so adding `"tool"` as a key collides</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t11" href="#t11">11</a></span><span class="t"><span class="com"># `LazyImporter` registers every key in `import_structure` as a submodule symbol, so adding `&quot;tool&quot;` as a key collides</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t12" href="#t12">12</a></span><span class="t"><span class="com"># with the `tool` decorator and raises a duplicate-symbol error at construction. We therefore eagerly import the</span>&nbsp;</span><span class="r"></span></p>
-    <p class="pln"><span class="n"><a id="t13" href="#t13">13</a></span><span class="t"><span class="com"># decorator and pass it via `extra_objects`, keeping `"tool"` out of `import_structure`.</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t13" href="#t13">13</a></span><span class="t"><span class="com"># decorator and pass it via `extra_objects`, keeping `&quot;tool&quot;` out of `import_structure`.</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t14" href="#t14">14</a></span><span class="t"><span class="com">#</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t15" href="#t15">15</a></span><span class="t"><span class="com"># Guidance for adding future exports:</span>&nbsp;</span><span class="r"></span></p>
-    <p class="pln"><span class="n"><a id="t16" href="#t16">16</a></span><span class="t"><span class="com">#   - Symbols defined in `tool.py` (e.g. `Tool`) CANNOT be lazy: doing so would require `"tool"` as a key, which</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t16" href="#t16">16</a></span><span class="t"><span class="com">#   - Symbols defined in `tool.py` (e.g. `Tool`) CANNOT be lazy: doing so would require `&quot;tool&quot;` as a key, which</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t17" href="#t17">17</a></span><span class="t"><span class="com">#     re-introduces the collision with the `tool` decorator. Import them eagerly here and add them to `extra_objects`.</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t18" href="#t18">18</a></span><span class="t"><span class="com">#   - Symbols from `from_function.py` (e.g. `create_tool_from_function`) could be lazy, but since we already eagerly</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t19" href="#t19">19</a></span><span class="t"><span class="com">#     import this module for the `tool` decorator, we keep its exports eager in `extra_objects` too rather than</span>&nbsp;</span><span class="r"></span></p>
@@ -106,15 +106,15 @@
     <p class="run"><span class="n"><a id="t24" href="#t24">24</a></span><span class="t"><span class="key">from</span> <span class="nam">haystack</span><span class="op">.</span><span class="nam">tools</span><span class="op">.</span><span class="nam">tool</span> <span class="key">import</span> <span class="nam">Tool</span><span class="op">,</span> <span class="nam">_check_duplicate_tool_names</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t25" href="#t25">25</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t26" href="#t26">26</a></span><span class="t"><span class="nam">_import_structure</span> <span class="op">=</span> <span class="op">{</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run run2"><span class="n"><a id="t27" href="#t27">27</a></span><span class="t">    <span class="str">"toolset"</span><span class="op">:</span> <span class="op">[</span><span class="str">"Toolset"</span><span class="op">]</span><span class="op">,</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run run2"><span class="n"><a id="t28" href="#t28">28</a></span><span class="t">    <span class="str">"searchable_toolset"</span><span class="op">:</span> <span class="op">[</span><span class="str">"SearchableToolset"</span><span class="op">]</span><span class="op">,</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run run2"><span class="n"><a id="t29" href="#t29">29</a></span><span class="t">    <span class="str">"skills"</span><span class="op">:</span> <span class="op">[</span><span class="str">"SkillToolset"</span><span class="op">]</span><span class="op">,</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run run2"><span class="n"><a id="t30" href="#t30">30</a></span><span class="t">    <span class="str">"component_tool"</span><span class="op">:</span> <span class="op">[</span><span class="str">"ComponentTool"</span><span class="op">]</span><span class="op">,</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run run2"><span class="n"><a id="t31" href="#t31">31</a></span><span class="t">    <span class="str">"pipeline_tool"</span><span class="op">:</span> <span class="op">[</span><span class="str">"PipelineTool"</span><span class="op">]</span><span class="op">,</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run run2"><span class="n"><a id="t32" href="#t32">32</a></span><span class="t">    <span class="str">"agent_tool"</span><span class="op">:</span> <span class="op">[</span><span class="str">"AgentTool"</span><span class="op">]</span><span class="op">,</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run run2"><span class="n"><a id="t33" href="#t33">33</a></span><span class="t">    <span class="str">"serde_utils"</span><span class="op">:</span> <span class="op">[</span><span class="str">"deserialize_tools_or_toolset_inplace"</span><span class="op">,</span> <span class="str">"serialize_tools_or_toolset"</span><span class="op">]</span><span class="op">,</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run run2"><span class="n"><a id="t34" href="#t34">34</a></span><span class="t">    <span class="str">"utils"</span><span class="op">:</span> <span class="op">[</span><span class="str">"flatten_tools_or_toolsets"</span><span class="op">,</span> <span class="str">"warm_up_tools"</span><span class="op">]</span><span class="op">,</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run run2"><span class="n"><a id="t35" href="#t35">35</a></span><span class="t">    <span class="str">"tool_types"</span><span class="op">:</span> <span class="op">[</span><span class="str">"ToolsType"</span><span class="op">]</span><span class="op">,</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run run2"><span class="n"><a id="t27" href="#t27">27</a></span><span class="t">    <span class="str">&quot;toolset&quot;</span><span class="op">:</span> <span class="op">[</span><span class="str">&quot;Toolset&quot;</span><span class="op">]</span><span class="op">,</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run run2"><span class="n"><a id="t28" href="#t28">28</a></span><span class="t">    <span class="str">&quot;searchable_toolset&quot;</span><span class="op">:</span> <span class="op">[</span><span class="str">&quot;SearchableToolset&quot;</span><span class="op">]</span><span class="op">,</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run run2"><span class="n"><a id="t29" href="#t29">29</a></span><span class="t">    <span class="str">&quot;skills&quot;</span><span class="op">:</span> <span class="op">[</span><span class="str">&quot;SkillToolset&quot;</span><span class="op">]</span><span class="op">,</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run run2"><span class="n"><a id="t30" href="#t30">30</a></span><span class="t">    <span class="str">&quot;component_tool&quot;</span><span class="op">:</span> <span class="op">[</span><span class="str">&quot;ComponentTool&quot;</span><span class="op">]</span><span class="op">,</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run run2"><span class="n"><a id="t31" href="#t31">31</a></span><span class="t">    <span class="str">&quot;pipeline_tool&quot;</span><span class="op">:</span> <span class="op">[</span><span class="str">&quot;PipelineTool&quot;</span><span class="op">]</span><span class="op">,</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run run2"><span class="n"><a id="t32" href="#t32">32</a></span><span class="t">    <span class="str">&quot;agent_tool&quot;</span><span class="op">:</span> <span class="op">[</span><span class="str">&quot;AgentTool&quot;</span><span class="op">]</span><span class="op">,</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run run2"><span class="n"><a id="t33" href="#t33">33</a></span><span class="t">    <span class="str">&quot;serde_utils&quot;</span><span class="op">:</span> <span class="op">[</span><span class="str">&quot;deserialize_tools_or_toolset_inplace&quot;</span><span class="op">,</span> <span class="str">&quot;serialize_tools_or_toolset&quot;</span><span class="op">]</span><span class="op">,</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run run2"><span class="n"><a id="t34" href="#t34">34</a></span><span class="t">    <span class="str">&quot;utils&quot;</span><span class="op">:</span> <span class="op">[</span><span class="str">&quot;flatten_tools_or_toolsets&quot;</span><span class="op">,</span> <span class="str">&quot;warm_up_tools&quot;</span><span class="op">]</span><span class="op">,</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run run2"><span class="n"><a id="t35" href="#t35">35</a></span><span class="t">    <span class="str">&quot;tool_types&quot;</span><span class="op">:</span> <span class="op">[</span><span class="str">&quot;ToolsType&quot;</span><span class="op">]</span><span class="op">,</span>&nbsp;</span><span class="r"></span></p>
     <p class="run run2"><span class="n"><a id="t36" href="#t36">36</a></span><span class="t"><span class="op">}</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t37" href="#t37">37</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
     <p class="exc show_exc"><span class="n"><a id="t38" href="#t38">38</a></span><span class="t"><span class="key">if</span> <span class="nam">TYPE_CHECKING</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
@@ -135,10 +135,10 @@
     <p class="run run2"><span class="n"><a id="t53" href="#t53">53</a></span><span class="t">        <span class="nam">module_file</span><span class="op">=</span><span class="nam">__file__</span><span class="op">,</span>&nbsp;</span><span class="r"></span></p>
     <p class="run run2"><span class="n"><a id="t54" href="#t54">54</a></span><span class="t">        <span class="nam">import_structure</span><span class="op">=</span><span class="nam">_import_structure</span><span class="op">,</span>&nbsp;</span><span class="r"></span></p>
     <p class="run run2"><span class="n"><a id="t55" href="#t55">55</a></span><span class="t">        <span class="nam">extra_objects</span><span class="op">=</span><span class="op">{</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run run2"><span class="n"><a id="t56" href="#t56">56</a></span><span class="t">            <span class="str">"create_tool_from_function"</span><span class="op">:</span> <span class="nam">create_tool_from_function</span><span class="op">,</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run run2"><span class="n"><a id="t57" href="#t57">57</a></span><span class="t">            <span class="str">"tool"</span><span class="op">:</span> <span class="nam">tool</span><span class="op">,</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run run2"><span class="n"><a id="t58" href="#t58">58</a></span><span class="t">            <span class="str">"Tool"</span><span class="op">:</span> <span class="nam">Tool</span><span class="op">,</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run run2"><span class="n"><a id="t59" href="#t59">59</a></span><span class="t">            <span class="str">"_check_duplicate_tool_names"</span><span class="op">:</span> <span class="nam">_check_duplicate_tool_names</span><span class="op">,</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run run2"><span class="n"><a id="t56" href="#t56">56</a></span><span class="t">            <span class="str">&quot;create_tool_from_function&quot;</span><span class="op">:</span> <span class="nam">create_tool_from_function</span><span class="op">,</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run run2"><span class="n"><a id="t57" href="#t57">57</a></span><span class="t">            <span class="str">&quot;tool&quot;</span><span class="op">:</span> <span class="nam">tool</span><span class="op">,</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run run2"><span class="n"><a id="t58" href="#t58">58</a></span><span class="t">            <span class="str">&quot;Tool&quot;</span><span class="op">:</span> <span class="nam">Tool</span><span class="op">,</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run run2"><span class="n"><a id="t59" href="#t59">59</a></span><span class="t">            <span class="str">&quot;_check_duplicate_tool_names&quot;</span><span class="op">:</span> <span class="nam">_check_duplicate_tool_names</span><span class="op">,</span>&nbsp;</span><span class="r"></span></p>
     <p class="run run2"><span class="n"><a id="t60" href="#t60">60</a></span><span class="t">        <span class="op">}</span><span class="op">,</span>&nbsp;</span><span class="r"></span></p>
     <p class="run run2"><span class="n"><a id="t61" href="#t61">61</a></span><span class="t">    <span class="op">)</span>&nbsp;</span><span class="r"></span></p>
 </main>
@@ -149,8 +149,8 @@
             <a class="nav" href="index.html">&Hat; index</a> &nbsp; &nbsp;
             <a class="nav" href="z_cd8d1179d631fe92_agent_tool_py.html">&#xbb; next</a>
             &nbsp; &nbsp; &nbsp;
-            <a class="nav" href="https://coverage.readthedocs.io/en/7.15.2">coverage.py v7.15.2</a>,
-            created at 2026-08-07 11:41 +0000
+            <a class="nav" href="https://coverage.readthedocs.io/en/7.15.4">coverage.py v7.15.4</a>,
+            created at 2026-08-10 05:47 +0000
         </p>
     </div>
 </footer>
