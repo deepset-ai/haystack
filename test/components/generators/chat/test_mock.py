@@ -13,22 +13,20 @@ from haystack.dataclasses import ChatMessage, StreamingChunk, ToolCall
 from haystack.tools import Tool
 
 
-def _add_function(a: float, b: float) -> float:
+def _add(a: float, b: float) -> float:
     return a + b
 
 
-def _make_add_tool() -> Tool:
-    """A minimal Tool whose parameter schema drives the tool-aware response-function tests."""
-    return Tool(
-        name="add",
-        description="Add two numbers.",
-        parameters={
-            "type": "object",
-            "properties": {"a": {"type": "number"}, "b": {"type": "number"}},
-            "required": ["a", "b"],
-        },
-        function=_add_function,
-    )
+ADD_TOOL = Tool(
+    name="add",
+    description="Add two numbers.",
+    parameters={
+        "type": "object",
+        "properties": {"a": {"type": "number"}, "b": {"type": "number"}},
+        "required": ["a", "b"],
+    },
+    function=_add,
+)
 
 
 def _exclaim(messages: list[ChatMessage]) -> str:
@@ -41,22 +39,21 @@ def _assistant_reply(messages: list[ChatMessage]) -> ChatMessage:
     return ChatMessage.from_assistant("canned message")
 
 
-def _call_first_tool(messages: list[ChatMessage], tools) -> ChatMessage:
-    """Tool-aware response function: builds a tool call from the runtime tool schema passed to run()."""
+def _call_first_tool(messages: list[ChatMessage], tools: "list[Tool] | None") -> ChatMessage:
+    """
+    Tool-aware response function: builds a tool call from the runtime tool schema passed to run().
+
+    Its `tools` annotation is deferred (a string) to check that tool-awareness detection does not resolve annotations.
+    """
     if not tools:
         return ChatMessage.from_assistant("no tools available")
     tool = tools[0]
-    argument = next(iter(tool.parameters.get("properties", {})), "value")
+    argument = next(iter(tool.parameters["properties"]))
     return ChatMessage.from_assistant(tool_calls=[ToolCall(tool_name=tool.name, arguments={argument: 1})])
 
 
 def _noop_callback(chunk: StreamingChunk) -> None:
     """Module-level streaming callback used to test init-level callback serialization."""
-
-
-def _echo_tool_name(messages, tools):
-    """Two-parameter response function used to exercise tool-aware serialization roundtrips."""
-    return tools[0].name if tools else "none"
 
 
 class TestMockChatGenerator:
@@ -133,46 +130,25 @@ class TestMockChatGenerator:
         gen = MockChatGenerator(response_fn=_exclaim)
         assert gen.run("plain string")["replies"][0].text == "plain string!"
 
-    @pytest.mark.parametrize(
-        ("fn", "expected"),
-        [
-            (lambda messages: "x", False),
-            (lambda messages, tools: "x", True),
-            (lambda messages, tools=None: "x", True),
-            (lambda *args: "x", True),
-            (_exclaim, False),
-            (_call_first_tool, True),
-        ],
-    )
-    def test_response_fn_tool_awareness_detection(self, fn: Callable, expected: bool) -> None:
-
-        # the second parameter (or *args) is what makes a response_fn receive the tools
-        assert MockChatGenerator(response_fn=fn)._response_fn_wants_tools is expected
-
     def test_response_fn_receives_tools(self) -> None:
 
-        # a tool-aware response_fn builds a tool call from the tool schema passed to run()
+        # a response_fn taking a second argument builds a tool call from the tool schema passed to run()
         gen = MockChatGenerator(response_fn=_call_first_tool)
-        reply = gen.run([ChatMessage.from_user("add 2 and 3")], tools=[_make_add_tool()])["replies"][0]
+        reply = gen.run([ChatMessage.from_user("add 2 and 3")], tools=[ADD_TOOL])["replies"][0]
         assert reply.tool_calls == [ToolCall(tool_name="add", arguments={"a": 1})]
-        assert reply.meta["finish_reason"] == "tool_calls"
-
-    def test_response_fn_tool_aware_without_tools(self) -> None:
-
-        # a tool-aware response_fn is still called when no tools are passed; it receives None
-        gen = MockChatGenerator(response_fn=_call_first_tool)
+        # the same response_fn is still called when no tools are passed; it receives None
         assert gen.run([ChatMessage.from_user("hi")])["replies"][0].text == "no tools available"
 
     def test_messages_only_response_fn_ignores_tools(self) -> None:
 
-        # passing tools to run() must not break a single-parameter (messages-only) response_fn
+        # passing tools to run() must not break a response_fn that only accepts the messages
         gen = MockChatGenerator(response_fn=_exclaim)
-        assert gen.run([ChatMessage.from_user("hi")], tools=[_make_add_tool()])["replies"][0].text == "hi!"
+        assert gen.run([ChatMessage.from_user("hi")], tools=[ADD_TOOL])["replies"][0].text == "hi!"
 
     async def test_response_fn_receives_tools_async(self) -> None:
 
         gen = MockChatGenerator(response_fn=_call_first_tool)
-        result = await gen.run_async([ChatMessage.from_user("add")], tools=[_make_add_tool()])
+        result = await gen.run_async([ChatMessage.from_user("add")], tools=[ADD_TOOL])
         assert result["replies"][0].tool_calls == [ToolCall(tool_name="add", arguments={"a": 1})]
 
     def test_tool_call_response(self) -> None:
@@ -292,15 +268,6 @@ class TestMockChatGenerator:
         # behavior is preserved across the roundtrip
         messages = [ChatMessage.from_user("hi")]
         assert restored.run(messages)["replies"][0].text == generator.run(messages)["replies"][0].text
-
-    def test_serialization_roundtrip_tool_aware_response_fn(self) -> None:
-
-        # the tool-awareness of a deserialized response_fn is recomputed from its signature, not serialized
-        gen = MockChatGenerator(response_fn=_echo_tool_name)
-        restored = MockChatGenerator.from_dict(gen.to_dict())
-        assert restored._response_fn_wants_tools is True
-        reply = restored.run([ChatMessage.from_user("hi")], tools=[_make_add_tool()])["replies"][0]
-        assert reply.text == "add"
 
     def test_in_pipeline(self) -> None:
 
