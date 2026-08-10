@@ -88,10 +88,6 @@ class Toolset:
     Toolset implements the collection interface (__iter__, __contains__, __len__, __getitem__), making it behave like
     a list of Tools. This makes it compatible with components that expect iterable tools, such as Agent or Haystack
     chat generators.
-
-    To combine multiple Toolsets, pass them as a list wherever tools are accepted, e.g.
-    `Agent(tools=[toolset_a, toolset_b])`. This keeps each Toolset as a unit, preserving its lifecycle and
-    serialization.
     """
 
     # Use field() with default_factory to initialize the list

@@ -112,9 +112,12 @@ def _select_tools_by_name(configured_tools: ToolsType, names: list[str]) -> list
         [configured_tools] if isinstance(configured_tools, Toolset) else list(configured_tools)
     )
 
-    selectable_per_item = [
-        (item, item.get_selectable_tools() if isinstance(item, Toolset) else [item]) for item in items
-    ]
+    # Resolve the tools each item offers for selection
+    selectable_per_item: list[tuple[Tool | Toolset, list[Tool]]] = []
+    for item in items:
+        selectable = item.get_selectable_tools() if isinstance(item, Toolset) else [item]
+        selectable_per_item.append((item, selectable))
+
     valid_tool_names = {tool.name for _, selectable in selectable_per_item for tool in selectable}
     # A dynamic Toolset may look empty before its catalog is resolved, so emptiness is checked here.
     if not valid_tool_names:
@@ -131,13 +134,13 @@ def _select_tools_by_name(configured_tools: ToolsType, names: list[str]) -> list
         matched = requested_names & {tool.name for tool in selectable}
         if not matched:
             continue
-        if not isinstance(item, Toolset):
-            selected.append(item)
-        elif (run_copy := item.spawn(selected_tool_names=matched)) is not item:
-            # The selection is carried by the per-run copy, so the shared, configured Toolset is never mutated.
-            selected.append(run_copy)
+        spawned = item.spawn(selected_tool_names=matched) if isinstance(item, Toolset) else item
+        if spawned is not item:
+            # spawn() returned a per-run copy that already restricts itself to the selected tools.
+            selected.append(spawned)
         else:
-            # Select from the same list validation used: iteration may not surface every selectable tool.
+            # No per-run copy: extract the selected tools from `selectable`, the same list the names were
+            # validated against. Iterating a dynamic Toolset instead could silently miss some of them.
             selected.extend(tool for tool in selectable if tool.name in matched)
     return selected
 
