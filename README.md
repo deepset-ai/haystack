@@ -54,7 +54,7 @@
 | haystack/components/evaluators/\_\_init\_\_.py                            |        5 |        0 |    100% |           |
 | haystack/components/evaluators/answer\_exact\_match.py                    |       15 |        0 |    100% |           |
 | haystack/components/evaluators/context\_relevance.py                      |       50 |        0 |    100% |           |
-| haystack/components/evaluators/document\_map.py                           |       46 |        4 |     91% |73, 76-80, 126 |
+| haystack/components/evaluators/document\_map.py                           |       52 |        4 |     92% |73, 76-80, 134 |
 | haystack/components/evaluators/document\_mrr.py                           |       42 |        4 |     90% |71, 74-78, 122 |
 | haystack/components/evaluators/document\_ndcg.py                          |       70 |        0 |    100% |           |
 | haystack/components/evaluators/document\_recall.py                        |       73 |        2 |     97% |   109-113 |
@@ -262,7 +262,7 @@
 | haystack/utils/type\_serialization.py                                     |      135 |        6 |     96% |97, 99, 243-244, 252, 268 |
 | haystack/utils/url\_validation.py                                         |        4 |        0 |    100% |           |
 | haystack/version.py                                                       |        5 |        2 |     60% |      9-10 |
-| **TOTAL**                                                                 | **16576** |  **785** | **95%** |           |
+| **TOTAL**                                                                 | **16582** |  **785** | **95%** |           |
 
 
 ## Setup coverage badge
