@@ -7,7 +7,7 @@ import sys
 import typing
 from collections import deque
 from types import UnionType
-from typing import Any, Callable, Deque, Dict, FrozenSet, List, Optional, Set, Tuple, Union
+from typing import Any, Callable, Deque, Dict, FrozenSet, List, Literal, Optional, Set, Tuple, Union
 
 import pytest
 
@@ -291,6 +291,37 @@ def test_output_type_round_trip_callable_with_parameter_list():
         # so `...` still falls through to the existing Ellipsis handling in serialize_type/deserialize_type.
         Callable[..., int],
         Callable[[int], Callable[..., str]],
+    ]:
+        assert deserialize_type(serialize_type(type_)) == type_
+
+
+def test_output_type_serialization_literal():
+    assert serialize_type(Literal["yes", "no"]) == "typing.Literal['yes', 'no']"
+    assert serialize_type(Literal[1, 2, 3]) == "typing.Literal[1, 2, 3]"
+    assert serialize_type(Literal[True, False]) == "typing.Literal[True, False]"
+    # A value that happens to look like a type name must stay a string, not be rendered as that type.
+    assert serialize_type(Literal["int", "str"]) == "typing.Literal['int', 'str']"
+
+
+def test_output_type_deserialization_literal():
+    assert deserialize_type("typing.Literal['yes', 'no']") == Literal["yes", "no"]
+    assert deserialize_type("typing.Literal[1, 2, 3]") == Literal[1, 2, 3]
+    assert deserialize_type("typing.Literal[True, False]") == Literal[True, False]
+    assert deserialize_type("typing.Literal['int', 'str']") == Literal["int", "str"]
+
+
+def test_output_type_round_trip_literal():
+    for type_ in [
+        Literal["yes", "no"],
+        Literal["int", "str"],  # values that look like type names must round-trip as strings, not types
+        Literal[1, 2, 3],
+        Literal[True, False],
+        Literal["None"],  # the string "None", not the NoneType singleton
+        Literal["a, b", "c"],  # a comma inside a value must not split the arguments
+        Literal["x"],
+        Literal[b"bytes"],
+        Optional[Literal["a", "b"]],
+        Union[Literal["a"], int],
     ]:
         assert deserialize_type(serialize_type(type_)) == type_
 
