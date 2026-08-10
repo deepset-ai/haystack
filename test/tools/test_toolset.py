@@ -168,7 +168,6 @@ class TestToolset:
         assert "non_existent_tool" not in toolset
 
     def test_combining_toolsets_via_unpacking(self, add_tool, multiply_tool, subtract_tool):
-        """A Toolset can be built from the tools of existing ones; the combined tools remain invocable."""
         combined = Toolset([*Toolset([add_tool, subtract_tool]), multiply_tool])
         assert [t.name for t in combined] == ["add", "subtract", "multiply"]
 
@@ -357,8 +356,6 @@ class TestToolsetWarmUp:
         assert t2.warm_up_count == 1
 
     def test_warm_up_can_be_called_multiple_times(self):
-        # Per the framework-wide convention, warm_up() may be called before every run; the Toolset delegates to
-        # the tools' own warm_up(), which are responsible for their own idempotence.
         t1 = WarmUpCountingTool("a")
         toolset = Toolset([t1])
         toolset.warm_up()
@@ -367,7 +364,6 @@ class TestToolsetWarmUp:
         assert t1.warm_up_count == 3
 
     def test_add_never_warms_the_new_tool(self):
-        # add() is stateless: it never warms the added tool; the next warm_up() call warms whatever is present.
         existing = WarmUpCountingTool("a")
         toolset = Toolset([existing])
         toolset.warm_up()
@@ -378,7 +374,6 @@ class TestToolsetWarmUp:
         assert new_tool.warm_up_count == 1
 
     def test_add_toolset_raises(self):
-        # add() accepts only Tools: to combine Toolsets, pass them as a list, e.g. Agent(tools=[ts_a, ts_b]).
         toolset = Toolset([WarmUpCountingTool("a")])
         not_a_tool: Any = Toolset([WarmUpCountingTool("b")])
         with pytest.raises(TypeError, match="Expected Tool"):
