@@ -349,16 +349,11 @@ class RecursiveDocumentSplitter:
             if current_chunk:
                 chunks.append("".join(current_chunk))
 
-            if self.split_overlap > 0:
-                chunks = self._apply_overlap(chunks)
-
             if chunks:
                 return chunks
 
         # if no separator worked, fall back to word- or character-level chunking
         chunks = self._fall_back_to_fixed_chunking(text, self.split_units)
-        if self.split_overlap > 0:
-            chunks = self._apply_overlap(chunks)
         return chunks
 
     def _fall_back_to_fixed_chunking(self, text: str, split_units: Literal["word", "char", "token"]) -> list[str]:
@@ -428,6 +423,12 @@ class RecursiveDocumentSplitter:
     def _run_one(self, doc: Document) -> list[Document]:
         chunks = self._chunk_text(doc.content)  # type: ignore # the caller already check for a non-empty doc.content
         chunks = chunks[:-1] if len(chunks[-1]) == 0 else chunks  # remove last empty chunk if it exists
+
+        # apply the overlap once, on the fully chunked list, so that chunks produced
+        # at inner recursion levels don't get the overlap applied a second time
+        if self.split_overlap > 0:
+            chunks = self._apply_overlap(chunks)
+
         current_position = 0
         current_page = 1
 

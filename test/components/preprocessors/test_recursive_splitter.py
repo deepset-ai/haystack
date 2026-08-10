@@ -1036,6 +1036,40 @@ def test_run_complex_text_with_multiple_separators():
     assert chunks[3].content.endswith("D" * 50)
 
 
+def test_run_multiple_separators_with_overlap_applies_overlap_only_once():
+    """
+    Regression test for https://github.com/deepset-ai/haystack/issues/12281.
+
+    With multiple separators the recursive chunking calls ``_chunk_text`` at every recursion level.
+    Overlap must be applied exactly once, on the final chunk list, otherwise chunks produced at
+    inner recursion levels get the overlap prepended a second time, yielding chunks that are not
+    substrings of the source text.
+    """
+    text = (
+        "Overview\n"
+        "This module handles ingestion and preprocessing of documents.\n\n"
+        "Details\n"
+        "It splits text into chunks for embedding."
+    )
+
+    splitter = RecursiveDocumentSplitter(
+        split_length=50, split_overlap=10, split_unit="char", separators=["\n\n", "\n", " "]
+    )
+    result = splitter.run([Document(content=text)])
+    chunks = result["documents"]
+
+    # every chunk must be a substring of the source text; the bug produces chunks like
+    # "Overview\nOverview\nOverview\nThis module handles ing" that are not present in the source
+    assert all(chunk.content in text for chunk in chunks)
+
+    # the overlap of the very first chunk ("Overview\n") must never be prepended twice
+    assert not any("Overview\nOverview" in chunk.content for chunk in chunks)
+
+    assert len(chunks) == 6
+    assert chunks[0].content == "Overview\n"
+    assert chunks[-1].content == "unks for embedding."
+
+
 def test_recursive_splitter_generates_unique_ids_and_correct_meta():
     text = "Haystack is awesome. " * 5
     source_doc = Document(content=text)
