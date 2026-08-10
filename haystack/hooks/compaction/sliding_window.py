@@ -205,7 +205,7 @@ def _first_turn_and_step_to_keep(
         # The newest steps are kept regardless of the budget.
         return len(historical_groups), min(first_kept_step, max(len(step_groups) - min_keep_steps, 0))
 
-    # The whole current task fits, so every step stays and the rest of the budget goes on the newest turns that fit.
+    # The entire current task fits, so every step stays and the rest of the budget goes on the newest turns that fit.
     first_kept_turn = _first_group_to_keep(
         messages=messages,
         groups=historical_groups,
@@ -221,7 +221,7 @@ def _task_and_step_split(
     """
     Split a conversation into the messages to keep and the messages to remove.
 
-    Leading system messages and the latest real user message are always kept. Historical user turns are kept whole when
+    Leading system messages and the latest real user message are always kept. Historical turns are kept in full when
     they fit. If the current task itself exceeds the available budget, its oldest Agent steps are removed one at a time
     while keeping each assistant message together with its tool results.
 
@@ -277,13 +277,13 @@ class SlidingWindowCompactor(Compactor):
     """
     Keeps the Agent's instructions, current task, and as much complete recent conversation as the target allows.
 
-    Leading system messages and the latest user message are protected. Earlier user/assistant turns are kept when they
-    fit, and the current task's history is kept in complete Agent steps, where a step is an assistant message together
+    Leading system messages and the latest user message are protected. Historical turns are kept in full when they fit,
+    and the current task's history is kept in complete Agent steps, where a step is an assistant message together
     with all immediately following tool results.
 
     An `omission_note` is left where the removed messages used to sit: directly after the leading system messages when
-    only earlier turns were removed, and directly after the latest user message when the current task's own steps were
-    removed. Only one note is ever present, since a later compaction folds an earlier note into its replacement.
+    only historical turns were removed, and directly after the latest user message when the current task's own steps
+    were removed. Only one note is ever present, since a later compaction folds an earlier note into its replacement.
 
     ```python
     from haystack.components.agents import Agent
