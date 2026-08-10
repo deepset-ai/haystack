@@ -67,12 +67,11 @@ def make_state(messages: list[ChatMessage], **data: Any) -> State:
     return State(schema=_SCHEMA, data={**base, **data})
 
 
-def long_conversation() -> list[ChatMessage]:
+def fresh_conversation_with_two_steps() -> list[ChatMessage]:
     """
-    Six messages: a system prefix, a user turn, then two tool round-trips.
+    A system prefix and a first user task with two Agent steps behind it, so there are no earlier turns to remove.
 
-    The results are padded so that removing them saves more than an omission note costs, which is what a compactor
-    weighs before leaving one behind.
+    The tool results are padded so that dropping a step is a saving worth making.
     """
     return [
         ChatMessage.from_system("rules"),

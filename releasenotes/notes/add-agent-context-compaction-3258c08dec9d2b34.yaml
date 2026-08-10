@@ -7,7 +7,10 @@ features:
     The first built-in strategy, ``SlidingWindowCompactor``, preserves leading system messages, the latest user task,
     and as much complete recent conversation as the target allows. It removes earlier user/assistant turns as whole
     units first. Only when removing all earlier turns is insufficient does it remove individual Agent steps from the
-    current task. It replaces removed history with a short omission note.
+    current task. It replaces removed history with a short omission note, left where the removed messages used to sit:
+    directly after the leading system messages when only earlier turns were removed, and directly after the latest user
+    message when the current task's own steps were removed. Only one note is ever present, because a later compaction
+    folds an earlier one into its replacement.
 
     .. code-block:: python
 

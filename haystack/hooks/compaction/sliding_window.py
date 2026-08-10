@@ -128,7 +128,7 @@ def _first_group_to_keep(
 
 def _first_turn_and_step_to_keep(
     messages: list[ChatMessage],
-    turn_groups: list[list[int]],
+    historical_groups: list[list[int]],
     step_groups: list[list[int]],
     available_tokens: int,
     token_counter: TokenCounter,
@@ -138,12 +138,12 @@ def _first_turn_and_step_to_keep(
     Return which historical turn and which Agent step of the current task to start keeping from.
 
     :param messages: The full conversation containing the messages referenced by both group lists.
-    :param turn_groups: Index groups for the complete historical turns preceding the current task, oldest first.
+    :param historical_groups: Index groups for the complete historical turns preceding the current task, oldest first.
     :param step_groups: Index groups for the current task's Agent steps, oldest first.
     :param available_tokens: The token budget left once the protected context is paid for.
     :param token_counter: The `TokenCounter` used to measure the groups.
     :param min_keep_steps: The fewest recent Agent steps to keep, even when they exceed the budget.
-    :returns: The position in `turn_groups` and the position in `step_groups` to start keeping from. Either is the
+    :returns: The position in `historical_groups` and the position in `step_groups` to start keeping from. Either is the
         length of its list when nothing from it is kept.
     """
     current_task_tokens = token_counter.count(
@@ -156,12 +156,12 @@ def _first_turn_and_step_to_keep(
             messages=messages, groups=step_groups, available_tokens=available_tokens, token_counter=token_counter
         )
         # The newest steps are kept regardless of the budget.
-        return len(turn_groups), min(first_kept_step, max(len(step_groups) - min_keep_steps, 0))
+        return len(historical_groups), min(first_kept_step, max(len(step_groups) - min_keep_steps, 0))
 
     # The whole current task fits, so every step stays and the rest of the budget goes on the newest turns that fit.
     first_kept_turn = _first_group_to_keep(
         messages=messages,
-        groups=turn_groups,
+        groups=historical_groups,
         available_tokens=available_tokens - current_task_tokens,
         token_counter=token_counter,
     )
@@ -186,8 +186,9 @@ def _task_and_step_split(
     :returns: A tuple containing:
 
         1. The messages to keep, ordered oldest to newest.
-        2. The position in that list where an omission note belongs, immediately before the current task when only
-           historical turns were removed and immediately before the surviving steps when the task itself was trimmed.
+        2. The position in that list where an omission note belongs, which is where the removed messages used to sit:
+           directly after the leading system messages when only historical turns were removed, and directly after the
+           user message anchoring the current task when the task's own steps were removed.
         3. Every message selected for removal.
     """
     # Find the leading system messages that contain the Agent instructions.
@@ -204,7 +205,7 @@ def _task_and_step_split(
     # Group the complete historical turns (i.e. user-assistant) that precede the current task. An earlier compaction's
     # note is left out of its turn, so keeping the turn folds that note into the note this compaction leaves behind.
     historical_end = task_index if task_index is not None else system_end
-    turn_groups = _index_groups(
+    historical_groups = _index_groups(
         messages=messages,
         spans=_historical_turn_spans(messages=messages, start=system_end, end=historical_end),
         skip_compaction_notes=True,
@@ -214,13 +215,13 @@ def _task_and_step_split(
     protected_tokens = token_counter.count(messages=[*messages[:system_end], *task])
     first_kept_turn, first_kept_step = _first_turn_and_step_to_keep(
         messages=messages,
-        turn_groups=turn_groups,
+        historical_groups=historical_groups,
         step_groups=step_groups,
         available_tokens=target_tokens - protected_tokens,
         token_counter=token_counter,
         min_keep_steps=min_keep_steps,
     )
-    kept_turn_indices = _flatten(groups=turn_groups[first_kept_turn:])
+    kept_turn_indices = _flatten(groups=historical_groups[first_kept_turn:])
     kept_step_indices = _flatten(groups=step_groups[first_kept_step:])
     kept_turns = _messages_at(messages=messages, indices=kept_turn_indices)
     kept_steps = _messages_at(messages=messages, indices=kept_step_indices)
@@ -232,9 +233,10 @@ def _task_and_step_split(
         kept_indices.add(task_index)
     removable = [message for index, message in enumerate(messages) if index not in kept_indices]
 
-    # The note stands in for the newest thing that was dropped. That is the current task's own steps when those were
-    # cut, in which case every historical turn went too and `kept_turns` is empty; otherwise it is the older turns.
-    note_index = system_end + len(kept_turns) + (len(task) if first_kept_step > 0 else 0)
+    # The note stands in for what was dropped, so it goes where the dropped messages used to sit. Either right after
+    # the leading system messages when the historical turns were trimmed, or right after the user message that anchors
+    # the current task when its own Agent steps were trimmed. Both positions are counted off the layout of `kept`.
+    note_index = system_end if first_kept_step == 0 else system_end + len(kept_turns) + len(task)
     return kept, note_index, removable
 
 
@@ -243,9 +245,13 @@ class SlidingWindowCompactor(Compactor):
     """
     Keeps the Agent's instructions, current task, and as much complete recent conversation as the target allows.
 
-    Leading system messages and the latest user message are protected. Earlier user/assistant turns are retained when
-    they fit, and the current task's history is retained in complete Agent steps, where a step is an assistant message
-    together with all immediately following tool results. An `omission_note` is left in place of what was removed.
+    Leading system messages and the latest user message are protected. Earlier user/assistant turns are kept when they
+    fit, and the current task's history is kept in complete Agent steps, where a step is an assistant message together
+    with all immediately following tool results.
+
+    An `omission_note` is left where the removed messages used to sit: directly after the leading system messages when
+    only earlier turns were removed, and directly after the latest user message when the current task's own steps were
+    removed. Only one note is ever present, since a later compaction folds an earlier note into its replacement.
 
     ```python
     from haystack.components.agents import Agent
@@ -288,8 +294,8 @@ class SlidingWindowCompactor(Compactor):
         :param messages: The conversation to compact, oldest to newest.
         :param target_tokens: The size the kept conversation should come in under.
         :param token_counter: The `TokenCounter` to measure messages with.
-        :returns: The protected context, an omission note if configured, and the steps that survived; or None when
-            there is nothing to remove.
+        :returns: The conversation that survived, with an omission note if configured standing where the removed
+            messages used to sit; or None when there is nothing to remove.
         """
         if token_counter.count(messages=messages) <= target_tokens:
             return None
