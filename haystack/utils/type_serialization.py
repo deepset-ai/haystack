@@ -89,8 +89,7 @@ def serialize_type(target: Any) -> str:
         return "..."
 
     # Literal holds values (e.g. Literal["yes", "no"]), not types. Serialize each value with repr() so
-    # strings keep their quotes and round-trip through ast.literal_eval on deserialization, rather than
-    # being rendered as bare tokens that deserialize_type would then try (and fail) to resolve as types.
+    # strings keep their quotes.
     if typing.get_origin(target) is typing.Literal:
         return f"typing.Literal[{', '.join(repr(a) for a in get_args(target))}]"
 
@@ -243,9 +242,9 @@ def deserialize_type(type_str: str) -> Any:
 
         main_type = deserialize_type(main_type_str)
 
-        # Literal arguments are values, not types. Parse them with ast.literal_eval, which safely handles
+        # Parse literal args with ast.literal_eval, which safely handles
         # str/int/bool/None/bytes and is quote-aware, so a comma inside a string value does not split the
-        # arguments the way _parse_generic_args would.
+        # arguments.
         if main_type is typing.Literal:
             return typing.Literal[ast.literal_eval(f"({generics_str},)")]
 

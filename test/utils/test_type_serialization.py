@@ -296,8 +296,6 @@ def test_output_type_round_trip_callable_with_parameter_list():
 
 
 def test_output_type_serialization_literal():
-    # `Literal` holds values (e.g. Literal["yes", "no"]), not types, so each value is serialized with
-    # repr() rather than as a bare token. See https://github.com/deepset-ai/haystack/issues/12285.
     assert serialize_type(Literal["yes", "no"]) == "typing.Literal['yes', 'no']"
     assert serialize_type(Literal[1, 2, 3]) == "typing.Literal[1, 2, 3]"
     assert serialize_type(Literal[True, False]) == "typing.Literal[True, False]"
