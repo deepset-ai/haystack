@@ -96,8 +96,7 @@ def test_run_with_partial_matching():
 
 
 @pytest.mark.parametrize(
-    "retrieved_documents",
-    [[Document(content="A")], [Document(content="A"), Document(content="A")]],
+    "retrieved_documents", [[Document(content="A")], [Document(content="A"), Document(content="A")]]
 )
 def test_run_with_missed_and_duplicate_relevant_documents(retrieved_documents):
     evaluator = DocumentMAPEvaluator()
