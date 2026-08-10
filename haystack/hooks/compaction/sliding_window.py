@@ -11,6 +11,9 @@ from haystack.hooks.compaction.utils import _COMPACTION_META_KEY, _agent_step_sp
 from haystack.token_counters import TokenCounter
 from haystack.utils.experimental import _experimental
 
+# Recorded as the strategy on every message this compactor produces, so a later run can recognize its own notes.
+_STRATEGY = "sliding_window"
+
 # Placeholder a custom omission note may include to have the number of removed messages substituted in.
 _NUM_REMOVED_PLACEHOLDER = "{num_removed}"
 
@@ -42,6 +45,18 @@ def _latest_user_index(messages: list[ChatMessage]) -> int | None:
         if message.is_from(role=ChatRole.USER) and _COMPACTION_META_KEY not in message.meta:
             return index
     return None
+
+
+def _is_compaction_note(message: ChatMessage) -> bool:
+    """
+    Whether a message is an omission note this strategy left in place of removed history.
+
+    Every compactor marks what it produces with the same meta key, including the tool results
+    `ToolResultPruningCompactor` rewrites into a placeholder. Matching on the role and the strategy keeps those out:
+    they are still part of the conversation and have to travel with the turn they belong to.
+    """
+    marker = message.meta.get(_COMPACTION_META_KEY)
+    return message.is_from(role=ChatRole.USER) and isinstance(marker, dict) and marker.get("strategy") == _STRATEGY
 
 
 def _historical_turn_spans(messages: list[ChatMessage], start: int, end: int) -> list[tuple[int, int]]:
@@ -80,11 +95,7 @@ def _index_groups(
     Expand each span into the message indices it covers, optionally dropping messages an earlier compaction produced.
     """
     return [
-        [
-            index
-            for index in range(start, end)
-            if not skip_compaction_notes or _COMPACTION_META_KEY not in messages[index].meta
-        ]
+        [index for index in range(start, end) if not (skip_compaction_notes and _is_compaction_note(messages[index]))]
         for start, end in spans
     ]
 
@@ -316,7 +327,7 @@ class SlidingWindowCompactor(Compactor):
             self.omission_note.replace(_NUM_REMOVED_PLACEHOLDER, str(len(removable))),
             meta={
                 _COMPACTION_META_KEY: {
-                    "strategy": "sliding_window",
+                    "strategy": _STRATEGY,
                     "removed_messages": len(removable),
                     "kept_messages": len(kept),
                 }
