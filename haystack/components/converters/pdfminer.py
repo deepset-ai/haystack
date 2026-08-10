@@ -19,6 +19,7 @@ with LazyImport("Run 'pip install pdfminer.six'") as pdfminer_import:
     from pdfminer.layout import LAParams, LTTextContainer
     from pdfminer.pdfinterp import PDFPageInterpreter, PDFResourceManager
     from pdfminer.pdfpage import PDFPage
+    from pdfminer.pdftypes import resolve1
 
 logger = logging.getLogger(__name__)
 
@@ -95,9 +96,11 @@ class PDFMinerToDocument:
             If True, the full path of the file is stored in the metadata of the document.
             If False, only the file name is stored.
         :param link_format:
-            The format for link output. Can be either:
-            `LinkFormat.MARKDOWN` or `"markdown"` to get `[text](address)`,
-            `LinkFormat.PLAIN` or `"plain"` to get text (address),
+            The format used for the hyperlinks found in the PDF link annotations.
+            The links of a page are appended at the end of that page's text, one per line. PDF link annotations
+            carry no anchor text, so the address is used as the link text as well. Can be either:
+            `LinkFormat.MARKDOWN` or `"markdown"` to get `[address](address)`,
+            `LinkFormat.PLAIN` or `"plain"` to get `address (address)`,
             `LinkFormat.NONE` or `"none"` to get text without links.
         """
 
@@ -151,7 +154,18 @@ class PDFMinerToDocument:
             data["init_parameters"]["link_format"] = LinkFormat.from_str(data["init_parameters"]["link_format"])
         return default_from_dict(cls, data)
 
-    def _iter_pages(self, fp: io.BytesIO) -> Iterator[Any]:
+    def _iter_pages(self, fp: io.BytesIO) -> Iterator[tuple[Any, Any]]:
+        """
+        Lazily yields the pages of a PDF as `(LTPage, PDFPage)` pairs.
+
+        The pages are processed one at a time so that only a single page layout is kept in memory.
+
+        :param fp:
+            The PDF file to read.
+
+        :returns:
+            An iterator over `(page layout object, page object)` pairs.
+        """
         rsrcmgr = PDFResourceManager(caching=True)
         device = PDFPageAggregator(rsrcmgr, laparams=self.layout_params)
         interpreter = PDFPageInterpreter(rsrcmgr, device)
@@ -181,8 +195,6 @@ class PDFMinerToDocument:
                 text += container_text
 
         if self.link_format != LinkFormat.NONE and getattr(pdf_page, "annots", None):
-            from pdfminer.pdftypes import resolve1
-
             page_links = []
             annots = resolve1(pdf_page.annots)
             if annots:

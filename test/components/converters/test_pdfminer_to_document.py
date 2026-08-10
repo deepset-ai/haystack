@@ -298,7 +298,7 @@ class TestPDFMinerToDocument:
         mock_pdf_page = MagicMock()
         mock_pdf_page.annots = [{"Subtype": mock_subtype, "A": {"S": mock_s, "URI": b"https://example.com"}}]
 
-        with patch("pdfminer.pdftypes.resolve1", side_effect=lambda x: x):
+        with patch("haystack.components.converters.pdfminer.resolve1", side_effect=lambda x: x):
             # Test Markdown
             converter_md = PDFMinerToDocument(link_format="markdown")
             text_md = converter_md._convert_page(mock_lt_page, mock_pdf_page)
@@ -339,7 +339,7 @@ class TestPDFMinerToDocument:
                 raise Exception("Malformed annotation")
             return obj
 
-        with patch("pdfminer.pdftypes.resolve1", side_effect=mock_resolve1):
+        with patch("haystack.components.converters.pdfminer.resolve1", side_effect=mock_resolve1):
             converter_md = PDFMinerToDocument(link_format="markdown")
             text_md = converter_md._convert_page(mock_lt_page, mock_pdf_page)
             assert "Page content" in text_md

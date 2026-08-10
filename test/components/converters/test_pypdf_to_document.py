@@ -190,6 +190,24 @@ class TestPyPDFToDocument:
         assert "Page 1 content" in text
         assert "[https://valid.com](https://valid.com)" in text
 
+    def test_unreadable_annotations(self):
+        """
+        /Annots can be an unresolvable reference, in which case pypdf returns None instead of an array.
+        The page text must still be extracted.
+        """
+        from unittest.mock import MagicMock
+
+        mock_page1 = MagicMock()
+        mock_page1.extract_text.return_value = "Page 1 content"
+        mock_page1.__contains__.side_effect = lambda key: key == "/Annots"
+        mock_page1.__getitem__.side_effect = lambda key: None
+
+        mock_reader = Mock()
+        mock_reader.pages = [mock_page1]
+
+        converter = PyPDFToDocument(link_format="markdown")
+        assert converter._default_convert(mock_reader) == "Page 1 content"
+
     @pytest.mark.integration
     def test_run(self, test_files_path, pypdf_component):
         """
