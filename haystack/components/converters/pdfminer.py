@@ -151,36 +151,43 @@ class PDFMinerToDocument:
             data["init_parameters"]["link_format"] = LinkFormat.from_str(data["init_parameters"]["link_format"])
         return default_from_dict(cls, data)
 
-    def _converter(self, lt_page_objs: Iterator, pdf_page_objs: Iterator) -> str:
-        """
-        Extracts text from PDF pages then converts the text into a single str
+    def _iter_pages(self, fp: io.BytesIO) -> Iterator[Any]:
+        rsrcmgr = PDFResourceManager(caching=True)
+        device = PDFPageAggregator(rsrcmgr, laparams=self.layout_params)
+        interpreter = PDFPageInterpreter(rsrcmgr, device)
+        for pdf_page in PDFPage.get_pages(fp, caching=True):
+            interpreter.process_page(pdf_page)
+            yield device.get_result(), pdf_page
 
-        :param lt_page_objs:
-            Python generator that yields PDF pages layout objects (LTPage).
-        :param pdf_page_objs:
-            Python generator that yields PDF pages (PDFPage).
+    def _convert_page(self, lt_page: Any, pdf_page: Any) -> str:
+        """
+        Extracts text from a single PDF page.
+
+        :param lt_page:
+            PDF page layout object (LTPage).
+        :param pdf_page:
+            PDF page (PDFPage).
 
         :returns:
-            PDF text converted to single str
+            PDF text from the single page converted to str
         """
-        pages = []
-        for lt_page, pdf_page in zip(lt_page_objs, pdf_page_objs, strict=False):
-            text = ""
-            for container in lt_page:
-                # Keep text only
-                if isinstance(container, LTTextContainer):
-                    container_text = container.get_text()
-                    if container_text:
-                        text += "\n\n"
-                    text += container_text
+        text = ""
+        for container in lt_page:
+            # Keep text only
+            if isinstance(container, LTTextContainer):
+                container_text = container.get_text()
+                if container_text:
+                    text += "\n\n"
+                text += container_text
 
-            if self.link_format != LinkFormat.NONE and getattr(pdf_page, "annots", None):
-                from pdfminer.pdftypes import resolve1
+        if self.link_format != LinkFormat.NONE and getattr(pdf_page, "annots", None):
+            from pdfminer.pdftypes import resolve1
 
-                page_links = []
-                annots = resolve1(pdf_page.annots)
-                if annots:
-                    for annot in annots:
+            page_links = []
+            annots = resolve1(pdf_page.annots)
+            if annots:
+                for annot in annots:
+                    try:
                         annot_obj = resolve1(annot)
                         if (
                             isinstance(annot_obj, dict)
@@ -203,13 +210,13 @@ class PDFMinerToDocument:
                                             page_links.append(f"[{uri_str}]({uri_str})")
                                         else:  # PLAIN
                                             page_links.append(f"{uri_str} ({uri_str})")
-                if page_links:
-                    text += "\n\n" + "\n".join(page_links)
+                    except Exception:
+                        logger.debug("Skipping malformed annotation")
+                        continue
+            if page_links:
+                text += "\n\n" + "\n".join(page_links)
 
-            pages.append(text)
-
-        # Add a page delimiter
-        return "\f".join(pages)
+        return text
 
     def detect_undecoded_cid_characters(self, text: str) -> dict[str, Any]:
         """
@@ -270,17 +277,7 @@ class PDFMinerToDocument:
                 continue
             try:
                 fp = io.BytesIO(bytestream.data)
-                rsrcmgr = PDFResourceManager(caching=True)
-                device = PDFPageAggregator(rsrcmgr, laparams=self.layout_params)
-                interpreter = PDFPageInterpreter(rsrcmgr, device)
-
-                pdf_pages = list(PDFPage.get_pages(fp, caching=True))
-                lt_pages = []
-                for page in pdf_pages:
-                    interpreter.process_page(page)
-                    lt_pages.append(device.get_result())
-
-                text = self._converter(iter(lt_pages), iter(pdf_pages))
+                text = "\f".join(self._convert_page(lt_page, pdf_page) for lt_page, pdf_page in self._iter_pages(fp))
             except Exception as e:
                 logger.warning(
                     "Could not read {source} and convert it to Document, skipping. {error}", source=source, error=e

@@ -185,16 +185,21 @@ class PyPDFToDocument:
             if self.link_format != LinkFormat.NONE and "/Annots" in page:
                 page_links = []
                 for annot in page["/Annots"]:  # type: ignore
-                    annot_obj = annot.get_object()
-                    if annot_obj.get("/Subtype") == "/Link":
-                        a = annot_obj.get("/A")
-                        if a and a.get("/S") == "/URI":
-                            uri = a.get("/URI")
-                            if uri:
-                                if self.link_format == LinkFormat.MARKDOWN:
-                                    page_links.append(f"[{uri}]({uri})")
-                                else:  # PLAIN
-                                    page_links.append(f"{uri} ({uri})")
+                    try:
+                        annot_obj = annot.get_object()
+                        if annot_obj.get("/Subtype") == "/Link":
+                            a = annot_obj.get("/A")
+                            if a and a.get("/S") == "/URI":
+                                uri = a.get("/URI")
+                                if uri:
+                                    uri_str = uri.decode("utf-8") if isinstance(uri, bytes) else str(uri)
+                                    if self.link_format == LinkFormat.MARKDOWN:
+                                        page_links.append(f"[{uri_str}]({uri_str})")
+                                    else:  # PLAIN
+                                        page_links.append(f"{uri_str} ({uri_str})")
+                    except Exception:
+                        logger.debug("Skipping malformed annotation in page {page}", page=page.page_number)
+                        continue
                 if page_links:
                     extracted_text += "\n\n" + "\n".join(page_links)
 
