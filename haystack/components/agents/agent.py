@@ -567,10 +567,6 @@ class Agent:
             else:
                 component.set_input_type(self, name=var_name, type=Any, default=None)
 
-    def _warm_up_tools(self) -> None:
-        """Warm up the configured tools. Called on every warm_up(), so late-added tools are warmed too."""
-        warm_up_tools(tools=self.tools)
-
     def _warm_up_hooks(self) -> None:
         """Warm up the configured hooks once."""
         if not self._hooks_warmed_up:
@@ -585,14 +581,14 @@ class Agent:
 
     def warm_up(self) -> None:
         """Warm up the tools, hooks, and the underlying chat generator."""
-        self._warm_up_tools()
+        warm_up_tools(tools=self.tools)
         self._warm_up_hooks()
         if hasattr(self.chat_generator, "warm_up"):
             self.chat_generator.warm_up()
 
     async def warm_up_async(self) -> None:
         """Warm up the tools, hooks, and the underlying chat generator on the serving event loop."""
-        self._warm_up_tools()
+        warm_up_tools(tools=self.tools)
         await self._warm_up_hooks_async()
         if hasattr(self.chat_generator, "warm_up_async"):
             await self.chat_generator.warm_up_async()
