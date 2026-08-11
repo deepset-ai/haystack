@@ -90,21 +90,39 @@ def _record_tool_calls(state: State, tool_messages: list[ChatMessage]) -> None:
 # ---------------------------
 
 
+def _spawn_selection_copy(item: Tool | Toolset, selected_tool_names: set[str]) -> Toolset | None:
+    """
+    Return the per-run copy carrying the selection, or None if the item does not provide one.
+
+    A Toolset with run-scoped state (e.g. SearchableToolset) overrides `spawn()` to return a copy that
+    applies `selected_tool_names` itself. A plain Toolset returns itself from `spawn()` (it has nothing
+    to isolate), and a standalone Tool has no `spawn()`: in both cases the caller applies the selection.
+
+    :param item: A configured Tool or Toolset.
+    :param selected_tool_names: The tool names selected for this run.
+    :returns: The selection-carrying per-run copy, or None.
+    """
+    if not isinstance(item, Toolset):
+        return None
+    spawned = item.spawn(selected_tool_names=selected_tool_names)
+    return spawned if spawned is not item else None
+
+
 def _select_tools_by_name(configured_tools: ToolsType, names: list[str]) -> list[Tool | Toolset]:
     """
     Select configured tools by name for a single run.
 
-    Standalone Tools are kept when their name is requested. A Toolset that exposes a requested name is replaced by a
-    per-run `spawn()` (an isolated copy) with the requested names registered as its `_selected_tool_names`, so
-    dynamic toolsets such as SearchableToolset preserve their behavior (search/lazy-loading) over the selected subset
-    without mutating the shared, configured Toolset.
+    Standalone Tools are kept when their name is requested. A Toolset with run-scoped state (one overriding
+    `spawn()`, such as SearchableToolset) is replaced by a per-run copy carrying the requested names, so its
+    dynamic behavior (search/lazy-loading) is preserved without mutating the shared, configured Toolset. Any
+    other Toolset is warmed up and reduced to the matching Tools.
 
     :param configured_tools: The tools configured on the Agent.
     :param names: The requested tool names.
-    :returns: The selected standalone Tools and/or spawned, selection-scoped Toolsets.
+    :returns: The selected Tools and/or selection-scoped Toolset copies.
     :raises ValueError: If no tools were configured, or if any requested name is not a valid tool name.
     """
-    if not configured_tools:
+    if configured_tools is None:
         raise ValueError("No tools were configured for the Agent at initialization.")
 
     requested_names = set(names)
@@ -112,14 +130,16 @@ def _select_tools_by_name(configured_tools: ToolsType, names: list[str]) -> list
         [configured_tools] if isinstance(configured_tools, Toolset) else list(configured_tools)
     )
 
-    # Resolve selectable names per item. For Toolsets we use get_selectable_tools() so dynamic toolsets
-    # (e.g. SearchableToolset) offer their full catalog by name, not just the tools exposed by iteration.
-    selectable_per_item: list[tuple[Tool | Toolset, set[str]]] = []
-    valid_tool_names: set[str] = set()
+    # Resolve the tools each item offers for selection
+    selectable_per_item: list[tuple[Tool | Toolset, list[Tool]]] = []
     for item in items:
-        item_names = {tool.name for tool in item.get_selectable_tools()} if isinstance(item, Toolset) else {item.name}
-        selectable_per_item.append((item, item_names))
-        valid_tool_names |= item_names
+        selectable = item.get_selectable_tools() if isinstance(item, Toolset) else [item]
+        selectable_per_item.append((item, selectable))
+
+    valid_tool_names = {tool.name for _, selectable in selectable_per_item for tool in selectable}
+    # A dynamic Toolset may look empty before its catalog is resolved, so emptiness is checked here.
+    if not valid_tool_names:
+        raise ValueError("No tools were configured for the Agent at initialization.")
 
     invalid_tool_names = requested_names - valid_tool_names
     if invalid_tool_names:
@@ -128,27 +148,28 @@ def _select_tools_by_name(configured_tools: ToolsType, names: list[str]) -> list
         )
 
     selected: list[Tool | Toolset] = []
-    for item, item_names in selectable_per_item:
-        matched = requested_names & item_names
+    for item, selectable in selectable_per_item:
+        matched = requested_names & {tool.name for tool in selectable}
         if not matched:
             continue
-        if isinstance(item, Toolset):
-            # Apply the selection to a per-run copy so the shared, configured Toolset is never mutated.
-            spawned = item.spawn()
-            spawned._selected_tool_names = matched
-            selected.append(spawned)
+        run_copy = _spawn_selection_copy(item, matched)
+        if run_copy is not None:
+            selected.append(run_copy)
         else:
-            selected.append(item)
+            # Select from `selectable`, the list the names were validated against: iterating a dynamic
+            # Toolset could silently miss tools.
+            selected.extend(tool for tool in selectable if tool.name in matched)
     return selected
 
 
 def _spawn_tools(tools: ToolsType) -> ToolsType:
     """
-    Return per-run copies of `tools`, replacing each Toolset with an isolated `spawn()` (Tools are passed through).
+    Return per-run copies of `tools`, replacing each Toolset with its `spawn()` (Tools are passed through).
 
     This isolates run-scoped Toolset state (e.g. a SearchableToolset's discovered tools and any active name
     selection) so that concurrent runs sharing the same configured Toolset — such as parallel sub-agent tool calls
-    or concurrent requests against one Agent — don't corrupt each other.
+    or concurrent requests against one Agent — don't corrupt each other. A plain Toolset has no run-scoped state
+    and its `spawn()` returns itself unchanged.
     """
     if isinstance(tools, Toolset):
         return tools.spawn()

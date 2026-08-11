@@ -371,11 +371,13 @@ class TestWarmUpTools:
             def __init__(self, tools):
                 super().__init__(tools)
                 self.warm_up_count = 0
+                self._loaded = False
 
             def warm_up(self):
-                if self._is_warmed_up:
+                if self._loaded:
                     return
                 self.warm_up_count += 1
+                self._loaded = True
                 super().warm_up()  # Also warm up individual tools
 
         tool = WarmupCountingTool(
