@@ -2306,8 +2306,8 @@ class TestAgentWarmUp:
         ],
     )
     def test_warm_up_loads_lazy_toolset(self, initial_tools):
-        # A lazy toolset (e.g. MCPToolset) loads its real tools on warm_up(). Before that it may be empty
-        # (a truthiness check would skip it) or expose a placeholder: warm_up must load the real tools either way.
+        # Before warm_up(), a lazy toolset (e.g. MCPToolset) is either empty or contains a placeholder tool.
+        # Agent.warm_up() must load the real tools in both cases.
         actual_tool = Tool(
             name="get_time",
             description="Get the current time in ISO format",
