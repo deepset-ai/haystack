@@ -13,16 +13,16 @@ from haystack.components.generators.chat import (
     OpenAIResponsesChatGenerator,
 )
 from haystack.components.generators.chat.types import ChatGenerator
-from haystack.components.generators.chat.utils import _generator_output_token_limit_key, _resolve_output_token_limit
+from haystack.components.generators.chat.utils import _generator_output_token_limit_key, _run_kwargs_with_output_limit
 from haystack.dataclasses import ChatMessage
 
 
 def integration_generator(class_name: str) -> ChatGenerator:
     """
-    Stand in for a Chat Generator that lives in `haystack-core-integrations`.
+    Return an object named `class_name` that satisfies `ChatGenerator`.
 
-    Those packages are not importable from here, which is why the lookup matches on class name. A stand-in named the
-    same way is therefore an accurate test of the mechanism, but it cannot catch a rename on the integration side.
+    It stands in for a generator from `haystack-core-integrations`, which cannot be imported here. Lookup is by class
+    name, so the name is the only part that has to match; a rename on the integration side goes unnoticed.
     """
 
     def run(self: Any, messages: list[ChatMessage], **kwargs: Any) -> dict[str, Any]:
@@ -93,27 +93,33 @@ class TestGeneratorOutputTokenLimitKey:
         assert _generator_output_token_limit_key(chat_generator=integration_generator("MysteryChatGenerator")) is None
 
 
-class TestResolveOutputTokenLimit:
-    def test_sends_the_default_as_the_providers_runtime_setting(self):
-        assert _resolve_output_token_limit(chat_generator=OpenAIChatGenerator(), default_limit=100) == (
-            100,
-            {"max_completion_tokens": 100},
-        )
+class TestRunKwargsWithOutputLimit:
+    def test_passes_the_limit_as_the_providers_runtime_setting(self):
+        kwargs = _run_kwargs_with_output_limit(chat_generator=OpenAIChatGenerator(), limit=100)
 
-    def test_a_configured_limit_wins_and_is_not_repeated_at_runtime(self):
+        assert kwargs == {"generation_kwargs": {"max_completion_tokens": 100}}
+
+    def test_overrides_a_limit_the_generator_already_configures(self):
+        # A caller that reserves room for a reply of a given size needs that size honored, so the runtime value wins.
         generator = OpenAIChatGenerator(generation_kwargs={"temperature": 0, "max_completion_tokens": 23})
-        original = dict(generator.generation_kwargs)
 
-        assert _resolve_output_token_limit(chat_generator=generator, default_limit=100) == (23, None)
-        assert generator.generation_kwargs == original
+        kwargs = _run_kwargs_with_output_limit(chat_generator=generator, limit=100)
 
-    @pytest.mark.parametrize("value", [0, -1, True, "512", None], ids=["zero", "negative", "bool", "string", "none"])
-    def test_an_invalid_configured_limit_is_left_for_the_generator_to_report(self, value):
-        generator = OpenAIChatGenerator(generation_kwargs={"max_completion_tokens": value})
-        # The generator owns the setting, so it is neither used nor silently overwritten at runtime.
-        assert _resolve_output_token_limit(chat_generator=generator, default_limit=100) == (100, None)
+        assert kwargs == {"generation_kwargs": {"max_completion_tokens": 100}}
+        # Only this call is affected; the generator keeps its own settings, including the ones it is not asked about.
+        assert generator.generation_kwargs == {"temperature": 0, "max_completion_tokens": 23}
+
+    def test_the_override_reaches_the_generator(self):
+        # Generators merge runtime kwargs over configured ones, which is what makes the override above take effect.
+        generator = OpenAIChatGenerator(generation_kwargs={"temperature": 0, "max_completion_tokens": 23})
+        kwargs = _run_kwargs_with_output_limit(chat_generator=generator, limit=100)
+
+        merged = {**generator.generation_kwargs, **kwargs["generation_kwargs"]}
+
+        assert merged == {"temperature": 0, "max_completion_tokens": 100}
 
     def test_an_unknown_generator_receives_no_guessed_setting(self):
-        # The protocol only guarantees `run(messages)`, so passing a guessed kwarg would raise inside the generator.
+        # The protocol only guarantees `run(messages)`, so even an empty `generation_kwargs` could raise a TypeError.
         generator = integration_generator("MysteryChatGenerator")
-        assert _resolve_output_token_limit(chat_generator=generator, default_limit=100) == (100, None)
+
+        assert _run_kwargs_with_output_limit(chat_generator=generator, limit=100) == {}

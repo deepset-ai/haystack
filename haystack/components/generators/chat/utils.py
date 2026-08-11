@@ -6,13 +6,9 @@ from typing import Any
 
 from haystack.components.generators.chat.types import ChatGenerator
 
-# The `generation_kwargs` key that caps a reply's length, per Chat Generator.
-#
-# Providers do not agree on a name for this setting and the `ChatGenerator` protocol does not standardize it, so a
-# caller that wants to bound a reply has to know which key the generator expects. Generators are matched by class name
-# rather than by `isinstance`, because most of the entries below live in `haystack-core-integrations` and are not
-# importable from here. Only the most derived match is used, so an unlisted subclass resolves through the generator it
-# inherits from: that is what covers the many OpenAI-compatible integrations without naming any of them.
+# The `generation_kwargs` key that caps a reply's length, per Chat Generator. Providers do not agree on a name and the
+# `ChatGenerator` protocol does not standardize it. Keyed by class name because most of these live in
+# `haystack-core-integrations` and cannot be imported here.
 _OUTPUT_TOKEN_LIMIT_KEYS = {
     # Haystack
     "OpenAIChatGenerator": "max_completion_tokens",
@@ -42,7 +38,8 @@ def _generator_output_token_limit_key(chat_generator: ChatGenerator) -> str | No
     :param chat_generator: The generator to look up.
     :returns: The key the generator expects, or None when the generator is not recognized.
     """
-    # Walk from the most derived class, so a provider's own entry wins over the generator it inherits from.
+    # `__mro__` is the class followed by its bases, so an unlisted generator still matches through one it inherits
+    # from, such as the integrations built on `OpenAIChatGenerator`. Most derived first, so its own entry wins.
     for cls in type(chat_generator).__mro__:
         key = _OUTPUT_TOKEN_LIMIT_KEYS.get(cls.__name__)
         if key is not None:
@@ -50,33 +47,16 @@ def _generator_output_token_limit_key(chat_generator: ChatGenerator) -> str | No
     return None
 
 
-def _resolve_output_token_limit(chat_generator: ChatGenerator, default_limit: int) -> tuple[int, dict[str, Any] | None]:
+def _run_kwargs_with_output_limit(chat_generator: ChatGenerator, limit: int) -> dict[str, Any]:
     """
-    Resolve an effective output-token limit and the runtime kwargs that hold a Chat Generator to it.
-
-    A recognized limit already configured on the generator wins and is not repeated at runtime. This counts a limit the
-    generator set for itself: `HuggingFaceAPIChatGenerator` and `TransformersChatGenerator` both leave a default of 512
-    in their `generation_kwargs`, and reading the dict cannot tell that apart from a deliberate choice, so a caller
-    asking for more than that gets the generator's number back.
-
-    When a recognized generator has no limit configured, the default is returned as that provider's runtime setting. An
-    unrecognized generator receives no runtime setting, because the `ChatGenerator` protocol guarantees nothing beyond
-    `run(messages)` and guessing a key would raise a `TypeError` in the generator.
+    Return the `run` kwargs that set a Chat Generator's output-token limit to `limit`.
 
     :param chat_generator: The generator whose output should be limited.
-    :param default_limit: The positive fallback output-token limit.
-    :returns: The effective limit, and the `generation_kwargs` to pass at runtime, or None when there are none. A
-        caller that gets None can still send the limit as prompt guidance and measure the reply itself.
+    :param limit: The positive output-token limit to set.
+    :returns: The kwargs, or an empty dict when the generator is not recognized.
     """
     limit_key = _generator_output_token_limit_key(chat_generator=chat_generator)
     if limit_key is None:
-        return default_limit, None
-
-    configured = getattr(chat_generator, "generation_kwargs", None)
-    if isinstance(configured, dict) and limit_key in configured:
-        value = configured[limit_key]
-        if isinstance(value, int) and not isinstance(value, bool) and value > 0:
-            return value, None
-        # The generator owns this setting. Do not silently replace an invalid value; let it report the problem.
-        return default_limit, None
-    return default_limit, {limit_key: default_limit}
+        # Nothing at all rather than an empty `generation_kwargs`, which an unrecognized generator need not accept.
+        return {}
+    return {"generation_kwargs": {limit_key: limit}}
