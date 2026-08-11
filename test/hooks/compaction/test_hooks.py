@@ -18,7 +18,7 @@ from haystack.utils.experimental import ExperimentalWarning
 from test.hooks.compaction.helpers import (
     FakeCounter,
     count_markers,
-    long_conversation,
+    fresh_conversation_with_two_steps,
     make_state,
     tool_call,
     tool_result,
@@ -165,7 +165,7 @@ class TestCompactionHook:
     )
     def test_trigger(self, context_tokens, should_compact):
         compactor = _RecordingCompactor()
-        _hook(compactor).run(make_state(messages=long_conversation(), context_tokens=context_tokens))
+        _hook(compactor).run(make_state(messages=fresh_conversation_with_two_steps(), context_tokens=context_tokens))
         assert compactor.calls == (["compact"] if should_compact else [])
 
     def test_fires_without_reported_usage_by_counting_locally(self):
@@ -201,7 +201,7 @@ class TestCompactionHook:
         # The reported count also covers tool schemas and template overhead, which a compactor cannot remove. Here that
         # overhead alone exceeds the target, so the compactor is told to cut the messages as far as it is allowed.
         compactor = _RecordingCompactor()
-        _hook(compactor).run(make_state(messages=long_conversation(), context_tokens=800))
+        _hook(compactor).run(make_state(messages=fresh_conversation_with_two_steps(), context_tokens=800))
         assert compactor.targets[0] == 0
 
     def test_warns_when_the_token_counter_exceeds_the_context_estimate(self, caplog):
@@ -213,7 +213,7 @@ class TestCompactionHook:
     def test_rewrites_messages_and_re_estimates_context_tokens(self):
         counter = FakeCounter()
         hook = _hook(token_counter=counter)
-        messages = long_conversation()
+        messages = fresh_conversation_with_two_steps()
         original_context_tokens = 800
         estimated = _estimated_context_tokens(
             messages=messages, context_tokens=original_context_tokens, token_counter=counter
@@ -244,7 +244,7 @@ class TestCompactionHook:
         assert state.data["context_tokens"] == 0
 
     def test_leaves_the_conversation_alone_when_the_compactor_declines(self):
-        messages = long_conversation()
+        messages = fresh_conversation_with_two_steps()
         state = make_state(messages, context_tokens=800)
         _hook(_RecordingCompactor(result=None)).run(state=state)
         assert state.data["messages"] == messages
@@ -312,7 +312,7 @@ class TestCompactionHookAsync:
     @pytest.mark.asyncio
     async def test_run_async_uses_the_async_compaction_path(self):
         compactor = _RecordingCompactor()
-        await _hook(compactor).run_async(make_state(long_conversation(), context_tokens=800))
+        await _hook(compactor).run_async(make_state(fresh_conversation_with_two_steps(), context_tokens=800))
         assert compactor.calls == ["compact_async"]
 
     @pytest.mark.asyncio
