@@ -54,9 +54,13 @@ def _resolve_output_token_limit(chat_generator: ChatGenerator, default_limit: in
     """
     Resolve an effective output-token limit and the runtime kwargs that hold a Chat Generator to it.
 
-    A recognized limit already configured on the generator wins and is not repeated at runtime. When a recognized
-    generator has no limit configured, the default is returned as that provider's runtime setting. An unrecognized
-    generator receives no runtime setting, because the `ChatGenerator` protocol guarantees nothing beyond
+    A recognized limit already configured on the generator wins and is not repeated at runtime. This counts a limit the
+    generator set for itself: `HuggingFaceAPIChatGenerator` and `TransformersChatGenerator` both leave a default of 512
+    in their `generation_kwargs`, and reading the dict cannot tell that apart from a deliberate choice, so a caller
+    asking for more than that gets the generator's number back.
+
+    When a recognized generator has no limit configured, the default is returned as that provider's runtime setting. An
+    unrecognized generator receives no runtime setting, because the `ChatGenerator` protocol guarantees nothing beyond
     `run(messages)` and guessing a key would raise a `TypeError` in the generator.
 
     :param chat_generator: The generator whose output should be limited.
