@@ -1226,6 +1226,8 @@ class PipelineBase:  # noqa: PLW1641
         :param component_name: The name of a component.
         :param component: Component with component metadata.
         :param inputs: Global inputs state.
+        :param is_resume: Whether the component is being resumed from a breakpoint. If True, the inputs
+            have already been consumed, so the first available value is returned for each socket.
         :returns: The inputs for the component.
         """
         component_inputs = inputs.get(component_name, {})

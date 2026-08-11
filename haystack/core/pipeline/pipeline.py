@@ -141,6 +141,8 @@ class Pipeline(PipelineBase):
         :param component_visits: Current state of component visits.
         :param parent_span: The parent span to use for the newly created span.
             This is to allow tracing to be correctly linked to the pipeline run.
+        :param break_point: An optional breakpoint. If it targets this component and its visit
+            count matches the current one, a `BreakpointException` is raised before the Component runs.
         :raises PipelineRuntimeError: If Component doesn't return a dictionary.
         :return: The output of the Component.
         """
