@@ -941,6 +941,10 @@ Creates an instance of the 'CohereRanker'.
   to the Document content.
 - **max_tokens_per_doc** (<code>int</code>) – The maximum number of tokens to embed for each document defaults to 4096.
 
+**Raises:**
+
+- <code>ValueError</code> – If `top_k` is not > 0.
+
 #### to_dict
 
 ```python
