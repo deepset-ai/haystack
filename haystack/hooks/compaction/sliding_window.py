@@ -321,7 +321,7 @@ class SlidingWindowCompactor(Compactor):
         :param target_tokens: The size the kept conversation should come in under.
         :param token_counter: The `TokenCounter` to measure messages with.
         :returns: The conversation that survived, with an omission note if configured standing where the removed
-            messages used to sit; or None when there is nothing to remove.
+            messages used to sit; or None when there is nothing to remove but an earlier note.
         """
         if token_counter.count(messages=messages) <= target_tokens:
             return None
@@ -335,6 +335,10 @@ class SlidingWindowCompactor(Compactor):
             return None
         if not self.omission_note:
             return kept
+        # Swapping an earlier note for a new one frees nothing, so decline instead of rewriting the conversation again
+        # on every following step.
+        if all(_is_compaction_note(message=message) for message in removable):
+            return None
 
         # We prefer user over system since not all providers support multiple system messages
         note = ChatMessage.from_user(

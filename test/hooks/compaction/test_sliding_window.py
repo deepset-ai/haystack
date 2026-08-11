@@ -292,6 +292,24 @@ class TestSlidingWindowCompactor:
         assert compacted is not None
         assert compacted[2].text == expected
 
+    def test_returns_none_when_only_an_earlier_note_would_be_removed(self):
+        messages = [
+            ChatMessage.from_system(text="rules"),
+            ChatMessage.from_user(
+                text=_DEFAULT_OMISSION_NOTE.replace("{num_removed}", "12"),
+                meta={_COMPACTION_META_KEY: {"strategy": "sliding_window"}},
+            ),
+            ChatMessage.from_user(text="current task"),
+            ChatMessage.from_assistant(text="current step"),
+        ]
+        # Enough for everything but the earlier note, leaving that note as the only thing compaction could remove.
+        target_tokens = 16
+        # Swapping one note for another frees nothing, so compaction must decline rather than run again every step.
+        assert (
+            SlidingWindowCompactor().compact(messages=messages, target_tokens=target_tokens, token_counter=COUNTER)
+            is None
+        )
+
     @pytest.mark.parametrize(
         ("messages", "target_tokens"),
         [
