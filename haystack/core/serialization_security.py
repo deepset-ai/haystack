@@ -18,6 +18,7 @@ The two-mode loading API (`unsafe=True`) bypasses the allowlist entirely.
 import builtins
 import contextvars
 import fnmatch
+import importlib
 import os
 from collections.abc import Iterable, Iterator
 from contextlib import contextmanager
@@ -73,6 +74,19 @@ _DENIED_BUILTIN_NAMES: frozenset[str] = frozenset(
 # reach the same builtin via a different import path (e.g. `io.open is builtins.open`).
 _DENIED_BUILTIN_OBJECTS: frozenset = frozenset([getattr(builtins, name) for name in _DENIED_BUILTIN_NAMES])
 
+# Import primitives are functional twins of the denied builtin `__import__`: they load an arbitrary
+# module by name (the gateway to `os`/`subprocess`/...). The module-granular allowlist does not stop
+# them, because a wrapper like `haystack.utils.type_serialization.thread_safe_import` lives inside
+# the allowlisted `haystack` namespace and reports `__module__ == "haystack..."`, and the builtin
+# denylist above only matches `builtins` members by identity. Deny these import primitives too.
+_DENIED_CALLABLE_OBJECTS: frozenset = frozenset({importlib.import_module, importlib.reload})
+# `thread_safe_import` is matched by its (`__module__`, `__qualname__`) pair rather than by identity
+# so this module need not import `haystack.utils.type_serialization` (which itself imports from this
+# module, so an import here would be circular).
+_DENIED_CALLABLE_QUALNAMES: frozenset[tuple[str, str]] = frozenset(
+    {("haystack.utils.type_serialization", "thread_safe_import")}
+)
+
 
 @dataclass(frozen=True)
 class _DeserializationContext:
@@ -88,6 +102,18 @@ _current_context: contextvars.ContextVar[_DeserializationContext | None] = conte
 def _get_context() -> _DeserializationContext:
     ctx = _current_context.get()
     return ctx if ctx is not None else _DeserializationContext()
+
+
+def _is_unsafe_deserialization() -> bool:
+    """
+    Return whether the active deserialization context was entered with `unsafe=True`.
+
+    Components deserializing their own data (e.g. `OutputAdapter.from_dict`) use this to decide
+    whether to honor an embedded `unsafe` flag: a serialized component may only disable its Jinja
+    sandbox when the whole pipeline is being loaded in unsafe mode (`Pipeline.load(..., unsafe=True)`),
+    never on its own from otherwise-untrusted data in default safe mode.
+    """
+    return _get_context().unsafe
 
 
 # Process-wide patterns set via allow_deserialization_module.
@@ -255,6 +281,34 @@ def _check_not_denied_builtin(resolved: object, handle: str) -> None:
             f"blocked because it can be used to execute code, import modules, access the "
             f"filesystem, or escape via attribute access. If you trust the source of this data, "
             f"load it with unsafe=True to bypass deserialization safety checks."
+        )
+
+
+def _check_not_denied_callable(resolved: object, handle: str) -> None:
+    """
+    Reject `resolved` if it is an import primitive that is unsafe to resolve from serialized data.
+
+    Used by the callable-resolution path (`deserialize_callable`) as a companion to
+    :func:`_check_not_denied_builtin`. It blocks the non-builtin import primitives in
+    :data:`_DENIED_CALLABLE_OBJECTS` / :data:`_DENIED_CALLABLE_QUALNAMES` (e.g.
+    `importlib.import_module`, `haystack.utils.type_serialization.thread_safe_import`), which are
+    functionally equivalent to the already-denied builtin `__import__` and can load any module as a
+    gateway to code execution. Bypassed in `unsafe=True` mode, which disables all safety checks.
+
+    :param resolved:
+        The object resolved from the serialized handle.
+    :param handle:
+        The original serialized handle, used only for the error message.
+    """
+    if _get_context().unsafe:
+        return
+    ident = (getattr(resolved, "__module__", ""), getattr(resolved, "__qualname__", ""))
+    if any(resolved is denied for denied in _DENIED_CALLABLE_OBJECTS) or ident in _DENIED_CALLABLE_QUALNAMES:
+        raise DeserializationError(
+            f"Refusing to deserialize '{handle}': it resolves to an import primitive that can load "
+            f"arbitrary modules (equivalent to the blocked builtin '__import__'), which is a gateway "
+            f"to code execution. If you trust the source of this data, load it with unsafe=True to "
+            f"bypass deserialization safety checks."
         )
 
 
