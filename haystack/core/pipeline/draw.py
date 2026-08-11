@@ -263,8 +263,8 @@ def _to_mermaid_image(
     :param timeout:
         Timeout in seconds for the request to the Mermaid server.
     :param super_component_mapping:
-        Mapping of component names to the SuperComponent that contains them, used to group
-        those components visually in the rendered diagram.
+        Mapping of component names to the name of the SuperComponent that contains them, used to
+        group those components visually in the rendered diagram.
     :returns:
         The image, SVG, or PDF data returned by the Mermaid server as bytes.
     :raises ValueError:
