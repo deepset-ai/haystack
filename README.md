@@ -7,12 +7,12 @@
 | haystack/\_\_init\_\_.py                                                  |       11 |        0 |    100% |           |
 | haystack/components/\_\_init\_\_.py                                       |        0 |        0 |    100% |           |
 | haystack/components/agents/\_\_init\_\_.py                                |        5 |        0 |    100% |           |
-| haystack/components/agents/agent.py                                       |      367 |        3 |     99% |159, 175, 744 |
+| haystack/components/agents/agent.py                                       |      358 |        3 |     99% |158, 174, 735 |
 | haystack/components/agents/state/\_\_init\_\_.py                          |        5 |        0 |    100% |           |
 | haystack/components/agents/state/state.py                                 |       74 |        2 |     97% |    76, 80 |
 | haystack/components/agents/state/state\_utils.py                          |       18 |        0 |    100% |           |
 | haystack/components/agents/tool\_calling.py                               |      248 |        5 |     98% |30, 247-249, 618 |
-| haystack/components/agents/utils.py                                       |      115 |        2 |     98% |   80, 276 |
+| haystack/components/agents/utils.py                                       |      120 |        3 |     98% |80, 126, 297 |
 | haystack/components/builders/\_\_init\_\_.py                              |        5 |        0 |    100% |           |
 | haystack/components/builders/answer\_builder.py                           |       98 |        3 |     97% |270, 291, 303 |
 | haystack/components/builders/chat\_prompt\_builder.py                     |      110 |        2 |     98% |  179, 266 |
@@ -229,13 +229,13 @@
 | haystack/tools/from\_function.py                                          |       61 |        0 |    100% |           |
 | haystack/tools/parameters\_schema\_utils.py                               |       97 |        3 |     97% |95, 135-136 |
 | haystack/tools/pipeline\_tool.py                                          |       30 |        2 |     93% |  240, 243 |
-| haystack/tools/searchable\_toolset.py                                     |      120 |        2 |     98% |  191, 214 |
+| haystack/tools/searchable\_toolset.py                                     |      112 |        0 |    100% |           |
 | haystack/tools/serde\_utils.py                                            |       43 |        3 |     93% |33, 35, 57 |
 | haystack/tools/skills/\_\_init\_\_.py                                     |        2 |        0 |    100% |           |
 | haystack/tools/skills/skill\_toolset.py                                   |       61 |        0 |    100% |           |
 | haystack/tools/tool.py                                                    |      150 |        5 |     97% |174, 197, 241-242, 376 |
 | haystack/tools/tool\_types.py                                             |        5 |        0 |    100% |           |
-| haystack/tools/toolset.py                                                 |      119 |        9 |     92% |119, 193, 249, 301, 428-432 |
+| haystack/tools/toolset.py                                                 |      107 |        8 |     93% |102, 158, 264, 407-411 |
 | haystack/tools/utils.py                                                   |       29 |        0 |    100% |           |
 | haystack/tracing/\_\_init\_\_.py                                          |        1 |        0 |    100% |           |
 | haystack/tracing/logging\_tracer.py                                       |       36 |        0 |    100% |           |
@@ -262,7 +262,7 @@
 | haystack/utils/type\_serialization.py                                     |      140 |        6 |     96% |103, 105, 256-257, 265, 281 |
 | haystack/utils/url\_validation.py                                         |        4 |        0 |    100% |           |
 | haystack/version.py                                                       |        5 |        2 |     60% |      9-10 |
-| **TOTAL**                                                                 | **16680** |  **788** | **95%** |           |
+| **TOTAL**                                                                 | **16656** |  **786** | **95%** |           |
 
 
 ## Setup coverage badge
