@@ -90,6 +90,24 @@ def _record_tool_calls(state: State, tool_messages: list[ChatMessage]) -> None:
 # ---------------------------
 
 
+def _spawn_selection_copy(item: Tool | Toolset, selected_tool_names: set[str]) -> Toolset | None:
+    """
+    Return the per-run copy carrying the selection, or None if the item does not provide one.
+
+    A Toolset with run-scoped state (e.g. SearchableToolset) overrides `spawn()` to return a copy that
+    applies `selected_tool_names` itself. A plain Toolset returns itself from `spawn()` (it has nothing
+    to isolate), and a standalone Tool has no `spawn()`: in both cases the caller applies the selection.
+
+    :param item: A configured Tool or Toolset.
+    :param selected_tool_names: The tool names selected for this run.
+    :returns: The selection-carrying per-run copy, or None.
+    """
+    if not isinstance(item, Toolset):
+        return None
+    spawned = item.spawn(selected_tool_names=selected_tool_names)
+    return spawned if spawned is not item else None
+
+
 def _select_tools_by_name(configured_tools: ToolsType, names: list[str]) -> list[Tool | Toolset]:
     """
     Select configured tools by name for a single run.
@@ -134,13 +152,12 @@ def _select_tools_by_name(configured_tools: ToolsType, names: list[str]) -> list
         matched = requested_names & {tool.name for tool in selectable}
         if not matched:
             continue
-        spawned = item.spawn(selected_tool_names=matched) if isinstance(item, Toolset) else item
-        if spawned is not item:
-            # spawn() returned a per-run copy that already restricts itself to the selected tools.
-            selected.append(spawned)
+        run_copy = _spawn_selection_copy(item, matched)
+        if run_copy is not None:
+            selected.append(run_copy)
         else:
-            # No per-run copy: extract the selected tools from `selectable`, the same list the names were
-            # validated against. Iterating a dynamic Toolset instead could silently miss some of them.
+            # Select from `selectable`, the list the names were validated against: iterating a dynamic
+            # Toolset could silently miss tools.
             selected.extend(tool for tool in selectable if tool.name in matched)
     return selected
 
