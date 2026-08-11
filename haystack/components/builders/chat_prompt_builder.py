@@ -6,14 +6,13 @@ import json
 from dataclasses import replace
 from typing import Any, Literal
 
-from jinja2.sandbox import SandboxedEnvironment
-
 from haystack import component, default_from_dict, default_to_dict, logging
 from haystack.dataclasses.chat_message import ChatMessage, ChatRole, TextContent
 from haystack.lazy_imports import LazyImport
 from haystack.utils import Jinja2TimeExtension
 from haystack.utils.jinja2_chat_extension import ChatMessageExtension
 from haystack.utils.jinja2_extensions import _extract_template_variables_and_assignments
+from haystack.utils.jinja2_sandbox import HaystackSandboxedEnvironment
 
 logger = logging.getLogger(__name__)
 
@@ -165,7 +164,7 @@ class ChatPromptBuilder:
         self._required_variables = required_variables
         self.template = template
 
-        self._env = SandboxedEnvironment(extensions=[ChatMessageExtension])
+        self._env = HaystackSandboxedEnvironment(extensions=[ChatMessageExtension])
         if arrow_import.is_successful():
             self._env.add_extension(Jinja2TimeExtension)
 
