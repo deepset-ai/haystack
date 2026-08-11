@@ -1,13 +1,11 @@
 ---
+deprecations:
+  - |
+    Combining Toolsets with the ``+`` operator or ``Toolset.add(toolset)`` is deprecated and will be
+    removed in Haystack 3.2.0. Both now emit a ``FutureWarning`` but keep working, and pipelines
+    serialized with a ``+``-combined Toolset still load. Pass Toolsets as a list wherever tools are
+    accepted instead: ``Agent(tools=[toolset_a, toolset_b])``.
 upgrade:
-  - |
-    The ``+`` operator for combining Toolsets has been removed. Pass Toolsets as a list wherever tools are
-    accepted instead: ``Agent(tools=[toolset_a, toolset_b])``. Pipelines serialized with a ``+``-combined
-    Toolset cannot be loaded anymore (their YAML references the removed internal ``_ToolsetWrapper`` class):
-    recreate them with the list form and serialize them again.
-  - |
-    ``Toolset.add()`` now only accepts a single Tool, not another Toolset. To combine Toolsets, pass them as
-    a list: ``Agent(tools=[toolset_a, toolset_b])``.
   - |
     Haystack can call ``warm_up()`` on Tools and Toolsets more than once, for example before every run.
     Previously ``Toolset`` absorbed repeated calls with an internal ``_is_warmed_up`` flag; that flag is gone
