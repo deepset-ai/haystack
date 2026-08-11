@@ -129,6 +129,12 @@ jobs:
             // e.g. a maintainer who deliberately assigned themselves) and remember
             // the issue for the board step.
             async function releaseLinkedIssues(pr, meta) {
+              const assignees = meta.reviewers ?? [];
+              // linked_issue_review only claims an issue when it has individual
+              // reviewers to assign, so with nobody to unassign there is nothing to
+              // hand back -- and no reason to move the board item either.
+              if (!assignees.length) return;
+
               const result = await github.graphql(
                 `query($owner: String!, $repo: String!, $number: Int!) {
                   repository(owner: $owner, name: $repo) {
@@ -144,14 +150,11 @@ jobs:
               const issues = result.repository.pullRequest.closingIssuesReferences.nodes.filter(
                 (issue) => issue.repository.nameWithOwner === `${owner}/${repo}`,
               );
-              const assignees = meta.reviewers ?? [];
               for (const issue of issues) {
-                if (assignees.length) {
-                  // Logins that aren't assigned are ignored, so this is idempotent.
-                  await github.rest.issues.removeAssignees({
-                    owner, repo, issue_number: issue.number, assignees,
-                  });
-                }
+                // Logins that aren't assigned are ignored, so this is idempotent.
+                await github.rest.issues.removeAssignees({
+                  owner, repo, issue_number: issue.number, assignees,
+                });
                 parkedIssueIds.add(issue.id);
                 core.info(`Released linked issue #${issue.number} of PR #${pr.number}`);
               }
@@ -357,11 +360,6 @@ jobs:
                   if (await claSigned(pr.head.sha)) {
                     await restore(pr);
                   } else if (pr.draft) {
-                    // Also re-run the release: it heals PRs that were gated before
-                    // this ran on any linked issues, and issues that got re-claimed
-                    // while the PR was briefly readied.
-                    const comment = await findMarkerComment(pr.number);
-                    await releaseLinkedIssues(pr, comment ? parseMarker(comment.body) : {});
                     await escalate(pr);
                   } else {
                     // Readied without signing: put it back in draft, then escalate.
