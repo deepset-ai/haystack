@@ -270,6 +270,8 @@ class DocumentCleaner:
         Note: This heuristic uses exact matches and therefore works well for footers like "Copyright 2019 by XXX",
          but won't detect "Page 3 of 4" or similar.
 
+        :param text: The text to remove headers and footers from, with pages separated by the
+            form feed character described above.
         :param n_chars: The number of first/last characters where the header/footer shall be searched in.
         :param n_first_pages_to_ignore: The number of first pages to ignore
             (e.g. TOCs often don't contain footer/header).
