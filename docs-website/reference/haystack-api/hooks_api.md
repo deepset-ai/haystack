@@ -175,11 +175,15 @@ Deserialize the hook, reconstructing its compactor and token counter.
 
 Bases: <code>Compactor</code>
 
-Keeps the Agent's instructions, current task, and as many complete recent steps as the target allows.
+Keeps the Agent's instructions, current task, and as much complete recent conversation as the target allows.
 
-Leading system messages and the latest user message are protected. Recent history is retained in complete Agent
-steps, where a step is an assistant message together with all immediately following tool results. An
-`omission_note` is left in place of what was removed.
+Leading system messages and the latest user message are protected. Historical turns are kept in full when they fit,
+and the current task's history is kept in complete Agent steps, where a step is an assistant message together
+with all immediately following tool results.
+
+An `omission_note` is left where the removed messages used to sit: directly after the leading system messages when
+only historical turns were removed, and directly after the latest user message when the current task's own steps
+were removed. Only one note is ever present, since a later compaction folds an earlier note into its replacement.
 
 ```python
 from haystack.components.agents import Agent
@@ -228,18 +232,18 @@ compact(
 ) -> list[ChatMessage] | None
 ```
 
-Drop older history while preserving the task anchor and a recent window of complete Agent steps.
+Drop older history while preserving the task anchor and a complete recent conversation window.
 
 **Parameters:**
 
 - **messages** (<code>list\[ChatMessage\]</code>) – The conversation to compact, oldest to newest.
-- **target_tokens** (<code>int</code>) – The size the retained conversation should come in under.
+- **target_tokens** (<code>int</code>) – The size the kept conversation should come in under.
 - **token_counter** (<code>TokenCounter</code>) – The `TokenCounter` to measure messages with.
 
 **Returns:**
 
-- <code>list\[ChatMessage\] | None</code> – The protected context, an omission note if configured, and the retained steps; or None when there is
-  nothing worth removing.
+- <code>list\[ChatMessage\] | None</code> – The conversation that survived, with an omission note if configured standing where the removed
+  messages used to sit; or None when there is nothing to remove but an earlier note.
 
 #### to_dict
 
