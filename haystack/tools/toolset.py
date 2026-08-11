@@ -157,23 +157,6 @@ class Toolset:
             return any(tool is item or tool == item for tool in self)
         return False
 
-    def __len__(self) -> int:
-        """
-        Return the number of Tools in this Toolset.
-
-        :returns: Number of Tools
-        """
-        return sum(1 for _ in self)
-
-    def __getitem__(self, index: int) -> Tool:
-        """
-        Get a Tool by index.
-
-        :param index: Index of the Tool to get
-        :returns: The Tool at the specified index
-        """
-        return list(self)[index]
-
     def warm_up(self) -> None:
         """
         Prepare the Toolset for use.
@@ -210,9 +193,14 @@ class Toolset:
         """
         Add a new Tool or merge another Toolset.
 
-        Note: adding a Toolset is deprecated and will be removed in Haystack 3.2.0. It flattens the added
-        Toolset into its individual tools, losing its lifecycle and serialization. Pass Toolsets as a list
-        wherever tools are accepted instead, e.g. `Agent(tools=[toolset_a, toolset_b])`.
+        Note: adding a Toolset flattens it into its individual tools, so this is only recommended
+        for Toolsets that don't manage shared resources in their `warm_up()` (or `__init__`).
+        For example, combining with an `MCPToolset`, which owns a shared connection, is not
+        recommended: the connection's lifecycle would no longer be managed by the original
+        Toolset.
+
+        Adding a Toolset is deprecated and will be removed in Haystack 3.2.0: pass Toolsets as a
+        list wherever tools are accepted instead, e.g. `Agent(tools=[toolset_a, toolset_b])`.
 
         :param tool: A Tool instance or another Toolset to add
         :raises ValueError: If adding the tool would result in duplicate tool names
@@ -304,13 +292,32 @@ class Toolset:
             return Toolset(tools=self.tools + other)
         raise TypeError(f"Cannot add {type(other).__name__} to Toolset")
 
+    def __len__(self) -> int:
+        """
+        Return the number of Tools in this Toolset.
+
+        :returns: Number of Tools
+        """
+        return sum(1 for _ in self)
+
+    def __getitem__(self, index: int) -> Tool:
+        """
+        Get a Tool by index.
+
+        :param index: Index of the Tool to get
+        :returns: The Tool at the specified index
+        """
+        return list(self)[index]
+
 
 class _ToolsetWrapper(Toolset):
     """
     A wrapper that holds multiple toolsets and provides a unified interface.
 
+    This is used internally when combining different types of toolsets to preserve
+    their individual configurations while still being usable with Agent and Haystack chat generators.
+
     Deprecated together with the `+` operator that creates it; both will be removed in Haystack 3.2.0.
-    Kept so that `+`-combined Toolsets, including previously serialized pipelines using them, keep working.
     """
 
     def __init__(self, toolsets: list[Toolset]) -> None:
@@ -328,7 +335,7 @@ class _ToolsetWrapper(Toolset):
                     yield tool
 
     def get_selectable_tools(self) -> list[Tool]:
-        """Return every selectable tool across all wrapped toolsets."""
+        """Return every selectable tool across all wrapped toolsets, ignoring any active filter."""
         return [tool for toolset in self.toolsets for tool in toolset.get_selectable_tools()]
 
     def spawn(self, selected_tool_names: set[str] | None = None) -> "_ToolsetWrapper":
@@ -387,7 +394,7 @@ class _ToolsetWrapper(Toolset):
 
         return cls(toolsets=toolsets)
 
-    def __add__(self, other: "Tool | Toolset | list[Tool]") -> "_ToolsetWrapper":
+    def __add__(self, other: Toolset | Tool | list[Tool]) -> "_ToolsetWrapper":
         """Add another toolset or tool to this wrapper. Deprecated, see `Toolset.__add__`."""
         warnings.warn(
             "Combining Toolsets and Tools with '+' is deprecated and will be removed in Haystack 3.2.0. "

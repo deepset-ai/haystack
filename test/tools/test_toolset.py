@@ -167,7 +167,6 @@ class TestToolset:
         assert "multiply" not in toolset
         assert "non_existent_tool" not in toolset
 
-    @pytest.mark.filterwarnings("ignore::FutureWarning")
     def test_toolset_addition(self, add_tool, multiply_tool, subtract_tool):
         """Test that the __add__ method combines toolsets with various operand types."""
         base = Toolset([add_tool])

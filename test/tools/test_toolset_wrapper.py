@@ -12,9 +12,6 @@ from haystack.core.serialization import generate_qualified_class_name
 from haystack.tools import Tool, Toolset, tool
 from haystack.tools.toolset import _ToolsetWrapper
 
-# The whole file exercises the deprecated `+` operator on purpose.
-pytestmark = pytest.mark.filterwarnings("ignore::FutureWarning")
-
 
 @tool
 def add(a: Annotated[int, "first number"], b: Annotated[int, "second number"]) -> int:
@@ -72,17 +69,13 @@ class WarmUpCountingTool(Tool):
 
 
 class WarmUpCountingToolset(Toolset):
-    """A Toolset that records how many times its own warm_up() did real work."""
+    """A Toolset that records how many times warm_up() was called."""
 
     def __init__(self, tools):
         super().__init__(tools)
         self.warm_up_count = 0
-        self._loaded = False
 
     def warm_up(self) -> None:
-        if self._loaded:
-            return
-        self._loaded = True
         self.warm_up_count += 1
         super().warm_up()
 
@@ -157,16 +150,15 @@ class TestToolsetWrapperWarmUp:
         assert ts1.warm_up_count == 1
         assert ts2.warm_up_count == 1
 
-    def test_warm_up_can_be_called_multiple_times(self):
-        # The wrapper delegates on every call; the wrapped toolsets guard themselves.
+    def test_warm_up_delegates_on_every_call(self):
         ts1 = WarmUpCountingToolset([WarmUpCountingTool("a")])
         ts2 = WarmUpCountingToolset([WarmUpCountingTool("b")])
         wrapper = ts1 + ts2
         wrapper.warm_up()
         wrapper.warm_up()
         wrapper.warm_up()
-        assert ts1.warm_up_count == 1
-        assert ts2.warm_up_count == 1
+        assert ts1.warm_up_count == 3
+        assert ts2.warm_up_count == 3
 
 
 class TestToolsetWrapperSerialization:
