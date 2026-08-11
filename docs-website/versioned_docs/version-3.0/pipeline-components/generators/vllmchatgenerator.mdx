@@ -27,7 +27,7 @@ This component enables chat completion using models served with [vLLM](https://d
 
 [vLLM](https://docs.vllm.ai/) is a high-throughput and memory-efficient inference and serving engine for LLMs. It exposes an OpenAI-compatible HTTP server, which `VLLMChatGenerator` uses to run chat completions.
 
-`VLLMChatGenerator` expects a vLLM server to be running and accessible at the `api_base_url` parameter (by default, `http://localhost:8000/v1`). The component needs a list of [`ChatMessage`](../../concepts/data-classes/chatmessage.mdx) objects to operate. `ChatMessage` is a data class that contains a message, a role (who generated the message, such as `user`, `assistant`, `system`, `function`), and optional metadata.
+`VLLMChatGenerator` expects a vLLM server to be running and accessible at the `api_base_url` parameter (by default, `http://localhost:8000/v1`). The component needs a list of [`ChatMessage`](../../concepts/data-classes/chatmessage.mdx) objects to operate. `ChatMessage` is a data class that contains a message, a role (who generated the message, such as `user`, `assistant`, `system`, `tool`), and optional metadata.
 
 You can pass any text generation parameters valid for the vLLM OpenAI-compatible Chat Completion API directly to this component using the `generation_kwargs` parameter in `__init__` or in the `run` method. vLLM-specific parameters not part of the standard OpenAI API (such as `top_k`, `min_tokens`, `repetition_penalty`) can be passed through `generation_kwargs["extra_body"]`. For more details, see the [vLLM documentation](https://docs.vllm.ai/en/stable/serving/openai_compatible_server/).
 

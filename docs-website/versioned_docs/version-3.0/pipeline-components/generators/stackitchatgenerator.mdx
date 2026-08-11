@@ -14,9 +14,9 @@ This component enables chat completions using the STACKIT API.
 |  |  |
 | --- | --- |
 | **Most common position in a pipeline** | After a [`ChatPromptBuilder`](../builders/chatpromptbuilder.mdx) |
-| **Mandatory init variables** | `model`: The model used through the STACKIT API |
+| **Mandatory init variables** | `model`: The model used through the STACKIT API  <br /> <br />`api_key`: A STACKIT API key. Can be set with `STACKIT_API_KEY` env var. |
 | **Mandatory run variables** | `messages`: A list of [`ChatMessage`](../../concepts/data-classes/chatmessage.mdx)  objects |
-| **Output variables** | `replies`: A list of [`ChatMessage`](../../concepts/data-classes/chatmessage.mdx) objects  <br /> <br />`meta`: A list of dictionaries with the metadata associated with each reply (such as token count, finish reason, and so on) |
+| **Output variables** | `replies`: A list of [`ChatMessage`](../../concepts/data-classes/chatmessage.mdx) objects |
 | **API reference** | [STACKIT](/reference/integrations-stackit) |
 | **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/stackit |
 | **Package name** | `stackit-haystack` |
@@ -38,7 +38,7 @@ Optionally, you can change the default `api_base_url`, which is `"https://api.op
 
 You can pass any text generation parameters valid for the STACKIT Chat Completion API directly to this component with the `generation_kwargs` parameter in the init or run methods.
 
-The component needs a list of `ChatMessage` objects to run. `ChatMessage` is a data class that contains a message, a role (who generated the message, such as `user`, `assistant`, `system`, `function`), and optional metadata. Find out more about it [ChatMessage documentation](../../concepts/data-classes/chatmessage.mdx).
+The component needs a list of `ChatMessage` objects to run. `ChatMessage` is a data class that contains a message, a role (who generated the message, such as `user`, `assistant`, `system`, `tool`), and optional metadata. Find out more about it [ChatMessage documentation](../../concepts/data-classes/chatmessage.mdx).
 
 ### Streaming
 

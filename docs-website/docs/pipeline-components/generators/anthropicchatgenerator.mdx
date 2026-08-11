@@ -16,7 +16,7 @@ This component enables chat completions using Anthropic large language models (L
 | **Most common position in a pipeline** | After a [ChatPromptBuilder](../builders/chatpromptbuilder.mdx) |
 | **Mandatory init variables** | `api_key`: An Anthropic API key. Can be set with `ANTHROPIC_API_KEY` env var. |
 | **Mandatory run variables** | `messages` A list of [`ChatMessage`](../../concepts/data-classes/chatmessage.mdx)  objects |
-| **Output variables** | `replies`: A list of [`ChatMessage`](../../concepts/data-classes/chatmessage.mdx)  objects  <br /> <br />`meta`: A list of dictionaries with the metadata associated with each reply, such as token count, finish reason, and so on |
+| **Output variables** | `replies`: A list of [`ChatMessage`](../../concepts/data-classes/chatmessage.mdx)  objects |
 | **API reference** | [Anthropic](/reference/integrations-anthropic) |
 | **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/anthropic |
 | **Package name** | `anthropic-haystack` |
@@ -38,9 +38,9 @@ Set your preferred Anthropic model with the `model` parameter when initializing 
 
 `AnthropicChatGenerator` requires a prompt to generate text, but you can pass any text generation parameters available in the Anthropic [Messaging API](https://docs.anthropic.com/en/api/messages) method directly to this component using the `generation_kwargs` parameter, both at initialization and when running the component. For more details on the parameters supported by the Anthropic API, see the [Anthropic documentation](https://docs.anthropic.com).
 
-Finally, the component needs a list of `ChatMessage` objects to operate. `ChatMessage` is a data class that contains a message, a role (who generated the message, such as `user`, `assistant`, `system`, `function`), and optional metadata.
+Finally, the component needs a list of `ChatMessage` objects to operate. `ChatMessage` is a data class that contains a message, a role (who generated the message, such as `user`, `assistant`, `system`, `tool`), and optional metadata.
 
-Only text input modality is supported at this time.
+Both text and image input modalities are supported.
 
 ### Tool Support
 
@@ -107,6 +107,7 @@ Here's an example of an instance of `AnthropicChatGenerator` being initialized w
 ```python python
 from haystack_integrations.components.generators.anthropic import AnthropicChatGenerator
 from haystack.dataclasses import ChatMessage
+from haystack.utils import Secret
 
 generation_kwargs = {"extra_headers": {"anthropic-beta": "prompt-caching-2024-07-31"}}
 

@@ -20,9 +20,10 @@ def mock_chat_generator():
     return Mock(spec=OpenAIChatGenerator)
 
 
-def test_init_invalid_top_k():
-    with pytest.raises(ValueError, match="top_k must be > 0"):
-        LLMRanker(top_k=0)
+@pytest.mark.parametrize("top_k", [0, -1])
+def test_init_invalid_top_k(top_k):
+    with pytest.raises(ValueError, match=rf"top_k must be > 0, but got {top_k}"):
+        LLMRanker(top_k=top_k)
 
 
 def test_init_default_generator(monkeypatch):
@@ -87,11 +88,21 @@ def test_from_dict(monkeypatch):
     assert ranker._chat_generator.to_dict() == chat_generator.to_dict()
 
 
-def test_run_invalid_runtime_top_k(mock_chat_generator):
-    ranker = LLMRanker(chat_generator=mock_chat_generator)
+@pytest.mark.parametrize(("init_top_k", "run_top_k"), [(10, 0), (10, -1), (1, 0)])
+def test_run_invalid_runtime_top_k(mock_chat_generator, init_top_k, run_top_k):
+    ranker = LLMRanker(chat_generator=mock_chat_generator, top_k=init_top_k)
 
-    with pytest.raises(ValueError, match="top_k must be > 0"):
-        ranker.run(query="test", documents=[Document(content="doc")], top_k=0)
+    with pytest.raises(ValueError, match=rf"top_k must be > 0, but got {run_top_k}"):
+        ranker.run(query="test", documents=[Document(content="doc")], top_k=run_top_k)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(("init_top_k", "run_top_k"), [(10, 0), (10, -1), (1, 0)])
+async def test_run_async_invalid_runtime_top_k(mock_chat_generator, init_top_k, run_top_k):
+    ranker = LLMRanker(chat_generator=mock_chat_generator, top_k=init_top_k)
+
+    with pytest.raises(ValueError, match=rf"top_k must be > 0, but got {run_top_k}"):
+        await ranker.run_async(query="test", documents=[Document(content="doc")], top_k=run_top_k)
 
 
 def test_run_empty_documents(mock_chat_generator):
