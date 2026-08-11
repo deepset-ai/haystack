@@ -7,7 +7,16 @@ from typing import Any
 from haystack.core.serialization import default_to_dict
 from haystack.dataclasses import ChatMessage, ChatRole
 from haystack.hooks.compaction.types import Compactor
-from haystack.hooks.compaction.utils import _COMPACTION_META_KEY, _agent_step_spans
+from haystack.hooks.compaction.utils import (
+    _COMPACTION_META_KEY,
+    _current_step_groups,
+    _historical_turn_groups,
+    _is_compaction_message,
+    _latest_user_index,
+    _leading_system_end,
+    _messages_at,
+    _messages_except,
+)
 from haystack.token_counters import TokenCounter
 from haystack.utils.experimental import _experimental
 
@@ -23,86 +32,9 @@ _DEFAULT_OMISSION_NOTE = (
 )
 
 
-def _leading_system_end(messages: list[ChatMessage]) -> int:
-    """Return the end of the leading system-message block."""
-    for index, message in enumerate(messages):
-        # Find the first non-leading system message or a system message produced by compaction
-        if not message.is_from(role=ChatRole.SYSTEM) or _COMPACTION_META_KEY in message.meta:
-            return index
-    return len(messages)
-
-
-def _latest_user_index(messages: list[ChatMessage]) -> int | None:
-    """
-    Return the latest user message not produced by compaction.
-
-    :param messages: The conversation to analyze, oldest to newest.
-    """
-    # We loop backwards to find the latest user message
-    for index in reversed(range(len(messages))):
-        message = messages[index]
-        # Find the latest user message that was not produced by a previous compaction
-        if message.is_from(role=ChatRole.USER) and _COMPACTION_META_KEY not in message.meta:
-            return index
-    return None
-
-
 def _is_compaction_note(message: ChatMessage) -> bool:
     """Whether a message is an omission note this strategy left in place of removed history."""
-    marker = message.meta.get(_COMPACTION_META_KEY)
-    return message.is_from(role=ChatRole.USER) and isinstance(marker, dict) and marker.get("strategy") == _STRATEGY
-
-
-def _historical_turn_spans(messages: list[ChatMessage], start: int, end: int) -> list[tuple[int, int]]:
-    """
-    Return spans for complete user turns in a bounded section of conversation history.
-
-    Each turn begins with a real user message and continues up to, but does not include, the next real user message.
-    This groups a user's request with every assistant step and tool result produced in response to it.
-
-    :param messages: The full conversation to analyze, ordered oldest to newest.
-    :param start: The inclusive index at which to begin looking for historical turns.
-    :param end: The exclusive index at which to stop. This is normally the current task's user-message index.
-    :returns: Ordered `(start_index, end_index)` pairs for each complete historical turn. Both indices refer to
-        `messages`, and `end_index` is exclusive, so a returned pair can be used directly as `messages[start:end]`.
-    """
-    # Reject any user-role message an earlier compaction produced, whichever strategy made it: none of them are user
-    # requests, so none of them begin a turn. Leaving them out also lets this compaction fold an old note away.
-    user_indices = [
-        index
-        for index in range(start, end)
-        if messages[index].is_from(role=ChatRole.USER) and _COMPACTION_META_KEY not in messages[index].meta
-    ]
-
-    # A real user message closes the preceding turn and starts the next one. The final historical turn extends to the
-    # supplied boundary, which is typically where the protected current task begins.
-    return [
-        (index, user_indices[position + 1] if position + 1 < len(user_indices) else end)
-        for position, index in enumerate(user_indices)
-    ]
-
-
-def _index_groups(
-    messages: list[ChatMessage], spans: list[tuple[int, int]], skip_compaction_notes: bool = False
-) -> list[list[int]]:
-    """
-    Expand each span into the message indices it covers, optionally dropping messages an earlier compaction produced.
-    """
-    return [
-        [index for index in range(start, end) if not (skip_compaction_notes and _is_compaction_note(messages[index]))]
-        for start, end in spans
-    ]
-
-
-def _messages_at(messages: list[ChatMessage], indices: list[int]) -> list[ChatMessage]:
-    """Return the messages at the given indices, in the order the indices are given."""
-    return [messages[index] for index in indices]
-
-
-def _messages_except(messages: list[ChatMessage], indices: list[int]) -> list[ChatMessage]:
-    """Return the messages the given indices leave out, in conversation order."""
-    left_out = set(indices)
-    return [message for index, message in enumerate(messages) if index not in left_out]
+    return _is_compaction_message(message=message, strategy=_STRATEGY, role=ChatRole.USER)
 
 
 def _flatten(groups: list[list[int]]) -> list[int]:
@@ -124,19 +56,13 @@ def _removable_groups(
         kept or removed entire, which is what keeps a tool call with its results and an assistant reply with the user
         message it answers.
     """
-    # Steps belong to the current task, so they start after its anchor, or after the instructions when the
-    # conversation has no user message to anchor on.
-    step_start = (task_index + 1) if task_index is not None else system_end
-    step_groups = _index_groups(messages=messages, spans=_agent_step_spans(messages=messages, start=step_start))
-
     # An earlier compaction's note is left out of its turn, so keeping the turn folds that note into the note this
     # compaction leaves behind.
-    historical_end = task_index if task_index is not None else system_end
-    historical_groups = _index_groups(
-        messages=messages,
-        spans=_historical_turn_spans(messages=messages, start=system_end, end=historical_end),
-        skip_compaction_notes=True,
-    )
+    historical_groups = [
+        [index for index in group if not _is_compaction_note(message=messages[index])]
+        for group in _historical_turn_groups(messages=messages, system_end=system_end, task_index=task_index)
+    ]
+    step_groups = _current_step_groups(messages=messages, system_end=system_end, task_index=task_index)
     return historical_groups, step_groups
 
 
