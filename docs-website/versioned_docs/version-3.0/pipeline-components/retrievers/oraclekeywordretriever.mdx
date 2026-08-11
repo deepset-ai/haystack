@@ -39,7 +39,8 @@ To run Oracle Database 23ai locally with Docker:
 docker run -d --name oracle23ai \
   -p 1521:1521 \
   -e ORACLE_PASSWORD=oracle \
-  container-registry.oracle.com/database/free:latest
+  -e ORACLE_INIT_PARAMS=vector_memory_size=512M \
+  gvenzl/oracle-free:23-slim
 ```
 
 Install the Oracle integration for Haystack:

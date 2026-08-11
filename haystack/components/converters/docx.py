@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import Any
 
 from haystack import Document, component, default_from_dict, default_to_dict, logging
-from haystack.components.converters.utils import get_bytestream_from_source, normalize_metadata
+from haystack.components.converters.utils import LinkFormat, get_bytestream_from_source, normalize_metadata
 from haystack.dataclasses import ByteStream
 from haystack.lazy_imports import LazyImport
 
@@ -91,29 +91,7 @@ class DOCXTableFormat(Enum):
         return table_format
 
 
-class DOCXLinkFormat(Enum):
-    """
-    Supported formats for storing DOCX link information in a Document.
-    """
-
-    MARKDOWN = "markdown"
-    PLAIN = "plain"
-    NONE = "none"
-
-    def __str__(self) -> str:
-        return self.value
-
-    @staticmethod
-    def from_str(string: str) -> "DOCXLinkFormat":
-        """
-        Convert a string to a DOCXLinkFormat enum.
-        """
-        enum_map = {e.value: e for e in DOCXLinkFormat}
-        link_format = enum_map.get(string.lower())
-        if link_format is None:
-            msg = f"Unknown link format '{string}'. Supported formats are: {list(enum_map.keys())}"
-            raise ValueError(msg)
-        return link_format
+DOCXLinkFormat = LinkFormat
 
 
 @component

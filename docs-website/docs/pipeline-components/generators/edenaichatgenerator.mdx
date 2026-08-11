@@ -16,7 +16,7 @@ This component enables chat completion using 500+ models through Eden AI's OpenA
 | **Most common position in a pipeline** | After a [ChatPromptBuilder](../builders/chatpromptbuilder.mdx) |
 | **Mandatory init variables** | `api_key`: The Eden AI API key. Can be set with `EDENAI_API_KEY` env var. |
 | **Mandatory run variables** | `messages` A list of [`ChatMessage`](../../concepts/data-classes/chatmessage.mdx) objects |
-| **Output variables** | `replies`: A list of [`ChatMessage`](../../concepts/data-classes/chatmessage.mdx) objects  <br /> <br />`meta`: A list of dictionaries with the metadata associated with each reply, such as token count, finish reason, and so on |
+| **Output variables** | `replies`: A list of [`ChatMessage`](../../concepts/data-classes/chatmessage.mdx) objects |
 | **API reference** | [Eden AI](/reference/integrations-edenai) |
 | **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/edenai |
 | **Package name** | `edenai-haystack` |
@@ -41,7 +41,7 @@ Models are selected using Eden AI's `provider/model` naming convention, for exam
 
 For the full list of available models, see the [Eden AI models catalog](https://www.edenai.co/models).
 
-This component needs a list of [`ChatMessage`](../../concepts/data-classes/chatmessage.mdx) objects to operate. `ChatMessage` is a data class that contains a message, a role (who generated the message, such as `user`, `assistant`, `system`, `function`), and optional metadata.
+This component needs a list of [`ChatMessage`](../../concepts/data-classes/chatmessage.mdx) objects to operate. `ChatMessage` is a data class that contains a message, a role (who generated the message, such as `user`, `assistant`, `system`, `tool`), and optional metadata.
 
 Refer to the [Eden AI documentation](https://docs.edenai.co/) for more details on the parameters supported by the API, which you can provide with `generation_kwargs` when running the component.
 
@@ -118,7 +118,10 @@ question = "What is Eden AI?"
 result = rag_pipeline.run(
     {
         "fetcher": {"urls": ["https://www.edenai.co/"]},
-        "prompt_builder": {"template_variables": {"query": question}, "template": messages},
+        "prompt_builder": {
+            "template_variables": {"query": question},
+            "template": messages,
+        },
     },
 )
 

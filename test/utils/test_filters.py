@@ -530,6 +530,96 @@ document_matches_filter_data = [
         id="== operator with ISO 8601 datetime Document value",
     ),
     pytest.param(
+        {"field": "meta.date", "operator": "==", "value": "2025-02-03T12:45:46+00:00"},
+        Document(meta={"date": "2025-02-03T12:45:46Z"}),
+        True,
+        id="== operator with equal instant in different UTC syntax",
+    ),
+    pytest.param(
+        {"field": "meta.date", "operator": "==", "value": "1969-07-21"},
+        Document(meta={"date": "1969-07-21T00:00:00"}),
+        True,
+        id="== operator with equal datetime in different ISO 8601 format",
+    ),
+    pytest.param(
+        {"field": "meta.date", "operator": "==", "value": datetime(2025, 2, 3, 12, 45, 46, tzinfo=timezone.utc)},
+        Document(meta={"date": "2025-02-03T12:45:46Z"}),
+        True,
+        id="== operator with datetime filter value and ISO 8601 string Document value",
+    ),
+    pytest.param(
+        {"field": "meta.date", "operator": "==", "value": datetime(2025, 2, 3, 12, 45, 46, tzinfo=timezone.utc)},
+        Document(meta={"date": datetime(2025, 2, 3, 12, 45, 46)}),
+        True,
+        id="== operator with aware datetime filter value and naive datetime Document value",
+    ),
+    pytest.param(
+        {"field": "meta.date", "operator": "==", "value": "2025-02-03T12:45:46+05:00"},
+        Document(meta={"date": "2025-02-03T12:45:46"}),
+        True,
+        id="== operator with aware ISO 8601 filter value and naive ISO 8601 Document value",
+    ),
+    pytest.param(
+        {"field": "meta.date", "operator": "==", "value": "2025-02-03T14:45:46+02:00"},
+        Document(meta={"date": "2025-02-03T12:45:46+00:00"}),
+        True,
+        id="== operator with equal instant in different UTC offsets",
+    ),
+    pytest.param(
+        # Only full ISO 8601 dates are normalized, so a bare year stays a plain string comparison.
+        {"field": "meta.year", "operator": "==", "value": "2025-01-01T00:00:00"},
+        Document(meta={"year": "2025"}),
+        False,
+        id="== operator with partial date Document value",
+    ),
+    pytest.param(
+        # Date-shaped but unparsable values must not raise, they fall back to comparing as strings.
+        {"field": "meta.date", "operator": "==", "value": "9999-99-99T99:99:99"},
+        Document(meta={"date": "1234-56-78"}),
+        False,
+        id="== operator with date-shaped but invalid values",
+    ),
+    pytest.param(
+        {"field": "meta.date", "operator": "==", "value": "1234-56-78"},
+        Document(meta={"date": "1234-56-78"}),
+        True,
+        id="== operator with identical date-shaped but invalid values",
+    ),
+    pytest.param(
+        {"field": "meta.date", "operator": "!=", "value": "2025-02-03T12:45:46+00:00"},
+        Document(meta={"date": "2025-02-03T12:45:46Z"}),
+        False,
+        id="!= operator with equal instant in different UTC syntax",
+    ),
+    pytest.param(
+        {"field": "meta.date", "operator": "in", "value": ["2025-02-03T12:45:46+00:00", "2025-02-04T12:45:46+00:00"]},
+        Document(meta={"date": "2025-02-03T12:45:46Z"}),
+        True,
+        id="in operator with equivalent ISO 8601 datetime in filter value",
+    ),
+    pytest.param(
+        {
+            "field": "meta.date",
+            "operator": "not in",
+            "value": ["2025-02-03T12:45:46+00:00", "2025-02-04T12:45:46+00:00"],
+        },
+        Document(meta={"date": "2025-02-03T12:45:46Z"}),
+        False,
+        id="not in operator with equivalent ISO 8601 datetime in filter value",
+    ),
+    pytest.param(
+        {"field": "meta.page", "operator": "==", "value": "1"},
+        Document(meta={"page": 1}),
+        False,
+        id="== operator with numeric string filter value and numeric Document value",
+    ),
+    pytest.param(
+        {"field": "meta.page", "operator": "in", "value": ["1", "2"]},
+        Document(meta={"page": 1}),
+        False,
+        id="in operator with numeric string filter value and numeric Document value",
+    ),
+    pytest.param(
         {"field": "meta.date", "operator": ">=", "value": "2025-02-01"},
         Document(meta={"date": "2025-02-03T12:45:46.435816Z"}),
         True,
@@ -541,6 +631,50 @@ document_matches_filter_data = [
 @pytest.mark.parametrize("filters, document, expected_result", document_matches_filter_data)
 def test_document_matches_filter(filters, document, expected_result):
     assert document_matches_filter(filters, document) == expected_result
+
+
+@pytest.mark.parametrize(
+    "operator,expected_result",
+    [
+        ("==", False),
+        ("!=", True),
+        (">", False),
+        (">=", False),
+        ("<", False),
+        ("<=", False),
+        ("in", False),
+        ("not in", True),
+    ],
+)
+@pytest.mark.parametrize(
+    "document_value,filter_value",
+    [
+        ("2025-02-03T12:45:46", "2025-02-03T12:45:46+00:00"),
+        ("2025-02-03T12:45:46+00:00", "2025-02-03T12:45:46"),
+        (datetime(2025, 2, 3, 12, 45, 46), datetime(2025, 2, 3, 12, 45, 46, tzinfo=timezone.utc)),
+        (datetime(2025, 2, 3, 12, 45, 46, tzinfo=timezone.utc), datetime(2025, 2, 3, 12, 45, 46)),
+    ],
+)
+def test_document_matches_filter_strict_datetime_comparison(operator, expected_result, document_value, filter_value):
+    if operator in {"in", "not in"}:
+        filter_value = [filter_value]
+    filters = {"field": "meta.date", "operator": operator, "value": filter_value}
+
+    assert (
+        document_matches_filter(filters, Document(meta={"date": document_value}), strict_datetime_comparison=True)
+        is expected_result
+    )
+
+
+def test_document_matches_filter_strict_datetime_comparison_in_nested_condition():
+    filters = {
+        "operator": "AND",
+        "conditions": [{"field": "meta.date", "operator": ">=", "value": "2025-02-03T12:45:46+00:00"}],
+    }
+
+    assert not document_matches_filter(
+        filters, Document(meta={"date": "2025-02-03T12:45:46"}), strict_datetime_comparison=True
+    )
 
 
 document_matches_filter_raises_error_data = [

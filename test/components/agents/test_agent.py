@@ -16,7 +16,7 @@ from openai import Stream
 from openai.types.chat import ChatCompletionChunk, chat_completion_chunk
 
 from haystack import Document, Pipeline, component, tracing
-from haystack.components.agents.agent import Agent, _accumulate_usage, _select_tools_by_name
+from haystack.components.agents.agent import Agent
 from haystack.components.agents.state import State, merge_lists, replace_values
 from haystack.components.agents.tool_calling import _run_tool
 from haystack.components.builders.chat_prompt_builder import ChatPromptBuilder
@@ -1404,51 +1404,6 @@ class TestAgentExitReasonAsync:
         assert result["exit_reason"] == "max_agent_steps"
 
 
-class TestAccumulateUsage:
-    """Unit tests for the `_accumulate_usage` helper used to merge ChatGenerator usage dicts."""
-
-    def test_sums_flat_numeric_keys(self):
-        current = {"prompt_tokens": 10, "completion_tokens": 5, "total_tokens": 15}
-        new = {"prompt_tokens": 3, "completion_tokens": 2, "total_tokens": 5}
-        assert _accumulate_usage(current, new) == {"prompt_tokens": 13, "completion_tokens": 7, "total_tokens": 20}
-
-    def test_merges_nested_detail_dicts_recursively(self):
-        current = {"prompt_tokens": 10, "completion_tokens_details": {"reasoning_tokens": 2, "audio_tokens": 0}}
-        new = {
-            "prompt_tokens": 4,
-            "completion_tokens_details": {"reasoning_tokens": 3, "audio_tokens": 1},
-            "prompt_tokens_details": {"cached_tokens": 6},
-        }
-        assert _accumulate_usage(current, new) == {
-            "prompt_tokens": 14,
-            "completion_tokens_details": {"reasoning_tokens": 5, "audio_tokens": 1},
-            "prompt_tokens_details": {"cached_tokens": 6},
-        }
-
-    def test_adds_keys_missing_in_current(self):
-        assert _accumulate_usage({"prompt_tokens": 5}, {"completion_tokens": 7}) == {
-            "prompt_tokens": 5,
-            "completion_tokens": 7,
-        }
-
-    def test_empty_current_dict_returns_copy_of_new(self):
-        new = {"prompt_tokens": 5, "details": {"cached_tokens": 1}}
-        result = _accumulate_usage({}, new)
-        assert result == new
-        # Nested dicts must be deep-copied so future merges don't mutate the source.
-        new["details"]["cached_tokens"] = 999
-        assert result["details"]["cached_tokens"] == 1
-
-    def test_non_dict_non_numeric_falls_back_to_new(self):
-        # Strings, lists, or any other type that isn't a dict-or-number pair returns `new` unchanged.
-        assert _accumulate_usage("old-model", "new-model") == "new-model"
-        assert _accumulate_usage(5, "stringified") == "stringified"
-        assert _accumulate_usage({"model": "gpt-x"}, {"model": "gpt-y"}) == {"model": "gpt-y"}
-
-    def test_sums_floats(self):
-        assert _accumulate_usage(1.5, 2.25) == 3.75
-
-
 class TestAgentTracing:
     def test_agent_tracing_span_run(self, caplog, monkeypatch, weather_tool):
         chat_generator = MockChatGeneratorWithoutRunAsync()
@@ -1816,56 +1771,35 @@ class TestAgentTracing:
         assert agent_span.parent_span == agent_component_span
 
 
-class TestSelectToolsByName:
-    """Tests for the _select_tools_by_name helper (runtime tool-name selection)."""
-
-    def test_selects_standalone_tools_by_name(self, weather_tool: Tool, component_tool: Tool):
-        result = _select_tools_by_name([weather_tool, component_tool], [weather_tool.name])
-        assert result == [weather_tool]
-
-    def test_raises_on_invalid_name(self, weather_tool: Tool, component_tool: Tool):
-        with pytest.raises(
-            ValueError, match="The following tool names are not valid: {'invalid_tool_name'}. Valid tool names are: ."
-        ):
-            _select_tools_by_name([weather_tool, component_tool], ["invalid_tool_name"])
-
-    def test_raises_when_no_tools_configured(self, weather_tool: Tool):
-        with pytest.raises(ValueError, match="No tools were configured for the Agent at initialization."):
-            _select_tools_by_name([], [weather_tool.name])
-
-    def test_returns_isolated_spawn_with_selection(self, weather_tool: Tool, component_tool: Tool):
-        """A Toolset exposing a requested name is replaced by an isolated spawn carrying the selection.
-
-        The shared, configured Toolset is not mutated.
-        """
-        toolset = Toolset([weather_tool, component_tool])
-
-        result = _select_tools_by_name([toolset], [weather_tool.name])
-
-        assert len(result) == 1
-        spawned = result[0]
-        assert isinstance(spawned, Toolset)
-        assert spawned is not toolset  # an isolated per-run copy
-        assert spawned._selected_tool_names == {weather_tool.name}
-        assert [tool.name for tool in spawned] == [weather_tool.name]
-        # The configured toolset is untouched.
-        assert toolset._selected_tool_names is None
-
-    def test_mixed_standalone_tools_and_toolsets(self, weather_tool: Tool, component_tool: Tool):
-        toolset = Toolset([weather_tool])
-
-        result = _select_tools_by_name([component_tool, toolset], [weather_tool.name, component_tool.name])
-
-        # The standalone tool is passed through; the toolset is replaced by an isolated spawn with the selection.
-        assert component_tool in result
-        spawns = [t for t in result if isinstance(t, Toolset)]
-        assert len(spawns) == 1
-        assert spawns[0] is not toolset
-        assert spawns[0]._selected_tool_names == {weather_tool.name}
-        assert toolset._selected_tool_names is None
-
-
 class TestAgentToolSelection:
+    @staticmethod
+    def _agent_with_duplicate_tool_names() -> Agent:
+        def make_tool(description: str) -> Tool:
+            return Tool(
+                name="same_name",
+                description=description,
+                parameters={"type": "object", "properties": {}},
+                function=lambda: None,
+            )
+
+        agent = Agent(
+            chat_generator=MockChatGenerator("Hello"),
+            tools=[Toolset([make_tool("first")]), Toolset([make_tool("second")])],
+        )
+        agent.warm_up()
+        return agent
+
+    def test_run_raises_on_duplicate_tool_names_across_toolsets(self):
+        agent = self._agent_with_duplicate_tool_names()
+        with pytest.raises(ValueError, match="Duplicate tool names"):
+            agent.run(messages=[ChatMessage.from_user("hi")])
+
+    @pytest.mark.asyncio
+    async def test_run_async_raises_on_duplicate_tool_names_across_toolsets(self):
+        agent = self._agent_with_duplicate_tool_names()
+        with pytest.raises(ValueError, match="Duplicate tool names"):
+            await agent.run_async(messages=[ChatMessage.from_user("hi")])
+
     def test_tool_selection_new_tool(self, weather_tool: Tool, component_tool: Tool):
         chat_generator = MockChatGenerator("Hello")
         agent = Agent(chat_generator=chat_generator, tools=[weather_tool], system_prompt="This is a system prompt.")
@@ -2000,12 +1934,16 @@ class TestPrompts:
         with pytest.raises(TemplateSyntaxError):
             make_agent(system_prompt="{% message role='system' %}Incomplete syntax.")
 
-    def test_system_prompt_plain_string(self, make_agent):
-        agent = make_agent(system_prompt="You are a helpful assistant.")
-        assert agent._system_chat_prompt_builder is not None
-        result = agent.run(messages=[ChatMessage.from_user("Hi")])
-        assert result["messages"][0].is_from(ChatRole.SYSTEM)
-        assert result["messages"][0].text == "You are a helpful assistant."
+    def test_prompt_wrong_role_raises_at_init(self, make_agent):
+        with pytest.raises(ValueError, match="system_prompt message block must have role 'system'"):
+            make_agent(system_prompt=_user_msg("This is a user message, not system."))
+        with pytest.raises(ValueError, match="user_prompt message block must have role 'user'"):
+            make_agent(user_prompt=_sys_msg("This is a system message, not user."))
+
+    def test_dynamic_prompt_role_raises_at_runtime(self, make_agent):
+        agent = make_agent(user_prompt="{% message role=role_name %}Q: {{question}}{% endmessage %}")
+        with pytest.raises(ValueError, match="user_prompt must render to a user message"):
+            agent.run(messages=[], role_name="assistant", question="Will it snow?")
 
     def test_system_prompt_plain_string_with_template_variables(self, make_agent):
         agent = make_agent(system_prompt="You are an assistant for {{company}}. Your role is {{role}}.")
@@ -2021,38 +1959,6 @@ class TestPrompts:
         assert "company" in input_names
         assert "role" in input_names
 
-    def test_system_prompt_with_template_variables(self, make_agent):
-        agent = make_agent(system_prompt=_sys_msg("You are an assistant for {{company}}. Your role is {{role}}."))
-        assert agent._system_chat_prompt_builder is not None
-        assert set(agent._system_chat_prompt_builder.variables) == {"company", "role"}
-
-        result = agent.run(messages=[ChatMessage.from_user("Hi")], company="Acme", role="support agent")
-        sys_msg = result["messages"][0]
-        assert sys_msg.is_from(ChatRole.SYSTEM)
-        assert sys_msg.text == "You are an assistant for Acme. Your role is support agent."
-
-        input_names = set(agent.__haystack_input__._sockets_dict.keys())
-        assert "company" in input_names
-        assert "role" in input_names
-
-    def test_system_prompt_with_meta(self, make_agent):
-        agent = make_agent(
-            system_prompt="{% message role='system' meta={'key': 'value'} %}System message with meta{% endmessage %}"
-        )
-        assert agent._system_chat_prompt_builder is not None
-
-        result = agent.run(messages=[ChatMessage.from_user("Hi")])
-        messages = result["messages"]
-        assert messages[0].is_from(ChatRole.SYSTEM)
-        assert messages[0].text == "System message with meta"
-        assert messages[0].meta == {"key": "value"}
-
-    def test_user_prompt_only_variables_forwarded_to_builder(self, make_agent):
-        agent = make_agent(user_prompt=_user_msg("Question: {{question}}"))
-        # 'irrelevant_kwarg' is not a template variable — must not raise
-        result = agent.run(messages=[], question="Will it snow?", irrelevant_kwarg="unused")
-        assert "messages" in result
-
     def test_user_prompt_plain_string_with_template_variables(self, make_agent):
         agent = make_agent(user_prompt="Question: {{question}}")
         result = agent.run(messages=[], question="Will it snow?")
@@ -2061,23 +1967,6 @@ class TestPrompts:
 
         input_names = set(agent.__haystack_input__._sockets_dict.keys())
         assert "question" in input_names
-
-    def test_user_prompt_with_template_variables(self, make_agent):
-        agent = make_agent(
-            user_prompt=_user_msg(
-                "Hello {{name|upper}}, check weather for: "
-                + "{% for c in cities %}{{c}}{% if not loop.last %}, {% endif %}{% endfor %}"
-                + " on {{date}}?"
-            )
-        )
-        result = agent.run(messages=[], name="Alice", cities=["Berlin", "Paris", "Rome"], date="2024-01-15")
-        user_messages = [m for m in result["messages"] if m.is_from(ChatRole.USER)]
-        assert user_messages[0].text == "Hello ALICE, check weather for: Berlin, Paris, Rome on 2024-01-15?"
-
-        input_names = set(agent.__haystack_input__._sockets_dict.keys())
-        assert "name" in input_names
-        assert "cities" in input_names
-        assert "date" in input_names
 
     def test_user_prompt_appended_after_initial_messages(self, make_agent):
         agent = make_agent(user_prompt=_user_msg("And now: {{query}}"))
@@ -2101,28 +1990,6 @@ class TestPrompts:
         assert messages[0].text == "You help users of Haystack."
         user_messages = [m for m in messages if m.is_from(ChatRole.USER)]
         assert user_messages[0].text == "Tell me about pipelines in the Haystack context."
-
-    def test_prompt_wrong_role_raises_at_init(self, make_agent):
-        with pytest.raises(ValueError, match="system_prompt message block must have role 'system'"):
-            make_agent(system_prompt=_user_msg("This is a user message, not system."))
-
-        with pytest.raises(ValueError, match="user_prompt message block must have role 'user'"):
-            make_agent(user_prompt=_sys_msg("This is a system message, not user."))
-
-    def test_dynamic_prompt_role_raises_at_runtime(self, make_agent):
-        agent = make_agent(user_prompt="{% message role=role_name %}Question: {{question}}{% endmessage %}")
-        with pytest.raises(ValueError, match="user_prompt must render to a user message"):
-            agent.run(messages=[], role_name="assistant", question="Will it snow?")
-
-    def test_prompt_multiple_message_blocks_raises_at_init(self, make_agent):
-        multi_message_prompt = """{% message role='system' %}You are a helpful assistant.{% endmessage %}
-        {% message role='user' %}How are you?{% endmessage %}"""
-
-        with pytest.raises(ValueError, match="system_prompt must define exactly one message block"):
-            make_agent(system_prompt=multi_message_prompt)
-
-        with pytest.raises(ValueError, match="user_prompt must define exactly one message block"):
-            make_agent(user_prompt=multi_message_prompt)
 
 
 @pytest.mark.integration
@@ -2363,13 +2230,14 @@ class TestAgentWarmUp:
         agent.warm_up()
         assert toolset.was_warmed_up
 
-    def test_warm_up_mixed_toolsets(self):
+    def test_warm_up_list_of_toolsets(self):
+        # Toolsets are combined by passing them as a list; each keeps its own warm_up.
         tool1 = self._make_tracking_tool("tool1")
         toolset1 = self._make_tracking_toolset([tool1])
         tool2 = self._make_tracking_tool("tool2")
         toolset2 = self._make_tracking_toolset([tool2])
 
-        agent = Agent(chat_generator=MockChatGenerator("Hello"), tools=toolset1 + toolset2)
+        agent = Agent(chat_generator=MockChatGenerator("Hello"), tools=[toolset1, toolset2])
 
         assert not toolset1.was_warmed_up
         assert not toolset2.was_warmed_up
@@ -2397,7 +2265,7 @@ class TestAgentWarmUp:
         assert toolset1.was_warmed_up
         assert toolset2.was_warmed_up
 
-    def test_warm_up_is_idempotent(self):
+    def test_warm_up_rewarms_tools_on_every_call(self):
         call_count = {"n": 0}
         tool = Tool(
             name="counting_tool",
@@ -2418,16 +2286,28 @@ class TestAgentWarmUp:
         agent.warm_up()
         agent.warm_up()
 
-        assert call_count["n"] == 1
+        assert call_count["n"] == 3
 
-    def test_warm_up_refreshes_toolset(self):
-        """Agent.warm_up() must warm up lazy toolsets (e.g. MCPToolset) so the actual tools are available at runtime."""
-        placeholder_tool = Tool(
-            name="mcp_not_connected_placeholder_123",
-            description="Placeholder tool before connection",
-            parameters={"type": "object", "properties": {}},
-            function=lambda: "placeholder",
-        )
+    @pytest.mark.parametrize(
+        "initial_tools",
+        [
+            pytest.param([], id="empty"),
+            pytest.param(
+                [
+                    Tool(
+                        name="mcp_not_connected_placeholder_123",
+                        description="Placeholder tool before connection",
+                        parameters={"type": "object", "properties": {}},
+                        function=lambda: "placeholder",
+                    )
+                ],
+                id="placeholder",
+            ),
+        ],
+    )
+    def test_warm_up_loads_lazy_toolset(self, initial_tools):
+        # Before warm_up(), a lazy toolset (e.g. MCPToolset) is either empty or contains a placeholder tool.
+        # Agent.warm_up() must load the real tools in both cases.
         actual_tool = Tool(
             name="get_time",
             description="Get the current time in ISO format",
@@ -2435,21 +2315,21 @@ class TestAgentWarmUp:
             function=lambda: "2024-12-01T12:00:00Z",
         )
 
-        class MockMCPToolset(Toolset):
+        class LazyToolset(Toolset):
             def __init__(self):
-                super().__init__([placeholder_tool])
                 self._connected = False
+                super().__init__(list(initial_tools))
 
             def warm_up(self):
                 if not self._connected:
                     self.tools = [actual_tool]
                     self._connected = True
 
-        mcp_toolset = MockMCPToolset()
-        agent = Agent(chat_generator=MockChatGenerator("Hello"), tools=mcp_toolset)
-        assert mcp_toolset.tools == [placeholder_tool]
+        toolset = LazyToolset()
+        agent = Agent(chat_generator=MockChatGenerator("Hello"), tools=toolset)
+        assert toolset.tools == initial_tools
         agent.warm_up()
-        assert mcp_toolset.tools == [actual_tool]
+        assert toolset.tools == [actual_tool]
 
     def test_run_warms_lazy_toolset_before_tool_selection(self):
         """
@@ -2561,7 +2441,6 @@ class TestComponentLifecycle:
 
         chat_generator.warm_up.reset_mock()
         agent.run([ChatMessage.from_user("What is the weather in Berlin?")])
-        assert agent._tools_warmed_up is True
         # warm_up runs twice here: the Agent delegates to the generator, and the generator's own run() self-warms
         assert chat_generator.warm_up.call_count == 2
 

@@ -630,6 +630,10 @@ Create a NvidiaRanker component.
 - **timeout** (<code>float | None</code>) – Timeout for request calls, if not set it is inferred from the `NVIDIA_TIMEOUT` environment variable
   or set to 60 by default.
 
+**Raises:**
+
+- <code>ValueError</code> – If `top_k` is not > 0.
+
 #### class_name
 
 ```python
@@ -701,6 +705,7 @@ Rank a list of documents based on a given query.
 **Raises:**
 
 - <code>TypeError</code> – If the arguments are of the wrong type.
+- <code>ValueError</code> – If `top_k` is not > 0.
 
 ## haystack_integrations.components.rankers.nvidia.truncate
 

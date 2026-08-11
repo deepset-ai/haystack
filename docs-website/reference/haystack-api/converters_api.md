@@ -128,20 +128,6 @@ from_str(string: str) -> DOCXTableFormat
 
 Convert a string to a DOCXTableFormat enum.
 
-### DOCXLinkFormat
-
-Bases: <code>Enum</code>
-
-Supported formats for storing DOCX link information in a Document.
-
-#### from_str
-
-```python
-from_str(string: str) -> DOCXLinkFormat
-```
-
-Convert a string to a DOCXLinkFormat enum.
-
 ### DOCXToDocument
 
 Converts DOCX files to Documents.
@@ -1227,6 +1213,7 @@ __init__(
     detect_vertical: bool = True,
     all_texts: bool = False,
     store_full_path: bool = False,
+    link_format: str | LinkFormat = LinkFormat.NONE,
 ) -> None
 ```
 
@@ -1257,6 +1244,40 @@ Create a PDFMinerToDocument component.
 - **all_texts** (<code>bool</code>) – If layout analysis should be performed on text in figures.
 - **store_full_path** (<code>bool</code>) – If True, the full path of the file is stored in the metadata of the document.
   If False, only the file name is stored.
+- **link_format** (<code>str | LinkFormat</code>) – The format used for the hyperlinks found in the PDF link annotations.
+  The links of a page are appended at the end of that page's text, one per line. PDF link annotations
+  carry no anchor text, so the address is used as the link text as well. Can be either:
+  `LinkFormat.MARKDOWN` or `"markdown"` to get `[address](address)`,
+  `LinkFormat.PLAIN` or `"plain"` to get `address (address)`,
+  `LinkFormat.NONE` or `"none"` to get text without links.
+
+#### to_dict
+
+```python
+to_dict() -> dict[str, Any]
+```
+
+Serializes the component to a dictionary.
+
+**Returns:**
+
+- <code>dict\[str, Any\]</code> – Dictionary with serialized data.
+
+#### from_dict
+
+```python
+from_dict(data: dict[str, Any]) -> PDFMinerToDocument
+```
+
+Deserializes the component from a dictionary.
+
+**Parameters:**
+
+- **data** (<code>dict\[str, Any\]</code>) – Dictionary with serialized data.
+
+**Returns:**
+
+- <code>PDFMinerToDocument</code> – Deserialized component.
 
 #### detect_undecoded_cid_characters
 
@@ -1441,7 +1462,8 @@ __init__(
     layout_mode_scale_weight: float = 1.25,
     layout_mode_strip_rotated: bool = True,
     layout_mode_font_height_weight: float = 1.0,
-    store_full_path: bool = False
+    store_full_path: bool = False,
+    link_format: str | LinkFormat = LinkFormat.NONE
 ) -> None
 ```
 
@@ -1466,6 +1488,12 @@ Create an PyPDFToDocument component.
   Ignored if `extraction_mode` is `PyPDFExtractionMode.PLAIN`.
 - **store_full_path** (<code>bool</code>) – If True, the full path of the file is stored in the metadata of the document.
   If False, only the file name is stored.
+- **link_format** (<code>str | LinkFormat</code>) – The format used for the hyperlinks found in the PDF link annotations.
+  The links of a page are appended at the end of that page's text, one per line. PDF link annotations
+  carry no anchor text, so the address is used as the link text as well. Can be either:
+  `LinkFormat.MARKDOWN` or `"markdown"` to get `[address](address)`,
+  `LinkFormat.PLAIN` or `"plain"` to get `address (address)`,
+  `LinkFormat.NONE` or `"none"` to get text without links.
 
 #### to_dict
 

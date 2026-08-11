@@ -476,6 +476,13 @@ class PipelineBase:  # noqa: PLW1641
         for _, _, edge_data in self.graph.out_edges(name, data=True):
             receiver_socket = edge_data["to_socket"]
             receiver_socket.senders = [s for s in receiver_socket.senders if s != name]
+            if (
+                len(receiver_socket.senders) <= 1
+                and receiver_socket.is_lazy_variadic
+                and not receiver_socket.wrap_input_in_list
+            ):
+                receiver_socket.is_lazy_variadic = False
+                receiver_socket.wrap_input_in_list = True
 
         # Delete component from the graph, deleting all its connections
         self.graph.remove_node(name)
@@ -484,6 +491,9 @@ class PipelineBase:  # noqa: PLW1641
         input_sockets = instance.__haystack_input__._sockets_dict  # type: ignore[attr-defined]
         for socket in input_sockets.values():
             socket.senders = []
+            if socket.is_lazy_variadic and not socket.wrap_input_in_list:
+                socket.is_lazy_variadic = False
+                socket.wrap_input_in_list = True
 
         output_sockets = instance.__haystack_output__._sockets_dict  # type: ignore[attr-defined]
         for socket in output_sockets.values():
@@ -1216,6 +1226,8 @@ class PipelineBase:  # noqa: PLW1641
         :param component_name: The name of a component.
         :param component: Component with component metadata.
         :param inputs: Global inputs state.
+        :param is_resume: Whether the component is being resumed from a breakpoint. If True, the inputs
+            have already been consumed, so the first available value is returned for each socket.
         :returns: The inputs for the component.
         """
         component_inputs = inputs.get(component_name, {})

@@ -33,28 +33,15 @@ The regex pattern should include at least one capture group (text within parenth
 
 ### Handling no matches
 
-By default, when the pattern doesn't match, the component returns an empty dictionary `{}`. You can change this behavior with the `return_empty_on_no_match` parameter:
+When the pattern doesn't match, the component returns `captured_text` as an empty string:
 
 ```python
 from haystack.components.extractors import RegexTextExtractor
 
-# Default behavior - returns empty dict when no match
-extractor_default = RegexTextExtractor(regex_pattern=r"<answer>(.*?)</answer>")
-result = extractor_default.run(text_or_messages="No answer tags here")
-print(result)  # Output: {}
-
-# Alternative behavior - returns empty string when no match
-extractor_explicit = RegexTextExtractor(
-    regex_pattern=r"<answer>(.*?)</answer>",
-    return_empty_on_no_match=False,
-)
-result = extractor_explicit.run(text_or_messages="No answer tags here")
+extractor = RegexTextExtractor(regex_pattern=r"<answer>(.*?)</answer>")
+result = extractor.run(text_or_messages="No answer tags here")
 print(result)  # Output: {'captured_text': ''}
 ```
-
-:::note
-The default behavior of returning `{}` when no match is found is deprecated and will change in a future release to return `{'captured_text': ''}` instead. Set `return_empty_on_no_match=False` explicitly if you want the new behavior now.
-:::
 
 ## Usage
 
@@ -84,10 +71,7 @@ When working with LLM outputs in chat pipelines, you can extract structured data
 from haystack.components.extractors import RegexTextExtractor
 from haystack.dataclasses import ChatMessage
 
-extractor = RegexTextExtractor(
-    regex_pattern=r"```json\s*(.*?)\s*```",
-    return_empty_on_no_match=False,
-)
+extractor = RegexTextExtractor(regex_pattern=r"```json\s*(.*?)\s*```")
 
 # Simulating an LLM response with JSON in a code block
 messages = [
@@ -121,10 +105,7 @@ pipe.add_component("prompt_builder", ChatPromptBuilder())
 pipe.add_component("llm", OpenAIChatGenerator())
 pipe.add_component(
     "extractor",
-    RegexTextExtractor(
-        regex_pattern=r"<summary>(.*?)</summary>",
-        return_empty_on_no_match=False,
-    ),
+    RegexTextExtractor(regex_pattern=r"<summary>(.*?)</summary>"),
 )
 
 pipe.connect("prompt_builder.prompt", "llm.messages")

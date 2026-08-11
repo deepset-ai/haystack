@@ -16,14 +16,14 @@ CohereChatGenerator enables chat completions using Cohere's large language model
 | **Most common position in a pipeline** | After a [ChatPromptBuilder](../builders/chatpromptbuilder.mdx) |
 | **Mandatory init variables** | `api_key`: The Cohere API key. Can be set with `COHERE_API_KEY` or `CO_API_KEY` env var. |
 | **Mandatory run variables** | `messages` A list of [`ChatMessage`](../../concepts/data-classes/chatmessage.mdx)  objects |
-| **Output variables** | `replies`: A list of [`ChatMessage`](../../concepts/data-classes/chatmessage.mdx)  objects  <br /> <br />`meta`: A list of dictionaries with the metadata associated with each reply, such as token count, finish reason, and so on |
+| **Output variables** | `replies`: A list of [`ChatMessage`](../../concepts/data-classes/chatmessage.mdx)  objects |
 | **API reference** | [Cohere](/reference/integrations-cohere) |
 | **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/cohere |
 | **Package name** | `cohere-haystack` |
 
 </div>
 
-This integration supports Cohere `chat` models such as `command`,`command-r` and `comman-r-plus`. Check out the most recent full list in [Cohere documentation](https://docs.cohere.com/reference/chat).
+This integration supports Cohere `chat` models such as `command-a-03-2025` (the default), `command-a-plus-05-2026`, and `command-r-plus-08-2024`. Check out the most recent full list in [Cohere documentation](https://docs.cohere.com/reference/chat).
 
 ## Overview
 
@@ -34,7 +34,7 @@ This integration supports Cohere `chat` models such as `command`,`command-r` and
 
 Then, the component needs a prompt to operate, but you can pass any text generation parameters valid for the `Co.chat` method directly to this component using the `generation_kwargs` parameter, both at initialization and to `run()` method. For more details on the parameters supported by the Cohere API, refer to the [Cohere documentation](https://docs.cohere.com/reference/chat).
 
-Finally, the component needs a list of `ChatMessage` objects to operate. `ChatMessage` is a data class that contains a message, a role (who generated the message, such as `user`, `assistant`, `system`, `function`), and optional metadata.
+Finally, the component needs a list of `ChatMessage` objects to operate. `ChatMessage` is a data class that contains a message, a role (who generated the message, such as `user`, `assistant`, `system`, `tool`), and optional metadata.
 
 ### Tool Support
 

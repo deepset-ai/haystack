@@ -83,6 +83,35 @@ class TestMemoryDocumentStore(
         yield store
         store.shutdown()
 
+    def test_filter_documents_date_equality_with_equivalent_iso_formats(
+        self, document_store: InMemoryDocumentStore
+    ) -> None:
+        # Deliberately kept here rather than in the shared FilterDocumentsTest suite: normalizing ISO dates
+        # for '==' is specific to document_matches_filter, while the integrations hand equality straight to
+        # their backend. Promoting this to the shared suite would break every document store integration.
+        docs = [Document(id="1", content="doc", meta={"date": "2025-02-03T12:45:46Z"})]
+        document_store.write_documents(docs)
+
+        equal_result = document_store.filter_documents(
+            filters={"field": "meta.date", "operator": "==", "value": "2025-02-03T12:45:46+00:00"}
+        )
+        in_result = document_store.filter_documents(
+            filters={"field": "meta.date", "operator": "in", "value": ["2025-02-03T12:45:46+00:00"]}
+        )
+
+        self.assert_documents_are_equal(equal_result, docs)
+        self.assert_documents_are_equal(in_result, docs)
+
+    def test_filter_documents_with_strict_datetime_comparison(self) -> None:
+        store = InMemoryDocumentStore(strict_datetime_comparison=True)
+        document = Document(content="doc", meta={"date": "2025-02-03T12:45:46Z"})
+        store.write_documents([document])
+
+        result = store.filter_documents(filters={"field": "meta.date", "operator": ">=", "value": "2025-02-01"})
+
+        assert result == []
+        store.shutdown()
+
     def test_to_dict(self, in_memory_doc_store):
         data = in_memory_doc_store.to_dict()
         assert data == {
@@ -95,6 +124,7 @@ class TestMemoryDocumentStore(
                 "index": in_memory_doc_store.index,
                 "shared": True,
                 "return_embedding": True,
+                "strict_datetime_comparison": False,
             },
         }
 
@@ -106,6 +136,7 @@ class TestMemoryDocumentStore(
             embedding_similarity_function="cosine",
             index="my_cool_index",
             return_embedding=True,
+            strict_datetime_comparison=True,
         )
         data = store.to_dict()
         assert data == {
@@ -118,6 +149,7 @@ class TestMemoryDocumentStore(
                 "index": "my_cool_index",
                 "shared": True,
                 "return_embedding": True,
+                "strict_datetime_comparison": True,
             },
         }
 

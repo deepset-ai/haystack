@@ -19,16 +19,16 @@ Haystack releases are officially distributed through the [`deepset/haystack`](ht
 At the moment, the only flavor available for Haystack is `base`, which ships exactly what you would get by installing Haystack locally with `pip install haystack-ai`.
 :::
 
-You can pull a specific Haystack flavor using Docker tags: for example, to pull the image containing Haystack `2.12.1`, you can run the command:
+You can pull a specific Haystack flavor using Docker tags: for example, to pull the image containing Haystack `3.0.0`, you can run the command:
 
 ```shell
-docker pull deepset/haystack:base-v2.12.1
+docker pull deepset/haystack:base-v3.0.0
 ```
 
 Although the `base` flavor is meant to be customized, it can also be used to quickly run Haystack scripts locally without the need to set up a Python environment and its dependencies. For example, this is how you would print Haystack’s version running a Docker container:
 
 ```shell
-docker run -it --rm deepset/haystack:base-v2.12.1 python -c"from haystack.version import __version__; print(__version__)"
+docker run -it --rm deepset/haystack:base-v3.0.0 python -c"from haystack.version import __version__; print(__version__)"
 ```
 
 ## Customizing the Haystack Docker Image
@@ -40,7 +40,7 @@ For example, you might want to run a simple indexing pipeline using [Chroma](../
 Assuming you have a `main.py` script in your current folder, the Dockerfile would look like this:
 
 ```shell
-FROM deepset/haystack:base-v2.12.1
+FROM deepset/haystack:base-v3.0.0
 
 RUN pip install chroma-haystack
 
@@ -66,9 +66,9 @@ As an example, let’s say your application wraps two pipelines: one to _index_ 
 For building the Hayhooks image, we can easily customize the base image of one of the latest versions of Hayhooks, adding required dependencies required by [`QdrantDocumentStore`](../../document-stores/qdrant-document-store.mdx). The Dockerfile would look like this:
 
 ```dockerfile Dockerfile
-FROM deepset/hayhooks:v1.16.0
+FROM deepset/hayhooks:v1.23.0
 
-RUN pip install qdrant-haystack sentence-transformers
+RUN pip install qdrant-haystack sentence-transformers-haystack
 
 CMD ["hayhooks", "run", "--host", "0.0.0.0"]
 

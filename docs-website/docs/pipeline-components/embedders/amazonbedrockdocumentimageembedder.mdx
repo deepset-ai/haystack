@@ -31,7 +31,7 @@ Amazon Bedrock is a fully managed service that provides access to foundation mod
 
 The embedder efficiently loads the images, computes the embeddings using selected Bedrock model, and stores each of them in the `embedding` field of the document.
 
-Supported models are `amazon.titan-embed-image-v1`, `cohere.embed-english-v3` , and `cohere.embed-multilingual-v3`.
+Amazon Titan and Cohere multimodal embedding models are supported, for example `amazon.titan-embed-image-v1`, `cohere.embed-english-v3`, `cohere.embed-multilingual-v3`, and `cohere.embed-v4:0`.
 
 `AmazonBedrockDocumentImageEmbedder` is commonly used in indexing pipelines. At retrieval time, you need to use the same model with `AmazonBedrockTextEmbedder` to embed the query, before using an Embedding Retriever.
 

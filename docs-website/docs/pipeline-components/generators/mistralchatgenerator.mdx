@@ -16,7 +16,7 @@ This component enables chat completion using Mistral’s text generation models.
 | **Most common position in a pipeline** | After a [ChatPromptBuilder](../builders/chatpromptbuilder.mdx) |
 | **Mandatory init variables** | `api_key`: The Mistral API key. Can be set with `MISTRAL_API_KEY` env var. |
 | **Mandatory run variables** | `messages` A list of [`ChatMessage`](../../concepts/data-classes/chatmessage.mdx)  objects |
-| **Output variables** | `replies`: A list of [`ChatMessage`](../../concepts/data-classes/chatmessage.mdx)  objects  <br /> <br />`meta`: A list of dictionaries with the metadata associated with each reply, such as token count, finish reason, and so on |
+| **Output variables** | `replies`: A list of [`ChatMessage`](../../concepts/data-classes/chatmessage.mdx)  objects |
 | **API reference** | [Mistral](/reference/integrations-mistral) |
 | **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/mistral |
 | **Package name** | `mistral-haystack` |
@@ -34,13 +34,12 @@ This integration supports Mistral’s models provided through the generative end
 
 Currently, available models are:
 
-- `mistral-tiny` (default)
-- `mistral-small`
-- `mistral-medium`(soon to be deprecated)
+- `mistral-small-latest` (default)
+- `mistral-medium-latest`
 - `mistral-large-latest`
 - `codestral-latest`
 
-This component needs a list of [`ChatMessage`](../../concepts/data-classes/chatmessage.mdx) objects to operate. `ChatMessage` is a data class that contains a message, a role (who generated the message, such as `user`, `assistant`, `system`, `function`), and optional metadata.
+This component needs a list of [`ChatMessage`](../../concepts/data-classes/chatmessage.mdx) objects to operate. `ChatMessage` is a data class that contains a message, a role (who generated the message, such as `user`, `assistant`, `system`, `tool`), and optional metadata.
 
 Refer to the [Mistral API documentation](https://docs.mistral.ai/api/#operation/createChatCompletion) for more details on the parameters supported by the Mistral API, which you can provide with `generation_kwargs` when running the component.
 

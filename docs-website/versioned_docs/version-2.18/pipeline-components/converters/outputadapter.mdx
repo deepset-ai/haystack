@@ -96,7 +96,6 @@ assert result["output_adapter"]["output"] == "Haystack"
 You can also define your own custom filters, which can then be added to an `OutputAdapter` instance through its init method and used in templates. Here’s an example of this approach:
 
 ```python
-
 from haystack import Pipeline, component, Document
 from haystack.components.converters import OutputAdapter
 

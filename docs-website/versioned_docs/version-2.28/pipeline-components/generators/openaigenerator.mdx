@@ -104,7 +104,12 @@ from haystack import Document
 from haystack.utils import Secret
 
 docstore = InMemoryDocumentStore()
-docstore.write_documents([Document(content="Rome is the capital of Italy"), Document(content="Paris is the capital of France")])
+docstore.write_documents(
+    [
+        Document(content="Rome is the capital of Italy"),
+        Document(content="Paris is the capital of France"),
+    ]
+)
 
 query = "What is the capital of France?"
 
@@ -122,18 +127,13 @@ pipe = Pipeline()
 
 pipe.add_component("retriever", InMemoryBM25Retriever(document_store=docstore))
 pipe.add_component("prompt_builder", PromptBuilder(template=template))
-pipe.add_component("llm", OpenAIGenerator(api_key=Secret.from_env_var("OPENAI_API_KEY")))
+pipe.add_component(
+    "llm", OpenAIGenerator(api_key=Secret.from_env_var("OPENAI_API_KEY"))
+)
 pipe.connect("retriever", "prompt_builder.documents")
 pipe.connect("prompt_builder", "llm")
 
-res=pipe.run({
-    "prompt_builder": {
-        "query": query
-    },
-    "retriever": {
-        "query": query
-    }
-})
+res = pipe.run({"prompt_builder": {"query": query}, "retriever": {"query": query}})
 
 print(res)
 ```

@@ -3,8 +3,6 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import inspect
-import re
-from copy import deepcopy
 from dataclasses import dataclass
 from typing import Any, Literal, cast
 
@@ -18,7 +16,16 @@ from haystack.components.agents.state.state import (
 )
 from haystack.components.agents.state.state_utils import merge_lists
 from haystack.components.agents.tool_calling import _run_tool, _run_tool_async
-from haystack.components.agents.utils import _record_context_tokens
+from haystack.components.agents.utils import (
+    _record_context_tokens,
+    _record_llm_usage,
+    _record_tool_calls,
+    _render_prompt_messages,
+    _select_tools_by_name,
+    _spawn_tools,
+    _template_for_role,
+    _validate_prompt_message_blocks,
+)
 from haystack.components.builders import ChatPromptBuilder
 from haystack.components.generators.chat.types import ChatGenerator
 from haystack.core.serialization import component_to_dict, default_from_dict, default_to_dict
@@ -44,7 +51,6 @@ from haystack.hooks.utils import (
     warm_up_hooks_async,
 )
 from haystack.tools import (
-    Tool,
     Toolset,
     ToolsType,
     _check_duplicate_tool_names,
@@ -58,11 +64,6 @@ from haystack.utils.callable_serialization import deserialize_callable, serializ
 from haystack.utils.deserialization import deserialize_component_inplace
 
 logger = logging.getLogger(__name__)
-
-# Regex to detect the Jinja2 chat template syntax
-_JINJA2_CHAT_TEMPLATE_RE = re.compile(r"\{%\s*message\s")
-# Regex to extract the role from a Jinja2 message block, e.g. {% message role="user" %}
-_JINJA2_MESSAGE_ROLE_RE = re.compile(r'\{%\s*message\s+role\s*=\s*["\'](\w+)["\']')
 
 # `exit_reason` values the Agent sets when it stops without a tool exit condition: a tool-call-free reply, or the
 # `max_agent_steps` budget running out. A tool exit condition instead reports the tool's name.
@@ -92,69 +93,6 @@ _INTERNAL_STATE_KEYS: dict[str, dict[str, Any]] = {
     "hook_context": {"type": dict[str, Any], "handler": replace_values},
     "context_tokens": {"type": int, "handler": replace_values},
 }
-
-
-def _accumulate_usage(current: Any, new: Any) -> Any:
-    """
-    Recursively sum numeric leaf values across two usage-like dicts.
-
-    Used to aggregate `ChatMessage.meta["usage"]` payloads across LLM calls in a run. Nested dicts (e.g. OpenAI's
-    `completion_tokens_details`) are merged recursively; numeric leaves are summed; other types fall back to the new
-    value.
-
-    :param current: The current accumulated usage data.
-    :param new: The new usage data to merge in.
-    """
-    if isinstance(current, dict) and isinstance(new, dict):
-        result = dict(current)
-        for k, v in new.items():
-            result[k] = _accumulate_usage(result[k], v) if k in result else deepcopy(v)
-        return result
-    if isinstance(current, (int, float)) and isinstance(new, (int, float)):
-        return current + new
-    return new
-
-
-def _record_llm_usage(state: State, llm_messages: list[ChatMessage]) -> None:
-    """
-    Aggregate token usage from the latest LLM messages into the State.
-
-    Only writes when at least one message reports `meta["usage"]`, so generators that don't surface usage data
-    leave `token_usage` at its default empty dict rather than overwriting it.
-
-    :param state: The Agent's State, used to read the running `token_usage` total and write back the new total.
-    :param llm_messages: The ChatMessage objects returned from the latest LLM call. Token usage is read from each
-        message's `meta["usage"]` field, if present.
-    """
-    current = state.data.get("token_usage")
-    updated = False
-    for msg in llm_messages:
-        usage = msg.meta.get("usage")
-        if isinstance(usage, dict):
-            current = _accumulate_usage(current or {}, usage)
-            updated = True
-    if updated:
-        state.set("token_usage", current)
-
-
-def _record_tool_calls(state: State, tool_messages: list[ChatMessage]) -> None:
-    """
-    Increment per-tool call counts in the State for every successfully dispatched tool.
-
-    :param state: The Agent's State, used to read the running `tool_call_counts` map and write back the new totals.
-    :param tool_messages: The ChatMessage objects returned from the latest tool execution. Per-tool counts are
-        incremented based on each message's `tool_call_result.origin.tool_name`.
-    """
-    counts = state.data.get("tool_call_counts") or {}
-    updated = False
-    for tm in tool_messages:
-        if tm.tool_call_result is None:
-            continue
-        name = tm.tool_call_result.origin.tool_name
-        counts[name] = counts.get(name, 0) + 1
-        updated = True
-    if updated:
-        state.set("tool_call_counts", counts)
 
 
 def _get_run_method_params(instance: "Agent") -> set[str]:
@@ -236,137 +174,6 @@ def _pending_tool_call_messages_from_state(state: State) -> list[ChatMessage]:
         return []
     last_message = messages[-1]
     return [last_message] if last_message.tool_calls else []
-
-
-def _select_tools_by_name(configured_tools: ToolsType, names: list[str]) -> list[Tool | Toolset]:
-    """
-    Select configured tools by name for a single run.
-
-    Standalone Tools are kept when their name is requested. A Toolset that exposes a requested name is replaced by a
-    per-run `spawn()` (an isolated copy) with the requested names registered as its `_selected_tool_names`, so
-    dynamic toolsets such as SearchableToolset preserve their behavior (search/lazy-loading) over the selected subset
-    without mutating the shared, configured Toolset.
-
-    :param configured_tools: The tools configured on the Agent.
-    :param names: The requested tool names.
-    :returns: The selected standalone Tools and/or spawned, selection-scoped Toolsets.
-    :raises ValueError: If no tools were configured, or if any requested name is not a valid tool name.
-    """
-    if not configured_tools:
-        raise ValueError("No tools were configured for the Agent at initialization.")
-
-    requested_names = set(names)
-    items: list[Tool | Toolset] = (
-        [configured_tools] if isinstance(configured_tools, Toolset) else list(configured_tools)
-    )
-
-    # Resolve selectable names per item. For Toolsets we use get_selectable_tools() so dynamic toolsets
-    # (e.g. SearchableToolset) offer their full catalog by name, not just the tools exposed by iteration.
-    selectable_per_item: list[tuple[Tool | Toolset, set[str]]] = []
-    valid_tool_names: set[str] = set()
-    for item in items:
-        item_names = {tool.name for tool in item.get_selectable_tools()} if isinstance(item, Toolset) else {item.name}
-        selectable_per_item.append((item, item_names))
-        valid_tool_names |= item_names
-
-    invalid_tool_names = requested_names - valid_tool_names
-    if invalid_tool_names:
-        raise ValueError(
-            f"The following tool names are not valid: {invalid_tool_names}. Valid tool names are: {valid_tool_names}."
-        )
-
-    selected: list[Tool | Toolset] = []
-    for item, item_names in selectable_per_item:
-        matched = requested_names & item_names
-        if not matched:
-            continue
-        if isinstance(item, Toolset):
-            # Apply the selection to a per-run copy so the shared, configured Toolset is never mutated.
-            spawned = item.spawn()
-            spawned._selected_tool_names = matched
-            selected.append(spawned)
-        else:
-            selected.append(item)
-    return selected
-
-
-def _spawn_tools(tools: ToolsType) -> ToolsType:
-    """
-    Return per-run copies of `tools`, replacing each Toolset with an isolated `spawn()` (Tools are passed through).
-
-    This isolates run-scoped Toolset state (e.g. a SearchableToolset's discovered tools and any active name
-    selection) so that concurrent runs sharing the same configured Toolset — such as parallel sub-agent tool calls
-    or concurrent requests against one Agent — don't corrupt each other.
-    """
-    if isinstance(tools, Toolset):
-        return tools.spawn()
-    return [item.spawn() if isinstance(item, Toolset) else item for item in tools]
-
-
-def _validate_prompt_message_blocks(user_prompt: str | None, system_prompt: str | None) -> None:
-    """
-    Validate explicit Jinja2 message blocks in Agent prompts.
-
-    :param user_prompt: Optional user prompt template.
-    :param system_prompt: Optional system prompt template.
-    :raises ValueError: If a prompt contains multiple message blocks or a literal block role is invalid.
-    """
-    if user_prompt is not None:
-        message_blocks = _JINJA2_CHAT_TEMPLATE_RE.findall(user_prompt)
-        roles = _JINJA2_MESSAGE_ROLE_RE.findall(user_prompt)
-        if len(message_blocks) > 1:
-            raise ValueError(f"user_prompt must define exactly one message block, found {len(message_blocks)}.")
-        if roles and roles[0] != "user":
-            raise ValueError(f"user_prompt message block must have role 'user', found role '{roles[0]}'.")
-
-    if system_prompt is not None and _JINJA2_CHAT_TEMPLATE_RE.search(system_prompt):
-        message_blocks = _JINJA2_CHAT_TEMPLATE_RE.findall(system_prompt)
-        roles = _JINJA2_MESSAGE_ROLE_RE.findall(system_prompt)
-        if len(message_blocks) > 1:
-            raise ValueError(f"system_prompt must define exactly one message block, found {len(message_blocks)}.")
-        if roles and roles[0] != "system":
-            raise ValueError(f"system_prompt message block must have role 'system', found role '{roles[0]}'.")
-
-
-def _template_for_role(prompt: str, role: str) -> str:
-    """
-    Convert a prompt into a ChatPromptBuilder string template for the expected role.
-
-    :param prompt: Prompt template, with or without an explicit Jinja2 message block.
-    :param role: Role to use when wrapping a plain string prompt.
-    :returns: The original message-block template, or a plain string prompt wrapped in one message block.
-    """
-    if _JINJA2_CHAT_TEMPLATE_RE.search(prompt):
-        return prompt
-    return f'{{% message role="{role}" %}}{prompt}{{% endmessage %}}'
-
-
-def _render_prompt_messages(
-    *, prompt_builder: ChatPromptBuilder, expected_role: ChatRole, prompt_label: str, kwargs: dict[str, Any]
-) -> list[ChatMessage]:
-    """
-    Render one Agent prompt and validate the rendered message.
-
-    :param prompt_builder: Builder configured with the prompt template.
-    :param expected_role: Role the rendered message must have.
-    :param prompt_label: Prompt name used in error messages.
-    :param kwargs: Runtime values available to the prompt template.
-    :returns: A single rendered prompt message.
-    :raises ValueError: If the prompt renders to zero, multiple, or wrong-role messages.
-    """
-    prompt_kwargs = {var: kwargs[var] for var in prompt_builder.variables if var in kwargs}
-    prompt_messages = prompt_builder.run(**prompt_kwargs)["prompt"]
-    if len(prompt_messages) != 1:
-        raise ValueError(
-            f"{prompt_label} must render to exactly one {expected_role.value} message. "
-            f"Got {len(prompt_messages)} messages."
-        )
-    if not prompt_messages[0].is_from(expected_role):
-        raise ValueError(
-            f"{prompt_label} must render to a {expected_role.value} message. "
-            f"Got a message with role {prompt_messages[0].role}."
-        )
-    return prompt_messages
 
 
 @dataclass(kw_only=True)
@@ -670,7 +477,6 @@ class Agent:
         self.tool_concurrency_limit = tool_concurrency_limit
         self.tool_streaming_callback_passthrough = tool_streaming_callback_passthrough
         self.hooks = hooks
-        self._tools_warmed_up = False
         self._hooks_warmed_up = False
 
         # --- State schema ---
@@ -761,13 +567,6 @@ class Agent:
             else:
                 component.set_input_type(self, name=var_name, type=Any, default=None)
 
-    def _warm_up_tools(self) -> None:
-        """Warm up the configured tools once."""
-        if not self._tools_warmed_up:
-            if self.tools:
-                warm_up_tools(self.tools)
-            self._tools_warmed_up = True
-
     def _warm_up_hooks(self) -> None:
         """Warm up the configured hooks once."""
         if not self._hooks_warmed_up:
@@ -782,14 +581,14 @@ class Agent:
 
     def warm_up(self) -> None:
         """Warm up the tools, hooks, and the underlying chat generator."""
-        self._warm_up_tools()
+        warm_up_tools(tools=self.tools)
         self._warm_up_hooks()
         if hasattr(self.chat_generator, "warm_up"):
             self.chat_generator.warm_up()
 
     async def warm_up_async(self) -> None:
         """Warm up the tools, hooks, and the underlying chat generator on the serving event loop."""
-        self._warm_up_tools()
+        warm_up_tools(tools=self.tools)
         await self._warm_up_hooks_async()
         if hasattr(self.chat_generator, "warm_up_async"):
             await self.chat_generator.warm_up_async()
@@ -929,8 +728,8 @@ class Agent:
         if all(m.is_from(ChatRole.SYSTEM) for m in messages):
             logger.warning("All messages provided to the Agent component are system messages. This is not recommended.")
 
-        selected_tools = self._select_tools(tools)
-        flat_tools = flatten_tools_or_toolsets(selected_tools)
+        selected_tools = self._select_tools(tools=tools)
+        flat_tools = flatten_tools_or_toolsets(tools=selected_tools)
         # Validate tool support once for the run (covers both init-time and runtime tools)
         if flat_tools and not self._chat_generator_supports_tools:
             raise TypeError(
@@ -983,26 +782,20 @@ class Agent:
             or if any provided tool name is not valid.
         :raises TypeError: If tools is not a list of Tool objects, a Toolset, or a list of tool names (strings).
         """
-        # Toolsets are spawned into per-run copies (see _spawn_tools / _select_tools_by_name) so concurrent runs
+        # Toolsets are spawned per run (see _spawn_tools / _select_tools_by_name) so concurrent runs
         # sharing the same configured Toolset don't corrupt each other's run-scoped state.
         if tools is None:
-            return _spawn_tools(self.tools)
+            return _spawn_tools(tools=self.tools)
 
         if isinstance(tools, list) and all(isinstance(t, str) for t in tools):
             return _select_tools_by_name(self.tools, cast(list[str], tools))
 
-        if isinstance(tools, Toolset):
+        if isinstance(tools, (Toolset, list)):
+            selected = cast(ToolsType, tools)  # mypy can't narrow the Union type from the isinstance checks
             # Per-run tools are not covered by the Agent's own warm_up(), so warm them up here.
             # warm_up() is expected to be idempotent, so re-warming on every run is cheap.
-            warm_up_tools(tools)
-            return _spawn_tools(tools)
-
-        if isinstance(tools, list):
-            selected = cast(list[Tool | Toolset], tools)  # mypy can't narrow the Union type from isinstance check
-            # Per-run tools are not covered by the Agent's own warm_up(), so warm them up here.
-            # warm_up() is expected to be idempotent, so re-warming on every run is cheap.
-            warm_up_tools(selected)
-            return _spawn_tools(selected)
+            warm_up_tools(tools=selected)
+            return _spawn_tools(tools=selected)
 
         raise TypeError(
             "tools must be a list of Tool and/or Toolset objects, a Toolset, or a list of tool names (strings)."
@@ -1063,11 +856,13 @@ class Agent:
             **kwargs,
         )
 
-        with self._create_agent_span(exe_context.tools) as span:
+        with self._create_agent_span(tools=exe_context.tools) as span:
             span.set_content_tag("haystack.agent.input", agent_inputs)
-            _run_hooks(self.hooks, BEFORE_RUN, exe_context.state)
+            _run_hooks(hooks=self.hooks, hook_point=BEFORE_RUN, state=exe_context.state)
+            # A before_run hook can restore a saved State, so resume the execution counter from its step count.
+            exe_context.counter = exe_context.state.data.get("step_count", 0)
             while exe_context.counter < self.max_agent_steps:
-                if not self._run_step(exe_context, span):
+                if not self._run_step(exe_context=exe_context, agent_span=span):
                     break
             else:
                 # Reached only when the loop ends without a `break`. A `break` means a step already set its own
@@ -1077,8 +872,8 @@ class Agent:
                     max_agent_steps=self.max_agent_steps,
                 )
                 exe_context.state.set("exit_reason", _EXIT_REASON_MAX_STEPS)
-            _run_hooks(self.hooks, AFTER_RUN, exe_context.state)
-            result = _public_outputs(exe_context.state)
+            _run_hooks(hooks=self.hooks, hook_point=AFTER_RUN, state=exe_context.state)
+            result = _public_outputs(state=exe_context.state)
             if msgs := result.get("messages"):
                 result["last_message"] = msgs[-1]
             span.set_content_tag("haystack.agent.output", result)
@@ -1144,11 +939,13 @@ class Agent:
             **kwargs,
         )
 
-        with self._create_agent_span(exe_context.tools) as span:
+        with self._create_agent_span(tools=exe_context.tools) as span:
             span.set_content_tag("haystack.agent.input", agent_inputs)
-            await _run_hooks_async(self.hooks, BEFORE_RUN, exe_context.state)
+            await _run_hooks_async(hooks=self.hooks, hook_point=BEFORE_RUN, state=exe_context.state)
+            # A before_run hook can restore a saved State, so resume the execution counter from its step count.
+            exe_context.counter = exe_context.state.data.get("step_count", 0)
             while exe_context.counter < self.max_agent_steps:
-                if not await self._run_step_async(exe_context, span):
+                if not await self._run_step_async(exe_context=exe_context, agent_span=span):
                     break
             else:
                 # Reached only when the loop ends without a `break`. A `break` means a step already set its own
@@ -1158,8 +955,8 @@ class Agent:
                     max_agent_steps=self.max_agent_steps,
                 )
                 exe_context.state.set("exit_reason", _EXIT_REASON_MAX_STEPS)
-            await _run_hooks_async(self.hooks, AFTER_RUN, exe_context.state)
-            result = _public_outputs(exe_context.state)
+            await _run_hooks_async(hooks=self.hooks, hook_point=AFTER_RUN, state=exe_context.state)
+            result = _public_outputs(state=exe_context.state)
             if msgs := result.get("messages"):
                 result["last_message"] = msgs[-1]
             span.set_content_tag("haystack.agent.output", result)
@@ -1174,12 +971,12 @@ class Agent:
         ) as step_span:
             # Re-flatten the tools every step so dynamic toolsets (e.g. SearchableToolset) surface tools discovered in
             # earlier steps. Validate names here so duplicates fail before starting the step.
-            current_tools = flatten_tools_or_toolsets(exe_context.tools)
-            _check_duplicate_tool_names(current_tools)
+            current_tools = flatten_tools_or_toolsets(tools=exe_context.tools)
+            _check_duplicate_tool_names(tools=current_tools)
             # Expose the current tools to hooks (e.g. ConfirmationHook) via State.
             exe_context.state.set("tools", current_tools, handler_override=replace_values)
 
-            _run_hooks(self.hooks, BEFORE_LLM, exe_context.state)
+            _run_hooks(hooks=self.hooks, hook_point=BEFORE_LLM, state=exe_context.state)
             chat_generator_inputs = {
                 "messages": exe_context.state.data["messages"],
                 **exe_context.chat_generator_inputs,
@@ -1192,17 +989,17 @@ class Agent:
                 llm_span.set_content_tag("haystack.agent.step.llm.output", result)
             llm_messages = result["replies"]
             exe_context.state.set("messages", llm_messages)
-            _record_llm_usage(exe_context.state, llm_messages)
-            _record_context_tokens(exe_context.state, llm_messages)
+            _record_llm_usage(state=exe_context.state, llm_messages=llm_messages)
+            _record_context_tokens(state=exe_context.state, llm_messages=llm_messages)
 
             # Stop on the "no tool call" exit: no tools available, or a plain assistant text reply (see _is_text_exit).
-            if not current_tools or _is_text_exit(llm_messages):
+            if not current_tools or _is_text_exit(messages=llm_messages):
                 exe_context.counter += 1
                 exe_context.state.set("step_count", exe_context.counter)
                 exe_context.state.set("exit_reason", _EXIT_REASON_TEXT)
-                return self._continue_after_exit_hooks(exe_context)
+                return self._continue_after_exit_hooks(exe_context=exe_context)
 
-            _run_hooks(self.hooks, BEFORE_TOOL, exe_context.state)
+            _run_hooks(hooks=self.hooks, hook_point=BEFORE_TOOL, state=exe_context.state)
             # Re-read the pending tool calls from State so that any rewrites a before_tool hook made (e.g.
             # ConfirmationHook rejecting or modifying calls) are honored by the executor.
             pending_tool_call_messages = _pending_tool_call_messages_from_state(exe_context.state)
@@ -1215,8 +1012,8 @@ class Agent:
             }
             tool_messages, exe_context.state = _run_tool(**tool_execution_inputs)
             exe_context.state.set("messages", tool_messages)
-            _record_tool_calls(exe_context.state, tool_messages)
-            _run_hooks(self.hooks, AFTER_TOOL, exe_context.state)
+            _record_tool_calls(state=exe_context.state, tool_messages=tool_messages)
+            _run_hooks(hooks=self.hooks, hook_point=AFTER_TOOL, state=exe_context.state)
 
             exe_context.counter += 1
             exe_context.state.set("step_count", exe_context.counter)
@@ -1227,7 +1024,7 @@ class Agent:
             )
             if exit_condition_tool is not None:
                 exe_context.state.set("exit_reason", exit_condition_tool)
-                return self._continue_after_exit_hooks(exe_context)
+                return self._continue_after_exit_hooks(exe_context=exe_context)
             return True
 
     async def _run_step_async(self, exe_context: _ExecutionContext, agent_span: tracing.Span) -> bool:
@@ -1237,12 +1034,12 @@ class Agent:
         ) as step_span:
             # Re-flatten the tools every step so dynamic toolsets (e.g. SearchableToolset) surface tools discovered in
             # earlier steps. Validate names here so duplicates fail before starting the step.
-            current_tools = flatten_tools_or_toolsets(exe_context.tools)
-            _check_duplicate_tool_names(current_tools)
+            current_tools = flatten_tools_or_toolsets(tools=exe_context.tools)
+            _check_duplicate_tool_names(tools=current_tools)
             # Expose the current tools to hooks (e.g. ConfirmationHook) via State.
             exe_context.state.set("tools", current_tools, handler_override=replace_values)
 
-            await _run_hooks_async(self.hooks, BEFORE_LLM, exe_context.state)
+            await _run_hooks_async(hooks=self.hooks, hook_point=BEFORE_LLM, state=exe_context.state)
             chat_generator_inputs = {
                 "messages": exe_context.state.data["messages"],
                 **exe_context.chat_generator_inputs,
@@ -1257,17 +1054,17 @@ class Agent:
                 llm_span.set_content_tag("haystack.agent.step.llm.output", result)
             llm_messages = result["replies"]
             exe_context.state.set("messages", llm_messages)
-            _record_llm_usage(exe_context.state, llm_messages)
-            _record_context_tokens(exe_context.state, llm_messages)
+            _record_llm_usage(state=exe_context.state, llm_messages=llm_messages)
+            _record_context_tokens(state=exe_context.state, llm_messages=llm_messages)
 
             # Stop on the "no tool call" exit: no tools available, or a plain assistant text reply (see _is_text_exit).
-            if not current_tools or _is_text_exit(llm_messages):
+            if not current_tools or _is_text_exit(messages=llm_messages):
                 exe_context.counter += 1
                 exe_context.state.set("step_count", exe_context.counter)
                 exe_context.state.set("exit_reason", _EXIT_REASON_TEXT)
-                return await self._continue_after_exit_hooks_async(exe_context)
+                return await self._continue_after_exit_hooks_async(exe_context=exe_context)
 
-            await _run_hooks_async(self.hooks, BEFORE_TOOL, exe_context.state)
+            await _run_hooks_async(hooks=self.hooks, hook_point=BEFORE_TOOL, state=exe_context.state)
             # Re-read the pending tool calls from State so that any rewrites a before_tool hook made (e.g.
             # ConfirmationHook rejecting or modifying calls) are honored by the executor.
             pending_tool_call_messages = _pending_tool_call_messages_from_state(exe_context.state)
@@ -1280,8 +1077,8 @@ class Agent:
             }
             tool_messages, exe_context.state = await _run_tool_async(**tool_execution_inputs)
             exe_context.state.set("messages", tool_messages)
-            _record_tool_calls(exe_context.state, tool_messages)
-            await _run_hooks_async(self.hooks, AFTER_TOOL, exe_context.state)
+            _record_tool_calls(state=exe_context.state, tool_messages=tool_messages)
+            await _run_hooks_async(hooks=self.hooks, hook_point=AFTER_TOOL, state=exe_context.state)
 
             exe_context.counter += 1
             exe_context.state.set("step_count", exe_context.counter)
@@ -1292,7 +1089,7 @@ class Agent:
             )
             if exit_condition_tool is not None:
                 exe_context.state.set("exit_reason", exit_condition_tool)
-                return await self._continue_after_exit_hooks_async(exe_context)
+                return await self._continue_after_exit_hooks_async(exe_context=exe_context)
             return True
 
     def _check_exit_conditions(self, llm_messages: list[ChatMessage], tool_messages: list[ChatMessage]) -> str | None:
@@ -1336,7 +1133,7 @@ class Agent:
         if not self.hooks.get(ON_EXIT):
             return False
         exe_context.state.set("continue_run", False)
-        _run_hooks(self.hooks, ON_EXIT, exe_context.state)
+        _run_hooks(hooks=self.hooks, hook_point=ON_EXIT, state=exe_context.state)
         return _consume_continue_run(exe_context.state)
 
     async def _continue_after_exit_hooks_async(self, exe_context: _ExecutionContext) -> bool:
@@ -1344,5 +1141,5 @@ class Agent:
         if not self.hooks.get(ON_EXIT):
             return False
         exe_context.state.set("continue_run", False)
-        await _run_hooks_async(self.hooks, ON_EXIT, exe_context.state)
+        await _run_hooks_async(hooks=self.hooks, hook_point=ON_EXIT, state=exe_context.state)
         return _consume_continue_run(exe_context.state)

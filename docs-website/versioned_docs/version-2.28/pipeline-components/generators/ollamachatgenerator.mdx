@@ -118,9 +118,9 @@ generator = OllamaChatGenerator(
 )
 
 response = generator.run(
-    messages=[ChatMessage.from_user(
-        "What's the weather in Berlin? Use the get_weather tool."
-    )]
+    messages=[
+        ChatMessage.from_user("What's the weather in Berlin? Use the get_weather tool.")
+    ]
 )
 
 # Final reconstructed message: tool_calls populated, text is None

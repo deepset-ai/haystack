@@ -111,7 +111,7 @@ class SkillToolset(Toolset):
         )
 
     def __add__(self, other: Tool | Toolset | list[Tool]) -> "Toolset":
-        """Concatenation is not supported for SearchableToolset."""
+        """Concatenation is not supported for SkillToolset."""
         raise NotImplementedError(
             "SkillToolset does not support concatenation. To combine it with other tools, pass it to the Agent "
             "alongside them, e.g. tools=[skill_toolset, other_tool]."

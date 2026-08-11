@@ -181,7 +181,7 @@ document_list = [
 result = sparse_doc_embedder.run(document_list)
 print(f"Document Text: {result['documents'][0].content}")
 print(f"Document Sparse Embedding: {result['documents'][0].sparse_embedding}")
-print(f"Sparse Embedding Dimension: {len(result['documents'][0].sparse_embedding)}")
+print(f"Number of non-zero elements: {len(result['documents'][0].sparse_embedding.indices)}")
 ```
 
 #### __init__

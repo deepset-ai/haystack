@@ -25,7 +25,7 @@ When you perform embedding retrieval, you use this component to transform your q
 
 ## Overview
 
-To see the list of compatible IBM watsonx.ai embedding models, head over to IBM [documentation](https://dataplatform.cloud.ibm.com/docs/content/wsj/analyze-data/fm-models-embed.html?context=wx). The default model for `WatsonxTextEmbedder` is `ibm/slate-30m-english-rtrvr`. You can specify another model with the `model` parameter when initializing this component.
+To see the list of compatible IBM watsonx.ai embedding models, head over to IBM [documentation](https://dataplatform.cloud.ibm.com/docs/content/wsj/analyze-data/fm-models-embed.html?context=wx). The default model for `WatsonxTextEmbedder` is `ibm/slate-30m-english-rtrvr-v2`. You can specify another model with the `model` parameter when initializing this component.
 
 Use `WatsonxTextEmbedder` to embed a simple string (such as a query) into a vector. For embedding lists of documents, use the [`WatsonxDocumentEmbedder`](watsonxdocumentembedder.mdx), which enriches the document with the computed embedding, also known as vector.
 
@@ -115,6 +115,5 @@ result = query_pipeline.run({"text_embedder": {"text": query}})
 
 print(result["retriever"]["documents"][0])
 
-# Document(id=..., mimetype: 'text/plain',
-# text: 'My name is Wolfgang and I live in Berlin')
+# Document(id=..., content: 'My name is Wolfgang and I live in Berlin', score: ...)
 ```

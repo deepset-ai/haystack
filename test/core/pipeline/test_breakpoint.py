@@ -10,7 +10,7 @@ from typing import Any
 import pytest
 
 from haystack import component
-from haystack.components.joiners import BranchJoiner
+from haystack.components.joiners import BranchJoiner, ListJoiner
 from haystack.components.routers import ConditionalRouter
 from haystack.components.routers.conditional_router import Route
 from haystack.core.errors import BreakpointException, PipelineInvalidPipelineSnapshotError
@@ -18,7 +18,6 @@ from haystack.core.pipeline import Pipeline
 from haystack.core.pipeline.breakpoint import (
     HAYSTACK_PIPELINE_SNAPSHOT_SAVE_ENABLED,
     _create_pipeline_snapshot,
-    _deserialize_internal_inputs,
     _is_snapshot_save_enabled,
     _save_pipeline_snapshot,
     _transform_json_structure,
@@ -134,14 +133,14 @@ def test_breakpoint_saves_intermediate_outputs(tmp_path, monkeypatch):
         }
     )
 
-    # verify the saved inputs record which component sent each one, keyed by the position it arrived in.
+    # verify the saved inputs record which component sent each one, in the order it arrived.
     # The accompanying schema is asserted in TestCreatePipelineSnapshot.
     assert loaded_snapshot.pipeline_state.inputs_format == INTERNAL_INPUTS_FORMAT
     assert loaded_snapshot.pipeline_state.inputs["serialized_data"] == {
         # comp1 was given its input from outside the pipeline
-        "comp1": {"input_value": {"0": {"sender": None, "value": "test"}}},
+        "comp1": {"input_value": [{"sender": None, "value": "test"}]},
         # comp2 was given its input by comp1, and had not consumed it yet when the breakpoint hit
-        "comp2": {"input_value": {"0": {"sender": "comp1", "value": "processed_test"}}},
+        "comp2": {"input_value": [{"sender": "comp1", "value": "processed_test"}]},
     }
 
     # verify the whole pipeline state contains the expected data
@@ -170,13 +169,6 @@ class _CountUpTo:
         if value < self.limit:
             return {"retry": value + 1}
         return {"done": f"finished at {value}"}
-
-
-@component
-class _CollectBranches:
-    @component.output_types(result=str)
-    def run(self, a: str | None = None, b: str | None = None) -> dict[str, str]:
-        return {"result": f"a={a} b={b}"}
 
 
 def _three_component_pipeline() -> Pipeline:
@@ -259,16 +251,21 @@ class TestResumeFromPipelineSnapshot:
         assert _looping_pipeline().run(data={}, pipeline_snapshot=snapshot) == {"counter": {"done": "finished at 5"}}
 
     def test_snapshot_preserves_sockets_whose_sender_produced_no_output(self):
-        """A router that leaves a branch inactive puts the `_NoOutputProduced()` sentinel in the pipeline inputs."""
+        """A mixed socket queue containing a value and `_NoOutputProduced()` survives a snapshot and resume."""
         routes: list[Route] = [
-            {"condition": "{{ n > 5 }}", "output": "{{ 'big' }}", "output_name": "big", "output_type": str},
-            {"condition": "{{ n <= 5 }}", "output": "{{ 'small' }}", "output_name": "small", "output_type": str},
+            {"condition": "{{ n > 5 }}", "output": "{{ ['big'] }}", "output_name": "big", "output_type": list[str]},
+            {
+                "condition": "{{ n <= 5 }}",
+                "output": "{{ ['small'] }}",
+                "output_name": "small",
+                "output_type": list[str],
+            },
         ]
         pipeline = Pipeline()
         pipeline.add_component("router", ConditionalRouter(routes=routes))
-        pipeline.add_component("collect", _CollectBranches())
-        pipeline.connect("router.big", "collect.a")
-        pipeline.connect("router.small", "collect.b")
+        pipeline.add_component("collect", ListJoiner(list[str]))
+        pipeline.connect("router.big", "collect.values")
+        pipeline.connect("router.small", "collect.values")
 
         expected = pipeline.run({"router": {"n": 9}})
 
@@ -277,9 +274,15 @@ class TestResumeFromPipelineSnapshot:
         snapshot = exc_info.value.pipeline_snapshot
         assert snapshot is not None
 
-        restored = _deserialize_internal_inputs(snapshot.pipeline_state.inputs)
-        assert restored["collect"]["b"] == [{"sender": "router", "value": _NoOutputProduced()}]
+        socket_schema = snapshot.pipeline_state.inputs["serialization_schema"]["properties"]["collect"]["properties"][
+            "values"
+        ]
+        assert "prefixItems" in socket_schema
 
+        restored = _deserialize_value_with_schema(snapshot.pipeline_state.inputs)
+        restored_values = [entry["value"] for entry in restored["collect"]["values"]]
+        assert ["big"] in restored_values
+        assert any(isinstance(value, _NoOutputProduced) for value in restored_values)
         assert pipeline.run(data={}, pipeline_snapshot=snapshot) == expected
 
 
@@ -294,7 +297,7 @@ class TestResumeFromLegacyPipelineSnapshot:
         assert snapshot is not None
 
         legacy_inputs = _serialize_value_with_schema(
-            _transform_json_structure(_deserialize_internal_inputs(snapshot.pipeline_state.inputs))
+            _transform_json_structure(_deserialize_value_with_schema(snapshot.pipeline_state.inputs))
         )
         assert legacy_inputs["serialized_data"]["comp2"] == {"input_value": "test_processed"}
         legacy_snapshot = replace(
@@ -360,15 +363,13 @@ class TestCreatePipelineSnapshot:
         assert snapshot.break_point == break_point
         assert snapshot.include_outputs_from == include_outputs_from
 
-        # Each input a socket received is stored under its position, so that it carries its own schema.
+        # Each input a socket received is stored in a list. Mixed-type lists carry one schema per position.
         def socket_schema(sender_type: str) -> dict[str, Any]:
             return {
-                "type": "object",
-                "properties": {
-                    "0": {
-                        "type": "object",
-                        "properties": {"sender": {"type": sender_type}, "value": {"type": "string"}},
-                    }
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {"sender": {"type": sender_type}, "value": {"type": "string"}},
                 },
             }
 
@@ -382,8 +383,8 @@ class TestCreatePipelineSnapshot:
                     },
                 },
                 "serialized_data": {
-                    "comp1": {"input_value": {"0": {"sender": None, "value": "test"}}},
-                    "comp2": {"input_value": {"0": {"sender": "comp1", "value": "processed_test"}}},
+                    "comp1": {"input_value": [{"sender": None, "value": "test"}]},
+                    "comp2": {"input_value": [{"sender": "comp1", "value": "processed_test"}]},
                 },
             },
             component_visits={"comp1": 1, "comp2": 0},
@@ -489,7 +490,7 @@ class TestCreatePipelineSnapshot:
 
         # The non-serializable comp1 field is omitted while the serializable siblings are preserved.
         assert "comp1" not in deserialized_inputs
-        assert deserialized_inputs["comp2"] == {"input_value": {"0": {"sender": None, "value": "keep me"}}}
+        assert deserialized_inputs["comp2"] == {"input_value": [{"sender": None, "value": "keep me"}]}
         assert deserialized_inputs["comp3"] == {}
         # original_input_data and pipeline_outputs degrade to empty-but-valid payloads.
         assert deserialized_original_input_data == {}

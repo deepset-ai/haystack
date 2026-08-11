@@ -1,0 +1,45 @@
+---
+features:
+  - |
+    Added experimental context compaction for the ``Agent``. ``CompactionHook`` runs before LLM calls and
+    shortens the conversation when it reaches a configured fraction of the model's context window.
+
+    The first built-in strategy, ``SlidingWindowCompactor``, preserves leading system messages, the latest user task,
+    and as much complete recent conversation as the target allows. It removes complete historical turns first, and only
+    when removing every historical turn is insufficient does it remove individual Agent steps from the current task. It
+    replaces removed history with a short omission note, left where the removed messages used to sit: directly after
+    the leading system messages when only historical turns were removed, and directly after the latest user message
+    when the current task's own steps were removed. Only one note is ever present, because a later compaction folds an
+    earlier one into its replacement.
+
+    .. code-block:: python
+
+        from haystack.components.agents import Agent
+        from haystack.components.generators.chat import OpenAIResponsesChatGenerator
+        from haystack.hooks.compaction import CompactionHook, SlidingWindowCompactor
+
+        hook = CompactionHook(
+            compactor=SlidingWindowCompactor(),
+            context_window=400_000,
+            compact_at=0.7,
+            compact_to=0.4,
+        )
+        agent = Agent(
+            chat_generator=OpenAIResponsesChatGenerator(model="gpt-5.4-nano"),
+            tools=[web_search],
+            hooks={"before_llm": [hook]},
+        )
+
+    The hook uses provider-reported context usage when available and locally estimates the request otherwise, including
+    tool schemas. Leave headroom above ``compact_at`` for the next reply and its tool results.
+
+    ``SlidingWindowCompactor`` treats an assistant message and its following tool results as one step, so a tool call is
+    never separated from its results. Historical turns are likewise kept or removed in full, so an assistant reply is
+    not retained without the user message it answers. It can also land above the requested target rather than under it,
+    because leading system messages and the current task are never removed and ``min_keep_steps`` holds on to the
+    newest Agent steps whatever their size, so a long system prompt or one large tool result can leave the conversation
+    well over the target. Compaction is lossy: removed messages cannot be recovered or summarized by this strategy.
+    Implement the ``Compactor`` protocol to provide a custom strategy.
+
+    ``CompactionHook`` and ``SlidingWindowCompactor`` emit an ``ExperimentalWarning`` and may change without a
+    deprecation cycle.

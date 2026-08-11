@@ -129,7 +129,10 @@ class SearchableToolset(Toolset):
         self._bootstrap_tool: Tool | None = None
         self._document_store: InMemoryDocumentStore | None = None
         self._passthrough: bool | None = None
-        self._is_warmed_up = False
+
+        # Optional per-run name filter, set on the copies returned by spawn(). When set, iteration only
+        # yields tools whose name is in this set, and search is scoped to it. None means no filtering.
+        self._selected_tool_names: set[str] | None = None
 
         # Initialize parent with empty tools list - we manage tools dynamically
         super().__init__(tools=[])
@@ -153,7 +156,7 @@ class SearchableToolset(Toolset):
 
         :raises ValueError: If the flattened catalog contains tools with duplicate names.
         """
-        if self._is_warmed_up:
+        if self._passthrough is not None:
             return
 
         # Warm up the catalog first (triggers lazy connections like MCPToolset), then flatten — lazy toolsets will
@@ -176,8 +179,6 @@ class SearchableToolset(Toolset):
             self._document_store.write_documents(documents, policy=DuplicatePolicy.OVERWRITE)
             self._bootstrap_tool = self._create_search_tool()
 
-        self._is_warmed_up = True
-
     def get_selectable_tools(self) -> list[Tool]:
         """
         Return the full catalog of tools that can be selected by name.
@@ -187,8 +188,7 @@ class SearchableToolset(Toolset):
 
         :returns: The flattened catalog of tools.
         """
-        if not self._is_warmed_up:
-            self.warm_up()
+        self.warm_up()
         return list(self._catalog)
 
     def clear(self) -> None:
@@ -200,21 +200,23 @@ class SearchableToolset(Toolset):
         """
         self._discovered_tools.clear()
 
-    def spawn(self) -> "SearchableToolset":
+    def spawn(self, selected_tool_names: set[str] | None = None) -> "SearchableToolset":
         """
-        Return an isolated copy for a single run.
+        Return an isolated copy for a single run, carrying the given name selection.
 
         The copy shares the read-only catalog and BM25 index but gets fresh discovered tools and name selection,
-        plus a bootstrap search tool bound to the copy. This way concurrent runs sharing the same configured
-        SearchableToolset don't share discovered tools or collide on the active selection.
+        plus a bootstrap search tool bound to the copy; the selection scopes both iteration and search. This way
+        concurrent runs sharing the same configured SearchableToolset don't share discovered tools or collide on
+        the active selection.
 
+        :param selected_tool_names: Optional catalog tool names this run is restricted to. None means no
+            restriction.
         :returns: A run-scoped copy of this SearchableToolset.
         """
-        if not self._is_warmed_up:
-            self.warm_up()
+        self.warm_up()
         new = copy.copy(self)
         new._discovered_tools = {}
-        new._selected_tool_names = None
+        new._selected_tool_names = set(selected_tool_names) if selected_tool_names is not None else None
         # Rebuild the bootstrap tool so its closure is bound to the copy's discovered tools / selection
         # rather than the original's. The document store and catalog are read-only and stay shared.
         if not self._passthrough:
@@ -307,23 +309,16 @@ class SearchableToolset(Toolset):
         set, but the bootstrap search tool is always exposed so search keeps working over the selected subset.
         Automatically calls warm_up() if needed to ensure the bootstrap tool is available.
         """
-        # Unlike base Toolset/MCPToolset, which expose a placeholder tool before warm_up, this toolset materializes
-        # everything (flattened catalog, bootstrap tool, passthrough decision) in warm_up.
+        # This toolset materializes everything (flattened catalog, bootstrap tool, passthrough decision) in warm_up.
         # Without warming here, iterating before warm_up would yield nothing, so we warm up to make the toolset usable
         # at all.
-        if not self._is_warmed_up:
-            self.warm_up()
+        self.warm_up()
         if self._passthrough:
             yield from (tool for tool in self._catalog if self._is_selected(tool.name))
         else:
             if self._bootstrap_tool is not None:
                 yield self._bootstrap_tool
             yield from (tool for tool in self._discovered_tools.values() if self._is_selected(tool.name))
-
-    def __len__(self) -> int:
-        """Return the number of currently available tools."""
-        # the number of tools is computed by invoking __iter__ on the toolset
-        return sum(1 for _ in self)
 
     def __contains__(self, item: str | Tool) -> bool:
         """
@@ -337,16 +332,6 @@ class SearchableToolset(Toolset):
         if isinstance(item, Tool):
             return any(tool == item for tool in self)
         raise TypeError(f"Invalid item type: {type(item)}. Must be Tool or str.")
-
-    def __getitem__(self, index: int) -> Tool:
-        """
-        Get a tool by index.
-
-        :param index: Index of the tool to retrieve.
-        :returns: The tool at the given index.
-        :raises IndexError: If the index is out of range.
-        """
-        return list(self)[index]
 
     def to_dict(self) -> dict[str, Any]:
         """

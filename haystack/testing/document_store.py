@@ -1204,8 +1204,9 @@ class GetMetadataFieldUniqueValuesTest:
     """
     Tests for Document Store get_metadata_field_unique_values().
 
-    Only mix in for stores that implement get_metadata_field_unique_values.
-    Expects the method to return (values_list, total_count) or (values_list, pagination_key).
+    Only mix in for stores that implement get_metadata_field_unique_values() with the standardized
+    signature: get_metadata_field_unique_values(metadata_field, search_term=None, from_=0, size=10,
+        filters=None) returns (values, total_count).
     """
 
     @staticmethod
@@ -1221,27 +1222,160 @@ class GetMetadataFieldUniqueValuesTest:
         document_store.write_documents(docs)
         assert document_store.count_documents() == 5
 
-        sig = inspect.signature(document_store.get_metadata_field_unique_values)  # type:ignore[attr-defined]
-        params: dict = {}
-        if "search_term" in sig.parameters:
-            params["search_term"] = None
-        if "from_" in sig.parameters:
-            params["from_"] = 0
-        elif "offset" in sig.parameters:
-            params["offset"] = 0
-        if "size" in sig.parameters:
-            params["size"] = 10
-        elif "limit" in sig.parameters:
-            params["limit"] = 10
+        values, total_count = document_store.get_metadata_field_unique_values(metadata_field="category")  # type:ignore[attr-defined]
 
-        result = document_store.get_metadata_field_unique_values("category", **params)  # type:ignore[attr-defined]
-
-        values = result[0] if isinstance(result, tuple) else result
         assert isinstance(values, list)
         assert len(values) == 3  # the returned values must not contain duplicates
         assert set(values) == {"A", "B", "C"}
-        if isinstance(result, tuple) and len(result) >= 2 and isinstance(result[1], int):
-            assert result[1] == 3
+        assert total_count == 3
+
+    @staticmethod
+    def test_get_metadata_field_unique_values_meta_prefix(document_store: DocumentStore):
+        """Test get_metadata_field_unique_values() with a field name that includes the 'meta.' prefix."""
+        docs = [
+            Document(content="Doc 1", meta={"category": "A"}),
+            Document(content="Doc 2", meta={"category": "B"}),
+            Document(content="Doc 3", meta={"category": "A"}),
+        ]
+        document_store.write_documents(docs)
+
+        values, total_count = document_store.get_metadata_field_unique_values(metadata_field="category")  # type:ignore[attr-defined]
+        prefixed_values, prefixed_total_count = document_store.get_metadata_field_unique_values(  # type:ignore[attr-defined]
+            metadata_field="meta.category"
+        )
+
+        assert set(prefixed_values) == set(values)
+        assert prefixed_total_count == total_count
+
+    @staticmethod
+    def test_get_metadata_field_unique_values_search_term(document_store: DocumentStore):
+        """Test get_metadata_field_unique_values() filters by a case-insensitive substring of the value."""
+        docs = [
+            Document(content="Doc 1", meta={"category": "All_Beauty"}),
+            Document(content="Doc 2", meta={"category": "Electronics"}),
+            # the content mentions "beaut" but the value doesn't - must not match search_term="beaut"
+            Document(content="something about beauty products", meta={"category": "Home"}),
+        ]
+        document_store.write_documents(docs)
+
+        values, total_count = document_store.get_metadata_field_unique_values(  # type:ignore[attr-defined]
+            metadata_field="category", search_term="beaut"
+        )
+
+        assert values == ["All_Beauty"]
+        assert total_count == 1
+
+    @staticmethod
+    def test_get_metadata_field_unique_values_pagination(document_store: DocumentStore):
+        """Test get_metadata_field_unique_values() paginates a stable ordering via from_/size."""
+        docs = [Document(content=f"Doc {i}", meta={"category": f"category_{i}"}) for i in range(5)]
+        document_store.write_documents(docs)
+
+        all_values = sorted(f"category_{i}" for i in range(5))
+
+        first_page, total_count = document_store.get_metadata_field_unique_values(  # type:ignore[attr-defined]
+            metadata_field="category", from_=0, size=2
+        )
+        assert first_page == all_values[:2]
+        assert total_count == 5
+
+        second_page, total_count = document_store.get_metadata_field_unique_values(  # type:ignore[attr-defined]
+            metadata_field="category", from_=2, size=2
+        )
+        assert second_page == all_values[2:4]
+        assert total_count == 5
+
+    @staticmethod
+    def test_get_metadata_field_unique_values_empty_store(document_store: DocumentStore):
+        """Test get_metadata_field_unique_values() on an empty store."""
+        assert document_store.count_documents() == 0
+
+        values, total_count = document_store.get_metadata_field_unique_values(  # type:ignore[attr-defined]
+            metadata_field="category"
+        )
+        assert values == []
+        assert total_count == 0
+
+    @staticmethod
+    def test_get_metadata_field_unique_values_missing_field(document_store: DocumentStore):
+        """Test get_metadata_field_unique_values() for a field that no document has."""
+        docs = [Document(content="Doc 1", meta={"category": "A"})]
+        document_store.write_documents(docs)
+
+        values, total_count = document_store.get_metadata_field_unique_values(  # type:ignore[attr-defined]
+            metadata_field="missing_field"
+        )
+        assert values == []
+        assert total_count == 0
+
+    @staticmethod
+    def test_get_metadata_field_unique_values_preserves_type(document_store: DocumentStore):
+        """Test get_metadata_field_unique_values() returns values in their original (non-string) type."""
+        docs = [
+            Document(content="Doc 1", meta={"priority": 1}),
+            Document(content="Doc 2", meta={"priority": 2}),
+            Document(content="Doc 3", meta={"priority": 1}),
+        ]
+        document_store.write_documents(docs)
+
+        values, total_count = document_store.get_metadata_field_unique_values(  # type:ignore[attr-defined]
+            metadata_field="priority"
+        )
+
+        assert set(values) == {1, 2}
+        assert all(isinstance(value, int) for value in values)
+        assert total_count == 2
+
+    @staticmethod
+    def test_get_metadata_field_unique_values_distinct_types(document_store: DocumentStore):
+        """
+        Test get_metadata_field_unique_values() doesn't collapse values that share a string form.
+
+        Example: the int 1, the float 1.0, the str "1" and the bool True must be counted and returned as
+        distinct values.
+        """
+        docs = [
+            Document(content="Doc 1", meta={"priority": 1}),
+            Document(content="Doc 2", meta={"priority": "1"}),
+            Document(content="Doc 3", meta={"priority": 1.0}),
+            Document(content="Doc 4", meta={"priority": True}),
+            Document(content="Doc 5", meta={"priority": 1}),
+        ]
+        document_store.write_documents(docs)
+
+        values, total_count = document_store.get_metadata_field_unique_values(  # type:ignore[attr-defined]
+            metadata_field="priority"
+        )
+
+        assert total_count == 4
+        assert len(values) == 4
+
+        # `1 == 1.0 == True` and `set`/`in` use equality, not identity, so distinctness must be
+        # verified by type instead, otherwise this test could pass even if values collapsed.
+        values_by_type = {type(value): value for value in values}
+        assert values_by_type.keys() == {int, str, float, bool}
+        assert values_by_type[int] == 1
+        assert values_by_type[str] == "1"
+        assert values_by_type[float] == 1.0
+        assert values_by_type[bool] is True
+
+    @staticmethod
+    def test_get_metadata_field_unique_values_with_filters(document_store: DocumentStore):
+        """Test get_metadata_field_unique_values() restricts documents using the filters param."""
+        docs = [
+            Document(content="Doc 1", meta={"category": "A", "status": "active"}),
+            Document(content="Doc 2", meta={"category": "B", "status": "active"}),
+            Document(content="Doc 3", meta={"category": "C", "status": "inactive"}),
+        ]
+        document_store.write_documents(docs)
+
+        filters = {"field": "meta.status", "operator": "==", "value": "active"}
+        values, total_count = document_store.get_metadata_field_unique_values(  # type:ignore[attr-defined]
+            metadata_field="category", filters=filters
+        )
+
+        assert set(values) == {"A", "B"}
+        assert total_count == 2
 
 
 class DocumentStoreBaseTests(CountDocumentsTest, DeleteDocumentsTest, FilterDocumentsTest, WriteDocumentsTest):

@@ -59,6 +59,7 @@ Use this Retriever in a query pipeline like this:
 
 ```python
 from haystack import Document, Pipeline
+from haystack.document_stores.types import DuplicatePolicy
 from haystack_integrations.components.embedders.sentence_transformers import (
     SentenceTransformersTextEmbedder,
     SentenceTransformersDocumentEmbedder,

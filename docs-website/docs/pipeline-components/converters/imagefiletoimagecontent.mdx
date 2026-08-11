@@ -42,7 +42,6 @@ This component is often used in query pipelines just before a `ChatPromptBuilder
 ### On its own
 
 ```python
-
 from haystack.components.converters.image import ImageFileToImageContent
 
 converter = ImageFileToImageContent(detail="high", size=(800, 600))
@@ -59,7 +58,7 @@ print(image_contents)
 # meta={"file_path": "cat.jpg"}
 # ),
 # ImageContent(
-# base64_image="/9j/4A...", mime_type="image/png", detail="high",
+# base64_image="iVBORw0KGgo...", mime_type="image/png", detail="high",
 # meta={"file_path": "scenery.png"}
 # )
 # ]

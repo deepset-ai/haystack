@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import ast
 import builtins
 import importlib
 import inspect
@@ -86,6 +87,11 @@ def serialize_type(target: Any) -> str:
     # str(Ellipsis) == "Ellipsis", which deserialize_type then rejects as a non-type builtin.
     if target is Ellipsis:
         return "..."
+
+    # Literal holds values (e.g. Literal["yes", "no"]), not types. Serialize each value with repr() so
+    # strings keep their quotes.
+    if typing.get_origin(target) is typing.Literal:
+        return f"typing.Literal[{', '.join(repr(a) for a in get_args(target))}]"
 
     args = get_args(target)
 
@@ -235,6 +241,13 @@ def deserialize_type(type_str: str) -> Any:
         generics_str = generics_str[:-1]
 
         main_type = deserialize_type(main_type_str)
+
+        # Parse literal args with ast.literal_eval, which safely handles
+        # str/int/bool/None/bytes and is quote-aware, so a comma inside a string value does not split the
+        # arguments.
+        if main_type is typing.Literal:
+            return typing.Literal[ast.literal_eval(f"({generics_str},)")]
+
         generic_args = [_deserialize_type_arg(arg) for arg in _parse_generic_args(generics_str)]
 
         # Reconstruct

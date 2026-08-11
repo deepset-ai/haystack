@@ -28,7 +28,9 @@ def _serialize_value_with_schema(payload: Any) -> dict[str, Any]:  # noqa: PLR09
     - Objects with to_dict() methods (e.g. dataclasses)
     - Objects with __dict__ attributes
     - Dictionaries
-    - Lists, tuples, and sets. Lists with mixed types are not supported.
+    - Lists, tuples, and sets, including ones holding mixed types. A mixed-type array records one
+      schema per position under the JSON Schema `prefixItems` keyword, while a homogeneous array
+      keeps the single shared `items` schema.
     - Primitive types (str, int, float, bool, None)
 
     This is for runtime values (Agent/State data, pipeline inputs/outputs at a breakpoint), not
@@ -61,20 +63,23 @@ def _serialize_value_with_schema(payload: Any) -> dict[str, Any]:  # noqa: PLR09
 
     # Handle array case - iterate through elements
     if isinstance(payload, (list, tuple, set, frozenset)):
-        # Serialize each item in the array
+        # Serialize each item in the array, keeping its own schema
         serialized_list = []
+        item_schemas: list[Any] = []
+        base_schema: dict[str, Any]
         for item in payload:
             serialized_value = _serialize_value_with_schema(item)
             serialized_list.append(serialized_value["serialized_data"])
+            item_schemas.append(serialized_value["serialization_schema"])
 
-        # Determine item type from first element (if any)
-        # NOTE: We do not support mixed-type lists
-        if payload:
-            first = next(iter(payload))
-            item_schema = _serialize_value_with_schema(first)
-            base_schema = {"type": "array", "items": item_schema["serialization_schema"]}
-        else:
+        if not item_schemas:
             base_schema = {"type": "array", "items": {}}
+        elif all(item_schema == item_schemas[0] for item_schema in item_schemas):
+            # Homogeneous array: keep the historical `items` envelope so older readers keep working
+            base_schema = {"type": "array", "items": item_schemas[0]}
+        else:
+            # Mixed-type array: describe every position with the JSON Schema `prefixItems` keyword
+            base_schema = {"type": "array", "prefixItems": item_schemas}
 
         # Add JSON Schema properties to infer sets, frozensets and tuples
         if isinstance(payload, (set, frozenset)):
@@ -194,7 +199,8 @@ def _deserialize_value_with_schema(serialized: dict[str, Any]) -> Any:
          "serialized_data": <the actual data>
       }
 
-    NOTE: For array types we only support homogeneous lists (all elements of the same type).
+    For array types, `prefixItems` (one schema per position, emitted for mixed-type arrays) takes
+    precedence over `items` (a single shared schema, emitted for homogeneous arrays).
 
     :param serialized: The serialized dict with schema and data.
     :returns: The deserialized value in its original form.
@@ -233,10 +239,23 @@ def _deserialize_value_with_schema(serialized: dict[str, Any]) -> Any:
 
     # Handle array case
     if schema_type == "array":
-        # Deserialize each item
+        # Mixed-type arrays carry one schema per position under `prefixItems`,
+        # homogeneous ones carry a single shared schema under `items`.
+        prefix_items = schema.get("prefixItems")
+        if prefix_items is not None:
+            if len(prefix_items) != len(data):
+                raise DeserializationError(
+                    f"Invalid array payload: 'prefixItems' declares {len(prefix_items)} element schemas "
+                    f"but 'serialized_data' holds {len(data)} elements."
+                )
+            item_schemas: list[Any] = list(prefix_items)
+        else:
+            item_schemas = [schema["items"]] * len(data)
+
+        # Deserialize each item with the schema of its own position
         deserialized_items = [
-            _deserialize_value_with_schema({"serialization_schema": schema["items"], "serialized_data": item})
-            for item in data
+            _deserialize_value_with_schema({"serialization_schema": item_schema, "serialized_data": item})
+            for item_schema, item in zip(item_schemas, data, strict=True)
         ]
         final_array: list | set | frozenset | tuple
         # Is a set or frozenset if uniqueItems is True

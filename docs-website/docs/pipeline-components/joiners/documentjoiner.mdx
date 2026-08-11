@@ -24,7 +24,7 @@ Use this component in hybrid retrieval pipelines or indexing pipelines with mult
 
 ## Overview
 
-`DocumentJoiner` joins input lists of documents from multiple connections and outputs them as one list. You can choose how you want the lists to be joined by specifying the `join_mode`. There are three options available:
+`DocumentJoiner` joins input lists of documents from multiple connections and outputs them as one list. You can choose how you want the lists to be joined by specifying the `join_mode`. There are four options available:
 
 - `concatenate` - Combines document from multiple components, discarding any duplicates. documents get their scores from the last component in the pipeline that assigns scores. This mode doesn’t influence document scores.
 - `merge` - Merges the scores of duplicate documents coming from multiple components. You can also assign a weight to the scores to influence how they’re merged and set the top_k limit to specify how many documents you want `DocumentJoiner` to return.
@@ -63,7 +63,7 @@ joiner.run(documents=[docs_1, docs_2])
 
 Below is an example of a hybrid retrieval pipeline that retrieves documents from an `InMemoryDocumentStore` based on keyword search (using `InMemoryBM25Retriever`) and embedding search (using `InMemoryEmbeddingRetriever`). It then uses the `DocumentJoiner` with its default join mode to concatenate the retrieved documents into one list. The Document Store must contain documents with embeddings, otherwise the `InMemoryEmbeddingRetriever` will not return any documents.
 
-The examples on this page use Sentence Transformers embedders that have moved to the `sentence-transformers-haystack` package. Install it to run the examples:
+The examples on this page use Sentence Transformers embedders from the `sentence-transformers-haystack` package. Install it to run the examples:
 
 ```shell
 pip install sentence-transformers-haystack

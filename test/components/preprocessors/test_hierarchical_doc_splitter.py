@@ -114,6 +114,15 @@ class TestHierarchicalDocumentSplitter:
         for key in ("__block_size", "__parent_id", "__children_ids", "__level"):
             assert key not in doc.meta
 
+    def test_nested_metadata_is_not_shared_with_input_document(self):
+        builder = HierarchicalDocumentSplitter(block_sizes={5, 2}, split_overlap=0, split_by="word")
+        doc = Document(content="one two three four five six seven eight", meta={"authors": ["ada"]})
+
+        root = builder.run([doc])["documents"][0]
+        root.meta["authors"].append("grace")
+
+        assert doc.meta["authors"] == ["ada"]
+
     def test_to_dict_in_pipeline(self, in_memory_doc_store):
         pipeline = Pipeline()
         hierarchical_doc_builder = HierarchicalDocumentSplitter(block_sizes={10, 5, 2})

@@ -1,10 +1,449 @@
 ---
 title: "Hooks"
 id: hooks-api
-description: "Hooks that run at points in the Agent's run loop and influence it by mutating State, including built-in tool result offloading and Human-in-the-Loop tool confirmation."
+description: "Hooks that run at points in the Agent's run loop and influence it by mutating State, including built-in context compaction, tool result offloading, and Human-in-the-Loop tool confirmation."
 slug: "/hooks-api"
 ---
 
+
+## compaction/hooks
+
+### CompactionHook
+
+Compacts an Agent's conversation once it fills too much of the model's context window.
+
+This `before_llm` Agent hook estimates the size of the conversation before each chat-generator call and, once it
+reaches `compact_at` of the window, hands it to a `Compactor` to bring back down to `compact_to`. Register it on an
+`Agent` under the `before_llm` hook point:
+
+```python
+from haystack.components.agents import Agent
+from haystack.components.generators.chat import OpenAIResponsesChatGenerator
+from haystack.hooks.compaction import CompactionHook, SlidingWindowCompactor
+
+hook = CompactionHook(
+    compactor=SlidingWindowCompactor(),
+    context_window=400_000,
+    compact_at=0.7,
+    compact_to=0.4,
+)
+agent = Agent(
+    chat_generator=OpenAIResponsesChatGenerator(model="gpt-5.4-nano"),
+    tools=[web_search],
+    hooks={"before_llm": [hook]},
+    max_agent_steps=50,
+)
+```
+
+Size is measured by anchoring on the `context_tokens` state key - the chat generator's own count of the request it
+was sent plus its reply, which already covers the system prompt, the tool schemas, and the provider's chat-template
+overhead - and counting only the messages appended since that call. The estimate is therefore exact for the bulk of
+the conversation and approximate only for its most recent messages.
+
+Compaction is lossy by nature, so the Agent works from a shorter record of the run afterwards. What survives is up
+to the compactor.
+
+#### __init__
+
+```python
+__init__(
+    compactor: Compactor,
+    *,
+    context_window: int,
+    compact_at: float = 0.7,
+    compact_to: float = 0.4,
+    token_counter: TokenCounter | None = None
+) -> None
+```
+
+Initialize the hook with a compactor and the window it has to fit in.
+
+**Parameters:**
+
+- **compactor** (<code>Compactor</code>) – The `Compactor` that rewrites the conversation.
+- **context_window** (<code>int</code>) – The model's context window in tokens. Everything else is a fraction of this, so moving to
+  a different model means changing only this number.
+- **compact_at** (<code>float</code>) – The fraction of the window at which compaction starts. Leave room above it for the reply and
+  the tool results it triggers, which land on top of what was measured.
+- **compact_to** (<code>float</code>) – The fraction of the window compaction aims to bring the conversation down to. Lower means
+  compacting less often but losing more each time.
+- **token_counter** (<code>TokenCounter | None</code>) – The `TokenCounter` used to size the messages the chat generator has not reported on yet.
+  Defaults to `ApproximateTokenCounter`, which needs no extra dependency.
+
+**Raises:**
+
+- <code>ValueError</code> – If `context_window` is not positive, or the fractions are not
+  `0 < compact_to < compact_at <= 1`.
+
+#### run
+
+```python
+run(state: State) -> None
+```
+
+Compact `state.data["messages"]` if the conversation fills too much of the window.
+
+**Parameters:**
+
+- **state** (<code>State</code>) – The Agent's live `State`. Read to decide whether to compact, and rewritten in place when the
+  compactor returns a compacted conversation.
+
+**Returns:**
+
+- <code>None</code> – None. The hook mutates `state` in place.
+
+#### run_async
+
+```python
+run_async(state: State) -> None
+```
+
+Asynchronously compact `state.data["messages"]` if the conversation fills too much of the window.
+
+**Parameters:**
+
+- **state** (<code>State</code>) – The Agent's live `State`. Read to decide whether to compact, and rewritten in place when the
+  compactor returns a compacted conversation.
+
+**Returns:**
+
+- <code>None</code> – None. The hook mutates `state` in place.
+
+#### warm_up
+
+```python
+warm_up() -> None
+```
+
+Warm up the token counter and the compactor, which may hold resources such as a Chat Generator.
+
+#### warm_up_async
+
+```python
+warm_up_async() -> None
+```
+
+Warm up the token counter and the compactor on the serving event loop.
+
+#### close
+
+```python
+close() -> None
+```
+
+Release the compactor's resources.
+
+#### close_async
+
+```python
+close_async() -> None
+```
+
+Release the compactor's async resources.
+
+#### to_dict
+
+```python
+to_dict() -> dict[str, Any]
+```
+
+Serialize the hook, including its compactor and token counter.
+
+**Returns:**
+
+- <code>dict\[str, Any\]</code> – A dictionary representation of the hook.
+
+#### from_dict
+
+```python
+from_dict(data: dict[str, Any]) -> CompactionHook
+```
+
+Deserialize the hook, reconstructing its compactor and token counter.
+
+**Parameters:**
+
+- **data** (<code>dict\[str, Any\]</code>) – A dictionary representation produced by `to_dict`.
+
+**Returns:**
+
+- <code>CompactionHook</code> – The deserialized `CompactionHook`.
+
+## compaction/sliding_window
+
+### SlidingWindowCompactor
+
+Bases: <code>Compactor</code>
+
+Keeps the Agent's instructions, current task, and as much complete recent conversation as the target allows.
+
+Leading system messages and the latest user message are protected. Historical turns are kept in full when they fit,
+and the current task's history is kept in complete Agent steps, where a step is an assistant message together
+with all immediately following tool results.
+
+An `omission_note` is left where the removed messages used to sit: directly after the leading system messages when
+only historical turns were removed, and directly after the latest user message when the current task's own steps
+were removed. Only one note is ever present, since a later compaction folds an earlier note into its replacement.
+
+```python
+from haystack.components.agents import Agent
+from haystack.components.generators.chat import OpenAIResponsesChatGenerator
+from haystack.hooks.compaction import CompactionHook, SlidingWindowCompactor
+
+hook = CompactionHook(
+    compactor=SlidingWindowCompactor(), context_window=400_000, compact_at=0.7, compact_to=0.4
+)
+agent = Agent(
+    chat_generator=OpenAIResponsesChatGenerator(model="gpt-5.4-nano"),
+    tools=[web_search],
+    hooks={"before_llm": [hook]},
+)
+```
+
+#### __init__
+
+```python
+__init__(
+    *,
+    min_keep_steps: int = 1,
+    omission_note: str | None = _DEFAULT_OMISSION_NOTE
+) -> None
+```
+
+Initialize the compactor.
+
+**Parameters:**
+
+- **min_keep_steps** (<code>int</code>) – The fewest complete recent Agent steps to keep even when they exceed the target. A step
+  is an assistant message and all immediately following tool results. `0` allows all completed steps to be
+  removed when none fit.
+- **omission_note** (<code>str | None</code>) – The user message left in place of what was removed, or None to remove the messages
+  silently. Include `{num_removed}` to have the number of removed messages substituted in.
+
+**Raises:**
+
+- <code>ValueError</code> – If `min_keep_steps` is negative.
+
+#### compact
+
+```python
+compact(
+    messages: list[ChatMessage], target_tokens: int, token_counter: TokenCounter
+) -> list[ChatMessage] | None
+```
+
+Drop older history while preserving the task anchor and a complete recent conversation window.
+
+**Parameters:**
+
+- **messages** (<code>list\[ChatMessage\]</code>) – The conversation to compact, oldest to newest.
+- **target_tokens** (<code>int</code>) – The size the kept conversation should come in under.
+- **token_counter** (<code>TokenCounter</code>) – The `TokenCounter` to measure messages with.
+
+**Returns:**
+
+- <code>list\[ChatMessage\] | None</code> – The conversation that survived, with an omission note if configured standing where the removed
+  messages used to sit; or None when there is nothing to remove but an earlier note.
+
+#### to_dict
+
+```python
+to_dict() -> dict[str, Any]
+```
+
+Serialize the compactor.
+
+**Returns:**
+
+- <code>dict\[str, Any\]</code> – A dictionary representation of the compactor.
+
+## compaction/tool_result_pruning
+
+### ToolResultPruningCompactor
+
+Bases: <code>Compactor</code>
+
+Replaces the content of older tool results with a short placeholder, keeping the conversation's shape intact.
+
+Tool output usually dominates a long Agent run, and most of it stops being useful once the model has acted on it.
+This compactor rewrites those results in place rather than removing messages, so every tool call keeps its matching
+result and the model can see what it ran and re-run it if needed.
+
+```python
+from haystack.components.agents import Agent
+from haystack.components.generators.chat import OpenAIResponsesChatGenerator
+from haystack.hooks.compaction import CompactionHook, ToolResultPruningCompactor
+
+hook = CompactionHook(
+    compactor=ToolResultPruningCompactor(min_keep_steps=1),
+    context_window=400_000,
+    compact_at=0.7,
+    compact_to=0.4,
+)
+agent = Agent(
+    chat_generator=OpenAIResponsesChatGenerator(model="gpt-5.4-nano"),
+    tools=[web_search],
+    hooks={"before_llm": [hook]},
+)
+```
+
+#### __init__
+
+```python
+__init__(
+    *,
+    min_keep_steps: int = 1,
+    min_tokens: int = 200,
+    placeholder: str = _DEFAULT_PLACEHOLDER,
+    skip_meta_keys: tuple[str, ...] = ("tool_result_offloaded",)
+) -> None
+```
+
+Initialize the compactor with the rules deciding which results it prunes.
+
+**Parameters:**
+
+- **min_keep_steps** (<code>int</code>) – The minimum number of recent tool-calling Agent steps whose results remain untouched,
+  even when they exceed the target. Must be at least 1, which ensures the current result batch remains intact
+  until the model has acted on it.
+- **min_tokens** (<code>int</code>) – Only prune tool-result messages that use more than this many tokens. Small results cost
+  little and are often the ones worth keeping.
+- **placeholder** (<code>str</code>) – The text left in place of a pruned result, replacing the built-in one. May contain
+  `{tool_name}`, which is filled in with the name of the tool that produced the result.
+- **skip_meta_keys** (<code>tuple\[str, ...\]</code>) – Results whose `meta` contains any of these keys are left alone. The default covers
+  results that a `ToolResultOffloadHook` already replaced with a reference to stored content: pruning one of
+  those would destroy the reference the model needs to read it back.
+
+**Raises:**
+
+- <code>ValueError</code> – If `min_keep_steps` is less than 1 or `min_tokens` is negative.
+
+#### compact
+
+```python
+compact(
+    messages: list[ChatMessage], target_tokens: int, token_counter: TokenCounter
+) -> list[ChatMessage] | None
+```
+
+Replace the content of prunable tool results with a placeholder.
+
+Results are considered oldest first and pruning stops as soon as the conversation reaches `target_tokens`.
+This keeps as much original output as possible. Results from the most recent `min_keep_steps` tool-calling
+Agent steps are never considered, even when the target cannot otherwise be reached. After measuring the initial
+conversation, the running total is updated with per-result token deltas to avoid repeatedly counting the full
+context.
+
+**Parameters:**
+
+- **messages** (<code>list\[ChatMessage\]</code>) – The conversation to compact, oldest to newest.
+- **target_tokens** (<code>int</code>) – The size the compacted conversation should come in under.
+- **token_counter** (<code>TokenCounter</code>) – The `TokenCounter` used to measure the conversation before and after each replacement.
+
+**Returns:**
+
+- <code>list\[ChatMessage\] | None</code> – The conversation with older tool results replaced, or None when no result was prunable.
+
+#### to_dict
+
+```python
+to_dict() -> dict[str, Any]
+```
+
+Serialize the compactor.
+
+**Returns:**
+
+- <code>dict\[str, Any\]</code> – A dictionary representation of the compactor.
+
+## compaction/types/protocol
+
+### Compactor
+
+Bases: <code>Protocol</code>
+
+Rewrites an Agent's conversation into a shorter one that carries the same working context.
+
+A compactor is the *how* of context compaction; deciding *when* to compact is the caller's job, which
+`CompactionHook` does by comparing the context size against a fraction of the model's window. Strategies
+differ widely in cost and fidelity, from dropping the oldest messages outright to condensing them with an LLM.
+
+Implementations must honor three rules:
+
+1. **Return `None` unless the conversation actually gets smaller.** Callers apply whatever else is returned, so
+   judging whether compacting was worthwhile is the compactor's job.
+1. **Return a new list; leave `messages` as it is.** The caller owns that list and writes the returned one back.
+1. **Keep tool calls and their results together.** Do not retain a tool result after removing the assistant message
+   that contains its originating call, or retain a tool call without all of its results. Chat-completion APIs reject
+   these incomplete tool-call exchanges.
+
+`target_tokens` is a goal, not a guarantee: a compactor that cannot reach it should get as close as it can rather
+than strip the conversation past what the Agent needs to keep working.
+
+Implement `to_dict` so the compactor's settings survive serialization. The default `from_dict` passes them straight
+back to the constructor, which is enough for plain values; override it when `to_dict` emitted something that has to
+be rebuilt first, such as a `Secret` or a nested component.
+
+#### compact
+
+```python
+compact(
+    messages: list[ChatMessage], target_tokens: int, token_counter: TokenCounter
+) -> list[ChatMessage] | None
+```
+
+Return a shorter replacement for `messages`, or None to leave it unchanged.
+
+**Parameters:**
+
+- **messages** (<code>list\[ChatMessage\]</code>) – The conversation to compact, oldest to newest.
+- **target_tokens** (<code>int</code>) – The size the compacted conversation should come in under.
+- **token_counter** (<code>TokenCounter</code>) – The `TokenCounter` to measure messages with. The same one the caller sized the context
+  with, so a compactor's measurements are consistent with the decision to compact.
+
+**Returns:**
+
+- <code>list\[ChatMessage\] | None</code> – The replacement conversation, or None when this compactor has nothing to change.
+
+#### compact_async
+
+```python
+compact_async(
+    messages: list[ChatMessage], target_tokens: int, token_counter: TokenCounter
+) -> list[ChatMessage] | None
+```
+
+Asynchronously return a shorter replacement for `messages`, or None to leave it unchanged.
+
+The default implementation calls `compact` directly. Override it when compaction does I/O, so the event loop is
+not blocked.
+
+**Parameters:**
+
+- **messages** (<code>list\[ChatMessage\]</code>) – The conversation to compact, oldest to newest.
+- **target_tokens** (<code>int</code>) – The size the compacted conversation should come in under.
+- **token_counter** (<code>TokenCounter</code>) – The `TokenCounter` to measure messages with. The same one the caller sized the context
+  with, so a compactor's measurements are consistent with the decision to compact.
+
+**Returns:**
+
+- <code>list\[ChatMessage\] | None</code> – The replacement conversation, or None when this compactor has nothing to change.
+
+#### to_dict
+
+```python
+to_dict() -> dict[str, Any]
+```
+
+Serialize the compactor to a dictionary.
+
+#### from_dict
+
+```python
+from_dict(data: dict[str, Any]) -> Compactor
+```
+
+Deserialize the compactor from a dictionary.
 
 ## from_function
 

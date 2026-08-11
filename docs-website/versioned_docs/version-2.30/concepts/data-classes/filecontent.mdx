@@ -99,7 +99,9 @@ After adding `FileContent` to a `ChatMessage`, use the `file` and `files` proper
 from haystack.dataclasses import ChatMessage, FileContent
 
 file_content = FileContent.from_file_path("data/invoice.pdf")
-message = ChatMessage.from_user(content_parts=[file_content, "Extract the invoice total."])
+message = ChatMessage.from_user(
+    content_parts=[file_content, "Extract the invoice total."]
+)
 
 print(message.file)
 print(message.files)

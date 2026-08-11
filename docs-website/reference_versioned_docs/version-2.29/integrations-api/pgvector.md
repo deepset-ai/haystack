@@ -899,7 +899,7 @@ get_metadata_field_unique_values(
     search_term: str | None = None,
     from_: int = 0,
     size: int = 10,
-) -> tuple[list[str], int]
+) -> tuple[list[Any], int]
 ```
 
 Returns unique values for a given metadata field, optionally filtered by a search term.
@@ -914,8 +914,8 @@ Returns unique values for a given metadata field, optionally filtered by a searc
 
 **Returns:**
 
-- <code>tuple\[list\[str\], int\]</code> – A tuple containing:
-- A list of unique values (as strings)
+- <code>tuple\[list\[Any\], int\]</code> – A tuple containing:
+- A list of unique values in their original type
 - The total count of unique values
 
 #### get_metadata_field_unique_values_async
@@ -926,7 +926,7 @@ get_metadata_field_unique_values_async(
     search_term: str | None = None,
     from_: int = 0,
     size: int = 10,
-) -> tuple[list[str], int]
+) -> tuple[list[Any], int]
 ```
 
 Asynchronously returns unique values for a given metadata field, optionally filtered by a search term.
@@ -941,6 +941,6 @@ Asynchronously returns unique values for a given metadata field, optionally filt
 
 **Returns:**
 
-- <code>tuple\[list\[str\], int\]</code> – A tuple containing:
-- A list of unique values (as strings)
+- <code>tuple\[list\[Any\], int\]</code> – A tuple containing:
+- A list of unique values in their original type
 - The total count of unique values

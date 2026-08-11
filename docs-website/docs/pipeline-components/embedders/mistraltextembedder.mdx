@@ -23,7 +23,7 @@ This component transforms a string into a vector using the Mistral API and model
 
 </div>
 
-Use `MistalTextEmbedder` to embed a simple string (such as a query) into a vector. For embedding lists of documents, use the [`MistralDocumentEmbedder`](mistraldocumentembedder.mdx), which enriches the document with the computed embedding, also known as vector.
+Use `MistralTextEmbedder` to embed a simple string (such as a query) into a vector. For embedding lists of documents, use the [`MistralDocumentEmbedder`](mistraldocumentembedder.mdx), which enriches the document with the computed embedding, also known as vector.
 
 ## Overview
 
@@ -55,7 +55,7 @@ Remember to set the`MISTRAL_API_KEY` as an environment variable first or pass it
 Here is how you can use the component on its own:
 
 ```python
-
+from haystack.utils import Secret
 from haystack_integrations.components.embedders.mistral.text_embedder import (
     MistralTextEmbedder,
 )

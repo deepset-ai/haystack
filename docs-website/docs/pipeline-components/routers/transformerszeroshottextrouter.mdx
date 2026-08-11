@@ -14,9 +14,9 @@ Use this component to route text input to various output connections based on it
 |  |  |
 | --- | --- |
 | **Most common position in a pipeline** | Flexible |
-| **Mandatory init variables** | `labels`: A list of labels for classification  <br /> <br />`token`: The Hugging Face API token. Can be set with `HF_API_TOKEN` or `HF_TOKEN` env var. |
+| **Mandatory init variables** | `labels`: A list of labels for classification |
 | **Mandatory run variables** | `text`: The text to be routed to one of the specified outputs based on which label it has been categorized into |
-| **Output variables** | `documents`: A dictionary with the label as key and the text as value |
+| **Output variables** | `<label>`: The input text, on the output connection named after the label the model assigned to it. There's one output per label you define. |
 | **API reference** | [Transformers](/reference/integrations-transformers) |
 | **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/transformers |
 | **Package name** | `transformers-haystack` |
@@ -30,6 +30,8 @@ Use this component to route text input to various output connections based on it
 `TransformersZeroShotTextRouter` uses the `MoritzLaurer/deberta-v3-base-zeroshot-v1.1-all-33` zero-shot text classification model by default. You can set another model of your choosing with the `model` parameter.
 
 To use `TransformersZeroShotTextRouter`, you need to provide the mandatory `labels` parameter – a list of strings of possible class labels to classify each sequence into.
+
+Authentication with a Hugging Face API token is only required to access private or gated models. You can pass the token at initialization with `token`, or set the `HF_API_TOKEN` or `HF_TOKEN` environment variable.
 
 To see the full list of parameters, check out our [API reference](/reference/integrations-transformers#transformerszeroshottextrouter).
 
@@ -55,7 +57,7 @@ We then create a retrieving pipeline with the `TransformersZeroShotTextRouter` t
 
 Finally, the pipeline is executed with a sample text: "What is the capital of Germany?” which categorizes this input text as “query” and routes it to Query Embedder and subsequently Query Retriever to return the relevant results.
 
-The examples on this page use Sentence Transformers embedders that have moved to the `sentence-transformers-haystack` package. Install it to run the examples:
+The examples on this page use Sentence Transformers embedders from the `sentence-transformers-haystack` package. Install it to run the examples:
 
 ```shell
 pip install sentence-transformers-haystack

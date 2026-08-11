@@ -69,15 +69,13 @@ class WarmUpCountingTool(Tool):
 
 
 class WarmUpCountingToolset(Toolset):
-    """A Toolset that records how many times its own warm_up() did real work."""
+    """A Toolset that records how many times warm_up() was called."""
 
     def __init__(self, tools):
         super().__init__(tools)
         self.warm_up_count = 0
 
     def warm_up(self) -> None:
-        if self._is_warmed_up:
-            return
         self.warm_up_count += 1
         super().warm_up()
 
@@ -107,6 +105,21 @@ class TestToolsetWrapper:
         assert add_tool in result
         assert multiply_tool in result
 
+    def test_wrapper_getitem_supports_negative_indices(self, add_tool, multiply_tool):
+        """Test that _ToolsetWrapper.__getitem__ behaves like a list, including negative indices."""
+        toolset1 = Toolset([add_tool])
+        toolset2 = Toolset([multiply_tool])
+
+        result = toolset1 + toolset2
+
+        assert result[0] is add_tool
+        assert result[1] is multiply_tool
+        assert result[-1] is multiply_tool
+        assert result[-2] is add_tool
+
+        with pytest.raises(IndexError):
+            _ = result[2]
+
     def test_wrapper_with_agent(self, add_tool, multiply_tool, monkeypatch):
         """Test that _ToolsetWrapper works with Agent."""
         monkeypatch.setenv("OPENAI_API_KEY", "test")
@@ -129,10 +142,6 @@ class TestToolsetWrapper:
 class TestToolsetWrapperWarmUp:
     """Tests for warm_up behavior of _ToolsetWrapper."""
 
-    def test_new_wrapper_is_not_warmed_up(self):
-        wrapper = Toolset([WarmUpCountingTool("a")]) + Toolset([WarmUpCountingTool("b")])
-        assert wrapper._is_warmed_up is False
-
     def test_warm_up_delegates_to_each_toolset(self):
         ts1 = WarmUpCountingToolset([WarmUpCountingTool("a")])
         ts2 = WarmUpCountingToolset([WarmUpCountingTool("b")])
@@ -140,17 +149,16 @@ class TestToolsetWrapperWarmUp:
         wrapper.warm_up()
         assert ts1.warm_up_count == 1
         assert ts2.warm_up_count == 1
-        assert wrapper._is_warmed_up is True
 
-    def test_warm_up_is_idempotent(self):
+    def test_warm_up_delegates_on_every_call(self):
         ts1 = WarmUpCountingToolset([WarmUpCountingTool("a")])
         ts2 = WarmUpCountingToolset([WarmUpCountingTool("b")])
         wrapper = ts1 + ts2
         wrapper.warm_up()
         wrapper.warm_up()
         wrapper.warm_up()
-        assert ts1.warm_up_count == 1
-        assert ts2.warm_up_count == 1
+        assert ts1.warm_up_count == 3
+        assert ts2.warm_up_count == 3
 
 
 class TestToolsetWrapperSerialization:
@@ -203,30 +211,29 @@ class TestToolsetWrapperToolSelection:
 
     def test_get_selectable_tools_ignores_active_filter(self, add_tool, multiply_tool):
         wrapper = Toolset([add_tool]) + Toolset([multiply_tool])
-        wrapper._selected_tool_names = {"add"}
+        filtered = wrapper.spawn(selected_tool_names={"add"})
         # Iteration is filtered, but get_selectable_tools still returns the full set.
-        assert [tool.name for tool in wrapper] == ["add"]
-        assert {tool.name for tool in wrapper.get_selectable_tools()} == {"add", "multiply"}
+        assert [tool.name for tool in filtered] == ["add"]
+        assert {tool.name for tool in filtered.get_selectable_tools()} == {"add", "multiply"}
 
     def test_filter_restricts_iteration_and_len(self, add_tool, multiply_tool, subtract_tool):
         wrapper = Toolset([add_tool, multiply_tool]) + Toolset([subtract_tool])
-        wrapper._selected_tool_names = {"add", "subtract"}
-        assert [tool.name for tool in wrapper] == ["add", "subtract"]
-        assert len(wrapper) == 2
+        filtered = wrapper.spawn(selected_tool_names={"add", "subtract"})
+        assert [tool.name for tool in filtered] == ["add", "subtract"]
+        assert len(filtered) == 2
 
-    def test_spawn_isolates_own_and_child_state(self, add_tool, multiply_tool):
-        ts1 = Toolset([add_tool])
-        ts2 = Toolset([multiply_tool])
-        wrapper = ts1 + ts2
+    def test_filter_restricts_getitem(self, add_tool, multiply_tool, subtract_tool):
+        wrapper = Toolset([add_tool, multiply_tool]) + Toolset([subtract_tool])
+        filtered = wrapper.spawn(selected_tool_names={"add", "subtract"})
+        assert filtered[0].name == "add"
+        assert filtered[-1].name == "subtract"
 
-        spawned = wrapper.spawn()
+    def test_spawn_carries_selection_without_mutating_the_original(self, add_tool, multiply_tool):
+        wrapper = Toolset([add_tool]) + Toolset([multiply_tool])
 
-        # The spawn and its wrapped toolsets are independent copies.
+        spawned = wrapper.spawn(selected_tool_names={"add"})
+
         assert spawned is not wrapper
-        spawned._selected_tool_names = {"add"}
         assert {tool.name for tool in spawned} == {"add"}
-        # The configured wrapper and its children are untouched.
-        assert wrapper._selected_tool_names is None
-        assert ts1._selected_tool_names is None
-        assert ts2._selected_tool_names is None
+        # The configured wrapper is untouched.
         assert {tool.name for tool in wrapper} == {"add", "multiply"}

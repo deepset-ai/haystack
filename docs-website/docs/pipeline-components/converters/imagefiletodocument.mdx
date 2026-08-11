@@ -13,7 +13,7 @@ Converts image file references into empty `Document` objects with associated met
 
 |  |  |
 | --- | --- |
-| **Most common position in a pipeline** | Before a component that processes images, like `SentenceTransformersImageDocumentEmbedder` or `LLMDocumentContentExtractor` |
+| **Most common position in a pipeline** | Before a component that processes images, like `SentenceTransformersDocumentImageEmbedder` or `LLMDocumentContentExtractor` |
 | **Mandatory run variables**            | `sources`: A list of image file paths or ByteStreams                                                                        |
 | **Output variables**                   | `documents`: A list of empty Document objects with associated metadata                                                      |
 | **API reference**                      | [Image Converters](/reference/image-converters-api)                                                                                |
@@ -26,7 +26,7 @@ Converts image file references into empty `Document` objects with associated met
 
 `ImageFileToDocument` converts image file sources into empty `Document` objects with associated metadata.
 
-This component is useful in pipelines where image file paths need to be wrapped in `Document` objects to be processed by downstream components such as  `SentenceTransformersImageDocumentEmbedder` or `LLMDocumentContentExtractor`.
+This component is useful in pipelines where image file paths need to be wrapped in `Document` objects to be processed by downstream components such as  `SentenceTransformersDocumentImageEmbedder` or `LLMDocumentContentExtractor`.
 
 It _does not_ extract any content from the image files, but instead creates `Document` objects with `None` as their content and attaches metadata such as file path and any user-provided values.
 
@@ -44,7 +44,6 @@ Optionally, you can provide metadata using the `meta` parameter. This can be a s
 This component is primarily meant to be used in pipelines.
 
 ```python
-
 from haystack.components.converters.image import ImageFileToDocument
 
 converter = ImageFileToDocument()
@@ -64,7 +63,7 @@ print(documents)
 
 In the following Pipeline, image documents are created using the `ImageFileToDocument` component, then they are enriched with image embeddings and saved in the Document Store.
 
-The examples on this page use Sentence Transformers embedders that have moved to the `sentence-transformers-haystack` package. Install it to run the examples:
+The examples on this page use Sentence Transformers embedders from the `sentence-transformers-haystack` package. Install it to run the examples:
 
 ```shell
 pip install sentence-transformers-haystack

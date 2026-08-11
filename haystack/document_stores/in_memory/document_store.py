@@ -72,6 +72,8 @@ class InMemoryDocumentStore:
         shared: bool = True,
         async_executor: ThreadPoolExecutor | None = None,
         return_embedding: bool = True,
+        *,
+        strict_datetime_comparison: bool = False,
     ) -> None:
         """
         Initializes the DocumentStore.
@@ -94,6 +96,10 @@ class InMemoryDocumentStore:
             Optional ThreadPoolExecutor to use for async calls. If not provided, a single-threaded
             executor will be initialized and used.
         :param return_embedding: Whether to return the embedding of the retrieved Documents. Default is True.
+        :param strict_datetime_comparison:
+            If `True`, timezone-naive and timezone-aware datetimes never match each other in filters.
+            If `False` (the default), the timezone from the aware datetime is copied to the naive one before
+            comparing.
         """
         self.bm25_tokenization_regex = bm25_tokenization_regex
         self.tokenizer = re.compile(bm25_tokenization_regex).findall
@@ -129,6 +135,7 @@ class InMemoryDocumentStore:
             else async_executor
         )
         self.return_embedding = return_embedding
+        self.strict_datetime_comparison = strict_datetime_comparison
 
     def __del__(self) -> None:
         """
@@ -371,6 +378,7 @@ class InMemoryDocumentStore:
             index=self.index,
             shared=self._shared,
             return_embedding=self.return_embedding,
+            strict_datetime_comparison=self.strict_datetime_comparison,
         )
 
     @classmethod
@@ -436,7 +444,13 @@ class InMemoryDocumentStore:
         """
         if filters:
             InMemoryDocumentStore._validate_filters(filters)
-            docs = [doc for doc in self.storage.values() if document_matches_filter(filters=filters, document=doc)]
+            docs = [
+                doc
+                for doc in self.storage.values()
+                if document_matches_filter(
+                    filters=filters, document=doc, strict_datetime_comparison=self.strict_datetime_comparison
+                )
+            ]
         else:
             docs = list(self.storage.values())
 
@@ -548,7 +562,13 @@ class InMemoryDocumentStore:
         :raises ValueError: if filters have invalid syntax.
         """
         InMemoryDocumentStore._validate_filters(filters)
-        matching = [doc for doc in self.storage.values() if document_matches_filter(filters=filters, document=doc)]
+        matching = [
+            doc
+            for doc in self.storage.values()
+            if document_matches_filter(
+                filters=filters, document=doc, strict_datetime_comparison=self.strict_datetime_comparison
+            )
+        ]
         for doc in matching:
             doc.meta.update(meta)
             self.storage[doc.id] = doc
@@ -564,7 +584,13 @@ class InMemoryDocumentStore:
         :raises ValueError: if filters have invalid syntax.
         """
         InMemoryDocumentStore._validate_filters(filters)
-        matching = [doc for doc in self.storage.values() if document_matches_filter(filters=filters, document=doc)]
+        matching = [
+            doc
+            for doc in self.storage.values()
+            if document_matches_filter(
+                filters=filters, document=doc, strict_datetime_comparison=self.strict_datetime_comparison
+            )
+        ]
         doc_ids = [doc.id for doc in matching]
         self.delete_documents(doc_ids)
         return len(doc_ids)
@@ -580,7 +606,13 @@ class InMemoryDocumentStore:
         """
         if filters:
             InMemoryDocumentStore._validate_filters(filters)
-            return sum(1 for doc in self.storage.values() if document_matches_filter(filters=filters, document=doc))
+            return sum(
+                1
+                for doc in self.storage.values()
+                if document_matches_filter(
+                    filters=filters, document=doc, strict_datetime_comparison=self.strict_datetime_comparison
+                )
+            )
         return len(self.storage)
 
     def count_unique_metadata_by_filter(self, filters: dict[str, Any], metadata_fields: list[str]) -> dict[str, int]:
@@ -597,7 +629,13 @@ class InMemoryDocumentStore:
         """
         if filters:
             InMemoryDocumentStore._validate_filters(filters)
-            docs = [doc for doc in self.storage.values() if document_matches_filter(filters=filters, document=doc)]
+            docs = [
+                doc
+                for doc in self.storage.values()
+                if document_matches_filter(
+                    filters=filters, document=doc, strict_datetime_comparison=self.strict_datetime_comparison
+                )
+            ]
         else:
             docs = list(self.storage.values())
 
@@ -653,23 +691,38 @@ class InMemoryDocumentStore:
             return {"min": None, "max": None}
 
     def get_metadata_field_unique_values(
-        self, metadata_field: str, search_term: str | None = None
-    ) -> tuple[list[str], int]:
+        self,
+        metadata_field: str,
+        search_term: str | None = None,
+        from_: int = 0,
+        size: int = 10,
+        filters: dict[str, Any] | None = None,
+    ) -> tuple[list[Any], int]:
         """
-        Returns unique values for a metadata field, optionally filtered by a search term in content.
+        Returns unique values for a metadata field, optionally filtered by a search term, with pagination.
 
         :param metadata_field: The metadata field name. Can include or omit the "meta." prefix.
-        :param search_term: If set, only documents whose content contains this term (case-insensitive)
-            are considered.
-        :returns: A tuple of (list of unique values, total count of unique values).
+        :param search_term: Optional search term to filter values, matched as a case-insensitive substring
+            against the metadata field's value.
+        :param from_: The offset to start returning values from (for pagination).
+        :param size: The maximum number of unique values to return.
+        :param filters: Optional filters to restrict the documents considered.
+        :returns: A tuple of (paginated list of unique values, total count of unique values).
         """
         key = metadata_field.removeprefix("meta.") if metadata_field.startswith("meta.") else metadata_field
+        unique_values: dict[tuple[str, str], Any] = {}
+        for doc in self.filter_documents(filters=filters):
+            value = doc.meta.get(key)
+            if value is not None:
+                unique_values.setdefault((type(value).__name__, str(value)), value)
+
         if search_term:
-            docs = [doc for doc in self.storage.values() if doc.content and search_term.lower() in doc.content.lower()]
-        else:
-            docs = list(self.storage.values())
-        values = sorted({str(doc.meta[key]) for doc in docs if key in doc.meta and doc.meta[key] is not None}, key=str)
-        return values, len(values)
+            search_term_lower = search_term.lower()
+            unique_values = {k: v for k, v in unique_values.items() if search_term_lower in k[1].lower()}
+
+        sorted_keys = sorted(unique_values, key=lambda k: (k[1], k[0]))
+        paginated_keys = sorted_keys[from_ : from_ + size]
+        return [unique_values[k] for k in paginated_keys], len(sorted_keys)
 
     def bm25_retrieval(
         self, query: str, filters: dict[str, Any] | None = None, top_k: int = 10, scale_score: bool = False
@@ -765,7 +818,11 @@ class InMemoryDocumentStore:
         if filters:
             InMemoryDocumentStore._validate_filters(filters)
             all_documents = [
-                doc for doc in self.storage.values() if document_matches_filter(filters=filters, document=doc)
+                doc
+                for doc in self.storage.values()
+                if document_matches_filter(
+                    filters=filters, document=doc, strict_datetime_comparison=self.strict_datetime_comparison
+                )
             ]
         else:
             all_documents = list(self.storage.values())
@@ -963,19 +1020,29 @@ class InMemoryDocumentStore:
         )
 
     async def get_metadata_field_unique_values_async(
-        self, metadata_field: str, search_term: str | None = None
-    ) -> tuple[list[str], int]:
+        self,
+        metadata_field: str,
+        search_term: str | None = None,
+        from_: int = 0,
+        size: int = 10,
+        filters: dict[str, Any] | None = None,
+    ) -> tuple[list[Any], int]:
         """
-        Returns unique values for a metadata field, optionally filtered by a search term in content.
+        Returns unique values for a metadata field, optionally filtered by a search term, with pagination.
 
         :param metadata_field: The metadata field name. Can include or omit the "meta." prefix.
-        :param search_term: If set, only documents whose content contains this term (case-insensitive)
-            are considered.
-        :returns: A tuple of (list of unique values, total count of unique values).
+        :param search_term: Optional search term to filter values, matched as a case-insensitive substring
+            against the metadata field's value.
+        :param from_: The offset to start returning values from (for pagination).
+        :param size: The maximum number of unique values to return.
+        :param filters: Optional filters to restrict the documents considered.
+        :returns: A tuple of (paginated list of unique values, total count of unique values).
         """
         return await asyncio.get_running_loop().run_in_executor(
             self.executor,
-            lambda: self.get_metadata_field_unique_values(metadata_field=metadata_field, search_term=search_term),
+            lambda: self.get_metadata_field_unique_values(
+                metadata_field=metadata_field, search_term=search_term, from_=from_, size=size, filters=filters
+            ),
         )
 
     async def delete_all_documents_async(self) -> None:
