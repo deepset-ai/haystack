@@ -211,22 +211,22 @@ class TestToolsetWrapperToolSelection:
 
     def test_get_selectable_tools_ignores_active_filter(self, add_tool, multiply_tool):
         wrapper = Toolset([add_tool]) + Toolset([multiply_tool])
-        wrapper._selected_tool_names = {"add"}
+        filtered = wrapper.spawn(selected_tool_names={"add"})
         # Iteration is filtered, but get_selectable_tools still returns the full set.
-        assert [tool.name for tool in wrapper] == ["add"]
-        assert {tool.name for tool in wrapper.get_selectable_tools()} == {"add", "multiply"}
+        assert [tool.name for tool in filtered] == ["add"]
+        assert {tool.name for tool in filtered.get_selectable_tools()} == {"add", "multiply"}
 
     def test_filter_restricts_iteration_and_len(self, add_tool, multiply_tool, subtract_tool):
         wrapper = Toolset([add_tool, multiply_tool]) + Toolset([subtract_tool])
-        wrapper._selected_tool_names = {"add", "subtract"}
-        assert [tool.name for tool in wrapper] == ["add", "subtract"]
-        assert len(wrapper) == 2
+        filtered = wrapper.spawn(selected_tool_names={"add", "subtract"})
+        assert [tool.name for tool in filtered] == ["add", "subtract"]
+        assert len(filtered) == 2
 
     def test_filter_restricts_getitem(self, add_tool, multiply_tool, subtract_tool):
         wrapper = Toolset([add_tool, multiply_tool]) + Toolset([subtract_tool])
-        wrapper._selected_tool_names = {"add", "subtract"}
-        assert wrapper[0].name == "add"
-        assert wrapper[-1].name == "subtract"
+        filtered = wrapper.spawn(selected_tool_names={"add", "subtract"})
+        assert filtered[0].name == "add"
+        assert filtered[-1].name == "subtract"
 
     def test_spawn_carries_selection_without_mutating_the_original(self, add_tool, multiply_tool):
         wrapper = Toolset([add_tool]) + Toolset([multiply_tool])
@@ -236,5 +236,4 @@ class TestToolsetWrapperToolSelection:
         assert spawned is not wrapper
         assert {tool.name for tool in spawned} == {"add"}
         # The configured wrapper is untouched.
-        assert wrapper._selected_tool_names is None
         assert {tool.name for tool in wrapper} == {"add", "multiply"}
