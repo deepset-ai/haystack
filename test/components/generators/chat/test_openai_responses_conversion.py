@@ -27,11 +27,13 @@ from openai.types.responses import (
     ResponseTextDoneEvent,
     ResponseUsage,
 )
+from openai.types.responses.response import IncompleteDetails
 from openai.types.responses.response_usage import InputTokensDetails, OutputTokensDetails
 
 from haystack.components.generators.chat.openai_responses import (
     _convert_chat_message_to_responses_api_format,
     _convert_response_chunk_to_streaming_chunk,
+    _convert_response_to_chat_message,
     _convert_streaming_chunks_to_chat_message,
 )
 from haystack.dataclasses import (
@@ -222,6 +224,22 @@ def openai_responses_streaming_chunks_with_tool_call():
 
 
 class TestConversionToStreamingChunks:
+    @pytest.mark.parametrize(
+        ("incomplete_reason", "finish_reason"), [("max_output_tokens", "length"), ("content_filter", "content_filter")]
+    )
+    def test_convert_incomplete_response_with_finish_reason(self, incomplete_reason: str, finish_reason: str) -> None:
+        response = Response.model_construct(
+            output=[],
+            output_text=None,
+            status="incomplete",
+            incomplete_details=IncompleteDetails(reason=incomplete_reason),
+        )
+        event = ResponseCompletedEvent.model_construct(response=response, type="response.incomplete")
+
+        chunk = _convert_response_chunk_to_streaming_chunk(event, previous_chunks=[])
+
+        assert chunk.finish_reason == finish_reason
+
     def test_convert_streaming_chunks_to_chat_message_with_tool_call_empty_reasoning(
         self, openai_responses_streaming_chunks_with_tool_call: MagicMock
     ) -> None:
@@ -1226,6 +1244,21 @@ class TestConversionToStreamingChunks:
 
 
 class TestResponseToChatMessage:
+    @pytest.mark.parametrize(
+        ("incomplete_reason", "finish_reason"), [("max_output_tokens", "length"), ("content_filter", "content_filter")]
+    )
+    def test_convert_incomplete_response_with_finish_reason(self, incomplete_reason: str, finish_reason: str) -> None:
+        response = Response.model_construct(
+            output=[],
+            output_text=None,
+            status="incomplete",
+            incomplete_details=IncompleteDetails(reason=incomplete_reason),
+        )
+
+        message = _convert_response_to_chat_message(response)
+
+        assert message.meta["finish_reason"] == finish_reason
+
     def test_convert_system_message(self) -> None:
 
         message = ChatMessage.from_system("You are good assistant")

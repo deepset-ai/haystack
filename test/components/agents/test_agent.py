@@ -1086,6 +1086,19 @@ class TestAgentExitConditions:
         assert result["step_count"] == 2
         assert result["last_message"].text == "The weather is sunny."
 
+    def test_exits_on_empty_assistant_message_truncated_by_output_limit(self, monkeypatch, weather_tool):
+        monkeypatch.setenv("OPENAI_API_KEY", "fake-key")
+        agent = Agent(chat_generator=OpenAIChatGenerator(), tools=[weather_tool], exit_conditions=["text"])
+
+        truncated_reply = {"replies": [ChatMessage.from_assistant(text="", meta={"finish_reason": "length"})]}
+        recovered_reply = {"replies": [ChatMessage.from_assistant(text="The weather is sunny.")]}
+        agent.chat_generator.run = MagicMock(side_effect=[truncated_reply, recovered_reply])
+
+        result = agent.run([ChatMessage.from_user("What's the weather?")])
+
+        assert agent.chat_generator.run.call_count == 1
+        assert result["last_message"].text == ""
+
     @pytest.mark.asyncio
     async def test_does_not_exit_on_empty_assistant_message_async(self, weather_tool):
         replies = [ChatMessage.from_assistant(text=""), "The weather is sunny."]
@@ -1095,6 +1108,20 @@ class TestAgentExitConditions:
 
         assert result["step_count"] == 2
         assert result["last_message"].text == "The weather is sunny."
+
+    @pytest.mark.asyncio
+    async def test_exits_on_empty_assistant_message_truncated_by_output_limit_async(self, monkeypatch, weather_tool):
+        monkeypatch.setenv("OPENAI_API_KEY", "fake-key")
+        agent = Agent(chat_generator=OpenAIChatGenerator(), tools=[weather_tool], exit_conditions=["text"])
+
+        truncated_reply = {"replies": [ChatMessage.from_assistant(text="", meta={"finish_reason": "length"})]}
+        recovered_reply = {"replies": [ChatMessage.from_assistant(text="The weather is sunny.")]}
+        agent.chat_generator.run_async = AsyncMock(side_effect=[truncated_reply, recovered_reply])
+
+        result = await agent.run_async([ChatMessage.from_user("What's the weather?")])
+
+        assert agent.chat_generator.run_async.call_count == 1
+        assert result["last_message"].text == ""
 
     def test_text_exit(self, weather_tool):
         """A plain assistant reply with no tool calls reports the `"text"` exit reason."""
