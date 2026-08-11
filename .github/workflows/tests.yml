@@ -159,7 +159,7 @@ jobs:
       - name: Coverage comment
         id: coverage_comment
         if: matrix.os == 'ubuntu-latest'
-        uses: py-cov-action/python-coverage-comment-action@5d8df5979747514c914e1c5a12335a7cf9a2745f # v4.1
+        uses: py-cov-action/python-coverage-comment-action@a05be3d2e8a6272d3ef5fb2840ab20368bb2eb71 # v4.3
         with:
           GITHUB_TOKEN: ${{ github.token }}
           MINIMUM_GREEN: 90
