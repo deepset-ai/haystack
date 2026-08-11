@@ -95,27 +95,83 @@ class TestSelectToolsByName:
         with pytest.raises(ValueError, match="The following tool names are not valid"):
             _select_tools_by_name([first_tool], ["unknown"])
 
-    def test_raises_when_no_tools_configured(self, first_tool: Tool):
+    @pytest.mark.parametrize("configured_tools", [[], Toolset([])], ids=["empty_list", "empty_toolset"])
+    def test_raises_when_no_tools_configured(self, configured_tools, first_tool: Tool):
         with pytest.raises(ValueError, match="No tools were configured for the Agent at initialization."):
-            _select_tools_by_name([], [first_tool.name])
+            _select_tools_by_name(configured_tools, [first_tool.name])
 
-    def test_spawns_toolsets_without_mutating_them(self, first_tool: Tool, second_tool: Tool):
+    def test_reduces_plain_toolsets_to_matching_tools(self, first_tool: Tool, second_tool: Tool):
         toolset = Toolset([first_tool, second_tool])
         selected = _select_tools_by_name([toolset], [first_tool.name])
-        spawned = selected[0]
-        assert isinstance(spawned, Toolset)
-        assert spawned is not toolset
-        assert spawned._selected_tool_names == {first_tool.name}
-        assert toolset._selected_tool_names is None
+        assert selected == [first_tool]
+        # The configured toolset is untouched.
+        assert list(toolset) == [first_tool, second_tool]
 
     def test_selects_standalone_tools_and_toolsets(self, first_tool: Tool, second_tool: Tool):
         toolset = Toolset([first_tool])
         selected = _select_tools_by_name([second_tool, toolset], [first_tool.name, second_tool.name])
-        assert second_tool in selected
-        spawned = next(item for item in selected if isinstance(item, Toolset))
-        assert spawned is not toolset
-        assert spawned._selected_tool_names == {first_tool.name}
-        assert toolset._selected_tool_names is None
+        assert selected == [second_tool, first_tool]
+
+    def test_warms_up_lazy_toolsets_to_resolve_names(self, first_tool: Tool, second_tool: Tool):
+        class LazyToolset(Toolset):
+            """A Toolset that loads its tools on warm_up(), like toolsets backed by external services."""
+
+            def __init__(self, tools_to_load):
+                self._tools_to_load = tools_to_load
+                super().__init__([])  # no tools until warm_up
+
+            def warm_up(self):
+                if not self.tools:
+                    self.tools = list(self._tools_to_load)
+
+        toolset = LazyToolset([first_tool, second_tool])
+        assert list(toolset) == []  # not loaded yet
+
+        # Name resolution warms the toolset first, so lazily loaded tools are selectable.
+        selected = _select_tools_by_name([toolset], [first_tool.name])
+        assert selected == [first_tool]
+
+    def test_spawns_toolsets_without_mutating_them(self, first_tool: Tool, second_tool: Tool):
+        class RunScopedToolset(Toolset):
+            """A Toolset overriding spawn(), signaling run-scoped state."""
+
+            def __init__(self, tools):
+                super().__init__(tools)
+                self.selected: set[str] | None = None
+
+            def spawn(self, selected_tool_names: set[str] | None = None) -> "RunScopedToolset":
+                new = RunScopedToolset(list(self.tools))
+                new.selected = set(selected_tool_names) if selected_tool_names is not None else None
+                return new
+
+        toolset = RunScopedToolset([first_tool, second_tool])
+        selected = _select_tools_by_name([toolset], [first_tool.name])
+
+        run_copy = selected[0]
+        assert isinstance(run_copy, RunScopedToolset)
+        assert run_copy is not toolset
+        assert run_copy.selected == {first_tool.name}
+        # The configured toolset is untouched.
+        assert toolset.selected is None
+
+    def test_selects_tools_not_surfaced_by_iteration(self, first_tool: Tool, second_tool: Tool):
+        class DiscoveryToolset(Toolset):
+            """A dynamic Toolset without a spawn() override: iteration yields less than get_selectable_tools()."""
+
+            def __init__(self, catalog):
+                self._catalog = catalog
+                super().__init__([])
+
+            def __iter__(self):
+                yield from []  # nothing discovered yet
+
+            def get_selectable_tools(self) -> list[Tool]:
+                return list(self._catalog)
+
+        toolset = DiscoveryToolset([first_tool, second_tool])
+        # The requested tool must be selected even though iteration does not surface it.
+        selected = _select_tools_by_name([toolset], [first_tool.name])
+        assert selected == [first_tool]
 
 
 class TestContextTokensFromUsage:

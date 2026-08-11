@@ -73,21 +73,28 @@ def multiply_numbers(
 
 
 math_toolset.add(multiply_numbers)
+```
 
-# or, you can merge toolsets together
-math_toolset.add(another_toolset)
+### Combining Toolsets
+
+To use multiple Toolsets together, pass them as a list wherever tools are accepted:
+
+```python
+agent = Agent(
+    chat_generator=OpenAIChatGenerator(), tools=[math_toolset, another_toolset]
+)
 ```
 
 ### Run-Scoped Copies and Tool Selection
 
-A `Toolset` is never mutated in place during an [`Agent`](../pipeline-components/agents-1/agent.mdx) run. Each run operates on an isolated, run-scoped copy of the configured `Toolset`, created with the `spawn()` method. This makes concurrent runs that share the same `Toolset` instance safe: per-run state, such as an active tool-name selection or a [`SearchableToolset`](searchabletoolset.mdx)'s discovered tools, cannot leak or collide across runs.
+An [`Agent`](../pipeline-components/agents-1/agent.mdx) run never modifies your configured `Toolset`. A `Toolset` with per-run state, such as a [`SearchableToolset`](searchabletoolset.mdx), is copied for each run through its `spawn()` method, so concurrent runs cannot leak state (like discovered tools) into each other. A plain `Toolset` has no per-run state and is shared as is; just avoid adding or removing tools while runs are in progress.
 
-You can also restrict an `Agent` to a subset of tools at runtime by passing tool names, for example `agent.run(tools=["tool_a", "tool_b"])`. When a `Toolset` is configured, the selection is applied to the live (run-scoped) `Toolset` rather than flattening it into a static list, so dynamic behavior like a `SearchableToolset`'s search and lazy loading keeps working over the selected subset.
+You can also restrict an `Agent` to a subset of tools at runtime by passing tool names, for example `agent.run(tools=["tool_a", "tool_b"])`. The selection applies only to that run, and dynamic behavior like a `SearchableToolset`'s search keeps working over the selected subset.
 
 Two methods support this and can be overridden when subclassing:
 
-- `get_selectable_tools()`: Returns every tool available for name-based selection, ignoring any active selection restriction. Override it if your subclass's iteration does not surface every selectable tool.
-- `spawn()`: Returns an isolated, run-scoped copy of the `Toolset`. Override it if your subclass holds additional run-scoped state.
+- `get_selectable_tools()`: Returns every tool available for name-based selection. Override it if your subclass's iteration does not surface every selectable tool.
+- `spawn()`: Returns the `Toolset` itself, which has no run-scoped state to isolate. Override it to return an isolated, run-scoped copy if your subclass holds run-scoped state.
 
 ## Usage
 
