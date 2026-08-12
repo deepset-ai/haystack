@@ -12,6 +12,7 @@ from haystack.core.errors import DeserializationError, SerializationError
 from haystack.core.serialization_security import (
     _check_module_allowed,
     _check_not_denied_builtin,
+    _check_not_denied_callable,
     _check_resolved_module_allowed,
     _is_denied_builtin,
     _is_module_allowed,
@@ -139,6 +140,11 @@ def deserialize_callable(callable_handle: str) -> Callable:
         # `builtins` is on the allowlist (for `builtins.print` etc.), so the module check
         # above does not stop dangerous builtins like `eval`/`exec` from resolving here. Block them.
         _check_not_denied_builtin(attr_value, callable_handle)
+
+        # The module check also does not stop import primitives that live inside an allowlisted
+        # namespace (e.g. `haystack...thread_safe_import`), which are gateways to code execution
+        # equivalent to the denied builtin `__import__`. Block them too.
+        _check_not_denied_callable(attr_value, callable_handle)
 
         return attr_value
 

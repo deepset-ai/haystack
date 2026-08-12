@@ -8,6 +8,7 @@ import json
 import operator
 import subprocess
 from collections.abc import Callable
+from unittest import mock
 
 import pytest
 
@@ -302,6 +303,46 @@ class TestDeniedBuiltins:
         # `unsafe=True` disables all deserialization safety checks by design.
         with _deserialization_context(unsafe=True):
             assert deserialize_callable("builtins.eval") is eval
+
+
+class TestDeniedImportPrimitives:
+    """
+    An import primitive that lives inside an allowlisted namespace slips through both the
+    module-granular allowlist (its `__module__` is allowlisted) and the builtin denylist (it is not
+    a `builtins` member). It is a functional twin of the denied builtin `__import__` — a gateway to
+    `os`/`subprocess`/... — and must be blocked.
+    """
+
+    def test_thread_safe_import_rejected(self):
+        with pytest.raises(DeserializationError, match="import primitive"):
+            deserialize_callable("haystack.utils.type_serialization.thread_safe_import")
+
+    def test_unsafe_mode_bypasses_the_block(self):
+        from haystack.utils.type_serialization import thread_safe_import
+
+        with _deserialization_context(unsafe=True):
+            handle = "haystack.utils.type_serialization.thread_safe_import"
+            assert deserialize_callable(handle) is thread_safe_import
+
+    def test_pipeline_loads_rejects_import_filter_gadget(self):
+        # End-to-end through the default-safe API: an attacker registers the import primitive as an
+        # OutputAdapter custom filter and uses it in the template to import `os` and run a command.
+        # Loading must reject it before any code runs.
+        gadget_yaml = (
+            "components:\n"
+            "  adapter:\n"
+            "    type: haystack.components.converters.output_adapter.OutputAdapter\n"
+            "    init_parameters:\n"
+            "      template: \"{{ ('os' | imp).system('echo pwned') }}\"\n"
+            "      output_type: str\n"
+            "      custom_filters:\n"
+            '        imp: "haystack.utils.type_serialization.thread_safe_import"\n'
+            "connections: []\n"
+        )
+        with mock.patch("os.system") as mocked_system:
+            with pytest.raises(DeserializationError):
+                Pipeline.loads(gadget_yaml)
+        assert not mocked_system.called
 
 
 class TestModuleAttributeWalkBypass:
