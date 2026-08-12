@@ -7,6 +7,7 @@ from typing import Any
 
 import pytest
 
+from haystack import tracing
 from haystack.components.agents.state.state import State
 from haystack.components.agents.state.state_utils import merge_lists, replace_values
 from haystack.dataclasses import ChatMessage, ToolCall
@@ -20,6 +21,7 @@ from haystack.hooks.human_in_the_loop import (
     ToolExecutionDecision,
 )
 from haystack.hooks.human_in_the_loop.types import ConfirmationUI
+from haystack.hooks.invocation import _run_hooks, _run_hooks_async
 from haystack.tools import Tool, create_tool_from_function
 
 
@@ -276,6 +278,126 @@ class TestConfirmationHookAsync:
                 error=True,
             ),
         ]
+
+
+class TestConfirmationHookTracing:
+    def test_adds_decision_metadata_and_content_to_hook_span(self, spying_tracer):
+        tools = [_echo_tool(name) for name in ("confirmed_tool", "modified_tool", "rejected_tool")]
+        messages = [
+            ChatMessage.from_user("sensitive user message"),
+            ChatMessage.from_assistant(
+                tool_calls=[
+                    ToolCall(id="tc-confirm", tool_name="confirmed_tool", arguments={"x": 1}),
+                    ToolCall(id="tc-modify", tool_name="modified_tool", arguments={"x": 2}),
+                    ToolCall(id="tc-reject", tool_name="rejected_tool", arguments={"x": 3}),
+                ]
+            ),
+        ]
+        state = _state_with(messages, tools)
+        hook = _multi_tool_hook(
+            {
+                "confirmed_tool": ConfirmationUIResult(action="confirm"),
+                "modified_tool": ConfirmationUIResult(
+                    action="modify", new_tool_params={"x": 99}, feedback="sensitive modification feedback"
+                ),
+                "rejected_tool": ConfirmationUIResult(action="reject", feedback="sensitive rejection feedback"),
+            }
+        )
+
+        _run_hooks(hooks={"before_tool": [hook]}, hook_point="before_tool", state=state)
+
+        span = spying_tracer.spans[0]
+        assert span.tags == {
+            "haystack.agent.hook.point": "before_tool",
+            "haystack.agent.hook.name": "ConfirmationHook",
+            "haystack.agent.hook.type": "haystack.hooks.human_in_the_loop.hooks.ConfirmationHook",
+            "haystack.agent.hook.human_in_the_loop.tool_decisions": [
+                {"tool_name": "confirmed_tool", "decision": "confirm"},
+                {"tool_name": "modified_tool", "decision": "modify"},
+                {"tool_name": "rejected_tool", "decision": "reject"},
+            ],
+            "haystack.agent.hook.human_in_the_loop.confirmed": 1,
+            "haystack.agent.hook.human_in_the_loop.modified": 1,
+            "haystack.agent.hook.human_in_the_loop.rejected": 1,
+            "haystack.agent.hook.human_in_the_loop.tool_decision_details": [
+                {
+                    "tool_name": "confirmed_tool",
+                    "decision": "confirm",
+                    "original_arguments": {"x": 1},
+                    "final_arguments": {"x": 1},
+                    "feedback": None,
+                },
+                {
+                    "tool_name": "modified_tool",
+                    "decision": "modify",
+                    "original_arguments": {"x": 2},
+                    "final_arguments": {"x": 99},
+                    "feedback": "The parameters for tool 'modified_tool' were updated by the user to:\n{'x': 99} "
+                    "With user feedback: sensitive modification feedback",
+                },
+                {
+                    "tool_name": "rejected_tool",
+                    "decision": "reject",
+                    "original_arguments": {"x": 3},
+                    "final_arguments": None,
+                    "feedback": "Tool execution for 'rejected_tool' was rejected by the user. "
+                    "With user feedback: sensitive rejection feedback",
+                },
+            ],
+        }
+
+        metadata = {key: value for key, value in span.tags.items() if not key.endswith("tool_decision_details")}
+        assert "sensitive" not in str(metadata)
+        assert "99" not in str(metadata)
+
+    def test_omits_decision_content_when_content_tracing_is_disabled(self, eager_spying_tracer, monkeypatch, tools):
+        monkeypatch.setattr(tracing.tracer, "is_content_tracing_enabled", False)
+        messages = [
+            ChatMessage.from_user("sensitive user message"),
+            ChatMessage.from_assistant(
+                tool_calls=[ToolCall(id="tc-1", tool_name="addition_tool", arguments={"a": 1, "b": 2})]
+            ),
+        ]
+        state = _state_with(messages, tools)
+        hook = _confirm_hook(ConfirmationUIResult(action="reject", feedback="sensitive rejection feedback"))
+
+        _run_hooks(hooks={"before_tool": [hook]}, hook_point="before_tool", state=state)
+
+        span = eager_spying_tracer.spans[0]
+        assert span.tags["haystack.agent.hook.human_in_the_loop.tool_decisions"] == (
+            '[{"tool_name": "addition_tool", "decision": "reject"}]'
+        )
+        assert "haystack.agent.hook.human_in_the_loop.tool_decision_details" not in span.tags
+        assert "sensitive" not in str(span.tags)
+
+    @pytest.mark.asyncio
+    async def test_adds_decision_tags_to_hook_span_async(self, spying_tracer, tools):
+        messages = [
+            ChatMessage.from_user("sensitive user message"),
+            ChatMessage.from_assistant(
+                tool_calls=[ToolCall(id="tc-1", tool_name="addition_tool", arguments={"a": 1, "b": 2})]
+            ),
+        ]
+        state = _state_with(messages, tools)
+        hook = _confirm_hook(ConfirmationUIResult(action="reject", feedback="sensitive rejection feedback"))
+
+        await _run_hooks_async(hooks={"before_tool": [hook]}, hook_point="before_tool", state=state)
+
+        span = spying_tracer.spans[0]
+        assert span.tags["haystack.agent.hook.human_in_the_loop.tool_decisions"] == [
+            {"tool_name": "addition_tool", "decision": "reject"}
+        ]
+        assert span.tags["haystack.agent.hook.human_in_the_loop.confirmed"] == 0
+        assert span.tags["haystack.agent.hook.human_in_the_loop.modified"] == 0
+        assert span.tags["haystack.agent.hook.human_in_the_loop.rejected"] == 1
+        assert span.tags["haystack.agent.hook.human_in_the_loop.tool_decision_details"][0]["original_arguments"] == {
+            "a": 1,
+            "b": 2,
+        }
+        assert (
+            "sensitive rejection feedback"
+            in span.tags["haystack.agent.hook.human_in_the_loop.tool_decision_details"][0]["feedback"]
+        )
 
 
 def _echo(x: int) -> dict[str, int]:

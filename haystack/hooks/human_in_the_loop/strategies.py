@@ -6,6 +6,7 @@ import json
 from dataclasses import replace
 from typing import Any
 
+from haystack import tracing
 from haystack.components.agents.state.state import State
 from haystack.core.serialization import component_to_dict, default_from_dict, default_to_dict
 from haystack.dataclasses import ChatMessage, ToolCall
@@ -238,6 +239,51 @@ def _passthrough_tool_call(tool_call: ToolCall) -> ToolExecutionDecision:
     )
 
 
+def _set_confirmation_tracing_tags(
+    *, messages_with_tool_calls: list[ChatMessage], tool_execution_decisions: list[ToolExecutionDecision]
+) -> None:
+    """Add Human-in-the-Loop decision metadata and optional content to the current hook span."""
+    tool_calls = [tool_call for message in messages_with_tool_calls for tool_call in message.tool_calls or []]
+    decisions = []
+    decision_details = []
+
+    for tool_call, tool_execution_decision in zip(tool_calls, tool_execution_decisions, strict=True):
+        if not tool_execution_decision.execute:
+            outcome = "reject"
+        elif tool_call.arguments != (tool_execution_decision.final_tool_params or {}):
+            outcome = "modify"
+        else:
+            outcome = "confirm"
+        decisions.append({"tool_name": tool_call.tool_name, "decision": outcome})
+        decision_details.append(
+            {
+                "tool_name": tool_call.tool_name,
+                "decision": outcome,
+                "original_arguments": tool_call.arguments,
+                "final_arguments": tool_execution_decision.final_tool_params,
+                "feedback": tool_execution_decision.feedback,
+            }
+        )
+
+    span = tracing.tracer.current_span()
+    if span is not None:
+        span.set_tags(
+            tags={
+                "haystack.agent.hook.human_in_the_loop.tool_decisions": decisions,
+                "haystack.agent.hook.human_in_the_loop.confirmed": sum(
+                    decision["decision"] == "confirm" for decision in decisions
+                ),
+                "haystack.agent.hook.human_in_the_loop.modified": sum(
+                    decision["decision"] == "modify" for decision in decisions
+                ),
+                "haystack.agent.hook.human_in_the_loop.rejected": sum(
+                    decision["decision"] == "reject" for decision in decisions
+                ),
+            }
+        )
+        span.set_content_tag(key="haystack.agent.hook.human_in_the_loop.tool_decision_details", value=decision_details)
+
+
 def _process_confirmation_strategies(
     *,
     confirmation_strategies: dict[str | tuple[str, ...], ConfirmationStrategy],
@@ -271,6 +317,7 @@ def _process_confirmation_strategies(
         tools=tools,
         confirmation_strategy_context=confirmation_strategy_context,
     )
+    _set_confirmation_tracing_tags(messages_with_tool_calls=messages_with_tool_calls, tool_execution_decisions=teds)
 
     # Apply tool execution decisions to messages_with_tool_calls
     rejection_messages, modified_tool_call_messages = _apply_tool_execution_decisions(
@@ -320,6 +367,7 @@ async def _process_confirmation_strategies_async(
         tools=tools,
         confirmation_strategy_context=confirmation_strategy_context,
     )
+    _set_confirmation_tracing_tags(messages_with_tool_calls=messages_with_tool_calls, tool_execution_decisions=teds)
 
     # Apply tool execution decisions to messages_with_tool_calls
     rejection_messages, modified_tool_call_messages = _apply_tool_execution_decisions(
