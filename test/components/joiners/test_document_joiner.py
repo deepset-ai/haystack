@@ -89,7 +89,7 @@ class TestDocumentJoiner:
             JoinMode.DISTRIBUTION_BASED_RANK_FUSION,
         ],
     )
-    def test_empty_list(self, join_mode: JoinMode):
+    def test_empty_list(self, join_mode: JoinMode) -> None:
         joiner = DocumentJoiner(join_mode=join_mode)
         result = joiner.run([])
         assert result == {"documents": []}
@@ -103,7 +103,7 @@ class TestDocumentJoiner:
             JoinMode.DISTRIBUTION_BASED_RANK_FUSION,
         ],
     )
-    def test_list_of_empty_lists(self, join_mode: JoinMode):
+    def test_list_of_empty_lists(self, join_mode: JoinMode) -> None:
         joiner = DocumentJoiner(join_mode=join_mode)
         result = joiner.run([[], []])
         assert result == {"documents": []}
@@ -117,7 +117,7 @@ class TestDocumentJoiner:
             JoinMode.DISTRIBUTION_BASED_RANK_FUSION,
         ],
     )
-    def test_list_with_one_empty_list(self, join_mode: JoinMode):
+    def test_list_with_one_empty_list(self, join_mode: JoinMode) -> None:
         joiner = DocumentJoiner(join_mode=join_mode)
         documents = [Document(content="a"), Document(content="b"), Document(content="c")]
         result = joiner.run([[], documents])
