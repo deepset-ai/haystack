@@ -481,7 +481,8 @@ class TestAgent:
         assert agent.tools[0].function is weather_function
         assert isinstance(agent.tools[1]._component, PromptBuilder)
         assert agent.exit_conditions == ["text", "weather_tool"]
-        assert agent.state_schema == {
+        assert agent.state_schema == {"foo": {"type": str}}
+        assert agent.resolved_state_schema == {
             "foo": {"type": str},
             "messages": {"handler": merge_lists, "type": list[ChatMessage]},
             "step_count": {"type": int, "handler": replace_values},
@@ -594,7 +595,8 @@ class TestAgent:
             },
         }
         agent = Agent.from_dict(data)
-        assert agent.state_schema == {
+        assert agent.state_schema == {}
+        assert agent.resolved_state_schema == {
             "messages": {"type": list[ChatMessage], "handler": merge_lists},
             "step_count": {"type": int, "handler": replace_values},
             "token_usage": {"type": dict[str, Any], "handler": replace_values},
@@ -639,7 +641,8 @@ class TestAgent:
         assert deserialized_agent.tools[0].function is weather_function
         assert isinstance(deserialized_agent.tools[1]._component, PromptBuilder)
         assert deserialized_agent.exit_conditions == ["text", "weather_tool"]
-        assert deserialized_agent.state_schema == {
+        assert deserialized_agent.state_schema == {"foo": {"type": str}}
+        assert deserialized_agent.resolved_state_schema == {
             "foo": {"type": str},
             "messages": {"handler": merge_lists, "type": list[ChatMessage]},
             "step_count": {"type": int, "handler": replace_values},
@@ -652,6 +655,64 @@ class TestAgent:
             "context_tokens": {"type": int, "handler": replace_values},
         }
         assert deserialized_agent.streaming_callback is sync_streaming_callback
+
+    def test_clone(self, weather_tool):
+        agent = Agent(
+            chat_generator=MockChatGenerator("Hello"),
+            tools=[weather_tool],
+            system_prompt="You are helpful",
+            exit_conditions=["text", "weather_tool"],
+            state_schema={"foo": {"type": str}},
+            max_agent_steps=7,
+        )
+
+        clone = agent.clone()
+
+        assert clone is not agent
+        assert clone.to_dict() == agent.to_dict()
+
+    @pytest.mark.parametrize(
+        "name, value",
+        [
+            ("system_prompt", "A nice system prompt"),
+            ("max_agent_steps", 3),
+            ("exit_conditions", ["weather_tool"]),
+            ("state_schema", {"bar": {"type": int}}),
+        ],
+    )
+    def test_clone_with_overrides(self, weather_tool, name, value):
+        agent = Agent(
+            chat_generator=MockChatGenerator("Hello"),
+            tools=[weather_tool],
+            system_prompt="You are helpful",
+            state_schema={"foo": {"type": str}},
+        )
+
+        clone = agent.clone(**{name: value})
+
+        assert getattr(clone, name) == value
+
+        # only the overridden init parameter differs
+        original_params = agent.to_dict()["init_parameters"]
+        clone_params = clone.to_dict()["init_parameters"]
+        assert clone_params.keys() == original_params.keys()
+        for key in original_params:
+            if key == name:
+                assert clone_params[key] != original_params[key]
+            else:
+                assert clone_params[key] == original_params[key]
+
+    def test_clone_with_additional_state_schema_and_tools(self, weather_tool, component_tool):
+        agent = Agent(
+            chat_generator=MockChatGenerator("Hello"), tools=[weather_tool], state_schema={"foo": {"type": str}}
+        )
+
+        clone = agent.clone(
+            tools=[*agent.tools, component_tool], state_schema={**agent.state_schema, "notes": {"type": str}}
+        )
+
+        assert clone.tools == [weather_tool, component_tool]
+        assert clone.state_schema == {"foo": {"type": str}, "notes": {"type": str}}
 
     def test_exit_conditions(self, weather_tool, component_tool, monkeypatch):
         monkeypatch.setenv("FAKE_OPENAI_KEY", "fake-key")
