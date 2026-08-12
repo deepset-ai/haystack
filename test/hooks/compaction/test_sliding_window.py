@@ -6,7 +6,7 @@ import pytest
 
 from haystack.dataclasses import ChatMessage, ChatRole, ToolCall
 from haystack.hooks.compaction import SlidingWindowCompactor
-from haystack.hooks.compaction.sliding_window import _DEFAULT_OMISSION_NOTE, _historical_turn_spans, _is_compaction_note
+from haystack.hooks.compaction.sliding_window import _DEFAULT_OMISSION_NOTE, _is_compaction_note
 from haystack.hooks.compaction.utils import _COMPACTION_META_KEY
 from test.hooks.compaction.helpers import (
     FakeCounter,
@@ -61,53 +61,12 @@ class TestIsCompactionNote:
             pytest.param(
                 ChatMessage.from_user(text="odd", meta={_COMPACTION_META_KEY: "sliding_window"}),
                 False,
-                id="marker-that-is-not-a-mapping",
+                id="marker-that-is-not-a-dict",
             ),
         ],
     )
     def test_only_matches_sliding_window_omission_message(self, message, expected):
         assert _is_compaction_note(message=message) is expected
-
-
-class TestHistoricalTurnSpans:
-    def test_groups_each_user_message_with_its_assistant_steps_and_tool_results(self):
-        messages = [
-            ChatMessage.from_system("rules"),
-            ChatMessage.from_user("first task"),
-            tool_call("c1"),
-            tool_result("first result", call_id="c1"),
-            ChatMessage.from_assistant("first answer"),
-            ChatMessage.from_user("second task"),
-            ChatMessage.from_assistant("second answer"),
-        ]
-        spans = _historical_turn_spans(messages=messages, start=1, end=len(messages))
-        assert spans == [(1, 5), (5, 7)]
-        assert messages[slice(*spans[0])] == messages[1:5]
-        assert messages[slice(*spans[1])] == messages[5:7]
-
-    def test_only_returns_turns_within_the_requested_bounds(self):
-        messages = [
-            ChatMessage.from_user("outside"),
-            ChatMessage.from_assistant("outside answer"),
-            ChatMessage.from_user("inside"),
-            ChatMessage.from_assistant("inside answer"),
-            ChatMessage.from_user("current task"),
-        ]
-        assert _historical_turn_spans(messages=messages, start=2, end=4) == [(2, 4)]
-
-    def test_compaction_note_does_not_start_a_new_turn(self):
-        messages = [
-            # Historical turns
-            ChatMessage.from_user(
-                "Earlier messages were removed.", meta={_COMPACTION_META_KEY: {"strategy": "sliding_window"}}
-            ),
-            ChatMessage.from_user("task"),
-            ChatMessage.from_assistant("first step"),
-            ChatMessage.from_user("next task"),
-            ChatMessage.from_assistant("second step"),
-        ]
-        # The note is skipped which is why the first span starts at 1
-        assert _historical_turn_spans(messages=messages, start=0, end=len(messages)) == [(1, 3), (3, 5)]
 
 
 class TestSlidingWindowCompactor:
