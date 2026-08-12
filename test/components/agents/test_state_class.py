@@ -52,7 +52,7 @@ class TestMergeLists:
     def test_merge_two_lists(self):
         current = [1, 2, 3]
         new = [4, 5, 6]
-        result = merge_lists(current, new)
+        result: list[int] = merge_lists(current, new)
         assert result == [1, 2, 3, 4, 5, 6]
         # Ensure original lists weren't modified
         assert current == [1, 2, 3]
