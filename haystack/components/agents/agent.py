@@ -481,17 +481,17 @@ class Agent:
 
         # --- State schema ---
         # shallow copy is sufficient: we only add a top-level "messages" key, never mutate nested values
-        self._state_schema = state_schema or {}
-        self.state_schema = dict(self._state_schema)
-        if self.state_schema.get("messages") is None:
-            self.state_schema["messages"] = {"type": list[ChatMessage], "handler": merge_lists}
+        self.state_schema = state_schema or {}
+        self.resolved_state_schema = dict(self.state_schema)
+        if self.resolved_state_schema.get("messages") is None:
+            self.resolved_state_schema["messages"] = {"type": list[ChatMessage], "handler": merge_lists}
         for key, config in {**_RUN_METADATA_STATE_KEYS, **_INTERNAL_STATE_KEYS}.items():
-            self.state_schema[key] = dict(config)
+            self.resolved_state_schema[key] = dict(config)
 
         # --- Component I/O ---
         self._run_method_params = _get_run_method_params(self)
         output_types: dict[str, Any] = {"last_message": ChatMessage}
-        for param, config in self.state_schema.items():
+        for param, config in self.resolved_state_schema.items():
             # Internal keys are run-control / hook-facing state, not exposed as inputs or outputs.
             if param in _INTERNAL_STATE_KEYS:
                 continue
@@ -552,7 +552,7 @@ class Agent:
 
         for var_name, sources in all_variables.items():
             prompt_source = " and ".join(sources)
-            if var_name in self.state_schema:
+            if var_name in self.resolved_state_schema:
                 raise ValueError(
                     f"Variable '{var_name}' from {prompt_source} is already defined in the state schema. "
                     "Please rename the variable or remove it from the prompt to avoid conflicts."
@@ -618,9 +618,6 @@ class Agent:
         """
         init_params = inspect.signature(type(self).__init__).parameters
         params: dict[str, Any] = {name: getattr(self, name) for name in init_params if name != "self"}
-        # self.state_schema is the resolved schema including reserved keys, which __init__ rejects
-        # we pass the original user-provided schema instead
-        params["state_schema"] = self._state_schema
         return type(self)(**{**params, **overrides})
 
     def to_dict(self) -> dict[str, Any]:
@@ -637,8 +634,7 @@ class Agent:
             user_prompt=self.user_prompt,
             required_variables=self.required_variables,
             exit_conditions=self.exit_conditions,
-            # We serialize the original state schema, not the resolved one to reflect the original user input
-            state_schema=_schema_to_dict(self._state_schema),
+            state_schema=_schema_to_dict(self.state_schema),
             max_agent_steps=self.max_agent_steps,
             streaming_callback=serialize_callable(self.streaming_callback) if self.streaming_callback else None,
             raise_on_tool_invocation_failure=self.raise_on_tool_invocation_failure,
@@ -689,7 +685,7 @@ class Agent:
                 "haystack.agent.max_steps": self.max_agent_steps,
                 "haystack.agent.tools": tools,
                 "haystack.agent.exit_conditions": self.exit_conditions,
-                "haystack.agent.state_schema": _schema_to_dict(self.state_schema),
+                "haystack.agent.state_schema": _schema_to_dict(self.resolved_state_schema),
             },
             parent_span=parent_span,
         )
@@ -751,8 +747,8 @@ class Agent:
                 "The Agent component requires a chat generator that supports tools when tools are provided."
             )
 
-        state_kwargs: dict[str, Any] = {key: kwargs[key] for key in self.state_schema.keys() if key in kwargs}
-        state = State(schema=self.state_schema, data=state_kwargs)
+        state_kwargs: dict[str, Any] = {key: kwargs[key] for key in self.resolved_state_schema.keys() if key in kwargs}
+        state = State(schema=self.resolved_state_schema, data=state_kwargs)
         state.set("messages", messages)
         state.set("step_count", 0)
         state.set("token_usage", {})
