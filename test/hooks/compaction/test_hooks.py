@@ -12,6 +12,7 @@ from haystack.components.generators.chat import MockChatGenerator
 from haystack.dataclasses import ChatMessage
 from haystack.hooks.compaction import CompactionHook, Compactor, SlidingWindowCompactor, ToolResultPruningCompactor
 from haystack.hooks.compaction.utils import _COMPACTION_META_KEY, _estimated_context_tokens, _last_assistant_index
+from haystack.hooks.invocation import _run_hooks, _run_hooks_async
 from haystack.token_counters import TokenCounter
 from haystack.tools import tool
 from haystack.utils.experimental import ExperimentalWarning
@@ -328,3 +329,66 @@ class TestCompactionHookAsync:
         result = await _agent({"before_llm": [_hook()]}).run_async(messages=[ChatMessage.from_user("start")])
         assert count_markers(result["messages"]) == 1
         _assert_every_tool_result_is_answered(result["messages"])
+
+
+class TestCompactionHookTracing:
+    def test_adds_compaction_tags_to_hook_span(self, spying_tracer):
+        compacted = [ChatMessage.from_assistant(text="kept")]
+        hook = _hook(compactor=_RecordingCompactor(result=compacted))
+        state = make_state(messages=[ChatMessage.from_assistant(text="original")], context_tokens=800)
+        _run_hooks(hooks={"before_llm": [hook]}, hook_point="before_llm", state=state)
+        span = spying_tracer.spans[0]
+        assert span.operation_name == "haystack.agent.hook"
+        assert span.parent_span is None
+        assert span.tags == {
+            # From _run_hooks
+            "haystack.agent.hook.point": "before_llm",
+            "haystack.agent.hook.name": "CompactionHook",
+            "haystack.agent.hook.type": "haystack.hooks.compaction.hooks.CompactionHook",
+            # From CompactionHook
+            "haystack.agent.hook.compaction.strategy": "test.hooks.compaction.test_hooks._RecordingCompactor",
+            "haystack.agent.hook.compaction.estimated_context_tokens": 800,
+            "haystack.agent.hook.compaction.triggered": True,
+            "haystack.agent.hook.compaction.target_tokens": 0,
+            "haystack.agent.hook.compaction.compacted": True,
+        }
+
+    def test_traces_when_compaction_is_not_triggered(self, spying_tracer):
+        hook = _hook(compactor=_RecordingCompactor())
+        state = make_state(messages=[ChatMessage.from_assistant(text="original")], context_tokens=300)
+        _run_hooks(hooks={"before_llm": [hook]}, hook_point="before_llm", state=state)
+        span = spying_tracer.spans[0]
+        assert span.operation_name == "haystack.agent.hook"
+        assert span.parent_span is None
+        assert span.tags == {
+            # From _run_hooks
+            "haystack.agent.hook.point": "before_llm",
+            "haystack.agent.hook.name": "CompactionHook",
+            "haystack.agent.hook.type": "haystack.hooks.compaction.hooks.CompactionHook",
+            # From CompactionHook
+            "haystack.agent.hook.compaction.strategy": "test.hooks.compaction.test_hooks._RecordingCompactor",
+            "haystack.agent.hook.compaction.estimated_context_tokens": 300,
+            "haystack.agent.hook.compaction.triggered": False,
+        }
+
+    @pytest.mark.asyncio
+    async def test_adds_compaction_tags_to_hook_span_async(self, spying_tracer):
+        compacted = [ChatMessage.from_assistant(text="kept")]
+        hook = _hook(compactor=_RecordingCompactor(result=compacted))
+        state = make_state(messages=[ChatMessage.from_assistant(text="original")], context_tokens=800)
+        await _run_hooks_async(hooks={"before_llm": [hook]}, hook_point="before_llm", state=state)
+        span = spying_tracer.spans[0]
+        assert span.operation_name == "haystack.agent.hook"
+        assert span.parent_span is None
+        assert span.tags == {
+            # From _run_hooks_async
+            "haystack.agent.hook.point": "before_llm",
+            "haystack.agent.hook.name": "CompactionHook",
+            "haystack.agent.hook.type": "haystack.hooks.compaction.hooks.CompactionHook",
+            # From CompactionHook
+            "haystack.agent.hook.compaction.strategy": "test.hooks.compaction.test_hooks._RecordingCompactor",
+            "haystack.agent.hook.compaction.estimated_context_tokens": 800,
+            "haystack.agent.hook.compaction.triggered": True,
+            "haystack.agent.hook.compaction.target_tokens": 0,
+            "haystack.agent.hook.compaction.compacted": True,
+        }
