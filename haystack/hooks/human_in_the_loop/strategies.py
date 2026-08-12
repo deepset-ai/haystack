@@ -4,7 +4,7 @@
 
 import json
 from dataclasses import replace
-from typing import Any, Literal
+from typing import Any, Literal, cast
 
 from haystack import tracing
 from haystack.components.agents.state.state import State
@@ -19,6 +19,7 @@ from haystack.hooks.human_in_the_loop import ToolExecutionDecision
 from haystack.hooks.human_in_the_loop.dataclasses import _AppliedToolDecision
 from haystack.hooks.human_in_the_loop.types import ConfirmationPolicy, ConfirmationStrategy, ConfirmationUI
 from haystack.tools import Tool
+from haystack.utils.async_utils import _execute_component_async
 from haystack.utils.deserialization import deserialize_component_inplace
 
 REJECTION_FEEDBACK_TEMPLATE = "Tool execution for '{tool_name}' was rejected by the user."
@@ -280,7 +281,7 @@ def _applied_tool_decision(*, tool_call: ToolCall, decision: ToolExecutionDecisi
     )
 
 
-def _set_confirmation_tracing_tags(*, span: Any, applied_decision: _AppliedToolDecision) -> None:
+def _set_applied_decision_tracing_tags(*, span: Any, applied_decision: _AppliedToolDecision) -> None:
     """Add a completed Human-in-the-Loop decision and its optional content to a tool span."""
     span.set_tag("haystack.agent.hook.human_in_the_loop.decision", applied_decision.decision)
     span.set_content_tag(
@@ -429,8 +430,7 @@ def _run_confirmation_strategies(
                 )
                 continue
 
-            # Run the confirmation strategy in a per-tool span. If a durable strategy suspends execution, the span
-            # closes with its input but without a decision; a resumed invocation creates a new span.
+            # Run the confirmation strategy in a per-tool span.
             with _create_confirmation_tool_span(
                 tool=tool_to_invoke, tool_call=tool_call, strategy=strategy, parent_span=parent_span
             ) as span:
@@ -442,7 +442,7 @@ def _run_confirmation_strategies(
                     tool_call_id=tool_call.id,
                     confirmation_strategy_context=confirmation_strategy_context,
                 )
-                _set_confirmation_tracing_tags(
+                _set_applied_decision_tracing_tags(
                     span=span, applied_decision=_applied_tool_decision(tool_call=tool_call, decision=ted)
                 )
             teds.append(ted)
@@ -499,28 +499,24 @@ async def _run_confirmation_strategies_async(
                 )
                 continue
 
-            # Use run_async if available, otherwise fall back to sync run.
             with _create_confirmation_tool_span(
                 tool=tool_to_invoke, tool_call=tool_call, strategy=strategy, parent_span=parent_span
             ) as span:
                 span.set_content_tag(key="haystack.agent.hook.human_in_the_loop.tool.input", value=tool_call.arguments)
-                if hasattr(strategy, "run_async"):
-                    ted = await strategy.run_async(
+                # The _execute_component_async helper supports arbitrary run results, but its return type is currently
+                # component-specific, so we cast it to the expected ToolExecutionDecision type here.
+                ted = cast(
+                    ToolExecutionDecision,
+                    await _execute_component_async(
+                        strategy,
                         tool_name=tool_name,
                         tool_description=tool_to_invoke.description,
                         tool_params=final_args,
                         tool_call_id=tool_call.id,
                         confirmation_strategy_context=confirmation_strategy_context,
-                    )
-                else:
-                    ted = strategy.run(
-                        tool_name=tool_name,
-                        tool_description=tool_to_invoke.description,
-                        tool_params=final_args,
-                        tool_call_id=tool_call.id,
-                        confirmation_strategy_context=confirmation_strategy_context,
-                    )
-                _set_confirmation_tracing_tags(
+                    ),
+                )
+                _set_applied_decision_tracing_tags(
                     span=span, applied_decision=_applied_tool_decision(tool_call=tool_call, decision=ted)
                 )
             teds.append(ted)
