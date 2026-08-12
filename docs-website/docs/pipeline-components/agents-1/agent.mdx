@@ -112,6 +112,14 @@ def fallback_on_max_steps(state: State) -> None:
 For the full parameter reference, see the [Agents API Documentation](/reference/agents-api).
 :::
 
+### Cloning
+
+`clone()` returns a new agent with the same configuration, optionally replacing some init parameters. This is useful for creating a variant of an agent you did not build yourself, such as one returned by a factory function of the [Agent Pack](./agent-pack.mdx).
+
+```python
+variant = agent.clone(system_prompt="Answer in German.", max_agent_steps=20)
+```
+
 ## Usage
 
 ### On its own

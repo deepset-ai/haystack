@@ -1,0 +1,5 @@
+---
+features:
+  - |
+    Add an ``Agent.clone()`` method that returns a new Agent with the same configuration, optionally
+    replacing some init parameters: ``variant = agent.clone(system_prompt="Answer in German.")``.

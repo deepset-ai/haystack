@@ -609,6 +609,20 @@ class Agent:
         elif hasattr(self.chat_generator, "close"):
             self.chat_generator.close()
 
+    def clone(self, **overrides: Any) -> "Agent":
+        """
+        Return a new Agent configured like this one, with the given init parameters replaced.
+
+        :param overrides: Init parameters to replace, e.g. `agent.clone(system_prompt="...")`.
+        :returns: The new Agent.
+        """
+        init_params = inspect.signature(type(self).__init__).parameters
+        params: dict[str, Any] = {name: getattr(self, name) for name in init_params if name != "self"}
+        # self.state_schema is the resolved schema including reserved keys, which __init__ rejects
+        # we pass the original user-provided schema instead
+        params["state_schema"] = self._state_schema
+        return type(self)(**{**params, **overrides})
+
     def to_dict(self) -> dict[str, Any]:
         """
         Serialize the component to a dictionary.

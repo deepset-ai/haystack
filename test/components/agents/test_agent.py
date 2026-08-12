@@ -653,6 +653,54 @@ class TestAgent:
         }
         assert deserialized_agent.streaming_callback is sync_streaming_callback
 
+    def test_clone(self, weather_tool):
+        agent = Agent(
+            chat_generator=MockChatGenerator("Hello"),
+            tools=[weather_tool],
+            system_prompt="You are helpful",
+            exit_conditions=["text", "weather_tool"],
+            state_schema={"foo": {"type": str}},
+            max_agent_steps=7,
+        )
+
+        clone = agent.clone()
+
+        assert clone is not agent
+        assert clone.to_dict() == agent.to_dict()
+        assert clone._state_schema == {"foo": {"type": str}}
+        assert clone.state_schema == agent.state_schema
+
+    @pytest.mark.parametrize(
+        "name, value, attr",
+        [
+            ("system_prompt", "A nice system prompt", "system_prompt"),
+            ("max_agent_steps", 3, "max_agent_steps"),
+            ("exit_conditions", ["weather_tool"], "exit_conditions"),
+            ("state_schema", {"bar": {"type": int}}, "_state_schema"),
+        ],
+    )
+    def test_clone_with_overrides(self, weather_tool, name, value, attr):
+        agent = Agent(
+            chat_generator=MockChatGenerator("Hello"),
+            tools=[weather_tool],
+            system_prompt="You are helpful",
+            state_schema={"foo": {"type": str}},
+        )
+
+        clone = agent.clone(**{name: value})
+
+        assert getattr(clone, attr) == value
+
+        # only the overridden init parameter differs
+        original_params = agent.to_dict()["init_parameters"]
+        clone_params = clone.to_dict()["init_parameters"]
+        assert clone_params.keys() == original_params.keys()
+        for key in original_params:
+            if key == name:
+                assert clone_params[key] != original_params[key]
+            else:
+                assert clone_params[key] == original_params[key]
+
     def test_exit_conditions(self, weather_tool, component_tool, monkeypatch):
         monkeypatch.setenv("FAKE_OPENAI_KEY", "fake-key")
         generator = OpenAIChatGenerator(api_key=Secret.from_env_var("FAKE_OPENAI_KEY"))
