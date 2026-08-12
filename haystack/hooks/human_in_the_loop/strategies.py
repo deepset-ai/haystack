@@ -8,7 +8,12 @@ from typing import Any, Literal
 
 from haystack import tracing
 from haystack.components.agents.state.state import State
-from haystack.core.serialization import component_to_dict, default_from_dict, default_to_dict
+from haystack.core.serialization import (
+    component_to_dict,
+    default_from_dict,
+    default_to_dict,
+    generate_qualified_class_name,
+)
 from haystack.dataclasses import ChatMessage, ToolCall
 from haystack.hooks.human_in_the_loop import ToolExecutionDecision
 from haystack.hooks.human_in_the_loop.dataclasses import _AppliedToolDecision
@@ -240,11 +245,16 @@ def _passthrough_tool_call(tool_call: ToolCall) -> ToolExecutionDecision:
     )
 
 
-def _create_confirmation_tool_span(*, tool: Tool, tool_call: ToolCall, parent_span: Any) -> Any:
+def _create_confirmation_tool_span(
+    *, tool: Tool, tool_call: ToolCall, strategy: ConfirmationStrategy, parent_span: Any
+) -> Any:
     """Create a tracing span for one tool call processed by a Human-in-the-Loop strategy."""
-    tags = {"haystack.tool.name": tool_call.tool_name, "haystack.tool.description": tool.description}
-    if tool_call.id is not None:
-        tags["haystack.tool.call.id"] = tool_call.id
+    tags = {
+        "haystack.tool.name": tool_call.tool_name,
+        "haystack.tool.description": tool.description,
+        "haystack.tool.call.id": tool_call.id or "",
+        "haystack.agent.hook.human_in_the_loop.strategy.type": generate_qualified_class_name(type(strategy)),
+    }
 
     return tracing.tracer.trace("haystack.agent.hook.human_in_the_loop.tool", tags=tags, parent_span=parent_span)
 
@@ -422,7 +432,7 @@ def _run_confirmation_strategies(
             # Run the confirmation strategy in a per-tool span. If a durable strategy suspends execution, the span
             # closes with its input but without a decision; a resumed invocation creates a new span.
             with _create_confirmation_tool_span(
-                tool=tool_to_invoke, tool_call=tool_call, parent_span=parent_span
+                tool=tool_to_invoke, tool_call=tool_call, strategy=strategy, parent_span=parent_span
             ) as span:
                 span.set_content_tag(key="haystack.agent.hook.human_in_the_loop.tool.input", value=tool_call.arguments)
                 ted = strategy.run(
@@ -491,7 +501,7 @@ async def _run_confirmation_strategies_async(
 
             # Use run_async if available, otherwise fall back to sync run.
             with _create_confirmation_tool_span(
-                tool=tool_to_invoke, tool_call=tool_call, parent_span=parent_span
+                tool=tool_to_invoke, tool_call=tool_call, strategy=strategy, parent_span=parent_span
             ) as span:
                 span.set_content_tag(key="haystack.agent.hook.human_in_the_loop.tool.input", value=tool_call.arguments)
                 if hasattr(strategy, "run_async"):
