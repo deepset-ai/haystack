@@ -4,10 +4,15 @@
 
 from typing import Any
 
-from haystack import logging
+from haystack import logging, tracing
 from haystack.components.agents.state.state import State
 from haystack.components.agents.state.state_utils import replace_values
-from haystack.core.serialization import component_to_dict, default_from_dict, default_to_dict
+from haystack.core.serialization import (
+    component_to_dict,
+    default_from_dict,
+    default_to_dict,
+    generate_qualified_class_name,
+)
 from haystack.dataclasses import ChatMessage
 from haystack.hooks.compaction.types import Compactor
 from haystack.hooks.compaction.utils import _estimated_context_tokens, _last_assistant_index
@@ -164,9 +169,22 @@ class CompactionHook:
         estimated = _estimated_context_tokens(
             messages=messages, context_tokens=context_tokens, token_counter=self.token_counter, tools=tools
         )
-        if estimated < self.context_window * self.compact_at:
-            # The conversation is not yet large enough to compact, so leave it alone.
+        triggered = estimated >= self.context_window * self.compact_at
+
+        span = tracing.tracer.current_span()
+        if span is not None:
+            span.set_tags(
+                tags={
+                    "haystack.agent.hook.compaction.strategy": generate_qualified_class_name(cls=type(self.compactor)),
+                    "haystack.agent.hook.compaction.estimated_context_tokens": estimated,
+                    "haystack.agent.hook.compaction.triggered": triggered,
+                }
+            )
+
+        # The conversation is not yet large enough to compact, so leave it alone.
+        if not triggered:
             return None
+
         # Calculate the non-message overhead, such as tool schemas and the provider's chat-template overhead.
         message_tokens = self.token_counter.count(messages=messages)
         overhead = estimated - message_tokens
@@ -178,9 +196,14 @@ class CompactionHook:
                 message_tokens=message_tokens,
                 estimated=estimated,
             )
+        target_tokens = max(int(self.context_window * self.compact_to) - overhead, 0)
+
+        if span is not None:
+            span.set_tag(key="haystack.agent.hook.compaction.target_tokens", value=target_tokens)
+
         # Return the target token amount the messages should be compacted to and the overhead needed to re-estimate the
         # context size after compaction.
-        return max(int(self.context_window * self.compact_to) - overhead, 0), overhead
+        return target_tokens, overhead
 
     def _apply(
         self,
@@ -201,8 +224,14 @@ class CompactionHook:
         :param original_context_tokens: The provider-reported context count before compaction, or 0 when unavailable.
         :param estimated_overhead: The estimated non-message overhead to include in the updated context count.
         """
+        span = tracing.tracer.current_span()
+        if span is not None:
+            span.set_tag(key="haystack.agent.hook.compaction.compacted", value=compacted is not None)
+
+        # If the compactor returned None, it declined to compact. Leave the conversation alone.
         if compacted is None:
             return
+
         state.set("messages", compacted, handler_override=replace_values)
         # If the original value was 0, leave it unchanged so later steps keep recounting the full request locally.
         if original_context_tokens != 0:
