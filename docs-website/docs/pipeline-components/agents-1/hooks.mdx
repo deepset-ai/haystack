@@ -151,7 +151,8 @@ class GradeFinalAnswer:
         self._judge = OpenAIChatGenerator(model=self.model)
 
     def warm_up(self) -> None:
-        # Warm up the judge's own client during the Agent's warm-up.
+        # The Agent calls this before every run, but OpenAIChatGenerator.warm_up
+        # creates its client only on the first call, so repeating it is safe and cheap.
         self._judge.warm_up()
 
     def close(self) -> None:
