@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import json
-from dataclasses import asdict, replace
+from dataclasses import replace
 from typing import Any, Literal
 
 from haystack import tracing
@@ -240,20 +240,43 @@ def _passthrough_tool_call(tool_call: ToolCall) -> ToolExecutionDecision:
     )
 
 
-def _set_confirmation_tracing_tags(*, applied_decisions: list[_AppliedToolDecision]) -> None:
-    """Add Human-in-the-Loop decision metadata and optional content to the current hook span."""
-    decisions = [
-        {"tool_name": applied_decision.tool_name, "decision": applied_decision.decision}
-        for applied_decision in applied_decisions
-    ]
+def _create_confirmation_tool_span(*, tool: Tool, tool_call: ToolCall, parent_span: Any) -> Any:
+    """Create a tracing span for one tool call processed by a Human-in-the-Loop strategy."""
+    tags = {"haystack.tool.name": tool_call.tool_name, "haystack.tool.description": tool.description}
+    if tool_call.id is not None:
+        tags["haystack.tool.call.id"] = tool_call.id
 
-    span = tracing.tracer.current_span()
-    if span is not None:
-        span.set_tags(tags={"haystack.agent.hook.human_in_the_loop.tool_decisions": decisions})
-        span.set_content_tag(
-            key="haystack.agent.hook.human_in_the_loop.tool_decision_details",
-            value=[asdict(applied_decision) for applied_decision in applied_decisions],
-        )
+    return tracing.tracer.trace("haystack.agent.hook.human_in_the_loop.tool", tags=tags, parent_span=parent_span)
+
+
+def _applied_tool_decision(*, tool_call: ToolCall, decision: ToolExecutionDecision) -> _AppliedToolDecision:
+    """Match and classify a strategy decision against the tool call that was presented for confirmation."""
+    final_arguments = decision.final_tool_params or {}
+    outcome: Literal["confirm", "modify", "reject"]
+    if not decision.execute:
+        outcome = "reject"
+    elif tool_call.arguments != final_arguments:
+        outcome = "modify"
+    else:
+        outcome = "confirm"
+
+    return _AppliedToolDecision(
+        tool_name=tool_call.tool_name,
+        tool_call_id=tool_call.id,
+        decision=outcome,
+        original_arguments=tool_call.arguments,
+        final_arguments=decision.final_tool_params,
+        feedback=decision.feedback,
+    )
+
+
+def _set_confirmation_tracing_tags(*, span: Any, applied_decision: _AppliedToolDecision) -> None:
+    """Add a completed Human-in-the-Loop decision and its optional content to a tool span."""
+    span.set_tag("haystack.agent.hook.human_in_the_loop.decision", applied_decision.decision)
+    span.set_content_tag(
+        key="haystack.agent.hook.human_in_the_loop.tool.output",
+        value={"final_arguments": applied_decision.final_arguments, "feedback": applied_decision.feedback},
+    )
 
 
 def _process_confirmation_strategies(
@@ -290,10 +313,9 @@ def _process_confirmation_strategies(
         confirmation_strategy_context=confirmation_strategy_context,
     )
     # Apply tool execution decisions to messages_with_tool_calls
-    rejection_messages, modified_tool_call_messages, applied_decisions = _apply_tool_execution_decisions(
+    rejection_messages, modified_tool_call_messages = _apply_tool_execution_decisions(
         tool_call_messages=messages_with_tool_calls, tool_execution_decisions=teds
     )
-    _set_confirmation_tracing_tags(applied_decisions=applied_decisions)
 
     # Update the chat history with rejection messages and new tool call messages
     return _update_chat_history(
@@ -339,10 +361,9 @@ async def _process_confirmation_strategies_async(
         confirmation_strategy_context=confirmation_strategy_context,
     )
     # Apply tool execution decisions to messages_with_tool_calls
-    rejection_messages, modified_tool_call_messages, applied_decisions = _apply_tool_execution_decisions(
+    rejection_messages, modified_tool_call_messages = _apply_tool_execution_decisions(
         tool_call_messages=messages_with_tool_calls, tool_execution_decisions=teds
     )
-    _set_confirmation_tracing_tags(applied_decisions=applied_decisions)
 
     # Update the chat history with rejection messages and new tool call messages
     return _update_chat_history(
@@ -369,6 +390,7 @@ def _run_confirmation_strategies(
         A list of ToolExecutionDecision objects representing the decisions made for each tool call.
     """
     tools_with_names = {tool.name: tool for tool in tools}
+    parent_span = tracing.tracer.current_span()
 
     teds = []
     for message in messages_with_tool_calls:
@@ -397,14 +419,22 @@ def _run_confirmation_strategies(
                 )
                 continue
 
-            # Run the confirmation strategy
-            ted = strategy.run(
-                tool_name=tool_name,
-                tool_description=tool_to_invoke.description,
-                tool_params=final_args,
-                tool_call_id=tool_call.id,
-                confirmation_strategy_context=confirmation_strategy_context,
-            )
+            # Run the confirmation strategy in a per-tool span. If a durable strategy suspends execution, the span
+            # closes with its input but without a decision; a resumed invocation creates a new span.
+            with _create_confirmation_tool_span(
+                tool=tool_to_invoke, tool_call=tool_call, parent_span=parent_span
+            ) as span:
+                span.set_content_tag(key="haystack.agent.hook.human_in_the_loop.tool.input", value=tool_call.arguments)
+                ted = strategy.run(
+                    tool_name=tool_name,
+                    tool_description=tool_to_invoke.description,
+                    tool_params=final_args,
+                    tool_call_id=tool_call.id,
+                    confirmation_strategy_context=confirmation_strategy_context,
+                )
+                _set_confirmation_tracing_tags(
+                    span=span, applied_decision=_applied_tool_decision(tool_call=tool_call, decision=ted)
+                )
             teds.append(ted)
 
     return teds
@@ -430,6 +460,7 @@ async def _run_confirmation_strategies_async(
         A list of ToolExecutionDecision objects representing the decisions made for each tool call.
     """
     tools_with_names = {tool.name: tool for tool in tools}
+    parent_span = tracing.tracer.current_span()
 
     teds = []
     for message in messages_with_tool_calls:
@@ -458,22 +489,29 @@ async def _run_confirmation_strategies_async(
                 )
                 continue
 
-            # Use run_async if available, otherwise fall back to sync run
-            if hasattr(strategy, "run_async"):
-                ted = await strategy.run_async(
-                    tool_name=tool_name,
-                    tool_description=tool_to_invoke.description,
-                    tool_params=final_args,
-                    tool_call_id=tool_call.id,
-                    confirmation_strategy_context=confirmation_strategy_context,
-                )
-            else:
-                ted = strategy.run(
-                    tool_name=tool_name,
-                    tool_description=tool_to_invoke.description,
-                    tool_params=final_args,
-                    tool_call_id=tool_call.id,
-                    confirmation_strategy_context=confirmation_strategy_context,
+            # Use run_async if available, otherwise fall back to sync run.
+            with _create_confirmation_tool_span(
+                tool=tool_to_invoke, tool_call=tool_call, parent_span=parent_span
+            ) as span:
+                span.set_content_tag(key="haystack.agent.hook.human_in_the_loop.tool.input", value=tool_call.arguments)
+                if hasattr(strategy, "run_async"):
+                    ted = await strategy.run_async(
+                        tool_name=tool_name,
+                        tool_description=tool_to_invoke.description,
+                        tool_params=final_args,
+                        tool_call_id=tool_call.id,
+                        confirmation_strategy_context=confirmation_strategy_context,
+                    )
+                else:
+                    ted = strategy.run(
+                        tool_name=tool_name,
+                        tool_description=tool_to_invoke.description,
+                        tool_params=final_args,
+                        tool_call_id=tool_call.id,
+                        confirmation_strategy_context=confirmation_strategy_context,
+                    )
+                _set_confirmation_tracing_tags(
+                    span=span, applied_decision=_applied_tool_decision(tool_call=tool_call, decision=ted)
                 )
             teds.append(ted)
 
@@ -482,7 +520,7 @@ async def _run_confirmation_strategies_async(
 
 def _apply_tool_execution_decisions(
     tool_call_messages: list[ChatMessage], tool_execution_decisions: list[ToolExecutionDecision]
-) -> tuple[list[ChatMessage], list[ChatMessage], list[_AppliedToolDecision]]:
+) -> tuple[list[ChatMessage], list[ChatMessage]]:
     """
     Apply the tool execution decisions to the tool call messages.
 
@@ -494,7 +532,6 @@ def _apply_tool_execution_decisions(
           messages.
         - A list of tool call messages for confirmed or modified tool calls. If tool parameters were modified,
           a user message explaining the modification is included before the tool call message.
-        - The applied decisions, matched to their original tool calls and classified for tracing.
     """
     decision_by_id = {d.tool_call_id: d for d in tool_execution_decisions if d.tool_call_id}
     decision_by_name = {d.tool_name: d for d in tool_execution_decisions if d.tool_name}
@@ -519,8 +556,6 @@ def _apply_tool_execution_decisions(
 
     new_tool_call_messages = []
     rejection_messages = []
-    applied_decisions: list[_AppliedToolDecision] = []
-
     for chat_msg in tool_call_messages:
         new_tool_calls = []
         for tc in chat_msg.tool_calls or []:
@@ -529,28 +564,10 @@ def _apply_tool_execution_decisions(
                 # This shouldn't happen, if so something went wrong in _run_confirmation_strategies
                 continue
 
-            # Determine the outcome of the decision
+            applied_decision = _applied_tool_decision(tool_call=tc, decision=ted)
             final_args = ted.final_tool_params or {}
-            outcome: Literal["confirm", "modify", "reject"]
-            if not ted.execute:
-                outcome = "reject"
-            elif tc.arguments != final_args:
-                outcome = "modify"
-            else:
-                outcome = "confirm"
 
-            # Collect applied decision for tracing
-            applied_decisions.append(
-                _AppliedToolDecision(
-                    tool_name=tc.tool_name,
-                    decision=outcome,
-                    original_arguments=tc.arguments,
-                    final_arguments=ted.final_tool_params,
-                    feedback=ted.feedback,
-                )
-            )
-
-            if outcome == "reject":
+            if applied_decision.decision == "reject":
                 # rejected tool call
                 tool_result_text = ted.feedback or REJECTION_FEEDBACK_TEMPLATE.format(tool_name=tc.tool_name)
                 rejection_messages.extend(
@@ -562,7 +579,7 @@ def _apply_tool_execution_decisions(
                 continue
 
             # Covers confirm and modify cases
-            if outcome == "modify":
+            if applied_decision.decision == "modify":
                 # In the modify case we add a user message explaining the modification otherwise the LLM won't know
                 # why the tool parameters changed and will likely just try and call the tool again with the
                 # original parameters.
@@ -579,7 +596,7 @@ def _apply_tool_execution_decisions(
     # new_tool_call_messages is a list of assistant messages with an optional preceding user message explaining
     # modifications
     # rejection_messages is a list of pairs of assistant and tool messages for rejected tool calls
-    return rejection_messages, new_tool_call_messages, applied_decisions
+    return rejection_messages, new_tool_call_messages
 
 
 def _update_chat_history(

@@ -281,7 +281,7 @@ class TestConfirmationHookAsync:
 
 
 class TestConfirmationHookTracing:
-    def test_adds_decision_metadata_and_content_to_hook_span(self, spying_tracer):
+    def test_adds_one_tool_span_per_confirmation_strategy(self, spying_tracer):
         tools = [_echo_tool(name) for name in ("confirmed_tool", "modified_tool", "rejected_tool")]
         messages = [
             ChatMessage.from_user("sensitive user message"),
@@ -306,44 +306,56 @@ class TestConfirmationHookTracing:
 
         _run_hooks(hooks={"before_tool": [hook]}, hook_point="before_tool", state=state)
 
-        span = spying_tracer.spans[0]
-        assert span.tags == {
+        hook_span, *tool_spans = spying_tracer.spans
+        assert hook_span.tags == {
             "haystack.agent.hook.point": "before_tool",
             "haystack.agent.hook.name": "ConfirmationHook",
             "haystack.agent.hook.type": "haystack.hooks.human_in_the_loop.hooks.ConfirmationHook",
-            "haystack.agent.hook.human_in_the_loop.tool_decisions": [
-                {"tool_name": "confirmed_tool", "decision": "confirm"},
-                {"tool_name": "modified_tool", "decision": "modify"},
-                {"tool_name": "rejected_tool", "decision": "reject"},
-            ],
-            "haystack.agent.hook.human_in_the_loop.tool_decision_details": [
-                {
-                    "tool_name": "confirmed_tool",
-                    "decision": "confirm",
-                    "original_arguments": {"x": 1},
-                    "final_arguments": {"x": 1},
-                    "feedback": None,
-                },
-                {
-                    "tool_name": "modified_tool",
-                    "decision": "modify",
-                    "original_arguments": {"x": 2},
+        }
+        assert len(tool_spans) == 3
+        assert all(span.operation_name == "haystack.agent.hook.human_in_the_loop.tool" for span in tool_spans)
+        assert all(span.parent_span is hook_span for span in tool_spans)
+        assert [span.tags for span in tool_spans] == [
+            {
+                "haystack.tool.name": "confirmed_tool",
+                "haystack.tool.description": "Echo tool confirmed_tool.",
+                "haystack.tool.call.id": "tc-confirm",
+                "haystack.agent.hook.human_in_the_loop.tool.input": {"x": 1},
+                "haystack.agent.hook.human_in_the_loop.decision": "confirm",
+                "haystack.agent.hook.human_in_the_loop.tool.output": {"final_arguments": {"x": 1}, "feedback": None},
+            },
+            {
+                "haystack.tool.name": "modified_tool",
+                "haystack.tool.description": "Echo tool modified_tool.",
+                "haystack.tool.call.id": "tc-modify",
+                "haystack.agent.hook.human_in_the_loop.tool.input": {"x": 2},
+                "haystack.agent.hook.human_in_the_loop.decision": "modify",
+                "haystack.agent.hook.human_in_the_loop.tool.output": {
                     "final_arguments": {"x": 99},
                     "feedback": "The parameters for tool 'modified_tool' were updated by the user to:\n{'x': 99} "
                     "With user feedback: sensitive modification feedback",
                 },
-                {
-                    "tool_name": "rejected_tool",
-                    "decision": "reject",
-                    "original_arguments": {"x": 3},
+            },
+            {
+                "haystack.tool.name": "rejected_tool",
+                "haystack.tool.description": "Echo tool rejected_tool.",
+                "haystack.tool.call.id": "tc-reject",
+                "haystack.agent.hook.human_in_the_loop.tool.input": {"x": 3},
+                "haystack.agent.hook.human_in_the_loop.decision": "reject",
+                "haystack.agent.hook.human_in_the_loop.tool.output": {
                     "final_arguments": None,
                     "feedback": "Tool execution for 'rejected_tool' was rejected by the user. "
                     "With user feedback: sensitive rejection feedback",
                 },
-            ],
-        }
+            },
+        ]
 
-        metadata = {key: value for key, value in span.tags.items() if not key.endswith("tool_decision_details")}
+        metadata = {
+            key: value
+            for span in spying_tracer.spans
+            for key, value in span.tags.items()
+            if not key.endswith(("tool.input", "tool.output"))
+        }
         assert "sensitive" not in str(metadata)
         assert "99" not in str(metadata)
 
@@ -360,15 +372,18 @@ class TestConfirmationHookTracing:
 
         _run_hooks(hooks={"before_tool": [hook]}, hook_point="before_tool", state=state)
 
-        span = eager_spying_tracer.spans[0]
-        assert span.tags["haystack.agent.hook.human_in_the_loop.tool_decisions"] == (
-            '[{"tool_name": "addition_tool", "decision": "reject"}]'
-        )
-        assert "haystack.agent.hook.human_in_the_loop.tool_decision_details" not in span.tags
-        assert "sensitive" not in str(span.tags)
+        hook_span, tool_span = eager_spying_tracer.spans
+        assert tool_span.parent_span is hook_span
+        assert tool_span.tags == {
+            "haystack.tool.name": "addition_tool",
+            "haystack.tool.description": "A tool that adds two integers together.",
+            "haystack.tool.call.id": "tc-1",
+            "haystack.agent.hook.human_in_the_loop.decision": "reject",
+        }
+        assert "sensitive" not in str(eager_spying_tracer.spans)
 
     @pytest.mark.asyncio
-    async def test_adds_decision_tags_to_hook_span_async(self, spying_tracer, tools):
+    async def test_adds_decision_tags_to_tool_span_async(self, spying_tracer, tools):
         messages = [
             ChatMessage.from_user("sensitive user message"),
             ChatMessage.from_assistant(
@@ -380,18 +395,43 @@ class TestConfirmationHookTracing:
 
         await _run_hooks_async(hooks={"before_tool": [hook]}, hook_point="before_tool", state=state)
 
-        span = spying_tracer.spans[0]
-        assert span.tags["haystack.agent.hook.human_in_the_loop.tool_decisions"] == [
-            {"tool_name": "addition_tool", "decision": "reject"}
-        ]
-        assert span.tags["haystack.agent.hook.human_in_the_loop.tool_decision_details"][0]["original_arguments"] == {
-            "a": 1,
-            "b": 2,
-        }
+        hook_span, tool_span = spying_tracer.spans
+        assert tool_span.parent_span is hook_span
+        assert tool_span.tags["haystack.agent.hook.human_in_the_loop.decision"] == "reject"
+        assert tool_span.tags["haystack.agent.hook.human_in_the_loop.tool.input"] == {"a": 1, "b": 2}
         assert (
             "sensitive rejection feedback"
-            in span.tags["haystack.agent.hook.human_in_the_loop.tool_decision_details"][0]["feedback"]
+            in tool_span.tags["haystack.agent.hook.human_in_the_loop.tool.output"]["feedback"]
         )
+
+    def test_tool_span_can_close_without_a_decision(self, spying_tracer, monkeypatch, tools):
+        messages = [
+            ChatMessage.from_user("add"),
+            ChatMessage.from_assistant(
+                tool_calls=[ToolCall(id="tc-1", tool_name="addition_tool", arguments={"a": 1, "b": 2})]
+            ),
+        ]
+        state = _state_with(messages, tools)
+        strategy = _confirm_strat(ConfirmationUIResult(action="confirm"))
+
+        def suspend(**kwargs: Any) -> ToolExecutionDecision:
+            del kwargs
+            raise RuntimeError("execution suspended")
+
+        monkeypatch.setattr(strategy, "run", suspend)
+        hook = ConfirmationHook(confirmation_strategies={"addition_tool": strategy})
+
+        with pytest.raises(RuntimeError, match="execution suspended"):
+            _run_hooks(hooks={"before_tool": [hook]}, hook_point="before_tool", state=state)
+
+        hook_span, tool_span = spying_tracer.spans
+        assert tool_span.parent_span is hook_span
+        assert tool_span.tags == {
+            "haystack.tool.name": "addition_tool",
+            "haystack.tool.description": "A tool that adds two integers together.",
+            "haystack.tool.call.id": "tc-1",
+            "haystack.agent.hook.human_in_the_loop.tool.input": {"a": 1, "b": 2},
+        }
 
 
 def _echo(x: int) -> dict[str, int]:

@@ -1,7 +1,7 @@
 ---
 enhancements:
   - |
-    Add Human-in-the-Loop decision metadata to ``ConfirmationHook`` tracing spans. Traces identify the tool and
-    whether its call was confirmed, modified, or rejected. When content tracing is enabled, spans also include the
-    original and final tool arguments and user feedback; chat messages, hook context, and the Agent ``State`` are not
-    recorded by the hook.
+    Add a per-tool tracing span to ``ConfirmationHook``. Each span identifies the tool, tool call, and an applied
+    confirm, modify, or reject decision when one is available. When content tracing is enabled, spans also include
+    the original and final tool arguments and user feedback; chat messages, hook context, and the Agent ``State`` are
+    not recorded by the hook.
