@@ -477,7 +477,6 @@ class Agent:
         self.tool_concurrency_limit = tool_concurrency_limit
         self.tool_streaming_callback_passthrough = tool_streaming_callback_passthrough
         self.hooks = hooks
-        self._hooks_warmed_up = False
 
         # --- State schema ---
         # shallow copy is sufficient: we only add a top-level "messages" key, never mutate nested values
@@ -567,29 +566,17 @@ class Agent:
             else:
                 component.set_input_type(self, name=var_name, type=Any, default=None)
 
-    def _warm_up_hooks(self) -> None:
-        """Warm up the configured hooks once."""
-        if not self._hooks_warmed_up:
-            warm_up_hooks(self.hooks)
-            self._hooks_warmed_up = True
-
-    async def _warm_up_hooks_async(self) -> None:
-        """Warm up the configured hooks once, preferring each hook's async warm-up."""
-        if not self._hooks_warmed_up:
-            await warm_up_hooks_async(self.hooks)
-            self._hooks_warmed_up = True
-
     def warm_up(self) -> None:
         """Warm up the tools, hooks, and the underlying chat generator."""
         warm_up_tools(tools=self.tools)
-        self._warm_up_hooks()
+        warm_up_hooks(self.hooks)
         if hasattr(self.chat_generator, "warm_up"):
             self.chat_generator.warm_up()
 
     async def warm_up_async(self) -> None:
         """Warm up the tools, hooks, and the underlying chat generator on the serving event loop."""
         warm_up_tools(tools=self.tools)
-        await self._warm_up_hooks_async()
+        await warm_up_hooks_async(self.hooks)
         if hasattr(self.chat_generator, "warm_up_async"):
             await self.chat_generator.warm_up_async()
         elif hasattr(self.chat_generator, "warm_up"):
