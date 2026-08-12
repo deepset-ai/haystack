@@ -33,7 +33,7 @@ from haystack.dataclasses.chat_message import ChatRole, TextContent
 from haystack.dataclasses.streaming_chunk import StreamingChunk
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.hooks import hook
-from haystack.tools import ComponentTool, Tool, tool
+from haystack.tools import ComponentTool, Tool
 from haystack.tools.toolset import Toolset
 from haystack.utils import Secret
 
@@ -76,12 +76,6 @@ def weather_function(location):
         if city in location.lower():
             return result
     return {"weather": "unknown", "temperature": 0, "unit": "celsius"}
-
-
-@tool
-def weather_tool_with_decorator(location: str) -> str:
-    """Provides weather information for a given location."""
-    return f"Weather report for {location}: 20°C, sunny"
 
 
 @pytest.fixture
@@ -803,28 +797,50 @@ class TestAgentRun:
 
 
 class TestAgentStreaming:
-    @pytest.mark.parametrize("callback_source", ["agent_init", "run_param", "chat_generator_init"])
-    def test_streaming_callback_sources(self, openai_mock_chat_completion_chunk, weather_tool, callback_source):
+    def test_run_with_params_streaming(self, openai_mock_chat_completion_chunk, weather_tool):
         streaming_callback_called = False
 
         def streaming_callback(chunk: StreamingChunk) -> None:
             nonlocal streaming_callback_called
             streaming_callback_called = True
 
-        if callback_source == "agent_init":
-            chat_generator = OpenAIChatGenerator(api_key=Secret.from_token("test-api-key"))
-            agent = Agent(chat_generator=chat_generator, tools=[weather_tool], streaming_callback=streaming_callback)
-            response = agent.run([ChatMessage.from_user("Hello")])
-        elif callback_source == "run_param":
-            chat_generator = OpenAIChatGenerator(api_key=Secret.from_token("test-api-key"))
-            agent = Agent(chat_generator=chat_generator, tools=[weather_tool])
-            response = agent.run([ChatMessage.from_user("Hello")], streaming_callback=streaming_callback)
-        else:
-            chat_generator = OpenAIChatGenerator(
-                api_key=Secret.from_token("test-api-key"), streaming_callback=streaming_callback
-            )
-            agent = Agent(chat_generator=chat_generator, tools=[weather_tool])
-            response = agent.run([ChatMessage.from_user("Hello")])
+        chat_generator = OpenAIChatGenerator(api_key=Secret.from_token("test-api-key"))
+        agent = Agent(chat_generator=chat_generator, tools=[weather_tool], streaming_callback=streaming_callback)
+        response = agent.run([ChatMessage.from_user("Hello")])
+
+        assert streaming_callback_called is True
+        assert len(response["messages"]) == 2
+        assert "Hello" in response["messages"][1].text  # see openai_mock_chat_completion_chunk
+        assert response["last_message"] == response["messages"][-1]
+
+    def test_run_with_run_streaming(self, openai_mock_chat_completion_chunk, weather_tool):
+        streaming_callback_called = False
+
+        def streaming_callback(chunk: StreamingChunk) -> None:
+            nonlocal streaming_callback_called
+            streaming_callback_called = True
+
+        chat_generator = OpenAIChatGenerator(api_key=Secret.from_token("test-api-key"))
+        agent = Agent(chat_generator=chat_generator, tools=[weather_tool])
+        response = agent.run([ChatMessage.from_user("Hello")], streaming_callback=streaming_callback)
+
+        assert streaming_callback_called is True
+        assert len(response["messages"]) == 2
+        assert "Hello" in response["messages"][1].text  # see openai_mock_chat_completion_chunk
+        assert response["last_message"] == response["messages"][-1]
+
+    def test_keep_generator_streaming(self, openai_mock_chat_completion_chunk, weather_tool):
+        streaming_callback_called = False
+
+        def streaming_callback(chunk: StreamingChunk) -> None:
+            nonlocal streaming_callback_called
+            streaming_callback_called = True
+
+        chat_generator = OpenAIChatGenerator(
+            api_key=Secret.from_token("test-api-key"), streaming_callback=streaming_callback
+        )
+        agent = Agent(chat_generator=chat_generator, tools=[weather_tool])
+        response = agent.run([ChatMessage.from_user("Hello")])
 
         assert streaming_callback_called is True
         assert len(response["messages"]) == 2
