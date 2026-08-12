@@ -952,14 +952,20 @@ is reused. This can be useful for long-running applications to control memory us
 #### spawn
 
 ```python
-spawn() -> SearchableToolset
+spawn(selected_tool_names: set[str] | None = None) -> SearchableToolset
 ```
 
-Return an isolated copy for a single run.
+Return an isolated copy for a single run, carrying the given name selection.
 
 The copy shares the read-only catalog and BM25 index but gets fresh discovered tools and name selection,
-plus a bootstrap search tool bound to the copy. This way concurrent runs sharing the same configured
-SearchableToolset don't share discovered tools or collide on the active selection.
+plus a bootstrap search tool bound to the copy; the selection scopes both iteration and search. This way
+concurrent runs sharing the same configured SearchableToolset don't share discovered tools or collide on
+the active selection.
+
+**Parameters:**
+
+- **selected_tool_names** (<code>set\[str\] | None</code>) – Optional catalog tool names this run is restricted to. None means no
+  restriction.
 
 **Returns:**
 
@@ -1325,60 +1331,45 @@ agent = Agent(chat_generator=OpenAIChatGenerator(), tools=math_toolset)
    By subclassing Toolset, you can create implementations that dynamically load tools from external sources like
    OpenAPI URLs, MCP servers, or other resources.
 
+   When implementing a custom Toolset subclass for dynamic tool loading:
+
+   - Load the tools in `warm_up()` and assign them to `self.tools`. Since `warm_up()` may be called before
+     every run, make it idempotent by guarding on your own state (e.g. `if self._client is not None: return`).
+   - Override `to_dict()` and `from_dict()` to serialize the endpoint descriptor (URL, server info) rather than
+     the dynamically loaded Tool instances.
+
    Example:
 
 ```python
-from typing import Annotated
 from haystack.core.serialization import generate_qualified_class_name
-from haystack.tools import tool, Toolset
-from haystack.components.agents import Agent
-from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.tools import Toolset
 
-class CalculatorToolset(Toolset):
-    '''A toolset for calculator operations.'''
+class RemoteServiceToolset(Toolset):
+    def __init__(self, endpoint: str) -> None:
+        self.endpoint = endpoint
+        self._client = None
+        super().__init__(tools=[])  # tools are loaded on warm_up()
 
-    def __init__(self) -> None:
-        super().__init__(self._create_tools())
-
-    def _create_tools(self):
-        # These tools are defined statically for illustration purposes only.
-        # In a real-world scenario, you would dynamically load tools from an external source here.
-        @tool
-        def add(a: Annotated[int, "first number"], b: Annotated[int, "second number"]) -> int:
-            '''Add two numbers.'''
-            return a + b
-
-        @tool
-        def multiply(a: Annotated[int, "first number"], b: Annotated[int, "second number"]) -> int:
-            '''Multiply two numbers.'''
-            return a * b
-
-        return [add, multiply]
+    def warm_up(self) -> None:
+        if self._client is not None:
+            return
+        self._client = connect(self.endpoint)
+        self.tools = self._client.fetch_tools()
 
     def to_dict(self):
         return {
             "type": generate_qualified_class_name(type(self)),
-            "data": {},  # no data to serialize as we define the tools dynamically
+            "data": {"endpoint": self.endpoint},
         }
 
     @classmethod
     def from_dict(cls, data):
-        return cls()  # Recreate the tools dynamically during deserialization
-
-# Create the dynamic toolset and use it with an Agent
-calculator_toolset = CalculatorToolset()
-agent = Agent(chat_generator=OpenAIChatGenerator(), tools=calculator_toolset)
+        return cls(endpoint=data["data"]["endpoint"])
 ```
 
 Toolset implements the collection interface (__iter__, __contains__, __len__, __getitem__), making it behave like
 a list of Tools. This makes it compatible with components that expect iterable tools, such as Agent or Haystack
 chat generators.
-
-When implementing a custom Toolset subclass for dynamic tool loading:
-
-- Perform the dynamic loading in the __init__ method
-- Override to_dict() and from_dict() methods if your tools are defined dynamically
-- Serialize endpoint descriptors rather than tool instances if your tools are loaded from external sources
 
 #### get_selectable_tools
 
@@ -1386,14 +1377,10 @@ When implementing a custom Toolset subclass for dynamic tool loading:
 get_selectable_tools() -> list[Tool]
 ```
 
-Return the full set of tools that can be selected by name, ignoring any active name filter.
+Return the tools available for name-based selection (e.g. via `Agent.run(tools=["tool_name"])`).
 
-This differs from iteration, which yields only the tools currently exposed (and respects the name filter).
-Override this when a Toolset's iteration does not surface every selectable tool, so name-based selection
-can still target the full set.
-
-Warms up the Toolset first if needed, so lazily loaded tools (those a Toolset fetches in `warm_up()`)
-are available for selection.
+Warms up the Toolset first, so lazily loaded tools are selectable too. Subclasses whose iteration does
+not surface every selectable tool (e.g. SearchableToolset) override this to return the full set.
 
 **Returns:**
 
@@ -1402,19 +1389,23 @@ are available for selection.
 #### spawn
 
 ```python
-spawn() -> Toolset
+spawn(selected_tool_names: set[str] | None = None) -> Toolset
 ```
 
-Return an isolated copy of this Toolset for a single run.
+Return this Toolset, or an isolated copy of it, for a single run.
 
-The copy shares this Toolset's read-only state (its tools and any warmed-up resources) but gets fresh
-run-scoped state, so concurrent runs that share the same configured Toolset don't corrupt each other (for
-example, one run's name selection leaking into another). Warms up first if needed so the copy shares the
-warmed state. Subclasses with additional run-scoped state should override this.
+A plain Toolset has no run-scoped state, so the default implementation returns `self` and ignores the
+selection (the Agent materializes it). Subclasses with run-scoped state (e.g. SearchableToolset) override
+this to return a copy carrying the selection, so concurrent runs sharing the same configured Toolset
+don't corrupt each other.
+
+**Parameters:**
+
+- **selected_tool_names** (<code>set\[str\] | None</code>) – Optional tool names this run is restricted to. None means no restriction.
 
 **Returns:**
 
-- <code>Toolset</code> – A run-scoped copy of this Toolset.
+- <code>Toolset</code> – This Toolset, or a run-scoped copy of it.
 
 #### warm_up
 
@@ -1429,23 +1420,24 @@ Subclasses can override this method to customize initialization behavior, such a
 
 - Setting up shared resources (database connections, HTTP sessions) instead of
   warming individual tools
-- Implementing custom initialization logic for dynamically loaded tools
+- Loading tools dynamically from an external source and assigning them to `self.tools`
 - Controlling when and how tools are initialized
 
 For example, a Toolset that manages tools from an external service (like MCPToolset)
-might override this to initialize a shared connection rather than warming up
-individual tools:
+might override this to initialize a shared connection and load the tools through it:
 
 ```python
 class MCPToolset(Toolset):
     def warm_up(self) -> None:
-        # Only warm up the shared MCP connection, not individual tools
+        if self.mcp_connection is not None:
+            return
         self.mcp_connection = establish_connection(self.server_url)
+        self.tools = self.mcp_connection.fetch_tools()
 ```
 
-This method is idempotent: it only warms up the tools the first time it is called.
-Subclasses overriding it should preserve this contract (for example by guarding on
-`self._is_warmed_up`).
+This method may be called multiple times (e.g. before every run): implementations are responsible for
+their own idempotence, guarding on their own state as in the example above. The default implementation delegates
+to the tools' own idempotent `warm_up()`.
 
 #### add
 
@@ -1455,16 +1447,14 @@ add(tool: Tool | Toolset) -> None
 
 Add a new Tool or merge another Toolset.
 
-If this Toolset has already been warmed up, the newly added Tool (or the tools of the
-added Toolset) are warmed up immediately so they are ready to use without requiring a
-second `warm_up()` call on the whole Toolset.
-
 Note: adding a Toolset flattens it into its individual tools, so this is only recommended
 for Toolsets that don't manage shared resources in their `warm_up()` (or `__init__`).
 For example, combining with an `MCPToolset`, which owns a shared connection, is not
 recommended: the connection's lifecycle would no longer be managed by the original
-Toolset. In those cases combine Toolsets with `+` (which preserves each Toolset as a
-unit via `_ToolsetWrapper`) instead.
+Toolset.
+
+Adding a Toolset is deprecated and will be removed in Haystack 3.2.0: pass Toolsets as a
+list wherever tools are accepted instead, e.g. `Agent(tools=[toolset_a, toolset_b])`.
 
 **Parameters:**
 

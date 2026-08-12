@@ -127,7 +127,7 @@ print(result["last_message"].text)
 
 ### Class-based hooks
 
-A hook is any object with a `run(state)` method; it may additionally define `run_async(state)` for true async behavior. Class-based hooks may also implement the optional lifecycle methods `warm_up` / `warm_up_async` and `close` / `close_async`. The Agent calls them from its own `warm_up` / `close`, so a hook can defer opening clients or reading credentials until warm-up and release them on close.
+A hook is any object with a `run(state)` method; it may additionally define `run_async(state)` for true async behavior. Class-based hooks may also implement the optional lifecycle methods `warm_up` / `warm_up_async` and `close` / `close_async`. The Agent calls them from its own `warm_up` / `close`, so a hook can defer opening clients or reading credentials until warm-up and release them on close. Because warm-up runs before every Agent run, a hook should not repeat expensive initialization: return early if the work is already done, as in `if self._client is not None: return`.
 
 When a class-based hook should be serializable (so an Agent using it can be serialized), implement `to_dict` / `from_dict`: store serializable constructor arguments on the hook and rebuild runtime clients from those values.
 
@@ -151,7 +151,8 @@ class GradeFinalAnswer:
         self._judge = OpenAIChatGenerator(model=self.model)
 
     def warm_up(self) -> None:
-        # Warm up the judge's own client during the Agent's warm-up.
+        # The Agent calls this before every run, but OpenAIChatGenerator.warm_up
+        # creates its client only on the first call, so repeating it is safe and cheap.
         self._judge.warm_up()
 
     def close(self) -> None:

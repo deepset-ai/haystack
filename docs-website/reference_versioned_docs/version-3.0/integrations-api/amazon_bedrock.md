@@ -1671,6 +1671,10 @@ Creates an instance of the 'AmazonBedrockRanker'.
 - **meta_data_separator** (<code>str</code>) – Separator used to concatenate the meta fields
   to the Document content.
 
+**Raises:**
+
+- <code>ValueError</code> – If `model` is empty or if `top_k` is not > 0.
+
 #### to_dict
 
 ```python

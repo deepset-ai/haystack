@@ -112,6 +112,26 @@ def fallback_on_max_steps(state: State) -> None:
 For the full parameter reference, see the [Agents API Documentation](/reference/agents-api).
 :::
 
+### Cloning and modifying an agent
+
+Agent attributes are not meant to be reassigned after initialization: several parameters are processed at init time, so setting an attribute on a built agent does not reliably take effect. The recommended way to get a modified version of an existing agent is `clone()`.
+
+`clone()` returns a new agent with the same configuration, optionally replacing some init parameters. This is useful for creating a variant of an agent you did not build yourself, such as one returned by a factory function of the [Agent Pack](./agent-pack.mdx).
+
+```python
+variant = agent.clone(system_prompt="Answer in German.", max_agent_steps=20)
+```
+
+Overrides replace the original values. To extend a list or dictionary instead, unpack the existing value and add your entries:
+
+```python
+extended = agent.clone(
+    tools=[*agent.tools, my_new_tool],
+    state_schema={**agent.state_schema, "notes": {"type": str}},
+    hooks={**agent.hooks, "before_llm": [my_hook]},
+)
+```
+
 ## Usage
 
 ### On its own

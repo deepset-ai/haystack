@@ -4,12 +4,19 @@ name: CLA draft gate
 #  - Scheduled sweep: if a first-time contributor's PR is older than 1 hour and
 #    the `license/cla` status is not green, convert the PR to draft, remove the
 #    requested reviewers (remembering them in a hidden comment marker), label it
-#    `cla-pending`, and explain why in a comment.
+#    `cla-pending`, and explain why in a comment. The PR's linked issues are
+#    handed back too: the reviewers we removed are unassigned and the issue is
+#    moved out of the review column of the Open Source project board, undoing
+#    what linked_issue_review.yml did when the PR was opened. Otherwise a parked
+#    PR keeps its issue looking taken and in review.
 #  - When the CLA is signed (the `license/cla` commit status turns green), mark
 #    the PR ready for review again and re-request the same reviewers. This also
 #    covers the case where the contributor marks the PR ready for review
-#    themselves after signing. The scheduled sweep doubles as a backstop in case
-#    a status event is missed.
+#    themselves after signing. The resulting ready_for_review/review_requested
+#    events make linked_issue_review.yml re-claim the linked issues, which only
+#    works because gating unassigned them (it skips issues that already have an
+#    assignee). The scheduled sweep doubles as a backstop in case a status event
+#    is missed.
 #  - Team members are never gated. author_association is unreliable for this
 #    (private org members appear as CONTRIBUTOR/NONE), so effective repository
 #    permission is used instead.
@@ -43,7 +50,8 @@ jobs:
       github.event_name != 'status' ||
       (github.event.context == 'license/cla' && github.event.state == 'success')
     steps:
-      - uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+      - id: gate
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         with:
           # The convertPullRequestToDraft/markPullRequestReadyForReview GraphQL
           # mutations require a user token; GITHUB_TOKEN fails with "Resource
@@ -62,6 +70,10 @@ jobs:
             const WARNING_MARKER = "<!-- cla-warning-10d -->";
             const FIRST_TIMER = new Set(["FIRST_TIME_CONTRIBUTOR", "FIRST_TIMER", "NONE"]);
             const { owner, repo } = context.repo;
+
+            // Node ids of the linked issues released by this run, handed to the
+            // next step (which needs a different token to touch the project).
+            const parkedIssueIds = new Set();
 
             // Team members must never be gated. author_association is unreliable
             // for this: PRIVATE org members show up as CONTRIBUTOR/NONE in webhook
@@ -110,6 +122,44 @@ jobs:
                 .catch(() => {}); // already exists
             }
 
+            // linked_issue_review.yml assigns the requested reviewers to the PR's
+            // linked issues and moves them to the review column, to signal that the
+            // issue is taken. A gated PR isn't being reviewed, so hand the issue
+            // back: unassign exactly the reviewers we removed (anybody else stays,
+            // e.g. a maintainer who deliberately assigned themselves) and remember
+            // the issue for the board step.
+            async function releaseLinkedIssues(pr, meta) {
+              const assignees = meta.reviewers ?? [];
+              // linked_issue_review only claims an issue when it has individual
+              // reviewers to assign, so with nobody to unassign there is nothing to
+              // hand back -- and no reason to move the board item either.
+              if (!assignees.length) return;
+
+              const result = await github.graphql(
+                `query($owner: String!, $repo: String!, $number: Int!) {
+                  repository(owner: $owner, name: $repo) {
+                    pullRequest(number: $number) {
+                      closingIssuesReferences(first: 10) {
+                        nodes { id number repository { nameWithOwner } }
+                      }
+                    }
+                  }
+                }`,
+                { owner, repo, number: pr.number },
+              );
+              const issues = result.repository.pullRequest.closingIssuesReferences.nodes.filter(
+                (issue) => issue.repository.nameWithOwner === `${owner}/${repo}`,
+              );
+              for (const issue of issues) {
+                // Logins that aren't assigned are ignored, so this is idempotent.
+                await github.rest.issues.removeAssignees({
+                  owner, repo, issue_number: issue.number, assignees,
+                });
+                parkedIssueIds.add(issue.id);
+                core.info(`Released linked issue #${issue.number} of PR #${pr.number}`);
+              }
+            }
+
             async function gate(pr) {
               const labels = pr.labels.map((l) => l.name);
               if (labels.includes(EXEMPT_LABEL)) return;
@@ -118,8 +168,8 @@ jobs:
               const teamReviewers = (pr.requested_teams ?? []).map((t) => t.slug);
 
               const existing = await findMarkerComment(pr.number);
+              let meta = { reviewers, team_reviewers: teamReviewers };
               if (!existing) {
-                const meta = { reviewers, team_reviewers: teamReviewers };
                 const body = [
                   `${MARKER}${JSON.stringify(meta)} -->`,
                   `Hi @${pr.user.login}, thanks a lot for your contribution! :pray:`,
@@ -134,16 +184,20 @@ jobs:
                     "for review again and a reviewer will be re-assigned.",
                 ].join("\n");
                 await github.rest.issues.createComment({ owner, repo, issue_number: pr.number, body });
-              } else if (reviewers.length || teamReviewers.length) {
+              } else {
                 // Merge any newly requested reviewers into the stored metadata.
-                const meta = parseMarker(existing.body);
-                meta.reviewers = [...new Set([...(meta.reviewers ?? []), ...reviewers])];
-                meta.team_reviewers = [...new Set([...(meta.team_reviewers ?? []), ...teamReviewers])];
-                const rest = existing.body.slice(existing.body.indexOf(" -->") + 4);
-                await github.rest.issues.updateComment({
-                  owner, repo, comment_id: existing.id,
-                  body: `${MARKER}${JSON.stringify(meta)} -->${rest}`,
-                });
+                const stored = parseMarker(existing.body);
+                meta = {
+                  reviewers: [...new Set([...(stored.reviewers ?? []), ...reviewers])],
+                  team_reviewers: [...new Set([...(stored.team_reviewers ?? []), ...teamReviewers])],
+                };
+                if (reviewers.length || teamReviewers.length) {
+                  const rest = existing.body.slice(existing.body.indexOf(" -->") + 4);
+                  await github.rest.issues.updateComment({
+                    owner, repo, comment_id: existing.id,
+                    body: `${MARKER}${JSON.stringify(meta)} -->${rest}`,
+                  });
+                }
               }
 
               if (reviewers.length || teamReviewers.length) {
@@ -162,6 +216,10 @@ jobs:
                 "mutation($id: ID!) { convertPullRequestToDraft(input: { pullRequestId: $id }) { pullRequest { isDraft } } }",
                 { id: pr.node_id },
               );
+              // Uses the merged metadata rather than pr.requested_reviewers: on the
+              // re-gate path (contributor readies the PR themselves and CODEOWNERS
+              // re-requests review) the two differ, and we want to release both.
+              await releaseLinkedIssues(pr, meta);
               core.info(`Gated PR #${pr.number} (CLA not signed)`);
             }
 
@@ -302,6 +360,11 @@ jobs:
                   if (await claSigned(pr.head.sha)) {
                     await restore(pr);
                   } else if (pr.draft) {
+                    // Also re-run the release: it heals PRs that were gated before
+                    // this ran on any linked issues, and issues that got re-claimed
+                    // while the PR was briefly readied.
+                    const comment = await findMarkerComment(pr.number);
+                    await releaseLinkedIssues(pr, comment ? parseMarker(comment.body) : {});
                     await escalate(pr);
                   } else {
                     // Readied without signing: put it back in draft, then escalate.
@@ -321,4 +384,92 @@ jobs:
               } catch (error) {
                 core.warning(`PR #${pr.number}: ${error.message}`);
               }
+            }
+
+            core.setOutput("backlog_issue_ids", JSON.stringify([...parkedIssueIds]));
+
+      - name: Move released issues back to the backlog
+        if: steps.gate.outputs.backlog_issue_ids && steps.gate.outputs.backlog_issue_ids != '[]'
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          ISSUE_NODE_IDS: ${{ steps.gate.outputs.backlog_issue_ids }}
+          PROJECT_ORG: deepset-ai
+          PROJECT_NUMBER: "5"
+          # Names of the Status options, matched case-insensitively and falling
+          # back to a substring match (the review option is ":eyes: In review").
+          # This only undoes the move linked_issue_review.yml made, so an issue is
+          # left alone unless it currently sits in the review column.
+          REVIEW_STATUS_NAME: In review
+          BACKLOG_STATUS_NAME: Backlog
+        with:
+          # The default GITHUB_TOKEN cannot access org-level projects.
+          github-token: ${{ secrets.GH_PROJECT_PAT }}
+          script: |
+            const issueIds = JSON.parse(process.env.ISSUE_NODE_IDS);
+
+            const result = await github.graphql(
+              `query($org: String!, $number: Int!) {
+                organization(login: $org) {
+                  projectV2(number: $number) {
+                    id
+                    field(name: "Status") {
+                      ... on ProjectV2SingleSelectField { id options { id name } }
+                    }
+                  }
+                }
+              }`,
+              { org: process.env.PROJECT_ORG, number: Number(process.env.PROJECT_NUMBER) },
+            );
+            const project = result.organization.projectV2;
+            const field = project.field;
+            const optionFor = (name) =>
+              field.options.find((o) => o.name.toLowerCase() === name.toLowerCase()) ??
+              field.options.find((o) => o.name.toLowerCase().includes(name.toLowerCase()));
+
+            const backlog = optionFor(process.env.BACKLOG_STATUS_NAME);
+            const review = optionFor(process.env.REVIEW_STATUS_NAME);
+            if (!backlog || !review) {
+              core.warning(
+                `No Status option matching "${process.env.BACKLOG_STATUS_NAME}" and ` +
+                  `"${process.env.REVIEW_STATUS_NAME}" in project ${process.env.PROJECT_NUMBER}. ` +
+                  `Available: ${field.options.map((o) => o.name).join(", ")}`,
+              );
+              return;
+            }
+
+            for (const issueId of issueIds) {
+              const node = await github.graphql(
+                `query($id: ID!) {
+                  node(id: $id) {
+                    ... on Issue {
+                      projectItems(first: 50) {
+                        nodes {
+                          id
+                          project { id }
+                          fieldValueByName(name: "Status") {
+                            ... on ProjectV2ItemFieldSingleSelectValue { optionId }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }`,
+                { id: issueId },
+              );
+              const item = node.node.projectItems.nodes.find((n) => n.project.id === project.id);
+              // Nothing to release if the issue was never added to the board, and
+              // don't override a column somebody moved the issue to deliberately.
+              if (!item || item.fieldValueByName?.optionId !== review.id) continue;
+              await github.graphql(
+                `mutation($projectId: ID!, $itemId: ID!, $fieldId: ID!, $optionId: String!) {
+                  updateProjectV2ItemFieldValue(
+                    input: {
+                      projectId: $projectId, itemId: $itemId, fieldId: $fieldId,
+                      value: { singleSelectOptionId: $optionId }
+                    }
+                  ) { projectV2Item { id } }
+                }`,
+                { projectId: project.id, itemId: item.id, fieldId: field.id, optionId: backlog.id },
+              );
+              core.info(`Moved issue ${issueId} back to "${backlog.name}"`);
             }

@@ -72,7 +72,7 @@ Compactors receive the current messages, a target token count, and the same toke
 
 | Compactor | Strategy | Trade-off |
 | --- | --- | --- |
-| [`SlidingWindowCompactor`](compaction/sliding-window-compactor.mdx) | Preserves the Agent's instructions, latest user task, and recent complete Agent steps while removing older history. | Fast and local, but discarded information is not summarized. |
+| [`SlidingWindowCompactor`](compaction/sliding-window-compactor.mdx) | Preserves the Agent's instructions and latest user task, keeps complete historical turns while they fit, and trims the current task's own Agent steps only when that is not enough. | Fast and local, but discarded information is not summarized. |
 | [`ToolResultPruningCompactor`](compaction/tool-result-pruning-compactor.mdx) | Replaces older, large tool results with short placeholders while preserving tool-call/result structure. | Retains the shape of the run and recent results, but removes the content of pruned results. |
 
 ## Combining compaction strategies
@@ -108,7 +108,7 @@ agent = Agent(
 )
 ```
 
-If pruning brings the updated context below `compact_at`, the sliding-window hook does nothing. If pruning returns `None` because no eligible results remain, or it shortens the context without getting below the trigger, the sliding window removes older complete Agent steps. Configure both hooks for the same model context window and compatible token counters so they make decisions from comparable estimates.
+If pruning brings the updated context below `compact_at`, the sliding-window hook does nothing. If pruning returns `None` because no eligible results remain, or it shortens the context without getting below the trigger, the sliding window removes historical turns and then, if needed, the current task's oldest Agent steps. A result the pruning compactor already replaced with a placeholder stays with the historical turn it belongs to, so its tool call keeps an answer. Configure both hooks for the same model context window and compatible token counters so they make decisions from comparable estimates.
 
 ### Creating a custom compactor
 

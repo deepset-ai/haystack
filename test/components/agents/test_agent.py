@@ -481,7 +481,8 @@ class TestAgent:
         assert agent.tools[0].function is weather_function
         assert isinstance(agent.tools[1]._component, PromptBuilder)
         assert agent.exit_conditions == ["text", "weather_tool"]
-        assert agent.state_schema == {
+        assert agent.state_schema == {"foo": {"type": str}}
+        assert agent.resolved_state_schema == {
             "foo": {"type": str},
             "messages": {"handler": merge_lists, "type": list[ChatMessage]},
             "step_count": {"type": int, "handler": replace_values},
@@ -594,7 +595,8 @@ class TestAgent:
             },
         }
         agent = Agent.from_dict(data)
-        assert agent.state_schema == {
+        assert agent.state_schema == {}
+        assert agent.resolved_state_schema == {
             "messages": {"type": list[ChatMessage], "handler": merge_lists},
             "step_count": {"type": int, "handler": replace_values},
             "token_usage": {"type": dict[str, Any], "handler": replace_values},
@@ -639,7 +641,8 @@ class TestAgent:
         assert deserialized_agent.tools[0].function is weather_function
         assert isinstance(deserialized_agent.tools[1]._component, PromptBuilder)
         assert deserialized_agent.exit_conditions == ["text", "weather_tool"]
-        assert deserialized_agent.state_schema == {
+        assert deserialized_agent.state_schema == {"foo": {"type": str}}
+        assert deserialized_agent.resolved_state_schema == {
             "foo": {"type": str},
             "messages": {"handler": merge_lists, "type": list[ChatMessage]},
             "step_count": {"type": int, "handler": replace_values},
@@ -652,6 +655,64 @@ class TestAgent:
             "context_tokens": {"type": int, "handler": replace_values},
         }
         assert deserialized_agent.streaming_callback is sync_streaming_callback
+
+    def test_clone(self, weather_tool):
+        agent = Agent(
+            chat_generator=MockChatGenerator("Hello"),
+            tools=[weather_tool],
+            system_prompt="You are helpful",
+            exit_conditions=["text", "weather_tool"],
+            state_schema={"foo": {"type": str}},
+            max_agent_steps=7,
+        )
+
+        clone = agent.clone()
+
+        assert clone is not agent
+        assert clone.to_dict() == agent.to_dict()
+
+    @pytest.mark.parametrize(
+        "name, value",
+        [
+            ("system_prompt", "A nice system prompt"),
+            ("max_agent_steps", 3),
+            ("exit_conditions", ["weather_tool"]),
+            ("state_schema", {"bar": {"type": int}}),
+        ],
+    )
+    def test_clone_with_overrides(self, weather_tool, name, value):
+        agent = Agent(
+            chat_generator=MockChatGenerator("Hello"),
+            tools=[weather_tool],
+            system_prompt="You are helpful",
+            state_schema={"foo": {"type": str}},
+        )
+
+        clone = agent.clone(**{name: value})
+
+        assert getattr(clone, name) == value
+
+        # only the overridden init parameter differs
+        original_params = agent.to_dict()["init_parameters"]
+        clone_params = clone.to_dict()["init_parameters"]
+        assert clone_params.keys() == original_params.keys()
+        for key in original_params:
+            if key == name:
+                assert clone_params[key] != original_params[key]
+            else:
+                assert clone_params[key] == original_params[key]
+
+    def test_clone_with_additional_state_schema_and_tools(self, weather_tool, component_tool):
+        agent = Agent(
+            chat_generator=MockChatGenerator("Hello"), tools=[weather_tool], state_schema={"foo": {"type": str}}
+        )
+
+        clone = agent.clone(
+            tools=[*agent.tools, component_tool], state_schema={**agent.state_schema, "notes": {"type": str}}
+        )
+
+        assert clone.tools == [weather_tool, component_tool]
+        assert clone.state_schema == {"foo": {"type": str}, "notes": {"type": str}}
 
     def test_exit_conditions(self, weather_tool, component_tool, monkeypatch):
         monkeypatch.setenv("FAKE_OPENAI_KEY", "fake-key")
@@ -1772,6 +1833,34 @@ class TestAgentTracing:
 
 
 class TestAgentToolSelection:
+    @staticmethod
+    def _agent_with_duplicate_tool_names() -> Agent:
+        def make_tool(description: str) -> Tool:
+            return Tool(
+                name="same_name",
+                description=description,
+                parameters={"type": "object", "properties": {}},
+                function=lambda: None,
+            )
+
+        agent = Agent(
+            chat_generator=MockChatGenerator("Hello"),
+            tools=[Toolset([make_tool("first")]), Toolset([make_tool("second")])],
+        )
+        agent.warm_up()
+        return agent
+
+    def test_run_raises_on_duplicate_tool_names_across_toolsets(self):
+        agent = self._agent_with_duplicate_tool_names()
+        with pytest.raises(ValueError, match="Duplicate tool names"):
+            agent.run(messages=[ChatMessage.from_user("hi")])
+
+    @pytest.mark.asyncio
+    async def test_run_async_raises_on_duplicate_tool_names_across_toolsets(self):
+        agent = self._agent_with_duplicate_tool_names()
+        with pytest.raises(ValueError, match="Duplicate tool names"):
+            await agent.run_async(messages=[ChatMessage.from_user("hi")])
+
     def test_tool_selection_new_tool(self, weather_tool: Tool, component_tool: Tool):
         chat_generator = MockChatGenerator("Hello")
         agent = Agent(chat_generator=chat_generator, tools=[weather_tool], system_prompt="This is a system prompt.")
@@ -2202,13 +2291,14 @@ class TestAgentWarmUp:
         agent.warm_up()
         assert toolset.was_warmed_up
 
-    def test_warm_up_mixed_toolsets(self):
+    def test_warm_up_list_of_toolsets(self):
+        # Toolsets are combined by passing them as a list; each keeps its own warm_up.
         tool1 = self._make_tracking_tool("tool1")
         toolset1 = self._make_tracking_toolset([tool1])
         tool2 = self._make_tracking_tool("tool2")
         toolset2 = self._make_tracking_toolset([tool2])
 
-        agent = Agent(chat_generator=MockChatGenerator("Hello"), tools=toolset1 + toolset2)
+        agent = Agent(chat_generator=MockChatGenerator("Hello"), tools=[toolset1, toolset2])
 
         assert not toolset1.was_warmed_up
         assert not toolset2.was_warmed_up
@@ -2236,7 +2326,7 @@ class TestAgentWarmUp:
         assert toolset1.was_warmed_up
         assert toolset2.was_warmed_up
 
-    def test_warm_up_is_idempotent(self):
+    def test_warm_up_rewarms_tools_on_every_call(self):
         call_count = {"n": 0}
         tool = Tool(
             name="counting_tool",
@@ -2257,16 +2347,28 @@ class TestAgentWarmUp:
         agent.warm_up()
         agent.warm_up()
 
-        assert call_count["n"] == 1
+        assert call_count["n"] == 3
 
-    def test_warm_up_refreshes_toolset(self):
-        """Agent.warm_up() must warm up lazy toolsets (e.g. MCPToolset) so the actual tools are available at runtime."""
-        placeholder_tool = Tool(
-            name="mcp_not_connected_placeholder_123",
-            description="Placeholder tool before connection",
-            parameters={"type": "object", "properties": {}},
-            function=lambda: "placeholder",
-        )
+    @pytest.mark.parametrize(
+        "initial_tools",
+        [
+            pytest.param([], id="empty"),
+            pytest.param(
+                [
+                    Tool(
+                        name="mcp_not_connected_placeholder_123",
+                        description="Placeholder tool before connection",
+                        parameters={"type": "object", "properties": {}},
+                        function=lambda: "placeholder",
+                    )
+                ],
+                id="placeholder",
+            ),
+        ],
+    )
+    def test_warm_up_loads_lazy_toolset(self, initial_tools):
+        # Before warm_up(), a lazy toolset (e.g. MCPToolset) is either empty or contains a placeholder tool.
+        # Agent.warm_up() must load the real tools in both cases.
         actual_tool = Tool(
             name="get_time",
             description="Get the current time in ISO format",
@@ -2274,21 +2376,21 @@ class TestAgentWarmUp:
             function=lambda: "2024-12-01T12:00:00Z",
         )
 
-        class MockMCPToolset(Toolset):
+        class LazyToolset(Toolset):
             def __init__(self):
-                super().__init__([placeholder_tool])
                 self._connected = False
+                super().__init__(list(initial_tools))
 
             def warm_up(self):
                 if not self._connected:
                     self.tools = [actual_tool]
                     self._connected = True
 
-        mcp_toolset = MockMCPToolset()
-        agent = Agent(chat_generator=MockChatGenerator("Hello"), tools=mcp_toolset)
-        assert mcp_toolset.tools == [placeholder_tool]
+        toolset = LazyToolset()
+        agent = Agent(chat_generator=MockChatGenerator("Hello"), tools=toolset)
+        assert toolset.tools == initial_tools
         agent.warm_up()
-        assert mcp_toolset.tools == [actual_tool]
+        assert toolset.tools == [actual_tool]
 
     def test_run_warms_lazy_toolset_before_tool_selection(self):
         """
@@ -2400,7 +2502,6 @@ class TestComponentLifecycle:
 
         chat_generator.warm_up.reset_mock()
         agent.run([ChatMessage.from_user("What is the weather in Berlin?")])
-        assert agent._tools_warmed_up is True
         # warm_up runs twice here: the Agent delegates to the generator, and the generator's own run() self-warms
         assert chat_generator.warm_up.call_count == 2
 
