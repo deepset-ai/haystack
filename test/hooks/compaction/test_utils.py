@@ -8,7 +8,7 @@ from haystack.dataclasses import ChatMessage, ChatRole
 from haystack.hooks.compaction.utils import (
     _COMPACTION_META_KEY,
     _agent_step_spans,
-    _current_step_groups,
+    _current_agent_step_groups,
     _estimated_context_tokens,
     _historical_turn_groups,
     _historical_turn_spans,
@@ -131,7 +131,7 @@ class TestIsCompactionMessage:
             pytest.param("sliding_window", ChatRole.SYSTEM, False, id="matching-strategy-wrong-role"),
         ],
     )
-    def test_matches_a_strategy_and_an_optional_role(self, strategy, role, expected):
+    def test_strategy_and_role(self, strategy, role, expected):
         note = ChatMessage.from_user(text="removed", meta={_COMPACTION_META_KEY: {"strategy": "sliding_window"}})
         assert _is_compaction_message(message=note, strategy=strategy, role=role) is expected
 
@@ -139,19 +139,19 @@ class TestIsCompactionMessage:
         "message",
         [
             pytest.param(ChatMessage.from_user(text="hi"), id="no-marker"),
-            # A marker that is not a mapping cannot carry a strategy, so it matches nothing.
+            # A marker that is not a dict cannot carry a strategy, so it matches nothing.
             pytest.param(
                 ChatMessage.from_user(text="odd", meta={_COMPACTION_META_KEY: "sliding_window"}),
-                id="marker-that-is-not-a-mapping",
+                id="marker-that-is-not-a-dict",
             ),
         ],
     )
-    def test_does_not_match_without_a_usable_marker(self, message):
+    def test_unusable_marker(self, message):
         assert _is_compaction_message(message=message, strategy="sliding_window") is False
 
 
 class TestHistoricalTurnGroups:
-    def test_covers_the_turns_between_the_system_block_and_the_task(self):
+    def test_basic(self):
         messages = [
             ChatMessage.from_system("rules"),
             ChatMessage.from_user("old question"),
@@ -160,14 +160,14 @@ class TestHistoricalTurnGroups:
         ]
         assert _historical_turn_groups(messages=messages, system_end=1, task_index=3) == [[1, 2]]
 
-    def test_there_is_no_history_without_a_task_anchor(self):
+    def test_missing_task_anchor(self):
         # With no user message to anchor on, everything after the system block belongs to the current task instead.
         messages = [ChatMessage.from_system("rules"), ChatMessage.from_assistant("step")]
         assert _historical_turn_groups(messages=messages, system_end=1, task_index=None) == []
 
 
-class TestCurrentStepGroups:
-    def test_covers_the_steps_after_the_task_anchor(self):
+class TestCurrentAgentStepGroups:
+    def test_basic(self):
         messages = [
             ChatMessage.from_system("rules"),
             ChatMessage.from_user("current task"),
@@ -175,11 +175,11 @@ class TestCurrentStepGroups:
             tool_result("result", call_id="c1"),
             ChatMessage.from_assistant("answer"),
         ]
-        assert _current_step_groups(messages=messages, system_end=1, task_index=1) == [[2, 3], [4]]
+        assert _current_agent_step_groups(messages=messages, system_end=1, task_index=1) == [[2, 3], [4]]
 
-    def test_starts_after_the_system_block_without_a_task_anchor(self):
+    def test_missing_task_anchor(self):
         messages = [ChatMessage.from_system("rules"), ChatMessage.from_assistant("step")]
-        assert _current_step_groups(messages=messages, system_end=1, task_index=None) == [[1]]
+        assert _current_agent_step_groups(messages=messages, system_end=1, task_index=None) == [[1]]
 
 
 class TestEstimatedContextTokens:

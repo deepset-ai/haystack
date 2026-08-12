@@ -82,8 +82,18 @@ def _agent_step_spans(messages: list[ChatMessage], start: int) -> list[tuple[int
     return spans
 
 
-def _current_step_groups(messages: list[ChatMessage], system_end: int, task_index: int | None) -> list[list[int]]:
-    """Return message-index groups for complete Agent steps belonging to the current task."""
+def _current_agent_step_groups(messages: list[ChatMessage], system_end: int, task_index: int | None) -> list[list[int]]:
+    """
+    Return message-index groups for complete Agent steps belonging to the current task.
+
+    :param messages: The conversation to analyze, ordered oldest to newest.
+    :param system_end: The end of the leading system-message block. Steps are looked for from here when the
+        conversation has no user message to anchor on.
+    :param task_index: The index of the user message anchoring the current task, or None when there is none. Steps are
+        looked for from the message after it.
+    :returns: One group of message indices per step, ordered oldest step first. A step is an assistant message and all
+        immediately following tool results, so a group holds a tool call together with its results.
+    """
     step_start = task_index + 1 if task_index is not None else system_end
     return [list(range(start, end)) for start, end in _agent_step_spans(messages=messages, start=step_start)]
 
@@ -106,7 +116,16 @@ def _historical_turn_spans(messages: list[ChatMessage], start: int, end: int) ->
 
 
 def _historical_turn_groups(messages: list[ChatMessage], system_end: int, task_index: int | None) -> list[list[int]]:
-    """Return message-index groups for complete historical turns preceding the current task."""
+    """
+    Return message-index groups for complete historical turns preceding the current task.
+
+    :param messages: The conversation to analyze, ordered oldest to newest.
+    :param system_end: The end of the leading system-message block, where the history begins.
+    :param task_index: The index of the user message anchoring the current task, where the history ends. None when
+        there is no such message, in which case the history is empty and everything belongs to the current task.
+    :returns: One group of message indices per turn, ordered oldest turn first. A turn is a user message that
+        compaction did not produce, together with everything that follows it up to the next one.
+    """
     historical_end = task_index if task_index is not None else system_end
     return [
         list(range(start, end))

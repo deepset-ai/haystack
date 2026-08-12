@@ -61,7 +61,7 @@ class TestIsCompactionNote:
             pytest.param(
                 ChatMessage.from_user(text="odd", meta={_COMPACTION_META_KEY: "sliding_window"}),
                 False,
-                id="marker-that-is-not-a-mapping",
+                id="marker-that-is-not-a-dict",
             ),
         ],
     )
