@@ -22,11 +22,15 @@ def _hook_name(hook: Hook) -> str:
         function = hook.function or hook.async_function
         if function is not None:
             try:
-                return serialize_callable(callable_handle=function)
-            except SerializationError:
-                # Tracing must not prevent an otherwise runnable hook from executing. Nested functions and lambdas are
-                # unsupported by serialization, but their qualified names are still useful within the current process.
-                return f"{function.__module__}.{function.__qualname__}"
+                try:
+                    return serialize_callable(callable_handle=function)
+                except SerializationError:
+                    # Nested functions and lambdas are unsupported by serialization, but their qualified names are still
+                    # useful.
+                    return f"{function.__module__}.{function.__qualname__}"
+            # functools.partial and callable-object instances may not expose __module__, __qualname__, or __name__.
+            except Exception:
+                pass
     return type(hook).__name__
 
 

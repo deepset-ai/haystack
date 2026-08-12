@@ -2,18 +2,28 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import functools
 import threading
 
 import pytest
 
 from haystack.components.agents.state import State
-from haystack.hooks import hook
+from haystack.hooks import FunctionHook, hook
 from haystack.hooks.invocation import _run_hooks, _run_hooks_async
 
 
 @hook
 def traced_function_hook(state: State) -> None:
     state.set(key="messages", value=[])
+
+
+def plain_function_hook(state: State) -> None:
+    pass
+
+
+class CallableFunctionHook:
+    def __call__(self, state: State) -> None:
+        pass
 
 
 class RecordingHook:
@@ -90,6 +100,16 @@ class TestRunHooks:
             "haystack.agent.hook.name": "test.hooks.test_invocation.traced_function_hook",
             "haystack.agent.hook.type": "haystack.hooks.from_function.FunctionHook",
         }
+
+    @pytest.mark.parametrize(
+        "function", [functools.partial(plain_function_hook), CallableFunctionHook()], ids=["partial", "callable-object"]
+    )
+    def test_function_hook_name_falls_back_when_callable_has_no_name(self, spying_tracer, function):
+        # We don't support serialization of partials or callable-object instances, so the span name falls back to the
+        # class name.
+        function_hook = FunctionHook(function=function)
+        _run_hooks(hooks={"before_run": [function_hook]}, hook_point="before_run", state=State(schema={}))
+        assert spying_tracer.spans[0].tags["haystack.agent.hook.name"] == "FunctionHook"
 
     def test_no_hooks_does_not_create_span(self, spying_tracer):
         _run_hooks(hooks={}, hook_point="before_llm", state=State(schema={}))
