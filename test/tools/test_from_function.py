@@ -539,8 +539,7 @@ def test_from_function_with_openapi_example_containing_title_key():
 
     def render(
         options: Annotated[dict, "rendering options"] = Field(  # noqa: B008
-            default={},
-            json_schema_extra={"example": {"title": "Untitled", "width": "80"}},
+            default={}, json_schema_extra={"example": {"title": "Untitled", "width": "80"}}
         ),
     ) -> str:
         """Render a document."""
