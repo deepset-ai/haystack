@@ -3,14 +3,15 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import json
-from dataclasses import replace
-from typing import Any
+from dataclasses import asdict, replace
+from typing import Any, Literal
 
 from haystack import tracing
 from haystack.components.agents.state.state import State
 from haystack.core.serialization import component_to_dict, default_from_dict, default_to_dict
 from haystack.dataclasses import ChatMessage, ToolCall
 from haystack.hooks.human_in_the_loop import ToolExecutionDecision
+from haystack.hooks.human_in_the_loop.dataclasses import _AppliedToolDecision
 from haystack.hooks.human_in_the_loop.types import ConfirmationPolicy, ConfirmationStrategy, ConfirmationUI
 from haystack.tools import Tool
 from haystack.utils.deserialization import deserialize_component_inplace
@@ -239,49 +240,20 @@ def _passthrough_tool_call(tool_call: ToolCall) -> ToolExecutionDecision:
     )
 
 
-def _set_confirmation_tracing_tags(
-    *, messages_with_tool_calls: list[ChatMessage], tool_execution_decisions: list[ToolExecutionDecision]
-) -> None:
+def _set_confirmation_tracing_tags(*, applied_decisions: list[_AppliedToolDecision]) -> None:
     """Add Human-in-the-Loop decision metadata and optional content to the current hook span."""
-    tool_calls = [tool_call for message in messages_with_tool_calls for tool_call in message.tool_calls or []]
-    decisions = []
-    decision_details = []
-
-    for tool_call, tool_execution_decision in zip(tool_calls, tool_execution_decisions, strict=True):
-        if not tool_execution_decision.execute:
-            outcome = "reject"
-        elif tool_call.arguments != (tool_execution_decision.final_tool_params or {}):
-            outcome = "modify"
-        else:
-            outcome = "confirm"
-        decisions.append({"tool_name": tool_call.tool_name, "decision": outcome})
-        decision_details.append(
-            {
-                "tool_name": tool_call.tool_name,
-                "decision": outcome,
-                "original_arguments": tool_call.arguments,
-                "final_arguments": tool_execution_decision.final_tool_params,
-                "feedback": tool_execution_decision.feedback,
-            }
-        )
+    decisions = [
+        {"tool_name": applied_decision.tool_name, "decision": applied_decision.decision}
+        for applied_decision in applied_decisions
+    ]
 
     span = tracing.tracer.current_span()
     if span is not None:
-        span.set_tags(
-            tags={
-                "haystack.agent.hook.human_in_the_loop.tool_decisions": decisions,
-                "haystack.agent.hook.human_in_the_loop.confirmed": sum(
-                    decision["decision"] == "confirm" for decision in decisions
-                ),
-                "haystack.agent.hook.human_in_the_loop.modified": sum(
-                    decision["decision"] == "modify" for decision in decisions
-                ),
-                "haystack.agent.hook.human_in_the_loop.rejected": sum(
-                    decision["decision"] == "reject" for decision in decisions
-                ),
-            }
+        span.set_tags(tags={"haystack.agent.hook.human_in_the_loop.tool_decisions": decisions})
+        span.set_content_tag(
+            key="haystack.agent.hook.human_in_the_loop.tool_decision_details",
+            value=[asdict(applied_decision) for applied_decision in applied_decisions],
         )
-        span.set_content_tag(key="haystack.agent.hook.human_in_the_loop.tool_decision_details", value=decision_details)
 
 
 def _process_confirmation_strategies(
@@ -317,12 +289,11 @@ def _process_confirmation_strategies(
         tools=tools,
         confirmation_strategy_context=confirmation_strategy_context,
     )
-    _set_confirmation_tracing_tags(messages_with_tool_calls=messages_with_tool_calls, tool_execution_decisions=teds)
-
     # Apply tool execution decisions to messages_with_tool_calls
-    rejection_messages, modified_tool_call_messages = _apply_tool_execution_decisions(
+    rejection_messages, modified_tool_call_messages, applied_decisions = _apply_tool_execution_decisions(
         tool_call_messages=messages_with_tool_calls, tool_execution_decisions=teds
     )
+    _set_confirmation_tracing_tags(applied_decisions=applied_decisions)
 
     # Update the chat history with rejection messages and new tool call messages
     return _update_chat_history(
@@ -367,12 +338,11 @@ async def _process_confirmation_strategies_async(
         tools=tools,
         confirmation_strategy_context=confirmation_strategy_context,
     )
-    _set_confirmation_tracing_tags(messages_with_tool_calls=messages_with_tool_calls, tool_execution_decisions=teds)
-
     # Apply tool execution decisions to messages_with_tool_calls
-    rejection_messages, modified_tool_call_messages = _apply_tool_execution_decisions(
+    rejection_messages, modified_tool_call_messages, applied_decisions = _apply_tool_execution_decisions(
         tool_call_messages=messages_with_tool_calls, tool_execution_decisions=teds
     )
+    _set_confirmation_tracing_tags(applied_decisions=applied_decisions)
 
     # Update the chat history with rejection messages and new tool call messages
     return _update_chat_history(
@@ -512,7 +482,7 @@ async def _run_confirmation_strategies_async(
 
 def _apply_tool_execution_decisions(
     tool_call_messages: list[ChatMessage], tool_execution_decisions: list[ToolExecutionDecision]
-) -> tuple[list[ChatMessage], list[ChatMessage]]:
+) -> tuple[list[ChatMessage], list[ChatMessage], list[_AppliedToolDecision]]:
     """
     Apply the tool execution decisions to the tool call messages.
 
@@ -524,6 +494,7 @@ def _apply_tool_execution_decisions(
           messages.
         - A list of tool call messages for confirmed or modified tool calls. If tool parameters were modified,
           a user message explaining the modification is included before the tool call message.
+        - The applied decisions, matched to their original tool calls and classified for tracing.
     """
     decision_by_id = {d.tool_call_id: d for d in tool_execution_decisions if d.tool_call_id}
     decision_by_name = {d.tool_name: d for d in tool_execution_decisions if d.tool_name}
@@ -548,6 +519,7 @@ def _apply_tool_execution_decisions(
 
     new_tool_call_messages = []
     rejection_messages = []
+    applied_decisions: list[_AppliedToolDecision] = []
 
     for chat_msg in tool_call_messages:
         new_tool_calls = []
@@ -557,7 +529,28 @@ def _apply_tool_execution_decisions(
                 # This shouldn't happen, if so something went wrong in _run_confirmation_strategies
                 continue
 
+            # Determine the outcome of the decision
+            final_args = ted.final_tool_params or {}
+            outcome: Literal["confirm", "modify", "reject"]
             if not ted.execute:
+                outcome = "reject"
+            elif tc.arguments != final_args:
+                outcome = "modify"
+            else:
+                outcome = "confirm"
+
+            # Collect applied decision for tracing
+            applied_decisions.append(
+                _AppliedToolDecision(
+                    tool_name=tc.tool_name,
+                    decision=outcome,
+                    original_arguments=tc.arguments,
+                    final_arguments=ted.final_tool_params,
+                    feedback=ted.feedback,
+                )
+            )
+
+            if outcome == "reject":
                 # rejected tool call
                 tool_result_text = ted.feedback or REJECTION_FEEDBACK_TEMPLATE.format(tool_name=tc.tool_name)
                 rejection_messages.extend(
@@ -569,8 +562,7 @@ def _apply_tool_execution_decisions(
                 continue
 
             # Covers confirm and modify cases
-            final_args = ted.final_tool_params or {}
-            if tc.arguments != final_args:
+            if outcome == "modify":
                 # In the modify case we add a user message explaining the modification otherwise the LLM won't know
                 # why the tool parameters changed and will likely just try and call the tool again with the
                 # original parameters.
@@ -585,9 +577,9 @@ def _apply_tool_execution_decisions(
             new_tool_call_messages.append(make_assistant_message(chat_msg, new_tool_calls))
 
     # new_tool_call_messages is a list of assistant messages with an optional preceding user message explaining
-    #   modifications
+    # modifications
     # rejection_messages is a list of pairs of assistant and tool messages for rejected tool calls
-    return rejection_messages, new_tool_call_messages
+    return rejection_messages, new_tool_call_messages, applied_decisions
 
 
 def _update_chat_history(

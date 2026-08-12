@@ -19,6 +19,7 @@ from haystack.hooks.human_in_the_loop import (
     SimpleConsoleUI,
     ToolExecutionDecision,
 )
+from haystack.hooks.human_in_the_loop.dataclasses import _AppliedToolDecision
 from haystack.hooks.human_in_the_loop.strategies import (
     _apply_tool_execution_decisions,
     _process_confirmation_strategies,
@@ -268,7 +269,7 @@ class TestApplyToolExecutionDecisions:
         return ChatMessage.from_assistant(tool_calls=[tool_call])
 
     def test_reject(self, tools, assistant_message):
-        rejection_messages, new_tool_call_messages = _apply_tool_execution_decisions(
+        rejection_messages, new_tool_call_messages, applied_decisions = _apply_tool_execution_decisions(
             tool_call_messages=[assistant_message],
             tool_execution_decisions=[
                 ToolExecutionDecision(
@@ -292,9 +293,18 @@ class TestApplyToolExecutionDecisions:
             ),
         ]
         assert new_tool_call_messages == []
+        assert applied_decisions == [
+            _AppliedToolDecision(
+                tool_name="addition_tool",
+                decision="reject",
+                original_arguments={"a": 1, "b": 2},
+                final_arguments=None,
+                feedback="The tool execution for 'addition_tool' was rejected by the user. With feedback: Not needed",
+            )
+        ]
 
     def test_confirm(self, tools, assistant_message):
-        rejection_messages, new_tool_call_messages = _apply_tool_execution_decisions(
+        rejection_messages, new_tool_call_messages, applied_decisions = _apply_tool_execution_decisions(
             tool_call_messages=[assistant_message],
             tool_execution_decisions=[
                 ToolExecutionDecision(
@@ -304,9 +314,18 @@ class TestApplyToolExecutionDecisions:
         )
         assert rejection_messages == []
         assert new_tool_call_messages == [assistant_message]
+        assert applied_decisions == [
+            _AppliedToolDecision(
+                tool_name="addition_tool",
+                decision="confirm",
+                original_arguments={"a": 1, "b": 2},
+                final_arguments={"a": 1, "b": 2},
+                feedback=None,
+            )
+        ]
 
     def test_modify(self, tools, assistant_message):
-        rejection_messages, new_tool_call_messages = _apply_tool_execution_decisions(
+        rejection_messages, new_tool_call_messages, applied_decisions = _apply_tool_execution_decisions(
             tool_call_messages=[assistant_message],
             tool_execution_decisions=[
                 ToolExecutionDecision(
@@ -326,6 +345,15 @@ class TestApplyToolExecutionDecisions:
             ChatMessage.from_assistant(
                 tool_calls=[ToolCall(tool_name=tools[0].name, arguments={"a": 5, "b": 6}, id="1")]
             ),
+        ]
+        assert applied_decisions == [
+            _AppliedToolDecision(
+                tool_name="addition_tool",
+                decision="modify",
+                original_arguments={"a": 1, "b": 2},
+                final_arguments={"a": 5, "b": 6},
+                feedback="The parameters for tool 'addition_tool' were updated by the user to:\n{'a': 5, 'b': 6}",
+            )
         ]
 
     def test_two_teds_same_name_no_ids(self):
@@ -406,7 +434,7 @@ class TestUpdateChatHistory:
             tool_calls=[ToolCall("tool1", {"a": 1, "b": 2}, id="1"), ToolCall("tool2", {"a": 3, "b": 4}, id="2")]
         )
         chat_history = [ChatMessage.from_user("What is 1 + 2? and 3 + 4?"), tool_call_message]
-        rejection_messages, modified_tool_call_messages = _apply_tool_execution_decisions(
+        rejection_messages, modified_tool_call_messages, _ = _apply_tool_execution_decisions(
             tool_call_messages=[tool_call_message],
             tool_execution_decisions=[
                 ToolExecutionDecision(
@@ -447,7 +475,7 @@ class TestUpdateChatHistory:
             tool_calls=[ToolCall("tool1", {"a": 1, "b": 2}, id="1"), ToolCall("tool2", {"a": 3, "b": 4}, id="2")]
         )
         chat_history = [ChatMessage.from_user("What is 1 + 2? and 3 + 4?"), tool_call_message]
-        rejection_messages, modified_tool_call_messages = _apply_tool_execution_decisions(
+        rejection_messages, modified_tool_call_messages, _ = _apply_tool_execution_decisions(
             tool_call_messages=[tool_call_message],
             tool_execution_decisions=[
                 ToolExecutionDecision(

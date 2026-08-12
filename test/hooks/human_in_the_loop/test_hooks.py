@@ -316,9 +316,6 @@ class TestConfirmationHookTracing:
                 {"tool_name": "modified_tool", "decision": "modify"},
                 {"tool_name": "rejected_tool", "decision": "reject"},
             ],
-            "haystack.agent.hook.human_in_the_loop.confirmed": 1,
-            "haystack.agent.hook.human_in_the_loop.modified": 1,
-            "haystack.agent.hook.human_in_the_loop.rejected": 1,
             "haystack.agent.hook.human_in_the_loop.tool_decision_details": [
                 {
                     "tool_name": "confirmed_tool",
@@ -387,9 +384,6 @@ class TestConfirmationHookTracing:
         assert span.tags["haystack.agent.hook.human_in_the_loop.tool_decisions"] == [
             {"tool_name": "addition_tool", "decision": "reject"}
         ]
-        assert span.tags["haystack.agent.hook.human_in_the_loop.confirmed"] == 0
-        assert span.tags["haystack.agent.hook.human_in_the_loop.modified"] == 0
-        assert span.tags["haystack.agent.hook.human_in_the_loop.rejected"] == 1
         assert span.tags["haystack.agent.hook.human_in_the_loop.tool_decision_details"][0]["original_arguments"] == {
             "a": 1,
             "b": 2,
