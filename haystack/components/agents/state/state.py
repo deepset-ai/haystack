@@ -196,15 +196,15 @@ class State:
         :param skip_keys: List of keys to skip during serialization
         :returns: Dictionary representation of the State object
         """
-        skipped = set(skip_keys or [])
-        schema = {key: definition for key, definition in self.schema.items() if key not in skipped}
-        data = {key: value for key, value in self._data.items() if key not in skipped}
+        skip_keys = skip_keys or []
+        schema = {key: definition for key, definition in self.schema.items() if key not in skip_keys}
+        data = {key: value for key, value in self._data.items() if key not in skip_keys}
 
         serialized = {}
         serialized["schema"] = _schema_to_dict(schema=schema)
         # Field-level fallback so a single non-serializable value omits only that field instead of
         # failing the whole State serialization.
-        serialized["data"] = _serialize_with_field_fallback(data, description="the agent's State data")
+        serialized["data"] = _serialize_with_field_fallback(payload=data, description="the agent's State data")
 
         return serialized
 
