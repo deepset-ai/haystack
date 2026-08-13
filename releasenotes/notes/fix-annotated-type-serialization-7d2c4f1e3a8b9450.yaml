@@ -1,0 +1,12 @@
+---
+fixes:
+  - |
+    Fixed ``serialize_type``/``deserialize_type`` for ``typing.Annotated``. Previously an ``Annotated`` type hint was
+    serialized with its metadata values rendered as bare tokens (e.g. ``typing.Annotated[int, doc]``), which failed to
+    deserialize, and values that looked like type names (e.g. ``Annotated[str, "int"]``) were silently turned into
+    types on the round-trip. Literal metadata (str, int, bool, None, bytes) is now serialized with ``repr()`` and
+    read back with ``ast.literal_eval``; type metadata is serialized through ``serialize_type`` and resolved through
+    ``deserialize_type`` on read. A quote-aware split is used on the deserialize side so a comma inside a string
+    metadata value (e.g. ``Annotated[int, "a, b"]``) is not treated as an argument separator. An ``Annotated`` type
+    used by a component (such as an ``OutputAdapter`` or any tool whose schema uses Pydantic ``Field`` metadata) now
+    round-trips correctly through pipeline serialization. Mirrors the ``Literal`` fix from ``#12286``.
