@@ -1,0 +1,92 @@
+---
+title: "TaskMarketToolset"
+id: taskmarkettoolset
+slug: "/taskmarkettoolset"
+description: "Expose confirmation-gated TaskMarket discovery and task-request tools to Haystack agents."
+---
+
+# TaskMarketToolset
+
+`TaskMarketToolset` exposes TaskMarket discovery and task-request operations as Haystack tools. It is intended for agents that need to find or request work through the TaskMarket API while keeping spending and submission decisions under application control.
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Mandatory init variables** | None for read-only operation; provide `approval` to enable task creation |
+| **API reference**            | [TaskMarketToolset](/reference/tools-api#taskmarkettoolset) |
+| **GitHub link**              | https://github.com/deepset-ai/haystack/blob/main/haystack/tools/taskmarket.py |
+| **Package name**             | `haystack-ai` |
+
+</div>
+
+## Overview
+
+The toolset provides five tools:
+
+- `taskmarket_list_tasks`: list public tasks without spending funds.
+- `taskmarket_get_task`: retrieve the current status of a task.
+- `taskmarket_list_submissions`: retrieve submissions for application-level review.
+- `taskmarket_preview_task`: normalize a proposed request and calculate its maximum Base USDC spend without writing anything.
+- `taskmarket_create_task`: create a task only after a matching preview, `confirm=True`, an application-provided approval callback, and a Base USDC balance check.
+
+The write path calls the first-party `taskmarket` CLI exactly once after preflight. It does not accept or reject submissions, does not receive wallet private keys, and does not retry an ambiguous write. If a write times out, inspect TaskMarket before deciding whether any follow-up is appropriate.
+
+## Installation
+
+Install the TaskMarket CLI separately when task creation is needed:
+
+```shell
+npm install -g @lucid-agents/taskmarket
+```
+
+Read-only tools use the public TaskMarket HTTP API and do not require the CLI.
+
+## Usage
+
+```python
+from typing import Any
+
+from haystack.tools import TaskMarketToolset
+
+
+def approve_task(preview: dict[str, Any]) -> bool:
+    """Connect this callback to the application's human or policy approval flow."""
+    print(f"Review {preview['rewardUsdc']} USDC: {preview['description']}")
+    return application_policy_allows(preview)  # Replace with your approval flow.
+
+
+toolset = TaskMarketToolset(approval=approve_task)
+```
+
+Without an `approval` callback, the toolset remains safe for discovery and preview but blocks task creation.
+
+### Preview before creating
+
+Call `taskmarket_preview_task` first. The result contains the canonical request, Base chain ID, USDC contract, deadline, maximum spend, and a short-lived confirmation token. The maximum spend includes the configured platform and relay fees, so the approval flow can show the full amount before any CLI write.
+
+```python
+preview = next(t for t in toolset if t.name == "taskmarket_preview_task").invoke(
+    description="Build and test a small Haystack component",
+    reward_usdc="1.00",
+    duration_hours=24,
+    mode="bounty",
+)
+
+created = next(t for t in toolset if t.name == "taskmarket_create_task").invoke(
+    description="Build and test a small Haystack component",
+    reward_usdc="1.00",
+    duration_hours=24,
+    confirmation_token=preview["confirmationToken"],
+    confirm=True,
+    mode="bounty",
+)
+```
+
+The application should treat a result with `status="unknown"` as an indeterminate write and reconcile it through `taskmarket_get_task` or the TaskMarket CLI before attempting anything else.
+
+:::warning
+
+Task creation spends USDC. Use a real approval callback, keep the CLI wallet configured for Base USDC, and never put a private key in a Haystack pipeline or tool argument.
+
+:::
