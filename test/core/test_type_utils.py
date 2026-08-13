@@ -1022,6 +1022,8 @@ class TestConversion:
             ConversionStrategy.STR_TO_CHAT_MESSAGE,
         )
 
+        assert _types_are_compatible(sender=int, receiver=str | ChatMessage) == (False, None)
+
         assert _types_are_compatible(sender=ChatMessage, receiver=list[ChatMessage] | None) == (
             True,
             ConversionStrategy.WRAP,
@@ -1030,8 +1032,6 @@ class TestConversion:
             True,
             ConversionStrategy.WRAP,
         )
-
-        assert _types_are_compatible(sender=int, receiver=str | ChatMessage) == (False, None)
 
     def test_union_in_receiver_strategy_priority(self):
         assert _types_are_compatible(sender=ChatMessage, receiver=list[str] | list[ChatMessage]) == (
@@ -1042,19 +1042,8 @@ class TestConversion:
             True,
             ConversionStrategy.WRAP,
         )
+
         assert _types_are_compatible(sender=str, receiver=list[str] | list[ChatMessage]) == (
-            True,
-            ConversionStrategy.WRAP,
-        )
-        assert _types_are_compatible(sender=str, receiver=Union[list[str], ChatMessage]) == (
-            True,
-            ConversionStrategy.WRAP,
-        )
-        assert _types_are_compatible(sender=ChatMessage, receiver=str | list[ChatMessage]) == (
-            True,
-            ConversionStrategy.WRAP,
-        )
-        assert _types_are_compatible(sender=ChatMessage, receiver=str | list[str] | list[ChatMessage]) == (
             True,
             ConversionStrategy.WRAP,
         )
@@ -1080,6 +1069,19 @@ class TestConversion:
         assert _types_are_compatible(sender=str, receiver=Union[ChatMessage, list[ChatMessage]]) == (
             True,
             ConversionStrategy.STR_TO_CHAT_MESSAGE,
+        )
+
+        assert _types_are_compatible(sender=ChatMessage, receiver=str | list[ChatMessage]) == (
+            True,
+            ConversionStrategy.WRAP,
+        )
+        assert _types_are_compatible(sender=str, receiver=Union[list[str], ChatMessage]) == (
+            True,
+            ConversionStrategy.WRAP,
+        )
+        assert _types_are_compatible(sender=ChatMessage, receiver=str | list[str] | list[ChatMessage]) == (
+            True,
+            ConversionStrategy.WRAP,
         )
 
     def test_convert_value(self):
