@@ -1,0 +1,9 @@
+---
+fixes:
+  - |
+    Pipeline connections now always convert values in the same way. Before, when an output was connected to an
+    input accepting multiple types (for example ``ChatMessage`` connected to ``str | list[str]``) and more
+    than one conversion was possible, the choice was not deterministic: the same pipeline could deliver ``"hello"``
+    in one run and ``["hello"]`` in another. Conversion is now chosen using a fixed priority: first, wrapping a value
+    in a list or unwrapping a single-element list; second, converting between ``ChatMessage`` and ``str``; and last,
+    combining both conversions.
