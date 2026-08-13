@@ -481,8 +481,25 @@ def _apply_tool_execution_decisions(
     decision_by_name = {d.tool_name: d for d in tool_execution_decisions if d.tool_name}
 
     # Known limitation: If tool calls are missing IDs, we rely on tool names to match decisions to tool calls.
-    # This can lead to incorrect matches if there are multiple tool calls in the provided messages with duplicate names.
-    if not decision_by_id and len(decision_by_name) < len(tool_execution_decisions):
+    # This can lead to incorrect matches if there are multiple tool calls in the provided messages with duplicate
+    # names: decision_by_name only keeps one decision per name, so every such tool call whose own id isn't in
+    # decision_by_id would silently match that same single decision.
+    #
+    # The ambiguity has to be checked against the actual tool calls (not just the decisions): a single decision
+    # without a tool_call_id can still be applied to two tool calls that share a name, so counting duplicate names
+    # only among tool_execution_decisions misses the case where there are fewer decisions than matching tool calls.
+    tool_call_name_counts: dict[str, int] = {}
+    for chat_msg in tool_call_messages:
+        for tc in chat_msg.tool_calls or []:
+            if tc.tool_name:
+                tool_call_name_counts[tc.tool_name] = tool_call_name_counts.get(tc.tool_name, 0) + 1
+
+    ambiguous = any(
+        tc.tool_name and tool_call_name_counts.get(tc.tool_name, 0) > 1 and (tc.id or "") not in decision_by_id
+        for chat_msg in tool_call_messages
+        for tc in (chat_msg.tool_calls or [])
+    )
+    if ambiguous:
         raise ValueError(
             "ToolExecutionDecisions are missing tool_call_id fields and there are multiple tool calls with the same "
             "name. When multiple tool calls with the same name are present, tool_call_id is required to correctly "

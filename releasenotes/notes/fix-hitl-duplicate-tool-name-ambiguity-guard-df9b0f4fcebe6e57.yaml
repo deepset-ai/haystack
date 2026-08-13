@@ -1,0 +1,11 @@
+---
+fixes:
+  - |
+    Fixed ``_apply_tool_execution_decisions`` in the human-in-the-loop hooks silently applying the wrong
+    ``ToolExecutionDecision`` when multiple tool calls shared the same name. The ambiguity guard only raised
+    when *every* decision was missing a ``tool_call_id``; if just one decision in the batch had an id (even
+    for an unrelated tool call), the guard was skipped entirely. Duplicate-named tool calls whose own decision
+    lacked an id would then fall back to name-based matching, which keeps only one decision per name, so the
+    same decision (and its ``final_tool_params``) could get silently applied to the wrong tool call. A
+    ``ValueError`` is now raised whenever any tool call with a duplicated name can't be matched by id, regardless
+    of whether other decisions in the same batch have one.

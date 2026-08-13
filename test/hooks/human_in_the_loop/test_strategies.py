@@ -356,6 +356,64 @@ class TestApplyToolExecutionDecisions:
                 ],
             )
 
+    def test_two_teds_same_name_mixed_ids_raises(self):
+        """
+        Regression test: even when *some* decisions carry a tool_call_id, a duplicate-named tool call whose
+        own decision is missing an id is still ambiguous and must raise, rather than silently falling back
+        to whichever decision happens to be last in decision_by_name.
+        """
+        message_with_tool_calls = ChatMessage.from_assistant(
+            text="I'll extract the information about the people mentioned in the context.",
+            tool_calls=[
+                ToolCall(tool_name="add_database_tool", arguments={"name": "Malte"}, id="1"),
+                ToolCall(tool_name="add_database_tool", arguments={"name": "Milos"}, id="2"),
+                ToolCall(tool_name="unrelated_tool", arguments={"path": "f.txt"}, id="3"),
+            ],
+        )
+        with pytest.raises(
+            ValueError,
+            match="ToolExecutionDecisions are missing tool_call_id fields and there are multiple tool calls with the "
+            "same name",
+        ):
+            _apply_tool_execution_decisions(
+                tool_call_messages=[message_with_tool_calls],
+                tool_execution_decisions=[
+                    ToolExecutionDecision(
+                        tool_name="unrelated_tool", execute=True, tool_call_id="3", final_tool_params={"path": "f.txt"}
+                    ),
+                    # Missing tool_call_id: ambiguous against the two "add_database_tool" calls above, even though
+                    # another decision in this same batch does have an id.
+                    ToolExecutionDecision(
+                        tool_name="add_database_tool", execute=True, final_tool_params={"name": "Milos"}
+                    ),
+                ],
+            )
+
+    def test_two_teds_same_name_all_ids_present(self):
+        """When every tool call sharing a name has its own id-matched decision, matching is unambiguous."""
+        message_with_tool_calls = ChatMessage.from_assistant(
+            text="I'll extract the information about the people mentioned in the context.",
+            tool_calls=[
+                ToolCall(tool_name="add_database_tool", arguments={"name": "Malte"}, id="1"),
+                ToolCall(tool_name="add_database_tool", arguments={"name": "Milos"}, id="2"),
+            ],
+        )
+        rejection_messages, tool_call_messages = _apply_tool_execution_decisions(
+            tool_call_messages=[message_with_tool_calls],
+            tool_execution_decisions=[
+                ToolExecutionDecision(
+                    tool_name="add_database_tool", execute=True, tool_call_id="1", final_tool_params={"name": "Malte"}
+                ),
+                ToolExecutionDecision(
+                    tool_name="add_database_tool", execute=True, tool_call_id="2", final_tool_params={"name": "Milos"}
+                ),
+            ],
+        )
+        assert rejection_messages == []
+        applied_tool_calls = tool_call_messages[0].tool_calls
+        assert applied_tool_calls[0].arguments == {"name": "Malte"}
+        assert applied_tool_calls[1].arguments == {"name": "Milos"}
+
 
 class TestUpdateChatHistory:
     @pytest.fixture
