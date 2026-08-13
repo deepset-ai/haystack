@@ -189,15 +189,23 @@ class State:
         """
         return key in self._data
 
-    def to_dict(self) -> dict[str, Any]:
+    def to_dict(self, skip_keys: list[str] | None = None) -> dict[str, Any]:
         """
         Convert the State object to a dictionary.
+
+        :param skip_keys: List of keys to skip during serialization
+        :returns: Dictionary representation of the State object
         """
+        skipped = set(skip_keys or [])
+        schema = {key: definition for key, definition in self.schema.items() if key not in skipped}
+        data = {key: value for key, value in self._data.items() if key not in skipped}
+
         serialized = {}
-        serialized["schema"] = _schema_to_dict(self.schema)
+        serialized["schema"] = _schema_to_dict(schema=schema)
         # Field-level fallback so a single non-serializable value omits only that field instead of
         # failing the whole State serialization.
-        serialized["data"] = _serialize_with_field_fallback(self._data, description="the agent's State data")
+        serialized["data"] = _serialize_with_field_fallback(data, description="the agent's State data")
+
         return serialized
 
     @classmethod
