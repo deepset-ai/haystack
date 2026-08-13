@@ -11,7 +11,7 @@ from openai import AsyncOpenAI
 from openai.types import ImagesResponse
 from openai.types.image import Image
 
-import haystack.components.generators.openai_image_generator as openai_image_generator_module
+import haystack.components._openai_client_mixin as openai_client_mixin_module
 from haystack.components.generators.openai_image_generator import OpenAIImageGenerator
 from haystack.utils import Secret
 
@@ -257,8 +257,8 @@ def mock_openai_clients(monkeypatch):
     sync_cls = MagicMock(name="OpenAI")
     async_cls = MagicMock(name="AsyncOpenAI")
     async_cls.return_value.close = AsyncMock()
-    monkeypatch.setattr(openai_image_generator_module, "OpenAI", sync_cls)
-    monkeypatch.setattr(openai_image_generator_module, "AsyncOpenAI", async_cls)
+    monkeypatch.setattr(openai_client_mixin_module, "OpenAI", sync_cls)
+    monkeypatch.setattr(openai_client_mixin_module, "AsyncOpenAI", async_cls)
     return sync_cls, async_cls
 
 

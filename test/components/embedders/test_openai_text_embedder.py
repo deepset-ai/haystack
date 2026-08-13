@@ -10,7 +10,7 @@ import pytest
 from openai.types import CreateEmbeddingResponse, Embedding
 from openai.types.create_embedding_response import Usage
 
-import haystack.components.embedders.openai_text_embedder as openai_text_embedder_module
+import haystack.components._openai_client_mixin as openai_client_mixin_module
 from haystack.components.embedders.openai_text_embedder import OpenAITextEmbedder
 from haystack.utils.auth import Secret
 
@@ -232,8 +232,8 @@ def mock_openai_clients(monkeypatch):
     sync_cls = MagicMock(name="OpenAI")
     async_cls = MagicMock(name="AsyncOpenAI")
     async_cls.return_value.close = AsyncMock()
-    monkeypatch.setattr(openai_text_embedder_module, "OpenAI", sync_cls)
-    monkeypatch.setattr(openai_text_embedder_module, "AsyncOpenAI", async_cls)
+    monkeypatch.setattr(openai_client_mixin_module, "OpenAI", sync_cls)
+    monkeypatch.setattr(openai_client_mixin_module, "AsyncOpenAI", async_cls)
     return sync_cls, async_cls
 
 

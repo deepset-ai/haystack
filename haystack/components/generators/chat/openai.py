@@ -4,7 +4,6 @@
 
 import asyncio
 import json
-import os
 from datetime import datetime
 from typing import Any, ClassVar
 
@@ -23,6 +22,7 @@ from openai.types.chat.chat_completion_chunk import Choice as ChunkChoice
 from pydantic import BaseModel
 
 from haystack import component, default_from_dict, default_to_dict, logging
+from haystack.components._openai_client_mixin import OpenAIClientMixin
 from haystack.components.generators.utils import (
     _convert_streaming_chunks_to_chat_message,
     _normalize_messages,
@@ -49,13 +49,12 @@ from haystack.tools import (
     warm_up_tools,
 )
 from haystack.utils import Secret, deserialize_callable, serialize_callable
-from haystack.utils.http_client import init_http_client
 
 logger = logging.getLogger(__name__)
 
 
 @component
-class OpenAIChatGenerator:
+class OpenAIChatGenerator(OpenAIClientMixin):
     """
     Completes chats using OpenAI's large language models (LLMs).
 
@@ -96,8 +95,6 @@ class OpenAIChatGenerator:
     }
     ```
     """
-
-    _HAYSTACK_TO_PROVIDER_GENERATION_KWARGS: ClassVar[dict[str, str]] = {"max_output_tokens": "max_completion_tokens"}
 
     SUPPORTED_MODELS: ClassVar[list[str]] = [
         "gpt-5-mini",
@@ -215,67 +212,10 @@ class OpenAIChatGenerator:
         self.async_client: AsyncOpenAI | None = None
         self._tools_warmed_up = False
 
-    def _client_kwargs(self) -> dict[str, Any]:
-        timeout = self.timeout if self.timeout is not None else float(os.environ.get("OPENAI_TIMEOUT", "30.0"))
-        max_retries = (
-            self.max_retries if self.max_retries is not None else int(os.environ.get("OPENAI_MAX_RETRIES", "5"))
-        )
-        return {
-            "api_key": self.api_key.resolve_value(),
-            "organization": self.organization,
-            "base_url": self.api_base_url,
-            "timeout": timeout,
-            "max_retries": max_retries,
-        }
-
     def _warm_up_tools(self) -> None:
         if not self._tools_warmed_up:
             warm_up_tools(self.tools)
             self._tools_warmed_up = True
-
-    def warm_up(self) -> None:
-        """
-        Warm up the tools and initialize the synchronous OpenAI client.
-        """
-        self._warm_up_tools()
-        if self.client is None:
-            # openai>=3 annotates http_client as httpx2, but legacy httpx clients are supported at runtime.
-            # https://github.com/openai/openai-python/blob/main/httpx2.md
-            http_client = init_http_client(self.http_client_kwargs, async_client=False)
-            self.client = OpenAI(
-                http_client=http_client,  # type: ignore[arg-type]
-                **self._client_kwargs(),
-            )
-
-    async def warm_up_async(self) -> None:  # noqa: RUF029
-        """
-        Warm up the tools and initialize the asynchronous OpenAI client on the serving event loop.
-        """
-        self._warm_up_tools()
-        if self.async_client is None:
-            # openai>=3 annotates http_client as httpx2, but legacy httpx clients are supported at runtime.
-            # https://github.com/openai/openai-python/blob/main/httpx2.md
-            http_client = init_http_client(self.http_client_kwargs, async_client=True)
-            self.async_client = AsyncOpenAI(
-                http_client=http_client,  # type: ignore[arg-type]
-                **self._client_kwargs(),
-            )
-
-    def close(self) -> None:
-        """
-        Releases the synchronous OpenAI client.
-        """
-        if self.client is not None:
-            self.client.close()
-            self.client = None
-
-    async def close_async(self) -> None:
-        """
-        Releases the asynchronous OpenAI client.
-        """
-        if self.async_client is not None:
-            await self.async_client.close()
-            self.async_client = None
 
     def _get_telemetry_data(self) -> dict[str, Any]:
         """
