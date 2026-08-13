@@ -1,0 +1,6 @@
+---
+features:
+  - |
+    Added the experimental ``SummarizationCompactor``. It uses a Chat Generator to condense the Agent's oldest
+    historical turns, accumulated summaries, and old current-task steps as needed to reach the context target while
+    preserving leading system messages, the latest user task, and complete recent tool-calling steps.
