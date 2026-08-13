@@ -2,12 +2,28 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import functools
 import threading
 
 import pytest
 
 from haystack.components.agents.state import State
+from haystack.hooks import FunctionHook, hook
 from haystack.hooks.invocation import _run_hooks, _run_hooks_async
+
+
+@hook
+def traced_function_hook(state: State) -> None:
+    state.set(key="messages", value=[])
+
+
+def plain_function_hook(state: State) -> None:
+    pass
+
+
+class CallableFunctionHook:
+    def __call__(self, state: State) -> None:
+        pass
 
 
 class RecordingHook:
@@ -57,6 +73,48 @@ class TestRunHooks:
     def test_no_hooks_for_hook_point_is_noop(self):
         _run_hooks(hooks={}, hook_point="before_llm", state=State(schema={}))  # does not raise
 
+    def test_traces_each_hook_invocation_as_a_sibling(self, spying_tracer):
+        log: list = []
+        hooks = {"before_llm": [RecordingHook(label="a", log=log), RecordingHook(label="b", log=log)]}
+        with spying_tracer.trace(operation_name="parent") as parent_span:
+            _run_hooks(hooks=hooks, hook_point="before_llm", state=State(schema={}))
+        hook_spans = [span for span in spying_tracer.spans if span.operation_name == "haystack.agent.hook"]
+        assert len(hook_spans) == 2
+        assert all(span.parent_span is parent_span for span in hook_spans)
+        assert all(
+            span.tags
+            == {
+                "haystack.agent.hook.point": "before_llm",
+                "haystack.agent.hook.name": "RecordingHook",
+                "haystack.agent.hook.type": "test.hooks.test_invocation.RecordingHook",
+            }
+            for span in hook_spans
+        )
+
+    def test_function_hook_span_identifies_wrapped_function(self, spying_tracer):
+        _run_hooks(hooks={"before_run": [traced_function_hook]}, hook_point="before_run", state=State(schema={}))
+        span = spying_tracer.spans[0]
+        assert span.operation_name == "haystack.agent.hook"
+        assert span.tags == {
+            "haystack.agent.hook.point": "before_run",
+            "haystack.agent.hook.name": "test.hooks.test_invocation.traced_function_hook",
+            "haystack.agent.hook.type": "haystack.hooks.from_function.FunctionHook",
+        }
+
+    @pytest.mark.parametrize(
+        "function", [functools.partial(plain_function_hook), CallableFunctionHook()], ids=["partial", "callable-object"]
+    )
+    def test_function_hook_name_falls_back_when_callable_has_no_name(self, spying_tracer, function):
+        # We don't support serialization of partials or callable-object instances, so the span name falls back to the
+        # class name.
+        function_hook = FunctionHook(function=function)
+        _run_hooks(hooks={"before_run": [function_hook]}, hook_point="before_run", state=State(schema={}))
+        assert spying_tracer.spans[0].tags["haystack.agent.hook.name"] == "FunctionHook"
+
+    def test_no_hooks_does_not_create_span(self, spying_tracer):
+        _run_hooks(hooks={}, hook_point="before_llm", state=State(schema={}))
+        assert spying_tracer.spans == []
+
 
 class TestRunHooksAsync:
     @pytest.mark.asyncio
@@ -89,3 +147,20 @@ class TestRunHooksAsync:
         hooks = {"before_llm": [AsyncRecordingHook("a", log), RecordingHook("b", log)]}
         await _run_hooks_async(hooks=hooks, hook_point="before_llm", state=State(schema={}))
         assert log == [("run_async", "a"), ("run", "b")]
+
+    @pytest.mark.asyncio
+    async def test_traces_async_hook_invocation(self, spying_tracer):
+        log: list = []
+        hook_instance = AsyncRecordingHook(label="a", log=log)
+        with spying_tracer.trace(operation_name="parent") as parent_span:
+            await _run_hooks_async(
+                hooks={"after_tool": [hook_instance]}, hook_point="after_tool", state=State(schema={})
+            )
+        hook_span = spying_tracer.spans[1]
+        assert hook_span.operation_name == "haystack.agent.hook"
+        assert hook_span.parent_span is parent_span
+        assert hook_span.tags == {
+            "haystack.agent.hook.point": "after_tool",
+            "haystack.agent.hook.name": "AsyncRecordingHook",
+            "haystack.agent.hook.type": "test.hooks.test_invocation.AsyncRecordingHook",
+        }

@@ -280,6 +280,22 @@ close_async() -> None
 
 Release the hooks' and the underlying chat generator's async resources.
 
+#### clone
+
+```python
+clone(**overrides: Any) -> Agent
+```
+
+Return a new Agent configured like this one, with the given init parameters replaced.
+
+**Parameters:**
+
+- **overrides** (<code>Any</code>) – Init parameters to replace, e.g. `agent.clone(system_prompt="...")`.
+
+**Returns:**
+
+- <code>Agent</code> – The new Agent.
+
 #### to_dict
 
 ```python

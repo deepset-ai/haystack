@@ -643,12 +643,12 @@ class TestAgentHookLifecycle:
         Agent(chat_generator=MockChatGenerator(), hooks={"before_llm": [h]})
         assert h.warmed == 0
 
-    def test_warm_up_warms_hooks_once(self):
+    def test_warm_up_warms_hooks_each_call(self):
         h = LifecycleHook()
         agent = Agent(chat_generator=MockChatGenerator(), hooks={"before_llm": [h]})
         agent.warm_up()
         agent.warm_up()
-        assert h.warmed == 1
+        assert h.warmed == 2
 
     def test_reused_hook_warmed_once(self):
         h = LifecycleHook()
