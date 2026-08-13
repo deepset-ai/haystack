@@ -6,11 +6,9 @@ from typing import Any
 
 from haystack.components.generators.chat.types import ChatGenerator
 
-# The provider-neutral generation parameters that Haystack components can request from Chat Generators. These names
-# follow the OpenAI Responses API.
-_HAYSTACK_GENERATION_PARAMETERS = frozenset({"max_output_tokens", "temperature", "top_p"})
-
-_HAYSTACK_TO_PROVIDER_GENERATION_KWARGS = "_HAYSTACK_TO_PROVIDER_GENERATION_KWARGS"
+# The provider-neutral generation parameters that Haystack components can request from Chat Generators.
+# The chosen name is based on OpenAI's Responses API.
+_HAYSTACK_GENERATION_PARAMETERS = frozenset({"max_output_tokens"})
 
 
 def _convert_haystack_generation_kwargs(
@@ -34,9 +32,7 @@ def _convert_haystack_generation_kwargs(
         msg = f"Unknown Haystack generation parameter(s): {unknown}"
         raise ValueError(msg)
 
-    parameter_mapping = getattr(chat_generator, _HAYSTACK_TO_PROVIDER_GENERATION_KWARGS, {})
-    if not isinstance(parameter_mapping, dict):
-        return {}
+    parameter_mapping = getattr(chat_generator, "_HAYSTACK_TO_PROVIDER_GENERATION_KWARGS", {})
 
     return {
         provider_name: haystack_generation_kwargs[haystack_name]

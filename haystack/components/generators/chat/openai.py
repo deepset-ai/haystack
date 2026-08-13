@@ -97,11 +97,7 @@ class OpenAIChatGenerator:
     ```
     """
 
-    _HAYSTACK_TO_PROVIDER_GENERATION_KWARGS: ClassVar[dict[str, str]] = {
-        "max_output_tokens": "max_completion_tokens",
-        "temperature": "temperature",
-        "top_p": "top_p",
-    }
+    _HAYSTACK_TO_PROVIDER_GENERATION_KWARGS: ClassVar[dict[str, str]] = {"max_output_tokens": "max_completion_tokens"}
 
     SUPPORTED_MODELS: ClassVar[list[str]] = [
         "gpt-5-mini",

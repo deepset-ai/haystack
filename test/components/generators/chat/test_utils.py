@@ -2,32 +2,28 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+from typing import ClassVar
+
 import pytest
 
-from haystack.components.generators.chat import MockChatGenerator, OpenAIChatGenerator, OpenAIResponsesChatGenerator
+from haystack.components.generators.chat import MockChatGenerator
 from haystack.components.generators.chat.utils import (
     _HAYSTACK_GENERATION_PARAMETERS,
     _convert_haystack_generation_kwargs,
 )
 
 
+class MappedMockChatGenerator(MockChatGenerator):
+    _HAYSTACK_TO_PROVIDER_GENERATION_KWARGS: ClassVar[dict[str, str]] = {"max_output_tokens": "provider_max_tokens"}
+
+
 class TestConvertHaystackGenerationKwargs:
     def test_haystack_generation_parameters(self) -> None:
-        assert {"max_output_tokens", "temperature", "top_p"} == _HAYSTACK_GENERATION_PARAMETERS
+        assert {"max_output_tokens"} == _HAYSTACK_GENERATION_PARAMETERS
 
-    def test_openai_kwargs(self) -> None:
-        converted = _convert_haystack_generation_kwargs(
-            OpenAIChatGenerator.__new__(OpenAIChatGenerator),
-            {"max_output_tokens": 100, "temperature": 0.2, "top_p": 0.9},
-        )
-        assert converted == {"max_completion_tokens": 100, "temperature": 0.2, "top_p": 0.9}
-
-    def test_openai_responses_kwargs(self) -> None:
-        converted = _convert_haystack_generation_kwargs(
-            OpenAIResponsesChatGenerator.__new__(OpenAIResponsesChatGenerator),
-            {"max_output_tokens": 100, "temperature": 0.2, "top_p": 0.9},
-        )
-        assert converted == {"max_output_tokens": 100, "temperature": 0.2, "top_p": 0.9}
+    def test_conversion(self) -> None:
+        converted = _convert_haystack_generation_kwargs(MappedMockChatGenerator(), {"max_output_tokens": 100})
+        assert converted == {"provider_max_tokens": 100}
 
     def test_no_mapping(self) -> None:
         assert _convert_haystack_generation_kwargs(MockChatGenerator(), {"max_output_tokens": 100}) == {}
