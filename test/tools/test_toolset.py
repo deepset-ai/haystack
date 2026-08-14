@@ -156,6 +156,12 @@ class TestToolset:
         assert len(tool_messages) == 1
         assert tool_messages[0].tool_call_results[0].result == "5"
 
+    def test_toolset_add_rejects_toolset(self, add_tool, multiply_tool):
+        toolset = Toolset([add_tool])
+
+        with pytest.raises(TypeError, match="Expected Tool, got Toolset"):
+            toolset.add(Toolset([multiply_tool]))
+
     def test_toolset_contains(self, add_tool, multiply_tool):
         """Test that the __contains__ method works correctly."""
         toolset = Toolset([add_tool])
@@ -167,46 +173,6 @@ class TestToolset:
         assert "multiply" not in toolset
         assert "non_existent_tool" not in toolset
 
-    def test_toolset_addition(self, add_tool, multiply_tool, subtract_tool):
-        """Test that the __add__ method combines toolsets with various operand types."""
-        base = Toolset([add_tool])
-
-        # Toolset + Tool
-        result = base + multiply_tool
-        assert isinstance(result, Toolset)
-        assert [t.name for t in result] == ["add", "multiply"]
-
-        # Toolset + Toolset
-        result = base + Toolset([subtract_tool])
-        assert isinstance(result, Toolset)
-        assert [t.name for t in result] == ["add", "subtract"]
-
-        # Toolset + list[Tool]
-        result = base + [multiply_tool, subtract_tool]
-        assert isinstance(result, Toolset)
-        assert [t.name for t in result] == ["add", "multiply", "subtract"]
-
-        # Unsupported operand types raise TypeError
-        with pytest.raises(TypeError):
-            base + "not_a_tool"  # type: ignore[operator]
-        with pytest.raises(TypeError):
-            base + 123  # type: ignore[operator]
-
-        # The combined tools remain invocable
-        message = ChatMessage.from_assistant(
-            tool_calls=[
-                ToolCall(tool_name="add", arguments={"a": 10, "b": 5}),
-                ToolCall(tool_name="multiply", arguments={"a": 10, "b": 5}),
-                ToolCall(tool_name="subtract", arguments={"a": 10, "b": 5}),
-            ]
-        )
-        tool_messages = _run_tool_messages(messages=[message], tools=result)
-        tool_results = [tcr.result for message in tool_messages for tcr in message.tool_call_results]
-        assert tool_results == ["15", "50", "5"]
-
-    def test_plus_emits_future_warning(self, add_tool, multiply_tool):
-        with pytest.warns(FutureWarning):
-            _ = Toolset([add_tool]) + Toolset([multiply_tool])
 
     def test_combining_toolsets_via_unpacking(self, add_tool, multiply_tool, subtract_tool):
         combined = Toolset([*Toolset([add_tool, subtract_tool]), multiply_tool])
