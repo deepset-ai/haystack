@@ -30,6 +30,45 @@ _import_lock = Lock()
 _SPECIAL_LITERALS: dict[str, Any] = {"None": None, "NoneType": NoneType, "...": ..., "Ellipsis": ...}
 
 
+def _parse_annotated_args(args_str: str) -> list[str]:
+    """
+    Parse Annotated arguments string, handling nested brackets and quoted strings.
+
+    Annotated[int, "doc", 42] -> ["int", '"doc"', "42"]
+    Annotated[int, "a, b", "c"] -> ["int", '"a, b"', '"c"']
+    Annotated[list[int], "meta"] -> ["list[int]", '"meta"']
+    """
+    args = []
+    bracket_count = 0
+    current_arg = ""
+    in_quotes = False
+    quote_char = None
+
+    for char in args_str:
+        if char in ('"', "'") and not in_quotes:
+            in_quotes = True
+            quote_char = char
+        elif char == quote_char and in_quotes:
+            in_quotes = False
+            quote_char = None
+
+        if char == "[" and not in_quotes:
+            bracket_count += 1
+        elif char == "]" and not in_quotes:
+            bracket_count -= 1
+
+        if char == "," and bracket_count == 0 and not in_quotes:
+            args.append(current_arg.strip())
+            current_arg = ""
+        else:
+            current_arg += char
+
+    if current_arg:
+        args.append(current_arg.strip())
+
+    return args
+
+
 def _is_union_type(target: Any) -> bool:
     """
     Check if target is a Union type.
@@ -92,6 +131,16 @@ def serialize_type(target: Any) -> str:
     # strings keep their quotes.
     if typing.get_origin(target) is typing.Literal:
         return f"typing.Literal[{', '.join(repr(a) for a in get_args(target))}]"
+
+    # Annotated wraps a type with metadata (e.g. Annotated[int, "doc", 42]).
+    # The first argument is the wrapped type, the rest are metadata values.
+    # Serialize metadata with repr() so strings keep their quotes and other literals
+    # are rendered faithfully.
+    if typing.get_origin(target) is typing.Annotated:
+        args = get_args(target)
+        wrapped_type = serialize_type(args[0])
+        metadata = ", ".join(repr(a) for a in args[1:])
+        return f"typing.Annotated[{wrapped_type}, {metadata}]"
 
     args = get_args(target)
 
@@ -247,6 +296,27 @@ def deserialize_type(type_str: str) -> Any:
         # arguments.
         if main_type is typing.Literal:
             return typing.Literal[ast.literal_eval(f"({generics_str},)")]
+
+        # Annotated: first arg is the wrapped type, rest are metadata values.
+        # Use the same safe parsing as Literal, but the first arg is a type (not a literal).
+        if main_type is typing.Annotated:
+            # Parse the full argument list with the quote-aware splitter
+            annotated_args = _parse_annotated_args(generics_str)
+            if not annotated_args:
+                raise DeserializationError("Annotated requires at least one argument (the wrapped type)")
+
+            # First arg is the wrapped type - deserialize it as a type
+            wrapped_type = deserialize_type(annotated_args[0])
+
+            # Remaining args are metadata - parse them safely with ast.literal_eval
+            metadata = []
+            for meta_str in annotated_args[1:]:
+                try:
+                    metadata.append(ast.literal_eval(meta_str))
+                except (ValueError, SyntaxError) as e:
+                    raise DeserializationError(f"Could not parse Annotated metadata: {meta_str}") from e
+
+            return typing.Annotated[wrapped_type, *metadata]
 
         generic_args = [_deserialize_type_arg(arg) for arg in _parse_generic_args(generics_str)]
 

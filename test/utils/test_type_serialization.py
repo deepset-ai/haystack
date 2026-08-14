@@ -508,3 +508,36 @@ if sys.version_info < (3, 14):
         assert serialize_type(Optional[dict]) == "typing.Optional[dict]"
         assert serialize_type(Optional[float]) == "typing.Optional[float]"
         assert serialize_type(Optional[bool]) == "typing.Optional[bool]"
+
+
+def test_output_type_serialization_annotated():
+    from typing import Annotated
+    assert serialize_type(Annotated[int, "doc"]) == "typing.Annotated[int, 'doc']"
+    assert serialize_type(Annotated[str, "int"]) == "typing.Annotated[str, 'int']"
+    assert serialize_type(Annotated[int, "a, b"]) == "typing.Annotated[int, 'a, b']"
+    assert serialize_type(Annotated[int, "doc", 42, True, None, b"bytes"]) == "typing.Annotated[int, 'doc', 42, True, None, b'bytes']"
+    assert serialize_type(Annotated[list[int], "meta"]) == "typing.Annotated[list[int], 'meta']"
+
+
+def test_output_type_deserialization_annotated():
+    from typing import Annotated
+    assert deserialize_type("typing.Annotated[int, 'doc']") == Annotated[int, "doc"]
+    assert deserialize_type("typing.Annotated[str, 'int']") == Annotated[str, "int"]
+    assert deserialize_type("typing.Annotated[int, 'a, b']") == Annotated[int, "a, b"]
+    assert deserialize_type("typing.Annotated[int, 'doc', 42, True, None, b'bytes']") == Annotated[int, "doc", 42, True, None, b"bytes"]
+    assert deserialize_type("typing.Annotated[list[int], 'meta']") == Annotated[list[int], "meta"]
+
+
+def test_output_type_round_trip_annotated():
+    from typing import Annotated
+    for type_ in [
+        Annotated[int, "doc"],
+        Annotated[str, "int"],
+        Annotated[int, "a, b"],
+        Annotated[int, "doc", 42, True, None, b"bytes"],
+        Annotated[list[int], "meta"],
+        Annotated[Dict[str, int], "metadata"],
+        Optional[Annotated[int, "doc"]],
+        Union[Annotated[str, "x"], int],
+    ]:
+        assert deserialize_type(serialize_type(type_)) == type_

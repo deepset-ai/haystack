@@ -1,0 +1,10 @@
+---
+fixes:
+  - |
+    Fixes typing.Annotated round-trip through serialize_type / deserialize_type.
+    Previously, Annotated types (e.g. Annotated[int, "doc"]) could not be serialized
+    and deserialized correctly - metadata values were rendered without quotes causing
+    deserialization failures or silent corruption (e.g. Annotated[str, "int"] becoming
+    Annotated[str, int]). Now Annotated types with literal metadata (str, int, bool,
+    None, bytes) round-trip correctly, preserving both the wrapped type and metadata values.
+    Mirrors the Literal fix from PR #12286.
