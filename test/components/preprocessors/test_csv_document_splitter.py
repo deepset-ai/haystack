@@ -228,7 +228,7 @@ P,Q,,,,
             assert table.content == expected_tables[i]
             assert table.meta == expected_meta[i]
 
-    def test_recursive_split_with_nested_row_and_column_blocks(self, splitter: CSVDocumentSplitter) -> None:
+    def test_recursive_split_with_nested_row_and_column_blocks(self) -> None:
         csv_content = """A,B,C,D,E,F
 1,2,3,4,5,6
 ,,,,,
