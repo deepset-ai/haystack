@@ -238,19 +238,9 @@ def _passthrough_tool_call(tool_call: ToolCall) -> ToolExecutionDecision:
     )
 
 
-def _with_tool_call_id(decision: ToolExecutionDecision, tool_call: ToolCall) -> ToolExecutionDecision:
-    """
-    Stamp the ID of the tool call a decision was made about onto that decision, if the strategy did not pass it back.
-
-    A custom `ConfirmationStrategy` receives `tool_call_id` but is free to return a decision without it, and a decision
-    that carries no ID can only be matched back to its tool call by tool name. Restoring the ID here keeps that
-    name-based fallback for tool calls that genuinely have no ID.
-
-    :param decision: The decision a confirmation strategy returned.
-    :param tool_call: The tool call the strategy was asked about.
-    :returns: The decision, with the tool call's ID set if it had none.
-    """
-    if tool_call.id is None or decision.tool_call_id is not None:
+def _bind_decision_to_tool_call(decision: ToolExecutionDecision, tool_call: ToolCall) -> ToolExecutionDecision:
+    """Bind a confirmation decision to the tool call being processed by its tool_call_id."""
+    if decision.tool_call_id == tool_call.id:
         return decision
     return replace(decision, tool_call_id=tool_call.id)
 
@@ -404,7 +394,7 @@ def _run_confirmation_strategies(
                 tool_call_id=tool_call.id,
                 confirmation_strategy_context=confirmation_strategy_context,
             )
-            teds.append(_with_tool_call_id(ted, tool_call))
+            teds.append(_bind_decision_to_tool_call(decision=ted, tool_call=tool_call))
 
     return teds
 
@@ -474,7 +464,7 @@ async def _run_confirmation_strategies_async(
                     tool_call_id=tool_call.id,
                     confirmation_strategy_context=confirmation_strategy_context,
                 )
-            teds.append(_with_tool_call_id(ted, tool_call))
+            teds.append(_bind_decision_to_tool_call(decision=ted, tool_call=tool_call))
 
     return teds
 
@@ -494,14 +484,29 @@ def _apply_tool_execution_decisions(
         - A list of tool call messages for confirmed or modified tool calls. If tool parameters were modified,
           a user message explaining the modification is included before the tool call message.
     """
+    # Create lookup for decisions that have a tool_call_id
     decision_by_id = {d.tool_call_id: d for d in tool_execution_decisions if d.tool_call_id}
-    # Known limitation: If tool calls are missing IDs, we rely on tool names to match decisions to tool calls.
-    # This can lead to incorrect matches if there are multiple tool calls in the provided messages with duplicate names.
-    # Decisions that carry an ID stay out of the name lookup, so they cannot be handed to a different tool call.
+
+    # Create a lookup for decisions that don't have a tool_call_id. We use tool name instead.
     decisions_without_id = [d for d in tool_execution_decisions if not d.tool_call_id]
     decision_by_name = {d.tool_name: d for d in decisions_without_id if d.tool_name}
+    has_ambiguous_decisions = len(decision_by_name) < len(decisions_without_id)
 
-    if len(decision_by_name) < len(decisions_without_id):
+    # Decision names can be unique even when tool call names are not. For example:
+    # Tool calls: search, search
+    # Decisions:  search, lookup
+    # Without this check, both tool calls would reuse the single "search" decision.
+    tool_call_names_requiring_name_match = [
+        tc.tool_name
+        for message in tool_call_messages
+        for tc in (message.tool_calls or [])
+        if not tc.id or tc.id not in decision_by_id
+    ]
+    has_ambiguous_tool_calls = len(set(tool_call_names_requiring_name_match)) < len(
+        tool_call_names_requiring_name_match
+    )
+
+    if has_ambiguous_decisions or has_ambiguous_tool_calls:
         raise ValueError(
             "ToolExecutionDecisions are missing tool_call_id fields and cannot be matched by tool name. A decision "
             "without a tool_call_id is matched to its tool call by name, so those names have to be non-empty and "
