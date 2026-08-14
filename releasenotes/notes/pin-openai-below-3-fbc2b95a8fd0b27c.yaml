@@ -1,7 +1,0 @@
----
-upgrade:
-  - |
-    Pinned ``openai`` to ``<3``. The OpenAI SDK 3.0 switched its HTTP stack from ``httpx`` to
-    ``httpx2``, and the clients Haystack builds from ``http_client_kwargs`` and passes to
-    ``http_client`` are still ``httpx`` ones. Support for ``openai`` 3.x will be added in a
-    follow-up release.
