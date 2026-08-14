@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+from typing import Literal
 from unittest.mock import ANY, MagicMock
 
 import pytest
@@ -16,6 +17,7 @@ from openai.types.responses import (
     ResponseFunctionCallArgumentsDeltaEvent,
     ResponseFunctionCallArgumentsDoneEvent,
     ResponseFunctionToolCall,
+    ResponseIncompleteEvent,
     ResponseInProgressEvent,
     ResponseOutputItemAddedEvent,
     ResponseOutputItemDoneEvent,
@@ -227,14 +229,16 @@ class TestConversionToStreamingChunks:
     @pytest.mark.parametrize(
         ("incomplete_reason", "finish_reason"), [("max_output_tokens", "length"), ("content_filter", "content_filter")]
     )
-    def test_convert_incomplete_response_with_finish_reason(self, incomplete_reason: str, finish_reason: str) -> None:
+    def test_convert_incomplete_response_with_finish_reason(
+        self, incomplete_reason: Literal["max_output_tokens", "content_filter"], finish_reason: str
+    ) -> None:
         response = Response.model_construct(
             output=[],
             output_text=None,
             status="incomplete",
             incomplete_details=IncompleteDetails(reason=incomplete_reason),
         )
-        event = ResponseCompletedEvent.model_construct(response=response, type="response.incomplete")
+        event = ResponseIncompleteEvent.model_construct(response=response, type="response.incomplete")
 
         chunk = _convert_response_chunk_to_streaming_chunk(event, previous_chunks=[])
 
@@ -1247,7 +1251,9 @@ class TestResponseToChatMessage:
     @pytest.mark.parametrize(
         ("incomplete_reason", "finish_reason"), [("max_output_tokens", "length"), ("content_filter", "content_filter")]
     )
-    def test_convert_incomplete_response_with_finish_reason(self, incomplete_reason: str, finish_reason: str) -> None:
+    def test_convert_incomplete_response_with_finish_reason(
+        self, incomplete_reason: Literal["max_output_tokens", "content_filter"], finish_reason: str
+    ) -> None:
         response = Response.model_construct(
             output=[],
             output_text=None,
