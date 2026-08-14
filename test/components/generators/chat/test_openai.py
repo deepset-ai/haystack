@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any
 from unittest.mock import ANY, AsyncMock, MagicMock, patch
 
+import httpx
 import pytest
 from openai import OpenAIError
 from openai.types.chat import (
@@ -1867,6 +1868,37 @@ class TestComponentLifecycle:
 
         await generator.close_async()
         assert generator.async_client is None
+
+    def test_http_client_kwargs_are_used_for_requests(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setenv("OPENAI_API_KEY", "fake-api-key")
+        requests: list[httpx.Request] = []
+        # trimmed capture of a real /chat/completions response
+        completion = {
+            "id": "chatcmpl-ECjrZ3klFGP0kTdMQgSCTPnNr0z87",
+            "object": "chat.completion",
+            "created": 1786704941,
+            "model": "gpt-5-mini-2025-08-07",
+            "choices": [{"index": 0, "message": {"role": "assistant", "content": "Paris"}, "finish_reason": "stop"}],
+            "usage": {"prompt_tokens": 17, "completion_tokens": 10, "total_tokens": 27},
+        }
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            requests.append(request)
+            return httpx.Response(200, json=completion)
+
+        generator = OpenAIChatGenerator(
+            http_client_kwargs={
+                "transport": httpx.MockTransport(handler),
+                "cookies": {"session": "abc"},
+                "follow_redirects": False,
+            }
+        )
+        result = generator.run("What's the capital of France?")
+
+        assert len(requests) == 1
+        assert requests[0].headers["cookie"] == "session=abc"
+        assert result["replies"][0].text == "Paris"
+        assert generator.client._client.follow_redirects is False  # type: ignore[attr-defined]
 
 
 class TestChatCompletionChunkConversion:

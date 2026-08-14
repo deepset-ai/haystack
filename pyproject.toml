@@ -45,8 +45,7 @@ dependencies = [
   "tqdm",
   "tenacity!=8.4.0",
   "lazy-imports",
-  # openai 3.x builds on httpx2, while the clients we pass to `http_client` are httpx ones
-  "openai>=2.6.0,<3",
+  "openai>=2.6.0",
   "pydantic",
   "Jinja2",
   "MarkupSafe",             # already required by Jinja2 but used directly in templatize_part
