@@ -687,6 +687,83 @@ class TestDocstringStripping:
         assert "Class-level docstring." not in (header.content or "")
         assert "Class-level docstring." in " | ".join(header.meta.get("docstrings") or [])
 
+    def test_strip_docstrings_keeps_docstring_when_body_is_only_docstring(self):
+        # Issue #12330: a function/method/class whose body consists solely of a
+        # docstring must not be reduced to a header with no body — that would emit
+        # invalid Python (e.g. `def foo():\n`, `class Foo:\n`). The docstring is
+        # kept in place in this case, and is not moved to meta["docstrings"]
+        # (consistent with how we treat units that have no docstring to strip).
+        import ast
+
+        cases = [
+            # function with only a docstring
+            ('def my_helper():\n    """A helper that does nothing."""\n', ["function"]),
+            # class with only a docstring (no methods)
+            ('class MyError(Exception):\n    """Custom error."""\n', ["class"]),
+            # nested class with only a docstring (outer class also has only a docstring,
+            # so the outer class_header is a docstring-only slice and the inner is a
+            # nested_class with its own docstring-only body)
+            ('class Outer:\n    """Outer class."""\n    class Inner:\n        """Inner class."""\n', ["class_header"]),
+            # method with only a docstring
+            (
+                'class Foo:\n    def method(self):\n        """A method that does nothing."""\n',
+                ["class_header", "method"],
+            ),
+        ]
+        for source, expected_kinds in cases:
+            splitter = PythonCodeSplitter(min_effective_lines=1, max_effective_lines=20, strip_docstrings=True)
+            result = splitter.run(documents=[Document(content=source)])
+            # Every emitted chunk must contain the docstring in its content (or be
+            # syntactically valid with no docstring if it is just the trailing-class
+            # body marker) and must parse as valid Python.
+            for chunk in result["documents"]:
+                assert chunk.content, f"empty content for {source!r}"
+                ast.parse(chunk.content)
+            # At least one chunk must still carry the docstring inline (because we
+            # never stripped it from a docstring-only body).
+            joined_content = "\n".join(c.content or "" for c in result["documents"])
+            assert '"""' in joined_content, f"docstring missing from all content for {source!r}"
+            # No chunk should have moved the docstring to meta — stripping was
+            # skipped on docstring-only bodies, so the metadata list is empty.
+            for chunk in result["documents"]:
+                assert not chunk.meta.get("docstrings"), (
+                    f"docstring should not be moved to meta when it is the only body content; "
+                    f"got {chunk.meta!r} for {source!r}"
+                )
+            # The first chunk in the run is the unit we care about; check its kind.
+            first_kinds = result["documents"][0].meta.get("unit_kinds", [])
+            for expected_kind in expected_kinds:
+                assert expected_kind in first_kinds, (
+                    f"expected kind {expected_kind!r} in {first_kinds!r} for {source!r}"
+                )
+
+    def test_strip_docstrings_keeps_class_header_docstring_when_no_other_body(self):
+        # When a class has a docstring but no body statements before its first method
+        # (i.e. the class_header slice is just the class declaration + the docstring),
+        # stripping the docstring would leave `class Foo:\n`, which is invalid Python.
+        # The docstring is kept in place; it is not moved to meta["docstrings"].
+        import ast
+
+        source = textwrap.dedent(
+            '''
+            class Foo:
+                """Foo docstring."""
+
+                def method(self):
+                    return 1
+            '''
+        ).lstrip()
+        splitter = PythonCodeSplitter(min_effective_lines=1, max_effective_lines=20, strip_docstrings=True)
+        result = splitter.run(documents=[Document(content=source)])
+        header_chunks = [c for c in result["documents"] if "class_header" in c.meta.get("unit_kinds", [])]
+        assert header_chunks
+        header = header_chunks[0]
+        ast.parse(header.content or "")
+        assert '"""' in (header.content or "")
+        assert not header.meta.get("docstrings")
+        # The class docstring is preserved verbatim in the header content.
+        assert "Foo docstring." in (header.content or "")
+
 
 class TestTopLevelStatements:
     @pytest.fixture

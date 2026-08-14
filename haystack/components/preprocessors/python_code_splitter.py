@@ -196,6 +196,20 @@ class PythonCodeSplitter:
         if ds_start <= node.lineno or ds_end > unit_end:
             return self._slice_lines(source_lines, unit_start, unit_end), None
 
+        # If stripping the docstring would leave an empty body, keep it in place. This
+        # happens in two cases:
+        # - The body is just the docstring (e.g. `def foo(): """doc"""`), so removing the
+        #   docstring leaves `def foo():`, which is a SyntaxError.
+        # - The slice is a class_header that contains only the class docstring and the
+        #   class declaration (e.g. `class Foo:\n    """doc"""\n`, followed by methods):
+        #   removing the docstring leaves `class Foo:\n`, which is also a SyntaxError.
+        # In both cases there is no other body statement within the slice to keep the
+        # chunk valid Python, so we leave the docstring in place and do not move it
+        # to ``meta["docstrings"]`` (consistent with returning the original slice and
+        # ``None`` for the docstring when there is nothing to strip).
+        if len(body) <= 1 or body[1].lineno > unit_end:
+            return self._slice_lines(source_lines, unit_start, unit_end), None
+
         before = source_lines[unit_start - 1 : ds_start - 1]
         after = source_lines[ds_end:unit_end]
         return "".join(before + after), docstring
