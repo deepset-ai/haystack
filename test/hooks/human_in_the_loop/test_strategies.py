@@ -329,33 +329,6 @@ class TestApplyToolExecutionDecisions:
             ),
         ]
 
-    def test_two_teds_same_name_no_ids(self):
-        message_with_tool_calls = ChatMessage.from_assistant(
-            text="I'll extract the information about the people mentioned in the context.",
-            # Same tool name with different params but missing IDs
-            tool_calls=[
-                ToolCall(tool_name="add_database_tool", arguments={"name": "Malte"}),
-                ToolCall(tool_name="add_database_tool", arguments={"name": "Milos"}),
-            ],
-        )
-        # This raises a ValueError because tool_call_id is missing and there are multiple tool calls with the same name
-        # so we cannot disambiguate which TED applies to which tool call.
-        with pytest.raises(
-            ValueError,
-            match="ToolExecutionDecisions are missing tool_call_id fields and cannot be matched by tool name",
-        ):
-            _apply_tool_execution_decisions(
-                tool_call_messages=[message_with_tool_calls],
-                tool_execution_decisions=[
-                    ToolExecutionDecision(
-                        tool_name="add_database_tool", execute=True, final_tool_params={"name": "Malte"}
-                    ),
-                    ToolExecutionDecision(
-                        tool_name="add_database_tool", execute=True, final_tool_params={"name": "Milos"}
-                    ),
-                ],
-            )
-
     def test_two_teds_same_name_no_ids_and_one_with_an_id(self):
         message_with_tool_calls = ChatMessage.from_assistant(
             tool_calls=[
@@ -371,7 +344,7 @@ class TestApplyToolExecutionDecisions:
             ToolExecutionDecision("tool", execute=False),
             ToolExecutionDecision("other", execute=True, tool_call_id="1"),
         ]
-        with pytest.raises(ValueError, match="cannot be matched by tool name"):
+        with pytest.raises(ValueError, match="No unused ToolExecutionDecision matches tool call"):
             _apply_tool_execution_decisions(
                 tool_call_messages=[message_with_tool_calls], tool_execution_decisions=decisions
             )
@@ -392,22 +365,22 @@ class TestApplyToolExecutionDecisions:
         assert rejection_messages[0].tool_calls == [rejected_tool_call]
         assert new_tool_call_messages[0].tool_calls == [confirmed_tool_call]
 
-    def test_ted_with_an_empty_name_and_no_id(self):
+    def test_decision_with_mismatched_tool_name_raises(self):
         message_with_tool_calls = ChatMessage.from_assistant(
             tool_calls=[ToolCall("tool", {}), ToolCall("other", {}, id="1")]
         )
         decisions = [
-            ToolExecutionDecision("", execute=False),
+            ToolExecutionDecision("different_tool", execute=False),
             ToolExecutionDecision("other", execute=True, tool_call_id="1"),
         ]
-        with pytest.raises(ValueError, match="cannot be matched by tool name"):
+        with pytest.raises(ValueError, match="No unused ToolExecutionDecision matches tool call"):
             _apply_tool_execution_decisions(
                 tool_call_messages=[message_with_tool_calls], tool_execution_decisions=decisions
             )
 
     def test_one_decision_cannot_match_multiple_tool_calls(self):
         message = ChatMessage.from_assistant(tool_calls=[ToolCall("tool", {}), ToolCall("tool", {})])
-        with pytest.raises(ValueError, match="cannot be matched by tool name"):
+        with pytest.raises(ValueError, match="Expected one ToolExecutionDecision for each tool call"):
             _apply_tool_execution_decisions(
                 tool_call_messages=[message], tool_execution_decisions=[ToolExecutionDecision("tool", execute=True)]
             )

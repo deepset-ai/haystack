@@ -484,34 +484,19 @@ def _apply_tool_execution_decisions(
         - A list of tool call messages for confirmed or modified tool calls. If tool parameters were modified,
           a user message explaining the modification is included before the tool call message.
     """
+    tool_calls = [tc for message in tool_call_messages for tc in (message.tool_calls or [])]
+    if len(tool_calls) != len(tool_execution_decisions):
+        raise ValueError(
+            f"Expected one ToolExecutionDecision for each tool call, but received {len(tool_execution_decisions)} "
+            f"decisions for {len(tool_calls)} tool calls."
+        )
+
     # Create lookup for decisions that have a tool_call_id
     decision_by_id = {d.tool_call_id: d for d in tool_execution_decisions if d.tool_call_id}
 
     # Create a lookup for decisions that don't have a tool_call_id. We use tool name instead.
     decisions_without_id = [d for d in tool_execution_decisions if not d.tool_call_id]
     decision_by_name = {d.tool_name: d for d in decisions_without_id if d.tool_name}
-    has_ambiguous_decisions = len(decision_by_name) < len(decisions_without_id)
-
-    # Decision names can be unique even when tool call names are not. For example:
-    # Tool calls: search, search
-    # Decisions:  search, lookup
-    # Without this check, both tool calls would reuse the single "search" decision.
-    tool_call_names_requiring_name_match = [
-        tc.tool_name
-        for message in tool_call_messages
-        for tc in (message.tool_calls or [])
-        if not tc.id or tc.id not in decision_by_id
-    ]
-    has_ambiguous_tool_calls = len(set(tool_call_names_requiring_name_match)) < len(
-        tool_call_names_requiring_name_match
-    )
-
-    if has_ambiguous_decisions or has_ambiguous_tool_calls:
-        raise ValueError(
-            "ToolExecutionDecisions are missing tool_call_id fields and cannot be matched by tool name. A decision "
-            "without a tool_call_id is matched to its tool call by name, so those names have to be non-empty and "
-            "unique. Set tool_call_id to match decisions to tool calls reliably."
-        )
 
     def make_assistant_message(chat_message: ChatMessage, tool_calls: list[ToolCall]) -> ChatMessage:
         return ChatMessage.from_assistant(
@@ -528,10 +513,14 @@ def _apply_tool_execution_decisions(
     for chat_msg in tool_call_messages:
         new_tool_calls = []
         for tc in chat_msg.tool_calls or []:
-            ted = decision_by_id.get(tc.id or "") or decision_by_name.get(tc.tool_name)
-            if not ted:
-                # This shouldn't happen, if so something went wrong in _run_confirmation_strategies
-                continue
+            ted = decision_by_id.pop(tc.id or "", None)
+            if ted is None:
+                ted = decision_by_name.pop(tc.tool_name, None)
+            if ted is None:
+                raise ValueError(
+                    f"No unused ToolExecutionDecision matches tool call {tc.tool_name!r} with ID {tc.id!r}. "
+                    "Set tool_call_id to match decisions to tool calls reliably."
+                )
 
             if not ted.execute:
                 # rejected tool call
