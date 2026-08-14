@@ -140,7 +140,8 @@ class TestOpenAIChatGeneratorAsync:
         assert len(requests) == 1
         assert requests[0].headers["cookie"] == "session=abc"
         assert result["replies"][0].text == "Paris"
-        assert component.async_client._client.follow_redirects is False  # type: ignore[attr-defined]
+        assert component.async_client is not None
+        assert component.async_client._client.follow_redirects is False
 
     @pytest.mark.asyncio
     async def test_run_async(
