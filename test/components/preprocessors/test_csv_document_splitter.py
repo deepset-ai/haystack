@@ -88,6 +88,23 @@ P,Q,R
         result = splitter._find_split_indices(df, split_threshold=2, axis="row")
         assert result == [(2, 3), (6, 7)]
 
+    def test_find_split_indices_returns_positional_indices_for_non_zero_index(
+        self, splitter: CSVDocumentSplitter
+    ) -> None:
+        csv_content = """A,B,C
+1,2,3
+4,5,6
+P,Q,R
+,,
+,,
+X,Y,Z
+"""
+        df = read_csv(StringIO(csv_content), header=None, dtype=object).iloc[3:]
+
+        result = splitter._find_split_indices(df, split_threshold=2, axis="row")
+
+        assert result == [(1, 2)]
+
     def test_find_split_indices_column_two_tables(
         self, splitter: CSVDocumentSplitter, two_tables_sep_by_two_empty_columns: str
     ) -> None:
@@ -210,6 +227,32 @@ P,Q,,,,
         for i, table in enumerate(result):
             assert table.content == expected_tables[i]
             assert table.meta == expected_meta[i]
+
+    def test_recursive_split_with_nested_row_and_column_blocks(self, splitter: CSVDocumentSplitter) -> None:
+        csv_content = """A,B,C,D,E,F
+1,2,3,4,5,6
+,,,,,
+P,Q,,,X,Y
+1,2,,,7,8
+,,,,M,N
+,,,,9,10
+R,S,,,,
+3,4,,,,
+"""
+        splitter = CSVDocumentSplitter(row_split_threshold=1, column_split_threshold=1)
+        doc = Document(content=csv_content, id="test_id")
+
+        result = splitter.run([doc])["documents"]
+
+        assert [(table.content, table.meta) for table in result] == [
+            (
+                "A,B,C,D,E,F\n1,2,3,4,5,6\n",
+                {"source_id": "test_id", "row_idx_start": 0, "col_idx_start": 0, "split_id": 0},
+            ),
+            ("P,Q\n1,2\n", {"source_id": "test_id", "row_idx_start": 3, "col_idx_start": 0, "split_id": 1}),
+            ("X,Y\n7,8\nM,N\n9,10\n", {"source_id": "test_id", "row_idx_start": 3, "col_idx_start": 4, "split_id": 2}),
+            ("R,S\n3,4\n", {"source_id": "test_id", "row_idx_start": 7, "col_idx_start": 0, "split_id": 3}),
+        ]
 
     def test_csv_with_blank_lines(self, splitter: CSVDocumentSplitter) -> None:
         csv_data = """ID,LeftVal,,,RightVal,Extra
