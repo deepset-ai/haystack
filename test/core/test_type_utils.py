@@ -1233,3 +1233,45 @@ class TestResolveParameterTypes:
             "documents": "list[Document]",
             "top_k": "int | None",
         }
+
+
+# `Annotated[T, m1, m2, ...]` is the same type as `T` for type-checking purposes — the metadata is
+# just an annotation, not a type modifier. These tests verify that the Pipeline type checker treats
+# Annotated the same as the wrapped type so a component socket declared as `Annotated[int, "doc"]`
+# can be connected to a socket declared as `int` (this is what enables `Annotated` annotations in
+# component input/output socket types to round-trip through Pipeline serialization).
+def test_annotated_same_as_wrapped_type_strict():
+    from typing import Annotated
+
+    from haystack.core.type_utils import _strict_types_are_compatible
+
+    # Annotated[int, ...] is compatible with int in both directions.
+    assert _strict_types_are_compatible(Annotated[int, "doc"], int)
+    assert _strict_types_are_compatible(int, Annotated[int, "doc"])
+    # Two Annotated types with the same wrapped type are compatible (metadata is ignored).
+    assert _strict_types_are_compatible(Annotated[int, "x"], Annotated[int, "y"])
+    # Nested Annotated: unwrap recursively.
+    assert _strict_types_are_compatible(Annotated[Annotated[int, "inner"], "outer"], int)
+    # Annotated with a generic wrapped type is compatible with the bare generic.
+    assert _strict_types_are_compatible(Annotated[List[int], "doc"], List[int])
+    assert _strict_types_are_compatible(List[int], Annotated[List[int], "doc"])
+    # Annotated[str, ...] is not compatible with int.
+    assert not _strict_types_are_compatible(Annotated[str, "doc"], int)
+    assert not _strict_types_are_compatible(int, Annotated[str, "doc"])
+
+
+def test_safe_get_origin_unwraps_annotated():
+    from typing import Annotated
+
+    from haystack.core.type_utils import _safe_get_origin
+
+    # _safe_get_origin(Annotated[T, ...]) returns the origin of T (not Annotated), so the rest of
+    # the type checker can treat Annotated[T, ...] as T. Without this unwrap, the type checker
+    # would see `Annotated` as the origin and reject the type as incompatible with anything else.
+    assert _safe_get_origin(Annotated[int, "doc"]) is int
+    assert _safe_get_origin(Annotated[str, "x", "y"]) is str
+    # Nested Annotated: unwrap recursively.
+    assert _safe_get_origin(Annotated[Annotated[int, "inner"], "outer"]) is int
+    # Bare types are unchanged.
+    assert _safe_get_origin(int) is int
+    assert _safe_get_origin(List[int]) is list

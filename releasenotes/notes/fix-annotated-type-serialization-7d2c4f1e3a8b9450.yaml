@@ -1,12 +1,24 @@
 ---
 fixes:
   - |
-    Fixed ``serialize_type``/``deserialize_type`` for ``typing.Annotated``. Previously an ``Annotated`` type hint was
-    serialized with its metadata values rendered as bare tokens (e.g. ``typing.Annotated[int, doc]``), which failed to
-    deserialize, and values that looked like type names (e.g. ``Annotated[str, "int"]``) were silently turned into
-    types on the round-trip. Literal metadata (str, int, bool, None, bytes) is now serialized with ``repr()`` and
-    read back with ``ast.literal_eval``; type metadata is serialized through ``serialize_type`` and resolved through
-    ``deserialize_type`` on read. A quote-aware split is used on the deserialize side so a comma inside a string
-    metadata value (e.g. ``Annotated[int, "a, b"]``) is not treated as an argument separator. An ``Annotated`` type
-    used by a component (such as an ``OutputAdapter`` or any tool whose schema uses Pydantic ``Field`` metadata) now
-    round-trips correctly through pipeline serialization. Mirrors the ``Literal`` fix from ``#12286``.
+    Fixed round-trip serialization and Pipeline type-checking for ``typing.Annotated``. Two related gaps:
+
+    * ``serialize_type``/``deserialize_type`` had no handling for ``Annotated``: metadata values were
+      rendered as bare tokens (e.g. ``typing.Annotated[int, doc]``) which failed to deserialize, and
+      values that happened to look like a type name (e.g. ``Annotated[str, "int"]``) were silently
+      turned into types on the round-trip. Literal metadata (str, int, bool, None, bytes) is now
+      serialized with ``repr()`` and read back with ``ast.literal_eval``; type metadata is serialized
+      through ``serialize_type`` and resolved through ``deserialize_type`` on read. A quote-aware
+      split is used on the deserialize side so a comma inside a string metadata value (e.g.
+      ``Annotated[int, "a, b"]``) is not treated as an argument separator.
+    * ``_safe_get_origin`` and ``_strict_types_are_compatible`` in ``haystack.core.type_utils`` did
+      not unwrap ``Annotated``, so a component socket declared as ``Annotated[int, "doc"]`` was
+      treated as a different type from ``int`` and could not be connected. ``Annotated`` is now
+      treated as the underlying type for type-checking purposes (the metadata is annotation, not a
+      type modifier), so a socket declared as ``Annotated[int, "doc"]`` can be connected to one
+      declared as ``int``.
+
+    An ``Annotated`` type used by a component (such as an ``OutputAdapter`` or any tool whose schema
+    uses Pydantic ``Field`` metadata) now round-trips correctly through ``Pipeline.dumps()`` /
+    ``Pipeline.loads()`` and can be connected across components. Mirrors the ``Literal`` fix from
+    ``#12286``.
