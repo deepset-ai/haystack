@@ -13,6 +13,7 @@ import pytest
 
 from haystack.core.component.types import Variadic
 from haystack.core.type_utils import (
+    _STRATEGY_PRIORITY,
     ConversionStrategy,
     _chat_message_to_str,
     _contains_type,
@@ -905,6 +906,9 @@ def test_contains_type():
 
 
 class TestConversion:
+    def test_strategy_priority_covers_all_strategies(self):
+        assert set(_STRATEGY_PRIORITY) == set(ConversionStrategy)
+
     def test_chat_message_to_str(self):
         with pytest.raises(ValueError, match="Cannot convert `ChatMessage` to `str` because it has no text. "):
             _chat_message_to_str(value=ChatMessage.from_assistant())
