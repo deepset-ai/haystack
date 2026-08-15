@@ -65,7 +65,7 @@ class OpenAIClientMixin:
             http_client = init_http_client(self.http_client_kwargs, async_client=False)
             self.client = OpenAI(
                 http_client=http_client,  # type: ignore[arg-type]
-                **self._client_kwargs()
+                **self._client_kwargs(),
             )
 
     async def warm_up_async(self) -> None:  # noqa: RUF029
@@ -78,7 +78,7 @@ class OpenAIClientMixin:
             http_client = init_http_client(self.http_client_kwargs, async_client=True)
             self.async_client = AsyncOpenAI(
                 http_client=http_client,  # type: ignore[arg-type]
-                **self._client_kwargs()
+                **self._client_kwargs(),
             )
 
     def close(self) -> None:
