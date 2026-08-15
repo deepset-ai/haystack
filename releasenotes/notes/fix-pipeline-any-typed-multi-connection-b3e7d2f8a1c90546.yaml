@@ -1,0 +1,14 @@
+---
+fixes:
+  - |
+    Fixed ``Pipeline`` ``connect`` rejecting a second connection to an ``Any``-typed
+    input socket (e.g. ``PromptBuilder.documents``) with a ``PipelineConnectError``.
+    The previous behaviour was the gap left after #10783 — its commit message claimed
+    ``Any``-type support, but ``_make_socket_auto_variadic`` only handled ``list``,
+    ``Optional[list]``, and union-of-list receivers. An ``Any``-typed receiver is now
+    made lazy variadic on the second connection so multiple senders can attach. The
+    framework cannot safely flatten one level for an ``Any``-typed socket (it has no
+    element type to enforce), so the receiver gets ``[sender_1, sender_2, ...]`` and
+    is responsible for any per-sender aggregation. This is the connection-eligibility
+    half of #10721; rendering-side aggregation (e.g. flattening inside
+    ``PromptBuilder``) is a natural follow-up.

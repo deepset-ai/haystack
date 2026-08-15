@@ -1068,10 +1068,17 @@ class PipelineBase:  # noqa: PLW1641
         A socket is automatically made lazy variadic when:
           - It already has at least one connected sender
           - It is not already variadic
-          - Its type is list, Optional[list], a union of list types
+          - Its type is list, Optional[list], a union of list types, or ``Any`` (the type-erased case;
+            common for components like ``PromptBuilder`` that register template variables as ``Any``)
 
-        When auto-variadicity is applied, `wrap_input_in_list` is also set to False so that sender output types match
-        the receiver socket's declared list type directly.
+        When auto-variadicity is applied:
+          - For a list-shaped receiver (``list`` / ``Optional[list]`` / union of lists), ``wrap_input_in_list``
+            is set to ``False`` so the framework flattens one level and the component receives a single
+            concatenated list, matching the declared socket type.
+          - For an ``Any``-typed receiver, ``wrap_input_in_list`` is left at ``True`` so the component
+            receives a list of the per-sender values (``[sender_1, sender_2, ...]``) and can decide how
+            to handle the type-erased inputs (a component that knows it always aggregates a list of
+            lists may flatten them in ``run()``).
 
         :param component_name:
             Name of the component owning the receiver socket, used in error messages.
@@ -1086,6 +1093,20 @@ class PipelineBase:  # noqa: PLW1641
         """
         # If it's already variadic, we return as-is
         if receiver_socket.is_variadic:
+            return receiver_socket
+
+        # An ``Any``-typed socket can accept inputs from multiple senders. The framework cannot
+        # safely flatten one level (it does not know the element type), so the component receives
+        # ``[sender_1, sender_2, ...]`` via the existing ``wrap_input_in_list=True`` path. This is
+        # the gap left after #10783, whose commit message claimed ``Any`` support but only
+        # implemented ``list`` / ``Optional[list]`` / union-of-list handling. The most visible
+        # beneficiary is ``PromptBuilder``: every template variable is registered as ``Any``
+        # (``component.set_input_type(self, var, Any)``), so a multi-connection from two
+        # retrievers to ``prompt_builder.documents`` used to fail before this branch was added.
+        if receiver_socket.type is Any:
+            receiver_socket.is_lazy_variadic = True
+            # ``wrap_input_in_list`` stays at its current value (True by default). The component
+            # sees ``[sender_1, sender_2, ...]`` and can flatten in its own ``run()`` if needed.
             return receiver_socket
 
         # Get receiver origin
@@ -1110,7 +1131,7 @@ class PipelineBase:  # noqa: PLW1641
         raise error_type(
             f"Component '{component_name}' cannot accept multiple inputs to '{receiver_socket.name}'. "
             f"It is already connected to component '{receiver_socket.senders[0]}', and it can only accept "
-            f"inputs from multiple senders if its type is list, Optional[list], or union of list types."
+            f"inputs from multiple senders if its type is list, Optional[list], union of list types, or Any."
         )
 
     def _prepare_component_input_data(self, data: dict[str, Any]) -> dict[str, dict[str, Any]]:

@@ -2554,6 +2554,26 @@ class TestMakeSocketAutoVariadic:
         assert inp_socket.is_lazy_variadic is True
         assert inp_socket.wrap_input_in_list is False
 
+    def test_successful_any_typed_socket(self):
+        # An `Any`-typed receiver socket (e.g. every template variable in `PromptBuilder` is
+        # registered as `Any`) can be made lazy variadic so multiple senders can connect to it.
+        # The framework cannot safely flatten one level (it does not know the element type), so
+        # `wrap_input_in_list` is left at its default `True` and the component receives
+        # `[sender_1, sender_2, ...]`.
+        from typing import Any  # local import to keep the parametrize block above self-contained
+
+        pipe = PipelineBase()
+        inp_socket = pipe._make_socket_auto_variadic(
+            component_name="prompt_builder",
+            receiver_socket=InputSocket(name="documents", type=Any, senders=["retriever_1"]),
+            error_type=PipelineConnectError,
+        )
+        assert inp_socket.is_variadic is True
+        assert inp_socket.is_lazy_variadic is True
+        # `wrap_input_in_list` must stay True: the framework has no way to know whether each
+        # sender's value is itself a list to flatten one level. The component decides.
+        assert inp_socket.wrap_input_in_list is True
+
     def test_raises_error_all_int(self):
         with pytest.raises(PipelineConnectError):
             pipe = PipelineBase()
@@ -2592,7 +2612,7 @@ class TestValidateInput:
             ValueError,
             match="Component 'comp2' cannot accept multiple inputs to 'input_'. "
             "It is already connected to component 'comp1', and it can only accept inputs from multiple "
-            r"senders if its type is list, Optional\[list\], or union of list types.",
+            r"senders if its type is list, Optional\[list\], union of list types, or Any.",
         ):
             pipe.validate_input(data={"comp1": {"input_": "test"}, "comp2": {"input_": "extra_input"}})
 
@@ -2710,3 +2730,38 @@ class TestFindComponentsBlockingPipeline:
         # actually blocking.
         assert blocking_comps == ["a_comp3", "blocking_comp"]
         assert blocking_comp_types == ["FakeComponent", "FakeComponent"]
+
+
+# Integration test for the gap fixed in #10721 follow-up: a component whose input socket is typed
+# as `Any` (e.g. every template variable in `PromptBuilder`) can now accept multiple senders. The
+# connection used to fail with `PipelineConnectError` because #10783's commit message claimed `Any`
+# support but the actual implementation only handled `list` / `Optional[list]` / union of lists.
+class TestAnyTypedMultiConnection:
+    def test_prompt_builder_documents_accepts_multiple_retrievers(self):
+        from haystack import Document
+        from haystack.components.builders import PromptBuilder
+        from haystack.components.retrievers import InMemoryBM25Retriever
+        from haystack.document_stores.in_memory import InMemoryDocumentStore
+
+        ds = InMemoryDocumentStore()
+        ds.write_documents([Document(content="Ferrari is fast", meta={"brand": "Ferrari"})])
+        ds.write_documents([Document(content="Porsche is fast", meta={"brand": "Porsche"})])
+
+        pipe = PipelineBase()
+        pipe.add_component("retriever_1", InMemoryBM25Retriever(document_store=ds))
+        pipe.add_component("retriever_2", InMemoryBM25Retriever(document_store=ds))
+        # PromptBuilder registers every template variable as `Any` (see
+        # `PromptBuilder.__init__` -> `component.set_input_type(self, var, Any)`), so `documents` is an
+        # `Any`-typed socket. Before the fix, the second `connect` raised `PipelineConnectError`; with
+        # the fix, the socket is made lazy variadic and the component receives
+        # `[documents_from_retriever_1, documents_from_retriever_2]` at runtime (one-level wrapping).
+        pipe.add_component("prompt_builder", PromptBuilder(template="Docs: {{ documents }}"))
+
+        pipe.connect("retriever_1.documents", "prompt_builder.documents")
+        pipe.connect("retriever_2.documents", "prompt_builder.documents")
+        # The `Any`-typed socket is now lazy variadic. The component is reachable and the second
+        # connection did not raise. (The aggregation behavior at render time is the component's
+        # responsibility; the framework fix is the connection-eligibility half of #10721.)
+        assert "retriever_1" in pipe.graph.nodes
+        assert "retriever_2" in pipe.graph.nodes
+        assert "prompt_builder" in pipe.graph.nodes
