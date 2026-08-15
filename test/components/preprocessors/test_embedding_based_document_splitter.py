@@ -801,6 +801,38 @@ Artificial intelligence is transforming education by enabling personalized learn
             if i in [9, 10]:
                 assert split_doc.meta["page_number"] == 4
 
+    @pytest.mark.asyncio
+    async def test_recursive_split_of_large_chunks_stays_async(self) -> None:
+        """
+        `run_async` must embed through the embedder's async path, including while recursively splitting
+        chunks that came out longer than max_length. Reaching for the synchronous `run` there blocks the
+        event loop on the embedder's network calls.
+        """
+        calls = {"sync": 0, "async": 0}
+
+        def embed(documents: list[Document]) -> dict[str, list[Document]]:
+            # Alternating embeddings so consecutive groups look unrelated and the text keeps splitting.
+            return {"documents": [replace(doc, embedding=[float(i % 3), 1.0, 0.0]) for i, doc in enumerate(documents)]}
+
+        class RecordingEmbedder:
+            def run(self, documents: list[Document]) -> dict[str, list[Document]]:
+                calls["sync"] += 1
+                return embed(documents)
+
+            async def run_async(self, documents: list[Document]) -> dict[str, list[Document]]:
+                calls["async"] += 1
+                return embed(documents)
+
+        text = " ".join(f"Sentence number {i} about topic {i % 4}." for i in range(40))
+        splitter = EmbeddingBasedDocumentSplitter(document_embedder=RecordingEmbedder(), min_length=10, max_length=120)
+        splitter.warm_up()
+
+        await splitter.run_async(documents=[Document(content=text)])
+
+        # The first pass is async, and the recursion into the over-long chunk has to be too.
+        assert calls["async"] > 1
+        assert calls["sync"] == 0
+
 
 class TestComponentLifecycle:
     def test_warm_up_builds_splitter_and_delegates_to_embedder(self):
