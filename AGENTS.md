@@ -58,8 +58,6 @@ hatch run release-note SHORT_DESCRIPTION
 
 Edit the generated file in `releasenotes/notes/`. Release notes use reStructuredText formatting; see the [release notes section in CONTRIBUTING.md](CONTRIBUTING.md#release-notes) for details.
 
-<!-- braindump:begin -->
-
 The rules below were mined from 2,746 PR review comments written by the deepset
 team between 2025-07-01 and 2026-08-14, then filtered against the current source tree so that
 guidance referring to APIs removed or moved in Haystack 3.0 does not survive.
@@ -178,5 +176,3 @@ Also see directory-specific guidelines:
 ### `README.md`
 
 - Keep `README.md` feature lists complete and concrete — clarify broad terms with examples
-
-<!-- braindump:end -->
