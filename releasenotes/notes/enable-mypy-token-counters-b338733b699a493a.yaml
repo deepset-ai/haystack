@@ -1,0 +1,8 @@
+---
+enhancements:
+  - |
+    Added ``test/token_counters/`` to the mypy typing checks coverage (``hatch run types``).
+    Fixed incomplete type annotations flagged by ``disallow_incomplete_defs``: annotated the
+    ``monkeypatch`` fixture parameter in ``test_tiktoken_counter.py`` and added
+    ``# type: ignore[assignment]`` to ``MagicMock`` client assignments in
+    ``test_openai_counter.py``.

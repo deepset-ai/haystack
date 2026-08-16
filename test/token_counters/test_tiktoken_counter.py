@@ -33,7 +33,7 @@ class _FakeEncoder:
 
 
 @pytest.fixture
-def fake_encoder(monkeypatch) -> _FakeEncoder:
+def fake_encoder(monkeypatch: pytest.MonkeyPatch) -> _FakeEncoder:
     """Replace `tiktoken.get_encoding`, which downloads its vocabulary on first use."""
     encoder = _FakeEncoder()
     monkeypatch.setattr(tiktoken_counter_module.tiktoken, "get_encoding", lambda _name: encoder)
