@@ -1,0 +1,4 @@
+---
+fixes:
+  - |
+    Fixes a test assertion mismatch in ``test_openai.py`` by dynamically serializing OpenAI response usage models in streaming chunk fixtures to ensure compatibility across OpenAI SDK versions.
