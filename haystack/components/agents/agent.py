@@ -435,9 +435,12 @@ class Agent:
         """
         # --- Validation ---
         self._chat_generator_supports_tools: bool = "tools" in inspect.signature(chat_generator.run).parameters
-        # We use an explicit None check for tools b/c testing for truthiness calls __len__, which for SearchableToolset
-        # would iterate and prematurely warm it up at init.
-        if tools is not None and not self._chat_generator_supports_tools:
+        # An empty list carries no tools, so it must not trip this check: `tools` is normalized to `[]` below, and
+        # both `clone()` and `to_dict()` feed that normalized value straight back into `__init__`. This mirrors the
+        # equivalent check in `run()`. Only a list is measured; a Toolset is never tested for truthiness here b/c
+        # that calls __len__, which for SearchableToolset would iterate and prematurely warm it up at init.
+        tools_provided = tools is not None and (not isinstance(tools, list) or len(tools) > 0)
+        if tools_provided and not self._chat_generator_supports_tools:
             raise TypeError(
                 f"{type(chat_generator).__name__} does not accept tools parameter in its run method. "
                 "The Agent component requires a chat generator that supports tools when tools are provided."

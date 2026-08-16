@@ -144,7 +144,7 @@ class MockChatGeneratorWithoutTools:
     """A mock chat generator that implements ChatGenerator protocol but doesn't support tools."""
 
     def to_dict(self) -> dict[str, Any]:
-        return {"type": "MockChatGeneratorWithoutTools", "data": {}}
+        return {"type": "test.components.agents.test_agent.MockChatGeneratorWithoutTools", "init_parameters": {}}
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "MockChatGeneratorWithoutTools":
@@ -284,6 +284,13 @@ class TestAgentInit:
 
         with pytest.raises(TypeError, match="MockChatGeneratorWithoutTools does not accept tools"):
             Agent(chat_generator=chat_generator, tools=[weather_tool])
+
+    def test_empty_tools_list_with_chat_generator_without_tools_support(self):
+        # An empty list carries no tools, so it must be accepted just like `tools=None`. `run()` already
+        # treats it that way, and `clone()`/`to_dict()` both feed the normalized `[]` back into `__init__`.
+        agent = Agent(chat_generator=MockChatGeneratorWithoutTools(), tools=[])
+
+        assert agent.tools == []
 
 
 class TestAgentSerialization:
@@ -512,8 +519,32 @@ class TestAgentSerialization:
         assert all(isinstance(ts, Toolset) for ts in restored.tools)
         assert restored.tools[0][0].function is weather_function
 
+    def test_to_dict_from_dict_without_tools(self):
+        # `to_dict` serializes the normalized `self.tools`, which is `[]` when no tools were given.
+        # `from_dict` hands that `[]` straight back to `__init__`, so the round trip must survive it.
+        agent = Agent(chat_generator=MockChatGeneratorWithoutTools(), max_agent_steps=3)
+
+        data = agent.to_dict()
+        assert data["init_parameters"]["tools"] == []
+
+        restored = Agent.from_dict(data)
+
+        assert restored.tools == []
+        assert restored.max_agent_steps == 3
+        assert type(restored.chat_generator).__name__ == "MockChatGeneratorWithoutTools"
+
 
 class TestAgentClone:
+    def test_clone_without_tools(self):
+        # `clone()` reads back the normalized `self.tools` (`[]`) and passes it to `__init__`.
+        agent = Agent(chat_generator=MockChatGeneratorWithoutTools(), system_prompt="You are helpful")
+
+        clone = agent.clone()
+
+        assert clone is not agent
+        assert clone.tools == []
+        assert clone.to_dict() == agent.to_dict()
+
     def test_clone(self, weather_tool):
         agent = Agent(
             chat_generator=MockChatGenerator("Hello"),
