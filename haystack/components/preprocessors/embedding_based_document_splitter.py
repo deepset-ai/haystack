@@ -456,6 +456,8 @@ class EmbeddingBasedDocumentSplitter:
         further splitting is possible.
 
         This works because the threshold for splits is calculated dynamically based on the provided of embeddings.
+
+        Keep in sync with `_split_large_splits_async`.
         """
         final_splits = []
 
@@ -488,6 +490,9 @@ class EmbeddingBasedDocumentSplitter:
 
         Mirrors `_split_large_splits`, but embeds through the async path so that the recursion does not block the
         event loop with synchronous embedder calls.
+
+        Keep in sync with `_split_large_splits`, which also documents why re-running the splitter on an oversized
+        chunk can split it further.
         """
         final_splits = []
 
@@ -495,6 +500,9 @@ class EmbeddingBasedDocumentSplitter:
             if len(split) <= self.max_length:
                 final_splits.append(split)
             else:
+                # Recursively split large splits
+                # We can reuse the same _split_text_async method to split the text into smaller chunks because the
+                # threshold for splits is calculated dynamically based on embeddings from `split`.
                 sub_splits = await self._split_text_async(text=split)
 
                 # Stop splitting if no further split is possible or continue with recursion
