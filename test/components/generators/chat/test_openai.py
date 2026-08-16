@@ -39,7 +39,7 @@ from haystack.components.generators.chat.openai import (
     _convert_chat_completion_chunk_to_streaming_chunk,
     _make_schema_strict,
 )
-from haystack.components.generators.utils import print_streaming_chunk
+from haystack.components.generators.utils import _serialize_object, print_streaming_chunk
 from haystack.dataclasses import (
     ChatMessage,
     ChatRole,
@@ -1513,7 +1513,7 @@ def chat_completion_chunks():
                 completion_tokens_details=CompletionTokensDetails(
                     accepted_prediction_tokens=0, audio_tokens=0, reasoning_tokens=0, rejected_prediction_tokens=0
                 ),
-                prompt_tokens_details=PromptTokensDetails(audio_tokens=0, cached_tokens=0, cache_write_tokens=0),
+                prompt_tokens_details=PromptTokensDetails(audio_tokens=0, cached_tokens=0),
             ),
         ),
     ]
@@ -1534,7 +1534,7 @@ def chat_completion_chunk_delta_none():
 
 
 @pytest.fixture
-def streaming_chunks():
+def streaming_chunks(chat_completion_chunks):
     return [
         StreamingChunk(
             content="",
@@ -1710,18 +1710,7 @@ def streaming_chunks():
             meta={
                 "model": "gpt-5-mini",
                 "received_at": ANY,
-                "usage": {
-                    "completion_tokens": 42,
-                    "prompt_tokens": 282,
-                    "total_tokens": 324,
-                    "completion_tokens_details": {
-                        "accepted_prediction_tokens": 0,
-                        "audio_tokens": 0,
-                        "reasoning_tokens": 0,
-                        "rejected_prediction_tokens": 0,
-                    },
-                    "prompt_tokens_details": {"audio_tokens": 0, "cached_tokens": 0, "cache_write_tokens": 0},
-                },
+                "usage": _serialize_object(chat_completion_chunks[-1].usage),
             },
         ),
     ]
@@ -1993,18 +1982,7 @@ class TestChatCompletionChunkConversion:
         assert result.meta["finish_reason"] == "tool_calls"
         assert result.meta["index"] == 0
         assert result.meta["completion_start_time"] is not None
-        assert result.meta["usage"] == {
-            "completion_tokens": 42,
-            "prompt_tokens": 282,
-            "total_tokens": 324,
-            "completion_tokens_details": {
-                "accepted_prediction_tokens": 0,
-                "audio_tokens": 0,
-                "reasoning_tokens": 0,
-                "rejected_prediction_tokens": 0,
-            },
-            "prompt_tokens_details": {"audio_tokens": 0, "cached_tokens": 0, "cache_write_tokens": 0},
-        }
+        assert result.meta["usage"] == _serialize_object(chat_completion_chunks[-1].usage)
 
     def test_convert_usage_chunk_to_streaming_chunk(self) -> None:
 
