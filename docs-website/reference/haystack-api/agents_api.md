@@ -546,10 +546,18 @@ Check if a key exists in the state.
 #### to_dict
 
 ```python
-to_dict() -> dict[str, Any]
+to_dict(skip_keys: list[str] | None = None) -> dict[str, Any]
 ```
 
 Convert the State object to a dictionary.
+
+**Parameters:**
+
+- **skip_keys** (<code>list\[str\] | None</code>) – List of keys to skip during serialization
+
+**Returns:**
+
+- <code>dict\[str, Any\]</code> – Dictionary representation of the State object
 
 #### from_dict
 
