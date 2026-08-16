@@ -1,0 +1,4 @@
+---
+fixes:
+  - |
+    Fixes a bug in ``MetaFieldRanker`` where documents with a score of ``0.0`` were evaluated as falsy and converted to ``-1`` during score merging, causing incorrect sorting order.

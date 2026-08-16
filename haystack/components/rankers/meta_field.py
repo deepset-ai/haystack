@@ -404,7 +404,8 @@ class MetaFieldRanker:
 
         scored_docs = [replace(doc, score=scores_map[doc.id]) for doc in documents]
 
-        return sorted(scored_docs, key=lambda doc: doc.score if doc.score else -1, reverse=True)
+        # ponytail: fix score=0.0 being treated as falsy and converted to -1
+        return sorted(scored_docs, key=lambda doc: doc.score if doc.score is not None else -1, reverse=True)
 
     @staticmethod
     def _calculate_rrf(rank: int, k: int = 61) -> float:

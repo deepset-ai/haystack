@@ -313,3 +313,18 @@ class TestMetaFieldRanker:
         docs_after = output["documents"]
         assert len(docs_after) == 2
         assert "2" not in [doc.id for doc in docs_after]
+
+    def test_merge_rankings_with_zero_and_negative_scores(self):
+        ranker = MetaFieldRanker(meta_field="rating", ranking_mode="linear_score", weight=0.5)
+        docs_before = [
+            Document(id="1", content="abc", meta={"rating": 0.5}, score=0.0),
+            Document(id="2", content="abc", meta={"rating": 1.0}, score=0.0),
+        ]
+        output = ranker.run(documents=docs_before)
+        docs_after = output["documents"]
+        # doc 2 (rating 1.0): score 0.0*0.5 + linear_score(0,2)*0.5 = 0.5
+        # doc 1 (rating 0.5): score 0.0*0.5 + linear_score(1,2)*0.5 = 0.25
+        assert docs_after[0].id == "2"
+        assert docs_after[0].score == 0.5
+        assert docs_after[1].id == "1"
+        assert docs_after[1].score == 0.25
