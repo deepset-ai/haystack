@@ -196,6 +196,16 @@ class TestAgentHooksValidation:
 
 
 class TestBeforeRunHook:
+    def test_tools_are_available_before_the_first_step(self):
+        available_tool_names: list[str] = []
+
+        def record_tools(state: State) -> None:
+            available_tool_names.extend(tool.name for tool in state.data["tools"])
+
+        agent = _agent(MockChatGenerator(), tools=[save], hooks={"before_run": [hook(record_tools)]})
+        agent.run(messages=[ChatMessage.from_user("hi")])
+        assert available_tool_names == ["save"]
+
     def test_runs_once_across_multi_step_run(self):
         agent = _agent(
             MockChatGenerator(),
