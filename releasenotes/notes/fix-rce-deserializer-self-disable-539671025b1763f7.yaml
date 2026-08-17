@@ -10,7 +10,9 @@ security:
     A malicious pipeline could register ``allow_deserialization_module`` as a Jinja ``custom_filters``
     entry (on an ``OutputAdapter`` or ``ConditionalRouter``), call it with ``"*"`` to disarm the
     allowlist process-wide, and then use the equally-resolvable ``deserialize_callable`` to resolve
-    and invoke ``os.system``. The same attribute walk could also reach the deserializer's mutable
+    and invoke ``os.system``. Loading alone was enough to trigger this: a Jinja filter called with
+    constant arguments runs while the component is being constructed, so the pipeline never had to
+    be run. The same attribute walk could also reach the deserializer's mutable
     control-plane state directly — for example a filter bound to ``_extra_allowed_modules.append``
     — to widen the allowlist persistently and stage a later attack.
     Relatedly, the handle resolver walked attribute names freely, so a handle could descend into
