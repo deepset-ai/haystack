@@ -203,7 +203,6 @@ class TestBeforeRunHook:
             available_tool_names.extend(tool.name for tool in state.data["tools"])
 
         agent = _agent(MockChatGenerator(), tools=[save], hooks={"before_run": [hook(record_tools)]})
-        agent.chat_generator.run = MagicMock(return_value={"replies": [ChatMessage.from_assistant("done")]})
         agent.run(messages=[ChatMessage.from_user("hi")])
         assert available_tool_names == ["save"]
 
