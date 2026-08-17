@@ -30,6 +30,12 @@ When using the `MariaDBEmbeddingRetriever` in your Pipeline, make sure embedding
 
 In addition to `query_embedding`, the Retriever accepts optional parameters including `top_k` (the maximum number of Documents to retrieve) and `filters` to narrow down the search space.
 
+:::note[Vector index]
+
+For fast approximate nearest neighbor search, the `MariaDBDocumentStore` must be initialized with `create_vector_index=True`. This creates a MHNSW index at table creation time, but requires **every document to have a non-null embedding**. The `embedding_dimension` and `distance` parameters also only take effect at table creation (or with `recreate_table=True`).
+
+:::
+
 ## Installation
 
 To quickly set up a MariaDB 11.7 instance, you can use Docker:

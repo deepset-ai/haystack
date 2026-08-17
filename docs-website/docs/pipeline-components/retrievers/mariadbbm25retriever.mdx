@@ -73,8 +73,9 @@ retriever.run(query="my search query")
 ```python
 import os
 from haystack import Document, Pipeline
-from haystack.components.builders import AnswerBuilder, PromptBuilder
-from haystack.components.generators import OpenAIGenerator
+from haystack.components.builders import AnswerBuilder, ChatPromptBuilder
+from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.dataclasses import ChatMessage
 from haystack.document_stores.types import DuplicatePolicy
 
 from haystack_integrations.document_stores.mariadb import MariaDBDocumentStore
@@ -84,15 +85,21 @@ os.environ["MARIADB_USER"] = "haystack"
 os.environ["MARIADB_PASSWORD"] = "secret"
 os.environ["OPENAI_API_KEY"] = "your-openai-api-key"
 
-prompt_template = """
-Given these documents, answer the question.\nDocuments:
+prompt_template = [
+    ChatMessage.from_user(
+        """
+Given these documents, answer the question.
+Documents:
 {% for doc in documents %}
     {{ doc.content }}
 {% endfor %}
 
-\nQuestion: {{question}}
-\nAnswer:
+Question: {{question}}
+
+Answer:
 """
+    ),
+]
 
 document_store = MariaDBDocumentStore()
 
@@ -107,13 +114,15 @@ document_store.write_documents(documents=documents, policy=DuplicatePolicy.SKIP)
 retriever = MariaDBBM25Retriever(document_store=document_store)
 rag_pipeline = Pipeline()
 rag_pipeline.add_component(name="retriever", instance=retriever)
-rag_pipeline.add_component(instance=PromptBuilder(template=prompt_template), name="prompt_builder")
-rag_pipeline.add_component(instance=OpenAIGenerator(), name="llm")
+rag_pipeline.add_component(
+    instance=ChatPromptBuilder(template=prompt_template, required_variables="*"),
+    name="prompt_builder",
+)
+rag_pipeline.add_component(instance=OpenAIChatGenerator(), name="llm")
 rag_pipeline.add_component(instance=AnswerBuilder(), name="answer_builder")
 rag_pipeline.connect("retriever", "prompt_builder.documents")
-rag_pipeline.connect("prompt_builder", "llm")
+rag_pipeline.connect("prompt_builder.prompt", "llm.messages")
 rag_pipeline.connect("llm.replies", "answer_builder.replies")
-rag_pipeline.connect("llm.meta", "answer_builder.meta")
 rag_pipeline.connect("retriever", "answer_builder.documents")
 
 question = "languages spoken around the world today"

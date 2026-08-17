@@ -88,6 +88,14 @@ print(document_store.count_documents())
 
 To learn more about the initialization parameters, see our [API docs](/reference/integrations-mariadb#mariadbdocumentstore).
 
+:::note[Table creation parameters]
+
+The `embedding_dimension`, `distance`, and `create_vector_index` parameters are only applied when the table is first created (or when `recreate_table=True`). Changing them later has no effect on an existing table.
+
+Setting `create_vector_index=True` at table creation enables a MHNSW vector index for fast approximate nearest neighbor search. However, this requires **every document to have a non-null embedding** — documents without embeddings will cause an error on write.
+
+:::
+
 To properly compute embeddings for your documents, you can use a Document Embedder (for instance, the [`SentenceTransformersDocumentEmbedder`](../pipeline-components/embedders/sentencetransformersdocumentembedder.mdx)).
 
 ### Supported Retrievers
