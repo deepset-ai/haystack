@@ -29,6 +29,18 @@ class ConversionStrategy(Enum):
 
 ConversionStrategyType = ConversionStrategy | None
 
+# Priority used to pick a strategy when a Union receiver admits more than one conversion
+_STRATEGY_PRIORITY = (
+    ConversionStrategy.WRAP,
+    ConversionStrategy.UNWRAP,
+    ConversionStrategy.CHAT_MESSAGE_TO_STR,
+    ConversionStrategy.STR_TO_CHAT_MESSAGE,
+    ConversionStrategy.WRAP_CHAT_MESSAGE_TO_STR,
+    ConversionStrategy.WRAP_STR_TO_CHAT_MESSAGE,
+    ConversionStrategy.UNWRAP_CHAT_MESSAGE_TO_STR,
+    ConversionStrategy.UNWRAP_STR_TO_CHAT_MESSAGE,
+)
+
 
 def _resolve_parameter_types(target: Callable) -> dict[str, Any]:
     """
@@ -213,13 +225,13 @@ def _get_conversion_strategy(sender: Any, receiver: Any) -> ConversionStrategyTy
         return None
 
     # If receiver is a Union, it's compatible if ANY of its types are compatible.
-    # We prefer strategies that don't require type conversion if possible.
+    # When several members admit different conversions, decide based on _STRATEGY_PRIORITY.
     if _safe_get_origin(receiver) is Union:
-        strategies = {_get_conversion_strategy(sender, arg) for arg in get_args(receiver)} - {None}
-        for preferred in (ConversionStrategy.WRAP, ConversionStrategy.UNWRAP):
+        strategies = {_get_conversion_strategy(sender, arg) for arg in get_args(receiver)}
+        for preferred in _STRATEGY_PRIORITY:
             if preferred in strategies:
                 return preferred
-        return strategies.pop() if strategies else None
+        return None
 
     # ChatMessage -> str
     if sender is ChatMessage and receiver is str:

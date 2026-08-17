@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any
 from unittest.mock import ANY, AsyncMock, MagicMock, patch
 
+import httpx
 import pytest
 from openai import OpenAIError
 from openai.types.chat import (
@@ -1510,9 +1511,15 @@ def chat_completion_chunks():
                 prompt_tokens=282,
                 total_tokens=324,
                 completion_tokens_details=CompletionTokensDetails(
-                    accepted_prediction_tokens=0, audio_tokens=0, reasoning_tokens=0, rejected_prediction_tokens=0
+                    accepted_prediction_tokens=0,
+                    audio_tokens=0,
+                    reasoning_tokens=0,
+                    rejected_prediction_tokens=0,
+                    text_tokens=42,
                 ),
-                prompt_tokens_details=PromptTokensDetails(audio_tokens=0, cached_tokens=0, cache_write_tokens=0),
+                prompt_tokens_details=PromptTokensDetails(
+                    audio_tokens=0, cached_tokens=0, cache_write_tokens=0, image_tokens=0, text_tokens=282
+                ),
             ),
         ),
     ]
@@ -1718,8 +1725,15 @@ def streaming_chunks():
                         "audio_tokens": 0,
                         "reasoning_tokens": 0,
                         "rejected_prediction_tokens": 0,
+                        "text_tokens": 42,
                     },
-                    "prompt_tokens_details": {"audio_tokens": 0, "cached_tokens": 0, "cache_write_tokens": 0},
+                    "prompt_tokens_details": {
+                        "audio_tokens": 0,
+                        "cached_tokens": 0,
+                        "cache_write_tokens": 0,
+                        "image_tokens": 0,
+                        "text_tokens": 282,
+                    },
                 },
             },
         ),
@@ -1868,6 +1882,38 @@ class TestComponentLifecycle:
         await generator.close_async()
         assert generator.async_client is None
 
+    def test_http_client_kwargs_are_used_for_requests(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setenv("OPENAI_API_KEY", "fake-api-key")
+        requests: list[httpx.Request] = []
+        # trimmed capture of a real /chat/completions response
+        completion = {
+            "id": "chatcmpl-ECjrZ3klFGP0kTdMQgSCTPnNr0z87",
+            "object": "chat.completion",
+            "created": 1786704941,
+            "model": "gpt-5-mini-2025-08-07",
+            "choices": [{"index": 0, "message": {"role": "assistant", "content": "Paris"}, "finish_reason": "stop"}],
+            "usage": {"prompt_tokens": 17, "completion_tokens": 10, "total_tokens": 27},
+        }
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            requests.append(request)
+            return httpx.Response(200, json=completion)
+
+        generator = OpenAIChatGenerator(
+            http_client_kwargs={
+                "transport": httpx.MockTransport(handler),
+                "cookies": {"session": "abc"},
+                "follow_redirects": False,
+            }
+        )
+        result = generator.run("What's the capital of France?")
+
+        assert len(requests) == 1
+        assert requests[0].headers["cookie"] == "session=abc"
+        assert result["replies"][0].text == "Paris"
+        assert generator.client is not None
+        assert generator.client._client.follow_redirects is False
+
 
 class TestChatCompletionChunkConversion:
     def test_convert_chat_completion_chunk_to_streaming_chunk(
@@ -1969,8 +2015,15 @@ class TestChatCompletionChunkConversion:
                 "audio_tokens": 0,
                 "reasoning_tokens": 0,
                 "rejected_prediction_tokens": 0,
+                "text_tokens": 42,
             },
-            "prompt_tokens_details": {"audio_tokens": 0, "cached_tokens": 0, "cache_write_tokens": 0},
+            "prompt_tokens_details": {
+                "audio_tokens": 0,
+                "cached_tokens": 0,
+                "cache_write_tokens": 0,
+                "image_tokens": 0,
+                "text_tokens": 282,
+            },
         }
 
     def test_convert_usage_chunk_to_streaming_chunk(self) -> None:

@@ -292,8 +292,11 @@ class DocumentSplitter:
 
             # check if length of current units is below split_threshold
             if len(current_units) < split_threshold and len(text_splits) > 0:
-                # concatenate the last split with the current one
-                text_splits[-1] += txt
+                # concatenate the last split with the current one. The first `split_overlap` units
+                # of this segment are already part of the previous split (that is what the overlap
+                # is), so only append the units beyond the overlap; otherwise the overlapping text
+                # would be duplicated and the merged chunk would not be present in the source.
+                text_splits[-1] += "".join(current_units[split_overlap:])
 
             # NOTE: If skip_empty_documents is True, this line skips documents that have content=""
             elif not self.skip_empty_documents or len(txt) > 0:
