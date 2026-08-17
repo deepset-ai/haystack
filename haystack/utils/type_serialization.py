@@ -18,6 +18,7 @@ from haystack.core.serialization_security import (
     _check_module_allowed,
     _check_not_deserialization_internal,
     _check_resolved_module_allowed,
+    _check_traversable_attribute,
     mark_deserialization_internal,
 )
 
@@ -315,6 +316,9 @@ def _import_class_by_name(fully_qualified_name: str) -> Any:
     """
     module_path, attr_name = fully_qualified_name.rsplit(".", 1)
     _check_module_allowed(module_path)
+    # A class reference names a public attribute of a module, never an object-internals attribute
+    # (`__dict__`, `__globals__`, ...) that would expose a module namespace or escape gadget.
+    _check_traversable_attribute(attr_name, fully_qualified_name)
     try:
         logger.debug(
             "Attempting to import '{attr_name}' from module '{module_path}'",

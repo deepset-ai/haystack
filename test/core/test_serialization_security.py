@@ -218,7 +218,9 @@ class TestImportClassByNameAllowlist:
     def test_rejects_dangerous_builtin(self, name):
         # `builtins` passes the module allowlist, so a class reference must resolve to an actual
         # type — otherwise a nested `{"type": "builtins.compile"}` payload would resolve a function.
-        with pytest.raises(DeserializationError, match="not a type"):
+        # The dunder-named builtins (`__import__`, `__build_class__`) are refused even earlier by the
+        # object-internals traversal guard.
+        with pytest.raises(DeserializationError, match="not a type|internal attribute"):
             import_class_by_name(f"builtins.{name}")
 
     def test_allows_builtin_type(self):
@@ -277,7 +279,10 @@ class TestDeniedBuiltins:
 
     @pytest.mark.parametrize("name", _DENIED_BUILTIN_NAMES)
     def test_dangerous_builtin_callable_rejected(self, name):
-        with pytest.raises(DeserializationError, match="blocked because it can be used"):
+        # Most denied builtins are refused by the identity denylist ("blocked because it can be
+        # used ..."); the dunder-named ones (`__import__`, `__build_class__`) are caught earlier by
+        # the object-internals traversal guard. Either way they never resolve.
+        with pytest.raises(DeserializationError, match="blocked because it can be used|internal attribute"):
             deserialize_callable(f"builtins.{name}")
 
     def test_harmless_builtin_callable_still_resolves(self):
@@ -500,6 +505,72 @@ class TestDeniedDeserializerInternals:
             "connections: []\n"
         )
         with pytest.raises(DeserializationError, match="deserialization control plane"):
+            Pipeline.loads(poison_yaml)
+        assert _extra_allowed_modules == []
+        with pytest.raises(DeserializationError):
+            deserialize_callable("os.system")
+
+
+class TestObjectInternalsTraversal:
+    """
+    A serialized handle legitimately walks `module.Class.method`, never into an object's internals.
+    Descending into dunder attributes (`__globals__`, `__dict__`, `__class__`, `__subclasses__`, ...)
+    or the frame/code accessors is a classic sandbox escape: `<func>.__globals__` yields the defining
+    module's live namespace, from which the allowlist state can be rewritten or `__builtins__` (hence
+    `eval`/`exec`) reached — all while the traversal stays inside an allowlisted module, so neither the
+    module allowlist nor the per-object identity checks would catch it.
+    """
+
+    TRAVERSAL_GADGETS = [
+        # `<func>.__globals__` -> the defining module's live globals dict, then a bound mutator/getter.
+        "haystack.core.serialization_security.allow_deserialization_module.__globals__.update",
+        "haystack.core.serialization_security.allow_deserialization_module.__globals__.get",
+        "haystack.utils.callable_serialization.deserialize_callable.__globals__.get",
+        # `<module>.__dict__` -> the module's live namespace dict.
+        "haystack.core.serialization_security.__dict__.update",
+        # Function/class internals reachable as a final or intermediate hop.
+        "haystack.components.converters.output_adapter.OutputAdapter.__init__.__globals__.get",
+        "haystack.components.converters.output_adapter.OutputAdapter.__subclasses__",
+        "haystack.components.converters.output_adapter.OutputAdapter.__class__",
+    ]
+
+    @pytest.mark.parametrize("handle", TRAVERSAL_GADGETS)
+    def test_deserialize_callable_rejects_internal_attribute_traversal(self, handle):
+        with pytest.raises(DeserializationError, match="internal attribute"):
+            deserialize_callable(handle)
+
+    def test_import_class_by_name_rejects_internal_attribute(self):
+        with pytest.raises((DeserializationError, ImportError)):
+            import_class_by_name("haystack.core.serialization_security.__dict__")
+
+    def test_unsafe_mode_bypasses_the_block(self):
+        with _deserialization_context(unsafe=True):
+            resolved = deserialize_callable(
+                "haystack.core.serialization_security.allow_deserialization_module.__globals__.get"
+            )
+            assert callable(resolved)
+
+    def test_legitimate_attribute_walks_still_resolve(self):
+        # `Class.method` and nested traversal through non-dunder attributes must keep working.
+        assert callable(deserialize_callable("collections.OrderedDict.fromkeys"))
+        assert callable(deserialize_callable("collections.Counter.most_common"))
+
+    def test_pipeline_loads_rejects_globals_rewrite_vector(self):
+        # End-to-end: rewriting `_extra_allowed_modules` via `__globals__.update` in default safe
+        # mode, without touching any blocked resolver or the protected state objects directly.
+        poison_yaml = (
+            "components:\n"
+            "  adapter:\n"
+            "    type: haystack.components.converters.output_adapter.OutputAdapter\n"
+            "    init_parameters:\n"
+            '      template: "{{ mapping | upd }}{{ trigger }}"\n'
+            "      output_type: str\n"
+            "      custom_filters:\n"
+            "        upd: haystack.core.serialization_security.allow_deserialization_module.__globals__.update\n"
+            "      unsafe: false\n"
+            "connections: []\n"
+        )
+        with pytest.raises(DeserializationError, match="internal attribute"):
             Pipeline.loads(poison_yaml)
         assert _extra_allowed_modules == []
         with pytest.raises(DeserializationError):

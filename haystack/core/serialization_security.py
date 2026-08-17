@@ -208,6 +208,65 @@ def _check_not_deserialization_internal(resolved: object, handle: str) -> None:
         )
 
 
+# Non-dunder attribute names that still expose an object's internals — the frame/code/closure
+# accessors on functions, generators, coroutines and async generators. Dunder names (`__globals__`,
+# `__dict__`, `__class__`, `__builtins__`, `__subclasses__`, ...) are matched separately by the
+# `__` prefix; these have no such prefix and must be listed explicitly.
+_UNSAFE_TRAVERSAL_ATTRS: frozenset[str] = frozenset(
+    {
+        "gi_frame",
+        "gi_code",
+        "gi_yieldfrom",
+        "cr_frame",
+        "cr_code",
+        "cr_await",
+        "ag_frame",
+        "ag_code",
+        "f_globals",
+        "f_builtins",
+        "f_locals",
+        "f_back",
+        "f_code",
+        "func_globals",
+        "func_code",
+        "func_closure",
+        "func_dict",
+        "func_defaults",
+    }
+)
+
+
+def _check_traversable_attribute(name: str, handle: str) -> None:
+    """
+    Reject descending into an object-internals attribute while walking a serialized handle.
+
+    Serialized callable/class handles reference public dotted import paths (`module.Class.method`);
+    they never legitimately traverse into an object's internals. Dunder attributes (`__globals__`,
+    `__dict__`, `__class__`, `__builtins__`, `__subclasses__`, ...) and the frame/code accessors in
+    :data:`_UNSAFE_TRAVERSAL_ATTRS` are the classic sandbox-escape gadgets — e.g. `<func>.__globals__`
+    yields the defining module's live namespace, from which the allowlist state can be rewritten or
+    `__builtins__` (hence `eval`/`exec`) reached, regardless of any per-object identity check. The
+    module-granular allowlist does not stop this because the traversal stays inside an allowlisted
+    module. Bypassed in `unsafe=True` mode, which disables all deserialization safety checks by design.
+
+    :param name:
+        The attribute name about to be resolved from the current object in the walk.
+    :param handle:
+        The original serialized handle, used only for the error message.
+    :raises DeserializationError:
+        If `name` names an object-internals attribute.
+    """
+    if _get_context().unsafe:
+        return
+    if name.startswith("__") or name in _UNSAFE_TRAVERSAL_ATTRS:
+        raise DeserializationError(
+            f"Refusing to deserialize '{handle}': it traverses into the internal attribute '{name}', "
+            f"which can expose object internals (e.g. '__globals__', '__class__', '__builtins__') and is "
+            f"a known sandbox-escape gadget. If you trust the source of this data, load it with unsafe=True "
+            f"to bypass deserialization safety checks."
+        )
+
+
 # Process-wide patterns set via allow_deserialization_module.
 _extra_allowed_modules: list[str] = []
 
