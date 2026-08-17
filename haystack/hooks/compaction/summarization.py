@@ -140,11 +140,30 @@ def _groups_to_summarize(
     return selected
 
 
-def _summary_message(text: str, summarized_messages: int, source: _SummarySource) -> ChatMessage:
-    """Build the marked user message that stands in for the messages the summary replaced."""
-    body = f"<conversation_summary>\n{text.strip()}\n</conversation_summary>"
-    meta = {_COMPACTION_META_KEY: {"strategy": _STRATEGY, "summarized_messages": summarized_messages, "source": source}}
-    return ChatMessage.from_user(text=body, meta=meta)
+def _no_summary_text_error(replies: list[ChatMessage]) -> str:
+    """
+    Describe an unusable summarization reply well enough to diagnose it without reproducing the call.
+
+    `finish_reason` in the reply's `meta` usually gives the cause: `length` means `max_summary_tokens` left no room for
+    any text, and `content_filter` means the provider refused the conversation. A reasoning model can also spend its
+    whole budget thinking and return reasoning with no text, so whether any reasoning came back is reported too.
+    """
+    if not replies:
+        return "The Chat Generator returned no replies to use as a conversation summary."
+    last = replies[-1]
+    reasoning = last.reasoning
+    if last.meta.get("finish_reason") in ("length", "max_tokens"):
+        return (
+            "The Chat Generator hit its output limit before writing any of the conversation summary. A reasoning model "
+            "left at its default effort does this reliably, because providers count thinking against the same budget "
+            "as the summary, so raising `max_summary_tokens` will not help. Configure the summary Chat Generator for "
+            f"low reasoning effort. The reply reports usage {last.meta.get('usage')}."
+        )
+    return (
+        f"The Chat Generator returned no text to use as a conversation summary. The last of {len(replies)} "
+        f"reply/replies has meta {last.meta}, {len(reasoning.reasoning_text) if reasoning else 0} characters of "
+        f"reasoning content, and text {last.text!r}."
+    )
 
 
 def _replace_indices(messages: list[ChatMessage], indices: list[int], summary: ChatMessage) -> list[ChatMessage]:
@@ -204,12 +223,20 @@ class SummarizationCompactor(Compactor):
     mapping, the compactor logs a warning. When that warning appears, set the provider-specific output-token limit to
     the same value when initializing the Chat Generator.
 
+    Configure a reasoning model used for summarizing with low reasoning effort. Providers count thinking against the
+    same output budget as the summary, and a reasoning model left at its default effort will spend the entire budget
+    thinking and return no summary at all, no matter how large `max_summary_tokens` is. The compactor reports it when
+    this happens, but the setting has to come from the Chat Generator.
+
     ```python
     from haystack.components.agents import Agent
     from haystack.components.generators.chat import OpenAIResponsesChatGenerator
     from haystack.hooks.compaction import CompactionHook, SummarizationCompactor
 
-    summary_generator = OpenAIResponsesChatGenerator(model="gpt-5.4-nano")
+    # Low reasoning effort leaves the output budget for the summary rather than the thinking.
+    summary_generator = OpenAIResponsesChatGenerator(
+        model="gpt-5.4-nano", generation_kwargs={"reasoning": {"effort": "low"}}
+    )
     hook = CompactionHook(
         compactor=SummarizationCompactor(chat_generator=summary_generator),
         context_window=400_000,
@@ -225,7 +252,7 @@ class SummarizationCompactor(Compactor):
         chat_generator: ChatGenerator,
         *,
         min_keep_steps: int = 1,
-        max_summary_tokens: int = 1024,
+        max_summary_tokens: int = 2048,
         summary_instruction: str = _DEFAULT_SUMMARY_INSTRUCTION,
         raise_on_failure: bool = False,
     ) -> None:
@@ -243,8 +270,7 @@ class SummarizationCompactor(Compactor):
             fixed sections covering the objective, decisions and constraints, completed work, exact identifiers, and
             unresolved work, each written as `(none)` when the summarized portion says nothing about it. It also states
             that only part of the conversation is shown, so the model does not conclude that something never happened
-            just because it is absent. The token budget is appended to whatever is given here, so a replacement does
-            not need to mention it.
+            just because it is absent.
         :param raise_on_failure: Whether a failed or non-shrinking summarization raises. By default the failure is
             logged and any successful partial compaction is returned.
         :raises ValueError: If `min_keep_steps` is negative or `max_summary_tokens` is not positive.
@@ -449,18 +475,13 @@ class SummarizationCompactor(Compactor):
         transcript = _rendered_conversation(
             _messages_at(messages=messages, indices=indices), placeholder=_attachment_placeholder
         )
-        instruction = (
-            f"{self.summary_instruction}\n\nWrite a complete summary in no more than approximately "
-            f"{self.max_summary_tokens} tokens. Prioritize completeness within that limit so the response is not "
-            "cut off."
-        )
         return [
-            ChatMessage.from_system(text=instruction),
+            ChatMessage.from_system(text=self.summary_instruction),
             ChatMessage.from_user(text=f"<conversation_to_summarize>\n{transcript}\n</conversation_to_summarize>"),
         ]
 
-    @staticmethod
     def _apply_summary(
+        self,
         messages: list[ChatMessage],
         indices: list[int],
         source: _SummarySource,
@@ -476,8 +497,22 @@ class SummarizationCompactor(Compactor):
         replies = result.get("replies") or []
         text = replies[-1].text if replies else None
         if not text or not text.strip():
-            raise RuntimeError("The Chat Generator returned no text to use as a conversation summary.")
-        summary = _summary_message(text=text, summarized_messages=len(indices), source=source)
+            raise RuntimeError(_no_summary_text_error(replies=replies))
+
+        # Warn user if text has been truncated
+        if replies[-1].meta.get("finish_reason") in ("length", "max_tokens"):
+            logger.warning(
+                "The Chat Generator stopped at `max_summary_tokens={limit}` before finishing the summary, so the "
+                "summary kept for this compaction is cut off partway. Raise `max_summary_tokens`, or shorten what "
+                "`summary_instruction` asks for. Note that providers count a reasoning model's thinking against this "
+                "same budget, so a reasoning model needs a good deal more than the length of the summary itself.",
+                limit=self.max_summary_tokens,
+            )
+
+        summary = ChatMessage.from_user(
+            text=f"<conversation_summary>\n{text.strip()}\n</conversation_summary>",
+            meta={_COMPACTION_META_KEY: {"strategy": _STRATEGY, "summarized_messages": len(indices), "source": source}},
+        )
         compacted = _replace_indices(messages=messages, indices=indices, summary=summary)
         before = token_counter.count(messages=messages)
         after = token_counter.count(messages=compacted)

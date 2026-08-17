@@ -15,7 +15,10 @@ features:
     possible however small the target is. Each summary records the tier it came from and the number of messages it
     replaced under the ``context_compaction`` key in its ``meta``.
 
-    ``max_summary_tokens`` reserves space for each generated summary. Chat Generators that advertise Haystack's
+    ``max_summary_tokens`` reserves space for each generated summary, and defaults to a value that leaves room for a
+    reasoning model, since providers count a reasoning model's thinking against this same output budget. If the
+    generator stops on that limit before finishing, the summary is still used and a warning says it was cut off.
+    Chat Generators that advertise Haystack's
     provider-neutral output-token mapping receive that limit at runtime. If this mapping is unavailable, the compactor
     logs a warning. When that warning appears, set the provider-specific output-token limit to the same value when
     initializing the summary Chat Generator. The prompt also states the limit. Generated summaries are only applied
@@ -35,7 +38,7 @@ features:
             compactor=SummarizationCompactor(
                 chat_generator=summary_generator,
                 min_keep_steps=2,
-                max_summary_tokens=1_024,
+                max_summary_tokens=4_096,
             ),
             context_window=400_000,
             compact_at=0.7,
