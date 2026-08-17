@@ -40,7 +40,11 @@ from haystack.core.serialization import (
     component_to_dict,
     generate_qualified_class_name,
 )
-from haystack.core.serialization_security import _check_module_allowed, _deserialization_context
+from haystack.core.serialization_security import (
+    _check_module_allowed,
+    _deserialization_context,
+    mark_deserialization_internal,
+)
 from haystack.core.type_utils import (
     ConversionStrategyType,
     _convert_value,
@@ -173,6 +177,7 @@ class PipelineBase:  # noqa: PLW1641
         }
 
     @classmethod
+    @mark_deserialization_internal
     def from_dict(
         cls: type[T],
         data: dict[str, Any],
@@ -309,6 +314,7 @@ class PipelineBase:  # noqa: PLW1641
         fp.write(marshaller.marshal(self.to_dict()))
 
     @classmethod
+    @mark_deserialization_internal
     def loads(
         cls: type[T],
         data: str | bytes | bytearray,
@@ -351,6 +357,7 @@ class PipelineBase:  # noqa: PLW1641
         return cls.from_dict(deserialized_data, callbacks, allowed_modules=allowed_modules, unsafe=unsafe)
 
     @classmethod
+    @mark_deserialization_internal
     def load(
         cls: type[T],
         fp: TextIO,
