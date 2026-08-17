@@ -5,6 +5,7 @@
 import logging
 import os
 import re
+import threading
 from collections.abc import Iterator
 from datetime import datetime
 from typing import Any
@@ -1313,8 +1314,22 @@ class TestAgentTracing:
 
         assert spying_tracer.spans[0].tags["haystack.agent.steps_taken"] == 2
 
-    def test_tracing_span_run_with_parallel_tool_calls(self, spying_tracer, weather_tool):
+    def test_tracing_span_run_with_parallel_tool_calls(self, spying_tracer):
         """Each tool call in a step gets its own `haystack.agent.step.tool` span instead of one grouped span."""
+        # The barrier holds each call inside its own tool span until the other call has opened its span too, so both
+        # spans are provably open at the same time — the situation in which a span could pick a sibling as its parent.
+        barrier = threading.Barrier(2, timeout=10)
+
+        def blocking_weather_function(location: str):
+            barrier.wait()
+            return weather_function(location)
+
+        weather_tool = Tool(
+            name="weather_tool",
+            description="Provides weather information for a given location.",
+            parameters={"type": "object", "properties": {"location": {"type": "string"}}, "required": ["location"]},
+            function=blocking_weather_function,
+        )
         agent = Agent(chat_generator=_parallel_tool_calling_generator(), tools=[weather_tool])
 
         agent.run([ChatMessage.from_user("What's the weather in Berlin and Paris?")])
@@ -1325,6 +1340,10 @@ class TestAgentTracing:
         for span in tool_spans:
             assert span.tags["haystack.tool.name"] == "weather_tool"
         assert {span.tags["haystack.agent.step.tool.input"]["location"] for span in tool_spans} == {"Berlin", "Paris"}
+        # The tool spans are siblings under the step that requested the calls, not chained under each other.
+        step_span = spying_tracer.spans[1]
+        assert step_span.operation_name == "haystack.agent.step"
+        assert all(span.parent_span is step_span for span in tool_spans)
 
     @pytest.mark.asyncio
     async def test_tracing_span_run_async_with_parallel_tool_calls(self, spying_tracer, weather_tool):
@@ -1336,6 +1355,10 @@ class TestAgentTracing:
         tool_spans = [s for s in spying_tracer.spans if s.operation_name == "haystack.agent.step.tool"]
         assert len(tool_spans) == 2
         assert {span.tags["haystack.agent.step.tool.input"]["location"] for span in tool_spans} == {"Berlin", "Paris"}
+        # The tool spans are siblings under the step that requested the calls, not chained under each other.
+        step_span = spying_tracer.spans[1]
+        assert step_span.operation_name == "haystack.agent.step"
+        assert all(span.parent_span is step_span for span in tool_spans)
 
     def test_tracing_in_pipeline(self, spying_tracer, weather_tool):
         agent = Agent(chat_generator=MockChatGeneratorWithoutRunAsync(), tools=[weather_tool])

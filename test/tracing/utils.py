@@ -36,11 +36,20 @@ class SpyingSpan(Span):
 
 
 class SpyingTracer(Tracer):
+    """
+    A tracer that records every span it creates, in creation order, in `spans`.
+
+    Open spans are also kept on a stack, so `current_span` returns the innermost span whose `trace` block has not
+    exited yet. The stack lives on the tracer instance rather than in a ContextVar, mirroring tracing backends such
+    as Langfuse: code that opens a span while sibling spans are open concurrently sees a sibling as the current span.
+    """
+
     def current_span(self) -> Span | None:
-        return self.spans[-1] if self.spans else None
+        return self._open_spans[-1] if self._open_spans else None
 
     def __init__(self) -> None:
         self.spans: list[SpyingSpan] = []
+        self._open_spans: list[SpyingSpan] = []
 
     @contextlib.contextmanager
     def trace(
@@ -52,7 +61,11 @@ class SpyingTracer(Tracer):
 
         self.spans.append(new_span)
 
-        yield new_span
+        self._open_spans.append(new_span)
+        try:
+            yield new_span
+        finally:
+            self._open_spans.remove(new_span)
 
 
 @dataclasses.dataclass
