@@ -7,6 +7,7 @@ import io
 import json
 import operator
 import subprocess
+import types
 from collections.abc import Callable
 from unittest import mock
 
@@ -607,6 +608,110 @@ class TestDeniedPipelineEntryPoints:
         assert _extra_allowed_modules == []
         with pytest.raises(DeserializationError):
             deserialize_callable("os.system")
+
+    def test_nested_gadget_pipeline_needs_an_unsafe_load_to_arm(self):
+        # The other half of the chain, on its own: the nested payload is inert unless something loads
+        # it in unsafe mode. In safe mode the load is refused (its `unsafe: true` OutputAdapter, and
+        # its control-plane filters, are both rejected), so the gadget never arms.
+        with mock.patch("os.system") as mocked_system:
+            with pytest.raises(DeserializationError, match="unsafe=True while loading in safe mode"):
+                Pipeline.loads(self._nested_yaml())
+        assert not mocked_system.called
+        assert _extra_allowed_modules == []
+
+        # Under an unsafe load it arms *and fires* — and it fires at load time, not at run time:
+        # `OutputAdapter.__init__` extracts template variables via `meta.find_undeclared_variables`,
+        # whose codegen constant-folds filter calls with constant arguments, so `('*' | allow)` runs
+        # while the component is being constructed. No `.run()` is involved.
+        # This is why blocking the *loaders* is the load-bearing part of the fix: once safe-mode data
+        # cannot reach an unsafe load, it cannot reach this construction either.
+        Pipeline.loads(self._nested_yaml(), unsafe=True)
+        assert _extra_allowed_modules == ["*"]  # reverted by the autouse fixture
+
+
+class TestPipelineCallableClassification:
+    """
+    Structural guard for the marking above. `mark_deserialization_internal` is a per-callable
+    denylist inside a namespace-wide allowlist, so its completeness depends on someone remembering
+    to stamp the next dangerous entry point — exactly how `run_async_generator` and `stream` were
+    missed when `run` / `run_async` were marked.
+
+    Rather than testing the callables we happen to have thought of, this enumerates every public
+    callable on `PipelineBase` / `Pipeline` and requires each one to be classified here. Adding a
+    new public method fails this test until it is declared either deserializer-internal or safe to
+    resolve, and dropping a decorator fails it too.
+    """
+
+    # Loaders that accept `unsafe=True`, plus the execute primitives.
+    INTERNAL: dict[str, set[str]] = {
+        "PipelineBase": {"from_dict", "load", "loads"},
+        "Pipeline": {"run", "run_async", "run_async_generator", "stream"},
+    }
+    # Resolvable from serialized data without handing it deserialization control or execution:
+    # graph construction, introspection, serialization *out*, and lifecycle.
+    SAFE_TO_RESOLVE: dict[str, set[str]] = {
+        "PipelineBase": {
+            "add_component",
+            "close",
+            "close_async",
+            "connect",
+            "draw",
+            "dump",
+            "dumps",
+            "get_component",
+            "get_component_name",
+            "inputs",
+            "outputs",
+            "remove_component",
+            "show",
+            "to_dict",
+            "validate_input",
+            "validate_pipeline",
+            "walk",
+            "warm_up",
+            "warm_up_async",
+        },
+        "Pipeline": set(),
+    }
+
+    @staticmethod
+    def _public_callables(pipeline_class):
+        # `vars()` rather than `dir()`: each class is checked against its own declarations, so the
+        # two classification sets stay disjoint and a method moving between them is visible.
+        return {
+            name
+            for name, value in vars(pipeline_class).items()
+            if not name.startswith("_") and isinstance(value, (types.FunctionType, classmethod, staticmethod))
+        }
+
+    @pytest.mark.parametrize("class_name", ["PipelineBase", "Pipeline"])
+    def test_every_public_callable_is_classified(self, class_name):
+        from haystack.core.pipeline.base import PipelineBase
+        from haystack.core.pipeline.pipeline import Pipeline as ConcretePipeline
+        from haystack.core.serialization_security import _DESERIALIZATION_INTERNAL_ATTR
+
+        cls = {"PipelineBase": PipelineBase, "Pipeline": ConcretePipeline}[class_name]
+        internal, safe = self.INTERNAL[class_name], self.SAFE_TO_RESOLVE[class_name]
+        assert not internal & safe, f"{class_name}: classified both ways: {sorted(internal & safe)}"
+
+        public = self._public_callables(cls)
+        unclassified = public - internal - safe
+        assert not unclassified, (
+            f"{class_name}.{sorted(unclassified)} is public and unclassified. Decide whether it hands "
+            f"deserialized data deserialization control or execution: if so, stamp it with "
+            f"`mark_deserialization_internal` and add it to INTERNAL; otherwise add it to SAFE_TO_RESOLVE."
+        )
+        stale = (internal | safe) - public
+        assert not stale, f"{class_name}: classified but no longer public: {sorted(stale)}"
+
+        for name in sorted(public):
+            attr = getattr(cls, name)
+            func = getattr(attr, "__func__", attr)
+            marked = getattr(func, _DESERIALIZATION_INTERNAL_ATTR, False) is True
+            assert marked is (name in internal), (
+                f"{class_name}.{name} is classified as {'internal' if name in internal else 'safe'} "
+                f"but its `mark_deserialization_internal` stamp is {marked}."
+            )
 
 
 class TestObjectInternalsTraversal:
