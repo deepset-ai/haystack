@@ -2,13 +2,15 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import logging
 from typing import Any, ClassVar
 
 import pytest
 
+from haystack.components.agents import Agent
 from haystack.components.generators.chat import MockChatGenerator
 from haystack.dataclasses import ChatMessage, ChatRole, FileContent, ImageContent, TextContent, ToolCall
-from haystack.hooks.compaction import SummarizationCompactor
+from haystack.hooks.compaction import CompactionHook, SummarizationCompactor
 from haystack.hooks.compaction.summarization import _attachment_placeholder
 from haystack.hooks.compaction.utils import _COMPACTION_META_KEY
 from test.hooks.compaction.helpers import FakeCounter, tool_call, tool_result
@@ -345,6 +347,12 @@ class TestSummarizationCompactor:
         )
         assert "no more than approximately 64 tokens" in prompts[0]
 
+    def test_warns_when_the_generator_cannot_enforce_the_summary_budget(self, caplog):
+        with caplog.at_level(logging.WARNING):
+            SummarizationCompactor(RecordingGenerator(), max_summary_tokens=64)
+        assert "does not advertise a generation-parameter mapping for `max_output_tokens`" in caplog.text
+        assert "set its provider-specific output-token limit to 64" in caplog.text
+
     @pytest.mark.parametrize(
         ("kwargs", "match"),
         [
@@ -370,6 +378,32 @@ class TestSummarizationCompactor:
         assert restored.max_summary_tokens == 321
         assert restored.summary_instruction == "custom"
         assert restored.raise_on_failure is True
+
+
+class TestSummarizationCompactorInAgent:
+    def test_compacts_history_through_a_compaction_hook(self):
+        summary_generator = MappedGenerator()
+        hook = CompactionHook(
+            compactor=SummarizationCompactor(summary_generator, max_summary_tokens=64),
+            context_window=1_000,
+            compact_at=0.5,
+            compact_to=0.2,
+            token_counter=COUNTER,
+        )
+        agent = Agent(chat_generator=MockChatGenerator("done"), system_prompt="rules", hooks={"before_llm": [hook]})
+        messages = [
+            ChatMessage.from_user("old question " * 30),
+            ChatMessage.from_assistant("old answer " * 30),
+            ChatMessage.from_user("current task"),
+        ]
+        result = agent.run(messages=messages)
+        compacted = result["messages"]
+        assert result["last_message"].text == "done"
+        assert compacted[0].text == "rules"
+        assert any(message.text == "current task" for message in compacted)
+        assert sources(compacted) == ["historical_turns"]
+        assert all("old question" not in (message.text or "") for message in compacted)
+        assert summary_generator.received_generation_kwargs == [{"provider_max_tokens": 64}]
 
 
 class TestSummarizationCompactorAsync:

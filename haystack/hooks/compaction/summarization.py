@@ -176,8 +176,9 @@ class SummarizationCompactor(Compactor):
     so tool calls are never separated from their results.
 
     Each summary is requested within `max_summary_tokens`. A Chat Generator that supports an output-token limit is
-    held to it at runtime, whatever its provider calls that setting. Any other generator receives the limit as prompt
-    guidance, and the summary it returns is measured before it is accepted either way.
+    held to it at runtime, whatever its provider calls that setting. If the Chat Generator does not advertise such a
+    mapping, the compactor logs a warning. When that warning appears, set the provider-specific output-token limit to
+    the same value when initializing the Chat Generator.
 
     ```python
     from haystack.components.agents import Agent
@@ -207,7 +208,10 @@ class SummarizationCompactor(Compactor):
         """
         Initialize the compactor.
 
-        :param chat_generator: The Chat Generator used to write summaries.
+        :param chat_generator: The Chat Generator used to write summaries. The compactor logs a warning if this
+            generator does not advertise a mapping for Haystack's `max_output_tokens` parameter. If that warning
+            appears, set the generator's provider-specific output-token limit to the same value as `max_summary_tokens`
+            when initializing the Chat Generator.
         :param min_keep_steps: The fewest complete recent Agent steps to keep, even when they exceed the target.
         :param max_summary_tokens: The output-token budget reserved for each summary. A Chat Generator that supports an
             output-token limit is sent this one at runtime, overriding any limit configured on the generator itself.
@@ -230,6 +234,17 @@ class SummarizationCompactor(Compactor):
         self.max_summary_tokens = max_summary_tokens
         self.summary_instruction = summary_instruction
         self.raise_on_failure = raise_on_failure
+
+        parameter_mapping = getattr(self.chat_generator, "_HAYSTACK_TO_PROVIDER_GENERATION_KWARGS", {})
+        if "max_output_tokens" not in parameter_mapping:
+            logger.warning(
+                "The Chat Generator {generator} does not advertise a generation-parameter mapping for "
+                "`max_output_tokens`, so SummarizationCompactor cannot enforce `max_summary_tokens={limit}`. "
+                "When initializing this Chat Generator, set its provider-specific output-token limit to {limit} "
+                "to keep summary sizing consistent.",
+                generator=type(self.chat_generator).__name__,
+                limit=self.max_summary_tokens,
+            )
 
     def compact(
         self, messages: list[ChatMessage], target_tokens: int, token_counter: TokenCounter

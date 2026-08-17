@@ -1,6 +1,40 @@
 ---
 features:
   - |
-    Added the experimental ``SummarizationCompactor``. It uses a Chat Generator to condense the Agent's oldest
-    historical turns, accumulated summaries, and old current-task steps as needed to reach the context target while
-    preserving leading system messages, the latest user task, and complete recent tool-calling steps.
+    Added the experimental ``SummarizationCompactor`` for preserving useful context from long-running Agents instead
+    of dropping older messages outright. It uses a separate Chat Generator to summarize the oldest historical turns
+    first. If more space is needed, it folds accumulated summaries together and only then summarizes older steps from
+    the Agent's current task. Leading system messages, the latest user task, and a configurable number of recent Agent
+    steps are preserved, and assistant tool calls always stay together with all of their tool results.
+
+    ``max_summary_tokens`` reserves space for each generated summary. Chat Generators that advertise Haystack's
+    provider-neutral output-token mapping receive that limit at runtime. If this mapping is unavailable, the compactor
+    logs a warning. When that warning appears, set the provider-specific output-token limit to the same value when
+    initializing the summary Chat Generator. The prompt also states the limit. Generated summaries are only applied
+    when they reduce the measured conversation size. By default, a failed summarization keeps any progress already made
+    and logs a warning; set ``raise_on_failure=True`` to propagate the error instead.
+
+    .. code-block:: python
+
+        from haystack.components.agents import Agent
+        from haystack.components.generators.chat import OpenAIResponsesChatGenerator
+        from haystack.hooks.compaction import CompactionHook, SummarizationCompactor
+
+        agent_generator = OpenAIResponsesChatGenerator(model="gpt-5.4")
+        summary_generator = OpenAIResponsesChatGenerator(model="gpt-5.4-nano")
+
+        compaction_hook = CompactionHook(
+            compactor=SummarizationCompactor(
+                chat_generator=summary_generator,
+                min_keep_steps=2,
+                max_summary_tokens=1_024,
+            ),
+            context_window=400_000,
+            compact_at=0.7,
+            compact_to=0.4,
+        )
+
+        agent = Agent(
+            chat_generator=agent_generator,
+            hooks={"before_llm": [compaction_hook]},
+        )
