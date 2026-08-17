@@ -4,7 +4,8 @@ security:
     Closed an additional remote code execution vector related to the deserialization control-plane
     hardening: the pipeline loading entry points (``Pipeline.loads`` / ``Pipeline.load`` /
     ``Pipeline.from_dict``, which accept ``unsafe=True``) and the execute primitives
-    (``Pipeline.run`` / ``Pipeline.run_async``) were still resolvable from the allowlisted
+    (``Pipeline.run`` / ``Pipeline.run_async`` / ``Pipeline.run_async_generator`` /
+    ``Pipeline.stream``) were still resolvable from the allowlisted
     ``haystack`` namespace. Bound as ``custom_filters`` on an ``OutputAdapter`` or
     ``ConditionalRouter`` (which bypass the Jinja sandbox), a pipeline loaded in default safe mode
     could call ``Pipeline.loads(..., unsafe=True)`` to load a nested pipeline whose own filters

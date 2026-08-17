@@ -515,7 +515,8 @@ class TestDeniedPipelineEntryPoints:
     """
     Blocking the low-level resolvers (`deserialize_callable` etc.) is not enough on its own: the
     high-level loading entry points that accept `unsafe=True` — `Pipeline.loads` / `load` /
-    `from_dict` — and the execute primitive `Pipeline.run` / `run_async` are themselves resolvable
+    `from_dict` — and the execute primitives (`Pipeline.run` / `run_async` / `run_async_generator` /
+    `stream`) are themselves resolvable
     from the allowlisted `haystack` namespace. Bound as sandbox-bypassing `custom_filters`, they
     re-enter deserialization: a safe-mode pipeline can call `Pipeline.loads(nested, unsafe=True)` to
     load a *nested* pipeline whose own filters (`allow_deserialization_module`, `deserialize_callable`)
@@ -530,6 +531,10 @@ class TestDeniedPipelineEntryPoints:
         "haystack.core.pipeline.pipeline.Pipeline.from_dict",
         "haystack.core.pipeline.pipeline.Pipeline.run",
         "haystack.core.pipeline.pipeline.Pipeline.run_async",
+        # `run_async_generator` and `stream` reach `run_async` too, so they are execute primitives
+        # in their own right: `stream` schedules the run via `asyncio.create_task`.
+        "haystack.core.pipeline.pipeline.Pipeline.run_async_generator",
+        "haystack.core.pipeline.pipeline.Pipeline.stream",
         # The base class the classmethods actually live on, and the public re-export.
         "haystack.core.pipeline.base.PipelineBase.loads",
         "haystack.Pipeline.loads",
@@ -547,8 +552,8 @@ class TestDeniedPipelineEntryPoints:
             assert callable(deserialize_callable(handle))
 
     def test_entry_points_carry_the_marker(self):
-        # By construction: the loaders and the run primitive are stamped, so the resolver excludes
-        # them the day they are marked, not the day the chain below is discovered.
+        # By construction: the loaders and the execute primitives are stamped, so the resolver
+        # excludes them the day they are marked, not the day the chain below is discovered.
         from haystack.core.pipeline.base import PipelineBase
         from haystack.core.pipeline.pipeline import Pipeline as ConcretePipeline
         from haystack.core.serialization_security import _DESERIALIZATION_INTERNAL_ATTR
@@ -556,7 +561,7 @@ class TestDeniedPipelineEntryPoints:
         for classmethod_name in ("loads", "load", "from_dict"):
             func = getattr(PipelineBase, classmethod_name).__func__
             assert getattr(func, _DESERIALIZATION_INTERNAL_ATTR, False) is True
-        for method_name in ("run", "run_async"):
+        for method_name in ("run", "run_async", "run_async_generator", "stream"):
             func = getattr(ConcretePipeline, method_name)
             assert getattr(func, _DESERIALIZATION_INTERNAL_ATTR, False) is True
 

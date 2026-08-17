@@ -790,6 +790,7 @@ class Pipeline(PipelineBase):
         task = asyncio.create_task(_runner())
         running_tasks[task] = component_name
 
+    @mark_deserialization_internal
     async def run_async_generator(  # noqa: PLR0915,C901
         self, data: dict[str, Any], include_outputs_from: set[str] | None = None, concurrency_limit: int = 4
     ) -> AsyncGenerator[dict[str, Any], None]:
@@ -1197,6 +1198,7 @@ class Pipeline(PipelineBase):
             final = partial
         return final or {}
 
+    @mark_deserialization_internal
     def stream(
         self,
         data: dict[str, Any],
