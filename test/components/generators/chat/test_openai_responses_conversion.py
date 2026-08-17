@@ -243,6 +243,8 @@ class TestConversionToStreamingChunks:
         chunk = _convert_response_chunk_to_streaming_chunk(event, previous_chunks=[])
 
         assert chunk.finish_reason == finish_reason
+        message = _convert_streaming_chunks_to_chat_message([chunk])
+        assert message.meta["finish_reason"] == finish_reason
 
     def test_convert_streaming_chunks_to_chat_message_with_tool_call_empty_reasoning(
         self, openai_responses_streaming_chunks_with_tool_call: MagicMock
@@ -298,6 +300,7 @@ class TestConversionToStreamingChunks:
                     "total_tokens": 145,
                 },
                 "store": True,
+                "finish_reason": "tool_calls",
             },
         )
 
@@ -901,6 +904,9 @@ class TestConversionToStreamingChunks:
                 finish_reason="stop",
             ),
         ]
+
+        message = _convert_streaming_chunks_to_chat_message(streaming_chunks)
+        assert message.meta["finish_reason"] == "stop"
 
     def test_convert_only_function_call(self) -> None:
 

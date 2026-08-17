@@ -920,6 +920,8 @@ def _convert_streaming_chunks_to_chat_message(chunks: list[StreamingChunk]) -> C
     # We dump the entire final response into meta to be consistent with non-streaming response
     final_response = chunks[-1].meta.get("response") or {}
     final_response.pop("output", None)
+    if chunks[-1].finish_reason is not None:
+        final_response["finish_reason"] = chunks[-1].finish_reason
     if logprobs:
         final_response["logprobs"] = logprobs
 
