@@ -1,0 +1,5 @@
+---
+enhancements:
+  - |
+    Make the Agent's run-scoped tools available in ``State`` to ``before_run`` hooks. Dynamic toolsets such as
+    ``SearchableToolset`` continue to refresh the State tool snapshot before each LLM step.
