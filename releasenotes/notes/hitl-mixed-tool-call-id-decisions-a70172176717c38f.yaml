@@ -2,8 +2,8 @@
 fixes:
   - |
     Fixed ``ConfirmationHook`` applying a Human-in-the-Loop decision to the wrong tool call when a custom
-    ``ConfirmationStrategy`` returns decisions without a ``tool_call_id``. The ID of the tool call a strategy was asked
-    about is now restored on the decision it returns, decisions that carry an ID are no longer matched to a different
-    tool call by name, and two ID-less decisions for the same tool name raise a ``ValueError`` as documented instead of
-    both tool calls taking the last decision. The text of that ``ValueError`` changed, since it now also covers an
-    ID-less decision with an empty tool name.
+    ``ConfirmationStrategy`` returns a decision with a missing or incorrect ``tool_call_id``. Each decision is now
+    bound to the tool call for which its strategy ran, and ID-bearing decisions are no longer matched to a different
+    call by name. Haystack's existing requirement of exactly one decision per tool call is now explicitly enforced.
+    Each matched decision is consumed after use, so a missing, unused, or reused decision raises a ``ValueError``
+    instead of being silently misapplied.
