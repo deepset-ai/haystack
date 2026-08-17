@@ -197,7 +197,7 @@ class TestOpenAIChatGeneratorAsync:
         assert [isinstance(reply, ChatMessage) for reply in response["replies"]]
 
     @pytest.mark.asyncio
-    async def test_run_async_merges_generation_kwargs_with_the_ones_set_at_init(
+    async def test_run_with_generation_kwargs_async(
         self, chat_messages: list[ChatMessage], openai_mock_async_chat_completion: MagicMock
     ) -> None:
 

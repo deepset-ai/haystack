@@ -601,7 +601,7 @@ class TestRun:
         assert len(response["replies"]) == 1
         assert isinstance(response["replies"][0], ChatMessage)
 
-    def test_run_merges_generation_kwargs_with_the_ones_set_at_init(self, openai_mock_responses: MagicMock) -> None:
+    def test_run_with_generation_kwargs(self, openai_mock_responses: MagicMock) -> None:
 
         component = OpenAIResponsesChatGenerator(
             api_key=Secret.from_token("test-api-key"), generation_kwargs={"max_output_tokens": 10, "temperature": 0.5}
@@ -1232,9 +1232,7 @@ class TestOpenAIResponsesChatGeneratorAsync:
         assert len(response["replies"]) == 1
         assert isinstance(response["replies"][0], ChatMessage)
 
-    async def test_run_async_merges_generation_kwargs_with_the_ones_set_at_init(
-        self, openai_mock_async_responses: MagicMock
-    ) -> None:
+    async def test_run_async_with_generation_kwargs(self, openai_mock_async_responses: MagicMock) -> None:
 
         component = OpenAIResponsesChatGenerator(
             api_key=Secret.from_token("test-api-key"), generation_kwargs={"max_output_tokens": 10, "temperature": 0.5}

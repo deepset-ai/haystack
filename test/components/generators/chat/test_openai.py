@@ -507,7 +507,7 @@ class TestOpenAIChatGenerator:
         assert len(response["replies"]) == 1
         assert [isinstance(reply, ChatMessage) for reply in response["replies"]]
 
-    def test_run_merges_generation_kwargs_with_the_ones_set_at_init(
+    def test_run_with_generation_kwargs(
         self, chat_messages: list[ChatMessage], openai_mock_chat_completion: MagicMock
     ) -> None:
 
