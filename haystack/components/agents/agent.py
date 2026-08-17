@@ -743,6 +743,7 @@ class Agent:
         state.set("tool_call_counts", {tool.name: 0 for tool in flat_tools})
         state.set("exit_reason", None)
         state.set("continue_run", False)
+        state.set("tools", flat_tools)
         state.set("hook_context", hook_context or {})
 
         streaming_callback = select_streaming_callback(  # type: ignore[call-overload]
