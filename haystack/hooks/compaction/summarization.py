@@ -33,11 +33,12 @@ logger = logging.getLogger(__name__)
 _STRATEGY = "summarization"
 
 # Recorded as the `source` on a summary, naming the stretch of conversation it stands in for. Compaction gives these up
-# in order, so the Agent's current task is the last thing to go.
+# in order, so the Agent's current task is the last thing to go. Within each region original messages are summarized
+# first, and existing summaries are combined only once nothing else is left there.
 _HISTORICAL_TURNS = "historical_turns"
 _HISTORICAL_SUMMARIES = "historical_summaries"
-_CURRENT_TASK_SUMMARIES = "current_task_summaries"
 _CURRENT_TASK_STEPS = "current_task_steps"
+_CURRENT_TASK_SUMMARIES = "current_task_summaries"
 
 _DEFAULT_SUMMARY_INSTRUCTION = """You are compacting one portion of a conversation between a user and an AI agent so \
 the agent can keep working with fewer tokens. You are shown only the portion being replaced. The rest of the \
@@ -106,11 +107,11 @@ def _raw_historical_turn_groups(
     messages: list[ChatMessage], system_end: int, task_index: int | None
 ) -> list[list[int]]:
     """
-    Return the historical turns that still hold raw, never-summarized conversation, oldest turn first.
+    Return the historical turns that still hold never-summarized messages, oldest turn first.
 
     Summaries an earlier compaction wrote are excluded, so summarizing a turn leaves them in place for
-    `_HISTORICAL_SUMMARIES` to fold later. The list is empty when there are no historical turns, or when every one of
-    them is already nothing but summaries.
+    `_HISTORICAL_SUMMARIES` to combine later. The list is empty when there are no historical turns, or when every one
+    of them is already nothing but summaries.
     """
     # Strip the previous summaries out of each turn, then drop the turns that strip away to nothing.
     groups = [
@@ -169,11 +170,37 @@ class SummarizationCompactor(Compactor):
     """
     Condenses old historical turns first, then old steps from the Agent's current task.
 
-    Leading system messages and the latest real user message are always kept. Historical turns are summarized in full,
-    oldest first. Summaries normally accumulate so they are not repeatedly rewritten; if every historical turn has
-    already been summarized and more space is needed, those historical summaries are folded into one before any
-    current-task steps are summarized. An assistant message and all immediately following tool results form one step,
-    so tool calls are never separated from their results.
+    The conversation is read as two regions. History runs from the end of the leading system messages up to the latest
+    real user message; the current task runs from that user message to the end. Compaction always spends history before
+    it spends the current task, and within each region it summarizes original messages before it combines existing
+    summaries with each other, in four tiers:
+
+    1. `historical_turns`: the fewest oldest turns that make room. A turn is a real user message and everything
+       following it up to the next one.
+    2. `historical_summaries`: no original messages are left in history, so its summaries are combined into a single
+       one.
+    3. `current_task_steps`: the fewest oldest steps of the current task, keeping the `min_keep_steps` newest. A step
+       is an assistant message and all immediately following tool results, so a tool call is never separated from its
+       results.
+    4. `current_task_summaries`: no step may be given up either, so the summaries they left behind are combined into
+       one.
+
+    Each summary records which of these it came from under the `context_compaction` key in its `meta`, alongside
+    `summarized_messages`, the number of messages it replaced. A combined summary replaces summaries rather than
+    original messages, so its count refers to those, not to the original messages behind them.
+
+    Summaries accumulate rather than being rewritten on every compaction, because combining them is the last thing
+    tried in each region. Summarizing one original turn or step usually frees more room than combining two summaries
+    does, and every combination summarizes already-summarized text again, losing a little more detail each time.
+
+    Compaction therefore has a floor it cannot go below: the leading system messages, one combined historical summary,
+    the latest user message, one combined current-task summary, and the `min_keep_steps` newest steps. Once a
+    conversation is reduced to that, `compact` returns None however small the target is, because there is nothing left
+    that may be given up. Set `min_keep_steps=0` to lower the floor as far as it goes.
+
+    One known gap: history is grouped into turns starting at real user messages, so messages sitting between the
+    leading system block and the first user message belong to no turn and are never summarized. Conversations that
+    start with a user message, which is the usual case for an Agent, are unaffected.
 
     Each summary is requested within `max_summary_tokens`. A Chat Generator that supports an output-token limit is
     held to it at runtime, whatever its provider calls that setting. If the Chat Generator does not advertise such a
@@ -348,12 +375,17 @@ class SummarizationCompactor(Compactor):
         Choose the next stretch of conversation to replace with a summary.
 
         Four tiers are tried in order, so the oldest and least useful context goes first and the Agent's current task
-        is given up last:
+        is given up last. History is spent before the current task, and within each of the two, original messages are
+        summarized before existing summaries are combined with each other:
 
-        1. `_HISTORICAL_TURNS`: the fewest oldest raw turns that make room for a summary.
-        2. `_HISTORICAL_SUMMARIES`: nothing raw is left in history, so fold its summaries into one.
-        3. `_CURRENT_TASK_SUMMARIES`: fold the summaries earlier steps left behind before giving up more steps.
-        4. `_CURRENT_TASK_STEPS`: the fewest oldest steps of the current task, keeping `min_keep_steps` of the newest.
+        1. `_HISTORICAL_TURNS`: the fewest oldest not-yet-summarized turns that make room for a summary.
+        2. `_HISTORICAL_SUMMARIES`: history holds only summaries now, so combine them into one.
+        3. `_CURRENT_TASK_STEPS`: the fewest oldest steps of the current task, keeping `min_keep_steps` of the newest.
+        4. `_CURRENT_TASK_SUMMARIES`: no step may be given up either, so combine the summaries they left behind.
+
+        Combining is deliberately last within a region. Summarizing an original turn or step usually frees more room
+        than combining two summaries does, and every combination summarizes already-summarized text again, so the
+        tiers that combine only run once the region holds nothing else.
 
         :param messages: The conversation as it stands, ordered oldest to newest.
         :param target_tokens: The token budget the conversation should come in under.
@@ -384,8 +416,8 @@ class SummarizationCompactor(Compactor):
             )
             return oldest_turns, _HISTORICAL_TURNS
 
-        # Tier 2. History is nothing but summaries now, so the only room left there is in folding them into one. They
-        # are left to accumulate until this point so that they are not rewritten on every compaction.
+        # Tier 2. History is nothing but summaries now, so the only room left there is in combining them into one.
+        # They are left to accumulate until this point so that they are not rewritten on every compaction.
         history_summaries = _previous_summary_indices(messages=messages, start=system_end, end=history_end)
         if len(history_summaries) > 1:
             return history_summaries, _HISTORICAL_SUMMARIES
@@ -393,23 +425,27 @@ class SummarizationCompactor(Compactor):
         # History is exhausted, so the current task has to pay. Its `min_keep_steps` newest steps are off limits.
         agent_steps = _current_agent_step_groups(messages=messages, system_end=system_end, task_index=task_index)
         eligible_steps = agent_steps[: max(len(agent_steps) - self.min_keep_steps, 0)]
-        if not eligible_steps:
-            return None
 
-        # Tier 3. Fold the summaries earlier steps left behind before spending another raw step on the same space.
+        # Tier 3. Not-yet-summarized steps of the task the Agent is working on right now. Summarizing one of those is
+        # worth more space than combining summaries, so it goes first, and the summaries it leaves behind accumulate.
+        if eligible_steps:
+            oldest_steps = _groups_to_summarize(
+                messages=messages,
+                groups=eligible_steps,
+                target_tokens=target_tokens,
+                summary_tokens=self.max_summary_tokens,
+                token_counter=token_counter,
+            )
+            return oldest_steps, _CURRENT_TASK_STEPS
+
+        # Tier 4. Every step that may be given up is gone, so the last room anywhere is in combining the summaries
+        # they left behind. Combining spends no step, so `min_keep_steps` does not stand in its way.
         task_summaries = _previous_summary_indices(messages=messages, start=task_start, end=len(messages))
         if len(task_summaries) > 1:
             return task_summaries, _CURRENT_TASK_SUMMARIES
 
-        # Tier 4. Last resort: give up the oldest steps of the task the Agent is working on right now.
-        oldest_steps = _groups_to_summarize(
-            messages=messages,
-            groups=eligible_steps,
-            target_tokens=target_tokens,
-            summary_tokens=self.max_summary_tokens,
-            token_counter=token_counter,
-        )
-        return oldest_steps, _CURRENT_TASK_STEPS
+        # The conversation is down to what this compactor always keeps, so it cannot shrink any further.
+        return None
 
     def _prompt(self, messages: list[ChatMessage], indices: list[int]) -> list[ChatMessage]:
         """Build the bounded summarization instruction and the rendered transcript of the selected messages."""

@@ -28,6 +28,7 @@ def summarizer(*responses: str | Exception) -> tuple[MockChatGenerator, list[str
     A Chat Generator returning the given summaries in order, recording the prompt it received for each.
 
     An `Exception` among the responses is raised instead of answering, so a test can fail one summarization step.
+    Calling it more often than there are responses raises, so a test that queues none asserts nothing was summarized.
     """
     queued = list(responses)
     prompts: list[str] = []
@@ -77,6 +78,22 @@ def sources(messages: list[ChatMessage]) -> list[str]:
     return [
         message.meta[_COMPACTION_META_KEY]["source"] for message in messages if _COMPACTION_META_KEY in message.meta
     ]
+
+
+def compact_each_round(
+    compactor: SummarizationCompactor, messages: list[ChatMessage], rounds: list[list[ChatMessage]], target_tokens: int
+) -> list[ChatMessage]:
+    """
+    Compact once per round, the way an Agent loop drives the hook as the conversation grows.
+
+    Several behaviors only show up across compactions rather than within one, because a single `compact` call already
+    takes enough of the conversation in one go to meet the target.
+    """
+    for addition in rounds:
+        messages = [*messages, *addition]
+        compacted = compactor.compact(messages=messages, target_tokens=target_tokens, token_counter=COUNTER)
+        messages = compacted if compacted is not None else messages
+    return messages
 
 
 def two_turns_and_a_task() -> list[ChatMessage]:
@@ -136,17 +153,22 @@ class TestAttachmentPlaceholder:
         assert _attachment_placeholder(content) == expected
 
 
-class TestSummarizationCompactor:
-    def test_summarizes_oldest_historical_turn(self):
+class TestTierOrder:
+    """
+    Which stretch of conversation is given up next.
+
+    History is spent before the current task, and within each of the two, original messages are summarized before
+    are combined: `historical_turns`, `historical_summaries`, `current_task_steps`, `current_task_summaries`.
+    """
+
+    def test_summarizes_the_oldest_historical_turn_only(self):
         messages = two_turns_and_a_task()
         generator, prompts = summarizer("short historical summary")
         # Room for everything but the padded oldest turn, plus the summary standing in for it.
         target_tokens = COUNTER.count([messages[0], *messages[3:]]) + 100
-
         compacted = SummarizationCompactor(generator, max_summary_tokens=100).compact(
             messages=messages, target_tokens=target_tokens, token_counter=COUNTER
         )
-
         assert compacted is not None
         # Only the oldest turn was summarized, so the recent turn never reached the generator.
         assert len(prompts) == 1
@@ -154,14 +176,7 @@ class TestSummarizationCompactor:
         assert "recent question" not in prompts[0]
         assert compacted == [messages[0], compacted[1], *messages[3:]]
 
-    def test_leaves_the_input_conversation_untouched(self):
-        messages = two_turns_and_a_task()
-        SummarizationCompactor(MockChatGenerator("summary"), max_summary_tokens=1).compact(
-            messages=messages, target_tokens=SMALLEST, token_counter=COUNTER
-        )
-        assert messages == two_turns_and_a_task()
-
-    def test_summarizes_historical_turns_then_current_steps(self):
+    def test_summarizes_historical_turns_before_current_steps(self):
         messages = [
             ChatMessage.from_system("rules"),
             ChatMessage.from_user("old question " * 40),
@@ -169,11 +184,9 @@ class TestSummarizationCompactor:
             *a_task_with_two_steps()[1:],
         ]
         generator, prompts = summarizer("history", "old step")
-
         compacted = SummarizationCompactor(generator, max_summary_tokens=1).compact(
             messages=messages, target_tokens=SMALLEST, token_counter=COUNTER
         )
-
         assert compacted is not None
         assert "old question" in prompts[0]
         assert "old result" in prompts[1]
@@ -181,7 +194,7 @@ class TestSummarizationCompactor:
         # The newest step is never given up.
         assert compacted[-2:] == messages[-2:]
 
-    def test_folds_historical_summaries_before_current_steps(self):
+    def test_combines_historical_summaries_before_current_steps(self):
         messages = [
             ChatMessage.from_system("rules"),
             summary("first history " * 20, "historical_turns"),
@@ -189,18 +202,16 @@ class TestSummarizationCompactor:
             *a_task_with_two_steps()[1:],
         ]
         generator, prompts = summarizer("combined history", "old step")
-
         compacted = SummarizationCompactor(generator, max_summary_tokens=1).compact(
             messages=messages, target_tokens=SMALLEST, token_counter=COUNTER
         )
-
         assert compacted is not None
-        # The two historical summaries are folded into one before any current-task step is touched.
+        # History holds no original messages, so its summaries are combined before any current-task step is touched.
         assert "first history" in prompts[0] and "old result" not in prompts[0]
         assert "old result" in prompts[1]
         assert sources(compacted) == ["historical_summaries", "current_task_steps"]
 
-    def test_folds_current_task_summaries_before_more_steps(self):
+    def test_summarizes_steps_before_combining_current_task_summaries(self):
         messages = [
             ChatMessage.from_system("rules"),
             ChatMessage.from_user("current task"),
@@ -208,16 +219,35 @@ class TestSummarizationCompactor:
             summary("second step summary " * 20, "current_task_steps"),
             *a_task_with_two_steps()[2:],
         ]
-        generator, prompts = summarizer("combined steps", "old step")
-
+        generator, prompts = summarizer("old step", "combined steps")
         compacted = SummarizationCompactor(generator, max_summary_tokens=1).compact(
             messages=messages, target_tokens=SMALLEST, token_counter=COUNTER
         )
-
         assert compacted is not None
-        assert "first step summary" in prompts[0]
-        assert "old result" in prompts[1]
-        assert sources(compacted) == ["current_task_summaries", "current_task_steps"]
+        # Summarizing the step frees more room than combining does, so it goes first. Only once no step may be
+        # given up are the three summaries it left behind combined into one.
+        assert "old result" in prompts[0]
+        assert "first step summary" in prompts[1] and "old step" in prompts[1]
+        assert sources(compacted) == ["current_task_summaries"]
+        assert compacted[-2:] == messages[-2:]
+
+    def test_combines_current_task_summaries_when_min_keep_steps_reserves_every_step(self):
+        messages = [
+            ChatMessage.from_system("rules"),
+            ChatMessage.from_user("current task"),
+            summary("first step summary " * 20, "current_task_steps"),
+            summary("second step summary " * 20, "current_task_steps"),
+            tool_call("new"),
+            tool_result("new result", call_id="new"),
+        ]
+        generator, prompts = summarizer("combined steps")
+        compacted = SummarizationCompactor(generator, min_keep_steps=1, max_summary_tokens=1).compact(
+            messages=messages, target_tokens=SMALLEST, token_counter=COUNTER
+        )
+        assert compacted is not None
+        # Combining spends no step, so `min_keep_steps` reserving the only one does not stand in its way.
+        assert "first step summary" in prompts[0] and "second step summary" in prompts[0]
+        assert sources(compacted) == ["current_task_summaries"]
         assert compacted[-2:] == messages[-2:]
 
     @pytest.mark.parametrize(("min_keep_steps", "expected"), [(0, 0), (1, 1), (2, 2), (20, 2)])
@@ -229,6 +259,127 @@ class TestSummarizationCompactor:
         )
         result = compacted or messages
         assert sum(message.is_from(role=ChatRole.ASSISTANT) for message in result) == expected
+
+
+class TestSummaryLifecycle:
+    """
+    How summaries build up and are combined as an Agent loop compacts the same conversation again and again.
+
+    Combining is the last thing tried in each region, so summaries accumulate instead of being rewritten every time.
+    """
+
+    def test_historical_summaries_accumulate_while_raw_turns_remain(self):
+        compactor = SummarizationCompactor(MockChatGenerator("summary"), max_summary_tokens=10)
+        # Each round is another finished turn, and the newest user message anchors the current task.
+        rounds = [
+            [ChatMessage.from_user(f"question {index} " * 30), ChatMessage.from_assistant(f"answer {index} " * 30)]
+            for index in range(4)
+        ]
+        # Loose enough that each round is paid for by summarizing one more turn, so combining is never reached.
+        compacted = compact_each_round(compactor, [ChatMessage.from_system("rules")], rounds, target_tokens=1_100)
+        # One summary per compaction rather than one combined summary, because turns were still there to give up.
+        assert sources(compacted) == ["historical_turns", "historical_turns", "historical_turns"]
+
+    def test_current_task_summaries_accumulate_while_raw_steps_remain(self):
+        compactor = SummarizationCompactor(MockChatGenerator("summary"), min_keep_steps=1, max_summary_tokens=10)
+        start = [ChatMessage.from_system("rules"), ChatMessage.from_user("current task")]
+        rounds = [
+            [tool_call(f"c{index}"), tool_result(f"result {index} " * 30, call_id=f"c{index}")] for index in range(4)
+        ]
+        compacted = compact_each_round(compactor, start, rounds, target_tokens=650)
+        assert sources(compacted) == ["current_task_steps", "current_task_steps", "current_task_steps"]
+
+    def test_stops_once_each_region_is_down_to_a_single_summary(self):
+        # The floor compaction never goes below: the system block, one summary per region, the latest user message,
+        # and the `min_keep_steps` newest steps.
+        messages = [
+            ChatMessage.from_system("rules"),
+            summary("all history " * 20, "historical_summaries"),
+            ChatMessage.from_user("current task"),
+            summary("all earlier steps " * 20, "current_task_summaries"),
+            tool_call("new"),
+            tool_result("new result " * 20, call_id="new"),
+        ]
+        # No responses are queued, so any attempt to summarize would raise rather than quietly succeed.
+        generator, prompts = summarizer()
+        compacted = SummarizationCompactor(generator, min_keep_steps=1, max_summary_tokens=1).compact(
+            messages=messages, target_tokens=SMALLEST, token_counter=COUNTER
+        )
+        assert compacted is None
+        assert prompts == []
+
+    def test_a_summarized_past_task_is_combined_into_history_once_a_new_task_arrives(self):
+        # The summary of a task's early steps stops being a current-task summary the moment a newer user message
+        # arrives, because the region a summary belongs to is decided by position, not by the `source` it records.
+        messages = [
+            ChatMessage.from_system("rules"),
+            ChatMessage.from_user("past task " * 30),
+            summary("early steps of the past task", "current_task_steps"),
+            ChatMessage.from_assistant("late step " * 30),
+            ChatMessage.from_user("current task"),
+        ]
+        generator, prompts = summarizer("past turn", "combined history")
+        compacted = SummarizationCompactor(generator, max_summary_tokens=5).compact(
+            messages=messages, target_tokens=SMALLEST, token_counter=COUNTER
+        )
+        assert compacted is not None
+        # The rest of the past turn is summarized first, then that summary and the older one are combined.
+        assert "past task" in prompts[0] and "early steps of the past task" not in prompts[0]
+        assert "early steps of the past task" in prompts[1] and "past turn" in prompts[1]
+        assert sources(compacted) == ["historical_summaries"]
+
+    def test_summarized_messages_counts_what_a_summary_replaced(self):
+        messages = [
+            ChatMessage.from_system("rules"),
+            ChatMessage.from_user("old " * 100),
+            ChatMessage.from_assistant("answer " * 100),
+            ChatMessage.from_user("task"),
+        ]
+        compacted = SummarizationCompactor(MockChatGenerator("summary"), max_summary_tokens=1).compact(
+            messages=messages, target_tokens=SMALLEST, token_counter=COUNTER
+        )
+        assert compacted is not None
+        assert compacted[1].is_from(role=ChatRole.USER)
+        assert compacted[1].meta[_COMPACTION_META_KEY] == {
+            "strategy": "summarization",
+            "summarized_messages": 2,
+            "source": "historical_turns",
+        }
+
+    def test_summarized_messages_counts_summaries_rather_than_the_messages_behind_them(self):
+        messages = [
+            ChatMessage.from_system("rules"),
+            summary("first history " * 20, "historical_turns"),
+            summary("second history " * 20, "historical_turns"),
+            summary("third history " * 20, "historical_turns"),
+            ChatMessage.from_user("current task"),
+        ]
+        compacted = SummarizationCompactor(MockChatGenerator("all history"), max_summary_tokens=1).compact(
+            messages=messages, target_tokens=SMALLEST, token_counter=COUNTER
+        )
+        assert compacted is not None
+        # Combining replaces summaries, so the count is three, not the many real messages those three stood for.
+        assert compacted[1].meta[_COMPACTION_META_KEY]["summarized_messages"] == 3
+
+    def test_leaves_the_input_conversation_untouched(self):
+        messages = two_turns_and_a_task()
+        SummarizationCompactor(MockChatGenerator("summary"), max_summary_tokens=1).compact(
+            messages=messages, target_tokens=SMALLEST, token_counter=COUNTER
+        )
+        assert messages == two_turns_and_a_task()
+
+    def test_returns_none_when_the_conversation_fits(self):
+        generator, prompts = summarizer()
+        messages = [ChatMessage.from_system("rules"), ChatMessage.from_user("task")]
+        compacted = SummarizationCompactor(generator).compact(
+            messages=messages, target_tokens=10_000, token_counter=COUNTER
+        )
+        assert compacted is None
+        assert prompts == []
+
+
+class TestSummaryContent:
+    """What the summarizing Chat Generator is asked for, and under what budget."""
 
     def test_attachments_are_named_in_the_transcript(self):
         image = ImageContent(base64_image="Zm9v", mime_type="image/png", meta={"file_path": "/tmp/shot.png"})
@@ -258,8 +409,34 @@ class TestSummarizationCompactor:
             messages=two_turns_and_a_task(), target_tokens=SMALLEST, token_counter=COUNTER
         )
         assert "Only list file paths." in prompts[0]
-        assert "You are compacting part of a conversation" not in prompts[0]
+        assert "You are compacting one portion of a conversation" not in prompts[0]
 
+    @pytest.mark.parametrize(
+        ("generator_class", "expected"),
+        [
+            # A generator that maps `max_output_tokens` is held to the budget by its own provider setting.
+            pytest.param(MappedGenerator, {"provider_max_tokens": 64}, id="advertised"),
+            # Nothing is guessed for a generator that maps nothing, so it keeps whatever it was configured with.
+            pytest.param(RecordingGenerator, None, id="not-advertised"),
+        ],
+    )
+    def test_summary_budget_is_sent_only_when_the_generator_supports_a_limit(self, generator_class, expected):
+        generator = generator_class()
+        SummarizationCompactor(generator, max_summary_tokens=64).compact(
+            messages=two_turns_and_a_task(), target_tokens=SMALLEST, token_counter=COUNTER
+        )
+        assert generator.received_generation_kwargs
+        assert all(received == expected for received in generator.received_generation_kwargs)
+
+    def test_summary_budget_is_always_stated_in_the_prompt(self):
+        generator, prompts = summarizer("summary")
+        SummarizationCompactor(generator, max_summary_tokens=64).compact(
+            messages=two_turns_and_a_task(), target_tokens=SMALLEST, token_counter=COUNTER
+        )
+        assert "no more than approximately 64 tokens" in prompts[0]
+
+
+class TestFailureHandling:
     def test_keeps_partial_progress_when_a_summary_fails(self):
         messages = [
             ChatMessage.from_system("rules"),
@@ -270,11 +447,9 @@ class TestSummarizationCompactor:
             ChatMessage.from_assistant("new step"),
         ]
         generator, prompts = summarizer("history", RuntimeError("provider unavailable"))
-
         compacted = SummarizationCompactor(generator, max_summary_tokens=1).compact(
             messages=messages, target_tokens=SMALLEST, token_counter=COUNTER
         )
-
         assert compacted is not None
         assert len(prompts) == 2
         # The history was summarized before the step summary failed, and that progress is kept.
@@ -294,59 +469,8 @@ class TestSummarizationCompactor:
         with pytest.raises(RuntimeError, match="did not reduce"):
             compactor.compact(messages=messages, target_tokens=SMALLEST, token_counter=COUNTER)
 
-    def test_returns_none_when_the_conversation_fits(self):
-        generator, prompts = summarizer("unused")
-        messages = [ChatMessage.from_system("rules"), ChatMessage.from_user("task")]
-        compacted = SummarizationCompactor(generator).compact(
-            messages=messages, target_tokens=10_000, token_counter=COUNTER
-        )
-        assert compacted is None
-        assert prompts == []
 
-    def test_summary_is_a_marked_user_message(self):
-        messages = [
-            ChatMessage.from_system("rules"),
-            ChatMessage.from_user("old " * 100),
-            ChatMessage.from_assistant("answer " * 100),
-            ChatMessage.from_user("task"),
-        ]
-        compacted = SummarizationCompactor(MockChatGenerator("summary"), max_summary_tokens=1).compact(
-            messages=messages, target_tokens=SMALLEST, token_counter=COUNTER
-        )
-        assert compacted is not None
-        assert compacted[1].is_from(role=ChatRole.USER)
-        assert compacted[1].meta[_COMPACTION_META_KEY] == {
-            "strategy": "summarization",
-            "summarized_messages": 2,
-            "source": "historical_turns",
-        }
-
-    @pytest.mark.parametrize(
-        ("generator_class", "expected"),
-        [
-            # A generator that maps `max_output_tokens` is held to the budget by its own provider setting.
-            pytest.param(MappedGenerator, {"provider_max_tokens": 64}, id="advertised"),
-            # Nothing is guessed for a generator that maps nothing, so it keeps whatever it was configured with.
-            pytest.param(RecordingGenerator, None, id="not-advertised"),
-        ],
-    )
-    def test_summary_budget_is_sent_only_when_the_generator_supports_a_limit(self, generator_class, expected):
-        generator = generator_class()
-
-        SummarizationCompactor(generator, max_summary_tokens=64).compact(
-            messages=two_turns_and_a_task(), target_tokens=SMALLEST, token_counter=COUNTER
-        )
-
-        assert generator.received_generation_kwargs
-        assert all(received == expected for received in generator.received_generation_kwargs)
-
-    def test_summary_budget_is_always_stated_in_the_prompt(self):
-        generator, prompts = summarizer("summary")
-        SummarizationCompactor(generator, max_summary_tokens=64).compact(
-            messages=two_turns_and_a_task(), target_tokens=SMALLEST, token_counter=COUNTER
-        )
-        assert "no more than approximately 64 tokens" in prompts[0]
-
+class TestConfiguration:
     def test_warns_when_the_generator_cannot_enforce_the_summary_budget(self, caplog):
         with caplog.at_level(logging.WARNING):
             SummarizationCompactor(RecordingGenerator(), max_summary_tokens=64)
@@ -411,11 +535,9 @@ class TestSummarizationCompactorAsync:
     async def test_compact_async_matches_compact(self):
         messages = two_turns_and_a_task()
         generator, prompts = summarizer("async summary")
-
         compacted = await SummarizationCompactor(generator, max_summary_tokens=1).compact_async(
             messages=messages, target_tokens=SMALLEST, token_counter=COUNTER
         )
-
         assert len(prompts) == 1
         assert compacted == SummarizationCompactor(MockChatGenerator("async summary"), max_summary_tokens=1).compact(
             messages=messages, target_tokens=SMALLEST, token_counter=COUNTER

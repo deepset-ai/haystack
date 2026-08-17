@@ -2,10 +2,18 @@
 features:
   - |
     Added the experimental ``SummarizationCompactor`` for preserving useful context from long-running Agents instead
-    of dropping older messages outright. It uses a separate Chat Generator to summarize the oldest historical turns
-    first. If more space is needed, it folds accumulated summaries together and only then summarizes older steps from
-    the Agent's current task. Leading system messages, the latest user task, and a configurable number of recent Agent
-    steps are preserved, and assistant tool calls always stay together with all of their tool results.
+    of dropping older messages outright. It uses a separate Chat Generator to summarize the conversation in four tiers,
+    spending history before the Agent's current task and, within each of the two, summarizing original messages before
+    combining existing summaries with each other: the oldest historical turns, then the historical summaries left
+    behind, then the oldest steps of the current task, then the current-task summaries left behind. Because combining
+    comes last in each region, summaries accumulate instead of being rewritten on every compaction, which keeps
+    already-summarized text from being summarized again and again.
+
+    Leading system messages, the latest user task, and a configurable number of recent Agent steps are preserved, and
+    assistant tool calls always stay together with all of their tool results. This is also the floor that compaction
+    cannot go below: once each region holds a single combined summary, ``compact`` reports that no further reduction is
+    possible however small the target is. Each summary records the tier it came from and the number of messages it
+    replaced under the ``context_compaction`` key in its ``meta``.
 
     ``max_summary_tokens`` reserves space for each generated summary. Chat Generators that advertise Haystack's
     provider-neutral output-token mapping receive that limit at runtime. If this mapping is unavailable, the compactor
