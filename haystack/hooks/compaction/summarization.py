@@ -6,7 +6,6 @@ from typing import Any, Literal
 
 from haystack import logging
 from haystack.components.generators.chat.types import ChatGenerator
-from haystack.components.generators.chat.utils import _convert_haystack_generation_kwargs
 from haystack.core.serialization import component_to_dict, default_from_dict, default_to_dict
 from haystack.dataclasses import ChatMessage, FileContent, ImageContent
 from haystack.dataclasses.chat_message import ChatMessageContentT
@@ -63,6 +62,9 @@ this portion is replaced, so copy the placeholder details here.
 Work still outstanding, and the immediate next step.
 
 Rules:
+- Your summary replaces the portion you are given, so it has to be clearly shorter than that portion. Judge it \
+against the length of what you were given: the longer the portion, the harder you should compress. If the portion is \
+already short, your summary still has to come out shorter than it.
 - Record only what this portion shows. Do not infer, do not give advice, and do not add anything that is not here.
 - Copy identifiers exactly rather than describing them. They cannot be recovered once this portion is gone.
 - Fold any <conversation_summary> blocks you are given into your own: keep what is still true, drop what is now \
@@ -144,9 +146,9 @@ def _no_summary_text_error(replies: list[ChatMessage]) -> str:
     """
     Describe an unusable summarization reply well enough to diagnose it without reproducing the call.
 
-    `finish_reason` in the reply's `meta` usually gives the cause: `length` means `max_summary_tokens` left no room for
-    any text, and `content_filter` means the provider refused the conversation. A reasoning model can also spend its
-    whole budget thinking and return reasoning with no text, so whether any reasoning came back is reported too.
+    `finish_reason` in the reply's `meta` usually gives the cause: `length` means the Chat Generator's own output limit
+    left no room for any text, and `content_filter` means the provider refused the conversation. Anything else is
+    unexplained, so the reply itself is reported, including whether it came back with reasoning but no text.
     """
     if not replies:
         return "The Chat Generator returned no replies to use as a conversation summary."
@@ -154,10 +156,10 @@ def _no_summary_text_error(replies: list[ChatMessage]) -> str:
     reasoning = last.reasoning
     if last.meta.get("finish_reason") in ("length", "max_tokens"):
         return (
-            "The Chat Generator hit its output limit before writing any of the conversation summary. A reasoning model "
-            "left at its default effort does this reliably, because providers count thinking against the same budget "
-            "as the summary, so raising `max_summary_tokens` will not help. Configure the summary Chat Generator for "
-            f"low reasoning effort. The reply reports usage {last.meta.get('usage')}."
+            "The Chat Generator hit its output limit before writing any of the conversation summary. Raise the "
+            "output-token limit on the Chat Generator, or, if it is a reasoning model, lower its reasoning effort, "
+            "since providers typically count thinking against that same limit. The reply reports usage "
+            f"{last.meta.get('usage')}."
         )
     return (
         f"The Chat Generator returned no text to use as a conversation summary. The last of {len(replies)} "
@@ -218,25 +220,15 @@ class SummarizationCompactor(Compactor):
     leading system block and the first user message belong to no turn and are never summarized. Conversations that
     start with a user message, which is the usual case for an Agent, are unaffected.
 
-    Each summary is requested within `max_summary_tokens`. A Chat Generator that supports an output-token limit is
-    held to it at runtime, whatever its provider calls that setting. If the Chat Generator does not advertise such a
-    mapping, the compactor logs a warning. When that warning appears, set the provider-specific output-token limit to
-    the same value when initializing the Chat Generator.
-
-    Configure a reasoning model used for summarizing with low reasoning effort. Providers count thinking against the
-    same output budget as the summary, and a reasoning model left at its default effort will spend the entire budget
-    thinking and return no summary at all, no matter how large `max_summary_tokens` is. The compactor reports it when
-    this happens, but the setting has to come from the Chat Generator.
+    `approximate_summary_tokens` tells the compactor about how long a summary comes out, so it can work out how much
+    conversation to hand over at once. It is an estimate used for planning, not a limit imposed on the model.
 
     ```python
     from haystack.components.agents import Agent
     from haystack.components.generators.chat import OpenAIResponsesChatGenerator
     from haystack.hooks.compaction import CompactionHook, SummarizationCompactor
 
-    # Low reasoning effort leaves the output budget for the summary rather than the thinking.
-    summary_generator = OpenAIResponsesChatGenerator(
-        model="gpt-5.4-nano", generation_kwargs={"reasoning": {"effort": "low"}}
-    )
+    summary_generator = OpenAIResponsesChatGenerator(model="gpt-5.4-nano")
     hook = CompactionHook(
         compactor=SummarizationCompactor(chat_generator=summary_generator),
         context_window=400_000,
@@ -252,49 +244,43 @@ class SummarizationCompactor(Compactor):
         chat_generator: ChatGenerator,
         *,
         min_keep_steps: int = 1,
-        max_summary_tokens: int = 2048,
+        approximate_summary_tokens: int = 1024,
         summary_instruction: str = _DEFAULT_SUMMARY_INSTRUCTION,
         raise_on_failure: bool = False,
     ) -> None:
         """
         Initialize the compactor.
 
-        :param chat_generator: The Chat Generator used to write summaries. The compactor logs a warning if this
-            generator does not advertise a mapping for Haystack's `max_output_tokens` parameter. If that warning
-            appears, set the generator's provider-specific output-token limit to the same value as `max_summary_tokens`
-            when initializing the Chat Generator.
+        :param chat_generator: The Chat Generator used to write summaries. The compactor sends it no generation
+            settings of its own, so any limit on how long its replies may be belongs on the Chat Generator.
         :param min_keep_steps: The fewest complete recent Agent steps to keep, even when they exceed the target.
-        :param max_summary_tokens: The output-token budget reserved for each summary. A Chat Generator that supports an
-            output-token limit is sent this one at runtime, overriding any limit configured on the generator itself.
+        :param approximate_summary_tokens: About how long you expect a summary to come out. This is an estimate used
+            for planning, never a limit imposed on the model: the compactor subtracts it from the target to work out
+            how much conversation to hand over in one summarization. Raising it makes the compactor summarize more of
+            the conversation per round, so the result is likelier to land under the target, at the cost of giving up
+            more of the conversation. Lowering it summarizes less per round and keeps more, but may leave the result
+            above the target and need another round. Err high, since the cost of guessing high is only that more is
+            summarized. Raise it if your summary model writes at length.
         :param summary_instruction: What the model is told to preserve when it writes a summary. The default asks for
             fixed sections covering the objective, decisions and constraints, completed work, exact identifiers, and
             unresolved work, each written as `(none)` when the summarized portion says nothing about it. It also states
             that only part of the conversation is shown, so the model does not conclude that something never happened
-            just because it is absent.
+            just because it is absent, and that the summary has to come out shorter than the portion it replaces.
         :param raise_on_failure: Whether a failed or non-shrinking summarization raises. By default the failure is
             logged and any successful partial compaction is returned.
-        :raises ValueError: If `min_keep_steps` is negative or `max_summary_tokens` is not positive.
+        :raises ValueError: If `min_keep_steps` is negative or `approximate_summary_tokens` is not positive.
         """
         if min_keep_steps < 0:
             raise ValueError(f"`min_keep_steps` must be at least 0, got {min_keep_steps}.")
-        if max_summary_tokens < 1:
-            raise ValueError(f"`max_summary_tokens` must be a positive number of tokens, got {max_summary_tokens}.")
+        if approximate_summary_tokens < 1:
+            raise ValueError(
+                f"`approximate_summary_tokens` must be a positive number of tokens, got {approximate_summary_tokens}."
+            )
         self.chat_generator = chat_generator
         self.min_keep_steps = min_keep_steps
-        self.max_summary_tokens = max_summary_tokens
+        self.approximate_summary_tokens = approximate_summary_tokens
         self.summary_instruction = summary_instruction
         self.raise_on_failure = raise_on_failure
-
-        parameter_mapping = getattr(self.chat_generator, "_HAYSTACK_TO_PROVIDER_GENERATION_KWARGS", {})
-        if "max_output_tokens" not in parameter_mapping:
-            logger.warning(
-                "The Chat Generator {generator} does not advertise a generation-parameter mapping for "
-                "`max_output_tokens`, so SummarizationCompactor cannot enforce `max_summary_tokens={limit}`. "
-                "When initializing this Chat Generator, set its provider-specific output-token limit to {limit} "
-                "to keep summary sizing consistent.",
-                generator=type(self.chat_generator).__name__,
-                limit=self.max_summary_tokens,
-            )
 
     def compact(
         self, messages: list[ChatMessage], target_tokens: int, token_counter: TokenCounter
@@ -307,8 +293,6 @@ class SummarizationCompactor(Compactor):
         :param token_counter: The counter used both to plan compaction and verify generated summaries.
         :returns: A smaller replacement conversation, or None when nothing was reduced.
         """
-        run_kwargs = self._generation_run_kwargs()
-
         # Rebound only when a summary is applied, and never mutated, so `messages` is left as the caller passed it.
         compacted = messages
         summarized = False
@@ -322,7 +306,7 @@ class SummarizationCompactor(Compactor):
             try:
                 # Summarize that stretch and swap it in, so the next round plans against the smaller conversation.
                 # A generator error or a summary that does not shrink raises out of here.
-                result = self.chat_generator.run(messages=prompt, **run_kwargs)
+                result = self.chat_generator.run(messages=prompt)
                 compacted = self._apply_summary(
                     messages=compacted, indices=indices, source=source, result=result, token_counter=token_counter
                 )
@@ -346,8 +330,6 @@ class SummarizationCompactor(Compactor):
         :param token_counter: The counter used both to plan compaction and verify generated summaries.
         :returns: A smaller replacement conversation, or None when nothing was reduced.
         """
-        run_kwargs = self._generation_run_kwargs()
-
         # Rebound only when a summary is applied, and never mutated, so `messages` is left as the caller passed it.
         compacted = messages
         summarized = False
@@ -361,9 +343,7 @@ class SummarizationCompactor(Compactor):
             try:
                 # Summarize that stretch and swap it in, so the next round plans against the smaller conversation.
                 # Only the generator call is awaited; planning and swapping are pure.
-                result = await _execute_component_async(
-                    component_instance=self.chat_generator, messages=prompt, **run_kwargs
-                )
+                result = await _execute_component_async(component_instance=self.chat_generator, messages=prompt)
                 compacted = self._apply_summary(
                     messages=compacted, indices=indices, source=source, result=result, token_counter=token_counter
                 )
@@ -375,21 +355,6 @@ class SummarizationCompactor(Compactor):
         # Every applied summary was measured as shrinking the conversation, so any summary at all is real progress,
         # whether or not the target was met. Without one there is nothing to hand back.
         return compacted if summarized else None
-
-    def _generation_run_kwargs(self) -> dict[str, Any]:
-        """
-        Return the `run` keyword arguments that hold a summary to `max_summary_tokens`.
-
-        `max_output_tokens` is Haystack's provider-neutral name for an output-token limit, so the Chat Generator
-        translates it into whatever its own provider calls it. A generator that does not advertise the parameter gets
-        no runtime setting at all and is held to the limit by the prompt alone, since the `ChatGenerator` protocol
-        guarantees nothing beyond `run`.
-        """
-        generation_kwargs = _convert_haystack_generation_kwargs(
-            chat_generator=self.chat_generator,
-            haystack_generation_kwargs={"max_output_tokens": self.max_summary_tokens},
-        )
-        return {"generation_kwargs": generation_kwargs} if generation_kwargs else {}
 
     def _next_summary(
         self, messages: list[ChatMessage], target_tokens: int, token_counter: TokenCounter
@@ -434,7 +399,7 @@ class SummarizationCompactor(Compactor):
                 messages=messages,
                 groups=historical_turns,
                 target_tokens=target_tokens,
-                summary_tokens=self.max_summary_tokens,
+                summary_tokens=self.approximate_summary_tokens,
                 token_counter=token_counter,
             )
             return oldest_turns, "historical_turns"
@@ -456,7 +421,7 @@ class SummarizationCompactor(Compactor):
                 messages=messages,
                 groups=eligible_steps,
                 target_tokens=target_tokens,
-                summary_tokens=self.max_summary_tokens,
+                summary_tokens=self.approximate_summary_tokens,
                 token_counter=token_counter,
             )
             return oldest_steps, "current_task_steps"
@@ -471,7 +436,7 @@ class SummarizationCompactor(Compactor):
         return None
 
     def _prompt(self, messages: list[ChatMessage], indices: list[int]) -> list[ChatMessage]:
-        """Build the bounded summarization instruction and the rendered transcript of the selected messages."""
+        """Build the summarization instruction and the rendered transcript of the selected messages."""
         transcript = _rendered_conversation(
             _messages_at(messages=messages, indices=indices), placeholder=_attachment_placeholder
         )
@@ -499,14 +464,14 @@ class SummarizationCompactor(Compactor):
         if not text or not text.strip():
             raise RuntimeError(_no_summary_text_error(replies=replies))
 
-        # Warn user if text has been truncated
+        # A cut-off summary is still better than keeping the messages that overflowed the context, so it is applied
+        # rather than rejected. It is missing whatever it had not written yet, so say so.
         if replies[-1].meta.get("finish_reason") in ("length", "max_tokens"):
             logger.warning(
-                "The Chat Generator stopped at `max_summary_tokens={limit}` before finishing the summary, so the "
-                "summary kept for this compaction is cut off partway. Raise `max_summary_tokens`, or shorten what "
-                "`summary_instruction` asks for. Note that providers count a reasoning model's thinking against this "
-                "same budget, so a reasoning model needs a good deal more than the length of the summary itself.",
-                limit=self.max_summary_tokens,
+                "The Chat Generator hit its output limit before finishing the conversation summary, so the summary "
+                "kept for this compaction is cut off partway. Raise the output-token limit on the Chat Generator, or, "
+                "if it is a reasoning model, lower its reasoning effort, since providers typically count thinking "
+                "against that same limit."
             )
 
         summary = ChatMessage.from_user(
@@ -565,7 +530,7 @@ class SummarizationCompactor(Compactor):
             self,
             chat_generator=component_to_dict(obj=self.chat_generator, name="chat_generator"),
             min_keep_steps=self.min_keep_steps,
-            max_summary_tokens=self.max_summary_tokens,
+            approximate_summary_tokens=self.approximate_summary_tokens,
             summary_instruction=self.summary_instruction,
             raise_on_failure=self.raise_on_failure,
         )

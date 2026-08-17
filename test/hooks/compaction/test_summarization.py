@@ -3,7 +3,6 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import logging
-from typing import Any, ClassVar
 
 import pytest
 
@@ -43,22 +42,6 @@ def summarizer(*responses: str | Exception) -> tuple[MockChatGenerator, list[str
     return MockChatGenerator(response_fn=respond), prompts
 
 
-class RecordingGenerator(MockChatGenerator):
-    """A Chat Generator recording the `generation_kwargs` of every call, and advertising none of its own."""
-
-    def __init__(self) -> None:
-        super().__init__("summary")
-        self.received_generation_kwargs: list[dict[str, Any] | None] = []
-
-    def run(self, messages, streaming_callback=None, generation_kwargs=None, **kwargs):
-        self.received_generation_kwargs.append(generation_kwargs)
-        return super().run(messages, streaming_callback, generation_kwargs, **kwargs)
-
-    async def run_async(self, messages, streaming_callback=None, generation_kwargs=None, **kwargs):
-        self.received_generation_kwargs.append(generation_kwargs)
-        return await super().run_async(messages, streaming_callback, generation_kwargs, **kwargs)
-
-
 class NoReplyGenerator(MockChatGenerator):
     """A Chat Generator answering with no replies at all, as a misbehaving provider or proxy can."""
 
@@ -70,12 +53,6 @@ class NoReplyGenerator(MockChatGenerator):
 
     async def run_async(self, messages, streaming_callback=None, generation_kwargs=None, **kwargs):
         return {"replies": []}
-
-
-class MappedGenerator(RecordingGenerator):
-    """A Chat Generator naming what its provider calls Haystack's `max_output_tokens`."""
-
-    _HAYSTACK_TO_PROVIDER_GENERATION_KWARGS: ClassVar[dict[str, str]] = {"max_output_tokens": "provider_max_tokens"}
 
 
 def summary(text: str, source: str) -> ChatMessage:
@@ -180,7 +157,7 @@ class TestTierOrder:
         generator, prompts = summarizer("short historical summary")
         # Room for everything but the padded oldest turn, plus the summary standing in for it.
         target_tokens = COUNTER.count([messages[0], *messages[3:]]) + 100
-        compacted = SummarizationCompactor(generator, max_summary_tokens=100).compact(
+        compacted = SummarizationCompactor(generator, approximate_summary_tokens=100).compact(
             messages=messages, target_tokens=target_tokens, token_counter=COUNTER
         )
         assert compacted is not None
@@ -198,7 +175,7 @@ class TestTierOrder:
             *a_task_with_two_steps()[1:],
         ]
         generator, prompts = summarizer("history", "old step")
-        compacted = SummarizationCompactor(generator, max_summary_tokens=1).compact(
+        compacted = SummarizationCompactor(generator, approximate_summary_tokens=1).compact(
             messages=messages, target_tokens=SMALLEST, token_counter=COUNTER
         )
         assert compacted is not None
@@ -216,7 +193,7 @@ class TestTierOrder:
             *a_task_with_two_steps()[1:],
         ]
         generator, prompts = summarizer("combined history", "old step")
-        compacted = SummarizationCompactor(generator, max_summary_tokens=1).compact(
+        compacted = SummarizationCompactor(generator, approximate_summary_tokens=1).compact(
             messages=messages, target_tokens=SMALLEST, token_counter=COUNTER
         )
         assert compacted is not None
@@ -234,7 +211,7 @@ class TestTierOrder:
             *a_task_with_two_steps()[2:],
         ]
         generator, prompts = summarizer("old step", "combined steps")
-        compacted = SummarizationCompactor(generator, max_summary_tokens=1).compact(
+        compacted = SummarizationCompactor(generator, approximate_summary_tokens=1).compact(
             messages=messages, target_tokens=SMALLEST, token_counter=COUNTER
         )
         assert compacted is not None
@@ -255,7 +232,7 @@ class TestTierOrder:
             tool_result("new result", call_id="new"),
         ]
         generator, prompts = summarizer("combined steps")
-        compacted = SummarizationCompactor(generator, min_keep_steps=1, max_summary_tokens=1).compact(
+        compacted = SummarizationCompactor(generator, min_keep_steps=1, approximate_summary_tokens=1).compact(
             messages=messages, target_tokens=SMALLEST, token_counter=COUNTER
         )
         assert compacted is not None
@@ -268,9 +245,9 @@ class TestTierOrder:
     def test_min_keep_steps_wins_over_an_unaffordable_target(self, min_keep_steps, expected):
         messages = a_task_with_two_steps()
         generator, _ = summarizer("step summary")
-        compacted = SummarizationCompactor(generator, min_keep_steps=min_keep_steps, max_summary_tokens=1).compact(
-            messages=messages, target_tokens=SMALLEST, token_counter=COUNTER
-        )
+        compacted = SummarizationCompactor(
+            generator, min_keep_steps=min_keep_steps, approximate_summary_tokens=1
+        ).compact(messages=messages, target_tokens=SMALLEST, token_counter=COUNTER)
         result = compacted or messages
         assert sum(message.is_from(role=ChatRole.ASSISTANT) for message in result) == expected
 
@@ -283,7 +260,7 @@ class TestSummaryLifecycle:
     """
 
     def test_historical_summaries_accumulate_while_raw_turns_remain(self):
-        compactor = SummarizationCompactor(MockChatGenerator("summary"), max_summary_tokens=10)
+        compactor = SummarizationCompactor(MockChatGenerator("summary"), approximate_summary_tokens=10)
         # Each round is another finished turn, and the newest user message anchors the current task.
         rounds = [
             [ChatMessage.from_user(f"question {index} " * 30), ChatMessage.from_assistant(f"answer {index} " * 30)]
@@ -295,7 +272,9 @@ class TestSummaryLifecycle:
         assert sources(compacted) == ["historical_turns", "historical_turns", "historical_turns"]
 
     def test_current_task_summaries_accumulate_while_raw_steps_remain(self):
-        compactor = SummarizationCompactor(MockChatGenerator("summary"), min_keep_steps=1, max_summary_tokens=10)
+        compactor = SummarizationCompactor(
+            MockChatGenerator("summary"), min_keep_steps=1, approximate_summary_tokens=10
+        )
         start = [ChatMessage.from_system("rules"), ChatMessage.from_user("current task")]
         rounds = [
             [tool_call(f"c{index}"), tool_result(f"result {index} " * 30, call_id=f"c{index}")] for index in range(4)
@@ -316,7 +295,7 @@ class TestSummaryLifecycle:
         ]
         # No responses are queued, so any attempt to summarize would raise rather than quietly succeed.
         generator, prompts = summarizer()
-        compacted = SummarizationCompactor(generator, min_keep_steps=1, max_summary_tokens=1).compact(
+        compacted = SummarizationCompactor(generator, min_keep_steps=1, approximate_summary_tokens=1).compact(
             messages=messages, target_tokens=SMALLEST, token_counter=COUNTER
         )
         assert compacted is None
@@ -333,7 +312,7 @@ class TestSummaryLifecycle:
             ChatMessage.from_user("current task"),
         ]
         generator, prompts = summarizer("past turn", "combined history")
-        compacted = SummarizationCompactor(generator, max_summary_tokens=5).compact(
+        compacted = SummarizationCompactor(generator, approximate_summary_tokens=5).compact(
             messages=messages, target_tokens=SMALLEST, token_counter=COUNTER
         )
         assert compacted is not None
@@ -349,7 +328,7 @@ class TestSummaryLifecycle:
             ChatMessage.from_assistant("answer " * 100),
             ChatMessage.from_user("task"),
         ]
-        compacted = SummarizationCompactor(MockChatGenerator("summary"), max_summary_tokens=1).compact(
+        compacted = SummarizationCompactor(MockChatGenerator("summary"), approximate_summary_tokens=1).compact(
             messages=messages, target_tokens=SMALLEST, token_counter=COUNTER
         )
         assert compacted is not None
@@ -368,7 +347,7 @@ class TestSummaryLifecycle:
             summary("third history " * 20, "historical_turns"),
             ChatMessage.from_user("current task"),
         ]
-        compacted = SummarizationCompactor(MockChatGenerator("all history"), max_summary_tokens=1).compact(
+        compacted = SummarizationCompactor(MockChatGenerator("all history"), approximate_summary_tokens=1).compact(
             messages=messages, target_tokens=SMALLEST, token_counter=COUNTER
         )
         assert compacted is not None
@@ -377,7 +356,7 @@ class TestSummaryLifecycle:
 
     def test_leaves_the_input_conversation_untouched(self):
         messages = two_turns_and_a_task()
-        SummarizationCompactor(MockChatGenerator("summary"), max_summary_tokens=1).compact(
+        SummarizationCompactor(MockChatGenerator("summary"), approximate_summary_tokens=1).compact(
             messages=messages, target_tokens=SMALLEST, token_counter=COUNTER
         )
         assert messages == two_turns_and_a_task()
@@ -410,7 +389,7 @@ class TestSummaryContent:
             ChatMessage.from_user("current task"),
         ]
         generator, prompts = summarizer("summary")
-        SummarizationCompactor(generator, max_summary_tokens=1).compact(
+        SummarizationCompactor(generator, approximate_summary_tokens=1).compact(
             messages=messages, target_tokens=SMALLEST, token_counter=COUNTER
         )
         # The summary cannot reproduce either attachment, so the transcript has to name them well enough to ask again.
@@ -419,36 +398,19 @@ class TestSummaryContent:
 
     def test_custom_summary_instruction_replaces_the_default(self):
         generator, prompts = summarizer("summary")
-        SummarizationCompactor(generator, summary_instruction="Only list file paths.", max_summary_tokens=1).compact(
-            messages=two_turns_and_a_task(), target_tokens=SMALLEST, token_counter=COUNTER
-        )
+        SummarizationCompactor(
+            generator, summary_instruction="Only list file paths.", approximate_summary_tokens=1
+        ).compact(messages=two_turns_and_a_task(), target_tokens=SMALLEST, token_counter=COUNTER)
         assert "Only list file paths." in prompts[0]
         assert "You are compacting one portion of a conversation" not in prompts[0]
 
-    @pytest.mark.parametrize(
-        ("generator_class", "expected"),
-        [
-            # A generator that maps `max_output_tokens` is held to the budget by its own provider setting.
-            pytest.param(MappedGenerator, {"provider_max_tokens": 64}, id="advertised"),
-            # Nothing is guessed for a generator that maps nothing, so it keeps whatever it was configured with.
-            pytest.param(RecordingGenerator, None, id="not-advertised"),
-        ],
-    )
-    def test_summary_budget_is_sent_only_when_the_generator_supports_a_limit(self, generator_class, expected):
-        generator = generator_class()
-        SummarizationCompactor(generator, max_summary_tokens=64).compact(
-            messages=two_turns_and_a_task(), target_tokens=SMALLEST, token_counter=COUNTER
-        )
-        assert generator.received_generation_kwargs
-        assert all(received == expected for received in generator.received_generation_kwargs)
-
     def test_the_instruction_reaches_the_model_verbatim(self):
         generator, prompts = summarizer("summary")
-        SummarizationCompactor(generator, summary_instruction="Only list file paths.", max_summary_tokens=64).compact(
-            messages=two_turns_and_a_task(), target_tokens=SMALLEST, token_counter=COUNTER
-        )
-        # Nothing is appended, so what the model is told is exactly what the caller wrote. The budget is enforced by
-        # `max_output_tokens` alone and is never mentioned to the model.
+        SummarizationCompactor(
+            generator, summary_instruction="Only list file paths.", approximate_summary_tokens=64
+        ).compact(messages=two_turns_and_a_task(), target_tokens=SMALLEST, token_counter=COUNTER)
+        # Nothing is appended, so what the model is told is exactly what the caller wrote.
+        # `approximate_summary_tokens` is a planning estimate and never reaches the model.
         system_prompt = prompts[0].split("\n<conversation_to_summarize>")[0]
         assert system_prompt == "Only list file paths."
         assert "64" not in system_prompt
@@ -465,7 +427,7 @@ class TestFailureHandling:
             ChatMessage.from_assistant("new step"),
         ]
         generator, prompts = summarizer("history", RuntimeError("provider unavailable"))
-        compacted = SummarizationCompactor(generator, max_summary_tokens=1).compact(
+        compacted = SummarizationCompactor(generator, approximate_summary_tokens=1).compact(
             messages=messages, target_tokens=SMALLEST, token_counter=COUNTER
         )
         assert compacted is not None
@@ -482,7 +444,7 @@ class TestFailureHandling:
             ChatMessage.from_user("current"),
         ]
         compactor = SummarizationCompactor(
-            MockChatGenerator("much longer summary " * 100), max_summary_tokens=1, raise_on_failure=True
+            MockChatGenerator("much longer summary " * 100), approximate_summary_tokens=1, raise_on_failure=True
         )
         with pytest.raises(RuntimeError, match="did not reduce"):
             compactor.compact(messages=messages, target_tokens=SMALLEST, token_counter=COUNTER)
@@ -501,8 +463,8 @@ class TestFailureHandling:
             compactor.compact(messages=two_turns_and_a_task(), target_tokens=SMALLEST, token_counter=COUNTER)
         message = str(failure.value)
         assert "hit its output limit before writing any of the conversation summary" in message
-        assert "low reasoning effort" in message
-        assert "raising `max_summary_tokens` will not help" in message
+        assert "Raise the output-token limit on the Chat Generator" in message
+        assert "lower its reasoning effort" in message
         assert "'completion_tokens': 2048" in message
 
     def test_an_empty_summary_for_another_reason_reports_the_reply(self):
@@ -524,7 +486,7 @@ class TestFailureHandling:
         # through reports for the same thing.
         cut_off = ChatMessage.from_assistant("## Objective\n- Ported two endpo", meta={"finish_reason": finish_reason})
         compactor = SummarizationCompactor(
-            MockChatGenerator(response_fn=lambda messages: cut_off), max_summary_tokens=4096
+            MockChatGenerator(response_fn=lambda messages: cut_off), approximate_summary_tokens=4096
         )
         with caplog.at_level(logging.WARNING):
             compacted = compactor.compact(
@@ -533,8 +495,8 @@ class TestFailureHandling:
         # A summary cut off partway still beats keeping the messages that overflowed the context, so it is applied.
         assert compacted is not None
         assert "Ported two endpo" in (compacted[1].text or "")
-        assert "stopped at `max_summary_tokens=4096` before finishing the summary" in caplog.text
-        assert "reasoning model" in caplog.text
+        assert "hit its output limit before finishing the conversation summary" in caplog.text
+        assert "lower its reasoning effort" in caplog.text
 
     def test_does_not_warn_about_truncation_for_a_complete_summary(self, caplog):
         complete = ChatMessage.from_assistant("a complete summary", meta={"finish_reason": "stop"})
@@ -544,23 +506,17 @@ class TestFailureHandling:
         assert "before finishing the summary" not in caplog.text
 
     def test_no_replies_at_all_is_reported_separately(self):
-        compactor = SummarizationCompactor(NoReplyGenerator(), max_summary_tokens=1, raise_on_failure=True)
+        compactor = SummarizationCompactor(NoReplyGenerator(), approximate_summary_tokens=1, raise_on_failure=True)
         with pytest.raises(RuntimeError, match="returned no replies"):
             compactor.compact(messages=two_turns_and_a_task(), target_tokens=SMALLEST, token_counter=COUNTER)
 
 
 class TestConfiguration:
-    def test_warns_when_the_generator_cannot_enforce_the_summary_budget(self, caplog):
-        with caplog.at_level(logging.WARNING):
-            SummarizationCompactor(RecordingGenerator(), max_summary_tokens=64)
-        assert "does not advertise a generation-parameter mapping for `max_output_tokens`" in caplog.text
-        assert "set its provider-specific output-token limit to 64" in caplog.text
-
     @pytest.mark.parametrize(
         ("kwargs", "match"),
         [
             ({"min_keep_steps": -1}, "`min_keep_steps` must be at least 0"),
-            ({"max_summary_tokens": 0}, "`max_summary_tokens` must be a positive"),
+            ({"approximate_summary_tokens": 0}, "`approximate_summary_tokens` must be a positive"),
         ],
     )
     def test_rejects_invalid_settings(self, kwargs, match):
@@ -571,23 +527,23 @@ class TestConfiguration:
         compactor = SummarizationCompactor(
             MockChatGenerator("summary"),
             min_keep_steps=2,
-            max_summary_tokens=321,
+            approximate_summary_tokens=321,
             summary_instruction="custom",
             raise_on_failure=True,
         )
         restored = SummarizationCompactor.from_dict(compactor.to_dict())
         assert isinstance(restored.chat_generator, MockChatGenerator)
         assert restored.min_keep_steps == 2
-        assert restored.max_summary_tokens == 321
+        assert restored.approximate_summary_tokens == 321
         assert restored.summary_instruction == "custom"
         assert restored.raise_on_failure is True
 
 
 class TestSummarizationCompactorInAgent:
     def test_compacts_history_through_a_compaction_hook(self):
-        summary_generator = MappedGenerator()
+        summary_generator = MockChatGenerator("summary")
         hook = CompactionHook(
-            compactor=SummarizationCompactor(summary_generator, max_summary_tokens=64),
+            compactor=SummarizationCompactor(summary_generator, approximate_summary_tokens=64),
             context_window=1_000,
             compact_at=0.5,
             compact_to=0.2,
@@ -606,7 +562,6 @@ class TestSummarizationCompactorInAgent:
         assert any(message.text == "current task" for message in compacted)
         assert sources(compacted) == ["historical_turns"]
         assert all("old question" not in (message.text or "") for message in compacted)
-        assert summary_generator.received_generation_kwargs == [{"provider_max_tokens": 64}]
 
 
 class TestSummarizationCompactorAsync:
@@ -614,10 +569,10 @@ class TestSummarizationCompactorAsync:
     async def test_compact_async_matches_compact(self):
         messages = two_turns_and_a_task()
         generator, prompts = summarizer("async summary")
-        compacted = await SummarizationCompactor(generator, max_summary_tokens=1).compact_async(
+        compacted = await SummarizationCompactor(generator, approximate_summary_tokens=1).compact_async(
             messages=messages, target_tokens=SMALLEST, token_counter=COUNTER
         )
         assert len(prompts) == 1
-        assert compacted == SummarizationCompactor(MockChatGenerator("async summary"), max_summary_tokens=1).compact(
-            messages=messages, target_tokens=SMALLEST, token_counter=COUNTER
-        )
+        assert compacted == SummarizationCompactor(
+            MockChatGenerator("async summary"), approximate_summary_tokens=1
+        ).compact(messages=messages, target_tokens=SMALLEST, token_counter=COUNTER)
