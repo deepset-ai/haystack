@@ -13,9 +13,11 @@ from haystack.core.serialization_security import (
     _check_module_allowed,
     _check_not_denied_builtin,
     _check_not_denied_callable,
+    _check_not_deserialization_internal,
     _check_resolved_module_allowed,
     _is_denied_builtin,
     _is_module_allowed,
+    mark_deserialization_internal,
 )
 from haystack.utils.type_serialization import thread_safe_import
 
@@ -64,6 +66,7 @@ def serialize_callable(callable_handle: Callable) -> str:
     return full_path
 
 
+@mark_deserialization_internal
 def deserialize_callable(callable_handle: str) -> Callable:
     """
     Deserializes a callable given its full import path as a string.
@@ -145,6 +148,14 @@ def deserialize_callable(callable_handle: str) -> Callable:
         # namespace (e.g. `haystack...thread_safe_import`), which are gateways to code execution
         # equivalent to the denied builtin `__import__`. Block them too.
         _check_not_denied_callable(attr_value, callable_handle)
+
+        # Refuse the deserializer's own machinery — the allowlist-administration function
+        # (`allow_deserialization_module`) and the resolution helpers (`deserialize_callable`,
+        # `deserialize_type`, `import_class_by_name`). They live in the allowlisted `haystack`
+        # namespace, so the module checks above admit them, but resolving them from serialized data
+        # lets a hostile pipeline register them as Jinja custom filters, disarm the allowlist with
+        # `'*'`, and then resolve and invoke arbitrary callables such as `os.system`.
+        _check_not_deserialization_internal(attr_value, callable_handle)
 
         return attr_value
 

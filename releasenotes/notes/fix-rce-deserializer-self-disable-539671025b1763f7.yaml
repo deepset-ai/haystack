@@ -1,0 +1,20 @@
+---
+security:
+  - |
+    Fixed a remote code execution vulnerability that could be triggered by loading an untrusted
+    pipeline in default safe mode (``Pipeline.load`` / ``Pipeline.loads`` / ``Pipeline.from_dict``,
+    without ``unsafe=True``). Because the deserialization allowlist admits the whole ``haystack``
+    namespace, the deserializer's own allowlist-administration function
+    (``allow_deserialization_module``) and its resolution helpers (``deserialize_callable``,
+    ``deserialize_type``, ``import_class_by_name``) were themselves resolvable from serialized data.
+    A malicious pipeline could register ``allow_deserialization_module`` as a Jinja ``custom_filters``
+    entry (on an ``OutputAdapter`` or ``ConditionalRouter``), call it with ``"*"`` to disarm the
+    allowlist process-wide, and then use the equally-resolvable ``deserialize_callable`` to resolve
+    and invoke ``os.system``. The same attribute walk could also reach the deserializer's mutable
+    control-plane state directly — for example a filter bound to ``_extra_allowed_modules.append``
+    — to widen the allowlist persistently and stage a later attack.
+    The fix refuses to deserialize the deserialization control plane as a whole: the allowlist
+    administration and resolution helpers (marked at definition time), everything defined in
+    ``haystack.core.serialization_security``, and any bound method of the mutable allowlist/context
+    state. This applies to both the callable- and class-resolution paths, and is bypassed only when
+    the pipeline is loaded with ``unsafe=True``.

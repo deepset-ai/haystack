@@ -345,6 +345,167 @@ class TestDeniedImportPrimitives:
         assert not mocked_system.called
 
 
+class TestDeniedDeserializerInternals:
+    """
+    The allowlist admits the whole `haystack` namespace so Haystack can deserialize its own
+    components. That also makes the deserializer's *own* interface resolvable from serialized data:
+    the allowlist-administration function `allow_deserialization_module` and the resolution helpers
+    (`deserialize_callable`, `deserialize_type`, `import_class_by_name`). A hostile pipeline can register
+    `allow_deserialization_module` as a Jinja custom filter, call it with `"*"` to disarm the
+    allowlist process-wide, then use the equally-resolvable `deserialize_callable` to resolve and
+    invoke `os.system`. The resolver must refuse to hand any of them back.
+    """
+
+    INTERNAL_HANDLES = [
+        "haystack.core.serialization_security.allow_deserialization_module",
+        "haystack.utils.callable_serialization.deserialize_callable",
+        "haystack.utils.type_serialization.deserialize_type",
+        "haystack.utils.type_serialization._import_class_by_name",
+        "haystack.core.serialization.import_class_by_name",
+    ]
+
+    @pytest.mark.parametrize("handle", INTERNAL_HANDLES)
+    def test_deserialize_callable_rejects_internal(self, handle):
+        with pytest.raises(DeserializationError, match="deserialization control plane"):
+            deserialize_callable(handle)
+
+    @pytest.mark.parametrize("handle", INTERNAL_HANDLES)
+    def test_unsafe_mode_bypasses_the_block(self, handle):
+        # unsafe=True disables all deserialization safety checks by design.
+        with _deserialization_context(unsafe=True):
+            assert callable(deserialize_callable(handle))
+
+    def test_all_internal_functions_carry_the_marker(self):
+        # By construction: every internal entry point is stamped, so a new resolver helper is
+        # excluded the day it is written (once decorated), not the day it is exploited.
+        from haystack.core.serialization import import_class_by_name as _icbn
+        from haystack.core.serialization_security import _DESERIALIZATION_INTERNAL_ATTR
+        from haystack.core.serialization_security import allow_deserialization_module as _adm
+        from haystack.utils.callable_serialization import deserialize_callable as _dc
+        from haystack.utils.type_serialization import _import_class_by_name as _icbn_impl
+        from haystack.utils.type_serialization import deserialize_type as _dt
+
+        for func in (_adm, _dc, _dt, _icbn, _icbn_impl):
+            assert getattr(func, _DESERIALIZATION_INTERNAL_ATTR, False) is True
+
+    def test_class_resolution_path_rejects_internal(self):
+        # The admin/resolution API must also be unreachable as a component `type` or class reference.
+        handle = "haystack.core.serialization_security.allow_deserialization_module"
+        with pytest.raises((DeserializationError, ImportError)):
+            import_class_by_name(handle)
+        with pytest.raises((DeserializationError, ImportError)):
+            deserialize_type(handle)
+
+    def _self_disable_yaml(self, component_type, extra_init):
+        filters = (
+            "        allow: haystack.core.serialization_security.allow_deserialization_module\n"
+            "        dc: haystack.utils.callable_serialization.deserialize_callable\n"
+            "        mp: builtins.map\n"
+        )
+        return (
+            "components:\n"
+            "  c:\n"
+            f"    type: {component_type}\n"
+            "    init_parameters:\n"
+            f"{extra_init}"
+            "      custom_filters:\n"
+            f"{filters}"
+            "      unsafe: false\n"
+            "connections: []\n"
+        )
+
+    def test_pipeline_loads_rejects_output_adapter_self_disable_vector(self):
+        # End-to-end reproduction of the reported RCE via OutputAdapter, in default safe mode.
+        yaml = self._self_disable_yaml(
+            "haystack.components.converters.output_adapter.OutputAdapter",
+            "      template: \"{{ '*' | allow }}{{ 'os.system' | dc | mp(cmds) | list }}\"\n      output_type: str\n",
+        )
+        with mock.patch("os.system") as mocked_system:
+            with pytest.raises(DeserializationError, match="deserialization control plane"):
+                Pipeline.loads(yaml)
+        assert not mocked_system.called
+
+    def test_pipeline_loads_rejects_conditional_router_self_disable_vector(self):
+        # Same chain carried by ConditionalRouter; removing one component is not a mitigation.
+        extra = (
+            "      routes:\n"
+            "        - condition: \"{{ ['*'|allow, ('os.system'|dc|mp(cmds)|list)] and True }}\"\n"
+            '          output: "{{ 1 }}"\n'
+            "          output_name: out\n"
+            "          output_type: int\n"
+        )
+        yaml = self._self_disable_yaml("haystack.components.routers.conditional_router.ConditionalRouter", extra)
+        with mock.patch("os.system") as mocked_system:
+            with pytest.raises(DeserializationError, match="deserialization control plane"):
+                Pipeline.loads(yaml)
+        assert not mocked_system.called
+
+    def test_rejected_load_does_not_widen_the_process_wide_allowlist(self):
+        # The chain is cut before `allow_deserialization_module` can run, so the second reported
+        # consequence — permanent process-wide teardown of the allowlist — never happens.
+        yaml = self._self_disable_yaml(
+            "haystack.components.converters.output_adapter.OutputAdapter",
+            "      template: \"{{ '*' | allow }}{{ 'os.system' | dc | mp(cmds) | list }}\"\n      output_type: str\n",
+        )
+        with pytest.raises(DeserializationError):
+            Pipeline.loads(yaml)
+        assert _extra_allowed_modules == []
+        with pytest.raises(DeserializationError):
+            deserialize_callable("os.system")
+
+    # The mutable control-plane state (the allowlist list and the deserialization context var) is
+    # reachable through the same attribute walk the resolver performs, so a bound mutator can widen
+    # the allowlist without touching any of the blocked resolver functions above.
+    CONTROL_PLANE_HANDLES = [
+        "haystack.core.serialization_security._extra_allowed_modules.append",
+        "haystack.core.serialization_security._extra_allowed_modules.extend",
+        "haystack.core.serialization_security._extra_allowed_modules.insert",
+        "haystack.core.serialization_security._current_context.set",
+        "haystack.core.serialization_security._DeserializationContext",
+        "haystack.core.serialization_security._get_context",
+    ]
+
+    @pytest.mark.parametrize("handle", CONTROL_PLANE_HANDLES)
+    def test_deserialize_callable_rejects_control_plane_state(self, handle):
+        with pytest.raises(DeserializationError, match="deserialization control plane"):
+            deserialize_callable(handle)
+
+    def test_reexported_alias_handles_are_also_rejected(self):
+        # The same function objects are re-exported under other public paths; they inherit the mark
+        # (or match by defining module) and must be refused there too.
+        for handle in (
+            "haystack.core.serialization.allow_deserialization_module",
+            "haystack.utils.deserialize_callable",
+            "haystack.utils.deserialize_type",
+        ):
+            with pytest.raises(DeserializationError, match="deserialization control plane"):
+                deserialize_callable(handle)
+
+    def test_pipeline_loads_rejects_allowlist_poisoning_via_append(self):
+        # A staged attack that never touches the blocked resolver helpers: a custom filter bound to
+        # `_extra_allowed_modules.append`, called with "*" from the template, would disarm the
+        # allowlist process-wide (the advisory's persistent "second consequence") and enable a staged
+        # RCE on a *later* load that resolves `os.system` directly. Blocking it at load time prevents
+        # both the poisoning and the later resolution.
+        poison_yaml = (
+            "components:\n"
+            "  adapter:\n"
+            "    type: haystack.components.converters.output_adapter.OutputAdapter\n"
+            "    init_parameters:\n"
+            "      template: \"{{ '*' | ap }}{{ trigger }}\"\n"
+            "      output_type: str\n"
+            "      custom_filters:\n"
+            "        ap: haystack.core.serialization_security._extra_allowed_modules.append\n"
+            "      unsafe: false\n"
+            "connections: []\n"
+        )
+        with pytest.raises(DeserializationError, match="deserialization control plane"):
+            Pipeline.loads(poison_yaml)
+        assert _extra_allowed_modules == []
+        with pytest.raises(DeserializationError):
+            deserialize_callable("os.system")
+
+
 class TestModuleAttributeWalkBypass:
     """
     The allowlist must be enforced against the module a handle
