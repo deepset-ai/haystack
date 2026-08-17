@@ -34,6 +34,16 @@ docker run -d -p 3306:3306 \
   mariadb:11.7
 ```
 
+The `mariadb` connector is a C extension built from source, so it needs the MariaDB Connector/C system library (`mariadb_config`):
+
+```shell
+# Ubuntu / Debian
+sudo apt-get install -y libmariadb-dev
+
+# macOS
+brew install mariadb-connector-c
+```
+
 To use MariaDB with Haystack, install the `mariadb-haystack` integration:
 
 ```shell
@@ -83,4 +93,4 @@ To properly compute embeddings for your documents, you can use a Document Embedd
 ### Supported Retrievers
 
 - [`MariaDBEmbeddingRetriever`](../pipeline-components/retrievers/mariadbembeddingretriever.mdx): An embedding-based Retriever that fetches documents from the Document Store based on a query embedding.
-- [`MariaDBBM25Retriever`](../pipeline-components/retrievers/mariadbbm25retriever.mdx): A keyword-based Retriever that fetches documents matching a query using MariaDB's full-text search.
+- [`MariaDBBM25Retriever`](../pipeline-components/retrievers/mariadbbm25retriever.mdx): A keyword-based Retriever that fetches documents matching a query using MariaDB's full-text search (BM25).
