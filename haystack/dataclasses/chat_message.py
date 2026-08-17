@@ -634,6 +634,8 @@ class ChatMessage:
         """
         Convert a ChatMessage to the dictionary format expected by OpenAI's Chat Completions API.
 
+        The `_meta` field of ChatMessage is removed because it is not supported by OpenAI's Chat Completions API.
+
         :param require_tool_call_ids:
             If True (default), enforces that each Tool Call includes a non-null `id` attribute.
             Set to False to allow Tool Calls without `id`, which may be suitable for shallow OpenAI-compatible APIs.
