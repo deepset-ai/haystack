@@ -85,6 +85,7 @@ def test_from_dict(monkeypatch):
     assert ranker.top_k == 3
     assert ranker.raise_on_failure is True
     assert ranker.prompt == "Rank {{ documents|length }} docs for {{ query }}"
+    assert isinstance(ranker._chat_generator, OpenAIChatGenerator)
     assert ranker._chat_generator.to_dict() == chat_generator.to_dict()
 
 
