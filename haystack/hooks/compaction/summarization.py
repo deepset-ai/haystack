@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Any
+from typing import Any, Literal
 
 from haystack import logging
 from haystack.components.generators.chat.types import ChatGenerator
@@ -33,12 +33,9 @@ logger = logging.getLogger(__name__)
 _STRATEGY = "summarization"
 
 # Recorded as the `source` on a summary, naming the stretch of conversation it stands in for. Compaction gives these up
-# in order, so the Agent's current task is the last thing to go. Within each region original messages are summarized
-# first, and existing summaries are combined only once nothing else is left there.
-_HISTORICAL_TURNS = "historical_turns"
-_HISTORICAL_SUMMARIES = "historical_summaries"
-_CURRENT_TASK_STEPS = "current_task_steps"
-_CURRENT_TASK_SUMMARIES = "current_task_summaries"
+# in the order listed, so the Agent's current task is the last thing to go. Within each region original messages are
+# summarized first, and existing summaries are combined only once nothing else is left there.
+_SummarySource = Literal["historical_turns", "historical_summaries", "current_task_steps", "current_task_summaries"]
 
 _DEFAULT_SUMMARY_INSTRUCTION = """You are compacting one portion of a conversation between a user and an AI agent so \
 the agent can keep working with fewer tokens. You are shown only the portion being replaced. The rest of the \
@@ -109,9 +106,9 @@ def _raw_historical_turn_groups(
     """
     Return the historical turns that still hold never-summarized messages, oldest turn first.
 
-    Summaries an earlier compaction wrote are excluded, so summarizing a turn leaves them in place for
-    `_HISTORICAL_SUMMARIES` to combine later. The list is empty when there are no historical turns, or when every one
-    of them is already nothing but summaries.
+    Summaries an earlier compaction wrote are excluded, so summarizing a turn leaves them in place for the
+    `historical_summaries` tier to combine later. The list is empty when there are no historical turns, or when every
+    one of them is already nothing but summaries.
     """
     # Strip the previous summaries out of each turn, then drop the turns that strip away to nothing.
     groups = [
@@ -143,7 +140,7 @@ def _groups_to_summarize(
     return selected
 
 
-def _summary_message(text: str, summarized_messages: int, source: str) -> ChatMessage:
+def _summary_message(text: str, summarized_messages: int, source: _SummarySource) -> ChatMessage:
     """Build the marked user message that stands in for the messages the summary replaced."""
     body = f"<conversation_summary>\n{text.strip()}\n</conversation_summary>"
     meta = {_COMPACTION_META_KEY: {"strategy": _STRATEGY, "summarized_messages": summarized_messages, "source": source}}
@@ -370,7 +367,7 @@ class SummarizationCompactor(Compactor):
 
     def _next_summary(
         self, messages: list[ChatMessage], target_tokens: int, token_counter: TokenCounter
-    ) -> tuple[list[int], str] | None:
+    ) -> tuple[list[int], _SummarySource] | None:
         """
         Choose the next stretch of conversation to replace with a summary.
 
@@ -378,10 +375,10 @@ class SummarizationCompactor(Compactor):
         is given up last. History is spent before the current task, and within each of the two, original messages are
         summarized before existing summaries are combined with each other:
 
-        1. `_HISTORICAL_TURNS`: the fewest oldest not-yet-summarized turns that make room for a summary.
-        2. `_HISTORICAL_SUMMARIES`: history holds only summaries now, so combine them into one.
-        3. `_CURRENT_TASK_STEPS`: the fewest oldest steps of the current task, keeping `min_keep_steps` of the newest.
-        4. `_CURRENT_TASK_SUMMARIES`: no step may be given up either, so combine the summaries they left behind.
+        1. `historical_turns`: the fewest oldest not-yet-summarized turns to summarize.
+        2. `historical_summaries`: history holds only summaries now, so combine them into one.
+        3. `current_task_steps`: the fewest oldest steps of the current task, keeping `min_keep_steps` of the newest.
+        4. `current_task_summaries`: no step may be given up either, so combine the summaries they left behind.
 
         Combining is deliberately last within a region. Summarizing an original turn or step usually frees more room
         than combining two summaries does, and every combination summarizes already-summarized text again, so the
@@ -404,7 +401,7 @@ class SummarizationCompactor(Compactor):
         history_end = task_index if task_index is not None else system_end
         task_start = task_index + 1 if task_index is not None else system_end
 
-        # Tier 1. Raw history is the cheapest context to lose, so take the oldest turns that still hold any.
+        # Tier 1. Summarize the fewest number of raw historical turns
         historical_turns = _raw_historical_turn_groups(messages=messages, system_end=system_end, task_index=task_index)
         if historical_turns:
             oldest_turns = _groups_to_summarize(
@@ -414,20 +411,20 @@ class SummarizationCompactor(Compactor):
                 summary_tokens=self.max_summary_tokens,
                 token_counter=token_counter,
             )
-            return oldest_turns, _HISTORICAL_TURNS
+            return oldest_turns, "historical_turns"
 
         # Tier 2. History is nothing but summaries now, so the only room left there is in combining them into one.
-        # They are left to accumulate until this point so that they are not rewritten on every compaction.
         history_summaries = _previous_summary_indices(messages=messages, start=system_end, end=history_end)
         if len(history_summaries) > 1:
-            return history_summaries, _HISTORICAL_SUMMARIES
+            return history_summaries, "historical_summaries"
 
-        # History is exhausted, so the current task has to pay. Its `min_keep_steps` newest steps are off limits.
-        agent_steps = _current_agent_step_groups(messages=messages, system_end=system_end, task_index=task_index)
-        eligible_steps = agent_steps[: max(len(agent_steps) - self.min_keep_steps, 0)]
+        # History is exhausted, so the current task has to be summarized.
+        current_agent_steps = _current_agent_step_groups(
+            messages=messages, system_end=system_end, task_index=task_index
+        )
+        eligible_steps = current_agent_steps[: max(len(current_agent_steps) - self.min_keep_steps, 0)]
 
-        # Tier 3. Not-yet-summarized steps of the task the Agent is working on right now. Summarizing one of those is
-        # worth more space than combining summaries, so it goes first, and the summaries it leaves behind accumulate.
+        # Tier 3. Summarize the fewest number of raw agent steps.
         if eligible_steps:
             oldest_steps = _groups_to_summarize(
                 messages=messages,
@@ -436,13 +433,13 @@ class SummarizationCompactor(Compactor):
                 summary_tokens=self.max_summary_tokens,
                 token_counter=token_counter,
             )
-            return oldest_steps, _CURRENT_TASK_STEPS
+            return oldest_steps, "current_task_steps"
 
-        # Tier 4. Every step that may be given up is gone, so the last room anywhere is in combining the summaries
-        # they left behind. Combining spends no step, so `min_keep_steps` does not stand in its way.
+        # Tier 4. There are no more raw agent steps that can be summarized. So now we combine the current task
+        # summaries.
         task_summaries = _previous_summary_indices(messages=messages, start=task_start, end=len(messages))
         if len(task_summaries) > 1:
-            return task_summaries, _CURRENT_TASK_SUMMARIES
+            return task_summaries, "current_task_summaries"
 
         # The conversation is down to what this compactor always keeps, so it cannot shrink any further.
         return None
@@ -466,7 +463,7 @@ class SummarizationCompactor(Compactor):
     def _apply_summary(
         messages: list[ChatMessage],
         indices: list[int],
-        source: str,
+        source: _SummarySource,
         result: dict[str, Any],
         token_counter: TokenCounter,
     ) -> list[ChatMessage]:
