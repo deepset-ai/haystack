@@ -250,7 +250,9 @@ class TestSummaryLifecycle:
             for index in range(4)
         ]
         # Loose enough that each round is paid for by summarizing one more turn, so combining is never reached.
-        compacted = compact_each_round(compactor, [ChatMessage.from_system("rules")], rounds, target_tokens=1_100)
+        compacted = compact_each_round(
+            compactor=compactor, messages=[ChatMessage.from_system("rules")], rounds=rounds, target_tokens=1_100
+        )
         # One summary per compaction rather than one combined summary, because turns were still there to give up.
         assert sources(messages=compacted) == ["historical_turns", "historical_turns", "historical_turns"]
 
@@ -262,7 +264,7 @@ class TestSummaryLifecycle:
         rounds = [
             [tool_call(f"c{index}"), tool_result(f"result {index} " * 30, call_id=f"c{index}")] for index in range(4)
         ]
-        compacted = compact_each_round(compactor, start, rounds, target_tokens=650)
+        compacted = compact_each_round(compactor=compactor, messages=start, rounds=rounds, target_tokens=650)
         assert sources(messages=compacted) == ["current_task_steps", "current_task_steps", "current_task_steps"]
 
     def test_stops_once_each_region_is_down_to_a_single_summary(self):
@@ -355,48 +357,34 @@ class TestSummaryLifecycle:
 
 
 class TestSummaryContent:
-    """What the summarizing Chat Generator is asked for, and under what budget."""
+    """What the summarizing Chat Generator is asked for."""
 
     def test_attachments_are_named_in_the_transcript(self):
         image = ImageContent(base64_image="Zm9v", mime_type="image/png", meta={"file_path": "/tmp/shot.png"})
         pdf = FileContent(base64_data="Zm9v", mime_type="application/pdf", filename="q3.pdf")
         messages = [
-            ChatMessage.from_system("rules"),
-            ChatMessage.from_user(content_parts=["review this " * 20, pdf]),
+            ChatMessage.from_user(content_parts=["review this", pdf]),
             tool_call("c1"),
             # An attachment a tool returned is nested inside the tool result rather than on the message.
             ChatMessage.from_tool(
-                tool_result=[TextContent(text="captured " * 20), image],
+                tool_result=[TextContent(text="captured"), image],
                 origin=ToolCall(tool_name="browse", arguments={}, id="c1"),
             ),
-            ChatMessage.from_user("current task"),
         ]
-        generator, prompts = summarizer("summary")
-        SummarizationCompactor(generator, approximate_summary_tokens=1).compact(
-            messages=messages, target_tokens=SMALLEST, token_counter=COUNTER
-        )
+        compactor = SummarizationCompactor(chat_generator=MockChatGenerator())
+        prompt = compactor._prompt(messages=messages, indices=[0, 1, 2])
+        transcript = prompt[1].text
+        assert transcript is not None
         # The summary cannot reproduce either attachment, so the transcript has to name them well enough to ask again.
-        assert "<file: q3.pdf, application/pdf>" in prompts[0]
-        assert "<image: image/png, file_path=/tmp/shot.png>" in prompts[0]
+        assert "<file: q3.pdf, application/pdf>" in transcript
+        assert "<image: image/png, file_path=/tmp/shot.png>" in transcript
 
     def test_custom_summary_instruction_replaces_the_default(self):
-        generator, prompts = summarizer("summary")
-        SummarizationCompactor(
-            generator, summary_instruction="Only list file paths.", approximate_summary_tokens=1
-        ).compact(messages=fresh_conversation_with_two_steps(), target_tokens=SMALLEST, token_counter=COUNTER)
-        assert "Only list file paths." in prompts[0]
-        assert "You are compacting one portion of a conversation" not in prompts[0]
-
-    def test_the_instruction_reaches_the_model_verbatim(self):
-        generator, prompts = summarizer("summary")
-        SummarizationCompactor(
-            generator, summary_instruction="Only list file paths.", approximate_summary_tokens=64
-        ).compact(messages=fresh_conversation_with_two_steps(), target_tokens=SMALLEST, token_counter=COUNTER)
-        # Nothing is appended, so what the model is told is exactly what the caller wrote.
-        # `approximate_summary_tokens` is a planning estimate and never reaches the model.
-        system_prompt = prompts[0].split("\n<conversation_to_summarize>")[0]
-        assert system_prompt == "Only list file paths."
-        assert "64" not in system_prompt
+        compactor = SummarizationCompactor(
+            chat_generator=MockChatGenerator(), summary_instruction="Only list file paths."
+        )
+        prompt = compactor._prompt(messages=[ChatMessage.from_user("task")], indices=[0])
+        assert prompt[0].text == "Only list file paths."
 
 
 class TestFailureHandling:
