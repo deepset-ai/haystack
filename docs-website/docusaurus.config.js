@@ -7,14 +7,16 @@
 import {themes as prismThemes} from 'prism-react-renderer';
 import versions from './versions.json' with { type: 'json' };
 
-// Only build the current version (docs/) plus the 5 most recent stable versions (e.g. 2.x) and the unstable
-// versioned docs (e.g. 2.x-unstable; only present during the release process).
-const MAX_STABLE_VERSIONS = 5;
+// Keep the total number of built versions constant to keep memory/build time reasonable
+// Build the current version (docs/), the unstable version (e.g. 3.x-unstable, only present during the release process)
+// and fill the remaining slots with the most recent stable versions (e.g. 3.x)
+const MAX_TOTAL_VERSIONS = 6;
+const unstableVersions = versions.filter(v => v.endsWith('-unstable'));
 const activeVersions = [
   'current',
-  ...versions.filter(v => v.endsWith('-unstable')),
-  ...versions.filter(v => !v.endsWith('-unstable')).slice(0, MAX_STABLE_VERSIONS),
-];
+  ...unstableVersions,
+  ...versions.filter(v => !v.endsWith('-unstable')),
+].slice(0, MAX_TOTAL_VERSIONS);
 
 // This runs in Node.js - Don't use client-side code here (browser APIs, JSX...)
 
@@ -79,7 +81,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
           beforeDefaultRemarkPlugins: [require('./src/remark/versionedReferenceLinks')],
           versions: {
             current: {
-              label: '3.1-unstable',
+              label: '3.2-unstable',
               path: 'next',
               banner: 'unreleased',
             },
@@ -132,7 +134,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
         exclude: ['**/_templates/**'],
         versions: {
           current: {
-            label: '3.1-unstable',
+            label: '3.2-unstable',
             path: 'next',
             banner: 'unreleased',
           },

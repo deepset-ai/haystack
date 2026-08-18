@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    Fixed ``create_tool_from_function``, the ``@tool`` decorator, and ``ComponentTool`` stripping
+    ``title`` keys inside OpenAPI 3.0 singular ``example`` values when building a tool's JSON schema.
+    ``example`` is now treated as instance data alongside ``default``, ``const``, ``enum`` and
+    ``examples``, so a ``title`` key carried via Pydantic ``json_schema_extra`` stays part of the
+    tool contract.
