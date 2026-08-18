@@ -323,9 +323,9 @@ class TestConfirmationHookTracing:
                 "haystack.agent.hook.human_in_the_loop.strategy.type": (
                     "haystack.hooks.human_in_the_loop.strategies.BlockingConfirmationStrategy"
                 ),
-                "haystack.agent.hook.human_in_the_loop.tool.input": {"x": 1},
+                "haystack.agent.hook.human_in_the_loop.input": {"x": 1},
                 "haystack.agent.hook.human_in_the_loop.decision": "confirm",
-                "haystack.agent.hook.human_in_the_loop.tool.output": {"final_arguments": {"x": 1}, "feedback": None},
+                "haystack.agent.hook.human_in_the_loop.output": {"final_arguments": {"x": 1}, "feedback": None},
             },
             {
                 "haystack.tool.name": "modified_tool",
@@ -334,9 +334,9 @@ class TestConfirmationHookTracing:
                 "haystack.agent.hook.human_in_the_loop.strategy.type": (
                     "haystack.hooks.human_in_the_loop.strategies.BlockingConfirmationStrategy"
                 ),
-                "haystack.agent.hook.human_in_the_loop.tool.input": {"x": 2},
+                "haystack.agent.hook.human_in_the_loop.input": {"x": 2},
                 "haystack.agent.hook.human_in_the_loop.decision": "modify",
-                "haystack.agent.hook.human_in_the_loop.tool.output": {
+                "haystack.agent.hook.human_in_the_loop.output": {
                     "final_arguments": {"x": 99},
                     "feedback": "The parameters for tool 'modified_tool' were updated by the user to:\n{'x': 99} "
                     "With user feedback: sensitive modification feedback",
@@ -349,9 +349,9 @@ class TestConfirmationHookTracing:
                 "haystack.agent.hook.human_in_the_loop.strategy.type": (
                     "haystack.hooks.human_in_the_loop.strategies.BlockingConfirmationStrategy"
                 ),
-                "haystack.agent.hook.human_in_the_loop.tool.input": {"x": 3},
+                "haystack.agent.hook.human_in_the_loop.input": {"x": 3},
                 "haystack.agent.hook.human_in_the_loop.decision": "reject",
-                "haystack.agent.hook.human_in_the_loop.tool.output": {
+                "haystack.agent.hook.human_in_the_loop.output": {
                     "final_arguments": None,
                     "feedback": "Tool execution for 'rejected_tool' was rejected by the user. "
                     "With user feedback: sensitive rejection feedback",
@@ -363,7 +363,7 @@ class TestConfirmationHookTracing:
             key: value
             for span in spying_tracer.spans
             for key, value in span.tags.items()
-            if not key.endswith(("tool.input", "tool.output"))
+            if not key.endswith((".input", ".output"))
         }
         assert "sensitive" not in str(metadata)
         assert "99" not in str(metadata)
@@ -410,10 +410,9 @@ class TestConfirmationHookTracing:
         hook_span, tool_span = spying_tracer.spans
         assert tool_span.parent_span is hook_span
         assert tool_span.tags["haystack.agent.hook.human_in_the_loop.decision"] == "reject"
-        assert tool_span.tags["haystack.agent.hook.human_in_the_loop.tool.input"] == {"a": 1, "b": 2}
+        assert tool_span.tags["haystack.agent.hook.human_in_the_loop.input"] == {"a": 1, "b": 2}
         assert (
-            "sensitive rejection feedback"
-            in tool_span.tags["haystack.agent.hook.human_in_the_loop.tool.output"]["feedback"]
+            "sensitive rejection feedback" in tool_span.tags["haystack.agent.hook.human_in_the_loop.output"]["feedback"]
         )
 
     def test_tool_span_can_close_without_a_decision(self, spying_tracer, monkeypatch, tools):
@@ -443,7 +442,7 @@ class TestConfirmationHookTracing:
             "haystack.agent.hook.human_in_the_loop.strategy.type": (
                 "haystack.hooks.human_in_the_loop.strategies.BlockingConfirmationStrategy"
             ),
-            "haystack.agent.hook.human_in_the_loop.tool.input": {"a": 1, "b": 2},
+            "haystack.agent.hook.human_in_the_loop.input": {"a": 1, "b": 2},
         }
 
 

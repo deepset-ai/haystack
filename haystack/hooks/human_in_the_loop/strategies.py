@@ -247,9 +247,14 @@ def _passthrough_tool_call(tool_call: ToolCall) -> ToolExecutionDecision:
 
 
 def _create_confirmation_tool_span(
-    *, tool: Tool, tool_call: ToolCall, strategy: ConfirmationStrategy, parent_span: Any
+    tool: Tool, tool_call: ToolCall, strategy: ConfirmationStrategy, parent_span: Any
 ) -> Any:
-    """Create a tracing span for one tool call processed by a Human-in-the-Loop strategy."""
+    """
+    Create a tracing span for one tool call processed by a Human-in-the-Loop strategy.
+
+    Tag keys are namespaced by the entity they describe, so tags about the confirmation itself live under
+    `haystack.agent.hook.human_in_the_loop`, while tags describing the tool reuse the shared `haystack.tool.*` keys.
+    """
     tags = {
         "haystack.tool.name": tool_call.tool_name,
         "haystack.tool.description": tool.description,
@@ -280,10 +285,15 @@ def _applied_tool_decision(*, tool_call: ToolCall, decision: ToolExecutionDecisi
 
 
 def _set_applied_decision_tracing_tags(span: Any, applied_decision: _AppliedToolDecision) -> None:
-    """Add a completed Human-in-the-Loop decision and its optional content to a tool span."""
+    """
+    Add a completed Human-in-the-Loop decision and its optional content to a tool span.
+
+    The output is the outcome of the confirmation, not a tool result: a tool span opened here always closes before the
+    tool runs, and the tool's own result is recorded separately under `haystack.agent.step.tool.output`.
+    """
     span.set_tag("haystack.agent.hook.human_in_the_loop.decision", applied_decision.decision)
     span.set_content_tag(
-        key="haystack.agent.hook.human_in_the_loop.tool.output",
+        key="haystack.agent.hook.human_in_the_loop.output",
         value={"final_arguments": applied_decision.final_arguments, "feedback": applied_decision.feedback},
     )
 
@@ -440,7 +450,7 @@ def _run_confirmation_strategies(
             with _create_confirmation_tool_span(
                 tool=tool_to_invoke, tool_call=tool_call, strategy=strategy, parent_span=parent_span
             ) as span:
-                span.set_content_tag(key="haystack.agent.hook.human_in_the_loop.tool.input", value=tool_call.arguments)
+                span.set_content_tag(key="haystack.agent.hook.human_in_the_loop.input", value=tool_call.arguments)
                 ted = strategy.run(
                     tool_name=tool_name,
                     tool_description=tool_to_invoke.description,
@@ -509,7 +519,7 @@ async def _run_confirmation_strategies_async(
             with _create_confirmation_tool_span(
                 tool=tool_to_invoke, tool_call=tool_call, strategy=strategy, parent_span=parent_span
             ) as span:
-                span.set_content_tag(key="haystack.agent.hook.human_in_the_loop.tool.input", value=tool_call.arguments)
+                span.set_content_tag(key="haystack.agent.hook.human_in_the_loop.input", value=tool_call.arguments)
                 # The _execute_component_async helper supports arbitrary run results, but its return type is currently
                 # component-specific, so we cast it to the expected ToolExecutionDecision type here.
                 ted = cast(
