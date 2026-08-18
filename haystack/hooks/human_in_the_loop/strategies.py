@@ -434,7 +434,6 @@ def _run_confirmation_strategies(
             tool_to_invoke = tools_with_names.get(tool_name)
             if tool_to_invoke is None:
                 # Unknown tool (e.g. the model hallucinated the name): skip confirmation and pass it through.
-                # This allows the tool-calling code to handle unknown tools uniformly (e.g. raise ToolNotFoundException)
                 teds.append(_passthrough_tool_call(tool_call=tool_call))
                 continue
 
