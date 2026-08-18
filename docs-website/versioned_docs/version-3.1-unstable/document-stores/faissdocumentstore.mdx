@@ -1,0 +1,152 @@
+---
+title: "FAISSDocumentStore"
+id: faissdocumentstore
+slug: "/faissdocumentstore"
+---
+
+# FAISSDocumentStore
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| API reference | [FAISS](/reference/integrations-faiss)                                                      |
+| GitHub link   | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/faiss |
+
+</div>
+
+`FAISSDocumentStore` is a local Document Store backed by [FAISS](https://github.com/facebookresearch/faiss) for vector similarity search.
+It keeps vectors in a FAISS index and stores document data in memory, with optional persistence to disk.
+
+`FAISSDocumentStore` is a good fit for local development and small to medium-sized datasets where you want a lightweight setup without running an external database service.
+
+## Installation
+
+Install the FAISS integration:
+
+```shell
+pip install faiss-haystack
+```
+
+## Initialization
+
+Create a `FAISSDocumentStore` instance and write embedded documents:
+
+```python
+from haystack import Document
+from haystack.document_stores.types import DuplicatePolicy
+from haystack_integrations.document_stores.faiss import FAISSDocumentStore
+
+document_store = FAISSDocumentStore(
+    index_path="my_faiss_index",  # Optional: enables persistence on disk
+    index_string="Flat",
+    embedding_dim=768,
+)
+
+document_store.write_documents(
+    [
+        Document(content="This is first", embedding=[0.1] * 768),
+        Document(content="This is second", embedding=[0.2] * 768),
+    ],
+    policy=DuplicatePolicy.OVERWRITE,
+)
+
+print(document_store.count_documents())
+
+# Persist index and metadata files (`.faiss` and `.json`)
+document_store.save("my_faiss_index")
+```
+
+### Persistence
+
+If you provide `index_path` when initializing `FAISSDocumentStore`, it tries to load existing persisted files (`.faiss` and `.json`) from that path.
+You can also explicitly call:
+
+- `save(index_path)` to write index and metadata to disk.
+- `load(index_path)` to load them later.
+
+Example of loading from a previously saved folder/path:
+
+```python
+from haystack_integrations.document_stores.faiss import FAISSDocumentStore
+
+# This loads `my_faiss_index.faiss` and `my_faiss_index.json` if they exist
+document_store = FAISSDocumentStore(index_path="my_faiss_index")
+
+# Alternatively, initialize first and then load explicitly
+another_store = FAISSDocumentStore(embedding_dim=768)
+another_store.load("my_faiss_index")
+```
+
+## Supported Retrievers
+
+[`FAISSEmbeddingRetriever`](../pipeline-components/retrievers/faissembeddingretriever.mdx): Retrieves documents from `FAISSDocumentStore` based on query embeddings.
+
+
+### Fixing OpenMP Runtime Conflicts on macOS
+
+#### Symptoms
+
+You may encounter one or both of the following errors at runtime:
+
+```
+OMP: Error #15: Initializing libomp.dylib, but found libomp.dylib already initialized.
+OMP: Hint This means that multiple copies of the OpenMP runtime have been linked into the program.
+```
+
+```
+resource_tracker: There appear to be 1 leaked semaphore objects to clean up at shutdown
+```
+
+If setting `OMP_NUM_THREADS=1` prevents the crash, the root cause is **multiple OpenMP runtimes loaded simultaneously**. Each runtime maintains its own thread pool and thread-local storage (TLS). When two runtimes spin up worker threads at the same time, they corrupt each other's memory — causing segfaults at `N > 1` threads.
+
+---
+
+#### Diagnosis
+
+First, find how many copies of `libomp.dylib` exist in your virtual environment:
+
+```bash
+find /path/to/your/.venv -name "libomp.dylib" 2>/dev/null
+```
+
+If you see more than one, e.g.:
+
+```
+.venv/lib/pythonX.Y/site-packages/torch/lib/libomp.dylib
+.venv/lib/pythonX.Y/site-packages/sklearn/.dylibs/libomp.dylib
+.venv/lib/pythonX.Y/site-packages/faiss/.dylibs/libomp.dylib
+```
+
+you need to consolidate them into a single runtime.
+
+---
+
+#### Fix
+
+The solution is to pick one canonical `libomp.dylib` (torch's is a good choice) and replace all other copies with symlinks pointing to it.
+
+For each duplicate, delete the copy and replace it with a symlink:
+
+```bash
+# Delete the duplicate
+rm /path/to/.venv/lib/pythonX.Y/site-packages/<package>/.dylibs/libomp.dylib
+
+# Replace with a symlink to the canonical copy
+ln -s /path/to/.venv/lib/pythonX.Y/site-packages/torch/lib/libomp.dylib \
+      /path/to/.venv/lib/pythonX.Y/site-packages/<package>/.dylibs/libomp.dylib
+```
+
+Repeat for every duplicate found. Because these packages use `@loader_path`-relative references to load `libomp.dylib`, the symlink will be transparently resolved to the single canonical runtime at load time.
+
+---
+
+#### Verify
+
+After applying the fix, confirm only one unique `libomp.dylib` is being referenced:
+
+```bash
+find /path/to/your/.venv -name "*.so" | xargs otool -L 2>/dev/null | grep libomp | sort -u
+```
+
+All entries should resolve to the same canonical path. You should now be able to run without `OMP_NUM_THREADS=1`.
