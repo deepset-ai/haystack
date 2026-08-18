@@ -3,19 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from dataclasses import asdict, dataclass
-from typing import Any, Literal
-
-
-@dataclass
-class _AppliedToolDecision:
-    """A tool decision after it has been matched to its original call."""
-
-    tool_name: str
-    tool_call_id: str | None
-    decision: Literal["confirm", "modify", "reject"]
-    original_arguments: dict[str, Any]
-    final_arguments: dict[str, Any] | None
-    feedback: str | None
+from typing import Any
 
 
 @dataclass

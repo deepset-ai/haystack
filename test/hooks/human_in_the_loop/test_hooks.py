@@ -313,7 +313,7 @@ class TestConfirmationHookTracing:
             "haystack.agent.hook.type": "haystack.hooks.human_in_the_loop.hooks.ConfirmationHook",
         }
         assert len(tool_spans) == 3
-        assert all(span.operation_name == "haystack.agent.hook.human_in_the_loop" for span in tool_spans)
+        assert all(span.operation_name == "haystack.agent.hook.human_in_the_loop.strategy" for span in tool_spans)
         assert all(span.parent_span is hook_span for span in tool_spans)
         assert [span.tags for span in tool_spans] == [
             {
@@ -323,10 +323,20 @@ class TestConfirmationHookTracing:
                 "haystack.agent.hook.human_in_the_loop.strategy.type": (
                     "haystack.hooks.human_in_the_loop.strategies.BlockingConfirmationStrategy"
                 ),
-                "haystack.agent.hook.human_in_the_loop.original_arguments": {"x": 1},
-                "haystack.agent.hook.human_in_the_loop.decision": "confirm",
-                "haystack.agent.hook.human_in_the_loop.final_arguments": {"x": 1},
-                "haystack.agent.hook.human_in_the_loop.feedback": None,
+                "haystack.agent.hook.human_in_the_loop.strategy.input": {
+                    "tool_name": "confirmed_tool",
+                    "tool_description": "Echo tool confirmed_tool.",
+                    "tool_params": {"x": 1},
+                    "tool_call_id": "tc-confirm",
+                },
+                "haystack.agent.hook.human_in_the_loop.strategy.decision": "confirm",
+                "haystack.agent.hook.human_in_the_loop.strategy.output": {
+                    "tool_name": "confirmed_tool",
+                    "execute": True,
+                    "tool_call_id": "tc-confirm",
+                    "feedback": None,
+                    "final_tool_params": {"x": 1},
+                },
             },
             {
                 "haystack.tool.name": "modified_tool",
@@ -335,13 +345,21 @@ class TestConfirmationHookTracing:
                 "haystack.agent.hook.human_in_the_loop.strategy.type": (
                     "haystack.hooks.human_in_the_loop.strategies.BlockingConfirmationStrategy"
                 ),
-                "haystack.agent.hook.human_in_the_loop.original_arguments": {"x": 2},
-                "haystack.agent.hook.human_in_the_loop.decision": "modify",
-                "haystack.agent.hook.human_in_the_loop.final_arguments": {"x": 99},
-                "haystack.agent.hook.human_in_the_loop.feedback": (
-                    "The parameters for tool 'modified_tool' were updated by the user to:\n{'x': 99} "
-                    "With user feedback: sensitive modification feedback"
-                ),
+                "haystack.agent.hook.human_in_the_loop.strategy.input": {
+                    "tool_name": "modified_tool",
+                    "tool_description": "Echo tool modified_tool.",
+                    "tool_params": {"x": 2},
+                    "tool_call_id": "tc-modify",
+                },
+                "haystack.agent.hook.human_in_the_loop.strategy.decision": "modify",
+                "haystack.agent.hook.human_in_the_loop.strategy.output": {
+                    "tool_name": "modified_tool",
+                    "execute": True,
+                    "tool_call_id": "tc-modify",
+                    "feedback": "The parameters for tool 'modified_tool' were updated by the user to:\n{'x': 99} "
+                    "With user feedback: sensitive modification feedback",
+                    "final_tool_params": {"x": 99},
+                },
             },
             {
                 "haystack.tool.name": "rejected_tool",
@@ -350,13 +368,21 @@ class TestConfirmationHookTracing:
                 "haystack.agent.hook.human_in_the_loop.strategy.type": (
                     "haystack.hooks.human_in_the_loop.strategies.BlockingConfirmationStrategy"
                 ),
-                "haystack.agent.hook.human_in_the_loop.original_arguments": {"x": 3},
-                "haystack.agent.hook.human_in_the_loop.decision": "reject",
-                "haystack.agent.hook.human_in_the_loop.final_arguments": None,
-                "haystack.agent.hook.human_in_the_loop.feedback": (
-                    "Tool execution for 'rejected_tool' was rejected by the user. "
-                    "With user feedback: sensitive rejection feedback"
-                ),
+                "haystack.agent.hook.human_in_the_loop.strategy.input": {
+                    "tool_name": "rejected_tool",
+                    "tool_description": "Echo tool rejected_tool.",
+                    "tool_params": {"x": 3},
+                    "tool_call_id": "tc-reject",
+                },
+                "haystack.agent.hook.human_in_the_loop.strategy.decision": "reject",
+                "haystack.agent.hook.human_in_the_loop.strategy.output": {
+                    "tool_name": "rejected_tool",
+                    "execute": False,
+                    "tool_call_id": "tc-reject",
+                    "feedback": "Tool execution for 'rejected_tool' was rejected by the user. "
+                    "With user feedback: sensitive rejection feedback",
+                    "final_tool_params": None,
+                },
             },
         ]
 
@@ -364,7 +390,7 @@ class TestConfirmationHookTracing:
             key: value
             for span in spying_tracer.spans
             for key, value in span.tags.items()
-            if not key.endswith((".original_arguments", ".final_arguments", ".feedback"))
+            if not key.endswith((".strategy.input", ".strategy.output"))
         }
         assert "sensitive" not in str(metadata)
         assert "99" not in str(metadata)
@@ -391,7 +417,7 @@ class TestConfirmationHookTracing:
             "haystack.agent.hook.human_in_the_loop.strategy.type": (
                 "haystack.hooks.human_in_the_loop.strategies.BlockingConfirmationStrategy"
             ),
-            "haystack.agent.hook.human_in_the_loop.decision": "reject",
+            "haystack.agent.hook.human_in_the_loop.strategy.decision": "reject",
         }
         assert "sensitive" not in str(eager_spying_tracer.spans)
 
@@ -410,9 +436,11 @@ class TestConfirmationHookTracing:
 
         hook_span, tool_span = spying_tracer.spans
         assert tool_span.parent_span is hook_span
-        assert tool_span.tags["haystack.agent.hook.human_in_the_loop.decision"] == "reject"
-        assert tool_span.tags["haystack.agent.hook.human_in_the_loop.original_arguments"] == {"a": 1, "b": 2}
-        assert "sensitive rejection feedback" in tool_span.tags["haystack.agent.hook.human_in_the_loop.feedback"]
+        assert tool_span.tags["haystack.agent.hook.human_in_the_loop.strategy.decision"] == "reject"
+        strategy_input = tool_span.tags["haystack.agent.hook.human_in_the_loop.strategy.input"]
+        assert strategy_input["tool_params"] == {"a": 1, "b": 2}
+        strategy_output = tool_span.tags["haystack.agent.hook.human_in_the_loop.strategy.output"]
+        assert "sensitive rejection feedback" in strategy_output["feedback"]
 
     def test_tool_span_can_close_without_a_decision(self, spying_tracer, monkeypatch, tools):
         messages = [
@@ -441,7 +469,12 @@ class TestConfirmationHookTracing:
             "haystack.agent.hook.human_in_the_loop.strategy.type": (
                 "haystack.hooks.human_in_the_loop.strategies.BlockingConfirmationStrategy"
             ),
-            "haystack.agent.hook.human_in_the_loop.original_arguments": {"a": 1, "b": 2},
+            "haystack.agent.hook.human_in_the_loop.strategy.input": {
+                "tool_name": "addition_tool",
+                "tool_description": "A tool that adds two integers together.",
+                "tool_params": {"a": 1, "b": 2},
+                "tool_call_id": None,
+            },
         }
 
 

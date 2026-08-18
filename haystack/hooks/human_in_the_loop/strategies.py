@@ -16,7 +16,6 @@ from haystack.core.serialization import (
 )
 from haystack.dataclasses import ChatMessage, ToolCall
 from haystack.hooks.human_in_the_loop import ToolExecutionDecision
-from haystack.hooks.human_in_the_loop.dataclasses import _AppliedToolDecision
 from haystack.hooks.human_in_the_loop.types import ConfirmationPolicy, ConfirmationStrategy, ConfirmationUI
 from haystack.tools import Tool
 from haystack.utils.async_utils import _execute_component_async
@@ -246,14 +245,15 @@ def _passthrough_tool_call(tool_call: ToolCall) -> ToolExecutionDecision:
     )
 
 
-def _create_confirmation_tool_span(
+def _create_confirmation_strategy_span(
     tool: Tool, tool_call: ToolCall, strategy: ConfirmationStrategy, parent_span: Any
 ) -> Any:
     """
-    Create a tracing span for one tool call processed by a Human-in-the-Loop strategy.
+    Create a tracing span for one `ConfirmationStrategy` run.
 
-    Tag keys are namespaced by the entity they describe, so tags about the confirmation itself live under
-    `haystack.agent.hook.human_in_the_loop`, while tags describing the tool reuse the shared `haystack.tool.*` keys.
+    The span covers a single strategy run, so a hook confirming several tool calls produces several sibling spans under
+    the `haystack.agent.hook` span of its invocation. Tags describing the strategy run are namespaced by the span name,
+    while tags describing the tool reuse the shared `haystack.tool.*` keys.
     """
     tags = {
         "haystack.tool.name": tool_call.tool_name,
@@ -261,36 +261,43 @@ def _create_confirmation_tool_span(
         "haystack.tool.call.id": tool_call.id or "",
         "haystack.agent.hook.human_in_the_loop.strategy.type": generate_qualified_class_name(type(strategy)),
     }
-    return tracing.tracer.trace("haystack.agent.hook.human_in_the_loop", tags=tags, parent_span=parent_span)
+    return tracing.tracer.trace("haystack.agent.hook.human_in_the_loop.strategy", tags=tags, parent_span=parent_span)
 
 
-def _applied_tool_decision(*, tool_call: ToolCall, decision: ToolExecutionDecision) -> _AppliedToolDecision:
-    """Match and classify a strategy decision against the tool call that was presented for confirmation."""
-    final_arguments = decision.final_tool_params or {}
-    outcome: Literal["confirm", "modify", "reject"]
+def _classify_decision(tool_call: ToolCall, decision: ToolExecutionDecision) -> Literal["confirm", "modify", "reject"]:
+    """Classify a strategy decision against the tool call that was presented for confirmation."""
     if not decision.execute:
-        outcome = "reject"
-    elif tool_call.arguments != final_arguments:
-        outcome = "modify"
-    else:
-        outcome = "confirm"
-    return _AppliedToolDecision(
-        tool_name=tool_call.tool_name,
-        tool_call_id=tool_call.id,
-        decision=outcome,
-        original_arguments=tool_call.arguments,
-        final_arguments=decision.final_tool_params,
-        feedback=decision.feedback,
-    )
+        return "reject"
+    if tool_call.arguments != (decision.final_tool_params or {}):
+        return "modify"
+    return "confirm"
 
 
-def _set_applied_decision_tracing_tags(span: Any, applied_decision: _AppliedToolDecision) -> None:
-    """Add a completed Human-in-the-Loop decision and its optional content to a tool span."""
-    span.set_tag("haystack.agent.hook.human_in_the_loop.decision", applied_decision.decision)
+def _set_strategy_input_tracing_tags(span: Any, tool: Tool, tool_call: ToolCall, tool_params: dict[str, Any]) -> None:
+    """
+    Record the arguments a `ConfirmationStrategy` is run with.
+
+    `confirmation_strategy_context` is left out: it carries request-scoped resources such as WebSocket connections and
+    queues rather than information about the decision.
+    """
     span.set_content_tag(
-        key="haystack.agent.hook.human_in_the_loop.final_arguments", value=applied_decision.final_arguments
+        key="haystack.agent.hook.human_in_the_loop.strategy.input",
+        value={
+            "tool_name": tool_call.tool_name,
+            "tool_description": tool.description,
+            "tool_params": tool_params,
+            "tool_call_id": tool_call.id,
+        },
     )
-    span.set_content_tag(key="haystack.agent.hook.human_in_the_loop.feedback", value=applied_decision.feedback)
+
+
+def _set_strategy_output_tracing_tags(span: Any, tool_call: ToolCall, decision: ToolExecutionDecision) -> None:
+    """Record the decision a `ConfirmationStrategy` returned, plus how it compares to the original tool call."""
+    span.set_tag(
+        "haystack.agent.hook.human_in_the_loop.strategy.decision",
+        _classify_decision(tool_call=tool_call, decision=decision),
+    )
+    span.set_content_tag(key="haystack.agent.hook.human_in_the_loop.strategy.output", value=decision.to_dict())
 
 
 def _bind_decision_to_tool_call(decision: ToolExecutionDecision, tool_call: ToolCall) -> ToolExecutionDecision:
@@ -442,11 +449,11 @@ def _run_confirmation_strategies(
                 continue
 
             # Run the confirmation strategy
-            with _create_confirmation_tool_span(
+            with _create_confirmation_strategy_span(
                 tool=tool_to_invoke, tool_call=tool_call, strategy=strategy, parent_span=parent_span
             ) as span:
-                span.set_content_tag(
-                    key="haystack.agent.hook.human_in_the_loop.original_arguments", value=tool_call.arguments
+                _set_strategy_input_tracing_tags(
+                    span=span, tool=tool_to_invoke, tool_call=tool_call, tool_params=final_args
                 )
                 ted = strategy.run(
                     tool_name=tool_name,
@@ -456,9 +463,7 @@ def _run_confirmation_strategies(
                     confirmation_strategy_context=confirmation_strategy_context,
                 )
                 bound_ted = _bind_decision_to_tool_call(decision=ted, tool_call=tool_call)
-                _set_applied_decision_tracing_tags(
-                    span=span, applied_decision=_applied_tool_decision(tool_call=tool_call, decision=bound_ted)
-                )
+                _set_strategy_output_tracing_tags(span=span, tool_call=tool_call, decision=bound_ted)
             teds.append(bound_ted)
 
     return teds
@@ -513,12 +518,10 @@ async def _run_confirmation_strategies_async(
                 )
                 continue
 
-            with _create_confirmation_tool_span(
+            with _create_confirmation_strategy_span(
                 tool=tool_to_invoke, tool_call=tool_call, strategy=strategy, parent_span=parent_span
             ) as span:
-                span.set_content_tag(
-                    key="haystack.agent.hook.human_in_the_loop.original_arguments", value=tool_call.arguments
-                )
+                _set_strategy_input_tracing_tags(span, tool=tool_to_invoke, tool_call=tool_call, tool_params=final_args)
                 # The _execute_component_async helper supports arbitrary run results, but its return type is currently
                 # component-specific, so we cast it to the expected ToolExecutionDecision type here.
                 ted = cast(
@@ -533,9 +536,7 @@ async def _run_confirmation_strategies_async(
                     ),
                 )
                 bound_ted = _bind_decision_to_tool_call(decision=ted, tool_call=tool_call)
-                _set_applied_decision_tracing_tags(
-                    span=span, applied_decision=_applied_tool_decision(tool_call=tool_call, decision=bound_ted)
-                )
+                _set_strategy_output_tracing_tags(span, tool_call=tool_call, decision=bound_ted)
             teds.append(bound_ted)
 
     return teds
@@ -593,10 +594,10 @@ def _apply_tool_execution_decisions(
                     "Set tool_call_id to match decisions to tool calls reliably."
                 )
 
-            applied_decision = _applied_tool_decision(tool_call=tc, decision=ted)
+            classified_decision = _classify_decision(tool_call=tc, decision=ted)
             final_args = ted.final_tool_params or {}
 
-            if applied_decision.decision == "reject":
+            if classified_decision == "reject":
                 # rejected tool call
                 tool_result_text = ted.feedback or REJECTION_FEEDBACK_TEMPLATE.format(tool_name=tc.tool_name)
                 rejection_messages.extend(
@@ -608,7 +609,7 @@ def _apply_tool_execution_decisions(
                 continue
 
             # Covers confirm and modify cases
-            if applied_decision.decision == "modify":
+            if classified_decision == "modify":
                 # In the modify case we add a user message explaining the modification otherwise the LLM won't know
                 # why the tool parameters changed and will likely just try and call the tool again with the
                 # original parameters.
