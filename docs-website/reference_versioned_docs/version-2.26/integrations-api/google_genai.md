@@ -813,8 +813,10 @@ Run the Google Gen AI chat generator on the given input data.
 
 - **messages** (<code>list\[ChatMessage\] | str</code>) – A list of ChatMessage instances representing the input messages.
   If a string is provided, it is converted to a list containing a ChatMessage with user role.
-- **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Configuration for generation. If provided, it will override
-  the default config. Supports `thinking_budget` for Gemini 2.5 series thinking configuration.
+- **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Configuration for generation. These are merged per key with the
+  `generation_kwargs` passed during component initialization: keys provided here take precedence,
+  keys set only at initialization are kept. Supports `thinking_budget` for Gemini 2.5 series
+  thinking configuration.
 - **safety_settings** (<code>list\[dict\[str, Any\]\] | None</code>) – Safety settings for content filtering. If provided, it will override the
   default settings.
 - **streaming_callback** (<code>StreamingCallbackT | None</code>) – A callback function that is called when a new token is
@@ -851,8 +853,10 @@ Async version of the run method. Run the Google Gen AI chat generator on the giv
 
 - **messages** (<code>list\[ChatMessage\] | str</code>) – A list of ChatMessage instances representing the input messages.
   If a string is provided, it is converted to a list containing a ChatMessage with user role.
-- **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Configuration for generation. If provided, it will override
-  the default config. Supports `thinking_budget` for Gemini 2.5 series thinking configuration.
+- **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Configuration for generation. These are merged per key with the
+  `generation_kwargs` passed during component initialization: keys provided here take precedence,
+  keys set only at initialization are kept. Supports `thinking_budget` for Gemini 2.5 series
+  thinking configuration.
   See https://ai.google.dev/gemini-api/docs/thinking for possible values.
 - **safety_settings** (<code>list\[dict\[str, Any\]\] | None</code>) – Safety settings for content filtering. If provided, it will override the
   default settings.
