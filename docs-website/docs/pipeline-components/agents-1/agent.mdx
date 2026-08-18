@@ -91,8 +91,8 @@ def fallback_on_max_steps(state: State) -> None:
 - `tools`: A list of tool or toolset instances the agent can call. Supported types: [`Tool`](../../tools/tool.mdx), [`ComponentTool`](../../tools/componenttool.mdx), [`PipelineTool`](../../tools/pipelinetool.mdx), [`AgentTool`](../../tools/agenttool.mdx), [`MCPTool`](../../tools/mcptool.mdx), [`Toolset`](../../tools/toolset.mdx), [`MCPToolset`](../../tools/mcptoolset.mdx), [`SearchableToolset`](../../tools/searchabletoolset.mdx). Tool names must be unique; duplicate names are detected at the start of each agent step, before the chat generator is called.
 - `system_prompt`: A plain string or Jinja2 template used as the system message for every run. If the template contains Jinja2 variables, those variables become additional inputs to `run()`.
 - `user_prompt`: A Jinja2 template appended to the user-provided messages on each run. Template variables become additional inputs to `run()`. Use `required_variables` to enforce which variables must be provided.
-- `exit_conditions`: List of conditions that cause the agent to stop. Use `”text”` to stop when the LLM replies without a tool call, or a tool name to stop once that tool has been executed. Defaults to `[“text”]`. Exit conditions are evaluated at runtime rather than validated at initialization, so a condition can name a tool that is only loaded later — for example, a tool passed at runtime via `run(tools=...)` or one discovered by a [`SearchableToolset`](../../tools/searchabletoolset.mdx).
-- `state_schema`: Defines the agent's runtime state — a dict mapping key names to type configs (e.g. `{“docs”: {“type”: list[Document]}}`). Tools can read from and write to state keys via `inputs_from_state` and `outputs_to_state`. See [State](./state.mdx) for full details.
+- `exit_conditions`: List of conditions that cause the agent to stop. Use `"text"` to stop when the LLM replies without a tool call, or a tool name to stop once that tool has been executed. Defaults to `["text"]`. Exit conditions are evaluated at runtime rather than validated at initialization, so a condition can name a tool that is only loaded later — for example, a tool passed at runtime via `run(tools=...)` or one discovered by a [`SearchableToolset`](../../tools/searchabletoolset.mdx).
+- `state_schema`: Defines the agent's runtime state — a dict mapping key names to type configs (e.g. `{"docs": {"type": list[Document]}}`). Tools can read from and write to state keys via `inputs_from_state` and `outputs_to_state`. See [State](./state.mdx) for full details.
 - `streaming_callback`: A callback invoked for each streamed token. Use the built-in `print_streaming_chunk` for console output.
 - `max_agent_steps`: Maximum number of LLM + tool call iterations before the agent stops. Defaults to `100`.
 - `raise_on_tool_invocation_failure`: If `True`, raises an exception when a tool call fails. If `False` (default), the error is passed back to the LLM as a message so it can recover.
@@ -105,7 +105,7 @@ def fallback_on_max_steps(state: State) -> None:
 `run()` also accepts parameters that override the init-time configuration for a single call:
 
 - `tools`: Pass a list of `Tool`/`Toolset` objects, or a list of tool name strings to select a subset of the agent's configured tools for this run.
-- `generation_kwargs`: Additional keyword arguments forwarded to the LLM, overriding any set at init time (e.g. `{“temperature”: 0.2}`).
+- `generation_kwargs`: Additional keyword arguments forwarded to the chat generator (e.g. `{"temperature": 0.2}`). They are merged per key with the `generation_kwargs` set at the chat generator's initialization: keys passed here take precedence, keys set only at initialization are kept.
 - `hook_context`: A dict of request-scoped resources made available to [hooks](./hooks.mdx) via `state.data["hook_context"]` — for example, a user ID or a WebSocket connection.
 
 :::info
