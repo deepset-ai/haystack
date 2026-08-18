@@ -1,0 +1,10 @@
+---
+enhancements:
+  - |
+    Add a tracing span per ``ConfirmationStrategy`` run to ``ConfirmationHook``. Each
+    ``haystack.agent.hook.human_in_the_loop.strategy`` span identifies the tool call it confirms and records the
+    strategy type and the applied confirm, modify, or reject decision. When content tracing is enabled, spans also
+    carry the arguments the strategy was run with and the ``ToolExecutionDecision`` it returned under
+    ``haystack.agent.hook.human_in_the_loop.strategy.input`` and
+    ``haystack.agent.hook.human_in_the_loop.strategy.output``; chat messages, the confirmation strategy context, and
+    the Agent ``State`` are not recorded by the hook.
