@@ -694,8 +694,9 @@ class Agent:
         :param messages: List of ChatMessage objects to start the agent with.
         :param streaming_callback: Optional callback for streaming responses.
         :param requires_async: Whether the agent run requires asynchronous execution.
-        :param generation_kwargs: Additional keyword arguments for chat generator. These parameters will
-            override the parameters passed during component initialization.
+        :param generation_kwargs: Additional keyword arguments for the chat generator. These are merged per key
+            with the `generation_kwargs` passed at the chat generator's initialization: keys provided here take
+            precedence, keys set only at initialization are kept.
         :param tools: Optional list of Tool objects, a Toolset, or list of tool names to use for this run.
             When passing tool names, tools are selected from the Agent's originally configured tools.
         :param hook_context: Optional dictionary of request-scoped resources made available to hooks via
@@ -743,6 +744,7 @@ class Agent:
         state.set("tool_call_counts", {tool.name: 0 for tool in flat_tools})
         state.set("exit_reason", None)
         state.set("continue_run", False)
+        state.set("tools", flat_tools)
         state.set("hook_context", hook_context or {})
 
         streaming_callback = select_streaming_callback(  # type: ignore[call-overload]
@@ -814,8 +816,9 @@ class Agent:
         :param messages: List of Haystack ChatMessage objects to process.
         :param streaming_callback: A callback that will be invoked when a response is streamed from the LLM.
             The same callback can be configured to emit tool results when a tool is called.
-        :param generation_kwargs: Additional keyword arguments for LLM. These parameters will
-            override the parameters passed during component initialization.
+        :param generation_kwargs: Additional keyword arguments for the chat generator. These are merged per key
+            with the `generation_kwargs` passed at the chat generator's initialization: keys provided here take
+            precedence, keys set only at initialization are kept.
         :param tools: Optional list of Tool objects, a Toolset, or list of tool names to use for this run.
             When passing tool names, tools are selected from the Agent's originally configured tools.
         :param hook_context: Optional dictionary of request-scoped resources made available to hooks via
@@ -898,8 +901,9 @@ class Agent:
         :param messages: List of Haystack ChatMessage objects to process.
         :param streaming_callback: An asynchronous callback that will be invoked when a response is streamed from the
             LLM. The same callback can be configured to emit tool results when a tool is called.
-        :param generation_kwargs: Additional keyword arguments for LLM. These parameters will
-            override the parameters passed during component initialization.
+        :param generation_kwargs: Additional keyword arguments for the chat generator. These are merged per key
+            with the `generation_kwargs` passed at the chat generator's initialization: keys provided here take
+            precedence, keys set only at initialization are kept.
         :param tools: Optional list of Tool objects, a Toolset, or list of tool names to use for this run.
         :param hook_context: Optional dictionary of request-scoped resources made available to hooks via
             `state.data.get("hook_context")`. Useful in web/server environments to provide per-request objects

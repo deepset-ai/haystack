@@ -507,6 +507,20 @@ class TestOpenAIChatGenerator:
         assert len(response["replies"]) == 1
         assert [isinstance(reply, ChatMessage) for reply in response["replies"]]
 
+    def test_run_with_generation_kwargs(
+        self, chat_messages: list[ChatMessage], openai_mock_chat_completion: MagicMock
+    ) -> None:
+
+        component = OpenAIChatGenerator(
+            api_key=Secret.from_token("test-api-key"),
+            generation_kwargs={"max_completion_tokens": 10, "temperature": 0.5},
+        )
+        component.run(chat_messages, generation_kwargs={"temperature": 0.9})
+
+        _, kwargs = openai_mock_chat_completion.call_args
+        assert kwargs["temperature"] == 0.9
+        assert kwargs["max_completion_tokens"] == 10
+
     def test_run_with_params_streaming(
         self, chat_messages: list[ChatMessage], openai_mock_chat_completion_chunk: MagicMock
     ) -> None:
@@ -1511,9 +1525,15 @@ def chat_completion_chunks():
                 prompt_tokens=282,
                 total_tokens=324,
                 completion_tokens_details=CompletionTokensDetails(
-                    accepted_prediction_tokens=0, audio_tokens=0, reasoning_tokens=0, rejected_prediction_tokens=0
+                    accepted_prediction_tokens=0,
+                    audio_tokens=0,
+                    reasoning_tokens=0,
+                    rejected_prediction_tokens=0,
+                    text_tokens=42,
                 ),
-                prompt_tokens_details=PromptTokensDetails(audio_tokens=0, cached_tokens=0, cache_write_tokens=0),
+                prompt_tokens_details=PromptTokensDetails(
+                    audio_tokens=0, cached_tokens=0, cache_write_tokens=0, image_tokens=0, text_tokens=282
+                ),
             ),
         ),
     ]
@@ -1719,8 +1739,15 @@ def streaming_chunks():
                         "audio_tokens": 0,
                         "reasoning_tokens": 0,
                         "rejected_prediction_tokens": 0,
+                        "text_tokens": 42,
                     },
-                    "prompt_tokens_details": {"audio_tokens": 0, "cached_tokens": 0, "cache_write_tokens": 0},
+                    "prompt_tokens_details": {
+                        "audio_tokens": 0,
+                        "cached_tokens": 0,
+                        "cache_write_tokens": 0,
+                        "image_tokens": 0,
+                        "text_tokens": 282,
+                    },
                 },
             },
         ),
@@ -2002,8 +2029,15 @@ class TestChatCompletionChunkConversion:
                 "audio_tokens": 0,
                 "reasoning_tokens": 0,
                 "rejected_prediction_tokens": 0,
+                "text_tokens": 42,
             },
-            "prompt_tokens_details": {"audio_tokens": 0, "cached_tokens": 0, "cache_write_tokens": 0},
+            "prompt_tokens_details": {
+                "audio_tokens": 0,
+                "cached_tokens": 0,
+                "cache_write_tokens": 0,
+                "image_tokens": 0,
+                "text_tokens": 282,
+            },
         }
 
     def test_convert_usage_chunk_to_streaming_chunk(self) -> None:

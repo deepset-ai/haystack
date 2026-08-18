@@ -140,7 +140,6 @@ class LinkContentFetcher:
         """
         self.raise_on_failure = raise_on_failure
         self.user_agents = user_agents or [DEFAULT_USER_AGENT]
-        self.current_user_agent_idx: int = 0
         self.retry_attempts = retry_attempts
         self.timeout = timeout
         self.http2 = http2
@@ -165,21 +164,38 @@ class LinkContentFetcher:
         self.handlers["audio/*"] = _binary_content_handler
         self.handlers["video/*"] = _binary_content_handler
 
+    def _get_response(self, url: str) -> httpx.Response:
+        """
+        Gets a response from a URL, rotating the user agent on every failed attempt.
+
+        The rotation cursor is local to this call: `run` fetches URLs concurrently, so a cursor kept on the
+        component would be advanced and reset by whichever fetches happen to be in flight at the same time.
+
+        :param url: The URL to fetch.
+        :returns: The httpx Response object.
+        """
+        user_agent_idx = 0
+
+        def rotate_user_agent(retry_state: RetryCallState) -> None:  # noqa: ARG001
+            nonlocal user_agent_idx
+            user_agent_idx = (user_agent_idx + 1) % len(self.user_agents)
+            logger.debug("Switched user agent to {user_agent}", user_agent=self.user_agents[user_agent_idx])
+
         @retry(
             reraise=True,
             stop=stop_after_attempt(self.retry_attempts),
             wait=wait_exponential(multiplier=1, min=2, max=10),
             retry=(retry_if_exception_type((httpx.HTTPStatusError, httpx.RequestError))),
-            # This method is invoked only after failed requests (exception raised)
-            after=self._switch_user_agent,
+            # This callback is invoked only after failed requests (exception raised)
+            after=rotate_user_agent,
         )
         def get_response(url: str) -> httpx.Response:
             assert self._client is not None  # mypy: client is built by warm_up before run
-            response = self._client.get(url, headers=self._get_headers())
+            response = self._client.get(url, headers=self._get_headers(self.user_agents[user_agent_idx]))
             response.raise_for_status()
             return response
 
-        self._get_response: Callable = get_response
+        return get_response(url)
 
     def _build_client_kwargs(self) -> dict[str, Any]:
         """
@@ -233,16 +249,16 @@ class LinkContentFetcher:
             await self._async_client.aclose()
             self._async_client = None
 
-    def _get_headers(self) -> dict[str, str]:
+    def _get_headers(self, user_agent: str) -> dict[str, str]:
         """
         Build headers with precedence
 
         client defaults -> component defaults -> user-provided -> rotating UA
+
+        :param user_agent: The user agent for this attempt, taken from the caller's own rotation.
         """
         base = dict(self._client.headers) if self._client is not None else {}
-        return _merge_headers(
-            base, REQUEST_HEADERS, self.request_headers, {"User-Agent": self.user_agents[self.current_user_agent_idx]}
-        )
+        return _merge_headers(base, REQUEST_HEADERS, self.request_headers, {"User-Agent": user_agent})
 
     @component.output_types(streams=list[ByteStream])
     def run(self, urls: list[str]) -> dict[str, Any]:
@@ -361,9 +377,6 @@ class LinkContentFetcher:
             # less verbose log as this is expected to happen often (requests failing, blocked, etc.)
             logger.debug("Couldn't retrieve content from {url} because {error}", url=url, error=str(e))
 
-        finally:
-            self.current_user_agent_idx = 0
-
         return {"content_type": content_type, "url": url}, stream
 
     async def _fetch_async(
@@ -393,8 +406,6 @@ class LinkContentFetcher:
             # Create an empty ByteStream for failed requests when raise_on_failure is False
             stream = ByteStream(data=b"")
             metadata = {"content_type": content_type, "url": url}
-        finally:
-            self.current_user_agent_idx = 0
 
         return metadata, stream
 
@@ -427,17 +438,21 @@ class LinkContentFetcher:
         """
         attempt = 0
         last_exception = None
+        # Local to this call: `run_async` gathers URLs concurrently, so a cursor on the component
+        # would be shared by every request in flight.
+        user_agent_idx = 0
 
         while attempt <= self.retry_attempts:
             try:
-                response = await client.get(url, headers=self._get_headers())
+                response = await client.get(url, headers=self._get_headers(self.user_agents[user_agent_idx]))
                 response.raise_for_status()
                 return response
             except (httpx.HTTPStatusError, httpx.RequestError) as e:
                 last_exception = e
                 attempt += 1
                 if attempt <= self.retry_attempts:
-                    self._switch_user_agent(None)  # Switch user agent for next retry
+                    # Switch user agent for next retry
+                    user_agent_idx = (user_agent_idx + 1) % len(self.user_agents)
                     # Wait before retry using exponential backoff
                     await asyncio.sleep(min(2 * 2 ** (attempt - 1), 10))
                 else:
@@ -482,14 +497,3 @@ class LinkContentFetcher:
 
         # default handler
         return self.handlers["text/plain"]
-
-    def _switch_user_agent(self, retry_state: RetryCallState | None = None) -> None:  # noqa: ARG002
-        """
-        Switches the User-Agent for this LinkContentRetriever to the next one in the list of user agents.
-
-        Used by tenacity to retry the requests with a different user agent.
-
-        :param retry_state: The retry state (unused, required by tenacity).
-        """
-        self.current_user_agent_idx = (self.current_user_agent_idx + 1) % len(self.user_agents)
-        logger.debug("Switched user agent to {user_agent}", user_agent=self.user_agents[self.current_user_agent_idx])

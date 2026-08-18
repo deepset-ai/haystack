@@ -285,7 +285,10 @@ Creates an GoogleGenAIMultimodalDocumentEmbedder component.
   Required when using Vertex AI with Application Default Credentials.
 - **file_path_meta_field** (<code>str</code>) – The metadata field in the Document that contains the file path to the file to embed.
 - **root_path** (<code>str | None</code>) – The root directory path where document files are located. If provided, file paths in
-  document metadata will be resolved relative to this path. If None, file paths are treated as absolute paths.
+  document metadata will be resolved relative to this path and are guaranteed to stay within it.
+  If None, file paths are treated as absolute paths with no containment check.
+  If document metadata, in particular `file_path_meta_field`, may be influenced by untrusted input,
+  set `root_path` to a dedicated data directory so that path-traversal beyond it is rejected.
 - **image_size** (<code>tuple\[int, int\] | None</code>) – Only used for images and PDF pages. If provided, resizes the image to fit within the specified dimensions
   (width, height) while maintaining aspect ratio. This reduces file size, memory usage, and processing time,
   which is beneficial when working with models that have resolution constraints or when transmitting images
@@ -348,6 +351,13 @@ Embeds a list of documents.
 - `documents`: A list of documents with embeddings.
 - `meta`: Information about the usage of the model.
 
+**Raises:**
+
+- <code>TypeError</code> – If the input is not a list of `Documents`.
+- <code>ValueError</code> – If a document is missing the file path metadata field, its file path escapes `root_path`, or its
+  MIME type is not supported.
+- <code>RuntimeError</code> – If the conversion of some documents fails.
+
 #### run_async
 
 ```python
@@ -367,6 +377,13 @@ Embeds a list of documents asynchronously.
 - <code>dict\[str, list\[Document\]\] | dict\[str, Any\]</code> – A dictionary with the following keys:
 - `documents`: A list of documents with embeddings.
 - `meta`: Information about the usage of the model.
+
+**Raises:**
+
+- <code>TypeError</code> – If the input is not a list of `Documents`.
+- <code>ValueError</code> – If a document is missing the file path metadata field, its file path escapes `root_path`, or its
+  MIME type is not supported.
+- <code>RuntimeError</code> – If the conversion of some documents fails.
 
 ## haystack_integrations.components.embedders.google_genai.text_embedder
 
@@ -813,8 +830,10 @@ Run the Google Gen AI chat generator on the given input data.
 
 - **messages** (<code>list\[ChatMessage\] | str</code>) – A list of ChatMessage instances representing the input messages.
   If a string is provided, it is converted to a list containing a ChatMessage with user role.
-- **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Configuration for generation. If provided, it will override
-  the default config. Supports `thinking_budget` for Gemini 2.5 series thinking configuration.
+- **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Configuration for generation. These are merged per key with the
+  `generation_kwargs` passed during component initialization: keys provided here take precedence,
+  keys set only at initialization are kept. Supports `thinking_budget` for Gemini 2.5 series
+  thinking configuration.
 - **safety_settings** (<code>list\[dict\[str, Any\]\] | None</code>) – Safety settings for content filtering. If provided, it will override the
   default settings.
 - **streaming_callback** (<code>StreamingCallbackT | None</code>) – A callback function that is called when a new token is
@@ -851,8 +870,10 @@ Async version of the run method. Run the Google Gen AI chat generator on the giv
 
 - **messages** (<code>list\[ChatMessage\] | str</code>) – A list of ChatMessage instances representing the input messages.
   If a string is provided, it is converted to a list containing a ChatMessage with user role.
-- **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Configuration for generation. If provided, it will override
-  the default config. Supports `thinking_budget` for Gemini 2.5 series thinking configuration.
+- **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Configuration for generation. These are merged per key with the
+  `generation_kwargs` passed during component initialization: keys provided here take precedence,
+  keys set only at initialization are kept. Supports `thinking_budget` for Gemini 2.5 series
+  thinking configuration.
   See https://ai.google.dev/gemini-api/docs/thinking for possible values.
 - **safety_settings** (<code>list\[dict\[str, Any\]\] | None</code>) – Safety settings for content filtering. If provided, it will override the
   default settings.
