@@ -1,0 +1,67 @@
+---
+title: "ApproximateTokenCounter"
+id: approximatetokencounter
+slug: "/approximatetokencounter"
+description: "Estimate the token count of chat messages and tool schemas from their text length without additional dependencies."
+---
+
+# ApproximateTokenCounter
+
+`ApproximateTokenCounter` estimates the token count of `ChatMessage` objects and optional tool schemas from their text length. It needs no extra dependency or warm-up step.
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Import path** | `haystack.token_counters.ApproximateTokenCounter` |
+| **API reference** | [Token Counters](/reference/token-counters-api) |
+| **GitHub link** | https://github.com/deepset-ai/haystack/blob/main/haystack/token_counters/approximate_counter.py |
+| **Package name** | `haystack-ai` |
+
+</div>
+
+## Usage
+
+Create the counter and pass a list of messages to `count()`:
+
+```python
+from haystack.dataclasses import ChatMessage
+from haystack.token_counters import ApproximateTokenCounter
+
+messages = [
+    ChatMessage.from_system("You are a helpful assistant."),
+    ChatMessage.from_user("Explain retrieval-augmented generation."),
+]
+
+counter = ApproximateTokenCounter()
+token_count = counter.count(messages)
+print(token_count)
+```
+
+By default, the counter treats four characters as one token. Set `chars_per_token` to tune the estimate for the languages and models in your application:
+
+```python
+counter = ApproximateTokenCounter(chars_per_token=3.5)
+```
+
+A smaller value produces a higher, more conservative estimate. `chars_per_token` must be greater than zero.
+
+To include the context consumed by tool schemas, pass the tools to `count()`:
+
+```python
+token_count = counter.count(messages, tools=[search_tool])
+```
+
+## Non-text content
+
+Images and files cannot be measured from text length, so the counter adds a flat estimate for each item. Change the defaults when your application sends large images or long documents:
+
+```python
+counter = ApproximateTokenCounter(
+    chars_per_token=4.0,
+    tokens_per_image=765,
+    tokens_per_file=4000,
+)
+```
+
+The counter includes non-text content attached directly to a message as well as content nested inside tool results.
