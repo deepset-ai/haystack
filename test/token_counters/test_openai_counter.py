@@ -66,7 +66,7 @@ class TestOpenAITokenCounter:
         counter = OpenAITokenCounter("gpt-5-mini", api_key=Secret.from_token("test-key"))
         client = MagicMock()
         client.responses.input_tokens.count.return_value = SimpleNamespace(input_tokens=42)
-        counter.client = client  # type: ignore[assignment]
+        counter.client = client
         image = ImageContent(base64_image="Zm9v", mime_type="image/png")
         messages = [ChatMessage.from_system("Be concise."), ChatMessage.from_user(content_parts=["Look:", image])]
 
@@ -90,7 +90,7 @@ class TestOpenAITokenCounter:
     def test_close_releases_the_client(self):
         counter = OpenAITokenCounter("gpt-5-mini", api_key=Secret.from_token("test-key"))
         client = MagicMock()
-        counter.client = client  # type: ignore[assignment]
+        counter.client = client
         counter.close()
         client.close.assert_called_once_with()
         assert counter.client is None

@@ -105,6 +105,7 @@ class TestTiktokenCounter:
             "init_parameters": {"encoding": "cl100k_base", "tokens_per_image": 200, "tokens_per_file": 3000},
         }
         restored = TiktokenCounter.from_dict(data)
+        assert isinstance(restored, TiktokenCounter)
         assert restored.encoding == "cl100k_base"
         assert restored.tokens_per_image == 200
 

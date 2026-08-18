@@ -2,7 +2,8 @@
 enhancements:
   - |
     Added ``test/token_counters/`` to the mypy typing checks coverage (``hatch run types``).
-    Fixed incomplete type annotations flagged by ``disallow_incomplete_defs``: annotated the
-    ``monkeypatch`` fixture parameter in ``test_tiktoken_counter.py`` and added
-    ``# type: ignore[assignment]`` to ``MagicMock`` client assignments in
-    ``test_openai_counter.py``.
+    Fixed type errors flagged by mypy: annotated the ``monkeypatch`` fixture parameter in
+    ``test_tiktoken_counter.py``; added ``assert isinstance(restored, ...)`` guards in
+    ``test_tiktoken_counter.py`` and ``test_approximate_counter.py`` so mypy narrows the
+    ``TokenCounter`` Protocol return type of ``from_dict`` before attribute access; and removed
+    now-superfluous ``# type: ignore[assignment]`` comments in ``test_openai_counter.py``.
