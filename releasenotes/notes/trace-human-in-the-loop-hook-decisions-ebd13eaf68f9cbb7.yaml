@@ -4,5 +4,7 @@ enhancements:
     Add a per-tool tracing span to ``ConfirmationHook``. Each span identifies the tool, tool call, confirmation
     strategy, and an applied confirm, modify, or reject decision when one is available. When content tracing is
     enabled, spans also include the original and final tool arguments and user feedback under
-    ``haystack.agent.hook.human_in_the_loop.input`` and ``haystack.agent.hook.human_in_the_loop.output``; chat
-    messages, hook context, and the Agent ``State`` are not recorded by the hook.
+    ``haystack.agent.hook.human_in_the_loop.original_arguments``,
+    ``haystack.agent.hook.human_in_the_loop.final_arguments``, and
+    ``haystack.agent.hook.human_in_the_loop.feedback``; chat messages, hook context, and the Agent ``State`` are not
+    recorded by the hook.
