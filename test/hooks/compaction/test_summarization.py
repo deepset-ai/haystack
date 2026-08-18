@@ -85,19 +85,6 @@ def compact_each_round(
     return messages
 
 
-def two_turns_and_a_task() -> list[ChatMessage]:
-    """A padded oldest turn, a short recent turn, and the current task with one step behind it."""
-    return [
-        ChatMessage.from_system("rules"),
-        ChatMessage.from_user("oldest question " * 30),
-        ChatMessage.from_assistant("oldest answer " * 30),
-        ChatMessage.from_user("recent question"),
-        ChatMessage.from_assistant("recent answer"),
-        ChatMessage.from_user("current task"),
-        ChatMessage.from_assistant("current step"),
-    ]
-
-
 class TestAttachmentPlaceholder:
     @pytest.mark.parametrize(
         ("content", "expected"),
@@ -140,7 +127,16 @@ class TestTierOrder:
     """
 
     def test_summarizes_the_oldest_historical_turn_only(self):
-        messages = two_turns_and_a_task()
+        # Two completed historical turns followed by a current task with one step.
+        messages = [
+            ChatMessage.from_system("rules"),
+            ChatMessage.from_user("oldest question " * 30),
+            ChatMessage.from_assistant("oldest answer " * 30),
+            ChatMessage.from_user("recent question"),
+            ChatMessage.from_assistant("recent answer"),
+            ChatMessage.from_user("current task"),
+            ChatMessage.from_assistant("current step"),
+        ]
         generator, prompts = summarizer("short historical summary")
         # Room for everything but the padded oldest turn, plus the summary standing in for it.
         target_tokens = COUNTER.count([messages[0], *messages[3:]]) + 100
@@ -342,11 +338,11 @@ class TestSummaryLifecycle:
         assert compacted[1].meta[_COMPACTION_META_KEY]["summarized_messages"] == 3
 
     def test_leaves_the_input_conversation_untouched(self):
-        messages = two_turns_and_a_task()
+        messages = fresh_conversation_with_two_steps()
         SummarizationCompactor(MockChatGenerator("summary"), approximate_summary_tokens=1).compact(
             messages=messages, target_tokens=SMALLEST, token_counter=COUNTER
         )
-        assert messages == two_turns_and_a_task()
+        assert messages == fresh_conversation_with_two_steps()
 
     def test_returns_none_when_the_conversation_fits(self):
         generator, prompts = summarizer()
@@ -387,7 +383,7 @@ class TestSummaryContent:
         generator, prompts = summarizer("summary")
         SummarizationCompactor(
             generator, summary_instruction="Only list file paths.", approximate_summary_tokens=1
-        ).compact(messages=two_turns_and_a_task(), target_tokens=SMALLEST, token_counter=COUNTER)
+        ).compact(messages=fresh_conversation_with_two_steps(), target_tokens=SMALLEST, token_counter=COUNTER)
         assert "Only list file paths." in prompts[0]
         assert "You are compacting one portion of a conversation" not in prompts[0]
 
@@ -395,7 +391,7 @@ class TestSummaryContent:
         generator, prompts = summarizer("summary")
         SummarizationCompactor(
             generator, summary_instruction="Only list file paths.", approximate_summary_tokens=64
-        ).compact(messages=two_turns_and_a_task(), target_tokens=SMALLEST, token_counter=COUNTER)
+        ).compact(messages=fresh_conversation_with_two_steps(), target_tokens=SMALLEST, token_counter=COUNTER)
         # Nothing is appended, so what the model is told is exactly what the caller wrote.
         # `approximate_summary_tokens` is a planning estimate and never reaches the model.
         system_prompt = prompts[0].split("\n<conversation_to_summarize>")[0]
@@ -452,7 +448,9 @@ class TestFailureHandling:
     def test_raises_when_the_generator_returns_no_usable_text(self, generator_factory):
         compactor = SummarizationCompactor(generator_factory(), raise_on_failure=True)
         with pytest.raises(RuntimeError, match="no usable text"):
-            compactor.compact(messages=two_turns_and_a_task(), target_tokens=SMALLEST, token_counter=COUNTER)
+            compactor.compact(
+                messages=fresh_conversation_with_two_steps(), target_tokens=SMALLEST, token_counter=COUNTER
+            )
 
     def test_an_unusable_reply_is_reported_with_the_generator_output(self):
         # The reply is discarded once compaction moves on, so the error carries it: `finish_reason` is usually what
@@ -462,7 +460,9 @@ class TestFailureHandling:
             MockChatGenerator(response_fn=lambda messages: truncated), raise_on_failure=True
         )
         with pytest.raises(RuntimeError) as failure:
-            compactor.compact(messages=two_turns_and_a_task(), target_tokens=SMALLEST, token_counter=COUNTER)
+            compactor.compact(
+                messages=fresh_conversation_with_two_steps(), target_tokens=SMALLEST, token_counter=COUNTER
+            )
         assert "'finish_reason': 'length'" in str(failure.value)
 
 
@@ -522,7 +522,7 @@ class TestSummarizationCompactorInAgent:
 class TestSummarizationCompactorAsync:
     @pytest.mark.asyncio
     async def test_compact_async_matches_compact(self):
-        messages = two_turns_and_a_task()
+        messages = fresh_conversation_with_two_steps()
         generator, prompts = summarizer("async summary")
         compacted = await SummarizationCompactor(generator, approximate_summary_tokens=1).compact_async(
             messages=messages, target_tokens=SMALLEST, token_counter=COUNTER
