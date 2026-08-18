@@ -25,6 +25,7 @@ from haystack.core.serialization import (
 from haystack.core.serialization_security import (
     _DENIED_BUILTIN_NAMES,
     DESERIALIZATION_ALLOWLIST_ENV_VAR,
+    UNSAFE_DESERIALIZATION_ENV_VAR,
     _check_module_allowed,
     _current_context,
     _deserialization_context,
@@ -47,6 +48,11 @@ def _reset_allowlist_state(monkeypatch):
     "untrusted" really means untrusted.
     """
     monkeypatch.delenv(DESERIALIZATION_ALLOWLIST_ENV_VAR, raising=False)
+    monkeypatch.delenv(UNSAFE_DESERIALIZATION_ENV_VAR, raising=False)
+    # Reset the "warn once" latch so tests that enable the env var can assert on the warning.
+    import haystack.core.serialization_security as _ss
+
+    monkeypatch.setattr(_ss, "_warned_unsafe_env", False, raising=False)
     snapshot = list(_extra_allowed_modules)
     _extra_allowed_modules.clear()
     token = _current_context.set(_DeserializationContext())
@@ -175,6 +181,68 @@ class TestEnvVar:
     def test_env_var_ignores_empty_entries(self, monkeypatch):
         monkeypatch.setenv(DESERIALIZATION_ALLOWLIST_ENV_VAR, ", ,mypkg,,")
         assert _is_module_allowed("mypkg.sub")
+
+
+class TestUnsafeDeserializationEnvVar:
+    """
+    `HAYSTACK_UNSAFE_DESERIALIZATION` is a process-wide off switch: when truthy it makes every load
+    behave as if `unsafe=True` was passed, disabling all deserialization safety checks. It is a
+    separate axis from the module allowlist (`HAYSTACK_DESERIALIZATION_ALLOWLIST`), which only widens
+    which modules may be imported.
+    """
+
+    def test_unset_keeps_safe_mode(self):
+        # Sanity: with the env var unset, the guards are active.
+        assert not _is_module_allowed("subprocess")
+        with pytest.raises(DeserializationError):
+            deserialize_callable("os.system")
+
+    @pytest.mark.parametrize("value", ["1", "true", "TRUE", "True"])
+    def test_truthy_values_disable_all_checks(self, monkeypatch, value):
+        monkeypatch.setenv(UNSAFE_DESERIALIZATION_ENV_VAR, value)
+        # Allowlist bypassed ...
+        assert _is_module_allowed("subprocess")
+        assert deserialize_callable("os.system") is __import__("os").system
+        # ... and so are the denylists / control-plane / traversal guards.
+        assert callable(deserialize_callable("builtins.eval"))
+        assert callable(deserialize_callable("haystack.core.serialization_security.allow_deserialization_module"))
+        assert callable(
+            deserialize_callable("haystack.core.serialization_security.allow_deserialization_module.__globals__.get")
+        )
+
+    @pytest.mark.parametrize("value", ["", "0", "false", "no", "off", "yes", "on", "nope"])
+    def test_falsey_values_keep_safe_mode(self, monkeypatch, value):
+        monkeypatch.setenv(UNSAFE_DESERIALIZATION_ENV_VAR, value)
+        with pytest.raises(DeserializationError):
+            deserialize_callable("os.system")
+
+    def test_allows_unsafe_output_adapter_component(self, monkeypatch):
+        # A serialized OutputAdapter with `unsafe: true` loads under the env var, exactly as it would
+        # under `Pipeline.loads(..., unsafe=True)`.
+        yaml = (
+            "components:\n"
+            "  adapter:\n"
+            "    type: haystack.components.converters.output_adapter.OutputAdapter\n"
+            "    init_parameters:\n"
+            '      template: "{{ documents[0] }}"\n'
+            "      output_type: str\n"
+            "      unsafe: true\n"
+            "connections: []\n"
+        )
+        with pytest.raises(DeserializationError):
+            Pipeline.loads(yaml)  # refused in safe mode
+        monkeypatch.setenv(UNSAFE_DESERIALIZATION_ENV_VAR, "1")
+        Pipeline.loads(yaml)  # accepted with the env var set
+
+    def test_warns_once_when_active(self, monkeypatch):
+        import haystack.core.serialization_security as ss
+
+        monkeypatch.setenv(UNSAFE_DESERIALIZATION_ENV_VAR, "1")
+        monkeypatch.setattr(ss, "_warned_unsafe_env", False, raising=False)
+        assert ss._unsafe_env_enabled() is True
+        # The "warn once" latch flips after the first active read and stays set on subsequent calls.
+        assert ss._warned_unsafe_env is True
+        assert ss._unsafe_env_enabled() is True
 
 
 class TestCheckModuleAllowed:
