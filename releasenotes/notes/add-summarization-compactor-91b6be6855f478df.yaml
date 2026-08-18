@@ -20,9 +20,9 @@ features:
     imposed on the model, and the compactor sends the Chat Generator no generation settings of its own. Raising it
     summarizes more of the conversation per round, so the result is likelier to land under the target at the cost of
     giving up more context, which makes erring high the safer direction. Generated summaries are only applied when they
-    reduce the measured conversation size, and the compactor warns when a reply comes back cut off or empty. By
-    default, a failed summarization keeps any progress already made and logs a warning; set ``raise_on_failure=True``
-    to propagate the error instead.
+    reduce the measured conversation size, and a reply with no usable text in it is treated as a failure. By default, a
+    failed summarization keeps any progress already made and logs a warning; set ``raise_on_failure=True`` to propagate
+    the error instead.
 
     .. code-block:: python
 

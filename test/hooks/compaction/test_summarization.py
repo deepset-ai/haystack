@@ -2,7 +2,6 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-import logging
 
 import pytest
 
@@ -449,66 +448,34 @@ class TestFailureHandling:
         with pytest.raises(RuntimeError, match="did not reduce"):
             compactor.compact(messages=messages, target_tokens=SMALLEST, token_counter=COUNTER)
 
-    @pytest.mark.parametrize("finish_reason", ["length", "max_tokens"])
-    def test_an_empty_summary_from_the_output_limit_names_the_reasoning_cause(self, finish_reason):
-        # A reasoning model at default effort spends the whole output budget thinking and returns nothing, which is
-        # the failure users actually hit. Raising the budget does not fix it, so the message must not suggest that.
-        spent_on_thinking = ChatMessage.from_assistant(
-            "", meta={"finish_reason": finish_reason, "usage": {"completion_tokens": 2048}}
-        )
+    @pytest.mark.parametrize(
+        "generator_factory",
+        [
+            pytest.param(
+                lambda: MockChatGenerator(response_fn=lambda messages: ChatMessage.from_assistant("")), id="empty-text"
+            ),
+            pytest.param(
+                lambda: MockChatGenerator(response_fn=lambda messages: ChatMessage.from_assistant("  \n  ")),
+                id="whitespace-only-text",
+            ),
+            pytest.param(NoReplyGenerator, id="no-replies"),
+        ],
+    )
+    def test_raises_when_the_generator_returns_no_usable_text(self, generator_factory):
+        compactor = SummarizationCompactor(generator_factory(), raise_on_failure=True)
+        with pytest.raises(RuntimeError, match="no usable text"):
+            compactor.compact(messages=two_turns_and_a_task(), target_tokens=SMALLEST, token_counter=COUNTER)
+
+    def test_an_unusable_reply_is_reported_with_the_generator_output(self):
+        # The reply is discarded once compaction moves on, so the error carries it: `finish_reason` is usually what
+        # says why the summary came back unusable.
+        truncated = ChatMessage.from_assistant("", meta={"finish_reason": "length"})
         compactor = SummarizationCompactor(
-            MockChatGenerator(response_fn=lambda messages: spent_on_thinking), raise_on_failure=True
+            MockChatGenerator(response_fn=lambda messages: truncated), raise_on_failure=True
         )
         with pytest.raises(RuntimeError) as failure:
             compactor.compact(messages=two_turns_and_a_task(), target_tokens=SMALLEST, token_counter=COUNTER)
-        message = str(failure.value)
-        assert "hit its output limit before writing any of the conversation summary" in message
-        assert "Raise the output-token limit on the Chat Generator" in message
-        assert "lower its reasoning effort" in message
-        assert "'completion_tokens': 2048" in message
-
-    def test_an_empty_summary_for_another_reason_reports_the_reply(self):
-        # Not a truncation, so the cause is unknown and the reply itself is the only evidence there is.
-        empty = ChatMessage.from_assistant(
-            "", reasoning="thinking about the conversation", meta={"finish_reason": "content_filter"}
-        )
-        compactor = SummarizationCompactor(MockChatGenerator(response_fn=lambda messages: empty), raise_on_failure=True)
-        with pytest.raises(RuntimeError) as failure:
-            compactor.compact(messages=two_turns_and_a_task(), target_tokens=SMALLEST, token_counter=COUNTER)
-        message = str(failure.value)
-        assert "no text to use as a conversation summary" in message
-        assert "'finish_reason': 'content_filter'" in message
-        assert f"{len('thinking about the conversation')} characters of reasoning content" in message
-
-    @pytest.mark.parametrize("finish_reason", ["length", "max_tokens"])
-    def test_warns_and_keeps_a_summary_the_generator_cut_off(self, caplog, finish_reason):
-        # `length` is Haystack's own finish reason; `max_tokens` is what a generator passing its provider's wording
-        # through reports for the same thing.
-        cut_off = ChatMessage.from_assistant("## Objective\n- Ported two endpo", meta={"finish_reason": finish_reason})
-        compactor = SummarizationCompactor(
-            MockChatGenerator(response_fn=lambda messages: cut_off), approximate_summary_tokens=4096
-        )
-        with caplog.at_level(logging.WARNING):
-            compacted = compactor.compact(
-                messages=two_turns_and_a_task(), target_tokens=SMALLEST, token_counter=COUNTER
-            )
-        # A summary cut off partway still beats keeping the messages that overflowed the context, so it is applied.
-        assert compacted is not None
-        assert "Ported two endpo" in (compacted[1].text or "")
-        assert "hit its output limit before finishing the conversation summary" in caplog.text
-        assert "lower its reasoning effort" in caplog.text
-
-    def test_does_not_warn_about_truncation_for_a_complete_summary(self, caplog):
-        complete = ChatMessage.from_assistant("a complete summary", meta={"finish_reason": "stop"})
-        compactor = SummarizationCompactor(MockChatGenerator(response_fn=lambda messages: complete))
-        with caplog.at_level(logging.WARNING):
-            compactor.compact(messages=two_turns_and_a_task(), target_tokens=SMALLEST, token_counter=COUNTER)
-        assert "before finishing the summary" not in caplog.text
-
-    def test_no_replies_at_all_is_reported_separately(self):
-        compactor = SummarizationCompactor(NoReplyGenerator(), approximate_summary_tokens=1, raise_on_failure=True)
-        with pytest.raises(RuntimeError, match="returned no replies"):
-            compactor.compact(messages=two_turns_and_a_task(), target_tokens=SMALLEST, token_counter=COUNTER)
+        assert "'finish_reason': 'length'" in str(failure.value)
 
 
 class TestConfiguration:
