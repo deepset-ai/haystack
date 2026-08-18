@@ -256,7 +256,6 @@ def _create_confirmation_tool_span(
         "haystack.tool.call.id": tool_call.id or "",
         "haystack.agent.hook.human_in_the_loop.strategy.type": generate_qualified_class_name(type(strategy)),
     }
-
     return tracing.tracer.trace("haystack.agent.hook.human_in_the_loop.tool", tags=tags, parent_span=parent_span)
 
 
@@ -270,7 +269,6 @@ def _applied_tool_decision(*, tool_call: ToolCall, decision: ToolExecutionDecisi
         outcome = "modify"
     else:
         outcome = "confirm"
-
     return _AppliedToolDecision(
         tool_name=tool_call.tool_name,
         tool_call_id=tool_call.id,
@@ -281,7 +279,7 @@ def _applied_tool_decision(*, tool_call: ToolCall, decision: ToolExecutionDecisi
     )
 
 
-def _set_applied_decision_tracing_tags(*, span: Any, applied_decision: _AppliedToolDecision) -> None:
+def _set_applied_decision_tracing_tags(span: Any, applied_decision: _AppliedToolDecision) -> None:
     """Add a completed Human-in-the-Loop decision and its optional content to a tool span."""
     span.set_tag("haystack.agent.hook.human_in_the_loop.decision", applied_decision.decision)
     span.set_content_tag(
@@ -420,7 +418,8 @@ def _run_confirmation_strategies(
             tool_to_invoke = tools_with_names.get(tool_name)
             if tool_to_invoke is None:
                 # Unknown tool (e.g. the model hallucinated the name): skip confirmation and pass it through.
-                teds.append(_passthrough_tool_call(tool_call))
+                # This allows the tool-calling code to handle unknown tools uniformly (e.g. raise ToolNotFoundException)
+                teds.append(_passthrough_tool_call(tool_call=tool_call))
                 continue
 
             # Confirm the model-requested arguments
@@ -449,10 +448,11 @@ def _run_confirmation_strategies(
                     tool_call_id=tool_call.id,
                     confirmation_strategy_context=confirmation_strategy_context,
                 )
+                bound_ted = _bind_decision_to_tool_call(decision=ted, tool_call=tool_call)
                 _set_applied_decision_tracing_tags(
-                    span=span, applied_decision=_applied_tool_decision(tool_call=tool_call, decision=ted)
+                    span=span, applied_decision=_applied_tool_decision(tool_call=tool_call, decision=bound_ted)
                 )
-            teds.append(_bind_decision_to_tool_call(decision=ted, tool_call=tool_call))
+            teds.append(bound_ted)
 
     return teds
 
@@ -489,7 +489,7 @@ async def _run_confirmation_strategies_async(
             tool_to_invoke = tools_with_names.get(tool_name)
             if tool_to_invoke is None:
                 # Unknown tool (e.g. the model hallucinated the name): skip confirmation and pass it through.
-                teds.append(_passthrough_tool_call(tool_call))
+                teds.append(_passthrough_tool_call(tool_call=tool_call))
                 continue
 
             # Confirm the model-requested arguments
@@ -523,10 +523,11 @@ async def _run_confirmation_strategies_async(
                         confirmation_strategy_context=confirmation_strategy_context,
                     ),
                 )
+                bound_ted = _bind_decision_to_tool_call(decision=ted, tool_call=tool_call)
                 _set_applied_decision_tracing_tags(
-                    span=span, applied_decision=_applied_tool_decision(tool_call=tool_call, decision=ted)
+                    span=span, applied_decision=_applied_tool_decision(tool_call=tool_call, decision=bound_ted)
                 )
-            teds.append(_bind_decision_to_tool_call(decision=ted, tool_call=tool_call))
+            teds.append(bound_ted)
 
     return teds
 
