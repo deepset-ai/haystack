@@ -291,6 +291,8 @@ class TestRouter:
             {
                 "condition": "{{True}}",
                 "output": "{{callback}}",
+                # `Route.output_type` is annotated `type | list[type]`, which does not describe the
+                # parameterized generics and unions ConditionalRouter accepts. A Callable works at runtime.
                 "output_type": Callable[[int, str], bool],  # type: ignore[typeddict-item]
                 "output_name": "callback",
             }
@@ -483,15 +485,16 @@ class TestRouter:
         res = router.run(streams=streams, message=message)
         assert isinstance(res["message"], ChatMessage)
 
-        streams = ["1", "2", "3", "4"]  # type: ignore[list-item]
         with pytest.raises(ValueError, match="Route 'streams' type doesn't match expected type"):
-            router.run(streams=streams, message=message)
+            router.run(streams=["1", "2", "3", "4"], message=message)
 
     def test_validate_output_type_with_pep604(self):
         routes: list[Route] = [
             {
                 "condition": "{{True}}",
                 "output": "{{value}}",
+                # As above: a PEP 604 union is not a `type`, but `conditional_router.py` has an explicit
+                # branch for union output types, so `Route.output_type` is narrower than the real contract.
                 "output_type": list[str] | dict[str, int] | None,  # type: ignore[typeddict-item]
                 "output_name": "result",
             }

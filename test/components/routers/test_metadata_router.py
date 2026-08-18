@@ -62,6 +62,8 @@ class TestMetadataRouter:
             rules={"en": {"field": "meta.language", "operator": "==", "value": "en"}},
             output_type=list[Document | ByteStream],
         )
+        # `MetadataRouter.run` is annotated `list[Document] | list[ByteStream]`, which excludes the mixed
+        # list this test exercises. Routing handles it fine at runtime.
         output = router.run(documents=docs)  # type: ignore[arg-type]
         assert isinstance(output["en"][0], ByteStream)
         assert isinstance(output["en"][1], Document)
