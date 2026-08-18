@@ -1759,6 +1759,15 @@ class TestPipelineBaseFromDict:
     def test_from_dict_with_empty_dict(self):
         assert PipelineBase() == PipelineBase.from_dict({})
 
+    def test_equality_with_non_pipeline_objects(self):
+        pipe = PipelineBase()
+        assert pipe != object()
+        assert (pipe == object()) is False
+        assert (pipe == "string") is False
+        assert (pipe == 123) is False
+        assert (pipe == None) is False
+        assert (pipe in [object(), "other", 42]) is False
+
     def test_from_dict_with_components_instances(self):
         add_two = AddFixedValue(add=2)
         add_default = AddFixedValue()

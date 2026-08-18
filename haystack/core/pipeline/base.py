@@ -123,9 +123,8 @@ class PipelineBase:  # noqa: PLW1641
         Pipelines of the same type share every metadata, node and edge, but they're not required to use
         the same node instances: this allows pipeline saved and then loaded back to be equal to themselves.
         """
-        if not isinstance(self, type(other)):
+        if not isinstance(other, type(self)):
             return False
-        assert isinstance(other, PipelineBase)
         return self.to_dict() == other.to_dict()
 
     def __repr__(self) -> str:

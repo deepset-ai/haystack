@@ -1,0 +1,4 @@
+---
+fixes:
+  - |
+    Fixed ``PipelineBase.__eq__`` raising ``AssertionError`` when comparing a ``Pipeline`` instance against non-Pipeline objects or testing membership in collections.
