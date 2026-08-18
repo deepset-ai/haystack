@@ -318,7 +318,6 @@ class TestConfirmationHookTracing:
         assert [span.tags for span in tool_spans] == [
             {
                 "haystack.tool.name": "confirmed_tool",
-                "haystack.tool.description": "Echo tool confirmed_tool.",
                 "haystack.tool.call.id": "tc-confirm",
                 "haystack.agent.hook.human_in_the_loop.strategy.type": (
                     "haystack.hooks.human_in_the_loop.strategies.BlockingConfirmationStrategy"
@@ -340,7 +339,6 @@ class TestConfirmationHookTracing:
             },
             {
                 "haystack.tool.name": "modified_tool",
-                "haystack.tool.description": "Echo tool modified_tool.",
                 "haystack.tool.call.id": "tc-modify",
                 "haystack.agent.hook.human_in_the_loop.strategy.type": (
                     "haystack.hooks.human_in_the_loop.strategies.BlockingConfirmationStrategy"
@@ -363,7 +361,6 @@ class TestConfirmationHookTracing:
             },
             {
                 "haystack.tool.name": "rejected_tool",
-                "haystack.tool.description": "Echo tool rejected_tool.",
                 "haystack.tool.call.id": "tc-reject",
                 "haystack.agent.hook.human_in_the_loop.strategy.type": (
                     "haystack.hooks.human_in_the_loop.strategies.BlockingConfirmationStrategy"
@@ -412,7 +409,6 @@ class TestConfirmationHookTracing:
         assert tool_span.parent_span is hook_span
         assert tool_span.tags == {
             "haystack.tool.name": "addition_tool",
-            "haystack.tool.description": "A tool that adds two integers together.",
             "haystack.tool.call.id": "tc-1",
             "haystack.agent.hook.human_in_the_loop.strategy.type": (
                 "haystack.hooks.human_in_the_loop.strategies.BlockingConfirmationStrategy"
@@ -464,8 +460,7 @@ class TestConfirmationHookTracing:
         assert tool_span.parent_span is hook_span
         assert tool_span.tags == {
             "haystack.tool.name": "addition_tool",
-            "haystack.tool.description": "A tool that adds two integers together.",
-            "haystack.tool.call.id": "",
+            "haystack.tool.call.id": None,
             "haystack.agent.hook.human_in_the_loop.strategy.type": (
                 "haystack.hooks.human_in_the_loop.strategies.BlockingConfirmationStrategy"
             ),

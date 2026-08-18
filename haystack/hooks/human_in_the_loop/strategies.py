@@ -245,25 +245,6 @@ def _passthrough_tool_call(tool_call: ToolCall) -> ToolExecutionDecision:
     )
 
 
-def _create_confirmation_strategy_span(
-    tool: Tool, tool_call: ToolCall, strategy: ConfirmationStrategy, parent_span: Any
-) -> Any:
-    """
-    Create a tracing span for one `ConfirmationStrategy` run.
-
-    The span covers a single strategy run, so a hook confirming several tool calls produces several sibling spans under
-    the `haystack.agent.hook` span of its invocation. Tags describing the strategy run are namespaced by the span name,
-    while tags describing the tool reuse the shared `haystack.tool.*` keys.
-    """
-    tags = {
-        "haystack.tool.name": tool_call.tool_name,
-        "haystack.tool.description": tool.description,
-        "haystack.tool.call.id": tool_call.id or "",
-        "haystack.agent.hook.human_in_the_loop.strategy.type": generate_qualified_class_name(type(strategy)),
-    }
-    return tracing.tracer.trace("haystack.agent.hook.human_in_the_loop.strategy", tags=tags, parent_span=parent_span)
-
-
 def _classify_decision(tool_call: ToolCall, decision: ToolExecutionDecision) -> Literal["confirm", "modify", "reject"]:
     """Classify a strategy decision against the tool call that was presented for confirmation."""
     if not decision.execute:
@@ -273,7 +254,30 @@ def _classify_decision(tool_call: ToolCall, decision: ToolExecutionDecision) -> 
     return "confirm"
 
 
-def _set_strategy_input_tracing_tags(span: Any, tool: Tool, tool_call: ToolCall, tool_params: dict[str, Any]) -> None:
+def _create_confirmation_strategy_span(strategy: ConfirmationStrategy, tool_call: ToolCall, parent_span: Any) -> Any:
+    """
+    Create a tracing span for one `ConfirmationStrategy` run.
+
+    The span covers a single strategy run, so a hook confirming several tool calls produces several sibling spans under
+    the `haystack.agent.hook` span of its invocation. The tool call is identified with the shared `haystack.tool.*`
+    keys so the siblings stay distinguishable when content tracing is disabled.
+    """
+    tags = {
+        "haystack.tool.name": tool_call.tool_name,
+        "haystack.tool.call.id": tool_call.id,
+        "haystack.agent.hook.human_in_the_loop.strategy.type": generate_qualified_class_name(type(strategy)),
+    }
+    return tracing.tracer.trace("haystack.agent.hook.human_in_the_loop.strategy", tags=tags, parent_span=parent_span)
+
+
+def _set_strategy_input_tracing_tags(
+    span: Any,
+    tool_name: str,
+    tool_description: str,
+    tool_params: dict[str, Any],
+    tool_call_id: str | None = None,
+    confirmation_strategy_context: dict[str, Any] | None = None,  # noqa: ARG001
+) -> None:
     """
     Record the arguments a `ConfirmationStrategy` is run with.
 
@@ -283,10 +287,10 @@ def _set_strategy_input_tracing_tags(span: Any, tool: Tool, tool_call: ToolCall,
     span.set_content_tag(
         key="haystack.agent.hook.human_in_the_loop.strategy.input",
         value={
-            "tool_name": tool_call.tool_name,
-            "tool_description": tool.description,
+            "tool_name": tool_name,
+            "tool_description": tool_description,
             "tool_params": tool_params,
-            "tool_call_id": tool_call.id,
+            "tool_call_id": tool_call_id,
         },
     )
 
@@ -449,19 +453,18 @@ def _run_confirmation_strategies(
                 continue
 
             # Run the confirmation strategy
+            strategy_inputs: dict[str, Any] = {
+                "tool_name": tool_name,
+                "tool_description": tool_to_invoke.description,
+                "tool_params": final_args,
+                "tool_call_id": tool_call.id,
+                "confirmation_strategy_context": confirmation_strategy_context,
+            }
             with _create_confirmation_strategy_span(
-                tool=tool_to_invoke, tool_call=tool_call, strategy=strategy, parent_span=parent_span
+                strategy=strategy, tool_call=tool_call, parent_span=parent_span
             ) as span:
-                _set_strategy_input_tracing_tags(
-                    span=span, tool=tool_to_invoke, tool_call=tool_call, tool_params=final_args
-                )
-                ted = strategy.run(
-                    tool_name=tool_name,
-                    tool_description=tool_to_invoke.description,
-                    tool_params=final_args,
-                    tool_call_id=tool_call.id,
-                    confirmation_strategy_context=confirmation_strategy_context,
-                )
+                _set_strategy_input_tracing_tags(span=span, **strategy_inputs)
+                ted = strategy.run(**strategy_inputs)
                 bound_ted = _bind_decision_to_tool_call(decision=ted, tool_call=tool_call)
                 _set_strategy_output_tracing_tags(span=span, tool_call=tool_call, decision=bound_ted)
             teds.append(bound_ted)
@@ -518,25 +521,22 @@ async def _run_confirmation_strategies_async(
                 )
                 continue
 
+            strategy_inputs: dict[str, Any] = {
+                "tool_name": tool_name,
+                "tool_description": tool_to_invoke.description,
+                "tool_params": final_args,
+                "tool_call_id": tool_call.id,
+                "confirmation_strategy_context": confirmation_strategy_context,
+            }
             with _create_confirmation_strategy_span(
-                tool=tool_to_invoke, tool_call=tool_call, strategy=strategy, parent_span=parent_span
+                strategy=strategy, tool_call=tool_call, parent_span=parent_span
             ) as span:
-                _set_strategy_input_tracing_tags(span, tool=tool_to_invoke, tool_call=tool_call, tool_params=final_args)
+                _set_strategy_input_tracing_tags(span=span, **strategy_inputs)
                 # The _execute_component_async helper supports arbitrary run results, but its return type is currently
                 # component-specific, so we cast it to the expected ToolExecutionDecision type here.
-                ted = cast(
-                    ToolExecutionDecision,
-                    await _execute_component_async(
-                        strategy,
-                        tool_name=tool_name,
-                        tool_description=tool_to_invoke.description,
-                        tool_params=final_args,
-                        tool_call_id=tool_call.id,
-                        confirmation_strategy_context=confirmation_strategy_context,
-                    ),
-                )
+                ted = cast(ToolExecutionDecision, await _execute_component_async(strategy, **strategy_inputs))
                 bound_ted = _bind_decision_to_tool_call(decision=ted, tool_call=tool_call)
-                _set_strategy_output_tracing_tags(span, tool_call=tool_call, decision=bound_ted)
+                _set_strategy_output_tracing_tags(span=span, tool_call=tool_call, decision=bound_ted)
             teds.append(bound_ted)
 
     return teds
