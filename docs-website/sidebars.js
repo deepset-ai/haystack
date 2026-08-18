@@ -124,6 +124,7 @@ export default {
           label: 'LanceDBDocumentStore',
           href: 'https://haystack.deepset.ai/integrations/lancedb/',
         },
+        'document-stores/mariadbdocumentstore',
         {
           type: 'link',
           label: 'MilvusDocumentStore',
@@ -619,6 +620,8 @@ export default {
             'pipeline-components/retrievers/inmemorybm25retriever',
             'pipeline-components/retrievers/inmemoryembeddingretriever',
             'pipeline-components/retrievers/cogneeretriever',
+            'pipeline-components/retrievers/mariadbembeddingretriever',
+            'pipeline-components/retrievers/mariadbkeywordretriever',
             'pipeline-components/retrievers/mem0memoryretriever',
             'pipeline-components/retrievers/mongodbatlasembeddingretriever',
             'pipeline-components/retrievers/mongodbatlasfulltextretriever',

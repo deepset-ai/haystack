@@ -13,7 +13,7 @@ An embedding-based Retriever compatible with the MariaDB Document Store.
 
 |  |  |
 | --- | --- |
-| **Most common position in a pipeline** | 1. After a Text Embedder and before a [`PromptBuilder`](../builders/promptbuilder.mdx) in a RAG pipeline 2. The last component in a semantic search pipeline 3. After a Text Embedder and before an [`ExtractiveReader`](../readers/extractivereader.mdx) in an extractive QA pipeline |
+| **Most common position in a pipeline** | 1. After a Text Embedder and before a [`PromptBuilder`](../builders/promptbuilder.mdx) in a RAG pipeline 2. The last component in a semantic search pipeline 3. After a Text Embedder and before a [`TransformersExtractiveReader`](../readers/transformersextractivereader.mdx) in an extractive QA pipeline |
 | **Mandatory init variables**           | `document_store`: An instance of a [MariaDBDocumentStore](../../document-stores/mariadbdocumentstore.mdx) |
 | **Mandatory run variables**            | `query_embedding`: A vector representing the query (a list of floats) |
 | **Output variables**                   | `documents`: A list of documents |
@@ -58,6 +58,12 @@ sudo apt-get install -y libmariadb-dev
 pip install mariadb-haystack
 ```
 
+The pipeline example below also uses the Sentence Transformers embedders:
+
+```shell
+pip install sentence-transformers-haystack
+```
+
 ## Usage
 
 ### On its own
@@ -65,7 +71,9 @@ pip install mariadb-haystack
 ```python
 import os
 from haystack_integrations.document_stores.mariadb import MariaDBDocumentStore
-from haystack_integrations.components.retrievers.mariadb import MariaDBEmbeddingRetriever
+from haystack_integrations.components.retrievers.mariadb import (
+    MariaDBEmbeddingRetriever,
+)
 
 os.environ["MARIADB_USER"] = "haystack"
 os.environ["MARIADB_PASSWORD"] = "secret"
@@ -82,14 +90,16 @@ retriever.run(query_embedding=[0.1] * 768)
 ```python
 import os
 from haystack import Document, Pipeline
-from haystack.components.embedders import (
+from haystack_integrations.components.embedders.sentence_transformers import (
     SentenceTransformersTextEmbedder,
     SentenceTransformersDocumentEmbedder,
 )
 from haystack.document_stores.types import DuplicatePolicy
 
 from haystack_integrations.document_stores.mariadb import MariaDBDocumentStore
-from haystack_integrations.components.retrievers.mariadb import MariaDBEmbeddingRetriever
+from haystack_integrations.components.retrievers.mariadb import (
+    MariaDBEmbeddingRetriever,
+)
 
 os.environ["MARIADB_USER"] = "haystack"
 os.environ["MARIADB_PASSWORD"] = "secret"
@@ -101,8 +111,12 @@ document_store = MariaDBDocumentStore(
 
 documents = [
     Document(content="There are over 7,000 languages spoken around the world today."),
-    Document(content="Elephants have been observed to recognize themselves in mirrors."),
-    Document(content="Bioluminescent waves can be seen in the Maldives and Puerto Rico."),
+    Document(
+        content="Elephants have been observed to recognize themselves in mirrors."
+    ),
+    Document(
+        content="Bioluminescent waves can be seen in the Maldives and Puerto Rico."
+    ),
 ]
 
 document_embedder = SentenceTransformersDocumentEmbedder()
@@ -121,6 +135,8 @@ query_pipeline.add_component(
 )
 query_pipeline.connect("text_embedder.embedding", "retriever.query_embedding")
 
-result = query_pipeline.run({"text_embedder": {"text": "How many languages are there?"}})
+result = query_pipeline.run(
+    {"text_embedder": {"text": "How many languages are there?"}}
+)
 print(result["retriever"]["documents"][0])
 ```

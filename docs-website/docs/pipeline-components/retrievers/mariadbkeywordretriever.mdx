@@ -1,11 +1,11 @@
 ---
-title: "MariaDBBM25Retriever"
-id: mariadbbm25retriever
-slug: "/mariadbbm25retriever"
+title: "MariaDBKeywordRetriever"
+id: mariadbkeywordretriever
+slug: "/mariadbkeywordretriever"
 description: "A keyword-based Retriever that fetches documents matching a query from the MariaDB Document Store."
 ---
 
-# MariaDBBM25Retriever
+# MariaDBKeywordRetriever
 
 A keyword-based Retriever that fetches documents matching a query from the MariaDB Document Store.
 
@@ -13,7 +13,7 @@ A keyword-based Retriever that fetches documents matching a query from the Maria
 
 |  |  |
 | --- | --- |
-| **Most common position in a pipeline** | 1. Before a [`PromptBuilder`](../builders/promptbuilder.mdx) in a RAG pipeline 2. The last component in a keyword search pipeline 3. Before an [`ExtractiveReader`](../readers/extractivereader.mdx) in an extractive QA pipeline |
+| **Most common position in a pipeline** | 1. Before a [`PromptBuilder`](../builders/promptbuilder.mdx) in a RAG pipeline 2. The last component in a keyword search pipeline 3. Before a [`TransformersExtractiveReader`](../readers/transformersextractivereader.mdx) in an extractive QA pipeline |
 | **Mandatory init variables**           | `document_store`: An instance of a [MariaDBDocumentStore](../../document-stores/mariadbdocumentstore.mdx) |
 | **Mandatory run variables**            | `query`: A string |
 | **Output variables**                   | `documents`: A list of documents matching the query |
@@ -24,7 +24,7 @@ A keyword-based Retriever that fetches documents matching a query from the Maria
 
 ## Overview
 
-The `MariaDBBM25Retriever` is a keyword-based Retriever compatible with the `MariaDBDocumentStore`. It uses MariaDB's built-in full-text search to find Documents that match the given query.
+The `MariaDBKeywordRetriever` is a keyword-based Retriever compatible with the `MariaDBDocumentStore`. It uses MariaDB's built-in full-text search to find Documents that match the given query.
 
 In addition to `query`, the Retriever accepts optional parameters including `top_k` (the maximum number of Documents to retrieve) and `filters` to narrow the search space.
 
@@ -57,13 +57,13 @@ pip install mariadb-haystack
 ```python
 import os
 from haystack_integrations.document_stores.mariadb import MariaDBDocumentStore
-from haystack_integrations.components.retrievers.mariadb import MariaDBBM25Retriever
+from haystack_integrations.components.retrievers.mariadb import MariaDBKeywordRetriever
 
 os.environ["MARIADB_USER"] = "haystack"
 os.environ["MARIADB_PASSWORD"] = "secret"
 
 document_store = MariaDBDocumentStore()
-retriever = MariaDBBM25Retriever(document_store=document_store)
+retriever = MariaDBKeywordRetriever(document_store=document_store)
 
 retriever.run(query="my search query")
 ```
@@ -79,7 +79,7 @@ from haystack.dataclasses import ChatMessage
 from haystack.document_stores.types import DuplicatePolicy
 
 from haystack_integrations.document_stores.mariadb import MariaDBDocumentStore
-from haystack_integrations.components.retrievers.mariadb import MariaDBBM25Retriever
+from haystack_integrations.components.retrievers.mariadb import MariaDBKeywordRetriever
 
 os.environ["MARIADB_USER"] = "haystack"
 os.environ["MARIADB_PASSWORD"] = "secret"
@@ -105,13 +105,17 @@ document_store = MariaDBDocumentStore()
 
 documents = [
     Document(content="There are over 7,000 languages spoken around the world today."),
-    Document(content="Elephants have been observed to recognize themselves in mirrors."),
-    Document(content="Bioluminescent waves can be seen in the Maldives and Puerto Rico."),
+    Document(
+        content="Elephants have been observed to recognize themselves in mirrors."
+    ),
+    Document(
+        content="Bioluminescent waves can be seen in the Maldives and Puerto Rico."
+    ),
 ]
 
 document_store.write_documents(documents=documents, policy=DuplicatePolicy.SKIP)
 
-retriever = MariaDBBM25Retriever(document_store=document_store)
+retriever = MariaDBKeywordRetriever(document_store=document_store)
 rag_pipeline = Pipeline()
 rag_pipeline.add_component(name="retriever", instance=retriever)
 rag_pipeline.add_component(

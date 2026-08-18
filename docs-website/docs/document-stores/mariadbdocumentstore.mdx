@@ -66,11 +66,14 @@ export MARIADB_PASSWORD=secret
 Initialize a `MariaDBDocumentStore` object and write documents to it:
 
 ```python
+import os
 from haystack_integrations.document_stores.mariadb import MariaDBDocumentStore
 from haystack import Document
 
+os.environ["MARIADB_USER"] = "haystack"
+os.environ["MARIADB_PASSWORD"] = "secret"
+
 document_store = MariaDBDocumentStore(
-    host="localhost",
     port=3306,
     database="haystack",
     embedding_dimension=768,
@@ -101,4 +104,4 @@ To properly compute embeddings for your documents, you can use a Document Embedd
 ### Supported Retrievers
 
 - [`MariaDBEmbeddingRetriever`](../pipeline-components/retrievers/mariadbembeddingretriever.mdx): An embedding-based Retriever that fetches documents from the Document Store based on a query embedding.
-- [`MariaDBBM25Retriever`](../pipeline-components/retrievers/mariadbbm25retriever.mdx): A keyword-based Retriever that fetches documents matching a query using MariaDB's full-text search (BM25).
+- [`MariaDBKeywordRetriever`](../pipeline-components/retrievers/mariadbkeywordretriever.mdx): A keyword-based Retriever that fetches documents matching a query using MariaDB's full-text search.
