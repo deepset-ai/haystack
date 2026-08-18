@@ -4,14 +4,14 @@
 
 import json
 import os
+from pathlib import Path
 from typing import Any
 
 import pytest
-from openai import OpenAIError
 from pydantic import BaseModel
 
 from haystack import Pipeline, component
-from haystack.components.generators.chat import AzureOpenAIResponsesChatGenerator
+from haystack.components.generators.chat import AzureOpenAIResponsesChatGenerator, OpenAIResponsesChatGenerator
 from haystack.components.generators.utils import print_streaming_chunk
 from haystack.dataclasses import ChatMessage, ToolCall
 from haystack.tools import ComponentTool, Tool
@@ -75,6 +75,12 @@ def tools():
 
 
 class TestInitialization:
+    def test_haystack_to_provider_generation_kwargs(self) -> None:
+        assert (
+            AzureOpenAIResponsesChatGenerator._HAYSTACK_TO_PROVIDER_GENERATION_KWARGS
+            is OpenAIResponsesChatGenerator._HAYSTACK_TO_PROVIDER_GENERATION_KWARGS
+        )
+
     def test_supported_models(self) -> None:
         """SUPPORTED_MODELS is a non-empty list of strings."""
         models = AzureOpenAIResponsesChatGenerator.SUPPORTED_MODELS
@@ -82,26 +88,24 @@ class TestInitialization:
         assert len(models) > 0
         assert all(isinstance(m, str) for m in models)
 
-    def test_init_default(self, monkeypatch):
+    def test_init_default(self, monkeypatch: pytest.MonkeyPatch) -> None:
+
         monkeypatch.setenv("AZURE_OPENAI_API_KEY", "test-api-key")
         component = AzureOpenAIResponsesChatGenerator(azure_endpoint="some-non-existing-endpoint")
-        assert component.client.api_key == "test-api-key"
+        assert component.client is None
+        assert component.async_client is None
         assert component._azure_deployment == "gpt-5-mini"
         assert component.streaming_callback is None
         assert not component.generation_kwargs
 
-    def test_init_fail_wo_api_key(self, monkeypatch):
-        monkeypatch.delenv("AZURE_OPENAI_API_KEY", raising=False)
-        monkeypatch.delenv("OPENAI_API_KEY", raising=False)
-        with pytest.raises(OpenAIError):
-            AzureOpenAIResponsesChatGenerator(azure_endpoint="some-non-existing-endpoint")
+    def test_init_fail_wo_azure_endpoint(self, monkeypatch: pytest.MonkeyPatch) -> None:
 
-    def test_init_fail_wo_azure_endpoint(self, monkeypatch):
         monkeypatch.delenv("AZURE_OPENAI_ENDPOINT", raising=False)
         with pytest.raises(ValueError):
             AzureOpenAIResponsesChatGenerator()
 
-    def test_init_with_parameters(self, tools):
+    def test_init_with_parameters(self, tools: list[Tool]) -> None:
+
         component = AzureOpenAIResponsesChatGenerator(
             api_key=Secret.from_token("test-api-key"),
             azure_endpoint="some-non-existing-endpoint",
@@ -110,7 +114,8 @@ class TestInitialization:
             tools=tools,
             tools_strict=True,
         )
-        assert component.client.api_key == "test-api-key"
+        assert component.client is None
+        assert component.async_client is None
         assert component._azure_deployment == "gpt-5-mini"
         assert component.streaming_callback is print_streaming_chunk
         assert component.generation_kwargs == {"max_completion_tokens": 10, "some_test_param": "test-params"}
@@ -118,7 +123,7 @@ class TestInitialization:
         assert component.tools_strict
         assert component.max_retries is None
 
-    def test_init_with_toolset(self, tools, monkeypatch):
+    def test_init_with_toolset(self, tools: list[Tool], monkeypatch: pytest.MonkeyPatch) -> None:
         """Test that the AzureOpenAIChatGenerator can be initialized with a Toolset."""
         monkeypatch.setenv("AZURE_OPENAI_API_KEY", "test-api-key")
         toolset = Toolset(tools)
@@ -127,7 +132,8 @@ class TestInitialization:
 
 
 class TestSerDe:
-    def test_to_dict_default(self, monkeypatch):
+    def test_to_dict_default(self, monkeypatch: pytest.MonkeyPatch) -> None:
+
         monkeypatch.setenv("AZURE_OPENAI_API_KEY", "test-api-key")
         component = AzureOpenAIResponsesChatGenerator(azure_endpoint="some-non-existing-endpoint")
         data = component.to_dict()
@@ -148,7 +154,8 @@ class TestSerDe:
             },
         }
 
-    def test_to_dict_with_parameters(self, monkeypatch, calendar_event_model):
+    def test_to_dict_with_parameters(self, monkeypatch: pytest.MonkeyPatch, calendar_event_model: type) -> None:
+
         monkeypatch.setenv("ENV_VAR", "test-api-key")
         component = AzureOpenAIResponsesChatGenerator(
             api_key=Secret.from_env_var("ENV_VAR", strict=False),
@@ -202,7 +209,8 @@ class TestSerDe:
             },
         }
 
-    def test_to_dict_with_ad_token_provider(self):
+    def test_to_dict_with_ad_token_provider(self) -> None:
+
         component = AzureOpenAIResponsesChatGenerator(
             api_key=default_azure_ad_token_provider, azure_endpoint="some-non-existing-endpoint"
         )
@@ -224,7 +232,7 @@ class TestSerDe:
             },
         }
 
-    def test_to_dict_with_toolset(self, tools, monkeypatch):
+    def test_to_dict_with_toolset(self, tools: list[Tool], monkeypatch: pytest.MonkeyPatch) -> None:
         """Test that the AzureOpenAIChatGenerator can be serialized to a dictionary with a Toolset."""
         monkeypatch.setenv("AZURE_OPENAI_API_KEY", "test-api-key")
         toolset = Toolset(tools[:1])
@@ -246,6 +254,7 @@ class TestSerDe:
                                 "required": ["city"],
                             },
                             "function": "generators.chat.test_azure_responses.get_weather",
+                            "async_function": None,
                             "outputs_to_string": None,
                             "inputs_from_state": None,
                             "outputs_to_state": None,
@@ -256,7 +265,8 @@ class TestSerDe:
         }
         assert data["init_parameters"]["tools"] == expected_tools_data
 
-    def test_from_dict(self, monkeypatch):
+    def test_from_dict(self, monkeypatch: pytest.MonkeyPatch) -> None:
+
         monkeypatch.setenv("AZURE_OPENAI_API_KEY", "test-api-key")
         monkeypatch.setenv("AZURE_OPENAI_AD_TOKEN", "test-ad-token")
         data = {
@@ -303,7 +313,8 @@ class TestSerDe:
         assert generator.tools_strict is False
         assert generator.http_client_kwargs is None
 
-    def test_from_dict_with_ad_token_provider(self):
+    def test_from_dict_with_ad_token_provider(self) -> None:
+
         data = {
             "type": "haystack.components.generators.chat.azure_responses.AzureOpenAIResponsesChatGenerator",
             "init_parameters": {
@@ -336,7 +347,7 @@ class TestSerDe:
         assert generator.tools_strict is False
         assert generator.http_client_kwargs is None
 
-    def test_from_dict_with_toolset(self, tools, monkeypatch):
+    def test_from_dict_with_toolset(self, tools: list[Tool], monkeypatch: pytest.MonkeyPatch) -> None:
         """Test that the AzureOpenAIChatGenerator can be deserialized from a dictionary with a Toolset."""
         monkeypatch.setenv("AZURE_OPENAI_API_KEY", "test-api-key")
         toolset = Toolset(tools)
@@ -349,7 +360,8 @@ class TestSerDe:
         assert len(deserialized_component.tools) == len(tools)
         assert all(isinstance(tool, Tool) for tool in deserialized_component.tools)
 
-    def test_pipeline_serialization_deserialization(self, tmp_path, monkeypatch):
+    def test_pipeline_serialization_deserialization(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+
         monkeypatch.setenv("AZURE_OPENAI_API_KEY", "test-api-key")
         generator = AzureOpenAIResponsesChatGenerator(azure_endpoint="some-non-existing-endpoint")
         p = Pipeline()
@@ -384,66 +396,9 @@ class TestSerDe:
         assert p.to_dict() == q.to_dict()
 
 
-class TestWarmUp:
-    def test_warm_up_with_tools(self, monkeypatch):
-        """Test that warm_up() calls warm_up on tools and is idempotent."""
-        monkeypatch.setenv("AZURE_OPENAI_API_KEY", "test-api-key")
+class TestComponentLifecycle:
+    def test_warm_up_warms_tools_once(self, monkeypatch: pytest.MonkeyPatch) -> None:
 
-        # Create a mock tool that tracks if warm_up() was called
-        class MockTool(Tool):
-            warm_up_call_count = 0  # Class variable to track calls
-
-            def __init__(self):
-                super().__init__(
-                    name="mock_tool",
-                    description="A mock tool for testing",
-                    parameters={"x": {"type": "string"}},
-                    function=lambda x: x,
-                )
-
-            def warm_up(self):
-                MockTool.warm_up_call_count += 1
-
-        # Reset the class variable before test
-        MockTool.warm_up_call_count = 0
-        mock_tool = MockTool()
-
-        # Create AzureOpenAIChatGenerator with the mock tool
-        component = AzureOpenAIResponsesChatGenerator(azure_endpoint="some-non-existing-endpoint", tools=[mock_tool])
-
-        # Verify initial state - warm_up not called yet
-        assert MockTool.warm_up_call_count == 0
-        assert not component._is_warmed_up
-
-        # Call warm_up() on the generator
-        component.warm_up()
-
-        # Assert that the tool's warm_up() was called
-        assert MockTool.warm_up_call_count == 1
-        assert component._is_warmed_up
-
-        # Call warm_up() again and verify it's idempotent (only warms up once)
-        component.warm_up()
-
-        # The tool's warm_up should still only have been called once
-        assert MockTool.warm_up_call_count == 1
-        assert component._is_warmed_up
-
-    def test_warm_up_with_no_tools(self, monkeypatch):
-        """Test that warm_up() works when no tools are provided."""
-        monkeypatch.setenv("AZURE_OPENAI_API_KEY", "test-api-key")
-        component = AzureOpenAIResponsesChatGenerator(azure_endpoint="some-non-existing-endpoint")
-
-        # Verify initial state
-        assert not component._is_warmed_up
-        assert component.tools is None
-
-        # Verify the component is warmed up
-        component.warm_up()
-        assert component._is_warmed_up
-
-    def test_warm_up_with_multiple_tools(self, monkeypatch):
-        """Test that warm_up() works with multiple tools."""
         monkeypatch.setenv("AZURE_OPENAI_API_KEY", "test-api-key")
         warm_up_calls = []
 
@@ -453,27 +408,65 @@ class TestWarmUp:
                     name=tool_name,
                     description=f"Mock tool {tool_name}",
                     parameters={"type": "object", "properties": {"x": {"type": "string"}}, "required": ["x"]},
-                    function=lambda x: f"{tool_name} result: {x}",
+                    function=lambda x: x,
                 )
 
             def warm_up(self):
                 warm_up_calls.append(self.name)
 
-        # Use a LIST of tools, not a Toolset
         component = AzureOpenAIResponsesChatGenerator(
             azure_endpoint="some-non-existing-endpoint", tools=[MockTool("tool1"), MockTool("tool2")]
         )
+        assert not component._tools_warmed_up
 
-        # Assert that both tools' warm_up() were called
         component.warm_up()
-        assert "tool1" in warm_up_calls
-        assert "tool2" in warm_up_calls
-        assert component._is_warmed_up
+        assert sorted(warm_up_calls) == ["tool1", "tool2"]
+        assert component._tools_warmed_up
 
-        # Test idempotency - warm_up should not call tools again
-        initial_count = len(warm_up_calls)
         component.warm_up()
-        assert len(warm_up_calls) == initial_count
+        assert sorted(warm_up_calls) == ["tool1", "tool2"]
+
+    def test_warm_up_with_no_tools_does_not_raise(self, monkeypatch: pytest.MonkeyPatch) -> None:
+
+        monkeypatch.setenv("AZURE_OPENAI_API_KEY", "test-api-key")
+        component = AzureOpenAIResponsesChatGenerator(azure_endpoint="some-non-existing-endpoint")
+        component.warm_up()
+        assert component._tools_warmed_up
+
+    def test_sync_lifecycle(self, monkeypatch: pytest.MonkeyPatch) -> None:
+
+        monkeypatch.setenv("AZURE_OPENAI_API_KEY", "test-api-key")
+        component = AzureOpenAIResponsesChatGenerator(azure_endpoint="some-non-existing-endpoint")
+        assert component.client is None
+        assert component.async_client is None
+
+        component.warm_up()
+        assert component.client is not None
+        assert component.async_client is None
+
+        component.close()
+        assert component.client is None
+
+    async def test_async_lifecycle(self, monkeypatch: pytest.MonkeyPatch) -> None:
+
+        monkeypatch.setenv("AZURE_OPENAI_API_KEY", "test-api-key")
+        component = AzureOpenAIResponsesChatGenerator(azure_endpoint="some-non-existing-endpoint")
+
+        await component.warm_up_async()
+        assert component.async_client is not None
+        assert component.client is None
+
+        await component.close_async()
+        assert component.async_client is None
+
+    async def test_close_is_safe_without_warm_up(self, monkeypatch: pytest.MonkeyPatch) -> None:
+
+        monkeypatch.setenv("AZURE_OPENAI_API_KEY", "test-api-key")
+        component = AzureOpenAIResponsesChatGenerator(azure_endpoint="some-non-existing-endpoint")
+        component.close()
+        await component.close_async()
+        assert component.client is None
+        assert component.async_client is None
 
 
 @pytest.mark.integration
@@ -486,17 +479,20 @@ class TestWarmUp:
     ),
 )
 class TestIntegration:
-    def test_live_run(self):
+    def test_live_run(self) -> None:
+
         chat_messages = [ChatMessage.from_user("What's the capital of France")]
         component = AzureOpenAIResponsesChatGenerator(azure_deployment="gpt-4o-mini")
         results = component.run(chat_messages)
         assert len(results["replies"]) == 1
         message: ChatMessage = results["replies"][0]
+        assert message.text is not None
         assert "paris" in message.text.lower()
         assert "gpt-4o-mini" in message.meta["model"]
         assert message.meta["status"] == "completed"
 
-    def test_live_run_with_tools(self, tools):
+    def test_live_run_with_tools(self, tools: list[Tool]) -> None:
+
         chat_messages = [ChatMessage.from_user("What's the weather like in Paris?")]
         component = AzureOpenAIResponsesChatGenerator(
             organization="HaystackCI", tools=tools, azure_deployment="gpt-4o-mini"
@@ -515,7 +511,8 @@ class TestIntegration:
         assert "paris" in tool_call.arguments["city"].lower()
         assert message.meta["status"] == "completed"
 
-    def test_live_run_with_text_format(self, calendar_event_model):
+    def test_live_run_with_text_format(self, calendar_event_model: type) -> None:
+
         chat_messages = [
             ChatMessage.from_user("The marketing summit takes place on October12th at the Hilton Hotel downtown.")
         ]
@@ -525,6 +522,7 @@ class TestIntegration:
         results = component.run(chat_messages)
         assert len(results["replies"]) == 1
         message: ChatMessage = results["replies"][0]
+        assert message.text is not None
         msg = json.loads(message.text)
         assert "marketing summit" in msg["event_name"].lower()
         assert isinstance(msg["event_date"], str)
@@ -532,7 +530,8 @@ class TestIntegration:
         assert message.meta["status"] == "completed"
 
     # So far from documentation, responses.parse only supports BaseModel
-    def test_live_run_with_text_format_json_schema(self):
+    def test_live_run_with_text_format_json_schema(self) -> None:
+
         json_schema = {
             "format": {
                 "type": "json_schema",
@@ -556,6 +555,7 @@ class TestIntegration:
         results = component.run(chat_messages)
         assert len(results["replies"]) == 1
         message: ChatMessage = results["replies"][0]
+        assert message.text is not None
         msg = json.loads(message.text)
         assert "jane" in msg["name"].lower()
         assert msg["age"] == 54
@@ -564,7 +564,8 @@ class TestIntegration:
 
 
 class TestAzureOpenAIResponsesChatGeneratorAsync:
-    def test_init_should_also_create_async_client_with_same_args(self, tools):
+    async def test_warm_up_async_creates_async_client_with_expected_args(self, tools: list[Tool]) -> None:
+
         component = AzureOpenAIResponsesChatGenerator(
             api_key=Secret.from_token("test-api-key"),
             azure_endpoint="some-non-existing-endpoint",
@@ -573,6 +574,10 @@ class TestAzureOpenAIResponsesChatGeneratorAsync:
             tools=tools,
             tools_strict=True,
         )
+        assert component.async_client is None
+
+        await component.warm_up_async()
+        assert component.async_client is not None
         assert component.async_client.api_key == "test-api-key"
         assert component._azure_deployment == "gpt-5-mini"
         assert component.streaming_callback is print_streaming_chunk
@@ -590,12 +595,14 @@ class TestAzureOpenAIResponsesChatGeneratorAsync:
         ),
     )
     @pytest.mark.asyncio
-    async def test_live_run_async(self):
+    async def test_live_run_async(self) -> None:
+
         chat_messages = [ChatMessage.from_user("What's the capital of France")]
         component = AzureOpenAIResponsesChatGenerator(azure_deployment="gpt-4o-mini")
         results = await component.run_async(chat_messages)
         assert len(results["replies"]) == 1
         message: ChatMessage = results["replies"][0]
+        assert message.text is not None
         assert "paris" in message.text.lower()
         assert "gpt-4o-mini" in message.meta["model"]
         assert message.meta["status"] == "completed"
@@ -610,7 +617,8 @@ class TestAzureOpenAIResponsesChatGeneratorAsync:
         ),
     )
     @pytest.mark.asyncio
-    async def test_live_run_with_tools_async(self, tools):
+    async def test_live_run_with_tools_async(self, tools: list[Tool]) -> None:
+
         chat_messages = [ChatMessage.from_user("What's the weather like in Paris?")]
         component = AzureOpenAIResponsesChatGenerator(tools=tools, azure_deployment="gpt-4o-mini")
         results = await component.run_async(chat_messages)

@@ -6,7 +6,7 @@ from typing import Any
 
 from haystack import Document, component, default_from_dict, default_to_dict
 from haystack.document_stores.in_memory import InMemoryDocumentStore
-from haystack.document_stores.types import FilterPolicy
+from haystack.document_stores.types import FilterPolicy, apply_filter_policy
 
 
 @component
@@ -23,7 +23,7 @@ class InMemoryEmbeddingRetriever:
     ### Usage example
     ```python
     from haystack import Document
-    from haystack.components.embedders import SentenceTransformersDocumentEmbedder, SentenceTransformersTextEmbedder
+    from haystack.components.embedders import OpenAIDocumentEmbedder, OpenAITextEmbedder
     from haystack.components.retrievers.in_memory import InMemoryEmbeddingRetriever
     from haystack.document_stores.in_memory import InMemoryDocumentStore
 
@@ -31,7 +31,7 @@ class InMemoryEmbeddingRetriever:
         Document(content="Python is a popular programming language"),
         Document(content="python ist eine beliebte Programmiersprache"),
     ]
-    doc_embedder = SentenceTransformersDocumentEmbedder()
+    doc_embedder = OpenAIDocumentEmbedder()
     docs_with_embeddings = doc_embedder.run(docs)["documents"]
 
     doc_store = InMemoryDocumentStore()
@@ -39,7 +39,7 @@ class InMemoryEmbeddingRetriever:
     retriever = InMemoryEmbeddingRetriever(doc_store)
 
     query="Programmiersprache"
-    text_embedder = SentenceTransformersTextEmbedder()
+    text_embedder = OpenAITextEmbedder()
     query_embedding = text_embedder.run(query)["embedding"]
 
     result = retriever.run(query_embedding=query_embedding)
@@ -163,10 +163,7 @@ class InMemoryEmbeddingRetriever:
         :raises ValueError:
             If the specified DocumentStore is not found or is not an InMemoryDocumentStore instance.
         """
-        if self.filter_policy == FilterPolicy.MERGE and filters:
-            filters = {**(self.filters or {}), **filters}
-        else:
-            filters = filters or self.filters
+        filters = apply_filter_policy(self.filter_policy, self.filters, filters)
         if top_k is None:
             top_k = self.top_k
         if scale_score is None:
@@ -214,10 +211,7 @@ class InMemoryEmbeddingRetriever:
         :raises ValueError:
             If the specified DocumentStore is not found or is not an InMemoryDocumentStore instance.
         """
-        if self.filter_policy == FilterPolicy.MERGE and filters:
-            filters = {**(self.filters or {}), **filters}
-        else:
-            filters = filters or self.filters
+        filters = apply_filter_policy(self.filter_policy, self.filters, filters)
         if top_k is None:
             top_k = self.top_k
         if scale_score is None:

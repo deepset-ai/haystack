@@ -3,10 +3,20 @@
 
 |         |                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
 | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| CI/CD   | [![Tests](https://github.com/deepset-ai/haystack/actions/workflows/tests.yml/badge.svg)](https://github.com/deepset-ai/haystack/actions/workflows/tests.yml) [![types - Mypy](https://img.shields.io/badge/types-Mypy-blue.svg)](https://github.com/python/mypy) [![Coverage Status](https://coveralls.io/repos/github/deepset-ai/haystack/badge.svg?branch=main)](https://coveralls.io/github/deepset-ai/haystack?branch=main) [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff) |
+| CI/CD   | [![Tests](https://github.com/deepset-ai/haystack/actions/workflows/tests.yml/badge.svg)](https://github.com/deepset-ai/haystack/actions/workflows/tests.yml) [![types - Mypy](https://img.shields.io/badge/types-Mypy-blue.svg)](https://github.com/python/mypy) [![Coverage badge](https://raw.githubusercontent.com/deepset-ai/haystack/python-coverage-comment-action-data/badge.svg)](https://htmlpreview.github.io/?https://github.com/deepset-ai/haystack/blob/python-coverage-comment-action-data/htmlcov/index.html) [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff) |
 | Docs    | [![Website](https://img.shields.io/website?label=documentation&up_message=online&url=https%3A%2F%2Fdocs.haystack.deepset.ai)](https://docs.haystack.deepset.ai)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
-| Package | [![PyPI](https://img.shields.io/pypi/v/haystack-ai)](https://pypi.org/project/haystack-ai/) ![PyPI - Downloads](https://img.shields.io/pypi/dm/haystack-ai?color=blue&logo=pypi&logoColor=gold) ![PyPI - Python Version](https://img.shields.io/pypi/pyversions/haystack-ai?logo=python&logoColor=gold) [![Conda Version](https://img.shields.io/conda/vn/conda-forge/haystack-ai.svg)](https://anaconda.org/conda-forge/haystack-ai) [![GitHub](https://img.shields.io/github/license/deepset-ai/haystack?color=blue)](LICENSE) [![License Compliance](https://github.com/deepset-ai/haystack/actions/workflows/license_compliance.yml/badge.svg)](https://github.com/deepset-ai/haystack/actions/workflows/license_compliance.yml) |
-| Meta    | [![Discord](https://img.shields.io/discord/993534733298450452?logo=discord)](https://discord.com/invite/xYvH6drSmA) [![Twitter Follow](https://img.shields.io/twitter/follow/haystack_ai)](https://twitter.com/haystack_ai)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| Package | [![PyPI](https://img.shields.io/pypi/v/haystack-ai)](https://pypi.org/project/haystack-ai/) ![PyPI - Downloads](https://img.shields.io/pypi/dm/haystack-ai?color=blue&logo=pypi&logoColor=gold) ![PyPI - Python Version](https://img.shields.io/pypi/pyversions/haystack-ai?logo=python&logoColor=gold) [![Conda Version](https://img.shields.io/conda/vn/conda-forge/haystack-ai.svg)](https://anaconda.org/conda-forge/haystack-ai) [![GitHub](https://img.shields.io/github/license/deepset-ai/haystack?color=blue)](LICENSE) [![License Compliance](https://github.com/deepset-ai/haystack/actions/workflows/license_compliance.yml/badge.svg)](https://github.com/deepset-ai/haystack/actions/workflows/license_compliance.yml) [![HVTrust](https://hvtracker.net/badge/haystack.svg)](https://hvtracker.net/agents/haystack/) [![Evidence Grade](https://hvtracker.net/badge/haystack-grade.svg)](https://hvtracker.net/agents/haystack/) [![OpenSSF Best Practices](https://www.bestpractices.dev/projects/13067/badge)](https://www.bestpractices.dev/projects/13067)|
+| Meta    | [![Discord](https://img.shields.io/discord/993534733298450452?logo=discord)](https://discord.com/invite/qZxjM4bAHU) [![Twitter Follow](https://img.shields.io/twitter/follow/haystack_ai)](https://twitter.com/haystack_ai)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+</div>
+
+<div align="center">
+
+# 🎉🎊✨ &nbsp; Haystack 3.0 is out! &nbsp; ✨🎊🎉
+
+### Read the announcement [here](https://haystack.deepset.ai/blog/haystack-3-release)!
+
+## 🥳 🎈 🎆 🪅 🎇 🍾 🥂 🎁 🌈
+
 </div>
 
 [Haystack](https://haystack.deepset.ai/) is an open-source AI orchestration framework for building production-ready LLM applications in Python.
@@ -53,20 +63,26 @@ At any given point, hit the [documentation](https://docs.haystack.deepset.ai/doc
 
 ## Features
 
+**Agents built for production**  
+Extend agent behavior with lifecycle hooks (`before_llm`, `before_tool`, `on_exit`, …) for guardrails and custom logic, and track `step_count`, `token_usage`, and tool calls out of the box for monitoring and cost control. Get started fast with ready-made agents from [Agent Pack](https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/agent_pack) (e.g., a deep research agent, or an advanced RAG agent) or give your own agents progressive skill discovery via `SkillToolset`, so skill descriptions only enter context when needed.
+
 **Built for context engineering**  
 Design flexible systems with explicit control over how information is retrieved, ranked, filtered, combined, structured, and routed before it reaches the model. Define pipelines and agent workflows where retrieval, memory, tools, and generation are transparent and traceable.
 
-**Model- and vendor-agnostic**  
-Integrate with OpenAI, Mistral, Anthropic, Cohere, Hugging Face, Azure OpenAI, AWS Bedrock, local models, and many others. Swap models or infrastructure components without rewriting your system.
+**Native Async Support**  
+One `Pipeline` runs synchronously or asynchronously and streams token by token. `Agent` can run concurrent tool calls.  
 
 **Modular and customizable**  
 Use built-in components for retrieval, indexing, tool calling, memory, and evaluation, or create your own. Add loops, branches, and conditional logic to precisely control how context moves through your pipelines and agent workflows.
+
+**Model- and vendor-agnostic**  
+Integrate with OpenAI, Mistral, Anthropic, Cohere, Hugging Face, Google, Azure OpenAI, AWS Bedrock, local models, and many others. Swap models or infrastructure components without rewriting your system.
 
 **Extensible ecosystem**  
 Build and share custom components through a consistent interface that makes it easy for the community and third parties to extend Haystack and contribute to an open ecosystem.
 
 > [!TIP]
-> 
+>
 > Would you like to deploy and serve Haystack pipelines as **REST APIs** or **MCP servers**? [Hayhooks](https://github.com/deepset-ai/hayhooks) provides a simple way for you to wrap pipelines and agents with custom logic and expose them through HTTP endpoints or MCP. It also supports OpenAI-compatible chat completion endpoints and works with chat UIs like [open-webui](https://openwebui.com/).
 
 ## Haystack Enterprise: Support & Platform

@@ -7,32 +7,51 @@ from unittest.mock import ANY
 
 import pytest
 
-from haystack import AsyncPipeline, Document, Pipeline
+from haystack import Document, Pipeline, component
 from haystack.components.agents import Agent
 from haystack.components.embedders.openai_document_embedder import OpenAIDocumentEmbedder
 from haystack.components.embedders.openai_text_embedder import OpenAITextEmbedder
 from haystack.components.generators.chat import OpenAIChatGenerator
-from haystack.components.rankers.sentence_transformers_similarity import SentenceTransformersSimilarityRanker
 from haystack.components.retrievers import InMemoryBM25Retriever, InMemoryEmbeddingRetriever
 from haystack.dataclasses import ChatMessage
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.tools import PipelineTool
 
 
+@component
+class MockSimilarityRanker:
+    """Mock ranker used to build a sample pipeline for tests."""
+
+    @component.output_types(documents=list[Document])
+    def run(
+        self,
+        documents: list[Document],
+        query: str,
+        top_k: int | None = None,
+        scale_score: bool | None = None,
+        score_threshold: float | None = None,
+    ) -> dict[str, list[Document]]:
+        """
+        Returns a list of documents ranked by their similarity to the given query.
+
+        :param documents: List of documents to rank.
+        :param query: The input query to compare the documents to.
+        :param top_k: The maximum number of documents to return.
+        :param scale_score: If `True`, scales the raw logit predictions using a Sigmoid activation function.
+            If `False`, disables scaling of the raw logit predictions.
+            If set, overrides the value set at initialization.
+        :param score_threshold: Use it to return documents only with a score above this threshold.
+            If set, overrides the value set at initialization.
+        """
+        ranked = documents[:top_k] if top_k is not None else documents
+        return {"documents": ranked}
+
+
 @pytest.fixture
 def sample_pipeline():
     pipeline = Pipeline()
     pipeline.add_component("bm25_retriever", InMemoryBM25Retriever(document_store=InMemoryDocumentStore()))
-    pipeline.add_component("ranker", SentenceTransformersSimilarityRanker(model="fake-model"))
-    pipeline.connect("bm25_retriever", "ranker")
-    return pipeline
-
-
-@pytest.fixture
-def sample_async_pipeline():
-    pipeline = AsyncPipeline()
-    pipeline.add_component("bm25_retriever", InMemoryBM25Retriever(document_store=InMemoryDocumentStore()))
-    pipeline.add_component("ranker", SentenceTransformersSimilarityRanker(model="fake-model"))
+    pipeline.add_component("ranker", MockSimilarityRanker())
     pipeline.connect("bm25_retriever", "ranker")
     return pipeline
 
@@ -54,7 +73,9 @@ def sample_pipeline_dict():
                             "bm25_parameters": {},
                             "embedding_similarity_function": "dot_product",
                             "index": ANY,
+                            "shared": True,
                             "return_embedding": True,
+                            "strict_datetime_comparison": False,
                         },
                     },
                     "filters": None,
@@ -63,30 +84,7 @@ def sample_pipeline_dict():
                     "filter_policy": "replace",
                 },
             },
-            "ranker": {
-                "type": "haystack.components.rankers.sentence_transformers_similarity."
-                "SentenceTransformersSimilarityRanker",
-                "init_parameters": {
-                    "device": {"type": "single", "device": ANY},
-                    "model": "fake-model",
-                    "token": {"type": "env_var", "env_vars": ["HF_API_TOKEN", "HF_TOKEN"], "strict": False},
-                    "top_k": 10,
-                    "query_prefix": "",
-                    "query_suffix": "",
-                    "document_prefix": "",
-                    "document_suffix": "",
-                    "meta_fields_to_embed": [],
-                    "embedding_separator": "\n",
-                    "scale_score": True,
-                    "score_threshold": None,
-                    "trust_remote_code": False,
-                    "model_kwargs": None,
-                    "tokenizer_kwargs": None,
-                    "config_kwargs": None,
-                    "backend": "torch",
-                    "batch_size": 16,
-                },
-            },
+            "ranker": {"type": "test_pipeline_tool.MockSimilarityRanker", "init_parameters": {}},
         },
         "connections": [{"sender": "bm25_retriever.documents", "receiver": "ranker.documents"}],
         "connection_type_validation": True,
@@ -95,10 +93,8 @@ def sample_pipeline_dict():
 
 class TestPipelineTool:
     def test_init_invalid_pipeline(self):
-        with pytest.raises(
-            TypeError, match="The 'pipeline' parameter must be an instance of Pipeline or AsyncPipeline."
-        ):
-            PipelineTool(pipeline="invalid_pipeline", name="test_tool", description="A test tool")
+        with pytest.raises(TypeError, match="The 'pipeline' parameter must be an instance of Pipeline."):
+            PipelineTool(pipeline="invalid_pipeline", name="test_tool", description="A test tool")  # type: ignore[arg-type]
 
     def test_to_dict(self, sample_pipeline, sample_pipeline_dict):
         tool = PipelineTool(
@@ -121,33 +117,6 @@ class TestPipelineTool:
                 "parameters": None,
                 "inputs_from_state": None,
                 "outputs_to_state": None,
-                "is_pipeline_async": False,
-                "outputs_to_string": None,
-            },
-        }
-
-    def test_to_dict_async_pipeline(self, sample_async_pipeline, sample_pipeline_dict):
-        tool = PipelineTool(
-            pipeline=sample_async_pipeline,
-            input_mapping={"query": ["bm25_retriever.query"]},
-            output_mapping={"ranker.documents": "documents"},
-            name="test_tool",
-            description="A test tool",
-        )
-
-        tool_dict = tool.to_dict()
-        assert tool_dict == {
-            "type": "haystack.tools.pipeline_tool.PipelineTool",
-            "data": {
-                "pipeline": sample_pipeline_dict,
-                "name": "test_tool",
-                "input_mapping": {"query": ["bm25_retriever.query"]},
-                "output_mapping": {"ranker.documents": "documents"},
-                "description": "A test tool",
-                "parameters": None,
-                "inputs_from_state": None,
-                "outputs_to_state": None,
-                "is_pipeline_async": True,
                 "outputs_to_string": None,
             },
         }
@@ -171,9 +140,9 @@ class TestPipelineTool:
         assert tool.parameters == recreated_tool.parameters
         assert isinstance(recreated_tool._pipeline, Pipeline)
 
-    def test_from_dict_async_pipeline(self, sample_async_pipeline):
+    def test_from_dict_ignores_legacy_is_pipeline_async(self, sample_pipeline):
         tool = PipelineTool(
-            pipeline=sample_async_pipeline,
+            pipeline=sample_pipeline,
             input_mapping={"query": ["bm25_retriever.query"]},
             output_mapping={"ranker.documents": "documents"},
             name="test_tool",
@@ -181,14 +150,10 @@ class TestPipelineTool:
         )
 
         tool_dict = tool.to_dict()
-        recreated_tool = PipelineTool.from_dict(tool_dict)
+        tool_dict["data"]["is_pipeline_async"] = True
 
-        assert tool.name == recreated_tool.name
-        assert tool.description == recreated_tool.description
-        assert tool._input_mapping == recreated_tool._input_mapping
-        assert tool._output_mapping == recreated_tool._output_mapping
-        assert tool.parameters == recreated_tool.parameters
-        assert isinstance(recreated_tool._pipeline, AsyncPipeline)
+        recreated_tool = PipelineTool.from_dict(tool_dict)
+        assert isinstance(recreated_tool._pipeline, Pipeline)
 
     def test_auto_generated_tool_params(self, sample_pipeline):
         tool = PipelineTool(
@@ -200,9 +165,6 @@ class TestPipelineTool:
         )
 
         assert tool.parameters == {
-            "description": "A component that combines: 'bm25_retriever': Run the InMemoryBM25Retriever on the "
-            "given input data., 'ranker': Returns a list of documents ranked by their similarity "
-            "to the given query.",
             "properties": {
                 "query": {
                     "description": "Provided to the 'bm25_retriever' component as: 'The query string for the Retriever."
@@ -218,9 +180,6 @@ class TestPipelineTool:
     def test_auto_generated_tool_params_no_mappings(self, sample_pipeline):
         tool = PipelineTool(pipeline=sample_pipeline, name="test_tool", description="A test tool")
         assert tool.parameters == {
-            "description": "A component that combines: 'bm25_retriever': Run the InMemoryBM25Retriever on the given "
-            "input data., 'ranker': Returns a list of documents ranked by their similarity to the "
-            "given query.",
             "properties": {
                 "query": {
                     "description": "Provided to the 'bm25_retriever' component as: 'The query string for the "
@@ -261,9 +220,8 @@ class TestPipelineTool:
 
     @pytest.mark.integration
     @pytest.mark.skipif(not os.environ.get("OPENAI_API_KEY"), reason="OPENAI_API_KEY not set")
-    def test_live_pipeline_tool(self):
+    def test_live_pipeline_tool(self, in_memory_doc_store):
         # Initialize a document store and add some documents
-        document_store = InMemoryDocumentStore()
         document_embedder = OpenAIDocumentEmbedder()
         documents = [
             Document(content="Nikola Tesla was a Serbian-American inventor and electrical engineer."),
@@ -273,12 +231,12 @@ class TestPipelineTool:
             ),
         ]
         docs_with_embeddings = document_embedder.run(documents=documents)["documents"]
-        document_store.write_documents(docs_with_embeddings)
+        in_memory_doc_store.write_documents(docs_with_embeddings)
 
         # Build a simple retrieval pipeline
         retrieval_pipeline = Pipeline()
         retrieval_pipeline.add_component("embedder", OpenAITextEmbedder())
-        retrieval_pipeline.add_component("retriever", InMemoryEmbeddingRetriever(document_store=document_store))
+        retrieval_pipeline.add_component("retriever", InMemoryEmbeddingRetriever(document_store=in_memory_doc_store))
 
         retrieval_pipeline.connect("embedder.embedding", "retriever.query_embedding")
 
@@ -307,9 +265,8 @@ class TestPipelineTool:
     @pytest.mark.asyncio
     @pytest.mark.integration
     @pytest.mark.skipif(not os.environ.get("OPENAI_API_KEY"), reason="OPENAI_API_KEY not set")
-    async def test_live_async_pipeline_tool(self):
+    async def test_live_async_pipeline_tool(self, in_memory_doc_store):
         # Initialize a document store and add some documents
-        document_store = InMemoryDocumentStore()
         document_embedder = OpenAIDocumentEmbedder()
         documents = [
             Document(content="Nikola Tesla was a Serbian-American inventor and electrical engineer."),
@@ -319,12 +276,12 @@ class TestPipelineTool:
             ),
         ]
         docs_with_embeddings = document_embedder.run(documents=documents)["documents"]
-        document_store.write_documents(docs_with_embeddings)
+        in_memory_doc_store.write_documents(docs_with_embeddings)
 
         # Build a simple retrieval pipeline
-        retrieval_pipeline = AsyncPipeline()
+        retrieval_pipeline = Pipeline()
         retrieval_pipeline.add_component("embedder", OpenAITextEmbedder())
-        retrieval_pipeline.add_component("retriever", InMemoryEmbeddingRetriever(document_store=document_store))
+        retrieval_pipeline.add_component("retriever", InMemoryEmbeddingRetriever(document_store=in_memory_doc_store))
 
         retrieval_pipeline.connect("embedder.embedding", "retriever.query_embedding")
 
@@ -383,7 +340,7 @@ class TestPipelineTool:
                 output_mapping={"ranker.documents": "documents"},
                 name="test_tool",
                 description="A test tool",
-                inputs_from_state={"user_query": {"source": "query"}},
+                inputs_from_state={"user_query": {"source": "query"}},  # type: ignore[dict-item]
             )
 
     def test_pipeline_tool_with_valid_outputs_to_state(self, sample_pipeline):
@@ -409,3 +366,17 @@ class TestPipelineTool:
                 description="A test tool",
                 outputs_to_state={"result": {"source": "nonexistent"}},
             )
+
+
+class TestPipelineToolAsync:
+    def test_async_function_is_always_set(self, sample_pipeline):
+        tool = PipelineTool(
+            pipeline=sample_pipeline,
+            input_mapping={"query": ["bm25_retriever.query"]},
+            output_mapping={"ranker.documents": "documents"},
+            name="test_tool",
+            description="A test tool",
+        )
+
+        assert tool.function is not None
+        assert tool.async_function is not None

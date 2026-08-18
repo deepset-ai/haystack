@@ -104,8 +104,7 @@ class SentenceWindowRetriever:
             metadata fields. If False, it will skip retrieving the context for documents that are missing
             the required metadata fields, but will still include the original document in the results.
         """
-        if window_size < 1:
-            raise ValueError("The window_size parameter must be greater than 0.")
+        self._validate_window_size(window_size)
 
         self.window_size = window_size
         self.document_store = document_store
@@ -187,7 +186,8 @@ class SentenceWindowRetriever:
 
         :param retrieved_documents: List of retrieved documents from the previous retriever.
         :param window_size: The number of documents to retrieve before and after the relevant one. This will overwrite
-                            the `window_size` parameter set in the constructor.
+                            the `window_size` parameter set in the constructor. It must be greater than 0; values of
+                            0 and negative values are rejected.
         :returns:
             A dictionary with the following keys:
                 - `context_windows`: A list of strings, where each string represents the concatenated text from the
@@ -197,8 +197,8 @@ class SentenceWindowRetriever:
                                       meta field.
 
         """
-        window_size = window_size or self.window_size
-        SentenceWindowRetriever._raise_if_windows_size_is_negative(window_size)
+        window_size = self.window_size if window_size is None else window_size
+        self._validate_window_size(window_size)
         self._raise_if_documents_do_not_have_expected_metadata(retrieved_documents)
 
         context_text = []
@@ -220,7 +220,8 @@ class SentenceWindowRetriever:
 
         :param retrieved_documents: List of retrieved documents from the previous retriever.
         :param window_size: The number of documents to retrieve before and after the relevant one. This will overwrite
-                            the `window_size` parameter set in the constructor.
+                            the `window_size` parameter set in the constructor. It must be greater than 0; values of
+                            0 and negative values are rejected.
         :returns:
             A dictionary with the following keys:
                 - `context_windows`: A list of strings, where each string represents the concatenated text from the
@@ -230,8 +231,8 @@ class SentenceWindowRetriever:
                                       meta field.
 
         """
-        window_size = window_size or self.window_size
-        SentenceWindowRetriever._raise_if_windows_size_is_negative(window_size)
+        window_size = self.window_size if window_size is None else window_size
+        self._validate_window_size(window_size)
         self._raise_if_documents_do_not_have_expected_metadata(retrieved_documents)
 
         context_text = []
@@ -244,7 +245,7 @@ class SentenceWindowRetriever:
         return {"context_windows": context_text, "context_documents": context_documents}
 
     @staticmethod
-    def _raise_if_windows_size_is_negative(window_size: int) -> None:
+    def _validate_window_size(window_size: int) -> None:
         if window_size < 1:
             raise ValueError("The window_size parameter must be greater than 0.")
 
@@ -319,3 +320,17 @@ class SentenceWindowRetriever:
             *source_id_filters,
         ]
         return {"operator": "AND", "conditions": conditions}
+
+    def close(self) -> None:
+        """
+        Release the synchronous resources of the underlying Document Store.
+        """
+        if hasattr(self.document_store, "close"):
+            self.document_store.close()
+
+    async def close_async(self) -> None:
+        """
+        Release the asynchronous resources of the underlying Document Store.
+        """
+        if hasattr(self.document_store, "close_async"):
+            await self.document_store.close_async()

@@ -4,8 +4,11 @@
 
 import json
 import warnings
+from collections.abc import Sequence
+from typing import Any
 
 import pytest
+from pydantic import BaseModel
 
 from haystack.dataclasses.chat_message import (
     ChatMessage,
@@ -80,11 +83,12 @@ class TestContentParts:
             "error": True,
         }
 
-    def test_tool_call_result_to_dict_mixed_content(self, base64_image_string):
+    def test_tool_call_result_to_dict_mixed_content(self, base64_image_string, base64_pdf_string):
         text_content = TextContent(text="Here is an image:")
         image_content = ImageContent(base64_image=base64_image_string, mime_type="image/png")
+        file_content = FileContent(base64_data=base64_pdf_string, mime_type="application/pdf", filename="guide.pdf")
         tool_call = ToolCall(tool_name="test_tool", arguments={})
-        result = ToolCallResult(result=[text_content, image_content], origin=tool_call, error=False)
+        result = ToolCallResult(result=[text_content, image_content, file_content], origin=tool_call, error=False)
 
         assert result.to_dict() == {
             "result": [
@@ -95,6 +99,15 @@ class TestContentParts:
                         "mime_type": "image/png",
                         "detail": None,
                         "meta": {},
+                        "validation": True,
+                    }
+                },
+                {
+                    "file": {
+                        "base64_data": base64_pdf_string,
+                        "mime_type": "application/pdf",
+                        "filename": "guide.pdf",
+                        "extra": {},
                         "validation": True,
                     }
                 },
@@ -114,7 +127,7 @@ class TestContentParts:
         with pytest.raises(ValueError):
             ToolCallResult.from_dict({"result": "result", "error": False})
 
-    def test_tool_call_result_from_dict_mixed_content(self, base64_image_string):
+    def test_tool_call_result_from_dict_mixed_content(self, base64_image_string, base64_pdf_string):
         data = {
             "result": [
                 {"text": "Caption"},
@@ -127,6 +140,15 @@ class TestContentParts:
                         "validation": True,
                     }
                 },
+                {
+                    "file": {
+                        "base64_data": base64_pdf_string,
+                        "mime_type": "application/pdf",
+                        "filename": "guide.pdf",
+                        "extra": {},
+                        "validation": True,
+                    }
+                },
             ],
             "origin": {"tool_name": "test_tool", "arguments": {}, "id": "call_123", "extra": None},
             "error": False,
@@ -134,10 +156,14 @@ class TestContentParts:
 
         result = ToolCallResult.from_dict(data)
         assert isinstance(result.result, list)
-        assert len(result.result) == 2
+        assert len(result.result) == 3
         assert isinstance(result.result[0], TextContent)
         assert isinstance(result.result[1], ImageContent)
+        assert isinstance(result.result[2], FileContent)
         assert result.result[0].text == "Caption"
+        assert result.result[1].base64_image == base64_image_string
+        assert result.result[2].base64_data == base64_pdf_string
+        assert result.result[2].filename == "guide.pdf"
 
     def test_text_content_init(self):
         tc = TextContent(text="Hello")
@@ -306,7 +332,7 @@ class TestChatMessage:
 
     def test_from_assistant_with_invalid_reasoning(self):
         with pytest.raises(TypeError):
-            ChatMessage.from_assistant(text="text", reasoning=123)
+            ChatMessage.from_assistant(text="text", reasoning=123)  # type: ignore[arg-type]
 
     def test_from_user_with_valid_content(self):
         text = "I have a question."
@@ -354,7 +380,7 @@ class TestChatMessage:
         assert message.texts == [""]
 
     def test_from_user_with_content_parts(self, base64_image_string, base64_pdf_string):
-        content_parts = [
+        content_parts: list[TextContent | ImageContent | FileContent | str] = [
             TextContent(text="text"),
             ImageContent(base64_image=base64_image_string),
             FileContent(base64_data=base64_pdf_string),
@@ -393,7 +419,7 @@ class TestChatMessage:
     def test_from_user_with_content_parts_fails_unsupported_parts(self):
         with pytest.raises(TypeError):
             ChatMessage.from_user(
-                content_parts=["text part", ToolCall(id="123", tool_name="mytool", arguments={"a": 1})]
+                content_parts=["text part", ToolCall(id="123", tool_name="mytool", arguments={"a": 1})]  # type: ignore[list-item]
             )
 
     def test_from_user_with_content_parts_fails_with_empty_parts(self):
@@ -442,7 +468,10 @@ class TestChatMessage:
         assert not message.reasoning
 
     def test_from_tool_with_valid_mixed_content(self, base64_image_string):
-        tool_result = [TextContent(text="Hello"), ImageContent(base64_image=base64_image_string, mime_type="image/png")]
+        tool_result: list[TextContent | ImageContent] = [
+            TextContent(text="Hello"),
+            ImageContent(base64_image=base64_image_string, mime_type="image/png"),
+        ]
         message = ChatMessage.from_tool(
             tool_result=tool_result, origin=ToolCall(tool_name="mytool", arguments={}), error=False
         )
@@ -472,7 +501,10 @@ class TestChatMessage:
         assert len(message) == 2
 
     def test_mixed_content(self):
-        content = [TextContent(text="Hello"), ToolCall(id="123", tool_name="mytool", arguments={"a": 1})]
+        content: list[TextContent | ToolCall] = [
+            TextContent(text="Hello"),
+            ToolCall(id="123", tool_name="mytool", arguments={"a": 1}),
+        ]
 
         message = ChatMessage(_role=ChatRole.ASSISTANT, _content=content)
 
@@ -485,16 +517,16 @@ class TestChatMessage:
 
     def test_from_function_class_method_removed(self):
         with pytest.raises(AttributeError):
-            ChatMessage.from_function("Result of function invocation", "my_function")
+            ChatMessage.from_function("Result of function invocation", "my_function")  # type: ignore[attr-defined]
 
     def test_chat_message_content_attribute_removed(self):
         message = ChatMessage.from_user(text="This is a message")
         with pytest.raises(AttributeError):
-            message.content
+            message.content  # type: ignore[attr-defined]
 
     def test_chat_message_init_parameters_removed(self):
         with pytest.raises(TypeError):
-            ChatMessage(role="irrelevant", content="This is a message")
+            ChatMessage(role="irrelevant", content="This is a message")  # type: ignore[call-arg]
 
     def test_no_warning_on_init(self):
         with warnings.catch_warnings():
@@ -572,7 +604,7 @@ class TestChatMessageSerde:
         text_content = TextContent(text="Hello")
         invalid_content = "invalid"
 
-        message = ChatMessage(_role=ChatRole.ASSISTANT, _content=[text_content, invalid_content])
+        message = ChatMessage(_role=ChatRole.ASSISTANT, _content=[text_content, invalid_content])  # type: ignore[list-item]
 
         with pytest.raises(TypeError):
             message.to_dict()
@@ -724,6 +756,85 @@ class TestChatMessageSerde:
             "name": None,
             "meta": {},
         }
+
+
+class MessageEnvelope(BaseModel):
+    message: ChatMessage
+
+
+class TestFromDictPydanticDump:
+    """
+    `ChatMessage.from_dict` supports the format Pydantic produces when it auto-serializes ChatMessage as a plain
+    dataclass: raw dataclass fields (`_role`, `_content`, ...) with unwrapped content parts.
+    """
+
+    def _pydantic_dump(self, message: ChatMessage) -> dict[str, Any]:
+        return MessageEnvelope(message=message).model_dump(mode="json")["message"]
+
+    def test_text_message(self):
+        message = ChatMessage.from_user("What is the answer?", meta={"some": "info"}, name="virginia")
+        assert ChatMessage.from_dict(self._pydantic_dump(message)) == message
+
+    def test_tool_call_message(self):
+        message = ChatMessage.from_assistant(
+            tool_calls=[ToolCall(tool_name="mytool", arguments={"a": 1}, id="123", extra={"call_id": "123"})]
+        )
+        assert ChatMessage.from_dict(self._pydantic_dump(message)) == message
+
+    def test_tool_result_message(self):
+        message = ChatMessage.from_tool(
+            tool_result="42", origin=ToolCall(tool_name="mytool", arguments={"a": 1}, id="123"), error=False
+        )
+        assert ChatMessage.from_dict(self._pydantic_dump(message)) == message
+
+    def test_reasoning_message(self):
+        message = ChatMessage.from_assistant(
+            "Answer", reasoning=ReasoningContent(reasoning_text="Thinking...", extra={"key": "value"})
+        )
+        assert ChatMessage.from_dict(self._pydantic_dump(message)) == message
+
+    def test_image_message(self, base64_image_string):
+        message = ChatMessage.from_user(
+            content_parts=[
+                TextContent(text="What is in this image?"),
+                ImageContent(base64_image=base64_image_string, mime_type="image/png", detail="auto"),
+            ]
+        )
+        assert ChatMessage.from_dict(self._pydantic_dump(message)) == message
+
+    def test_file_message(self):
+        message = ChatMessage.from_user(
+            content_parts=[
+                TextContent(text="Summarize this file."),
+                FileContent(base64_data="aGVsbG8=", mime_type="text/plain", filename="hello.txt"),
+            ]
+        )
+        assert ChatMessage.from_dict(self._pydantic_dump(message)) == message
+
+    def test_multiple_messages(self, base64_image_string):
+        class Response(BaseModel):
+            messages: list[ChatMessage]
+
+        tool_call = ToolCall(id="123", tool_name="mytool", arguments={"a": 1})
+        messages = [
+            ChatMessage.from_user("What is the answer?"),
+            ChatMessage.from_assistant(
+                "Let me check.",
+                meta={"some": "info"},
+                tool_calls=[tool_call],
+                reasoning=ReasoningContent(reasoning_text="Let me think about it..."),
+            ),
+            ChatMessage.from_tool(tool_result="42", origin=tool_call),
+            ChatMessage.from_user(
+                content_parts=[
+                    ImageContent(base64_image=base64_image_string, mime_type="image/png"),
+                    FileContent(base64_data="aGVsbG8=", mime_type="text/plain", filename="hello.txt"),
+                ]
+            ),
+        ]
+
+        dumped = Response(messages=messages).model_dump(mode="json")
+        assert [ChatMessage.from_dict(message) for message in dumped["messages"]] == messages
 
 
 class TestToOpenaiDictFormat:
@@ -888,7 +999,7 @@ class TestToOpenaiDictFormat:
         assert openai_msg == {"role": "tool", "content": "result"}
 
     def test_to_openai_dict_format_tool_message_list_with_unsupported_image(self, base64_image_string):
-        tool_result = [
+        tool_result: Sequence[TextContent | ImageContent] = [
             TextContent(text="first result"),
             ImageContent(base64_image=base64_image_string, mime_type="image/png"),
         ]
@@ -936,10 +1047,33 @@ class TestFromOpenaiDictFormat:
         assert tool_call.tool_name == "get_weather"
         assert tool_call.arguments == {"location": "Berlin"}
 
+    def test_from_openai_dict_format_tool_call_with_empty_arguments(self):
+        # OpenAI-compatible servers (vLLM, llama.cpp, Ollama, ...) emit an empty
+        # string for a zero-argument tool call; it must not crash.
+        openai_msg = {
+            "role": "assistant",
+            "content": None,
+            "tool_calls": [{"id": "call_1", "function": {"name": "now", "arguments": ""}}],
+        }
+        message = ChatMessage.from_openai_dict_format(openai_msg)
+        assert message.tool_call == ToolCall(id="call_1", tool_name="now", arguments={})
+
+    def test_from_openai_dict_format_tool_call_with_missing_arguments(self):
+        # Some servers omit the `arguments` key entirely for zero-argument calls.
+        openai_msg = {
+            "role": "assistant",
+            "content": None,
+            "tool_calls": [{"id": "call_1", "function": {"name": "now"}}],
+        }
+        message = ChatMessage.from_openai_dict_format(openai_msg)
+        assert message.tool_call is not None
+        assert message.tool_call.arguments == {}
+
     def test_from_openai_dict_format_tool_message(self):
         openai_msg = {"role": "tool", "content": "The weather is sunny", "tool_call_id": "call_123"}
         message = ChatMessage.from_openai_dict_format(openai_msg)
         assert message.role.value == "tool"
+        assert message.tool_call_result is not None
         assert message.tool_call_result.result == "The weather is sunny"
         assert message.tool_call_result.origin.id == "call_123"
 
@@ -951,6 +1085,7 @@ class TestFromOpenaiDictFormat:
         }
         message = ChatMessage.from_openai_dict_format(openai_msg)
         assert message.role.value == "tool"
+        assert message.tool_call_result is not None
         assert message.tool_call_result.result == [TextContent(text="first result"), TextContent(text="second result")]
         assert message.tool_call_result.origin.id == "call_123"
 
@@ -958,6 +1093,7 @@ class TestFromOpenaiDictFormat:
         openai_msg = {"role": "tool", "content": "The weather is sunny"}
         message = ChatMessage.from_openai_dict_format(openai_msg)
         assert message.role.value == "tool"
+        assert message.tool_call_result is not None
         assert message.tool_call_result.result == "The weather is sunny"
         assert message.tool_call_result.origin.id is None
 

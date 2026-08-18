@@ -1,0 +1,58 @@
+---
+upgrade:
+  - |
+    Pipeline deserialization (``Pipeline.load`` / ``Pipeline.loads`` / ``Pipeline.from_dict``) now
+    refuses to import classes from modules outside a trusted-module allowlist. By default the
+    allowlist contains ``haystack``, ``haystack_integrations``, ``haystack_experimental``,
+    ``builtins``, ``typing``, and ``collections``. Pipelines that reference custom components or callables in
+    other packages will fail to load with a ``DeserializationError`` until the additional modules
+    are added to the allowlist.
+
+    To restore loading of such pipelines, extend the allowlist via one of:
+
+    - per-call kwarg: ``Pipeline.load(fp, allowed_modules=["mypkg.*"])``;
+    - process-wide programmatic API:
+      ``from haystack.core.serialization import allow_deserialization_module``;
+    - environment variable: ``HAYSTACK_DESERIALIZATION_ALLOWLIST="mypkg.*,otherpkg.*"``;
+    - or, if the source of the serialized data is fully trusted, bypass the allowlist with
+      ``Pipeline.load(fp, unsafe=True)``.
+  - |
+    During pipeline deserialization, ``default_from_dict`` now validates the keys of
+    ``init_parameters`` against the parent class's ``__init__`` signature before recursing into
+    any nested ``{"type": "...", "init_parameters": {...}}`` dictionary. A nested dict whose key
+    is not an accepted parameter name on the parent class is rejected with a ``DeserializationError``
+    *before* the nested type is imported. Classes whose constructor takes ``**kwargs`` are
+    exempt, since their accepted parameter set cannot be statically determined.
+
+    This may surface pre-existing YAML bugs — e.g. typos, leftovers from renamed or removed
+    parameters, or stale snapshots from older Haystack versions. The fix is to update the YAML
+    so each nested-component key matches a real ``__init__`` parameter on the parent class.
+security:
+  - |
+    Loading a pipeline from YAML used to dynamically import any class referenced in the file,
+    which made a crafted YAML capable of causing arbitrary classes to be imported and instantiated
+    by ``Pipeline.from_dict``. Deserialization is now gated by an allowlist of trusted module
+    namespaces (see the upgrade note for how to extend it). In addition,
+    ``default_from_dict`` now refuses to recurse into nested ``{"type": "..."}`` dictionaries
+    keyed by parameter names that the parent class does not actually accept — blocking attempts
+    to smuggle untrusted classes into unused parameter slots.
+  - |
+    Dangerous builtins such as ``eval``, ``exec``, ``compile``, ``__import__``, ``open``, and
+    ``getattr`` can no longer be resolved during deserialization, even though ``builtins`` is on
+    the default allowlist. Attempting to deserialize one as a callable, a type annotation, or a
+    nested ``{"type": ...}`` class reference raises a ``DeserializationError``. The block can be
+    bypassed with ``unsafe=True`` when the source of the serialized data is fully trusted.
+features:
+  - |
+    ``Pipeline.load`` / ``Pipeline.loads`` / ``Pipeline.from_dict`` now accept two new keyword
+    arguments:
+
+    - ``allowed_modules: list[str] | None`` — additional module patterns that may be imported
+      during this deserialization call. Patterns are matched as prefixes (``"mypkg"`` matches
+      ``mypkg`` and any submodule) or, if they contain ``*``/``?``/``[``, using ``fnmatch`` rules.
+    - ``unsafe: bool = False`` — when set to ``True``, the deserialization allowlist is bypassed
+      entirely. Only use this when you fully trust the source of the serialized data.
+
+    A new public helper, ``haystack.core.serialization.allow_deserialization_module(pattern)``,
+    extends the process-wide allowlist. The ``HAYSTACK_DESERIALIZATION_ALLOWLIST`` environment
+    variable (comma-separated patterns) is read at runtime on every deserialization call.

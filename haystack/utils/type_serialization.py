@@ -2,18 +2,35 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import ast
 import builtins
 import importlib
 import inspect
-import sys
 import typing
 from threading import Lock
 from types import GenericAlias, ModuleType, NoneType, UnionType
 from typing import Any, Union, get_args
 
+from haystack import logging
 from haystack.core.errors import DeserializationError
+from haystack.core.serialization_security import (
+    _check_builtin_is_type,
+    _check_module_allowed,
+    _check_not_deserialization_internal,
+    _check_resolved_module_allowed,
+    _check_traversable_attribute,
+    mark_deserialization_internal,
+)
+
+logger = logging.getLogger(__name__)
 
 _import_lock = Lock()
+
+# Literal singletons that are not types and must be resolved before the generic/module-path handling in
+# deserialize_type: the None singleton ("None"), NoneType, and Ellipsis ("..."). Ellipsis appears in
+# variadic tuples (tuple[int, ...]) and Callable[..., X]. "Ellipsis" is also accepted so that types
+# serialized by older Haystack versions (which emitted the literal "Ellipsis") can still be read back.
+_SPECIAL_LITERALS: dict[str, Any] = {"None": None, "NoneType": NoneType, "...": ..., "Ellipsis": ...}
 
 
 def _is_union_type(target: Any) -> bool:
@@ -37,6 +54,21 @@ def _build_pep604_union_type(types: list[type | UnionType]) -> type | UnionType:
     return result
 
 
+def _serialize_type_arg(arg: Any) -> str:
+    """
+    Serialize a single generic argument.
+
+    Almost all arguments are plain types and are handed off to ``serialize_type``. The exception is the
+    parameter list of a ``Callable[[X, Y], R]``, which ``typing.get_args`` returns as a Python ``list``
+    (e.g. ``[X, Y]``) rather than a type. Such a list is rendered as ``[X, Y]`` so it round-trips back to the
+    same ``Callable`` on deserialization. Without this, the list would fall through to ``serialize_type`` and
+    be dropped (its ``str()`` starts with ``[``, which the name handling truncates to an empty string).
+    """
+    if isinstance(arg, list):
+        return f"[{', '.join(serialize_type(a) for a in arg)}]"
+    return serialize_type(arg)
+
+
 def serialize_type(target: Any) -> str:
     """
     Serializes a type or an instance to its string representation, including the module name.
@@ -51,6 +83,18 @@ def serialize_type(target: Any) -> str:
     """
     if target is NoneType:
         return "None"
+
+    # `...` (Ellipsis) shows up as an argument in variadic tuples (tuple[int, ...]) and in
+    # Callable[..., X]. It is a singleton constant rather than a type, so serialize it to the same
+    # literal Python uses when rendering these types. Without this it would fall through to
+    # str(Ellipsis) == "Ellipsis", which deserialize_type then rejects as a non-type builtin.
+    if target is Ellipsis:
+        return "..."
+
+    # Literal holds values (e.g. Literal["yes", "no"]), not types. Serialize each value with repr() so
+    # strings keep their quotes.
+    if typing.get_origin(target) is typing.Literal:
+        return f"typing.Literal[{', '.join(repr(a) for a in get_args(target))}]"
 
     args = get_args(target)
 
@@ -75,17 +119,21 @@ def serialize_type(target: Any) -> str:
         # This avoids issues with Python's internal cache, where List[Union[str, int]] and List[str | int] are treated
         # as the same key. GenericAlias (builtins like list[...]) can keep the PEP 604 syntax.
         is_typing_generic = not isinstance(target, GenericAlias)
+        # Optional[X] is normalized by Python to Union[X, None]; the trailing None is already implied by the
+        # "Optional" name, so we drop it. For any other generic (e.g. Dict[str, None], Tuple[int, None] or a
+        # Union with more than two members) NoneType is a regular argument and must be kept.
+        skip_nonetype = name == "Optional"
         args_str = ", ".join(
-            serialize_type(Union[tuple(get_args(a))] if is_typing_generic and isinstance(a, UnionType) else a)  # noqa: UP007
+            _serialize_type_arg(Union[tuple(get_args(a))] if is_typing_generic and isinstance(a, UnionType) else a)  # noqa: UP007
             for a in args
-            if a is not NoneType
+            if not (skip_nonetype and a is NoneType)
         )
         return f"{module_name}.{name}[{args_str}]" if module_name else f"{name}[{args_str}]"
 
     return f"{module_name}.{name}" if module_name else f"{name}"
 
 
-def _parse_generic_args(args_str):
+def _parse_generic_args(args_str: str) -> list[str]:
     args = []
     bracket_count = 0
     current_arg = ""
@@ -139,6 +187,25 @@ def _parse_pep604_union_args(union_str: str) -> list[str]:
     return args
 
 
+def _deserialize_type_arg(arg_str: str) -> Any:
+    """
+    Deserialize a single generic argument produced by ``_parse_generic_args``.
+
+    Mirrors ``_serialize_type_arg``: a ``Callable`` parameter list is emitted as ``[X, Y]`` and must be read
+    back as a Python ``list`` of types (so ``Callable`` can be re-subscripted as ``Callable[[X, Y], R]``),
+    not as a single type. An empty parameter list ``[]`` becomes ``[]``. Every other argument is a normal
+    type and is delegated to ``deserialize_type``.
+    """
+    stripped = arg_str.strip()
+    if stripped.startswith("[") and stripped.endswith("]"):
+        inner = stripped[1:-1].strip()
+        if not inner:
+            return []
+        return [deserialize_type(a) for a in _parse_generic_args(inner)]
+    return deserialize_type(arg_str)
+
+
+@mark_deserialization_internal
 def deserialize_type(type_str: str) -> Any:
     """
     Deserializes a type given its full import path as a string, including nested generic types.
@@ -147,13 +214,25 @@ def deserialize_type(type_str: str) -> Any:
     and then retrieve the type object from it. It also handles nested generic types like
     `list[dict[int, str]]`.
 
+    Every module path with a `.` prefix is checked against the deserialization
+    allowlist (see `haystack.core.serialization_security`) before being imported. Modules outside
+    the allowlist are rejected with a `DeserializationError`. Builtin and `typing`/`collections`
+    names without a module prefix bypass this check.
+
     :param type_str:
         The string representation of the type's full import path.
     :returns:
         The deserialized type object.
     :raises DeserializationError:
-        If the type cannot be deserialized due to missing module or type.
+        If the module is not on the deserialization allowlist, or if the type cannot be
+        deserialized due to a missing module or type.
     """
+    # Resolve the non-type literal singletons (see _SPECIAL_LITERALS) up front, before the generic and
+    # module-path handling below: the dots in "..." would otherwise be read as a module path, and the
+    # None/Ellipsis singletons would be refused by the builtin type gate.
+    if type_str in _SPECIAL_LITERALS:
+        return _SPECIAL_LITERALS[type_str]
+
     # Handle PEP 604 union syntax at the top level (e.g., "str | int", "str | None")
     pep604_union_args = _parse_pep604_union_args(type_str)
     if len(pep604_union_args) > 1:
@@ -166,7 +245,14 @@ def deserialize_type(type_str: str) -> Any:
         generics_str = generics_str[:-1]
 
         main_type = deserialize_type(main_type_str)
-        generic_args = [deserialize_type(arg) for arg in _parse_generic_args(generics_str)]
+
+        # Parse literal args with ast.literal_eval, which safely handles
+        # str/int/bool/None/bytes and is quote-aware, so a comma inside a string value does not split the
+        # arguments.
+        if main_type is typing.Literal:
+            return typing.Literal[ast.literal_eval(f"({generics_str},)")]
+
+        generic_args = [_deserialize_type_arg(arg) for arg in _parse_generic_args(generics_str)]
 
         # Reconstruct
         try:
@@ -177,39 +263,24 @@ def deserialize_type(type_str: str) -> Any:
     # Handle non-generic types
     # First, check if there's a module prefix
     if "." in type_str:
-        parts = type_str.split(".")
-        module_name = ".".join(parts[:-1])
-        type_name = parts[-1]
+        try:
+            return _import_class_by_name(type_str)
+        except ImportError as e:
+            raise DeserializationError(str(e)) from e
 
-        module = sys.modules.get(module_name)
-        if module is None:
-            try:
-                module = thread_safe_import(module_name)
-            except ImportError as e:
-                raise DeserializationError(f"Could not import the module: {module_name}") from e
-
-        # Get the class from the module
-        if hasattr(module, type_name):
-            return getattr(module, type_name)
-
-        raise DeserializationError(f"Could not locate the type: {type_name} in the module: {module_name}")
-
-    # No module prefix, check builtins and typing
-    # First check builtins
+    # No module prefix, check builtins and typing.
+    # (None / NoneType / Ellipsis are handled at the top of this function, before they can reach the
+    # builtin type gate below which would refuse them for not being types.)
     if hasattr(builtins, type_str):
-        return getattr(builtins, type_str)
+        resolved = getattr(builtins, type_str)
+        # This bare-name path never consults the allowlist. A type annotation must resolve to an
+        # actual type, so builtin functions like `eval`/`exec` are rejected while types pass.
+        _check_builtin_is_type(resolved, type_str)
+        return resolved
 
     # Then check typing
     if hasattr(typing, type_str):
         return getattr(typing, type_str)
-
-    # Special case for NoneType
-    if type_str == "NoneType":
-        return NoneType
-
-    # Special case for None
-    if type_str == "None":
-        return None
 
     raise DeserializationError(f"Could not deserialize type: {type_str}")
 
@@ -226,3 +297,50 @@ def thread_safe_import(module_name: str) -> ModuleType:
     """
     with _import_lock:
         return importlib.import_module(module_name)
+
+
+@mark_deserialization_internal
+def _import_class_by_name(fully_qualified_name: str) -> Any:
+    """
+    Imports an attribute (typically a class) given its fully qualified name.
+
+    Checks the module against the deserialization allowlist (see
+    `haystack.core.serialization_security`) and, for `builtins`, that the resolved attribute is
+    an actual type — rejecting dangerous builtins like `eval`/`compile`.
+
+    :param fully_qualified_name: the fully qualified name, e.g. "my_package.MyClass"
+    :returns: the imported attribute.
+    :raises ImportError: If the module cannot be imported or the attribute doesn't exist on it.
+    :raises DeserializationError: If the module is not on the deserialization allowlist, or the
+        resolved builtin is not a type.
+    """
+    module_path, attr_name = fully_qualified_name.rsplit(".", 1)
+    _check_module_allowed(module_path)
+    # A class reference names a public attribute of a module, never an object-internals attribute
+    # (`__dict__`, `__globals__`, ...) that would expose a module namespace or escape gadget.
+    _check_traversable_attribute(attr_name, fully_qualified_name)
+    try:
+        logger.debug(
+            "Attempting to import '{attr_name}' from module '{module_path}'",
+            attr_name=attr_name,
+            module_path=module_path,
+        )
+        module = thread_safe_import(module_path)
+        resolved = getattr(module, attr_name)
+        # `_check_module_allowed` above gates the declared module path, which the caller controls.
+        # A class/module re-exported as an attribute of an allowlisted module (e.g.
+        # `haystack.utils.auth.os` -> the `os` module, or a re-exported `subprocess.Popen`) would
+        # otherwise slip through. Re-check the module the object actually belongs to; `module_path`
+        # is the allowlisted module it was resolved from, so a private C accelerator backing it
+        # (e.g. `io.StringIO` -> `_io`) is still accepted.
+        _check_resolved_module_allowed(resolved, declared_module=module_path)
+        # Refuse the deserializer's own machinery (the allowlist-administration function and the
+        # resolution helpers) on the class-resolution path too, so it cannot be reached as a
+        # component `type` or nested class reference. See `mark_deserialization_internal`.
+        _check_not_deserialization_internal(resolved, fully_qualified_name)
+        if module_path == "builtins":
+            _check_builtin_is_type(resolved, fully_qualified_name)
+        return resolved
+    except (ImportError, AttributeError) as error:
+        logger.exception("Failed to import '{full_name}'", full_name=fully_qualified_name)
+        raise ImportError(f"Could not import '{fully_qualified_name}'") from error

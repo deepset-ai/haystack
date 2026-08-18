@@ -1,0 +1,17 @@
+---
+upgrade:
+  - |
+    ``SerperDevWebSearch`` has been moved out of Haystack into the ``serperdev-haystack`` integration
+    package. Install the new package with ``pip install serperdev-haystack`` and update your imports.
+
+    Before:
+
+    .. code:: python
+
+      from haystack.components.websearch import SerperDevWebSearch
+
+    After:
+
+    .. code:: python
+
+      from haystack_integrations.components.websearch.serperdev import SerperDevWebSearch

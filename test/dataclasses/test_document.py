@@ -3,8 +3,10 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import warnings
+from copy import deepcopy
 from dataclasses import replace
 
+import numpy
 import pytest
 
 from haystack import Document
@@ -27,17 +29,17 @@ def test_document_str(doc, doc_str):
 def test_init():
     doc = Document()
     assert doc.id == "d4675c57fcfe114db0b95f1da46eea3c5d6f5729c17d01fb5251ae19830a3455"
-    assert doc.content == None
-    assert doc.blob == None
+    assert doc.content is None
+    assert doc.blob is None
     assert doc.meta == {}
-    assert doc.score == None
-    assert doc.embedding == None
-    assert doc.sparse_embedding == None
+    assert doc.score is None
+    assert doc.embedding is None
+    assert doc.sparse_embedding is None
 
 
 def test_init_with_wrong_parameters():
     with pytest.raises(TypeError):
-        Document(text="")
+        Document(text="")  # type: ignore[call-arg]
 
 
 def test_init_with_parameters():
@@ -51,8 +53,9 @@ def test_init_with_parameters():
         embedding=[0.1, 0.2, 0.3],
         sparse_embedding=sparse_embedding,
     )
-    assert doc.id == "1aa43af57c1dbc317241bf55d3067049f334d3b458d95dc72f71a7111f6c1a56"
+    assert doc.id == "c31efd4986b1f2424e5058482c6f668ccad2309043c2346524cd81d255e159fe"
     assert doc.content == "test text"
+    assert doc.blob is not None
     assert doc.blob.data == blob_data
     assert doc.blob.mime_type == "text/markdown"
     assert doc.meta == {"text": "test text"}
@@ -61,47 +64,47 @@ def test_init_with_parameters():
     assert doc.sparse_embedding == sparse_embedding
 
 
-def test_init_with_legacy_fields():
-    doc = Document(
-        content="test text",
-        content_type="text",
-        id_hash_keys=["content"],
-        dataframe="placeholder",
-        score=0.812,
-        embedding=[0.1, 0.2, 0.3],  # type: ignore
-    )
-    assert doc.id == "18fc2c114825872321cf5009827ca162f54d3be50ab9e9ffa027824b6ec223af"
-    assert doc.content == "test text"
-    assert doc.blob == None
-    assert doc.meta == {}
-    assert doc.score == 0.812
-    assert doc.embedding == [0.1, 0.2, 0.3]
-    assert doc.sparse_embedding == None
+@pytest.mark.parametrize(
+    "legacy_fields,meta,expected_id",
+    [
+        (
+            {"content_type": "text", "id_hash_keys": ["content"], "dataframe": "placeholder"},
+            {},
+            "18fc2c114825872321cf5009827ca162f54d3be50ab9e9ffa027824b6ec223af",
+        ),
+        (
+            {"content_type": "text", "id_hash_keys": ["content"]},
+            {"date": "10-10-2023", "type": "article"},
+            "dcd4914f727544e89ce8082f6f2e298d244dd0803a4dc167f19d24e7d43b28ac",
+        ),
+    ],
+)
+def test_init_with_legacy_fields(legacy_fields, meta, expected_id):
+    doc = Document(content="test text", score=0.812, embedding=[0.1, 0.2, 0.3], meta=meta, **legacy_fields)
 
+    # legacy fields are dropped, so the Document is the same as if they were not passed at all
+    assert doc == Document(content="test text", score=0.812, embedding=[0.1, 0.2, 0.3], meta=meta)
+    assert doc.id == expected_id
     assert doc.content_type == "text"  # this is a property now
-
     assert not hasattr(doc, "id_hash_keys")
     assert not hasattr(doc, "dataframe")
 
 
-def test_init_with_legacy_field():
-    doc = Document(
-        content="test text",
-        content_type="text",  # type: ignore
-        id_hash_keys=["content"],  # type: ignore
-        score=0.812,
-        embedding=[0.1, 0.2, 0.3],
-        meta={"date": "10-10-2023", "type": "article"},
-    )
-    assert doc.id == "a2c0321b34430cc675294611e55529fceb56140ca3202f1c59a43a8cecac1f43"
-    assert doc.content == "test text"
-    assert doc.meta == {"date": "10-10-2023", "type": "article"}
-    assert doc.score == 0.812
-    assert doc.embedding == [0.1, 0.2, 0.3]
-    assert doc.sparse_embedding == None
+@pytest.mark.parametrize("content", [123, 0, []])
+def test_init_with_non_string_content(content):
+    with pytest.raises(ValueError, match="must be a string or None"):
+        Document(content=content)
 
-    assert doc.content_type == "text"  # this is a property now
-    assert not hasattr(doc, "id_hash_keys")
+    with pytest.raises(ValueError, match="must be a string or None"):
+        Document("", content)
+
+
+def test_init_with_numpy_embedding():
+    expected = Document(content="test text", embedding=[0.1, 0.2, 0.3])
+
+    assert Document(content="test text", embedding=numpy.array([0.1, 0.2, 0.3])) == expected  # type: ignore[arg-type]
+
+    assert Document("", "test text", None, {}, None, numpy.array([0.1, 0.2, 0.3])) == expected  # type: ignore[arg-type]
 
 
 def test_basic_equality_type_mismatch():
@@ -119,6 +122,29 @@ def test_basic_equality_id():
     doc2 = replace(doc2, id="5678")
 
     assert doc1 != doc2
+
+
+def test_equality_with_colliding_meta_keys():
+    doc1 = Document(id="same_id", content="hello", meta={"id": "different1"})
+    doc2 = Document(id="same_id", content="hello", meta={"id": "different2"})
+
+    assert doc1 != doc2
+    assert doc1 == Document(id="same_id", content="hello", meta={"id": "different1"})
+
+
+def test_id_is_independent_of_meta_key_order():
+    doc1 = Document(content="hello", meta={"a": 1, "b": 2})
+    doc2 = Document(content="hello", meta={"b": 2, "a": 1})
+
+    assert doc1.meta == doc2.meta
+    assert doc1.id == doc2.id
+
+
+def test_id_is_independent_of_nested_meta_key_order():
+    doc1 = Document(content="hello", meta={"outer": {"a": 1, "b": 2}})
+    doc2 = Document(content="hello", meta={"outer": {"b": 2, "a": 1}})
+
+    assert doc1.id == doc2.id
 
 
 def test_to_dict():
@@ -189,30 +215,26 @@ def test_to_dict_with_custom_parameters_without_flattening():
     }
 
 
-def test_to_dict_field_precedence():
-    """
-    Test for Document.to_dict() with flatten=True.
-
-    Test that Document's first-level fields take precedence over meta fields when flattening the dictionary
-    representation.
-    """
-
+def test_to_dict_with_colliding_meta_keys():
     doc = Document(content="from-content", score=0.9, meta={"content": "from-meta", "score": 0.5, "source": "web"})
 
-    flat_dict = doc.to_dict(flatten=True)
-
-    # First-level fields should take precedence
-    assert flat_dict["content"] == "from-content"
-    assert flat_dict["score"] == 0.9
-    # Meta-only fields should be preserved
-    assert flat_dict["source"] == "web"
+    assert doc.to_dict() == {
+        "id": doc.id,
+        "content": "from-content",
+        "blob": None,
+        "score": 0.9,
+        "embedding": None,
+        "sparse_embedding": None,
+        "source": "web",
+        "meta": {"content": "from-meta", "score": 0.5},
+    }
 
 
 def test_from_dict():
     assert Document.from_dict({}) == Document()
 
 
-def from_from_dict_with_parameters():
+def test_from_dict_with_parameters():
     blob_data = b"some bytes"
     assert Document.from_dict(
         {
@@ -231,6 +253,29 @@ def from_from_dict_with_parameters():
         embedding=[0.1, 0.2, 0.3],
         sparse_embedding=SparseEmbedding(indices=[0, 2, 4], values=[0.1, 0.2, 0.3]),
     )
+
+
+@pytest.mark.parametrize(
+    "data",
+    [
+        {
+            "content": "test text",
+            "blob": {"data": list(b"some bytes"), "mime_type": "text/markdown"},
+            "score": 0.812,
+            "embedding": [0.1, 0.2, 0.3],
+            "sparse_embedding": {"indices": [0, 2, 4], "values": [0.1, 0.2, 0.3]},
+            "date": "10-10-2023",
+            "type": "article",
+        },
+        {"content": "test text", "meta": {"date": "10-10-2023", "type": "article"}, "score": 0.812},
+    ],
+)
+def test_from_dict_does_not_mutate_input(data):
+    original_data = deepcopy(data)
+
+    Document.from_dict(data)
+
+    assert data == original_data
 
 
 def test_from_dict_with_legacy_fields():
@@ -265,7 +310,7 @@ def test_from_dict_with_legacy_field_and_flat_meta():
     ) == Document(
         content="test text",
         content_type="text",  # type: ignore
-        id_hash_keys=["content"],  # type: ignore
+        id_hash_keys=["content"],
         score=0.812,
         embedding=[0.1, 0.2, 0.3],
         meta={"date": "10-10-2023", "type": "article"},
@@ -294,19 +339,38 @@ def test_from_dict_with_flat_meta():
     )
 
 
+@pytest.mark.parametrize(
+    "meta",
+    [
+        {"meta": "value"},
+        {"meta": {"nested": "value"}, "author": "Alice"},
+        {"id": "meta-id", "content": "meta-content", "source": "web"},
+        {"dataframe": "not-a-dataframe"},
+    ],
+)
+def test_flatten_roundtrip_with_colliding_meta_keys(meta):
+    doc = Document(content="hello", meta=meta)
+
+    restored = Document.from_dict(doc.to_dict())
+    assert restored == doc
+    assert restored.meta == meta
+
+
 def test_from_dict_with_flat_and_non_flat_meta():
-    with pytest.raises(ValueError, match="Pass either the 'meta' parameter or flattened metadata keys"):
-        Document.from_dict(
-            {
-                "content": "test text",
-                "blob": {"data": list(b"some bytes"), "mime_type": "text/markdown"},
-                "score": 0.812,
-                "meta": {"test": 10},
-                "embedding": [0.1, 0.2, 0.3],
-                "date": "10-10-2023",
-                "type": "article",
-            }
-        )
+    doc = Document.from_dict(
+        {
+            "content": "test text",
+            "blob": {"data": list(b"some bytes"), "mime_type": "text/markdown"},
+            "score": 0.812,
+            "meta": {"test": 10},
+            "embedding": [0.1, 0.2, 0.3],
+            "date": "10-10-2023",
+            "type": "article",
+        }
+    )
+    assert doc.meta == {"test": 10, "date": "10-10-2023", "type": "article"}
+    assert doc.content == "test text"
+    assert doc.score == 0.812
 
 
 def test_from_dict_with_dataframe():

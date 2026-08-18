@@ -17,29 +17,26 @@ repos:
         args: [--markdown-linebreak-ext=md, --markdown-linebreak-ext=mdx]
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.15.2
+    rev: v0.16.0
     hooks:
     - id: ruff-check
       args: [ --fix ]
     - id: ruff-format
+      types_or: [python, pyi, jupyter, mdx]
 
   - repo: local
     hooks:
-      - id: ruff-format-docs
-        name: ruff-format-docs
+      - id: release-note-backticks
+        name: release-note-backticks
         language: python
-        entry: python scripts/ruff_format_docs.py --line-length=88
-        files: ^docs-website/.*\.mdx$
+        entry: python scripts/release_note_backticks.py
+        files: ^releasenotes/notes/.*\.yaml$
         types: [text]
-        additional_dependencies:
-          - ruff
-          - add-trailing-comma
 
   - repo: https://github.com/codespell-project/codespell
     rev: v2.4.1
     hooks:
       - id: codespell
-        exclude: "haystack/data/abbreviations"
         args: ["--toml", "pyproject.toml"]
         additional_dependencies:
           - tomli

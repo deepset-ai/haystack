@@ -1,0 +1,10 @@
+fixes:
+  - |
+    ``HierarchicalDocumentSplitter`` now validates its ``block_sizes`` and
+    ``split_overlap`` parameters at construction time. Previously, an empty
+    ``block_sizes`` set silently produced no splits, and a ``split_overlap``
+    too large relative to the smallest block size raised a confusing error
+    referencing ``split_length``, a parameter that doesn't exist on this
+    component. ``HierarchicalDocumentSplitter`` now raises a clear
+    ``ValueError`` in both cases, using its own parameter names and
+    identifying the offending value.

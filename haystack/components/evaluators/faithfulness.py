@@ -2,15 +2,18 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import math
 from typing import Any
 
 from numpy import mean as np_mean
 
-from haystack import component, default_from_dict, default_to_dict
+from haystack import component, default_from_dict, default_to_dict, logging
 from haystack.components.evaluators.llm_evaluator import LLMEvaluator
 from haystack.components.generators.chat.types import ChatGenerator
 from haystack.core.serialization import component_to_dict
 from haystack.utils import deserialize_chatgenerator_inplace
+
+logger = logging.getLogger(__name__)
 
 # Default examples to include in the prompt if the user does not provide any examples
 _DEFAULT_EXAMPLES = [
@@ -80,7 +83,8 @@ class FaithfulnessEvaluator(LLMEvaluator):
     # 0.5
     print(result["results"])
     # [{'statements': ['Python is a high-level general-purpose programming language.',
-    'Python was created by George Lucas.'], 'statement_scores': [1, 0], 'score': 0.5}]
+    # 'Python was created by George Lucas.'], 'statement_scores': [1, 0], 'score': 0.5,
+    # 'status': 'evaluated'}]
     ```
     """
 
@@ -146,8 +150,10 @@ class FaithfulnessEvaluator(LLMEvaluator):
             progress_bar=progress_bar,
         )
 
-    @component.output_types(individual_scores=list[int], score=float, results=list[dict[str, Any]])
-    def run(self, **inputs) -> dict[str, Any]:
+    @component.output_types(
+        individual_scores=list[float], score=float, results=list[dict[str, Any]], meta=list[dict[str, Any]] | None
+    )
+    def run(self, **inputs: Any) -> dict[str, Any]:
         """
         Run the LLM evaluator.
 
@@ -161,23 +167,74 @@ class FaithfulnessEvaluator(LLMEvaluator):
             A dictionary with the following outputs:
                 - `score`: Mean faithfulness score over all the provided input answers.
                 - `individual_scores`: A list of faithfulness scores for each input answer.
-                - `results`: A list of dictionaries with `statements` and `statement_scores` for each input answer.
+                - `results`: A list of dictionaries with `statements`, `statement_scores`, `score`, and `status` for
+                  each input answer. `status` is `evaluated` for valid results and `error` for failed evaluations.
         """
         result = super(FaithfulnessEvaluator, self).run(**inputs)  # noqa: UP008
+        # Post-process the raw results to calculate relevance metrics and scores
+        return self._postprocess_results(result)
+
+    @component.output_types(
+        individual_scores=list[float], score=float, results=list[dict[str, Any]], meta=list[dict[str, Any]] | None
+    )
+    async def run_async(self, **inputs: Any) -> dict[str, Any]:
+        """
+        Run the LLM evaluator asynchronously.
+
+        :param questions:
+            A list of questions.
+        :param contexts:
+            A nested list of contexts that correspond to the questions.
+        :param predicted_answers:
+            A list of predicted answers.
+        :returns:
+            A dictionary with the following outputs:
+                - `score`: Mean faithfulness score over all the provided input answers.
+                - `individual_scores`: A list of faithfulness scores for each input answer.
+                - `results`: A list of dictionaries with `statements`, `statement_scores`, `score`, and `status` for
+                  each input answer. `status` is `evaluated` for valid results and `error` for failed evaluations.
+        """
+        result = await super(FaithfulnessEvaluator, self).run_async(**inputs)  # noqa: UP008
+        # Post-process the raw results to calculate relevance metrics and scores
+        return self._postprocess_results(result)
+
+    def _postprocess_results(self, result: dict[str, Any]) -> dict[str, Any]:
+        """
+        Post-processes raw LLM evaluator outputs to compute faithfulness scores.
+
+        Calculates statement-level score averages, computes the overall mean faithfulness
+        score across successful queries, and updates the result payload.
+
+        :param result:
+            The raw evaluation dictionary from the base LLM evaluator.
+        :returns:
+            The updated dictionary containing final scores and tracking metrics.
+        """
 
         # calculate average statement faithfulness score per query
         for idx, res in enumerate(result["results"]):
             if res is None:
-                result["results"][idx] = {"statements": [], "statement_scores": [], "score": float("nan")}
+                result["results"][idx] = {
+                    "statements": [],
+                    "statement_scores": [],
+                    "score": float("nan"),
+                    "status": "error",
+                }
                 continue
+            res["status"] = "evaluated"
             if not res["statements"]:
                 res["score"] = 0
             else:
                 res["score"] = np_mean(res["statement_scores"])
 
         # calculate average answer faithfulness score over all queries
-        result["score"] = np_mean([res["score"] for res in result["results"]])
-        result["individual_scores"] = [res["score"] for res in result["results"]]
+        scores = [res["score"] for res in result["results"]]
+        valid_scores = [s for s in scores if not math.isnan(s)]
+        skipped = len(scores) - len(valid_scores)
+        if skipped:
+            logger.warning("{skipped} query(s) failed and were excluded from the score.", skipped=skipped)
+        result["score"] = np_mean(valid_scores) if valid_scores else float("nan")
+        result["individual_scores"] = scores
 
         return result
 

@@ -4,16 +4,22 @@ on:
   workflow_dispatch:  # this is useful to re-generate the release page without a new tag being pushed
   push:
     tags:
-      - "v2.[0-9]+.[0-9]+*"
+      - "v[0-9]+.[0-9]+.[0-9]+*"
       # Ignore release versions tagged with -rc0 suffix
-      - "!v2.[0-9]+.[0-9]-rc0"
+      - "!v[0-9]+.[0-9]+.[0-9]-rc0"
+
+permissions:
+  contents: read
+
 jobs:
   generate-notes:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write  # ncipollo/release-action creates the GitHub release
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-tags: true
           fetch-depth: 0  # slow but needed by reno
@@ -27,15 +33,17 @@ jobs:
       - name: Install reno
         run: |
           python -m pip install --upgrade pip
-          pip install "reno<5"
+          pip install "reno<5" --uploaded-prior-to=P1D
 
       # Remove next version rc0 tag in the CI environment to prevent reno from assigning notes to future releases.
       # This ensures release notes are correctly aggregated for the current version.
       # This is a workaround. Can be removed if the release process is fully aligned with reno.
       - name: Delete next version rc0 tag in the CI environment
+        env:
+          CURRENT_RELEASE: ${{ steps.version.outputs.current_release }}
         run: |
           # Parse version X.Y.Z and increment Y for next minor version
-          IFS='.' read -r MAJOR MINOR _ <<< "${{ steps.version.outputs.current_release }}"
+          IFS='.' read -r MAJOR MINOR _ <<< "$CURRENT_RELEASE"
           NEXT_MINOR=$((MINOR + 1))
           NEXT_TAG="v${MAJOR}.${NEXT_MINOR}.0-rc0"
 
@@ -54,7 +62,7 @@ jobs:
           reno report --no-show-source --ignore-cache --earliest-version "$EARLIEST_VERSION" -o relnotes.rst
 
       - name: Convert to Markdown
-        uses: docker://pandoc/core:3.8
+        uses: docker://pandoc/core:3.8@sha256:c7127705b9d84c1b4acbbe411a86e3a6d67ac57870654dc378b6fe636ab747df
         with:
           args: "--from rst --to gfm --syntax-highlighting=none --wrap=none relnotes.rst -o relnotes.md"
 
@@ -91,7 +99,7 @@ jobs:
         run: |
           cat enhanced_relnotes.md
 
-      - uses: ncipollo/release-action@v1
+      - uses: ncipollo/release-action@339a81892b84b4eeb0f6e744e4574d79d0d9b8dd # v1.21.0
         with:
           bodyFile: "enhanced_relnotes.md"
           prerelease: ${{ steps.version.outputs.current_pre_release != '' }}

@@ -38,7 +38,7 @@ class RecursiveDocumentSplitter:
     from haystack import Document
     from haystack.components.preprocessors import RecursiveDocumentSplitter
 
-    chunker = RecursiveDocumentSplitter(split_length=260, split_overlap=0, separators=["\\n\\n", "\\n", ".", " "])
+    chunker = RecursiveDocumentSplitter(split_length=15, split_overlap=0, separators=["\\n\\n", "\\n", ".", " "])
     text = ('''Artificial intelligence (AI) - Introduction
 
     AI, in its broadest sense, is intelligence exhibited by machines, particularly computer systems.
@@ -46,12 +46,13 @@ class RecursiveDocumentSplitter:
     doc = Document(content=text)
     doc_chunks = chunker.run([doc])
     print(doc_chunks["documents"])
-    >[
-    >Document(id=..., content: 'Artificial intelligence (AI) - Introduction\\n\\n', meta: {'original_id': '...', 'split_id': 0, 'split_idx_start': 0, '_split_overlap': []})
-    >Document(id=..., content: 'AI, in its broadest sense, is intelligence exhibited by machines, particularly computer systems.\\n', meta: {'original_id': '...', 'split_id': 1, 'split_idx_start': 45, '_split_overlap': []})
-    >Document(id=..., content: 'AI technology is widely used throughout industry, government, and science.', meta: {'original_id': '...', 'split_id': 2, 'split_idx_start': 142, '_split_overlap': []})
-    >Document(id=..., content: ' Some high-profile applications include advanced web search engines; recommendation systems; interac...', meta: {'original_id': '...', 'split_id': 3, 'split_idx_start': 216, '_split_overlap': []})
-    >]
+    # [
+    # Document(id=..., content: 'Artificial intelligence (AI) - Introduction\\n\\n', meta: {'source_id': '...', 'parent_id': '...', 'split_id': 0, 'split_idx_start': 0, '_split_overlap': None, 'page_number': 1})
+    # Document(id=..., content: 'AI, in its broadest sense, is intelligence exhibited by machines, particularly computer systems.\\n', meta: {'source_id': '...', 'parent_id': '...', 'split_id': 1, 'split_idx_start': 45, '_split_overlap': None, 'page_number': 1})
+    # Document(id=..., content: 'AI technology is widely used throughout industry, government, and science.', meta: {'source_id': '...', 'parent_id': '...', 'split_id': 2, 'split_idx_start': 142, '_split_overlap': None, 'page_number': 1})
+    # Document(id=..., content: ' Some high-profile applications include advanced web search engines; recommendation systems; interac...', meta: {'source_id': '...', 'parent_id': '...', 'split_id': 3, 'split_idx_start': 216, '_split_overlap': None, 'page_number': 1})
+    # Document(id=..., content: 'vehicles; generative and creative tools; and superhuman play and analysis in strategy games.', meta: {'source_id': '...', 'parent_id': '...', 'split_id': 4, 'split_idx_start': 350, '_split_overlap': None, 'page_number': 1})
+    # ]
     ```
     """  # noqa: E501
 
@@ -99,6 +100,8 @@ class RecursiveDocumentSplitter:
         """
         Warm up the sentence tokenizer and tiktoken tokenizer if needed.
         """
+        if self._is_warmed_up:
+            return
         if "sentence" in self.separators:
             self.nltk_tokenizer = self._get_custom_sentence_tokenizer(self.sentence_splitter_params)
         if self.split_units == "token":
@@ -353,7 +356,10 @@ class RecursiveDocumentSplitter:
                 return chunks
 
         # if no separator worked, fall back to word- or character-level chunking
-        return self._fall_back_to_fixed_chunking(text, self.split_units)
+        chunks = self._fall_back_to_fixed_chunking(text, self.split_units)
+        if self.split_overlap > 0:
+            chunks = self._apply_overlap(chunks)
+        return chunks
 
     def _fall_back_to_fixed_chunking(self, text: str, split_units: Literal["word", "char", "token"]) -> list[str]:
         """
@@ -375,7 +381,9 @@ class RecursiveDocumentSplitter:
             current_length = 0
 
             for word in words:
-                if word != " ":
+                # re.findall above also yields multi-character whitespace tokens ("  ", "\t").
+                # Only count real words toward the length; any whitespace run is a separator.
+                if word.strip():
                     current_chunk.append(word)
                     current_length += 1
                     if current_length == self.split_length and current_chunk:
@@ -385,8 +393,15 @@ class RecursiveDocumentSplitter:
                 else:
                     current_chunk.append(word)
 
-            if current_chunk:
+            if current_length > 0:
                 chunks.append("".join(current_chunk))
+            elif current_chunk:
+                # Only whitespace is left over (e.g. trailing whitespace): attach it to the
+                # previous chunk instead of emitting a whitespace-only chunk on its own.
+                if chunks:
+                    chunks[-1] += "".join(current_chunk)
+                else:
+                    chunks.append("".join(current_chunk))
         elif split_units == "char":
             for i in range(0, self._chunk_length(text), self.split_length):
                 chunks.append(text[i : i + self.split_length])
@@ -400,17 +415,14 @@ class RecursiveDocumentSplitter:
 
     def _add_overlap_info(self, curr_pos: int, new_doc: Document, new_docs: list[Document]) -> None:
         prev_doc = new_docs[-1]
-        overlap_length = self._chunk_length(prev_doc.content) - (curr_pos - prev_doc.meta["split_idx_start"])  # type: ignore
+        # curr_pos and split_idx_start are character offsets, so measure the
+        # overlap and range in characters too (not via _chunk_length, which returns a word/token count).
+        prev_doc_length = len(prev_doc.content)  # type: ignore
+        overlap_length = prev_doc_length - (curr_pos - prev_doc.meta["split_idx_start"])
         if overlap_length > 0:
             prev_doc.meta["_split_overlap"].append({"doc_id": new_doc.id, "range": (0, overlap_length)})
             new_doc.meta["_split_overlap"].append(
-                {
-                    "doc_id": prev_doc.id,
-                    "range": (
-                        self._chunk_length(prev_doc.content) - overlap_length,  # type: ignore
-                        self._chunk_length(prev_doc.content),  # type: ignore
-                    ),
-                }
+                {"doc_id": prev_doc.id, "range": (prev_doc_length - overlap_length, prev_doc_length)}
             )
 
     def _run_one(self, doc: Document) -> list[Document]:
@@ -423,6 +435,7 @@ class RecursiveDocumentSplitter:
 
         for split_nr, chunk in enumerate(chunks):
             meta = deepcopy(doc.meta)
+            meta["source_id"] = doc.id
             meta["parent_id"] = doc.id
             meta["split_id"] = split_nr
             meta["split_idx_start"] = current_position
@@ -447,7 +460,15 @@ class RecursiveDocumentSplitter:
 
             # keep the new chunk doc and update the current position
             new_docs.append(new_doc)
-            current_position += len(chunk) - (self.split_overlap if split_nr < len(chunks) - 1 else 0)
+            # Advance current_position by chunk length minus overlap.
+            # split_overlap is in split_units, not chars, so get the actual
+            # overlap string from _get_overlap() and use its char length.
+            if self.split_overlap > 0 and split_nr < len(chunks) - 1:
+                overlap_str, _ = self._get_overlap([doc.content for doc in new_docs])  # type: ignore[misc]
+                overlap_char_len = len(overlap_str)
+            else:
+                overlap_char_len = 0
+            current_position += len(chunk) - overlap_char_len
 
         return new_docs
 

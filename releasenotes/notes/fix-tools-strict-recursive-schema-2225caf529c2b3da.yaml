@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Fixed ``tools_strict=True`` in ``OpenAIChatGenerator`` to recursively apply
+    ``additionalProperties: false`` and ``required`` to all nested objects in tool
+    parameter schemas. Previously only the top-level object was transformed, causing
+    OpenAI's strict mode to reject tools with nested parameters.

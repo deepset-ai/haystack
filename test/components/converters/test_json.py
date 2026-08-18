@@ -234,7 +234,7 @@ def test_run_with_bad_filter(tmpdir, caplog):
     assert len(records) == 1
     assert (
         records[0].msg
-        == f'Failed to extract text from {test_file}. Skipping it. Error: Cannot index array with string "motivation"'
+        == f'Failed to extract text from {test_file}. Skipping it. Error: Cannot index array with string ("motivation")'
     )
     assert result == {"documents": []}
 
@@ -255,6 +255,68 @@ def test_run_with_bad_encoding(tmpdir, caplog):
     assert records[0].msg.startswith(
         f"Failed to extract text from {test_file}. Skipping it. Error: 'utf-8' codec can't decode byte"
     )
+    assert result == {"documents": []}
+
+
+def test_run_with_malformed_json_and_content_key(tmpdir, caplog):
+    test_file = Path(tmpdir / "test_file.json")
+    test_file.write_text("This is not valid JSON.", "utf-8")
+
+    sources = [test_file]
+    converter = JSONConverter(content_key="motivation")
+
+    caplog.clear()
+    with caplog.at_level(logging.WARNING):
+        result = converter.run(sources=sources)
+
+    records = caplog.records
+    assert len(records) == 1
+    assert records[0].msg.startswith(f"Failed to extract text from {test_file}. Skipping it. Error:")
+    assert result == {"documents": []}
+
+
+def test_run_with_bad_filter_and_bytestream_without_file_path(caplog):
+    """A bare ByteStream source (no 'file_path' in its meta) must not raise a KeyError."""
+    source = ByteStream(data=json.dumps(test_data[0]).encode("utf-8"))
+    converter = JSONConverter(".laureates | .motivation")
+
+    caplog.clear()
+    with caplog.at_level(logging.WARNING):
+        result = converter.run(sources=[source])
+
+    records = caplog.records
+    assert len(records) == 1
+    assert records[0].msg.startswith("Failed to extract text from unknown. Skipping it. Error:")
+    assert result == {"documents": []}
+
+
+def test_run_with_bad_encoding_and_bytestream_without_file_path(caplog):
+    """A bare ByteStream source (no 'file_path' in its meta) must not raise a KeyError."""
+    source = ByteStream(data=json.dumps(test_data[0]).encode("utf-16"))
+    converter = JSONConverter(".laureates")
+
+    caplog.clear()
+    with caplog.at_level(logging.WARNING):
+        result = converter.run(sources=[source])
+
+    records = caplog.records
+    assert len(records) == 1
+    assert records[0].msg.startswith("Failed to extract text from unknown. Skipping it. Error:")
+    assert result == {"documents": []}
+
+
+def test_run_with_malformed_json_and_bytestream_without_file_path(caplog):
+    """A bare ByteStream source (no 'file_path' in its meta) must not raise a KeyError."""
+    source = ByteStream(data=b"This is not valid JSON.")
+    converter = JSONConverter(content_key="motivation")
+
+    caplog.clear()
+    with caplog.at_level(logging.WARNING):
+        result = converter.run(sources=[source])
+
+    records = caplog.records
+    assert len(records) == 1
+    assert records[0].msg.startswith("Failed to extract text from unknown. Skipping it. Error:")
     assert result == {"documents": []}
 
 

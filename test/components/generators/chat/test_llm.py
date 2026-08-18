@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from typing import Any
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -10,13 +11,20 @@ from haystack import Document, Pipeline, component
 from haystack.components.agents.agent import Agent
 from haystack.components.generators.chat import LLM
 from haystack.components.generators.chat.openai import OpenAIChatGenerator
+from haystack.components.joiners.branch import BranchJoiner
 from haystack.components.retrievers.in_memory import InMemoryBM25Retriever
-from haystack.core.component.types import OutputSocket
+from haystack.components.routers.conditional_router import ConditionalRouter
+from haystack.core.component.types import InputSocket, OutputSocket
 from haystack.dataclasses import ChatMessage
 from haystack.dataclasses.chat_message import ChatRole
+from haystack.dataclasses.streaming_chunk import StreamingChunk
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.tools import Tool
 from haystack.tools.toolset import Toolset
+
+
+def sync_streaming_callback(chunk: StreamingChunk) -> None:
+    pass
 
 
 @component
@@ -31,12 +39,14 @@ class MockChatGeneratorWithTools:
         return cls()
 
     @component.output_types(replies=list[ChatMessage])
-    def run(self, messages: list[ChatMessage], tools: list[Tool] | Toolset | None = None, **kwargs) -> dict[str, Any]:
+    def run(
+        self, messages: list[ChatMessage], tools: list[Tool] | Toolset | None = None, **kwargs: Any
+    ) -> dict[str, Any]:
         return {"replies": [ChatMessage.from_assistant("Reply with tools support")]}
 
     @component.output_types(replies=list[ChatMessage])
     async def run_async(
-        self, messages: list[ChatMessage], tools: list[Tool] | Toolset | None = None, **kwargs
+        self, messages: list[ChatMessage], tools: list[Tool] | Toolset | None = None, **kwargs: Any
     ) -> dict[str, Any]:
         return {"replies": [ChatMessage.from_assistant("Async reply with tools support")]}
 
@@ -53,47 +63,92 @@ class MockChatGenerator:
         return cls()
 
     @component.output_types(replies=list[ChatMessage])
-    def run(self, messages: list[ChatMessage], **kwargs) -> dict[str, Any]:
+    def run(self, messages: list[ChatMessage], **kwargs: Any) -> dict[str, Any]:
         return {"replies": [ChatMessage.from_assistant("Sync reply")]}
 
     @component.output_types(replies=list[ChatMessage])
-    async def run_async(self, messages: list[ChatMessage], **kwargs) -> dict[str, Any]:
+    async def run_async(self, messages: list[ChatMessage], **kwargs: Any) -> dict[str, Any]:
         return {"replies": [ChatMessage.from_assistant("Async reply")]}
 
 
 class TestLLM:
     class TestInit:
-        def test_is_subclass_of_agent(self):
+        USER_PROMPT = '{% message role="user" %}{{ query }}{% endmessage %}'
+
+        def test_is_subclass_of_agent(self) -> None:
+
             assert issubclass(LLM, Agent)
 
-        def test_defaults(self):
-            llm = LLM(chat_generator=MockChatGenerator())
+        def test_defaults(self) -> None:
+
+            llm = LLM(chat_generator=MockChatGenerator(), user_prompt=self.USER_PROMPT)
             assert llm.chat_generator is not None
             assert llm.tools == []
             assert llm.system_prompt is None
-            assert llm.user_prompt is None
+            assert llm.user_prompt == self.USER_PROMPT
+            assert llm.required_variables == "*"
             assert llm.streaming_callback is None
-            assert llm._tool_invoker is None
 
-        def test_output_sockets(self):
-            llm = LLM(chat_generator=MockChatGenerator())
-            assert llm.__haystack_output__._sockets_dict == {
+        def test_output_sockets(self) -> None:
+
+            llm = LLM(chat_generator=MockChatGenerator(), user_prompt=self.USER_PROMPT)
+            assert llm.__haystack_output__._sockets_dict == {  # type: ignore[attr-defined]
                 "messages": OutputSocket(name="messages", type=list[ChatMessage], receivers=[]),
                 "last_message": OutputSocket(name="last_message", type=ChatMessage, receivers=[]),
+                "token_usage": OutputSocket(name="token_usage", type=dict[str, Any], receivers=[]),
             }
 
-        def test_detects_no_tools_support(self):
-            llm = LLM(chat_generator=MockChatGenerator())
+        def test_detects_no_tools_support(self) -> None:
+
+            llm = LLM(chat_generator=MockChatGenerator(), user_prompt=self.USER_PROMPT)
             assert llm._chat_generator_supports_tools is False
 
-        def test_detects_tools_support(self):
-            llm = LLM(chat_generator=MockChatGeneratorWithTools())
+        def test_detects_tools_support(self) -> None:
+
+            llm = LLM(chat_generator=MockChatGeneratorWithTools(), user_prompt=self.USER_PROMPT)
             assert llm._chat_generator_supports_tools is True
 
+        def test_messages_required_when_no_prompt_variables(self) -> None:
+
+            llm = LLM(
+                chat_generator=MockChatGenerator(), user_prompt='{% message role="user" %}Hello world{% endmessage %}'
+            )
+            messages_socket = llm.__haystack_input__._sockets_dict["messages"]  # type: ignore[attr-defined]
+            assert isinstance(messages_socket, InputSocket)
+            assert messages_socket.is_mandatory
+
+        def test_messages_optional_when_prompt_has_variables(self) -> None:
+
+            llm = LLM(chat_generator=MockChatGenerator(), user_prompt=self.USER_PROMPT)
+            messages_socket = llm.__haystack_input__._sockets_dict["messages"]  # type: ignore[attr-defined]
+            assert isinstance(messages_socket, InputSocket)
+            assert not messages_socket.is_mandatory
+
+        def test_messages_optional_when_plain_prompt_has_variables(self) -> None:
+
+            llm = LLM(chat_generator=MockChatGenerator(), user_prompt="Question: {{ query }}")
+            messages_socket = llm.__haystack_input__._sockets_dict["messages"]  # type: ignore[attr-defined]
+            assert isinstance(messages_socket, InputSocket)
+            assert not messages_socket.is_mandatory
+            assert "query" in llm.__haystack_input__._sockets_dict  # type: ignore[attr-defined]
+
+        def test_runtime_prompt_overrides_not_component_inputs(self) -> None:
+
+            llm = LLM(chat_generator=MockChatGenerator(), user_prompt=self.USER_PROMPT)
+            assert "system_prompt" not in llm.__haystack_input__._sockets_dict  # type: ignore[attr-defined]
+            assert "user_prompt" not in llm.__haystack_input__._sockets_dict  # type: ignore[attr-defined]
+
+        def test_raises_if_required_variables_empty(self) -> None:
+
+            with pytest.raises(ValueError, match="required_variables must not be empty"):
+                LLM(chat_generator=MockChatGenerator(), user_prompt=self.USER_PROMPT, required_variables=[])
+
     class TestSerialization:
-        def test_to_dict_excludes_agent_only_params(self, monkeypatch):
+        def test_to_dict_excludes_agent_only_params(self, monkeypatch: pytest.MonkeyPatch) -> None:
+
             monkeypatch.setenv("OPENAI_API_KEY", "fake-key")
-            llm = LLM(chat_generator=OpenAIChatGenerator(), system_prompt="You are helpful.")
+            user_prompt = '{% message role="user" %}{{ query }}{% endmessage %}'
+            llm = LLM(chat_generator=OpenAIChatGenerator(), system_prompt="You are helpful.", user_prompt=user_prompt)
 
             serialized = llm.to_dict()
 
@@ -106,7 +161,8 @@ class TestLLM:
                 "exit_conditions",
                 "max_agent_steps",
                 "raise_on_tool_invocation_failure",
-                "tool_invoker_kwargs",
+                "tool_concurrency_limit",
+                "tool_streaming_callback_passthrough",
                 "confirmation_strategies",
                 "state_schema",
             ]
@@ -115,7 +171,8 @@ class TestLLM:
                     f"Agent-only param '{param}' should not be serialized"
                 )
 
-        def test_to_dict_includes_llm_params(self, monkeypatch):
+        def test_to_dict_includes_llm_params(self, monkeypatch: pytest.MonkeyPatch) -> None:
+
             monkeypatch.setenv("OPENAI_API_KEY", "fake-key")
             llm = LLM(
                 chat_generator=OpenAIChatGenerator(),
@@ -131,7 +188,8 @@ class TestLLM:
             assert serialized["init_parameters"]["required_variables"] == ["query"]
             assert serialized["init_parameters"]["streaming_callback"] is None
 
-        def test_from_dict(self, monkeypatch):
+        def test_from_dict(self, monkeypatch: pytest.MonkeyPatch) -> None:
+
             monkeypatch.setenv("OPENAI_API_KEY", "fake-key")
             data = {
                 "type": "haystack.components.generators.chat.llm.LLM",
@@ -153,8 +211,8 @@ class TestLLM:
                         },
                     },
                     "system_prompt": "You are helpful.",
-                    "user_prompt": None,
-                    "required_variables": None,
+                    "user_prompt": '{% message role="user" %}{{ query }}{% endmessage %}',
+                    "required_variables": "*",
                     "streaming_callback": None,
                 },
             }
@@ -166,9 +224,13 @@ class TestLLM:
             assert llm.system_prompt == "You are helpful."
             assert llm.tools == []
 
-        def test_roundtrip(self, monkeypatch):
+        def test_roundtrip(self, monkeypatch: pytest.MonkeyPatch) -> None:
+
             monkeypatch.setenv("OPENAI_API_KEY", "fake-key")
-            original = LLM(chat_generator=OpenAIChatGenerator(), system_prompt="You are a poet.")
+            user_prompt = '{% message role="user" %}{{ query }}{% endmessage %}'
+            original = LLM(
+                chat_generator=OpenAIChatGenerator(), system_prompt="You are a poet.", user_prompt=user_prompt
+            )
 
             restored = LLM.from_dict(original.to_dict())
 
@@ -176,6 +238,42 @@ class TestLLM:
             assert isinstance(restored.chat_generator, OpenAIChatGenerator)
             assert restored.system_prompt == original.system_prompt
             assert restored.tools == []
+
+    class TestRun:
+        USER_PROMPT = '{% message role="user" %}{{ query }}{% endmessage %}'
+
+        def test_run_accepts_messages_via_kwargs(self) -> None:
+
+            llm = LLM(chat_generator=MockChatGenerator(), user_prompt=self.USER_PROMPT)
+            prior_message = ChatMessage.from_user("Some prior context")
+            result = llm.run(query="What is 2+2?", messages=[prior_message])
+            assert result["last_message"].text == "Sync reply"
+            assert prior_message in result["messages"]
+
+        def test_run_without_messages(self) -> None:
+
+            llm = LLM(chat_generator=MockChatGenerator(), user_prompt=self.USER_PROMPT)
+            result = llm.run(query="What is 2+2?")
+            assert result["last_message"].text == "Sync reply"
+            user_messages = [m for m in result["messages"] if m.is_from(ChatRole.USER)]
+            assert any("What is 2+2?" in m.text for m in user_messages)
+
+        def test_run_with_plain_user_prompt(self) -> None:
+
+            llm = LLM(chat_generator=MockChatGenerator(), user_prompt="Question: {{ query }}")
+            result = llm.run(query="What is 2+2?")
+            assert result["last_message"].text == "Sync reply"
+            user_messages = [m for m in result["messages"] if m.is_from(ChatRole.USER)]
+            assert any("Question: What is 2+2?" in m.text for m in user_messages)
+
+        @pytest.mark.asyncio
+        async def test_run_async_accepts_messages_via_kwargs(self) -> None:
+
+            llm = LLM(chat_generator=MockChatGenerator(), user_prompt=self.USER_PROMPT)
+            prior_message = ChatMessage.from_user("Some prior context")
+            result = await llm.run_async(query="What is 2+2?", messages=[prior_message])
+            assert result["last_message"].text == "Async reply"
+            assert prior_message in result["messages"]
 
     class TestPipelineIntegration:
         @pytest.fixture()
@@ -190,7 +288,8 @@ class TestLLM:
             )
             return store
 
-        def test_rag_pipeline(self, document_store_with_docs):
+        def test_rag_pipeline(self, document_store_with_docs: InMemoryDocumentStore) -> None:
+
             user_prompt = (
                 '{% message role="user" %}'
                 "Use the following documents to answer the question.\n"
@@ -232,3 +331,60 @@ class TestLLM:
 
             assert llm_output["last_message"].is_from(ChatRole.ASSISTANT)
             assert llm_output["last_message"].text == "Sync reply"
+
+
+class TestLLMNotTriggeredByInjectedInput:
+    """
+    Regression guard for the optional-messages scheduling hazard described in
+    https://github.com/deepset-ai/haystack/issues/11109.
+
+    When `user_prompt` contains template variables, `messages` is optional on the LLM.
+    An optional input with `sender=None` (i.e., injected directly via `pipeline.run`)
+    would flip `has_user_input()` to True and incorrectly trigger the component even
+    when its required inputs (e.g. `query`) never arrive.
+    """
+
+    def test_llm_not_triggered_by_injected_streaming_callback(self) -> None:
+
+        @component
+        class Planner:
+            @component.output_types(messages=list[ChatMessage], last_role=str)
+            def run(self) -> dict:
+                return {"messages": [ChatMessage.from_user("hello")], "last_role": "assistant"}
+
+        chat_generator = MockChatGenerator()
+        llm = LLM(chat_generator=chat_generator)
+        chat_generator.run = MagicMock(return_value={"replies": [ChatMessage.from_assistant("x")]})  # type: ignore[method-assign]
+
+        router = ConditionalRouter(
+            routes=[
+                {
+                    "condition": "{{ last_role == 'tool' }}",
+                    "output": "{{ messages }}",
+                    "output_name": "processing",
+                    "output_type": list[ChatMessage],
+                },
+                {
+                    "condition": "{{ True }}",
+                    "output": "{{ messages }}",
+                    "output_name": "planning",
+                    "output_type": list[ChatMessage],
+                },
+            ],
+            unsafe=True,
+        )
+
+        pipeline = Pipeline()
+        pipeline.add_component("planner", Planner())
+        pipeline.add_component("router", router)
+        pipeline.add_component("branch_joiner", BranchJoiner(type_=list[ChatMessage]))
+        pipeline.add_component("llm", llm)
+        pipeline.connect("planner.messages", "router.messages")
+        pipeline.connect("planner.last_role", "router.last_role")
+        pipeline.connect("router.processing", "branch_joiner.value")
+        pipeline.connect("branch_joiner.value", "llm.messages")
+
+        result = pipeline.run(data={"llm": {"streaming_callback": sync_streaming_callback}})
+
+        assert "llm" not in result
+        chat_generator.run.assert_not_called()

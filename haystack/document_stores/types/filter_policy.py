@@ -21,7 +21,7 @@ class FilterPolicy(Enum):
     # Runtime filters are merged with init filters, with runtime filters overwriting init values.
     MERGE = "merge"
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.value
 
     @staticmethod

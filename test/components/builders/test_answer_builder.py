@@ -146,6 +146,16 @@ class TestAnswerBuilder:
         assert answers[0].documents[0].meta["referenced"] is True
         assert answers[0].documents[0].meta["source_index"] == 2
 
+    def test_run_returns_referenced_documents_in_source_order(self):
+        component = AnswerBuilder(reference_pattern="\\[(\\d+)\\]", return_only_referenced_documents=True)
+        output = component.run(
+            query="test query",
+            replies=["First [3], then [10], and finally [50]."],
+            documents=[Document(content=f"doc{i}") for i in range(1, 51)],
+        )
+        source_indices = [doc.meta["source_index"] for doc in output["answers"][0].documents]
+        assert source_indices == [3, 10, 50]
+
     def test_run_with_documents_with_reference_pattern_return_all_documents(self):
         component = AnswerBuilder(reference_pattern="\\[(\\d+)\\]", return_only_referenced_documents=False)
         output = component.run(
@@ -185,6 +195,38 @@ class TestAnswerBuilder:
         assert answers[0].query == "test query"
         assert len(answers[0].documents) == 0
         assert "Document index '3' referenced in Generator output is out of range." in caplog.text
+
+    def test_run_with_documents_with_zero_reference(self, caplog):
+        # References are 1-based, so [0] is out of range and must not silently
+        # resolve to the last document via a negative index.
+        component = AnswerBuilder(reference_pattern="\\[(\\d+)\\]")
+        with caplog.at_level(logging.WARNING):
+            output = component.run(
+                query="test query",
+                replies=["Answer: AnswerString[0]"],
+                meta=[{}],
+                documents=[Document(content="test doc 1"), Document(content="test doc 2")],
+            )
+        answers = output["answers"]
+        assert len(answers) == 1
+        assert len(answers[0].documents) == 0
+        assert "Document index '0' referenced in Generator output is out of range." in caplog.text
+
+    def test_run_with_zero_reference_in_expanded_range(self, caplog):
+        component = AnswerBuilder(reference_pattern="\\[([\\d\\s,-]+)\\]", expand_reference_ranges=True)
+        with caplog.at_level(logging.WARNING):
+            output = component.run(
+                query="test query",
+                replies=["Answer: AnswerString[0-1]"],
+                meta=[{}],
+                documents=[Document(content="test doc 1"), Document(content="test doc 2")],
+            )
+        answers = output["answers"]
+        assert len(answers) == 1
+        assert len(answers[0].documents) == 1
+        assert answers[0].documents[0].content == "test doc 1"
+        assert answers[0].documents[0].meta["referenced"] is True
+        assert "Document index '0' referenced in Generator output is out of range." in caplog.text
 
     def test_run_with_reference_pattern_set_at_runtime(self):
         component = AnswerBuilder(reference_pattern="unused pattern")
@@ -418,3 +460,64 @@ class TestAnswerBuilder:
         assert "all_messages" in answers[0].meta
         assert answers[0].meta["all_messages"] == replies
         assert len(answers[0].meta["all_messages"]) == 1
+
+    def test_run_does_not_mutate_input_documents_meta(self):
+        doc = Document(content="Paris is the capital of France.", meta={"source": "wiki"})
+        component = AnswerBuilder()
+        component.run(query="Capital of France?", replies=["Paris."], documents=[doc])
+        assert doc.meta == {"source": "wiki"}
+
+    def test_run_does_not_mutate_input_documents_meta_with_reference_pattern(self):
+        doc = Document(content="Paris is the capital of France.", meta={"source": "wiki"})
+        component = AnswerBuilder(reference_pattern=r"\[(\d+)\]", return_only_referenced_documents=False)
+        component.run(query="Capital?", replies=["Paris [1]."], documents=[doc])
+        assert doc.meta == {"source": "wiki"}
+
+    def test_run_does_not_mutate_document_with_empty_meta(self):
+        doc = Document(content="Paris is the capital of France.")
+        component = AnswerBuilder()
+        component.run(query="Capital of France?", replies=["Paris."], documents=[doc])
+        assert doc.meta == {}
+
+    def test_run_expands_reference_ranges_when_enabled(self):
+        docs = [Document(content=f"doc {i}") for i in range(1, 11)]
+        component = AnswerBuilder(
+            reference_pattern=r"\[(\d+)\]", expand_reference_ranges=True, return_only_referenced_documents=False
+        )
+        output = component.run(query="test query", replies=["Answer citing sources [6-10]."], documents=docs)
+        answer = output["answers"][0]
+        referenced_docs = [doc for doc in answer.documents if doc.meta["referenced"]]
+        assert [doc.meta["source_index"] for doc in referenced_docs] == [6, 7, 8, 9, 10]
+
+    def test_run_expands_comma_separated_reference_ranges(self):
+        docs = [Document(content=f"doc {i}") for i in range(1, 11)]
+        component = AnswerBuilder(
+            reference_pattern=r"\[(\d+)\]", expand_reference_ranges=True, return_only_referenced_documents=False
+        )
+        output = component.run(query="test query", replies=["Answer citing sources [1-3,7-9]."], documents=docs)
+        answer = output["answers"][0]
+        referenced_docs = [doc for doc in answer.documents if doc.meta["referenced"]]
+        assert [doc.meta["source_index"] for doc in referenced_docs] == [1, 2, 3, 7, 8, 9]
+
+    def test_run_ignores_invalid_reference_ranges(self):
+        docs = [Document(content=f"doc {i}") for i in range(1, 5)]
+        component = AnswerBuilder(
+            reference_pattern=r"\[(\d+)\]", expand_reference_ranges=True, return_only_referenced_documents=True
+        )
+        output = component.run(query="test query", replies=["Answer citing sources [3-1]."], documents=docs)
+        assert output["answers"][0].documents == []
+
+    def test_run_clamps_reference_range_to_number_of_documents(self):
+        docs = [Document(content=f"doc {i}") for i in range(1, 4)]
+        component = AnswerBuilder(
+            reference_pattern=r"\[(\d+)\]", expand_reference_ranges=True, return_only_referenced_documents=True
+        )
+        output = component.run(query="test query", replies=["Answer citing sources [1-100]."], documents=docs)
+        referenced_docs = output["answers"][0].documents
+        assert [doc.meta["source_index"] for doc in referenced_docs] == [1, 2, 3]
+
+    def test_run_does_not_expand_reference_ranges_by_default(self):
+        docs = [Document(content=f"doc {i}") for i in range(1, 11)]
+        component = AnswerBuilder(reference_pattern=r"\[(\d+)\]", return_only_referenced_documents=True)
+        output = component.run(query="test query", replies=["Answer citing sources [6-10]."], documents=docs)
+        assert output["answers"][0].documents == []

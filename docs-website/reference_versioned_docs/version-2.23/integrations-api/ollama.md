@@ -10,8 +10,9 @@ slug: "/integrations-ollama"
 
 ### OllamaDocumentEmbedder
 
-Computes the embeddings of a list of Documents and stores the obtained vectors in the embedding field of each
-Document. It uses embedding models compatible with the Ollama Library.
+Computes the embeddings of a list of Documents and stores the obtained vectors in each Document's embedding field.
+
+It uses embedding models compatible with the Ollama Library.
 
 Usage example:
 
@@ -41,8 +42,11 @@ __init__(
     meta_fields_to_embed: list[str] | None = None,
     embedding_separator: str = "\n",
     batch_size: int = 32,
-)
+    dimensions: int | None = None,
+) -> None
 ```
+
+Create a new OllamaDocumentEmbedder instance.
 
 **Parameters:**
 
@@ -65,6 +69,10 @@ __init__(
 - **meta_fields_to_embed** (<code>list\[str\] | None</code>) – List of metadata fields to embed along with the document text.
 - **embedding_separator** (<code>str</code>) – Separator used to concatenate the metadata fields to the document text.
 - **batch_size** (<code>int</code>) – Number of documents to process at once.
+- **dimensions** (<code>int | None</code>) – The desired number of dimensions in the embedding output. Only supported by models
+  that implement Matryoshka Representation Learning (MRL), such as nomic-embed-text-v1.5,
+  mxbai-embed-large, and qwen3-embedding. If None (default), the full vector is returned.
+  Requires ollama-python >= 0.6.2.
 
 #### run
 
@@ -116,8 +124,7 @@ Asynchronously run an Ollama Model to compute embeddings of the provided documen
 
 ### OllamaTextEmbedder
 
-Computes the embeddings of a list of Documents and stores the obtained vectors in the embedding field of
-each Document. It uses embedding models compatible with the Ollama Library.
+Computes the embeddings of a string using embedding models compatible with the Ollama Library.
 
 Usage example:
 
@@ -138,8 +145,11 @@ __init__(
     generation_kwargs: dict[str, Any] | None = None,
     timeout: int = 120,
     keep_alive: float | str | None = None,
-)
+    dimensions: int | None = None,
+) -> None
 ```
+
+Create a new OllamaTextEmbedder instance.
 
 **Parameters:**
 
@@ -156,6 +166,9 @@ __init__(
 - a number in seconds (such as 3600)
 - any negative number which will keep the model loaded in memory (e.g. -1 or "-1m")
 - '0' which will unload the model immediately after generating a response.
+- **dimensions** (<code>int | None</code>) – The desired number of dimensions in the embedding output. Only supported by models
+  that implement Matryoshka Representation Learning (MRL), such as nomic-embed-text-v1.5,
+  mxbai-embed-large, and qwen3-embedding. If None (default), the full vector is returned.
 
 #### run
 
@@ -236,8 +249,10 @@ __init__(
     tools: ToolsType | None = None,
     response_format: None | Literal["json"] | JsonSchemaValue | None = None,
     think: bool | Literal["low", "medium", "high"] = False,
-)
+) -> None
 ```
+
+Create a new OllamaChatGenerator instance.
 
 **Parameters:**
 
@@ -304,7 +319,7 @@ Deserializes the component from a dictionary.
 
 ```python
 run(
-    messages: list[ChatMessage],
+    messages: list[ChatMessage] | str,
     generation_kwargs: dict[str, Any] | None = None,
     tools: ToolsType | None = None,
     *,
@@ -316,7 +331,8 @@ Runs an Ollama Model on a given chat history.
 
 **Parameters:**
 
-- **messages** (<code>list\[ChatMessage\]</code>) – A list of ChatMessage instances representing the input messages.
+- **messages** (<code>list\[ChatMessage\] | str</code>) – A list of ChatMessage instances representing the input messages. If a string is provided, it is converted
+  to a list containing a ChatMessage with user role.
 - **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Per-call overrides for Ollama inference options.
   These are merged on top of the instance-level `generation_kwargs`.
   Optional arguments to pass to the Ollama generation endpoint, such as temperature, top_p, etc. See the
@@ -336,7 +352,7 @@ Runs an Ollama Model on a given chat history.
 
 ```python
 run_async(
-    messages: list[ChatMessage],
+    messages: list[ChatMessage] | str,
     generation_kwargs: dict[str, Any] | None = None,
     tools: ToolsType | None = None,
     *,
@@ -348,7 +364,8 @@ Async version of run. Runs an Ollama Model on a given chat history.
 
 **Parameters:**
 
-- **messages** (<code>list\[ChatMessage\]</code>) – A list of ChatMessage instances representing the input messages.
+- **messages** (<code>list\[ChatMessage\] | str</code>) – A list of ChatMessage instances representing the input messages. If a string is provided, it is converted
+  to a list containing a ChatMessage with user role.
 - **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Per-call overrides for Ollama inference options.
   These are merged on top of the instance-level `generation_kwargs`.
 - **tools** (<code>ToolsType | None</code>) – A list of Tool and/or Toolset objects, or a single Toolset for which the model can prepare calls.
@@ -395,8 +412,10 @@ __init__(
     timeout: int = 120,
     keep_alive: float | str | None = None,
     streaming_callback: Callable[[StreamingChunk], None] | None = None,
-)
+) -> None
 ```
+
+Create a new OllamaGenerator instance.
 
 **Parameters:**
 

@@ -81,7 +81,9 @@ __init__(
     progress_bar: bool = True,
     meta_fields_to_embed: list[str] | None = None,
     embedding_separator: str = "\n",
-    config: dict[str, Any] | None = None
+    config: dict[str, Any] | None = None,
+    timeout: float | None = None,
+    max_retries: int | None = None
 ) -> None
 ```
 
@@ -100,15 +102,22 @@ Creates an GoogleGenAIDocumentEmbedder component.
   Required when using Vertex AI with Application Default Credentials.
 - **model** (<code>str</code>) – The name of the model to use for calculating embeddings.
   The default model is `gemini-embedding-001`.
-- **prefix** (<code>str</code>) – A string to add at the beginning of each text.
+- **prefix** (<code>str</code>) – A string to add at the beginning of each text. It can be used to specify a task type for
+  `gemini-embedding-2`. For available task types, see
+  [Gemini documentation](https://ai.google.dev/gemini-api/docs/embeddings#task-types).
 - **suffix** (<code>str</code>) – A string to add at the end of each text.
 - **batch_size** (<code>int</code>) – Number of documents to embed at once.
 - **progress_bar** (<code>bool</code>) – If `True`, shows a progress bar when running.
 - **meta_fields_to_embed** (<code>list\[str\] | None</code>) – List of metadata fields to embed along with the document text.
 - **embedding_separator** (<code>str</code>) – Separator used to concatenate the metadata fields to the document text.
-- **config** (<code>dict\[str, Any\] | None</code>) – A dictionary of keyword arguments to configure embedding content configuration `types.EmbedContentConfig`.
-  If not specified, it defaults to `{"task_type": "SEMANTIC_SIMILARITY"}`.
-  For more information, see the [Google AI Task types](https://ai.google.dev/gemini-api/docs/embeddings#task-types).
+- **config** (<code>dict\[str, Any\] | None</code>) – A dictionary of keyword arguments to configure embedding content configuration.
+  See [Google API documentation](https://googleapis.github.io/python-genai/genai.html#genai.types.EmbedContentConfig)
+  for the available options.
+  Specifying task types in `config` does not take effect for `gemini-embedding-2`.
+  See [Gemini documentation](https://ai.google.dev/gemini-api/docs/embeddings#task-types) for more
+  information.
+- **timeout** (<code>float | None</code>) – The timeout in seconds for the underlying Google GenAI client network requests.
+- **max_retries** (<code>int | None</code>) – The maximum number of retries for the underlying Google GenAI client network requests.
 
 #### to_dict
 
@@ -252,10 +261,12 @@ __init__(
     file_path_meta_field: str = "file_path",
     root_path: str | None = None,
     image_size: tuple[int, int] | None = None,
-    model: str = "gemini-embedding-2-preview",
+    model: str = "gemini-embedding-2",
     batch_size: int = 6,
     progress_bar: bool = True,
-    config: dict[str, Any] | None = None
+    config: dict[str, Any] | None = None,
+    timeout: float | None = None,
+    max_retries: int | None = None
 ) -> None
 ```
 
@@ -274,7 +285,10 @@ Creates an GoogleGenAIMultimodalDocumentEmbedder component.
   Required when using Vertex AI with Application Default Credentials.
 - **file_path_meta_field** (<code>str</code>) – The metadata field in the Document that contains the file path to the file to embed.
 - **root_path** (<code>str | None</code>) – The root directory path where document files are located. If provided, file paths in
-  document metadata will be resolved relative to this path. If None, file paths are treated as absolute paths.
+  document metadata will be resolved relative to this path and are guaranteed to stay within it.
+  If None, file paths are treated as absolute paths with no containment check.
+  If document metadata, in particular `file_path_meta_field`, may be influenced by untrusted input,
+  set `root_path` to a dedicated data directory so that path-traversal beyond it is rejected.
 - **image_size** (<code>tuple\[int, int\] | None</code>) – Only used for images and PDF pages. If provided, resizes the image to fit within the specified dimensions
   (width, height) while maintaining aspect ratio. This reduces file size, memory usage, and processing time,
   which is beneficial when working with models that have resolution constraints or when transmitting images
@@ -284,11 +298,40 @@ Creates an GoogleGenAIMultimodalDocumentEmbedder component.
   See [Google AI documentation](https://ai.google.dev/gemini-api/docs/embeddings#supported-modalities) for
   more information.
 - **progress_bar** (<code>bool</code>) – If `True`, shows a progress bar when running.
-- **config** (<code>dict\[str, Any\] | None</code>) – A dictionary of keyword arguments to configure embedding content configuration `types.EmbedContentConfig`.
+- **config** (<code>dict\[str, Any\] | None</code>) – A dictionary of keyword arguments to configure embedding content configuration.
   You can for example set the output dimensionality of the embedding: `{"output_dimensionality": 768}`.
-  It also allows customizing the task type. If the task type is not specified, it defaults to
-  `{"task_type": "RETRIEVAL_DOCUMENT"}`.
-  For more information, see the [Google AI documentation](https://ai.google.dev/gemini-api/docs/embeddings#task-types).
+  See [Google API documentation](https://googleapis.github.io/python-genai/genai.html#genai.types.EmbedContentConfig)
+  for the available options.
+- **timeout** (<code>float | None</code>) – The timeout in seconds for the underlying Google GenAI client network requests.
+- **max_retries** (<code>int | None</code>) – The maximum number of retries for the underlying Google GenAI client network requests.
+
+#### to_dict
+
+```python
+to_dict() -> dict[str, Any]
+```
+
+Serializes the component to a dictionary.
+
+**Returns:**
+
+- <code>dict\[str, Any\]</code> – Dictionary with serialized data.
+
+#### from_dict
+
+```python
+from_dict(data: dict[str, Any]) -> GoogleGenAIMultimodalDocumentEmbedder
+```
+
+Deserializes the component from a dictionary.
+
+**Parameters:**
+
+- **data** (<code>dict\[str, Any\]</code>) – Dictionary to deserialize from.
+
+**Returns:**
+
+- <code>GoogleGenAIMultimodalDocumentEmbedder</code> – Deserialized component.
 
 #### run
 
@@ -307,6 +350,13 @@ Embeds a list of documents.
 - <code>dict\[str, list\[Document\]\] | dict\[str, Any\]</code> – A dictionary with the following keys:
 - `documents`: A list of documents with embeddings.
 - `meta`: Information about the usage of the model.
+
+**Raises:**
+
+- <code>TypeError</code> – If the input is not a list of `Documents`.
+- <code>ValueError</code> – If a document is missing the file path metadata field, its file path escapes `root_path`, or its
+  MIME type is not supported.
+- <code>RuntimeError</code> – If the conversion of some documents fails.
 
 #### run_async
 
@@ -327,6 +377,13 @@ Embeds a list of documents asynchronously.
 - <code>dict\[str, list\[Document\]\] | dict\[str, Any\]</code> – A dictionary with the following keys:
 - `documents`: A list of documents with embeddings.
 - `meta`: Information about the usage of the model.
+
+**Raises:**
+
+- <code>TypeError</code> – If the input is not a list of `Documents`.
+- <code>ValueError</code> – If a document is missing the file path metadata field, its file path escapes `root_path`, or its
+  MIME type is not supported.
+- <code>RuntimeError</code> – If the conversion of some documents fails.
 
 ## haystack_integrations.components.embedders.google_genai.text_embedder
 
@@ -401,7 +458,9 @@ __init__(
     model: str = "gemini-embedding-001",
     prefix: str = "",
     suffix: str = "",
-    config: dict[str, Any] | None = None
+    config: dict[str, Any] | None = None,
+    timeout: float | None = None,
+    max_retries: int | None = None
 ) -> None
 ```
 
@@ -420,11 +479,18 @@ Creates an GoogleGenAITextEmbedder component.
   Required when using Vertex AI with Application Default Credentials.
 - **model** (<code>str</code>) – The name of the model to use for calculating embeddings.
   The default model is `gemini-embedding-001`.
-- **prefix** (<code>str</code>) – A string to add at the beginning of each text to embed.
+- **prefix** (<code>str</code>) – A string to add at the beginning of each text. It can be used to specify a task type for
+  `gemini-embedding-2`. For available task types, see
+  [Gemini documentation](https://ai.google.dev/gemini-api/docs/embeddings#task-types).
 - **suffix** (<code>str</code>) – A string to add at the end of each text to embed.
-- **config** (<code>dict\[str, Any\] | None</code>) – A dictionary of keyword arguments to configure embedding content configuration `types.EmbedContentConfig`.
-  If not specified, it defaults to `{"task_type": "SEMANTIC_SIMILARITY"}`.
-  For more information, see the [Google AI Task types](https://ai.google.dev/gemini-api/docs/embeddings#task-types).
+- **config** (<code>dict\[str, Any\] | None</code>) – A dictionary of keyword arguments to configure embedding content configuration.
+  See [Google API documentation](https://googleapis.github.io/python-genai/genai.html#genai.types.EmbedContentConfig)
+  for the available options.
+  Specifying task types in `config` does not take effect for `gemini-embedding-2`.
+  See [Gemini documentation](https://ai.google.dev/gemini-api/docs/embeddings#task-types) for more
+  information.
+- **timeout** (<code>float | None</code>) – The timeout in seconds for the underlying Google GenAI client network requests.
+- **max_retries** (<code>int | None</code>) – The maximum number of retries for the underlying Google GenAI client network requests.
 
 #### to_dict
 
@@ -677,7 +743,7 @@ __init__(
     tools: ToolsType | None = None,
     timeout: float | None = None,
     max_retries: int | None = None
-)
+) -> None
 ```
 
 Initialize a GoogleGenAIChatGenerator instance.
@@ -750,7 +816,7 @@ Deserializes the component from a dictionary.
 
 ```python
 run(
-    messages: list[ChatMessage],
+    messages: list[ChatMessage] | str,
     generation_kwargs: dict[str, Any] | None = None,
     safety_settings: list[dict[str, Any]] | None = None,
     streaming_callback: StreamingCallbackT | None = None,
@@ -762,9 +828,12 @@ Run the Google Gen AI chat generator on the given input data.
 
 **Parameters:**
 
-- **messages** (<code>list\[ChatMessage\]</code>) – A list of ChatMessage instances representing the input messages.
-- **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Configuration for generation. If provided, it will override
-  the default config. Supports `thinking_budget` for Gemini 2.5 series thinking configuration.
+- **messages** (<code>list\[ChatMessage\] | str</code>) – A list of ChatMessage instances representing the input messages.
+  If a string is provided, it is converted to a list containing a ChatMessage with user role.
+- **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Configuration for generation. These are merged per key with the
+  `generation_kwargs` passed during component initialization: keys provided here take precedence,
+  keys set only at initialization are kept. Supports `thinking_budget` for Gemini 2.5 series
+  thinking configuration.
 - **safety_settings** (<code>list\[dict\[str, Any\]\] | None</code>) – Safety settings for content filtering. If provided, it will override the
   default settings.
 - **streaming_callback** (<code>StreamingCallbackT | None</code>) – A callback function that is called when a new token is
@@ -787,7 +856,7 @@ Run the Google Gen AI chat generator on the given input data.
 
 ```python
 run_async(
-    messages: list[ChatMessage],
+    messages: list[ChatMessage] | str,
     generation_kwargs: dict[str, Any] | None = None,
     safety_settings: list[dict[str, Any]] | None = None,
     streaming_callback: StreamingCallbackT | None = None,
@@ -799,9 +868,12 @@ Async version of the run method. Run the Google Gen AI chat generator on the giv
 
 **Parameters:**
 
-- **messages** (<code>list\[ChatMessage\]</code>) – A list of ChatMessage instances representing the input messages.
-- **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Configuration for generation. If provided, it will override
-  the default config. Supports `thinking_budget` for Gemini 2.5 series thinking configuration.
+- **messages** (<code>list\[ChatMessage\] | str</code>) – A list of ChatMessage instances representing the input messages.
+  If a string is provided, it is converted to a list containing a ChatMessage with user role.
+- **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Configuration for generation. These are merged per key with the
+  `generation_kwargs` passed during component initialization: keys provided here take precedence,
+  keys set only at initialization are kept. Supports `thinking_budget` for Gemini 2.5 series
+  thinking configuration.
   See https://ai.google.dev/gemini-api/docs/thinking for possible values.
 - **safety_settings** (<code>list\[dict\[str, Any\]\] | None</code>) – Safety settings for content filtering. If provided, it will override the
   default settings.

@@ -19,7 +19,8 @@ class ImageFileToDocument:
     Converts image file references into empty Document objects with associated metadata.
 
     This component is useful in pipelines where image file paths need to be wrapped in `Document` objects to be
-    processed by downstream components such as the `SentenceTransformersImageDocumentEmbedder`.
+    processed by downstream components such as the `LLMDocumentContentExtractor` or the
+    `SentenceTransformersDocumentImageEmbedder` (available in the `sentence-transformers-haystack` integration).
 
     It does **not** extract any content from the image files, instead it creates `Document` objects with `None` as
     their content and attaches metadata such as file path and any user-provided values.

@@ -4,8 +4,10 @@
 
 from collections import defaultdict
 
-from haystack import Document, component
+from haystack import Document, component, logging
 from haystack.utils.misc import _deduplicate_documents
+
+logger = logging.getLogger(__name__)
 
 
 @component
@@ -41,18 +43,17 @@ class MetaFieldGroupingRanker:
     result = ranker.run(documents=docs)
     print(result["documents"])
 
-    # [
-    #     Document(id=d665bbc83e52c08c3d8275bccf4f22bf2bfee21c6e77d78794627637355b8ebc,
-    #             content: 'Java is a popular programming language', meta: {'group': '42', 'split_id': 3, 'subgroup': 'subB'}),
-    #     Document(id=a20b326f07382b3cbf2ce156092f7c93e8788df5d48f2986957dce2adb5fe3c2,
-    #             content: 'Python is a popular programming language', meta: {'group': '42', 'split_id': 4, 'subgroup': 'subB'}),
-    #     Document(id=ce12919795d22f6ca214d0f161cf870993889dcb146f3bb1b3e1ffdc95be960f,
-    #             content: 'Javascript is a popular programming language', meta: {'group': '42', 'split_id': 7, 'subgroup': 'subB'}),
-    #     Document(id=d9fc857046c904e5cf790b3969b971b1bbdb1b3037d50a20728fdbf82991aa94,
-    #             content: 'A chromosome is a package of DNA', meta: {'group': '314', 'split_id': 2, 'subgroup': 'subC'}),
-    #     Document(id=6d3b7bdc13d09aa01216471eb5fb0bfdc53c5f2f3e98ad125ff6b85d3106c9a3,
-    #             content: 'An octopus has three hearts', meta: {'group': '11', 'split_id': 2, 'subgroup': 'subD'})
-    # ]
+    # >> [
+    # >>  Document(id=d665bbc83e52c08c3d8275bccf4f22bf2bfee21c6e77d78794627637355b8ebc,
+    # >>          content: 'Java is a popular programming language', meta: {'group': '42', 'split_id': 3, 'subgroup': 'subB'}),
+    # >>  Document(id=a20b326f07382b3cbf2ce156092f7c93e8788df5d48f2986957dce2adb5fe3c2,
+    # >>          content: 'Python is a popular programming language', meta: {'group': '42', 'split_id': 4, 'subgroup': 'subB'}),
+    # >>  Document(id=ce12919795d22f6ca214d0f161cf870993889dcb146f3bb1b3e1ffdc95be960f,
+    # >>          content: 'Javascript is a popular programming language', meta: {'group': '42', 'split_id': 7, 'subgroup': 'subB'}),
+    # >>  Document(id=d9fc857046c904e5cf790b3969b971b1bbdb1b3037d50a20728fdbf82991aa94,
+    # >>          content: 'A chromosome is a package of DNA', meta: {'group': '314', 'split_id': 2, 'subgroup': 'subC'}),
+    # >>  Document(id=6d3b7bdc13d09aa01216471eb5fb0bfdc53c5f2f3e98ad125ff6b85d3106c9a3,
+    # >>          content: 'An octopus has three hearts', meta: {'group': '11', 'split_id': 2, 'subgroup': 'subD'})
     ```
     """  # noqa: E501
 
@@ -110,11 +111,29 @@ class MetaFieldGroupingRanker:
 
             document_groups[group_value][subgroup_value].append(doc)
 
+        # use a non-optional key for type checking; "" disables sorting.
+        sort_field = self.sort_docs_by or ""
+
         ordered_docs = []
         for subgroups in document_groups.values():
             for docs in subgroups.values():
-                if self.sort_docs_by:
-                    docs.sort(key=lambda d: d.meta.get(self.sort_docs_by or "", float("inf")))
+                if sort_field:
+                    # Sort by the field value, placing documents with a missing value last.
+                    # The (is_missing, value) tuple keeps documents with a missing value out of the
+                    # value comparison, but two present values of mutually non-comparable types
+                    # (e.g. an int and a str) would still raise a TypeError. In that case we keep the
+                    # group's insertion order instead of crashing, mirroring MetaFieldRanker.
+                    try:
+                        docs.sort(key=lambda d: (d.meta.get(sort_field) is None, d.meta.get(sort_field)))
+                    except TypeError as error:
+                        logger.warning(
+                            "Tried to sort Documents with IDs {document_ids}, but got TypeError with the "
+                            "message: {error}\nKeeping the original order of the Documents in this group "
+                            "since sorting by '{sort_field}' is not possible.",
+                            document_ids=",".join([doc.id for doc in docs]),
+                            error=error,
+                            sort_field=sort_field,
+                        )
                 ordered_docs.extend(docs)
 
         ordered_docs.extend(no_group_docs)

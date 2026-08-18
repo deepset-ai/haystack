@@ -26,6 +26,25 @@ class TestDocumentJoiner:
         assert joiner.top_k == 5
         assert not joiner.sort_by_score
 
+    def test_init_with_zero_sum_weights_raises(self):
+        # weights that sum to zero would divide by zero during normalization
+        with pytest.raises(ValueError, match="must not sum to zero"):
+            DocumentJoiner(join_mode="merge", weights=[0.0, 0.0, 0.0])
+
+    def test_init_with_top_k_none_is_valid(self):
+        joiner = DocumentJoiner(top_k=None)
+        assert joiner.top_k is None
+
+    @pytest.mark.parametrize("top_k", [1, 5])
+    def test_init_with_positive_top_k_is_valid(self, top_k):
+        joiner = DocumentJoiner(top_k=top_k)
+        assert joiner.top_k == top_k
+
+    @pytest.mark.parametrize("top_k", [0, -1])
+    def test_init_with_non_positive_top_k_raises(self, top_k):
+        with pytest.raises(ValueError, match="top_k must be greater than 0"):
+            DocumentJoiner(top_k=top_k)
+
     def test_to_dict(self):
         joiner = DocumentJoiner()
         data = joiner.to_dict()
@@ -46,8 +65,8 @@ class TestDocumentJoiner:
         data = {"type": "haystack.components.joiners.document_joiner.DocumentJoiner", "init_parameters": {}}
         document_joiner = DocumentJoiner.from_dict(data)
         assert document_joiner.join_mode == JoinMode.CONCATENATE
-        assert document_joiner.weights == None
-        assert document_joiner.top_k == None
+        assert document_joiner.weights is None
+        assert document_joiner.top_k is None
         assert document_joiner.sort_by_score
 
     def test_from_dict_customs_parameters(self):
@@ -70,7 +89,7 @@ class TestDocumentJoiner:
             JoinMode.DISTRIBUTION_BASED_RANK_FUSION,
         ],
     )
-    def test_empty_list(self, join_mode: JoinMode):
+    def test_empty_list(self, join_mode: JoinMode) -> None:
         joiner = DocumentJoiner(join_mode=join_mode)
         result = joiner.run([])
         assert result == {"documents": []}
@@ -84,7 +103,7 @@ class TestDocumentJoiner:
             JoinMode.DISTRIBUTION_BASED_RANK_FUSION,
         ],
     )
-    def test_list_of_empty_lists(self, join_mode: JoinMode):
+    def test_list_of_empty_lists(self, join_mode: JoinMode) -> None:
         joiner = DocumentJoiner(join_mode=join_mode)
         result = joiner.run([[], []])
         assert result == {"documents": []}
@@ -98,7 +117,7 @@ class TestDocumentJoiner:
             JoinMode.DISTRIBUTION_BASED_RANK_FUSION,
         ],
     )
-    def test_list_with_one_empty_list(self, join_mode: JoinMode):
+    def test_list_with_one_empty_list(self, join_mode: JoinMode) -> None:
         joiner = DocumentJoiner(join_mode=join_mode)
         documents = [Document(content="a"), Document(content="b"), Document(content="c")]
         result = joiner.run([[], documents])
@@ -145,6 +164,29 @@ class TestDocumentJoiner:
         assert sorted(documents_1 + [documents_2[-1]], key=lambda d: d.id) == sorted(
             output["documents"], key=lambda d: d.id
         )
+
+    def test_run_with_concatenate_join_mode_keeps_zero_score_over_negative_duplicate(self):
+        joiner = DocumentJoiner(sort_by_score=False)
+        documents_1 = [Document(content="a", score=0.0)]
+        documents_2 = [Document(content="a", score=-0.5)]
+        output = joiner.run([documents_1, documents_2])
+        assert len(output["documents"]) == 1
+        assert output["documents"][0].score == 0.0
+
+    def test_run_with_concatenate_join_mode_keeps_zero_score_over_none_duplicate(self):
+        joiner = DocumentJoiner(sort_by_score=False)
+        documents_1 = [Document(content="a", score=0.0)]
+        documents_2 = [Document(content="a")]
+        output = joiner.run([documents_1, documents_2])
+        assert len(output["documents"]) == 1
+        assert output["documents"][0].score == 0.0
+
+    def test_run_with_merge_join_mode_handles_zero_score(self):
+        joiner = DocumentJoiner(join_mode="merge", weights=[0.5, 0.5])
+        documents_1 = [Document(content="a", score=0.0)]
+        documents_2 = [Document(content="a", score=0.0)]
+        output = joiner.run([documents_1, documents_2])
+        assert output["documents"][0].score == 0.0
 
     def test_run_with_merge_join_mode(self):
         joiner = DocumentJoiner(join_mode="merge", weights=[1.5, 0.5])
@@ -248,6 +290,16 @@ class TestDocumentJoiner:
         ]
         assert all(doc.id in expected_document_ids for doc in output["documents"])
 
+    def test_run_with_distribution_based_rank_fusion_join_mode_with_none_score(self):
+        # Documents with score=None (e.g. from a non-scoring source) must not crash DBSF;
+        # a missing score is treated as 0, consistent with how the statistics are computed.
+        joiner = DocumentJoiner(join_mode="distribution_based_rank_fusion")
+        documents_1 = [Document(content="a", score=0.6), Document(content="b", score=None)]
+        documents_2 = [Document(content="c", score=0.5), Document(content="d", score=0.3)]
+        output = joiner.run([documents_1, documents_2])
+        assert len(output["documents"]) == 4
+        assert all(doc.score is not None for doc in output["documents"])
+
     def test_run_with_top_k_in_run_method(self):
         joiner = DocumentJoiner()
         documents_1 = [Document(content="a"), Document(content="b"), Document(content="c")]
@@ -255,6 +307,22 @@ class TestDocumentJoiner:
         top_k = 4
         output = joiner.run([documents_1, documents_2], top_k=top_k)
         assert len(output["documents"]) == top_k
+
+    def test_run_with_top_k_zero_in_run_method_overrides_init_top_k(self):
+        # A run-time top_k=0 must be honored (return no documents), not treated as "unset"
+        # and fall back to the instance's top_k.
+        joiner = DocumentJoiner(top_k=5)
+        documents_1 = [Document(content="a"), Document(content="b"), Document(content="c")]
+        documents_2 = [Document(content="d"), Document(content="e"), Document(content="f")]
+        output = joiner.run([documents_1, documents_2], top_k=0)
+        assert len(output["documents"]) == 0
+
+    def test_run_with_negative_top_k_in_run_method_raises(self):
+        joiner = DocumentJoiner(top_k=5)
+        documents_1 = [Document(content="a"), Document(content="b"), Document(content="c")]
+        documents_2 = [Document(content="d"), Document(content="e"), Document(content="f")]
+        with pytest.raises(ValueError, match="top_k must not be negative"):
+            joiner.run([documents_1, documents_2], top_k=-1)
 
     def test_sort_by_score_without_scores(self, caplog):
         joiner = DocumentJoiner()
@@ -270,43 +338,3 @@ class TestDocumentJoiner:
         documents_2 = [Document(content="d", score=0.2)]
         output = joiner.run([documents_1, documents_2])
         assert output["documents"] == documents_1 + documents_2
-
-    def test_test_score_norm_with_rrf(self):
-        """
-        Verifies reciprocal rank fusion (RRF) of the DocumentJoiner component with various weight configurations.
-        It creates a set of documents, forms them into two lists, and then applies multiple DocumentJoiner
-        instances with distinct weights to these lists. The test checks if the resulting
-        joined documents are correctly sorted in descending order by score, ensuring the RRF ranking works as
-        expected under different weighting scenarios.
-        """
-        num_docs = 6
-        docs = []
-
-        for i in range(num_docs):
-            docs.append(Document(content=f"doc{i}"))
-
-        docs_2 = [docs[0], docs[4], docs[2], docs[5], docs[1]]
-        document_lists = [docs, docs_2]
-
-        joiner_1 = DocumentJoiner(join_mode="reciprocal_rank_fusion", weights=[0.5, 0.5])
-
-        joiner_2 = DocumentJoiner(join_mode="reciprocal_rank_fusion", weights=[7, 7])
-
-        joiner_3 = DocumentJoiner(join_mode="reciprocal_rank_fusion", weights=[0.7, 0.3])
-
-        joiner_4 = DocumentJoiner(join_mode="reciprocal_rank_fusion", weights=[0.6, 0.4])
-
-        joiner_5 = DocumentJoiner(join_mode="reciprocal_rank_fusion", weights=[1, 0])
-
-        joiners = [joiner_1, joiner_2, joiner_3, joiner_4, joiner_5]
-
-        for joiner in joiners:
-            join_results = joiner.run(documents=document_lists)
-            is_sorted = all(
-                join_results["documents"][i].score >= join_results["documents"][i + 1].score
-                for i in range(len(join_results["documents"]) - 1)
-            )
-
-            assert is_sorted, (
-                "Documents are not sorted in descending order by score, there is an issue with rff ranking"
-            )

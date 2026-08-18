@@ -24,18 +24,14 @@ class LLM(Agent):
     without tool usage. It processes messages and returns a single response from the language model.
 
     ### Usage examples
-
     ```python
     from haystack.components.generators.chat import LLM
     from haystack.components.generators.chat import OpenAIChatGenerator
-    from haystack.dataclasses import ChatMessage
 
     llm = LLM(
         chat_generator=OpenAIChatGenerator(),
         system_prompt="You are a helpful translation assistant.",
-        user_prompt=\"\"\"{% message role="user"%}
-    Summarize the following document: {{ document }}
-    {% endmessage %}\"\"\",
+        user_prompt="Summarize the following document: {{ document }}",
         required_variables=["document"],
     )
 
@@ -50,20 +46,25 @@ class LLM(Agent):
         chat_generator: ChatGenerator,
         system_prompt: str | None = None,
         user_prompt: str | None = None,
-        required_variables: list[str] | Literal["*"] | None = None,
+        required_variables: list[str] | Literal["*"] = "*",
         streaming_callback: StreamingCallbackT | None = None,
     ) -> None:
         """
         Initialize the LLM component.
 
         :param chat_generator: An instance of the chat generator that the LLM should use.
-        :param system_prompt: System prompt for the LLM.
-        :param user_prompt: User prompt for the LLM. If provided this is appended to the messages provided at runtime.
+        :param system_prompt: System prompt for the LLM. Can be a plain string template or a Jinja2 message template.
+        :param user_prompt: User prompt for the LLM. This prompt is appended to the messages provided at
+            runtime. Can be a plain string template or a Jinja2 message template. If it contains template variables
+            (e.g., `{{ variable_name }}`), they become inputs to the component. If omitted or if there are no
+            template variables, `messages` must be provided at runtime instead.
         :param required_variables:
-            List variables that must be provided as input to user_prompt.
+            Variables that must be provided as input to `user_prompt` or `system_prompt`.
             If a variable listed as required is not provided, an exception is raised.
-            If set to `"*"`, all variables found in the prompt are required. Optional.
+            If set to `"*"`, all variables found in the prompt are required. Defaults to `"*"`.
+            Only relevant when `user_prompt` or `system_prompt` contains template variables.
         :param streaming_callback: A callback that will be invoked when a response is streamed from the LLM.
+        :raises ValueError: If user_prompt contains template variables but required_variables is an empty list.
         """
         super(LLM, self).__init__(  # noqa: UP008
             chat_generator=chat_generator,
@@ -71,6 +72,25 @@ class LLM(Agent):
             user_prompt=user_prompt,
             required_variables=required_variables,
             streaming_callback=streaming_callback,
+        )
+        if self._user_chat_prompt_builder is None or len(self._user_chat_prompt_builder.variables) == 0:
+            # This means user_prompt is empty or has no template variables.
+            # To ensure properly scheduling we then require messages to be passed at runtime.
+            component.set_input_type(self, "messages", list[ChatMessage])
+        else:
+            # user prompt was provided with variables
+            if isinstance(required_variables, list) and len(required_variables) == 0:
+                raise ValueError(
+                    "required_variables must not be empty. Set it to '*' to require all variables, "
+                    "or provide a non-empty list of variable names."
+                )
+            component.set_input_type(self, "messages", list[ChatMessage], None)
+
+        # The Agent base class declares `step_count` and `tool_call_counts` as outputs, but an LLM never has tools
+        # and always runs exactly one step — those values are uninformative, so drop them from the public surface.
+        # `token_usage` is still meaningful and stays exposed.
+        component.set_output_types(
+            self, messages=list[ChatMessage], last_message=ChatMessage, token_usage=dict[str, Any]
         )
 
     def to_dict(self) -> dict[str, Any]:
@@ -105,75 +125,83 @@ class LLM(Agent):
 
         return default_from_dict(cls, data)
 
-    def run(
+    def run(  # type: ignore[override]  # `messages` is in **kwargs to allow dynamic required/optional status
         self,
-        messages: list[ChatMessage] | None = None,
-        streaming_callback: StreamingCallbackT | None = None,
         *,
+        streaming_callback: StreamingCallbackT | None = None,
         generation_kwargs: dict[str, Any] | None = None,
-        system_prompt: str | None = None,
-        user_prompt: str | None = None,
         **kwargs: Any,
     ) -> dict[str, Any]:
         """
         Process messages and generate a response from the language model.
 
-        :param messages: List of Haystack ChatMessage objects to process.
+        :param messages: Optional list of ChatMessage objects to prepend to the conversation. Whether this is
+            required or optional depends on the `user_prompt` configuration: if `user_prompt` has no template
+            variables, `messages` must be provided. Passed via `**kwargs`.
         :param streaming_callback: A callback that will be invoked when a response is streamed from the LLM.
-        :param generation_kwargs: Additional keyword arguments for the underlying chat generator. These parameters
-            will override the parameters passed during component initialization.
-        :param system_prompt: System prompt for the LLM. If provided, it overrides the default system prompt.
-        :param user_prompt: User prompt for the LLM. If provided, it overrides the default user prompt and is
-            appended to the messages provided at runtime.
-        :param kwargs: Additional keyword arguments. These are used to fill template variables in the `user_prompt`
-            (the keys must match template variable names).
+        :param generation_kwargs: Additional keyword arguments for the chat generator. These are merged per key
+            with the `generation_kwargs` passed at the chat generator's initialization: keys provided here take
+            precedence, keys set only at initialization are kept.
+        :param kwargs: Additional keyword arguments. These are used to fill template variables in `user_prompt` or
+            `system_prompt` (the keys must match template variable names).
         :returns:
             A dictionary with the following keys:
             - "messages": List of all messages exchanged during the LLM's run.
             - "last_message": The last message exchanged during the LLM's run.
+            - "token_usage": Token usage from the LLM call (e.g. prompt_tokens, completion_tokens). Empty if the
+              chat generator did not return usage data.
         """
-        return super(LLM, self).run(  # noqa: UP008
-            messages=messages,
+        # `messages` is intentionally omitted from the signature so the framework can treat it as required
+        # or optional depending on init configuration. See __init__ for details.
+        messages = kwargs.pop("messages", None)
+        result = super(LLM, self).run(  # noqa: UP008
+            messages=messages or [],
             streaming_callback=streaming_callback,
             generation_kwargs=generation_kwargs,
-            system_prompt=system_prompt,
-            user_prompt=user_prompt,
             **kwargs,
         )
+        # Inherited Agent-internal bookkeeping that isn't useful at the LLM surface.
+        result.pop("step_count", None)
+        result.pop("tool_call_counts", None)
+        return result
 
-    async def run_async(
+    async def run_async(  # type: ignore[override]  # `messages` is in **kwargs to allow dynamic required/optional status
         self,
-        messages: list[ChatMessage] | None = None,
-        streaming_callback: StreamingCallbackT | None = None,
         *,
+        streaming_callback: StreamingCallbackT | None = None,
         generation_kwargs: dict[str, Any] | None = None,
-        system_prompt: str | None = None,
-        user_prompt: str | None = None,
         **kwargs: Any,
     ) -> dict[str, Any]:
         """
         Asynchronously process messages and generate a response from the language model.
 
-        :param messages: List of Haystack ChatMessage objects to process.
+        :param messages: Optional list of ChatMessage objects to prepend to the conversation. Whether this is
+            required or optional depends on the `user_prompt` configuration: if `user_prompt` has no template
+            variables, `messages` must be provided. Passed via `**kwargs`.
         :param streaming_callback: An asynchronous callback that will be invoked when a response is streamed
             from the LLM.
-        :param generation_kwargs: Additional keyword arguments for the underlying chat generator. These parameters
-            will override the parameters passed during component initialization.
-        :param system_prompt: System prompt for the LLM. If provided, it overrides the default system prompt.
-        :param user_prompt: User prompt for the LLM. If provided, it overrides the default user prompt and is
-            appended to the messages provided at runtime.
-        :param kwargs: Additional keyword arguments. These are used to fill template variables in the `user_prompt`
-            (the keys must match template variable names).
+        :param generation_kwargs: Additional keyword arguments for the chat generator. These are merged per key
+            with the `generation_kwargs` passed at the chat generator's initialization: keys provided here take
+            precedence, keys set only at initialization are kept.
+        :param kwargs: Additional keyword arguments. These are used to fill template variables in `user_prompt` or
+            `system_prompt` (the keys must match template variable names).
         :returns:
             A dictionary with the following keys:
             - "messages": List of all messages exchanged during the LLM's run.
             - "last_message": The last message exchanged during the LLM's run.
+            - "token_usage": Token usage from the LLM call (e.g. prompt_tokens, completion_tokens). Empty if the
+              chat generator did not return usage data.
         """
-        return await super(LLM, self).run_async(  # noqa: UP008
-            messages=messages,
+        # `messages` is intentionally omitted from the signature so the framework can treat it as required
+        # or optional depending on init configuration. See __init__ for details.
+        messages = kwargs.pop("messages", None)
+        result = await super(LLM, self).run_async(  # noqa: UP008
+            messages=messages or [],
             streaming_callback=streaming_callback,
             generation_kwargs=generation_kwargs,
-            system_prompt=system_prompt,
-            user_prompt=user_prompt,
             **kwargs,
         )
+        # Inherited Agent-internal bookkeeping that isn't useful at the LLM surface.
+        result.pop("step_count", None)
+        result.pop("tool_call_counts", None)
+        return result

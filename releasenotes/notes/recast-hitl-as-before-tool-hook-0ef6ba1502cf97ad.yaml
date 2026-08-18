@@ -1,0 +1,44 @@
+---
+upgrade:
+  - |
+    Human-in-the-Loop tool confirmation on ``Agent`` is now expressed as a ``before_tool`` hook instead of a
+    dedicated concept. The ``confirmation_strategies`` and ``confirmation_strategy_context`` parameters have been
+    removed from ``Agent.__init__``, ``Agent.run``, and ``Agent.run_async``. To migrate, wrap your confirmation
+    strategies in the new ``ConfirmationHook``, register it under the ``before_tool`` hook point, and pass any
+    request-scoped resources through the generic ``hook_context`` run argument instead of
+    ``confirmation_strategy_context``. The Human-in-the-Loop module has also moved from
+    ``haystack.human_in_the_loop`` to ``haystack.hooks.human_in_the_loop``, so that it lives alongside the other
+    built-in hooks (such as tool result offloading); update your imports to the new location:
+
+    .. code-block:: python
+
+        from haystack.components.agents import Agent
+        from haystack.hooks.human_in_the_loop import (
+            AlwaysAskPolicy,
+            BlockingConfirmationStrategy,
+            ConfirmationHook,
+            RichConsoleUI,
+        )
+
+        confirmation_hook = ConfirmationHook(
+            confirmation_strategies={
+                "my_tool": BlockingConfirmationStrategy(
+                    confirmation_policy=AlwaysAskPolicy(), confirmation_ui=RichConsoleUI()
+                )
+            }
+        )
+        agent = Agent(chat_generator=..., tools=[...], hooks={"before_tool": [confirmation_hook]})
+        agent.run(messages=[...], hook_context={"websocket": ws})
+features:
+  - |
+    Added ``ConfirmationHook``, a ``before_tool`` Agent hook that applies Human-in-the-Loop confirmation strategies
+    to pending tool calls. It confirms, modifies, or rejects the tool calls the model requested before they run by
+    rewriting the conversation in the Agent's ``State``. Its ``confirmation_strategies`` mapping accepts a single
+    tool name, a tuple of tool names, or the wildcard ``"*"`` that applies to any tool without a more specific
+    entry, so you can set a default strategy for all tools and override individual ones.
+  - |
+    Agent hooks may now declare an ``allowed_hook_points`` attribute listing the hook points they support. The
+    ``Agent`` validates it at construction and raises a ``ValueError`` if such a hook is registered under an
+    unsupported hook point. For example, ``ConfirmationHook`` sets ``allowed_hook_points = ("before_tool",)``, so
+    registering it under ``before_llm`` or ``on_exit`` now fails fast instead of silently doing nothing. Hooks that
+    do not declare the attribute can still be registered under any hook point.

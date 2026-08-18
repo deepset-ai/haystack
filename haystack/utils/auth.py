@@ -18,7 +18,7 @@ class SecretType(Enum):
     TOKEN = "token"
     ENV_VAR = "env_var"
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.value
 
     @staticmethod
@@ -41,10 +41,10 @@ class Secret(ABC):
 
     Usage example:
     ```python
-    from haystack.components.generators import OpenAIGenerator
+    from haystack.components.generators.chat import OpenAIChatGenerator
     from haystack.utils import Secret
 
-    generator = OpenAIGenerator(api_key=Secret.from_token("<here_goes_your_token>"))
+    generator = OpenAIChatGenerator(api_key=Secret.from_token("<here_goes_your_token>"))
     ```
     """
 
@@ -144,7 +144,7 @@ class TokenSecret(Secret):
     _token: str
     _type: SecretType = SecretType.TOKEN
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         super().__init__()
         assert self._type == SecretType.TOKEN
 
@@ -161,6 +161,10 @@ class TokenSecret(Secret):
         raise ValueError(
             "Cannot deserialize token-based secret. Use an alternative secret type like environment variables."
         )
+
+    def __repr__(self) -> str:
+        # Hide the token so it can't leak through print/log/traceback formatting.
+        return f"TokenSecret(_token=<redacted>, _type={self._type!r})"
 
     def resolve_value(self) -> Any | None:
         """Return the token."""
@@ -184,7 +188,7 @@ class EnvVarSecret(Secret):
     _strict: bool = True
     _type: SecretType = SecretType.ENV_VAR
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         super().__init__()
         assert self._type == SecretType.ENV_VAR
 

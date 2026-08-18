@@ -2,95 +2,44 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+from typing import Annotated, Any
+
 import pytest
 
-from haystack import Pipeline
-from haystack.components.tools import ToolInvoker
+from haystack import Pipeline, component
+from haystack.components.agents import Agent
+from haystack.components.agents.state import State
+from haystack.components.agents.tool_calling import _run_tool
+from haystack.components.generators.chat import OpenAIChatGenerator
 from haystack.core.serialization import generate_qualified_class_name
 from haystack.dataclasses import ChatMessage
 from haystack.dataclasses.chat_message import ToolCall
-from haystack.tools import Tool, Toolset
+from haystack.tools import Tool, Toolset, tool
 from haystack.tools.errors import ToolInvocationError
 
 
-# Common functions for tests
-def add_numbers(a: int, b: int) -> int:
-    """Add two numbers."""
-    return a + b
+def _run_tool_messages(messages: list[ChatMessage], tools: Toolset | list[Tool | Toolset]) -> list[ChatMessage]:
+    tool_messages, _ = _run_tool(messages=messages, state=State(schema={}), tools=tools)
+    return tool_messages
 
 
-def multiply_numbers(a: int, b: int) -> int:
-    """Multiply two numbers."""
-    return a * b
-
-
-def subtract_numbers(a: int, b: int) -> int:
-    """Subtract b from a."""
-    return a - b
-
-
-class CustomToolset(Toolset):
-    def __init__(self, tools, custom_attr):
-        super().__init__(tools)
-        self.custom_attr = custom_attr
-
-    def to_dict(self):
-        data = super().to_dict()
-        data["custom_attr"] = self.custom_attr
-        return data
-
-    @classmethod
-    def from_dict(cls, data):
-        tools = [Tool.from_dict(tool_data) for tool_data in data["data"]["tools"]]
-        custom_attr = data["custom_attr"]
-        return cls(tools=tools, custom_attr=custom_attr)
-
-
-class CalculatorToolset(Toolset):
-    """A toolset for calculator operations."""
+class DynamicToolset(Toolset):
+    """A custom Toolset that recreates its tools dynamically on deserialization instead of serializing them."""
 
     def __init__(self):
-        super().__init__([])
-        self._create_tools()
-
-    def _create_tools(self):
-        add_tool = Tool(
-            name="add",
-            description="Add two numbers",
-            parameters={
-                "type": "object",
-                "properties": {"a": {"type": "integer"}, "b": {"type": "integer"}},
-                "required": ["a", "b"],
-            },
-            function=add_numbers,
-        )
-
-        multiply_tool = Tool(
-            name="multiply",
-            description="Multiply two numbers",
-            parameters={
-                "type": "object",
-                "properties": {"a": {"type": "integer"}, "b": {"type": "integer"}},
-                "required": ["a", "b"],
-            },
-            function=multiply_numbers,
-        )
-
-        self.add(add_tool)
-        self.add(multiply_tool)
+        super().__init__([add])
 
     def to_dict(self):
-        return {
-            "type": generate_qualified_class_name(type(self)),
-            "data": {},  # no data to serialize as we define the tools dynamically
-        }
+        return {"type": generate_qualified_class_name(type(self)), "data": {}}
 
     @classmethod
     def from_dict(cls, data):
         return cls()
 
 
-def weather_function(location):
+@tool
+def weather(location: Annotated[str, "the location to get the weather for"]) -> dict:
+    """Provides weather information for a given location."""
     weather_info = {
         "Berlin": {"weather": "mostly sunny", "temperature": 7, "unit": "celsius"},
         "Paris": {"weather": "mostly cloudy", "temperature": 8, "unit": "celsius"},
@@ -99,17 +48,9 @@ def weather_function(location):
     return weather_info.get(location, {"weather": "unknown", "temperature": 0, "unit": "celsius"})
 
 
-weather_parameters = {"type": "object", "properties": {"location": {"type": "string"}}, "required": ["location"]}
-
-
 @pytest.fixture
 def weather_tool():
-    return Tool(
-        name="weather_tool",
-        description="Provides weather information for a given location.",
-        parameters=weather_parameters,
-        function=weather_function,
-    )
+    return weather
 
 
 @pytest.fixture
@@ -131,547 +72,235 @@ def faulty_tool():
     )
 
 
+@tool
+def add(a: Annotated[int, "first number"], b: Annotated[int, "second number"]) -> int:
+    """Add two numbers."""
+    return a + b
+
+
+@tool
+def multiply(a: Annotated[int, "first number"], b: Annotated[int, "second number"]) -> int:
+    """Multiply two numbers."""
+    return a * b
+
+
+@tool
+def subtract(a: Annotated[int, "first number"], b: Annotated[int, "second number"]) -> int:
+    """Subtract b from a."""
+    return a - b
+
+
+@pytest.fixture
+def add_tool():
+    return add
+
+
+@pytest.fixture
+def multiply_tool():
+    return multiply
+
+
+@pytest.fixture
+def subtract_tool():
+    return subtract
+
+
+class WarmUpCountingTool(Tool):
+    """A Tool that records how many times warm_up() was called."""
+
+    def __init__(self, name: str):
+        super().__init__(
+            name=name,
+            description=f"{name} tool",
+            parameters={"type": "object", "properties": {}},
+            function=lambda: None,
+        )
+        self.warm_up_count = 0
+
+    def warm_up(self) -> None:
+        self.warm_up_count += 1
+
+
 class TestToolset:
-    def test_toolset_with_multiple_tools(self):
+    def test_toolset_with_multiple_tools(self, add_tool, multiply_tool):
         """Test that a Toolset with multiple tools works properly."""
-        add_tool = Tool(
-            name="add",
-            description="Add two numbers",
-            parameters={
-                "type": "object",
-                "properties": {"a": {"type": "integer"}, "b": {"type": "integer"}},
-                "required": ["a", "b"],
-            },
-            function=add_numbers,
-        )
-
-        multiply_tool = Tool(
-            name="multiply",
-            description="Multiply two numbers",
-            parameters={
-                "type": "object",
-                "properties": {"a": {"type": "integer"}, "b": {"type": "integer"}},
-                "required": ["a", "b"],
-            },
-            function=multiply_numbers,
-        )
-
         toolset = Toolset([add_tool, multiply_tool])
 
         assert len(toolset) == 2
         assert toolset[0].name == "add"
         assert toolset[1].name == "multiply"
 
-        invoker = ToolInvoker(tools=toolset)
+        add_message = ChatMessage.from_assistant(tool_calls=[ToolCall(tool_name="add", arguments={"a": 2, "b": 3})])
+        multiply_message = ChatMessage.from_assistant(
+            tool_calls=[ToolCall(tool_name="multiply", arguments={"a": 4, "b": 5})]
+        )
+        tool_messages = _run_tool_messages(messages=[add_message, multiply_message], tools=toolset)
 
-        add_call = ToolCall(tool_name="add", arguments={"a": 2, "b": 3})
-        add_message = ChatMessage.from_assistant(tool_calls=[add_call])
-
-        multiply_call = ToolCall(tool_name="multiply", arguments={"a": 4, "b": 5})
-        multiply_message = ChatMessage.from_assistant(tool_calls=[multiply_call])
-
-        result = invoker.run(messages=[add_message, multiply_message])
-
-        assert len(result["tool_messages"]) == 2
-        tool_results = [message.tool_call_result.result for message in result["tool_messages"]]
+        assert len(tool_messages) == 2
+        tool_results = [tcr.result for message in tool_messages for tcr in message.tool_call_results]
         assert "5" in tool_results
         assert "20" in tool_results
 
-    def test_toolset_adding(self):
+    def test_toolset_add(self, add_tool):
         """Test that tools can be added to a Toolset."""
         toolset = Toolset()
         assert len(toolset) == 0
-
-        add_tool = Tool(
-            name="add",
-            description="Add two numbers",
-            parameters={
-                "type": "object",
-                "properties": {"a": {"type": "integer"}, "b": {"type": "integer"}},
-                "required": ["a", "b"],
-            },
-            function=add_numbers,
-        )
 
         toolset.add(add_tool)
         assert len(toolset) == 1
         assert toolset[0].name == "add"
 
-        invoker = ToolInvoker(tools=toolset)
-        tool_call = ToolCall(tool_name="add", arguments={"a": 2, "b": 3})
-        message = ChatMessage.from_assistant(tool_calls=[tool_call])
-        result = invoker.run(messages=[message])
+        message = ChatMessage.from_assistant(tool_calls=[ToolCall(tool_name="add", arguments={"a": 2, "b": 3})])
+        tool_messages = _run_tool_messages(messages=[message], tools=toolset)
 
-        assert len(result["tool_messages"]) == 1
-        assert result["tool_messages"][0].tool_call_result.result == "5"
+        assert len(tool_messages) == 1
+        assert tool_messages[0].tool_call_results[0].result == "5"
 
-    def test_toolset_addition(self):
-        """Test that toolsets can be combined."""
-        add_tool = Tool(
-            name="add",
-            description="Add two numbers",
-            parameters={
-                "type": "object",
-                "properties": {"a": {"type": "integer"}, "b": {"type": "integer"}},
-                "required": ["a", "b"],
-            },
-            function=add_numbers,
-        )
-
-        multiply_tool = Tool(
-            name="multiply",
-            description="Multiply two numbers",
-            parameters={
-                "type": "object",
-                "properties": {"a": {"type": "integer"}, "b": {"type": "integer"}},
-                "required": ["a", "b"],
-            },
-            function=multiply_numbers,
-        )
-
-        subtract_tool = Tool(
-            name="subtract",
-            description="Subtract two numbers",
-            parameters={
-                "type": "object",
-                "properties": {"a": {"type": "integer"}, "b": {"type": "integer"}},
-                "required": ["a", "b"],
-            },
-            function=subtract_numbers,
-        )
-
-        toolset1 = Toolset([add_tool])
-        toolset2 = Toolset([multiply_tool])
-
-        combined_toolset = toolset1 + toolset2
-        assert len(combined_toolset) == 2
-
-        combined_toolset = combined_toolset + subtract_tool
-        assert len(combined_toolset) == 3
-
-        tool_names = [tool.name for tool in combined_toolset]
-        assert "add" in tool_names
-        assert "multiply" in tool_names
-        assert "subtract" in tool_names
-
-        invoker = ToolInvoker(tools=combined_toolset)
-
-        add_call = ToolCall(tool_name="add", arguments={"a": 10, "b": 5})
-        multiply_call = ToolCall(tool_name="multiply", arguments={"a": 10, "b": 5})
-        subtract_call = ToolCall(tool_name="subtract", arguments={"a": 10, "b": 5})
-
-        message = ChatMessage.from_assistant(tool_calls=[add_call, multiply_call, subtract_call])
-
-        result = invoker.run(messages=[message])
-
-        assert len(result["tool_messages"]) == 3
-        tool_results = [message.tool_call_result.result for message in result["tool_messages"]]
-        assert "15" in tool_results
-        assert "50" in tool_results
-        assert "5" in tool_results
-
-    def test_toolset_contains(self):
+    def test_toolset_contains(self, add_tool, multiply_tool):
         """Test that the __contains__ method works correctly."""
-        add_tool = Tool(
-            name="add",
-            description="Add two numbers",
-            parameters={
-                "type": "object",
-                "properties": {"a": {"type": "integer"}, "b": {"type": "integer"}},
-                "required": ["a", "b"],
-            },
-            function=add_numbers,
-        )
-
-        multiply_tool = Tool(
-            name="multiply",
-            description="Multiply two numbers",
-            parameters={
-                "type": "object",
-                "properties": {"a": {"type": "integer"}, "b": {"type": "integer"}},
-                "required": ["a", "b"],
-            },
-            function=multiply_numbers,
-        )
-
         toolset = Toolset([add_tool])
-
         # Test with a tool instance
         assert add_tool in toolset
         assert multiply_tool not in toolset
-
         # Test with a tool name
         assert "add" in toolset
         assert "multiply" not in toolset
         assert "non_existent_tool" not in toolset
 
-    def test_toolset_add_various_types(self):
-        """Test that the __add__ method works with various object types."""
-        add_tool = Tool(
-            name="add",
-            description="Add two numbers",
-            parameters={
-                "type": "object",
-                "properties": {"a": {"type": "integer"}, "b": {"type": "integer"}},
-                "required": ["a", "b"],
-            },
-            function=add_numbers,
-        )
+    def test_toolset_addition(self, add_tool, multiply_tool, subtract_tool):
+        """Test that the __add__ method combines toolsets with various operand types."""
+        base = Toolset([add_tool])
 
-        multiply_tool = Tool(
-            name="multiply",
-            description="Multiply two numbers",
-            parameters={
-                "type": "object",
-                "properties": {"a": {"type": "integer"}, "b": {"type": "integer"}},
-                "required": ["a", "b"],
-            },
-            function=multiply_numbers,
-        )
+        # Toolset + Tool
+        result = base + multiply_tool
+        assert isinstance(result, Toolset)
+        assert [t.name for t in result] == ["add", "multiply"]
 
-        subtract_tool = Tool(
-            name="subtract",
-            description="Subtract two numbers",
-            parameters={
-                "type": "object",
-                "properties": {"a": {"type": "integer"}, "b": {"type": "integer"}},
-                "required": ["a", "b"],
-            },
-            function=subtract_numbers,
-        )
+        # Toolset + Toolset
+        result = base + Toolset([subtract_tool])
+        assert isinstance(result, Toolset)
+        assert [t.name for t in result] == ["add", "subtract"]
 
-        # Test adding a single tool
-        toolset1 = Toolset([add_tool])
-        result1 = toolset1 + multiply_tool
-        assert len(result1) == 2
-        assert add_tool in result1
-        assert multiply_tool in result1
+        # Toolset + list[Tool]
+        result = base + [multiply_tool, subtract_tool]
+        assert isinstance(result, Toolset)
+        assert [t.name for t in result] == ["add", "multiply", "subtract"]
 
-        # Test adding another toolset
-        toolset2 = Toolset([subtract_tool])
-        result2 = toolset1 + toolset2
-        assert len(result2) == 2
-        assert add_tool in result2
-        assert subtract_tool in result2
-
-        # Test adding a list of tools
-        result3 = toolset1 + [multiply_tool, subtract_tool]
-        assert len(result3) == 3
-        assert add_tool in result3
-        assert multiply_tool in result3
-        assert subtract_tool in result3
-
-        # Test adding types that aren't supported
+        # Unsupported operand types raise TypeError
         with pytest.raises(TypeError):
-            toolset1 + "not_a_tool"
-
+            base + "not_a_tool"  # type: ignore[operator]
         with pytest.raises(TypeError):
-            toolset1 + 123
+            base + 123  # type: ignore[operator]
 
-    def test_toolset_serialization(self):
+        # The combined tools remain invocable
+        message = ChatMessage.from_assistant(
+            tool_calls=[
+                ToolCall(tool_name="add", arguments={"a": 10, "b": 5}),
+                ToolCall(tool_name="multiply", arguments={"a": 10, "b": 5}),
+                ToolCall(tool_name="subtract", arguments={"a": 10, "b": 5}),
+            ]
+        )
+        tool_messages = _run_tool_messages(messages=[message], tools=result)
+        tool_results = [tcr.result for message in tool_messages for tcr in message.tool_call_results]
+        assert tool_results == ["15", "50", "5"]
+
+    def test_plus_emits_future_warning(self, add_tool, multiply_tool):
+        with pytest.warns(FutureWarning):
+            _ = Toolset([add_tool]) + Toolset([multiply_tool])
+
+    def test_combining_toolsets_via_unpacking(self, add_tool, multiply_tool, subtract_tool):
+        combined = Toolset([*Toolset([add_tool, subtract_tool]), multiply_tool])
+        assert [t.name for t in combined] == ["add", "subtract", "multiply"]
+
+        # The combined tools remain invocable
+        message = ChatMessage.from_assistant(
+            tool_calls=[
+                ToolCall(tool_name="add", arguments={"a": 10, "b": 5}),
+                ToolCall(tool_name="multiply", arguments={"a": 10, "b": 5}),
+            ]
+        )
+        tool_messages = _run_tool_messages(messages=[message], tools=combined)
+        tool_results = [tcr.result for message in tool_messages for tcr in message.tool_call_results]
+        assert tool_results == ["15", "50"]
+
+    def test_toolset_serialization(self, add_tool):
         """Test that a Toolset can be serialized and deserialized."""
-        add_tool = Tool(
-            name="add",
-            description="Add two numbers",
-            parameters={
-                "type": "object",
-                "properties": {"a": {"type": "integer"}, "b": {"type": "integer"}},
-                "required": ["a", "b"],
-            },
-            function=add_numbers,
-        )
-
-        toolset = Toolset([add_tool])
-
-        serialized = toolset.to_dict()
-
+        serialized = Toolset([add_tool]).to_dict()
         deserialized = Toolset.from_dict(serialized)
 
         assert len(deserialized) == 1
         assert deserialized[0].name == "add"
-        assert deserialized[0].description == "Add two numbers"
+        assert deserialized[0].description == "Add two numbers."
 
-        invoker = ToolInvoker(tools=deserialized)
         tool_call = ToolCall(tool_name="add", arguments={"a": 2, "b": 3})
         message = ChatMessage.from_assistant(tool_calls=[tool_call])
-        result = invoker.run(messages=[message])
+        tool_messages = _run_tool_messages(messages=[message], tools=deserialized)
 
-        assert len(result["tool_messages"]) == 1
-        assert result["tool_messages"][0].tool_call_result.result == "5"
+        assert len(tool_messages) == 1
+        assert tool_messages[0].tool_call_results[0].result == "5"
 
-    def test_custom_toolset_serialization(self):
-        """Test serialization and deserialization of a custom Toolset subclass."""
-        add_tool = Tool(
-            name="add",
-            description="Add two numbers",
-            parameters={
-                "type": "object",
-                "properties": {"a": {"type": "integer"}, "b": {"type": "integer"}},
-                "required": ["a", "b"],
-            },
-            function=add_numbers,
-        )
-
-        custom_attr_value = "custom_value"
-        custom_toolset = CustomToolset(tools=[add_tool], custom_attr=custom_attr_value)
-
-        serialized = custom_toolset.to_dict()
-        assert serialized["type"].endswith("CustomToolset")
-        assert serialized["custom_attr"] == custom_attr_value
-        assert len(serialized["data"]["tools"]) == 1
-        assert serialized["data"]["tools"][0]["data"]["name"] == "add"
-
-        deserialized = CustomToolset.from_dict(serialized)
-        assert isinstance(deserialized, CustomToolset)
-        assert deserialized.custom_attr == custom_attr_value
-        assert len(deserialized) == 1
-        assert deserialized[0].name == "add"
-
-        invoker = ToolInvoker(tools=deserialized)
-        tool_call = ToolCall(tool_name="add", arguments={"a": 2, "b": 3})
-        message = ChatMessage.from_assistant(tool_calls=[tool_call])
-        result = invoker.run(messages=[message])
-
-        assert len(result["tool_messages"]) == 1
-        assert result["tool_messages"][0].tool_call_result.result == "5"
-
-    def test_toolset_duplicate_tool_names(self):
+    def test_toolset_duplicate_tool_names(self, add_tool):
         """Test that a Toolset raises an error for duplicate tool names."""
-        add_tool1 = Tool(
-            name="add",
-            description="Add two numbers (first)",
-            parameters={
-                "type": "object",
-                "properties": {"a": {"type": "integer"}, "b": {"type": "integer"}},
-                "required": ["a", "b"],
-            },
-            function=add_numbers,
-        )
+        with pytest.raises(ValueError, match="Duplicate tool names found"):
+            Toolset([add_tool, add_tool])
 
-        add_tool2 = Tool(
-            name="add",
-            description="Add two numbers (second)",
-            parameters={
-                "type": "object",
-                "properties": {"a": {"type": "integer"}, "b": {"type": "integer"}},
-                "required": ["a", "b"],
-            },
-            function=add_numbers,
-        )
+        toolset = Toolset([add_tool])
 
         with pytest.raises(ValueError, match="Duplicate tool names found"):
-            Toolset([add_tool1, add_tool2])
-
-        toolset = Toolset([add_tool1])
+            toolset.add(add_tool)
 
         with pytest.raises(ValueError, match="Duplicate tool names found"):
-            toolset.add(add_tool2)
-
-        toolset2 = Toolset([add_tool2])
-        with pytest.raises(ValueError, match="Duplicate tool names found"):
-            _ = toolset + toolset2
+            Toolset([*toolset, *Toolset([add_tool])])
 
 
-class TestToolsetIntegration:
-    """Integration tests for Toolset in complete pipelines."""
+class TestToolsetWithAgent:
+    def test_init_with_toolset(self, weather_tool, monkeypatch):
+        """Test initializing Agent with a Toolset."""
+        monkeypatch.setenv("OPENAI_API_KEY", "test")
+        toolset = Toolset(tools=[weather_tool])
+        agent = Agent(chat_generator=OpenAIChatGenerator(), tools=toolset)
+        assert agent.tools == toolset
 
-    def test_custom_toolset_serde_in_pipeline(self):
-        """Test serialization and deserialization of a custom toolset within a pipeline."""
+    def test_tool_invocation_error_with_toolset(self, faulty_tool):
+        """Test tool invocation errors with a Toolset."""
+        toolset = Toolset(tools=[faulty_tool])
+        tool_call = ToolCall(tool_name="faulty_tool", arguments={"location": "Berlin"})
+        tool_call_message = ChatMessage.from_assistant(tool_calls=[tool_call])
+        with pytest.raises(ToolInvocationError):
+            _run_tool(messages=[tool_call_message], state=State(schema={}), tools=toolset)
 
-        pipeline = Pipeline()
-        pipeline.add_component("tool_invoker", ToolInvoker(tools=CalculatorToolset()))
+    def test_custom_toolset_serde_in_agent(self, monkeypatch):
+        """Test serialization and deserialization of a custom toolset within an Agent."""
+        monkeypatch.setenv("OPENAI_API_KEY", "test")
+        agent = Agent(chat_generator=OpenAIChatGenerator(), tools=DynamicToolset())
+        agent_dict = agent.to_dict()
+        tools_dict = agent_dict["init_parameters"]["tools"]
+        assert tools_dict["type"] == "test_toolset.DynamicToolset"
+        assert len(tools_dict["data"]) == 0
+        new_agent = Agent.from_dict(agent_dict)
+        assert isinstance(new_agent.tools, DynamicToolset)
 
-        pipeline_dict = pipeline.to_dict()
-
-        tool_invoker_dict = pipeline_dict["components"]["tool_invoker"]
-        assert tool_invoker_dict["type"] == "haystack.components.tools.tool_invoker.ToolInvoker"
-        assert len(tool_invoker_dict["init_parameters"]["tools"]["data"]) == 0
-
-        new_pipeline = Pipeline.from_dict(pipeline_dict)
-        assert new_pipeline == pipeline
-
-    def test_regular_toolset_serde_in_pipeline(self):
-        """Test serialization and deserialization of regular Toolsets within a pipeline."""
-
-        add_tool = Tool(
-            name="add",
-            description="Add two numbers",
-            parameters={
-                "type": "object",
-                "properties": {"a": {"type": "integer"}, "b": {"type": "integer"}},
-                "required": ["a", "b"],
-            },
-            function=add_numbers,
-        )
-
-        multiply_tool = Tool(
-            name="multiply",
-            description="Multiply two numbers",
-            parameters={
-                "type": "object",
-                "properties": {"a": {"type": "integer"}, "b": {"type": "integer"}},
-                "required": ["a", "b"],
-            },
-            function=multiply_numbers,
-        )
-
+    def test_serde_with_toolset(self, add_tool, multiply_tool, monkeypatch):
+        """Test serialization and deserialization of regular Toolsets within an Agent."""
+        monkeypatch.setenv("OPENAI_API_KEY", "test")
         toolset = Toolset([add_tool, multiply_tool])
-
-        pipeline = Pipeline()
-        pipeline.add_component("tool_invoker", ToolInvoker(tools=toolset))
-
-        pipeline_dict = pipeline.to_dict()
-
-        tool_invoker_dict = pipeline_dict["components"]["tool_invoker"]
-        assert tool_invoker_dict["type"] == "haystack.components.tools.tool_invoker.ToolInvoker"
-
-        # Verify the serialized toolset
-        tools_dict = tool_invoker_dict["init_parameters"]["tools"]
+        agent = Agent(chat_generator=OpenAIChatGenerator(), tools=toolset)
+        agent_dict = agent.to_dict()
+        tools_dict = agent_dict["init_parameters"]["tools"]
         assert tools_dict["type"] == "haystack.tools.toolset.Toolset"
         assert len(tools_dict["data"]["tools"]) == 2
         tool_names = [tool["data"]["name"] for tool in tools_dict["data"]["tools"]]
         assert "add" in tool_names
         assert "multiply" in tool_names
+        new_agent = Agent.from_dict(agent_dict)
+        assert isinstance(new_agent.tools, Toolset)
+        assert [tool.name for tool in new_agent.tools] == ["add", "multiply"]
 
-        # Deserialize and verify
-        new_pipeline = Pipeline.from_dict(pipeline_dict)
-        assert new_pipeline == pipeline
-
-
-class TestToolsetWithToolInvoker:
-    def test_init_with_toolset(self, weather_tool):
-        """Test initializing ToolInvoker with a Toolset."""
-        toolset = Toolset(tools=[weather_tool])
-        invoker = ToolInvoker(tools=toolset)
-        assert invoker.tools == toolset
-        assert invoker._tools_with_names == {tool.name: tool for tool in toolset}
-
-    def test_serde_with_toolset(self, weather_tool):
-        """Test serialization and deserialization of ToolInvoker with a Toolset."""
-        toolset = Toolset(tools=[weather_tool])
-        invoker = ToolInvoker(tools=toolset)
-        data = invoker.to_dict()
-        deserialized_invoker = ToolInvoker.from_dict(data)
-        assert deserialized_invoker.tools == invoker.tools
-        assert deserialized_invoker._tools_with_names == invoker._tools_with_names
-        assert deserialized_invoker.raise_on_failure == invoker.raise_on_failure
-        assert deserialized_invoker.convert_result_to_json_string == invoker.convert_result_to_json_string
-
-    def test_tool_invocation_error_with_toolset(self, faulty_tool):
-        """Test tool invocation errors with a Toolset."""
-        toolset = Toolset(tools=[faulty_tool])
-        invoker = ToolInvoker(tools=toolset)
-        tool_call = ToolCall(tool_name="faulty_tool", arguments={"location": "Berlin"})
-        tool_call_message = ChatMessage.from_assistant(tool_calls=[tool_call])
-        with pytest.raises(ToolInvocationError):
-            invoker.run(messages=[tool_call_message])
-
-    def test_toolinvoker_deserialization_with_custom_toolset(self, weather_tool):
-        """Test deserialization of ToolInvoker with a custom Toolset."""
-        custom_toolset = CustomToolset(tools=[weather_tool], custom_attr="custom_value")
-        invoker = ToolInvoker(tools=custom_toolset)
-        data = invoker.to_dict()
-
-        assert isinstance(data, dict)
-        assert "type" in data and "init_parameters" in data
-        tools_data = data["init_parameters"]["tools"]
-        assert isinstance(tools_data, dict)
-        assert len(tools_data["data"]["tools"]) == 1
-        assert tools_data["data"]["tools"][0]["type"] == "haystack.tools.tool.Tool"
-        assert tools_data.get("custom_attr") == "custom_value"
-
-        deserialized_invoker = ToolInvoker.from_dict(data)
-        assert deserialized_invoker.tools == invoker.tools
-        assert deserialized_invoker._tools_with_names == invoker._tools_with_names
-        assert deserialized_invoker.raise_on_failure == invoker.raise_on_failure
-        assert deserialized_invoker.convert_result_to_json_string == invoker.convert_result_to_json_string
-
-
-class TestToolsetList:
-    """Tests for list[Toolset] functionality."""
-
-    def test_tool_invoker_with_list_of_toolsets(self, weather_tool):
-        """Test that ToolInvoker can be initialized with a mixed list of Tools and Toolsets."""
-        add_tool = Tool(
-            name="add",
-            description="Add two numbers",
-            parameters={
-                "type": "object",
-                "properties": {"a": {"type": "integer"}, "b": {"type": "integer"}},
-                "required": ["a", "b"],
-            },
-            function=add_numbers,
-        )
-        multiply_tool = Tool(
-            name="multiply",
-            description="Multiply two numbers",
-            parameters={
-                "type": "object",
-                "properties": {"a": {"type": "integer"}, "b": {"type": "integer"}},
-                "required": ["a", "b"],
-            },
-            function=multiply_numbers,
-        )
-
-        toolset1 = Toolset([weather_tool])
-        # Mix: Toolset, standalone Tool, another Toolset
-        toolset2 = Toolset([add_tool])
-
-        invoker = ToolInvoker(tools=[toolset1, multiply_tool, toolset2])
-
-        # Verify tools are flattened internally
-        assert "weather_tool" in invoker._tools_with_names
-        assert "multiply" in invoker._tools_with_names
-        assert "add" in invoker._tools_with_names
-        assert len(invoker._tools_with_names) == 3
-
-    def test_tool_invoker_run_with_list_of_toolsets(self, weather_tool):
-        """Test running ToolInvoker with a list of Toolsets."""
-        add_tool = Tool(
-            name="add",
-            description="Add two numbers",
-            parameters={
-                "type": "object",
-                "properties": {"a": {"type": "integer"}, "b": {"type": "integer"}},
-                "required": ["a", "b"],
-            },
-            function=add_numbers,
-        )
-
-        toolset1 = Toolset([weather_tool])
-        toolset2 = Toolset([add_tool])
-
-        invoker = ToolInvoker(tools=[toolset1, toolset2])
-
-        # Call both tools
-        weather_call = ToolCall(tool_name="weather_tool", arguments={"location": "Berlin"})
-        add_call = ToolCall(tool_name="add", arguments={"a": 5, "b": 3})
-        message = ChatMessage.from_assistant(tool_calls=[weather_call, add_call])
-
-        result = invoker.run(messages=[message])
-
-        assert len(result["tool_messages"]) == 2
-        assert "mostly sunny" in result["tool_messages"][0].tool_call_result.result
-        assert "8" in result["tool_messages"][1].tool_call_result.result
-
-    def test_tool_invoker_serde_with_list_of_toolsets(self, weather_tool):
-        """Test serialization and deserialization of ToolInvoker with a list of Toolsets."""
-        add_tool = Tool(
-            name="add",
-            description="Add two numbers",
-            parameters={
-                "type": "object",
-                "properties": {"a": {"type": "integer"}, "b": {"type": "integer"}},
-                "required": ["a", "b"],
-            },
-            function=add_numbers,
-        )
-
-        toolset1 = Toolset([weather_tool])
-        toolset2 = Toolset([add_tool])
-
-        invoker = ToolInvoker(tools=[toolset1, toolset2])
-        data = invoker.to_dict()
+    def test_agent_serde_with_list_of_toolsets(self, weather_tool, add_tool, monkeypatch):
+        """Test serialization and deserialization of Agent with a list of Toolsets."""
+        monkeypatch.setenv("OPENAI_API_KEY", "test")
+        agent = Agent(chat_generator=OpenAIChatGenerator(), tools=[Toolset([weather_tool]), Toolset([add_tool])])
+        data = agent.to_dict()
 
         # Verify serialization preserves list[Toolset] structure
         tools_data = data["init_parameters"]["tools"]
@@ -682,100 +311,156 @@ class TestToolsetList:
         assert tools_data[1]["type"] == "haystack.tools.toolset.Toolset"
 
         # Deserialize and verify
-        deserialized_invoker = ToolInvoker.from_dict(data)
-        assert isinstance(deserialized_invoker.tools, list)
-        assert len(deserialized_invoker.tools) == 2
-        assert all(isinstance(ts, Toolset) for ts in deserialized_invoker.tools)
-        assert deserialized_invoker._tools_with_names == invoker._tools_with_names
+        deserialized_agent = Agent.from_dict(data)
+        assert isinstance(deserialized_agent.tools, list)
+        assert len(deserialized_agent.tools) == 2
+        assert all(isinstance(ts, Toolset) for ts in deserialized_agent.tools)
 
-    def test_pipeline_with_list_of_toolsets(self):
-        """Test that a Pipeline can serialize/deserialize with a list of Toolsets."""
-        add_tool = Tool(
-            name="add",
-            description="Add two numbers",
-            parameters={
-                "type": "object",
-                "properties": {"a": {"type": "integer"}, "b": {"type": "integer"}},
-                "required": ["a", "b"],
-            },
-            function=add_numbers,
-        )
+    def test_agent_serde_with_list_containing_custom_toolset(self, multiply_tool, monkeypatch):
+        """A custom-serde Toolset inside a list roundtrips through its own to_dict/from_dict."""
+        monkeypatch.setenv("OPENAI_API_KEY", "test")
+        agent = Agent(chat_generator=OpenAIChatGenerator(), tools=[DynamicToolset(), Toolset([multiply_tool])])
+        data = agent.to_dict()
 
-        multiply_tool = Tool(
-            name="multiply",
-            description="Multiply two numbers",
-            parameters={
-                "type": "object",
-                "properties": {"a": {"type": "integer"}, "b": {"type": "integer"}},
-                "required": ["a", "b"],
-            },
-            function=multiply_numbers,
-        )
+        tools_data = data["init_parameters"]["tools"]
+        assert tools_data[0]["type"] == "test_toolset.DynamicToolset"
+        assert tools_data[0]["data"] == {}
+        assert tools_data[1]["type"] == "haystack.tools.toolset.Toolset"
 
-        toolset1 = Toolset([add_tool])
-        toolset2 = Toolset([multiply_tool])
+        deserialized_agent = Agent.from_dict(data)
+        custom_toolset, plain_toolset = deserialized_agent.tools[0], deserialized_agent.tools[1]
+        assert isinstance(custom_toolset, DynamicToolset)
+        assert isinstance(plain_toolset, Toolset)
+        # The custom toolset rebuilt its tools via its own from_dict.
+        assert [tool.name for tool in custom_toolset] == ["add"]
+        assert [tool.name for tool in plain_toolset] == ["multiply"]
 
+    def test_list_of_toolsets_runtime_override(self, weather_tool, add_tool, multiply_tool):
+        """Test that list of Toolsets can be passed as runtime override to Agent.run()."""
+        toolset2 = Toolset([add_tool])
+        toolset3 = Toolset([multiply_tool])
+
+        @component
+        class AddCallingChatGenerator:
+            tool_invoked = False
+
+            @component.output_types(replies=list[ChatMessage])
+            def run(
+                self, messages: list[ChatMessage], tools: list[Tool | Toolset] | None = None, **kwargs: Any
+            ) -> dict[str, list[ChatMessage]]:
+                # The Agent flattens toolsets before passing them to the chat generator.
+                assert tools == [add_tool, multiply_tool]
+                if self.tool_invoked:
+                    return {"replies": [ChatMessage.from_assistant("done")]}
+                self.tool_invoked = True
+                return {
+                    "replies": [
+                        ChatMessage.from_assistant(tool_calls=[ToolCall(tool_name="add", arguments={"a": 3, "b": 7})])
+                    ]
+                }
+
+        agent = Agent(chat_generator=AddCallingChatGenerator(), tools=Toolset([weather_tool]))
+        result = agent.run(messages=[ChatMessage.from_user("Add numbers")], tools=[toolset2, toolset3])
+        assert result["messages"][2].tool_call_result.result == "10"
+
+    def test_pipeline_with_list_of_toolsets(self, add_tool, multiply_tool, monkeypatch):
+        """Test that a Pipeline can serialize/deserialize an Agent with a list of Toolsets."""
+        monkeypatch.setenv("OPENAI_API_KEY", "test")
         pipeline = Pipeline()
-        pipeline.add_component("tool_invoker", ToolInvoker(tools=[toolset1, toolset2]))
-
+        pipeline.add_component(
+            "agent", Agent(chat_generator=OpenAIChatGenerator(), tools=[Toolset([add_tool]), Toolset([multiply_tool])])
+        )
         pipeline_dict = pipeline.to_dict()
 
         # Verify the serialized structure
-        tool_invoker_dict = pipeline_dict["components"]["tool_invoker"]
-        tools_data = tool_invoker_dict["init_parameters"]["tools"]
+        agent_dict = pipeline_dict["components"]["agent"]
+        tools_data = agent_dict["init_parameters"]["tools"]
         assert isinstance(tools_data, list)
         assert len(tools_data) == 2
         assert all(ts["type"] == "haystack.tools.toolset.Toolset" for ts in tools_data)
 
         # Deserialize and verify functionality
         new_pipeline = Pipeline.from_dict(pipeline_dict)
-        assert new_pipeline == pipeline
+        assert new_pipeline.to_dict() == pipeline_dict
 
-        # Run the pipeline to verify it works
-        tool_call = ToolCall(tool_name="add", arguments={"a": 10, "b": 5})
-        message = ChatMessage.from_assistant(tool_calls=[tool_call])
-        result = new_pipeline.run(data={"tool_invoker": {"messages": [message]}})
 
-        assert "tool_invoker" in result
-        assert len(result["tool_invoker"]["tool_messages"]) == 1
-        assert "15" in result["tool_invoker"]["tool_messages"][0].tool_call_result.result
+class TestToolsetWarmUp:
+    """Stress tests for Toolset warm_up behavior."""
 
-    def test_list_of_toolsets_runtime_override(self, weather_tool):
-        """Test that list of Toolsets can be passed as runtime override to ToolInvoker.run()."""
-        add_tool = Tool(
-            name="add",
-            description="Add two numbers",
-            parameters={
-                "type": "object",
-                "properties": {"a": {"type": "integer"}, "b": {"type": "integer"}},
-                "required": ["a", "b"],
-            },
-            function=add_numbers,
-        )
+    def test_warm_up_warms_all_tools(self):
+        t1, t2 = WarmUpCountingTool("a"), WarmUpCountingTool("b")
+        toolset = Toolset([t1, t2])
+        assert t1.warm_up_count == 0
+        assert t2.warm_up_count == 0
+        toolset.warm_up()
+        assert t1.warm_up_count == 1
+        assert t2.warm_up_count == 1
 
-        multiply_tool = Tool(
-            name="multiply",
-            description="Multiply two numbers",
-            parameters={
-                "type": "object",
-                "properties": {"a": {"type": "integer"}, "b": {"type": "integer"}},
-                "required": ["a", "b"],
-            },
-            function=multiply_numbers,
-        )
+    def test_warm_up_can_be_called_multiple_times(self):
+        t1 = WarmUpCountingTool("a")
+        toolset = Toolset([t1])
+        toolset.warm_up()
+        toolset.warm_up()
+        toolset.warm_up()
+        assert t1.warm_up_count == 3
 
-        # Initialize with one toolset
-        toolset1 = Toolset([weather_tool])
-        invoker = ToolInvoker(tools=toolset1)
+    def test_add_never_warms_the_new_tool(self):
+        existing = WarmUpCountingTool("a")
+        toolset = Toolset([existing])
+        toolset.warm_up()
+        new_tool = WarmUpCountingTool("b")
+        toolset.add(new_tool)
+        assert new_tool.warm_up_count == 0
+        toolset.warm_up()
+        assert new_tool.warm_up_count == 1
 
-        # Override with a different list of toolsets at runtime
-        toolset2 = Toolset([add_tool])
-        toolset3 = Toolset([multiply_tool])
+    def test_add_toolset_flattens_with_future_warning(self):
+        toolset = Toolset([WarmUpCountingTool("a")])
+        other = Toolset([WarmUpCountingTool("b")])
+        with pytest.warns(FutureWarning):
+            toolset.add(other)
+        assert [t.name for t in toolset] == ["a", "b"]
 
-        add_call = ToolCall(tool_name="add", arguments={"a": 3, "b": 7})
-        message = ChatMessage.from_assistant(tool_calls=[add_call])
+    def test_add_non_tool_raises(self):
+        toolset = Toolset([WarmUpCountingTool("a")])
+        with pytest.raises(TypeError, match="Expected Tool or Toolset"):
+            toolset.add("not_a_tool")  # type: ignore[arg-type]
 
-        result = invoker.run(messages=[message], tools=[toolset2, toolset3])
 
-        assert len(result["tool_messages"]) == 1
-        assert "10" in result["tool_messages"][0].tool_call_result.result
+class TestToolsetSpawn:
+    """Tests for spawn(), the run-scoping hook."""
+
+    def test_spawn_returns_self_for_plain_toolset(self, add_tool, multiply_tool):
+        toolset = Toolset([add_tool, multiply_tool])
+        assert toolset.spawn() is toolset
+        assert toolset.spawn(selected_tool_names={"add"}) is toolset
+        assert [tool.name for tool in toolset] == ["add", "multiply"]
+
+
+class TestToolsetToolSelection:
+    """Tests for get_selectable_tools()."""
+
+    def test_get_selectable_tools_returns_all_tools(self, add_tool, multiply_tool):
+        toolset = Toolset([add_tool, multiply_tool])
+        assert toolset.get_selectable_tools() == [add_tool, multiply_tool]
+
+    def test_get_selectable_tools_warms_up_lazy_toolset(self, add_tool, multiply_tool):
+        """get_selectable_tools() warms up a lazy toolset so its lazily loaded tools are available for selection."""
+
+        class LazyToolset(Toolset):
+            def __init__(self):
+                self._loaded = False
+                super().__init__([])  # no tools until warm_up
+
+            def warm_up(self):
+                if self._loaded:
+                    return
+                self._loaded = True
+                self.tools = [add_tool, multiply_tool]
+
+        toolset = LazyToolset()
+        assert toolset.tools == []  # not loaded yet
+
+        selectable = toolset.get_selectable_tools()
+
+        assert [tool.name for tool in selectable] == ["add", "multiply"]

@@ -1,0 +1,13 @@
+---
+fixes:
+  - |
+    Fixed ``RecursiveDocumentSplitter`` silently
+    ignoring ``split_overlap`` when none of the configured ``separators``
+    match the input text.  In that code path the component fell back to
+    fixed-size chunking but returned the result directly without calling
+    ``_apply_overlap``, so every chunk after the first was missing the
+    expected overlap prefix.  The fix applies ``_apply_overlap`` to the
+    fallback chunks before returning them, making behaviour consistent
+    with the separator-matched code path.  All three split units
+    (``"char"``, ``"word"``, and ``"token"``) are affected and are now
+    covered by regression tests.

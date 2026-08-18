@@ -1,0 +1,129 @@
+---
+upgrade:
+  - |
+    ``continue_run`` is now a reserved key in ``Agent.state_schema`` (set by an ``on_exit`` hook to keep the Agent
+    running). Passing it via the ``state_schema`` argument now raises ``ValueError``. Rename any conflicting state
+    key (e.g. ``my_continue_run``) to migrate.
+features:
+  - |
+    Added hooks to the ``Agent``. Pass ``hooks`` as a dictionary mapping a hook point to a list of hooks the Agent runs
+    at that point. Each hook receives the live ``State`` and influences the run by mutating it in place; hooks for a
+    hook point run in list order, and the same hook can be registered under multiple hook points. Valid hook points are:
+    - ``before_llm``: Runs before each chat-generator call.
+    - ``before_tool``: Runs after the model requests tool calls, before any tools run. After these hooks run, the Agent
+      re-reads the current last message from ``state["messages"]``. If that message contains tool calls, those calls are
+      executed. If it does not, no tools run for that step, no tool-based exit condition is triggered, and the Agent
+      loops back to the next LLM call unless ``max_agent_steps`` has been reached.
+    - ``on_exit``: Runs when the Agent is about to stop on an exit condition. An ``on_exit`` hook can keep the Agent
+      running by setting the ``continue_run`` control flag (``state.set("continue_run", True)``), usually alongside a
+      message telling the model what to do next. ``on_exit`` hooks run when the Agent stops on an exit condition, but
+      not when it stops because ``max_agent_steps`` is reached.
+
+    A hook is any object with a ``run(state)`` method (optionally ``run_async(state)``); use the ``@hook`` decorator
+    to build one from a function. This enables patterns such as building run-time system context, retrieving memories,
+    and requiring a tool to be called before finishing.
+
+    The example below registers one hook at each placement to show what each can do:
+
+    .. code-block:: python
+
+        from datetime import datetime, timezone
+        from typing import Annotated
+
+        from haystack.components.agents import Agent
+        from haystack.components.agents.state import State, replace_values
+        from haystack.components.generators.chat import OpenAIChatGenerator
+        from haystack.dataclasses import ChatMessage
+        from haystack.hooks import hook
+        from haystack.tools import tool
+
+
+        @tool
+        def search(query: Annotated[str, "The search query"]) -> str:
+            """Search the web."""
+            # Placeholder: would call a real search API
+            return "Fusion startups reported net-energy-gain milestones this year."
+
+
+        @hook
+        def build_context(state: State) -> None:
+            # before_llm: build run-time system context once, before the first model call.
+            if state.get("step_count") == 0:
+                now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+                system = ChatMessage.from_system(f"You are a research assistant. The current time is {now}.")
+                state.set("messages", [system, *state.data["messages"]], handler_override=replace_values)
+
+
+        @hook
+        def audit_tool_calls(state: State) -> None:
+            # before_tool: see which tools the model is about to run.
+            pending = state.data["messages"][-1].tool_calls
+            print(f"about to run: {[tc.tool_name for tc in pending]}")
+
+
+        @hook
+        def require_search(state: State) -> None:
+            # on_exit: keep going until the agent has actually searched.
+            if state.get("tool_call_counts", {}).get("search", 0) == 0:
+                state.set("messages", [ChatMessage.from_system("Search before answering.")])
+                state.set("continue_run", True)
+
+
+        agent = Agent(
+            chat_generator=OpenAIChatGenerator(model="gpt-5.4-nano"),
+            tools=[search],
+            hooks={
+                "before_llm": [build_context],
+                "before_tool": [audit_tool_calls],
+                "on_exit": [require_search],
+            },
+        )
+
+        result = agent.run(messages=[ChatMessage.from_user("What are the latest developments in fusion energy?")])
+        print(result["last_message"].text)
+
+    Class-based hooks may also implement the optional lifecycle methods ``warm_up`` / ``warm_up_async`` and
+    ``close`` / ``close_async``. The Agent calls them from its own ``warm_up`` / ``warm_up_async`` and
+    ``close`` / ``close_async``, so a hook can defer opening clients or reading credentials until warm-up and release
+    them on close. When a class-based hook should be serializable, store serializable constructor arguments on the hook
+    and rebuild runtime clients from those values. For example, an ``on_exit`` hook can grade the Agent's answer with
+    its own LLM and ask it to improve a weak answer before finishing, warming the judge's client during the Agent's
+    warm-up:
+
+    .. code-block:: python
+
+        from typing import Any
+        from haystack.core.serialization import default_from_dict, default_to_dict
+
+
+        class GradeFinalAnswer:
+            """Grade the Agent's answer with an LLM and ask it to improve a weak answer before finishing."""
+
+            def __init__(self, model: str = "gpt-5.4-nano"):
+                self.model = model
+                self._judge = OpenAIChatGenerator(model=self.model)
+
+            def warm_up(self) -> None:
+                # Warm up the judge's own client during the Agent's warm-up.
+                self._judge.warm_up()
+
+            def run(self, state: State) -> None:
+                answer = state.data["messages"][-1].text or ""
+                verdict = self._judge.run(
+                    messages=[ChatMessage.from_user(f"Reply with only PASS or FAIL. Is this answer complete?\n\n{answer}")]
+                )["replies"][0].text or ""
+                if "FAIL" in verdict.upper():
+                    state.set("messages", [ChatMessage.from_user("Your answer was incomplete. Please improve it.")])
+                    state.set("continue_run", True)
+
+            def to_dict(self) -> dict[str, Any]:
+                return default_to_dict(self, model=self.model)
+
+            @classmethod
+            def from_dict(cls, data: dict[str, Any]) -> "GradeFinalAnswer":
+                return default_from_dict(cls, data)
+
+
+        agent = Agent(chat_generator=OpenAIChatGenerator(model="gpt-5.4-nano"), hooks={"on_exit": [GradeFinalAnswer()]})
+        result = agent.run(messages=[ChatMessage.from_user("Explain how vaccines work.")])
+        print(result["last_message"].text)

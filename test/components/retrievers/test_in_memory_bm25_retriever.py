@@ -26,23 +26,21 @@ def mock_docs():
 
 
 class TestMemoryBM25Retriever:
-    def test_init_default(self):
-        retriever = InMemoryBM25Retriever(InMemoryDocumentStore())
+    def test_init_default(self, in_memory_doc_store):
+        retriever = InMemoryBM25Retriever(in_memory_doc_store)
         assert retriever.filters is None
         assert retriever.top_k == 10
         assert retriever.scale_score is False
 
-    def test_init_with_parameters(self):
-        retriever = InMemoryBM25Retriever(
-            InMemoryDocumentStore(), filters={"name": "test.txt"}, top_k=5, scale_score=True
-        )
+    def test_init_with_parameters(self, in_memory_doc_store):
+        retriever = InMemoryBM25Retriever(in_memory_doc_store, filters={"name": "test.txt"}, top_k=5, scale_score=True)
         assert retriever.filters == {"name": "test.txt"}
         assert retriever.top_k == 5
         assert retriever.scale_score
 
-    def test_init_with_invalid_top_k_parameter(self):
+    def test_init_with_invalid_top_k_parameter(self, in_memory_doc_store):
         with pytest.raises(ValueError):
-            InMemoryBM25Retriever(InMemoryDocumentStore(), top_k=-2)
+            InMemoryBM25Retriever(in_memory_doc_store, top_k=-2)
 
     def test_to_dict(self):
         MyFakeStore = document_store_class("MyFakeStore", bases=(InMemoryDocumentStore,))
@@ -120,23 +118,67 @@ class TestMemoryBM25Retriever:
             InMemoryBM25Retriever.from_dict(data)
 
     def test_from_dict_nonexisting_docstore(self):
+        # Use a type whose module passes the deserialization allowlist (haystack.*) but cannot be
+        # resolved, so we still exercise the "import failed" code path rather than the allowlist gate.
         data = {
             "type": "haystack.components.retrievers.in_memory.bm25_retriever.InMemoryBM25Retriever",
-            "init_parameters": {"document_store": {"type": "Nonexisting.Docstore", "init_parameters": {}}},
+            "init_parameters": {"document_store": {"type": "haystack.does.not.exist.Docstore", "init_parameters": {}}},
         }
-        with pytest.raises(ImportError, match=r"Failed to deserialize 'document_store':.*Nonexisting\.Docstore"):
+        with pytest.raises(
+            ImportError, match=r"Failed to deserialize 'document_store':.*haystack\.does\.not\.exist\.Docstore"
+        ):
             InMemoryBM25Retriever.from_dict(data)
 
-    def test_retriever_valid_run(self, mock_docs):
-        ds = InMemoryDocumentStore()
-        ds.write_documents(mock_docs)
+    def test_retriever_valid_run(self, in_memory_doc_store, mock_docs):
+        in_memory_doc_store.write_documents(mock_docs)
 
-        retriever = InMemoryBM25Retriever(ds, top_k=5)
+        retriever = InMemoryBM25Retriever(in_memory_doc_store, top_k=5)
         result = retriever.run(query="PHP")
 
         assert "documents" in result
         assert len(result["documents"]) == 5
         assert result["documents"][0].content == "PHP is a popular programming language"
+
+    def test_run_with_filter_policy_merge_combines_init_and_runtime_filters(self, in_memory_doc_store):
+        in_memory_doc_store.write_documents(
+            [
+                Document(content="python article current", meta={"type": "article", "year": 2020}),
+                Document(content="python blog current", meta={"type": "blog", "year": 2021}),
+                Document(content="python article archived", meta={"type": "article", "year": 2019}),
+            ]
+        )
+
+        retriever = InMemoryBM25Retriever(
+            in_memory_doc_store,
+            filters={"field": "meta.type", "operator": "==", "value": "article"},
+            filter_policy=FilterPolicy.MERGE,
+        )
+
+        result = retriever.run(query="python", filters={"field": "meta.year", "operator": ">=", "value": 2020})
+
+        assert [doc.content for doc in result["documents"]] == ["python article current"]
+
+    @pytest.mark.asyncio
+    async def test_run_async_with_filter_policy_merge_combines_init_and_runtime_filters(self, in_memory_doc_store):
+        in_memory_doc_store.write_documents(
+            [
+                Document(content="python article current", meta={"type": "article", "year": 2020}),
+                Document(content="python blog current", meta={"type": "blog", "year": 2021}),
+                Document(content="python article archived", meta={"type": "article", "year": 2019}),
+            ]
+        )
+
+        retriever = InMemoryBM25Retriever(
+            in_memory_doc_store,
+            filters={"field": "meta.type", "operator": "==", "value": "article"},
+            filter_policy=FilterPolicy.MERGE,
+        )
+
+        result = await retriever.run_async(
+            query="python", filters={"field": "meta.year", "operator": ">=", "value": 2020}
+        )
+
+        assert [doc.content for doc in result["documents"]] == ["python article current"]
 
     def test_invalid_run_wrong_store_type(self):
         SomeOtherDocumentStore = document_store_class("SomeOtherDocumentStore")
@@ -151,10 +193,9 @@ class TestMemoryBM25Retriever:
             ("Java", "Java is a popular programming language"),
         ],
     )
-    def test_run_with_pipeline(self, mock_docs, query: str, query_result: str):
-        ds = InMemoryDocumentStore()
-        ds.write_documents(mock_docs)
-        retriever = InMemoryBM25Retriever(ds)
+    def test_run_with_pipeline(self, in_memory_doc_store, mock_docs, query: str, query_result: str):
+        in_memory_doc_store.write_documents(mock_docs)
+        retriever = InMemoryBM25Retriever(in_memory_doc_store)
 
         pipeline = Pipeline()
         pipeline.add_component("retriever", retriever)
@@ -175,10 +216,11 @@ class TestMemoryBM25Retriever:
             ("Ruby", "Ruby is a popular programming language", 3),
         ],
     )
-    def test_run_with_pipeline_and_top_k(self, mock_docs, query: str, query_result: str, top_k: int):
-        ds = InMemoryDocumentStore()
-        ds.write_documents(mock_docs)
-        retriever = InMemoryBM25Retriever(ds)
+    def test_run_with_pipeline_and_top_k(
+        self, in_memory_doc_store, mock_docs, query: str, query_result: str, top_k: int
+    ):
+        in_memory_doc_store.write_documents(mock_docs)
+        retriever = InMemoryBM25Retriever(in_memory_doc_store)
 
         pipeline = Pipeline()
         pipeline.add_component("retriever", retriever)

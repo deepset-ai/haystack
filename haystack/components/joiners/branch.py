@@ -71,8 +71,8 @@ class BranchJoiner:
     print(json.loads(result["validator"]["validated"][0].text))
 
 
-    >> {'first_name': 'Peter', 'last_name': 'Parker', 'nationality': 'American', 'name': 'Spider-Man', 'occupation':
-    >> 'Superhero', 'age': 23, 'location': 'New York City'}
+    # >> {'first_name': 'Peter', 'last_name': 'Parker', 'nationality': 'American', 'name': 'Spider-Man', 'occupation':
+    # >> 'Superhero', 'age': 23, 'location': 'New York City'}
     ```
 
     Note that `BranchJoiner` can manage only one data type at a time. In this case, `BranchJoiner` is created for
@@ -116,7 +116,7 @@ class BranchJoiner:
         data["init_parameters"]["type_"] = deserialize_type(data["init_parameters"]["type_"])
         return default_from_dict(cls, data)
 
-    def run(self, **kwargs) -> dict[str, Any]:
+    def run(self, **kwargs: Any) -> dict[str, Any]:
         """
         Executes the `BranchJoiner`, selecting the first available input value and passing it downstream.
 

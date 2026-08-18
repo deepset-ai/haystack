@@ -23,9 +23,12 @@ from openai.types.chat.chat_completion_chunk import Choice as ChunkChoice
 from pydantic import BaseModel
 
 from haystack import component, default_from_dict, default_to_dict, logging
-from haystack.components.generators.utils import _convert_streaming_chunks_to_chat_message, _serialize_object
+from haystack.components.generators.utils import (
+    _convert_streaming_chunks_to_chat_message,
+    _normalize_messages,
+    _serialize_object,
+)
 from haystack.dataclasses import (
-    AsyncStreamingCallbackT,
     ChatMessage,
     ComponentInfo,
     FinishReason,
@@ -36,6 +39,7 @@ from haystack.dataclasses import (
     ToolCallDelta,
     select_streaming_callback,
 )
+from haystack.dataclasses.streaming_chunk import _invoke_streaming_callback
 from haystack.tools import (
     ToolsType,
     _check_duplicate_tool_names,
@@ -68,7 +72,6 @@ class OpenAIChatGenerator:
     [OpenAI documentation](https://platform.openai.com/docs/api-reference/chat).
 
     ### Usage example
-
     ```python
     from haystack.components.generators.chat import OpenAIChatGenerator
     from haystack.dataclasses import ChatMessage
@@ -93,6 +96,8 @@ class OpenAIChatGenerator:
     }
     ```
     """
+
+    _HAYSTACK_TO_PROVIDER_GENERATION_KWARGS: ClassVar[dict[str, str]] = {"max_output_tokens": "max_completion_tokens"}
 
     SUPPORTED_MODELS: ClassVar[list[str]] = [
         "gpt-5-mini",
@@ -206,35 +211,71 @@ class OpenAIChatGenerator:
         # Check for duplicate tool names
         _check_duplicate_tool_names(flatten_tools_or_toolsets(self.tools))
 
-        if timeout is None:
-            timeout = float(os.environ.get("OPENAI_TIMEOUT", "30.0"))
-        if max_retries is None:
-            max_retries = int(os.environ.get("OPENAI_MAX_RETRIES", "5"))
+        self.client: OpenAI | None = None
+        self.async_client: AsyncOpenAI | None = None
+        self._tools_warmed_up = False
 
-        client_kwargs: dict[str, Any] = {
-            "api_key": api_key.resolve_value(),
-            "organization": organization,
-            "base_url": api_base_url,
+    def _client_kwargs(self) -> dict[str, Any]:
+        timeout = self.timeout if self.timeout is not None else float(os.environ.get("OPENAI_TIMEOUT", "30.0"))
+        max_retries = (
+            self.max_retries if self.max_retries is not None else int(os.environ.get("OPENAI_MAX_RETRIES", "5"))
+        )
+        return {
+            "api_key": self.api_key.resolve_value(),
+            "organization": self.organization,
+            "base_url": self.api_base_url,
             "timeout": timeout,
             "max_retries": max_retries,
         }
 
-        self.client = OpenAI(http_client=init_http_client(self.http_client_kwargs, async_client=False), **client_kwargs)
-        self.async_client = AsyncOpenAI(
-            http_client=init_http_client(self.http_client_kwargs, async_client=True), **client_kwargs
-        )
-        self._is_warmed_up = False
+    def _warm_up_tools(self) -> None:
+        if not self._tools_warmed_up:
+            warm_up_tools(self.tools)
+            self._tools_warmed_up = True
 
     def warm_up(self) -> None:
         """
-        Warm up the OpenAI chat generator.
-
-        This will warm up the tools registered in the chat generator.
-        This method is idempotent and will only warm up the tools once.
+        Warm up the tools and initialize the synchronous OpenAI client.
         """
-        if not self._is_warmed_up:
-            warm_up_tools(self.tools)
-            self._is_warmed_up = True
+        self._warm_up_tools()
+        if self.client is None:
+            # openai>=3 annotates http_client as httpx2, but legacy httpx clients are supported at runtime.
+            # https://github.com/openai/openai-python/blob/main/httpx2.md
+            http_client = init_http_client(self.http_client_kwargs, async_client=False)
+            self.client = OpenAI(
+                http_client=http_client,  # type: ignore[arg-type]
+                **self._client_kwargs(),
+            )
+
+    async def warm_up_async(self) -> None:  # noqa: RUF029
+        """
+        Warm up the tools and initialize the asynchronous OpenAI client on the serving event loop.
+        """
+        self._warm_up_tools()
+        if self.async_client is None:
+            # openai>=3 annotates http_client as httpx2, but legacy httpx clients are supported at runtime.
+            # https://github.com/openai/openai-python/blob/main/httpx2.md
+            http_client = init_http_client(self.http_client_kwargs, async_client=True)
+            self.async_client = AsyncOpenAI(
+                http_client=http_client,  # type: ignore[arg-type]
+                **self._client_kwargs(),
+            )
+
+    def close(self) -> None:
+        """
+        Releases the synchronous OpenAI client.
+        """
+        if self.client is not None:
+            self.client.close()
+            self.client = None
+
+    async def close_async(self) -> None:
+        """
+        Releases the asynchronous OpenAI client.
+        """
+        if self.async_client is not None:
+            await self.async_client.close()
+            self.async_client = None
 
     def _get_telemetry_data(self) -> dict[str, Any]:
         """
@@ -301,7 +342,7 @@ class OpenAIChatGenerator:
     @component.output_types(replies=list[ChatMessage])
     def run(
         self,
-        messages: list[ChatMessage],
+        messages: list[ChatMessage] | str,
         streaming_callback: StreamingCallbackT | None = None,
         generation_kwargs: dict[str, Any] | None = None,
         *,
@@ -312,12 +353,14 @@ class OpenAIChatGenerator:
         Invokes chat completion based on the provided messages and generation parameters.
 
         :param messages:
-            A list of ChatMessage instances representing the input messages.
+            A list of ChatMessage instances representing the input messages. If a string is provided, it is converted
+            to a list containing a ChatMessage with user role.
         :param streaming_callback:
             A callback function that is called when a new token is received from the stream.
         :param generation_kwargs:
-            Additional keyword arguments for text generation. These parameters will
-            override the parameters passed during component initialization.
+            Additional keyword arguments for text generation. These are merged per key with the
+            `generation_kwargs` passed at initialization: keys provided here take precedence, keys set
+            only at initialization are kept.
             For details on OpenAI API parameters, see [OpenAI documentation](https://platform.openai.com/docs/api-reference/chat/create).
         :param tools:
             A list of Tool and/or Toolset objects, or a single Toolset for which the model can prepare calls.
@@ -331,8 +374,9 @@ class OpenAIChatGenerator:
             A dictionary with the following key:
             - `replies`: A list containing the generated responses as ChatMessage instances.
         """
-        if not self._is_warmed_up:
-            self.warm_up()
+        self.warm_up()
+
+        messages = _normalize_messages(messages)
 
         if len(messages) == 0:
             return {"replies": []}
@@ -350,6 +394,7 @@ class OpenAIChatGenerator:
             tools_strict=tools_strict,
         )
         openai_endpoint = api_args.pop("openai_endpoint")
+        assert self.client is not None  # mypy: client is built by warm_up above
         openai_endpoint_method = getattr(self.client.chat.completions, openai_endpoint)
         chat_completion = openai_endpoint_method(**api_args)
 
@@ -376,7 +421,7 @@ class OpenAIChatGenerator:
     @component.output_types(replies=list[ChatMessage])
     async def run_async(
         self,
-        messages: list[ChatMessage],
+        messages: list[ChatMessage] | str,
         streaming_callback: StreamingCallbackT | None = None,
         generation_kwargs: dict[str, Any] | None = None,
         *,
@@ -390,13 +435,15 @@ class OpenAIChatGenerator:
         but can be used with `await` in async code.
 
         :param messages:
-            A list of ChatMessage instances representing the input messages.
+            A list of ChatMessage instances representing the input messages. If a string is provided, it is converted
+            to a list containing a ChatMessage with user role.
         :param streaming_callback:
-            A callback function that is called when a new token is received from the stream.
-            Must be a coroutine.
+            A callback function that is called when a new token is received from the stream. Async callbacks are
+            preferred; a sync callback is accepted but will run synchronously on the event loop and may block it.
         :param generation_kwargs:
-            Additional keyword arguments for text generation. These parameters will
-            override the parameters passed during component initialization.
+            Additional keyword arguments for text generation. These are merged per key with the
+            `generation_kwargs` passed at initialization: keys provided here take precedence, keys set
+            only at initialization are kept.
             For details on OpenAI API parameters, see [OpenAI documentation](https://platform.openai.com/docs/api-reference/chat/create).
         :param tools: A list of Tool and/or Toolset objects, or a single Toolset for which the model can prepare calls.
             If set, it will override the `tools` parameter provided during initialization.
@@ -409,8 +456,9 @@ class OpenAIChatGenerator:
             A dictionary with the following key:
             - `replies`: A list containing the generated responses as ChatMessage instances.
         """
-        if not self._is_warmed_up:
-            self.warm_up()
+        await self.warm_up_async()
+
+        messages = _normalize_messages(messages)
 
         # validate and select the streaming callback
         streaming_callback = select_streaming_callback(
@@ -430,6 +478,7 @@ class OpenAIChatGenerator:
         )
 
         openai_endpoint = api_args.pop("openai_endpoint")
+        assert self.async_client is not None  # mypy: async_client is built by warm_up_async above
         openai_endpoint_method = getattr(self.async_client.chat.completions, openai_endpoint)
         chat_completion = await openai_endpoint_method(**api_args)
 
@@ -486,7 +535,7 @@ class OpenAIChatGenerator:
                 function_spec = {**t.tool_spec}
                 if tools_strict:
                     function_spec["strict"] = True
-                    function_spec["parameters"]["additionalProperties"] = False
+                    function_spec["parameters"] = _make_schema_strict(function_spec["parameters"])
                 tool_definitions.append({"type": "function", "function": function_spec})
             openai_tools = {"tools": tool_definitions}
 
@@ -528,7 +577,7 @@ class OpenAIChatGenerator:
         return [_convert_streaming_chunks_to_chat_message(chunks=chunks)]
 
     async def _handle_async_stream_response(
-        self, chat_completion: AsyncStream, callback: AsyncStreamingCallbackT
+        self, chat_completion: AsyncStream, callback: StreamingCallbackT
     ) -> list[ChatMessage]:
         component_info = ComponentInfo.from_component(self)
         chunks: list[StreamingChunk] = []
@@ -539,7 +588,7 @@ class OpenAIChatGenerator:
                     chunk=chunk, previous_chunks=chunks, component_info=component_info
                 )
                 chunks.append(chunk_delta)
-                await callback(chunk_delta)
+                await _invoke_streaming_callback(callback, chunk_delta)
 
         except asyncio.CancelledError:
             await asyncio.shield(chat_completion.close())
@@ -549,6 +598,39 @@ class OpenAIChatGenerator:
             raise  # Re-raise to propagate cancellation
 
         return [_convert_streaming_chunks_to_chat_message(chunks=chunks)]
+
+
+def _make_schema_strict(schema: dict[str, Any]) -> dict[str, Any]:
+    """
+    Recursively transform a JSON schema to be OpenAI strict-mode compliant.
+
+    Sets `additionalProperties: false` on all objects and ensures every defined
+    property is listed in `required`. Walks into nested properties, `$defs`,
+    array `items`, and `anyOf`/`oneOf`/`allOf` combinators.
+
+    See https://platform.openai.com/docs/guides/structured-outputs#supported-schemas
+    """
+    schema = {**schema}
+
+    schema_type = schema.get("type")
+
+    if schema_type == "object" or "properties" in schema:
+        schema["additionalProperties"] = False
+        if "properties" in schema:
+            schema["required"] = list(schema["properties"].keys())
+            schema["properties"] = {k: _make_schema_strict(v) for k, v in schema["properties"].items()}
+
+    if "items" in schema:
+        schema["items"] = _make_schema_strict(schema["items"])
+
+    if "$defs" in schema:
+        schema["$defs"] = {k: _make_schema_strict(v) for k, v in schema["$defs"].items()}
+
+    for combinator in ("anyOf", "oneOf", "allOf"):
+        if combinator in schema:
+            schema[combinator] = [_make_schema_strict(s) for s in schema[combinator]]
+
+    return schema
 
 
 def _check_finish_reason(meta: dict[str, Any]) -> None:

@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import os
-from typing import Any
+from typing import Any, ClassVar
 
 from openai.lib._pydantic import to_strict_json_schema
 from openai.lib.azure import AsyncAzureADTokenProvider, AsyncAzureOpenAI, AzureADTokenProvider, AzureOpenAI
@@ -42,7 +42,7 @@ class AzureOpenAIChatGenerator(OpenAIChatGenerator):
     [OpenAI documentation](https://platform.openai.com/docs/api-reference/chat).
 
     ### Usage example
-
+    <!-- test-ignore -->
     ```python
     from haystack.components.generators.chat import AzureOpenAIChatGenerator
     from haystack.dataclasses import ChatMessage
@@ -53,7 +53,7 @@ class AzureOpenAIChatGenerator(OpenAIChatGenerator):
     client = AzureOpenAIChatGenerator(
         azure_endpoint="<Your Azure endpoint e.g. `https://your-company.azure.openai.com/>",
         api_key=Secret.from_token("<your-api-key>"),
-        azure_deployment="<this a model name, e.g. gpt-4.1-mini>")
+        azure_deployment="<this is a model name, e.g. gpt-4.1-mini>")
     response = client.run(messages)
     print(response)
     ```
@@ -70,11 +70,49 @@ class AzureOpenAIChatGenerator(OpenAIChatGenerator):
     ```
     """
 
+    SUPPORTED_MODELS: ClassVar[list[str]] = [
+        "gpt-5.4",
+        "gpt-5.4-pro",
+        "gpt-5.3-codex",
+        "gpt-5.2",
+        "gpt-5.2-codex",
+        "gpt-5.2-chat",
+        "gpt-5.1",
+        "gpt-5.1-chat",
+        "gpt-5.1-codex",
+        "gpt-5.1-codex-mini",
+        "gpt-5",
+        "gpt-5-mini",
+        "gpt-5-nano",
+        "gpt-5-chat",
+        "gpt-4.1",
+        "gpt-4.1-mini",
+        "gpt-4.1-nano",
+        "gpt-4o",
+        "gpt-4o-mini",
+        "gpt-4o-audio-preview",
+        "gpt-realtime-1.5",
+        "gpt-audio-1.5",
+        "o1",
+        "o1-mini",
+        "o3",
+        "o3-mini",
+        "o4-mini",
+        "codex-mini",
+        "gpt-4",
+        "gpt-35-turbo",
+        "gpt-oss-120b",
+        "computer-use-preview",
+    ]
+    """A non-exhaustive list of chat models supported by this component.
+    See https://learn.microsoft.com/en-us/azure/foundry/foundry-models/concepts/models-sold-directly-by-azure
+    for the full list."""
+
     # ruff: noqa: PLR0913
     def __init__(
         self,
-        azure_endpoint: str | None = None,
-        api_version: str | None = "2024-12-01-preview",
+        azure_endpoint: str | Secret | None = None,
+        api_version: str | Secret | None = "2024-12-01-preview",
         azure_deployment: str | None = "gpt-4.1-mini",
         api_key: Secret | None = Secret.from_env_var("AZURE_OPENAI_API_KEY", strict=False),
         azure_ad_token: Secret | None = Secret.from_env_var("AZURE_OPENAI_AD_TOKEN", strict=False),
@@ -89,12 +127,19 @@ class AzureOpenAIChatGenerator(OpenAIChatGenerator):
         *,
         azure_ad_token_provider: AzureADTokenProvider | AsyncAzureADTokenProvider | None = None,
         http_client_kwargs: dict[str, Any] | None = None,
-    ):
+    ) -> None:
         """
         Initialize the Azure OpenAI Chat Generator component.
 
         :param azure_endpoint: The endpoint of the deployed model, for example `"https://example-resource.azure.openai.com/"`.
+            Can also be a [Secret](https://docs.haystack.deepset.ai/docs/secret-management), for example
+            `Secret.from_env_var("AZURE_OPENAI_ENDPOINT")`, to resolve the value from an environment variable at
+            runtime. This is useful to switch endpoints between environments (e.g. dev and prod) without changing the
+            serialized pipeline.
         :param api_version: The version of the API to use. Defaults to 2024-12-01-preview.
+            Can also be a [Secret](https://docs.haystack.deepset.ai/docs/secret-management), for example
+            `Secret.from_env_var("AZURE_OPENAI_API_VERSION")`, to resolve the value from an environment variable at
+            runtime.
         :param azure_deployment: The deployment of the model, usually the model name.
         :param api_key: The API key to use for authentication.
         :param azure_ad_token: [Azure Active Directory token](https://www.microsoft.com/en-us/security/business/identity-access/microsoft-entra-id).
@@ -156,7 +201,12 @@ class AzureOpenAIChatGenerator(OpenAIChatGenerator):
         # None init parameters. This way we accommodate the use case where env var AZURE_OPENAI_ENDPOINT is set instead
         # of passing it as a parameter.
         azure_endpoint = azure_endpoint or os.environ.get("AZURE_OPENAI_ENDPOINT")
-        if not azure_endpoint:
+        # `azure_endpoint` accepts either a plain string or a `Secret`. We keep the original value on the instance for
+        # serialization and resolve it to a string only to validate that an endpoint was provided.
+        resolved_azure_endpoint = (
+            azure_endpoint.resolve_value() if isinstance(azure_endpoint, Secret) else azure_endpoint
+        )
+        if not resolved_azure_endpoint:
             raise ValueError("Please provide an Azure endpoint or set the environment variable AZURE_OPENAI_ENDPOINT.")
 
         if api_key is None and azure_ad_token is None:
@@ -173,8 +223,8 @@ class AzureOpenAIChatGenerator(OpenAIChatGenerator):
         self.azure_deployment = azure_deployment
         self.organization = organization
         self.model = azure_deployment or "gpt-4.1-mini"
-        self.timeout = timeout if timeout is not None else float(os.environ.get("OPENAI_TIMEOUT", "30.0"))
-        self.max_retries = max_retries if max_retries is not None else int(os.environ.get("OPENAI_MAX_RETRIES", "5"))
+        self.timeout = timeout
+        self.max_retries = max_retries
         self.default_headers = default_headers or {}
         self.azure_ad_token_provider = azure_ad_token_provider
         self.http_client_kwargs = http_client_kwargs
@@ -182,37 +232,82 @@ class AzureOpenAIChatGenerator(OpenAIChatGenerator):
         self.tools = tools
         self.tools_strict = tools_strict
 
-        client_args: dict[str, Any] = {
-            "api_version": api_version,
-            "azure_endpoint": azure_endpoint,
-            "azure_deployment": azure_deployment,
-            "api_key": api_key.resolve_value() if api_key is not None else None,
-            "azure_ad_token": azure_ad_token.resolve_value() if azure_ad_token is not None else None,
-            "organization": organization,
-            "timeout": self.timeout,
-            "max_retries": self.max_retries,
+        self.client: AzureOpenAI | None = None
+        self.async_client: AsyncAzureOpenAI | None = None
+        self._tools_warmed_up = False
+
+    def _client_kwargs(self) -> dict[str, Any]:
+        timeout = self.timeout if self.timeout is not None else float(os.environ.get("OPENAI_TIMEOUT", "30.0"))
+        max_retries = (
+            self.max_retries if self.max_retries is not None else int(os.environ.get("OPENAI_MAX_RETRIES", "5"))
+        )
+        resolved_azure_endpoint = (
+            self.azure_endpoint.resolve_value() if isinstance(self.azure_endpoint, Secret) else self.azure_endpoint
+        )
+        resolved_api_version = (
+            self.api_version.resolve_value() if isinstance(self.api_version, Secret) else self.api_version
+        )
+        return {
+            "api_version": resolved_api_version,
+            "azure_endpoint": resolved_azure_endpoint,
+            "azure_deployment": self.azure_deployment,
+            "api_key": self.api_key.resolve_value() if self.api_key is not None else None,
+            "azure_ad_token": self.azure_ad_token.resolve_value() if self.azure_ad_token is not None else None,
+            "organization": self.organization,
+            "timeout": timeout,
+            "max_retries": max_retries,
             "default_headers": self.default_headers,
-            "azure_ad_token_provider": azure_ad_token_provider,
+            "azure_ad_token_provider": self.azure_ad_token_provider,
         }
 
-        self.client = AzureOpenAI(
-            http_client=init_http_client(self.http_client_kwargs, async_client=False), **client_args
-        )
-        self.async_client = AsyncAzureOpenAI(
-            http_client=init_http_client(self.http_client_kwargs, async_client=True), **client_args
-        )
-        self._is_warmed_up = False
+    def _warm_up_tools(self) -> None:
+        if not self._tools_warmed_up:
+            warm_up_tools(self.tools)
+            self._tools_warmed_up = True
 
     def warm_up(self) -> None:
         """
-        Warm up the Azure OpenAI chat generator.
-
-        This will warm up the tools registered in the chat generator.
-        This method is idempotent and will only warm up the tools once.
+        Warm up the tools and initialize the synchronous Azure OpenAI client.
         """
-        if not self._is_warmed_up:
-            warm_up_tools(self.tools)
-            self._is_warmed_up = True
+        self._warm_up_tools()
+        if self.client is None:
+            # openai>=3 annotates http_client as httpx2, but legacy httpx clients are supported at runtime.
+            # https://github.com/openai/openai-python/blob/main/httpx2.md
+            http_client = init_http_client(self.http_client_kwargs, async_client=False)
+            self.client = AzureOpenAI(
+                http_client=http_client,  # type: ignore[arg-type]
+                **self._client_kwargs(),
+            )
+
+    async def warm_up_async(self) -> None:  # noqa: RUF029
+        """
+        Warm up the tools and initialize the asynchronous Azure OpenAI client on the serving event loop.
+        """
+        self._warm_up_tools()
+        if self.async_client is None:
+            # openai>=3 annotates http_client as httpx2, but legacy httpx clients are supported at runtime.
+            # https://github.com/openai/openai-python/blob/main/httpx2.md
+            http_client = init_http_client(self.http_client_kwargs, async_client=True)
+            self.async_client = AsyncAzureOpenAI(
+                http_client=http_client,  # type: ignore[arg-type]
+                **self._client_kwargs(),
+            )
+
+    def close(self) -> None:
+        """
+        Releases the synchronous Azure OpenAI client.
+        """
+        if self.client is not None:
+            self.client.close()
+            self.client = None
+
+    async def close_async(self) -> None:
+        """
+        Releases the asynchronous Azure OpenAI client.
+        """
+        if self.async_client is not None:
+            await self.async_client.close()
+            self.async_client = None
 
     def to_dict(self) -> dict[str, Any]:
         """
@@ -241,10 +336,12 @@ class AzureOpenAIChatGenerator(OpenAIChatGenerator):
             generation_kwargs["response_format"] = json_schema
         return default_to_dict(
             self,
-            azure_endpoint=self.azure_endpoint,
+            azure_endpoint=self.azure_endpoint.to_dict()
+            if isinstance(self.azure_endpoint, Secret)
+            else self.azure_endpoint,
             azure_deployment=self.azure_deployment,
             organization=self.organization,
-            api_version=self.api_version,
+            api_version=self.api_version.to_dict() if isinstance(self.api_version, Secret) else self.api_version,
             streaming_callback=callback_name,
             generation_kwargs=generation_kwargs,
             timeout=self.timeout,

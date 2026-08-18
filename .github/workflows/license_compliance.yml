@@ -12,6 +12,9 @@ on:
 env:
   PYTHON_VERSION: "3.10"
 
+permissions:
+  contents: read
+
 jobs:
   license_check_direct:
     name: Direct dependencies only
@@ -20,21 +23,24 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout the code
-        uses: actions/checkout@v6
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - name: Setup Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: "${{ env.PYTHON_VERSION }}"
 
       - name: Get direct dependencies
         run: |
-          pip install toml
+          python -m pip install --upgrade pip
+          pip install toml --uploaded-prior-to=P1D
           python .github/utils/pyproject_to_requirements.py pyproject.toml > ${{ env.REQUIREMENTS_FILE }}
 
       - name: Check Licenses
         id: license_check_report
-        uses: pilosus/action-pip-license-checker@v3
+        uses: pilosus/action-pip-license-checker@e909b0226ff49d3235c99c4585bc617f49fff16a # v3.1.0
         with:
           github-token: ${{ secrets.GH_ACCESS_TOKEN }}
           requirements: ${{ env.REQUIREMENTS_FILE }}
@@ -47,7 +53,7 @@ jobs:
 
       # We keep the license inventory on FOSSA
       - name: Send license report to Fossa
-        uses: fossas/fossa-action@v1.8.0
+        uses: fossas/fossa-action@29693cc50323968e039056be419b32989fc5880c # v2.0.0
         continue-on-error: true # not critical
         with:
           api-key: ${{ secrets.FOSSA_LICENSE_SCAN_TOKEN }}
@@ -58,6 +64,6 @@ jobs:
 
       - name: Notify Slack on failure
         if: failure()
-        uses: deepset-ai/notify-slack-action@v1
+        uses: deepset-ai/notify-slack-action@a65def0c8bf91d6520286ab34280151c76a5a008 # v1.1.0
         with:
           slack-webhook-url: ${{ secrets.SLACK_WEBHOOK_URL_NOTIFICATIONS }}

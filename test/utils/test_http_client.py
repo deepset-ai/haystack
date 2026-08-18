@@ -14,7 +14,8 @@ def test_init_http_client():
     assert http_client is None
 
     # test client is initialized with http_client_kwargs
-    http_client = init_http_client(http_client_kwargs={"base_url": "https://example.com"})
+    client_kwargs = {"base_url": "https://example.com"}
+    http_client = init_http_client(http_client_kwargs=client_kwargs)
     assert http_client is not None
     assert isinstance(http_client, httpx.Client)
     assert http_client.base_url == "https://example.com"
@@ -35,7 +36,7 @@ def test_init_http_client_async():
 def test_http_client_kwargs_type_validation():
     # test http_client_kwargs is not a dictionary
     with pytest.raises(TypeError, match="The parameter 'http_client_kwargs' must be a dictionary."):
-        init_http_client(http_client_kwargs="invalid")
+        init_http_client(http_client_kwargs="invalid")  # type: ignore[call-overload]
 
 
 def test_http_client_kwargs_with_invalid_params():

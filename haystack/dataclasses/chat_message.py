@@ -16,9 +16,6 @@ from haystack.utils.dataclasses import _warn_on_inplace_mutation
 logger = logging.getLogger(__name__)
 
 
-LEGACY_INIT_PARAMETERS = {"role", "content", "meta", "name"}
-
-
 class ChatRole(str, Enum):
     """
     Enumeration representing the roles within a chat.
@@ -113,7 +110,7 @@ class ToolCall:
         return ToolCall(**data)
 
 
-ToolCallResultContentT = str | Sequence[TextContent | ImageContent]
+ToolCallResultContentT = str | Sequence[TextContent | ImageContent | FileContent]
 
 
 @_warn_on_inplace_mutation
@@ -139,8 +136,10 @@ class ToolCallResult:
         """
         serialized = asdict(self)
         if isinstance(self.result, list):
-            if not all(isinstance(part, (TextContent, ImageContent)) for part in self.result):
-                raise ValueError("ToolCallResult result must be a string or a list of TextContent or ImageContent")
+            if not all(isinstance(part, (TextContent, ImageContent, FileContent)) for part in self.result):
+                raise ValueError(
+                    "ToolCallResult result must be a string or a list of TextContent, ImageContent, or FileContent"
+                )
             serialized["result"] = [_serialize_content_part(part) for part in self.result]
         return serialized
 
@@ -233,6 +232,18 @@ def _deserialize_content_part(part: dict[str, Any]) -> ChatMessageContentT:
         if serialization_key in part:
             return cls.from_dict(part[serialization_key])
 
+    # Support for Pydantic's model_dump() output, which produces a flat dictionary without wrapping keys.
+    if "tool_name" in part and "arguments" in part:
+        return ToolCall.from_dict(part)
+    if "result" in part and "origin" in part:
+        return ToolCallResult.from_dict(part)
+    if "reasoning_text" in part:
+        return ReasoningContent.from_dict(part)
+    if "base64_image" in part:
+        return ImageContent.from_dict(part)
+    if "base64_data" in part:
+        return FileContent.from_dict(part)
+
     # NOTE: this verbose error message provides guidance to LLMs when creating invalid messages during agent runs
     msg = (
         f"Unsupported content part in the serialized ChatMessage: {part}. "
@@ -281,42 +292,6 @@ class ChatMessage:
     _content: Sequence[ChatMessageContentT]
     _name: str | None = None
     _meta: dict[str, Any] = field(default_factory=dict, hash=False)
-
-    def __new__(cls, *args, **kwargs):  # noqa: ARG004
-        """
-        This method is reimplemented to make the changes to the `ChatMessage` dataclass more visible.
-
-        :raises TypeError: If any legacy init parameters (`role`, `content`, `meta`, `name`) are passed.
-        """
-
-        general_msg = (
-            "Use the `from_assistant`, `from_user`, `from_system`, and `from_tool` class methods to create a "
-            "ChatMessage. For more information about the new API and how to migrate, see the documentation:"
-            " https://docs.haystack.deepset.ai/docs/chatmessage"
-        )
-
-        if any(param in kwargs for param in LEGACY_INIT_PARAMETERS):
-            raise TypeError(
-                "The `role`, `content`, `meta`, and `name` init parameters of `ChatMessage` have been removed. "
-                f"{general_msg}"
-            )
-
-        return super(ChatMessage, cls).__new__(cls)  # noqa: UP008
-
-    def __getattribute__(self, name: str) -> Any:
-        """
-        This method is reimplemented to make the `content` attribute removal more visible.
-        """
-
-        if name == "content":
-            msg = (
-                "The `content` attribute of `ChatMessage` has been removed. "
-                "Use the `text` property to access the textual value. "
-                "For more information about the new API and how to migrate, see the documentation: "
-                "https://docs.haystack.deepset.ai/docs/chatmessage"
-            )
-            raise AttributeError(msg)
-        return object.__getattribute__(self, name)
 
     def __len__(self) -> int:
         return len(self._content)
@@ -598,9 +573,9 @@ class ChatMessage:
         for part in self._content:
             serialized_part = _serialize_content_part(part)
             if isinstance(part, ImageContent):
-                serialized_part["image"]["base64_image"] = f"Base64 string ({len(part.base64_image)} characters)"
+                serialized_part["image"] = part._to_trace_dict()
             elif isinstance(part, FileContent):
-                serialized_part["file"]["base64_data"] = f"Base64 string ({len(part.base64_data)} characters)"
+                serialized_part["file"] = part._to_trace_dict()
             serialized["content"].append(serialized_part)
 
         return serialized
@@ -658,6 +633,8 @@ class ChatMessage:
     def to_openai_dict_format(self, require_tool_call_ids: bool = True) -> dict[str, Any]:
         """
         Convert a ChatMessage to the dictionary format expected by OpenAI's Chat Completions API.
+
+        The `_meta` field of ChatMessage is removed because it is not supported by OpenAI's Chat Completions API.
 
         :param require_tool_call_ids:
             If True (default), enforces that each Tool Call includes a non-null `id` attribute.
@@ -829,10 +806,13 @@ class ChatMessage:
             if tool_calls:
                 haystack_tool_calls = []
                 for tc in tool_calls:
+                    # Zero-argument tool calls from OpenAI-compatible servers may send an
+                    # empty string, null, or omit `arguments` entirely; treat all as {}.
+                    raw_arguments = tc["function"].get("arguments")
                     haystack_tc = ToolCall(
                         id=tc.get("id"),
                         tool_name=tc["function"]["name"],
-                        arguments=json.loads(tc["function"]["arguments"]),
+                        arguments=json.loads(raw_arguments) if raw_arguments else {},
                     )
                     haystack_tool_calls.append(haystack_tc)
             return cls.from_assistant(text=content, name=name, tool_calls=haystack_tool_calls)

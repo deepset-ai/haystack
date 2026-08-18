@@ -1,0 +1,4 @@
+---
+enhancements:
+  - |
+    Clarify in the Markdown-producing converter documentation that ``DocumentCleaner`` with its default settings can flatten Markdown output, and update the example pipelines for ``PaddleOCRVLDocumentConverter``, ``MistralOCRDocumentConverter``, ``AzureDocumentIntelligenceConverter``, and ``MarkItDownConverter`` to avoid routing Markdown content through the default cleaner configuration.

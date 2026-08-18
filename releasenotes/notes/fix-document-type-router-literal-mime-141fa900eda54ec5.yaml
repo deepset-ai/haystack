@@ -1,0 +1,9 @@
+---
+fixes:
+  - |
+    Fixed ``DocumentTypeRouter`` misrouting documents whose MIME type contains a
+    regex metacharacter. A declared type such as the standard IANA ``image/svg+xml``
+    was compiled as a regex, so the ``+`` was treated as a quantifier and the
+    document fell into ``unclassified`` instead of its own bucket. Declared MIME
+    types are now matched by exact equality first, falling back to regex matching
+    so patterns like ``audio/.*`` keep working.

@@ -150,6 +150,9 @@ class DocumentSplitter:
         if split_overlap < 0:
             raise ValueError("split_overlap must be greater than or equal to 0.")
 
+        if split_overlap >= split_length:
+            raise ValueError("split_overlap must be less than split_length.")
+
         if respect_sentence_boundary and split_by != "word":
             logger.warning(
                 "The 'respect_sentence_boundary' option is only supported for `split_by='word'`. "
@@ -240,9 +243,9 @@ class DocumentSplitter:
 
         return split_docs
 
-    def _split_by_character(self, doc) -> list[Document]:
+    def _split_by_character(self, doc: Document) -> list[Document]:
         split_at = _CHARACTER_SPLIT_BY_MAPPING[self.split_by]
-        units = doc.content.split(split_at)
+        units = doc.content.split(split_at)  # type: ignore[union-attr]
         # Add the delimiter back to all units except the last one
         for i in range(len(units) - 1):
             units[i] += split_at
@@ -255,7 +258,7 @@ class DocumentSplitter:
             text_splits=text_splits, splits_pages=splits_pages, splits_start_idxs=splits_start_idxs, meta=metadata
         )
 
-    def _split_by_function(self, doc) -> list[Document]:
+    def _split_by_function(self, doc: Document) -> list[Document]:
         # the check for None is done already in the run method
         splits = self.splitting_function(doc.content)  # type: ignore
         docs: list[Document] = []
@@ -289,8 +292,11 @@ class DocumentSplitter:
 
             # check if length of current units is below split_threshold
             if len(current_units) < split_threshold and len(text_splits) > 0:
-                # concatenate the last split with the current one
-                text_splits[-1] += txt
+                # concatenate the last split with the current one. The first `split_overlap` units
+                # of this segment are already part of the previous split (that is what the overlap
+                # is), so only append the units beyond the overlap; otherwise the overlapping text
+                # would be duplicated and the merged chunk would not be present in the source.
+                text_splits[-1] += "".join(current_units[split_overlap:])
 
             # NOTE: If skip_empty_documents is True, this line skips documents that have content=""
             elif not self.skip_empty_documents or len(txt) > 0:
@@ -344,7 +350,7 @@ class DocumentSplitter:
     @staticmethod
     def _add_split_overlap_information(
         current_doc: Document, current_doc_start_idx: int, previous_doc: Document, previous_doc_start_idx: int
-    ):
+    ) -> None:
         """
         Adds split overlap information to the current and previous Document's meta.
 

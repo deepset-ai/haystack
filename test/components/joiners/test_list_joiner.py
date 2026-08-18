@@ -8,7 +8,7 @@ import pytest
 
 from haystack import Document, Pipeline
 from haystack.components.builders import AnswerBuilder, ChatPromptBuilder
-from haystack.components.embedders import SentenceTransformersTextEmbedder
+from haystack.components.embedders import OpenAITextEmbedder
 from haystack.components.generators.chat.openai import OpenAIChatGenerator
 from haystack.components.joiners.list_joiner import ListJoiner
 from haystack.core.errors import PipelineConnectError
@@ -140,7 +140,7 @@ class TestListJoiner:
     def test_pipeline_bad_connection(self):
         with pytest.raises(PipelineConnectError):
             joiner = ListJoiner()
-            query_embedder = SentenceTransformersTextEmbedder()
+            query_embedder = OpenAITextEmbedder(api_key=Secret.from_token("test-api-key"))
             pipe = Pipeline()
             pipe.add_component("joiner", joiner)
             pipe.add_component("query_embedder", query_embedder)
@@ -148,7 +148,7 @@ class TestListJoiner:
 
     def test_pipeline_bad_connection_different_list_types(self):
         with pytest.raises(PipelineConnectError):
-            joiner = ListJoiner(list[str])
+            joiner = ListJoiner(list[int])
             llm = OpenAIChatGenerator(api_key=Secret.from_token("test-api-key"))
             pipe = Pipeline()
             pipe.add_component("joiner", joiner)

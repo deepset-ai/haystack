@@ -1,0 +1,149 @@
+---
+title: "VespaKeywordRetriever"
+id: vespakeywordretriever
+slug: "/vespakeywordretriever"
+description: "A keyword-based Retriever that fetches documents matching a query from the Vespa Document Store."
+---
+
+# VespaKeywordRetriever
+
+A keyword-based Retriever that fetches documents matching a query from the Vespa Document Store.
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | 1. Before a [`PromptBuilder`](../builders/promptbuilder.mdx)   in a RAG pipeline 2. The last component in the keyword search pipeline 3. Before an [`ExtractiveReader`](../readers/extractivereader.mdx)   in an extractive QA pipeline |
+| **Mandatory init variables**           | `document_store`: An instance of a [VespaDocumentStore](../../document-stores/vespadocumentstore.mdx)                                                                                                                       |
+| **Mandatory run variables**            | `query`:  A string                                                                                                                                                                                                          |
+| **Output variables**                   | `documents`: A list of documents (matching the query)                                                                                                                                                                       |
+| **API reference**                      | [Vespa](/reference/integrations-vespa)                                                                                                                                                                                       |
+| **GitHub link**                        | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/vespa                                                                                                                                        |
+| **Package name** | `vespa-haystack` |
+
+</div>
+
+## Overview
+
+The `VespaKeywordRetriever` is a keyword-based Retriever compatible with the `VespaDocumentStore`. It runs a [YQL](https://docs.vespa.ai/en/query-language.html) `userQuery()` against your Vespa application and ranks results with a configurable rank profile (defaults to `bm25`, which typically uses Vespa's [BM25 ranking feature](https://docs.vespa.ai/en/reference/bm25.html)).
+
+The retriever expects the underlying Vespa application to expose:
+
+- A text field for the Document body (named `content` by default, configurable on the Document Store via `content_field`). The field needs to be indexed for text matching in your Vespa schema.
+- A rank profile that scores lexical matches (named `bm25` by default, configurable via the `ranking` parameter). Pass `ranking=None` to use the schema default profile.
+
+In addition to the `query`, the `VespaKeywordRetriever` accepts other optional parameters, including `top_k` (the maximum number of Documents to retrieve) and `filters` to narrow the search space.
+
+## Installation
+
+Install the `vespa-haystack` integration:
+
+```shell
+pip install vespa-haystack
+```
+
+To run Vespa locally, see the [Vespa quick start](https://docs.vespa.ai/en/vespa-quick-start.html).
+
+## Usage
+
+### On its own
+
+This Retriever needs the `VespaDocumentStore` and indexed Documents to run. Set the `VESPA_URL` environment variable (or pass `url=...` to the Document Store) to connect to your Vespa application.
+
+```python
+from haystack_integrations.document_stores.vespa import VespaDocumentStore
+from haystack_integrations.components.retrievers.vespa import (
+    VespaKeywordRetriever,
+)
+
+document_store = VespaDocumentStore(schema="doc", namespace="doc")
+retriever = VespaKeywordRetriever(document_store=document_store)
+
+retriever.run(query="my nice query")
+```
+
+### In a RAG pipeline
+
+The prerequisites necessary for running this code are:
+
+- Set an environment variable `OPENAI_API_KEY` with your OpenAI API key.
+- Set the `VESPA_URL` environment variable (or pass `url=...` to the Document Store) to connect to your Vespa application.
+- A deployed Vespa schema with a `content` text field, a `category` metadata field, and a `bm25` rank profile.
+
+```python
+from haystack import Document, Pipeline
+from haystack.components.builders.answer_builder import AnswerBuilder
+from haystack.components.builders.chat_prompt_builder import ChatPromptBuilder
+from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.dataclasses import ChatMessage
+from haystack.document_stores.types import DuplicatePolicy
+
+from haystack_integrations.document_stores.vespa import VespaDocumentStore
+from haystack_integrations.components.retrievers.vespa import (
+    VespaKeywordRetriever,
+)
+
+## Create a RAG query pipeline
+prompt_template = [
+    ChatMessage.from_system("You are a helpful assistant."),
+    ChatMessage.from_user(
+        "Given these documents, answer the question.\nDocuments:\n"
+        "{% for doc in documents %}{{ doc.content }}{% endfor %}\n"
+        "Question: {{question}}\nAnswer:",
+    ),
+]
+
+document_store = VespaDocumentStore(
+    schema="doc",
+    namespace="doc",
+    content_field="content",
+    metadata_fields=["category"],
+)
+
+documents = [
+    Document(
+        content="Haystack integrates with Vespa for search.",
+        meta={"category": "docs"},
+    ),
+    Document(
+        content="Vespa supports lexical and vector retrieval.",
+        meta={"category": "docs"},
+    ),
+    Document(
+        content="This note is about something else entirely.",
+        meta={"category": "misc"},
+    ),
+]
+
+document_store.write_documents(documents=documents, policy=DuplicatePolicy.OVERWRITE)
+
+retriever = VespaKeywordRetriever(
+    document_store=document_store,
+    filters={"field": "meta.category", "operator": "==", "value": "docs"},
+)
+rag_pipeline = Pipeline()
+rag_pipeline.add_component(name="retriever", instance=retriever)
+rag_pipeline.add_component(
+    instance=ChatPromptBuilder(
+        template=prompt_template,
+        required_variables={"question", "documents"},
+    ),
+    name="prompt_builder",
+)
+rag_pipeline.add_component(instance=OpenAIChatGenerator(), name="llm")
+rag_pipeline.add_component(instance=AnswerBuilder(), name="answer_builder")
+rag_pipeline.connect("retriever", "prompt_builder.documents")
+rag_pipeline.connect("prompt_builder.prompt", "llm.messages")
+rag_pipeline.connect("llm.replies", "answer_builder.replies")
+rag_pipeline.connect("retriever", "answer_builder.documents")
+
+question = "How does Haystack work with Vespa?"
+result = rag_pipeline.run(
+    {
+        "retriever": {"query": question},
+        "prompt_builder": {"question": question},
+        "answer_builder": {"query": question},
+    },
+)
+print(result["answer_builder"])
+```

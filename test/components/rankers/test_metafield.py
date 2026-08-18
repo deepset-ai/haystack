@@ -185,11 +185,20 @@ class TestMetaFieldRanker:
 
     def test_raises_value_error_if_wrong_ranking_mode(self):
         with pytest.raises(ValueError):
-            MetaFieldRanker(meta_field="rating", ranking_mode="wrong_mode")
+            MetaFieldRanker(meta_field="rating", ranking_mode="wrong_mode")  # type: ignore[arg-type]
 
-    def test_raises_value_error_if_wrong_top_k(self):
-        with pytest.raises(ValueError):
-            MetaFieldRanker(meta_field="rating", top_k=-1)
+    @pytest.mark.parametrize("top_k", [0, -1])
+    def test_raises_value_error_if_wrong_top_k(self, top_k):
+        with pytest.raises(ValueError, match=rf"top_k must be > 0, but got {top_k}"):
+            MetaFieldRanker(meta_field="rating", top_k=top_k)
+
+    @pytest.mark.parametrize(("init_top_k", "run_top_k"), [(None, 0), (1, 0), (1, -1)])
+    def test_run_raises_value_error_if_wrong_top_k(self, init_top_k, run_top_k):
+        ranker = MetaFieldRanker(meta_field="rating", top_k=init_top_k)
+        documents = [Document(content="abc", meta={"rating": 1.3})]
+
+        with pytest.raises(ValueError, match=rf"top_k must be > 0, but got {run_top_k}"):
+            ranker.run(documents=documents, top_k=run_top_k)
 
     @pytest.mark.parametrize("score", [-1, 2, 1.3, 2.1])
     def test_raises_component_error_if_wrong_weight(self, score):
@@ -198,15 +207,15 @@ class TestMetaFieldRanker:
 
     def test_raises_value_error_if_wrong_sort_order(self):
         with pytest.raises(ValueError):
-            MetaFieldRanker(meta_field="rating", sort_order="wrong_order")
+            MetaFieldRanker(meta_field="rating", sort_order="wrong_order")  # type: ignore[arg-type]
 
     def test_raises_value_error_if_wrong_missing_meta(self):
         with pytest.raises(ValueError):
-            MetaFieldRanker(meta_field="rating", missing_meta="wrong_missing_meta")
+            MetaFieldRanker(meta_field="rating", missing_meta="wrong_missing_meta")  # type: ignore[arg-type]
 
     def test_raises_value_error_if_wrong_meta_value_type(self):
         with pytest.raises(ValueError):
-            MetaFieldRanker(meta_field="rating", meta_value_type="wrong_type")
+            MetaFieldRanker(meta_field="rating", meta_value_type="wrong_type")  # type: ignore[arg-type]
 
     def test_linear_score(self):
         ranker = MetaFieldRanker(meta_field="rating", ranking_mode="linear_score", weight=0.5)

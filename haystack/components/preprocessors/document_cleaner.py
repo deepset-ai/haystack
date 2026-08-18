@@ -270,6 +270,8 @@ class DocumentCleaner:
         Note: This heuristic uses exact matches and therefore works well for footers like "Copyright 2019 by XXX",
          but won't detect "Page 3 of 4" or similar.
 
+        :param text: The text to remove headers and footers from, with pages separated by the
+            form feed character described above.
         :param n_chars: The number of first/last characters where the header/footer shall be searched in.
         :param n_first_pages_to_ignore: The number of first pages to ignore
             (e.g. TOCs often don't contain footer/header).
@@ -341,7 +343,9 @@ class DocumentCleaner:
         :returns: The longest ngram that all sequences have in common.
         """
         sequences = [s for s in sequences if s]  # filter empty sequences
-        if not sequences:
+        if len(sequences) < 2:
+            # a single sequence has no ngram "in common" with any other; treating
+            # its own longest ngram as a repeated header/footer would wipe it
             return ""
         seqs_ngrams = map(partial(self._allngram, min_ngram=min_ngram, max_ngram=max_ngram), sequences)
         intersection = reduce(set.intersection, seqs_ngrams)

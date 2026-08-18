@@ -156,6 +156,23 @@ class TestHTMLToDocument:
             assert "Could not read non_existing_file.html" in caplog.text
             assert results["documents"] == []
 
+    def test_run_empty_bytestream(self, caplog):
+        """
+        Test that an empty ByteStream is skipped without invoking extraction,
+        so no noisy lxml parse errors are emitted.
+        """
+        empty_stream = ByteStream(data=b"")
+        empty_stream.mime_type = "text/html"
+        converter = HTMLToDocument()
+
+        with patch("haystack.components.converters.html.extract") as mock_extract:
+            with caplog.at_level(logging.WARNING):
+                results = converter.run(sources=[empty_stream])
+
+        assert results["documents"] == []
+        mock_extract.assert_not_called()
+        assert "because it is empty" in caplog.text
+
     def test_mixed_sources_run(self, test_files_path):
         """
         Test if the component runs correctly if the input is a mix of paths and ByteStreams.
@@ -175,14 +192,44 @@ class TestHTMLToDocument:
         for doc in docs:
             assert "Haystack" in doc.content
 
+    def test_bytestream_encoding_from_meta(self):
+        """
+        Test that a non-UTF-8 ByteStream is decoded using the encoding specified in its meta.
+        """
+        # "caf\xe9" is "café" in latin-1; decoding as utf-8 would raise UnicodeDecodeError.
+        latin1_html = b"<html><body><p>caf\xe9</p></body></html>"
+        bytestream = ByteStream(data=latin1_html, meta={"encoding": "latin-1"})
+
+        converter = HTMLToDocument()
+        results = converter.run(sources=[bytestream])
+        docs = results["documents"]
+
+        assert len(docs) == 1
+        assert "café" in docs[0].content
+
+    def test_bytestream_encoding_from_init(self):
+        """
+        Test that the encoding passed to __init__ is used as a fallback when not set in ByteStream meta.
+        """
+        latin1_html = b"<html><body><p>caf\xe9</p></body></html>"
+        bytestream = ByteStream(data=latin1_html)
+
+        converter = HTMLToDocument(encoding="latin-1")
+        results = converter.run(sources=[bytestream])
+        docs = results["documents"]
+
+        assert len(docs) == 1
+        assert "café" in docs[0].content
+
     def test_serde(self):
         """
         Test if the component runs correctly gets serialized and deserialized.
         """
-        converter = HTMLToDocument()
+        converter = HTMLToDocument(encoding="latin-1")
         serde_data = converter.to_dict()
         new_converter = HTMLToDocument.from_dict(serde_data)
         assert new_converter.extraction_kwargs == converter.extraction_kwargs
+        assert new_converter.encoding == converter.encoding
 
     def test_run_difficult_html(self, test_files_path):
         converter = HTMLToDocument()

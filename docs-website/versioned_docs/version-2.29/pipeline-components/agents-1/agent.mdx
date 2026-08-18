@@ -1,0 +1,470 @@
+---
+title: "Agent"
+id: agent
+slug: "/agent"
+description: "The `Agent` component is a tool-using agent that interacts with chat-based LLMs and tools to solve complex queries iteratively. It can execute external tools, manage state across multiple LLM calls, and stop execution based on configurable `exit_conditions`."
+---
+
+# Agent
+
+The `Agent` component is a tool-using agent that interacts with chat-based LLMs and tools to solve complex queries iteratively. It can execute external tools, manage state across multiple LLM calls, and stop execution based on configurable `exit_conditions`.
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | After a [`ChatPromptBuilder`](../builders/chatpromptbuilder.mdx) or user input                     |
+| **Mandatory init variables**           | `chat_generator`: An instance of a Chat Generator that supports tools                  |
+| **Mandatory run variables**            | `messages`: A list of [`ChatMessage`](../../concepts/data-classes/chatmessage.mdx)s                              |
+| **Output variables**                   | `messages`: Chat history with tool and model responses                                 |
+| **API reference**                      | [Agents](/reference/agents-api)                                                               |
+| **GitHub link**                        | https://github.com/deepset-ai/haystack/blob/main/haystack/components/agents/agent.py |
+| **Package name** | `haystack-ai` |
+
+</div>
+
+## Overview
+
+The `Agent` component is a loop-based system that uses a chat-based large language model (LLM) and external tools to solve complex user queries.
+It works iteratively—calling tools, updating state, and generating prompts—until one of the configurable `exit_conditions` is met.
+
+It can:
+
+- Dynamically select tools based on user input,
+- Maintain and validate runtime state using a schema,
+- Stream token-level outputs from the LLM.
+
+The `Agent` returns a dictionary containing:
+
+- `messages`: the full conversation history,
+- `last_message`: the final `ChatMessage` from the agent,
+- Additional dynamic keys based on `state_schema`.
+
+## Parameters
+
+`chat_generator` is the only mandatory parameter — an instance of a Chat Generator that supports tools. All other parameters are optional.
+
+- `tools`: A list of tool or toolset instances the agent can call. Supported types: [`Tool`](../../tools/tool.mdx), [`ComponentTool`](../../tools/componenttool.mdx), [`PipelineTool`](../../tools/pipelinetool.mdx), [`MCPTool`](../../tools/mcptool.mdx), [`Toolset`](../../tools/toolset.mdx), [`MCPToolset`](../../tools/mcptoolset.mdx), [`SearchableToolset`](../../tools/searchabletoolset.mdx).
+- `system_prompt`: A plain string or Jinja2 template used as the system message for every run. If the template contains Jinja2 variables, those variables become additional inputs to `run()`.
+- `user_prompt`: A Jinja2 template appended to the user-provided messages on each run. Template variables become additional inputs to `run()`. Use `required_variables` to enforce which variables must be provided.
+- `exit_conditions`: List of conditions that cause the agent to stop. Use `”text”` to stop when the LLM replies without a tool call, or a tool name to stop once that tool has been executed. Defaults to `[“text”]`.
+- `state_schema`: Defines the agent's runtime state — a dict mapping key names to type configs (e.g. `{“docs”: {“type”: list[Document]}}`). Tools can read from and write to state keys via `inputs_from_state` and `outputs_to_state`. See [State](./state.mdx) for full details.
+- `streaming_callback`: A callback invoked for each streamed token. Use the built-in `print_streaming_chunk` for console output.
+- `max_agent_steps`: Maximum number of LLM + tool call iterations before the agent stops. Defaults to `100`.
+- `raise_on_tool_invocation_failure`: If `True`, raises an exception when a tool call fails. If `False` (default), the error is passed back to the LLM as a message so it can recover.
+- `confirmation_strategies`: A dict mapping tool names (or tuples of tool names) to a `ConfirmationStrategy`, enabling human review of tool calls before execution. See [Human in the Loop](./human-in-the-loop.mdx).
+- `tool_invoker_kwargs`: Additional keyword arguments forwarded to the internal `ToolInvoker`.
+
+### Runtime overrides
+
+`run()` also accepts parameters that override the init-time configuration for a single call:
+
+- `tools`: Pass a list of `Tool`/`Toolset` objects, or a list of tool name strings to select a subset of the agent's configured tools for this run.
+- `generation_kwargs`: Additional keyword arguments forwarded to the LLM, overriding any set at init time (e.g. `{“temperature”: 0.2}`).
+
+:::info
+For the full parameter reference, see the [Agents API Documentation](/reference/agents-api).
+:::
+
+## Usage
+
+### On its own
+
+```python
+from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.dataclasses import ChatMessage
+from haystack.tools import tool
+from haystack.components.agents import Agent
+from typing import Annotated
+
+
+@tool(outputs_to_state={"calc_result": {"source": "result"}})
+def calculator(
+    expression: Annotated[str, "Math expression to evaluate, e.g. '7 * (4 + 2)'"],
+) -> dict:
+    """Evaluate basic math expressions."""
+    try:
+        result = eval(expression, {"__builtins__": {}})
+        return {"result": result}
+    except Exception as e:
+        return {"error": str(e)}
+
+
+agent = Agent(
+    chat_generator=OpenAIChatGenerator(model="gpt-5.4-nano"),
+    tools=[calculator],
+    system_prompt="You are a helpful assistant. Always use the calculator tool to evaluate math expressions.",
+    state_schema={"calc_result": {"type": int}},
+)
+
+response = agent.run(messages=[ChatMessage.from_user("What is 7 * (4 + 2)?")])
+
+print(response["last_message"].text)
+print("Calc Result:", response.get("calc_result"))
+```
+
+### In a pipeline
+
+The example pipeline below creates a database assistant using `OpenAIChatGenerator`, `LinkContentFetcher`, and custom database tool.
+It reads the given URL and processes the page content, then builds a prompt for the AI.
+The assistant uses this information to write people's names and titles from the given page to the database.
+
+```python
+from haystack.components.agents import Agent
+from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.components.builders.chat_prompt_builder import ChatPromptBuilder
+from haystack.components.converters.html import HTMLToDocument
+from haystack.components.fetchers.link_content import LinkContentFetcher
+from haystack import Document, Pipeline
+from haystack.dataclasses import ChatMessage
+from haystack.document_stores.in_memory import InMemoryDocumentStore
+from haystack.tools import tool
+from typing import Annotated, Optional
+
+document_store = InMemoryDocumentStore()  # create a document store or an SQL database
+
+
+@tool
+def add_database_tool(
+    name: Annotated[str, "First name of the person"],
+    surname: Annotated[str, "Last name of the person"],
+    job_title: Annotated[Optional[str], "Job title or role of the person"] = None,
+    other: Annotated[Optional[str], "Any other relevant information"] = None,
+) -> str:
+    """Add a person to the database with information about them."""
+    document_store.write_documents(
+        [
+            Document(
+                content=name + " " + surname + " " + (job_title or ""),
+                meta={"other": other},
+            ),
+        ],
+    )
+    # Returning a confirmation lets the agent know the tool call succeeded
+    return f"Successfully added {name} {surname} to the database."
+
+
+database_assistant = Agent(
+    chat_generator=OpenAIChatGenerator(model="gpt-5.4-nano"),
+    tools=[add_database_tool],
+    system_prompt="""
+    You are a database assistant.
+    Your task is to extract the names of people mentioned in the given context and add them to a knowledge base,
+    along with additional relevant information about them that can be extracted from the context.
+    Do not use your own knowledge, stay grounded to the given context.
+    Do not ask the user for confirmation.
+    Instead, automatically update the knowledge base and return a brief summary of the people added,
+    including the information stored for each.
+    """,
+)
+
+extraction_agent = Pipeline()
+extraction_agent.add_component("fetcher", LinkContentFetcher())
+extraction_agent.add_component("converter", HTMLToDocument())
+extraction_agent.add_component(
+    "builder",
+    ChatPromptBuilder(
+        template=[
+            ChatMessage.from_user("""
+    {% for doc in docs %}
+    {{ doc.content|default|truncate(25000) }}
+    {% endfor %}
+    """),
+        ],
+        required_variables=["docs"],
+    ),
+)
+
+extraction_agent.add_component("database_agent", database_assistant)
+extraction_agent.connect("fetcher.streams", "converter.sources")
+extraction_agent.connect("converter.documents", "builder.docs")
+extraction_agent.connect("builder", "database_agent")
+
+agent_output = extraction_agent.run(
+    {
+        "fetcher": {
+            "urls": ["https://github.com/deepset-ai/haystack/releases/tag/v2.27.0"],
+        },
+    },
+)
+
+print(agent_output["database_agent"]["last_message"].text)
+
+# Inspect what was written to the document store
+written_docs = document_store.filter_documents()
+print(f"\n{len(written_docs)} people added to the database:")
+for doc in written_docs:
+    print(f"  - {doc.content}")
+```
+
+### In YAML
+The example pipeline below fetches a webpage, converts its HTML to text, and builds a chat prompt combining the page content with a user query.
+The `Agent` then answers the question based on the provided content and can use its web search tool to find additional information if needed.
+
+<details>
+<summary>View YAML</summary>
+
+```yaml
+components:
+  agent:
+    init_parameters:
+      chat_generator:
+        init_parameters:
+          api_base_url: null
+          api_key:
+            env_vars:
+            - OPENAI_API_KEY
+            strict: true
+            type: env_var
+          generation_kwargs: {}
+          http_client_kwargs: null
+          max_retries: null
+          model: gpt-5.4-nano
+          organization: null
+          streaming_callback: null
+          timeout: null
+          tools: null
+          tools_strict: false
+        type: haystack.components.generators.chat.openai.OpenAIChatGenerator
+      confirmation_strategies: null
+      exit_conditions:
+      - text
+      max_agent_steps: 5
+      raise_on_tool_invocation_failure: false
+      required_variables: null
+      state_schema: {}
+      streaming_callback: null
+      system_prompt: You are a helpful assistant. Use the web search tool to find
+        information when needed.
+      tool_invoker_kwargs: null
+      tools:
+      - data:
+          component:
+            init_parameters:
+              allowed_domains: null
+              api_key:
+                env_vars:
+                - SERPERDEV_API_KEY
+                strict: true
+                type: env_var
+              exclude_subdomains: false
+              search_params: {}
+              top_k: 3
+            type: haystack.components.websearch.serper_dev.SerperDevWebSearch
+          description: Search the web for current information on any topic
+          inputs_from_state: null
+          name: web_search
+          outputs_to_state: null
+          outputs_to_string: null
+          parameters: null
+        type: haystack.tools.component_tool.ComponentTool
+      user_prompt: null
+    type: haystack.components.agents.agent.Agent
+  converter:
+    init_parameters:
+      extraction_kwargs: {}
+      store_full_path: false
+    type: haystack.components.converters.html.HTMLToDocument
+  fetcher:
+    init_parameters:
+      client_kwargs:
+        follow_redirects: true
+        timeout: 3
+      http2: false
+      raise_on_failure: true
+      request_headers: {}
+      retry_attempts: 2
+      timeout: 3
+      user_agents:
+      - haystack/LinkContentFetcher/2.27.0rc0
+    type: haystack.components.fetchers.link_content.LinkContentFetcher
+  prompt_builder:
+    init_parameters:
+      required_variables:
+      - docs
+      - query
+      template:
+      - content:
+        - text: 'Based on the following content:
+
+            {% for doc in docs %}
+
+            {{ doc.content }}
+
+            {% endfor %}
+
+            Answer this question: {{ query }}'
+        meta: {}
+        name: null
+        role: user
+      variables: null
+    type: haystack.components.builders.chat_prompt_builder.ChatPromptBuilder
+connection_type_validation: true
+connections:
+- receiver: converter.sources
+  sender: fetcher.streams
+- receiver: prompt_builder.docs
+  sender: converter.documents
+- receiver: agent.messages
+  sender: prompt_builder.prompt
+max_runs_per_component: 100
+metadata: {}
+```
+
+</details>
+
+## Streaming
+
+You can stream output as it's generated. Pass a callback to `streaming_callback`.
+Use the built-in `print_streaming_chunk` to print text tokens and tool events (tool calls and tool results).
+
+```python
+from haystack.components.generators.utils import print_streaming_chunk
+
+agent = Agent(
+    chat_generator=OpenAIChatGenerator(model="gpt-5.4-nano"),
+    tools=[...],
+    system_prompt="...",
+    streaming_callback=print_streaming_chunk,
+)
+```
+
+See our [Streaming Support](../generators/guides-to-generators/choosing-the-right-generator.mdx#streaming-support) docs to learn more how `StreamingChunk` works and how to write a custom callback.
+
+Give preference to `print_streaming_chunk` by default.
+Write a custom callback only if you need a specific transport (for example, SSE/WebSocket) or custom UI formatting.
+
+## Multimodal Inputs
+
+Agents support multimodal inputs when paired with a vision-capable model such as `gpt-5` (OpenAI) or `gemini-2.5-flash` (Google).
+Pass images alongside text by including `ImageContent` objects in the `content_parts` of a `ChatMessage`:
+
+```python
+from haystack.dataclasses import ChatMessage, ImageContent
+
+image = ImageContent.from_url("https://example.com/chart.png")
+result = agent.run(
+    messages=[
+        ChatMessage.from_user(content_parts=["What does this chart show?", image]),
+    ],
+)
+```
+
+Tools can also return `ImageContent` directly, letting the agent fetch and reason about images dynamically during its loop.
+Two things are required: set `outputs_to_string={"raw_result": True}` so the `ToolInvoker` skips string conversion, and return a `list[ImageContent]` (the tool result type is `str | Sequence[TextContent | ImageContent]`).
+
+The standard Chat Completions API doesn't support images in tool results — use `OpenAIResponsesChatGenerator` (OpenAI's Responses API) instead:
+
+```python
+from typing import Annotated
+from haystack.components.agents import Agent
+from haystack.components.generators.chat import OpenAIResponsesChatGenerator
+from haystack.dataclasses import ChatMessage, ImageContent
+from haystack.tools import tool
+
+
+@tool(outputs_to_string={"raw_result": True})
+def fetch_image(
+    url: Annotated[str, "URL of the image to fetch and analyze"],
+) -> list[ImageContent]:
+    """Fetch an image from a URL so the agent can analyze its contents."""
+    return [ImageContent.from_url(url)]
+
+
+agent = Agent(
+    chat_generator=OpenAIResponsesChatGenerator(model="gpt-5"),
+    tools=[fetch_image],
+    system_prompt="You are a helpful assistant that can fetch and analyze images from URLs.",
+)
+
+result = agent.run(
+    messages=[
+        ChatMessage.from_user(
+            "Fetch the image at https://picsum.photos/seed/haystack/640/480 and describe what you see.",
+        ),
+    ],
+)
+print(result["last_message"].text)
+```
+
+`ImageContent` can be created from a URL, a local file path, or a PDF page using the `PDFToImageContent` converter.
+
+### In a pipeline
+
+When an `Agent` sits inside a pipeline, use `ChatPromptBuilder` with its string template format and the `| templatize_part` filter to pass images as structured content parts:
+
+```python
+from haystack import Pipeline
+from haystack.components.agents import Agent
+from haystack.components.builders import ChatPromptBuilder
+from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.dataclasses import ImageContent
+
+template = """
+{% message role="user" %}
+{{ question }}
+{{ image | templatize_part }}
+{% endmessage %}
+"""
+
+agent = Agent(
+    chat_generator=OpenAIChatGenerator(model="gpt-5"),
+    system_prompt="You are a helpful assistant that can analyze images.",
+)
+prompt_builder = ChatPromptBuilder(
+    template=template,
+    required_variables=["question", "image"],
+)
+
+pipeline = Pipeline()
+pipeline.add_component("prompt_builder", prompt_builder)
+pipeline.add_component("agent", agent)
+pipeline.connect("prompt_builder.prompt", "agent.messages")
+
+# Download or provide your own chart image as "chart.png"
+image = ImageContent.from_file_path("chart.png")
+result = pipeline.run(
+    {
+        "prompt_builder": {"question": "What does this chart show?", "image": image},
+    },
+)
+print(result["agent"]["last_message"].text)
+```
+
+:::tip
+See these cookbooks for complete multimodal agent examples:
+- [Multimodal Agents](https://haystack.deepset.ai/cookbook/multimodal_intro#multimodal-agent) — image inputs and tool use with agents
+- [Gemma Chat RAG](https://haystack.deepset.ai/cookbook/gemma_chat_rag) — vision model in a RAG pipeline
+:::
+
+## Multi-Agent Systems
+
+You can wrap an `Agent` as a tool to build multi-agent systems where specialist agents handle focused subtasks and a coordinator agent plans and delegates.
+
+See [Multi-Agent Systems](../../concepts/agents/multi-agent-systems.mdx) for a full guide, including the recommended `@tool` decorator approach for full interface control and `ComponentTool` for declarative configuration.
+
+## MCP Integration
+
+Agents work with MCP in two directions:
+
+- **Consuming MCP tools**: Pass `MCPTool` or `MCPToolset` instances in the `tools` list to call tools on any MCP-compatible server (filesystem, browser, databases, and more). See [MCPTool](../../tools/mcptool.mdx) and [MCPToolset](../../tools/mcptoolset.mdx).
+- **Exposing as an MCP server**: Use [Hayhooks](../../development/hayhooks.mdx) to deploy your agent and expose it as an MCP server, making it callable from any MCP-compatible client such as Claude Desktop or Cursor.
+
+## Additional References
+
+📖 Related docs:
+
+- [State](./state.mdx) — managing shared data between tools
+- [Human in the Loop](./human-in-the-loop.mdx) — intercepting tool calls for human review
+
+📚 Tutorials:
+
+- [Build a Tool-Calling Agent](https://haystack.deepset.ai/tutorials/43_building_a_tool_calling_agent)
+- [Creating a Multi-Agent System](https://haystack.deepset.ai/tutorials/45_creating_a_multi_agent_system)
+- [Human-in-the-Loop with Haystack Agents](https://haystack.deepset.ai/tutorials/47_human_in_the_loop_agent/)
+
+🧑‍🍳 Cookbook:
+
+- [Build a GitHub Issue Resolver Agent](https://haystack.deepset.ai/cookbook/github_issue_resolver_agent)
+- [Multimodal Agents](https://haystack.deepset.ai/cookbook/multimodal_intro#multimodal-agent)
+- [Gemma Chat RAG](https://haystack.deepset.ai/cookbook/gemma_chat_rag)

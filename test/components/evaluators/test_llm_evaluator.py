@@ -2,11 +2,13 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+from unittest.mock import AsyncMock, Mock
 
 import pytest
 
 from haystack import Pipeline
 from haystack.components.evaluators import LLMEvaluator
+from haystack.components.generators.chat import MockChatGenerator
 from haystack.components.generators.chat.openai import OpenAIChatGenerator
 from haystack.dataclasses.chat_message import ChatMessage
 
@@ -30,20 +32,22 @@ class TestLLMEvaluator:
         ]
 
         assert isinstance(component._chat_generator, OpenAIChatGenerator)
-        assert component._chat_generator.client.api_key == "test-api-key"
         assert component._chat_generator.generation_kwargs == {"response_format": {"type": "json_object"}, "seed": 42}
 
-    def test_init_fail_wo_openai_api_key(self, monkeypatch):
+        assert set(component.__haystack_output__._sockets_dict) == {"results", "meta"}
+
+    def test_key_resolved_at_warm_up_not_init(self, monkeypatch):
         monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+        component = LLMEvaluator(
+            instructions="test-instruction",
+            inputs=[("predicted_answers", list[str])],
+            outputs=["score"],
+            examples=[
+                {"inputs": {"predicted_answers": "Football is the most popular sport."}, "outputs": {"score": 0}}
+            ],
+        )
         with pytest.raises(ValueError, match="None of the .* environment variables are set"):
-            LLMEvaluator(
-                instructions="test-instruction",
-                inputs=[("predicted_answers", list[str])],
-                outputs=["score"],
-                examples=[
-                    {"inputs": {"predicted_answers": "Football is the most popular sport."}, "outputs": {"score": 0}}
-                ],
-            )
+            component.warm_up()
 
     def test_init_with_chat_generator(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
@@ -198,6 +202,7 @@ class TestLLMEvaluator:
                 "instructions": "test-instruction",
                 "inputs": [["predicted_answers", "list[str]"]],
                 "outputs": ["score"],
+                "raise_on_failure": True,
                 "progress_bar": True,
                 "examples": [
                     {"inputs": {"predicted_answers": "Football is the most popular sport."}, "outputs": {"score": 0}}
@@ -213,6 +218,7 @@ class TestLLMEvaluator:
             instructions="test-instruction",
             inputs=[("predicted_answers", list[str])],
             outputs=["custom_score"],
+            raise_on_failure=False,
             examples=[
                 {
                     "inputs": {"predicted_answers": "Damn, this is straight outta hell!!!"},
@@ -232,6 +238,7 @@ class TestLLMEvaluator:
                 "instructions": "test-instruction",
                 "inputs": [["predicted_answers", "list[str]"]],
                 "outputs": ["custom_score"],
+                "raise_on_failure": False,
                 "progress_bar": True,
                 "examples": [
                     {
@@ -265,7 +272,6 @@ class TestLLMEvaluator:
 
         component = LLMEvaluator.from_dict(data)
         assert isinstance(component._chat_generator, OpenAIChatGenerator)
-        assert component._chat_generator.client.api_key == "test-api-key"
         assert component._chat_generator.generation_kwargs == {"response_format": {"type": "json_object"}, "seed": 42}
         assert component.instructions == "test-instruction"
         assert component.inputs == [("predicted_answers", list[str])]
@@ -455,3 +461,216 @@ class TestLLMEvaluator:
             ValueError
         ):  # json_utils/LLMEvaluator might raise JSONDecodeError which inherits from ValueError or wrapped
             component.run(predicted_answers=["answer"])
+
+
+class TestLLMEvaluatorAsync:
+    @pytest.mark.asyncio
+    async def test_run_async_returns_parsed_result(self, monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+        component = LLMEvaluator(
+            instructions="test-instruction",
+            inputs=[("questions", list[str]), ("predicted_answers", list[str])],
+            outputs=["score"],
+            examples=[
+                {
+                    "inputs": {
+                        "questions": "What is the value of any non-zero number raised to the power of zero?",
+                        "predicted_answers": "Zero",
+                    },
+                    "outputs": {"score": 0},
+                }
+            ],
+        )
+
+        async def chat_generator_run_async(self, *args, **kwargs):
+            return {"replies": [ChatMessage.from_assistant('{"score": 1}')]}
+
+        monkeypatch.setattr(
+            "haystack.components.evaluators.llm_evaluator.OpenAIChatGenerator.run_async", chat_generator_run_async
+        )
+
+        results = await component.run_async(
+            questions=["What is the perimeter of a circle called?"], predicted_answers=["Circumference"]
+        )
+        assert results == {"results": [{"score": 1}], "meta": None}
+
+    @pytest.mark.asyncio
+    async def test_run_async_fallback_to_thread_with_sync_generator(self, monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+
+        class SyncOnlyGenerator:
+            def run(self, messages):
+                return {"replies": [ChatMessage.from_assistant('{"score": 0}')]}
+
+        component = LLMEvaluator(
+            instructions="test-instruction",
+            inputs=[("questions", list[str]), ("predicted_answers", list[str])],
+            outputs=["score"],
+            examples=[
+                {
+                    "inputs": {
+                        "questions": "What is the top sport?",
+                        "predicted_answers": "Football is the most popular sport.",
+                    },
+                    "outputs": {"score": 1},
+                }
+            ],
+            chat_generator=SyncOnlyGenerator(),
+        )
+
+        results = await component.run_async(questions=["question"], predicted_answers=["answer"])
+        assert results == {"results": [{"score": 0}], "meta": None}
+
+    @pytest.mark.asyncio
+    async def test_run_async_raise_on_failure_false(self, monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+        component = LLMEvaluator(
+            instructions="test-instruction",
+            inputs=[("questions", list[str]), ("predicted_answers", list[str])],
+            outputs=["score"],
+            examples=[
+                {
+                    "inputs": {
+                        "questions": "What is the value of any non-zero number raised to the power of zero?",
+                        "predicted_answers": "One",
+                    },
+                    "outputs": {"score": 1},
+                }
+            ],
+            raise_on_failure=False,
+        )
+
+        async def chat_generator_run_async(self, *args, **kwargs):
+            raise Exception("API error")
+
+        monkeypatch.setattr(
+            "haystack.components.evaluators.llm_evaluator.OpenAIChatGenerator.run_async", chat_generator_run_async
+        )
+
+        result = await component.run_async(questions=["question"], predicted_answers=["answer"])
+        assert result["results"] == [None]
+
+    @pytest.mark.asyncio
+    async def test_run_async_raise_on_failure_true(self, monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+        component = LLMEvaluator(
+            instructions="test-instruction",
+            inputs=[("questions", list[str]), ("predicted_answers", list[str])],
+            outputs=["score"],
+            examples=[
+                {
+                    "inputs": {
+                        "questions": "What is the smallest unit of data in a computer?",
+                        "predicted_answers": "Bit",
+                    },
+                    "outputs": {"score": 1},
+                }
+            ],
+        )
+
+        async def chat_generator_run_async(self, *args, **kwargs):
+            raise Exception("API error")
+
+        monkeypatch.setattr(
+            "haystack.components.evaluators.llm_evaluator.OpenAIChatGenerator.run_async", chat_generator_run_async
+        )
+
+        with pytest.raises(ValueError):
+            await component.run_async(questions=["question"], predicted_answers=["answer"])
+
+
+class TestComponentLifecycle:
+    @staticmethod
+    def _make_evaluator(chat_generator):
+        return LLMEvaluator(
+            instructions="test-instruction",
+            inputs=[("predicted_answers", list[str])],
+            outputs=["score"],
+            examples=[
+                {"inputs": {"predicted_answers": "Football is the most popular sport."}, "outputs": {"score": 0}}
+            ],
+            chat_generator=chat_generator,
+        )
+
+    def test_warm_up_delegates_to_chat_generator(self):
+        chat_generator = Mock(spec=["run", "warm_up"])
+        evaluator = self._make_evaluator(chat_generator)
+        evaluator.warm_up()
+        chat_generator.warm_up.assert_called_once()
+
+    async def test_warm_up_async_delegates_to_chat_generator(self):
+        chat_generator = Mock(spec=["run", "warm_up_async"])
+        chat_generator.warm_up_async = AsyncMock()
+        evaluator = self._make_evaluator(chat_generator)
+        await evaluator.warm_up_async()
+        chat_generator.warm_up_async.assert_awaited_once()
+
+    async def test_warm_up_async_falls_back_to_sync_warm_up(self):
+        chat_generator = Mock(spec=["run", "warm_up"])
+        evaluator = self._make_evaluator(chat_generator)
+        await evaluator.warm_up_async()
+        chat_generator.warm_up.assert_called_once()
+
+    def test_close_delegates_to_chat_generator(self):
+        chat_generator = Mock(spec=["run", "close"])
+        evaluator = self._make_evaluator(chat_generator)
+        evaluator.close()
+        chat_generator.close.assert_called_once()
+
+    async def test_close_async_delegates_to_chat_generator(self):
+        chat_generator = Mock(spec=["run", "close_async"])
+        chat_generator.close_async = AsyncMock()
+        evaluator = self._make_evaluator(chat_generator)
+        await evaluator.close_async()
+        chat_generator.close_async.assert_awaited_once()
+
+    async def test_close_async_falls_back_to_sync_close(self):
+        chat_generator = Mock(spec=["run", "close"])
+        evaluator = self._make_evaluator(chat_generator)
+        await evaluator.close_async()
+        chat_generator.close.assert_called_once()
+
+    async def test_lifecycle_is_safe_when_chat_generator_lacks_methods(self):
+        chat_generator = Mock(spec=["run"])
+        evaluator = self._make_evaluator(chat_generator)
+        evaluator.warm_up()
+        await evaluator.warm_up_async()
+        evaluator.close()
+        await evaluator.close_async()
+
+
+class TestLLMEvaluatorTracing:
+    def test_run_traces_chat_generator_token_usage(self, spying_tracer):
+        evaluator = LLMEvaluator(
+            instructions="test-instruction",
+            inputs=[("predicted_answers", list[str])],
+            outputs=["score"],
+            examples=[{"inputs": {"predicted_answers": "Answer"}, "outputs": {"score": 1}}],
+            chat_generator=MockChatGenerator('{"score": 1}'),
+        )
+
+        evaluator.run(predicted_answers=["Football is the most popular sport."])
+
+        gen_spans = [s for s in spying_tracer.spans if s.operation_name == "haystack.chat_generator.run"]
+        assert len(gen_spans) == 1
+        output = gen_spans[0].tags["haystack.component.output"]
+        assert output["replies"][0].meta["usage"]["total_tokens"] > 0
+
+
+class TestLLMEvaluatorTracingAsync:
+    @pytest.mark.asyncio
+    async def test_run_async_traces_chat_generator_token_usage(self, spying_tracer):
+        evaluator = LLMEvaluator(
+            instructions="test-instruction",
+            inputs=[("predicted_answers", list[str])],
+            outputs=["score"],
+            examples=[{"inputs": {"predicted_answers": "Answer"}, "outputs": {"score": 1}}],
+            chat_generator=MockChatGenerator('{"score": 1}'),
+        )
+
+        await evaluator.run_async(predicted_answers=["Football is the most popular sport."])
+
+        gen_spans = [s for s in spying_tracer.spans if s.operation_name == "haystack.chat_generator.run"]
+        assert len(gen_spans) == 1
+        output = gen_spans[0].tags["haystack.component.output"]
+        assert output["replies"][0].meta["usage"]["total_tokens"] > 0

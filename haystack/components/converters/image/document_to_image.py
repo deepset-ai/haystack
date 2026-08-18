@@ -34,32 +34,36 @@ class DocumentToImageContent:
     - For PDF files, a `page_number` key specifying which page to extract
 
     ### Usage example
-        ```python
-        from haystack import Document
-        from haystack.components.converters.image.document_to_image import DocumentToImageContent
 
-        converter = DocumentToImageContent(
-            file_path_meta_field="file_path",
-            root_path="/data/files",
-            detail="high",
-            size=(800, 600)
+    ```python
+    from haystack import Document
+    from haystack.components.converters.image.document_to_image import DocumentToImageContent
+
+    converter = DocumentToImageContent(
+        file_path_meta_field="file_path",
+        root_path="test/test_files",
+        detail="high",
+        size=(800, 600)
+    )
+
+    documents = [
+        Document(content="Optional description of apple.jpg", meta={"file_path": "images/apple.jpg"}),
+        Document(
+            content="Optional description of sample_pdf_1.pdf",
+            meta={"file_path": "pdf/sample_pdf_1.pdf", "page_number": 1}
         )
+    ]
 
-        documents = [
-            Document(content="Optional description of image.jpg", meta={"file_path": "image.jpg"}),
-            Document(content="Text content of page 1 of doc.pdf", meta={"file_path": "doc.pdf", "page_number": 1})
-        ]
-
-        result = converter.run(documents)
-        image_contents = result["image_contents"]
-        # [ImageContent(
-        #    base64_image='/9j/4A...', mime_type='image/jpeg', detail='high', meta={'file_path': 'image.jpg'}
-        #  ),
-        #  ImageContent(
-        #    base64_image='/9j/4A...', mime_type='image/jpeg', detail='high',
-        #    meta={'page_number': 1, 'file_path': 'doc.pdf'}
-        #  )]
-        ```
+    result = converter.run(documents)
+    image_contents = result["image_contents"]
+    # [ImageContent(
+    #    base64_image='/9j/4A...', mime_type='image/jpeg', detail='high', meta={'file_path': 'images/apple.jpg'}
+    #  ),
+    #  ImageContent(
+    #    base64_image='/9j/4A...', mime_type='image/jpeg', detail='high',
+    #    meta={'file_path': 'pdf/sample_pdf_1.pdf', 'page_number': 1})
+    #  )]
+    ```
     """
 
     def __init__(
@@ -75,7 +79,11 @@ class DocumentToImageContent:
 
         :param file_path_meta_field: The metadata field in the Document that contains the file path to the image or PDF.
         :param root_path: The root directory path where document files are located. If provided, file paths in
-            document metadata will be resolved relative to this path. If None, file paths are treated as absolute paths.
+            document metadata will be resolved relative to this path and are guaranteed to stay within it. If None,
+            file paths are treated as absolute paths with no containment check.
+            Security: this component reads the file referenced by `file_path_meta_field` from the host filesystem. If
+            document metadata may be influenced by untrusted input, set `root_path` to a dedicated data directory so
+            that path-traversal payloads (e.g. absolute paths or `../`) are rejected instead of read.
         :param detail: Optional detail level of the image (only supported by OpenAI). Can be "auto", "high", or "low".
             This will be passed to the created ImageContent objects.
         :param size: If provided, resizes the image to fit within the specified dimensions (width, height) while

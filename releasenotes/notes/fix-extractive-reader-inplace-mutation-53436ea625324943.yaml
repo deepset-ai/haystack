@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Fixed in-place mutation of ``ExtractedAnswer.meta`` in
+    ``ExtractiveReader._add_answer_page_number`` when the answer's ``meta``
+    was ``None``. Now uses ``dataclasses.replace`` to avoid triggering the
+    dataclass mutation warning.

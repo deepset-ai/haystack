@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    Fixed ``document_matches_filter`` raising a ``FilterError`` when comparing a string date in
+    ``Document.meta`` against a ``datetime`` object using ordering operators (``>``, ``>=``, ``<``, ``<=``).

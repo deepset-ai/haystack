@@ -21,7 +21,8 @@ from haystack.core.errors import (
     PipelineRuntimeError,
 )
 from haystack.core.pipeline import Pipeline
-from haystack.core.pipeline.base import _NO_OUTPUT_PRODUCED, ComponentPriority, PipelineBase
+from haystack.core.pipeline.base import ComponentPriority, PipelineBase
+from haystack.core.pipeline.component_checks import _NoOutputProduced
 from haystack.core.pipeline.utils import FIFOPriorityQueue
 from haystack.core.serialization import DeserializationCallbacks
 from haystack.core.type_utils import ConversionStrategy
@@ -60,6 +61,48 @@ class FakeRouter:
         if inp == "route1":
             return {"route1": "output from route 1"}
         return {"route2": "output from route 2"}
+
+
+@component
+class StringProducer:
+    @component.output_types(text=str)
+    def run(self) -> dict[str, str]:
+        return {"text": "Hello"}
+
+
+@component
+class ChatMessageProducer:
+    @component.output_types(message=ChatMessage)
+    def run(self) -> dict[str, ChatMessage]:
+        return {"message": ChatMessage.from_user("Hello")}
+
+
+@component
+class ListStrProducer:
+    @component.output_types(texts=list[str])
+    def run(self) -> dict[str, list[str]]:
+        return {"texts": ["Hello", "Hi"]}
+
+
+@component
+class ListChatMessageProducer:
+    @component.output_types(messages=list[ChatMessage])
+    def run(self) -> dict[str, list[ChatMessage]]:
+        return {"messages": [ChatMessage.from_user("Hello")]}
+
+
+@component
+class ListStrAcceptor:
+    @component.output_types(result=list[str])
+    def run(self, texts: list[str]) -> dict[str, list[str]]:
+        return {"result": texts}
+
+
+@component
+class ListChatMessageAcceptor:
+    @component.output_types(result=list[ChatMessage])
+    def run(self, messages: list[ChatMessage]) -> dict[str, list[ChatMessage]]:
+        return {"result": messages}
 
 
 @pytest.fixture
@@ -212,28 +255,136 @@ class TestPipelineBase:
         component_2 = component_class("Type2")()
         component_3 = component_class("Type3")()
         component_4 = component_class("Type4")()
+        isolated = component_class("Isolated")()
 
         pipe.add_component("1", component_1)
         pipe.add_component("2", component_2)
         pipe.add_component("3", component_3)
         pipe.add_component("4", component_4)
+        pipe.add_component("isolated", isolated)
 
         pipe.connect("1", "2")
         pipe.connect("2", "3")
         pipe.connect("3", "4")
 
         pipe.remove_component("2")
+        # Removing a component with no connections at all is a safe no-op over its (empty) edge sets.
+        removed_isolated = pipe.remove_component("isolated")
 
         assert sorted(pipe.graph.nodes) == ["1", "3", "4"]
         assert sorted([(u, v) for (u, v) in pipe.graph.edges()]) == [("3", "4")]
+        assert removed_isolated.__haystack_added_to_pipeline__ is None  # type: ignore[attr-defined]
+
+    def test_remove_component_middle_of_chain_removal(self):
+        """Removing a component that is both a downstream and an upstream neighbor cleans up both sides."""
+        pipe = PipelineBase()
+        producer_class = component_class("Producer", input_types={}, output_types={"value": int})
+        middle_class = component_class("Middle", input_types={"value": int}, output_types={"value": int})
+        consumer_class = component_class("Consumer", input_types={"value": int})
+        pipe.add_component("producer", producer_class())
+        pipe.add_component("middle", middle_class())
+        pipe.add_component("consumer", consumer_class())
+        pipe.connect("producer.value", "middle.value")
+        pipe.connect("middle.value", "consumer.value")
+
+        pipe.remove_component("middle")
+
+        producer_socket = pipe.get_component("producer").__haystack_output__._sockets_dict["value"]  # type: ignore[attr-defined]
+        consumer_socket = pipe.get_component("consumer").__haystack_input__._sockets_dict["value"]  # type: ignore[attr-defined]
+        # Both the upstream and the downstream neighbor must be cleaned of the removed component.
+        assert producer_socket.receivers == []
+        assert consumer_socket.senders == []
+        # With the stale sender gone, the now-unconnected mandatory input is exposed again.
+        assert pipe.inputs() == {"consumer": {"value": {"type": int, "is_mandatory": True}}}
+        # Feeding it directly must not raise a spurious "already connected" error.
+        pipe.validate_input({"consumer": {"value": 5}})
+
+    def test_remove_component_fan_out(self):
+        """Removing a sender that fans out to multiple receivers cleans up every receiver, not just one."""
+        pipe = PipelineBase()
+        producer_class = component_class("Producer", output_types={"value": int})
+        consumer_a_class = component_class("ConsumerA", input_types={"value": int})
+        consumer_b_class = component_class("ConsumerB", input_types={"value": int})
+        pipe.add_component("producer", producer_class())
+        pipe.add_component("consumer_a", consumer_a_class())
+        pipe.add_component("consumer_b", consumer_b_class())
+        pipe.connect("producer.value", "consumer_a.value")
+        pipe.connect("producer.value", "consumer_b.value")
+
+        pipe.remove_component("producer")
+
+        consumer_a_socket = pipe.get_component("consumer_a").__haystack_input__._sockets_dict["value"]  # type: ignore[attr-defined]
+        consumer_b_socket = pipe.get_component("consumer_b").__haystack_input__._sockets_dict["value"]  # type: ignore[attr-defined]
+        # Every receiver of the removed sender's output must be cleaned, not just the first one.
+        assert consumer_a_socket.senders == []
+        assert consumer_b_socket.senders == []
+
+    def test_remove_component_fan_in(self):
+        """Removing a receiver fed by multiple senders cleans up every sender, not just one."""
+        pipe = PipelineBase()
+        producer_a_class = component_class("ProducerA", output_types={"value": int})
+        producer_b_class = component_class("ProducerB", output_types={"value": int})
+        consumer_class = component_class("Consumer", input_types={"value": list[int]})
+        pipe.add_component("producer_a", producer_a_class())
+        pipe.add_component("producer_b", producer_b_class())
+        pipe.add_component("consumer", consumer_class())
+        pipe.connect("producer_a.value", "consumer.value")
+        pipe.connect("producer_b.value", "consumer.value")
+
+        pipe.remove_component("consumer")
+
+        producer_a_socket = pipe.get_component("producer_a").__haystack_output__._sockets_dict["value"]  # type: ignore[attr-defined]
+        producer_b_socket = pipe.get_component("producer_b").__haystack_output__._sockets_dict["value"]  # type: ignore[attr-defined]
+        # Every sender of the removed receiver must be cleaned, not just the first one.
+        assert producer_a_socket.receivers == []
+        assert producer_b_socket.receivers == []
+
+    def test_remove_component_variadic_multi_sender(self):
+        """Removing one sender of a variadic receiver only strips itself, leaving the other senders intact."""
+        pipe = PipelineBase()
+        producer_a_class = component_class("ProducerA", output_types={"value": int})
+        producer_b_class = component_class("ProducerB", output_types={"value": int})
+        consumer_class = component_class("Consumer", input_types={"value": list[int]})
+        pipe.add_component("producer_a", producer_a_class())
+        pipe.add_component("producer_b", producer_b_class())
+        pipe.add_component("consumer", consumer_class())
+        pipe.connect("producer_a.value", "consumer.value")
+        pipe.connect("producer_b.value", "consumer.value")
+
+        consumer_socket = pipe.get_component("consumer").__haystack_input__._sockets_dict["value"]  # type: ignore[attr-defined]
+        assert consumer_socket.is_variadic
+        assert sorted(consumer_socket.senders) == ["producer_a", "producer_b"]
+
+        pipe.remove_component("producer_a")
+
+        # Only the removed sender is stripped; the surviving sender must remain in the list.
+        assert consumer_socket.senders == ["producer_b"]
+
+    def test_remove_component_multiple_connections_to_same_neighbor(self):
+        """Removing a component with several parallel connections to the same neighbor cleans up all of them."""
+        pipe = PipelineBase()
+        producer_class = component_class("Producer", output_types={"first": int, "second": int})
+        consumer_class = component_class("Consumer", input_types={"first": int, "second": int})
+        pipe.add_component("producer", producer_class())
+        pipe.add_component("consumer", consumer_class())
+        pipe.connect("producer.first", "consumer.first")
+        pipe.connect("producer.second", "consumer.second")
+
+        pipe.remove_component("producer")
+
+        consumer_first_socket = pipe.get_component("consumer").__haystack_input__._sockets_dict["first"]  # type: ignore[attr-defined]
+        consumer_second_socket = pipe.get_component("consumer").__haystack_input__._sockets_dict["second"]  # type: ignore[attr-defined]
+        # Both parallel connections between the same pair of components must be cleaned up.
+        assert consumer_first_socket.senders == []
+        assert consumer_second_socket.senders == []
 
     def test_remove_component_allows_you_to_reuse_the_component(self):
         pipe = PipelineBase()
-        Some = component_class("Some", input_types={"in": int}, output_types={"out": int})
+        some = component_class("Some", input_types={"in": int}, output_types={"out": int})
 
-        pipe.add_component("component_1", Some())
-        pipe.add_component("component_2", Some())
-        pipe.add_component("component_3", Some())
+        pipe.add_component("component_1", some())
+        pipe.add_component("component_2", some())
+        pipe.add_component("component_3", some())
         pipe.connect("component_1", "component_2")
         pipe.connect("component_2", "component_3")
         component_2 = pipe.remove_component("component_2")
@@ -247,9 +398,9 @@ class TestPipelineBase:
         }
 
         pipe2 = PipelineBase()
-        pipe2.add_component("component_4", Some())
+        pipe2.add_component("component_4", some())
         pipe2.add_component("component_2", component_2)
-        pipe2.add_component("component_5", Some())
+        pipe2.add_component("component_5", some())
 
         pipe2.connect("component_4", "component_2")
         pipe2.connect("component_2", "component_5")
@@ -260,6 +411,55 @@ class TestPipelineBase:
         assert component_2.__haystack_output__._sockets_dict == {
             "out": OutputSocket(name="out", type=int, receivers=["component_5"])
         }
+
+    def test_remove_component_resets_auto_variadic_socket_mutation(self):
+        pipe = PipelineBase()
+        producer_a_class = component_class("ProducerA", output_types={"value": list[int]})
+        producer_b_class = component_class("ProducerB", output_types={"value": list[int]})
+        consumer_class = component_class("Consumer", input_types={"values": list[int]})
+
+        consumer = consumer_class()
+        pipe.add_component("producer_a", producer_a_class())
+        pipe.add_component("producer_b", producer_b_class())
+        pipe.add_component("consumer", consumer)
+
+        pipe.connect("producer_a.value", "consumer.values")
+        pipe.connect("producer_b.value", "consumer.values")
+
+        consumer_socket = consumer.__haystack_input__._sockets_dict["values"]  # type: ignore[attr-defined]
+        assert consumer_socket.is_lazy_variadic is True
+        assert consumer_socket.wrap_input_in_list is False
+
+        pipe.remove_component("consumer")
+
+        assert consumer_socket.is_lazy_variadic is False
+        assert consumer_socket.wrap_input_in_list is True
+        assert consumer_socket.senders == []
+
+        pipe2 = PipelineBase()
+        pipe2.add_component("producer_a", producer_a_class())
+        pipe2.add_component("consumer", consumer)
+        pipe2.connect("producer_a.value", "consumer.values")
+
+        assert consumer_socket.is_lazy_variadic is False
+        assert consumer_socket.wrap_input_in_list is True
+
+    @pytest.mark.parametrize("input_type", [Variadic[int], GreedyVariadic[int]])
+    def test_remove_component_preserves_declared_variadic_socket(self, input_type):
+        pipe = PipelineBase()
+        consumer_class = component_class("Consumer", input_types={"values": input_type})
+        consumer = consumer_class()
+        pipe.add_component("consumer", consumer)
+
+        consumer_socket = consumer.__haystack_input__._sockets_dict["values"]  # type: ignore[attr-defined]
+        expected_lazy_variadic = consumer_socket.is_lazy_variadic
+        expected_greedy = consumer_socket.is_greedy
+
+        pipe.remove_component("consumer")
+
+        assert consumer_socket.is_lazy_variadic is expected_lazy_variadic
+        assert consumer_socket.is_greedy is expected_greedy
+        assert consumer_socket.wrap_input_in_list is True
 
     def test_get_component_name(self):
         pipe = PipelineBase()
@@ -323,325 +523,6 @@ class TestPipelineBase:
             ],
         }
         assert res == expected
-
-    def test_from_dict(self):
-        data = {
-            "metadata": {"test": "test"},
-            "max_runs_per_component": 101,
-            "components": {
-                "add_two": {
-                    "type": "haystack.testing.sample_components.add_value.AddFixedValue",
-                    "init_parameters": {"add": 2},
-                },
-                "add_default": {
-                    "type": "haystack.testing.sample_components.add_value.AddFixedValue",
-                    "init_parameters": {"add": 1},
-                },
-                "double": {"type": "haystack.testing.sample_components.double.Double", "init_parameters": {}},
-            },
-            "connections": [
-                {"sender": "add_two.result", "receiver": "double.value"},
-                {"sender": "double.value", "receiver": "add_default.value"},
-            ],
-        }
-        pipe = PipelineBase.from_dict(data)
-
-        assert pipe.metadata == {"test": "test"}
-        assert pipe._max_runs_per_component == 101
-
-        # Components
-        assert len(pipe.graph.nodes) == 3
-        ## add_two
-        add_two = pipe.graph.nodes["add_two"]
-        assert add_two["instance"].add == 2
-        assert add_two["input_sockets"] == {
-            "value": InputSocket(name="value", type=int),
-            "add": InputSocket(name="add", type=int | None, default_value=None),
-        }
-        assert add_two["output_sockets"] == {"result": OutputSocket(name="result", type=int, receivers=["double"])}
-        assert add_two["visits"] == 0
-
-        ## add_default
-        add_default = pipe.graph.nodes["add_default"]
-        assert add_default["instance"].add == 1
-        assert add_default["input_sockets"] == {
-            "value": InputSocket(name="value", type=int, senders=["double"]),
-            "add": InputSocket(name="add", type=int | None, default_value=None),
-        }
-        assert add_default["output_sockets"] == {"result": OutputSocket(name="result", type=int)}
-        assert add_default["visits"] == 0
-
-        ## double
-        double = pipe.graph.nodes["double"]
-        assert double["instance"]
-        assert double["input_sockets"] == {"value": InputSocket(name="value", type=int, senders=["add_two"])}
-        assert double["output_sockets"] == {"value": OutputSocket(name="value", type=int, receivers=["add_default"])}
-        assert double["visits"] == 0
-
-        # Connections
-        connections = list(pipe.graph.edges(data=True))
-        assert len(connections) == 2
-        assert connections[0] == (
-            "add_two",
-            "double",
-            {
-                "conn_type": "int",
-                "conversion_strategy": None,
-                "from_socket": OutputSocket(name="result", type=int, receivers=["double"]),
-                "to_socket": InputSocket(name="value", type=int, senders=["add_two"]),
-                "mandatory": True,
-            },
-        )
-        assert connections[1] == (
-            "double",
-            "add_default",
-            {
-                "conn_type": "int",
-                "conversion_strategy": None,
-                "from_socket": OutputSocket(name="value", type=int, receivers=["add_default"]),
-                "to_socket": InputSocket(name="value", type=int, senders=["double"]),
-                "mandatory": True,
-            },
-        )
-
-    # TODO: Remove this, this should be a component test.
-    # The pipeline can't handle this in any case nor way.
-    def test_from_dict_with_callbacks(self):
-        data = {
-            "metadata": {"test": "test"},
-            "components": {
-                "add_two": {
-                    "type": "haystack.testing.sample_components.add_value.AddFixedValue",
-                    "init_parameters": {"add": 2},
-                },
-                "add_default": {
-                    "type": "haystack.testing.sample_components.add_value.AddFixedValue",
-                    "init_parameters": {"add": 1},
-                },
-                "double": {"type": "haystack.testing.sample_components.double.Double", "init_parameters": {}},
-                "greet": {
-                    "type": "haystack.testing.sample_components.greet.Greet",
-                    "init_parameters": {"message": "test"},
-                },
-            },
-            "connections": [
-                {"sender": "add_two.result", "receiver": "double.value"},
-                {"sender": "double.value", "receiver": "add_default.value"},
-            ],
-        }
-
-        components_seen_in_callback = []
-
-        def component_pre_init_callback(name, component_cls, init_params):
-            assert name in ["add_two", "add_default", "double", "greet"]
-            assert component_cls in [AddFixedValue, Double, Greet]
-
-            if name == "add_two":
-                assert init_params == {"add": 2}
-            elif name == "add_default":
-                assert init_params == {"add": 1}
-            elif name == "greet":
-                assert init_params == {"message": "test"}
-
-            components_seen_in_callback.append(name)
-
-        pipe = PipelineBase.from_dict(
-            data, callbacks=DeserializationCallbacks(component_pre_init=component_pre_init_callback)
-        )
-        assert components_seen_in_callback == ["add_two", "add_default", "double", "greet"]
-        add_two = pipe.graph.nodes["add_two"]["instance"]
-        assert add_two.add == 2
-        add_default = pipe.graph.nodes["add_default"]["instance"]
-        assert add_default.add == 1
-        greet = pipe.graph.nodes["greet"]["instance"]
-        assert greet.message == "test"
-        assert greet.log_level == "INFO"
-
-        def component_pre_init_callback_modify(name, component_cls, init_params):
-            assert name in ["add_two", "add_default", "double", "greet"]
-            assert component_cls in [AddFixedValue, Double, Greet]
-
-            if name == "add_two":
-                init_params["add"] = 3
-            elif name == "add_default":
-                init_params["add"] = 0
-            elif name == "greet":
-                init_params["message"] = "modified test"
-                init_params["log_level"] = "DEBUG"
-
-        pipe = PipelineBase.from_dict(
-            data, callbacks=DeserializationCallbacks(component_pre_init=component_pre_init_callback_modify)
-        )
-        add_two = pipe.graph.nodes["add_two"]["instance"]
-        assert add_two.add == 3
-        add_default = pipe.graph.nodes["add_default"]["instance"]
-        assert add_default.add == 0
-        greet = pipe.graph.nodes["greet"]["instance"]
-        assert greet.message == "modified test"
-        assert greet.log_level == "DEBUG"
-
-        # Test with a component that internally instantiates another component
-        def component_pre_init_callback_check_class(name, component_cls, init_params):
-            assert name == "fake_component_squared"
-            assert component_cls == FakeComponentSquared
-
-        pipe = PipelineBase()
-        pipe.add_component("fake_component_squared", FakeComponentSquared())
-        pipe = PipelineBase.from_dict(
-            pipe.to_dict(),
-            callbacks=DeserializationCallbacks(component_pre_init=component_pre_init_callback_check_class),
-        )
-        assert type(pipe.graph.nodes["fake_component_squared"]["instance"].inner) == FakeComponent
-
-    def test_from_dict_with_empty_dict(self):
-        assert PipelineBase() == PipelineBase.from_dict({})
-
-    def test_from_dict_with_components_instances(self):
-        add_two = AddFixedValue(add=2)
-        add_default = AddFixedValue()
-        components = {"add_two": add_two, "add_default": add_default}
-        data = {
-            "metadata": {"test": "test"},
-            "components": {
-                "add_two": {},
-                "add_default": {},
-                "double": {"type": "haystack.testing.sample_components.double.Double", "init_parameters": {}},
-            },
-            "connections": [
-                {"sender": "add_two.result", "receiver": "double.value"},
-                {"sender": "double.value", "receiver": "add_default.value"},
-            ],
-        }
-        pipe = PipelineBase.from_dict(data, components=components)
-        assert pipe.metadata == {"test": "test"}
-
-        # Components
-        assert len(pipe.graph.nodes) == 3
-        ## add_two
-        add_two_data = pipe.graph.nodes["add_two"]
-        assert add_two_data["instance"] is add_two
-        assert add_two_data["instance"].add == 2
-        assert add_two_data["input_sockets"] == {
-            "value": InputSocket(name="value", type=int),
-            "add": InputSocket(name="add", type=int | None, default_value=None),
-        }
-        assert add_two_data["output_sockets"] == {"result": OutputSocket(name="result", type=int, receivers=["double"])}
-        assert add_two_data["visits"] == 0
-
-        ## add_default
-        add_default_data = pipe.graph.nodes["add_default"]
-        assert add_default_data["instance"] is add_default
-        assert add_default_data["instance"].add == 1
-        assert add_default_data["input_sockets"] == {
-            "value": InputSocket(name="value", type=int, senders=["double"]),
-            "add": InputSocket(name="add", type=int | None, default_value=None),
-        }
-        assert add_default_data["output_sockets"] == {"result": OutputSocket(name="result", type=int, receivers=[])}
-        assert add_default_data["visits"] == 0
-
-        ## double
-        double = pipe.graph.nodes["double"]
-        assert double["instance"]
-        assert double["input_sockets"] == {"value": InputSocket(name="value", type=int, senders=["add_two"])}
-        assert double["output_sockets"] == {"value": OutputSocket(name="value", type=int, receivers=["add_default"])}
-        assert double["visits"] == 0
-
-        # Connections
-        connections = list(pipe.graph.edges(data=True))
-        assert len(connections) == 2
-        assert connections[0] == (
-            "add_two",
-            "double",
-            {
-                "conn_type": "int",
-                "conversion_strategy": None,
-                "from_socket": OutputSocket(name="result", type=int, receivers=["double"]),
-                "to_socket": InputSocket(name="value", type=int, senders=["add_two"]),
-                "mandatory": True,
-            },
-        )
-        assert connections[1] == (
-            "double",
-            "add_default",
-            {
-                "conn_type": "int",
-                "conversion_strategy": None,
-                "from_socket": OutputSocket(name="value", type=int, receivers=["add_default"]),
-                "to_socket": InputSocket(name="value", type=int, senders=["double"]),
-                "mandatory": True,
-            },
-        )
-
-    def test_from_dict_without_component_type(self):
-        data = {
-            "metadata": {"test": "test"},
-            "components": {"add_two": {"init_parameters": {"add": 2}}},
-            "connections": [],
-        }
-        with pytest.raises(PipelineError) as err:
-            PipelineBase.from_dict(data)
-
-        err.match("Missing 'type' in component 'add_two'")
-
-    def test_from_dict_without_registered_component_type(self):
-        data = {
-            "metadata": {"test": "test"},
-            "components": {"add_two": {"type": "foo.bar.baz", "init_parameters": {"add": 2}}},
-            "connections": [],
-        }
-        with pytest.raises(PipelineError) as err:
-            PipelineBase.from_dict(data)
-
-        err.match(r"Component .+ not imported.")
-
-    def test_from_dict_with_invalid_type(self):
-        data = {
-            "metadata": {"test": "test"},
-            "components": {"add_two": {"type": "", "init_parameters": {"add": 2}}},
-            "connections": [],
-        }
-        with pytest.raises(PipelineError) as err:
-            PipelineBase.from_dict(data)
-
-        err.match(
-            r"Component '' \(name: 'add_two'\) not imported. Please check that the package is installed and the "
-            r"component path is correct."
-        )
-
-    def test_from_dict_with_correct_import_but_invalid_type(self):
-        # Test case: Module imports but component not found in registry.
-        data_registry_error = {
-            "metadata": {"test": "test"},
-            "components": {"add_two": {"type": "haystack.testing.NonExistentComponent", "init_parameters": {"add": 2}}},
-            "connections": [],
-        }
-
-        # Patch thread_safe_import so it doesn't raise an ImportError.
-        with patch("haystack.utils.type_serialization.thread_safe_import") as mock_import:
-            mock_import.return_value = None
-            with pytest.raises(PipelineError) as err_info:
-                PipelineBase.from_dict(data_registry_error)
-            outer_message = str(err_info.value)
-            inner_message = str(err_info.value.__cause__)
-
-            assert "Component 'haystack.testing.NonExistentComponent' (name: 'add_two') not imported." in outer_message
-            assert "Successfully imported module 'haystack.testing' but couldn't find" in inner_message
-            assert "in the component registry." in inner_message
-            assert "registered under a different path." in inner_message
-
-    def test_from_dict_without_connection_sender(self):
-        data = {"metadata": {"test": "test"}, "components": {}, "connections": [{"receiver": "some.receiver"}]}
-        with pytest.raises(PipelineError) as err:
-            PipelineBase.from_dict(data)
-
-        err.match("Missing sender in connection: {'receiver': 'some.receiver'}")
-
-    def test_from_dict_without_connection_receiver(self):
-        data = {"metadata": {"test": "test"}, "components": {}, "connections": [{"sender": "some.sender"}]}
-        with pytest.raises(PipelineError) as err:
-            PipelineBase.from_dict(data)
-
-        err.match("Missing receiver in connection: {'sender': 'some.sender'}")
 
     def test_describe_input_only_no_inputs_components(self):
         A = component_class("A", input_types={}, output={"x": 0})
@@ -1056,14 +937,14 @@ class TestPipelineBase:
                 {
                     "variadic_input": [
                         {"sender": "component1", "value": "test"},
-                        {"sender": "component2", "value": _NO_OUTPUT_PRODUCED},
+                        {"sender": "component2", "value": _NoOutputProduced()},
                     ],
                     "normal_input": [{"sender": "component3", "value": "test"}],
                 },
                 ComponentPriority.DEFER,
                 "Component should DEFER when all lazy variadic sockets are resolved",
             ),
-            # Test case 6: DEFER_LAST - Incomplete variadic inputs
+            # Test case 6: DEFER - Incomplete variadic inputs
             (
                 {
                     "instance": "mock_instance",
@@ -1079,8 +960,8 @@ class TestPipelineBase:
                     "variadic_input": [{"sender": "component1", "value": 42}],  # Missing component2
                     "normal_input": [{"sender": "component3", "value": "test"}],
                 },
-                ComponentPriority.DEFER_LAST,
-                "Component should be DEFER_LAST when not all variadic senders have produced output",
+                ComponentPriority.DEFER,
+                "Component should be DEFER when not all variadic senders have produced output",
             ),
             # Test case 7: READY - No input sockets, first visit
             (
@@ -1219,7 +1100,7 @@ class TestPipelineBase:
 
     @pytest.mark.parametrize(
         "output_value",
-        [42, None, _NO_OUTPUT_PRODUCED, "string_value", 3.14],
+        [42, None, _NoOutputProduced(), "string_value", 3.14],
         ids=["int", "none", "no-output", "string", "float"],
     )
     def test__write_component_outputs_different_output_values(
@@ -1240,9 +1121,9 @@ class TestPipelineBase:
         assert inputs["receiver1"]["input1"] == [{"sender": "sender1", "value": output_value}]
 
     def test__write_component_outputs_dont_overwrite_with_no_output(self, regular_output_socket, regular_input_socket):
-        """Test that existing inputs are not overwritten with _NO_OUTPUT_PRODUCED"""
+        """Test that existing inputs are not overwritten with _NoOutputProduced()"""
         receivers = [("receiver1", regular_output_socket, regular_input_socket, None)]
-        component_outputs = {"output1": _NO_OUTPUT_PRODUCED}
+        component_outputs = {"output1": _NoOutputProduced()}
         inputs = {"receiver1": {"input1": [{"sender": "sender1", "value": "keep"}]}}
         PipelineBase()._write_component_outputs(
             component_name="sender1",
@@ -1339,16 +1220,30 @@ class TestPipelineBase:
 
     @patch("haystack.core.pipeline.base.PipelineBase._get_component_with_graph_metadata_and_visits")
     def test__get_next_runnable_component_max_visits(self, mock_get_component_with_graph_metadata_and_visits):
-        """Test component exceeding max visits raises exception"""
+        """Test component reaching max visits raises exception"""
         pipeline = PipelineBase(max_runs_per_component=2)
         queue = FIFOPriorityQueue()
         queue.push("ready_component", ComponentPriority.READY)
-        mock_get_component_with_graph_metadata_and_visits.return_value = {"instance": "test", "visits": 3}
+        mock_get_component_with_graph_metadata_and_visits.return_value = {"instance": "test", "visits": 2}
 
         with pytest.raises(PipelineMaxComponentRuns) as exc_info:
-            pipeline._get_next_runnable_component(queue, component_visits={"ready_component": 3})
+            pipeline._get_next_runnable_component(queue, component_visits={"ready_component": 2})
 
         assert "Maximum run count 2 reached for component 'ready_component'" in str(exc_info.value)
+
+    @patch("haystack.core.pipeline.base.PipelineBase._get_component_with_graph_metadata_and_visits")
+    def test__get_next_runnable_component_max_visits_blocked(self, mock_get_component_with_graph_metadata_and_visits):
+        """Test a BLOCKED component that has reached max visits does NOT raise, since it cannot run anyway."""
+        pipeline = PipelineBase(max_runs_per_component=2)
+        queue = FIFOPriorityQueue()
+        queue.push("blocked_component", ComponentPriority.BLOCKED)
+        mock_get_component_with_graph_metadata_and_visits.return_value = {"instance": "test", "visits": 2}
+
+        result = pipeline._get_next_runnable_component(queue, component_visits={"blocked_component": 2})
+        assert result is not None
+        priority, component_name, comp = result
+        assert priority == ComponentPriority.BLOCKED
+        assert component_name == "blocked_component"
 
     @patch("haystack.core.pipeline.base.PipelineBase._get_component_with_graph_metadata_and_visits")
     def test__get_next_runnable_component_ready(self, mock_get_component_with_graph_metadata_and_visits):
@@ -1483,17 +1378,17 @@ class TestPipelineBase:
                 {"regular": 42, "greedy": [33], "lazy": [55, 66]},
                 {"regular": [{"sender": None, "value": 24}]},  # Only non-greedy user input remains
             ),
-            # Filtering _NO_OUTPUT_PRODUCED
+            # Filtering _NoOutputProduced()
             (
                 {"input1": InputSocket("input1", int)},
                 {
                     "input1": [
-                        {"sender": "comp1", "value": _NO_OUTPUT_PRODUCED},
+                        {"sender": "comp1", "value": _NoOutputProduced()},
                         {"sender": "comp2", "value": 42},
-                        {"sender": "comp2", "value": _NO_OUTPUT_PRODUCED},
+                        {"sender": "comp2", "value": _NoOutputProduced()},
                     ]
                 },
-                {"input1": 42},  # Should skip _NO_OUTPUT_PRODUCED values
+                {"input1": 42},  # Should skip _NoOutputProduced() values
                 {},  # All inputs consumed
             ),
         ],
@@ -1520,7 +1415,7 @@ class TestPipelineBase:
         assert consumed["input1"].equals(DataFrame({"a": [1, 2], "b": [1, 2]}))
 
     @pytest.mark.integration
-    def test_find_super_components(self):
+    def test_find_super_components(self, in_memory_doc_store):
         """
         Test that the pipeline can find super components in it's pipeline.
         """
@@ -1528,7 +1423,6 @@ class TestPipelineBase:
         from haystack.components.converters import MultiFileConverter
         from haystack.components.preprocessors import DocumentPreprocessor
         from haystack.components.writers import DocumentWriter
-        from haystack.document_stores.in_memory import InMemoryDocumentStore
 
         multi_file_converter = MultiFileConverter()
         doc_processor = DocumentPreprocessor()
@@ -1536,7 +1430,7 @@ class TestPipelineBase:
         pipeline = Pipeline()
         pipeline.add_component("converter", multi_file_converter)
         pipeline.add_component("preprocessor", doc_processor)
-        pipeline.add_component("writer", DocumentWriter(document_store=InMemoryDocumentStore()))
+        pipeline.add_component("writer", DocumentWriter(document_store=in_memory_doc_store))
         pipeline.connect("converter", "preprocessor")
         pipeline.connect("preprocessor", "writer")
 
@@ -1546,12 +1440,11 @@ class TestPipelineBase:
         assert [("converter", multi_file_converter), ("preprocessor", doc_processor)] == result
 
     @pytest.mark.integration
-    def test_merge_super_component_pipelines(self):
+    def test_merge_super_component_pipelines(self, in_memory_doc_store):
         from haystack import Pipeline
         from haystack.components.converters import MultiFileConverter
         from haystack.components.preprocessors import DocumentPreprocessor
         from haystack.components.writers import DocumentWriter
-        from haystack.document_stores.in_memory import InMemoryDocumentStore
 
         multi_file_converter = MultiFileConverter()
         doc_processor = DocumentPreprocessor()
@@ -1559,7 +1452,7 @@ class TestPipelineBase:
         pipeline = Pipeline()
         pipeline.add_component("converter", multi_file_converter)
         pipeline.add_component("preprocessor", doc_processor)
-        pipeline.add_component("writer", DocumentWriter(document_store=InMemoryDocumentStore()))
+        pipeline.add_component("writer", DocumentWriter(document_store=in_memory_doc_store))
         pipeline.connect("converter", "preprocessor")
         pipeline.connect("preprocessor", "writer")
 
@@ -1689,6 +1582,369 @@ class TestPipelineBase:
         assert component_name == "branch_joiner"
         # Since branch_joiner and comp3 are in a cycle, their topological sort values are the same
         assert topological_sort == {"branch_joiner": 1, "comp3": 1, "comp1": 0}
+
+
+class TestPipelineBaseFromDict:
+    """Unit tests for ``PipelineBase.from_dict`` and its deserialization safety checks."""
+
+    def test_from_dict(self):
+        data = {
+            "metadata": {"test": "test"},
+            "max_runs_per_component": 101,
+            "components": {
+                "add_two": {
+                    "type": "haystack.testing.sample_components.add_value.AddFixedValue",
+                    "init_parameters": {"add": 2},
+                },
+                "add_default": {
+                    "type": "haystack.testing.sample_components.add_value.AddFixedValue",
+                    "init_parameters": {"add": 1},
+                },
+                "double": {"type": "haystack.testing.sample_components.double.Double", "init_parameters": {}},
+            },
+            "connections": [
+                {"sender": "add_two.result", "receiver": "double.value"},
+                {"sender": "double.value", "receiver": "add_default.value"},
+            ],
+        }
+        pipe = PipelineBase.from_dict(data)
+
+        assert pipe.metadata == {"test": "test"}
+        assert pipe._max_runs_per_component == 101
+
+        # Components
+        assert len(pipe.graph.nodes) == 3
+        ## add_two
+        add_two = pipe.graph.nodes["add_two"]
+        assert add_two["instance"].add == 2
+        assert add_two["input_sockets"] == {
+            "value": InputSocket(name="value", type=int),
+            "add": InputSocket(name="add", type=int | None, default_value=None),
+        }
+        assert add_two["output_sockets"] == {"result": OutputSocket(name="result", type=int, receivers=["double"])}
+        assert add_two["visits"] == 0
+
+        ## add_default
+        add_default = pipe.graph.nodes["add_default"]
+        assert add_default["instance"].add == 1
+        assert add_default["input_sockets"] == {
+            "value": InputSocket(name="value", type=int, senders=["double"]),
+            "add": InputSocket(name="add", type=int | None, default_value=None),
+        }
+        assert add_default["output_sockets"] == {"result": OutputSocket(name="result", type=int)}
+        assert add_default["visits"] == 0
+
+        ## double
+        double = pipe.graph.nodes["double"]
+        assert double["instance"]
+        assert double["input_sockets"] == {"value": InputSocket(name="value", type=int, senders=["add_two"])}
+        assert double["output_sockets"] == {"value": OutputSocket(name="value", type=int, receivers=["add_default"])}
+        assert double["visits"] == 0
+
+        # Connections
+        connections = list(pipe.graph.edges(data=True))
+        assert len(connections) == 2
+        assert connections[0] == (
+            "add_two",
+            "double",
+            {
+                "conn_type": "int",
+                "conversion_strategy": None,
+                "from_socket": OutputSocket(name="result", type=int, receivers=["double"]),
+                "to_socket": InputSocket(name="value", type=int, senders=["add_two"]),
+                "mandatory": True,
+            },
+        )
+        assert connections[1] == (
+            "double",
+            "add_default",
+            {
+                "conn_type": "int",
+                "conversion_strategy": None,
+                "from_socket": OutputSocket(name="value", type=int, receivers=["add_default"]),
+                "to_socket": InputSocket(name="value", type=int, senders=["double"]),
+                "mandatory": True,
+            },
+        )
+
+    # TODO: Remove this, this should be a component test.
+    # The pipeline can't handle this in any case nor way.
+    def test_from_dict_with_callbacks(self):
+        data = {
+            "metadata": {"test": "test"},
+            "components": {
+                "add_two": {
+                    "type": "haystack.testing.sample_components.add_value.AddFixedValue",
+                    "init_parameters": {"add": 2},
+                },
+                "add_default": {
+                    "type": "haystack.testing.sample_components.add_value.AddFixedValue",
+                    "init_parameters": {"add": 1},
+                },
+                "double": {"type": "haystack.testing.sample_components.double.Double", "init_parameters": {}},
+                "greet": {
+                    "type": "haystack.testing.sample_components.greet.Greet",
+                    "init_parameters": {"message": "test"},
+                },
+            },
+            "connections": [
+                {"sender": "add_two.result", "receiver": "double.value"},
+                {"sender": "double.value", "receiver": "add_default.value"},
+            ],
+        }
+
+        components_seen_in_callback = []
+
+        def component_pre_init_callback(name, component_cls, init_params):
+            assert name in ["add_two", "add_default", "double", "greet"]
+            assert component_cls in [AddFixedValue, Double, Greet]
+
+            if name == "add_two":
+                assert init_params == {"add": 2}
+            elif name == "add_default":
+                assert init_params == {"add": 1}
+            elif name == "greet":
+                assert init_params == {"message": "test"}
+
+            components_seen_in_callback.append(name)
+
+        pipe = PipelineBase.from_dict(
+            data, callbacks=DeserializationCallbacks(component_pre_init=component_pre_init_callback)
+        )
+        assert components_seen_in_callback == ["add_two", "add_default", "double", "greet"]
+        add_two = pipe.graph.nodes["add_two"]["instance"]
+        assert add_two.add == 2
+        add_default = pipe.graph.nodes["add_default"]["instance"]
+        assert add_default.add == 1
+        greet = pipe.graph.nodes["greet"]["instance"]
+        assert greet.message == "test"
+        assert greet.log_level == "INFO"
+
+        def component_pre_init_callback_modify(name, component_cls, init_params):
+            assert name in ["add_two", "add_default", "double", "greet"]
+            assert component_cls in [AddFixedValue, Double, Greet]
+
+            if name == "add_two":
+                init_params["add"] = 3
+            elif name == "add_default":
+                init_params["add"] = 0
+            elif name == "greet":
+                init_params["message"] = "modified test"
+                init_params["log_level"] = "DEBUG"
+
+        pipe = PipelineBase.from_dict(
+            data, callbacks=DeserializationCallbacks(component_pre_init=component_pre_init_callback_modify)
+        )
+        add_two = pipe.graph.nodes["add_two"]["instance"]
+        assert add_two.add == 3
+        add_default = pipe.graph.nodes["add_default"]["instance"]
+        assert add_default.add == 0
+        greet = pipe.graph.nodes["greet"]["instance"]
+        assert greet.message == "modified test"
+        assert greet.log_level == "DEBUG"
+
+        # Test with a component that internally instantiates another component
+        def component_pre_init_callback_check_class(name, component_cls, init_params):
+            assert name == "fake_component_squared"
+            assert component_cls == FakeComponentSquared
+
+        pipe = PipelineBase()
+        pipe.add_component("fake_component_squared", FakeComponentSquared())
+        pipe = PipelineBase.from_dict(
+            pipe.to_dict(),
+            callbacks=DeserializationCallbacks(component_pre_init=component_pre_init_callback_check_class),
+        )
+        assert type(pipe.graph.nodes["fake_component_squared"]["instance"].inner) == FakeComponent
+
+    def test_from_dict_with_empty_dict(self):
+        assert PipelineBase() == PipelineBase.from_dict({})
+
+    def test_from_dict_with_components_instances(self):
+        add_two = AddFixedValue(add=2)
+        add_default = AddFixedValue()
+        components = {"add_two": add_two, "add_default": add_default}
+        data = {
+            "metadata": {"test": "test"},
+            "components": {
+                "add_two": {},
+                "add_default": {},
+                "double": {"type": "haystack.testing.sample_components.double.Double", "init_parameters": {}},
+            },
+            "connections": [
+                {"sender": "add_two.result", "receiver": "double.value"},
+                {"sender": "double.value", "receiver": "add_default.value"},
+            ],
+        }
+        pipe = PipelineBase.from_dict(data, components=components)
+        assert pipe.metadata == {"test": "test"}
+
+        # Components
+        assert len(pipe.graph.nodes) == 3
+        ## add_two
+        add_two_data = pipe.graph.nodes["add_two"]
+        assert add_two_data["instance"] is add_two
+        assert add_two_data["instance"].add == 2
+        assert add_two_data["input_sockets"] == {
+            "value": InputSocket(name="value", type=int),
+            "add": InputSocket(name="add", type=int | None, default_value=None),
+        }
+        assert add_two_data["output_sockets"] == {"result": OutputSocket(name="result", type=int, receivers=["double"])}
+        assert add_two_data["visits"] == 0
+
+        ## add_default
+        add_default_data = pipe.graph.nodes["add_default"]
+        assert add_default_data["instance"] is add_default
+        assert add_default_data["instance"].add == 1
+        assert add_default_data["input_sockets"] == {
+            "value": InputSocket(name="value", type=int, senders=["double"]),
+            "add": InputSocket(name="add", type=int | None, default_value=None),
+        }
+        assert add_default_data["output_sockets"] == {"result": OutputSocket(name="result", type=int, receivers=[])}
+        assert add_default_data["visits"] == 0
+
+        ## double
+        double = pipe.graph.nodes["double"]
+        assert double["instance"]
+        assert double["input_sockets"] == {"value": InputSocket(name="value", type=int, senders=["add_two"])}
+        assert double["output_sockets"] == {"value": OutputSocket(name="value", type=int, receivers=["add_default"])}
+        assert double["visits"] == 0
+
+        # Connections
+        connections = list(pipe.graph.edges(data=True))
+        assert len(connections) == 2
+        assert connections[0] == (
+            "add_two",
+            "double",
+            {
+                "conn_type": "int",
+                "conversion_strategy": None,
+                "from_socket": OutputSocket(name="result", type=int, receivers=["double"]),
+                "to_socket": InputSocket(name="value", type=int, senders=["add_two"]),
+                "mandatory": True,
+            },
+        )
+        assert connections[1] == (
+            "double",
+            "add_default",
+            {
+                "conn_type": "int",
+                "conversion_strategy": None,
+                "from_socket": OutputSocket(name="value", type=int, receivers=["add_default"]),
+                "to_socket": InputSocket(name="value", type=int, senders=["double"]),
+                "mandatory": True,
+            },
+        )
+
+    def test_from_dict_without_component_type(self):
+        data = {
+            "metadata": {"test": "test"},
+            "components": {"add_two": {"init_parameters": {"add": 2}}},
+            "connections": [],
+        }
+        with pytest.raises(PipelineError) as err:
+            PipelineBase.from_dict(data)
+
+        err.match("Missing 'type' in component 'add_two'")
+
+    def test_from_dict_without_registered_component_type(self):
+        # A component type whose module passes the allowlist but cannot be imported should
+        # surface as a `PipelineError` ("not imported").
+        data = {
+            "metadata": {"test": "test"},
+            "components": {"add_two": {"type": "haystack.does.not.exist.Component", "init_parameters": {"add": 2}}},
+            "connections": [],
+        }
+        with pytest.raises(PipelineError) as err:
+            PipelineBase.from_dict(data)
+
+        err.match(r"Component .+ not imported.")
+
+    def test_from_dict_rejects_untrusted_component_module(self):
+        data = {
+            "metadata": {"test": "test"},
+            "components": {"add_two": {"type": "foo.bar.baz", "init_parameters": {"add": 2}}},
+            "connections": [],
+        }
+        with pytest.raises(DeserializationError, match="not on the trusted-module allowlist"):
+            PipelineBase.from_dict(data)
+
+    def test_from_dict_with_unsafe_bypasses_allowlist(self):
+        # `unsafe=True` bypasses the allowlist but the import itself still fails because the module
+        # is nonexistent — proving that the allowlist check (not the import) is what changes.
+        data = {
+            "metadata": {"test": "test"},
+            "components": {"add_two": {"type": "foo.bar.baz", "init_parameters": {"add": 2}}},
+            "connections": [],
+        }
+        # Sanity check: without ``unsafe=True`` we'd get the allowlist rejection.
+        with pytest.raises(DeserializationError):
+            PipelineBase.from_dict(data)
+        # With ``unsafe=True`` the allowlist is bypassed; we fall through to a normal import error.
+        with pytest.raises(PipelineError, match="not imported"):
+            PipelineBase.from_dict(data, unsafe=True)
+
+    def test_from_dict_with_allowed_modules_kwarg(self):
+        # Passing the third-party module via `allowed_modules` should make the allowlist check pass.
+        data = {
+            "metadata": {"test": "test"},
+            "components": {"add_two": {"type": "foo.bar.baz", "init_parameters": {"add": 2}}},
+            "connections": [],
+        }
+        # Without an extension, the allowlist rejects the module.
+        with pytest.raises(DeserializationError):
+            PipelineBase.from_dict(data)
+        # Passing the matching pattern lets us hit the actual import failure instead.
+        with pytest.raises(PipelineError, match="not imported"):
+            PipelineBase.from_dict(data, allowed_modules=["foo.*"])
+
+    def test_from_dict_with_invalid_type(self):
+        data = {
+            "metadata": {"test": "test"},
+            "components": {"add_two": {"type": "", "init_parameters": {"add": 2}}},
+            "connections": [],
+        }
+        with pytest.raises(PipelineError) as err:
+            PipelineBase.from_dict(data)
+
+        err.match(
+            r"Component '' \(name: 'add_two'\) not imported. Please check that the package is installed and the "
+            r"component path is correct."
+        )
+
+    def test_from_dict_with_correct_import_but_invalid_type(self):
+        # Test case: Module imports but component not found in registry.
+        data_registry_error = {
+            "metadata": {"test": "test"},
+            "components": {"add_two": {"type": "haystack.testing.NonExistentComponent", "init_parameters": {"add": 2}}},
+            "connections": [],
+        }
+
+        # Patch thread_safe_import so it doesn't raise an ImportError.
+        with patch("haystack.utils.type_serialization.thread_safe_import") as mock_import:
+            mock_import.return_value = None
+            with pytest.raises(PipelineError) as err_info:
+                PipelineBase.from_dict(data_registry_error)
+            outer_message = str(err_info.value)
+            inner_message = str(err_info.value.__cause__)
+
+            assert "Component 'haystack.testing.NonExistentComponent' (name: 'add_two') not imported." in outer_message
+            assert "Successfully imported module 'haystack.testing' but couldn't find" in inner_message
+            assert "in the component registry." in inner_message
+            assert "registered under a different path." in inner_message
+
+    def test_from_dict_without_connection_sender(self):
+        data = {"metadata": {"test": "test"}, "components": {}, "connections": [{"receiver": "some.receiver"}]}
+        with pytest.raises(PipelineError) as err:
+            PipelineBase.from_dict(data)
+
+        err.match("Missing sender in connection: {'receiver': 'some.receiver'}")
+
+    def test_from_dict_without_connection_receiver(self):
+        data = {"metadata": {"test": "test"}, "components": {}, "connections": [{"sender": "some.sender"}]}
+        with pytest.raises(PipelineError) as err:
+            PipelineBase.from_dict(data)
+
+        err.match("Missing receiver in connection: {'sender': 'some.sender'}")
 
 
 class TestPipelineConnect:
@@ -1989,6 +2245,174 @@ class TestPipelineConnect:
         inp_socket.wrap_input_in_list = False
         assert receiver.__haystack_input__._sockets_dict == {"numbers": inp_socket}  # type: ignore[attr-defined]
         assert receiver.__haystack_input__._sockets_dict["numbers"].senders == ["sender1", "sender2"]  # type: ignore[attr-defined]
+
+    def test_connect_auto_variadic_with_conversion_str_to_list_str(self):
+        pipeline = PipelineBase()
+        receiver = ListStrAcceptor()
+        pipeline.add_component("producer1", StringProducer())
+        pipeline.add_component("producer2", StringProducer())
+        pipeline.add_component("receiver", receiver)
+        pipeline.connect("producer1.text", "receiver.texts")
+        pipeline.connect("producer2.text", "receiver.texts")
+
+        inp_socket = InputSocket(name="texts", type=list[str], senders=["producer1", "producer2"])
+        inp_socket.is_lazy_variadic = True
+        inp_socket.wrap_input_in_list = False
+        assert receiver.__haystack_input__._sockets_dict == {"texts": inp_socket}  # type: ignore[attr-defined]
+        assert receiver.__haystack_input__._sockets_dict["texts"].senders == ["producer1", "producer2"]  # type: ignore[attr-defined]
+        assert pipeline.graph["producer1"]["receiver"]["text/texts"]["conversion_strategy"] == ConversionStrategy.WRAP
+        assert pipeline.graph["producer2"]["receiver"]["text/texts"]["conversion_strategy"] == ConversionStrategy.WRAP
+
+    def test_connect_auto_variadic_with_conversion_str_and_list_str_to_list_str(self):
+        pipeline = PipelineBase()
+        receiver = ListStrAcceptor()
+        pipeline.add_component("producer1", StringProducer())
+        pipeline.add_component("producer2", ListStrProducer())
+        pipeline.add_component("receiver", receiver)
+        pipeline.connect("producer1.text", "receiver.texts")
+        pipeline.connect("producer2.texts", "receiver.texts")
+
+        inp_socket = InputSocket(name="texts", type=list[str], senders=["producer1", "producer2"])
+        inp_socket.is_lazy_variadic = True
+        inp_socket.wrap_input_in_list = False
+        assert receiver.__haystack_input__._sockets_dict == {"texts": inp_socket}  # type: ignore[attr-defined]
+        assert receiver.__haystack_input__._sockets_dict["texts"].senders == ["producer1", "producer2"]  # type: ignore[attr-defined]
+        assert pipeline.graph["producer1"]["receiver"]["text/texts"]["conversion_strategy"] == ConversionStrategy.WRAP
+        assert pipeline.graph["producer2"]["receiver"]["texts/texts"]["conversion_strategy"] is None
+
+    def test_connect_auto_variadic_chat_message_to_list_str(self):
+        pipeline = PipelineBase()
+        receiver = ListStrAcceptor()
+        pipeline.add_component("producer1", ChatMessageProducer())
+        pipeline.add_component("producer2", ChatMessageProducer())
+        pipeline.add_component("receiver", receiver)
+        pipeline.connect("producer1.message", "receiver.texts")
+        pipeline.connect("producer2.message", "receiver.texts")
+
+        inp_socket = InputSocket(name="texts", type=list[str], senders=["producer1", "producer2"])
+        inp_socket.is_lazy_variadic = True
+        inp_socket.wrap_input_in_list = False
+        assert receiver.__haystack_input__._sockets_dict == {"texts": inp_socket}  # type: ignore[attr-defined]
+        assert receiver.__haystack_input__._sockets_dict["texts"].senders == ["producer1", "producer2"]  # type: ignore[attr-defined]
+        assert (
+            pipeline.graph["producer1"]["receiver"]["message/texts"]["conversion_strategy"]
+            == ConversionStrategy.WRAP_CHAT_MESSAGE_TO_STR
+        )
+        assert (
+            pipeline.graph["producer2"]["receiver"]["message/texts"]["conversion_strategy"]
+            == ConversionStrategy.WRAP_CHAT_MESSAGE_TO_STR
+        )
+
+    def test_connect_auto_variadic_str_and_chat_message_to_list_str(self):
+        pipeline = PipelineBase()
+        receiver = ListStrAcceptor()
+        pipeline.add_component("str_producer", StringProducer())
+        pipeline.add_component("chat_producer", ChatMessageProducer())
+        pipeline.add_component("receiver", receiver)
+        pipeline.connect("str_producer.text", "receiver.texts")
+        pipeline.connect("chat_producer.message", "receiver.texts")
+
+        inp_socket = InputSocket(name="texts", type=list[str], senders=["str_producer", "chat_producer"])
+        inp_socket.is_lazy_variadic = True
+        inp_socket.wrap_input_in_list = False
+        assert receiver.__haystack_input__._sockets_dict == {"texts": inp_socket}  # type: ignore[attr-defined]
+        assert receiver.__haystack_input__._sockets_dict["texts"].senders == ["str_producer", "chat_producer"]  # type: ignore[attr-defined]
+        assert (
+            pipeline.graph["str_producer"]["receiver"]["text/texts"]["conversion_strategy"] == ConversionStrategy.WRAP
+        )
+        assert (
+            pipeline.graph["chat_producer"]["receiver"]["message/texts"]["conversion_strategy"]
+            == ConversionStrategy.WRAP_CHAT_MESSAGE_TO_STR
+        )
+
+    def test_connect_auto_variadic_chat_message_to_list_chat_message(self):
+        pipeline = PipelineBase()
+        receiver = ListChatMessageAcceptor()
+        pipeline.add_component("producer1", ChatMessageProducer())
+        pipeline.add_component("producer2", ChatMessageProducer())
+        pipeline.add_component("receiver", receiver)
+        pipeline.connect("producer1.message", "receiver.messages")
+        pipeline.connect("producer2.message", "receiver.messages")
+
+        inp_socket = InputSocket(name="messages", type=list[ChatMessage], senders=["producer1", "producer2"])
+        inp_socket.is_lazy_variadic = True
+        inp_socket.wrap_input_in_list = False
+        assert receiver.__haystack_input__._sockets_dict == {"messages": inp_socket}  # type: ignore[attr-defined]
+        assert receiver.__haystack_input__._sockets_dict["messages"].senders == ["producer1", "producer2"]  # type: ignore[attr-defined]
+        assert (
+            pipeline.graph["producer1"]["receiver"]["message/messages"]["conversion_strategy"]
+            == ConversionStrategy.WRAP
+        )
+        assert (
+            pipeline.graph["producer2"]["receiver"]["message/messages"]["conversion_strategy"]
+            == ConversionStrategy.WRAP
+        )
+
+    def test_connect_auto_variadic_str_to_list_chat_message(self):
+        pipeline = PipelineBase()
+        receiver = ListChatMessageAcceptor()
+        pipeline.add_component("producer1", StringProducer())
+        pipeline.add_component("producer2", StringProducer())
+        pipeline.add_component("receiver", receiver)
+        pipeline.connect("producer1.text", "receiver.messages")
+        pipeline.connect("producer2.text", "receiver.messages")
+
+        inp_socket = InputSocket(name="messages", type=list[ChatMessage], senders=["producer1", "producer2"])
+        inp_socket.is_lazy_variadic = True
+        inp_socket.wrap_input_in_list = False
+        assert receiver.__haystack_input__._sockets_dict == {"messages": inp_socket}  # type: ignore[attr-defined]
+        assert receiver.__haystack_input__._sockets_dict["messages"].senders == ["producer1", "producer2"]  # type: ignore[attr-defined]
+        assert (
+            pipeline.graph["producer1"]["receiver"]["text/messages"]["conversion_strategy"]
+            == ConversionStrategy.WRAP_STR_TO_CHAT_MESSAGE
+        )
+        assert (
+            pipeline.graph["producer2"]["receiver"]["text/messages"]["conversion_strategy"]
+            == ConversionStrategy.WRAP_STR_TO_CHAT_MESSAGE
+        )
+
+    def test_connect_auto_variadic_str_and_chat_message_to_list_chat_message(self):
+        pipeline = PipelineBase()
+        receiver = ListChatMessageAcceptor()
+        pipeline.add_component("str_producer", StringProducer())
+        pipeline.add_component("chat_producer", ChatMessageProducer())
+        pipeline.add_component("receiver", receiver)
+        pipeline.connect("str_producer.text", "receiver.messages")
+        pipeline.connect("chat_producer.message", "receiver.messages")
+
+        inp_socket = InputSocket(name="messages", type=list[ChatMessage], senders=["str_producer", "chat_producer"])
+        inp_socket.is_lazy_variadic = True
+        inp_socket.wrap_input_in_list = False
+        assert receiver.__haystack_input__._sockets_dict == {"messages": inp_socket}  # type: ignore[attr-defined]
+        assert receiver.__haystack_input__._sockets_dict["messages"].senders == ["str_producer", "chat_producer"]  # type: ignore[attr-defined]
+        assert (
+            pipeline.graph["str_producer"]["receiver"]["text/messages"]["conversion_strategy"]
+            == ConversionStrategy.WRAP_STR_TO_CHAT_MESSAGE
+        )
+        assert (
+            pipeline.graph["chat_producer"]["receiver"]["message/messages"]["conversion_strategy"]
+            == ConversionStrategy.WRAP
+        )
+
+    def test_connect_auto_variadic_chat_message_and_list_chat_message_to_list_chat_message(self):
+        pipeline = PipelineBase()
+        receiver = ListChatMessageAcceptor()
+        pipeline.add_component("chat_producer", ChatMessageProducer())
+        pipeline.add_component("list_producer", ListChatMessageProducer())
+        pipeline.add_component("receiver", receiver)
+        pipeline.connect("chat_producer.message", "receiver.messages")
+        pipeline.connect("list_producer.messages", "receiver.messages")
+
+        inp_socket = InputSocket(name="messages", type=list[ChatMessage], senders=["chat_producer", "list_producer"])
+        inp_socket.is_lazy_variadic = True
+        inp_socket.wrap_input_in_list = False
+        assert receiver.__haystack_input__._sockets_dict == {"messages": inp_socket}  # type: ignore[attr-defined]
+        assert receiver.__haystack_input__._sockets_dict["messages"].senders == ["chat_producer", "list_producer"]  # type: ignore[attr-defined]
+        assert (
+            pipeline.graph["chat_producer"]["receiver"]["message/messages"]["conversion_strategy"]
+            == ConversionStrategy.WRAP
+        )
+        assert pipeline.graph["list_producer"]["receiver"]["messages/messages"]["conversion_strategy"] is None
 
     def test_connect_with_conversion_chat_message_to_str(self):
         @component

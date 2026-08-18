@@ -30,12 +30,28 @@ print(result['documents'][0].embedding)
 # [-0.453125, 1.2236328, 2.0058594, ...]
 ```
 
+#### SUPPORTED_MODELS
+
+```python
+SUPPORTED_MODELS: list[str] = [
+    "embed-v4.0",
+    "embed-english-v3.0",
+    "embed-english-light-v3.0",
+    "embed-multilingual-v3.0",
+    "embed-multilingual-light-v3.0",
+]
+
+```
+
+A non-exhaustive list of embed models supported by this component.
+See https://docs.cohere.com/docs/models#embed for the full list.
+
 #### __init__
 
 ```python
 __init__(
     api_key: Secret = Secret.from_env_var(["COHERE_API_KEY", "CO_API_KEY"]),
-    model: str = "embed-english-v2.0",
+    model: str = "embed-v4.0",
     input_type: str = "search_document",
     api_base_url: str = "https://api.cohere.com",
     truncate: str = "END",
@@ -45,21 +61,18 @@ __init__(
     meta_fields_to_embed: list[str] | None = None,
     embedding_separator: str = "\n",
     embedding_type: EmbeddingTypes | None = None,
-)
+) -> None
 ```
+
+Initialize the CohereDocumentEmbedder.
 
 **Parameters:**
 
 - **api_key** (<code>Secret</code>) – the Cohere API key.
-- **model** (<code>str</code>) – the name of the model to use. Supported Models are:
-  `"embed-english-v3.0"`, `"embed-english-light-v3.0"`, `"embed-multilingual-v3.0"`,
-  `"embed-multilingual-light-v3.0"`, `"embed-english-v2.0"`, `"embed-english-light-v2.0"`,
-  `"embed-multilingual-v2.0"`. This list of all supported models can be found in the
-  [model documentation](https://docs.cohere.com/docs/models#representation).
+- **model** (<code>str</code>) – the name of the model to use.
+  Read [Cohere documentation](https://docs.cohere.com/docs/models#embed) for a list of all supported models.
 - **input_type** (<code>str</code>) – specifies the type of input you're giving to the model. Supported values are
-  "search_document", "search_query", "classification" and "clustering". Not
-  required for older versions of the embedding models (meaning anything lower than v3), but is required for
-  more recent versions (meaning anything bigger than v2).
+  "search_document", "search_query", "classification" and "clustering".
 - **api_base_url** (<code>str</code>) – the Cohere API Base url.
 - **truncate** (<code>str</code>) – truncate embeddings that are too long from start or end, ("NONE"|"START"|"END").
   Passing "START" will discard the start of the input. "END" will discard the end of the input. In both
@@ -180,6 +193,22 @@ print(documents_with_embeddings)
 #           embedding=vector of size 1536),
 #  ...]
 ```
+
+#### SUPPORTED_MODELS
+
+```python
+SUPPORTED_MODELS: list[str] = [
+    "embed-v4.0",
+    "embed-english-v3.0",
+    "embed-english-light-v3.0",
+    "embed-multilingual-v3.0",
+    "embed-multilingual-light-v3.0",
+]
+
+```
+
+A non-exhaustive list of embed models supported by this component.
+See https://docs.cohere.com/docs/models#embed for the full list.
 
 #### __init__
 
@@ -305,32 +334,45 @@ print(text_embedder.run(text_to_embed))
 # 'meta': {'api_version': {'version': '1'}, 'billed_units': {'input_tokens': 4}}}
 ```
 
+#### SUPPORTED_MODELS
+
+```python
+SUPPORTED_MODELS: list[str] = [
+    "embed-v4.0",
+    "embed-english-v3.0",
+    "embed-english-light-v3.0",
+    "embed-multilingual-v3.0",
+    "embed-multilingual-light-v3.0",
+]
+
+```
+
+A non-exhaustive list of embed models supported by this component.
+See https://docs.cohere.com/docs/models#embed for the full list.
+
 #### __init__
 
 ```python
 __init__(
     api_key: Secret = Secret.from_env_var(["COHERE_API_KEY", "CO_API_KEY"]),
-    model: str = "embed-english-v2.0",
+    model: str = "embed-v4.0",
     input_type: str = "search_query",
     api_base_url: str = "https://api.cohere.com",
     truncate: str = "END",
     timeout: float = 120.0,
     embedding_type: EmbeddingTypes | None = None,
-)
+) -> None
 ```
+
+Initialize the CohereTextEmbedder.
 
 **Parameters:**
 
 - **api_key** (<code>Secret</code>) – the Cohere API key.
-- **model** (<code>str</code>) – the name of the model to use. Supported Models are:
-  `"embed-english-v3.0"`, `"embed-english-light-v3.0"`, `"embed-multilingual-v3.0"`,
-  `"embed-multilingual-light-v3.0"`, `"embed-english-v2.0"`, `"embed-english-light-v2.0"`,
-  `"embed-multilingual-v2.0"`. This list of all supported models can be found in the
-  [model documentation](https://docs.cohere.com/docs/models#representation).
+- **model** (<code>str</code>) – the name of the model to use.
+  Read [Cohere documentation](https://docs.cohere.com/docs/models#embed) for a list of all supported models.
 - **input_type** (<code>str</code>) – specifies the type of input you're giving to the model. Supported values are
-  "search_document", "search_query", "classification" and "clustering". Not
-  required for older versions of the embedding models (meaning anything lower than v3), but is required for
-  more recent versions (meaning anything bigger than v2).
+  "search_document", "search_query", "classification" and "clustering".
 - **api_base_url** (<code>str</code>) – the Cohere API Base url.
 - **truncate** (<code>str</code>) – truncate embeddings that are too long from start or end, ("NONE"|"START"|"END").
   Passing "START" will discard the start of the input. "END" will discard the end of the input. In both
@@ -588,6 +630,30 @@ print(results["tool_invoker"]["tool_messages"][0].tool_call_result.result)
 # Output: "The weather in Paris is sunny and 32°C"
 ```
 
+#### SUPPORTED_MODELS
+
+```python
+SUPPORTED_MODELS: list[str] = [
+    "command-a-03-2025",
+    "command-r7b-12-2024",
+    "command-a-translate-08-2025",
+    "command-a-reasoning-08-2025",
+    "command-a-vision-07-2025",
+    "command-r-08-2024",
+    "command-r-plus-08-2024",
+    "command-r-03-2024",
+    "command-r-plus-04-2024",
+    "command-r-plus",
+    "command-r",
+    "command-light",
+    "command",
+]
+
+```
+
+A non-exhaustive list of chat models supported by this component.
+See https://docs.cohere.com/docs/models#command for the full list.
+
 #### __init__
 
 ```python
@@ -601,7 +667,7 @@ __init__(
     *,
     timeout: float | None = None,
     max_retries: int | None = None
-)
+) -> None
 ```
 
 Initialize the CohereChatGenerator instance.
@@ -663,7 +729,7 @@ Deserializes the component from a dictionary.
 
 ```python
 run(
-    messages: list[ChatMessage],
+    messages: list[ChatMessage] | str,
     generation_kwargs: dict[str, Any] | None = None,
     tools: ToolsType | None = None,
     streaming_callback: StreamingCallbackT | None = None,
@@ -674,7 +740,8 @@ Invoke the chat endpoint based on the provided messages and generation parameter
 
 **Parameters:**
 
-- **messages** (<code>list\[ChatMessage\]</code>) – list of `ChatMessage` instances representing the input messages.
+- **messages** (<code>list\[ChatMessage\] | str</code>) – list of `ChatMessage` instances representing the input messages.
+  If a string is provided, it is converted to a list containing a ChatMessage with user role.
 - **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – additional keyword arguments for chat generation. These parameters will
   potentially override the parameters passed in the __init__ method.
   For more details on the parameters supported by the Cohere API, refer to the
@@ -693,7 +760,7 @@ Invoke the chat endpoint based on the provided messages and generation parameter
 
 ```python
 run_async(
-    messages: list[ChatMessage],
+    messages: list[ChatMessage] | str,
     generation_kwargs: dict[str, Any] | None = None,
     tools: ToolsType | None = None,
     streaming_callback: StreamingCallbackT | None = None,
@@ -704,7 +771,8 @@ Asynchronously invoke the chat endpoint based on the provided messages and gener
 
 **Parameters:**
 
-- **messages** (<code>list\[ChatMessage\]</code>) – list of `ChatMessage` instances representing the input messages.
+- **messages** (<code>list\[ChatMessage\] | str</code>) – list of `ChatMessage` instances representing the input messages.
+  If a string is provided, it is converted to a list containing a ChatMessage with user role.
 - **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – additional keyword arguments for chat generation. These parameters will
   potentially override the parameters passed in the __init__ method.
   For more details on the parameters supported by the Cohere API, refer to the
@@ -738,6 +806,30 @@ generator = CohereGenerator(api_key="test-api-key")
 generator.run(prompt="What's the capital of France?")
 ```
 
+#### SUPPORTED_MODELS
+
+```python
+SUPPORTED_MODELS: list[str] = [
+    "command-a-03-2025",
+    "command-r7b-12-2024",
+    "command-a-translate-08-2025",
+    "command-a-reasoning-08-2025",
+    "command-a-vision-07-2025",
+    "command-r-08-2024",
+    "command-r-plus-08-2024",
+    "command-r-03-2024",
+    "command-r-plus-04-2024",
+    "command-r-plus",
+    "command-r",
+    "command-light",
+    "command",
+]
+
+```
+
+A non-exhaustive list of chat models supported by this component.
+See https://docs.cohere.com/docs/models#command for the full list.
+
 #### __init__
 
 ```python
@@ -747,7 +839,7 @@ __init__(
     streaming_callback: Callable | None = None,
     api_base_url: str | None = None,
     **kwargs: Any
-)
+) -> None
 ```
 
 Instantiates a `CohereGenerator` component.
@@ -832,7 +924,7 @@ __init__(
     meta_fields_to_embed: list[str] | None = None,
     meta_data_separator: str = "\n",
     max_tokens_per_doc: int = 4096,
-)
+) -> None
 ```
 
 Creates an instance of the 'CohereRanker'.
@@ -848,6 +940,10 @@ Creates an instance of the 'CohereRanker'.
 - **meta_data_separator** (<code>str</code>) – Separator used to concatenate the meta fields
   to the Document content.
 - **max_tokens_per_doc** (<code>int</code>) – The maximum number of tokens to embed for each document defaults to 4096.
+
+**Raises:**
+
+- <code>ValueError</code> – If `top_k` is not > 0.
 
 #### to_dict
 
@@ -886,6 +982,34 @@ run(
 ```
 
 Use the Cohere Reranker to re-rank the list of documents based on the query.
+
+**Parameters:**
+
+- **query** (<code>str</code>) – Query string.
+- **documents** (<code>list\[Document\]</code>) – List of Documents.
+- **top_k** (<code>int | None</code>) – The maximum number of Documents you want the Ranker to return.
+
+**Returns:**
+
+- <code>dict\[str, list\[Document\]\]</code> – A dictionary with the following keys:
+- `documents`: List of Documents most similar to the given query in descending order of similarity.
+
+**Raises:**
+
+- <code>ValueError</code> – If `top_k` is not > 0.
+
+#### run_async
+
+```python
+run_async(
+    query: str, documents: list[Document], top_k: int | None = None
+) -> dict[str, list[Document]]
+```
+
+Asynchronously re-rank the list of documents based on the query.
+
+This is the asynchronous version of the `run` method. It has the same parameters and return values
+but can be used with `await` in async code.
 
 **Parameters:**
 

@@ -2,14 +2,17 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import math
 from statistics import mean
 from typing import Any
 
-from haystack import component, default_from_dict, default_to_dict
+from haystack import component, default_from_dict, default_to_dict, logging
 from haystack.components.evaluators.llm_evaluator import LLMEvaluator
 from haystack.components.generators.chat.types import ChatGenerator
 from haystack.core.serialization import component_to_dict
 from haystack.utils import deserialize_chatgenerator_inplace
+
+logger = logging.getLogger(__name__)
 
 # Private global variable for default examples to include in the prompt if the user does not provide any examples
 _DEFAULT_EXAMPLES = [
@@ -82,17 +85,20 @@ class ContextRelevanceEvaluator(LLMEvaluator):
     print(result["results"])
     # [{
     #   'relevant_statements': ['Python, created by Guido van Rossum in the late 1980s.'],
-    #    'score': 1.0
+    #   'score': 1.0,
+    #   'status': 'evaluated'
     #  },
     #  {
     #   'relevant_statements': ['The JVM has two primary functions: to allow Java programs to run on any device or
     #                           operating system (known as the "write once, run anywhere" principle), and to manage and
     #                           optimize program memory'],
-    #   'score': 1.0
+    #   'score': 1.0,
+    #   'status': 'evaluated'
     #  },
     #  {
     #   'relevant_statements': [],
-    #   'score': 0.0
+    #   'score': 0.0,
+    #   'status': 'evaluated'
     #  }]
     ```
     """
@@ -156,8 +162,10 @@ class ContextRelevanceEvaluator(LLMEvaluator):
             progress_bar=progress_bar,
         )
 
-    @component.output_types(score=float, results=list[dict[str, Any]])
-    def run(self, **inputs) -> dict[str, Any]:
+    @component.output_types(
+        score=float, individual_scores=list[float], results=list[dict[str, Any]], meta=list[dict[str, Any]] | None
+    )
+    def run(self, **inputs: Any) -> dict[str, Any]:
         """
         Run the LLM evaluator.
 
@@ -168,22 +176,66 @@ class ContextRelevanceEvaluator(LLMEvaluator):
         :returns:
             A dictionary with the following outputs:
                 - `score`: Mean context relevance score over all the provided input questions.
-                - `results`: A list of dictionaries with `relevant_statements` and `score` for each input context.
+                - `individual_scores`: A list of context relevance scores for each input question.
+                - `results`: A list of dictionaries with `relevant_statements`, `score`, and `status` for each input
+                  context. `status` is `evaluated` for valid results and `error` for failed evaluations.
         """
         result = super(ContextRelevanceEvaluator, self).run(**inputs)  # noqa: UP008
+        # Post-process the raw results to calculate relevance metrics and scores
+        return self._postprocess_results(result)
 
+    @component.output_types(
+        score=float, individual_scores=list[float], results=list[dict[str, Any]], meta=list[dict[str, Any]] | None
+    )
+    async def run_async(self, **inputs: Any) -> dict[str, Any]:
+        """
+        Run the LLM evaluator asynchronously.
+
+        :param questions:
+            A list of questions.
+        :param contexts:
+            A list of lists of contexts. Each list of contexts corresponds to one question.
+        :returns:
+            A dictionary with the following outputs:
+                - `score`: Mean context relevance score over all the provided input questions.
+                - `individual_scores`: A list of context relevance scores for each input question.
+                - `results`: A list of dictionaries with `relevant_statements`, `score`, and `status` for each input
+                  context. `status` is `evaluated` for valid results and `error` for failed evaluations.
+        """
+        result = await super(ContextRelevanceEvaluator, self).run_async(**inputs)  # noqa: UP008
+        # Post-process the raw results to calculate relevance metrics and scores
+        return self._postprocess_results(result)
+
+    def _postprocess_results(self, result: dict[str, Any]) -> dict[str, Any]:
+        """
+        Post-processes raw LLM evaluator outputs to compute context relevance scores.
+
+        Calculates binary scores based on whether relevant statements were found,
+        averages the scores across all successful queries, and updates the result payload.
+
+        :param result:
+            The raw evaluation dictionary from the base LLM evaluator.
+        :returns:
+            The updated dictionary containing final scores and tracking metrics.
+        """
         for idx, res in enumerate(result["results"]):
             if res is None:
-                result["results"][idx] = {"relevant_statements": [], "score": float("nan")}
+                result["results"][idx] = {"relevant_statements": [], "score": float("nan"), "status": "error"}
                 continue
+            res["status"] = "evaluated"
             if len(res["relevant_statements"]) > 0:
                 res["score"] = 1
             else:
                 res["score"] = 0
 
         # calculate average context relevance score over all queries
-        result["score"] = mean([res["score"] for res in result["results"]])
-        result["individual_scores"] = [res["score"] for res in result["results"]]  # useful for the EvaluationRunResult
+        scores = [res["score"] for res in result["results"]]
+        valid_scores = [s for s in scores if not math.isnan(s)]
+        skipped = len(scores) - len(valid_scores)
+        if skipped:
+            logger.warning("{skipped} query(s) failed and were excluded from the score.", skipped=skipped)
+        result["score"] = mean(valid_scores) if valid_scores else float("nan")
+        result["individual_scores"] = scores  # useful for the EvaluationRunResult
 
         return result
 

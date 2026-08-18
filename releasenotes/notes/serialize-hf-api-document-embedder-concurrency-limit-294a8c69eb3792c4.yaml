@@ -1,0 +1,4 @@
+---
+fixes:
+  - |
+    Fixed ``HuggingFaceAPIDocumentEmbedder`` serialization to preserve the configured ``concurrency_limit``.

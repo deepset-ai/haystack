@@ -140,24 +140,24 @@ class TestFlattenToolsOrToolsets:
     def test_flatten_invalid_type_in_list(self):
         """Test that invalid types in the list raise TypeError."""
         with pytest.raises(TypeError, match="Items in the tools list must be Tool or Toolset instances"):
-            flatten_tools_or_toolsets(["not_a_tool"])
+            flatten_tools_or_toolsets(["not_a_tool"])  # type: ignore[list-item]
 
         with pytest.raises(TypeError, match="Items in the tools list must be Tool or Toolset instances"):
-            flatten_tools_or_toolsets([123])
+            flatten_tools_or_toolsets([123])  # type: ignore[list-item]
 
         with pytest.raises(TypeError, match="Items in the tools list must be Tool or Toolset instances"):
-            flatten_tools_or_toolsets([{"key": "value"}])
+            flatten_tools_or_toolsets([{"key": "value"}])  # type: ignore[list-item]
 
     def test_flatten_invalid_type(self):
         """Test that invalid root types raise TypeError."""
         with pytest.raises(TypeError, match="tools must be list\\[Union\\[Tool, Toolset\\]\\], Toolset, or None"):
-            flatten_tools_or_toolsets("not_valid")
+            flatten_tools_or_toolsets("not_valid")  # type: ignore[arg-type]
 
         with pytest.raises(TypeError, match="tools must be list\\[Union\\[Tool, Toolset\\]\\], Toolset, or None"):
-            flatten_tools_or_toolsets(123)
+            flatten_tools_or_toolsets(123)  # type: ignore[arg-type]
 
         with pytest.raises(TypeError, match="tools must be list\\[Union\\[Tool, Toolset\\]\\], Toolset, or None"):
-            flatten_tools_or_toolsets({"key": "value"})
+            flatten_tools_or_toolsets({"key": "value"})  # type: ignore[arg-type]
 
     def test_flatten_multiple_toolsets(self, add_tool, multiply_tool, subtract_tool):
         """Test flattening a list of multiple Toolsets."""
@@ -366,14 +366,18 @@ class TestWarmUpTools:
                 self.warm_up_count += 1
 
         class WarmupCountingToolset(Toolset):
-            """A toolset that counts how many times warm_up was called."""
+            """A toolset that counts how many times warm_up did real work."""
 
             def __init__(self, tools):
                 super().__init__(tools)
                 self.warm_up_count = 0
+                self._loaded = False
 
             def warm_up(self):
+                if self._loaded:
+                    return
                 self.warm_up_count += 1
+                self._loaded = True
                 super().warm_up()  # Also warm up individual tools
 
         tool = WarmupCountingTool(
@@ -389,7 +393,6 @@ class TestWarmUpTools:
         warm_up_tools(toolset)
         warm_up_tools(toolset)
 
-        # warm_up_tools itself doesn't prevent multiple calls,
-        # but verify the calls actually happen multiple times
-        assert toolset.warm_up_count == 3
-        assert tool.warm_up_count == 3
+        # warm_up is idempotent, so the toolset and its tools are only warmed up once
+        assert toolset.warm_up_count == 1
+        assert tool.warm_up_count == 1

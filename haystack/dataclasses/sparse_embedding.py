@@ -21,7 +21,7 @@ class SparseEmbedding:
     indices: list[int]
     values: list[float]
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """
         Checks if the indices and values lists are of the same length.
 

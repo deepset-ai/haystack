@@ -107,6 +107,24 @@ class TestDocumentTypeRouter:
         assert result["audio/x-wav"][0].content == "Audio content"
         assert result["unclassified"][0].content == "Unknown type"
 
+    def test_run_with_literal_mime_type_containing_regex_metacharacter(self):
+        # 'image/svg+xml' is a standard IANA type; the '+' must be treated as a
+        # literal, not a regex quantifier. A regex pattern like 'audio/.*' must
+        # still match by regex.
+        docs = [
+            Document(content="An SVG", meta={"mime_type": "image/svg+xml"}),
+            Document(content="Some audio", meta={"mime_type": "audio/mpeg"}),
+        ]
+
+        router = DocumentTypeRouter(mime_type_meta_field="mime_type", mime_types=["image/svg+xml", "audio/.*"])
+        result = router.run(documents=docs)
+
+        assert "unclassified" not in result
+        assert len(result["image/svg+xml"]) == 1
+        assert result["image/svg+xml"][0].content == "An SVG"
+        assert len(result["audio/.*"]) == 1
+        assert result["audio/.*"][0].content == "Some audio"
+
     def test_run_with_file_path_meta_field(self):
         docs = [
             Document(content="Example text", meta={"file_path": "example.txt"}),

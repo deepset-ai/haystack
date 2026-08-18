@@ -4,6 +4,7 @@
 
 import contextlib
 import dataclasses
+import threading
 from collections.abc import Iterator
 from typing import Any
 
@@ -49,6 +50,10 @@ class LoggingTracer(Tracer):
         """
 
         self.tags_color_strings = tags_color_strings or {}
+        # Spans can be created and closed from parallel worker threads (e.g. one span per tool call in the Agent).
+        # A span's operation name and its tags are emitted as separate log records, so we serialize the emission to
+        # keep each span's records contiguous instead of interleaved with those of concurrently-closing spans.
+        self._emit_lock = threading.Lock()
 
     @contextlib.contextmanager
     def trace(
@@ -77,13 +82,16 @@ class LoggingTracer(Tracer):
         finally:
             operation_name = custom_span.operation_name
             tags = custom_span.tags or {}
-            logger.debug("Operation: {operation_name}", operation_name=operation_name)
-            for tag_name, tag_value in tags.items():
-                color_string = self.tags_color_strings.get(tag_name, "")
-                coerced_value = coerce_tag_value(tag_value)
-                logger.debug(
-                    color_string + "{tag_name}={tag_value}" + RESET_COLOR, tag_name=tag_name, tag_value=coerced_value
-                )
+            with self._emit_lock:
+                logger.debug("Operation: {operation_name}", operation_name=operation_name)
+                for tag_name, tag_value in tags.items():
+                    color_string = self.tags_color_strings.get(tag_name, "")
+                    coerced_value = coerce_tag_value(tag_value)
+                    logger.debug(
+                        color_string + "{tag_name}={tag_value}" + RESET_COLOR,
+                        tag_name=tag_name,
+                        tag_value=coerced_value,
+                    )
 
     def current_span(self) -> Span | None:
         """Return the current active span, if any."""

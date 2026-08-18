@@ -1,0 +1,4 @@
+---
+features:
+  - |
+    Added new operations to the ``InMemoryDocumentStore``: count_documents_by_filter, count_unique_metadata_by_filter, get_metadata_fields_info, get_metadata_field_min_max, get_metadata_field_unique_values

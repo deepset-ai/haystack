@@ -1,0 +1,16 @@
+---
+upgrade:
+  - |
+    ``Agent.run()`` and ``Agent.run_async()`` now require ``messages`` as an explicit argument (no longer
+    optional). If you were relying on the default ``None`` value in Haystack version 2.26 or 2.27, pass an empty list instead:
+
+    .. code:: python
+
+      agent.run(messages=[], ...)
+
+    ``LLM.run()`` and ``LLM.run_async()`` are unaffected — they still accept ``None`` and default to
+    an empty list internally.
+fixes:
+  - |
+    Reverts the change that made ``Agent`` messages optional as it caused issues with pipeline execution.
+    As a consequence, the ``LLM`` component now defaults to an empty messages list unless provided at runtime.

@@ -67,13 +67,16 @@ class TestFaithfulnessEvaluator:
         ]
 
         assert isinstance(component._chat_generator, OpenAIChatGenerator)
-        assert component._chat_generator.client.api_key == "test-api-key"
+        assert component._chat_generator.api_key.resolve_value() == "test-api-key"
         assert component._chat_generator.generation_kwargs == {"response_format": {"type": "json_object"}, "seed": 42}
 
-    def test_init_fail_wo_openai_api_key(self, monkeypatch):
+        assert set(component.__haystack_output__._sockets_dict) == {"score", "individual_scores", "results", "meta"}
+
+    def test_key_resolved_at_warm_up_not_init(self, monkeypatch):
         monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+        component = FaithfulnessEvaluator()
         with pytest.raises(ValueError, match="None of the .* environment variables are set"):
-            FaithfulnessEvaluator()
+            component.warm_up()
 
     def test_init_with_parameters(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
@@ -96,7 +99,7 @@ class TestFaithfulnessEvaluator:
         ]
 
         assert isinstance(component._chat_generator, OpenAIChatGenerator)
-        assert component._chat_generator.client.api_key == "test-api-key"
+        assert component._chat_generator.api_key.resolve_value() == "test-api-key"
         assert component._chat_generator.generation_kwargs == {"response_format": {"type": "json_object"}, "seed": 42}
 
     def test_init_with_chat_generator(self, monkeypatch):
@@ -150,7 +153,7 @@ class TestFaithfulnessEvaluator:
         }
         component = FaithfulnessEvaluator.from_dict(data)
         assert isinstance(component._chat_generator, OpenAIChatGenerator)
-        assert component._chat_generator.client.api_key == "test-api-key"
+        assert component._chat_generator.api_key.resolve_value() == "test-api-key"
         assert component._chat_generator.generation_kwargs == {"response_format": {"type": "json_object"}, "seed": 42}
         assert component.examples == [
             {"inputs": {"predicted_answers": "Football is the most popular sport."}, "outputs": {"score": 0}}
@@ -202,8 +205,8 @@ class TestFaithfulnessEvaluator:
         assert results == {
             "individual_scores": [0.5, 1],
             "results": [
-                {"score": 0.5, "statement_scores": [1, 0], "statements": ["a", "b"]},
-                {"score": 1, "statement_scores": [1, 1], "statements": ["c", "d"]},
+                {"score": 0.5, "statement_scores": [1, 0], "statements": ["a", "b"], "status": "evaluated"},
+                {"score": 1, "statement_scores": [1, 1], "statements": ["c", "d"], "status": "evaluated"},
             ],
             "score": 0.75,
             "meta": None,
@@ -240,8 +243,8 @@ class TestFaithfulnessEvaluator:
         assert results == {
             "individual_scores": [0.5, 0],
             "results": [
-                {"score": 0.5, "statement_scores": [1, 0], "statements": ["a", "b"]},
-                {"score": 0, "statement_scores": [], "statements": []},
+                {"score": 0.5, "statement_scores": [1, 0], "statements": ["a", "b"], "status": "evaluated"},
+                {"score": 0, "statement_scores": [], "statements": [], "status": "evaluated"},
             ],
             "score": 0.25,
             "meta": None,
@@ -253,13 +256,16 @@ class TestFaithfulnessEvaluator:
         with pytest.raises(ValueError, match="LLM evaluator expected input parameter"):
             component.run()
 
-    def test_run_returns_nan_raise_on_failure_false(self, monkeypatch):
+    @pytest.mark.parametrize("failure_mode", ["generation", "parsing"])
+    def test_run_returns_nan_raise_on_failure_false(self, monkeypatch, caplog, failure_mode):
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
         component = FaithfulnessEvaluator(raise_on_failure=False)
 
         def chat_generator_run(self, *args, **kwargs):
             if "Python" in kwargs["messages"][0].text:
-                raise Exception("OpenAI API request failed.")
+                if failure_mode == "generation":
+                    raise Exception("OpenAI API request failed.")
+                return {"replies": [ChatMessage.from_assistant("not valid JSON")]}
             return {"replies": [ChatMessage.from_assistant('{"statements": ["c", "d"], "statement_scores": [1, 1]}')]}
 
         monkeypatch.setattr("haystack.components.evaluators.llm_evaluator.OpenAIChatGenerator.run", chat_generator_run)
@@ -282,18 +288,42 @@ class TestFaithfulnessEvaluator:
             "Football is the most popular sport with around 4 billion followers worldwide.",
             "Guido van Rossum.",
         ]
-        results = component.run(questions=questions, contexts=contexts, predicted_answers=predicted_answers)
+        with caplog.at_level("WARNING", logger="haystack.components.evaluators.faithfulness"):
+            results = component.run(questions=questions, contexts=contexts, predicted_answers=predicted_answers)
 
-        assert math.isnan(results["score"])
+        assert results["score"] == 1.0
 
         assert results["individual_scores"][0] == 1.0
         assert math.isnan(results["individual_scores"][1])
 
-        assert results["results"][0] == {"statements": ["c", "d"], "statement_scores": [1, 1], "score": 1.0}
+        assert results["results"][0] == {
+            "statements": ["c", "d"],
+            "statement_scores": [1, 1],
+            "score": 1.0,
+            "status": "evaluated",
+        }
 
         assert results["results"][1]["statements"] == []
         assert results["results"][1]["statement_scores"] == []
         assert math.isnan(results["results"][1]["score"])
+        assert results["results"][1]["status"] == "error"
+
+        assert "1 query(s) failed and were excluded from the score." in caplog.text
+
+    def test_run_all_failures_returns_nan_and_error_statuses(self, monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+        component = FaithfulnessEvaluator(raise_on_failure=False)
+
+        def chat_generator_run(self, *args, **kwargs):
+            raise Exception("OpenAI API request failed.")
+
+        monkeypatch.setattr("haystack.components.evaluators.llm_evaluator.OpenAIChatGenerator.run", chat_generator_run)
+
+        results = component.run(questions=["q1", "q2"], contexts=[["c1"], ["c2"]], predicted_answers=["a1", "a2"])
+
+        assert math.isnan(results["score"])
+        assert all(math.isnan(score) for score in results["individual_scores"])
+        assert [result["status"] for result in results["results"]] == ["error", "error"]
 
     @pytest.mark.skipif(
         not os.environ.get("OPENAI_API_KEY", None),
@@ -309,7 +339,96 @@ class TestFaithfulnessEvaluator:
 
         required_fields = {"individual_scores", "results", "score"}
         assert all(field in result for field in required_fields)
-        nested_required_fields = {"score", "statement_scores", "statements"}
+        nested_required_fields = {"score", "statement_scores", "statements", "status"}
+        assert all(field in result["results"][0] for field in nested_required_fields)
+
+        # assert that metadata is present in the result
+        assert "meta" in result
+        assert "prompt_tokens" in result["meta"][0]["usage"]
+        assert "completion_tokens" in result["meta"][0]["usage"]
+        assert "total_tokens" in result["meta"][0]["usage"]
+
+
+class TestFaithfulnessEvaluatorAsync:
+    @pytest.mark.asyncio
+    async def test_run_async_calculates_mean_score(self, monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+        component = FaithfulnessEvaluator()
+
+        async def chat_generator_run_async(self, *args, **kwargs):
+            if "Football" in kwargs["messages"][0].text:
+                return {
+                    "replies": [ChatMessage.from_assistant('{"statements": ["a", "b"], "statement_scores": [1, 0]}')]
+                }
+            return {"replies": [ChatMessage.from_assistant('{"statements": ["c", "d"], "statement_scores": [1, 1]}')]}
+
+        monkeypatch.setattr(
+            "haystack.components.evaluators.llm_evaluator.OpenAIChatGenerator.run_async", chat_generator_run_async
+        )
+
+        questions = ["Which is the most popular global sport?", "Who created the Python language?"]
+        contexts = [["Football is the world's most popular sport."], ["Python was created by Guido van Rossum."]]
+        predicted_answers = ["Football is the most popular sport.", "Python is a language created by George Lucas."]
+        results = await component.run_async(questions=questions, contexts=contexts, predicted_answers=predicted_answers)
+        assert results == {
+            "individual_scores": [0.5, 1.0],
+            "results": [
+                {"score": 0.5, "statement_scores": [1, 0], "statements": ["a", "b"], "status": "evaluated"},
+                {"score": 1.0, "statement_scores": [1, 1], "statements": ["c", "d"], "status": "evaluated"},
+            ],
+            "score": 0.75,
+            "meta": None,
+        }
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("failure_mode", ["generation", "parsing"])
+    async def test_run_async_returns_nan_raise_on_failure_false(self, monkeypatch, caplog, failure_mode):
+        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+        component = FaithfulnessEvaluator(raise_on_failure=False)
+
+        async def chat_generator_run_async(self, *args, **kwargs):
+            if "Python" in kwargs["messages"][0].text:
+                if failure_mode == "generation":
+                    raise Exception("OpenAI API request failed.")
+                return {"replies": [ChatMessage.from_assistant("not valid JSON")]}
+            return {"replies": [ChatMessage.from_assistant('{"statements": ["c", "d"], "statement_scores": [1, 1]}')]}
+
+        monkeypatch.setattr(
+            "haystack.components.evaluators.llm_evaluator.OpenAIChatGenerator.run_async", chat_generator_run_async
+        )
+
+        questions = ["Which is the most popular global sport?", "Who created the Python language?"]
+        contexts = [["Football is popular."], ["Python was created by Guido."]]
+        predicted_answers = ["Football is popular.", "Guido van Rossum."]
+
+        with caplog.at_level("WARNING", logger="haystack.components.evaluators.faithfulness"):
+            results = await component.run_async(
+                questions=questions, contexts=contexts, predicted_answers=predicted_answers
+            )
+
+        assert results["score"] == 1.0
+        assert results["individual_scores"][0] == 1.0
+        assert math.isnan(results["individual_scores"][1])
+        assert results["results"][0]["status"] == "evaluated"
+        assert results["results"][1]["status"] == "error"
+        assert "1 query(s) failed and were excluded from the score." in caplog.text
+
+    @pytest.mark.asyncio
+    @pytest.mark.skipif(
+        not os.environ.get("OPENAI_API_KEY", None),
+        reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
+    )
+    @pytest.mark.integration
+    async def test_live_run_async(self):
+        questions = ["What is Python and who created it?"]
+        contexts = [["Python is a programming language created by Guido van Rossum."]]
+        predicted_answers = ["Python is a programming language created by George Lucas."]
+        evaluator = FaithfulnessEvaluator(chat_generator=OpenAIChatGenerator(model="gpt-4.1-nano"))
+        result = await evaluator.run_async(questions=questions, contexts=contexts, predicted_answers=predicted_answers)
+
+        required_fields = {"individual_scores", "results", "score"}
+        assert all(field in result for field in required_fields)
+        nested_required_fields = {"score", "statement_scores", "statements", "status"}
         assert all(field in result["results"][0] for field in nested_required_fields)
 
         # assert that metadata is present in the result

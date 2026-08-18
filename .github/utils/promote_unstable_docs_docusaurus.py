@@ -12,7 +12,7 @@ import shutil
 import sys
 
 VERSION_VALIDATOR = re.compile(r"^[0-9]+\.[0-9]+$")
-
+MAX_STABLE_VERSIONS = 5
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -23,10 +23,8 @@ if __name__ == "__main__":
         sys.exit("Version must be formatted like so <major>.<minor>")
 
     target_version = f"{args.version}"  # e.g., "2.20" - the target release version
-    major, minor = args.version.split(".")
 
     target_unstable = f"{target_version}-unstable"  # e.g., "2.20-unstable"
-    previous_stable = f"{major}.{int(minor) - 1}"  # e.g., "2.19" - previous stable release
 
     versions = [
         folder.replace("version-", "")
@@ -83,9 +81,41 @@ if __name__ == "__main__":
     with open("docs-website/reference_versions.json", "w") as f:
         json.dump(reference_versions_list, f)
 
-    # in docusaurus.config.js, replace previous stable version with the target version
+    # in docusaurus.config.js, replace the current stable version (lastVersion) with the target version
     with open("docs-website/docusaurus.config.js") as f:
         config = f.read()
+    last_version_matches = set(re.findall(r"lastVersion: '([^']+)'", config))
+    if not last_version_matches:
+        sys.exit("Could not find any lastVersion entry in docusaurus.config.js")
+    if len(last_version_matches) > 1:
+        sys.exit(f"Found inconsistent lastVersion entries in docusaurus.config.js: {last_version_matches}")
+    previous_stable = last_version_matches.pop()  # e.g., "2.19" - previous stable release
     config = config.replace(f"lastVersion: '{previous_stable}'", f"lastVersion: '{target_version}'")  # "2.19" -> "2.20"
     with open("docs-website/docusaurus.config.js", "w") as f:
         f.write(config)
+
+    # regenerate vercel.json redirects for inactive versions (those beyond the top MAX_STABLE_VERSIONS)
+    with open("docs-website/versions.json") as f:
+        updated_versions = json.load(f)
+    stable_versions = [v for v in updated_versions if not v.endswith("-unstable")]
+    inactive_versions = stable_versions[MAX_STABLE_VERSIONS:]
+    redirects = []
+    for v in inactive_versions:
+        redirects.append({"source": f"/docs/{v}/:slug*", "destination": "/docs/:slug*", "permanent": True})
+        redirects.append({"source": f"/reference/{v}/:slug*", "destination": "/reference/:slug*", "permanent": True})
+
+    with open("docs-website/vercel.json") as f:
+        vercel_config = json.load(f)
+
+    existing_redirects = vercel_config.get("redirects", [])
+    existing_sources = {r.get("source") for r in existing_redirects}
+
+    for r in redirects:
+        if r["source"] not in existing_sources:
+            existing_redirects.append(r)
+
+    vercel_config["redirects"] = existing_redirects
+    with open("docs-website/vercel.json", "w") as f:
+        json.dump(vercel_config, f, indent=2)
+        f.write("\n")
+    print(f"Updated vercel.json with {len(redirects)} redirect(s) for inactive versions: {inactive_versions}")

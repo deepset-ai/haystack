@@ -13,7 +13,7 @@ def test_document_store_class_default():
     assert store.count_documents() == 0
     assert store.filter_documents() == []
     assert store.write_documents([]) is None
-    assert store.delete_documents([]) is None
+    assert store.delete_documents([]) is None  # type: ignore[func-returns-value]
     assert store.to_dict() == {"type": "haystack.testing.factory.MyStore", "init_parameters": {}}
 
 

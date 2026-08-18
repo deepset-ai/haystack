@@ -1,0 +1,65 @@
+---
+features:
+  - |
+    Added tool result offloading for the ``Agent`` via the new ``haystack.hooks.tool_result_offloading`` module.
+    ``ToolResultOffloadHook`` is an ``after_tool`` hook that writes selected tool results to a store and replaces
+    them in the conversation with a compact pointer (a reference plus a short preview). The next LLM call sees the
+    reference instead of the full result, which helps manage the context window and is a step towards letting an
+    Agent operate on offloaded results with follow-up tools (e.g. a bash tool that reads the referenced files).
+
+    Configure what gets offloaded, per tool, via ``offload_strategies``:
+
+    - Map a tool name, a tuple of tool names, or the wildcard ``"*"`` to an ``OffloadPolicy``. More specific keys
+      win over ``"*"``; a tool with no matching key is not offloaded.
+    - Built-in policies: ``AlwaysOffload``, ``NeverOffload``, and ``OffloadOverChars`` (offload when the result
+      exceeds a character threshold).
+    - For custom conditions, implement the ``OffloadPolicy`` protocol (it provides default ``to_dict``/``from_dict``,
+      so a stateless policy only needs a ``should_offload`` method).
+
+    Choose where results are stored:
+
+    - ``FileSystemToolResultStore`` writes results to the local file system.
+    - Implement the ``ToolResultStore`` protocol to target other backends.
+    - The hook is stateless and can be shared across concurrent runs. In a multi-user server, pass an isolated store
+      per run via the Agent's ``hook_context`` (``hook_context={RESULT_STORE_CONTEXT_KEY: per_request_store}``) so
+      concurrent users write to separate locations and never read each other's results.
+
+    What is offloaded:
+
+    - Only successful, text results are offloaded. Error results (including ``before_tool`` human-in-the-loop
+      rejections) are left in context.
+    - Non-text results (image or file content) are left in context; supporting only text is a deliberate choice for
+      now. A warning is logged when a non-text result has a matching offload policy.
+    - Each result is offloaded at most once.
+
+    .. code-block:: python
+
+        from typing import Annotated
+
+        from haystack.components.agents import Agent
+        from haystack.components.generators.chat import OpenAIChatGenerator
+        from haystack.dataclasses import ChatMessage
+        from haystack.hooks.tool_result_offloading import (
+            FileSystemToolResultStore,
+            OffloadOverChars,
+            ToolResultOffloadHook,
+        )
+        from haystack.tools import tool
+
+
+        @tool
+        def search(query: Annotated[str, "The search query"]) -> str:
+            """Search the web and return the (potentially large) results."""
+            return f"... large result for {query} ..."
+
+
+        offload_hook = ToolResultOffloadHook(
+            store=FileSystemToolResultStore(root="tool_results"),
+            offload_strategies={"*": OffloadOverChars(4000)},
+        )
+        agent = Agent(
+            chat_generator=OpenAIChatGenerator(model="gpt-5.4-nano"),
+            tools=[search],
+            hooks={"after_tool": [offload_hook]},
+        )
+        agent.run(messages=[ChatMessage.from_user("Summarize today's tech news")])

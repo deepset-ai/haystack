@@ -2,6 +2,8 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+from copy import deepcopy
+from dataclasses import replace
 from typing import Any, Literal
 
 from haystack import Document, component, default_from_dict, default_to_dict
@@ -24,13 +26,13 @@ class HierarchicalDocumentSplitter:
     doc = Document(content="This is a simple test document")
     splitter = HierarchicalDocumentSplitter(block_sizes={3, 2}, split_overlap=0, split_by="word")
     splitter.run([doc])
-    >> {'documents': [Document(id=3f7..., content: 'This is a simple test document', meta: {'block_size': 0, 'parent_id': None, 'children_ids': ['5ff..', '8dc..'], 'level': 0}),
-    >> Document(id=5ff.., content: 'This is a ', meta: {'block_size': 3, 'parent_id': '3f7..', 'children_ids': ['f19..', '52c..'], 'level': 1, 'source_id': '3f7..', 'page_number': 1, 'split_id': 0, 'split_idx_start': 0}),
-    >> Document(id=8dc.., content: 'simple test document', meta: {'block_size': 3, 'parent_id': '3f7..', 'children_ids': ['39d..', 'e23..'], 'level': 1, 'source_id': '3f7..', 'page_number': 1, 'split_id': 1, 'split_idx_start': 10}),
-    >> Document(id=f19.., content: 'This is ', meta: {'block_size': 2, 'parent_id': '5ff..', 'children_ids': [], 'level': 2, 'source_id': '5ff..', 'page_number': 1, 'split_id': 0, 'split_idx_start': 0}),
-    >> Document(id=52c.., content: 'a ', meta: {'block_size': 2, 'parent_id': '5ff..', 'children_ids': [], 'level': 2, 'source_id': '5ff..', 'page_number': 1, 'split_id': 1, 'split_idx_start': 8}),
-    >> Document(id=39d.., content: 'simple test ', meta: {'block_size': 2, 'parent_id': '8dc..', 'children_ids': [], 'level': 2, 'source_id': '8dc..', 'page_number': 1, 'split_id': 0, 'split_idx_start': 0}),
-    >> Document(id=e23.., content: 'document', meta: {'block_size': 2, 'parent_id': '8dc..', 'children_ids': [], 'level': 2, 'source_id': '8dc..', 'page_number': 1, 'split_id': 1, 'split_idx_start': 12})]}
+    # >> {'documents': [Document(id=3f7..., content: 'This is a simple test document', meta: {'block_size': 0, 'parent_id': None, 'children_ids': ['5ff..', '8dc..'], 'level': 0}),
+    # >> Document(id=5ff.., content: 'This is a ', meta: {'block_size': 3, 'parent_id': '3f7..', 'children_ids': ['f19..', '52c..'], 'level': 1, 'source_id': '3f7..', 'page_number': 1, 'split_id': 0, 'split_idx_start': 0}),
+    # >> Document(id=8dc.., content: 'simple test document', meta: {'block_size': 3, 'parent_id': '3f7..', 'children_ids': ['39d..', 'e23..'], 'level': 1, 'source_id': '3f7..', 'page_number': 1, 'split_id': 1, 'split_idx_start': 10}),
+    # >> Document(id=f19.., content: 'This is ', meta: {'block_size': 2, 'parent_id': '5ff..', 'children_ids': [], 'level': 2, 'source_id': '5ff..', 'page_number': 1, 'split_id': 0, 'split_idx_start': 0}),
+    # >> Document(id=52c.., content: 'a ', meta: {'block_size': 2, 'parent_id': '5ff..', 'children_ids': [], 'level': 2, 'source_id': '5ff..', 'page_number': 1, 'split_id': 1, 'split_idx_start': 8}),
+    # >> Document(id=39d.., content: 'simple test ', meta: {'block_size': 2, 'parent_id': '8dc..', 'children_ids': [], 'level': 2, 'source_id': '8dc..', 'page_number': 1, 'split_id': 0, 'split_idx_start': 0}),
+    # >> Document(id=e23.., content: 'document', meta: {'block_size': 2, 'parent_id': '8dc..', 'children_ids': [], 'level': 2, 'source_id': '8dc..', 'page_number': 1, 'split_id': 1, 'split_idx_start': 12})]}
     ```
     """  # noqa: E501
 
@@ -46,7 +48,22 @@ class HierarchicalDocumentSplitter:
         :param block_sizes: Set of block sizes to split the document into. The blocks are split in descending order.
         :param split_overlap: The number of overlapping units for each split.
         :param split_by: The unit for splitting your documents.
+        :raises ValueError: If `block_sizes` is empty, if `split_overlap` is negative, or if `split_overlap` is
+            greater than or equal to the smallest value in `block_sizes`.
         """
+
+        if not block_sizes:
+            raise ValueError("block_sizes must not be empty. Provide at least one block size.")
+
+        if split_overlap < 0:
+            raise ValueError("split_overlap must be greater than or equal to 0.")
+
+        smallest_block_size = min(block_sizes)
+        if split_overlap >= smallest_block_size:
+            raise ValueError(
+                f"split_overlap ({split_overlap}) must be less than the smallest value in block_sizes "
+                f"({smallest_block_size}). Reduce split_overlap or increase the smallest block size."
+            )
 
         self.block_sizes = sorted(set(block_sizes), reverse=True)
         self.splitters: dict[int, DocumentSplitter] = {}
@@ -67,19 +84,16 @@ class HierarchicalDocumentSplitter:
             hierarchical_docs.extend(self.build_hierarchy_from_doc(doc))
         return {"documents": hierarchical_docs}
 
-    def _build_block_sizes(self):
+    def _build_block_sizes(self) -> None:
         for block_size in self.block_sizes:
             self.splitters[block_size] = DocumentSplitter(
                 split_length=block_size, split_overlap=self.split_overlap, split_by=self.split_by
             )
 
     @staticmethod
-    def _add_meta_data(document: Document):
-        document.meta["__block_size"] = 0
-        document.meta["__parent_id"] = None
-        document.meta["__children_ids"] = []
-        document.meta["__level"] = 0
-        return document
+    def _add_meta_data(document: Document) -> Document:
+        new_meta = {**document.meta, "__block_size": 0, "__parent_id": None, "__children_ids": [], "__level": 0}
+        return replace(document, meta=new_meta)
 
     def build_hierarchy_from_doc(self, document: Document) -> list[Document]:
         """
@@ -93,7 +107,8 @@ class HierarchicalDocumentSplitter:
             List of HierarchicalDocument
         """
 
-        root = self._add_meta_data(document)
+        # the root is the only node built from the caller's Document, so it is the only one that needs detaching
+        root = self._add_meta_data(replace(document, meta=deepcopy(document.meta)))
         current_level_nodes = [root]
         all_docs = []
 

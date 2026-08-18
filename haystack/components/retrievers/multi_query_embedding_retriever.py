@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import asyncio
 from concurrent.futures import ThreadPoolExecutor
 from typing import Any
 
@@ -9,6 +10,7 @@ from haystack import Document, component, default_from_dict, default_to_dict
 from haystack.components.embedders.types.protocol import TextEmbedder
 from haystack.components.retrievers.types import EmbeddingRetriever
 from haystack.core.serialization import component_to_dict
+from haystack.utils.async_utils import _execute_component_async, _gather_tasks_with_cancel
 from haystack.utils.misc import _deduplicate_documents
 
 
@@ -27,8 +29,8 @@ class MultiQueryEmbeddingRetriever:
     from haystack import Document
     from haystack.document_stores.in_memory import InMemoryDocumentStore
     from haystack.document_stores.types import DuplicatePolicy
-    from haystack.components.embedders import SentenceTransformersTextEmbedder
-    from haystack.components.embedders import SentenceTransformersDocumentEmbedder
+    from haystack.components.embedders import OpenAITextEmbedder
+    from haystack.components.embedders import OpenAIDocumentEmbedder
     from haystack.components.retrievers import InMemoryEmbeddingRetriever
     from haystack.components.writers import DocumentWriter
     from haystack.components.retrievers import MultiQueryEmbeddingRetriever
@@ -44,14 +46,14 @@ class MultiQueryEmbeddingRetriever:
 
     # Populate the document store
     doc_store = InMemoryDocumentStore()
-    doc_embedder = SentenceTransformersDocumentEmbedder(model="sentence-transformers/all-MiniLM-L6-v2")
+    doc_embedder = OpenAIDocumentEmbedder()
     doc_writer = DocumentWriter(document_store=doc_store, policy=DuplicatePolicy.SKIP)
     documents = doc_embedder.run(documents)["documents"]
     doc_writer.run(documents=documents)
 
     # Run the multi-query retriever
     in_memory_retriever = InMemoryEmbeddingRetriever(document_store=doc_store, top_k=1)
-    query_embedder = SentenceTransformersTextEmbedder(model="sentence-transformers/all-MiniLM-L6-v2")
+    query_embedder = OpenAITextEmbedder()
 
     multi_query_retriever = MultiQueryEmbeddingRetriever(
         retriever=in_memory_retriever,
@@ -83,18 +85,42 @@ class MultiQueryEmbeddingRetriever:
         self.retriever = retriever
         self.query_embedder = query_embedder
         self.max_workers = max_workers
-        self._is_warmed_up = False
 
     def warm_up(self) -> None:
         """
-        Warm up the query embedder and the retriever if any has a warm_up method.
+        Warm up the query embedder and the retriever.
         """
-        if not self._is_warmed_up:
-            if hasattr(self.query_embedder, "warm_up") and callable(self.query_embedder.warm_up):
-                self.query_embedder.warm_up()
-            if hasattr(self.retriever, "warm_up") and callable(self.retriever.warm_up):
-                self.retriever.warm_up()
-            self._is_warmed_up = True
+        for inner in (self.query_embedder, self.retriever):
+            if hasattr(inner, "warm_up"):
+                inner.warm_up()
+
+    async def warm_up_async(self) -> None:
+        """
+        Warm up the query embedder and the retriever on the serving event loop.
+        """
+        for inner in (self.query_embedder, self.retriever):
+            if hasattr(inner, "warm_up_async"):
+                await inner.warm_up_async()
+            elif hasattr(inner, "warm_up"):
+                inner.warm_up()
+
+    def close(self) -> None:
+        """
+        Release the query embedder's and the retriever's resources.
+        """
+        for inner in (self.query_embedder, self.retriever):
+            if hasattr(inner, "close"):
+                inner.close()
+
+    async def close_async(self) -> None:
+        """
+        Release the query embedder's and the retriever's async resources.
+        """
+        for inner in (self.query_embedder, self.retriever):
+            if hasattr(inner, "close_async"):
+                await inner.close_async()
+            elif hasattr(inner, "close"):
+                inner.close()
 
     @component.output_types(documents=list[Document])
     def run(self, queries: list[str], retriever_kwargs: dict[str, Any] | None = None) -> dict[str, list[Document]]:
@@ -110,8 +136,7 @@ class MultiQueryEmbeddingRetriever:
         docs: list[Document] = []
         retriever_kwargs = retriever_kwargs or {}
 
-        if not self._is_warmed_up:
-            self.warm_up()
+        self.warm_up()
 
         with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
             queries_results = executor.map(lambda query: self._run_on_thread(query, retriever_kwargs), queries)
@@ -125,17 +150,64 @@ class MultiQueryEmbeddingRetriever:
         docs.sort(key=lambda x: x.score or 0.0, reverse=True)
         return {"documents": docs}
 
+    @component.output_types(documents=list[Document])
+    async def run_async(
+        self, queries: list[str], retriever_kwargs: dict[str, Any] | None = None
+    ) -> dict[str, list[Document]]:
+        """
+        Retrieve documents using multiple queries concurrently.
+
+        Uses each component's `run_async` method if available, otherwise falls back to running `run`
+        in a thread executor. Queries are processed concurrently using asyncio.gather.
+
+        :param queries: List of text queries to process.
+        :param retriever_kwargs: Optional dictionary of arguments to pass to the retriever's run method.
+        :returns:
+            A dictionary containing:
+                - `documents`: List of retrieved documents sorted by relevance score.
+        """
+        retriever_kwargs = retriever_kwargs or {}
+
+        await self.warm_up_async()
+
+        tasks = [asyncio.create_task(self._run_one_async(query, retriever_kwargs)) for query in queries]
+        results = await _gather_tasks_with_cancel(tasks)
+        docs: list[Document] = [doc for result in results if result for doc in result]
+        docs = _deduplicate_documents(docs)
+        docs.sort(key=lambda x: x.score or 0.0, reverse=True)
+        return {"documents": docs}
+
     def _run_on_thread(self, query: str, retriever_kwargs: dict[str, Any] | None = None) -> list[Document] | None:
         """
         Process a single query on a separate thread.
 
         :param query: The text query to process.
+        :param retriever_kwargs: Arguments to pass to the retriever's run method.
         :returns:
             List of retrieved documents or None if no results.
         """
         embedding_result = self.query_embedder.run(text=query)
         query_embedding = embedding_result["embedding"]
         result = self.retriever.run(query_embedding=query_embedding, **(retriever_kwargs or {}))
+        if result and "documents" in result:
+            return result["documents"]
+        return None
+
+    async def _run_one_async(self, query: str, retriever_kwargs: dict[str, Any]) -> list[Document] | None:
+        """
+        Process a single query asynchronously.
+
+        :param query: The text query to process.
+        :param retriever_kwargs: Arguments to pass to the retriever's run method.
+        :returns:
+            List of retrieved documents or None if no results.
+        """
+        embedding_result = await _execute_component_async(self.query_embedder, text=query)
+
+        query_embedding = embedding_result["embedding"]
+
+        result = await _execute_component_async(self.retriever, query_embedding=query_embedding, **retriever_kwargs)
+
         if result and "documents" in result:
             return result["documents"]
         return None

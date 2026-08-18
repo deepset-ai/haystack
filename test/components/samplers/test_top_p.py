@@ -95,6 +95,39 @@ class TestTopPSampler:
         assert docs[0].content == "Sarajevo"
         assert "Top-p sampling with p=" in caplog.text
 
+    def test_run_top_p_0_as_run_override(
+        self, caplog: pytest.LogCaptureFixture, documents_with_score: list[Document]
+    ) -> None:
+        # top_p=0.0 passed to run() must not be silently replaced by the init value
+        sampler = TopPSampler(top_p=1.0)
+        docs = documents_with_score
+        output = sampler.run(documents=docs, top_p=0.0)
+        docs = output["documents"]
+        assert len(docs) == 1
+        assert docs[0].content == "Sarajevo"
+        assert "Top-p sampling with p=" in caplog.text
+
+    def test_run_with_integer_scores(self) -> None:
+        # integer scores must be treated like float scores, not as missing
+        sampler = TopPSampler(top_p=0.99)
+        docs = [
+            Document(content="Sarajevo", score=7),
+            Document(content="Belgrade", score=1),
+            Document(content="Berlin", score=-5),
+        ]
+        output = sampler.run(documents=docs)
+        docs_filtered = output["documents"]
+        assert len(docs_filtered) < len(docs)
+        assert docs_filtered[0].content == "Sarajevo"
+
+    def test_run_with_boolean_scores_treated_as_missing(self, caplog: pytest.LogCaptureFixture) -> None:
+        sampler = TopPSampler(top_p=0.95)
+        docs = [Document(content="Sarajevo", score=True), Document(content="Belgrade", score=0.5)]
+        output = sampler.run(documents=docs)
+        docs_filtered = output["documents"]
+        assert docs_filtered == [docs[1]]
+        assert "Ensure all documents have a valid score value" in caplog.text
+
     def test_run_returns_empty_list_no_documents(self) -> None:
         sampler = TopPSampler()
         output = sampler.run(documents=[])

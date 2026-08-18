@@ -41,7 +41,7 @@ class SASEvaluator:
         "The Meiji Restoration in 1868 transformed Japan into a modernized world power.",
     ]
     result = evaluator.run(
-        ground_truths_answers=ground_truths, predicted_answers=predictions
+        ground_truth_answers=ground_truths, predicted_answers=predictions
     )
 
     print(result["score"])

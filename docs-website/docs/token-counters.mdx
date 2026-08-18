@@ -1,0 +1,86 @@
+---
+title: "Token Counters"
+id: token-counters
+slug: "/token-counters"
+description: "Use Haystack token counters to estimate the size of chat messages and tool schemas before sending them to a model."
+---
+
+# Token Counters
+
+Token counters estimate how many tokens a list of `ChatMessage` objects and optional tool schemas occupy. They are useful when you need to know the size of a conversation before sending it to a model, for example, to check whether it fits in the model's context window or to decide how much context to remove.
+
+Haystack provides the `TokenCounter` protocol and three implementations:
+
+| Counter | How it counts text | Extra dependency | Best suited for |
+| --- | --- | --- | --- |
+| [`ApproximateTokenCounter`](token-counters/approximatetokencounter.mdx) | Divides the rendered text length by a configurable characters-per-token ratio | None | Fast, dependency-free estimates |
+| [`TiktokenCounter`](token-counters/tiktokencounter.mdx) | Uses OpenAI's `tiktoken` byte-pair encoder | `tiktoken` | More accurate estimates for OpenAI models |
+| [`OpenAITokenCounter`](token-counters/openaitokencounter.mdx) | Calls OpenAI's input token counting API | OpenAI API key | Exact, model-specific counts including images, files, and tools |
+
+All counters include message roles, text, tool calls, tool results, and optional tool schemas. The local counters account for images and files using configurable flat rates, including images and files nested in tool results. `OpenAITokenCounter` sends supported non-text content to OpenAI for a model-specific count.
+
+See the [Token Counters API reference](/reference/token-counters-api) for all constructor parameters and methods.
+
+## Counting tool schemas
+
+Tool schemas are sent to the model alongside the messages and consume context tokens. Pass the tools to `count()` to include their schemas in the estimate:
+
+```python
+from typing import Annotated
+
+from haystack.dataclasses import ChatMessage
+from haystack.token_counters import ApproximateTokenCounter
+from haystack.tools import tool
+
+
+@tool
+def search(query: Annotated[str, "The search query"]) -> str:
+    """Search for documents that match the query."""
+    return "Search results"
+
+
+messages = [ChatMessage.from_user("Find information about Haystack.")]
+counter = ApproximateTokenCounter()
+
+token_count = counter.count(messages, tools=[search])
+```
+
+You can also count tool schemas without messages by calling `counter.count([], tools=[search])`.
+
+## Images and files
+
+Images and files do not have a portable text-based token count. Each token counter can handle them differently depending on the tokenizer or provider it uses.
+
+See the documentation for the counter you use to understand how it counts non-text content and whether you need to configure it:
+
+- [`ApproximateTokenCounter`](token-counters/approximatetokencounter.mdx)
+- [`TiktokenCounter`](token-counters/tiktokencounter.mdx)
+- [`OpenAITokenCounter`](token-counters/openaitokencounter.mdx)
+
+## Creating a custom token counter
+
+Implement the `TokenCounter` protocol when you need different counting behavior, such as using a provider's token-counting endpoint. A custom implementation must provide `count()` and `to_dict()` methods. The default `from_dict()` implementation restores plain constructor values.
+
+```python
+from typing import Any
+
+from haystack.core.serialization import default_to_dict
+from haystack.dataclasses import ChatMessage
+from haystack.token_counters import TokenCounter
+from haystack.tools import ToolsType
+
+
+class ProviderTokenCounter(TokenCounter):
+    def count(
+        self,
+        messages: list[ChatMessage],
+        tools: ToolsType | None = None,
+    ) -> int:
+        # Call the provider's token-counting endpoint here.
+        ...
+
+    def to_dict(self) -> dict[str, Any]:
+        return default_to_dict(self)
+```
+
+Override `from_dict()` when `to_dict()` serializes values that must be reconstructed before passing them to the constructor, such as a `Secret` or a nested component.

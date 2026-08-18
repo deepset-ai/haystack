@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import copy
+from collections.abc import Callable
 from unittest import mock
 
 import pytest
@@ -10,7 +11,9 @@ from jinja2.nativetypes import NativeEnvironment
 
 from haystack import Pipeline
 from haystack.components.routers import ConditionalRouter
-from haystack.components.routers.conditional_router import NoRouteSelectedException
+from haystack.components.routers.conditional_router import NoRouteSelectedException, Route
+from haystack.core.errors import DeserializationError
+from haystack.core.serialization_security import _deserialization_context
 from haystack.dataclasses import ChatMessage
 
 
@@ -24,9 +27,9 @@ class TestRouter:
         """
         Router raises a ValueError if each route does not contain 'condition', 'output', and 'output_type' keys
         """
-        routes = [
-            {"condition": "{{streams|length < 2}}", "output": "{{query}}"},
-            {"condition": "{{streams|length < 2}}", "output_type": str},
+        routes: list[Route] = [
+            {"condition": "{{streams|length < 2}}", "output": "{{query}}"},  # type: ignore[typeddict-item]
+            {"condition": "{{streams|length < 2}}", "output_type": str},  # type: ignore[typeddict-item]
         ]
         with pytest.raises(ValueError):
             ConditionalRouter(routes)
@@ -36,7 +39,9 @@ class TestRouter:
         ConditionalRouter init raises a ValueError if one of the routes contains invalid condition
         """
         # invalid condition field
-        routes = [{"condition": "{{streams|length < 2", "output": "query", "output_type": str, "output_name": "test"}]
+        routes: list[Route] = [
+            {"condition": "{{streams|length < 2", "output": "query", "output_type": str, "output_name": "test"}
+        ]
         with pytest.raises(ValueError, match="Invalid template"):
             ConditionalRouter(routes)
 
@@ -45,10 +50,10 @@ class TestRouter:
         ConditionalRouter init raises a ValueError with helpful error message when output is not a string
         """
         # output is an int instead of a string template
-        routes = [
+        routes: list[Route] = [
             {
                 "condition": '{{ flag == "double" }}',
-                "output": 2,
+                "output": 2,  # type: ignore[typeddict-item]
                 "output_name": "num_additional_outputs",
                 "output_type": int,
             }
@@ -66,10 +71,10 @@ class TestRouter:
         ConditionalRouter init raises a ValueError with helpful error message when output in list is not a string
         """
         # output list contains an int instead of a string template
-        routes = [
+        routes: list[Route] = [
             {
                 "condition": '{{ flag == "double" }}',
-                "output": ["{{streams}}", 2],
+                "output": ["{{streams}}", 2],  # type: ignore[list-item]
                 "output_name": ["streams", "num"],
                 "output_type": [list[int], int],
             }
@@ -85,7 +90,7 @@ class TestRouter:
         """
         Router can't accept a route with no variables used in the output field
         """
-        routes = [
+        routes: list[Route] = [
             {
                 "condition": "{{streams|length > 2}}",
                 "output": "This is a constant",
@@ -103,22 +108,22 @@ class TestRouter:
         Router accepts a list of routes with mandatory and optional fields but not if some new field is added
         """
 
-        routes = [
-            {
+        routes: list[Route] = [
+            {  # type: ignore[typeddict-unknown-key]
                 "condition": "{{streams|length < 2}}",
                 "output": "{{query}}",
                 "output_type": str,
                 "output_name": "test",
                 "bla": "bla",
             },
-            {"condition": "{{streams|length < 2}}", "output": "{{query}}", "output_type": str},
+            {"condition": "{{streams|length < 2}}", "output": "{{query}}", "output_type": str},  # type: ignore[typeddict-item]
         ]
 
         with pytest.raises(ValueError):
             ConditionalRouter(routes)
 
     def test_router_initialized(self):
-        routes = [
+        routes: list[Route] = [
             {"condition": "{{streams|length < 2}}", "output": "{{query}}", "output_type": str, "output_name": "query"},
             {
                 "condition": "{{streams|length >= 2}}",
@@ -130,8 +135,8 @@ class TestRouter:
         router = ConditionalRouter(routes)
 
         assert router.routes == routes
-        assert set(router.__haystack_input__._sockets_dict.keys()) == {"query", "streams"}
-        assert set(router.__haystack_output__._sockets_dict.keys()) == {"query", "streams"}
+        assert set(router.__haystack_input__._sockets_dict.keys()) == {"query", "streams"}  # type: ignore[attr-defined]
+        assert set(router.__haystack_output__._sockets_dict.keys()) == {"query", "streams"}  # type: ignore[attr-defined]
 
     def test_router_evaluate_condition_expressions(self):
         router = ConditionalRouter(
@@ -161,7 +166,7 @@ class TestRouter:
         assert result == {"query": "test"}
 
     def test_router_evaluate_condition_expressions_using_output_slot(self):
-        routes = [
+        routes: list[Route] = [
             {
                 "condition": "{{streams|length > 2}}",
                 "output": "{{streams}}",
@@ -182,7 +187,7 @@ class TestRouter:
         assert result == {"enough_streams": [1, 2, 3]}
 
     def test_complex_condition(self):
-        routes = [
+        routes: list[Route] = [
             {
                 "condition": "{{messages[-1].meta.finish_reason == 'function_call'}}",
                 "output": "{{streams}}",
@@ -229,9 +234,9 @@ class TestRouter:
         """
         Router raises a ValueError if each route is not a dictionary
         """
-        routes = [
+        routes: list[Route] = [
             {"condition": "{{streams|length < 2}}", "output": "{{query}}", "output_type": str, "output_name": "query"},
-            ["{{streams|length >= 2}}", "streams", list[int]],
+            ["{{streams|length >= 2}}", "streams", list[int]],  # type: ignore[list-item]
         ]
 
         with pytest.raises(ValueError):
@@ -241,16 +246,16 @@ class TestRouter:
         """
         Router raises a ValueError if each route does not contain 'condition', 'output', and 'output_type' keys
         """
-        routes = [
-            {"condition": "{{streams|length < 2}}", "output": "{{query}}"},
-            {"condition": "{{streams|length < 2}}", "output_type": str},
+        routes: list[Route] = [
+            {"condition": "{{streams|length < 2}}", "output": "{{query}}"},  # type: ignore[typeddict-item]
+            {"condition": "{{streams|length < 2}}", "output_type": str},  # type: ignore[typeddict-item]
         ]
 
         with pytest.raises(ValueError):
             ConditionalRouter(routes)
 
     def test_router_de_serialization(self):
-        routes = [
+        routes: list[Route] = [
             {"condition": "{{streams|length < 2}}", "output": "{{query}}", "output_type": str, "output_name": "query"},
             {
                 "condition": "{{streams|length >= 2}}",
@@ -278,6 +283,28 @@ class TestRouter:
 
         # check that the result is the same and correct
         assert result1 == result2 and result1 == {"streams": [1, 2, 3]}
+
+    def test_router_de_serialization_with_callable_output_type(self):
+        # Regression test: `output_type=Callable[[int, str], bool]` used to lose its parameter list on
+        # `to_dict` (producing "typing.Callable[, bool]") and then fail to deserialize entirely.
+        routes: list[Route] = [
+            {
+                "condition": "{{True}}",
+                "output": "{{callback}}",
+                # `Route.output_type` is annotated `type | list[type]`, which does not describe the
+                # parameterized generics and unions ConditionalRouter accepts. A Callable works at runtime.
+                "output_type": Callable[[int, str], bool],  # type: ignore[typeddict-item]
+                "output_name": "callback",
+            }
+        ]
+        router = ConditionalRouter(routes)
+        router_dict = router.to_dict()
+
+        serialized_output_type = router_dict["init_parameters"]["routes"][0]["output_type"]
+        assert serialized_output_type == "collections.abc.Callable[[int, str], bool]"
+
+        new_router = ConditionalRouter.from_dict(router_dict)
+        assert router.routes == new_router.routes
 
     def test_router_de_serialization_with_none_argument(self):
         new_router = ConditionalRouter.from_dict(
@@ -310,7 +337,7 @@ class TestRouter:
         assert result2 == {"streams": [1, 2, 3]}
 
     def test_router_serialization_idempotence(self):
-        routes = [
+        routes: list[Route] = [
             {
                 "condition": "{{streams|length < 2}}",
                 "output": "{{message}}",
@@ -331,7 +358,7 @@ class TestRouter:
         assert router_dict_first_invocation == router_dict_second_invocation
 
     def test_custom_filter(self):
-        routes = [
+        routes: list[Route] = [
             {
                 "condition": "{{phone_num|get_area_code == 123}}",
                 "output": "Phone number has a 123 area code",
@@ -355,7 +382,7 @@ class TestRouter:
         assert result == {"bad_phone_num": "Phone number does not have 123 area code"}
 
     def test_sede_with_custom_filter(self):
-        routes = [
+        routes: list[Route] = [
             {
                 "condition": "{{ test|custom_filter_to_sede == 123 }}",
                 "output": "123",
@@ -375,7 +402,7 @@ class TestRouter:
         assert result == deserialized_router.run(**kwargs)
 
     def test_unsafe(self):
-        routes = [
+        routes: list[Route] = [
             {
                 "condition": "{{streams|length < 2}}",
                 "output": "{{message}}",
@@ -395,8 +422,29 @@ class TestRouter:
         res = router.run(streams=streams, message=message)
         assert res == {"message": message}
 
+    def test_from_dict_rejects_unsafe_in_safe_mode(self):
+        # A serialized router must not be able to disable its Jinja sandbox (`unsafe=True` swaps in
+        # a NativeEnvironment) on its own while the pipeline is being loaded in default safe mode.
+        routes: list[Route] = [
+            {"condition": "{{streams|length < 2}}", "output": "{{query}}", "output_type": str, "output_name": "query"}
+        ]
+        data = ConditionalRouter(routes, unsafe=True).to_dict()
+        with pytest.raises(DeserializationError, match="unsafe=True while loading in safe mode"):
+            ConditionalRouter.from_dict(data)
+
+    def test_from_dict_allows_unsafe_when_loading_unsafe(self):
+        # When the loader explicitly opts into unsafe mode, the embedded `unsafe=True` is honored.
+        routes: list[Route] = [
+            {"condition": "{{streams|length < 2}}", "output": "{{query}}", "output_type": str, "output_name": "query"}
+        ]
+        data = ConditionalRouter(routes, unsafe=True).to_dict()
+        with _deserialization_context(unsafe=True):
+            router = ConditionalRouter.from_dict(data)
+        assert router._unsafe
+        assert isinstance(router._env, NativeEnvironment)
+
     def test_validate_output_type_without_unsafe(self):
-        routes = [
+        routes: list[Route] = [
             {
                 "condition": "{{streams|length < 2}}",
                 "output": "{{message}}",
@@ -417,7 +465,7 @@ class TestRouter:
             router.run(streams=streams, message=message)
 
     def test_validate_output_type_with_unsafe(self):
-        routes = [
+        routes: list[Route] = [
             {
                 "condition": "{{streams|length < 2}}",
                 "output": "{{message}}",
@@ -437,16 +485,17 @@ class TestRouter:
         res = router.run(streams=streams, message=message)
         assert isinstance(res["message"], ChatMessage)
 
-        streams = ["1", "2", "3", "4"]
         with pytest.raises(ValueError, match="Route 'streams' type doesn't match expected type"):
-            router.run(streams=streams, message=message)
+            router.run(streams=["1", "2", "3", "4"], message=message)
 
     def test_validate_output_type_with_pep604(self):
-        routes = [
+        routes: list[Route] = [
             {
                 "condition": "{{True}}",
                 "output": "{{value}}",
-                "output_type": list[str] | dict[str, int] | None,
+                # As above: a PEP 604 union is not a `type`, but `conditional_router.py` has an explicit
+                # branch for union output types, so `Route.output_type` is narrower than the real contract.
+                "output_type": list[str] | dict[str, int] | None,  # type: ignore[typeddict-item]
                 "output_name": "result",
             }
         ]
@@ -470,7 +519,9 @@ class TestRouter:
         str is a Sequence, but when the expected type is list[str], a bare string
         should be rejected.
         """
-        routes = [{"condition": "{{True}}", "output": "{{value}}", "output_type": list[str], "output_name": "result"}]
+        routes: list[Route] = [
+            {"condition": "{{True}}", "output": "{{value}}", "output_type": list[str], "output_name": "result"}
+        ]
         router = ConditionalRouter(routes, validate_output_type=True)
 
         # A list of strings should pass
@@ -486,7 +537,7 @@ class TestRouter:
         Test that the router works with optional parameters, particularly testing the default/fallback route
         when an expected parameter is not provided.
         """
-        routes = [
+        routes: list[Route] = [
             {"condition": '{{path == "rag"}}', "output": "{{question}}", "output_name": "normal", "output_type": str},
             {
                 "condition": '{{path == "followup_short"}}',
@@ -531,7 +582,7 @@ class TestRouter:
         Test ConditionalRouter with a mix of mandatory and optional parameters,
         exploring various combinations of provided/missing optional variables.
         """
-        routes = [
+        routes: list[Route] = [
             {
                 "condition": '{{mode == "chat" and language == "en" and source == "doc"}}',
                 "output": "{{question}}",
@@ -612,7 +663,7 @@ class TestRouter:
         Test that a warning is raised when optional_variables contains variables
         that are not used in any route conditions or outputs.
         """
-        routes = [
+        routes: list[Route] = [
             {"condition": '{{mode == "chat"}}', "output": "{{question}}", "output_name": "chat", "output_type": str},
             {"condition": "{{ True }}", "output": "{{question}}", "output_name": "fallback", "output_type": str},
         ]
@@ -626,7 +677,7 @@ class TestRouter:
         assert result == {"chat": "What?"}
 
     def test_router_to_dict_does_not_mutate_routes(self):
-        routes = [
+        routes: list[Route] = [
             {"condition": "{{streams|length < 2}}", "output": "{{query}}", "output_type": str, "output_name": "query"}
         ]
 
@@ -659,7 +710,7 @@ class TestRouter:
 
     def test_multiple_outputs_per_route(self):
         """Test that router handles multiple outputs per route correctly"""
-        routes = [
+        routes: list[Route] = [
             {
                 "condition": "{{streams|length >= 2}}",
                 "output": ["{{streams}}", "{{query}}"],
@@ -699,7 +750,7 @@ class TestRouter:
             )
 
     def test_sede_multiple_outputs(self):
-        routes = [
+        routes: list[Route] = [
             {
                 "condition": "{{phone_num|get_area_code == 123}}",
                 "output": ["{{phone_num}}", "{{phone_num|get_area_code}}"],
@@ -730,3 +781,194 @@ class TestRouter:
         templates = [condition, "{{query}}"]
         extracted_variables = ConditionalRouter._extract_variables(env=NativeEnvironment(), templates=templates)
         assert extracted_variables == {"control", "query"}
+
+    def test_conditional_router_passthrough_serialization_roundtrip(self):
+        """Test that output_passthrough survives to_dict/from_dict."""
+        routes: list[Route] = [
+            {
+                "condition": "{{flag}}",
+                "output": "value",
+                "output_name": "matched",
+                "output_type": str,
+                "output_passthrough": True,
+            },
+            {
+                "condition": "{{not flag}}",
+                "output": "value",
+                "output_name": "unmatched",
+                "output_type": str,
+                "output_passthrough": True,
+            },
+        ]
+
+        router = ConditionalRouter(routes)
+        reloaded = ConditionalRouter.from_dict(router.to_dict())
+
+        assert reloaded.routes == router.routes
+        assert reloaded.routes[0].get("output_passthrough") is True
+        assert reloaded.routes[1].get("output_passthrough") is True
+
+        assert reloaded.run(flag=True, value="hello") == {"matched": "hello"}
+        assert reloaded.run(flag=False, value="hello") == {"unmatched": "hello"}
+
+    def test_conditional_router_passthrough_with_custom_type(self):
+        """Test passthrough routing for custom types without Jinja2."""
+        from dataclasses import dataclass
+
+        @dataclass
+        class CustomDocument:
+            content: str
+            metadata: dict
+
+        routes: list[Route] = [
+            {
+                "condition": "{{is_important}}",
+                "output": "document",
+                "output_name": "important",
+                "output_type": CustomDocument,
+                "output_passthrough": True,
+            },
+            {
+                "condition": "{{not is_important}}",
+                "output": "document",
+                "output_name": "regular",
+                "output_type": CustomDocument,
+                "output_passthrough": True,
+            },
+        ]
+
+        router = ConditionalRouter(routes)
+        doc = CustomDocument(content="Important", metadata={"priority": "high"})
+
+        result = router.run(is_important=True, document=doc)
+        assert "important" in result
+        assert result["important"] == doc
+        assert result["important"].content == "Important"
+
+        result = router.run(is_important=False, document=doc)
+        assert "regular" in result
+        assert result["regular"] == doc
+
+    def test_conditional_router_passthrough_missing_variable(self):
+        """Test that passthrough routing raises ValueError when the named variable is not provided."""
+        routes: list[Route] = [
+            {
+                "condition": "{{True}}",
+                "output": "missing_var",
+                "output_name": "out",
+                "output_type": str,
+                "output_passthrough": True,
+            }
+        ]
+
+        router = ConditionalRouter(routes)
+
+        with pytest.raises(ValueError, match="Variable 'missing_var' not found in inputs"):
+            router.run(other_var="value")
+
+    def test_conditional_router_passthrough_mixed(self):
+        """Test mixing passthrough and Jinja2 routes in the same router."""
+        routes: list[Route] = [
+            {
+                "condition": "{{mode == 'direct'}}",
+                "output": "data",
+                "output_name": "direct_route",
+                "output_type": list,
+                "output_passthrough": True,
+            },
+            {
+                "condition": "{{mode == 'transform'}}",
+                "output": "{{data | reverse | list}}",
+                "output_name": "transformed_route",
+                "output_type": list,
+            },
+        ]
+
+        router = ConditionalRouter(routes)
+        test_list = [1, 2, 3]
+
+        result = router.run(mode="direct", data=test_list)
+        assert result["direct_route"] == test_list
+
+        result = router.run(mode="transform", data=test_list)
+        assert result["transformed_route"] == [3, 2, 1]
+
+    def test_conditional_router_passthrough_multi_output(self):
+        """Test output_passthrough with a list of output variable names."""
+        from dataclasses import dataclass
+
+        @dataclass
+        class Payload:
+            body: str
+
+        routes: list[Route] = [
+            {
+                "condition": "{{flag}}",
+                "output": ["label", "payload"],
+                "output_name": ["out_label", "out_payload"],
+                "output_type": [str, Payload],
+                "output_passthrough": True,
+            }
+        ]
+
+        router = ConditionalRouter(routes)
+        p = Payload(body="test")
+        result = router.run(flag=True, label="hello", payload=p)
+        assert result == {"out_label": "hello", "out_payload": p}
+        assert isinstance(result["out_payload"], Payload)
+
+    def test_conditional_router_passthrough_validate_output_type_mismatch(self):
+        """Test that validate_output_type catches a type mismatch on a passthrough route."""
+        routes: list[Route] = [
+            {
+                "condition": "{{True}}",
+                "output": "value",
+                "output_name": "out",
+                "output_type": int,
+                "output_passthrough": True,
+            }
+        ]
+
+        router = ConditionalRouter(routes, validate_output_type=True)
+
+        with pytest.raises(ValueError, match="type doesn't match"):
+            router.run(value="not_an_int")
+
+    def test_conditional_router_passthrough_optional_variable_routes_none(self):
+        """Test that a passthrough variable in optional_variables routes None when the pipeline omits it.
+
+        optional_variables registers the input with default=None. Inside a pipeline, missing optional
+        inputs are filled with their default before run() is called. We simulate that here by passing
+        maybe_value=None explicitly.
+        """
+        routes: list[Route] = [
+            {
+                "condition": "{{True}}",
+                "output": "maybe_value",
+                "output_name": "out",
+                "output_type": str,
+                "output_passthrough": True,
+            }
+        ]
+
+        router = ConditionalRouter(routes, optional_variables=["maybe_value"])
+        # Simulate pipeline behaviour: optional input not connected → filled with default None
+        result = router.run(maybe_value=None)
+        assert result == {"out": None}
+
+    def test_conditional_router_passthrough_skips_output_template_validation(self):
+        """Test that an invalid Jinja2 string in output is accepted when output_passthrough is True."""
+        routes: list[Route] = [
+            {
+                "condition": "{{True}}",
+                "output": "{{unclosed",  # would be rejected as a Jinja2 template
+                "output_name": "out",
+                "output_type": str,
+                "output_passthrough": True,
+            }
+        ]
+
+        # Construction must not raise even though the output string is not valid Jinja2
+        router = ConditionalRouter(routes)
+        result = router.run(**{"{{unclosed": "value"})
+        assert result == {"out": "value"}

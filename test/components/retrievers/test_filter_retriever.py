@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from typing import Any
+from unittest.mock import Mock
 
 import pytest
 
@@ -43,12 +44,12 @@ class TestFilterRetriever:
         docs2.sort(key=lambda x: x.id)
         return docs1 == docs2
 
-    def test_init_default(self):
-        retriever = FilterRetriever(InMemoryDocumentStore())
+    def test_init_default(self, in_memory_doc_store):
+        retriever = FilterRetriever(in_memory_doc_store)
         assert retriever.filters is None
 
-    def test_init_with_parameters(self):
-        retriever = FilterRetriever(InMemoryDocumentStore(), filters={"lang": "en"})
+    def test_init_with_parameters(self, in_memory_doc_store):
+        retriever = FilterRetriever(in_memory_doc_store, filters={"lang": "en"})
         assert retriever.filters == {"lang": "en"}
 
     def test_to_dict(self):
@@ -144,3 +145,14 @@ class TestFilterRetriever:
         results_docs = result["retriever"]["documents"]
         assert results_docs
         assert TestFilterRetriever._documents_equal(results_docs, sample_docs["en_docs"])
+
+    def test_close(self):
+        closable_document_store = Mock(spec=["close"])
+        retriever = FilterRetriever(document_store=closable_document_store)
+        retriever.close()
+        closable_document_store.close.assert_called_once_with()
+
+        nonclosable_document_store = Mock(spec=[])
+        retriever = FilterRetriever(document_store=nonclosable_document_store)
+        retriever.close()
+        assert nonclosable_document_store.mock_calls == []

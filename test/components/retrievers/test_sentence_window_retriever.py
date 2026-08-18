@@ -4,7 +4,7 @@
 
 import random
 import re
-from unittest.mock import ANY
+from unittest.mock import ANY, Mock
 
 import pytest
 
@@ -16,17 +16,17 @@ from haystack.document_stores.in_memory import InMemoryDocumentStore
 
 
 class TestSentenceWindowRetriever:
-    def test_init_default(self):
-        retriever = SentenceWindowRetriever(InMemoryDocumentStore())
+    def test_init_default(self, in_memory_doc_store):
+        retriever = SentenceWindowRetriever(in_memory_doc_store)
         assert retriever.window_size == 3
 
-    def test_init_with_parameters(self):
-        retriever = SentenceWindowRetriever(InMemoryDocumentStore(), window_size=5)
+    def test_init_with_parameters(self, in_memory_doc_store):
+        retriever = SentenceWindowRetriever(in_memory_doc_store, window_size=5)
         assert retriever.window_size == 5
 
-    def test_init_with_invalid_window_size_parameter(self):
+    def test_init_with_invalid_window_size_parameter(self, in_memory_doc_store):
         with pytest.raises(ValueError):
-            SentenceWindowRetriever(InMemoryDocumentStore(), window_size=-2)
+            SentenceWindowRetriever(in_memory_doc_store, window_size=-2)
 
     def test_merge_documents(self):
         docs = [
@@ -62,8 +62,8 @@ class TestSentenceWindowRetriever:
         expected = "This is a text with some words. There is a second sentence. And there is also a third sentence"
         assert merged_text == expected
 
-    def test_to_dict(self):
-        window_retriever = SentenceWindowRetriever(InMemoryDocumentStore())
+    def test_to_dict(self, in_memory_doc_store):
+        window_retriever = SentenceWindowRetriever(in_memory_doc_store)
         data = window_retriever.to_dict()
 
         assert data == {
@@ -77,7 +77,9 @@ class TestSentenceWindowRetriever:
                         "bm25_tokenization_regex": "(?u)\\b\\w+\\b",
                         "embedding_similarity_function": "dot_product",
                         "index": ANY,
+                        "shared": True,
                         "return_embedding": True,
+                        "strict_datetime_comparison": False,
                     },
                 },
                 "window_size": 3,
@@ -129,18 +131,18 @@ class TestSentenceWindowRetriever:
         with pytest.raises(DeserializationError):
             SentenceWindowRetriever.from_dict(data)
 
-    def test_document_without_split_id(self):
+    def test_document_without_split_id(self, in_memory_doc_store):
         docs = [
             Document(content="This is a text with some words. There is a ", meta={"id": "doc_0"}),
             Document(content="some words. There is a second sentence. And there is ", meta={"id": "doc_1"}),
         ]
         with pytest.raises(ValueError, match="The retrieved documents must have 'split_id_test' in their metadata."):
             retriever = SentenceWindowRetriever(
-                document_store=InMemoryDocumentStore(), window_size=3, split_id_meta_field="split_id_test"
+                document_store=in_memory_doc_store, window_size=3, split_id_meta_field="split_id_test"
             )
             retriever.run(retrieved_documents=docs)
 
-    def test_document_without_source_id(self):
+    def test_document_without_source_id(self, in_memory_doc_store):
         docs = [
             Document(content="This is a text with some words. There is a ", meta={"id": "doc_0", "split_id": 0}),
             Document(
@@ -150,11 +152,11 @@ class TestSentenceWindowRetriever:
         ]
         with pytest.raises(ValueError, match="The retrieved documents must have 'source_id_test' in their metadata."):
             retriever = SentenceWindowRetriever(
-                document_store=InMemoryDocumentStore(), window_size=3, source_id_meta_field="source_id_test"
+                document_store=in_memory_doc_store, window_size=3, source_id_meta_field="source_id_test"
             )
             retriever.run(retrieved_documents=docs)
 
-    def test_document_without_all_source_ids(self):
+    def test_document_without_all_source_ids(self, in_memory_doc_store):
         docs = [
             Document(
                 content="These are words from the first section",
@@ -169,18 +171,42 @@ class TestSentenceWindowRetriever:
             ValueError, match=re.escape("The retrieved documents must have '['id', 'section_id']' in their metadata.")
         ):
             retriever = SentenceWindowRetriever(
-                document_store=InMemoryDocumentStore(), window_size=3, source_id_meta_field=["id", "section_id"]
+                document_store=in_memory_doc_store, window_size=3, source_id_meta_field=["id", "section_id"]
             )
             retriever.run(retrieved_documents=docs)
 
-    def test_run_invalid_window_size(self):
-        docs = [Document(content="This is a text with some words. There is a ", meta={"id": "doc_0", "split_id": 0})]
+    def test_init_rejects_zero_window_size(self, in_memory_doc_store):
         with pytest.raises(ValueError):
-            retriever = SentenceWindowRetriever(document_store=InMemoryDocumentStore(), window_size=0)
-            retriever.run(retrieved_documents=docs)
+            SentenceWindowRetriever(document_store=in_memory_doc_store, window_size=0)
 
-    def test_constructor_parameter_does_not_change(self):
-        retriever = SentenceWindowRetriever(InMemoryDocumentStore(), window_size=5)
+    def test_run_rejects_invalid_runtime_window_size(self, in_memory_doc_store):
+        retriever = SentenceWindowRetriever(document_store=in_memory_doc_store, window_size=3)
+
+        with pytest.raises(ValueError, match="window_size parameter must be greater than 0"):
+            retriever.run(retrieved_documents=[], window_size=0)
+
+        with pytest.raises(ValueError, match="window_size parameter must be greater than 0"):
+            retriever.run(retrieved_documents=[], window_size=-1)
+
+    def test_run_without_runtime_window_size_uses_constructor_value(self, in_memory_doc_store):
+        docs = [
+            Document(content=f"Sentence {sent}.", meta={"id": f"doc_{sent}", "source_id": "source1", "split_id": sent})
+            for sent in range(10)
+        ]
+        in_memory_doc_store.write_documents(docs)
+        retriever = SentenceWindowRetriever(document_store=in_memory_doc_store, window_size=2)
+        retrieved_documents = [doc for doc in docs if doc.content == "Sentence 4."]
+
+        # window_size omitted: the constructor value is used, so 2 documents on each side
+        result = retriever.run(retrieved_documents=retrieved_documents)
+        assert len(result["context_documents"]) == 5
+
+        # window_size passed explicitly: it overrides the constructor value
+        result = retriever.run(retrieved_documents=retrieved_documents, window_size=1)
+        assert len(result["context_documents"]) == 3
+
+    def test_constructor_parameter_does_not_change(self, in_memory_doc_store):
+        retriever = SentenceWindowRetriever(in_memory_doc_store, window_size=5)
         assert retriever.window_size == 5
 
         doc = {
@@ -196,7 +222,7 @@ class TestSentenceWindowRetriever:
         retriever.run(retrieved_documents=[Document.from_dict(doc)], window_size=1)
         assert retriever.window_size == 5
 
-    def test_context_documents_returned_are_ordered_by_split_idx_start(self):
+    def test_context_documents_returned_are_ordered_by_split_idx_start(self, in_memory_doc_store):
         docs = []
         accumulated_length = 0
         for sent in range(10):
@@ -216,9 +242,8 @@ class TestSentenceWindowRetriever:
 
         random.shuffle(docs)
 
-        doc_store = InMemoryDocumentStore()
-        doc_store.write_documents(docs)
-        retriever = SentenceWindowRetriever(document_store=doc_store, window_size=3)
+        in_memory_doc_store.write_documents(docs)
+        retriever = SentenceWindowRetriever(document_store=in_memory_doc_store, window_size=3)
 
         # run the retriever with a document whose content = "Sentence 4."
         result = retriever.run(retrieved_documents=[doc for doc in docs if doc.content == "Sentence 4."])
@@ -227,7 +252,7 @@ class TestSentenceWindowRetriever:
         assert len(result["context_documents"]) == 7
         assert [doc.meta["split_idx_start"] for doc in result["context_documents"]] == [11, 22, 33, 44, 55, 66, 77]
 
-    def test_run_custom_fields(self):
+    def test_run_custom_fields(self, in_memory_doc_store):
         docs = []
         accumulated_length = 0
         for sent in range(10):
@@ -247,10 +272,9 @@ class TestSentenceWindowRetriever:
 
         random.shuffle(docs)
 
-        doc_store = InMemoryDocumentStore()
-        doc_store.write_documents(docs)
+        in_memory_doc_store.write_documents(docs)
         retriever = SentenceWindowRetriever(
-            document_store=doc_store,
+            document_store=in_memory_doc_store,
             window_size=3,
             source_id_meta_field="source_id_test",
             split_id_meta_field="split_id_test",
@@ -260,7 +284,7 @@ class TestSentenceWindowRetriever:
         result = retriever.run(retrieved_documents=[doc for doc in docs if doc.content == "Sentence 4."])
         assert len(result["context_documents"]) == 7
 
-    def test_run_with_multiple_source_ids(self):
+    def test_run_with_multiple_source_ids(self, in_memory_doc_store):
         docs = [
             Document(content="This is the first chunk.", meta={"section": "1", "split_id": 0, "source_id": "source1"}),
             Document(content="This is the second chunk.", meta={"section": "1", "split_id": 1, "source_id": "source1"}),
@@ -269,11 +293,10 @@ class TestSentenceWindowRetriever:
                 content="This is a chunk from section 2.", meta={"section": "2", "split_id": 3, "source_id": "source1"}
             ),
         ]
-        doc_store = InMemoryDocumentStore()
-        doc_store.write_documents(docs)
+        in_memory_doc_store.write_documents(docs)
 
         retriever = SentenceWindowRetriever(
-            document_store=doc_store, window_size=5, source_id_meta_field=["section", "source_id"]
+            document_store=in_memory_doc_store, window_size=5, source_id_meta_field=["section", "source_id"]
         )
         result = retriever.run(
             retrieved_documents=[
@@ -288,7 +311,7 @@ class TestSentenceWindowRetriever:
         assert all(doc.meta["section"] == "1" for doc in result["context_documents"])
 
     @pytest.mark.integration
-    def test_run_with_pipeline(self):
+    def test_run_with_pipeline(self, in_memory_doc_store):
         splitter = DocumentSplitter(split_length=1, split_overlap=0, split_by="period")
         text = (
             "This is a text with some words. There is a second sentence. And there is also a third sentence. "
@@ -296,13 +319,12 @@ class TestSentenceWindowRetriever:
         )
         doc = Document(content=text)
         docs = splitter.run([doc])
-        doc_store = InMemoryDocumentStore()
-        doc_store.write_documents(docs["documents"])
+        in_memory_doc_store.write_documents(docs["documents"])
 
         pipe = Pipeline()
-        pipe.add_component("bm25_retriever", InMemoryBM25Retriever(doc_store, top_k=1))
+        pipe.add_component("bm25_retriever", InMemoryBM25Retriever(in_memory_doc_store, top_k=1))
         pipe.add_component(
-            "sentence_window_retriever", SentenceWindowRetriever(document_store=doc_store, window_size=2)
+            "sentence_window_retriever", SentenceWindowRetriever(document_store=in_memory_doc_store, window_size=2)
         )
         pipe.connect("bm25_retriever", "sentence_window_retriever")
         result = pipe.run({"bm25_retriever": {"query": "third"}})
@@ -320,12 +342,11 @@ class TestSentenceWindowRetriever:
         assert len(result["sentence_window_retriever"]["context_documents"]) == 3
 
     @pytest.mark.integration
-    def test_serialization_deserialization_in_pipeline(self):
-        doc_store = InMemoryDocumentStore()
+    def test_serialization_deserialization_in_pipeline(self, in_memory_doc_store):
         pipe = Pipeline()
-        pipe.add_component("bm25_retriever", InMemoryBM25Retriever(doc_store, top_k=1))
+        pipe.add_component("bm25_retriever", InMemoryBM25Retriever(in_memory_doc_store, top_k=1))
         pipe.add_component(
-            "sentence_window_retriever", SentenceWindowRetriever(document_store=doc_store, window_size=2)
+            "sentence_window_retriever", SentenceWindowRetriever(document_store=in_memory_doc_store, window_size=2)
         )
         pipe.connect("bm25_retriever", "sentence_window_retriever")
 
@@ -333,3 +354,14 @@ class TestSentenceWindowRetriever:
         deserialized = Pipeline.from_dict(serialized)
 
         assert deserialized == pipe
+
+    def test_close(self):
+        closable_document_store = Mock(spec=["close"])
+        retriever = SentenceWindowRetriever(document_store=closable_document_store)
+        retriever.close()
+        closable_document_store.close.assert_called_once_with()
+
+        nonclosable_document_store = Mock(spec=[])
+        retriever = SentenceWindowRetriever(document_store=nonclosable_document_store)
+        retriever.close()
+        assert nonclosable_document_store.mock_calls == []

@@ -8,3 +8,7 @@
 
 # Documentation
 *.md                    @deepset-ai/documentation @deepset-ai/open-source-engineering
+
+# Auto-synced API reference (no human reviewers needed, auto-approved by GitHub bot)
+docs-website/reference/
+docs-website/reference_versioned_docs/

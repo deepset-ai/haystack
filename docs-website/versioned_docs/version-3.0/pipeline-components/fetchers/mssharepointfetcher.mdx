@@ -1,0 +1,147 @@
+---
+title: "MSSharePointFetcher"
+id: mssharepointfetcher
+slug: "/mssharepointfetcher"
+description: "Fetches the full content of Microsoft SharePoint and OneDrive items via the Microsoft Graph API and returns it as ByteStreams."
+---
+
+# MSSharePointFetcher
+
+Fetches the full content of Microsoft SharePoint and OneDrive items via the Microsoft Graph API and returns it as ByteStreams.
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | After [`MSSharePointRetriever`](../retrievers/mssharepointretriever.mdx), before a Router or File Converters |
+| **Mandatory init variables** | None |
+| **Mandatory run variables** | `access_token`: A delegated Microsoft Graph bearer token, typically wired from an upstream `OAuthTokenResolver`  <br /> <br />`targets`: A list of `Document`s (from `MSSharePointRetriever`) or raw SharePoint/OneDrive `web_url` strings |
+| **Output variables** | `streams`: A list of [ByteStreams](../../concepts/data-classes.mdx) holding the fetched content |
+| **API reference** | [Microsoft SharePoint](/reference/integrations-microsoft-sharepoint) |
+| **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/microsoft_sharepoint |
+| **Package name** | `microsoft-sharepoint-haystack` |
+
+</div>
+
+## Overview
+
+`MSSharePointFetcher` downloads the full content of Microsoft SharePoint and OneDrive items through the [Microsoft Graph API](https://learn.microsoft.com/en-us/graph/use-the-api) and returns `ByteStream` objects, ready for a downstream converter.
+
+It complements [`MSSharePointRetriever`](../retrievers/mssharepointretriever.mdx), which returns only Search snippets and metadata. Wire the retriever's `documents` (or a list of `web_url`s) into the fetcher to download the underlying content. The fetcher dispatches on the entity type of each hit:
+
+- **Files** (`driveItem`) are downloaded as their raw bytes (PDF, DOCX, ...).
+- **List items** (`listItem`) are returned as a JSON `ByteStream` of the item's column values (`fields`).
+- **SharePoint pages** (`sitePage`) are returned as an HTML `ByteStream` built from the page's web parts.
+
+Each `ByteStream`'s `meta` carries `url`, `file_name`, `content_type`, and a normalized `entity_type` (`driveItem`, `listItem`, or `sitePage`). Everything is resolved through the Microsoft Graph `shares` endpoint (plus the Pages API for pages), so only the `web_url` already exposed by the retriever is needed.
+
+Because the output is a list of `ByteStream`s of mixed types, the typical next step is a [`FileTypeRouter`](../routers/filetyperouter.mdx) that dispatches each stream to the right converter ([`PyPDFToDocument`](../converters/pypdftodocument.mdx), [`DOCXToDocument`](../converters/docxtodocument.mdx), [`HTMLToDocument`](../converters/htmltodocument.mdx), or a JSON converter).
+
+### Authentication
+
+The fetcher takes a per-user `access_token` as a run input. The token must carry **delegated** Microsoft Graph permissions (for example `Files.Read.All` for files and `Sites.Read.All` for list items and pages). Typically you wire it from an upstream [`OAuthTokenResolver`](../connectors/oauthtokenresolver.mdx), which emits a plain string. A `Secret` is also accepted and resolved internally.
+
+### Error handling and concurrency
+
+- `raise_on_failure` (default `True`): when `False`, a failed fetch is logged and the item is skipped, so the remaining items are still returned.
+- `max_retries` (default `3`): retries on throttled (HTTP 429) and transient server errors.
+- `max_concurrent_requests` (default `5`): bounds the number of items fetched concurrently by `run_async` to avoid tripping Microsoft Graph rate limits. It has no effect on the synchronous `run`, which fetches items one at a time.
+
+### Installation
+
+Install the Microsoft SharePoint integration with:
+
+```shell
+pip install microsoft-sharepoint-haystack
+```
+
+## Usage
+
+### On its own
+
+`access_token` below is a per-user delegated Microsoft Graph bearer token. You can pass either raw `web_url` strings or the `Document`s produced by `MSSharePointRetriever`.
+
+```python
+from haystack_integrations.components.fetchers.microsoft_sharepoint import (
+    MSSharePointFetcher,
+)
+
+fetcher = MSSharePointFetcher()
+
+result = fetcher.run(
+    access_token="my-delegated-graph-token",
+    targets=[
+        "https://contoso.sharepoint.com/sites/contoso-team/contoso-designs.docx",
+    ],
+)
+
+for stream in result["streams"]:
+    print(stream.meta["file_name"], stream.meta["content_type"])
+```
+
+### In a pipeline
+
+The following query pipeline ties the whole integration together: an [`OAuthTokenResolver`](../connectors/oauthtokenresolver.mdx) provides a token, [`MSSharePointRetriever`](../retrievers/mssharepointretriever.mdx) searches SharePoint, `MSSharePointFetcher` downloads the matching items, and a [`FileTypeRouter`](../routers/filetyperouter.mdx) sends each `ByteStream` to the right converter. Note that the resolver's single `access_token` output feeds both the retriever and the fetcher.
+
+```python
+from haystack import Pipeline
+from haystack.utils import Secret
+from haystack.components.routers import FileTypeRouter
+from haystack.components.converters import PyPDFToDocument, DOCXToDocument
+
+from haystack_integrations.components.connectors.oauth import OAuthTokenResolver
+from haystack_integrations.utils.oauth import OAuthRefreshTokenSource
+from haystack_integrations.components.retrievers.microsoft_sharepoint import (
+    MSSharePointRetriever,
+)
+from haystack_integrations.components.fetchers.microsoft_sharepoint import (
+    MSSharePointFetcher,
+)
+
+pipeline = Pipeline()
+pipeline.add_component(
+    "resolver",
+    OAuthTokenResolver(
+        token_source=OAuthRefreshTokenSource(
+            token_url="https://login.microsoftonline.com/common/oauth2/v2.0/token",
+            client_id="aaa-bbb-ccc",
+            refresh_token=Secret.from_env_var("MS_REFRESH_TOKEN"),
+            scopes=[
+                "https://graph.microsoft.com/Files.Read.All",
+                "https://graph.microsoft.com/Sites.Read.All",
+                "offline_access",
+            ],
+        ),
+    ),
+)
+pipeline.add_component("retriever", MSSharePointRetriever(top_k=5))
+pipeline.add_component("fetcher", MSSharePointFetcher())
+pipeline.add_component(
+    "router",
+    FileTypeRouter(
+        mime_types=[
+            "application/pdf",
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        ],
+    ),
+)
+pipeline.add_component("pdf_converter", PyPDFToDocument())
+pipeline.add_component("docx_converter", DOCXToDocument())
+
+# The same token feeds both the retriever and the fetcher.
+pipeline.connect("resolver.access_token", "retriever.access_token")
+pipeline.connect("resolver.access_token", "fetcher.access_token")
+
+# The retrieved documents become the fetcher's targets.
+pipeline.connect("retriever.documents", "fetcher.targets")
+
+# Route each fetched ByteStream to the matching converter.
+pipeline.connect("fetcher.streams", "router.sources")
+pipeline.connect("router.application/pdf", "pdf_converter.sources")
+pipeline.connect(
+    "router.application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "docx_converter.sources",
+)
+
+result = pipeline.run({"retriever": {"query": "quarterly roadmap"}})
+```

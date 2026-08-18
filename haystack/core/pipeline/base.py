@@ -27,9 +27,8 @@ from haystack.core.errors import (
     PipelineValidationError,
 )
 from haystack.core.pipeline.component_checks import (
-    _NO_OUTPUT_PRODUCED,
+    _NoOutputProduced,
     all_predecessors_executed,
-    are_all_lazy_variadic_sockets_resolved,
     are_all_sockets_ready,
     can_component_run,
     is_any_greedy_socket_ready,
@@ -40,6 +39,11 @@ from haystack.core.serialization import (
     component_from_dict,
     component_to_dict,
     generate_qualified_class_name,
+)
+from haystack.core.serialization_security import (
+    _check_module_allowed,
+    _deserialization_context,
+    mark_deserialization_internal,
 )
 from haystack.core.type_utils import (
     ConversionStrategyType,
@@ -76,8 +80,7 @@ class ComponentPriority(IntEnum):
     HIGHEST = 1
     READY = 2
     DEFER = 3
-    DEFER_LAST = 4
-    BLOCKED = 5
+    BLOCKED = 4
 
 
 class PipelineBase:  # noqa: PLW1641
@@ -174,8 +177,15 @@ class PipelineBase:  # noqa: PLW1641
         }
 
     @classmethod
+    @mark_deserialization_internal
     def from_dict(
-        cls: type[T], data: dict[str, Any], callbacks: DeserializationCallbacks | None = None, **kwargs: Any
+        cls: type[T],
+        data: dict[str, Any],
+        callbacks: DeserializationCallbacks | None = None,
+        *,
+        allowed_modules: list[str] | None = None,
+        unsafe: bool = False,
+        **kwargs: Any,
     ) -> T:
         """
         Deserializes the pipeline from a dictionary.
@@ -184,12 +194,28 @@ class PipelineBase:  # noqa: PLW1641
             Dictionary to deserialize from.
         :param callbacks:
             Callbacks to invoke during deserialization.
+        :param allowed_modules:
+            Additional module patterns whose classes may be imported during deserialization.
+            By default, only modules under `haystack`, `haystack_integrations`, `haystack_experimental`,
+            `builtins`, `typing`, and `collections` are trusted. See
+            `haystack.core.serialization.allow_deserialization_module` for the matching semantics.
+        :param unsafe:
+            If `True`, bypass the deserialization allowlist entirely. Only use this when you fully
+            trust the source of the serialized data — any class in any importable module can be
+            instantiated.
         :param kwargs:
             `components`: a dictionary of `{name: instance}` to reuse instances of components instead of creating new
             ones.
         :returns:
             Deserialized component.
         """
+        with _deserialization_context(allowed_modules=allowed_modules, unsafe=unsafe):
+            return cls._from_dict_impl(data, callbacks, **kwargs)
+
+    @classmethod
+    def _from_dict_impl(
+        cls: type[T], data: dict[str, Any], callbacks: DeserializationCallbacks | None = None, **kwargs: Any
+    ) -> T:
         data_copy = _deepcopy_with_exceptions(data)  # to prevent modification of original data
         metadata = data_copy.get("metadata", {})
         max_runs_per_component = data_copy.get("max_runs_per_component", 100)
@@ -208,28 +234,32 @@ class PipelineBase:  # noqa: PLW1641
                 if "type" not in component_data:
                     raise PipelineError(f"Missing 'type' in component '{name}'")
 
-                if component_data["type"] not in component.registry:
+                component_type = component_data["type"]
+                if isinstance(component_type, str) and "." in component_type:
+                    _check_module_allowed(component_type.rsplit(".", 1)[0])
+
+                if component_type not in component.registry:
                     try:
                         # Import the module first...
-                        module, _ = component_data["type"].rsplit(".", 1)
+                        module, _ = component_type.rsplit(".", 1)
                         logger.debug("Trying to import module {module_name}", module_name=module)
                         type_serialization.thread_safe_import(module)
                         # ...then try again
-                        if component_data["type"] not in component.registry:
+                        if component_type not in component.registry:
                             raise PipelineError(  # noqa: TRY301
                                 f"Successfully imported module '{module}' but couldn't find "
-                                f"'{component_data['type']}' in the component registry.\n"
+                                f"'{component_type}' in the component registry.\n"
                                 f"The component might be registered under a different path. "
                                 f"Here are the registered components:\n {list(component.registry.keys())}\n"
                             )
                     except (ImportError, PipelineError, ValueError) as e:
                         raise PipelineError(
-                            f"Component '{component_data['type']}' (name: '{name}') not imported. Please "
+                            f"Component '{component_type}' (name: '{name}') not imported. Please "
                             f"check that the package is installed and the component path is correct."
                         ) from e
 
                 # Create a new one
-                component_class = component.registry[component_data["type"]]
+                component_class = component.registry[component_type]
 
                 try:
                     instance = component_from_dict(component_class, component_data, name, callbacks)
@@ -284,11 +314,15 @@ class PipelineBase:  # noqa: PLW1641
         fp.write(marshaller.marshal(self.to_dict()))
 
     @classmethod
+    @mark_deserialization_internal
     def loads(
         cls: type[T],
         data: str | bytes | bytearray,
         marshaller: Marshaller = DEFAULT_MARSHALLER,
         callbacks: DeserializationCallbacks | None = None,
+        *,
+        allowed_modules: list[str] | None = None,
+        unsafe: bool = False,
     ) -> T:
         """
         Creates a `Pipeline` object from the string representation passed in the `data` argument.
@@ -299,6 +333,14 @@ class PipelineBase:  # noqa: PLW1641
             The Marshaller used to create the string representation. Defaults to `YamlMarshaller`.
         :param callbacks:
             Callbacks to invoke during deserialization.
+        :param allowed_modules:
+            Additional module patterns whose classes may be imported during deserialization.
+            By default, only modules under `haystack`, `haystack_integrations`, `haystack_experimental`,
+            `builtins`, `typing`, and `collections` are trusted.
+        :param unsafe:
+            If `True`, bypass the deserialization allowlist entirely. Only use this when you fully
+            trust the source of the serialized data — any class in any importable module can be
+            instantiated.
         :raises DeserializationError:
             If an error occurs during deserialization.
         :returns:
@@ -312,17 +354,21 @@ class PipelineBase:  # noqa: PLW1641
                 "caused by malformed or invalid syntax in the serialized representation."
             ) from e
 
-        return cls.from_dict(deserialized_data, callbacks)
+        return cls.from_dict(deserialized_data, callbacks, allowed_modules=allowed_modules, unsafe=unsafe)
 
     @classmethod
+    @mark_deserialization_internal
     def load(
         cls: type[T],
         fp: TextIO,
         marshaller: Marshaller = DEFAULT_MARSHALLER,
         callbacks: DeserializationCallbacks | None = None,
+        *,
+        allowed_modules: list[str] | None = None,
+        unsafe: bool = False,
     ) -> T:
         """
-        Creates a `Pipeline` object a string representation.
+        Creates a `Pipeline` object from a string representation.
 
         The string representation is read from the file-like object passed in the `fp` argument.
 
@@ -333,12 +379,20 @@ class PipelineBase:  # noqa: PLW1641
             The Marshaller used to create the string representation. Defaults to `YamlMarshaller`.
         :param callbacks:
             Callbacks to invoke during deserialization.
+        :param allowed_modules:
+            Additional module patterns whose classes may be imported during deserialization.
+            By default, only modules under `haystack`, `haystack_integrations`, `haystack_experimental`,
+            `builtins`, `typing`, and `collections` are trusted.
+        :param unsafe:
+            If `True`, bypass the deserialization allowlist entirely. Only use this when you fully
+            trust the source of the serialized data — any class in any importable module can be
+            instantiated.
         :raises DeserializationError:
             If an error occurs during deserialization.
         :returns:
             A `Pipeline` object.
         """
-        return cls.loads(fp.read(), marshaller, callbacks)
+        return cls.loads(fp.read(), marshaller, callbacks, allowed_modules=allowed_modules, unsafe=unsafe)
 
     def add_component(self, name: str, instance: Component) -> None:
         """
@@ -421,6 +475,22 @@ class PipelineBase:  # noqa: PLW1641
                 ", ".join(n for n in self.graph.nodes),
             ) from exc
 
+        # Remove this component's name from its neighbors' sockets before the edges are gone,
+        # otherwise the surviving components are left holding dangling references to it.
+        for _, _, edge_data in self.graph.in_edges(name, data=True):
+            sender_socket = edge_data["from_socket"]
+            sender_socket.receivers = [r for r in sender_socket.receivers if r != name]
+        for _, _, edge_data in self.graph.out_edges(name, data=True):
+            receiver_socket = edge_data["to_socket"]
+            receiver_socket.senders = [s for s in receiver_socket.senders if s != name]
+            if (
+                len(receiver_socket.senders) <= 1
+                and receiver_socket.is_lazy_variadic
+                and not receiver_socket.wrap_input_in_list
+            ):
+                receiver_socket.is_lazy_variadic = False
+                receiver_socket.wrap_input_in_list = True
+
         # Delete component from the graph, deleting all its connections
         self.graph.remove_node(name)
 
@@ -428,6 +498,9 @@ class PipelineBase:  # noqa: PLW1641
         input_sockets = instance.__haystack_input__._sockets_dict  # type: ignore[attr-defined]
         for socket in input_sockets.values():
             socket.senders = []
+            if socket.is_lazy_variadic and not socket.wrap_input_in_list:
+                socket.is_lazy_variadic = False
+                socket.wrap_input_in_list = True
 
         output_sockets = instance.__haystack_output__._sockets_dict  # type: ignore[attr-defined]
         for socket in output_sockets.values():
@@ -445,6 +518,12 @@ class PipelineBase:  # noqa: PLW1641
         All components to connect must exist in the pipeline.
         If connecting to a component that has several output connections, specify the inputs and output names as
         'component_name.connections_name'.
+
+        If multiple senders are connected to the same list-typed receiver socket, the socket is
+        promoted to a lazy variadic socket so it can accept all incoming values. With the synchronous
+        `run`, the resulting list is ordered alphabetically by sender component name, not by the order in
+        which `connect()` was called. With the asynchronous run path (`run_async`), no ordering is
+        guaranteed, since components in different branches may run in parallel.
 
         :param sender:
             The component that delivers the value. This can be either just a component name or can be
@@ -863,15 +942,60 @@ class PipelineBase:  # noqa: PLW1641
 
     def warm_up(self) -> None:
         """
-        Make sure all nodes are warm.
+        Make sure all components are warm.
 
-        It's the node's responsibility to make sure this method can be called at every `Pipeline.run()`
+        It's the component's responsibility to make sure this method can be called at every `Pipeline.run()`
         without re-initializing everything.
         """
-        for node in self.graph.nodes:
-            if hasattr(self.graph.nodes[node]["instance"], "warm_up"):
-                logger.info("Warming up component {node}...", node=node)
-                self.graph.nodes[node]["instance"].warm_up()
+        for component_name in self.graph.nodes:
+            if hasattr(self.graph.nodes[component_name]["instance"], "warm_up"):
+                logger.info("Warming up component {component_name}...", component_name=component_name)
+                self.graph.nodes[component_name]["instance"].warm_up()
+
+    async def warm_up_async(self) -> None:
+        """
+        Make sure all components are warm, using the async warm-up path where available.
+
+        Each component is warmed up with `warm_up_async` if it has one, otherwise with its sync `warm_up`.
+        Both run on the event loop, never offloaded to a worker thread.
+        This ensures that if an async client is created during `warm-up` (residual scenario), it binds to the loop that
+        `run_async` will use.
+        """
+        for component_name in self.graph.nodes:
+            instance = self.graph.nodes[component_name]["instance"]
+            if hasattr(instance, "warm_up_async"):
+                logger.info("Warming up component {component_name}...", component_name=component_name)
+                await instance.warm_up_async()
+            elif hasattr(instance, "warm_up"):
+                logger.info("Warming up component {component_name}...", component_name=component_name)
+                instance.warm_up()
+
+    def close(self) -> None:
+        """
+        Release resources held by the pipeline's components by calling each component's `close` method.
+
+        Only the synchronous side of each component is released here; use `close_async` to release async clients.
+        """
+        for component_name in self.graph.nodes:
+            instance = self.graph.nodes[component_name]["instance"]
+            if hasattr(instance, "close"):
+                logger.info("Closing component {component_name}...", component_name=component_name)
+                instance.close()
+
+    async def close_async(self) -> None:
+        """
+        Release resources held by the pipeline's components, using the async close path where available.
+
+        Each component is closed with `close_async` if it has one, otherwise with its sync `close`.
+        """
+        for component_name in self.graph.nodes:
+            instance = self.graph.nodes[component_name]["instance"]
+            if hasattr(instance, "close_async"):
+                logger.info("Closing component {component_name}...", component_name=component_name)
+                await instance.close_async()
+            elif hasattr(instance, "close"):
+                logger.info("Closing component {component_name}...", component_name=component_name)
+                instance.close()
 
     @staticmethod
     def _create_component_span(
@@ -1109,6 +1233,8 @@ class PipelineBase:  # noqa: PLW1641
         :param component_name: The name of a component.
         :param component: Component with component metadata.
         :param inputs: Global inputs state.
+        :param is_resume: Whether the component is being resumed from a breakpoint. If True, the inputs
+            have already been consumed, so the first available value is returned for each socket.
         :returns: The inputs for the component.
         """
         component_inputs = inputs.get(component_name, {})
@@ -1116,7 +1242,9 @@ class PipelineBase:  # noqa: PLW1641
         greedy_inputs_to_remove = set()
         for socket_name, socket in component["input_sockets"].items():
             socket_inputs = component_inputs.get(socket_name, [])
-            socket_inputs_values = [sock["value"] for sock in socket_inputs if sock["value"] is not _NO_OUTPUT_PRODUCED]
+            socket_inputs_values = [
+                sock["value"] for sock in socket_inputs if not isinstance(sock["value"], _NoOutputProduced)
+            ]
 
             # if we are resuming a component, the inputs are already consumed, so we just return the first input
             if is_resume:
@@ -1188,15 +1316,15 @@ class PipelineBase:  # noqa: PLW1641
         if not can_component_run(comp, comp_inputs):
             return ComponentPriority.BLOCKED
         if is_any_greedy_socket_ready(comp, comp_inputs) and are_all_sockets_ready(comp, comp_inputs):
-            # This priority is explicitly used in AsyncPipeline + implicitly in _is_queue_stale
+            # This priority is explicitly used in the async run path + implicitly in _is_queue_stale
             # Implicit b/c it checks via ">" operator if there is a component with HIGHEST priority
             return ComponentPriority.HIGHEST
         if all_predecessors_executed(comp, comp_inputs):
-            # This priority is explicitly used in AsyncPipeline + in _is_queue_stale
+            # This priority is explicitly used in the async run path + in _is_queue_stale
             return ComponentPriority.READY
-        if are_all_lazy_variadic_sockets_resolved(comp, comp_inputs):
-            return ComponentPriority.DEFER
-        return ComponentPriority.DEFER_LAST
+        # If we make it here it means the component can run but is waiting for more inputs, so we give it the lowest
+        # priority. This way, components that are ready to run will be prioritized over ones assigned with this prio.
+        return ComponentPriority.DEFER
 
     def _get_component_with_graph_metadata_and_visits(self, component_name: str, visits: int) -> dict[str, Any]:
         """
@@ -1236,7 +1364,9 @@ class PipelineBase:  # noqa: PLW1641
 
         component_name = item[1]
         comp = self._get_component_with_graph_metadata_and_visits(component_name, component_visits[component_name])
-        if comp["visits"] > self._max_runs_per_component:
+        # Only raise the max run count error if the component is not blocked, since if it's blocked it means it
+        # can't run anyway.
+        if item[0] < ComponentPriority.BLOCKED and comp["visits"] >= self._max_runs_per_component:
             msg = f"Maximum run count {self._max_runs_per_component} reached for component '{component_name}'"
             raise PipelineMaxComponentRuns(msg)
         return ComponentPriority(item[0]), component_name, comp
@@ -1300,8 +1430,8 @@ class PipelineBase:  # noqa: PLW1641
         """
         Decides which component to run when multiple components are waiting for inputs with the same priority.
 
-        NOTE: This was designed to only tie-break for priorities DEFER and DEFER_LAST. Since this function also removes
-        these components from the priority queue we rely on _is_queue_stale to then refill the priority queue.
+        NOTE: This was designed to only tie-break for components with the priority DEFER. Since this function also
+        removes these components from the priority queue we rely on _is_queue_stale to then refill the priority queue.
         And _is_queue_stale only triggers when all remaining components have BLOCKED priority.
 
         :param component_name: The name of the component.
@@ -1314,16 +1444,10 @@ class PipelineBase:  # noqa: PLW1641
         """
         # Create a list of all components that have the same priority as the current component, including the
         # current component itself and remove them from the priority queue.
-        has_deferred_priority = priority in [ComponentPriority.DEFER, ComponentPriority.DEFER_LAST]
         components_with_same_priority = [component_name]
         while len(priority_queue) > 0:
             next_priority, next_component_name = priority_queue.peek()
-            # For tiebreaking purposes we treat DEFER and DEFER_LAST as the same priority.
-            if (
-                has_deferred_priority
-                and next_priority in [ComponentPriority.DEFER, ComponentPriority.DEFER_LAST]
-                or next_priority == priority
-            ):
+            if priority == ComponentPriority.DEFER and next_priority == ComponentPriority.DEFER:
                 priority_queue.pop()  # actually remove the component
                 components_with_same_priority.append(next_component_name)
             else:
@@ -1443,12 +1567,12 @@ class PipelineBase:  # noqa: PLW1641
         :param include_outputs_from: Set of component names that should always return an output from the pipeline.
         """
         for receiver_name, sender_socket, receiver_socket, conversion_strategy in receivers:
-            # We either get the value that was produced by the actor or we use the _NO_OUTPUT_PRODUCED class to indicate
+            # We either get the value that was produced by the actor or we use a _NoOutputProduced marker to indicate
             # that the sender did not produce an output for this socket.
             # This allows us to track if a predecessor already ran but did not produce an output.
-            value = component_outputs.get(sender_socket.name, _NO_OUTPUT_PRODUCED)
+            value = component_outputs.get(sender_socket.name, _NoOutputProduced())
 
-            if value is not _NO_OUTPUT_PRODUCED and conversion_strategy:
+            if not isinstance(value, _NoOutputProduced) and conversion_strategy:
                 try:
                     value = _convert_value(value=value, conversion_strategy=conversion_strategy)
                 except Exception as e:
@@ -1485,7 +1609,8 @@ class PipelineBase:  # noqa: PLW1641
                 )
             else:
                 # If the receiver socket is not lazy variadic, it is greedy variadic or non-variadic.
-                # We overwrite with the new input if it's not _NO_OUTPUT_PRODUCED or if the current value is None.
+                # We overwrite with the new input if it's not a _NoOutputProduced marker, or if the current value
+                # is None.
                 _write_to_standard_socket(
                     inputs=inputs,
                     receiver_name=receiver_name,
@@ -1758,5 +1883,5 @@ def _write_to_standard_socket(
     current_value = inputs[receiver_name].get(receiver_socket_name)
 
     # Only overwrite if there's no existing value, or we have a new value to provide
-    if current_value is None or value is not _NO_OUTPUT_PRODUCED:
+    if current_value is None or not isinstance(value, _NoOutputProduced):
         inputs[receiver_name][receiver_socket_name] = [{"sender": component_name, "value": value}]

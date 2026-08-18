@@ -1,0 +1,105 @@
+---
+title: "FalkorDBDocumentStore"
+id: falkordbdocumentstore
+slug: "/falkordbdocumentstore"
+description: "Use the FalkorDB graph database with Haystack for GraphRAG workloads."
+---
+
+# FalkorDBDocumentStore
+
+Use the FalkorDB graph database with Haystack for GraphRAG workloads.
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| API reference | [FalkorDB](/reference/integrations-falkordb)                                                        |
+| GitHub link   | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/falkordb |
+
+</div>
+
+FalkorDB is a high-performance graph database optimized for GraphRAG workloads. The `FalkorDBDocumentStore` stores documents as graph nodes and supports native vector search — no APOC is required. Documents and their `meta` fields are stored flat on each node, and all bulk writes use `UNWIND` + `MERGE` for safe OpenCypher upserts.
+
+For more information, see the [FalkorDB documentation](https://docs.falkordb.com/).
+
+## Installation
+
+Run FalkorDB with Docker:
+
+```shell
+docker run -d -p 6379:6379 falkordb/falkordb:latest
+```
+
+Install the Haystack integration:
+
+```shell
+pip install falkordb-haystack
+```
+
+## Usage
+
+Initialize the document store and write documents:
+
+```python
+from haystack import Document
+from haystack_integrations.document_stores.falkordb import FalkorDBDocumentStore
+
+document_store = FalkorDBDocumentStore(
+    host="localhost",
+    port=6379,
+    embedding_dim=768,
+    recreate_graph=True,
+)
+
+document_store.write_documents(
+    [
+        Document(
+            content="There are over 7,000 languages spoken around the world today.",
+        ),
+        Document(
+            content="Elephants have been observed to recognize themselves in mirrors.",
+        ),
+    ],
+)
+print(document_store.count_documents())
+```
+
+To learn more about the initialization parameters, see the [API docs](/reference/integrations-falkordb#falkordbdocumentstore).
+
+To compute real embeddings for your documents, use a Document Embedder such as the [`SentenceTransformersDocumentEmbedder`](../pipeline-components/embedders/sentencetransformersdocumentembedder.mdx).
+
+### Authentication
+
+To connect to a password-protected FalkorDB instance, pass the password via `Secret`:
+
+```python
+from haystack.utils import Secret
+from haystack_integrations.document_stores.falkordb import FalkorDBDocumentStore
+
+document_store = FalkorDBDocumentStore(
+    host="localhost",
+    port=6379,
+    password=Secret.from_env_var("FALKORDB_PASSWORD"),
+)
+```
+
+### Similarity Functions
+
+`FalkorDBDocumentStore` supports two similarity functions for vector search:
+
+- `"cosine"` (default): cosine similarity, best for normalized embeddings.
+- `"euclidean"`: Euclidean distance, useful when embedding magnitude matters.
+
+```python
+document_store = FalkorDBDocumentStore(
+    host="localhost",
+    port=6379,
+    embedding_dim=768,
+    similarity="euclidean",
+)
+```
+
+### Supported Retrievers
+
+- [`FalkorDBEmbeddingRetriever`](../pipeline-components/retrievers/falkordbembeddingretriever.mdx): Retrieves documents from the `FalkorDBDocumentStore` based on vector similarity using FalkorDB's native vector index.
+- [`FalkorDBCypherRetriever`](../pipeline-components/retrievers/falkordbcypherretriever.mdx): Retrieves documents by executing arbitrary OpenCypher queries, enabling graph traversal and multi-hop queries for GraphRAG pipelines.

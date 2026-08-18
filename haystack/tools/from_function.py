@@ -4,12 +4,14 @@
 
 import inspect
 from collections.abc import Callable
-from typing import Any
+from typing import Any, overload
 
 from pydantic import create_model
 
+from haystack.components.agents.state.state import State
+
 from .errors import SchemaGenerationError
-from .parameters_schema_utils import _contains_callable_type
+from .parameters_schema_utils import _contains_callable_type, _unwrap_optional
 from .tool import Tool
 
 
@@ -42,24 +44,26 @@ def create_tool_from_function(
     tool = create_tool_from_function(get_weather)
 
     print(tool)
-    >>> Tool(name='get_weather', description='A simple function to get the current weather for a location.',
-    >>> parameters={
-    >>> 'type': 'object',
-    >>> 'properties': {
-    >>>     'city': {'type': 'string', 'description': 'the city for which to get the weather', 'default': 'Munich'},
-    >>>     'unit': {
-    >>>         'type': 'string',
-    >>>         'enum': ['Celsius', 'Fahrenheit'],
-    >>>         'description': 'the unit for the temperature',
-    >>>         'default': 'Celsius',
-    >>>     },
-    >>>     }
-    >>> },
-    >>> function=<function get_weather at 0x7f7b3a8a9b80>)
+    # >> Tool(name='get_weather', description='A simple function to get the current weather for a location.',
+    # >> parameters={
+    # >> 'type': 'object',
+    # >> 'properties': {
+    # >>     'city': {'type': 'string', 'description': 'the city for which to get the weather', 'default': 'Munich'},
+    # >>     'unit': {
+    # >>         'type': 'string',
+    # >>         'enum': ['Celsius', 'Fahrenheit'],
+    # >>         'description': 'the unit for the temperature',
+    # >>         'default': 'Celsius',
+    # >>     },
+    # >>     }
+    # >> },
+    # >> function=<function get_weather at 0x7f7b3a8a9b80>)
     ```
 
     :param function:
-        The function to be converted into a Tool.
+        The function to be converted into a Tool. May be either a regular function (assigned to the
+        resulting Tool's `function` field) or a coroutine function defined with `async def` (assigned
+        to `async_function`).
         The function must include type hints for all parameters.
         The function is expected to have basic python input types (str, int, float, bool, list, dict, tuple).
         Other input types may work but are not guaranteed.
@@ -139,6 +143,10 @@ def create_tool_from_function(
         if inputs_from_state and param_name in inputs_from_state.values():
             continue
 
+        # Skip State-typed parameters (including Optional[State]) - Agent tool execution injects them at runtime
+        if _unwrap_optional(param.annotation) is State:
+            continue
+
         if param.annotation is param.empty:
             raise ValueError(f"Function '{function.__name__}': parameter '{param_name}' does not have a type hint.")
 
@@ -171,15 +179,42 @@ def create_tool_from_function(
         if param_name in schema["properties"]:
             schema["properties"][param_name]["description"] = param_description
 
+    is_async = inspect.iscoroutinefunction(function)
+
     return Tool(
         name=name or function.__name__,
         description=tool_description,
         parameters=schema,
-        function=function,
+        function=None if is_async else function,
+        async_function=function if is_async else None,
         inputs_from_state=inputs_from_state,
         outputs_to_state=outputs_to_state,
         outputs_to_string=outputs_to_string,
     )
+
+
+@overload
+def tool(
+    function: Callable,
+    *,
+    name: str | None = None,
+    description: str | None = None,
+    inputs_from_state: dict[str, str] | None = None,
+    outputs_to_state: dict[str, dict[str, Any]] | None = None,
+    outputs_to_string: dict[str, Any] | None = None,
+) -> Tool: ...
+
+
+@overload
+def tool(
+    function: None = None,
+    *,
+    name: str | None = None,
+    description: str | None = None,
+    inputs_from_state: dict[str, str] | None = None,
+    outputs_to_state: dict[str, dict[str, Any]] | None = None,
+    outputs_to_string: dict[str, Any] | None = None,
+) -> Callable[[Callable], Tool]: ...
 
 
 def tool(
@@ -214,20 +249,20 @@ def tool(
         return f"Weather report for {city}: 20 {unit}, sunny"
 
     print(get_weather)
-    >>> Tool(name='get_weather', description='A simple function to get the current weather for a location.',
-    >>> parameters={
-    >>> 'type': 'object',
-    >>> 'properties': {
-    >>>     'city': {'type': 'string', 'description': 'the city for which to get the weather', 'default': 'Munich'},
-    >>>     'unit': {
-    >>>         'type': 'string',
-    >>>         'enum': ['Celsius', 'Fahrenheit'],
-    >>>         'description': 'the unit for the temperature',
-    >>>         'default': 'Celsius',
-    >>>     },
-    >>>     }
-    >>> },
-    >>> function=<function get_weather at 0x7f7b3a8a9b80>)
+    # >> Tool(name='get_weather', description='A simple function to get the current weather for a location.',
+    # >> parameters={
+    # >> 'type': 'object',
+    # >> 'properties': {
+    # >>     'city': {'type': 'string', 'description': 'the city for which to get the weather', 'default': 'Munich'},
+    # >>     'unit': {
+    # >>         'type': 'string',
+    # >>         'enum': ['Celsius', 'Fahrenheit'],
+    # >>         'description': 'the unit for the temperature',
+    # >>         'default': 'Celsius',
+    # >>     },
+    # >>     }
+    # >> },
+    # >> function=<function get_weather at 0x7f7b3a8a9b80>)
     ```
 
     :param function: The function to decorate (when used without parameters)
@@ -301,6 +336,19 @@ def tool(
     return decorator(function)
 
 
+# Keywords whose value is a mapping keyed by *names chosen by the user* — property
+# names, definition names, regexes — rather than by JSON Schema keywords. Their keys
+# must survive even when they spell 'title', so we recurse into the values only.
+# Deleting a key here would drop a declared property or leave a '$ref' dangling.
+_NAME_KEYED_SCHEMA_MAPS = frozenset(
+    {"properties", "patternProperties", "$defs", "definitions", "dependentSchemas", "dependentRequired"}
+)
+
+# Keywords whose value is instance *data*, not a sub-schema. A 'title' key inside a
+# default value is part of that value, so removing it would change the tool's contract.
+_DATA_SCHEMA_KEYWORDS = frozenset({"default", "const", "enum", "examples", "example"})
+
+
 def _remove_title_from_schema(schema: dict[str, Any]) -> None:
     """
     Remove the 'title' keyword from JSON schema and contained property schemas.
@@ -309,10 +357,16 @@ def _remove_title_from_schema(schema: dict[str, Any]) -> None:
         The JSON schema to remove the 'title' keyword from.
     """
     for key, value in list(schema.items()):
-        # Make sure not to remove parameters named title
-        if key == "properties" and isinstance(value, dict) and "title" in value:
-            for sub_val in value.values():
-                _remove_title_from_schema(sub_val)
+        # Keys of a name-keyed mapping are property or definition names, not schema
+        # keywords. Recurse only into the sub-schemas so that parameters named
+        # 'title' (or any other keyword, e.g. 'properties') are never removed or
+        # misinterpreted as schema keywords.
+        if key in _NAME_KEYED_SCHEMA_MAPS and isinstance(value, dict):
+            for sub_schema in value.values():
+                if isinstance(sub_schema, dict):
+                    _remove_title_from_schema(sub_schema)
+        elif key in _DATA_SCHEMA_KEYWORDS:
+            continue
         elif key == "title":
             del schema[key]
         elif isinstance(value, dict):

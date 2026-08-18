@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from unittest.mock import ANY
+from unittest.mock import ANY, MagicMock
 
 import pytest
 from openai.types import Reasoning, ResponseFormatText
@@ -97,18 +97,16 @@ def openai_responses_streaming_chunks_with_tool_call():
         ),
         StreamingChunk(
             content="",
-            meta={
-                "item": {
+            meta={"received_at": ANY},
+            index=0,
+            reasoning=ReasoningContent(
+                reasoning_text="",
+                extra={
                     "id": "rs_095b57053855eac100690491f54e308196878239be3ba6133c",
                     "summary": [],
                     "type": "reasoning",
                 },
-                "output_index": 0,
-                "sequence_number": 3,
-                "type": "response.output_item.done",
-                "received_at": ANY,
-            },
-            index=0,
+            ),
         ),
         StreamingChunk(
             content="",
@@ -225,15 +223,20 @@ def openai_responses_streaming_chunks_with_tool_call():
 
 class TestConversionToStreamingChunks:
     def test_convert_streaming_chunks_to_chat_message_with_tool_call_empty_reasoning(
-        self, openai_responses_streaming_chunks_with_tool_call
-    ):
+        self, openai_responses_streaming_chunks_with_tool_call: MagicMock
+    ) -> None:
+
         chat_message = _convert_streaming_chunks_to_chat_message(openai_responses_streaming_chunks_with_tool_call)
         assert chat_message == ChatMessage(
-            _role="assistant",
+            _role="assistant",  # type: ignore[arg-type]
             _content=[
                 ReasoningContent(
                     reasoning_text="",
-                    extra={"id": "rs_095b57053855eac100690491f54e308196878239be3ba6133c", "type": "reasoning"},
+                    extra={
+                        "id": "rs_095b57053855eac100690491f54e308196878239be3ba6133c",
+                        "summary": [],
+                        "type": "reasoning",
+                    },
                 ),
                 ToolCall(
                     tool_name="weather",
@@ -276,10 +279,11 @@ class TestConversionToStreamingChunks:
             },
         )
 
-    def test_convert_only_text(self):
+    def test_convert_only_text(self) -> None:
+
         openai_chunks = [
             ResponseCreatedEvent(
-                response=Response(
+                response=Response(  # type: ignore[call-arg]
                     id="resp_0a8811e62a95217b00690c5ff62c14819596eae387d116f285",
                     created_at=1762418678.0,
                     metadata={},
@@ -305,7 +309,7 @@ class TestConversionToStreamingChunks:
                 type="response.created",
             ),
             ResponseInProgressEvent(
-                response=Response(
+                response=Response(  # type: ignore[call-arg]
                     id="resp_0a8811e62a95217b00690c5ff62c14819596eae387d116f285",
                     created_at=1762418678.0,
                     metadata={},
@@ -366,7 +370,7 @@ class TestConversionToStreamingChunks:
                 sequence_number=5,
                 type="response.content_part.added",
             ),
-            ResponseTextDeltaEvent(
+            ResponseTextDeltaEvent(  # type: ignore[call-arg]
                 content_index=0,
                 delta="Germany",
                 item_id="msg_0a8811e62a95217b00690c5ff88f6c8195b037e57d327a1ee0",
@@ -376,7 +380,7 @@ class TestConversionToStreamingChunks:
                 type="response.output_text.delta",
                 obfuscation="EV5gCoyiD",
             ),
-            ResponseTextDeltaEvent(
+            ResponseTextDeltaEvent(  # type: ignore[call-arg]
                 content_index=0,
                 delta=":",
                 item_id="msg_0a8811e62a95217b00690c5ff88f6c8195b037e57d327a1ee0",
@@ -386,7 +390,7 @@ class TestConversionToStreamingChunks:
                 type="response.output_text.delta",
                 obfuscation="EkdNXp1EE2Cgj8z",
             ),
-            ResponseTextDeltaEvent(
+            ResponseTextDeltaEvent(  # type: ignore[call-arg]
                 content_index=0,
                 delta=" Berlin",
                 item_id="msg_0a8811e62a95217b00690c5ff88f6c8195b037e57d327a1ee0",
@@ -396,7 +400,7 @@ class TestConversionToStreamingChunks:
                 type="response.output_text.delta",
                 obfuscation="1eS0q9aye",
             ),
-            ResponseTextDeltaEvent(
+            ResponseTextDeltaEvent(  # type: ignore[call-arg]
                 content_index=0,
                 delta="\n",
                 item_id="msg_0a8811e62a95217b00690c5ff88f6c8195b037e57d327a1ee0",
@@ -406,7 +410,7 @@ class TestConversionToStreamingChunks:
                 type="response.output_text.delta",
                 obfuscation="H9Ict3F41DwGS4a",
             ),
-            ResponseTextDeltaEvent(
+            ResponseTextDeltaEvent(  # type: ignore[call-arg]
                 content_index=0,
                 delta="France",
                 item_id="msg_0a8811e62a95217b00690c5ff88f6c8195b037e57d327a1ee0",
@@ -416,7 +420,7 @@ class TestConversionToStreamingChunks:
                 type="response.output_text.delta",
                 obfuscation="4vxrblWURx",
             ),
-            ResponseTextDeltaEvent(
+            ResponseTextDeltaEvent(  # type: ignore[call-arg]
                 content_index=0,
                 delta=":",
                 item_id="msg_0a8811e62a95217b00690c5ff88f6c8195b037e57d327a1ee0",
@@ -426,7 +430,7 @@ class TestConversionToStreamingChunks:
                 type="response.output_text.delta",
                 obfuscation="B1CMJsNGhhqIz5K",
             ),
-            ResponseTextDeltaEvent(
+            ResponseTextDeltaEvent(  # type: ignore[call-arg]
                 content_index=0,
                 delta=" Paris",
                 item_id="msg_0a8811e62a95217b00690c5ff88f6c8195b037e57d327a1ee0",
@@ -472,7 +476,7 @@ class TestConversionToStreamingChunks:
                 type="response.output_item.done",
             ),
             ResponseCompletedEvent(
-                response=Response(
+                response=Response(  # type: ignore[call-arg]
                     id="resp_0a8811e62a95217b00690c5ff62c14819596eae387d116f285",
                     created_at=1762418678.0,
                     error=None,
@@ -515,7 +519,7 @@ class TestConversionToStreamingChunks:
                     truncation="disabled",
                     usage=ResponseUsage(
                         input_tokens=15,
-                        input_tokens_details=InputTokensDetails(cached_tokens=0),
+                        input_tokens_details=InputTokensDetails(cached_tokens=0, cache_write_tokens=0),
                         output_tokens=77,
                         output_tokens_details=OutputTokensDetails(reasoning_tokens=64),
                         total_tokens=92,
@@ -527,9 +531,9 @@ class TestConversionToStreamingChunks:
                 type="response.completed",
             ),
         ]
-        streaming_chunks = []
+        streaming_chunks: list[StreamingChunk] = []
         for chunk in openai_chunks:
-            streaming_chunk = _convert_response_chunk_to_streaming_chunk(chunk, previous_chunks=streaming_chunks)
+            streaming_chunk = _convert_response_chunk_to_streaming_chunk(chunk, previous_chunks=streaming_chunks)  # type: ignore[arg-type]
             streaming_chunks.append(streaming_chunk)
 
         assert streaming_chunks == [
@@ -609,18 +613,16 @@ class TestConversionToStreamingChunks:
             ),
             StreamingChunk(
                 content="",
-                meta={
-                    "received_at": ANY,
-                    "item": {
+                meta={"received_at": ANY},
+                index=0,
+                reasoning=ReasoningContent(
+                    reasoning_text="",
+                    extra={
                         "id": "rs_0a8811e62a95217b00690c5ff70a308195a8207d7eb43f1d5b",
                         "summary": [],
                         "type": "reasoning",
                     },
-                    "output_index": 0,
-                    "sequence_number": 3,
-                    "type": "response.output_item.done",
-                },
-                index=0,
+                ),
             ),
             StreamingChunk(
                 content="",
@@ -863,7 +865,7 @@ class TestConversionToStreamingChunks:
                         "truncation": "disabled",
                         "usage": {
                             "input_tokens": 15,
-                            "input_tokens_details": {"cached_tokens": 0},
+                            "input_tokens_details": {"cached_tokens": 0, "cache_write_tokens": 0},
                             "output_tokens": 77,
                             "output_tokens_details": {"reasoning_tokens": 64},
                             "total_tokens": 92,
@@ -878,7 +880,8 @@ class TestConversionToStreamingChunks:
             ),
         ]
 
-    def test_convert_only_function_call(self):
+    def test_convert_only_function_call(self) -> None:
+
         chunks = [
             ResponseCreatedEvent(
                 response=Response(
@@ -940,7 +943,7 @@ class TestConversionToStreamingChunks:
                 sequence_number=4,
                 type="response.output_item.added",
             ),
-            ResponseFunctionCallArgumentsDeltaEvent(
+            ResponseFunctionCallArgumentsDeltaEvent(  # type: ignore[call-arg]
                 delta='{"city":',
                 item_id="fc_095b57053855eac100690491f6a224819680e2f9c7cbc5a531",
                 output_index=1,
@@ -948,7 +951,7 @@ class TestConversionToStreamingChunks:
                 type="response.function_call_arguments.delta",
                 obfuscation="PySUcQ59ZZRkOm",
             ),
-            ResponseFunctionCallArgumentsDeltaEvent(
+            ResponseFunctionCallArgumentsDeltaEvent(  # type: ignore[call-arg]
                 delta='"Paris"}',
                 item_id="fc_095b57053855eac100690491f6a224819680e2f9c7cbc5a531",
                 output_index=1,
@@ -965,7 +968,7 @@ class TestConversionToStreamingChunks:
                 type="response.function_call_arguments.done",
             ),
             ResponseCompletedEvent(
-                response=Response(
+                response=Response(  # type: ignore[call-arg]
                     id="resp_095b57053855eac100690491f4e22c8196ac124365e8c70424",
                     created_at=1761907188.0,
                     metadata={},
@@ -1005,7 +1008,7 @@ class TestConversionToStreamingChunks:
                     reasoning=Reasoning(effort="medium", generate_summary=None, summary=None),
                     usage=ResponseUsage(
                         input_tokens=62,
-                        input_tokens_details=InputTokensDetails(cached_tokens=0),
+                        input_tokens_details=InputTokensDetails(cached_tokens=0, cache_write_tokens=0),
                         output_tokens=83,
                         output_tokens_details=OutputTokensDetails(reasoning_tokens=64),
                         total_tokens=145,
@@ -1017,9 +1020,9 @@ class TestConversionToStreamingChunks:
             ),
         ]
 
-        streaming_chunks = []
+        streaming_chunks: list[StreamingChunk] = []
         for chunk in chunks:
-            streaming_chunk = _convert_response_chunk_to_streaming_chunk(chunk, previous_chunks=streaming_chunks)
+            streaming_chunk = _convert_response_chunk_to_streaming_chunk(chunk, previous_chunks=streaming_chunks)  # type: ignore[arg-type]
             streaming_chunks.append(streaming_chunk)
 
         assert streaming_chunks == [
@@ -1075,18 +1078,16 @@ class TestConversionToStreamingChunks:
             ),
             StreamingChunk(
                 content="",
-                meta={
-                    "item": {
+                meta={"received_at": ANY},
+                index=0,
+                reasoning=ReasoningContent(
+                    reasoning_text="",
+                    extra={
                         "id": "rs_095b57053855eac100690491f54e308196878239be3ba6133c",
                         "summary": [],
                         "type": "reasoning",
                     },
-                    "output_index": 0,
-                    "sequence_number": 3,
-                    "type": "response.output_item.done",
-                    "received_at": ANY,
-                },
-                index=0,
+                ),
             ),
             StreamingChunk(
                 content="",
@@ -1209,7 +1210,7 @@ class TestConversionToStreamingChunks:
                         "reasoning": {"effort": "medium", "generate_summary": None, "summary": None},
                         "usage": {
                             "input_tokens": 62,
-                            "input_tokens_details": {"cached_tokens": 0},
+                            "input_tokens_details": {"cached_tokens": 0, "cache_write_tokens": 0},
                             "output_tokens": 83,
                             "output_tokens_details": {"reasoning_tokens": 64},
                             "total_tokens": 145,
@@ -1225,19 +1226,22 @@ class TestConversionToStreamingChunks:
 
 
 class TestResponseToChatMessage:
-    def test_convert_system_message(self):
+    def test_convert_system_message(self) -> None:
+
         message = ChatMessage.from_system("You are good assistant")
         assert _convert_chat_message_to_responses_api_format(message) == [
             {"role": "system", "content": "You are good assistant"}
         ]
 
-    def test_convert_user_message(self):
+    def test_convert_user_message(self) -> None:
+
         message = ChatMessage.from_user("I have a question")
         assert _convert_chat_message_to_responses_api_format(message) == [
             {"role": "user", "content": [{"type": "input_text", "text": "I have a question"}]}
         ]
 
-    def test_convert_multimodal_user_message(self, base64_image_string):
+    def test_convert_multimodal_user_message(self, base64_image_string: str) -> None:
+
         message = ChatMessage.from_user(
             content_parts=[
                 TextContent("I have a question"),
@@ -1267,7 +1271,8 @@ class TestResponseToChatMessage:
             ],
         }
 
-    def test_convert_user_message_with_file_content(self, base64_pdf_string):
+    def test_convert_user_message_with_file_content(self, base64_pdf_string: str) -> None:
+
         message = ChatMessage.from_user(
             content_parts=[FileContent(base64_data=base64_pdf_string, mime_type="application/pdf", filename="test.pdf")]
         )
@@ -1284,7 +1289,8 @@ class TestResponseToChatMessage:
             }
         ]
 
-    def test_convert_user_message_with_file_content_no_filename(self, base64_pdf_string):
+    def test_convert_user_message_with_file_content_no_filename(self, base64_pdf_string: str) -> None:
+
         message = ChatMessage.from_user(
             content_parts=[FileContent(base64_data=base64_pdf_string, mime_type="application/pdf")]
         )
@@ -1301,13 +1307,15 @@ class TestResponseToChatMessage:
             }
         ]
 
-    def test_convert_assistant_message(self):
+    def test_convert_assistant_message(self) -> None:
+
         message = ChatMessage.from_assistant(text="I have an answer", meta={"finish_reason": "stop"})
         assert _convert_chat_message_to_responses_api_format(message) == [
             {"role": "assistant", "content": "I have an answer"}
         ]
 
-    def test_convert_assistant_message_w_tool_call(self):
+    def test_convert_assistant_message_w_tool_call(self) -> None:
+
         chat_message = ChatMessage(
             _role=ChatRole.ASSISTANT,
             _content=[
@@ -1370,7 +1378,40 @@ class TestResponseToChatMessage:
             {"content": "I need to use the functions.weather tool.", "role": "assistant"},
         ]
 
-    def test_convert_tool_message(self):
+    def test_convert_assistant_message_reasoning_strips_invalid_streaming_fields(self) -> None:
+
+        chat_message = ChatMessage(
+            _role=ChatRole.ASSISTANT,
+            _content=[
+                ReasoningContent(
+                    reasoning_text="Let me think.",
+                    extra={
+                        "id": "rs_abc",
+                        "type": "reasoning",
+                        "encrypted_content": "enc123",
+                        "status": "completed",
+                        "item_id": "some_item",
+                        "output_index": 0,
+                        "summary_index": 1,
+                        "event_id": "ev_xyz",
+                        "sequence_number": 42,
+                    },
+                )
+            ],
+        )
+        result = _convert_chat_message_to_responses_api_format(chat_message)
+        assert result == [
+            {
+                "id": "rs_abc",
+                "type": "reasoning",
+                "encrypted_content": "enc123",
+                "status": "completed",
+                "summary": [{"text": "Let me think.", "type": "summary_text"}],
+            }
+        ]
+
+    def test_convert_tool_message(self) -> None:
+
         tool_call_result = ChatMessage(
             _role=ChatRole.TOOL,
             _content=[
@@ -1395,8 +1436,9 @@ class TestResponseToChatMessage:
             }
         ]
 
-    def test_convert_tool_message_list_with_image(self, base64_image_string):
-        tool_result = [
+    def test_convert_tool_message_list_with_image(self, base64_image_string: str) -> None:
+
+        tool_result: list[TextContent | ImageContent] = [
             TextContent(text="first result"),
             ImageContent(base64_image=base64_image_string, mime_type="image/png"),
         ]
@@ -1419,7 +1461,37 @@ class TestResponseToChatMessage:
             }
         ]
 
-    def test_convert_invalid(self):
+    def test_convert_tool_message_list_with_file(self, base64_pdf_string: str) -> None:
+
+        tool_result: list[TextContent | FileContent] = [
+            TextContent(text="first result"),
+            FileContent(base64_data=base64_pdf_string, mime_type="application/pdf", filename="guide.pdf"),
+        ]
+        message = ChatMessage.from_tool(
+            tool_result=tool_result,
+            origin=ToolCall(
+                tool_name="mytool", arguments={}, id="123", extra={"call_id": "call_a82vwFAIzku9SmBuQuecQSRq"}
+            ),
+            error=False,
+        )
+
+        assert _convert_chat_message_to_responses_api_format(message) == [
+            {
+                "call_id": "call_a82vwFAIzku9SmBuQuecQSRq",
+                "output": [
+                    {"type": "input_text", "text": "first result"},
+                    {
+                        "type": "input_file",
+                        "filename": "guide.pdf",
+                        "file_data": f"data:application/pdf;base64,{base64_pdf_string}",
+                    },
+                ],
+                "type": "function_call_output",
+            }
+        ]
+
+    def test_convert_invalid(self) -> None:
+
         message = ChatMessage(_role=ChatRole.ASSISTANT, _content=[])
         with pytest.raises(ValueError):
             _convert_chat_message_to_responses_api_format(message)
@@ -1437,3 +1509,110 @@ class TestResponseToChatMessage:
         )
         with pytest.raises(ValueError):
             _convert_chat_message_to_responses_api_format(message)
+
+    def test_convert_streaming_chunks_to_chat_message_preserves_encrypted_content(self) -> None:
+        """Test that encrypted_content in reasoning extra is preserved during streaming conversion."""
+        chunks = [
+            StreamingChunk(
+                content="",
+                meta={"received_at": ANY},
+                index=0,
+                start=True,
+                reasoning=ReasoningContent(
+                    reasoning_text="",
+                    extra={
+                        "id": "rs_095b57053855eac100690491f54e308196878239be3ba6133c",
+                        "type": "reasoning",
+                        "encrypted_content": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",  # Simulated encrypted reasoning
+                        "status": "in_progress",
+                    },
+                ),
+            ),
+            StreamingChunk(
+                content="",
+                meta={
+                    "received_at": ANY,
+                    "response": {
+                        "id": "resp_095b57053855eac100690491f4e22c8196ac124365e8c70424",
+                        "created_at": 1761907188.0,
+                        "model": "gpt-5-mini-2025-08-07",
+                        "object": "response",
+                        "output": [
+                            {
+                                "id": "rs_095b57053855eac100690491f54e308196878239be3ba6133c",
+                                "type": "reasoning",
+                                "encrypted_content": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+                                "status": "completed",
+                            }
+                        ],
+                    },
+                    "sequence_number": 16,
+                    "type": "response.completed",
+                },
+                finish_reason="stop",
+            ),
+        ]
+
+        message = _convert_streaming_chunks_to_chat_message(chunks)
+
+        # Verify reasoning content exists and has the correct structure
+        assert message.reasoning is not None
+        assert message.reasoning.reasoning_text == ""
+
+        # Verify encrypted_content is preserved along with id and type
+        assert message.reasoning.extra.get("id") == "rs_095b57053855eac100690491f54e308196878239be3ba6133c"
+        assert message.reasoning.extra.get("type") == "reasoning"
+        assert message.reasoning.extra.get("encrypted_content") == "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+        assert message.reasoning.extra.get("status") == "in_progress"
+
+    def test_encrypted_content_preserved_through_full_streaming_pipeline(self) -> None:
+        """
+        Feeds real OpenAI event objects through the full pipeline:
+
+         _convert_response_chunk_to_streaming_chunk → _convert_streaming_chunks_to_chat_message
+
+        to verify encrypted_content survives end-to-end.
+        """
+        REASONING_ID = "rs_abc123"
+        ENCRYPTED = "eyJhbGciOiJIUzI1NiJ9.encrypted_reasoning"
+
+        openai_events = [
+            # reasoning item starts — encrypted_content not yet available
+            ResponseOutputItemAddedEvent(
+                item=ResponseReasoningItem(id=REASONING_ID, summary=[], type="reasoning", status="in_progress"),
+                output_index=0,
+                sequence_number=0,
+                type="response.output_item.added",
+            ),
+            # reasoning item finishes — encrypted_content is now populated
+            ResponseOutputItemDoneEvent(
+                item=ResponseReasoningItem(
+                    id=REASONING_ID, summary=[], type="reasoning", encrypted_content=ENCRYPTED, status="completed"
+                ),
+                output_index=0,
+                sequence_number=1,
+                type="response.output_item.done",
+            ),
+        ]
+
+        streaming_chunks: list[StreamingChunk] = []
+        for event in openai_events:
+            chunk = _convert_response_chunk_to_streaming_chunk(event, previous_chunks=streaming_chunks)  # type: ignore[arg-type]
+            streaming_chunks.append(chunk)
+
+        # The done chunk must carry reasoning so encrypted_content reaches the assembly step
+        done_chunk = streaming_chunks[1]
+        assert done_chunk.reasoning is not None, (
+            "response.output_item.done for reasoning must produce a StreamingChunk with reasoning set; "
+            "without this, encrypted_content is silently dropped before assembly"
+        )
+        assert done_chunk.reasoning.extra.get("encrypted_content") == ENCRYPTED
+
+        message = _convert_streaming_chunks_to_chat_message(streaming_chunks)
+
+        assert message.reasoning is not None
+        assert message.reasoning.extra.get("id") == REASONING_ID
+        assert message.reasoning.extra.get("encrypted_content") == ENCRYPTED, (
+            "encrypted_content was dropped — the response.output_item.done event for reasoning items "
+            "must be handled in _convert_response_chunk_to_streaming_chunk"
+        )

@@ -15,6 +15,9 @@ on:
       - "!.github/**/*.py"
       - "releasenotes/notes/*.yaml"
 
+permissions:
+  contents: read
+
 jobs:
   reno:
     runs-on: ubuntu-slim

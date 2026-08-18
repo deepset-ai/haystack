@@ -1,0 +1,47 @@
+---
+upgrade:
+  - |
+    ``OpenAIGenerator``, ``AzureOpenAIGenerator``, ``HuggingFaceAPIGenerator``, and ``HuggingFaceLocalGenerator`` have
+    been removed. Use the Chat Generators instead: ``OpenAIChatGenerator``, ``AzureOpenAIChatGenerator``,
+    ``HuggingFaceAPIChatGenerator``, and ``HuggingFaceLocalChatGenerator``. As of v3.0, all ChatGenerators accept a
+    plain ``str`` as input and normalise it to a user message.
+
+    Before:
+
+    .. code:: python
+
+      from haystack.components.generators import OpenAIGenerator
+
+      gen = OpenAIGenerator()
+      text = gen.run("What is NLP?")["replies"][0]          # str
+
+    After:
+
+    .. code:: python
+
+      from haystack.components.generators.chat import OpenAIChatGenerator
+
+      gen = OpenAIChatGenerator()
+      reply = gen.run("What is NLP?")["replies"][0]         # ChatMessage
+      text = reply.text                                     # str; metadata is in reply.meta
+
+  - |
+    ``DALLEImageGenerator`` has been renamed to ``OpenAIImageGenerator`` and moved to
+    ``haystack.components.generators.openai_image_generator``. The rename reflects that OpenAI retired the DALL-E model
+    family but the component works with newer image generation models.
+
+    Before:
+
+    .. code:: python
+
+      from haystack.components.generators import DALLEImageGenerator
+
+      generator = DALLEImageGenerator()
+
+    After:
+
+    .. code:: python
+
+      from haystack.components.generators import OpenAIImageGenerator
+
+      generator = OpenAIImageGenerator()

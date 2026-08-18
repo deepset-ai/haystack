@@ -3,6 +3,8 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import sys
+from copy import deepcopy
+from typing import Any
 from unittest.mock import Mock
 
 import pytest
@@ -108,9 +110,16 @@ def test_import_class_by_name():
 
 
 def test_import_class_by_name_no_valid_class():
-    data = "some.invalid.class"
+    # A name that passes the deserialization allowlist but cannot be resolved should raise ImportError.
+    data = "haystack.does.not.exist.Class"
     with pytest.raises(ImportError):
         import_class_by_name(data)
+
+
+def test_import_class_by_name_rejects_untrusted_module():
+    # A module outside the default allowlist is rejected before the import is attempted.
+    with pytest.raises(DeserializationError, match="not on the trusted-module allowlist"):
+        import_class_by_name("some.invalid.class")
 
 
 class CustomData:
@@ -133,6 +142,21 @@ class UnserializableClass:
 def test_component_to_dict_invalid_type():
     with pytest.raises(SerializationError, match="unsupported value of type 'CustomData'"):
         component_to_dict(UnserializableClass(1, "s", CustomData(99, "aa")), "invalid_component")
+
+
+@component()
+class NestedNonStringKeyClass:
+    def __init__(self, mapping: dict[Any, Any]) -> None:
+        self.mapping = mapping
+
+    def run(self):
+        pass
+
+
+def test_component_to_dict_nested_non_string_key():
+    # A non-string key nested inside init_parameters must be rejected too, not just at the top level.
+    with pytest.raises(SerializationError, match="non-string key"):
+        component_to_dict(NestedNonStringKeyClass(mapping={1: "a"}), "invalid_component")
 
 
 @component
@@ -222,6 +246,24 @@ def test_component_from_dict_with_secret():
     assert isinstance(comp.api_key, Secret)
     assert isinstance(comp.token, Secret)
     assert comp.regular_param == "test"
+
+
+def test_component_from_dict_does_not_mutate_input():
+    """default_from_dict must not mutate the caller's data dict when deserializing nested objects."""
+    serialized_secret = Secret.from_env_var("TEST_API_KEY").to_dict()
+    data: dict[str, Any] = {
+        "type": generate_qualified_class_name(CustomComponentWithSecrets),
+        "init_parameters": {"api_key": serialized_secret, "regular_param": "test"},
+    }
+    expected = deepcopy(data)
+
+    comp = component_from_dict(CustomComponentWithSecrets, data, "test_component")
+
+    # the returned component is correctly deserialized ...
+    assert isinstance(comp.api_key, Secret)
+    # ... but the caller's dict is left untouched (the Secret sub-dict is not replaced in place)
+    assert data == expected
+    assert isinstance(data["init_parameters"]["api_key"], dict)
 
 
 def test_component_to_dict_and_from_dict_roundtrip_with_secret():
@@ -445,11 +487,10 @@ class CustomComponentWithDocumentStore:
         return {"value": value}
 
 
-def test_component_to_dict_with_document_store():
+def test_component_to_dict_with_document_store(in_memory_doc_store):
     """Test that DocumentStore instances are automatically serialized in component_to_dict."""
     # Test with InMemoryDocumentStore
-    doc_store = InMemoryDocumentStore()
-    comp = CustomComponentWithDocumentStore(document_store=doc_store)
+    comp = CustomComponentWithDocumentStore(document_store=in_memory_doc_store)
     res = component_to_dict(comp, "test_component")
     assert "type" in res["init_parameters"]["document_store"]
     assert "init_parameters" in res["init_parameters"]["document_store"]
@@ -464,11 +505,10 @@ def test_component_to_dict_with_document_store():
     assert res["init_parameters"]["document_store"] is None
 
 
-def test_component_from_dict_with_document_store():
+def test_component_from_dict_with_document_store(in_memory_doc_store):
     """Test that serialized DocumentStore dictionaries are automatically deserialized in component_from_dict."""
     # Test with InMemoryDocumentStore
-    doc_store = InMemoryDocumentStore()
-    serialized_doc_store = doc_store.to_dict()
+    serialized_doc_store = in_memory_doc_store.to_dict()
     data = {
         "type": generate_qualified_class_name(CustomComponentWithDocumentStore),
         "init_parameters": {"document_store": serialized_doc_store, "name": "test"},
@@ -488,11 +528,10 @@ def test_component_from_dict_with_document_store():
     assert comp.name == "test"
 
 
-def test_component_to_dict_and_from_dict_roundtrip_with_document_store():
+def test_component_to_dict_and_from_dict_roundtrip_with_document_store(in_memory_doc_store):
     """Test that serialization and deserialization work together for DocumentStore."""
     # Test roundtrip with InMemoryDocumentStore
-    original_doc_store = InMemoryDocumentStore()
-    comp = CustomComponentWithDocumentStore(document_store=original_doc_store)
+    comp = CustomComponentWithDocumentStore(document_store=in_memory_doc_store)
 
     serialized = component_to_dict(comp, "test_component")
     assert "type" in serialized["init_parameters"]["document_store"]
@@ -503,17 +542,17 @@ def test_component_to_dict_and_from_dict_roundtrip_with_document_store():
 
     deserialized_comp = component_from_dict(CustomComponentWithDocumentStore, serialized, "test_component")
     assert isinstance(deserialized_comp.document_store, InMemoryDocumentStore)
-    assert deserialized_comp.document_store.bm25_algorithm == original_doc_store.bm25_algorithm
+    assert deserialized_comp.document_store.bm25_algorithm == in_memory_doc_store.bm25_algorithm
     assert (
         deserialized_comp.document_store.embedding_similarity_function
-        == original_doc_store.embedding_similarity_function
+        == in_memory_doc_store.embedding_similarity_function
     )
 
     # Test roundtrip with custom parameters
-    original_doc_store = InMemoryDocumentStore(
+    in_memory_doc_store = InMemoryDocumentStore(
         bm25_algorithm="BM25Okapi", embedding_similarity_function="cosine", return_embedding=False
     )
-    comp = CustomComponentWithDocumentStore(document_store=original_doc_store)
+    comp = CustomComponentWithDocumentStore(document_store=in_memory_doc_store)
 
     serialized = component_to_dict(comp, "test_component")
     deserialized_comp = component_from_dict(CustomComponentWithDocumentStore, serialized, "test_component")
@@ -523,30 +562,27 @@ def test_component_to_dict_and_from_dict_roundtrip_with_document_store():
     assert deserialized_comp.document_store.return_embedding is False
 
 
-def test_default_to_dict_with_document_store():
+def test_default_to_dict_with_document_store(in_memory_doc_store):
     """Test that DocumentStore instances are automatically serialized in default_to_dict."""
-    doc_store = InMemoryDocumentStore()
-    res = default_to_dict(doc_store)
+    res = default_to_dict(in_memory_doc_store)
     assert res["type"] == "haystack.document_stores.in_memory.document_store.InMemoryDocumentStore"
     assert "init_parameters" in res
 
     # Test that DocumentStore is serialized when passed as a parameter
-    doc_store = InMemoryDocumentStore()
-    comp = CustomComponentWithDocumentStore(document_store=doc_store)
-    res = default_to_dict(comp, document_store=doc_store, name="test")
+    comp = CustomComponentWithDocumentStore(document_store=in_memory_doc_store)
+    res = default_to_dict(comp, document_store=in_memory_doc_store, name="test")
     assert "type" in res["init_parameters"]["document_store"]
     assert res["init_parameters"]["name"] == "test"
 
 
-def test_default_from_dict_with_document_store():
+def test_default_from_dict_with_document_store(in_memory_doc_store):
     """Test that serialized DocumentStore dictionaries are automatically deserialized in default_from_dict."""
-    doc_store = InMemoryDocumentStore()
-    serialized = doc_store.to_dict()
+    serialized = in_memory_doc_store.to_dict()
 
     # Test direct deserialization
     deserialized = default_from_dict(InMemoryDocumentStore, serialized)
     assert isinstance(deserialized, InMemoryDocumentStore)
-    assert deserialized.bm25_algorithm == doc_store.bm25_algorithm
+    assert deserialized.bm25_algorithm == in_memory_doc_store.bm25_algorithm
 
     # Test deserialization when DocumentStore is in init_parameters
     data = {
@@ -563,10 +599,48 @@ def test_default_from_dict_with_invalid_class_name():
     data = {
         "type": generate_qualified_class_name(CustomComponentWithDocumentStore),
         "init_parameters": {
-            "document_store": {"type": "nonexistent.module.Class", "init_parameters": {}},
+            # Use a class name that passes the allowlist (haystack.*) but cannot be resolved.
+            "document_store": {"type": "haystack.does.not.exist.Class", "init_parameters": {}},
             "name": "test",
         },
     }
     # Verify the error message includes the parameter key and original error
-    with pytest.raises(ImportError, match=r"Failed to deserialize 'document_store':.*nonexistent\.module\.Class"):
+    with pytest.raises(
+        ImportError, match=r"Failed to deserialize 'document_store':.*haystack\.does\.not\.exist\.Class"
+    ):
         default_from_dict(CustomComponentWithDocumentStore, data)
+
+
+def test_default_from_dict_rejects_untrusted_nested_class():
+    """A nested class with a module outside the allowlist should be rejected."""
+    data = {
+        "type": generate_qualified_class_name(CustomComponentWithDocumentStore),
+        "init_parameters": {
+            "document_store": {"type": "nonexistent.module.Class", "init_parameters": {}},
+            "name": "test",
+        },
+    }
+    with pytest.raises(
+        DeserializationError, match=r"Failed to deserialize 'document_store':.*not on the trusted-module allowlist"
+    ):
+        default_from_dict(CustomComponentWithDocumentStore, data)
+
+
+def test_default_from_dict_rejects_unknown_nested_parameter():
+    """A nested ``{type: ...}`` dict on a parameter that the class does not accept must be rejected
+    before the smuggled type is imported (Option 3: type-aware deserialization)."""
+    data = {
+        "type": generate_qualified_class_name(CustomComponentWithDocumentStore),
+        "init_parameters": {
+            # `payload` is not an init parameter of CustomComponentWithDocumentStore.
+            "payload": {"type": "haystack.testing.factory.MyComponent", "init_parameters": {}},
+            "name": "test",
+        },
+    }
+    with pytest.raises(DeserializationError) as exc_info:
+        default_from_dict(CustomComponentWithDocumentStore, data)
+    message = str(exc_info.value)
+    assert "Refusing to deserialize unknown parameter 'payload'" in message
+    # The message lists the accepted parameters (sorted) and tells the user how to fix it.
+    assert "Valid parameters are: 'document_store', 'name'." in message
+    assert "Correct the parameter name or remove it from the serialized data." in message

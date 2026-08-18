@@ -235,3 +235,14 @@ def test_image_content_warn_on_inplace_mutation(base64_image_string):
     ic = ImageContent(base64_image=base64_image_string, mime_type="image/png")
     with pytest.warns(Warning, match="dataclasses.replace"):
         ic.detail = "high"
+
+
+def test_image_content_to_trace_dict(base64_image_string):
+    image_content = ImageContent(
+        base64_image=base64_image_string, mime_type="image/png", detail="auto", meta={"key": "value"}
+    )
+    data = image_content._to_trace_dict()
+    assert data["base64_image"] == f"Base64 string ({len(base64_image_string)} characters)"
+    assert data["mime_type"] == "image/png"
+    assert data["detail"] == "auto"
+    assert data["meta"] == {"key": "value"}

@@ -1,0 +1,7 @@
+---
+features:
+  - |
+    Added partial support for the ``image-text-to-text`` task in ``HuggingFaceLocalChatGenerator``.
+
+    This allows the use of multimodal models like Qwen 3.5 or Ministral with text-only inputs.
+    Complete multimodal support via Hugging Face Transformers might be addressed in the future.

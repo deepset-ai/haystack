@@ -6,19 +6,22 @@ import logging
 from typing import Any
 
 import httpx
-import requests
 from tenacity import after_log, before_log, retry, retry_if_exception_type, stop_after_attempt, wait_exponential
 
-logger = logging.getLogger(__file__)
+# NOTE: this uses the standard library logger (not `haystack.logging`) on purpose: tenacity's `before_log`/`after_log`
+# call the logger with positional arguments, which Haystack's keyword-only patched logger would reject. We still name
+# it with `__name__` so it lives under the `haystack` namespace and is picked up by `configure_logging`.
+logger = logging.getLogger(__name__)
 
 
 def request_with_retry(
     attempts: int = 3, status_codes_to_retry: list[int] | None = None, **kwargs: Any
-) -> requests.Response:
+) -> httpx.Response:
     """
     Executes an HTTP request with a configurable exponential backoff retry on failures.
 
     Usage example:
+    <!-- test-ignore -->
     ```python
     from haystack.utils import request_with_retry
 
@@ -34,26 +37,11 @@ def request_with_retry(
     # Sending an HTTP request with custom timeout in seconds
     res = request_with_retry(method="GET", url="https://example.com", timeout=5)
 
-    # Sending an HTTP request with custom authorization handling
-    class CustomAuth(requests.auth.AuthBase):
-        def __call__(self, r):
-            r.headers["authorization"] = "Basic <my_token_here>"
-            return r
-
-    res = request_with_retry(method="GET", url="https://example.com", auth=CustomAuth())
-
-    # All of the above combined
-    res = request_with_retry(
-        method="GET",
-        url="https://example.com",
-        auth=CustomAuth(),
-        attempts=10,
-        status_codes_to_retry=[408, 503],
-        timeout=5
-    )
+    # Sending an HTTP request with custom headers
+    res = request_with_retry(method="GET", url="https://example.com", headers={"Authorization": "Bearer <token>"})
 
     # Sending a POST request
-    res = request_with_retry(method="POST", url="https://example.com", data={"key": "value"}, attempts=10)
+    res = request_with_retry(method="POST", url="https://example.com", json={"key": "value"}, attempts=10)
 
     # Retry all 5xx status codes
     res = request_with_retry(method="GET", url="https://example.com", status_codes_to_retry=list(range(500, 600)))
@@ -65,31 +53,34 @@ def request_with_retry(
         List of HTTP status codes that will trigger a retry.
         When param is `None`, HTTP 408, 418, 429 and 503 will be retried.
     :param kwargs:
-        Optional arguments that `request` accepts.
+        Optional arguments that `httpx.Client.request` accepts.
     :returns:
-        The `Response` object.
+        The `httpx.Response` object.
     """
 
     if status_codes_to_retry is None:
         status_codes_to_retry = [408, 418, 429, 503]
 
+    # Pop `timeout` once, before the retry loop.
+    timeout = kwargs.pop("timeout", 10)
+
     @retry(
         reraise=True,
         wait=wait_exponential(),
-        retry=retry_if_exception_type((requests.HTTPError, TimeoutError)),
+        retry=retry_if_exception_type((httpx.HTTPError, TimeoutError)),
         stop=stop_after_attempt(attempts),
         before=before_log(logger, logging.DEBUG),
         after=after_log(logger, logging.DEBUG),
     )
-    def run() -> requests.Response:
-        timeout = kwargs.pop("timeout", 10)
-        res = requests.request(**kwargs, timeout=timeout)
+    def run() -> httpx.Response:
+        with httpx.Client() as client:
+            res = client.request(**kwargs, timeout=timeout)
 
-        if res.status_code in status_codes_to_retry:
-            # We raise only for the status codes that must trigger a retry
-            res.raise_for_status()
+            if res.status_code in status_codes_to_retry:
+                # We raise only for the status codes that must trigger a retry
+                res.raise_for_status()
 
-        return res
+            return res
 
     res = run()
     # We raise here too in case the request failed with a status code that
@@ -182,6 +173,9 @@ async def async_request_with_retry(
     if status_codes_to_retry is None:
         status_codes_to_retry = [408, 418, 429, 503]
 
+    # Pop `timeout` once, before the retry loop.
+    timeout = kwargs.pop("timeout", 10)
+
     @retry(
         reraise=True,
         wait=wait_exponential(),
@@ -190,8 +184,7 @@ async def async_request_with_retry(
         before=before_log(logger, logging.DEBUG),
         after=after_log(logger, logging.DEBUG),
     )
-    async def run():
-        timeout = kwargs.pop("timeout", 10)
+    async def run() -> httpx.Response:
         async with httpx.AsyncClient() as client:
             res = await client.request(**kwargs, timeout=timeout)
 

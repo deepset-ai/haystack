@@ -54,7 +54,7 @@ __init__(
     max_retries: int | None = None,
     meta_fields_to_embed: list[str] | None = None,
     embedding_separator: str = "\n"
-)
+) -> None
 ```
 
 Creates a WatsonxDocumentEmbedder component.
@@ -166,7 +166,7 @@ __init__(
     suffix: str = "",
     timeout: float | None = None,
     max_retries: int | None = None
-)
+) -> None
 ```
 
 Creates an WatsonxTextEmbedder component.
@@ -411,7 +411,7 @@ Deserialize this component from a dictionary.
 ```python
 run(
     *,
-    messages: list[ChatMessage],
+    messages: list[ChatMessage] | str,
     generation_kwargs: dict[str, Any] | None = None,
     streaming_callback: StreamingCallbackT | None = None,
     tools: ToolsType | None = None
@@ -422,7 +422,8 @@ Generate chat completions synchronously.
 
 **Parameters:**
 
-- **messages** (<code>list\[ChatMessage\]</code>) – A list of ChatMessage instances representing the input messages.
+- **messages** (<code>list\[ChatMessage\] | str</code>) – A list of ChatMessage instances representing the input messages.
+  If a string is provided, it is converted to a list containing a ChatMessage with user role.
 - **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for text generation. These parameters will potentially override the parameters
   passed in the `__init__` method.
 - **streaming_callback** (<code>StreamingCallbackT | None</code>) – A callback function that is called when a new token is received from the stream.
@@ -440,7 +441,7 @@ Generate chat completions synchronously.
 ```python
 run_async(
     *,
-    messages: list[ChatMessage],
+    messages: list[ChatMessage] | str,
     generation_kwargs: dict[str, Any] | None = None,
     streaming_callback: StreamingCallbackT | None = None,
     tools: ToolsType | None = None
@@ -451,7 +452,8 @@ Generate chat completions asynchronously.
 
 **Parameters:**
 
-- **messages** (<code>list\[ChatMessage\]</code>) – A list of ChatMessage instances representing the input messages.
+- **messages** (<code>list\[ChatMessage\] | str</code>) – A list of ChatMessage instances representing the input messages.
+  If a string is provided, it is converted to a list containing a ChatMessage with user role.
 - **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for text generation. These parameters will potentially override the parameters
   passed in the `__init__` method.
 - **streaming_callback** (<code>StreamingCallbackT | None</code>) – A callback function that is called when a new token is received from the stream.

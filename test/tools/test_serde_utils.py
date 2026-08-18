@@ -2,6 +2,8 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+from typing import Any
+
 import pytest
 
 from haystack.tools import Tool, Toolset, deserialize_tools_or_toolset_inplace, serialize_tools_or_toolset
@@ -91,7 +93,7 @@ class TestToolSerdeUtils:
             name="weather", description="Get weather report", parameters=parameters, function=get_weather_report
         )
 
-        data = {"tools": [tool.to_dict()]}
+        data: dict[str, Any] = {"tools": [tool.to_dict()]}
         deserialize_tools_or_toolset_inplace(data)
         assert data["tools"] == [tool]
 
@@ -104,7 +106,7 @@ class TestToolSerdeUtils:
         assert data == {"no_tools": 123}
 
     def test_deserialize_tools_inplace_failures(self):
-        data = {"key": "value"}
+        data: dict[str, Any] = {"key": "value"}
         deserialize_tools_or_toolset_inplace(data)
         assert data == {"key": "value"}
 
@@ -186,7 +188,8 @@ class TestToolSerdeUtils:
 
         assert isinstance(data["tools"], list)
         assert len(data["tools"]) == 2
-        assert all(isinstance(ts, Toolset) for ts in data["tools"])
+        assert isinstance(data["tools"][0], Toolset)
+        assert isinstance(data["tools"][1], Toolset)
         assert data["tools"][0][0].name == "weather"
         assert data["tools"][1][0].name == "calculator"
 
@@ -201,7 +204,8 @@ class TestToolSerdeUtils:
 
         toolset = Toolset([tool2])
 
-        data = serialize_tools_or_toolset([tool1, toolset])
+        tools: list[Tool | Toolset] = [tool1, toolset]
+        data = serialize_tools_or_toolset(tools)
 
         assert isinstance(data, list)
         assert len(data) == 2
@@ -230,7 +234,8 @@ class TestToolSerdeUtils:
 
         toolset = Toolset([tool4, tool5])
 
-        data = serialize_tools_or_toolset([tool1, tool2, toolset, tool3])
+        tools: list[Tool | Toolset] = [tool1, tool2, toolset, tool3]
+        data = serialize_tools_or_toolset(tools)
 
         assert isinstance(data, list)
         assert len(data) == 4
@@ -283,7 +288,7 @@ class TestToolSerdeUtils:
         assert isinstance(data["tools"][0], Tool)
         assert data["tools"][0].name == "weather"
         assert data["tools"][0].parameters == weather_parameters
-        assert data["tools"][0].function("Paris") == "Weather report for Paris: 20°C, sunny"
+        assert data["tools"][0].function("Paris") == "Weather report for Paris: 20°C, sunny"  # type: ignore[misc]
 
         # Verify Toolset with calculator tool
         assert isinstance(data["tools"][1], Toolset)
@@ -321,14 +326,14 @@ class TestToolSerdeUtils:
         assert isinstance(data["tools"][0], Tool)
         assert data["tools"][0].name == "weather"
         assert data["tools"][0].parameters == weather_parameters
-        assert data["tools"][0].function("Berlin") == "Weather report for Berlin: 20°C, sunny"
+        assert data["tools"][0].function("Berlin") == "Weather report for Berlin: 20°C, sunny"  # type: ignore[misc]
 
         # Verify Tool 2 (calculator)
         assert isinstance(data["tools"][1], Tool)
         assert data["tools"][1].name == "calculator"
         assert data["tools"][1].parameters == calculator_parameters
-        assert data["tools"][1].function(5, 3, "add") == 8
-        assert data["tools"][1].function(5, 3, "multiply") == 15
+        assert data["tools"][1].function(5, 3, "add") == 8  # type: ignore[misc]
+        assert data["tools"][1].function(5, 3, "multiply") == 15  # type: ignore[misc]
 
         # Verify Toolset (with summarizer and formatter)
         assert isinstance(data["tools"][2], Toolset)

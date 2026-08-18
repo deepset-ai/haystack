@@ -1,0 +1,160 @@
+{
+  "rewrites": [
+    {
+      "source": "/.well-known/:path*",
+      "destination": "/api/well-known"
+    }
+  ],
+  "redirects": [
+    {
+      "source": "/docs/experimental-package",
+      "destination": "/docs/intro",
+      "permanent": true
+    },
+    {
+      "source": "/reference/category/experiments-api",
+      "destination": "/reference/",
+      "permanent": true
+    },
+    {
+      "source": "/reference/experimental-agents-api",
+      "destination": "/reference/agents-api",
+      "permanent": true
+    },
+    {
+      "source": "/reference/experimental-mem0-memory-store-api",
+      "destination": "/reference/integrations-mem0",
+      "permanent": true
+    },
+    {
+      "source": "/reference/experimental-chatmessage-store-api",
+      "destination": "/reference/",
+      "permanent": true
+    },
+    {
+      "source": "/reference/experimental-generators-api",
+      "destination": "/reference/",
+      "permanent": true
+    },
+    {
+      "source": "/reference/experimental-preprocessors-api",
+      "destination": "/reference/",
+      "permanent": true
+    },
+    {
+      "source": "/reference/experimental-retrievers-api",
+      "destination": "/reference/",
+      "permanent": true
+    },
+    {
+      "source": "/reference/experimental-summarizers-api",
+      "destination": "/reference/",
+      "permanent": true
+    },
+    {
+      "source": "/reference/experimental-writers-api",
+      "destination": "/reference/",
+      "permanent": true
+    },
+    {
+      "source": "/docs/2.21/:slug*",
+      "destination": "/docs/:slug*",
+      "permanent": true
+    },
+    {
+      "source": "/reference/2.21/:slug*",
+      "destination": "/reference/:slug*",
+      "permanent": true
+    },
+    {
+      "source": "/docs/2.20/:slug*",
+      "destination": "/docs/:slug*",
+      "permanent": true
+    },
+    {
+      "source": "/reference/2.20/:slug*",
+      "destination": "/reference/:slug*",
+      "permanent": true
+    },
+    {
+      "source": "/docs/2.19/:slug*",
+      "destination": "/docs/:slug*",
+      "permanent": true
+    },
+    {
+      "source": "/reference/2.19/:slug*",
+      "destination": "/reference/:slug*",
+      "permanent": true
+    },
+    {
+      "source": "/docs/2.18/:slug*",
+      "destination": "/docs/:slug*",
+      "permanent": true
+    },
+    {
+      "source": "/reference/2.18/:slug*",
+      "destination": "/reference/:slug*",
+      "permanent": true
+    },
+    {
+      "source": "/docs/2.23/:slug*",
+      "destination": "/docs/:slug*",
+      "permanent": true
+    },
+    {
+      "source": "/reference/2.23/:slug*",
+      "destination": "/reference/:slug*",
+      "permanent": true
+    },
+    {
+      "source": "/docs/2.22/:slug*",
+      "destination": "/docs/:slug*",
+      "permanent": true
+    },
+    {
+      "source": "/reference/2.22/:slug*",
+      "destination": "/reference/:slug*",
+      "permanent": true
+    },
+    {
+      "source": "/docs/2.24/:slug*",
+      "destination": "/docs/:slug*",
+      "permanent": true
+    },
+    {
+      "source": "/reference/2.24/:slug*",
+      "destination": "/reference/:slug*",
+      "permanent": true
+    },
+    {
+      "source": "/docs/2.25/:slug*",
+      "destination": "/docs/:slug*",
+      "permanent": true
+    },
+    {
+      "source": "/reference/2.25/:slug*",
+      "destination": "/reference/:slug*",
+      "permanent": true
+    },
+    {
+      "source": "/docs/2.26/:slug*",
+      "destination": "/docs/:slug*",
+      "permanent": true
+    },
+    {
+      "source": "/reference/2.26/:slug*",
+      "destination": "/reference/:slug*",
+      "permanent": true
+    },
+    {
+      "source": "/docs/2.27/:slug*",
+      "destination": "/docs/:slug*",
+      "permanent": true
+    },
+    {
+      "source": "/reference/2.27/:slug*",
+      "destination": "/reference/:slug*",
+      "permanent": true
+    }
+  ]
+}

@@ -1,0 +1,153 @@
+---
+title: "NvidiaDocumentEmbedder"
+id: nvidiadocumentembedder
+slug: "/nvidiadocumentembedder"
+description: "This component computes the embeddings of a list of documents and stores the obtained vectors in the embedding field of each document."
+---
+
+# NvidiaDocumentEmbedder
+
+This component computes the embeddings of a list of documents and stores the obtained vectors in the embedding field of each document.
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | Before a [`DocumentWriter`](../writers/documentwriter.mdx) in an indexing pipeline |
+| **Mandatory init variables** | `api_key`: API key for the NVIDIA NIM. Can be set with `NVIDIA_API_KEY` env var. |
+| **Mandatory run variables** | `documents`: A list of documents |
+| **Output variables** | `documents`: A list of documents (enriched with embeddings)  <br /> <br />`meta`: A dictionary of metadata |
+| **API reference** | [NVIDIA](/reference/integrations-nvidia) |
+| **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/nvidia |
+
+</div>
+
+## Overview
+
+`NvidiaDocumentEmbedder` enriches documents with an embedding of their content.
+
+You can use this component with self-hosted models using NVIDIA NIM or models hosted on the [NVIDIA API Catalog](https://build.nvidia.com/explore/discover).
+
+To embed a string, use [`NvidiaTextEmbedder`](nvidiatextembedder.mdx).
+
+## Usage
+
+To start using `NvidiaDocumentEmbedder`, install the `nvidia-haystack` package:
+
+```shell
+pip install nvidia-haystack
+```
+
+You can use `NvidiaDocumentEmbedder` with all the embedding models available on the [NVIDIA API Catalog](https://docs.api.nvidia.com/nim/reference) or with a model deployed using NVIDIA NIM. For more information, refer to [Deploying Text Embedding Models](https://developer.nvidia.com/docs/nemo-microservices/embedding/source/deploy.html).
+
+### On its own
+
+To use models from the NVIDIA API Catalog, you need to specify the `api_url` and your API key. You can get your API key from the [NVIDIA API Catalog](https://build.nvidia.com/explore/discover).
+
+`NvidiaDocumentEmbedder` uses the `NVIDIA_API_KEY` environment variable by default. Otherwise, you can pass an API key at initialization with the `api_key` parameter:
+
+```python
+from haystack import Document
+from haystack.utils.auth import Secret
+from haystack_integrations.components.embedders.nvidia import NvidiaDocumentEmbedder
+
+documents = [
+    Document(content="A transformer is a deep learning architecture"),
+    Document(content="Large language models use transformer architectures"),
+]
+
+embedder = NvidiaDocumentEmbedder(
+    model="nvidia/nv-embedqa-e5-v5",
+    api_url="https://integrate.api.nvidia.com/v1",
+    api_key=Secret.from_token("<your-api-key>"),
+)
+
+result = embedder.run(documents=documents)
+print(result["documents"])
+print(result["meta"])
+```
+
+To use a locally deployed model, set the `api_url` to your localhost and set `api_key` to `None`:
+
+```python
+from haystack import Document
+from haystack_integrations.components.embedders.nvidia import NvidiaDocumentEmbedder
+
+documents = [
+    Document(content="A transformer is a deep learning architecture"),
+    Document(content="Large language models use transformer architectures"),
+]
+
+embedder = NvidiaDocumentEmbedder(
+    model="nvidia/nv-embedqa-e5-v5",
+    api_url="http://localhost:9999/v1",
+    api_key=None,
+)
+
+result = embedder.run(documents=documents)
+print(result["documents"])
+print(result["meta"])
+```
+
+### In a pipeline
+
+The following example shows how to use `NvidiaDocumentEmbedder` in a RAG pipeline:
+
+```python
+from haystack import Pipeline, Document
+from haystack.document_stores.in_memory import InMemoryDocumentStore
+from haystack.components.writers import DocumentWriter
+from haystack.components.retrievers.in_memory import InMemoryEmbeddingRetriever
+from haystack.utils.auth import Secret
+from haystack_integrations.components.embedders.nvidia import (
+    NvidiaTextEmbedder,
+    NvidiaDocumentEmbedder,
+)
+
+document_store = InMemoryDocumentStore(embedding_similarity_function="cosine")
+
+documents = [
+    Document(content="My name is Wolfgang and I live in Berlin"),
+    Document(content="I saw a black horse running"),
+    Document(content="Germany has many big cities"),
+]
+
+indexing_pipeline = Pipeline()
+indexing_pipeline.add_component(
+    "embedder",
+    NvidiaDocumentEmbedder(
+        model="nvidia/nv-embedqa-e5-v5",
+        api_url="https://integrate.api.nvidia.com/v1",
+        api_key=Secret.from_token("<your-api-key>"),
+    ),
+)
+indexing_pipeline.add_component("writer", DocumentWriter(document_store=document_store))
+indexing_pipeline.connect("embedder", "writer")
+
+indexing_pipeline.run({"embedder": {"documents": documents}})
+
+query_pipeline = Pipeline()
+query_pipeline.add_component(
+    "text_embedder",
+    NvidiaTextEmbedder(
+        model="nvidia/nv-embedqa-e5-v5",
+        api_url="https://integrate.api.nvidia.com/v1",
+        api_key=Secret.from_token("<your-api-key>"),
+    ),
+)
+query_pipeline.add_component(
+    "retriever",
+    InMemoryEmbeddingRetriever(document_store=document_store),
+)
+query_pipeline.connect("text_embedder.embedding", "retriever.query_embedding")
+
+query = "Who lives in Berlin?"
+
+result = query_pipeline.run({"text_embedder": {"text": query}})
+
+print(result["retriever"]["documents"][0])
+```
+
+## Related
+
+- Cookbook: [Haystack RAG Pipeline with Self-Deployed AI models using NVIDIA NIMs](https://haystack.deepset.ai/cookbook/rag-with-nims)

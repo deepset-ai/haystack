@@ -6,6 +6,7 @@ import pytest
 
 from haystack import Document
 from haystack.components.rankers.lost_in_the_middle import LostInTheMiddleRanker
+from haystack.dataclasses.byte_stream import ByteStream
 
 
 class TestLostInTheMiddleRanker:
@@ -35,6 +36,12 @@ class TestLostInTheMiddleRanker:
         assert result["documents"][0].content == "1"
         assert result["documents"][1].content == "2"
 
+    def test_lost_in_the_middle_with_non_textual_documents(self):
+        ranker = LostInTheMiddleRanker()
+        docs = [Document(content="1"), Document(blob=ByteStream(b"some bytes"))]
+        with pytest.raises(ValueError, match="Some provided documents are not textual"):
+            ranker.run(documents=docs)
+
     def test_lost_in_the_middle_init(self):
         # tests that LostInTheMiddleRanker initializes with default values
         ranker = LostInTheMiddleRanker()
@@ -50,6 +57,22 @@ class TestLostInTheMiddleRanker:
 
         with pytest.raises(ValueError, match="Invalid value for word_count_threshold"):
             LostInTheMiddleRanker(word_count_threshold=-5)
+
+    @pytest.mark.parametrize("top_k", [0, -1])
+    def test_lost_in_the_middle_init_invalid_top_k(self, top_k):
+        # tests that LostInTheMiddleRanker raises an error when top_k is <= 0
+        with pytest.raises(ValueError, match=rf"top_k must be > 0, but got {top_k}"):
+            LostInTheMiddleRanker(top_k=top_k)
+
+    @pytest.mark.parametrize(("init_top_k", "run_top_k"), [(None, 0), (None, -1), (3, 0)])
+    def test_lost_in_the_middle_run_invalid_runtime_top_k(self, init_top_k, run_top_k):
+        # tests that LostInTheMiddleRanker.run raises an error for an invalid runtime top_k,
+        # even when the instance top_k is valid
+        ranker = LostInTheMiddleRanker(top_k=init_top_k)
+        docs = [Document(content=str(i)) for i in range(1, 5)]
+
+        with pytest.raises(ValueError, match=rf"top_k must be > 0, but got {run_top_k}"):
+            ranker.run(documents=docs, top_k=run_top_k)
 
     def test_lost_in_the_middle_with_word_count_threshold(self):
         # tests that lost_in_the_middle with word_count_threshold works as expected
@@ -98,7 +121,7 @@ class TestLostInTheMiddleRanker:
         assert result["documents"][1].content == "unique"
 
     @pytest.mark.parametrize("top_k", [1, 2, 3, 4, 5, 6, 7, 8, 12, 20])
-    def test_lost_in_the_middle_order_with_top_k(self, top_k: int):
+    def test_lost_in_the_middle_order_with_top_k(self, top_k: int) -> None:
         # tests that lost_in_the_middle order works with an odd number of documents and a top_k parameter
         docs = [Document(content=str(i)) for i in range(1, 10)]
         ranker = LostInTheMiddleRanker()

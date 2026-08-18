@@ -1,7 +1,6 @@
 name: Branch off
 
 on:
-  workflow_dispatch:
   workflow_call:
     outputs:
       bump_version_pr_url:
@@ -9,6 +8,9 @@ on:
         value: ${{ jobs.branch-off.outputs.bump_version_pr_url }}
 env:
   PYTHON_VERSION: "3.10"
+
+permissions:
+  contents: read
 
 jobs:
   branch-off:
@@ -18,9 +20,14 @@ jobs:
 
     steps:
       - name: Checkout this repo
-        uses: actions/checkout@v6
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: main
+          # Persist the bot token so the branch/tag pushes below authenticate as
+          # HaystackBot (a ruleset-bypass actor) instead of the default
+          # github-actions[bot], which only has contents:read and is blocked by
+          # the release rulesets.
+          token: ${{ secrets.HAYSTACK_BOT_TOKEN }}
 
       - name: Define all versions
         id: versions
@@ -51,11 +58,11 @@ jobs:
           git tag "v${{ steps.versions.outputs.next_version_rc0 }}" -m "v${{ steps.versions.outputs.next_version_rc0 }}"
           git push --tags
 
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: "${{ env.PYTHON_VERSION }}"
 
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: "22"
 
@@ -72,7 +79,7 @@ jobs:
 
       - name: Create PR to bump unstable version and create unstable docs
         id: create-pr
-        uses: peter-evans/create-pull-request@v8
+        uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
         with:
           token: ${{ secrets.HAYSTACK_BOT_TOKEN }}
           commit-message: "Bump unstable version and create unstable docs"

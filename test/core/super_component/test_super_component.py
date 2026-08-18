@@ -3,13 +3,13 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from typing import Any
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
 
+import numpy as np
 import pytest
 
-from haystack import AsyncPipeline, Document, Pipeline, SuperComponent, component, super_component
+from haystack import Document, Pipeline, SuperComponent, component, super_component
 from haystack.components.builders import AnswerBuilder, PromptBuilder
-from haystack.components.generators import OpenAIGenerator
 from haystack.components.joiners import DocumentJoiner
 from haystack.components.retrievers.in_memory import InMemoryBM25Retriever
 from haystack.core.pipeline.base import component_from_dict, component_to_dict
@@ -19,18 +19,6 @@ from haystack.dataclasses import GeneratedAnswer
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.document_stores.types import DuplicatePolicy
 from haystack.testing.sample_components import AddFixedValue, Double
-from haystack.utils.auth import Secret
-
-
-@pytest.fixture
-def mock_openai_generator(monkeypatch):
-    """Create a mock OpenAI Generator for testing."""
-
-    def mock_run(self: Any, prompt: str, **kwargs: Any) -> dict[str, list[str]]:
-        return {"replies": ["This is a test response about capitals."]}
-
-    monkeypatch.setattr(OpenAIGenerator, "run", mock_run)
-    return OpenAIGenerator(api_key=Secret.from_token("test-key"))
 
 
 @pytest.fixture
@@ -48,7 +36,8 @@ def document_store(documents):
     """Create and populate a test document store."""
     store = InMemoryDocumentStore()
     store.write_documents(documents, policy=DuplicatePolicy.OVERWRITE)
-    return store
+    yield store
+    store.shutdown()
 
 
 @pytest.fixture
@@ -92,7 +81,7 @@ def async_rag_pipeline(document_store):
         def run(self, prompt: str, **kwargs: Any) -> dict[str, list[str]]:
             return {"replies": ["This is a test response about capitals."]}
 
-    pipeline = AsyncPipeline()
+    pipeline = Pipeline()
     pipeline.add_component("retriever", InMemoryBM25Retriever(document_store=document_store))
     pipeline.add_component(
         "prompt_builder",
@@ -192,6 +181,7 @@ class TestSuperComponent:
         input_sockets = wrapper.__haystack_input__._sockets_dict  # type: ignore[attr-defined]
         assert set(input_sockets.keys()) == {
             "documents",
+            "expand_reference_ranges",
             "filters",
             "meta",
             "pattern",
@@ -218,6 +208,7 @@ class TestSuperComponent:
         input_sockets = wrapper.__haystack_input__._sockets_dict  # type: ignore[attr-defined]
         assert set(input_sockets.keys()) == {
             "documents",
+            "expand_reference_ranges",
             "filters",
             "meta",
             "pattern",
@@ -267,7 +258,6 @@ class TestSuperComponent:
         assert "type" in serialized
         assert "init_parameters" in serialized
         assert "pipeline" in serialized["init_parameters"]
-        assert serialized["init_parameters"]["is_pipeline_async"] is False
 
         # Test deserialization
         deserialized = SuperComponent.from_dict(serialized)
@@ -279,6 +269,17 @@ class TestSuperComponent:
         result = deserialized.run(query="What is the capital of France?")
         assert "documents" in result
         assert result["documents"][0].content == "Paris is the capital of France."
+
+    def test_from_dict_ignores_legacy_is_pipeline_async(self, document_store):
+        pipeline = Pipeline()
+        pipeline.add_component("retriever", InMemoryBM25Retriever(document_store=document_store))
+        wrapper = SuperComponent(pipeline=pipeline, output_mapping={"retriever.documents": "documents"})
+
+        serialized = wrapper.to_dict()
+        serialized["init_parameters"]["is_pipeline_async"] = True
+
+        deserialized = SuperComponent.from_dict(serialized)
+        assert isinstance(deserialized.pipeline, Pipeline)
 
     def test_subclass_serialization(self, rag_pipeline):
         super_comp = SuperComponent(rag_pipeline)
@@ -456,15 +457,95 @@ class TestSuperComponent:
             async def run_async(self):
                 return {"output": "Hello world"}
 
-        pipeline = AsyncPipeline()
+        pipeline = Pipeline()
         pipeline.add_component("hello", AsyncComponent())
 
         async_super_component = SuperComponent(pipeline=pipeline)
         serialized_super_component = async_super_component.to_dict()
-        assert serialized_super_component["init_parameters"]["is_pipeline_async"] is True
 
         deserialized_super_component = SuperComponent.from_dict(serialized_super_component)
-        assert isinstance(deserialized_super_component.pipeline, AsyncPipeline)
+        assert isinstance(deserialized_super_component.pipeline, Pipeline)
 
         result = await deserialized_super_component.run_async()
         assert result == {"output": "Hello world"}
+
+
+class TestSuperComponentLifecycle:
+    def test_warm_up_delegates_to_pipeline(self, sample_super_component):
+        with patch.object(sample_super_component.pipeline, "warm_up") as mock_warm_up:
+            sample_super_component.warm_up()
+            mock_warm_up.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_sync_and_async_warm_up_are_independent(self, sample_super_component):
+        with (
+            patch.object(sample_super_component.pipeline, "warm_up") as mock_warm_up,
+            patch.object(sample_super_component.pipeline, "warm_up_async", new=AsyncMock()) as mock_warm_up_async,
+        ):
+            sample_super_component.warm_up()
+            mock_warm_up.assert_called_once()
+            await sample_super_component.warm_up_async()
+            mock_warm_up_async.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_warm_up_async_delegates_to_pipeline(self, sample_super_component):
+        with patch.object(sample_super_component.pipeline, "warm_up_async", new=AsyncMock()) as mock_warm_up_async:
+            await sample_super_component.warm_up_async()
+            mock_warm_up_async.assert_awaited_once()
+
+    def test_close_delegates_to_pipeline(self, sample_super_component):
+        with patch.object(sample_super_component.pipeline, "close") as mock_close:
+            sample_super_component.close()
+            mock_close.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_close_async_delegates_to_pipeline(self, sample_super_component):
+        with patch.object(sample_super_component.pipeline, "close_async", new=AsyncMock()) as mock_close_async:
+            await sample_super_component.close_async()
+            mock_close_async.assert_awaited_once()
+
+
+@component
+class _CaptureValue:
+    """Captures whatever value reaches the inner pipeline, for both sync and async runs."""
+
+    def __init__(self) -> None:
+        self.captured: dict[str, Any] = {}
+
+    @component.output_types(seen=bool)
+    def run(self, value: Any = None) -> dict[str, bool]:
+        self.captured["value"] = value
+        return {"seen": True}
+
+    @component.output_types(seen=bool)
+    async def run_async(self, value: Any = None) -> dict[str, bool]:
+        self.captured["value"] = value
+        return {"seen": True}
+
+
+class TestSuperComponentDelegateDefaultFiltering:
+    """
+    Regression for the `_delegate_default` filter: must be `is not`, not `!=`, otherwise
+    numpy / pandas / torch inputs raise `ValueError: The truth value of ... is ambiguous`.
+    """
+
+    def test_run_accepts_numpy_ndarray_input(self):
+        inner = _CaptureValue()
+        pipe = Pipeline()
+        pipe.add_component("capture", inner)
+
+        result = SuperComponent(pipe).run(value=np.array([1, 2, 3]))
+
+        assert result == {"seen": True}
+        assert np.array_equal(inner.captured["value"], np.array([1, 2, 3]))
+
+    @pytest.mark.asyncio
+    async def test_run_async_accepts_numpy_ndarray_input(self):
+        inner = _CaptureValue()
+        pipe = Pipeline()
+        pipe.add_component("capture", inner)
+
+        result = await SuperComponent(pipe).run_async(value=np.array([4, 5, 6]))
+
+        assert result == {"seen": True}
+        assert np.array_equal(inner.captured["value"], np.array([4, 5, 6]))

@@ -135,10 +135,11 @@ class LinkContentFetcher:
                      Requires the 'h2' package to be installed (via `pip install httpx[http2]`).
         :param client_kwargs: Additional keyword arguments to pass to the httpx client.
                      If `None`, default values are used.
+        :param request_headers: Additional headers to send with every request. These take precedence over the
+                     component's default headers but not over the rotating `User-Agent`.
         """
         self.raise_on_failure = raise_on_failure
         self.user_agents = user_agents or [DEFAULT_USER_AGENT]
-        self.current_user_agent_idx: int = 0
         self.retry_attempts = retry_attempts
         self.timeout = timeout
         self.http2 = http2
@@ -149,26 +150,9 @@ class LinkContentFetcher:
         self.client_kwargs.setdefault("timeout", timeout)
         self.client_kwargs.setdefault("follow_redirects", True)
 
-        # Create httpx clients
-        client_kwargs = {**self.client_kwargs}
-
-        # Optional HTTP/2 support
-        if http2:
-            try:
-                h2_import.check()
-                client_kwargs["http2"] = True
-            except ImportError:
-                logger.warning(
-                    "HTTP/2 support requested but 'h2' package is not installed. "
-                    "Falling back to HTTP/1.1. Install with `pip install httpx[http2]` to enable HTTP/2 support."
-                )
-                self.http2 = False  # Update the setting to match actual capability
-
-        # Initialize synchronous client
-        self._client = httpx.Client(**client_kwargs)
-
-        # Initialize asynchronous client
-        self._async_client = httpx.AsyncClient(**client_kwargs)
+        # httpx clients are built lazily in warm_up / warm_up_async (resource lifecycle)
+        self._client: httpx.Client | None = None
+        self._async_client: httpx.AsyncClient | None = None
 
         # register default content handlers that extract data from the response
         self.handlers: dict[str, Callable[[httpx.Response], ByteStream]] = defaultdict(lambda: _text_content_handler)
@@ -180,48 +164,101 @@ class LinkContentFetcher:
         self.handlers["audio/*"] = _binary_content_handler
         self.handlers["video/*"] = _binary_content_handler
 
+    def _get_response(self, url: str) -> httpx.Response:
+        """
+        Gets a response from a URL, rotating the user agent on every failed attempt.
+
+        The rotation cursor is local to this call: `run` fetches URLs concurrently, so a cursor kept on the
+        component would be advanced and reset by whichever fetches happen to be in flight at the same time.
+
+        :param url: The URL to fetch.
+        :returns: The httpx Response object.
+        """
+        user_agent_idx = 0
+
+        def rotate_user_agent(retry_state: RetryCallState) -> None:  # noqa: ARG001
+            nonlocal user_agent_idx
+            user_agent_idx = (user_agent_idx + 1) % len(self.user_agents)
+            logger.debug("Switched user agent to {user_agent}", user_agent=self.user_agents[user_agent_idx])
+
         @retry(
             reraise=True,
             stop=stop_after_attempt(self.retry_attempts),
             wait=wait_exponential(multiplier=1, min=2, max=10),
             retry=(retry_if_exception_type((httpx.HTTPStatusError, httpx.RequestError))),
-            # This method is invoked only after failed requests (exception raised)
-            after=self._switch_user_agent,
+            # This callback is invoked only after failed requests (exception raised)
+            after=rotate_user_agent,
         )
         def get_response(url: str) -> httpx.Response:
-            response = self._client.get(url, headers=self._get_headers())
+            assert self._client is not None  # mypy: client is built by warm_up before run
+            response = self._client.get(url, headers=self._get_headers(self.user_agents[user_agent_idx]))
             response.raise_for_status()
             return response
 
-        self._get_response: Callable = get_response
+        return get_response(url)
 
-    def _get_headers(self) -> dict[str, str]:
+    def _build_client_kwargs(self) -> dict[str, Any]:
+        """
+        Build the keyword arguments used to construct the httpx clients.
+
+        Resolves optional HTTP/2 support, downgrading to HTTP/1.1 if the 'h2' package is not installed.
+        """
+        client_kwargs = {**self.client_kwargs}
+
+        # Optional HTTP/2 support
+        if self.http2:
+            try:
+                h2_import.check()
+                client_kwargs["http2"] = True
+            except ImportError:
+                logger.warning(
+                    "HTTP/2 support requested but 'h2' package is not installed. "
+                    "Falling back to HTTP/1.1. Install with `pip install httpx[http2]` to enable HTTP/2 support."
+                )
+                self.http2 = False  # Update the setting to match actual capability
+
+        return client_kwargs
+
+    def warm_up(self) -> None:
+        """
+        Initializes the synchronous httpx client.
+        """
+        if self._client is None:
+            self._client = httpx.Client(**self._build_client_kwargs())
+
+    async def warm_up_async(self) -> None:  # noqa: RUF029
+        """
+        Initializes the asynchronous httpx client on the serving event loop.
+        """
+        if self._async_client is None:
+            self._async_client = httpx.AsyncClient(**self._build_client_kwargs())
+
+    def close(self) -> None:
+        """
+        Releases the synchronous httpx client.
+        """
+        if self._client is not None:
+            self._client.close()
+            self._client = None
+
+    async def close_async(self) -> None:
+        """
+        Releases the asynchronous httpx client.
+        """
+        if self._async_client is not None:
+            await self._async_client.aclose()
+            self._async_client = None
+
+    def _get_headers(self, user_agent: str) -> dict[str, str]:
         """
         Build headers with precedence
 
         client defaults -> component defaults -> user-provided -> rotating UA
-        """
-        base = dict(self._client.headers)
-        return _merge_headers(
-            base, REQUEST_HEADERS, self.request_headers, {"User-Agent": self.user_agents[self.current_user_agent_idx]}
-        )
 
-    def __del__(self) -> None:
+        :param user_agent: The user agent for this attempt, taken from the caller's own rotation.
         """
-        Clean up resources when the component is deleted.
-
-        Closes both the synchronous and asynchronous HTTP clients to prevent
-        resource leaks.
-        """
-        try:
-            # Close the synchronous client if it exists
-            if hasattr(self, "_client"):
-                self._client.close()
-
-            # There is no way to close the async client without await
-        except Exception:
-            # Suppress any exceptions during cleanup
-            pass
+        base = dict(self._client.headers) if self._client is not None else {}
+        return _merge_headers(base, REQUEST_HEADERS, self.request_headers, {"User-Agent": user_agent})
 
     @component.output_types(streams=list[ByteStream])
     def run(self, urls: list[str]) -> dict[str, Any]:
@@ -241,6 +278,8 @@ class LinkContentFetcher:
             In all other scenarios, any retrieval errors are logged, and a list of successfully retrieved `ByteStream`
              objects is returned.
         """
+        self.warm_up()
+
         streams: list[ByteStream] = []
         if not urls:
             return {"streams": streams}
@@ -273,10 +312,13 @@ class LinkContentFetcher:
         :param urls: A list of URLs to fetch content from.
         :returns: `ByteStream` objects representing the extracted content.
         """
+        await self.warm_up_async()
+
         streams: list[ByteStream] = []
         if not urls:
             return {"streams": streams}
 
+        assert self._async_client is not None  # mypy: async_client is built by warm_up_async above
         # Create tasks for all URLs using _fetch_async directly
         tasks = [self._fetch_async(url, self._async_client) for url in urls]
 
@@ -335,9 +377,6 @@ class LinkContentFetcher:
             # less verbose log as this is expected to happen often (requests failing, blocked, etc.)
             logger.debug("Couldn't retrieve content from {url} because {error}", url=url, error=str(e))
 
-        finally:
-            self.current_user_agent_idx = 0
-
         return {"content_type": content_type, "url": url}, stream
 
     async def _fetch_async(
@@ -367,8 +406,6 @@ class LinkContentFetcher:
             # Create an empty ByteStream for failed requests when raise_on_failure is False
             stream = ByteStream(data=b"")
             metadata = {"content_type": content_type, "url": url}
-        finally:
-            self.current_user_agent_idx = 0
 
         return metadata, stream
 
@@ -401,17 +438,21 @@ class LinkContentFetcher:
         """
         attempt = 0
         last_exception = None
+        # Local to this call: `run_async` gathers URLs concurrently, so a cursor on the component
+        # would be shared by every request in flight.
+        user_agent_idx = 0
 
         while attempt <= self.retry_attempts:
             try:
-                response = await client.get(url, headers=self._get_headers())
+                response = await client.get(url, headers=self._get_headers(self.user_agents[user_agent_idx]))
                 response.raise_for_status()
                 return response
             except (httpx.HTTPStatusError, httpx.RequestError) as e:
                 last_exception = e
                 attempt += 1
                 if attempt <= self.retry_attempts:
-                    self._switch_user_agent(None)  # Switch user agent for next retry
+                    # Switch user agent for next retry
+                    user_agent_idx = (user_agent_idx + 1) % len(self.user_agents)
                     # Wait before retry using exponential backoff
                     await asyncio.sleep(min(2 * 2 ** (attempt - 1), 10))
                 else:
@@ -456,14 +497,3 @@ class LinkContentFetcher:
 
         # default handler
         return self.handlers["text/plain"]
-
-    def _switch_user_agent(self, retry_state: RetryCallState | None = None) -> None:  # noqa: ARG002
-        """
-        Switches the User-Agent for this LinkContentRetriever to the next one in the list of user agents.
-
-        Used by tenacity to retry the requests with a different user agent.
-
-        :param retry_state: The retry state (unused, required by tenacity).
-        """
-        self.current_user_agent_idx = (self.current_user_agent_idx + 1) % len(self.user_agents)
-        logger.debug("Switched user agent to {user_agent}", user_agent=self.user_agents[self.current_user_agent_idx])

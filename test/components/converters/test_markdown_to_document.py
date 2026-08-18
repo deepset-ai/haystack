@@ -16,6 +16,8 @@ class TestMarkdownToDocument:
         converter = MarkdownToDocument()
         assert converter.table_to_single_line is False
         assert converter.progress_bar is True
+        assert converter.encoding == "utf-8"
+        assert converter.extract_frontmatter is False
 
     def test_init_params_custom(self):
         converter = MarkdownToDocument(table_to_single_line=True, progress_bar=False, store_full_path=False)
@@ -79,6 +81,82 @@ class TestMarkdownToDocument:
         assert output["documents"][0].meta["language"] == "it"
         assert output["documents"][1].meta["language"] == "it"
 
+    def test_run_extracts_yaml_frontmatter_into_metadata(self):
+        bytestream = ByteStream(
+            data=(
+                b"---\n"
+                b"ticker: AAPL\n"
+                b"date: 2026-06-12\n"
+                b"rating_score: 4\n"
+                b"source: earnings_call\n"
+                b"tags:\n"
+                b"  - guidance\n"
+                b"---\n"
+                b"# Thesis\n"
+                b"Revenue guidance improved.\n"
+            ),
+            meta={"file_path": "/tmp/aapl.md"},
+        )
+
+        converter = MarkdownToDocument(progress_bar=False, extract_frontmatter=True)
+        output = converter.run(sources=[bytestream])
+        document = output["documents"][0]
+
+        assert "Revenue guidance improved." in document.content
+        assert "ticker: AAPL" not in document.content
+        assert document.meta["ticker"] == "AAPL"
+        assert document.meta["date"] == "2026-06-12"
+        assert document.meta["rating_score"] == 4
+        assert document.meta["source"] == "earnings_call"
+        assert document.meta["tags"] == ["guidance"]
+        assert document.meta["file_path"] == "aapl.md"
+
+    def test_run_keeps_frontmatter_as_content_by_default(self):
+        bytestream = ByteStream(data=b"---\nticker: AAPL\n---\n# Thesis\n")
+
+        converter = MarkdownToDocument(progress_bar=False)
+        output = converter.run(sources=[bytestream])
+        document = output["documents"][0]
+
+        assert "ticker: AAPL" in document.content
+        assert "ticker" not in document.meta
+
+    def test_run_meta_overrides_frontmatter_metadata(self):
+        bytestream = ByteStream(
+            data=b"---\nticker: AAPL\nsource: filing\n---\n# Thesis\n", meta={"source": "bytestream"}
+        )
+
+        converter = MarkdownToDocument(progress_bar=False, extract_frontmatter=True)
+        output = converter.run(sources=[bytestream], meta={"ticker": "MSFT"})
+        document = output["documents"][0]
+
+        assert document.meta["ticker"] == "MSFT"
+        assert document.meta["source"] == "filing"
+
+    def test_run_keeps_malformed_frontmatter_as_content_and_logs_warning(self, caplog):
+        bytestream = ByteStream(data=b"---\nticker: [AAPL\n---\n# Thesis\n")
+
+        converter = MarkdownToDocument(progress_bar=False, extract_frontmatter=True)
+        with caplog.at_level(logging.WARNING):
+            output = converter.run(sources=[bytestream])
+
+        document = output["documents"][0]
+        assert "ticker: [AAPL" in document.content
+        assert "ticker" not in document.meta
+        assert "Could not parse YAML frontmatter" in caplog.text
+
+    def test_run_keeps_unserializable_frontmatter_as_content_and_logs_warning(self, caplog):
+        bytestream = ByteStream(data=b"---\ncycle: &cycle\n  - *cycle\n---\n# Thesis\n")
+
+        converter = MarkdownToDocument(progress_bar=False, extract_frontmatter=True)
+        with caplog.at_level(logging.WARNING):
+            output = converter.run(sources=[bytestream])
+
+        document = output["documents"][0]
+        assert "cycle:" in document.content
+        assert "cycle" not in document.meta
+        assert "Could not convert YAML frontmatter" in caplog.text
+
     @pytest.mark.integration
     def test_run_wrong_file_type(self, test_files_path, caplog):
         """
@@ -124,3 +202,32 @@ class TestMarkdownToDocument:
         for doc in docs:
             assert "What to build with Haystack" in doc.content
             assert "# git clone https://github.com/deepset-ai/haystack.git" in doc.content
+
+    def test_bytestream_encoding_from_meta(self):
+        """
+        Test that a non-UTF-8 ByteStream is decoded using the encoding specified in its meta.
+        """
+        # "caf\xe9" is "café" in latin-1; decoding as utf-8 would raise UnicodeDecodeError.
+        latin1_md = "# caf\xe9".encode("latin-1")
+        bytestream = ByteStream(data=latin1_md, meta={"encoding": "latin-1"})
+
+        converter = MarkdownToDocument(progress_bar=False)
+        output = converter.run(sources=[bytestream])
+        docs = output["documents"]
+
+        assert len(docs) == 1
+        assert "café" in docs[0].content
+
+    def test_bytestream_encoding_from_init(self):
+        """
+        Test that the encoding passed to __init__ is used as a fallback when not set in ByteStream meta.
+        """
+        latin1_md = "# caf\xe9".encode("latin-1")
+        bytestream = ByteStream(data=latin1_md)
+
+        converter = MarkdownToDocument(encoding="latin-1", progress_bar=False)
+        output = converter.run(sources=[bytestream])
+        docs = output["documents"]
+
+        assert len(docs) == 1
+        assert "café" in docs[0].content
