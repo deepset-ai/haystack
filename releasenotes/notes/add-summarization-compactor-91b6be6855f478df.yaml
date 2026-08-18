@@ -1,28 +1,37 @@
 ---
 features:
   - |
-    Added the experimental ``SummarizationCompactor`` for preserving useful context from long-running Agents instead
-    of dropping older messages outright. It uses a separate Chat Generator to summarize the conversation in four tiers,
-    spending history before the Agent's current task and, within each of the two, summarizing original messages before
-    combining existing summaries with each other: the oldest historical turns, then the historical summaries left
-    behind, then the oldest steps of the current task, then the current-task summaries left behind. Because combining
-    comes last in each region, summaries accumulate instead of being rewritten on every compaction, which keeps
-    already-summarized text from being summarized again and again.
+    Added the experimental ``SummarizationCompactor``, which progressively summarizes a conversation until it fits a
+    target token budget. This preserves useful context from long-running Agents instead of dropping older messages
+    outright.
 
-    Leading system messages, the latest user task, and a configurable number of recent Agent steps are preserved, and
-    assistant tool calls always stay together with all of their tool results. This is also the floor that compaction
-    cannot go below: once each region holds a single combined summary, ``compact`` reports that no further reduction is
-    possible however small the target is. Each summary records the tier it came from and the number of messages it
-    replaced under the ``context_compaction`` key in its ``meta``.
+    The compactor reads the conversation as two regions. History runs from the end of the leading system messages up
+    to the latest real user message; the current task runs from that user message to the end. It always summarizes
+    history before the current task. Within each region, it summarizes original messages before combining existing
+    summaries. Each round uses the first applicable tier in this order:
 
-    ``approximate_summary_tokens`` tells the compactor about how long a summary is expected to come out, so it can work
-    out how much conversation to hand over in one summarization. It is an estimate used for planning, never a limit
-    imposed on the model, and the compactor sends the Chat Generator no generation settings of its own. Raising it
-    summarizes more of the conversation per round, so the result is likelier to land under the target at the cost of
-    giving up more context, which makes erring high the safer direction. Generated summaries are only applied when they
-    reduce the measured conversation size, and a reply with no usable text in it is treated as a failure. By default, a
-    failed summarization keeps any progress already made and logs a warning; set ``raise_on_failure=True`` to propagate
-    the error instead.
+    1. ``historical_turns``: Summarize the fewest oldest not-yet-summarized turns needed to reach the target.
+    2. ``historical_summaries``: When no original messages remain in history, combine its existing summaries.
+    3. ``current_task_steps``: Summarize the fewest oldest steps needed to reach the target while preserving the
+       ``min_keep_steps`` newest steps.
+    4. ``current_task_summaries``: When no more steps can be summarized, combine the current task's existing summaries.
+
+    Each summary records its tier and the number of messages it replaced under the ``context_compaction`` key in its
+    ``meta``.
+
+    Compaction has a floor it cannot go below: the leading system messages, one combined historical summary, the latest
+    user message, one combined current-task summary, and the ``min_keep_steps`` newest steps. Once the conversation is
+    reduced to that state, ``compact`` returns ``None`` because there is nothing left that may be given up, even if the
+    result is still above the target.
+
+    ``approximate_summary_tokens`` is the expected length of each summary. It is an estimate used to plan how much of
+    the conversation to summarize, not a limit imposed on the model. A higher value summarizes more of the conversation
+    per round and is more likely to bring the result under the target, at the cost of giving up more context. Configure
+    any generation limit directly on the Chat Generator.
+
+    A generated summary is only applied when it reduces the measured conversation size; a response with no usable text
+    is treated as a failure. By default, a failed summarization logs a warning and preserves any progress already made.
+    Set ``raise_on_failure=True`` to propagate the error instead.
 
     .. code-block:: python
 
