@@ -345,8 +345,9 @@ Process messages and execute tools until an exit condition is met.
 - **messages** (<code>list\[ChatMessage\]</code>) – List of Haystack ChatMessage objects to process.
 - **streaming_callback** (<code>StreamingCallbackT | None</code>) – A callback that will be invoked when a response is streamed from the LLM.
   The same callback can be configured to emit tool results when a tool is called.
-- **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for LLM. These parameters will
-  override the parameters passed during component initialization.
+- **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for the chat generator. These are merged per key
+  with the `generation_kwargs` passed at the chat generator's initialization: keys provided here take
+  precedence, keys set only at initialization are kept.
 - **tools** (<code>ToolsType | list\[str\] | None</code>) – Optional list of Tool objects, a Toolset, or list of tool names to use for this run.
   When passing tool names, tools are selected from the Agent's originally configured tools.
 - **hook_context** (<code>dict\[str, Any\] | None</code>) – Optional dictionary of request-scoped resources made available to hooks via
@@ -398,8 +399,9 @@ if available.
 - **messages** (<code>list\[ChatMessage\]</code>) – List of Haystack ChatMessage objects to process.
 - **streaming_callback** (<code>StreamingCallbackT | None</code>) – An asynchronous callback that will be invoked when a response is streamed from the
   LLM. The same callback can be configured to emit tool results when a tool is called.
-- **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for LLM. These parameters will
-  override the parameters passed during component initialization.
+- **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for the chat generator. These are merged per key
+  with the `generation_kwargs` passed at the chat generator's initialization: keys provided here take
+  precedence, keys set only at initialization are kept.
 - **tools** (<code>ToolsType | list\[str\] | None</code>) – Optional list of Tool objects, a Toolset, or list of tool names to use for this run.
 - **hook_context** (<code>dict\[str, Any\] | None</code>) – Optional dictionary of request-scoped resources made available to hooks via
   `state.data.get("hook_context")`. Useful in web/server environments to provide per-request objects
