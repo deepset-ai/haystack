@@ -290,6 +290,13 @@ def _set_applied_decision_tracing_tags(*, span: Any, applied_decision: _AppliedT
     )
 
 
+def _bind_decision_to_tool_call(decision: ToolExecutionDecision, tool_call: ToolCall) -> ToolExecutionDecision:
+    """Bind a confirmation decision to the tool call being processed by its tool_call_id."""
+    if decision.tool_call_id == tool_call.id:
+        return decision
+    return replace(decision, tool_call_id=tool_call.id)
+
+
 def _process_confirmation_strategies(
     *,
     confirmation_strategies: dict[str | tuple[str, ...], ConfirmationStrategy],
@@ -430,7 +437,7 @@ def _run_confirmation_strategies(
                 )
                 continue
 
-            # Run the confirmation strategy in a per-tool span.
+            # Run the confirmation strategy
             with _create_confirmation_tool_span(
                 tool=tool_to_invoke, tool_call=tool_call, strategy=strategy, parent_span=parent_span
             ) as span:
@@ -445,7 +452,7 @@ def _run_confirmation_strategies(
                 _set_applied_decision_tracing_tags(
                     span=span, applied_decision=_applied_tool_decision(tool_call=tool_call, decision=ted)
                 )
-            teds.append(ted)
+            teds.append(_bind_decision_to_tool_call(decision=ted, tool_call=tool_call))
 
     return teds
 
@@ -519,7 +526,7 @@ async def _run_confirmation_strategies_async(
                 _set_applied_decision_tracing_tags(
                     span=span, applied_decision=_applied_tool_decision(tool_call=tool_call, decision=ted)
                 )
-            teds.append(ted)
+            teds.append(_bind_decision_to_tool_call(decision=ted, tool_call=tool_call))
 
     return teds
 
@@ -539,17 +546,19 @@ def _apply_tool_execution_decisions(
         - A list of tool call messages for confirmed or modified tool calls. If tool parameters were modified,
           a user message explaining the modification is included before the tool call message.
     """
-    decision_by_id = {d.tool_call_id: d for d in tool_execution_decisions if d.tool_call_id}
-    decision_by_name = {d.tool_name: d for d in tool_execution_decisions if d.tool_name}
-
-    # Known limitation: If tool calls are missing IDs, we rely on tool names to match decisions to tool calls.
-    # This can lead to incorrect matches if there are multiple tool calls in the provided messages with duplicate names.
-    if not decision_by_id and len(decision_by_name) < len(tool_execution_decisions):
+    tool_calls = [tc for message in tool_call_messages for tc in (message.tool_calls or [])]
+    if len(tool_calls) != len(tool_execution_decisions):
         raise ValueError(
-            "ToolExecutionDecisions are missing tool_call_id fields and there are multiple tool calls with the same "
-            "name. When multiple tool calls with the same name are present, tool_call_id is required to correctly "
-            "match decisions to tool calls."
+            f"Expected one ToolExecutionDecision for each tool call, but received {len(tool_execution_decisions)} "
+            f"decisions for {len(tool_calls)} tool calls."
         )
+
+    # Create lookup for decisions that have a tool_call_id
+    decision_by_id = {d.tool_call_id: d for d in tool_execution_decisions if d.tool_call_id}
+
+    # Create a lookup for decisions that don't have a tool_call_id. We use tool name instead.
+    decisions_without_id = [d for d in tool_execution_decisions if not d.tool_call_id]
+    decision_by_name = {d.tool_name: d for d in decisions_without_id if d.tool_name}
 
     def make_assistant_message(chat_message: ChatMessage, tool_calls: list[ToolCall]) -> ChatMessage:
         return ChatMessage.from_assistant(
@@ -565,10 +574,14 @@ def _apply_tool_execution_decisions(
     for chat_msg in tool_call_messages:
         new_tool_calls = []
         for tc in chat_msg.tool_calls or []:
-            ted = decision_by_id.get(tc.id or "") or decision_by_name.get(tc.tool_name)
-            if not ted:
-                # This shouldn't happen, if so something went wrong in _run_confirmation_strategies
-                continue
+            ted = decision_by_id.pop(tc.id or "", None)
+            if ted is None:
+                ted = decision_by_name.pop(tc.tool_name, None)
+            if ted is None:
+                raise ValueError(
+                    f"No unused ToolExecutionDecision matches tool call {tc.tool_name!r} with ID {tc.id!r}. "
+                    "Set tool_call_id to match decisions to tool calls reliably."
+                )
 
             applied_decision = _applied_tool_decision(tool_call=tc, decision=ted)
             final_args = ted.final_tool_params or {}

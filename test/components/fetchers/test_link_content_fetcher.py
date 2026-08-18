@@ -2,10 +2,12 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import threading
 from unittest.mock import AsyncMock, Mock, patch
 
 import httpx
 import pytest
+from tenacity import wait_none
 
 from haystack.components.fetchers.link_content import (
     DEFAULT_USER_AGENT,
@@ -181,6 +183,43 @@ class TestLinkContentFetcher:
             assert sent_headers["X-Test"] == "1"
             assert sent_headers["Accept-Language"] == "fr-FR"
             assert sent_headers["User-Agent"] == "ua-sync-1"  # rotating UA wins
+
+    def test_user_agent_rotation_is_independent_per_url(self):
+        """
+        Every URL in a `run` call retries on its own, so every URL must walk its own user agent list.
+
+        The rotation cursor used to live on the component, and `run` fetches the URLs concurrently, so the
+        cursor was advanced and reset by whichever fetches happened to be in flight at the same time.
+        """
+        urls = [f"https://example.com/{i}" for i in range(8)]
+        user_agents = [f"ua-{i}" for i in range(4)]
+
+        attempts: dict[str, int] = {}
+        user_agent_on_success: dict[str, str] = {}
+        lock = threading.Lock()
+
+        def fake_get(url, headers=None, **kwargs):
+            with lock:
+                attempt = attempts.get(url, 0)
+                attempts[url] = attempt + 1
+            if attempt == 0:
+                # Every URL fails once, so every URL rotates once.
+                raise httpx.RequestError("simulated transient failure", request=httpx.Request("GET", url))
+            with lock:
+                user_agent_on_success[url] = headers["User-Agent"]
+            return Mock(status_code=200, text="OK", headers={"Content-Type": "text/plain"})
+
+        with patch("haystack.components.fetchers.link_content.httpx.Client") as ClientMock:
+            client = ClientMock.return_value
+            client.headers = {}
+            client.get.side_effect = fake_get
+
+            fetcher = LinkContentFetcher(user_agents=user_agents, retry_attempts=3, raise_on_failure=False)
+            with patch("haystack.components.fetchers.link_content.wait_exponential", return_value=wait_none()):
+                fetcher.run(urls=urls)
+
+        # Each URL failed once and succeeded on its first retry, so each one sends the second user agent.
+        assert user_agent_on_success == dict.fromkeys(urls, user_agents[1])
 
 
 class TestComponentLifecycle:

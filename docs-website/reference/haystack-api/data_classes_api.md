@@ -755,6 +755,8 @@ to_openai_dict_format(require_tool_call_ids: bool = True) -> dict[str, Any]
 
 Convert a ChatMessage to the dictionary format expected by OpenAI's Chat Completions API.
 
+The `_meta` field of ChatMessage is removed because it is not supported by OpenAI's Chat Completions API.
+
 **Parameters:**
 
 - **require_tool_call_ids** (<code>bool</code>) – If True (default), enforces that each Tool Call includes a non-null `id` attribute.

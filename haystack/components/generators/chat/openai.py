@@ -97,6 +97,8 @@ class OpenAIChatGenerator:
     ```
     """
 
+    _HAYSTACK_TO_PROVIDER_GENERATION_KWARGS: ClassVar[dict[str, str]] = {"max_output_tokens": "max_completion_tokens"}
+
     SUPPORTED_MODELS: ClassVar[list[str]] = [
         "gpt-5-mini",
         "gpt-5-nano",
@@ -237,8 +239,12 @@ class OpenAIChatGenerator:
         """
         self._warm_up_tools()
         if self.client is None:
+            # openai>=3 annotates http_client as httpx2, but legacy httpx clients are supported at runtime.
+            # https://github.com/openai/openai-python/blob/main/httpx2.md
+            http_client = init_http_client(self.http_client_kwargs, async_client=False)
             self.client = OpenAI(
-                http_client=init_http_client(self.http_client_kwargs, async_client=False), **self._client_kwargs()
+                http_client=http_client,  # type: ignore[arg-type]
+                **self._client_kwargs(),
             )
 
     async def warm_up_async(self) -> None:  # noqa: RUF029
@@ -247,8 +253,12 @@ class OpenAIChatGenerator:
         """
         self._warm_up_tools()
         if self.async_client is None:
+            # openai>=3 annotates http_client as httpx2, but legacy httpx clients are supported at runtime.
+            # https://github.com/openai/openai-python/blob/main/httpx2.md
+            http_client = init_http_client(self.http_client_kwargs, async_client=True)
             self.async_client = AsyncOpenAI(
-                http_client=init_http_client(self.http_client_kwargs, async_client=True), **self._client_kwargs()
+                http_client=http_client,  # type: ignore[arg-type]
+                **self._client_kwargs(),
             )
 
     def close(self) -> None:
