@@ -117,16 +117,8 @@ class TestAttachmentPlaceholder:
         assert _attachment_placeholder(content) == expected
 
 
-class TestTierOrder:
-    """
-    Which stretch of conversation is given up next.
-
-    History is spent before the current task, and within each of the two, original messages are summarized before
-    existing summaries are combined: `historical_turns`, `historical_summaries`, `current_task_steps`,
-    `current_task_summaries`.
-    """
-
-    def test_summarizes_the_oldest_historical_turn_only(self):
+class TestNextSummarySelection:
+    def test_selects_the_fewest_oldest_historical_turns(self):
         # Two completed historical turns followed by a current task with one step.
         messages = [
             ChatMessage.from_system("rules"),
@@ -137,55 +129,38 @@ class TestTierOrder:
             ChatMessage.from_user("current task"),
             ChatMessage.from_assistant("current step"),
         ]
-        generator, prompts = summarizer("short historical summary")
         # Room for everything but the padded oldest turn, plus the summary standing in for it.
         target_tokens = COUNTER.count([messages[0], *messages[3:]]) + 100
-        compacted = SummarizationCompactor(generator, approximate_summary_tokens=100).compact(
+        plan = SummarizationCompactor(chat_generator=MockChatGenerator(), approximate_summary_tokens=100)._next_summary(
             messages=messages, target_tokens=target_tokens, token_counter=COUNTER
         )
-        assert compacted is not None
-        # Only the oldest turn was summarized, so the recent turn never reached the generator.
-        assert len(prompts) == 1
-        assert "oldest question" in prompts[0]
-        assert "recent question" not in prompts[0]
-        assert compacted == [messages[0], compacted[1], *messages[3:]]
+        assert plan == ([1, 2], "historical_turns")
 
-    def test_summarizes_historical_turns_before_current_steps(self):
+    def test_selects_historical_turns_before_current_steps(self):
         messages = [
             ChatMessage.from_system("rules"),
             ChatMessage.from_user("old question " * 40),
             ChatMessage.from_assistant("old answer " * 40),
             *fresh_conversation_with_two_steps()[1:],
         ]
-        generator, prompts = summarizer("history", "old step")
-        compacted = SummarizationCompactor(generator, approximate_summary_tokens=1).compact(
+        plan = SummarizationCompactor(chat_generator=MockChatGenerator(), approximate_summary_tokens=1)._next_summary(
             messages=messages, target_tokens=SMALLEST, token_counter=COUNTER
         )
-        assert compacted is not None
-        assert "old question" in prompts[0]
-        assert "first result" in prompts[1]
-        assert sources(messages=compacted) == ["historical_turns", "current_task_steps"]
-        # The newest step is never given up.
-        assert compacted[-2:] == messages[-2:]
+        assert plan == ([1, 2], "historical_turns")
 
-    def test_combines_historical_summaries_before_current_steps(self):
+    def test_selects_historical_summaries_before_current_steps(self):
         messages = [
             ChatMessage.from_system("rules"),
             summary(text="first history " * 20, source="historical_turns"),
             summary(text="second history " * 20, source="historical_turns"),
             *fresh_conversation_with_two_steps()[1:],
         ]
-        generator, prompts = summarizer("combined history", "old step")
-        compacted = SummarizationCompactor(generator, approximate_summary_tokens=1).compact(
+        plan = SummarizationCompactor(chat_generator=MockChatGenerator(), approximate_summary_tokens=1)._next_summary(
             messages=messages, target_tokens=SMALLEST, token_counter=COUNTER
         )
-        assert compacted is not None
-        # History holds no original messages, so its summaries are combined before any current-task step is touched.
-        assert "first history" in prompts[0] and "first result" not in prompts[0]
-        assert "first result" in prompts[1]
-        assert sources(messages=compacted) == ["historical_summaries", "current_task_steps"]
+        assert plan == ([1, 2], "historical_summaries")
 
-    def test_summarizes_steps_before_combining_current_task_summaries(self):
+    def test_selects_current_steps_before_current_task_summaries(self):
         messages = [
             ChatMessage.from_system("rules"),
             ChatMessage.from_user("current task"),
@@ -193,19 +168,12 @@ class TestTierOrder:
             summary(text="second step summary " * 20, source="current_task_steps"),
             *fresh_conversation_with_two_steps()[2:],
         ]
-        generator, prompts = summarizer("old step", "combined steps")
-        compacted = SummarizationCompactor(generator, approximate_summary_tokens=1).compact(
+        plan = SummarizationCompactor(chat_generator=MockChatGenerator(), approximate_summary_tokens=1)._next_summary(
             messages=messages, target_tokens=SMALLEST, token_counter=COUNTER
         )
-        assert compacted is not None
-        # Summarizing the step frees more room than combining does, so it goes first. Only once no step may be
-        # given up are the three summaries it left behind combined into one.
-        assert "first result" in prompts[0]
-        assert "first step summary" in prompts[1] and "old step" in prompts[1]
-        assert sources(messages=compacted) == ["current_task_summaries"]
-        assert compacted[-2:] == messages[-2:]
+        assert plan == ([4, 5], "current_task_steps")
 
-    def test_combines_current_task_summaries_when_min_keep_steps_reserves_every_step(self):
+    def test_selects_current_task_summaries_when_min_keep_steps_reserves_every_step(self):
         messages = [
             ChatMessage.from_system("rules"),
             ChatMessage.from_user("current task"),
@@ -214,25 +182,25 @@ class TestTierOrder:
             tool_call("new"),
             tool_result("new result", call_id="new"),
         ]
-        generator, prompts = summarizer("combined steps")
-        compacted = SummarizationCompactor(generator, min_keep_steps=1, approximate_summary_tokens=1).compact(
-            messages=messages, target_tokens=SMALLEST, token_counter=COUNTER
-        )
-        assert compacted is not None
-        # Combining spends no step, so `min_keep_steps` reserving the only one does not stand in its way.
-        assert "first step summary" in prompts[0] and "second step summary" in prompts[0]
-        assert sources(messages=compacted) == ["current_task_summaries"]
-        assert compacted[-2:] == messages[-2:]
+        plan = SummarizationCompactor(
+            chat_generator=MockChatGenerator(), min_keep_steps=1, approximate_summary_tokens=1
+        )._next_summary(messages=messages, target_tokens=SMALLEST, token_counter=COUNTER)
+        assert plan == ([2, 3], "current_task_summaries")
 
-    @pytest.mark.parametrize(("min_keep_steps", "expected"), [(0, 0), (1, 1), (2, 2), (20, 2)])
-    def test_min_keep_steps_wins_over_an_unaffordable_target(self, min_keep_steps, expected):
-        messages = fresh_conversation_with_two_steps()
-        generator, _ = summarizer("step summary")
-        compacted = SummarizationCompactor(
-            generator, min_keep_steps=min_keep_steps, approximate_summary_tokens=1
-        ).compact(messages=messages, target_tokens=SMALLEST, token_counter=COUNTER)
-        result = compacted or messages
-        assert sum(message.is_from(role=ChatRole.ASSISTANT) for message in result) == expected
+    @pytest.mark.parametrize(
+        ("min_keep_steps", "expected"),
+        [
+            pytest.param(0, ([2, 3, 4, 5], "current_task_steps"), id="keep-none"),
+            pytest.param(1, ([2, 3], "current_task_steps"), id="keep-one"),
+            pytest.param(2, None, id="keep-both"),
+            pytest.param(20, None, id="keep-more-than-exist"),
+        ],
+    )
+    def test_min_keep_steps_limits_eligible_current_steps(self, min_keep_steps, expected):
+        plan = SummarizationCompactor(
+            chat_generator=MockChatGenerator(), min_keep_steps=min_keep_steps, approximate_summary_tokens=1
+        )._next_summary(messages=fresh_conversation_with_two_steps(), target_tokens=SMALLEST, token_counter=COUNTER)
+        assert plan == expected
 
 
 class TestSummaryLifecycle:
