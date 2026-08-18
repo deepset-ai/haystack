@@ -190,7 +190,7 @@
 | haystack/hooks/human\_in\_the\_loop/dataclasses.py                        |       16 |        0 |    100% |           |
 | haystack/hooks/human\_in\_the\_loop/hooks.py                              |       30 |        1 |     97% |       117 |
 | haystack/hooks/human\_in\_the\_loop/policies.py                           |       17 |        0 |    100% |           |
-| haystack/hooks/human\_in\_the\_loop/strategies.py                         |      166 |        8 |     95% |120-121, 272, 321, 365, 426, 460, 633 |
+| haystack/hooks/human\_in\_the\_loop/strategies.py                         |      193 |        5 |     97% |338, 386, 430, 499, 706 |
 | haystack/hooks/human\_in\_the\_loop/types/\_\_init\_\_.py                 |        2 |        0 |    100% |           |
 | haystack/hooks/human\_in\_the\_loop/types/protocol.py                     |       25 |        0 |    100% |           |
 | haystack/hooks/human\_in\_the\_loop/user\_interfaces.py                   |       96 |        2 |     98% |   65, 103 |
@@ -264,7 +264,7 @@
 | haystack/utils/type\_serialization.py                                     |      144 |        6 |     96% |106, 108, 260-261, 269, 285 |
 | haystack/utils/url\_validation.py                                         |        4 |        0 |    100% |           |
 | haystack/version.py                                                       |        5 |        2 |     60% |      9-10 |
-| **TOTAL**                                                                 | **16833** |  **768** | **95%** |           |
+| **TOTAL**                                                                 | **16860** |  **765** | **95%** |           |
 
 
 ## Setup coverage badge
