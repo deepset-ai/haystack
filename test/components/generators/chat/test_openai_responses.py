@@ -601,6 +601,17 @@ class TestRun:
         assert len(response["replies"]) == 1
         assert isinstance(response["replies"][0], ChatMessage)
 
+    def test_run_with_generation_kwargs(self, openai_mock_responses: MagicMock) -> None:
+
+        component = OpenAIResponsesChatGenerator(
+            api_key=Secret.from_token("test-api-key"), generation_kwargs={"max_output_tokens": 10, "temperature": 0.5}
+        )
+        component.run([ChatMessage.from_user("What's the capital of France")], generation_kwargs={"temperature": 0.9})
+
+        kwargs = openai_mock_responses.call_args.kwargs
+        assert kwargs["temperature"] == 0.9
+        assert kwargs["max_output_tokens"] == 10
+
     def test_run_with_flattened_generation_kwargs(
         self, openai_mock_responses: MagicMock, monkeypatch: pytest.MonkeyPatch
     ) -> None:
@@ -1220,6 +1231,19 @@ class TestOpenAIResponsesChatGeneratorAsync:
         assert isinstance(response["replies"], list)
         assert len(response["replies"]) == 1
         assert isinstance(response["replies"][0], ChatMessage)
+
+    async def test_run_async_with_generation_kwargs(self, openai_mock_async_responses: MagicMock) -> None:
+
+        component = OpenAIResponsesChatGenerator(
+            api_key=Secret.from_token("test-api-key"), generation_kwargs={"max_output_tokens": 10, "temperature": 0.5}
+        )
+        await component.run_async(
+            [ChatMessage.from_user("What's the capital of France")], generation_kwargs={"temperature": 0.9}
+        )
+
+        kwargs = openai_mock_async_responses.call_args.kwargs
+        assert kwargs["temperature"] == 0.9
+        assert kwargs["max_output_tokens"] == 10
 
     @pytest.mark.asyncio
     @pytest.mark.skipif(
