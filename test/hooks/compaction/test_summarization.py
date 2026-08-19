@@ -7,7 +7,7 @@ import pytest
 
 from haystack.components.agents import Agent
 from haystack.components.generators.chat import MockChatGenerator
-from haystack.dataclasses import ChatMessage, ChatRole, FileContent, ImageContent, TextContent, ToolCall
+from haystack.dataclasses import ChatMessage, FileContent, ImageContent, TextContent, ToolCall
 from haystack.hooks.compaction import CompactionHook, SummarizationCompactor
 from haystack.hooks.compaction.summarization import _attachment_placeholder
 from haystack.hooks.compaction.utils import _COMPACTION_META_KEY
@@ -54,19 +54,23 @@ class NoReplyGenerator(MockChatGenerator):
         return {"replies": []}
 
 
-def summary(text: str, source: str) -> ChatMessage:
-    """A summary an earlier compaction left behind, marked the way this compactor marks its own."""
+def summary(text: str, source: str, summarized_messages: int = 1) -> ChatMessage:
+    """Build a summary message with the metadata written by the compactor."""
     return ChatMessage.from_user(
         f"<conversation_summary>\n{text}\n</conversation_summary>",
-        meta={_COMPACTION_META_KEY: {"strategy": "summarization", "source": source}},
+        meta={
+            _COMPACTION_META_KEY: {
+                "strategy": "summarization",
+                "summarized_messages": summarized_messages,
+                "source": source,
+            }
+        },
     )
 
 
-def sources(messages: list[ChatMessage]) -> list[str]:
-    """Which stretch of conversation each summary in `messages` stands in for, oldest first."""
-    return [
-        message.meta[_COMPACTION_META_KEY]["source"] for message in messages if _COMPACTION_META_KEY in message.meta
-    ]
+def summaries(messages: list[ChatMessage]) -> list[ChatMessage]:
+    """Return the summary messages in a conversation, oldest first."""
+    return [message for message in messages if _COMPACTION_META_KEY in message.meta]
 
 
 def compact_after_each_addition(
@@ -223,12 +227,22 @@ class TestNextSummarySelection:
         assert plan is None
 
 
-class TestSummaryLifecycle:
-    """
-    How summaries build up and are combined as an Agent loop compacts the same conversation again and again.
+class TestCompaction:
+    def test_leaves_the_input_conversation_untouched(self):
+        messages = fresh_conversation_with_two_steps()
+        SummarizationCompactor(MockChatGenerator("summary"), approximate_summary_tokens=1).compact(
+            messages=messages, target_tokens=SMALLEST, token_counter=COUNTER
+        )
+        assert messages == fresh_conversation_with_two_steps()
 
-    Combining is the last thing tried in each region, so summaries accumulate instead of being rewritten every time.
-    """
+    def test_returns_none_when_the_conversation_fits(self):
+        generator, prompts = summarizer()
+        messages = [ChatMessage.from_system("rules"), ChatMessage.from_user("task")]
+        compacted = SummarizationCompactor(generator).compact(
+            messages=messages, target_tokens=10_000, token_counter=COUNTER
+        )
+        assert compacted is None
+        assert prompts == []
 
     def test_historical_summaries_accumulate_while_raw_turns_remain(self):
         compactor = SummarizationCompactor(MockChatGenerator("summary"), approximate_summary_tokens=10)
@@ -244,11 +258,13 @@ class TestSummaryLifecycle:
             additions=additions,
             target_tokens=1_100,
         )
-        assert [sources(messages=snapshot) for snapshot in snapshots] == [
+        expected_summary = summary(text="summary", source="historical_turns", summarized_messages=2)
+        summaries_per_snapshot = [summaries(messages=snapshot) for snapshot in snapshots]
+        assert summaries_per_snapshot == [
             [],
-            ["historical_turns"],
-            ["historical_turns", "historical_turns"],
-            ["historical_turns", "historical_turns", "historical_turns"],
+            [expected_summary],
+            [expected_summary, expected_summary],
+            [expected_summary, expected_summary, expected_summary],
         ]
 
     def test_current_task_summaries_accumulate_while_raw_steps_remain(self):
@@ -266,11 +282,13 @@ class TestSummaryLifecycle:
             additions=additions,
             target_tokens=650,
         )
-        assert [sources(messages=snapshot) for snapshot in snapshots] == [
+        expected_summary = summary(text="summary", source="current_task_steps", summarized_messages=2)
+        summaries_per_snapshot = [summaries(messages=snapshot) for snapshot in snapshots]
+        assert summaries_per_snapshot == [
             [],
-            ["current_task_steps"],
-            ["current_task_steps", "current_task_steps"],
-            ["current_task_steps", "current_task_steps", "current_task_steps"],
+            [expected_summary],
+            [expected_summary, expected_summary],
+            [expected_summary, expected_summary, expected_summary],
         ]
 
     def test_a_summarized_past_task_is_combined_into_history_once_a_new_task_arrives(self):
@@ -295,66 +313,9 @@ class TestSummaryLifecycle:
         assert "past task" in prompts[0] and "early steps of the past task" not in prompts[0]
         # Then the two historical summaries are combined.
         assert "early steps of the past task" in prompts[1] and "remaining past-task messages" in prompts[1]
-        assert sources(messages=compacted) == ["historical_summaries"]
-        assert "combined history" in (compacted[1].text or "")
-
-
-class TestApplySummary:
-    def test_summarized_messages_counts_the_raw_messages_replaced(self):
-        messages = [
-            ChatMessage.from_system("rules"),
-            ChatMessage.from_user("old " * 100),
-            ChatMessage.from_assistant("answer " * 100),
-            ChatMessage.from_user("task"),
+        assert summaries(messages=compacted) == [
+            summary(text="combined history", source="historical_summaries", summarized_messages=2)
         ]
-        compacted = SummarizationCompactor(chat_generator=MockChatGenerator())._apply_summary(
-            messages=messages,
-            indices=[1, 2],
-            source="historical_turns",
-            result={"replies": [ChatMessage.from_assistant("summary")]},
-            token_counter=COUNTER,
-        )
-        assert compacted[1].is_from(role=ChatRole.USER)
-        assert compacted[1].meta[_COMPACTION_META_KEY] == {
-            "strategy": "summarization",
-            "summarized_messages": 2,
-            "source": "historical_turns",
-        }
-
-    def test_summarized_messages_counts_summaries_not_the_messages_behind_them(self):
-        messages = [
-            ChatMessage.from_system("rules"),
-            summary(text="first history " * 20, source="historical_turns"),
-            summary(text="second history " * 20, source="historical_turns"),
-            summary(text="third history " * 20, source="historical_turns"),
-            ChatMessage.from_user("current task"),
-        ]
-        compacted = SummarizationCompactor(chat_generator=MockChatGenerator())._apply_summary(
-            messages=messages,
-            indices=[1, 2, 3],
-            source="historical_summaries",
-            result={"replies": [ChatMessage.from_assistant("all history")]},
-            token_counter=COUNTER,
-        )
-        assert compacted[1].meta[_COMPACTION_META_KEY]["summarized_messages"] == 3
-
-
-class TestCompaction:
-    def test_leaves_the_input_conversation_untouched(self):
-        messages = fresh_conversation_with_two_steps()
-        SummarizationCompactor(MockChatGenerator("summary"), approximate_summary_tokens=1).compact(
-            messages=messages, target_tokens=SMALLEST, token_counter=COUNTER
-        )
-        assert messages == fresh_conversation_with_two_steps()
-
-    def test_returns_none_when_the_conversation_fits(self):
-        generator, prompts = summarizer()
-        messages = [ChatMessage.from_system("rules"), ChatMessage.from_user("task")]
-        compacted = SummarizationCompactor(generator).compact(
-            messages=messages, target_tokens=10_000, token_counter=COUNTER
-        )
-        assert compacted is None
-        assert prompts == []
 
 
 class TestSummaryPrompt:
@@ -403,7 +364,9 @@ class TestFailureHandling:
         assert compacted is not None
         assert len(prompts) == 2
         # The history was summarized before the step summary failed, and that progress is kept.
-        assert sources(messages=compacted) == ["historical_turns"]
+        assert summaries(messages=compacted) == [
+            summary(text="history", source="historical_turns", summarized_messages=2)
+        ]
         assert compacted[-2:] == messages[-2:]
 
     def test_raises_when_a_summary_does_not_shrink_the_conversation(self):
@@ -491,7 +454,9 @@ class TestSummarizationCompactorInAgent:
         assert result["last_message"].text == "done"
         assert compacted[0].text == "rules"
         assert any(message.text == "current task" for message in compacted)
-        assert sources(messages=compacted) == ["historical_turns"]
+        assert summaries(messages=compacted) == [
+            summary(text="summary", source="historical_turns", summarized_messages=2)
+        ]
         assert all("old question" not in (message.text or "") for message in compacted)
 
 
