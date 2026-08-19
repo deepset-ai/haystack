@@ -10,3 +10,10 @@ features:
     ``unsafe=True`` at every call site. A warning is logged the first time it takes effect. Only enable
     it when every pipeline the process loads is trusted: a single untrusted pipeline then leads to
     arbitrary code execution.
+
+    The switch is not limited to pipeline loading: it disables the same checks for every
+    deserialization path in the process, including ones that take no ``unsafe`` argument of their own
+    — ``Tool.from_dict``, ``State.from_dict`` (agent snapshot resume), and the ``ConditionalRouter``
+    and ``OutputAdapter`` Jinja sandbox flags. A deployment that loads trusted pipelines at startup
+    but accepts serialized tools or agent state at request time is therefore exposed on the request
+    path as well, not only at load time.
