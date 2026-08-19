@@ -5,11 +5,11 @@ features:
     conversation until it fits a target token budget, preserving useful context from long-running Agents instead of
     dropping older messages.
 
-    It supports four strategies for summarization, which are applied in order until the target token budget is reached:
-    1. ``historical_turns``: Starting with the oldest, summarize as few turns that still contain original messages as
-       needed to reach the target.
-    2. ``historical_summaries``: When no original messages remain in history, combine as few of its oldest summaries as
-       needed to reach the target.
+    It uses four summarization tiers in order until the target token budget is reached:
+
+    1. ``historical_turns``: Starting with the oldest, summarize as few complete historical turns as needed.
+    2. ``historical_summaries``: When no complete historical turns remain, combine as few of the oldest historical
+       summaries as needed.
     3. ``current_task_steps``: Summarize the fewest oldest steps needed to reach the target while preserving the
        ``min_keep_steps`` newest steps.
     4. ``current_task_summaries``: When no more steps can be summarized, combine as few of the current task's oldest

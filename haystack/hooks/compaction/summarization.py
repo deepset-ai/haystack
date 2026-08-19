@@ -159,16 +159,16 @@ class SummarizationCompactor(Compactor):
 
     The conversation is read as two regions. History runs from the end of the leading system messages up to the latest
     real user message; the current task runs from that user message to the end. Compaction always summarizes history
-    before it summarizes the current task. Within each region it progressively summarizes original messages before it
-    combines existing summaries with each other. When a historical turn contains both original messages and an
-    existing summary, the whole turn is summarized together to preserve its chronological context.
+    before it summarizes the current task. Within history it summarizes complete turns before combining standalone
+    historical summaries; within the current task it summarizes eligible Agent steps before combining current-task
+    summaries.
 
     Each round of summarization happens in one of four tiers, in this order:
 
-    1. `historical_turns`: Starting with the oldest, as few turns of history that still contain original messages as
-        needed to reach the target are summarized.
-    2. `historical_summaries`: Next if no original messages are left in history, as few of its oldest summaries as
-        needed to reach the target are combined.
+    1. `historical_turns`: Starting with the oldest, as few complete historical turns as needed to reach the target are
+        summarized.
+    2. `historical_summaries`: Next if no complete historical turns remain, as few of the oldest historical summaries
+        as needed to reach the target are combined.
     3. `current_task_steps`: Third the fewest oldest steps of the current task are summarized to reach the target,
         but always keeping the `min_keep_steps` newest.
     4. `current_task_summaries`: Last if no steps of the current task can be given up because of `min_keep_steps`, as
@@ -324,16 +324,17 @@ class SummarizationCompactor(Compactor):
         Choose the next stretch of conversation to replace with a summary.
 
         Four tiers are tried in order, so the oldest and least useful context goes first and the Agent's current task
-        is given up last. History is spent before the current task, and within each of the two, original messages are
-        summarized before existing summaries are combined with each other. The tiers are:
+        is given up last. Complete historical turns are summarized before standalone historical summaries, and eligible
+        current-task steps are summarized before current-task summaries. The tiers are:
 
-        1. `historical_turns`: as few of the oldest turns that still contain original messages as needed.
-        2. `historical_summaries`: history holds only summaries now, so combine as few of the oldest as needed.
+        1. `historical_turns`: as few of the oldest complete historical turns as needed.
+        2. `historical_summaries`: no complete historical turns remain, so combine as few of the oldest summaries as
+            needed.
         3. `current_task_steps`: the fewest oldest steps of the current task, keeping `min_keep_steps` of the newest.
         4. `current_task_summaries`: no step may be given up, so combine as few of the oldest summaries as needed.
 
-        Combining is deliberately last within a region, since summarizing summaries is more likely to lose information
-        than summarizing the original messages they replaced.
+        Combining is deliberately last within a region, since repeatedly summarizing existing summaries is more likely
+        to lose information than summarizing a turn or step once.
 
         :param messages: The whole conversation, ordered oldest to newest.
         :param target_tokens: The token budget the conversation should come in under.
@@ -347,8 +348,8 @@ class SummarizationCompactor(Compactor):
         history_end = task_index if task_index is not None else system_end
         task_start = task_index + 1 if task_index is not None else system_end
 
-        # Tier 1. Each group starts with an original user message, so fully summarized turns are absent while mixed
-        # turns include their existing summaries and retain their chronological context.
+        # Tier 1. Each group is anchored by a real user message, so fully summarized turns are absent while mixed turns
+        # include their existing summaries and retain their chronological context.
         historical_turns = _historical_turn_groups(messages=messages, system_end=system_end, task_index=task_index)
         if historical_turns:
             return _groups_to_summarize(
