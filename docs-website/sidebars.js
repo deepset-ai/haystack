@@ -174,6 +174,7 @@ export default {
                   items: [
                     'pipeline-components/agents-1/compaction/compaction-hook',
                     'pipeline-components/agents-1/compaction/sliding-window-compactor',
+                    'pipeline-components/agents-1/compaction/summarization-compactor',
                     'pipeline-components/agents-1/compaction/tool-result-pruning-compactor',
                   ],
                 },
