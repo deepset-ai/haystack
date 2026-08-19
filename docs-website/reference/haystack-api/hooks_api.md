@@ -16,6 +16,8 @@ This `before_llm` Agent hook estimates the size of the conversation before each 
 reaches `compact_at` of the window, hands it to a `Compactor` to bring back down to `compact_to`. Register it on an
 `Agent` under the `before_llm` hook point:
 
+<!-- test-ignore -->
+
 ```python
 from haystack.components.agents import Agent
 from haystack.components.generators.chat import OpenAIResponsesChatGenerator
@@ -185,6 +187,8 @@ An `omission_note` is left where the removed messages used to sit: directly afte
 only historical turns were removed, and directly after the latest user message when the current task's own steps
 were removed. Only one note is ever present, since a later compaction folds an earlier note into its replacement.
 
+<!-- test-ignore -->
+
 ```python
 from haystack.components.agents import Agent
 from haystack.components.generators.chat import OpenAIResponsesChatGenerator
@@ -268,6 +272,8 @@ Replaces the content of older tool results with a short placeholder, keeping the
 Tool output usually dominates a long Agent run, and most of it stops being useful once the model has acted on it.
 This compactor rewrites those results in place rather than removing messages, so every tool call keeps its matching
 result and the model can see what it ran and re-run it if needed.
+
+<!-- test-ignore -->
 
 ```python
 from haystack.components.agents import Agent
