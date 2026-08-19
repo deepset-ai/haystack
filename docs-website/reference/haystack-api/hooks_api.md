@@ -261,6 +261,183 @@ Serialize the compactor.
 
 - <code>dict\[str, Any\]</code> – A dictionary representation of the compactor.
 
+## compaction/summarization
+
+### SummarizationCompactor
+
+Bases: <code>Compactor</code>
+
+A compactor that progressively summarizes a conversation until it fits a target token budget.
+
+In typical Agent use, the `CompactionHook` supplies the target (aka `target_tokens`) to `compact`. It derives it
+from the hook's `context_window` and `compact_to` settings after accounting for non-message overhead.
+
+The conversation is read as two regions. History runs from the end of the leading system messages up to the latest
+real user message; the current task runs from that user message to the end. Compaction always summarizes history
+before it summarizes the current task. Within history it summarizes complete turns before combining standalone
+historical summaries; within the current task it summarizes eligible Agent steps before combining current-task
+summaries.
+
+Each round of summarization happens in one of four tiers, in this order:
+
+1. `historical_turns`: Starting with the oldest, as few complete historical turns as needed to reach the target are
+   summarized.
+1. `historical_summaries`: Next if no complete historical turns remain, as few of the oldest historical summaries
+   as needed to reach the target are combined.
+1. `current_task_steps`: Third the fewest oldest steps of the current task are summarized to reach the target,
+   but always keeping the `min_keep_steps` newest.
+1. `current_task_summaries`: Last if no steps of the current task can be given up because of `min_keep_steps`, as
+   few of its oldest summaries as needed to reach the target are combined.
+
+Each summary is marked as belonging to this compaction strategy under the `context_compaction` key in its `meta`,
+alongside `summarized_messages`, the number of messages it replaced.
+
+The SummarizationCompactor has a floor it cannot go below: the leading system messages, one combined historical
+summary, the latest user message, one combined current-task summary, and the `min_keep_steps` newest steps. Once a
+conversation is reduced to that, `compact` returns None however small the target is, because there is nothing left
+that may be given up.
+
+<!-- test-ignore -->
+
+```python
+from haystack.components.agents import Agent
+from haystack.components.generators.chat import OpenAIResponsesChatGenerator
+from haystack.hooks.compaction import CompactionHook, SummarizationCompactor
+
+summary_generator = OpenAIResponsesChatGenerator(model="gpt-5.4-nano")
+hook = CompactionHook(
+    compactor=SummarizationCompactor(chat_generator=summary_generator),
+    context_window=400_000,
+    compact_at=0.7,
+    compact_to=0.4,
+)
+agent = Agent(chat_generator=agent_generator, tools=[web_search], hooks={"before_llm": [hook]})
+```
+
+#### __init__
+
+```python
+__init__(
+    chat_generator: ChatGenerator,
+    *,
+    min_keep_steps: int = 1,
+    approximate_summary_tokens: int = 1024,
+    summary_instruction: str = _DEFAULT_SUMMARY_INSTRUCTION,
+    raise_on_failure: bool = False
+) -> None
+```
+
+Initialize the compactor.
+
+**Parameters:**
+
+- **chat_generator** (<code>ChatGenerator</code>) – The Chat Generator used to write summaries.
+- **min_keep_steps** (<code>int</code>) – The fewest complete recent Agent steps to keep, even when they exceed the target.
+- **approximate_summary_tokens** (<code>int</code>) – About how long you expect a summary to come out. This is an estimate used
+  for planning, not a limit imposed on the model. The compactor uses it to work out how much of the
+  conversation to summarize. A higher value causes the compactor to summarize more of the conversation per
+  round, so the result is likelier to land under the target, at the cost of giving up more of the
+  conversation. A lower value summarizes less per round and keeps more, but may leave the result above the
+  target.
+- **summary_instruction** (<code>str</code>) – The prompt instructions for how to summarize a portion of the conversation.
+  The default instructions ask for a summary with fixed sections covering the objective, decisions and
+  constraints, completed work, exact identifiers, and unresolved work.
+- **raise_on_failure** (<code>bool</code>) – Whether to raise an exception if the chat generator fails or returns a summary that
+  does not shrink the conversation. By default the failure is logged and any successful partial compaction
+  is returned.
+
+**Raises:**
+
+- <code>ValueError</code> – If `min_keep_steps` is negative or `approximate_summary_tokens` is not positive.
+
+#### compact
+
+```python
+compact(
+    messages: list[ChatMessage], target_tokens: int, token_counter: TokenCounter
+) -> list[ChatMessage] | None
+```
+
+Return a progressively summarized conversation, or None when no useful reduction is possible.
+
+**Parameters:**
+
+- **messages** (<code>list\[ChatMessage\]</code>) – The conversation to compact, ordered oldest to newest.
+- **target_tokens** (<code>int</code>) – The token budget the compacted messages should aim to fit.
+- **token_counter** (<code>TokenCounter</code>) – The counter used both to plan compaction and verify generated summaries.
+
+**Returns:**
+
+- <code>list\[ChatMessage\] | None</code> – A smaller replacement conversation, or None when nothing was reduced.
+
+#### compact_async
+
+```python
+compact_async(
+    messages: list[ChatMessage], target_tokens: int, token_counter: TokenCounter
+) -> list[ChatMessage] | None
+```
+
+Asynchronously return a progressively summarized conversation.
+
+**Parameters:**
+
+- **messages** (<code>list\[ChatMessage\]</code>) – The conversation to compact, ordered oldest to newest.
+- **target_tokens** (<code>int</code>) – The token budget the compacted messages should aim to fit.
+- **token_counter** (<code>TokenCounter</code>) – The counter used both to plan compaction and verify generated summaries.
+
+**Returns:**
+
+- <code>list\[ChatMessage\] | None</code> – A smaller replacement conversation, or None when nothing was reduced.
+
+#### warm_up
+
+```python
+warm_up() -> None
+```
+
+Warm up the Chat Generator that writes summaries.
+
+#### warm_up_async
+
+```python
+warm_up_async() -> None
+```
+
+Warm up the Chat Generator on the serving event loop.
+
+#### close
+
+```python
+close() -> None
+```
+
+Release the Chat Generator's resources.
+
+#### close_async
+
+```python
+close_async() -> None
+```
+
+Release the Chat Generator's resources.
+
+#### to_dict
+
+```python
+to_dict() -> dict[str, Any]
+```
+
+Serialize the compactor and its Chat Generator.
+
+#### from_dict
+
+```python
+from_dict(data: dict[str, Any]) -> SummarizationCompactor
+```
+
+Deserialize the compactor and reconstruct its Chat Generator.
+
 ## compaction/tool_result_pruning
 
 ### ToolResultPruningCompactor
