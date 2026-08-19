@@ -29,7 +29,9 @@ def _tool_result_text(result: ToolCallResultContentT, placeholder: _PlaceholderF
     return "".join(block.text if isinstance(block, TextContent) else placeholder(block) for block in result)
 
 
-def _render_message(message: ChatMessage, placeholder: _PlaceholderFn = _non_text_placeholder) -> str:
+def _render_message(
+    message: ChatMessage, placeholder: _PlaceholderFn = _non_text_placeholder, *, include_tool_call_ids: bool = False
+) -> str:
     """
     One message as one or more lines of plain text.
 
@@ -47,7 +49,9 @@ def _render_message(message: ChatMessage, placeholder: _PlaceholderFn = _non_tex
     # produced it.
     if results := message.tool_call_results:
         return "\n".join(
-            f"[tool:{result.origin.tool_name}{' (error)' if result.error else ''}] "
+            f"[tool:{result.origin.tool_name}"
+            f"{' id=' + result.origin.id if include_tool_call_ids and result.origin.id else ''}"
+            f"{' (error)' if result.error else ''}] "
             f"{_tool_result_text(result.result, placeholder=placeholder)}"
             for result in results
         )
@@ -57,7 +61,8 @@ def _render_message(message: ChatMessage, placeholder: _PlaceholderFn = _non_tex
         lines.append(f"[{role}] " + "\n".join(texts))
     for call in message.tool_calls:
         arguments = json.dumps(call.arguments, default=str, sort_keys=True)
-        lines.append(f"[{role} -> tool_call] {call.tool_name}({arguments})")
+        call_id = f" id={call.id}" if include_tool_call_ids and call.id else ""
+        lines.append(f"[{role} -> tool_call{call_id}] {call.tool_name}({arguments})")
     # Images and files cost tokens too, so they need a stand-in rather than being skipped.
     non_text: list[ChatMessageContentT] = [*message.images, *message.files]
     for content in non_text:
@@ -65,9 +70,17 @@ def _render_message(message: ChatMessage, placeholder: _PlaceholderFn = _non_tex
     return "\n".join(lines) if lines else f"[{role}] <no content>"
 
 
-def _rendered_conversation(messages: list[ChatMessage], *, placeholder: _PlaceholderFn = _non_text_placeholder) -> str:
+def _rendered_conversation(
+    messages: list[ChatMessage],
+    *,
+    placeholder: _PlaceholderFn = _non_text_placeholder,
+    include_tool_call_ids: bool = False,
+) -> str:
     """The whole conversation as one plain-text block, which is what a counter measures."""
-    return "\n".join(_render_message(message, placeholder=placeholder) for message in messages)
+    return "\n".join(
+        _render_message(message, placeholder=placeholder, include_tool_call_ids=include_tool_call_ids)
+        for message in messages
+    )
 
 
 def _rendered_tools(tools: ToolsType | None) -> str:

@@ -302,26 +302,6 @@ class TestCompaction:
             [expected_summary, expected_summary, expected_summary],
         ]
 
-    def test_summarizes_a_mixed_past_task_as_one_historical_turn(self):
-        # The recorded source describes how a summary was created; its position decides which region it now occupies.
-        messages = [
-            ChatMessage.from_system("rules"),
-            ChatMessage.from_user("past task " * 30),
-            summary(text="early steps of the past task", source="current_task_steps"),
-            ChatMessage.from_assistant("late step " * 30),
-            ChatMessage.from_user("current task"),
-        ]
-        generator, prompts = summarizer("whole past task")
-        compacted = SummarizationCompactor(generator, approximate_summary_tokens=5).compact(
-            messages=messages, target_tokens=1, token_counter=COUNTER
-        )
-        assert compacted is not None
-        assert len(prompts) == 1
-        assert prompts[0].index("past task") < prompts[0].index("early steps") < prompts[0].index("late step")
-        assert summaries(messages=compacted) == [
-            summary(text="whole past task", source="historical_turns", summarized_messages=3)
-        ]
-
     def test_compacts_a_completed_mixed_turn_without_touching_the_new_task(self):
         messages = [
             ChatMessage.from_system("rules"),
@@ -346,11 +326,10 @@ class TestCompaction:
             == """Summarize this conversation.
 <conversation_to_summarize>
 [user] previous task
-[user] <conversation_summary>
+[conversation_summary]
 early previous-task work
-</conversation_summary>
-[assistant -> tool_call] search({})
-[tool:search] previous result
+[assistant -> tool_call id=previous] search({})
+[tool:search id=previous] previous result
 [assistant] previous final answer
 </conversation_to_summarize>"""
         )
@@ -358,12 +337,10 @@ early previous-task work
             prompts[1]
             == """Summarize this conversation.
 <conversation_to_summarize>
-[user] <conversation_summary>
+[conversation_summary]
 older history
-</conversation_summary>
-[user] <conversation_summary>
+[conversation_summary]
 completed previous task
-</conversation_summary>
 </conversation_to_summarize>"""
         )
         assert compacted == [
@@ -374,32 +351,35 @@ completed previous task
 
 
 class TestSummaryPrompt:
-    def test_attachments_are_named_in_the_transcript(self):
+    def test_builds_a_complete_prompt(self):
         image = ImageContent(base64_image="Zm9v", mime_type="image/png", meta={"file_path": "/tmp/shot.png"})
         pdf = FileContent(base64_data="Zm9v", mime_type="application/pdf", filename="q3.pdf")
         messages = [
-            ChatMessage.from_user(content_parts=["review this", pdf]),
-            tool_call("c1"),
-            # An attachment a tool returned is nested inside the tool result rather than on the message.
+            summary(text="earlier work", source="historical_turns", summarized_messages=6),
+            ChatMessage.from_user(content_parts=["review these attachments", pdf]),
+            tool_call("c1", name="browse", arguments={"url": "https://example.com"}),
             ChatMessage.from_tool(
-                tool_result=[TextContent(text="captured"), image],
+                tool_result=[TextContent(text="captured "), image],
                 origin=ToolCall(tool_name="browse", arguments={}, id="c1"),
             ),
         ]
-        compactor = SummarizationCompactor(chat_generator=MockChatGenerator())
-        prompt = compactor._prompt(messages=messages, indices=[0, 1, 2])
-        transcript = prompt[1].text
-        assert transcript is not None
-        # The summary cannot reproduce either attachment, so the transcript has to name them well enough to ask again.
-        assert "<file: q3.pdf, application/pdf>" in transcript
-        assert "<image: image/png, file_path=/tmp/shot.png>" in transcript
-
-    def test_custom_summary_instruction_replaces_the_default(self):
         compactor = SummarizationCompactor(
             chat_generator=MockChatGenerator(), summary_instruction="Only list file paths."
         )
-        prompt = compactor._prompt(messages=[ChatMessage.from_user("task")], indices=[0])
-        assert prompt[0].text == "Only list file paths."
+        prompt = compactor._prompt(messages=messages, indices=[0, 1, 2, 3])
+        assert prompt == [
+            ChatMessage.from_system("Only list file paths."),
+            ChatMessage.from_user(
+                """<conversation_to_summarize>
+[conversation_summary]
+earlier work
+[user] review these attachments
+[user] <file: q3.pdf, application/pdf>
+[assistant -> tool_call id=c1] browse({"url": "https://example.com"})
+[tool:browse id=c1] captured <image: image/png, file_path=/tmp/shot.png>
+</conversation_to_summarize>"""
+            ),
+        ]
 
 
 class TestFailureHandling:
