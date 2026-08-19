@@ -172,6 +172,9 @@ class SummarizationCompactor(Compactor):
     """
     A compactor that progressively summarizes a conversation until it fits a target token budget.
 
+    In typical Agent use, the `CompactionHook` supplies the target (aka `target_tokens`) to `compact`. It derives it
+    from the hook's `context_window` and `compact_to` settings after accounting for non-message overhead.
+
     The conversation is read as two regions. History runs from the end of the leading system messages up to the latest
     real user message; the current task runs from that user message to the end. Compaction always summarizes history
     before it summarizes the current task. Within each region it progressively summarizes original messages before it

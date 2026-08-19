@@ -1,16 +1,11 @@
 ---
 features:
   - |
-    Added the experimental ``SummarizationCompactor``, which progressively summarizes a conversation until it fits a
-    target token budget. This preserves useful context from long-running Agents instead of dropping older messages
-    outright.
+    Added the experimental ``SummarizationCompactor`` (use with ``CompactionHook``), which progressively summarizes a
+    conversation until it fits a target token budget, preserving useful context from long-running Agents instead of
+    dropping older messages.
 
-    The compactor reads the conversation as two regions. History runs from the end of the leading system messages up
-    to the latest real user message; the current task runs from that user message to the end. It always summarizes
-    history before the current task. Within each region, it summarizes original messages before combining existing
-    summaries. When a historical turn contains both original messages and an existing summary, it summarizes the whole
-    turn together to preserve chronological context. Each round uses the first applicable tier in this order:
-
+    It supports four strategies for summarization, which are applied in order until the target token budget is reached:
     1. ``historical_turns``: Starting with the oldest, summarize as few turns that still contain original messages as
        needed to reach the target.
     2. ``historical_summaries``: When no original messages remain in history, combine as few of its oldest summaries as
@@ -20,28 +15,18 @@ features:
     4. ``current_task_summaries``: When no more steps can be summarized, combine as few of the current task's oldest
        summaries as needed to reach the target.
 
-    Each summary records the summarization strategy and the number of messages it replaced under the
-    ``context_compaction`` key in its ``meta``.
-
-    Compaction has a floor it cannot go below: the leading system messages, one combined historical summary, the latest
-    user message, one combined current-task summary, and the ``min_keep_steps`` newest steps. Once the conversation is
-    reduced to that state, ``compact`` returns ``None`` because there is nothing left that may be given up, even if the
-    result is still above the target.
-
-    ``approximate_summary_tokens`` is the expected length of each summary. It is an estimate used to plan how much of
-    the conversation to summarize, not a limit imposed on the model. A higher value summarizes more of the conversation
-    per round and is more likely to bring the result under the target, at the cost of giving up more context. Configure
-    any generation limit directly on the Chat Generator.
-
-    A generated summary is only applied when it reduces the measured conversation size; a response with no usable text
-    is treated as a failure. By default, a failed summarization logs a warning and preserves any progress already made.
-    Set ``raise_on_failure=True`` to propagate the error instead.
-
     .. code-block:: python
 
+        from typing import Annotated
         from haystack.components.agents import Agent
         from haystack.components.generators.chat import OpenAIResponsesChatGenerator
         from haystack.hooks.compaction import CompactionHook, SummarizationCompactor
+        from haystack.tools import tool
+
+        @tool
+        def web_search(query: Annotated[str, "The search query"]) -> str:
+            """Search the web for current information."""
+            return f"Search results for: {query}"
 
         agent_generator = OpenAIResponsesChatGenerator(model="gpt-5.4")
         summary_generator = OpenAIResponsesChatGenerator(model="gpt-5.4-nano")
@@ -59,5 +44,6 @@ features:
 
         agent = Agent(
             chat_generator=agent_generator,
+            tools=[web_search],
             hooks={"before_llm": [compaction_hook]},
         )
