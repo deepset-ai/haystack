@@ -112,24 +112,6 @@ def _previous_summary_indices(messages: list[ChatMessage], start: int, end: int)
     return [index for index in range(start, end) if _is_compaction_message(message=messages[index], strategy=_STRATEGY)]
 
 
-def _historical_turn_groups_with_original_messages(
-    messages: list[ChatMessage], system_end: int, task_index: int | None
-) -> list[list[int]]:
-    """
-    Return whole historical turns that still contain original messages, oldest turn first.
-
-    A turn that mixes original messages with summaries from an earlier compaction is returned in full, preserving its
-    chronological context and allowing it to be summarized in one pass. Turns containing only summaries are left for
-    the `historical_summaries` tier. The list is empty when no historical turn contains an original message.
-    """
-    groups = _historical_turn_groups(messages=messages, system_end=system_end, task_index=task_index)
-    return [
-        group
-        for group in groups
-        if any(not _is_compaction_message(message=messages[index], strategy=_STRATEGY) for index in group)
-    ]
-
-
 def _groups_to_summarize(
     messages: list[ChatMessage],
     groups: list[list[int]],
@@ -360,11 +342,9 @@ class SummarizationCompactor(Compactor):
         history_end = task_index if task_index is not None else system_end
         task_start = task_index + 1 if task_index is not None else system_end
 
-        # Tier 1. Summarize the fewest historical turns that still contain original messages. Mixed turns include
-        # their existing summaries so the transcript stays chronological and is summarized in one pass.
-        historical_turns = _historical_turn_groups_with_original_messages(
-            messages=messages, system_end=system_end, task_index=task_index
-        )
+        # Tier 1. Each group starts with an original user message, so fully summarized turns are absent while mixed
+        # turns include their existing summaries and retain their chronological context.
+        historical_turns = _historical_turn_groups(messages=messages, system_end=system_end, task_index=task_index)
         if historical_turns:
             return _groups_to_summarize(
                 messages=messages,
