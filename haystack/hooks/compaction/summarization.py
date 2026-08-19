@@ -251,9 +251,10 @@ class SummarizationCompactor(Compactor):
         :returns: A smaller replacement conversation, or None when nothing was reduced.
         """
         compacted = messages
+        current_tokens = token_counter.count(messages=compacted)
         summarized = False
-        while True:
-            # Ask which stretch of the conversation to give up next. None means the target is met or nothing is left.
+        while current_tokens > target_tokens:
+            # Ask which stretch of the conversation to give up next. None means nothing eligible is left.
             plan = self._next_summary(messages=compacted, target_tokens=target_tokens, token_counter=token_counter)
             if plan is None:
                 break
@@ -263,8 +264,12 @@ class SummarizationCompactor(Compactor):
                 # Summarize that stretch and swap it in, so the next round plans against the smaller conversation.
                 # A generator error or a summary that does not shrink will raise.
                 result = self.chat_generator.run(messages=prompt)
-                compacted = self._apply_summary(
-                    messages=compacted, indices=indices, result=result, token_counter=token_counter
+                compacted, current_tokens = self._apply_summary(
+                    messages=compacted,
+                    indices=indices,
+                    result=result,
+                    before_tokens=current_tokens,
+                    token_counter=token_counter,
                 )
                 summarized = True
             except Exception as error:
@@ -285,9 +290,10 @@ class SummarizationCompactor(Compactor):
         :returns: A smaller replacement conversation, or None when nothing was reduced.
         """
         compacted = messages
+        current_tokens = token_counter.count(messages=compacted)
         summarized = False
-        while True:
-            # Ask which stretch of the conversation to give up next. None means the target is met or nothing is left.
+        while current_tokens > target_tokens:
+            # Ask which stretch of the conversation to give up next. None means nothing eligible is left.
             plan = self._next_summary(messages=compacted, target_tokens=target_tokens, token_counter=token_counter)
             if plan is None:
                 break
@@ -297,8 +303,12 @@ class SummarizationCompactor(Compactor):
                 # Summarize that stretch and swap it in, so the next round plans against the smaller conversation.
                 # A generator error or a summary that does not shrink will raise.
                 result = await _execute_component_async(component_instance=self.chat_generator, messages=prompt)
-                compacted = self._apply_summary(
-                    messages=compacted, indices=indices, result=result, token_counter=token_counter
+                compacted, current_tokens = self._apply_summary(
+                    messages=compacted,
+                    indices=indices,
+                    result=result,
+                    before_tokens=current_tokens,
+                    token_counter=token_counter,
                 )
                 summarized = True
             except Exception as error:
@@ -328,13 +338,8 @@ class SummarizationCompactor(Compactor):
         :param messages: The whole conversation, ordered oldest to newest.
         :param target_tokens: The token budget the conversation should come in under.
         :param token_counter: The counter used to measure candidate selections.
-        :returns: The message indices to summarize, or None when the conversation already fits or nothing is left that
-            may be given up.
+        :returns: The message indices to summarize, or None when nothing is left that may be given up.
         """
-        # The conversation is already small enough, so nothing to be summarized.
-        if token_counter.count(messages=messages) <= target_tokens:
-            return None
-
         # The landmarks everything is measured against: the Agent's instructions, and the user message anchoring the
         # current task. History runs from the instructions up to that anchor, the current task from the anchor on.
         system_end = _leading_system_end(messages=messages)
@@ -409,16 +414,22 @@ class SummarizationCompactor(Compactor):
         ]
 
     def _apply_summary(
-        self, messages: list[ChatMessage], indices: list[int], result: dict[str, Any], token_counter: TokenCounter
-    ) -> list[ChatMessage]:
+        self,
+        messages: list[ChatMessage],
+        indices: list[int],
+        result: dict[str, Any],
+        before_tokens: int,
+        token_counter: TokenCounter,
+    ) -> tuple[list[ChatMessage], int]:
         """
         Swap the selected messages for the generated summary.
 
         :param messages: The conversation to compact, ordered oldest to newest.
         :param indices: The positions of the messages to replace with a summary.
         :param result: The Chat Generator's output, which should contain one usable summary.
+        :param before_tokens: The already measured size of `messages`.
         :param token_counter: The counter used to verify that the summary actually shrinks the conversation.
-        :returns: The conversation with the selected messages replaced by the summary.
+        :returns: The conversation with the selected messages replaced by the summary, and its measured token count.
         :raises RuntimeError: If the generator returned no usable text, or if the swap did not make the conversation
             smaller, in which case keeping the raw messages is the better outcome.
         """
@@ -435,14 +446,13 @@ class SummarizationCompactor(Compactor):
             meta={_COMPACTION_META_KEY: {"strategy": _STRATEGY, "summarized_messages": len(indices)}},
         )
         compacted = _replace_indices(messages=messages, indices=indices, summary=summary)
-        before = token_counter.count(messages=messages)
-        after = token_counter.count(messages=compacted)
-        if after >= before:
+        after_tokens = token_counter.count(messages=compacted)
+        if after_tokens >= before_tokens:
             raise RuntimeError(
-                f"The generated summary did not reduce the conversation size ({before} tokens before and {after} "
-                "tokens after)."
+                f"The generated summary did not reduce the conversation size ({before_tokens} tokens before and "
+                f"{after_tokens} tokens after)."
             )
-        return compacted
+        return compacted, after_tokens
 
     def _report_failure(self, error: Exception) -> None:
         """Re-raise a failed summarization or log it, so whatever compacted successfully so far is still returned."""
