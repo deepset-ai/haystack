@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Any, Literal
+from typing import Any
 
 from haystack import logging
 from haystack.components.generators.chat.types import ChatGenerator
@@ -30,9 +30,6 @@ logger = logging.getLogger(__name__)
 
 # Recorded as the strategy on every summary this compactor produces, so a later run can recognize its own summaries.
 _STRATEGY = "summarization"
-
-# Recorded as the `source` on a summary, naming the stretch of conversation it stands in for.
-_SummarySource = Literal["historical_turns", "historical_summaries", "current_task_steps", "current_task_summaries"]
 
 _DEFAULT_SUMMARY_INSTRUCTION = """You are compacting one portion of a conversation between a user and an AI agent so \
 the agent can keep working with fewer tokens. You are shown only the portion being replaced. The rest of the \
@@ -185,15 +182,15 @@ class SummarizationCompactor(Compactor):
 
     1. `historical_turns`: Starting with the oldest, as few turns of history that still contain original messages as
         needed to reach the target are summarized.
-    2. `historical_summaries`: Next if no original messages are left in history, the existing summaries are combined
-        into one.
+    2. `historical_summaries`: Next if no original messages are left in history, as few of its oldest summaries as
+        needed to reach the target are combined.
     3. `current_task_steps`: Third the fewest oldest steps of the current task are summarized to reach the target,
         but always keeping the `min_keep_steps` newest.
-    4. `current_task_summaries`: Last if no steps of the current task can be given up because of `min_keep_steps`,
-        the existing summaries are combined into one.
+    4. `current_task_summaries`: Last if no steps of the current task can be given up because of `min_keep_steps`, as
+        few of its oldest summaries as needed to reach the target are combined.
 
-    Each summary records which of these tiers it came from under the `context_compaction` key in its `meta`, alongside
-    `summarized_messages`, the number of messages it replaced.
+    Each summary is marked as belonging to this compaction strategy under the `context_compaction` key in its `meta`,
+    alongside `summarized_messages`, the number of messages it replaced.
 
     The SummarizationCompactor has a floor it cannot go below: the leading system messages, one combined historical
     summary, the latest user message, one combined current-task summary, and the `min_keep_steps` newest steps. Once a
@@ -275,14 +272,14 @@ class SummarizationCompactor(Compactor):
             plan = self._next_summary(messages=compacted, target_tokens=target_tokens, token_counter=token_counter)
             if plan is None:
                 break
-            indices, source = plan
+            indices = plan
             prompt = self._prompt(messages=compacted, indices=indices)
             try:
                 # Summarize that stretch and swap it in, so the next round plans against the smaller conversation.
                 # A generator error or a summary that does not shrink will raise.
                 result = self.chat_generator.run(messages=prompt)
                 compacted = self._apply_summary(
-                    messages=compacted, indices=indices, source=source, result=result, token_counter=token_counter
+                    messages=compacted, indices=indices, result=result, token_counter=token_counter
                 )
                 summarized = True
             except Exception as error:
@@ -309,14 +306,14 @@ class SummarizationCompactor(Compactor):
             plan = self._next_summary(messages=compacted, target_tokens=target_tokens, token_counter=token_counter)
             if plan is None:
                 break
-            indices, source = plan
+            indices = plan
             prompt = self._prompt(messages=compacted, indices=indices)
             try:
                 # Summarize that stretch and swap it in, so the next round plans against the smaller conversation.
                 # A generator error or a summary that does not shrink will raise.
                 result = await _execute_component_async(component_instance=self.chat_generator, messages=prompt)
                 compacted = self._apply_summary(
-                    messages=compacted, indices=indices, source=source, result=result, token_counter=token_counter
+                    messages=compacted, indices=indices, result=result, token_counter=token_counter
                 )
                 summarized = True
             except Exception as error:
@@ -327,7 +324,7 @@ class SummarizationCompactor(Compactor):
 
     def _next_summary(
         self, messages: list[ChatMessage], target_tokens: int, token_counter: TokenCounter
-    ) -> tuple[list[int], _SummarySource] | None:
+    ) -> list[int] | None:
         """
         Choose the next stretch of conversation to replace with a summary.
 
@@ -336,9 +333,9 @@ class SummarizationCompactor(Compactor):
         summarized before existing summaries are combined with each other. The tiers are:
 
         1. `historical_turns`: as few of the oldest turns that still contain original messages as needed.
-        2. `historical_summaries`: history holds only summaries now, so combine them into one.
+        2. `historical_summaries`: history holds only summaries now, so combine as few of the oldest as needed.
         3. `current_task_steps`: the fewest oldest steps of the current task, keeping `min_keep_steps` of the newest.
-        4. `current_task_summaries`: no step may be given up, so combine the summaries they left behind.
+        4. `current_task_summaries`: no step may be given up, so combine as few of the oldest summaries as needed.
 
         Combining is deliberately last within a region, since summarizing summaries is more likely to lose information
         than summarizing the original messages they replaced.
@@ -346,8 +343,8 @@ class SummarizationCompactor(Compactor):
         :param messages: The whole conversation, ordered oldest to newest.
         :param target_tokens: The token budget the conversation should come in under.
         :param token_counter: The counter used to measure candidate selections.
-        :returns: The message indices to summarize and the `source` to record on the resulting summary, or None when
-            the conversation already fits or nothing is left that may be given up.
+        :returns: The message indices to summarize, or None when the conversation already fits or nothing is left that
+            may be given up.
         """
         # The conversation is already small enough, so nothing to be summarized.
         if token_counter.count(messages=messages) <= target_tokens:
@@ -366,19 +363,26 @@ class SummarizationCompactor(Compactor):
             messages=messages, system_end=system_end, task_index=task_index
         )
         if historical_turns:
-            oldest_turns = _groups_to_summarize(
+            return _groups_to_summarize(
                 messages=messages,
                 groups=historical_turns,
                 target_tokens=target_tokens,
                 summary_tokens=self.approximate_summary_tokens,
                 token_counter=token_counter,
             )
-            return oldest_turns, "historical_turns"
 
-        # Tier 2. History is nothing but summaries now, so the only room left there is in combining them into one.
+        # Tier 2. History is nothing but summaries now, so combine only as many of the oldest as the target requires.
         history_summaries = _previous_summary_indices(messages=messages, start=system_end, end=history_end)
         if len(history_summaries) > 1:
-            return history_summaries, "historical_summaries"
+            selected_summaries = _groups_to_summarize(
+                messages=messages,
+                groups=[[index] for index in history_summaries],
+                target_tokens=target_tokens,
+                summary_tokens=self.approximate_summary_tokens,
+                token_counter=token_counter,
+            )
+            # Combining one summary would only rewrite it, so always select at least two.
+            return history_summaries[: max(len(selected_summaries), 2)]
 
         # History is exhausted, so the current task has to be summarized.
         current_agent_steps = _current_agent_step_groups(
@@ -388,20 +392,27 @@ class SummarizationCompactor(Compactor):
 
         # Tier 3. Summarize the fewest number of raw agent steps.
         if eligible_steps:
-            oldest_steps = _groups_to_summarize(
+            return _groups_to_summarize(
                 messages=messages,
                 groups=eligible_steps,
                 target_tokens=target_tokens,
                 summary_tokens=self.approximate_summary_tokens,
                 token_counter=token_counter,
             )
-            return oldest_steps, "current_task_steps"
 
         # Tier 4. There are no more raw agent steps that can be summarized. So now we combine the current task
         # summaries.
         task_summaries = _previous_summary_indices(messages=messages, start=task_start, end=len(messages))
         if len(task_summaries) > 1:
-            return task_summaries, "current_task_summaries"
+            selected_summaries = _groups_to_summarize(
+                messages=messages,
+                groups=[[index] for index in task_summaries],
+                target_tokens=target_tokens,
+                summary_tokens=self.approximate_summary_tokens,
+                token_counter=token_counter,
+            )
+            # Combining one summary would only rewrite it, so always select at least two.
+            return task_summaries[: max(len(selected_summaries), 2)]
 
         # The conversation is down to what this compactor always keeps, so it cannot shrink any further.
         return None
@@ -415,19 +426,13 @@ class SummarizationCompactor(Compactor):
         ]
 
     def _apply_summary(
-        self,
-        messages: list[ChatMessage],
-        indices: list[int],
-        source: _SummarySource,
-        result: dict[str, Any],
-        token_counter: TokenCounter,
+        self, messages: list[ChatMessage], indices: list[int], result: dict[str, Any], token_counter: TokenCounter
     ) -> list[ChatMessage]:
         """
         Swap the selected messages for the generated summary.
 
         :param messages: The conversation to compact, ordered oldest to newest.
         :param indices: The positions of the messages to replace with a summary.
-        :param source: The tier the summary came from, to record in its `meta`.
         :param result: The Chat Generator's output, which should contain one usable summary.
         :param token_counter: The counter used to verify that the summary actually shrinks the conversation.
         :returns: The conversation with the selected messages replaced by the summary.
@@ -444,7 +449,7 @@ class SummarizationCompactor(Compactor):
 
         summary = ChatMessage.from_user(
             text=f"<conversation_summary>\n{text.strip()}\n</conversation_summary>",
-            meta={_COMPACTION_META_KEY: {"strategy": _STRATEGY, "summarized_messages": len(indices), "source": source}},
+            meta={_COMPACTION_META_KEY: {"strategy": _STRATEGY, "summarized_messages": len(indices)}},
         )
         compacted = _replace_indices(messages=messages, indices=indices, summary=summary)
         before = token_counter.count(messages=messages)

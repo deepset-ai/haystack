@@ -52,17 +52,11 @@ class NoReplyGenerator(MockChatGenerator):
         return {"replies": []}
 
 
-def summary(text: str, source: str, summarized_messages: int = 1) -> ChatMessage:
+def summary(text: str, summarized_messages: int = 1) -> ChatMessage:
     """Build a summary message with the metadata written by the compactor."""
     return ChatMessage.from_user(
         f"<conversation_summary>\n{text}\n</conversation_summary>",
-        meta={
-            _COMPACTION_META_KEY: {
-                "strategy": "summarization",
-                "summarized_messages": summarized_messages,
-                "source": source,
-            }
-        },
+        meta={_COMPACTION_META_KEY: {"strategy": "summarization", "summarized_messages": summarized_messages}},
     )
 
 
@@ -125,7 +119,7 @@ class TestAttachmentPlaceholder:
 
 
 class TestNextSummarySelection:
-    def test_selects_the_fewest_oldest_historical_turns(self):
+    def test_plan_only_selects_one_historical_turn(self):
         # Two completed historical turns followed by a current task with one step.
         messages = [
             ChatMessage.from_system("rules"),
@@ -141,77 +135,92 @@ class TestNextSummarySelection:
         plan = SummarizationCompactor(chat_generator=MockChatGenerator(), approximate_summary_tokens=100)._next_summary(
             messages=messages, target_tokens=target_tokens, token_counter=COUNTER
         )
-        assert plan == ([1, 2], "historical_turns")
+        assert plan == [1, 2]
 
-    def test_selects_historical_turns_before_current_steps(self):
+    def test_plan_selects_only_historical_turns(self):
+        # Both history and a current-task step are eligible since target tokens is 1; this checks tier priority.
         messages = [
             ChatMessage.from_system("rules"),
             ChatMessage.from_user("old question " * 40),
             ChatMessage.from_assistant("old answer " * 40),
-            *fresh_conversation_with_two_steps()[1:],
+            ChatMessage.from_user("current task"),
+            tool_call("first"),
+            tool_result("first result " * 12, call_id="first"),
+            tool_call("newest"),
+            tool_result("newest result " * 12, call_id="newest"),
         ]
         plan = SummarizationCompactor(chat_generator=MockChatGenerator(), approximate_summary_tokens=1)._next_summary(
             messages=messages, target_tokens=1, token_counter=COUNTER
         )
-        assert plan == ([1, 2], "historical_turns")
+        assert plan == [1, 2]
 
-    def test_selects_a_whole_historical_turn_when_it_contains_a_summary(self):
+    def test_plan_includes_summary_inside_of_historical_turns(self):
         messages = [
             ChatMessage.from_system("rules"),
             ChatMessage.from_user("past task"),
-            summary(text="early steps", source="current_task_steps"),
+            summary(text="early steps"),
             ChatMessage.from_assistant("late step"),
             ChatMessage.from_user("current task"),
         ]
         plan = SummarizationCompactor(chat_generator=MockChatGenerator(), approximate_summary_tokens=1)._next_summary(
             messages=messages, target_tokens=1, token_counter=COUNTER
         )
-        assert plan == ([1, 2, 3], "historical_turns")
+        assert plan == [1, 2, 3]
 
-    def test_selects_historical_summaries_before_current_steps(self):
+    def test_plan_selects_at_least_two_historical_turns(self):
         messages = [
             ChatMessage.from_system("rules"),
-            summary(text="first history " * 20, source="historical_turns"),
-            summary(text="second history " * 20, source="historical_turns"),
-            *fresh_conversation_with_two_steps()[1:],
+            summary(text="first history " * 20),
+            summary(text="second history " * 20),
+            summary(text="third history " * 20),
+            ChatMessage.from_user("current task"),
         ]
+        # We calculate target tokens such that summarizing only the first historical summary would be enough to fit,
+        # but we want the compactor to at least summarize two historical summaries to avoid pointless summarization.
+        target_tokens = COUNTER.count([messages[0], *messages[2:]]) + 1
         plan = SummarizationCompactor(chat_generator=MockChatGenerator(), approximate_summary_tokens=1)._next_summary(
-            messages=messages, target_tokens=1, token_counter=COUNTER
+            messages=messages, target_tokens=target_tokens, token_counter=COUNTER
         )
-        assert plan == ([1, 2], "historical_summaries")
+        assert plan == [1, 2]
 
     def test_selects_current_steps_before_current_task_summaries(self):
         messages = [
             ChatMessage.from_system("rules"),
             ChatMessage.from_user("current task"),
-            summary(text="first step summary " * 20, source="current_task_steps"),
-            summary(text="second step summary " * 20, source="current_task_steps"),
-            *fresh_conversation_with_two_steps()[2:],
+            summary(text="first step summary " * 20),
+            summary(text="second step summary " * 20),
+            tool_call("first"),
+            tool_result("first result " * 12, call_id="first"),
+            tool_call("newest"),
+            tool_result("newest result " * 12, call_id="newest"),
         ]
         plan = SummarizationCompactor(chat_generator=MockChatGenerator(), approximate_summary_tokens=1)._next_summary(
             messages=messages, target_tokens=1, token_counter=COUNTER
         )
-        assert plan == ([4, 5], "current_task_steps")
+        assert plan == [4, 5]
 
-    def test_selects_current_task_summaries_when_min_keep_steps_reserves_every_step(self):
+    def test_plan_selects_only_selects_two_current_task_summaries(self):
         messages = [
             ChatMessage.from_system("rules"),
             ChatMessage.from_user("current task"),
-            summary(text="first step summary " * 20, source="current_task_steps"),
-            summary(text="second step summary " * 20, source="current_task_steps"),
+            summary(text="first step summary " * 20),
+            summary(text="second step summary " * 20),
+            summary(text="third step summary " * 20),
             tool_call("new"),
             tool_result("new result", call_id="new"),
         ]
+        # We calculate target tokens such that summarizing the first two summaries is enough to fit
+        target_tokens = COUNTER.count([*messages[:2], *messages[4:]]) + 1
         plan = SummarizationCompactor(
             chat_generator=MockChatGenerator(), min_keep_steps=1, approximate_summary_tokens=1
-        )._next_summary(messages=messages, target_tokens=1, token_counter=COUNTER)
-        assert plan == ([2, 3], "current_task_summaries")
+        )._next_summary(messages=messages, target_tokens=target_tokens, token_counter=COUNTER)
+        assert plan == [2, 3]
 
     @pytest.mark.parametrize(
         ("min_keep_steps", "expected"),
         [
-            pytest.param(0, ([2, 3, 4, 5], "current_task_steps"), id="keep-none"),
-            pytest.param(1, ([2, 3], "current_task_steps"), id="keep-one"),
+            pytest.param(0, [2, 3, 4, 5], id="keep-none"),
+            pytest.param(1, [2, 3], id="keep-one"),
             pytest.param(2, None, id="keep-both"),
             pytest.param(20, None, id="keep-more-than-exist"),
         ],
@@ -226,9 +235,9 @@ class TestNextSummarySelection:
         # Nothing may be removed once each region has one summary and the newest step is reserved.
         messages = [
             ChatMessage.from_system("rules"),
-            summary(text="all history " * 20, source="historical_summaries"),
+            summary(text="all history " * 20),
             ChatMessage.from_user("current task"),
-            summary(text="all earlier steps " * 20, source="current_task_summaries"),
+            summary(text="all earlier steps " * 20),
             tool_call("new"),
             tool_result("new result " * 20, call_id="new"),
         ]
@@ -269,7 +278,7 @@ class TestCompaction:
             additions=additions,
             target_tokens=1_100,
         )
-        expected_summary = summary(text="summary", source="historical_turns", summarized_messages=2)
+        expected_summary = summary(text="summary", summarized_messages=2)
         summaries_per_snapshot = [summaries(messages=snapshot) for snapshot in snapshots]
         assert summaries_per_snapshot == [
             [],
@@ -293,7 +302,7 @@ class TestCompaction:
             additions=additions,
             target_tokens=650,
         )
-        expected_summary = summary(text="summary", source="current_task_steps", summarized_messages=2)
+        expected_summary = summary(text="summary", summarized_messages=2)
         summaries_per_snapshot = [summaries(messages=snapshot) for snapshot in snapshots]
         assert summaries_per_snapshot == [
             [],
@@ -305,9 +314,9 @@ class TestCompaction:
     def test_compacts_a_completed_mixed_turn_without_touching_the_new_task(self):
         messages = [
             ChatMessage.from_system("rules"),
-            summary(text="older history", source="historical_turns", summarized_messages=8),
+            summary(text="older history", summarized_messages=8),
             ChatMessage.from_user("previous task"),
-            summary(text="early previous-task work", source="current_task_steps", summarized_messages=4),
+            summary(text="early previous-task work", summarized_messages=4),
             tool_call("previous"),
             tool_result("previous result", call_id="previous"),
             ChatMessage.from_assistant("previous final answer"),
@@ -343,11 +352,7 @@ older history
 completed previous task
 </conversation_to_summarize>"""
         )
-        assert compacted == [
-            messages[0],
-            summary(text="combined history", source="historical_summaries", summarized_messages=2),
-            *messages[7:],
-        ]
+        assert compacted == [messages[0], summary(text="combined history", summarized_messages=2), *messages[7:]]
 
 
 class TestSummaryPrompt:
@@ -355,7 +360,7 @@ class TestSummaryPrompt:
         image = ImageContent(base64_image="Zm9v", mime_type="image/png", meta={"file_path": "/tmp/shot.png"})
         pdf = FileContent(base64_data="Zm9v", mime_type="application/pdf", filename="q3.pdf")
         messages = [
-            summary(text="earlier work", source="historical_turns", summarized_messages=6),
+            summary(text="earlier work", summarized_messages=6),
             ChatMessage.from_user(content_parts=["review these attachments", pdf]),
             tool_call("c1", name="browse", arguments={"url": "https://example.com"}),
             ChatMessage.from_tool(
@@ -399,9 +404,7 @@ class TestFailureHandling:
         assert compacted is not None
         assert len(prompts) == 2
         # The history was summarized before the step summary failed, and that progress is kept.
-        assert summaries(messages=compacted) == [
-            summary(text="history", source="historical_turns", summarized_messages=2)
-        ]
+        assert summaries(messages=compacted) == [summary(text="history", summarized_messages=2)]
         assert compacted[-2:] == messages[-2:]
 
     def test_raises_when_a_summary_does_not_shrink_the_conversation(self):
@@ -487,9 +490,7 @@ class TestSummarizationCompactorInAgent:
         assert result["last_message"].text == "done"
         assert compacted[0].text == "rules"
         assert any(message.text == "current task" for message in compacted)
-        assert summaries(messages=compacted) == [
-            summary(text="summary", source="historical_turns", summarized_messages=2)
-        ]
+        assert summaries(messages=compacted) == [summary(text="summary", summarized_messages=2)]
         assert all("old question" not in (message.text or "") for message in compacted)
 
 

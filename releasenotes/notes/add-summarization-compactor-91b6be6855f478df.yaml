@@ -13,13 +13,15 @@ features:
 
     1. ``historical_turns``: Starting with the oldest, summarize as few turns that still contain original messages as
        needed to reach the target.
-    2. ``historical_summaries``: When no original messages remain in history, combine its existing summaries.
+    2. ``historical_summaries``: When no original messages remain in history, combine as few of its oldest summaries as
+       needed to reach the target.
     3. ``current_task_steps``: Summarize the fewest oldest steps needed to reach the target while preserving the
        ``min_keep_steps`` newest steps.
-    4. ``current_task_summaries``: When no more steps can be summarized, combine the current task's existing summaries.
+    4. ``current_task_summaries``: When no more steps can be summarized, combine as few of the current task's oldest
+       summaries as needed to reach the target.
 
-    Each summary records its tier and the number of messages it replaced under the ``context_compaction`` key in its
-    ``meta``.
+    Each summary records the summarization strategy and the number of messages it replaced under the
+    ``context_compaction`` key in its ``meta``.
 
     Compaction has a floor it cannot go below: the leading system messages, one combined historical summary, the latest
     user message, one combined current-task summary, and the ``min_keep_steps`` newest steps. Once the conversation is
