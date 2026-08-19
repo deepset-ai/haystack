@@ -15,8 +15,6 @@ from test.hooks.compaction.helpers import FakeCounter, fresh_conversation_with_t
 
 pytestmark = pytest.mark.filterwarnings("ignore::haystack.utils.experimental.ExperimentalWarning")
 
-# A target of one token forces every tier to run, isolating the structural rules from sizing.
-SMALLEST = 1
 # One character per token, so the padded messages below are obviously the expensive ones.
 COUNTER = FakeCounter(chars_per_token=1)
 
@@ -153,7 +151,7 @@ class TestNextSummarySelection:
             *fresh_conversation_with_two_steps()[1:],
         ]
         plan = SummarizationCompactor(chat_generator=MockChatGenerator(), approximate_summary_tokens=1)._next_summary(
-            messages=messages, target_tokens=SMALLEST, token_counter=COUNTER
+            messages=messages, target_tokens=1, token_counter=COUNTER
         )
         assert plan == ([1, 2], "historical_turns")
 
@@ -165,7 +163,7 @@ class TestNextSummarySelection:
             *fresh_conversation_with_two_steps()[1:],
         ]
         plan = SummarizationCompactor(chat_generator=MockChatGenerator(), approximate_summary_tokens=1)._next_summary(
-            messages=messages, target_tokens=SMALLEST, token_counter=COUNTER
+            messages=messages, target_tokens=1, token_counter=COUNTER
         )
         assert plan == ([1, 2], "historical_summaries")
 
@@ -178,7 +176,7 @@ class TestNextSummarySelection:
             *fresh_conversation_with_two_steps()[2:],
         ]
         plan = SummarizationCompactor(chat_generator=MockChatGenerator(), approximate_summary_tokens=1)._next_summary(
-            messages=messages, target_tokens=SMALLEST, token_counter=COUNTER
+            messages=messages, target_tokens=1, token_counter=COUNTER
         )
         assert plan == ([4, 5], "current_task_steps")
 
@@ -193,7 +191,7 @@ class TestNextSummarySelection:
         ]
         plan = SummarizationCompactor(
             chat_generator=MockChatGenerator(), min_keep_steps=1, approximate_summary_tokens=1
-        )._next_summary(messages=messages, target_tokens=SMALLEST, token_counter=COUNTER)
+        )._next_summary(messages=messages, target_tokens=1, token_counter=COUNTER)
         assert plan == ([2, 3], "current_task_summaries")
 
     @pytest.mark.parametrize(
@@ -208,7 +206,7 @@ class TestNextSummarySelection:
     def test_min_keep_steps_limits_eligible_current_steps(self, min_keep_steps, expected):
         plan = SummarizationCompactor(
             chat_generator=MockChatGenerator(), min_keep_steps=min_keep_steps, approximate_summary_tokens=1
-        )._next_summary(messages=fresh_conversation_with_two_steps(), target_tokens=SMALLEST, token_counter=COUNTER)
+        )._next_summary(messages=fresh_conversation_with_two_steps(), target_tokens=1, token_counter=COUNTER)
         assert plan == expected
 
     def test_returns_none_at_the_compaction_floor(self):
@@ -223,15 +221,15 @@ class TestNextSummarySelection:
         ]
         plan = SummarizationCompactor(
             chat_generator=MockChatGenerator(), min_keep_steps=1, approximate_summary_tokens=1
-        )._next_summary(messages=messages, target_tokens=SMALLEST, token_counter=COUNTER)
+        )._next_summary(messages=messages, target_tokens=1, token_counter=COUNTER)
         assert plan is None
 
 
 class TestCompaction:
-    def test_leaves_the_input_conversation_untouched(self):
+    def test_does_not_mutate_the_input(self):
         messages = fresh_conversation_with_two_steps()
         SummarizationCompactor(MockChatGenerator("summary"), approximate_summary_tokens=1).compact(
-            messages=messages, target_tokens=SMALLEST, token_counter=COUNTER
+            messages=messages, target_tokens=1, token_counter=COUNTER
         )
         assert messages == fresh_conversation_with_two_steps()
 
@@ -302,7 +300,7 @@ class TestCompaction:
         ]
         generator, prompts = summarizer("remaining past-task messages", "combined history")
         compacted = SummarizationCompactor(generator, approximate_summary_tokens=5).compact(
-            messages=messages, target_tokens=SMALLEST, token_counter=COUNTER
+            messages=messages, target_tokens=1, token_counter=COUNTER
         )
         assert compacted is not None
         assert len(prompts) == 2
@@ -359,7 +357,7 @@ class TestFailureHandling:
         ]
         generator, prompts = summarizer("history", RuntimeError("provider unavailable"))
         compacted = SummarizationCompactor(generator, approximate_summary_tokens=1).compact(
-            messages=messages, target_tokens=SMALLEST, token_counter=COUNTER
+            messages=messages, target_tokens=1, token_counter=COUNTER
         )
         assert compacted is not None
         assert len(prompts) == 2
@@ -380,7 +378,7 @@ class TestFailureHandling:
             MockChatGenerator("much longer summary " * 100), approximate_summary_tokens=1, raise_on_failure=True
         )
         with pytest.raises(RuntimeError, match="did not reduce"):
-            compactor.compact(messages=messages, target_tokens=SMALLEST, token_counter=COUNTER)
+            compactor.compact(messages=messages, target_tokens=1, token_counter=COUNTER)
 
     @pytest.mark.parametrize(
         "generator_factory",
@@ -400,9 +398,7 @@ class TestFailureHandling:
     def test_raises_when_the_generator_returns_no_usable_text(self, generator_factory):
         compactor = SummarizationCompactor(generator_factory(), raise_on_failure=True)
         with pytest.raises(RuntimeError, match="no usable text"):
-            compactor.compact(
-                messages=fresh_conversation_with_two_steps(), target_tokens=SMALLEST, token_counter=COUNTER
-            )
+            compactor.compact(messages=fresh_conversation_with_two_steps(), target_tokens=1, token_counter=COUNTER)
 
 
 class TestConfiguration:
@@ -466,9 +462,9 @@ class TestSummarizationCompactorAsync:
         messages = fresh_conversation_with_two_steps()
         generator, prompts = summarizer("async summary")
         compacted = await SummarizationCompactor(generator, approximate_summary_tokens=1).compact_async(
-            messages=messages, target_tokens=SMALLEST, token_counter=COUNTER
+            messages=messages, target_tokens=1, token_counter=COUNTER
         )
         assert len(prompts) == 1
         assert compacted == SummarizationCompactor(
             MockChatGenerator("async summary"), approximate_summary_tokens=1
-        ).compact(messages=messages, target_tokens=SMALLEST, token_counter=COUNTER)
+        ).compact(messages=messages, target_tokens=1, token_counter=COUNTER)
