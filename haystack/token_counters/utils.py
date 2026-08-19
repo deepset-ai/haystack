@@ -30,7 +30,7 @@ def _tool_result_text(result: ToolCallResultContentT, placeholder: _PlaceholderF
 
 
 def _render_message(
-    message: ChatMessage, placeholder: _PlaceholderFn = _non_text_placeholder, *, include_tool_call_ids: bool = False
+    message: ChatMessage, placeholder: _PlaceholderFn = _non_text_placeholder, include_tool_call_ids: bool = False
 ) -> str:
     """
     One message as one or more lines of plain text.
@@ -42,6 +42,7 @@ def _render_message(
     :param placeholder: Builds the stand-in for content that has no text form. The default is short and stable, which
         is what a counter needs because the stand-in's own length is what gets measured. A caller rendering for a model
         to read can pass one that describes the content instead.
+    :param include_tool_call_ids: Whether to include tool call IDs in the rendered message.
     :returns: The rendered message.
     """
     role = message.role.value

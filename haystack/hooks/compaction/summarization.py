@@ -197,6 +197,7 @@ class SummarizationCompactor(Compactor):
     conversation is reduced to that, `compact` returns None however small the target is, because there is nothing left
     that may be given up.
 
+    <!-- test-ignore -->
     ```python
     from haystack.components.agents import Agent
     from haystack.components.generators.chat import OpenAIResponsesChatGenerator
@@ -225,12 +226,11 @@ class SummarizationCompactor(Compactor):
         """
         Initialize the compactor.
 
-        :param chat_generator: The Chat Generator used to write summaries. The compactor sends it no generation
-            settings of its own, so any limit on how long its replies may be belongs on the Chat Generator.
+        :param chat_generator: The Chat Generator used to write summaries.
         :param min_keep_steps: The fewest complete recent Agent steps to keep, even when they exceed the target.
         :param approximate_summary_tokens: About how long you expect a summary to come out. This is an estimate used
             for planning, not a limit imposed on the model. The compactor uses it to work out how much of the
-            conversation to summarize. A higher value causes the compactor summarize more of the conversation per
+            conversation to summarize. A higher value causes the compactor to summarize more of the conversation per
             round, so the result is likelier to land under the target, at the cost of giving up more of the
             conversation. A lower value summarizes less per round and keeps more, but may leave the result above the
             target.
