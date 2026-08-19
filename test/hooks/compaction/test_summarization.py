@@ -322,6 +322,56 @@ class TestCompaction:
             summary(text="whole past task", source="historical_turns", summarized_messages=3)
         ]
 
+    def test_compacts_a_completed_mixed_turn_without_touching_the_new_task(self):
+        messages = [
+            ChatMessage.from_system("rules"),
+            summary(text="older history", source="historical_turns", summarized_messages=8),
+            ChatMessage.from_user("previous task"),
+            summary(text="early previous-task work", source="current_task_steps", summarized_messages=4),
+            tool_call("previous"),
+            tool_result("previous result", call_id="previous"),
+            ChatMessage.from_assistant("previous final answer"),
+            ChatMessage.from_user("current task"),
+            tool_call("current"),
+            tool_result("current result", call_id="current"),
+        ]
+        generator, prompts = summarizer("completed previous task", "combined history")
+        compactor = SummarizationCompactor(
+            generator, approximate_summary_tokens=5, summary_instruction="Summarize this conversation."
+        )
+        compacted = compactor.compact(messages=messages, target_tokens=1, token_counter=COUNTER)
+        assert compacted is not None
+        assert (
+            prompts[0]
+            == """Summarize this conversation.
+<conversation_to_summarize>
+[user] previous task
+[user] <conversation_summary>
+early previous-task work
+</conversation_summary>
+[assistant -> tool_call] search({})
+[tool:search] previous result
+[assistant] previous final answer
+</conversation_to_summarize>"""
+        )
+        assert (
+            prompts[1]
+            == """Summarize this conversation.
+<conversation_to_summarize>
+[user] <conversation_summary>
+older history
+</conversation_summary>
+[user] <conversation_summary>
+completed previous task
+</conversation_summary>
+</conversation_to_summarize>"""
+        )
+        assert compacted == [
+            messages[0],
+            summary(text="combined history", source="historical_summaries", summarized_messages=2),
+            *messages[7:],
+        ]
+
 
 class TestSummaryPrompt:
     def test_attachments_are_named_in_the_transcript(self):
