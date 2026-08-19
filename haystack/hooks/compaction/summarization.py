@@ -95,22 +95,22 @@ def _previous_summary_indices(messages: list[ChatMessage], start: int, end: int)
     return [index for index in range(start, end) if _is_compaction_message(message=messages[index], strategy=_STRATEGY)]
 
 
-def _raw_historical_turn_groups(
+def _historical_turn_groups_with_original_messages(
     messages: list[ChatMessage], system_end: int, task_index: int | None
 ) -> list[list[int]]:
     """
-    Return the historical turns that still hold never-summarized messages, oldest turn first.
+    Return whole historical turns that still contain original messages, oldest turn first.
 
-    Summaries an earlier compaction wrote are excluded, so summarizing a turn leaves them in place for the
-    `historical_summaries` tier to combine later. The list is empty when there are no historical turns, or when every
-    one of them is already nothing but summaries.
+    A turn that mixes original messages with summaries from an earlier compaction is returned in full, preserving its
+    chronological context and allowing it to be summarized in one pass. Turns containing only summaries are left for
+    the `historical_summaries` tier. The list is empty when no historical turn contains an original message.
     """
-    # Strip the previous summaries out of each turn, then drop the turns that strip away to nothing.
-    groups = [
-        [index for index in group if not _is_compaction_message(message=messages[index], strategy=_STRATEGY)]
-        for group in _historical_turn_groups(messages=messages, system_end=system_end, task_index=task_index)
+    groups = _historical_turn_groups(messages=messages, system_end=system_end, task_index=task_index)
+    return [
+        group
+        for group in groups
+        if any(not _is_compaction_message(message=messages[index], strategy=_STRATEGY) for index in group)
     ]
-    return [group for group in groups if group]
 
 
 def _groups_to_summarize(
@@ -158,12 +158,13 @@ class SummarizationCompactor(Compactor):
     The conversation is read as two regions. History runs from the end of the leading system messages up to the latest
     real user message; the current task runs from that user message to the end. Compaction always summarizes history
     before it summarizes the current task. Within each region it progressively summarizes original messages before it
-    combines existing summaries with each other.
+    combines existing summaries with each other. When a historical turn contains both original messages and an
+    existing summary, the whole turn is summarized together to preserve its chronological context.
 
     Each round of summarization happens in one of four tiers, in this order:
 
-    1. `historical_turns`: First the fewest oldest not-yet-summarized turns of history are summarized to reach the
-        target.
+    1. `historical_turns`: Starting with the oldest, as few turns of history that still contain original messages as
+        needed to reach the target are summarized.
     2. `historical_summaries`: Next if no original messages are left in history, the existing summaries are combined
         into one.
     3. `current_task_steps`: Third the fewest oldest steps of the current task are summarized to reach the target,
@@ -314,7 +315,7 @@ class SummarizationCompactor(Compactor):
         is given up last. History is spent before the current task, and within each of the two, original messages are
         summarized before existing summaries are combined with each other. The tiers are:
 
-        1. `historical_turns`: the fewest oldest not-yet-summarized turns to summarize.
+        1. `historical_turns`: as few of the oldest turns that still contain original messages as needed.
         2. `historical_summaries`: history holds only summaries now, so combine them into one.
         3. `current_task_steps`: the fewest oldest steps of the current task, keeping `min_keep_steps` of the newest.
         4. `current_task_summaries`: no step may be given up, so combine the summaries they left behind.
@@ -339,8 +340,11 @@ class SummarizationCompactor(Compactor):
         history_end = task_index if task_index is not None else system_end
         task_start = task_index + 1 if task_index is not None else system_end
 
-        # Tier 1. Summarize the fewest number of raw historical turns
-        historical_turns = _raw_historical_turn_groups(messages=messages, system_end=system_end, task_index=task_index)
+        # Tier 1. Summarize the fewest historical turns that still contain original messages. Mixed turns include
+        # their existing summaries so the transcript stays chronological and is summarized in one pass.
+        historical_turns = _historical_turn_groups_with_original_messages(
+            messages=messages, system_end=system_end, task_index=task_index
+        )
         if historical_turns:
             oldest_turns = _groups_to_summarize(
                 messages=messages,

@@ -155,6 +155,19 @@ class TestNextSummarySelection:
         )
         assert plan == ([1, 2], "historical_turns")
 
+    def test_selects_a_whole_historical_turn_when_it_contains_a_summary(self):
+        messages = [
+            ChatMessage.from_system("rules"),
+            ChatMessage.from_user("past task"),
+            summary(text="early steps", source="current_task_steps"),
+            ChatMessage.from_assistant("late step"),
+            ChatMessage.from_user("current task"),
+        ]
+        plan = SummarizationCompactor(chat_generator=MockChatGenerator(), approximate_summary_tokens=1)._next_summary(
+            messages=messages, target_tokens=1, token_counter=COUNTER
+        )
+        assert plan == ([1, 2, 3], "historical_turns")
+
     def test_selects_historical_summaries_before_current_steps(self):
         messages = [
             ChatMessage.from_system("rules"),
@@ -289,7 +302,7 @@ class TestCompaction:
             [expected_summary, expected_summary, expected_summary],
         ]
 
-    def test_a_summarized_past_task_is_combined_into_history_once_a_new_task_arrives(self):
+    def test_summarizes_a_mixed_past_task_as_one_historical_turn(self):
         # The recorded source describes how a summary was created; its position decides which region it now occupies.
         messages = [
             ChatMessage.from_system("rules"),
@@ -298,21 +311,15 @@ class TestCompaction:
             ChatMessage.from_assistant("late step " * 30),
             ChatMessage.from_user("current task"),
         ]
-        generator, prompts = summarizer("remaining past-task messages", "combined history")
+        generator, prompts = summarizer("whole past task")
         compacted = SummarizationCompactor(generator, approximate_summary_tokens=5).compact(
             messages=messages, target_tokens=1, token_counter=COUNTER
         )
         assert compacted is not None
-        assert len(prompts) == 2
-        # TODO I feel a little concerned about this. Does this mean message 1 and 3 were summarized together, leaving
-        #      message 2 alone? And then the two summaries were combined? Seems like the wrong order and unnecessary
-        #      amounts of llm calls.
-        # First, only the raw messages from the past task are summarized; its existing summary is left in place.
-        assert "past task" in prompts[0] and "early steps of the past task" not in prompts[0]
-        # Then the two historical summaries are combined.
-        assert "early steps of the past task" in prompts[1] and "remaining past-task messages" in prompts[1]
+        assert len(prompts) == 1
+        assert prompts[0].index("past task") < prompts[0].index("early steps") < prompts[0].index("late step")
         assert summaries(messages=compacted) == [
-            summary(text="combined history", source="historical_summaries", summarized_messages=2)
+            summary(text="whole past task", source="historical_turns", summarized_messages=3)
         ]
 
 

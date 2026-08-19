@@ -8,9 +8,11 @@ features:
     The compactor reads the conversation as two regions. History runs from the end of the leading system messages up
     to the latest real user message; the current task runs from that user message to the end. It always summarizes
     history before the current task. Within each region, it summarizes original messages before combining existing
-    summaries. Each round uses the first applicable tier in this order:
+    summaries. When a historical turn contains both original messages and an existing summary, it summarizes the whole
+    turn together to preserve chronological context. Each round uses the first applicable tier in this order:
 
-    1. ``historical_turns``: Summarize the fewest oldest not-yet-summarized turns needed to reach the target.
+    1. ``historical_turns``: Starting with the oldest, summarize as few turns that still contain original messages as
+       needed to reach the target.
     2. ``historical_summaries``: When no original messages remain in history, combine its existing summaries.
     3. ``current_task_steps``: Summarize the fewest oldest steps needed to reach the target while preserving the
        ``min_keep_steps`` newest steps.
