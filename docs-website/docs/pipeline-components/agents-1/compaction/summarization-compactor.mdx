@@ -51,8 +51,6 @@ compaction_hook = CompactionHook(
 
 Register `compaction_hook` under the Agent's `before_llm` [hook point](../hooks.mdx). `CompactionHook` decides when to compact and derives the target from `context_window` and `compact_to`. `SummarizationCompactor` decides which part of the conversation to summarize.
 
-The summary generator makes additional model calls during compaction. Configure its model, credentials, generation limits, retries, and other generation settings directly on the Chat Generator.
-
 ## How progressive summarization works
 
 The compactor divides the conversation into two regions:
@@ -67,9 +65,9 @@ It always spends history before the current task. Each round uses the first appl
 3. **Current-task steps:** Summarize the oldest eligible Agent steps while preserving the `min_keep_steps` newest steps. An Agent step contains an assistant message and all immediately following tool results.
 4. **Current-task summaries:** When no more steps may be summarized, combine the oldest summaries already created for the current task.
 
-After each successful model call, the resulting summary replaces the selected messages. If the measured conversation is still above the target, the compactor plans another round. It combines only as many existing summaries as needed rather than collapsing every accumulated summary at once.
+After each successful model call, the resulting summary replaces the selected messages. If the measured conversation is still above the target, the compactor plans another round.
 
-Leading system messages and the latest user message are always retained. When a previously summarized current task moves into history, its summary remains in chronological position and is summarized together with the rest of that historical turn.
+Leading system messages and the latest user message are always retained.
 
 ## Summary prompt
 
@@ -81,9 +79,20 @@ The default instruction asks the model to produce terse sections for:
 - Identifiers
 - Unresolved work
 
-Only the messages being replaced are sent to the summary generator. The latest request and other retained messages stay in the conversation but are not included in that model call. Existing compaction summaries are clearly labelled in the transcript so the model can merge them, remove stale details, and preserve newer information.
+Only the messages being replaced are sent to the summary generator. The latest request and other retained messages stay in the conversation but are not included in that model call. For example, a selected portion containing an earlier summary, attachments, and a tool interaction is rendered as:
 
-Tool calls and results retain matching call IDs in the transcript. Image and file contents are not sent to the summary generator; they appear as placeholders containing identifying details such as a filename, MIME type, path, or URL. The default instruction asks the model to copy these placeholders because the attachment content cannot be recovered after its message is replaced.
+```text
+<conversation_to_summarize>
+[conversation_summary]
+The user asked for an analysis of the Q3 report. The report was downloaded but has not yet been reviewed.
+[user] Review the report and compare it with this chart.
+[user] <file: q3-report.pdf, application/pdf>
+[assistant -> tool_call id=call_1] web_search({"query": "Q3 industry benchmarks"})
+[tool:web_search id=call_1] Saved the benchmark chart: <image: image/png, file_path=/tmp/q3-benchmarks.png>
+</conversation_to_summarize>
+```
+
+Existing summaries are labelled so the model can merge them with newer information, while matching IDs connect tool calls to their results. Attachment contents are not sent to the summary generator and cannot be recovered after compaction; only their identifying details appear in the `<image: ...>` and `<file: ...>` placeholders.
 
 Set `summary_instruction` to replace the default instruction entirely:
 
@@ -125,8 +134,6 @@ Every generated summary is a user message wrapped in `<conversation_summary>` ta
 - `strategy`: `"summarization"`
 - `summarized_messages`: The number of messages directly replaced by that summary
 
-The count refers to direct input messages. When several previous summaries are combined, it counts those summary messages rather than all messages represented behind them.
-
 ## Compaction floor
 
 The smallest conversation this strategy can produce contains:
@@ -137,4 +144,4 @@ The smallest conversation this strategy can produce contains:
 - At most one current-task summary
 - The `min_keep_steps` newest Agent steps
 
-If this protected context still exceeds the target, the compactor returns the smallest useful result it can produce. Once no further messages are eligible, later calls return `None`.
+Once only this protected context remains, the compactor cannot reduce the conversation further. A compaction call at this floor returns `None`.
