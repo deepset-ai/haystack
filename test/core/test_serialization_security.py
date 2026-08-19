@@ -5,7 +5,9 @@
 import functools
 import io
 import json
+import logging
 import operator
+import os
 import subprocess
 import types
 from collections.abc import Callable
@@ -14,6 +16,7 @@ from unittest import mock
 import pytest
 
 from haystack import component as component_module
+from haystack.core import serialization_security as ss
 from haystack.core.errors import DeserializationError
 from haystack.core.pipeline import Pipeline
 from haystack.core.serialization import (
@@ -32,10 +35,11 @@ from haystack.core.serialization_security import (
     _DeserializationContext,
     _extra_allowed_modules,
     _is_module_allowed,
+    _is_unsafe_deserialization,
     _module_matches,
 )
 from haystack.marshal import YamlMarshaller
-from haystack.utils import deserialize_callable
+from haystack.utils import deserialize_callable, type_serialization
 from haystack.utils.type_serialization import deserialize_type
 
 
@@ -49,10 +53,10 @@ def _reset_allowlist_state(monkeypatch):
     """
     monkeypatch.delenv(DESERIALIZATION_ALLOWLIST_ENV_VAR, raising=False)
     monkeypatch.delenv(UNSAFE_DESERIALIZATION_ENV_VAR, raising=False)
-    # Reset the "warn once" latch so tests that enable the env var can assert on the warning.
-    import haystack.core.serialization_security as _ss
-
-    monkeypatch.setattr(_ss, "_warned_unsafe_env", False, raising=False)
+    # Clear the frozen env-var snapshot so each test starts like a fresh process. No `raising=False`
+    # here on purpose: if the attribute is ever renamed, this must fail loudly rather than silently
+    # become a no-op and leak one test's mode into the next.
+    monkeypatch.setattr(ss, "_unsafe_env_snapshot", None)
     snapshot = list(_extra_allowed_modules)
     _extra_allowed_modules.clear()
     token = _current_context.set(_DeserializationContext())
@@ -231,18 +235,68 @@ class TestUnsafeDeserializationEnvVar:
         )
         with pytest.raises(DeserializationError):
             Pipeline.loads(yaml)  # refused in safe mode
+        # The safe-mode load above froze the snapshot, so simulate a fresh process before enabling
+        # the env var — a mid-process flip is ignored by design (see the freezing tests below).
         monkeypatch.setenv(UNSAFE_DESERIALIZATION_ENV_VAR, "1")
+        monkeypatch.setattr(ss, "_unsafe_env_snapshot", None)
         Pipeline.loads(yaml)  # accepted with the env var set
 
-    def test_warns_once_when_active(self, monkeypatch):
-        import haystack.core.serialization_security as ss
-
+    def test_warns_once_when_active(self, monkeypatch, caplog):
         monkeypatch.setenv(UNSAFE_DESERIALIZATION_ENV_VAR, "1")
-        monkeypatch.setattr(ss, "_warned_unsafe_env", False, raising=False)
-        assert ss._unsafe_env_enabled() is True
-        # The "warn once" latch flips after the first active read and stays set on subsequent calls.
-        assert ss._warned_unsafe_env is True
-        assert ss._unsafe_env_enabled() is True
+        with caplog.at_level(logging.WARNING):
+            assert ss._unsafe_env_enabled() is True
+            assert ss._unsafe_env_enabled() is True
+        warnings = [r for r in caplog.records if UNSAFE_DESERIALIZATION_ENV_VAR in r.getMessage()]
+        assert len(warnings) == 1, "the safety-disabled warning must be logged exactly once per process"
+        assert "DISABLED" in warnings[0].getMessage()
+
+    def test_value_is_frozen_after_the_first_check(self, monkeypatch):
+        # The first check (here: a safe-mode resolution) snapshots the env var ...
+        with pytest.raises(DeserializationError):
+            deserialize_callable("os.system")
+        # ... so setting it afterwards has no effect for the rest of the process.
+        monkeypatch.setenv(UNSAFE_DESERIALIZATION_ENV_VAR, "1")
+        assert not _is_module_allowed("subprocess")
+        with pytest.raises(DeserializationError):
+            deserialize_callable("os.system")
+
+    def test_freezing_applies_in_both_directions(self, monkeypatch):
+        # Symmetrically, unsetting it after the snapshot does not re-arm the checks: the switch is
+        # decided once, so the mode of a process cannot change under a caller's feet mid-run.
+        monkeypatch.setenv(UNSAFE_DESERIALIZATION_ENV_VAR, "1")
+        assert _is_module_allowed("subprocess")
+        monkeypatch.delenv(UNSAFE_DESERIALIZATION_ENV_VAR)
+        assert _is_module_allowed("subprocess")
+
+    def test_env_write_reachable_from_serialized_data_cannot_disable_safety(self, monkeypatch):
+        """
+        Regression test for the reason the snapshot is frozen.
+
+        `os.environ.update` is `collections.abc.MutableMapping.update`, and `collections` is on the
+        default allowlist — so if any allowlisted module binds `os.environ` at module scope, a
+        serialized handle can resolve that mutator in *safe* mode and call it (e.g. as an
+        `OutputAdapter` Jinja `custom_filters` entry, which runs while the component is being
+        constructed). Were the env var read fresh on every check, that would switch the ongoing load
+        into unsafe mode and hand the pipeline arbitrary code execution.
+        """
+        monkeypatch.setattr(type_serialization, "environ", os.environ, raising=False)
+        # Resolving the gadget is itself a deserialization check, so the snapshot is already frozen
+        # by the time the attacker gets to call it — as it would be in a real load.
+        update = deserialize_callable("haystack.utils.type_serialization.environ.update")
+
+        # Register the variable before the write: the write below goes straight to the real
+        # environment, so monkeypatch has to know the pre-attack state to undo it at teardown.
+        # (Registering afterwards would record the polluted value and leak it into other tests.)
+        monkeypatch.setenv(UNSAFE_DESERIALIZATION_ENV_VAR, "")
+        update({UNSAFE_DESERIALIZATION_ENV_VAR: "1"})
+        assert os.environ[UNSAFE_DESERIALIZATION_ENV_VAR] == "1"  # the write lands ...
+
+        assert not _is_unsafe_deserialization()  # ... and changes nothing
+        assert not _is_module_allowed("subprocess")
+        with pytest.raises(DeserializationError):
+            deserialize_callable("os.system")
+        with pytest.raises(DeserializationError):
+            deserialize_callable("builtins.eval")
 
 
 class TestCheckModuleAllowed:

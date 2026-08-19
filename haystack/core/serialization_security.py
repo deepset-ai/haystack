@@ -18,7 +18,8 @@ environment variable `HAYSTACK_UNSAFE_DESERIALIZATION=1` is equivalent to `unsaf
 it disables *all* deserialization safety checks (the module allowlist, the builtin/import-primitive
 and control-plane denylists, the object-internals traversal guard, and the refusal to honor a
 component's own `unsafe: true` flag). Only enable it when every pipeline loaded by the process is
-trusted.
+trusted. Its value is read once, on the first deserialization in the process, and then frozen for the
+process lifetime, so nothing that runs later can turn the safety checks off (or back on).
 """
 
 import builtins
@@ -53,7 +54,6 @@ DESERIALIZATION_ALLOWLIST_ENV_VAR = "HAYSTACK_DESERIALIZATION_ALLOWLIST"
 # this disables *all* safety checks, so it must only be used when every pipeline the process loads
 # is trusted.
 UNSAFE_DESERIALIZATION_ENV_VAR = "HAYSTACK_UNSAFE_DESERIALIZATION"
-_UNSAFE_ENV_TRUTHY: frozenset[str] = frozenset({"1", "true"})
 
 # `builtins` is on the default allowlist because deserialization legitimately needs builtin *types*
 # (e.g. `builtins.str`, used in serialized type annotations and as nested `{"type": ...}` class
@@ -121,30 +121,40 @@ def _get_context() -> _DeserializationContext:
     return ctx if ctx is not None else _DeserializationContext()
 
 
-_warned_unsafe_env = False
+# Snapshot of `UNSAFE_DESERIALIZATION_ENV_VAR`, read once and then frozen for the process lifetime
+# (`None` means "not read yet"). Freezing it is a security property, not an optimization: the first
+# read happens before any deserialized data can run, so a hostile pipeline cannot turn the safety
+# checks off *while it is being loaded*. Without it, any route from serialized data to `os.environ`
+# is a full bypass — e.g. an allowlisted module that binds `os.environ` at module scope, whose
+# `update` resolves because it is `collections.abc.MutableMapping.update` and `collections` is on
+# the default allowlist. The read is deliberately lazy rather than done at import time, so that a
+# `load_dotenv()` (or any other env setup) that runs before the first load is still honored.
+_unsafe_env_snapshot: bool | None = None
 
 
 def _unsafe_env_enabled() -> bool:
     """
-    Return whether the process-wide unsafe-deserialization env var is set to a truthy value.
+    Return whether the process-wide unsafe-deserialization env var was set to a truthy value.
 
-    Reads :data:`UNSAFE_DESERIALIZATION_ENV_VAR` fresh on every call (so it can be toggled without
-    re-importing) and logs a single warning the first time it is found active, since it turns off all
-    deserialization safety for the whole process.
+    :data:`UNSAFE_DESERIALIZATION_ENV_VAR` is read on the first deserialization check in the process
+    and the result is then frozen for the process lifetime (see `_unsafe_env_snapshot`): later writes
+    to the variable are ignored, in either direction. A warning is logged when the snapshot is taken
+    and found active, since it turns off all deserialization safety for the whole process.
     """
-    enabled = os.environ.get(UNSAFE_DESERIALIZATION_ENV_VAR, "").strip().lower() in _UNSAFE_ENV_TRUTHY
-    if enabled:
-        global _warned_unsafe_env
-        if not _warned_unsafe_env:
-            _warned_unsafe_env = True
-
+    global _unsafe_env_snapshot
+    snapshot = _unsafe_env_snapshot
+    if snapshot is None:
+        # A benign race: concurrent first readers compute the same value from the same environment.
+        snapshot = os.environ.get(UNSAFE_DESERIALIZATION_ENV_VAR, "").strip().lower() in ("1", "true")
+        _unsafe_env_snapshot = snapshot
+        if snapshot:
             logger.warning(
                 "{env} is set: pipeline deserialization safety is DISABLED process-wide "
                 "(equivalent to passing unsafe=True on every load). Only enable this if every "
                 "pipeline loaded by this process is fully trusted.",
                 env=UNSAFE_DESERIALIZATION_ENV_VAR,
             )
-    return enabled
+    return snapshot
 
 
 def _is_unsafe_deserialization() -> bool:
@@ -153,15 +163,17 @@ def _is_unsafe_deserialization() -> bool:
 
     This is the single source of truth consulted by every safety check in this module. It is `True`
     when either the active deserialization context was entered with `unsafe=True`, or the process-wide
-    :data:`UNSAFE_DESERIALIZATION_ENV_VAR` env var is set (which disables all deserialization safety
-    checks for the whole process — see :func:`_unsafe_env_enabled`).
+    :data:`UNSAFE_DESERIALIZATION_ENV_VAR` env var was set when it was first read (which disables all
+    deserialization safety checks for the whole process — see :func:`_unsafe_env_enabled`).
 
     Components deserializing their own data (e.g. `OutputAdapter.from_dict`) use this to decide
     whether to honor an embedded `unsafe` flag: a serialized component may only disable its Jinja
     sandbox when the whole pipeline is being loaded in unsafe mode (`Pipeline.load(..., unsafe=True)`),
     never on its own from otherwise-untrusted data in default safe mode.
     """
-    return _get_context().unsafe or _unsafe_env_enabled()
+    # `_unsafe_env_enabled()` first so the env snapshot is always taken on the earliest
+    # check in the process, even when that check happens inside an `unsafe=True` load.
+    return _unsafe_env_enabled() or _get_context().unsafe
 
 
 _F = TypeVar("_F", bound=Callable[..., object])
