@@ -221,6 +221,7 @@ class TestAgentInit:
             "tool_call_counts": {"type": dict[str, int], "handler": replace_values},
             "exit_reason": {"type": str, "handler": replace_values},
             "continue_run": {"type": bool, "handler": replace_values},
+            "stop_run": {"type": str, "handler": replace_values},
             "tools": {"type": list, "handler": replace_values},
             "hook_context": {"type": dict[str, Any], "handler": replace_values},
             "context_tokens": {"type": int, "handler": replace_values},
@@ -1227,6 +1228,7 @@ class TestAgentTracing:
                     "type": "bool",
                     "handler": "haystack.components.agents.state.state_utils.replace_values",
                 },
+                "stop_run": {"type": "str", "handler": "haystack.components.agents.state.state_utils.replace_values"},
                 "tools": {"type": "list", "handler": "haystack.components.agents.state.state_utils.replace_values"},
                 "hook_context": {
                     "type": "dict[str, typing.Any]",
