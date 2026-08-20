@@ -335,8 +335,22 @@ class TestAzureOpenAIChatGenerator:
             },
         }
 
-    def test_from_dict(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    @pytest.mark.parametrize(
+        "rf",
+        [
+            {"type": "json_object"},
+            {"type": "json_schema", "json_schema": {"name": "MySchema", "strict": True, "schema": {}}},
+        ],
+    )
+    def test_to_dict_with_dict_response_format(self, monkeypatch: pytest.MonkeyPatch, rf: dict[str, Any]) -> None:
+        monkeypatch.setenv("AZURE_OPENAI_API_KEY", "test-api-key")
+        component = AzureOpenAIChatGenerator(
+            azure_endpoint="some-non-existing-endpoint", generation_kwargs={"response_format": rf}
+        )
+        data = component.to_dict()
+        assert data["init_parameters"]["generation_kwargs"]["response_format"] == rf
 
+    def test_from_dict(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setenv("AZURE_OPENAI_API_KEY", "test-api-key")
         monkeypatch.setenv("AZURE_OPENAI_AD_TOKEN", "test-ad-token")
         data = {
