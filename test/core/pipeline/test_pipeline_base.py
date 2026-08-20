@@ -130,6 +130,35 @@ class TestPipelineBase:
     It doesn't test Pipeline.run(), that is done separately in a different way.
     """
 
+    def test_pipeline_equality(self):
+        pipeline_1 = PipelineBase(metadata={"test": "data"})
+        pipeline_1.add_component("comp1", FakeComponent())
+        pipeline_2 = PipelineBase(metadata={"test": "data"})
+        pipeline_2.add_component("comp1", FakeComponent())
+
+        assert pipeline_1 == pipeline_2
+
+    def test_pipeline_eq_no_crash_on_non_pipeline_types(self):
+        pipeline = PipelineBase()
+
+        assert pipeline != object()
+        assert object() != pipeline
+        assert pipeline != "not a pipeline"
+        assert pipeline != 123
+        assert pipeline is not None
+        assert pipeline != None  # noqa: E711
+        assert pipeline not in [object(), "not a pipeline", 123]
+
+    def test_pipeline_equality_subclasses(self):
+        class CustomPipeline(PipelineBase):
+            pass
+
+        pipeline = PipelineBase()
+        custom_pipeline = CustomPipeline()
+
+        assert pipeline != custom_pipeline
+        assert custom_pipeline != pipeline
+
     def test_pipeline_dumps(self, test_files_path):
         pipeline = PipelineBase(max_runs_per_component=99)
         pipeline.add_component("Comp1", FakeComponent("Foo"))
