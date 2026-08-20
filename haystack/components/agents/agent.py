@@ -66,8 +66,7 @@ from haystack.utils.deserialization import deserialize_component_inplace
 logger = logging.getLogger(__name__)
 
 # `exit_reason` values the Agent sets when it stops without a tool exit condition: a tool-call-free reply, or the
-# `max_agent_steps` budget running out. A tool exit condition instead reports the tool's name, and a hook can
-# supply a custom reason through the `stop_run` state key.
+# `max_agent_steps` budget running out. A tool exit condition instead reports the tool's name.
 _EXIT_REASON_TEXT = "text"
 _EXIT_REASON_MAX_STEPS = "max_agent_steps"
 
@@ -83,8 +82,7 @@ _RUN_METADATA_STATE_KEYS: dict[str, dict[str, Any]] = {
 # Internal state keys the Agent manages for run control and hooks. Like run-metadata keys they are reserved and cannot
 # be redefined by users, but unlike them they are NOT exposed as Agent inputs or outputs (purely internal state):
 # - `continue_run`: set by an `on_exit` hook to keep the Agent running instead of stopping (re-read each exit attempt).
-# - `stop_run`: set by a hook to gracefully stop the run: evaluated at the step boundary (right after the
-#   `before_llm` hooks, before the LLM call) and used as the `exit_reason` when the stop ends the run.
+# - `stop_run`: set by a hook to stop the run, read before each LLM call and used as the `exit_reason`.
 # - `tools`: the flattened tools available in the current step, so a hook can inspect them (e.g. HITL confirmation).
 # - `hook_context`: per-run request-scoped resources passed to `run`/`run_async` for hooks to read.
 # - `context_tokens`: approximate current context-window size, refreshed after each LLM call, for hooks to read

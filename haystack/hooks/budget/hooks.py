@@ -18,6 +18,9 @@ class TokenBudgetHook:
     The hook runs at the `before_llm` hook point and checks the cumulative token usage recorded in the Agent state.
     When the budget is reached, the run ends before the next LLM call with the exit reason `"token_budget_exceeded"`.
 
+    Only calls made by the Agent's chat generator contribute to `token_usage`; calls made by tools or other hooks are
+    not included.
+
     <!-- test-ignore -->
     ```python
     from haystack.components.agents import Agent
@@ -32,10 +35,6 @@ class TokenBudgetHook:
 
     result = agent.run(messages=[...])
     ```
-
-    The budget is checked before each LLM call, so no call is ever made with the budget already exceeded; the final
-    token usage can exceed the budget by at most the last step's usage. Only calls made by the Agent's chat generator
-    contribute to `token_usage`; calls made by tools or other hooks are not included.
     """
 
     allowed_hook_points = ("before_llm",)
