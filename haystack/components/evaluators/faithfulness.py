@@ -12,6 +12,7 @@ from haystack.components.evaluators.llm_evaluator import LLMEvaluator
 from haystack.components.generators.chat.types import ChatGenerator
 from haystack.core.serialization import component_to_dict
 from haystack.utils import deserialize_chatgenerator_inplace
+from haystack.utils.deserialization import _copy_serialized_data
 
 logger = logging.getLogger(__name__)
 
@@ -263,6 +264,7 @@ class FaithfulnessEvaluator(LLMEvaluator):
         :returns:
             The deserialized component instance.
         """
+        data = _copy_serialized_data(data)  # `from_dict` must not modify the caller's data
         if data["init_parameters"].get("chat_generator"):
             deserialize_chatgenerator_inplace(data["init_parameters"], key="chat_generator")
         return default_from_dict(cls, data)

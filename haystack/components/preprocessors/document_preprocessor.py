@@ -9,6 +9,7 @@ from haystack import Document, Pipeline, default_from_dict, default_to_dict, sup
 from haystack.components.preprocessors.document_cleaner import DocumentCleaner
 from haystack.components.preprocessors.document_splitter import DocumentSplitter, Language
 from haystack.utils import deserialize_callable, serialize_callable
+from haystack.utils.deserialization import _copy_serialized_data
 
 
 @super_component
@@ -192,6 +193,7 @@ class DocumentPreprocessor:
         :returns:
             Deserialized SuperComponent.
         """
+        data = _copy_serialized_data(data)  # `from_dict` must not modify the caller's data
         splitting_function = data["init_parameters"].get("splitting_function", None)
         if splitting_function:
             data["init_parameters"]["splitting_function"] = deserialize_callable(splitting_function)

@@ -18,7 +18,7 @@ from haystack.hooks.compaction.types import Compactor
 from haystack.hooks.compaction.utils import _estimated_context_tokens, _last_assistant_index
 from haystack.token_counters import ApproximateTokenCounter, TokenCounter
 from haystack.tools import ToolsType
-from haystack.utils.deserialization import deserialize_component_inplace
+from haystack.utils.deserialization import _copy_serialized_data, deserialize_component_inplace
 from haystack.utils.experimental import _experimental
 
 logger = logging.getLogger(__name__)
@@ -305,6 +305,7 @@ class CompactionHook:
         :param data: A dictionary representation produced by `to_dict`.
         :returns: The deserialized `CompactionHook`.
         """
+        data = _copy_serialized_data(data)  # `from_dict` must not modify the caller's data
         init_params = data.get("init_parameters", {})
         for key in ("compactor", "token_counter"):
             if init_params.get(key) is not None:

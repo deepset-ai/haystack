@@ -6,6 +6,7 @@ from typing import Any
 
 from haystack import Document, component, default_from_dict, default_to_dict
 from haystack.document_stores.types import DocumentStore, DuplicatePolicy
+from haystack.utils.deserialization import _copy_serialized_data
 
 
 @component
@@ -71,6 +72,7 @@ class DocumentWriter:
         :raises DeserializationError:
             If the document store is not properly specified in the serialization data or its type cannot be imported.
         """
+        data = _copy_serialized_data(data)  # `from_dict` must not modify the caller's data
         init_params = data.get("init_parameters", {})
         if "policy" in init_params:
             init_params["policy"] = DuplicatePolicy[init_params["policy"]]

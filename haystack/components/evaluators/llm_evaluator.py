@@ -17,6 +17,7 @@ from haystack.components.generators.utils import _trace_chat_generator_run
 from haystack.core.serialization import component_to_dict
 from haystack.dataclasses.chat_message import ChatMessage
 from haystack.utils import deserialize_chatgenerator_inplace, deserialize_type, serialize_type
+from haystack.utils.deserialization import _copy_serialized_data
 from haystack.utils.misc import _parse_dict_from_json
 
 logger = logging.getLogger(__name__)
@@ -419,6 +420,7 @@ class LLMEvaluator:
         :returns:
             The deserialized component instance.
         """
+        data = _copy_serialized_data(data)  # `from_dict` must not modify the caller's data
         data["init_parameters"]["inputs"] = [
             (name, deserialize_type(type_)) for name, type_ in data["init_parameters"]["inputs"]
         ]

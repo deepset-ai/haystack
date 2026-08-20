@@ -13,6 +13,7 @@ from haystack.core.pipeline.pipeline import Pipeline
 from haystack.core.pipeline.utils import parse_connect_string
 from haystack.core.serialization import default_from_dict, default_to_dict, generate_qualified_class_name
 from haystack.core.super_component.utils import _delegate_default, _is_compatible
+from haystack.utils.deserialization import _copy_serialized_data
 
 logger = logging.getLogger(__name__)
 
@@ -490,6 +491,7 @@ class SuperComponent(_SuperComponent):
         :returns:
             The deserialized SuperComponent.
         """
+        data = _copy_serialized_data(data)  # `from_dict` must not modify the caller's data
         # `is_pipeline_async` is a legacy key kept only for backward compatibility.
         data["init_parameters"].pop("is_pipeline_async", None)
         pipeline = Pipeline.from_dict(data["init_parameters"]["pipeline"])

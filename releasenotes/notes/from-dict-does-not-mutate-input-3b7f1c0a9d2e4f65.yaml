@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    ``from_dict`` no longer modifies the dictionary it receives. Components, tools, toolsets and hooks that deserialize
+    nested values - a serialized callable, a nested component, tools, a type, or an enum - used to replace those values
+    in the caller's dictionary with the live objects. The dictionary was then no longer serializable and a second
+    ``from_dict`` call on it failed, for example with ``'function' object has no attribute 'split'``. Deserialization now
+    works on a copy, as ``Pipeline.from_dict`` already did.

@@ -13,7 +13,7 @@ from haystack.core.serialization import component_to_dict
 from haystack.dataclasses import ChatMessage, StreamingCallbackT
 from haystack.tools import ToolsType
 from haystack.utils.async_utils import _execute_component_async
-from haystack.utils.deserialization import deserialize_component_inplace
+from haystack.utils.deserialization import _copy_serialized_data, deserialize_component_inplace
 
 logger = logging.getLogger(__name__)
 
@@ -73,6 +73,7 @@ class FallbackChatGenerator:
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> FallbackChatGenerator:
         """Rebuild the component from a serialized representation, restoring nested chat generators."""
+        data = _copy_serialized_data(data)  # `from_dict` must not modify the caller's data
         # Reconstruct nested chat generators from their serialized dicts
         init_params = data.get("init_parameters", {})
         serialized = init_params.get("chat_generators") or []

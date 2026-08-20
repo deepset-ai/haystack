@@ -14,6 +14,7 @@ from haystack.tools.tool import (
     _serialize_outputs_to_state,
     _serialize_outputs_to_string,
 )
+from haystack.utils.deserialization import _copy_serialized_data
 
 logger = logging.getLogger(__name__)
 
@@ -231,6 +232,7 @@ class PipelineTool(ComponentTool):
         :returns:
             The deserialized PipelineTool instance.
         """
+        data = _copy_serialized_data(data)  # `from_dict` must not modify the caller's data
         inner_data = data["data"]
         # `is_pipeline_async` is a legacy key kept only for backward compatibility
         inner_data.pop("is_pipeline_async", None)

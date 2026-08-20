@@ -7,6 +7,7 @@ from typing import Any
 from haystack import Document, component, default_from_dict, default_to_dict
 from haystack.dataclasses import ByteStream
 from haystack.utils import deserialize_type, serialize_type
+from haystack.utils.deserialization import _copy_serialized_data
 from haystack.utils.filters import document_matches_filter
 
 
@@ -169,6 +170,7 @@ class MetadataRouter:
         :returns:
             The deserialized component instance.
         """
+        data = _copy_serialized_data(data)  # `from_dict` must not modify the caller's data
         init_params = data.get("init_parameters", {})
         if "output_type" in init_params:
             # Deserialize the output_type to its original type

@@ -15,6 +15,7 @@ from haystack import Document, component, default_from_dict, default_to_dict, lo
 from haystack.components.converters.utils import LinkFormat, get_bytestream_from_source, normalize_metadata
 from haystack.dataclasses import ByteStream
 from haystack.lazy_imports import LazyImport
+from haystack.utils.deserialization import _copy_serialized_data
 
 logger = logging.getLogger(__name__)
 
@@ -167,6 +168,7 @@ class DOCXToDocument:
         :returns:
             The deserialized component.
         """
+        data = _copy_serialized_data(data)  # `from_dict` must not modify the caller's data
         if "table_format" in data["init_parameters"]:
             data["init_parameters"]["table_format"] = DOCXTableFormat.from_str(data["init_parameters"]["table_format"])
         if "link_format" in data["init_parameters"]:

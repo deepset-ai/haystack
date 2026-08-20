@@ -14,6 +14,7 @@ from haystack.hooks.human_in_the_loop.strategies import (
     _serialize_confirmation_strategies,
 )
 from haystack.hooks.human_in_the_loop.types import ConfirmationStrategy
+from haystack.utils.deserialization import _copy_serialized_data
 
 
 class ConfirmationHook:
@@ -133,6 +134,7 @@ class ConfirmationHook:
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "ConfirmationHook":
         """Deserialize the hook, reconstructing its confirmation strategies."""
+        data = _copy_serialized_data(data)  # `from_dict` must not modify the caller's data
         init_params = data.get("init_parameters", {})
         if init_params.get("confirmation_strategies") is not None:
             init_params["confirmation_strategies"] = _deserialize_confirmation_strategies(

@@ -10,6 +10,7 @@ from openai.lib.azure import AsyncAzureOpenAI, AzureADTokenProvider, AzureOpenAI
 from haystack import component, default_from_dict, default_to_dict
 from haystack.components.embedders import OpenAITextEmbedder
 from haystack.utils import Secret, deserialize_callable, serialize_callable
+from haystack.utils.deserialization import _copy_serialized_data
 from haystack.utils.http_client import init_http_client
 
 
@@ -226,6 +227,7 @@ class AzureOpenAITextEmbedder(OpenAITextEmbedder):
         :returns:
             Deserialized component.
         """
+        data = _copy_serialized_data(data)  # `from_dict` must not modify the caller's data
         serialized_azure_ad_token_provider = data["init_parameters"].get("azure_ad_token_provider")
         if serialized_azure_ad_token_provider:
             data["init_parameters"]["azure_ad_token_provider"] = deserialize_callable(

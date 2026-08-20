@@ -15,6 +15,7 @@ from haystack.components.embedders.mock_utils import (
     _estimate_usage,
 )
 from haystack.utils import deserialize_callable, serialize_callable
+from haystack.utils.deserialization import _copy_serialized_data
 
 
 @component
@@ -122,6 +123,7 @@ class MockDocumentEmbedder:
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> MockDocumentEmbedder:
         """Deserialize the component from a dictionary."""
+        data = _copy_serialized_data(data)  # `from_dict` must not modify the caller's data
         init_params = data.get("init_parameters", {})
         embedding_fn = init_params.get("embedding_fn")
         if embedding_fn:

@@ -49,6 +49,7 @@ from haystack.tools import (
     warm_up_tools,
 )
 from haystack.utils import Secret, deserialize_callable, serialize_callable
+from haystack.utils.deserialization import _copy_serialized_data
 from haystack.utils.http_client import init_http_client
 
 logger = logging.getLogger(__name__)
@@ -331,6 +332,7 @@ class OpenAIChatGenerator:
         :returns:
             The deserialized component instance.
         """
+        data = _copy_serialized_data(data)  # `from_dict` must not modify the caller's data
         deserialize_tools_or_toolset_inplace(data["init_parameters"], key="tools")
         init_params = data.get("init_parameters", {})
         serialized_callback_handler = init_params.get("streaming_callback")

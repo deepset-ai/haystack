@@ -7,6 +7,7 @@ from typing import Any
 from haystack import Document, component, default_from_dict, default_to_dict
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.document_stores.types import FilterPolicy, apply_filter_policy
+from haystack.utils.deserialization import _copy_serialized_data
 
 
 @component
@@ -128,6 +129,7 @@ class InMemoryEmbeddingRetriever:
         :returns:
             The deserialized component.
         """
+        data = _copy_serialized_data(data)  # `from_dict` must not modify the caller's data
         init_params = data.get("init_parameters", {})
         if "filter_policy" in init_params:
             init_params["filter_policy"] = FilterPolicy.from_str(init_params["filter_policy"])

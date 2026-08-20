@@ -12,7 +12,7 @@ from haystack.skill_stores.types.protocol import SkillStore
 from haystack.tools.from_function import create_tool_from_function
 from haystack.tools.tool import Tool
 from haystack.tools.toolset import Toolset
-from haystack.utils.deserialization import deserialize_component_inplace
+from haystack.utils.deserialization import _copy_serialized_data, deserialize_component_inplace
 
 
 class SkillToolset(Toolset):
@@ -191,6 +191,7 @@ class SkillToolset(Toolset):
         :param data: Dictionary representation of the toolset, as produced by `to_dict`.
         :returns: A new SkillToolset instance.
         """
+        data = _copy_serialized_data(data)  # `from_dict` must not modify the caller's data
         inner_data = data["data"]
         deserialize_component_inplace(inner_data, key="store")
         return cls(**inner_data)

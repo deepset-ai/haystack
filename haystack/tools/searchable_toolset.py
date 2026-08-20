@@ -15,6 +15,7 @@ from haystack.tools.serde_utils import deserialize_tools_or_toolset_inplace, ser
 from haystack.tools.tool import Tool, _check_duplicate_tool_names
 from haystack.tools.toolset import Toolset
 from haystack.tools.utils import flatten_tools_or_toolsets, warm_up_tools
+from haystack.utils.deserialization import _copy_serialized_data
 
 if TYPE_CHECKING:
     from haystack.tools import ToolsType
@@ -359,6 +360,7 @@ class SearchableToolset(Toolset):
         :returns: New SearchableToolset instance.
         :raises TypeError: If a serialized catalog entry is not a subclass of Tool or Toolset.
         """
+        data = _copy_serialized_data(data)  # `from_dict` must not modify the caller's data
         inner_data = data["data"]
         deserialize_tools_or_toolset_inplace(inner_data, key="catalog")
         optional_keys = (

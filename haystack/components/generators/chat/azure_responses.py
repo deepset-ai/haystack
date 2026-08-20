@@ -14,6 +14,7 @@ from haystack.components.generators.chat import OpenAIResponsesChatGenerator
 from haystack.dataclasses.streaming_chunk import StreamingCallbackT
 from haystack.tools import ToolsType, deserialize_tools_or_toolset_inplace, serialize_tools_or_toolset
 from haystack.utils import Secret, deserialize_callable, serialize_callable
+from haystack.utils.deserialization import _copy_serialized_data
 
 
 @component
@@ -249,6 +250,7 @@ class AzureOpenAIResponsesChatGenerator(OpenAIResponsesChatGenerator):
         :returns:
             The deserialized component instance.
         """
+        data = _copy_serialized_data(data)  # `from_dict` must not modify the caller's data
         # If api_key is a str, it's a callable (Secrets are handled automatically by default_from_dict)
         serialized_api_key = data["init_parameters"].get("api_key")
         if isinstance(serialized_api_key, str):

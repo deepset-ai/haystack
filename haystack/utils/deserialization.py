@@ -54,3 +54,23 @@ def deserialize_component_inplace(data: dict[str, Any], key: str = "chat_generat
         raise DeserializationError(f"Class '{serialized_component['type']}' not correctly imported") from e
 
     data[key] = component_from_dict(cls=component_class, data=serialized_component, name=key)
+
+
+def _copy_serialized_data(data: dict[str, Any]) -> dict[str, Any]:
+    """
+    Return a copy of serialized data that `from_dict` implementations can safely deserialize in place.
+
+    Deserialization replaces serialized values with live objects, for example a callable path with the callable
+    itself or a nested component dictionary with the component. Doing that on the dictionary passed by the caller
+    leaves it holding objects that are no longer serializable and that a second `from_dict` call cannot read,
+    which is why `Pipeline.from_dict` copies its input before deserializing it.
+
+    :param data:
+        The serialized data a `from_dict` implementation received.
+    :returns:
+        A copy of the data. Objects that cannot be deep-copied, such as components and tools, are kept as they are.
+    """
+    # Local import to avoid a circular import at module load time.
+    from haystack.core.pipeline.utils import _deepcopy_with_exceptions
+
+    return _deepcopy_with_exceptions(data)

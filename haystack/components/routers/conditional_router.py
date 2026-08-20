@@ -15,6 +15,7 @@ from haystack import component, default_from_dict, default_to_dict, logging
 from haystack.core.errors import DeserializationError
 from haystack.core.serialization_security import _is_unsafe_deserialization
 from haystack.utils import deserialize_callable, deserialize_type, serialize_callable, serialize_type
+from haystack.utils.deserialization import _copy_serialized_data
 from haystack.utils.jinja2_extensions import _extract_template_variables_and_assignments
 from haystack.utils.jinja2_sandbox import HaystackSandboxedEnvironment
 from haystack.utils.type_serialization import _is_union_type
@@ -364,6 +365,7 @@ class ConditionalRouter:
         :returns:
             The deserialized component.
         """
+        data = _copy_serialized_data(data)  # `from_dict` must not modify the caller's data
         init_params = data.get("init_parameters", {})
 
         # `unsafe=True` swaps the Jinja sandbox for a NativeEnvironment that executes arbitrary code.

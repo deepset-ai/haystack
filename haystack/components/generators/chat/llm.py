@@ -10,7 +10,7 @@ from haystack.components.generators.chat.types import ChatGenerator
 from haystack.core.serialization import component_to_dict, default_from_dict, default_to_dict
 from haystack.dataclasses import ChatMessage, StreamingCallbackT
 from haystack.utils.callable_serialization import deserialize_callable, serialize_callable
-from haystack.utils.deserialization import deserialize_component_inplace
+from haystack.utils.deserialization import _copy_serialized_data, deserialize_component_inplace
 
 logger = logging.getLogger(__name__)
 
@@ -116,6 +116,7 @@ class LLM(Agent):
         :param data: Dictionary to deserialize from.
         :return: Deserialized LLM instance.
         """
+        data = _copy_serialized_data(data)  # `from_dict` must not modify the caller's data
         init_params = data.get("init_parameters", {})
 
         deserialize_component_inplace(init_params, key="chat_generator")

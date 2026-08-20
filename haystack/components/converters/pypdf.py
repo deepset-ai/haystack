@@ -12,6 +12,7 @@ from haystack import Document, component, default_from_dict, default_to_dict, lo
 from haystack.components.converters.utils import LinkFormat, get_bytestream_from_source, normalize_metadata
 from haystack.dataclasses import ByteStream
 from haystack.lazy_imports import LazyImport
+from haystack.utils.deserialization import _copy_serialized_data
 
 with LazyImport("Run 'pip install pypdf'") as pypdf_import:
     from pypdf import PdfReader
@@ -167,6 +168,7 @@ class PyPDFToDocument:
         :returns:
             Deserialized component.
         """
+        data = _copy_serialized_data(data)  # `from_dict` must not modify the caller's data
         if "link_format" in data.get("init_parameters", {}):
             data["init_parameters"]["link_format"] = LinkFormat.from_str(data["init_parameters"]["link_format"])
         return default_from_dict(cls, data)

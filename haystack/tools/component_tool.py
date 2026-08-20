@@ -26,7 +26,7 @@ from haystack.tools.tool import (
     _serialize_outputs_to_state,
     _serialize_outputs_to_string,
 )
-from haystack.utils.deserialization import deserialize_component_inplace
+from haystack.utils.deserialization import _copy_serialized_data, deserialize_component_inplace
 from haystack.utils.type_serialization import _is_union_type
 
 logger = logging.getLogger(__name__)
@@ -305,6 +305,7 @@ class ComponentTool(Tool):
         """
         Deserializes the ComponentTool from a dictionary.
         """
+        data = _copy_serialized_data(data)  # `from_dict` must not modify the caller's data
         inner_data = data["data"]
         deserialize_component_inplace(data=inner_data, key="component")
 

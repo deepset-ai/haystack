@@ -10,6 +10,7 @@ from haystack import component, default_from_dict, default_to_dict, logging
 from haystack.dataclasses.chat_message import ChatMessage, ChatRole, TextContent
 from haystack.lazy_imports import LazyImport
 from haystack.utils import Jinja2TimeExtension
+from haystack.utils.deserialization import _copy_serialized_data
 from haystack.utils.jinja2_chat_extension import ChatMessageExtension
 from haystack.utils.jinja2_extensions import _extract_template_variables_and_assignments
 from haystack.utils.jinja2_sandbox import HaystackSandboxedEnvironment
@@ -347,6 +348,7 @@ class ChatPromptBuilder:
         :returns:
             The deserialized component.
         """
+        data = _copy_serialized_data(data)  # `from_dict` must not modify the caller's data
         init_parameters = data["init_parameters"]
         template = init_parameters.get("template")
         if template:

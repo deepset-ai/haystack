@@ -10,7 +10,7 @@ from haystack.components.agents import Agent
 from haystack.components.agents.agent import _EXIT_REASON_MAX_STEPS
 from haystack.tools.component_tool import ComponentTool
 from haystack.tools.tool import _deserialize_outputs_to_state, _deserialize_outputs_to_string
-from haystack.utils.deserialization import deserialize_component_inplace
+from haystack.utils.deserialization import _copy_serialized_data, deserialize_component_inplace
 
 
 def _required_tool_parameters(agent: Agent, inputs_from_state: dict[str, Any] | None) -> list[str]:
@@ -251,6 +251,7 @@ class AgentTool(ComponentTool):
         :returns:
             The deserialized AgentTool instance.
         """
+        data = _copy_serialized_data(data)  # `from_dict` must not modify the caller's data
         inner_data = data["data"]
         deserialize_component_inplace(data=inner_data, key="agent")
 

@@ -25,6 +25,7 @@ from haystack.dataclasses import (
 from haystack.dataclasses.streaming_chunk import ToolCallDelta, _invoke_streaming_callback
 from haystack.tools import ToolsType
 from haystack.utils import deserialize_callable, serialize_callable
+from haystack.utils.deserialization import _copy_serialized_data
 
 logger = logging.getLogger(__name__)
 
@@ -186,6 +187,7 @@ class MockChatGenerator:
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> MockChatGenerator:
         """Deserialize the component from a dictionary."""
+        data = _copy_serialized_data(data)  # `from_dict` must not modify the caller's data
         init_params = data.get("init_parameters", {})
         responses = init_params.get("responses")
         if responses is not None:

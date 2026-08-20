@@ -13,6 +13,7 @@ from haystack.core.serialization import component_to_dict
 from haystack.dataclasses import ChatMessage
 from haystack.utils import deserialize_chatgenerator_inplace
 from haystack.utils.async_utils import _execute_component_async
+from haystack.utils.deserialization import _copy_serialized_data
 from haystack.utils.misc import _deduplicate_documents, _parse_dict_from_json
 
 logger = logging.getLogger(__name__)
@@ -222,6 +223,7 @@ class LLMRanker:
         :returns:
             The deserialized component instance.
         """
+        data = _copy_serialized_data(data)  # `from_dict` must not modify the caller's data
         init_params = data.get("init_parameters", {})
         if init_params.get("chat_generator"):
             deserialize_chatgenerator_inplace(init_params, key="chat_generator")

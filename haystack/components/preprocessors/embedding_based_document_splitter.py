@@ -15,7 +15,7 @@ from haystack.components.embedders.types import DocumentEmbedder
 from haystack.components.preprocessors.sentence_tokenizer import Language, SentenceSplitter
 from haystack.core.serialization import component_to_dict, default_from_dict, default_to_dict
 from haystack.utils.async_utils import _execute_component_async
-from haystack.utils.deserialization import deserialize_component_inplace
+from haystack.utils.deserialization import _copy_serialized_data, deserialize_component_inplace
 
 logger = logging.getLogger(__name__)
 
@@ -585,5 +585,6 @@ class EmbeddingBasedDocumentSplitter:
         :returns:
             The deserialized component.
         """
+        data = _copy_serialized_data(data)  # `from_dict` must not modify the caller's data
         deserialize_component_inplace(data["init_parameters"], key="document_embedder")
         return default_from_dict(cls, data)

@@ -10,6 +10,7 @@ from haystack.components.agents.state.state import State
 from haystack.core.serialization import default_from_dict, default_to_dict
 from haystack.core.type_utils import _resolve_parameter_types
 from haystack.utils.callable_serialization import deserialize_callable, serialize_callable
+from haystack.utils.deserialization import _copy_serialized_data
 
 
 def _takes_single_state_argument(function: Callable) -> bool:
@@ -112,6 +113,7 @@ class FunctionHook:
         :param data: The serialized hook dictionary produced by `to_dict`.
         :returns: The reconstructed `FunctionHook`.
         """
+        data = _copy_serialized_data(data)  # `from_dict` must not modify the caller's data
         init_params = data.get("init_parameters", {})
         if init_params.get("function") is not None:
             init_params["function"] = deserialize_callable(init_params["function"])

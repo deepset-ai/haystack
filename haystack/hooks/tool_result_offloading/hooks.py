@@ -12,7 +12,7 @@ from haystack.core.serialization import default_from_dict, default_to_dict
 from haystack.dataclasses import ChatMessage, TextContent
 from haystack.dataclasses.chat_message import ToolCallResultContentT
 from haystack.hooks.tool_result_offloading.types import OffloadPolicy, ToolResultStore
-from haystack.utils.deserialization import deserialize_component_inplace
+from haystack.utils.deserialization import _copy_serialized_data, deserialize_component_inplace
 
 logger = logging.getLogger(__name__)
 
@@ -347,6 +347,7 @@ class ToolResultOffloadHook:
         :param data: A dictionary representation produced by `to_dict`.
         :returns: The deserialized `ToolResultOffloadHook`.
         """
+        data = _copy_serialized_data(data)  # `from_dict` must not modify the caller's data
         init_params = data.get("init_parameters", {})
         if init_params.get("store") is not None:
             deserialize_component_inplace(init_params, key="store")

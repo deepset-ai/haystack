@@ -12,6 +12,7 @@ from haystack.components.retrievers.types.protocol import TextRetriever
 from haystack.core.serialization import component_from_dict, component_to_dict, import_class_by_name
 from haystack.dataclasses import Document
 from haystack.utils.async_utils import _execute_component_async, _gather_tasks_with_cancel
+from haystack.utils.deserialization import _copy_serialized_data
 from haystack.utils.experimental import _experimental
 from haystack.utils.misc import _deduplicate_documents, _reciprocal_rank_fusion
 
@@ -349,6 +350,7 @@ class MultiRetriever:
         :param data:
             Dictionary with the data to create the component.
         """
+        data = _copy_serialized_data(data)  # `from_dict` must not modify the caller's data
         retrievers_data = data.get("init_parameters", {}).get("retrievers", {})
         if retrievers_data:
             retrievers = {}

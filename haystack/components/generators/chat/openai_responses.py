@@ -38,6 +38,7 @@ from haystack.tools import (
     warm_up_tools,
 )
 from haystack.utils import Secret, deserialize_callable, serialize_callable
+from haystack.utils.deserialization import _copy_serialized_data
 from haystack.utils.http_client import init_http_client
 
 logger = logging.getLogger(__name__)
@@ -344,6 +345,7 @@ class OpenAIResponsesChatGenerator:
         :returns:
             The deserialized component instance.
         """
+        data = _copy_serialized_data(data)  # `from_dict` must not modify the caller's data
         # we only deserialize the tools if they are haystack tools
         # because openai tools are not serialized in the same way
         tools = data["init_parameters"].get("tools")

@@ -7,6 +7,7 @@ from typing import Any
 from haystack import component, default_from_dict, default_to_dict
 from haystack.core.component.types import GreedyVariadic
 from haystack.utils import deserialize_type, serialize_type
+from haystack.utils.deserialization import _copy_serialized_data
 
 
 @component
@@ -113,6 +114,7 @@ class BranchJoiner:
         :returns:
             A deserialized `BranchJoiner` instance.
         """
+        data = _copy_serialized_data(data)  # `from_dict` must not modify the caller's data
         data["init_parameters"]["type_"] = deserialize_type(data["init_parameters"]["type_"])
         return default_from_dict(cls, data)
 

@@ -61,7 +61,7 @@ from haystack.tools import (
 )
 from haystack.utils.async_utils import _execute_component_async
 from haystack.utils.callable_serialization import deserialize_callable, serialize_callable
-from haystack.utils.deserialization import deserialize_component_inplace
+from haystack.utils.deserialization import _copy_serialized_data, deserialize_component_inplace
 
 logger = logging.getLogger(__name__)
 
@@ -638,6 +638,7 @@ class Agent:
         :param data: Dictionary to deserialize from.
         :returns: Deserialized agent.
         """
+        data = _copy_serialized_data(data)  # `from_dict` must not modify the caller's data
         init_params = data.get("init_parameters", {})
 
         deserialize_component_inplace(init_params, key="chat_generator")

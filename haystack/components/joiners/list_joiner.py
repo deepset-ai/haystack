@@ -8,6 +8,7 @@ from typing import Any
 from haystack import component, default_from_dict, default_to_dict
 from haystack.core.component.types import Variadic
 from haystack.utils import deserialize_type, serialize_type
+from haystack.utils.deserialization import _copy_serialized_data
 
 
 @component
@@ -96,6 +97,7 @@ class ListJoiner:
         :param data: Dictionary to deserialize from.
         :returns: Deserialized component.
         """
+        data = _copy_serialized_data(data)  # `from_dict` must not modify the caller's data
         init_parameters = data.get("init_parameters")
         if init_parameters is not None and init_parameters.get("list_type_") is not None:
             data["init_parameters"]["list_type_"] = deserialize_type(data["init_parameters"]["list_type_"])

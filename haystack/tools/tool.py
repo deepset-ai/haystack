@@ -14,6 +14,7 @@ from jsonschema.exceptions import SchemaError
 from haystack.core.serialization import generate_qualified_class_name
 from haystack.tools.errors import ToolInvocationError
 from haystack.utils.callable_serialization import deserialize_callable, serialize_callable
+from haystack.utils.deserialization import _copy_serialized_data
 
 
 @dataclass
@@ -350,6 +351,7 @@ class Tool:
         :returns:
             Deserialized Tool.
         """
+        data = _copy_serialized_data(data)  # `from_dict` must not modify the caller's data
         init_parameters = data["data"]
         init_parameters["function"] = (
             deserialize_callable(init_parameters["function"]) if init_parameters.get("function") is not None else None

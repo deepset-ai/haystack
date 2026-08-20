@@ -12,6 +12,7 @@ from haystack import Document, component, logging
 from haystack.components.preprocessors.sentence_tokenizer import Language, SentenceSplitter, nltk_imports
 from haystack.core.serialization import default_from_dict, default_to_dict
 from haystack.utils import deserialize_callable, serialize_callable
+from haystack.utils.deserialization import _copy_serialized_data
 
 logger = logging.getLogger(__name__)
 
@@ -397,6 +398,7 @@ class DocumentSplitter:
         """
         Deserializes the component from a dictionary.
         """
+        data = _copy_serialized_data(data)  # `from_dict` must not modify the caller's data
         init_params = data.get("init_parameters", {})
 
         splitting_function = init_params.get("splitting_function", None)

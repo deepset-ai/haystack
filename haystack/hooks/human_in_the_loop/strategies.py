@@ -19,7 +19,7 @@ from haystack.hooks.human_in_the_loop import ToolExecutionDecision
 from haystack.hooks.human_in_the_loop.types import ConfirmationPolicy, ConfirmationStrategy, ConfirmationUI
 from haystack.tools import Tool
 from haystack.utils.async_utils import _execute_component_async
-from haystack.utils.deserialization import deserialize_component_inplace
+from haystack.utils.deserialization import _copy_serialized_data, deserialize_component_inplace
 
 REJECTION_FEEDBACK_TEMPLATE = "Tool execution for '{tool_name}' was rejected by the user."
 MODIFICATION_FEEDBACK_TEMPLATE = (
@@ -199,6 +199,7 @@ class BlockingConfirmationStrategy:
         :returns:
             Deserialized BlockingConfirmationStrategy.
         """
+        data = _copy_serialized_data(data)  # `from_dict` must not modify the caller's data
         deserialize_component_inplace(data["init_parameters"], key="confirmation_policy")
         deserialize_component_inplace(data["init_parameters"], key="confirmation_ui")
         return default_from_dict(cls, data)

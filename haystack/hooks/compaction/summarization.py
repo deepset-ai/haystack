@@ -23,7 +23,7 @@ from haystack.hooks.compaction.utils import (
 from haystack.token_counters import TokenCounter
 from haystack.token_counters.utils import _rendered_conversation
 from haystack.utils.async_utils import _execute_component_async
-from haystack.utils.deserialization import deserialize_component_inplace
+from haystack.utils.deserialization import _copy_serialized_data, deserialize_component_inplace
 from haystack.utils.experimental import _experimental
 
 logger = logging.getLogger(__name__)
@@ -505,6 +505,7 @@ class SummarizationCompactor(Compactor):
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "SummarizationCompactor":
         """Deserialize the compactor and reconstruct its Chat Generator."""
+        data = _copy_serialized_data(data)  # `from_dict` must not modify the caller's data
         init_params = data.get("init_parameters", {})
         if init_params.get("chat_generator") is not None:
             deserialize_component_inplace(data=init_params, key="chat_generator")

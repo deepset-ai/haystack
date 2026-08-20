@@ -23,6 +23,7 @@ from haystack.core.serialization import component_to_dict
 from haystack.dataclasses import ChatMessage
 from haystack.utils import deserialize_chatgenerator_inplace, expand_page_range
 from haystack.utils.async_utils import _execute_component_async
+from haystack.utils.deserialization import _copy_serialized_data
 from haystack.utils.misc import _parse_dict_from_json
 
 logger = logging.getLogger(__name__)
@@ -264,6 +265,7 @@ class LLMMetadataExtractor:
         :returns:
             An instance of the component.
         """
+        data = _copy_serialized_data(data)  # `from_dict` must not modify the caller's data
 
         deserialize_chatgenerator_inplace(data["init_parameters"], key="chat_generator")
         return default_from_dict(cls, data)

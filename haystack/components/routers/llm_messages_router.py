@@ -12,6 +12,7 @@ from haystack.core.serialization import component_to_dict
 from haystack.dataclasses import ChatMessage, ChatRole
 from haystack.utils import deserialize_chatgenerator_inplace
 from haystack.utils.async_utils import _execute_component_async
+from haystack.utils.deserialization import _copy_serialized_data
 
 
 @component
@@ -233,6 +234,7 @@ class LLMMessagesRouter:
         :returns:
             The deserialized component instance.
         """
+        data = _copy_serialized_data(data)  # `from_dict` must not modify the caller's data
         if data["init_parameters"].get("chat_generator"):
             deserialize_chatgenerator_inplace(data["init_parameters"], key="chat_generator")
 
