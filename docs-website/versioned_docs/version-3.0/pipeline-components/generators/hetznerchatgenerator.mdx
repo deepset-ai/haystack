@@ -25,64 +25,41 @@ This component enables chat completion using models hosted on the Hetzner Infere
 
 ## Overview
 
-`HetznerChatGenerator` supports the open-weight models served by the [Hetzner Inference API](https://docs.hetzner.com/general/company-and-policy/experiments/inference/) from Hetzner's European data centers. Two models are currently served, both with a 262,144-token context window:
+`HetznerChatGenerator` supports the open-weight models served by the [Hetzner Inference API](https://docs.hetzner.com/general/company-and-policy/experiments/inference/) from Hetzner's European data centers. Two models are currently served, both with a 262,144-token context window and both accepting images alongside text:
 
-- `Qwen/Qwen3.6-35B-A3B-FP8`, a mixture-of-experts model (35B total, 3B active parameters) and the component's default
-- `Qwen3.8-27B`, a dense model
+- `Qwen/Qwen3.6-35B-A3B-FP8` (default)
+- `Qwen3.8-27B`
 
-The selection changes while the service is in its experimental phase, and the `/v1/models` endpoint of the API is definitive. The `SUPPORTED_MODELS` class variable lists the models known at the time of the release, but a model outside that list is still passed on to the API.
-
-This component needs a list of [`ChatMessage`](../../concepts/data-classes/chatmessage.mdx) objects to operate. `ChatMessage` is a data class that contains a message, a role (who generated the message, such as `user`, `assistant`, `system`, `tool`), and optional metadata.
-
-You can pass any text generation parameters valid for the Hetzner chat completion API directly to this component using the `generation_kwargs` parameter in `__init__` or the `generation_kwargs` parameter in `run` method. The API is OpenAI-compatible, so the same parameters as for the [OpenAIChatGenerator](openaichatgenerator.mdx) apply.
-
-To use this integration, you need a Hetzner API token for the Inference API. You can provide it with:
-
-- The `HETZNER_API_KEY` environment variable (recommended)
-- The `api_key` init parameter and Haystack [Secret](../../concepts/secret-management.mdx) API: `Secret.from_token("your-api-key-here")`
-
-By default, the component uses Hetzner's OpenAI-compatible base URL `https://inference.hetzner.com/api/v1`, which you can override with `api_base_url` if needed.
+The selection changes while the service is experimental, so check the `/v1/models` endpoint of the API for the current list.
 
 :::info[Experimental service]
-Hetzner offers the Inference API as an experiment: it is free of charge while it keeps that status, its availability is not guaranteed, and it is rate-limited per API key (4M input tokens, 100k output tokens, and 10 requests per 60 seconds). Requests that exceed a limit fail with HTTP status code 429.
+Hetzner offers the Inference API as an experiment: it is free of charge while it keeps that status, its availability is not guaranteed, and it is rate-limited per API key (4M input tokens, 100k output tokens, and 10 requests per 60 seconds).
 :::
 
-### Multimodality
+### Parameters
 
-Both models served by the Inference API accept images alongside text, so you can include [`ImageContent`](../../concepts/data-classes/imagecontent.mdx) parts in the messages you pass to the component.
+To use the `HetznerChatGenerator`, ensure you have set a `HETZNER_API_KEY` as an environment variable. Alternatively, provide the API key as another environment variable or a token by setting `api_key` and using Haystack's [secret management](../../concepts/secret-management.mdx).
 
-### Tool Support
+Set your preferred model with the `model` parameter. Optionally, you can change the default `api_base_url`, which is `"https://inference.hetzner.com/api/v1"`.
 
-`HetznerChatGenerator` supports function calling through the `tools` parameter, which accepts flexible tool configurations:
+You can pass any text generation parameters valid for the Hetzner chat completion API directly to this component with the `generation_kwargs` parameter in the init or run methods. The API is OpenAI-compatible, so the same parameters as for the [OpenAIChatGenerator](openaichatgenerator.mdx) apply.
 
-- **A list of Tool objects**: Pass individual tools as a list
-- **A single Toolset**: Pass an entire Toolset directly
-- **Mixed Tools and Toolsets**: Combine multiple Toolsets with standalone tools in a single list
+The component needs a list of `ChatMessage` objects to run. `ChatMessage` is a data class that contains a message, a role (who generated the message, such as `user`, `assistant`, `system`, `tool`), and optional metadata. Find out more in the [ChatMessage documentation](../../concepts/data-classes/chatmessage.mdx).
 
-This allows you to organize related tools into logical groups while also including standalone tools as needed.
-
-```python
-from haystack.tools import Tool, Toolset
-from haystack_integrations.components.generators.hetzner import HetznerChatGenerator
-
-# Create individual tools
-weather_tool = Tool(name="weather", description="Get weather info", ...)
-news_tool = Tool(name="news", description="Get latest news", ...)
-
-# Group related tools into a toolset
-math_toolset = Toolset([add_tool, subtract_tool, multiply_tool])
-
-# Pass mixed tools and toolsets to the generator
-generator = HetznerChatGenerator(
-    tools=[math_toolset, weather_tool, news_tool]  # Mix of Toolset and Tool objects
-)
-```
-
-For more details on working with tools, see the [Tool](../../tools/tool.mdx) and [Toolset](../../tools/toolset.mdx) documentation.
+To let the model call tools, pass `Tool` objects, a `Toolset`, or a mix of both to the `tools` parameter. See the [Tool](../../tools/tool.mdx) and [Toolset](../../tools/toolset.mdx) documentation for details.
 
 ### Streaming
 
-`HetznerChatGenerator` supports [streaming](guides-to-generators/choosing-the-right-generator.mdx#streaming-support) responses from the LLM, allowing tokens to be emitted as they are generated. To enable streaming, pass a callable to the `streaming_callback` parameter during initialization.
+You can stream output as it's generated. Pass a callback to `streaming_callback`. Use the built-in `print_streaming_chunk` to print text tokens and tool events (tool calls and tool results).
+
+```python
+from haystack.components.generators.utils import print_streaming_chunk
+from haystack.dataclasses import ChatMessage
+from haystack_integrations.components.generators.hetzner import HetznerChatGenerator
+
+client = HetznerChatGenerator(streaming_callback=print_streaming_chunk)
+client.run([ChatMessage.from_user("What are Agentic Pipelines? Be brief.")])
+```
 
 ## Usage
 
@@ -94,8 +71,6 @@ pip install hetzner-haystack
 
 ### On its own
 
-Basic usage:
-
 ```python
 from haystack.dataclasses import ChatMessage
 from haystack_integrations.components.generators.hetzner import HetznerChatGenerator
@@ -105,24 +80,7 @@ response = client.run([ChatMessage.from_user("What are Agentic Pipelines? Be bri
 print(response["replies"][0].text)
 ```
 
-With streaming:
-
-```python
-from haystack.dataclasses import ChatMessage
-from haystack_integrations.components.generators.hetzner import HetznerChatGenerator
-
-client = HetznerChatGenerator(
-    model="Qwen3.8-27B",
-    streaming_callback=lambda chunk: print(chunk.content, end="", flush=True),
-)
-
-response = client.run([ChatMessage.from_user("What are Agentic Pipelines? Be brief.")])
-
-# check the model used for the response
-print("\n\nModel used:", response["replies"][0].meta.get("model"))
-```
-
-With an image:
+With multimodal inputs:
 
 ```python
 from haystack.dataclasses import ChatMessage, ImageContent
@@ -143,7 +101,7 @@ response = client.run(
 print(response["replies"][0].text)
 ```
 
-### In a Pipeline
+### In a pipeline
 
 ```python
 from haystack import Pipeline
@@ -169,5 +127,5 @@ response = pipe.run(
         "builder": {"template": messages, "template_variables": {"city": "Nuremberg"}}
     },
 )
-print(response)
+print(response["llm"]["replies"][0].text)
 ```
