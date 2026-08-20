@@ -26,6 +26,13 @@ class Hook(Protocol):
     `step_count`, `token_usage` and `tool_call_counts` are available; any additional keys defined in the Agent's
     `state_schema` are available too. The same hook object can be registered under multiple hook points.
 
+    Two reserved state keys drive control flow. An `on_exit` hook can set `continue_run` to keep the Agent running
+    instead of stopping on an exit condition. Any hook can set `stop_run` to a string reason to gracefully end the
+    run: the Agent evaluates it at the step boundary (right after the `before_llm` hooks, before the LLM call) and
+    reports it as `exit_reason`. A natural exit in the same step keeps its own reason, as does a run that stops
+    because it ran out of `max_agent_steps` on that step, and setting `stop_run` in an `after_run` hook has no
+    effect.
+
     Implement this protocol directly for stateful hooks (e.g. one wrapping a component), or use the `@hook` decorator to
     wrap a plain `(State) -> None` function.
 

@@ -1,0 +1,14 @@
+---
+features:
+  - |
+    Agent hooks can now gracefully stop a run by setting the ``stop_run`` control flag to a string reason
+    (``state.set("stop_run", "my_reason")``). The Agent evaluates the flag at the step boundary, right after the
+    ``before_llm`` hooks and before the LLM call, so a requested stop never spends another LLM call. The reason is
+    reported in the ``exit_reason`` output; a natural exit in the same step (a text reply or a tool exit condition)
+    keeps its own reason, and so does a run that stops because it ran out of ``max_agent_steps`` on that step.
+    Setting the flag in an ``after_run`` hook has no effect.
+  - |
+    Added ``TokenBudgetHook``, an experimental ``before_llm`` hook that gracefully stops an Agent run once the
+    cumulative token usage recorded in the Agent state reaches a configured budget, with the exit reason
+    ``"token_budget_exceeded"``. It reads the reported ``total_tokens`` when present and falls back to summing
+    input and output tokens across the usage key conventions of the different chat generators.

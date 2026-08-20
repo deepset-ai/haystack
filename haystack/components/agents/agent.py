@@ -66,7 +66,8 @@ from haystack.utils.deserialization import deserialize_component_inplace
 logger = logging.getLogger(__name__)
 
 # `exit_reason` values the Agent sets when it stops without a tool exit condition: a tool-call-free reply, or the
-# `max_agent_steps` budget running out. A tool exit condition instead reports the tool's name.
+# `max_agent_steps` budget running out. A tool exit condition instead reports the tool's name, and a hook can
+# supply a custom reason through the `stop_run` state key.
 _EXIT_REASON_TEXT = "text"
 _EXIT_REASON_MAX_STEPS = "max_agent_steps"
 
@@ -82,7 +83,8 @@ _RUN_METADATA_STATE_KEYS: dict[str, dict[str, Any]] = {
 # Internal state keys the Agent manages for run control and hooks. Like run-metadata keys they are reserved and cannot
 # be redefined by users, but unlike them they are NOT exposed as Agent inputs or outputs (purely internal state):
 # - `continue_run`: set by an `on_exit` hook to keep the Agent running instead of stopping (re-read each exit attempt).
-# - `stop_run`: set by a hook to end the run after the current step completes.
+# - `stop_run`: set by a hook to gracefully stop the run: evaluated at the step boundary (right after the
+#   `before_llm` hooks, before the LLM call) and used as the `exit_reason` when the stop ends the run.
 # - `tools`: the flattened tools available in the current step, so a hook can inspect them (e.g. HITL confirmation).
 # - `hook_context`: per-run request-scoped resources passed to `run`/`run_async` for hooks to read.
 # - `context_tokens`: approximate current context-window size, refreshed after each LLM call, for hooks to read
@@ -746,7 +748,6 @@ class Agent:
         state.set("tool_call_counts", {tool.name: 0 for tool in flat_tools})
         state.set("exit_reason", None)
         state.set("continue_run", False)
-        state.set("stop_run", None)
         state.set("tools", flat_tools)
         state.set("hook_context", hook_context or {})
 
@@ -843,8 +844,8 @@ class Agent:
             - "exit_reason": Why the Agent stopped, useful for routing the output downstream (e.g. with a
               `ConditionalRouter`). This is `"text"` when the model returned a reply with no tool calls, the name of
               the tool that satisfied a tool exit condition (in which case `last_message` is that tool's result),
-              `"max_agent_steps"` when the Agent hit `max_agent_steps`, or a custom reason supplied by a hook through
-              `stop_run`.
+              `"max_agent_steps"` when the Agent hit `max_agent_steps`, or a custom reason a hook supplied through
+              the `stop_run` state key.
             - Any additional keys defined in the `state_schema`.
         """
         agent_inputs = {"messages": messages, "streaming_callback": streaming_callback, **kwargs}
@@ -868,12 +869,9 @@ class Agent:
             while exe_context.counter < self.max_agent_steps:
                 if not self._run_step(exe_context=exe_context, agent_span=span):
                     break
-                # A hook requested a stop: the step it was set in has fully completed, so end the run here
-                if (reason := exe_context.state.data.get("stop_run")) is not None:
-                    exe_context.state.set("exit_reason", reason)
-                    break
             else:
-                # The Agent reached `max_agent_steps`
+                # Reached only when the loop ends without a `break`. A `break` means a step already set its own
+                # `exit_reason`, so this branch runs only when `max_agent_steps` is why the Agent stopped.
                 logger.warning(
                     "Agent reached maximum agent steps of {max_agent_steps}, stopping.",
                     max_agent_steps=self.max_agent_steps,
@@ -931,8 +929,8 @@ class Agent:
             - "exit_reason": Why the Agent stopped, useful for routing the output downstream (e.g. with a
               `ConditionalRouter`). This is `"text"` when the model returned a reply with no tool calls, the name of
               the tool that satisfied a tool exit condition (in which case `last_message` is that tool's result),
-              `"max_agent_steps"` when the Agent hit `max_agent_steps`, or a custom reason supplied by a hook through
-              `stop_run`.
+              `"max_agent_steps"` when the Agent hit `max_agent_steps`, or a custom reason a hook supplied through
+              the `stop_run` state key.
             - Any additional keys defined in the `state_schema`.
         """
         agent_inputs = {"messages": messages, "streaming_callback": streaming_callback, **kwargs}
@@ -956,12 +954,9 @@ class Agent:
             while exe_context.counter < self.max_agent_steps:
                 if not await self._run_step_async(exe_context=exe_context, agent_span=span):
                     break
-                # A hook requested a stop: the step it was set in has fully completed, so end the run here
-                if (reason := exe_context.state.data.get("stop_run")) is not None:
-                    exe_context.state.set("exit_reason", reason)
-                    break
             else:
-                # The Agent reached `max_agent_steps`
+                # Reached only when the loop ends without a `break`. A `break` means a step already set its own
+                # `exit_reason`, so this branch runs only when `max_agent_steps` is why the Agent stopped.
                 logger.warning(
                     "Agent reached maximum agent steps of {max_agent_steps}, stopping.",
                     max_agent_steps=self.max_agent_steps,
@@ -989,6 +984,10 @@ class Agent:
             exe_context.state.set("tools", current_tools, handler_override=replace_values)
 
             _run_hooks(hooks=self.hooks, hook_point=BEFORE_LLM, state=exe_context.state)
+            # A hook requested a stop: end the run at the step boundary, before spending another LLM call.
+            if (reason := exe_context.state.data.get("stop_run")) is not None:
+                exe_context.state.set("exit_reason", reason)
+                return False
             chat_generator_inputs = {
                 "messages": exe_context.state.data["messages"],
                 **exe_context.chat_generator_inputs,
@@ -1052,6 +1051,10 @@ class Agent:
             exe_context.state.set("tools", current_tools, handler_override=replace_values)
 
             await _run_hooks_async(hooks=self.hooks, hook_point=BEFORE_LLM, state=exe_context.state)
+            # A hook requested a stop: end the run at the step boundary, before spending another LLM call.
+            if (reason := exe_context.state.data.get("stop_run")) is not None:
+                exe_context.state.set("exit_reason", reason)
+                return False
             chat_generator_inputs = {
                 "messages": exe_context.state.data["messages"],
                 **exe_context.chat_generator_inputs,

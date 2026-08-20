@@ -5,6 +5,7 @@
 from typing import Any
 
 from haystack.components.agents.state.state import State
+from haystack.components.agents.utils import _INPUT_TOKEN_KEYS, _OUTPUT_TOKEN_KEYS, _first_numeric
 from haystack.core.serialization import default_from_dict, default_to_dict
 from haystack.utils.experimental import _experimental
 
@@ -14,8 +15,8 @@ class TokenBudgetHook:
     """
     Stop an Agent run when its token usage reaches a configured budget.
 
-    The hook runs at the `after_tool` hook point and checks the cumulative `total_tokens` recorded in the Agent state.
-    When the configured budget is reached, the Agent stops with the exit reason `"token_budget_exceeded"`.
+    The hook runs at the `before_llm` hook point and checks the cumulative token usage recorded in the Agent state.
+    When the budget is reached, the run ends before the next LLM call with the exit reason `"token_budget_exceeded"`.
 
     <!-- test-ignore -->
     ```python
@@ -26,17 +27,18 @@ class TokenBudgetHook:
     agent = Agent(
         chat_generator=OpenAIChatGenerator(),
         tools=[web_search],
-        hooks={"after_tool": [TokenBudgetHook(max_total_tokens=100_000)]},
+        hooks={"before_llm": [TokenBudgetHook(max_total_tokens=100_000)]},
     )
 
     result = agent.run(messages=[...])
     ```
 
-    The budget is checked after a tool step completes, so the final token usage may exceed it. Only calls made by the
-    Agent's chat generator contribute to `token_usage`; calls made by tools or other hooks are not included.
+    The budget is checked before each LLM call, so no call is ever made with the budget already exceeded; the final
+    token usage can exceed the budget by at most the last step's usage. Only calls made by the Agent's chat generator
+    contribute to `token_usage`; calls made by tools or other hooks are not included.
     """
 
-    allowed_hook_points = ("after_tool",)
+    allowed_hook_points = ("before_llm",)
 
     def __init__(self, *, max_total_tokens: int) -> None:
         """
@@ -55,7 +57,12 @@ class TokenBudgetHook:
 
         :param state: Agent state containing the cumulative token usage.
         """
-        total_tokens = state.data.get("token_usage", {}).get("total_tokens", 0)
+        usage = state.data.get("token_usage") or {}
+        # Not every chat generator reports `total_tokens`, so fall back to summing the input and output keys across
+        # the known naming conventions.
+        total_tokens = _first_numeric(usage, ("total_tokens",))
+        if not total_tokens:
+            total_tokens = _first_numeric(usage, _INPUT_TOKEN_KEYS) + _first_numeric(usage, _OUTPUT_TOKEN_KEYS)
         if total_tokens >= self.max_total_tokens:
             state.set("stop_run", "token_budget_exceeded")
 

@@ -537,49 +537,51 @@ class TestOnExitHook:
 
 
 class TestStopRun:
-    def test_stop_from_after_tool_ends_run_after_the_step(self):
-        agent = _agent(MockChatGenerator(), tools=[save], hooks={"after_tool": [stop_for_budget]})
+    @pytest.mark.parametrize("hook_point", ["before_tool", "after_tool"])
+    def test_mid_step_stop_skips_the_next_call(self, hook_point):
+        agent = _agent(MockChatGenerator(), tools=[save], hooks={hook_point: [stop_for_budget]})
         agent.chat_generator.run = MagicMock(
             return_value={"replies": [ChatMessage.from_assistant(tool_calls=[ToolCall("save", {"content": "x"})])]}
         )
         result = agent.run(messages=[ChatMessage.from_user("hi")])
         assert agent.chat_generator.run.call_count == 1
-        assert result["exit_reason"] == "budget_exceeded"
+        assert result["step_count"] == 1
+        assert result["tool_call_counts"]["save"] == 1
         assert result["last_message"].tool_call_result is not None
+        assert result["exit_reason"] == "budget_exceeded"
         assert "stop_run" not in result
 
-    def test_stop_from_before_llm_completes_the_current_step(self):
+    def test_before_llm_stop_skips_the_current_call(self):
         agent = _agent(MockChatGenerator(), tools=[save], hooks={"before_llm": [stop_for_budget]})
         agent.chat_generator.run = MagicMock(
             return_value={"replies": [ChatMessage.from_assistant(tool_calls=[ToolCall("save", {"content": "x"})])]}
         )
         result = agent.run(messages=[ChatMessage.from_user("hi")])
-        assert agent.chat_generator.run.call_count == 1
-        assert result["tool_call_counts"]["save"] == 1
+        assert agent.chat_generator.run.call_count == 0
+        assert result["step_count"] == 0
+        assert result["tool_call_counts"]["save"] == 0
         assert result["exit_reason"] == "budget_exceeded"
 
-    def test_stop_from_before_tool_completes_the_current_step(self):
-        agent = _agent(MockChatGenerator(), tools=[save], hooks={"before_tool": [stop_for_budget]})
-        agent.chat_generator.run = MagicMock(
-            return_value={"replies": [ChatMessage.from_assistant(tool_calls=[ToolCall("save", {"content": "x"})])]}
-        )
-        result = agent.run(messages=[ChatMessage.from_user("hi")])
-        assert agent.chat_generator.run.call_count == 1
-        assert result["tool_call_counts"]["save"] == 1
-        assert result["exit_reason"] == "budget_exceeded"
+    def test_check_runs_after_all_before_llm_hooks(self):
+        fired = []
 
-    def test_stop_from_after_run_has_no_effect(self):
-        agent = _agent(MockChatGenerator(), hooks={"after_run": [stop_for_budget]})
+        def record(state: State) -> None:
+            fired.append(1)
+
+        agent = _agent(MockChatGenerator(), hooks={"before_llm": [stop_for_budget, hook(record)]})
         agent.chat_generator.run = MagicMock(return_value={"replies": [ChatMessage.from_assistant("done")]})
         result = agent.run(messages=[ChatMessage.from_user("hi")])
-        assert result["exit_reason"] == "text"
+        assert fired == [1]
+        assert agent.chat_generator.run.call_count == 0
+        assert result["exit_reason"] == "budget_exceeded"
 
-    def test_tool_exit_in_the_same_step_wins_over_stop(self):
+    @pytest.mark.parametrize("hook_point", ["after_tool", "on_exit"])
+    def test_natural_exit_wins_in_the_same_step(self, hook_point):
         agent = _agent(
             MockChatGenerator(),
             tools=[final_answer],
             exit_conditions=["final_answer"],
-            hooks={"after_tool": [stop_for_budget]},
+            hooks={hook_point: [stop_for_budget]},
         )
         agent.chat_generator.run = MagicMock(
             return_value={
@@ -589,7 +591,7 @@ class TestStopRun:
         result = agent.run(messages=[ChatMessage.from_user("q")])
         assert result["exit_reason"] == "final_answer"
 
-    def test_stop_wins_over_continue_run_from_on_exit(self):
+    def test_stop_wins_when_continue_run_cancels_the_exit(self):
         agent = _agent(
             MockChatGenerator(),
             tools=[final_answer],
@@ -606,17 +608,15 @@ class TestStopRun:
         assert result["exit_reason"] == "budget_exceeded"
         assert result["last_message"].text == "keep going"
 
-    def test_stop_on_the_last_allowed_step_keeps_the_stop_reason(self):
+    def test_max_steps_wins_on_the_last_step(self):
         agent = _agent(MockChatGenerator(), tools=[save], max_agent_steps=1, hooks={"after_tool": [stop_for_budget]})
         agent.chat_generator.run = MagicMock(
             return_value={"replies": [ChatMessage.from_assistant(tool_calls=[ToolCall("save", {"content": "x"})])]}
         )
         result = agent.run(messages=[ChatMessage.from_user("hi")])
-        assert result["exit_reason"] == "budget_exceeded"
+        assert result["exit_reason"] == "max_agent_steps"
 
-    def test_stop_wins_over_max_steps_when_continue_run_cancels_the_exit(self):
-        # always_continue cancels the tool exit on the only allowed step, so without the stop the run would end
-        # with exit_reason "max_agent_steps". The deliberate stop reason wins over the step budget.
+    def test_max_steps_wins_over_a_cancelled_exit(self):
         agent = _agent(
             MockChatGenerator(),
             tools=[final_answer],
@@ -630,9 +630,15 @@ class TestStopRun:
             }
         )
         result = agent.run(messages=[ChatMessage.from_user("q")])
-        assert result["exit_reason"] == "budget_exceeded"
+        assert result["exit_reason"] == "max_agent_steps"
 
-    def test_after_run_hooks_run_on_a_stop_exit(self):
+    def test_stop_from_after_run_is_ignored(self):
+        agent = _agent(MockChatGenerator(), hooks={"after_run": [stop_for_budget]})
+        agent.chat_generator.run = MagicMock(return_value={"replies": [ChatMessage.from_assistant("done")]})
+        result = agent.run(messages=[ChatMessage.from_user("hi")])
+        assert result["exit_reason"] == "text"
+
+    def test_after_run_hooks_still_run(self):
         agent = _agent(
             MockChatGenerator(), tools=[save], hooks={"after_tool": [stop_for_budget], "after_run": [write_report]}
         )
@@ -643,7 +649,7 @@ class TestStopRun:
         assert result["exit_reason"] == "budget_exceeded"
         assert result["last_message"].text == "REPORT"
 
-    def test_on_exit_hooks_do_not_run_on_a_stop_exit(self):
+    def test_on_exit_hooks_do_not_run(self):
         fired = []
 
         def record(state: State) -> None:
@@ -712,7 +718,7 @@ class TestAgentHooksAsync:
         assert fired == [1]
 
     @pytest.mark.asyncio
-    async def test_stop_from_after_tool_ends_run_after_the_step(self):
+    async def test_mid_step_stop_skips_the_next_call(self):
         agent = _agent(MockChatGenerator(), tools=[save], hooks={"after_tool": [stop_for_budget]})
         agent.chat_generator.run_async = AsyncMock(
             return_value={"replies": [ChatMessage.from_assistant(tool_calls=[ToolCall("save", {"content": "x"})])]}
