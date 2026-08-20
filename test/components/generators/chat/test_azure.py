@@ -343,8 +343,6 @@ class TestAzureOpenAIChatGenerator:
         ],
     )
     def test_to_dict_with_dict_response_format(self, monkeypatch: pytest.MonkeyPatch, rf: dict[str, Any]) -> None:
-        # Regression: to_dict() crashed with TypeError when response_format was a plain dict
-        # because issubclass() was called without the isinstance(..., type) guard.
         monkeypatch.setenv("AZURE_OPENAI_API_KEY", "test-api-key")
         component = AzureOpenAIChatGenerator(
             azure_endpoint="some-non-existing-endpoint", generation_kwargs={"response_format": rf}
