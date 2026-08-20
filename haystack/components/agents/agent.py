@@ -65,9 +65,12 @@ from haystack.utils.deserialization import deserialize_component_inplace
 
 logger = logging.getLogger(__name__)
 
-# `exit_reason` values the Agent sets when it stops without a tool exit condition: a tool-call-free reply, or the
-# `max_agent_steps` budget running out. A tool exit condition instead reports the tool's name.
+# `exit_reason` values the Agent sets when it stops without a tool exit condition: a tool-call-free reply, an
+# incomplete model generation, or the `max_agent_steps` budget running out. A tool exit condition instead reports the
+# tool's name.
 _EXIT_REASON_TEXT = "text"
+_EXIT_REASON_LENGTH = "length"
+_EXIT_REASON_CONTENT_FILTER = "content_filter"
 _EXIT_REASON_MAX_STEPS = "max_agent_steps"
 
 # Run-metadata state keys the Agent populates automatically during a run. Users may not define them in their own
@@ -147,17 +150,27 @@ def _consume_continue_run(state: State) -> bool:
     return should_continue
 
 
-def _is_text_exit(messages: list[ChatMessage]) -> bool:
+def _get_model_exit_reason(messages: list[ChatMessage]) -> str | None:
     """
-    Return whether `messages` end in a plain assistant text reply with no tool calls anywhere in the batch.
+    Return the exit reason for a terminal assistant reply without tool calls.
 
-    This is the "no tool call" exit for the model's own replies. The last message must be a non-empty assistant text
-    message, so an invalid response (e.g. one with no tool calls and no text) does not trigger an exit.
+    Incomplete generation reasons take precedence over text so callers can distinguish a partial response from a
+    complete answer. An empty response without a recognized terminal reason does not trigger an exit, preserving the
+    Agent's recovery behavior for malformed tool calls that a Chat Generator discarded.
     """
-    if not messages:
-        return False
+    if not messages or any(message.tool_call for message in messages):
+        return None
+
     last = messages[-1]
-    return not any(m.tool_call for m in messages) and last.is_from(ChatRole.ASSISTANT) and bool(last.text)
+    if not last.is_from(ChatRole.ASSISTANT):
+        return None
+    if last.meta.get("finish_reason") == _EXIT_REASON_LENGTH:
+        return _EXIT_REASON_LENGTH
+    if last.meta.get("finish_reason") == _EXIT_REASON_CONTENT_FILTER:
+        return _EXIT_REASON_CONTENT_FILTER
+    if last.text:
+        return _EXIT_REASON_TEXT
+    return None
 
 
 def _pending_tool_call_messages_from_state(state: State) -> list[ChatMessage]:
@@ -838,9 +851,11 @@ class Agent:
               `meta["usage"]`.
             - "tool_call_counts": Mapping of tool name to the number of times that tool was invoked.
             - "exit_reason": Why the Agent stopped, useful for routing the output downstream (e.g. with a
-              `ConditionalRouter`). One of: `"text"` (the model returned a reply with no tool calls), the name of
-              the tool that satisfied a tool exit condition (in which case `last_message` is that tool's result),
-              or `"max_agent_steps"` (the Agent hit `max_agent_steps` before meeting an exit condition).
+              `ConditionalRouter`). One of: `"text"` (the model returned a complete reply with no tool calls),
+              `"length"` or `"content_filter"` (the model returned an incomplete reply, which may contain partial
+              text), the name of the tool that satisfied a tool exit condition (in which case `last_message` is that
+              tool's result), or `"max_agent_steps"` (the Agent hit `max_agent_steps` before meeting an exit
+              condition).
             - Any additional keys defined in the `state_schema`.
         """
         agent_inputs = {"messages": messages, "streaming_callback": streaming_callback, **kwargs}
@@ -922,9 +937,11 @@ class Agent:
               `meta["usage"]`.
             - "tool_call_counts": Mapping of tool name to the number of times that tool was invoked.
             - "exit_reason": Why the Agent stopped, useful for routing the output downstream (e.g. with a
-              `ConditionalRouter`). One of: `"text"` (the model returned a reply with no tool calls), the name of
-              the tool that satisfied a tool exit condition (in which case `last_message` is that tool's result),
-              or `"max_agent_steps"` (the Agent hit `max_agent_steps` before meeting an exit condition).
+              `ConditionalRouter`). One of: `"text"` (the model returned a complete reply with no tool calls),
+              `"length"` or `"content_filter"` (the model returned an incomplete reply, which may contain partial
+              text), the name of the tool that satisfied a tool exit condition (in which case `last_message` is that
+              tool's result), or `"max_agent_steps"` (the Agent hit `max_agent_steps` before meeting an exit
+              condition).
             - Any additional keys defined in the `state_schema`.
         """
         agent_inputs = {"messages": messages, "streaming_callback": streaming_callback, **kwargs}
@@ -993,11 +1010,12 @@ class Agent:
             _record_llm_usage(state=exe_context.state, llm_messages=llm_messages)
             _record_context_tokens(state=exe_context.state, llm_messages=llm_messages)
 
-            # Stop on the "no tool call" exit: no tools available, or a plain assistant text reply (see _is_text_exit).
-            if not current_tools or _is_text_exit(messages=llm_messages):
+            # Stop when there are no tools, or the model produced a terminal reply without tool calls.
+            model_exit_reason = _get_model_exit_reason(messages=llm_messages)
+            if not current_tools or model_exit_reason is not None:
                 exe_context.counter += 1
                 exe_context.state.set("step_count", exe_context.counter)
-                exe_context.state.set("exit_reason", _EXIT_REASON_TEXT)
+                exe_context.state.set("exit_reason", model_exit_reason or _EXIT_REASON_TEXT)
                 return self._continue_after_exit_hooks(exe_context=exe_context)
 
             _run_hooks(hooks=self.hooks, hook_point=BEFORE_TOOL, state=exe_context.state)
@@ -1058,11 +1076,12 @@ class Agent:
             _record_llm_usage(state=exe_context.state, llm_messages=llm_messages)
             _record_context_tokens(state=exe_context.state, llm_messages=llm_messages)
 
-            # Stop on the "no tool call" exit: no tools available, or a plain assistant text reply (see _is_text_exit).
-            if not current_tools or _is_text_exit(messages=llm_messages):
+            # Stop when there are no tools, or the model produced a terminal reply without tool calls.
+            model_exit_reason = _get_model_exit_reason(messages=llm_messages)
+            if not current_tools or model_exit_reason is not None:
                 exe_context.counter += 1
                 exe_context.state.set("step_count", exe_context.counter)
-                exe_context.state.set("exit_reason", _EXIT_REASON_TEXT)
+                exe_context.state.set("exit_reason", model_exit_reason or _EXIT_REASON_TEXT)
                 return await self._continue_after_exit_hooks_async(exe_context=exe_context)
 
             await _run_hooks_async(hooks=self.hooks, hook_point=BEFORE_TOOL, state=exe_context.state)
