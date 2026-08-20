@@ -297,6 +297,7 @@ export default {
             'pipeline-components/converters/msgtodocument',
             'pipeline-components/converters/multifileconverter',
             'pipeline-components/converters/openapiservicetofunctions',
+            'pipeline-components/converters/opendataloaderconverter',
             'pipeline-components/converters/outputadapter',
             'pipeline-components/converters/paddleocrvldocumentconverter',
             'pipeline-components/converters/pdfminertodocument',
