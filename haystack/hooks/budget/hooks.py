@@ -7,7 +7,10 @@ from typing import Any
 from haystack.components.agents.state.state import State
 from haystack.components.agents.utils import _INPUT_TOKEN_KEYS, _OUTPUT_TOKEN_KEYS, _first_numeric
 from haystack.core.serialization import default_from_dict, default_to_dict
+from haystack.dataclasses import ChatMessage
 from haystack.utils.experimental import _experimental
+
+_FINAL_MESSAGE_TEXT = "The Agent stopped because the token budget was exceeded."
 
 
 @_experimental
@@ -39,16 +42,18 @@ class TokenBudgetHook:
 
     allowed_hook_points = ("before_llm",)
 
-    def __init__(self, *, max_total_tokens: int) -> None:
+    def __init__(self, *, max_total_tokens: int, add_final_message: bool = False) -> None:
         """
         Create a token budget hook.
 
         :param max_total_tokens: Maximum cumulative token usage before the Agent is stopped.
+        :param add_final_message: Whether to append an assistant message explaining why the Agent stopped.
         :raises ValueError: If `max_total_tokens` is less than 1.
         """
         if max_total_tokens < 1:
             raise ValueError(f"`max_total_tokens` must be a positive number of tokens, got {max_total_tokens}.")
         self.max_total_tokens = max_total_tokens
+        self.add_final_message = add_final_message
 
     def run(self, state: State) -> None:
         """
@@ -64,6 +69,8 @@ class TokenBudgetHook:
             total_tokens = _first_numeric(usage, _INPUT_TOKEN_KEYS) + _first_numeric(usage, _OUTPUT_TOKEN_KEYS)
         if total_tokens >= self.max_total_tokens:
             state.set("stop_run", "token_budget_exceeded")
+            if self.add_final_message:
+                state.set("messages", [ChatMessage.from_assistant(_FINAL_MESSAGE_TEXT)])
 
     def to_dict(self) -> dict[str, Any]:
         """
@@ -71,7 +78,7 @@ class TokenBudgetHook:
 
         :returns: Serialized representation of the hook.
         """
-        return default_to_dict(self, max_total_tokens=self.max_total_tokens)
+        return default_to_dict(self, max_total_tokens=self.max_total_tokens, add_final_message=self.add_final_message)
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "TokenBudgetHook":
