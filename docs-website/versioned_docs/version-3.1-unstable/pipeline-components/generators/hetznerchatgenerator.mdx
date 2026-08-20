@@ -1,0 +1,172 @@
+---
+title: "HetznerChatGenerator"
+id: hetznerchatgenerator
+slug: "/hetznerchatgenerator"
+description: "This component enables chat completion using models hosted on the Hetzner Inference API."
+---
+
+# HetznerChatGenerator
+
+This component enables chat completion using models hosted on the Hetzner Inference API.
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | After a [ChatPromptBuilder](../builders/chatpromptbuilder.mdx) |
+| **Mandatory init variables** | `api_key`: A Hetzner API token. Can be set with `HETZNER_API_KEY` env var. |
+| **Mandatory run variables** | `messages`: A list of [`ChatMessage`](../../concepts/data-classes/chatmessage.mdx) objects |
+| **Output variables** | `replies`: A list of [`ChatMessage`](../../concepts/data-classes/chatmessage.mdx) objects |
+| **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/hetzner |
+| **Package name** | `hetzner-haystack` |
+
+</div>
+
+## Overview
+
+`HetznerChatGenerator` supports the open-weight models served by the [Hetzner Inference API](https://docs.hetzner.com/general/company-and-policy/experiments/inference/) from Hetzner's European data centers. Two models are currently served, both with a 262,144-token context window:
+
+- `Qwen/Qwen3.6-35B-A3B-FP8`, a mixture-of-experts model (35B total, 3B active parameters) and the component's default
+- `Qwen3.8-27B`, a dense model
+
+The selection changes while the service is in its experimental phase, and the `/v1/models` endpoint of the API is definitive. The `SUPPORTED_MODELS` class variable lists the models known at the time of the release, but a model outside that list is still passed on to the API.
+
+This component needs a list of [`ChatMessage`](../../concepts/data-classes/chatmessage.mdx) objects to operate. `ChatMessage` is a data class that contains a message, a role (who generated the message, such as `user`, `assistant`, `system`, `tool`), and optional metadata.
+
+You can pass any text generation parameters valid for the Hetzner chat completion API directly to this component using the `generation_kwargs` parameter in `__init__` or the `generation_kwargs` parameter in `run` method. The API is OpenAI-compatible, so the same parameters as for the [OpenAIChatGenerator](openaichatgenerator.mdx) apply.
+
+To use this integration, you need a Hetzner API token for the Inference API. You can provide it with:
+
+- The `HETZNER_API_KEY` environment variable (recommended)
+- The `api_key` init parameter and Haystack [Secret](../../concepts/secret-management.mdx) API: `Secret.from_token("your-api-key-here")`
+
+By default, the component uses Hetzner's OpenAI-compatible base URL `https://inference.hetzner.com/api/v1`, which you can override with `api_base_url` if needed.
+
+:::info[Experimental service]
+Hetzner offers the Inference API as an experiment: it is free of charge while it keeps that status, its availability is not guaranteed, and it is rate-limited per API key (4M input tokens, 100k output tokens, and 10 requests per 60 seconds). Requests that exceed a limit fail with HTTP status code 429.
+:::
+
+### Multimodality
+
+Both models served by the Inference API accept images alongside text, so you can include [`ImageContent`](../../concepts/data-classes/imagecontent.mdx) parts in the messages you pass to the component.
+
+### Tool Support
+
+`HetznerChatGenerator` supports function calling through the `tools` parameter, which accepts flexible tool configurations:
+
+- **A list of Tool objects**: Pass individual tools as a list
+- **A single Toolset**: Pass an entire Toolset directly
+- **Mixed Tools and Toolsets**: Combine multiple Toolsets with standalone tools in a single list
+
+This allows you to organize related tools into logical groups while also including standalone tools as needed.
+
+```python
+from haystack.tools import Tool, Toolset
+from haystack_integrations.components.generators.hetzner import HetznerChatGenerator
+
+# Create individual tools
+weather_tool = Tool(name="weather", description="Get weather info", ...)
+news_tool = Tool(name="news", description="Get latest news", ...)
+
+# Group related tools into a toolset
+math_toolset = Toolset([add_tool, subtract_tool, multiply_tool])
+
+# Pass mixed tools and toolsets to the generator
+generator = HetznerChatGenerator(
+    tools=[math_toolset, weather_tool, news_tool]  # Mix of Toolset and Tool objects
+)
+```
+
+For more details on working with tools, see the [Tool](../../tools/tool.mdx) and [Toolset](../../tools/toolset.mdx) documentation.
+
+### Streaming
+
+`HetznerChatGenerator` supports [streaming](guides-to-generators/choosing-the-right-generator.mdx#streaming-support) responses from the LLM, allowing tokens to be emitted as they are generated. To enable streaming, pass a callable to the `streaming_callback` parameter during initialization.
+
+## Usage
+
+Install the `hetzner-haystack` package to use the `HetznerChatGenerator`:
+
+```shell
+pip install hetzner-haystack
+```
+
+### On its own
+
+Basic usage:
+
+```python
+from haystack.dataclasses import ChatMessage
+from haystack_integrations.components.generators.hetzner import HetznerChatGenerator
+
+client = HetznerChatGenerator()
+response = client.run([ChatMessage.from_user("What are Agentic Pipelines? Be brief.")])
+print(response["replies"][0].text)
+```
+
+With streaming:
+
+```python
+from haystack.dataclasses import ChatMessage
+from haystack_integrations.components.generators.hetzner import HetznerChatGenerator
+
+client = HetznerChatGenerator(
+    model="Qwen3.8-27B",
+    streaming_callback=lambda chunk: print(chunk.content, end="", flush=True),
+)
+
+response = client.run([ChatMessage.from_user("What are Agentic Pipelines? Be brief.")])
+
+# check the model used for the response
+print("\n\nModel used:", response["replies"][0].meta.get("model"))
+```
+
+With an image:
+
+```python
+from haystack.dataclasses import ChatMessage, ImageContent
+from haystack_integrations.components.generators.hetzner import HetznerChatGenerator
+
+image = ImageContent.from_url(
+    "https://cdn.hetzner.de/cdn/public/Uploads/Finnland_Luftaufnahme-v2.jpg"
+)
+
+client = HetznerChatGenerator()
+response = client.run(
+    [
+        ChatMessage.from_user(
+            content_parts=["Describe this image in one sentence.", image]
+        )
+    ]
+)
+print(response["replies"][0].text)
+```
+
+### In a Pipeline
+
+```python
+from haystack import Pipeline
+from haystack.components.builders import ChatPromptBuilder
+from haystack.dataclasses import ChatMessage
+from haystack_integrations.components.generators.hetzner import HetznerChatGenerator
+
+prompt_builder = ChatPromptBuilder()
+llm = HetznerChatGenerator()
+
+pipe = Pipeline()
+pipe.add_component("builder", prompt_builder)
+pipe.add_component("llm", llm)
+pipe.connect("builder.prompt", "llm.messages")
+
+messages = [
+    ChatMessage.from_system("Give brief answers."),
+    ChatMessage.from_user("Tell me about {{city}}"),
+]
+
+response = pipe.run(
+    data={
+        "builder": {"template": messages, "template_variables": {"city": "Nuremberg"}}
+    },
+)
+print(response)
+```
