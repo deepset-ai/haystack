@@ -30,12 +30,6 @@ This component enables chat completion using models hosted on the Hetzner Infere
 - `Qwen/Qwen3.6-35B-A3B-FP8` (default)
 - `Qwen3.8-27B`
 
-The selection changes while the service is experimental, so check the `/v1/models` endpoint of the API for the current list.
-
-:::info[Experimental service]
-Hetzner offers the Inference API as an experiment: it is free of charge while it keeps that status, its availability is not guaranteed, and it is rate-limited per API key (4M input tokens, 100k output tokens, and 10 requests per 60 seconds).
-:::
-
 ### Parameters
 
 To use the `HetznerChatGenerator`, ensure you have set a `HETZNER_API_KEY` as an environment variable. Alternatively, provide the API key as another environment variable or a token by setting `api_key` and using Haystack's [secret management](../../concepts/secret-management.mdx).
