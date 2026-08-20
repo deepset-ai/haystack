@@ -183,7 +183,7 @@ class LinkContentFetcher:
 
         @retry(
             reraise=True,
-            stop=stop_after_attempt(self.retry_attempts),
+            stop=stop_after_attempt(self.retry_attempts + 1),
             wait=wait_exponential(multiplier=1, min=2, max=10),
             retry=(retry_if_exception_type((httpx.HTTPStatusError, httpx.RequestError))),
             # This callback is invoked only after failed requests (exception raised)
