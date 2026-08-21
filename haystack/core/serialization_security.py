@@ -12,7 +12,14 @@ Three ways to extend the allowlist:
 - Process-wide programmatic API: :func:`allow_deserialization_module`
 - Environment variable: `HAYSTACK_DESERIALIZATION_ALLOWLIST="mypkg.*,otherpkg.*"`
 
-The two-mode loading API (`unsafe=True`) bypasses the allowlist entirely.
+The two-mode loading API (`unsafe=True`) bypasses the allowlist entirely. For deployments that only
+ever load fully trusted pipelines and cannot pass `unsafe=True` at every call site, the process-wide
+environment variable `HAYSTACK_UNSAFE_DESERIALIZATION=1` is equivalent to `unsafe=True` on every load:
+it disables *all* deserialization safety checks (the module allowlist, the builtin/import-primitive
+and control-plane denylists, the object-internals traversal guard, and the refusal to honor a
+component's own `unsafe: true` flag). Only enable it when every pipeline loaded by the process is
+trusted. Its value is read once, on the first deserialization in the process, and then frozen for the
+process lifetime, so nothing that runs later can turn the safety checks off (or back on).
 """
 
 import builtins
@@ -26,6 +33,7 @@ from dataclasses import dataclass, field
 from types import ModuleType
 from typing import TypeVar
 
+from haystack import logging
 from haystack.core.errors import DeserializationError
 
 # The default allowlist covers Haystack's own packages plus a small set of standard-library type modules
@@ -40,6 +48,12 @@ DEFAULT_ALLOWED_MODULES: tuple[str, ...] = (
     "collections",
 )
 DESERIALIZATION_ALLOWLIST_ENV_VAR = "HAYSTACK_DESERIALIZATION_ALLOWLIST"
+
+# Process-wide "off switch": when set to a truthy value, deserialization behaves as if every load
+# were called with `unsafe=True` (see `_is_unsafe_deserialization`). Unlike the allowlist env var,
+# this disables *all* safety checks, so it must only be used when every pipeline the process loads
+# is trusted.
+UNSAFE_DESERIALIZATION_ENV_VAR = "HAYSTACK_UNSAFE_DESERIALIZATION"
 
 # `builtins` is on the default allowlist because deserialization legitimately needs builtin *types*
 # (e.g. `builtins.str`, used in serialized type annotations and as nested `{"type": ...}` class
@@ -88,6 +102,8 @@ _DENIED_CALLABLE_QUALNAMES: frozenset[tuple[str, str]] = frozenset(
     {("haystack.utils.type_serialization", "thread_safe_import")}
 )
 
+logger = logging.getLogger(__name__)
+
 
 @dataclass(frozen=True)
 class _DeserializationContext:
@@ -105,16 +121,59 @@ def _get_context() -> _DeserializationContext:
     return ctx if ctx is not None else _DeserializationContext()
 
 
+# Snapshot of `UNSAFE_DESERIALIZATION_ENV_VAR`, read once and then frozen for the process lifetime
+# (`None` means "not read yet"). Freezing it is a security property, not an optimization: the first
+# read happens before any deserialized data can run, so a hostile pipeline cannot turn the safety
+# checks off *while it is being loaded*. Without it, any route from serialized data to `os.environ`
+# is a full bypass — e.g. an allowlisted module that binds `os.environ` at module scope, whose
+# `update` resolves because it is `collections.abc.MutableMapping.update` and `collections` is on
+# the default allowlist. The read is deliberately lazy rather than done at import time, so that a
+# `load_dotenv()` (or any other env setup) that runs before the first load is still honored.
+_unsafe_env_snapshot: bool | None = None
+
+
+def _unsafe_env_enabled() -> bool:
+    """
+    Return whether the process-wide unsafe-deserialization env var was set to a truthy value.
+
+    :data:`UNSAFE_DESERIALIZATION_ENV_VAR` is read on the first deserialization check in the process
+    and the result is then frozen for the process lifetime (see `_unsafe_env_snapshot`): later writes
+    to the variable are ignored, in either direction. A warning is logged when the snapshot is taken
+    and found active, since it turns off all deserialization safety for the whole process.
+    """
+    global _unsafe_env_snapshot
+    snapshot = _unsafe_env_snapshot
+    if snapshot is None:
+        # A benign race: concurrent first readers compute the same value from the same environment.
+        snapshot = os.environ.get(UNSAFE_DESERIALIZATION_ENV_VAR, "").strip().lower() in ("1", "true")
+        _unsafe_env_snapshot = snapshot
+        if snapshot:
+            logger.warning(
+                "{env} is set: pipeline deserialization safety is DISABLED process-wide "
+                "(equivalent to passing unsafe=True on every load). Only enable this if every "
+                "pipeline loaded by this process is fully trusted.",
+                env=UNSAFE_DESERIALIZATION_ENV_VAR,
+            )
+    return snapshot
+
+
 def _is_unsafe_deserialization() -> bool:
     """
-    Return whether the active deserialization context was entered with `unsafe=True`.
+    Return whether deserialization is running in unsafe mode.
+
+    This is the single source of truth consulted by every safety check in this module. It is `True`
+    when either the active deserialization context was entered with `unsafe=True`, or the process-wide
+    :data:`UNSAFE_DESERIALIZATION_ENV_VAR` env var was set when it was first read (which disables all
+    deserialization safety checks for the whole process — see :func:`_unsafe_env_enabled`).
 
     Components deserializing their own data (e.g. `OutputAdapter.from_dict`) use this to decide
     whether to honor an embedded `unsafe` flag: a serialized component may only disable its Jinja
     sandbox when the whole pipeline is being loaded in unsafe mode (`Pipeline.load(..., unsafe=True)`),
     never on its own from otherwise-untrusted data in default safe mode.
     """
-    return _get_context().unsafe
+    # `_unsafe_env_enabled()` first so the env snapshot is always taken on the earliest
+    # check in the process, even when that check happens inside an `unsafe=True` load.
+    return _unsafe_env_enabled() or _get_context().unsafe
 
 
 _F = TypeVar("_F", bound=Callable[..., object])
@@ -195,7 +254,7 @@ def _check_not_deserialization_internal(resolved: object, handle: str) -> None:
     :raises DeserializationError:
         If `resolved` is part of the deserialization control plane.
     """
-    if _get_context().unsafe:
+    if _is_unsafe_deserialization():
         return
     if _is_deserialization_internal(resolved):
         name = getattr(resolved, "__qualname__", None) or getattr(resolved, "__name__", None) or repr(resolved)
@@ -256,7 +315,7 @@ def _check_traversable_attribute(name: str, handle: str) -> None:
     :raises DeserializationError:
         If `name` names an object-internals attribute.
     """
-    if _get_context().unsafe:
+    if _is_unsafe_deserialization():
         return
     if name.startswith("__") or name in _UNSAFE_TRAVERSAL_ATTRS:
         raise DeserializationError(
@@ -315,7 +374,7 @@ def _patterns_from_env() -> list[str]:
 def _is_module_allowed(module_name: str) -> bool:
     """Return whether `module_name` is on the active deserialization allowlist."""
     ctx = _get_context()
-    if ctx.unsafe:
+    if _is_unsafe_deserialization():
         return True
     patterns: list[str] = []
     patterns.extend(DEFAULT_ALLOWED_MODULES)
@@ -367,7 +426,7 @@ def _check_resolved_module_allowed(resolved: object, declared_module: str | None
     :raises DeserializationError:
         If the resolved object's real module is not on the allowlist.
     """
-    if _get_context().unsafe:
+    if _is_unsafe_deserialization():
         return
     # Builtins are gated separately and authoritatively — by the identity denylist
     # (`_check_not_denied_builtin`) in the callable path and by the type requirement
@@ -424,7 +483,7 @@ def _check_not_denied_builtin(resolved: object, handle: str) -> None:
     :param handle:
         The original serialized handle, used only for the error message.
     """
-    if _get_context().unsafe:
+    if _is_unsafe_deserialization():
         return
     if _is_denied_builtin(resolved):
         name = getattr(resolved, "__name__", str(resolved))
@@ -452,7 +511,7 @@ def _check_not_denied_callable(resolved: object, handle: str) -> None:
     :param handle:
         The original serialized handle, used only for the error message.
     """
-    if _get_context().unsafe:
+    if _is_unsafe_deserialization():
         return
     ident = (getattr(resolved, "__module__", ""), getattr(resolved, "__qualname__", ""))
     if any(resolved is denied for denied in _DENIED_CALLABLE_OBJECTS) or ident in _DENIED_CALLABLE_QUALNAMES:
@@ -478,7 +537,7 @@ def _check_builtin_is_type(resolved: object, handle: str) -> None:
     :param handle:
         The original serialized handle, used only for the error message.
     """
-    if _get_context().unsafe:
+    if _is_unsafe_deserialization():
         return
     if not isinstance(resolved, type):
         raise DeserializationError(
