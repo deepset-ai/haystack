@@ -140,12 +140,12 @@
 | haystack/core/component/types.py                                          |       42 |        3 |     93% |     88-90 |
 | haystack/core/errors.py                                                   |       72 |       10 |     86% |60-67, 127, 142-144, 151-153, 166 |
 | haystack/core/pipeline/\_\_init\_\_.py                                    |        2 |        0 |    100% |           |
-| haystack/core/pipeline/base.py                                            |      629 |       51 |     92% |269-270, 274, 482, 702, 739-749, 914, 982, 1556, 1723, 1727, 1737-1743, 1760-1822 |
+| haystack/core/pipeline/base.py                                            |      636 |       51 |     92% |270-271, 275, 490, 710, 747-757, 946, 1014, 1588, 1755, 1759, 1769-1775, 1792-1854 |
 | haystack/core/pipeline/breakpoint.py                                      |      106 |       11 |     90% |52, 71, 80, 88, 115-120, 187 |
 | haystack/core/pipeline/component\_checks.py                               |       66 |        0 |    100% |           |
 | haystack/core/pipeline/descriptions.py                                    |        6 |        0 |    100% |           |
 | haystack/core/pipeline/draw.py                                            |      199 |       41 |     79% |35-58, 142, 145, 148, 150, 158, 162-169, 296, 306, 378-380, 385, 393-394, 422-427 |
-| haystack/core/pipeline/pipeline.py                                        |      327 |       21 |     94% |174, 181, 425, 568, 591, 759, 950-954, 958, 975-979, 983-995, 1036-1045, 1070 |
+| haystack/core/pipeline/pipeline.py                                        |      327 |       19 |     94% |174, 181, 425, 568, 591, 759, 953, 958, 975-979, 983-995, 1036-1045, 1070 |
 | haystack/core/pipeline/utils.py                                           |       71 |        1 |     99% |       206 |
 | haystack/core/serialization.py                                            |      129 |        6 |     95% |76, 100, 247, 334, 350-351 |
 | haystack/core/serialization\_security.py                                  |      123 |        0 |    100% |           |
@@ -266,7 +266,7 @@
 | haystack/utils/type\_serialization.py                                     |      144 |        6 |     96% |106, 108, 260-261, 269, 285 |
 | haystack/utils/url\_validation.py                                         |        4 |        0 |    100% |           |
 | haystack/version.py                                                       |        5 |        2 |     60% |      9-10 |
-| **TOTAL**                                                                 | **17089** |  **781** | **95%** |           |
+| **TOTAL**                                                                 | **17096** |  **779** | **95%** |           |
 
 
 ## Setup coverage badge
