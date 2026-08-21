@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Fix ``PythonCodeSplitter`` with ``strip_docstrings=True`` emitting a syntactically
+    invalid chunk for any function, method, or class whose body consists solely of a
+    docstring (for example a one-line custom exception class). Such units are now left
+    unstripped instead of being reduced to a header with no body.

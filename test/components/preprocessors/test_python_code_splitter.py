@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import ast
 import textwrap
 
 import pytest
@@ -686,6 +687,46 @@ class TestDocstringStripping:
         header = header_chunks[0]
         assert "Class-level docstring." not in (header.content or "")
         assert "Class-level docstring." in " | ".join(header.meta.get("docstrings") or [])
+
+    @pytest.mark.parametrize(
+        "source",
+        [
+            pytest.param(
+                textwrap.dedent(
+                    '''
+                    class MyError(Exception):
+                        """Custom error raised when the widget explodes."""
+                    '''
+                ).lstrip(),
+                id="docstring_only_class",
+            ),
+            pytest.param(
+                textwrap.dedent(
+                    '''
+                    def foo():
+                        """This function intentionally does nothing yet."""
+                    '''
+                ).lstrip(),
+                id="docstring_only_function",
+            ),
+            pytest.param(
+                textwrap.dedent(
+                    '''
+                    class Widget:
+                        def explode(self):
+                            """Explode the widget."""
+                    '''
+                ).lstrip(),
+                id="docstring_only_method",
+            ),
+        ],
+    )
+    def test_strip_docstrings_skips_body_that_is_only_a_docstring(self, source):
+        """A def/class whose sole body statement is the docstring must not be stripped down to an empty body."""
+        splitter = PythonCodeSplitter(min_effective_lines=1, max_effective_lines=10, strip_docstrings=True)
+        result = splitter.run(documents=[Document(content=source)])
+        for chunk in result["documents"]:
+            ast.parse(chunk.content)  # raises SyntaxError if the body was stripped down to nothing
 
 
 class TestTopLevelStatements:

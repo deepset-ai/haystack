@@ -190,10 +190,11 @@ class PythonCodeSplitter:
             return self._slice_lines(source_lines, unit_start, unit_end), None
 
         # Skip stripping when the docstring shares a line with the def/class (would
-        # leave broken syntax) or extends past the caller's slice (e.g. class_header).
+        # leave broken syntax), extends past the caller's slice (e.g. class_header), or
+        # is the body's only statement (stripping it would leave no body at all).
         ds_start = first.lineno
         ds_end = first.end_lineno or first.lineno
-        if ds_start <= node.lineno or ds_end > unit_end:
+        if len(body) == 1 or ds_start <= node.lineno or ds_end > unit_end:
             return self._slice_lines(source_lines, unit_start, unit_end), None
 
         before = source_lines[unit_start - 1 : ds_start - 1]
