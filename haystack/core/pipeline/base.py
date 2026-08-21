@@ -398,7 +398,8 @@ class PipelineBase:  # noqa: PLW1641
         Add the given component to the pipeline.
 
         Components are not connected to anything by default: use `Pipeline.connect()` to connect components together.
-        Component names must be unique, but component instances can be reused if needed.
+        Component names must be unique, and a component instance can only be added to one pipeline at a time.
+        Adding the same component instance with the same name more than once is a no-op.
 
         :param name:
             The name of the component to add.
@@ -406,12 +407,66 @@ class PipelineBase:  # noqa: PLW1641
             The component instance to add.
 
         :raises ValueError:
-            If a component with the same name already exists.
+            If a different component with the same name already exists.
         :raises PipelineValidationError:
             If the given instance is not a component.
+        :raises PipelineError:
+            If the component instance is already in this pipeline under another name or is in another pipeline.
         """
+        if not self._validate_component(name, instance):
+            return
+
+        self._add_component_to_graph(name, instance)
+
+    def add_components(self, components: Mapping[str, Component]) -> None:
+        """
+        Add multiple components to the pipeline.
+
+        Components are not connected to anything by default: use `Pipeline.connect()` to connect components together.
+        Before adding anything, Haystack checks that every name is valid, every value is a Component instance,
+        no name belongs to a different component, and no instance is assigned to another name or pipeline.
+        If any check fails, the pipeline remains unchanged.
+        Components already present under the same name are ignored when they are the exact same instances.
+
+        :param components:
+            A mapping of component names to component instances.
+
+        :raises ValueError:
+            If a component name is invalid or already belongs to a different component in this pipeline.
+        :raises PipelineValidationError:
+            If one of the given instances is not a component.
+        :raises PipelineError:
+            If a component instance is already in this pipeline under another name, is in another pipeline,
+            or occurs more than once in the mapping.
+        """
+        components_to_add: list[tuple[str, Component]] = []
+        component_names_by_id: dict[int, str] = {}
+
+        # Materialize the items so custom mappings cannot change between validation and insertion.
+        for name, instance in list(components.items()):
+            if not self._validate_component(name, instance):
+                continue
+
+            instance_id = id(instance)
+            previous_name = component_names_by_id.get(instance_id)
+            if previous_name is not None:
+                raise PipelineError(
+                    f"Component instance cannot be added to the pipeline more than once. "
+                    f"It is mapped to both '{previous_name}' and '{name}'."
+                )
+
+            component_names_by_id[instance_id] = name
+            components_to_add.append((name, instance))
+
+        for name, instance in components_to_add:
+            self._add_component_to_graph(name, instance)
+
+    def _validate_component(self, name: str, instance: Component) -> bool:
+        """Validate a component before adding it, returning whether it needs to be added."""
         # Component names are unique
         if name in self.graph.nodes:
+            if self.graph.nodes[name]["instance"] is instance:
+                return False
             raise ValueError(f"A component named '{name}' already exists in this pipeline: choose another name.")
 
         # Components can't be named `_debug`
@@ -428,13 +483,24 @@ class PipelineBase:  # noqa: PLW1641
                 f"'{type(instance)}' doesn't seem to be a component. Is this class decorated with @component?"
             )
 
-        if getattr(instance, "__haystack_added_to_pipeline__", None):
-            msg = (
-                "Component has already been added in another Pipeline. Components can't be shared between Pipelines. "
-                "Create a new instance instead."
-            )
+        if owning_pipeline := getattr(instance, "__haystack_added_to_pipeline__", None):
+            if owning_pipeline is self:
+                existing_name = self.get_component_name(instance)
+                msg = (
+                    f"Component has already been added to this Pipeline under the name '{existing_name}'. "
+                    "A component instance can only be added once."
+                )
+            else:
+                msg = (
+                    "Component has already been added in another Pipeline. "
+                    "Components can't be shared between Pipelines. Create a new instance instead."
+                )
             raise PipelineError(msg)
 
+        return True
+
+    def _add_component_to_graph(self, name: str, instance: Component) -> None:
+        """Add an already validated component to the graph."""
         setattr(instance, "__haystack_added_to_pipeline__", self)  # noqa: B010
         setattr(instance, "__component_name__", name)  # noqa: B010
 

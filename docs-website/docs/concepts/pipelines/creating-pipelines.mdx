@@ -59,7 +59,23 @@ query_pipeline = Pipeline()
 
 ### 4\. Add components
 
-Add components to the pipeline one by one. The order in which you do this doesn't matter:
+Add components to the pipeline. The order in which you do this doesn't matter. You can add several components at
+once by passing a dictionary to `add_components()`:
+
+```python
+query_pipeline.add_components(
+    {
+        "text_embedder": text_embedder,
+        "retriever": retriever,
+    }
+)
+```
+
+Before adding anything, Haystack checks that every name is valid, every value is a Haystack component instance, no
+name belongs to a different component, and no instance is already assigned to another name or pipeline. If any check
+fails, the pipeline remains unchanged.
+
+You can instead add components individually with `add_component()`:
 
 ```python
 query_pipeline.add_component("component_name", component_type)
@@ -75,6 +91,9 @@ query_pipeline.add_component(
     InMemoryEmbeddingRetriever(document_store=document_store),
 )
 ```
+
+Adding the exact same component instance again under the same name is a no-op. A name cannot refer to a different
+component, and a component instance cannot appear under multiple names or belong to multiple pipelines at once.
 
 ### 5\. Connect components
 
