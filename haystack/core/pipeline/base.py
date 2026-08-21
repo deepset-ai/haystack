@@ -423,7 +423,9 @@ class PipelineBase:  # noqa: PLW1641
         Add multiple components to the pipeline.
 
         Components are not connected to anything by default: use `Pipeline.connect()` to connect components together.
-        All components are validated before any of them is added. If validation fails, the pipeline remains unchanged.
+        Before adding anything, Haystack checks that every name is valid, every value is a Component instance,
+        no name belongs to a different component, and no instance is assigned to another name or pipeline.
+        If any check fails, the pipeline remains unchanged.
         Components already present under the same name are ignored when they are the exact same instances.
 
         :param components:

@@ -190,7 +190,7 @@ class TestPipelineAddComponents:
 
         assert list(pipe.graph.nodes) == ["first", "second"]
 
-    def test_add_components_validates_all_components_before_adding_any(self):
+    def test_add_components_checks_all_components_before_adding_any(self):
         pipe = PipelineBase()
         first_component = component_class("First")()
         second_component = component_class("Second")()
