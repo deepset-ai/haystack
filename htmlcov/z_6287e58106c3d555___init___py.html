@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-    <title>Coverage for haystack/components/validators/__init__.py: 100%</title>
+    <title>Coverage for haystack/hooks/budget/__init__.py: 100%</title>
     <link rel="icon" sizes="32x32" href="favicon_32_cb_c827f16f.png">
     <link rel="stylesheet" href="style_cb_4667309f.css" type="text/css">
     <script src="coverage_html_cb_dd2e7eb5.js" defer></script>
@@ -11,7 +11,7 @@
 <header>
     <div class="content">
         <h1>
-            <span class="text">Coverage for </span><b>haystack<span class="sep">/</span>components<span class="sep">/</span>validators<span class="sep">/</span>__init__.py</b>:
+            <span class="text">Coverage for </span><b>haystack<span class="sep">/</span>hooks<span class="sep">/</span>budget<span class="sep">/</span>__init__.py</b>:
             <span class="pc_cov">100%</span>
         </h1>
         <aside id="help_panel_wrapper">
@@ -60,9 +60,9 @@
             <button type="button" class="exc show_exc button_toggle_exc" value="exc" data-shortcut="x" title="Toggle lines excluded">2<span class="text"> excluded</span></button>
         </h2>
         <p class="text">
-            <a id="prevFileLink" class="nav" href="z_6332e788d50df12b_top_p_py.html">&#xab; prev</a> &nbsp; &nbsp;
+            <a id="prevFileLink" class="nav" href="z_177ee90f6ce1b012___init___py.html">&#xab; prev</a> &nbsp; &nbsp;
             <a id="indexLink" class="nav" href="index.html">&Hat; index</a> &nbsp; &nbsp;
-            <a id="nextFileLink" class="nav" href="z_ee128ec698cb8f9d_json_schema_py.html">&#xbb; next</a>
+            <a id="nextFileLink" class="nav" href="z_6287e58106c3d555_hooks_py.html">&#xbb; next</a>
             &nbsp; &nbsp; &nbsp;
             <a class="nav" href="https://coverage.readthedocs.io/en/7.15.4">coverage.py v7.15.4</a>,
             created at 2026-08-21 09:05 +0000
@@ -89,20 +89,19 @@
     <p class="pln"><span class="n"><a id="t7" href="#t7">7</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t8" href="#t8">8</a></span><span class="t"><span class="key">from</span> <span class="nam">lazy_imports</span> <span class="key">import</span> <span class="nam">LazyImporter</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t9" href="#t9">9</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t10" href="#t10">10</a></span><span class="t"><span class="nam">_import_structure</span> <span class="op">=</span> <span class="op">{</span><span class="str">&quot;json_schema&quot;</span><span class="op">:</span> <span class="op">[</span><span class="str">&quot;JsonSchemaValidator&quot;</span><span class="op">]</span><span class="op">}</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t10" href="#t10">10</a></span><span class="t"><span class="nam">_import_structure</span> <span class="op">=</span> <span class="op">{</span><span class="str">&quot;hooks&quot;</span><span class="op">:</span> <span class="op">[</span><span class="str">&quot;TokenBudgetHook&quot;</span><span class="op">]</span><span class="op">}</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t11" href="#t11">11</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
     <p class="exc show_exc"><span class="n"><a id="t12" href="#t12">12</a></span><span class="t"><span class="key">if</span> <span class="nam">TYPE_CHECKING</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
-    <p class="exc show_exc"><span class="n"><a id="t13" href="#t13">13</a></span><span class="t">    <span class="key">from</span> <span class="op">.</span><span class="nam">json_schema</span> <span class="key">import</span> <span class="nam">JsonSchemaValidator</span> <span class="key">as</span> <span class="nam">JsonSchemaValidator</span>&nbsp;</span><span class="r"></span></p>
-    <p class="pln"><span class="n"><a id="t14" href="#t14">14</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
-    <p class="pln"><span class="n"><a id="t15" href="#t15">15</a></span><span class="t"><span class="key">else</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
-    <p class="run"><span class="n"><a id="t16" href="#t16">16</a></span><span class="t">    <span class="nam">sys</span><span class="op">.</span><span class="nam">modules</span><span class="op">[</span><span class="nam">__name__</span><span class="op">]</span> <span class="op">=</span> <span class="nam">LazyImporter</span><span class="op">(</span><span class="nam">name</span><span class="op">=</span><span class="nam">__name__</span><span class="op">,</span> <span class="nam">module_file</span><span class="op">=</span><span class="nam">__file__</span><span class="op">,</span> <span class="nam">import_structure</span><span class="op">=</span><span class="nam">_import_structure</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
+    <p class="exc show_exc"><span class="n"><a id="t13" href="#t13">13</a></span><span class="t">    <span class="key">from</span> <span class="op">.</span><span class="nam">hooks</span> <span class="key">import</span> <span class="nam">TokenBudgetHook</span> <span class="key">as</span> <span class="nam">TokenBudgetHook</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t14" href="#t14">14</a></span><span class="t"><span class="key">else</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
+    <p class="run"><span class="n"><a id="t15" href="#t15">15</a></span><span class="t">    <span class="nam">sys</span><span class="op">.</span><span class="nam">modules</span><span class="op">[</span><span class="nam">__name__</span><span class="op">]</span> <span class="op">=</span> <span class="nam">LazyImporter</span><span class="op">(</span><span class="nam">name</span><span class="op">=</span><span class="nam">__name__</span><span class="op">,</span> <span class="nam">module_file</span><span class="op">=</span><span class="nam">__file__</span><span class="op">,</span> <span class="nam">import_structure</span><span class="op">=</span><span class="nam">_import_structure</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
 </main>
 <footer>
     <div class="content">
         <p>
-            <a class="nav" href="z_6332e788d50df12b_top_p_py.html">&#xab; prev</a> &nbsp; &nbsp;
+            <a class="nav" href="z_177ee90f6ce1b012___init___py.html">&#xab; prev</a> &nbsp; &nbsp;
             <a class="nav" href="index.html">&Hat; index</a> &nbsp; &nbsp;
-            <a class="nav" href="z_ee128ec698cb8f9d_json_schema_py.html">&#xbb; next</a>
+            <a class="nav" href="z_6287e58106c3d555_hooks_py.html">&#xbb; next</a>
             &nbsp; &nbsp; &nbsp;
             <a class="nav" href="https://coverage.readthedocs.io/en/7.15.4">coverage.py v7.15.4</a>,
             created at 2026-08-21 09:05 +0000
