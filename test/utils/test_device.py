@@ -117,6 +117,19 @@ def test_component_device_multiple():
     assert multiple.first_device == ComponentDevice.from_single(Device.cpu())
 
 
+def test_component_device_first_device_skips_disk():
+    # A device map whose first entry is a disk device must not crash: disk can only be used as part
+    # of a device map, so first_device has to skip it and return the first usable (non-disk) device.
+    multiple = ComponentDevice.from_multiple(DeviceMap({"layer1": Device.disk(), "layer2": Device.gpu(0)}))
+    assert multiple.first_device == ComponentDevice.from_single(Device.gpu(0))
+
+
+def test_component_device_first_device_all_disk_returns_none():
+    # If the device map contains only disk devices, there is no usable single device, so None is returned.
+    all_disk = ComponentDevice.from_multiple(DeviceMap({"layer1": Device.disk(), "layer2": Device.disk()}))
+    assert all_disk.first_device is None
+
+
 @patch("torch.xpu.is_available")
 @patch("torch.backends.mps.is_available")
 @patch("torch.cuda.is_available")
