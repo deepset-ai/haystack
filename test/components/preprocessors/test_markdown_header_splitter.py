@@ -508,6 +508,45 @@ class TestCodeBlockExclusion:
         assert docs[1].meta["header"] == "Real Subheader"
         assert "not a header" not in [doc.meta["header"] for doc in docs]
 
+    @pytest.mark.parametrize(("opening", "closing"), [("```python", "````"), ("~~~bash", "~~~~")])
+    def test_closing_fence_can_be_longer_than_opening(self, opening, closing):
+        """A closing fence can contain more markers than its opening fence."""
+        text = f"# Real Header\n{opening}\n# not a header\n{closing}\n## Real Subheader\nContent.\n"
+
+        docs = MarkdownHeaderSplitter().run(documents=[Document(content=text)])["documents"]
+
+        assert [doc.meta["header"] for doc in docs] == ["Real Header", "Real Subheader"]
+        assert "".join(doc.content for doc in docs) == text
+
+    @pytest.mark.parametrize("indent", [" ", "  ", "   "])
+    def test_fences_can_be_indented(self, indent):
+        """Opening and closing fences can be indented by up to three spaces."""
+        text = f"# Real Header\n{indent}```python\n# not a header\n{indent}```\n## Real Subheader\nContent.\n"
+
+        docs = MarkdownHeaderSplitter().run(documents=[Document(content=text)])["documents"]
+
+        assert [doc.meta["header"] for doc in docs] == ["Real Header", "Real Subheader"]
+        assert "".join(doc.content for doc in docs) == text
+
+    def test_unclosed_fence_continues_to_end_of_document(self):
+        """An unclosed fence prevents hash-prefixed code lines from becoming headers."""
+        text = "# Real Header\n```python\n# not a header\n## also not a header\n"
+
+        docs = MarkdownHeaderSplitter().run(documents=[Document(content=text)])["documents"]
+
+        assert len(docs) == 1
+        assert docs[0].meta["header"] == "Real Header"
+        assert docs[0].content == text
+
+    def test_shorter_fence_does_not_close_block(self):
+        """A closing fence must contain at least as many markers as its opening fence."""
+        text = "# Real Header\n````python\n```\n# not a header\n````\n## Real Subheader\nContent.\n"
+
+        docs = MarkdownHeaderSplitter().run(documents=[Document(content=text)])["documents"]
+
+        assert [doc.meta["header"] for doc in docs] == ["Real Header", "Real Subheader"]
+        assert "".join(doc.content for doc in docs) == text
+
     def test_code_block_with_no_real_headers(self):
         """If the only hash lines are inside code blocks, the document is returned unchunked."""
         text = "Plain text before code.\n```\n# entirely fake\n```\nPlain text after code.\n"
