@@ -375,6 +375,14 @@ class ConditionalRouter:
                 "If you trust the source of this data, load it with Pipeline.load(..., unsafe=True)."
             )
 
+        custom_filters = init_params.get("custom_filters", {})
+        if custom_filters and not _is_unsafe_deserialization():
+            raise DeserializationError(
+                "Refusing to deserialize a ConditionalRouter with custom filters while loading in safe mode. "
+                "Custom filters are arbitrary callables that can execute during pipeline loading. "
+                "If you trust the source of this data, load it with Pipeline.load(..., unsafe=True)."
+            )
+
         routes = init_params.get("routes")
         for route in routes:
             # output_type needs to be deserialized from a string to a type
@@ -385,7 +393,6 @@ class ConditionalRouter:
 
         # Since the custom_filters are typed as optional in the init signature, we catch the
         # case where they are not present in the serialized data and set them to an empty dict.
-        custom_filters = init_params.get("custom_filters", {})
         if custom_filters is not None:
             for name, filter_func in custom_filters.items():
                 init_params["custom_filters"][name] = deserialize_callable(filter_func) if filter_func else None
