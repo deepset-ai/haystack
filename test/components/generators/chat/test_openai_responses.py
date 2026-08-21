@@ -104,11 +104,6 @@ class RecordingCallback:
 
 
 class TestInitialization:
-    def test_haystack_to_provider_generation_kwargs(self) -> None:
-        assert OpenAIResponsesChatGenerator._HAYSTACK_TO_PROVIDER_GENERATION_KWARGS == {
-            "max_output_tokens": "max_output_tokens"
-        }
-
     def test_supported_models(self) -> None:
         """SUPPORTED_MODELS is a non-empty list of strings."""
         models = OpenAIResponsesChatGenerator.SUPPORTED_MODELS

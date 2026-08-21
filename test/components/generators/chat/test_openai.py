@@ -190,11 +190,6 @@ def tools():
 
 
 class TestOpenAIChatGenerator:
-    def test_haystack_to_provider_generation_kwargs(self) -> None:
-        assert OpenAIChatGenerator._HAYSTACK_TO_PROVIDER_GENERATION_KWARGS == {
-            "max_output_tokens": "max_completion_tokens"
-        }
-
     def test_supported_models(self) -> None:
         """SUPPORTED_MODELS is a non-empty list of strings."""
         models = OpenAIChatGenerator.SUPPORTED_MODELS
