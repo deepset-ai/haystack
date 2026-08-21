@@ -104,6 +104,42 @@ def test_quote_spans_regex():
     assert len(matches5) == 0
 
 
+@pytest.mark.parametrize(
+    "text",
+    [
+        'He said "Two." Three.',
+        "He said 'Two.' Three.",
+        "He said “Two.” Three.",
+        "He said ‘Two.’ Three.",
+        "Il a dit «Deux.» Trois.",
+        'He shouted "Stop!" Three.',
+        "He said (two.) Three.",  # brackets are already handled, this is the control case
+    ],
+)
+def test_split_sentences_keeps_white_spaces_after_a_closing_quote(text: str) -> None:
+    splitter = SentenceSplitter(language="en", keep_white_spaces=True)
+    sentences = splitter.split_sentences(text)
+
+    # no character of the original text is lost
+    assert "".join(sentence["sentence"] for sentence in sentences) == text
+
+    # and the spans still tile the text, so they can be mapped back onto it
+    assert sentences[0]["start"] == 0
+    assert sentences[-1]["end"] == len(text)
+    for index in range(1, len(sentences)):
+        assert sentences[index]["start"] == sentences[index - 1]["end"]
+
+
+def test_split_sentences_keeps_a_cited_question_joined() -> None:
+    # a quoted question is not a sentence boundary, the split rules must keep joining it
+    text = 'She asked "Are you sure?" Then she left.'
+    splitter = SentenceSplitter(language="en", keep_white_spaces=True)
+
+    sentences = splitter.split_sentences(text)
+
+    assert [sentence["sentence"] for sentence in sentences] == [text]
+
+
 def test_split_sentences_performance() -> None:
     # make sure our regex is not vulnerable to Regex Denial of Service (ReDoS)
     # https://owasp.org/www-community/attacks/Regular_expression_Denial_of_Service_-_ReDoS
