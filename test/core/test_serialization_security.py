@@ -656,6 +656,7 @@ class TestPipelineCallableClassification:
             "close",
             "close_async",
             "connect",
+            "connect_many",
             "draw",
             "dump",
             "dumps",
