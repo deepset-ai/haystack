@@ -147,8 +147,8 @@ class TestPipelineAddComponent:
         pipe = PipelineBase()
         some_component = component_class("Some")()
 
-        pipe.add_component("some", some_component)
-        pipe.add_component("some", some_component)
+        assert pipe.add_component("some", some_component) is pipe
+        assert pipe.add_component("some", some_component) is pipe
 
         assert list(pipe.graph.nodes) == ["some"]
         assert pipe.get_component("some") is some_component
@@ -175,8 +175,9 @@ class TestPipelineAddComponents:
         first_component = component_class("First")()
         second_component = component_class("Second")()
 
-        pipe.add_components({"first": first_component, "second": second_component})
+        result = pipe.add_components({"first": first_component, "second": second_component})
 
+        assert result is pipe
         assert list(pipe.graph.nodes) == ["first", "second"]
         assert pipe.get_component("first") is first_component
         assert pipe.get_component("second") is second_component
@@ -185,8 +186,8 @@ class TestPipelineAddComponents:
         pipe = PipelineBase()
         components = {"first": component_class("First")(), "second": component_class("Second")()}
 
-        pipe.add_components(components)
-        pipe.add_components(components)
+        assert pipe.add_components(components) is pipe
+        assert pipe.add_components(components) is pipe
 
         assert list(pipe.graph.nodes) == ["first", "second"]
 
@@ -2058,6 +2059,49 @@ class TestPipelineBaseFromDict:
             PipelineBase.from_dict(data)
 
         err.match("Missing receiver in connection: {'sender': 'some.sender'}")
+
+
+class TestPipelineConnectMany:
+    def test_connect_many(self):
+        first = component_class("First", output_types={"value": int})()
+        middle = component_class("Middle", input_types={"value": int}, output_types={"value": int})()
+        last = component_class("Last", input_types={"value": int})()
+        pipe = PipelineBase().add_components({"first": first, "middle": middle, "last": last})
+
+        result = pipe.connect_many([("first", "middle"), ("middle", "last")])
+
+        assert result is pipe
+        assert list(pipe.graph.edges) == [("first", "middle", "value/value"), ("middle", "last", "value/value")]
+
+    def test_connect_many_with_empty_list(self):
+        pipe = PipelineBase()
+
+        assert pipe.connect_many([]) is pipe
+        assert list(pipe.graph.edges) == []
+
+    def test_connect_many_is_idempotent(self):
+        sender = component_class("Sender", output_types={"value": int})()
+        receiver = component_class("Receiver", input_types={"value": int})()
+        pipe = PipelineBase().add_components({"sender": sender, "receiver": receiver})
+        connections = [("sender.value", "receiver.value")]
+
+        assert pipe.connect_many(connections) is pipe
+        assert pipe.connect_many(connections) is pipe
+
+        assert sender.__haystack_output__.value.receivers == ["receiver"]  # type: ignore[attr-defined]
+        assert receiver.__haystack_input__.value.senders == ["sender"]  # type: ignore[attr-defined]
+        assert list(pipe.graph.edges) == [("sender", "receiver", "value/value")]
+
+    def test_connect_many_stops_after_first_error(self):
+        first = component_class("First", output_types={"value": int})()
+        middle = component_class("Middle", input_types={"value": int}, output_types={"value": int})()
+        last = component_class("Last", input_types={"value": int})()
+        pipe = PipelineBase().add_components({"first": first, "middle": middle, "last": last})
+
+        with pytest.raises(ValueError, match="Component named missing not found"):
+            pipe.connect_many([("first", "middle"), ("missing", "last"), ("middle", "last")])
+
+        assert list(pipe.graph.edges) == [("first", "middle", "value/value")]
 
 
 class TestPipelineConnect:

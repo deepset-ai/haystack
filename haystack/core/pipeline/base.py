@@ -13,6 +13,7 @@ from pathlib import Path
 from typing import Any, TextIO, TypeVar, Union, get_args
 
 import networkx
+from typing_extensions import Self
 
 from haystack import logging, tracing
 from haystack.core.component import Component, InputSocket, OutputSocket, component
@@ -393,7 +394,8 @@ class PipelineBase:  # noqa: PLW1641
         """
         return cls.loads(fp.read(), marshaller, callbacks, allowed_modules=allowed_modules, unsafe=unsafe)
 
-    def add_component(self, name: str, instance: Component) -> None:
+    # Self preserves the concrete subclass for fluent calls, so Pipeline().add_component(...).run() type-checks.
+    def add_component(self, name: str, instance: Component) -> Self:
         """
         Add the given component to the pipeline.
 
@@ -405,6 +407,8 @@ class PipelineBase:  # noqa: PLW1641
             The name of the component to add.
         :param instance:
             The component instance to add.
+        :returns:
+            The Pipeline instance.
 
         :raises ValueError:
             If a different component with the same name already exists.
@@ -414,11 +418,12 @@ class PipelineBase:  # noqa: PLW1641
             If the component instance is already in this pipeline under another name or is in another pipeline.
         """
         if not self._validate_component(name, instance):
-            return
+            return self
 
         self._add_component_to_graph(name, instance)
+        return self
 
-    def add_components(self, components: Mapping[str, Component]) -> None:
+    def add_components(self, components: dict[str, Component]) -> Self:
         """
         Add multiple components to the pipeline.
 
@@ -429,7 +434,9 @@ class PipelineBase:  # noqa: PLW1641
         Components already present under the same name are ignored when they are the exact same instances.
 
         :param components:
-            A mapping of component names to component instances.
+            A dictionary that maps component names to component instances.
+        :returns:
+            The Pipeline instance.
 
         :raises ValueError:
             If a component name is invalid or already belongs to a different component in this pipeline.
@@ -442,8 +449,7 @@ class PipelineBase:  # noqa: PLW1641
         components_to_add: list[tuple[str, Component]] = []
         component_names_by_id: dict[int, str] = {}
 
-        # Materialize the items so custom mappings cannot change between validation and insertion.
-        for name, instance in list(components.items()):
+        for name, instance in components.items():
             if not self._validate_component(name, instance):
                 continue
 
@@ -460,6 +466,8 @@ class PipelineBase:  # noqa: PLW1641
 
         for name, instance in components_to_add:
             self._add_component_to_graph(name, instance)
+
+        return self
 
     def _validate_component(self, name: str, instance: Component) -> bool:
         """Validate a component before adding it, returning whether it needs to be added."""
@@ -576,7 +584,7 @@ class PipelineBase:  # noqa: PLW1641
 
         return instance
 
-    def connect(self, sender: str, receiver: str) -> "PipelineBase":  # noqa: PLR0915 PLR0912 C901
+    def connect(self, sender: str, receiver: str) -> Self:  # noqa: PLR0915 PLR0912 C901
         """
         Connects two components together.
 
@@ -780,6 +788,30 @@ class PipelineBase:  # noqa: PLW1641
             mandatory=receiver_socket.is_mandatory,
             conversion_strategy=conversion_strategy,
         )
+        return self
+
+    def connect_many(self, connections: list[tuple[str, str]]) -> Self:
+        """
+        Connect multiple pairs of components.
+
+        Connections are made in the order provided. If connecting a pair raises an exception, no subsequent pairs
+        are connected, while earlier successful connections remain in the pipeline. Repeating an existing connection
+        is a no-op.
+
+        :param connections:
+            A list of `(sender, receiver)` pairs. Each value uses the same format accepted by
+            `Pipeline.connect()`.
+        :returns:
+            The Pipeline instance.
+
+        :raises PipelineConnectError:
+            If a pair of components cannot be connected.
+        :raises ValueError:
+            If a sender or receiver component is not present in the pipeline.
+        """
+        for sender, receiver in connections:
+            self.connect(sender, receiver)
+
         return self
 
     def get_component(self, name: str) -> Component:
