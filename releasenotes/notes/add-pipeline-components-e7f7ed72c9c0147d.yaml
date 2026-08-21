@@ -1,7 +1,7 @@
 ---
 features:
   - |
-    Add ``Pipeline.add_components()`` to atomically add a mapping of component names to component instances.
+    Add ``Pipeline.add_components()`` to add a mapping of component names to component instances in one call.
     Re-adding the same component instance under the same name with ``Pipeline.add_component()`` or
     ``Pipeline.add_components()`` is now a no-op.
 

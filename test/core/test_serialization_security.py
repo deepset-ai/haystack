@@ -652,6 +652,7 @@ class TestPipelineCallableClassification:
     SAFE_TO_RESOLVE: dict[str, set[str]] = {
         "PipelineBase": {
             "add_component",
+            "add_components",
             "close",
             "close_async",
             "connect",

@@ -71,8 +71,8 @@ query_pipeline.add_components(
 )
 ```
 
-The operation is atomic: Haystack validates every dictionary entry before changing the pipeline. If any component
-cannot be added, none of the new components are added.
+Haystack validates every dictionary entry before adding any components. If validation fails, the pipeline remains
+unchanged.
 
 You can instead add components individually with `add_component()`:
 
