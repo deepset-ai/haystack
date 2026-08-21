@@ -4,7 +4,6 @@
 
 import inspect
 from collections.abc import Callable
-from types import ModuleType
 from typing import Any
 
 from haystack import logging
@@ -118,12 +117,12 @@ def deserialize_callable(callable_handle: str) -> Callable:
             except AttributeError as e:
                 container = getattr(attr_value, "__name__", type(attr_value).__name__)
                 raise DeserializationError(f"Could not find attribute '{part}' in {container}") from e
-            # A crafted handle can walk into a *module* re-exported as an attribute of an
-            # allowlisted module (e.g. `haystack.utils.auth.os` -> the `os` module). The declared
-            # path had an allowlisted prefix, but the module's real identity (`__name__`) is not
-            # allowlisted. Re-check every module hop so the walk cannot escape the allowlist.
-            if isinstance(attr_value, ModuleType):
-                _check_module_allowed(attr_value.__name__)
+            # A crafted handle can walk through an object re-exported from an unallowlisted module and then reach a
+            # final callable whose own module is allowlisted. For example, an allowlisted Haystack module re-exports
+            # `rich.console.Console`; walking through that class to `Console._environ.update` ends at
+            # `collections.abc.MutableMapping.update`, hiding the unallowlisted `rich` hop from the final check below.
+            # Validate every object reached during traversal so no intermediate hop can escape the allowlist.
+            _check_resolved_module_allowed(attr_value, declared_module=module_name)
 
         # when the attribute is a classmethod, we need the underlying function
         if isinstance(attr_value, (classmethod, staticmethod)):

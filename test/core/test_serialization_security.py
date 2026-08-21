@@ -785,11 +785,10 @@ class TestModuleAttributeWalkBypass:
     The allowlist must be enforced against the module a handle
     *actually resolves to*, not against a string prefix of the declared handle.
 
-    An allowlisted package can expose another module as an attribute (a module-scope `import os`
-    makes `haystack.utils.auth.os` the standard-library `os` module). A handle like
-    `haystack.utils.auth.os.system` carries the allowlisted `haystack` prefix, so the old
-    prefix-only check accepted it, and the resolver then walked `.os.system` into the un-allowlisted
-    `os` module — a deserialization-allowlist bypass reaching arbitrary command execution.
+    An allowlisted package can expose an object from another module as an attribute. A handle can
+    then carry an allowlisted `haystack` prefix while its attribute walk escapes through that object
+    into an unallowlisted module. Every intermediate object's real module must be checked, not only
+    module objects and the final callable.
     """
 
     # (handle, module the walk escapes into) — real gadgets present in the default install.
@@ -821,6 +820,15 @@ class TestModuleAttributeWalkBypass:
         monkeypatch.setattr("haystack.utils.auth.injected_gadget", subprocess.getoutput, raising=False)
         with pytest.raises(DeserializationError, match="module 'subprocess'"):
             deserialize_callable("haystack.utils.auth.injected_gadget")
+
+    def test_callable_walk_through_reexported_unallowlisted_class_rejected(self):
+        # `Console` is re-exported from an allowlisted Haystack module but belongs to `rich.console`.
+        # Its `_environ` class attribute is the live `os.environ` mapping, whose `update` method
+        # reports the default-allowlisted `collections.abc` module. Checking only module hops and the
+        # final callable therefore misses the escape; checking the intermediate class rejects it.
+        handle = "haystack.hooks.human_in_the_loop.user_interfaces.Console._environ.update"
+        with pytest.raises(DeserializationError, match="module 'rich.console'"):
+            deserialize_callable(handle)
 
     def test_legitimate_haystack_callable_still_resolves(self):
         from haystack.utils.callable_serialization import serialize_callable
