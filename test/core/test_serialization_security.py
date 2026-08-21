@@ -421,18 +421,20 @@ class TestDeniedDeserializerInternals:
         )
 
     def test_pipeline_loads_rejects_output_adapter_self_disable_vector(self):
-        # End-to-end reproduction of the reported RCE via OutputAdapter, in default safe mode.
+        # End-to-end reproduction of the reported RCE via OutputAdapter, in default safe mode. The
+        # broad serialized-filter gate rejects it before any control-plane callable is resolved.
         yaml = self._self_disable_yaml(
             "haystack.components.converters.output_adapter.OutputAdapter",
             "      template: \"{{ '*' | allow }}{{ 'os.system' | dc | mp(cmds) | list }}\"\n      output_type: str\n",
         )
         with mock.patch("os.system") as mocked_system:
-            with pytest.raises(DeserializationError, match="deserialization control plane"):
+            with pytest.raises(DeserializationError, match="custom filters while loading in safe mode"):
                 Pipeline.loads(yaml)
         assert not mocked_system.called
 
     def test_pipeline_loads_rejects_conditional_router_self_disable_vector(self):
-        # Same chain carried by ConditionalRouter; removing one component is not a mitigation.
+        # Same chain carried by ConditionalRouter; its serialized filters are rejected before the
+        # narrower control-plane callable checks need to run.
         extra = (
             "      routes:\n"
             "        - condition: \"{{ ['*'|allow, ('os.system'|dc|mp(cmds)|list)] and True }}\"\n"
@@ -442,7 +444,7 @@ class TestDeniedDeserializerInternals:
         )
         yaml = self._self_disable_yaml("haystack.components.routers.conditional_router.ConditionalRouter", extra)
         with mock.patch("os.system") as mocked_system:
-            with pytest.raises(DeserializationError, match="deserialization control plane"):
+            with pytest.raises(DeserializationError, match="custom filters while loading in safe mode"):
                 Pipeline.loads(yaml)
         assert not mocked_system.called
 
@@ -505,7 +507,7 @@ class TestDeniedDeserializerInternals:
             "      unsafe: false\n"
             "connections: []\n"
         )
-        with pytest.raises(DeserializationError, match="deserialization control plane"):
+        with pytest.raises(DeserializationError, match="custom filters while loading in safe mode"):
             Pipeline.loads(poison_yaml)
         assert _extra_allowed_modules == []
         with pytest.raises(DeserializationError):
@@ -586,8 +588,8 @@ class TestDeniedPipelineEntryPoints:
 
     def test_pipeline_loads_rejects_nested_unsafe_load_run_vector(self):
         # End-to-end reproduction, in default safe mode. The top pipeline binds Pipeline.loads (L) and
-        # Pipeline.run (R) as custom_filters; the block fires while resolving L at load, before any
-        # template renders, so os.system is never reached and the allowlist is never poisoned.
+        # Pipeline.run (R) as custom_filters; the broad serialized-filter gate fires before resolving
+        # L, so os.system is never reached and the allowlist is never poisoned.
         top_yaml = (
             "components:\n"
             "  c:\n"
@@ -602,7 +604,7 @@ class TestDeniedPipelineEntryPoints:
             "connections: []\n"
         )
         with mock.patch("os.system") as mocked_system:
-            with pytest.raises(DeserializationError, match="deserialization control plane"):
+            with pytest.raises(DeserializationError, match="custom filters while loading in safe mode"):
                 Pipeline.loads(top_yaml)
         assert not mocked_system.called
         assert _extra_allowed_modules == []
@@ -762,7 +764,7 @@ class TestObjectInternalsTraversal:
 
     def test_pipeline_loads_rejects_globals_rewrite_vector(self):
         # End-to-end: rewriting `_extra_allowed_modules` via `__globals__.update` in default safe
-        # mode, without touching any blocked resolver or the protected state objects directly.
+        # mode. The serialized-filter gate rejects the handle before attribute traversal begins.
         poison_yaml = (
             "components:\n"
             "  adapter:\n"
@@ -775,7 +777,7 @@ class TestObjectInternalsTraversal:
             "      unsafe: false\n"
             "connections: []\n"
         )
-        with pytest.raises(DeserializationError, match="internal attribute"):
+        with pytest.raises(DeserializationError, match="custom filters while loading in safe mode"):
             Pipeline.loads(poison_yaml)
         assert _extra_allowed_modules == []
         with pytest.raises(DeserializationError):
