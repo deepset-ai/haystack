@@ -123,6 +123,109 @@ def lazy_variadic_input_socket():
     return InputSocket("variadic_input", Variadic[int], senders=["sender1", "sender2"])
 
 
+class TestPipelineAddComponent:
+    def test_add_invalid_component_name(self):
+        pipe = PipelineBase()
+        with pytest.raises(ValueError):
+            pipe.add_component("this.is.not.a.valida.name", FakeComponent)
+        with pytest.raises(ValueError):
+            pipe.add_component("_debug", FakeComponent)
+
+    def test_add_component_to_different_pipelines(self):
+        first_pipe = PipelineBase()
+        second_pipe = PipelineBase()
+        some_component = component_class("Some")()
+
+        assert some_component.__haystack_added_to_pipeline__ is None  # type: ignore[attr-defined]
+        first_pipe.add_component("some", some_component)
+        assert some_component.__haystack_added_to_pipeline__ is first_pipe  # type: ignore[attr-defined]
+
+        with pytest.raises(PipelineError):
+            second_pipe.add_component("some", some_component)
+
+    def test_add_same_component_with_same_name_is_no_op(self):
+        pipe = PipelineBase()
+        some_component = component_class("Some")()
+
+        pipe.add_component("some", some_component)
+        pipe.add_component("some", some_component)
+
+        assert list(pipe.graph.nodes) == ["some"]
+        assert pipe.get_component("some") is some_component
+
+    def test_add_different_component_with_same_name_raises(self):
+        pipe = PipelineBase()
+        pipe.add_component("some", component_class("Some")())
+
+        with pytest.raises(ValueError, match="A component named 'some' already exists"):
+            pipe.add_component("some", component_class("Other")())
+
+    def test_add_same_component_with_different_name_raises(self):
+        pipe = PipelineBase()
+        some_component = component_class("Some")()
+        pipe.add_component("some", some_component)
+
+        with pytest.raises(PipelineError, match="already been added"):
+            pipe.add_component("other", some_component)
+
+
+class TestPipelineAddComponents:
+    def test_add_components(self):
+        pipe = PipelineBase()
+        first_component = component_class("First")()
+        second_component = component_class("Second")()
+
+        pipe.add_components({"first": first_component, "second": second_component})
+
+        assert list(pipe.graph.nodes) == ["first", "second"]
+        assert pipe.get_component("first") is first_component
+        assert pipe.get_component("second") is second_component
+
+    def test_add_components_is_idempotent(self):
+        pipe = PipelineBase()
+        components = {"first": component_class("First")(), "second": component_class("Second")()}
+
+        pipe.add_components(components)
+        pipe.add_components(components)
+
+        assert list(pipe.graph.nodes) == ["first", "second"]
+
+    def test_add_components_validates_all_components_before_adding_any(self):
+        pipe = PipelineBase()
+        first_component = component_class("First")()
+        second_component = component_class("Second")()
+
+        with pytest.raises(ValueError, match="invalid component name"):
+            pipe.add_components({"first": first_component, "invalid.name": second_component})
+
+        assert list(pipe.graph.nodes) == []
+        assert first_component.__haystack_added_to_pipeline__ is None  # type: ignore[attr-defined]
+        assert second_component.__haystack_added_to_pipeline__ is None  # type: ignore[attr-defined]
+
+    def test_add_components_with_existing_name_does_not_add_new_components(self):
+        pipe = PipelineBase()
+        existing_component = component_class("Existing")()
+        new_component = component_class("New")()
+        pipe.add_component("existing", existing_component)
+
+        with pytest.raises(ValueError, match="A component named 'existing' already exists"):
+            pipe.add_components({"new": new_component, "existing": component_class("Replacement")()})
+
+        assert list(pipe.graph.nodes) == ["existing"]
+        assert pipe.get_component("existing") is existing_component
+        assert new_component.__haystack_added_to_pipeline__ is None  # type: ignore[attr-defined]
+
+    def test_add_components_rejects_same_instance_under_different_names(self):
+        pipe = PipelineBase()
+        some_component = component_class("Some")()
+
+        with pytest.raises(PipelineError, match="mapped to both 'first' and 'second'"):
+            pipe.add_components({"first": some_component, "second": some_component})
+
+        assert list(pipe.graph.nodes) == []
+        assert some_component.__haystack_added_to_pipeline__ is None  # type: ignore[attr-defined]
+
+
 class TestPipelineBase:
     """
     This class contains only unit tests for the PipelineBase class.
@@ -251,25 +354,6 @@ class TestPipelineBase:
         image_path = tmp_path / "test.png"
         pipe.draw(path=image_path)
         assert image_path.read_bytes() == mock_to_mermaid_image.return_value
-
-    def test_add_invalid_component_name(self):
-        pipe = PipelineBase()
-        with pytest.raises(ValueError):
-            pipe.add_component("this.is.not.a.valida.name", FakeComponent)
-        with pytest.raises(ValueError):
-            pipe.add_component("_debug", FakeComponent)
-
-    def test_add_component_to_different_pipelines(self):
-        first_pipe = PipelineBase()
-        second_pipe = PipelineBase()
-        some_component = component_class("Some")()
-
-        assert some_component.__haystack_added_to_pipeline__ is None  # type: ignore[attr-defined]
-        first_pipe.add_component("some", some_component)
-        assert some_component.__haystack_added_to_pipeline__ is first_pipe  # type: ignore[attr-defined]
-
-        with pytest.raises(PipelineError):
-            second_pipe.add_component("some", some_component)
 
     def test_remove_component_raises_if_invalid_component_name(self):
         pipe = PipelineBase()
