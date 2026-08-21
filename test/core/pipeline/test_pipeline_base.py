@@ -2073,7 +2073,7 @@ class TestPipelineConnectMany:
         assert result is pipe
         assert list(pipe.graph.edges) == [("first", "middle", "value/value"), ("middle", "last", "value/value")]
 
-    def test_connect_many_with_empty_iterable(self):
+    def test_connect_many_with_empty_list(self):
         pipe = PipelineBase()
 
         assert pipe.connect_many([]) is pipe

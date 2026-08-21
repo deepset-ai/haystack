@@ -5,7 +5,7 @@
 import itertools
 import json
 from collections import defaultdict
-from collections.abc import Iterable, Iterator, Mapping, Sequence
+from collections.abc import Iterator, Mapping, Sequence
 from contextlib import AbstractContextManager as ContextManager
 from datetime import datetime
 from enum import IntEnum
@@ -423,7 +423,7 @@ class PipelineBase:  # noqa: PLW1641
         self._add_component_to_graph(name, instance)
         return self
 
-    def add_components(self, components: Mapping[str, Component]) -> Self:
+    def add_components(self, components: dict[str, Component]) -> Self:
         """
         Add multiple components to the pipeline.
 
@@ -434,7 +434,7 @@ class PipelineBase:  # noqa: PLW1641
         Components already present under the same name are ignored when they are the exact same instances.
 
         :param components:
-            A mapping of component names to component instances.
+            A dictionary that maps component names to component instances.
         :returns:
             The Pipeline instance.
 
@@ -449,8 +449,7 @@ class PipelineBase:  # noqa: PLW1641
         components_to_add: list[tuple[str, Component]] = []
         component_names_by_id: dict[int, str] = {}
 
-        # Materialize the items so custom mappings cannot change between validation and insertion.
-        for name, instance in list(components.items()):
+        for name, instance in components.items():
             if not self._validate_component(name, instance):
                 continue
 
@@ -791,7 +790,7 @@ class PipelineBase:  # noqa: PLW1641
         )
         return self
 
-    def connect_many(self, connections: Iterable[tuple[str, str]]) -> Self:
+    def connect_many(self, connections: list[tuple[str, str]]) -> Self:
         """
         Connect multiple pairs of components.
 
@@ -800,7 +799,7 @@ class PipelineBase:  # noqa: PLW1641
         is a no-op.
 
         :param connections:
-            An iterable of `(sender, receiver)` pairs. Each value uses the same format accepted by
+            A list of `(sender, receiver)` pairs. Each value uses the same format accepted by
             `Pipeline.connect()`.
         :returns:
             The Pipeline instance.
