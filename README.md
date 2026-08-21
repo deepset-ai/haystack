@@ -34,7 +34,7 @@
 | haystack/components/converters/markdown.py                                |       71 |       10 |     86% |107, 120-122, 128-134, 152, 173-178 |
 | haystack/components/converters/msg.py                                     |       77 |        5 |     94% |91, 165-167, 179 |
 | haystack/components/converters/multi\_file\_converter.py                  |       50 |        0 |    100% |           |
-| haystack/components/converters/output\_adapter.py                         |       69 |        1 |     99% |       133 |
+| haystack/components/converters/output\_adapter.py                         |       71 |        1 |     99% |       133 |
 | haystack/components/converters/pdfminer.py                                |      105 |        0 |    100% |           |
 | haystack/components/converters/pptx.py                                    |       69 |        2 |     97% |     89-90 |
 | haystack/components/converters/pypdf.py                                   |      103 |        6 |     94% |192, 209-211, 267-271 |
@@ -121,7 +121,7 @@
 | haystack/components/retrievers/types/\_\_init\_\_.py                      |        2 |        0 |    100% |           |
 | haystack/components/retrievers/types/protocol.py                          |        5 |        0 |    100% |           |
 | haystack/components/routers/\_\_init\_\_.py                               |        5 |        0 |    100% |           |
-| haystack/components/routers/conditional\_router.py                        |      176 |        8 |     95% |470-471, 507, 525, 567, 585, 595, 607 |
+| haystack/components/routers/conditional\_router.py                        |      178 |        8 |     96% |477-478, 514, 532, 574, 592, 602, 614 |
 | haystack/components/routers/document\_length\_router.py                   |       15 |        0 |    100% |           |
 | haystack/components/routers/document\_type\_router.py                     |       46 |        0 |    100% |           |
 | haystack/components/routers/file\_type\_router.py                         |       72 |        6 |     92% |   182-187 |
@@ -249,7 +249,7 @@
 | haystack/utils/auth.py                                                    |      105 |       11 |     90% |22, 116, 124, 128, 133, 161, 234-238 |
 | haystack/utils/azure.py                                                   |        6 |        2 |     67% |     15-16 |
 | haystack/utils/base\_serialization.py                                     |      136 |        9 |     93% |186-189, 210, 221, 331-335 |
-| haystack/utils/callable\_serialization.py                                 |       68 |        8 |     88% |57, 61, 118-120, 130, 141, 172 |
+| haystack/utils/callable\_serialization.py                                 |       66 |        8 |     88% |56, 60, 117-119, 129, 140, 171 |
 | haystack/utils/dataclasses.py                                             |       22 |        0 |    100% |           |
 | haystack/utils/deserialization.py                                         |       18 |        1 |     94% |        54 |
 | haystack/utils/device.py                                                  |      214 |       17 |     92% |237-239, 325-327, 364, 403, 447, 468, 484, 512-515, 539-540 |
@@ -266,7 +266,7 @@
 | haystack/utils/type\_serialization.py                                     |      144 |        6 |     96% |106, 108, 260-261, 269, 285 |
 | haystack/utils/url\_validation.py                                         |        4 |        0 |    100% |           |
 | haystack/version.py                                                       |        5 |        2 |     60% |      9-10 |
-| **TOTAL**                                                                 | **17096** |  **779** | **95%** |           |
+| **TOTAL**                                                                 | **17098** |  **779** | **95%** |           |
 
 
 ## Setup coverage badge
