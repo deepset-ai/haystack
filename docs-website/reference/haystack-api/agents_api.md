@@ -369,9 +369,10 @@ Process messages and execute tools until an exit condition is met.
   `meta["usage"]`.
 - "tool_call_counts": Mapping of tool name to the number of times that tool was invoked.
 - "exit_reason": Why the Agent stopped, useful for routing the output downstream (e.g. with a
-  `ConditionalRouter`). One of: `"text"` (the model returned a reply with no tool calls), the name of
+  `ConditionalRouter`). This is `"text"` when the model returned a reply with no tool calls, the name of
   the tool that satisfied a tool exit condition (in which case `last_message` is that tool's result),
-  or `"max_agent_steps"` (the Agent hit `max_agent_steps` before meeting an exit condition).
+  `"max_agent_steps"` when the Agent hit `max_agent_steps`, or a custom reason a hook supplied through
+  the `stop_run` state key.
 - Any additional keys defined in the `state_schema`.
 
 #### run_async
@@ -422,9 +423,10 @@ if available.
   `meta["usage"]`.
 - "tool_call_counts": Mapping of tool name to the number of times that tool was invoked.
 - "exit_reason": Why the Agent stopped, useful for routing the output downstream (e.g. with a
-  `ConditionalRouter`). One of: `"text"` (the model returned a reply with no tool calls), the name of
+  `ConditionalRouter`). This is `"text"` when the model returned a reply with no tool calls, the name of
   the tool that satisfied a tool exit condition (in which case `last_message` is that tool's result),
-  or `"max_agent_steps"` (the Agent hit `max_agent_steps` before meeting an exit condition).
+  `"max_agent_steps"` when the Agent hit `max_agent_steps`, or a custom reason a hook supplied through
+  the `stop_run` state key.
 - Any additional keys defined in the `state_schema`.
 
 ## state/state

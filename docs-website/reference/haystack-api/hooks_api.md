@@ -6,6 +6,91 @@ slug: "/hooks-api"
 ---
 
 
+## budget/hooks
+
+### TokenBudgetHook
+
+Stop an Agent run when its token usage reaches a configured budget.
+
+The hook runs at the `before_llm` hook point and checks the cumulative token usage recorded in the Agent state.
+When the budget is reached, the run ends before the next LLM call with the exit reason `"token_budget_exceeded"`.
+
+Only calls made by the Agent's chat generator contribute to `token_usage`; calls made by tools or other hooks are
+not included.
+
+<!-- test-ignore -->
+
+```python
+from haystack.components.agents import Agent
+from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.hooks.budget import TokenBudgetHook
+
+agent = Agent(
+    chat_generator=OpenAIChatGenerator(),
+    tools=[web_search],
+    hooks={"before_llm": [TokenBudgetHook(max_total_tokens=100_000)]},
+)
+
+result = agent.run(messages=[...])
+```
+
+#### __init__
+
+```python
+__init__(*, max_total_tokens: int, add_final_message: bool = False) -> None
+```
+
+Create a token budget hook.
+
+**Parameters:**
+
+- **max_total_tokens** (<code>int</code>) – Maximum cumulative token usage before the Agent is stopped.
+- **add_final_message** (<code>bool</code>) – Whether to append an assistant message explaining why the Agent stopped.
+
+**Raises:**
+
+- <code>ValueError</code> – If `max_total_tokens` is less than 1.
+
+#### run
+
+```python
+run(state: State) -> None
+```
+
+Stop the Agent if its cumulative token usage has reached the budget.
+
+**Parameters:**
+
+- **state** (<code>State</code>) – Agent state containing the cumulative token usage.
+
+#### to_dict
+
+```python
+to_dict() -> dict[str, Any]
+```
+
+Serialize this hook to a dictionary.
+
+**Returns:**
+
+- <code>dict\[str, Any\]</code> – Serialized representation of the hook.
+
+#### from_dict
+
+```python
+from_dict(data: dict[str, Any]) -> TokenBudgetHook
+```
+
+Create a hook from its serialized representation.
+
+**Parameters:**
+
+- **data** (<code>dict\[str, Any\]</code>) – Serialized hook data.
+
+**Returns:**
+
+- <code>TokenBudgetHook</code> – The deserialized hook.
+
 ## compaction/hooks
 
 ### CompactionHook
