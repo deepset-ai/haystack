@@ -66,6 +66,7 @@ The `exit_reason` output tells you why the agent stopped, which makes it easy to
 - `"text"`: the model returned a reply with no tool calls.
 - the name of the tool that satisfied a tool exit condition. In this case `last_message` is that tool's result — a tool-result `ChatMessage` whose `text` is empty — so `exit_reason` tells you how to consume it.
 - `"max_agent_steps"`: the agent reached `max_agent_steps` before meeting an exit condition.
+- a custom reason set by a hook through the `stop_run` state key, such as `"token_budget_exceeded"` from the [`TokenBudgetHook`](./token-budget.mdx).
 
 Because `exit_reason` is available on the live `State`, an `after_run` [hook](./hooks.mdx) can read it to react to how the run ended — for example, appending a fallback answer when the step budget is exhausted before the agent finished:
 
