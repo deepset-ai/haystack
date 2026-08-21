@@ -268,27 +268,40 @@ class TestUnsafeDeserializationEnvVar:
         monkeypatch.delenv(UNSAFE_DESERIALIZATION_ENV_VAR)
         assert _is_module_allowed("subprocess")
 
-    def test_env_write_reachable_from_serialized_data_cannot_disable_safety(self, monkeypatch):
+    def test_env_write_gadget_is_not_resolvable_from_serialized_data(self, monkeypatch):
         """
-        Regression test for the reason the snapshot is frozen.
+        First line of defense: the gadget cannot be resolved at all.
 
         `os.environ.update` is `collections.abc.MutableMapping.update`, and `collections` is on the
-        default allowlist — so if any allowlisted module binds `os.environ` at module scope, a
-        serialized handle can resolve that mutator in *safe* mode and call it (e.g. as an
-        `OutputAdapter` Jinja `custom_filters` entry, which runs while the component is being
-        constructed). Were the env var read fresh on every check, that would switch the ongoing load
-        into unsafe mode and hand the pipeline arbitrary code execution.
+        default allowlist — so a handle that walks an allowlisted module's scope-level `os.environ`
+        binding ends at a callable whose own module *is* allowed. The per-hop check on the real
+        module of every traversed object rejects the `environ` hop itself, because that object
+        belongs to the un-allowlisted `os`.
         """
         monkeypatch.setattr(type_serialization, "environ", os.environ, raising=False)
-        # Resolving the gadget is itself a deserialization check, so the snapshot is already frozen
-        # by the time the attacker gets to call it — as it would be in a real load.
-        update = deserialize_callable("haystack.utils.type_serialization.environ.update")
+        with pytest.raises(DeserializationError, match="module 'os'"):
+            deserialize_callable("haystack.utils.type_serialization.environ.update")
+
+    def test_env_write_reachable_from_serialized_data_cannot_disable_safety(self, monkeypatch):
+        """
+        Second line of defense, and the reason the snapshot is frozen.
+
+        Even granting the attacker the env write that the gadget above would have performed — say
+        via a mutator the traversal check cannot see, or as an `OutputAdapter` Jinja
+        `custom_filters` entry that runs while the component is being constructed — the ongoing
+        load must not flip into unsafe mode. Were the env var read fresh on every check, it would,
+        handing the pipeline arbitrary code execution.
+        """
+        # Any deserialization check snapshots the env var, so by the time the attacker's payload
+        # runs the mode is already frozen — as it would be mid-load in a real process. Assert the
+        # safe-mode baseline here to take that snapshot without relying on the gadget above.
+        assert not _is_module_allowed("subprocess")
 
         # Register the variable before the write: the write below goes straight to the real
         # environment, so monkeypatch has to know the pre-attack state to undo it at teardown.
         # (Registering afterwards would record the polluted value and leak it into other tests.)
         monkeypatch.setenv(UNSAFE_DESERIALIZATION_ENV_VAR, "")
-        update({UNSAFE_DESERIALIZATION_ENV_VAR: "1"})
+        os.environ.update({UNSAFE_DESERIALIZATION_ENV_VAR: "1"})
         assert os.environ[UNSAFE_DESERIALIZATION_ENV_VAR] == "1"  # the write lands ...
 
         assert not _is_unsafe_deserialization()  # ... and changes nothing
