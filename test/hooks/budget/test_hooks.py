@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import logging
 from typing import Annotated, Any
 from unittest.mock import MagicMock
 
@@ -50,11 +51,13 @@ class TestTokenBudgetHook:
         ],
         ids=["total_tokens", "openai-style", "anthropic-style"],
     )
-    def test_stops_when_usage_reaches_the_budget(self, usage):
+    def test_stops_when_usage_reaches_the_budget(self, usage, caplog):
         state = _state(usage)
-        TokenBudgetHook(max_total_tokens=100).run(state)
+        with caplog.at_level(logging.WARNING):
+            TokenBudgetHook(max_total_tokens=100).run(state)
         assert state.data["stop_run"] == "token_budget_exceeded"
         assert state.data.get("messages") is None
+        assert "token budget of 100 (100 used)" in caplog.text
 
     @pytest.mark.parametrize("usage", [{"total_tokens": 99}, {}], ids=["under-budget", "no-usage-reported"])
     def test_does_not_stop_below_the_budget(self, usage):
