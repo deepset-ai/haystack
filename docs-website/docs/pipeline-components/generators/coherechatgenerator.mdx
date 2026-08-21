@@ -51,8 +51,12 @@ from haystack.tools import Tool, Toolset
 from haystack_integrations.components.generators.cohere import CohereChatGenerator
 
 # Create individual tools
-weather_tool = Tool(name="weather", description="Get weather info", ...)
-news_tool = Tool(name="news", description="Get latest news", ...)
+weather_tool = Tool(
+    name="weather", description="Get weather info", parameters=..., function=...
+)
+news_tool = Tool(
+    name="news", description="Get latest news", parameters=..., function=...
+)
 
 # Group related tools into a toolset
 math_toolset = Toolset([add_tool, subtract_tool, multiply_tool])

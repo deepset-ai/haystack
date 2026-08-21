@@ -22,13 +22,10 @@ from haystack import Pipeline
 
 pipe = Pipeline()
 print(pipe.dumps())
-
-# Prints:
-#
-# components: {}
-# connections: []
-# max_runs_per_component: 100
-# metadata: {}
+# >> components: {}
+# >> connections: []
+# >> max_runs_per_component: 100
+# >> metadata: {}
 ```
 
 You can also use `dump()` method to save the YAML representation of a pipeline in a file:
@@ -267,8 +264,7 @@ from my_custom_marshallers import TomlMarshaller
 
 pipe = Pipeline()
 pipe.dumps(TomlMarshaller())
-# prints:
-# 'max_runs_per_component = 100\nconnections = []\n\n[metadata]\n\n[components]\n'
+# >> 'max_runs_per_component = 100\nconnections = []\n\n[metadata]\n\n[components]\n'
 ```
 
 ## Additional References
