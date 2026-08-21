@@ -1069,6 +1069,29 @@ def test_run_multiple_separators_with_overlap_applies_overlap_only_once():
     assert chunks[0].content == "Overview\n"
     assert chunks[-1].content == "unks for embedding."
 
+    # the containment invariant must hold for every split unit, not just "char":
+    # for "word" units the overlap is rejoined with a single space in
+    # _create_chunk_starting_with_overlap, so the chunk's word sequence must be
+    # contiguous in the source instead of a plain substring.
+    for unit in ("char", "word", "token"):
+        splitter = RecursiveDocumentSplitter(
+            split_length=50, split_overlap=10, split_unit=unit, separators=["\n\n", "\n", " "]
+        )
+        result = splitter.run([Document(content=text)])
+        unit_chunks = result["documents"]
+        for chunk in unit_chunks:
+            if unit == "word":
+                words = text.split()
+                seq = chunk.content.split()
+                for i in range(len(words) - len(seq) + 1):
+                    if words[i : i + len(seq)] == seq:
+                        break
+                else:
+                    pytest.fail(f"[{unit}] chunk words not contiguous in source: {chunk.content!r}")
+            else:
+                assert chunk.content in text, f"[{unit}] chunk not a substring: {chunk.content!r}"
+        assert not any("Overview\nOverview" in chunk.content for chunk in unit_chunks), unit
+
 
 def test_recursive_splitter_generates_unique_ids_and_correct_meta():
     text = "Haystack is awesome. " * 5
