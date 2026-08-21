@@ -74,8 +74,6 @@ class OpenAIResponsesChatGenerator:
     ```
     """
 
-    _HAYSTACK_TO_PROVIDER_GENERATION_KWARGS: ClassVar[dict[str, str]] = {"max_output_tokens": "max_output_tokens"}
-
     SUPPORTED_MODELS: ClassVar[list[str]] = [
         "gpt-5-mini",
         "gpt-5-nano",

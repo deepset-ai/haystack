@@ -14,7 +14,7 @@ from pydantic import BaseModel
 
 import haystack.components.generators.chat.azure as azure_chat_module
 from haystack import Pipeline, component
-from haystack.components.generators.chat import AzureOpenAIChatGenerator, OpenAIChatGenerator
+from haystack.components.generators.chat import AzureOpenAIChatGenerator
 from haystack.components.generators.utils import print_streaming_chunk
 from haystack.dataclasses import ChatMessage, ToolCall
 from haystack.tools import ComponentTool, Tool
@@ -78,12 +78,6 @@ def tools():
 
 
 class TestAzureOpenAIChatGenerator:
-    def test_haystack_to_provider_generation_kwargs(self) -> None:
-        assert (
-            AzureOpenAIChatGenerator._HAYSTACK_TO_PROVIDER_GENERATION_KWARGS
-            is OpenAIChatGenerator._HAYSTACK_TO_PROVIDER_GENERATION_KWARGS
-        )
-
     def test_supported_models(self) -> None:
         """SUPPORTED_MODELS is a non-empty list of strings."""
         models = AzureOpenAIChatGenerator.SUPPORTED_MODELS
