@@ -1,0 +1,11 @@
+---
+fixes:
+  - |
+    ``OutputAdapter`` no longer coerces string outputs to other Python types when
+    ``output_type=str``. Previously the rendered template was always passed through
+    ``ast.literal_eval`` in safe mode, so a string that happened to be a valid Python
+    literal was silently converted (for example ``"1,000"`` became the tuple ``(1, 0)``
+    and ``"42"`` became the integer ``42``), producing a value that did not match the
+    declared ``str`` output type. Literal evaluation is now skipped when ``output_type``
+    is ``str``, so string outputs are returned unchanged. Other output types still
+    reconstruct structured literals as before.
