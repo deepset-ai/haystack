@@ -739,6 +739,7 @@ export default {
         'tools/componenttool',
         'tools/pipelinetool',
         'tools/toolset',
+        'tools/taskmarkettoolset',
         'tools/mcptool',
         'tools/mcptoolset',
         'tools/searchabletoolset',

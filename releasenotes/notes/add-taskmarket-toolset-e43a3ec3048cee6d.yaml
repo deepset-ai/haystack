@@ -1,0 +1,7 @@
+---
+features:
+  - |
+    Add `TaskMarketToolset` for confirmation-gated TaskMarket discovery,
+    preview, and task creation from Haystack agents. Task creation validates
+    Base USDC configuration and balance, requires an application approval
+    callback, and does not retry ambiguous CLI writes.
