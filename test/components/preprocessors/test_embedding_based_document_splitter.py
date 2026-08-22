@@ -193,6 +193,22 @@ class TestEmbeddingBasedDocumentSplitter:
         embeddings = [[1.0, 0.0], [1.0, 0.0]]
         assert splitter._find_split_points(embeddings) == []
 
+    def test_find_split_points_two_near_duplicate_groups_do_not_split_regardless_of_percentile(self):
+        """
+        Regression test: comparing the lone distance to itself (the original bug) or splitting on any
+        nonzero distance (an earlier, overly aggressive fix) both fail on near-duplicate groups. Two
+        groups that are almost, but not exactly, identical (a tiny cosine distance well under the
+        `_MIN_SPLIT_DISTANCE_FOR_SINGLE_GAP` floor) should not split, and since `percentile` does not
+        apply to the two-group case, this must hold at every percentile setting, including the most
+        aggressive (0.0).
+        """
+        mock_embedder = Mock()
+        embeddings = [[1.0, 0.0], [1.0, 0.001]]  # cosine distance ~5e-7: near-duplicate, not identical
+
+        for percentile in (0.0, 0.5, 0.95, 1.0):
+            splitter = EmbeddingBasedDocumentSplitter(document_embedder=mock_embedder, percentile=percentile)
+            assert splitter._find_split_points(embeddings) == [], f"unexpected split at percentile={percentile}"
+
     def test_run_splits_document_with_exactly_two_sentence_groups(self):
         """
         End-to-end regression test: a document that tokenizes into exactly two sentence groups with
