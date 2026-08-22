@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    ``OpenAIImageGenerator.to_dict()`` now serializes ``timeout`` and ``max_retries``, like the other OpenAI-backed
+    components already do. Previously both were dropped, so a pipeline that was serialized and loaded back silently
+    fell back to the ``OPENAI_TIMEOUT``/``OPENAI_MAX_RETRIES`` environment variables or to the 30 seconds and 5
+    retries defaults.
