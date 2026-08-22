@@ -31,7 +31,7 @@ from openai.types.chat.chat_completion_message_function_tool_call import Functio
 from openai.types.completion_usage import CompletionTokensDetails, CompletionUsage, PromptTokensDetails
 from pydantic import BaseModel
 
-import haystack.components.generators.chat.openai as openai_chat_module
+import haystack.components._openai_client_mixin as openai_client_mixin_module
 from haystack import component
 from haystack.components.generators.chat.openai import (
     OpenAIChatGenerator,
@@ -1755,8 +1755,8 @@ def mock_openai_clients(monkeypatch):
     sync_cls = MagicMock(name="OpenAI")
     async_cls = MagicMock(name="AsyncOpenAI")
     async_cls.return_value.close = AsyncMock()
-    monkeypatch.setattr(openai_chat_module, "OpenAI", sync_cls)
-    monkeypatch.setattr(openai_chat_module, "AsyncOpenAI", async_cls)
+    monkeypatch.setattr(openai_client_mixin_module, "OpenAI", sync_cls)
+    monkeypatch.setattr(openai_client_mixin_module, "AsyncOpenAI", async_cls)
     return sync_cls, async_cls
 
 

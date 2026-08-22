@@ -9,7 +9,7 @@ from unittest.mock import AsyncMock, MagicMock, Mock, patch
 import pytest
 from openai import APIError
 
-import haystack.components.embedders.openai_document_embedder as openai_document_embedder_module
+import haystack.components._openai_client_mixin as openai_client_mixin_module
 from haystack import Document
 from haystack.components.embedders.openai_document_embedder import OpenAIDocumentEmbedder
 from haystack.utils.auth import Secret
@@ -347,8 +347,8 @@ def mock_openai_clients(monkeypatch):
     sync_cls = MagicMock(name="OpenAI")
     async_cls = MagicMock(name="AsyncOpenAI")
     async_cls.return_value.close = AsyncMock()
-    monkeypatch.setattr(openai_document_embedder_module, "OpenAI", sync_cls)
-    monkeypatch.setattr(openai_document_embedder_module, "AsyncOpenAI", async_cls)
+    monkeypatch.setattr(openai_client_mixin_module, "OpenAI", sync_cls)
+    monkeypatch.setattr(openai_client_mixin_module, "AsyncOpenAI", async_cls)
     return sync_cls, async_cls
 
 

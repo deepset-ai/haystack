@@ -214,7 +214,7 @@ class AzureOpenAIChatGenerator(OpenAIChatGenerator):
 
         # The check above makes mypy incorrectly infer that api_key is never None,
         # which propagates the incorrect type.
-        self.api_key = api_key  # type: ignore
+        self.api_key = api_key
         self.azure_ad_token = azure_ad_token
         self.generation_kwargs = generation_kwargs or {}
         self.streaming_callback = streaming_callback

@@ -1,0 +1,4 @@
+---
+enhancements:
+  - |
+    Extracted duplicated OpenAI client lifecycle management logic (``_client_kwargs``, ``warm_up``, ``warm_up_async``, ``close``, ``close_async``) into a new ``OpenAIClientMixin`` class to unify behavior and reduce boilerplate across OpenAI and Azure components.

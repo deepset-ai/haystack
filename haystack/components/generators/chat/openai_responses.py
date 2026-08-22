@@ -13,6 +13,7 @@ from openai.types.responses import ParsedResponse, Response, ResponseOutputRefus
 from pydantic import BaseModel
 
 from haystack import component, default_from_dict, default_to_dict, logging
+from haystack.components._openai_client_mixin import OpenAIClientMixin
 from haystack.components.generators.utils import _normalize_messages, _serialize_object
 from haystack.dataclasses import (
     ChatMessage,
@@ -38,13 +39,12 @@ from haystack.tools import (
     warm_up_tools,
 )
 from haystack.utils import Secret, deserialize_callable, serialize_callable
-from haystack.utils.http_client import init_http_client
 
 logger = logging.getLogger(__name__)
 
 
 @component
-class OpenAIResponsesChatGenerator:
+class OpenAIResponsesChatGenerator(OpenAIClientMixin):
     """
     Completes chats using OpenAI's Responses API.
 
@@ -234,50 +234,6 @@ class OpenAIResponsesChatGenerator:
             if not is_openai_tool:
                 warm_up_tools(self.tools)  # type: ignore[arg-type]
             self._tools_warmed_up = True
-
-    def warm_up(self) -> None:
-        """
-        Warm up the tools and initialize the synchronous OpenAI client.
-        """
-        self._warm_up_tools()
-        if self.client is None:
-            # openai>=3 annotates http_client as httpx2, but legacy httpx clients are supported at runtime.
-            # https://github.com/openai/openai-python/blob/main/httpx2.md
-            http_client = init_http_client(self.http_client_kwargs, async_client=False)
-            self.client = OpenAI(
-                http_client=http_client,  # type: ignore[arg-type]
-                **self._client_kwargs(),
-            )
-
-    async def warm_up_async(self) -> None:  # noqa: RUF029
-        """
-        Warm up the tools and initialize the asynchronous OpenAI client on the serving event loop.
-        """
-        self._warm_up_tools()
-        if self.async_client is None:
-            # openai>=3 annotates http_client as httpx2, but legacy httpx clients are supported at runtime.
-            # https://github.com/openai/openai-python/blob/main/httpx2.md
-            http_client = init_http_client(self.http_client_kwargs, async_client=True)
-            self.async_client = AsyncOpenAI(
-                http_client=http_client,  # type: ignore[arg-type]
-                **self._client_kwargs(),
-            )
-
-    def close(self) -> None:
-        """
-        Releases the synchronous OpenAI client.
-        """
-        if self.client is not None:
-            self.client.close()
-            self.client = None
-
-    async def close_async(self) -> None:
-        """
-        Releases the asynchronous OpenAI client.
-        """
-        if self.async_client is not None:
-            await self.async_client.close()
-            self.async_client = None
 
     def _get_telemetry_data(self) -> dict[str, Any]:
         """
