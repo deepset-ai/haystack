@@ -96,8 +96,6 @@ class OpenAIChatGenerator(OpenAIClientMixin):
     ```
     """
 
-    _HAYSTACK_TO_PROVIDER_GENERATION_KWARGS: ClassVar[dict[str, str]] = {"max_output_tokens": "max_completion_tokens"}
-
     SUPPORTED_MODELS: ClassVar[list[str]] = [
         "gpt-5-mini",
         "gpt-5-nano",
@@ -300,8 +298,9 @@ class OpenAIChatGenerator(OpenAIClientMixin):
         :param streaming_callback:
             A callback function that is called when a new token is received from the stream.
         :param generation_kwargs:
-            Additional keyword arguments for text generation. These parameters will
-            override the parameters passed during component initialization.
+            Additional keyword arguments for text generation. These are merged per key with the
+            `generation_kwargs` passed at initialization: keys provided here take precedence, keys set
+            only at initialization are kept.
             For details on OpenAI API parameters, see [OpenAI documentation](https://platform.openai.com/docs/api-reference/chat/create).
         :param tools:
             A list of Tool and/or Toolset objects, or a single Toolset for which the model can prepare calls.
@@ -382,8 +381,9 @@ class OpenAIChatGenerator(OpenAIClientMixin):
             A callback function that is called when a new token is received from the stream. Async callbacks are
             preferred; a sync callback is accepted but will run synchronously on the event loop and may block it.
         :param generation_kwargs:
-            Additional keyword arguments for text generation. These parameters will
-            override the parameters passed during component initialization.
+            Additional keyword arguments for text generation. These are merged per key with the
+            `generation_kwargs` passed at initialization: keys provided here take precedence, keys set
+            only at initialization are kept.
             For details on OpenAI API parameters, see [OpenAI documentation](https://platform.openai.com/docs/api-reference/chat/create).
         :param tools: A list of Tool and/or Toolset objects, or a single Toolset for which the model can prepare calls.
             If set, it will override the `tools` parameter provided during initialization.

@@ -182,9 +182,16 @@ class OutputAdapter:
                 "If you trust the source of this data, load it with Pipeline.load(..., unsafe=True)."
             )
 
+        custom_filters = init_params.get("custom_filters", {})
+        if custom_filters and not _is_unsafe_deserialization():
+            raise DeserializationError(
+                "Refusing to deserialize an OutputAdapter with custom filters while loading in safe mode. "
+                "Custom filters are arbitrary callables that can execute during pipeline loading. "
+                "If you trust the source of this data, load it with Pipeline.load(..., unsafe=True)."
+            )
+
         init_params["output_type"] = deserialize_type(init_params["output_type"])
 
-        custom_filters = init_params.get("custom_filters", {})
         if custom_filters:
             init_params["custom_filters"] = {
                 name: deserialize_callable(filter_func) if filter_func else None

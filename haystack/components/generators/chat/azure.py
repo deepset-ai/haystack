@@ -324,7 +324,7 @@ class AzureOpenAIChatGenerator(OpenAIChatGenerator):
         # If it's already a json schema, it's left as is
         generation_kwargs = self.generation_kwargs.copy()
         response_format = generation_kwargs.get("response_format")
-        if response_format and issubclass(response_format, BaseModel):
+        if response_format and isinstance(response_format, type) and issubclass(response_format, BaseModel):
             json_schema = {
                 "type": "json_schema",
                 "json_schema": {

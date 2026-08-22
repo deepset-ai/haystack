@@ -120,6 +120,7 @@
           "label": "LanceDBDocumentStore",
           "href": "https://haystack.deepset.ai/integrations/lancedb/"
         },
+        "document-stores/mariadbdocumentstore",
         {
           "type": "link",
           "label": "MilvusDocumentStore",
@@ -447,6 +448,7 @@
             "pipeline-components/generators/googleaigeminichatgenerator",
             "pipeline-components/generators/googleaigeminigenerator",
             "pipeline-components/generators/googlegenaichatgenerator",
+            "pipeline-components/generators/hetznerchatgenerator",
             "pipeline-components/generators/huggingfaceapichatgenerator",
             "pipeline-components/generators/litellmchatgenerator",
             "pipeline-components/generators/llamacppchatgenerator",
@@ -602,6 +604,8 @@
             "pipeline-components/retrievers/inmemorybm25retriever",
             "pipeline-components/retrievers/inmemoryembeddingretriever",
             "pipeline-components/retrievers/cogneeretriever",
+            "pipeline-components/retrievers/mariadbembeddingretriever",
+            "pipeline-components/retrievers/mariadbkeywordretriever",
             "pipeline-components/retrievers/mem0memoryretriever",
             "pipeline-components/retrievers/mongodbatlasembeddingretriever",
             "pipeline-components/retrievers/mongodbatlasfulltextretriever",

@@ -5,7 +5,7 @@
 import io
 import mimetypes
 import sys
-from pathlib import PosixPath
+from pathlib import Path, PosixPath
 from unittest.mock import mock_open, patch
 
 import pytest
@@ -197,7 +197,7 @@ class TestFileTypeRouter:
         ]
         mime_types = [r"text/plain", r"text/plain", r"audio/x-wav", r"image/jpeg"]
         # Convert file paths to ByteStream objects and set metadata
-        byte_streams = []
+        byte_streams: list[str | Path | ByteStream] = []
         for path, mime_type in zip(file_paths, mime_types, strict=True):
             byte_streams.append(ByteStream(path.read_bytes(), mime_type=mime_type))
 
@@ -212,7 +212,7 @@ class TestFileTypeRouter:
         assert len(output[r"text/plain"]) == 2
         assert len(output[r"audio/x-wav"]) == 1
         assert len(output[r"image/jpeg"]) == 1
-        assert len(output.get("unclassified")) == 1
+        assert len(output["unclassified"]) == 1
 
     def test_run_with_bytestreams_and_file_paths(self, test_files_path):
         """
@@ -260,8 +260,10 @@ class TestFileTypeRouter:
         output = router.run(sources=file_paths)
         assert len(output[r"text/plain"]) == 1
         assert "mp3" not in output
-        assert len(output.get("unclassified")) == 1
-        assert output.get("failed")[0].name == "ignored.mp3"
+        assert len(output["unclassified"]) == 1
+        failed = output["failed"][0]
+        assert isinstance(failed, Path)
+        assert failed.name == "ignored.mp3"
 
     def test_no_extension(self, test_files_path):
         """
@@ -275,7 +277,7 @@ class TestFileTypeRouter:
         router = FileTypeRouter(mime_types=[r"text/plain"])
         output = router.run(sources=file_paths)
         assert len(output[r"text/plain"]) == 2
-        assert len(output.get("unclassified")) == 1
+        assert len(output["unclassified"]) == 1
 
     def test_unsupported_source_type(self):
         """
@@ -283,7 +285,7 @@ class TestFileTypeRouter:
         """
         router = FileTypeRouter(mime_types=[r"text/plain", r"audio/x-wav", r"image/jpeg"])
         with pytest.raises(TypeError, match="Unsupported data source type:"):
-            router.run(sources=[{"unsupported": "type"}])
+            router.run(sources=[{"unsupported": "type"}])  # type: ignore[list-item]
 
     def test_invalid_regex_pattern(self):
         """
@@ -316,7 +318,7 @@ class TestFileTypeRouter:
         jpg_stream = ByteStream(io.BytesIO(b"JPEG file content").read(), mime_type="image/jpeg")
         mp3_stream = ByteStream(io.BytesIO(b"MP3 file content").read(), mime_type="audio/mpeg")
 
-        byte_streams = [txt_stream, jpg_stream, mp3_stream]
+        byte_streams: list[str | Path | ByteStream] = [txt_stream, jpg_stream, mp3_stream]
         router = FileTypeRouter(mime_types=["text/plain", "image/jpeg"])
         output = router.run(sources=byte_streams)
 
@@ -326,7 +328,7 @@ class TestFileTypeRouter:
         assert len(output["image/jpeg"]) == 1, "Failed to match 'image/jpeg' MIME type exactly"
         assert jpg_stream in output["image/jpeg"], "'apple.jpg' ByteStream not correctly classified as 'image/jpeg'"
 
-        assert len(output.get("unclassified")) == 1, "Failed to handle unclassified file types"
+        assert len(output["unclassified"]) == 1, "Failed to handle unclassified file types"
         assert mp3_stream in output["unclassified"], "'sound.mp3' ByteStream should be unclassified but is not"
 
     @pytest.mark.parametrize(
@@ -492,7 +494,7 @@ class TestFileTypeRouter:
         with pytest.raises(FileNotFoundError):
             router.run(sources=["non_existent.txt"], meta={"spam": "eggs"})
 
-    def test_logging_for_non_existent_file(self, caplog: pytest.LogCaptureFixture):
+    def test_logging_for_non_existent_file(self, caplog: pytest.LogCaptureFixture) -> None:
         """
         Test that a logging warning is triggered when a non-existent file is encountered
         and raise_on_failure is False.

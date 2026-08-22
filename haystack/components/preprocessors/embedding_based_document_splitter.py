@@ -276,7 +276,7 @@ class EmbeddingBasedDocumentSplitter:
         merged_splits = self._merge_small_splits(splits=splits)
 
         # Recursively split splits larger than max_length
-        final_splits = self._split_large_splits(splits=merged_splits)
+        final_splits = await self._split_large_splits_async(splits=merged_splits)
 
         # Create Document objects from the final splits
         return EmbeddingBasedDocumentSplitter._create_documents_from_splits(splits=final_splits, original_doc=doc)
@@ -456,6 +456,8 @@ class EmbeddingBasedDocumentSplitter:
         further splitting is possible.
 
         This works because the threshold for splits is calculated dynamically based on the provided of embeddings.
+
+        Keep in sync with `_split_large_splits_async`.
         """
         final_splits = []
 
@@ -479,6 +481,41 @@ class EmbeddingBasedDocumentSplitter:
                     final_splits.append(split)
                 else:
                     final_splits.extend(self._split_large_splits(splits=sub_splits))
+
+        return final_splits
+
+    async def _split_large_splits_async(self, splits: list[str]) -> list[str]:
+        """
+        Asynchronously and recursively split splits that are above max_length.
+
+        Mirrors `_split_large_splits`, but embeds through the async path so that the recursion does not block the
+        event loop with synchronous embedder calls.
+
+        Keep in sync with `_split_large_splits`, which also documents why re-running the splitter on an oversized
+        chunk can split it further.
+        """
+        final_splits = []
+
+        for split in splits:
+            if len(split) <= self.max_length:
+                final_splits.append(split)
+            else:
+                # Recursively split large splits
+                # We can reuse the same _split_text_async method to split the text into smaller chunks because the
+                # threshold for splits is calculated dynamically based on embeddings from `split`.
+                sub_splits = await self._split_text_async(text=split)
+
+                # Stop splitting if no further split is possible or continue with recursion
+                if len(sub_splits) == 1:
+                    logger.warning(
+                        "Could not split a chunk further below max_length={max_length}. "
+                        "Returning chunk of length {length}.",
+                        max_length=self.max_length,
+                        length=len(split),
+                    )
+                    final_splits.append(split)
+                else:
+                    final_splits.extend(await self._split_large_splits_async(splits=sub_splits))
 
         return final_splits
 

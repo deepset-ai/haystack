@@ -185,7 +185,7 @@ class TestMetaFieldRanker:
 
     def test_raises_value_error_if_wrong_ranking_mode(self):
         with pytest.raises(ValueError):
-            MetaFieldRanker(meta_field="rating", ranking_mode="wrong_mode")
+            MetaFieldRanker(meta_field="rating", ranking_mode="wrong_mode")  # type: ignore[arg-type]
 
     @pytest.mark.parametrize("top_k", [0, -1])
     def test_raises_value_error_if_wrong_top_k(self, top_k):
@@ -207,15 +207,15 @@ class TestMetaFieldRanker:
 
     def test_raises_value_error_if_wrong_sort_order(self):
         with pytest.raises(ValueError):
-            MetaFieldRanker(meta_field="rating", sort_order="wrong_order")
+            MetaFieldRanker(meta_field="rating", sort_order="wrong_order")  # type: ignore[arg-type]
 
     def test_raises_value_error_if_wrong_missing_meta(self):
         with pytest.raises(ValueError):
-            MetaFieldRanker(meta_field="rating", missing_meta="wrong_missing_meta")
+            MetaFieldRanker(meta_field="rating", missing_meta="wrong_missing_meta")  # type: ignore[arg-type]
 
     def test_raises_value_error_if_wrong_meta_value_type(self):
         with pytest.raises(ValueError):
-            MetaFieldRanker(meta_field="rating", meta_value_type="wrong_type")
+            MetaFieldRanker(meta_field="rating", meta_value_type="wrong_type")  # type: ignore[arg-type]
 
     def test_linear_score(self):
         ranker = MetaFieldRanker(meta_field="rating", ranking_mode="linear_score", weight=0.5)

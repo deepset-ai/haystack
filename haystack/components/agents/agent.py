@@ -82,6 +82,7 @@ _RUN_METADATA_STATE_KEYS: dict[str, dict[str, Any]] = {
 # Internal state keys the Agent manages for run control and hooks. Like run-metadata keys they are reserved and cannot
 # be redefined by users, but unlike them they are NOT exposed as Agent inputs or outputs (purely internal state):
 # - `continue_run`: set by an `on_exit` hook to keep the Agent running instead of stopping (re-read each exit attempt).
+# - `stop_run`: set by a hook to stop the run, read before each LLM call and used as the `exit_reason`.
 # - `tools`: the flattened tools available in the current step, so a hook can inspect them (e.g. HITL confirmation).
 # - `hook_context`: per-run request-scoped resources passed to `run`/`run_async` for hooks to read.
 # - `context_tokens`: approximate current context-window size, refreshed after each LLM call, for hooks to read
@@ -89,6 +90,7 @@ _RUN_METADATA_STATE_KEYS: dict[str, dict[str, Any]] = {
 #   exposed as an output because it is a best-effort snapshot; see `_record_context_tokens`.
 _INTERNAL_STATE_KEYS: dict[str, dict[str, Any]] = {
     "continue_run": {"type": bool, "handler": replace_values},
+    "stop_run": {"type": str, "handler": replace_values},
     "tools": {"type": list, "handler": replace_values},
     "hook_context": {"type": dict[str, Any], "handler": replace_values},
     "context_tokens": {"type": int, "handler": replace_values},
@@ -694,8 +696,9 @@ class Agent:
         :param messages: List of ChatMessage objects to start the agent with.
         :param streaming_callback: Optional callback for streaming responses.
         :param requires_async: Whether the agent run requires asynchronous execution.
-        :param generation_kwargs: Additional keyword arguments for chat generator. These parameters will
-            override the parameters passed during component initialization.
+        :param generation_kwargs: Additional keyword arguments for the chat generator. These are merged per key
+            with the `generation_kwargs` passed at the chat generator's initialization: keys provided here take
+            precedence, keys set only at initialization are kept.
         :param tools: Optional list of Tool objects, a Toolset, or list of tool names to use for this run.
             When passing tool names, tools are selected from the Agent's originally configured tools.
         :param hook_context: Optional dictionary of request-scoped resources made available to hooks via
@@ -743,6 +746,7 @@ class Agent:
         state.set("tool_call_counts", {tool.name: 0 for tool in flat_tools})
         state.set("exit_reason", None)
         state.set("continue_run", False)
+        state.set("tools", flat_tools)
         state.set("hook_context", hook_context or {})
 
         streaming_callback = select_streaming_callback(  # type: ignore[call-overload]
@@ -814,8 +818,9 @@ class Agent:
         :param messages: List of Haystack ChatMessage objects to process.
         :param streaming_callback: A callback that will be invoked when a response is streamed from the LLM.
             The same callback can be configured to emit tool results when a tool is called.
-        :param generation_kwargs: Additional keyword arguments for LLM. These parameters will
-            override the parameters passed during component initialization.
+        :param generation_kwargs: Additional keyword arguments for the chat generator. These are merged per key
+            with the `generation_kwargs` passed at the chat generator's initialization: keys provided here take
+            precedence, keys set only at initialization are kept.
         :param tools: Optional list of Tool objects, a Toolset, or list of tool names to use for this run.
             When passing tool names, tools are selected from the Agent's originally configured tools.
         :param hook_context: Optional dictionary of request-scoped resources made available to hooks via
@@ -835,9 +840,10 @@ class Agent:
               `meta["usage"]`.
             - "tool_call_counts": Mapping of tool name to the number of times that tool was invoked.
             - "exit_reason": Why the Agent stopped, useful for routing the output downstream (e.g. with a
-              `ConditionalRouter`). One of: `"text"` (the model returned a reply with no tool calls), the name of
+              `ConditionalRouter`). This is `"text"` when the model returned a reply with no tool calls, the name of
               the tool that satisfied a tool exit condition (in which case `last_message` is that tool's result),
-              or `"max_agent_steps"` (the Agent hit `max_agent_steps` before meeting an exit condition).
+              `"max_agent_steps"` when the Agent hit `max_agent_steps`, or a custom reason a hook supplied through
+              the `stop_run` state key.
             - Any additional keys defined in the `state_schema`.
         """
         agent_inputs = {"messages": messages, "streaming_callback": streaming_callback, **kwargs}
@@ -898,8 +904,9 @@ class Agent:
         :param messages: List of Haystack ChatMessage objects to process.
         :param streaming_callback: An asynchronous callback that will be invoked when a response is streamed from the
             LLM. The same callback can be configured to emit tool results when a tool is called.
-        :param generation_kwargs: Additional keyword arguments for LLM. These parameters will
-            override the parameters passed during component initialization.
+        :param generation_kwargs: Additional keyword arguments for the chat generator. These are merged per key
+            with the `generation_kwargs` passed at the chat generator's initialization: keys provided here take
+            precedence, keys set only at initialization are kept.
         :param tools: Optional list of Tool objects, a Toolset, or list of tool names to use for this run.
         :param hook_context: Optional dictionary of request-scoped resources made available to hooks via
             `state.data.get("hook_context")`. Useful in web/server environments to provide per-request objects
@@ -918,9 +925,10 @@ class Agent:
               `meta["usage"]`.
             - "tool_call_counts": Mapping of tool name to the number of times that tool was invoked.
             - "exit_reason": Why the Agent stopped, useful for routing the output downstream (e.g. with a
-              `ConditionalRouter`). One of: `"text"` (the model returned a reply with no tool calls), the name of
+              `ConditionalRouter`). This is `"text"` when the model returned a reply with no tool calls, the name of
               the tool that satisfied a tool exit condition (in which case `last_message` is that tool's result),
-              or `"max_agent_steps"` (the Agent hit `max_agent_steps` before meeting an exit condition).
+              `"max_agent_steps"` when the Agent hit `max_agent_steps`, or a custom reason a hook supplied through
+              the `stop_run` state key.
             - Any additional keys defined in the `state_schema`.
         """
         agent_inputs = {"messages": messages, "streaming_callback": streaming_callback, **kwargs}
@@ -974,6 +982,10 @@ class Agent:
             exe_context.state.set("tools", current_tools, handler_override=replace_values)
 
             _run_hooks(hooks=self.hooks, hook_point=BEFORE_LLM, state=exe_context.state)
+            # A hook requested a stop: end the run at the step boundary, before spending another LLM call.
+            if (reason := exe_context.state.data.get("stop_run")) is not None:
+                exe_context.state.set("exit_reason", reason)
+                return False
             chat_generator_inputs = {
                 "messages": exe_context.state.data["messages"],
                 **exe_context.chat_generator_inputs,
@@ -1037,6 +1049,10 @@ class Agent:
             exe_context.state.set("tools", current_tools, handler_override=replace_values)
 
             await _run_hooks_async(hooks=self.hooks, hook_point=BEFORE_LLM, state=exe_context.state)
+            # A hook requested a stop: end the run at the step boundary, before spending another LLM call.
+            if (reason := exe_context.state.data.get("stop_run")) is not None:
+                exe_context.state.set("exit_reason", reason)
+                return False
             chat_generator_inputs = {
                 "messages": exe_context.state.data["messages"],
                 **exe_context.chat_generator_inputs,

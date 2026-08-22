@@ -346,7 +346,7 @@ _NAME_KEYED_SCHEMA_MAPS = frozenset(
 
 # Keywords whose value is instance *data*, not a sub-schema. A 'title' key inside a
 # default value is part of that value, so removing it would change the tool's contract.
-_DATA_SCHEMA_KEYWORDS = frozenset({"default", "const", "enum", "examples"})
+_DATA_SCHEMA_KEYWORDS = frozenset({"default", "const", "enum", "examples", "example"})
 
 
 def _remove_title_from_schema(schema: dict[str, Any]) -> None:
