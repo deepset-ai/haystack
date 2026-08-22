@@ -170,6 +170,55 @@ class TestEmbeddingBasedDocumentSplitter:
         # Should find a split point after the second embedding (index 2)
         assert 2 in split_points
 
+    def test_find_split_points_two_groups_can_split(self):
+        """
+        With exactly two sentence groups there is only one distance to compare, so np.percentile of that
+        single-element list always returns the value itself. `distance > threshold` was therefore comparing
+        the value to itself and could never be True, meaning a document that tokenizes into exactly two
+        sentence groups could never be split, no matter how dissimilar the groups were or how low
+        `percentile` was set. Maximally dissimilar (orthogonal) embeddings, even at the most aggressive
+        percentile=0.0 setting, must produce a split point.
+        """
+        mock_embedder = Mock()
+        splitter = EmbeddingBasedDocumentSplitter(document_embedder=mock_embedder, percentile=0.0)
+
+        embeddings = [[1.0, 0.0], [0.0, 1.0]]  # orthogonal -> maximum possible cosine distance
+        assert splitter._find_split_points(embeddings) == [1]
+
+    def test_find_split_points_two_identical_groups_do_not_split(self):
+        """Two identical groups (distance == 0) must still not produce a split point."""
+        mock_embedder = Mock()
+        splitter = EmbeddingBasedDocumentSplitter(document_embedder=mock_embedder, percentile=0.0)
+
+        embeddings = [[1.0, 0.0], [1.0, 0.0]]
+        assert splitter._find_split_points(embeddings) == []
+
+    def test_run_splits_document_with_exactly_two_sentence_groups(self):
+        """
+        End-to-end regression test: a document that tokenizes into exactly two sentence groups with
+        maximally dissimilar content must still be split by run(), even at the most aggressive
+        percentile=0.0 setting.
+        """
+        text = (
+            "Astronomy studies the stars and galaxies of outer space. "
+            "Sourdough baking relies on wild yeast fermentation."
+        )
+
+        def mock_run(documents):
+            embeddings = [[1.0, 0.0] if i == 0 else [0.0, 1.0] for i in range(len(documents))]
+            return {"documents": [replace(doc, embedding=emb) for doc, emb in zip(documents, embeddings, strict=True)]}
+
+        mock_embedder = Mock()
+        mock_embedder.run = Mock(side_effect=mock_run)
+
+        splitter = EmbeddingBasedDocumentSplitter(
+            document_embedder=mock_embedder, sentences_per_group=1, percentile=0.0, min_length=0, max_length=10000
+        )
+        splitter.warm_up()
+
+        result = splitter.run(documents=[Document(content=text)])
+        assert len(result["documents"]) == 2
+
     def test_create_splits_from_points(self):
         mock_embedder = Mock()
         splitter = EmbeddingBasedDocumentSplitter(document_embedder=mock_embedder)

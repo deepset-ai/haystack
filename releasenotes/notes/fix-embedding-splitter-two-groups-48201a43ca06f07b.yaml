@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    `EmbeddingBasedDocumentSplitter` could never split a document that tokenized into exactly two sentence
+    groups, no matter how dissimilar the groups were or how low `percentile` was set. With a single distance
+    to compare, `numpy.percentile` always returns that same value, so the `distance > threshold` check was
+    comparing the value to itself and could never be `True`. The splitter now treats the lone gap as a split
+    point unless the two groups are identical.

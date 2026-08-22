@@ -367,6 +367,15 @@ class EmbeddingBasedDocumentSplitter:
             )
             distances.append(distance)
 
+        # With a single distance (i.e. exactly two sentence groups) there is no distribution to compute a
+        # percentile against: np.percentile of a one-element list always returns that same element, so
+        # `distance > threshold` below would compare the value to itself and could never be True. Without this
+        # special case, a document that happens to tokenize into exactly two sentence groups could never be
+        # split, regardless of how dissimilar the groups are or how low `percentile` is set. Instead, treat the
+        # lone gap as a split point unless the two groups are identical.
+        if len(distances) == 1:
+            return [1] if distances[0] > 0 else []
+
         # Calculate threshold based on percentile
         threshold = np.percentile(distances, self.percentile * 100)
 
