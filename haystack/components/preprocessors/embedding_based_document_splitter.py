@@ -19,6 +19,13 @@ from haystack.utils.deserialization import deserialize_component_inplace
 
 logger = logging.getLogger(__name__)
 
+# When a document tokenizes into exactly two sentence groups, there is only one cosine distance to work with.
+# `percentile` has no meaning for a single-element distribution (np.percentile of one value always returns that
+# same value, whatever the requested percentile), so it cannot be used to decide whether that lone gap is a split
+# point. Instead we compare it against this fixed cosine-distance floor. Two consecutive groups closer than this
+# are treated as a paraphrase/near-duplicate rather than a topic change; `percentile` is ignored in this one case.
+_MIN_SPLIT_DISTANCE_FOR_SINGLE_GAP = 0.01
+
 
 @component
 class EmbeddingBasedDocumentSplitter:
@@ -86,7 +93,9 @@ class EmbeddingBasedDocumentSplitter:
         :param document_embedder: The DocumentEmbedder to use for calculating embeddings.
         :param sentences_per_group: Number of sentences to group together before embedding.
         :param percentile: Percentile threshold for cosine distance. Distances above this percentile
-            are treated as break points.
+            are treated as break points. Does not apply to documents that tokenize into exactly two sentence
+            groups: with only one distance to evaluate there is no distribution to compute a percentile against,
+            so a fixed absolute distance floor is used instead (see `_MIN_SPLIT_DISTANCE_FOR_SINGLE_GAP`).
         :param min_length: Minimum length of splits in characters. Splits below this length will be merged.
         :param max_length: Maximum length of splits in characters. Splits above this length will be recursively split.
         :param language: Language for sentence tokenization.
@@ -366,6 +375,15 @@ class EmbeddingBasedDocumentSplitter:
                 embedding1=embeddings[i], embedding2=embeddings[i + 1]
             )
             distances.append(distance)
+
+        # With a single distance (i.e. exactly two sentence groups) there is no distribution to compute a
+        # percentile against: np.percentile of a one-element list always returns that same element, so
+        # `distance > threshold` below would always compare the value to itself and could never be True. Without
+        # this special case, a document that happens to tokenize into exactly two sentence groups could never be
+        # split, regardless of how dissimilar the groups are or how low `percentile` is set. `percentile` cannot
+        # apply here, so we fall back to a fixed absolute distance floor instead.
+        if len(distances) == 1:
+            return [1] if distances[0] > _MIN_SPLIT_DISTANCE_FOR_SINGLE_GAP else []
 
         # Calculate threshold based on percentile
         threshold = np.percentile(distances, self.percentile * 100)
