@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import ast
 import textwrap
 
 import pytest
@@ -686,6 +687,21 @@ class TestDocstringStripping:
         header = header_chunks[0]
         assert "Class-level docstring." not in (header.content or "")
         assert "Class-level docstring." in " | ".join(header.meta.get("docstrings") or [])
+
+    @pytest.mark.parametrize(
+        "source",
+        [
+            'def only_docstring():\n    """Function docs."""\n',
+            'class OnlyDocstring:\n    """Class docs."""\n',
+        ],
+    )
+    def test_strip_docstrings_keeps_docstring_only_units_valid(self, source):
+        splitter = PythonCodeSplitter(min_effective_lines=1, max_effective_lines=10, strip_docstrings=True)
+        result = splitter.run(documents=[Document(content=source)])
+
+        assert result["documents"]
+        for chunk in result["documents"]:
+            ast.parse(chunk.content or "")
 
 
 class TestTopLevelStatements:
