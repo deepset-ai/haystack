@@ -19,13 +19,6 @@ from haystack.utils.deserialization import deserialize_component_inplace
 
 logger = logging.getLogger(__name__)
 
-# When a document tokenizes into exactly two sentence groups, there is only one cosine distance to work with.
-# `percentile` has no meaning for a single-element distribution (np.percentile of one value always returns that
-# same value, whatever the requested percentile), so it cannot be used to decide whether that lone gap is a split
-# point. Instead we compare it against this fixed cosine-distance floor. Two consecutive groups closer than this
-# are treated as a paraphrase/near-duplicate rather than a topic change; `percentile` is ignored in this one case.
-_MIN_SPLIT_DISTANCE_FOR_SINGLE_GAP = 0.01
-
 
 @component
 class EmbeddingBasedDocumentSplitter:
@@ -86,6 +79,7 @@ class EmbeddingBasedDocumentSplitter:
         language: Language = "en",
         use_split_rules: bool = True,
         extend_abbreviations: bool = True,
+        min_distance_for_two_groups: float | None = None,
     ) -> None:
         """
         Initialize EmbeddingBasedDocumentSplitter.
@@ -95,7 +89,7 @@ class EmbeddingBasedDocumentSplitter:
         :param percentile: Percentile threshold for cosine distance. Distances above this percentile
             are treated as break points. Does not apply to documents that tokenize into exactly two sentence
             groups: with only one distance to evaluate there is no distribution to compute a percentile against,
-            so a fixed absolute distance floor is used instead (see `_MIN_SPLIT_DISTANCE_FOR_SINGLE_GAP`).
+            so `min_distance_for_two_groups` is used instead for that case.
         :param min_length: Minimum length of splits in characters. Splits below this length will be merged.
         :param max_length: Maximum length of splits in characters. Splits above this length will be recursively split.
         :param language: Language for sentence tokenization.
@@ -104,6 +98,17 @@ class EmbeddingBasedDocumentSplitter:
         :param extend_abbreviations: If True, the abbreviations used by NLTK's PunktTokenizer are extended by a list
             of curated abbreviations. Currently supported languages are: en, de.
             If False, the default abbreviations are used.
+        :param min_distance_for_two_groups: Cosine distance threshold used only for documents that tokenize into
+            exactly two sentence groups. With a single distance to evaluate there is no distribution to compute
+            `percentile` against, so this fixed, absolute threshold is used instead: the lone gap becomes a split
+            point if its distance exceeds this value. There is no universally correct default: what counts as
+            "the same topic, reworded" versus "a genuine topic change" is specific to the embedding model in use,
+            and the two can differ in cosine distance by an order of magnitude or more between models (some
+            embedders compress all pairwise distances into a narrow band, others spread them out). Defaults to
+            `None`, meaning documents with exactly two sentence groups are never split, matching the behavior of
+            documents with only one group. To enable splitting for this case, measure cosine distances from your
+            own embedder on a few known same-topic and known different-topic sentence pairs, and set this to a
+            value between the two.
         """
         self.document_embedder = document_embedder
 
@@ -122,6 +127,10 @@ class EmbeddingBasedDocumentSplitter:
         if max_length <= min_length:
             raise ValueError("max_length must be greater than min_length.")
         self.max_length = max_length
+
+        if min_distance_for_two_groups is not None and not 0.0 <= min_distance_for_two_groups <= 2.0:
+            raise ValueError("min_distance_for_two_groups must be between 0.0 and 2.0.")
+        self.min_distance_for_two_groups = min_distance_for_two_groups
 
         self.language = language
         self.use_split_rules = use_split_rules
@@ -378,12 +387,14 @@ class EmbeddingBasedDocumentSplitter:
 
         # With a single distance (i.e. exactly two sentence groups) there is no distribution to compute a
         # percentile against: np.percentile of a one-element list always returns that same element, so
-        # `distance > threshold` below would always compare the value to itself and could never be True. Without
-        # this special case, a document that happens to tokenize into exactly two sentence groups could never be
-        # split, regardless of how dissimilar the groups are or how low `percentile` is set. `percentile` cannot
-        # apply here, so we fall back to a fixed absolute distance floor instead.
+        # `distance > threshold` below would always compare the value to itself and could never be True.
+        # `percentile` cannot apply here, so we fall back to `min_distance_for_two_groups` instead, which
+        # defaults to `None` (never split) since there's no universally correct absolute distance threshold
+        # across embedding models -- see its docstring in `__init__`.
         if len(distances) == 1:
-            return [1] if distances[0] > _MIN_SPLIT_DISTANCE_FOR_SINGLE_GAP else []
+            if self.min_distance_for_two_groups is None:
+                return []
+            return [1] if distances[0] > self.min_distance_for_two_groups else []
 
         # Calculate threshold based on percentile
         threshold = np.percentile(distances, self.percentile * 100)
@@ -590,6 +601,7 @@ class EmbeddingBasedDocumentSplitter:
             language=self.language,
             use_split_rules=self.use_split_rules,
             extend_abbreviations=self.extend_abbreviations,
+            min_distance_for_two_groups=self.min_distance_for_two_groups,
         )
 
     @classmethod

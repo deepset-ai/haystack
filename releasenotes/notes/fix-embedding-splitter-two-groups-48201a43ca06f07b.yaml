@@ -4,7 +4,15 @@ fixes:
     `EmbeddingBasedDocumentSplitter` could never split a document that tokenized into exactly two sentence
     groups, no matter how dissimilar the groups were or how low `percentile` was set. With a single distance
     to compare, `numpy.percentile` always returns that same value, so the `distance > threshold` check was
-    comparing the value to itself and could never be `True`. Since `percentile` requires a distribution of
-    distances to be meaningful and a single gap doesn't provide one, the splitter now falls back to a fixed
-    absolute cosine-distance floor for this case: the lone gap becomes a split point once the two groups are
-    no longer near-duplicates, regardless of `percentile`.
+    comparing the value to itself and could never be `True`. `percentile` cannot decide this case, since it
+    requires a distribution of distances to be meaningful and a single gap doesn't provide one. Splitting a
+    two-group document is now available via the new `min_distance_for_two_groups` parameter (see below);
+    without it, two-group documents keep the previous, safe behavior of never being split.
+enhancements:
+  - |
+    Added `min_distance_for_two_groups` to `EmbeddingBasedDocumentSplitter`, a cosine-distance threshold used
+    only for documents that tokenize into exactly two sentence groups, where `percentile` cannot apply.
+    Defaults to `None` (never split this case). There is no universally correct default value: how far apart
+    "the same topic, reworded" and "a genuine topic change" sit in cosine distance is specific to the
+    embedding model in use and can vary by an order of magnitude or more between models, so this is left for
+    users to calibrate against their own embedder.
