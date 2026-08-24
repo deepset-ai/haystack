@@ -167,6 +167,17 @@ def _strict_types_are_compatible(sender: Any, receiver: Any) -> bool:  # noqa: P
     if sender_origin is not Union and receiver_origin is Union:
         return any(_strict_types_are_compatible(sender, union_arg) for union_arg in get_args(receiver))
 
+    # A list output can be passed unchanged to a component accepting an Iterable. Keep this directional: an
+    # Iterable output does not guarantee that the runtime value is a list.
+    if sender_origin is list and receiver_origin is collections.abc.Iterable:
+        sender_args = get_args(sender)
+        receiver_args = get_args(receiver)
+        if not receiver_args:
+            return True
+        if len(sender_args) != 1 or len(receiver_args) != 1:
+            return False
+        return _strict_types_are_compatible(sender_args[0], receiver_args[0])
+
     # Both must have origins and they must be equal
     if not (sender_origin and receiver_origin and sender_origin == receiver_origin):
         return False
