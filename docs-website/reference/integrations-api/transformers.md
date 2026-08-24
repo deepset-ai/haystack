@@ -506,7 +506,9 @@ Invoke text generation inference based on the provided messages and generation p
 
 - **messages** (<code>list\[ChatMessage\] | str</code>) – A list of ChatMessage objects representing the input messages. If a string is provided,
   it is converted to a list containing a ChatMessage with user role.
-- **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for text generation.
+- **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for text generation. These are merged per key with
+  the `generation_kwargs` passed at initialization: keys provided here take precedence, keys set only at
+  initialization are kept.
 - **streaming_callback** (<code>StreamingCallbackT | None</code>) – An optional callable for handling streaming responses.
 - **tools** (<code>ToolsType | None</code>) – A list of Tool and/or Toolset objects, or a single Toolset for which the model can prepare calls.
   If set, it will override the `tools` parameter provided during initialization.
@@ -563,7 +565,9 @@ and return values but can be used with `await` in an async code.
 **Parameters:**
 
 - **messages** (<code>list\[ChatMessage\] | str</code>) – A list of ChatMessage objects representing the input messages.
-- **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for text generation.
+- **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for text generation. These are merged per key with
+  the `generation_kwargs` passed at initialization: keys provided here take precedence, keys set only at
+  initialization are kept.
 - **streaming_callback** (<code>StreamingCallbackT | None</code>) – An optional callable for handling streaming responses.
 - **tools** (<code>ToolsType | None</code>) – A list of Tool and/or Toolset objects, or a single Toolset for which the model can prepare calls.
   If set, it will override the `tools` parameter provided during initialization.
