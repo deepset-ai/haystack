@@ -195,7 +195,7 @@ class MetaFieldRanker:
         :param ranking_mode:
             (optional) The mode used to combine the Retriever's and Ranker's scores.
             Possible values are 'reciprocal_rank_fusion' (default) and 'linear_score'.
-            Use the 'score' mode only with Retrievers or Rankers that return a score in range [0,1].
+            Use the 'linear_score' mode only with Retrievers or Rankers that return a score in range [0,1].
             If not provided, the ranking_mode provided at initialization time is used.
         :param sort_order:
             Whether to sort the meta field by ascending or descending order.

@@ -445,6 +445,16 @@ class EmbeddingBasedDocumentSplitter:
         # Don't forget the last split
         merged.append(current_split)
 
+        # The loop only merges forward, so the final split can still be below min_length. Merge it backwards,
+        # subject to the same max_length limit as forward merges.
+        if (
+            len(merged) > 1
+            and len(merged[-1]) < self.min_length
+            and len(merged[-2]) + len(merged[-1]) < self.max_length
+        ):
+            trailing_split = merged.pop()
+            merged[-1] += trailing_split
+
         return merged
 
     def _split_large_splits(self, splits: list[str]) -> list[str]:
