@@ -74,7 +74,26 @@ _COMPONENT_INPUT = "haystack.component.input"
 _COMPONENT_OUTPUT = "haystack.component.output"
 _COMPONENT_VISITS = "haystack.component.visits"
 
+# Hard upper bound for `max_runs_per_component`: this protects the loop-detection mechanism from serialized
+# pipelines that set an arbitrarily large value to effectively disable it.
+MAX_RUNS_PER_COMPONENT_LIMIT = 1_000_000
+
 InputsType = dict[str, dict[str, list[dict[str, Any]]]]
+
+
+def _validate_max_runs_per_component(value: Any) -> None:
+    """
+    Validates a `max_runs_per_component` value.
+
+    :param value: The value to validate.
+    :raises ValueError: If the value is not an integer, is not positive, or exceeds
+        `MAX_RUNS_PER_COMPONENT_LIMIT`.
+    """
+    if isinstance(value, bool) or not isinstance(value, int) or not 0 < value <= MAX_RUNS_PER_COMPONENT_LIMIT:
+        raise ValueError(
+            f"'max_runs_per_component' must be an integer in the range (0, {MAX_RUNS_PER_COMPONENT_LIMIT}], "
+            f"got {value!r}"
+        )
 
 
 class ComponentPriority(IntEnum):
@@ -107,9 +126,12 @@ class PipelineBase:  # noqa: PLW1641
             How many times the `Pipeline` can run the same Component.
             If this limit is reached a `PipelineMaxComponentRuns` exception is raised.
             If not set defaults to 100 runs per Component.
+            Must be a positive integer no greater than `MAX_RUNS_PER_COMPONENT_LIMIT`.
         :param connection_type_validation: Whether the pipeline will validate the types of the connections.
             Defaults to True.
+        :raises ValueError: If `max_runs_per_component` is not a positive integer within the allowed range.
         """
+        _validate_max_runs_per_component(max_runs_per_component)
         self._telemetry_runs = 0
         self._last_telemetry_sent: datetime | None = None
         self.metadata = metadata or {}
@@ -219,6 +241,10 @@ class PipelineBase:  # noqa: PLW1641
         data_copy = _deepcopy_with_exceptions(data)  # to prevent modification of original data
         metadata = data_copy.get("metadata", {})
         max_runs_per_component = data_copy.get("max_runs_per_component", 100)
+        try:
+            _validate_max_runs_per_component(max_runs_per_component)
+        except ValueError as e:
+            raise DeserializationError(f"Invalid 'max_runs_per_component' value in the serialized pipeline: {e}") from e
         connection_type_validation = data_copy.get("connection_type_validation", True)
         pipe = cls(
             metadata=metadata,
