@@ -1024,6 +1024,98 @@ class TestFromOpenaiDictFormat:
         assert message.role.value == "system"
         assert message.text == "You are a helpful assistant"
 
+    def test_from_openai_dict_format_user_message_with_text_parts(self):
+        openai_msg = {
+            "role": "user",
+            "content": [{"type": "text", "text": "part one"}, {"type": "text", "text": "part two"}],
+        }
+        message = ChatMessage.from_openai_dict_format(openai_msg)
+        assert message.role.value == "user"
+        assert message.text == "part one"
+        assert message.texts == ["part one", "part two"]
+
+    def test_from_openai_dict_format_user_message_with_image_part(self, base64_image_string):
+        openai_msg = {
+            "role": "user",
+            "content": [
+                {"type": "text", "text": "What is in this image?"},
+                {
+                    "type": "image_url",
+                    "image_url": {"url": f"data:image/png;base64,{base64_image_string}", "detail": "low"},
+                },
+            ],
+        }
+        message = ChatMessage.from_openai_dict_format(openai_msg)
+        assert message.role.value == "user"
+        assert message.text == "What is in this image?"
+        assert message.images == [ImageContent(base64_image=base64_image_string, mime_type="image/png", detail="low")]
+
+    def test_from_openai_dict_format_user_message_with_file_part(self, base64_pdf_string):
+        openai_msg = {
+            "role": "user",
+            "content": [
+                {"type": "text", "text": "Summarize this document"},
+                {
+                    "type": "file",
+                    "file": {"file_data": f"data:application/pdf;base64,{base64_pdf_string}", "filename": "test.pdf"},
+                },
+            ],
+        }
+        message = ChatMessage.from_openai_dict_format(openai_msg)
+        assert message.role.value == "user"
+        assert message.text == "Summarize this document"
+        assert message.files == [
+            FileContent(base64_data=base64_pdf_string, mime_type="application/pdf", filename="test.pdf")
+        ]
+
+    def test_from_openai_dict_format_user_message_with_unsupported_parts(self, base64_image_string):
+        # non-data image URLs cannot be converted to ImageContent
+        with pytest.raises(ValueError):
+            ChatMessage.from_openai_dict_format(
+                {
+                    "role": "user",
+                    "content": [{"type": "image_url", "image_url": {"url": "https://example.com/image.png"}}],
+                }
+            )
+        # files referenced by file_id cannot be converted to FileContent
+        with pytest.raises(ValueError):
+            ChatMessage.from_openai_dict_format(
+                {"role": "user", "content": [{"type": "file", "file": {"file_id": "file-abc123"}}]}
+            )
+        # unknown content part types are rejected
+        with pytest.raises(ValueError):
+            ChatMessage.from_openai_dict_format(
+                {"role": "user", "content": [{"type": "input_audio", "input_audio": {"data": base64_image_string}}]}
+            )
+
+    def test_from_openai_dict_format_system_message_with_text_parts(self):
+        openai_msg = {
+            "role": "system",
+            "content": [{"type": "text", "text": "You are a helpful assistant"}, {"type": "text", "text": "Be brief"}],
+        }
+        message = ChatMessage.from_openai_dict_format(openai_msg)
+        assert message.role.value == "system"
+        assert message.text == "You are a helpful assistant\nBe brief"
+
+    def test_from_openai_dict_format_system_message_with_non_text_parts(self, base64_image_string):
+        openai_msg = {
+            "role": "system",
+            "content": [{"type": "image_url", "image_url": {"url": f"data:image/png;base64,{base64_image_string}"}}],
+        }
+        with pytest.raises(ValueError):
+            ChatMessage.from_openai_dict_format(openai_msg)
+
+    def test_from_openai_dict_format_multimodal_user_message_round_trip(self, base64_image_string, base64_pdf_string):
+        message = ChatMessage.from_user(
+            content_parts=[
+                TextContent(text="Compare this image and document"),
+                ImageContent(base64_image=base64_image_string, mime_type="image/png", detail="high"),
+                FileContent(base64_data=base64_pdf_string, mime_type="application/pdf", filename="test.pdf"),
+            ]
+        )
+        round_tripped = ChatMessage.from_openai_dict_format(message.to_openai_dict_format())
+        assert round_tripped == message
+
     def test_from_openai_dict_format_assistant_message_with_content(self):
         openai_msg = {"role": "assistant", "content": "I can help with that"}
         message = ChatMessage.from_openai_dict_format(openai_msg)
