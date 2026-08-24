@@ -488,6 +488,38 @@ def test_asymmetric_types_are_not_compatible_strict(sender_type, receiver_type):
     assert not _types_are_compatible(receiver_type, sender_type)[0]
 
 
+@pytest.mark.parametrize(
+    "sender_type,receiver_type",
+    [
+        pytest.param(List[int], Iterable[int], id="typing-list-to-iterable"),
+        pytest.param(list[int], Iterable[int], id="list-to-iterable"),
+        pytest.param(
+            list[str | Path | ByteStream],
+            Iterable[str | Path | ByteStream],
+            id="list-of-file-sources-to-iterable-of-file-sources",
+        ),
+        pytest.param(list[Class3], Iterable[Class1], id="list-of-subclass-to-iterable-of-superclass"),
+        pytest.param(list[int], Iterable[Any], id="list-to-iterable-of-any"),
+        pytest.param(list[int], Iterable, id="list-to-bare-iterable"),
+    ],
+)
+def test_list_is_compatible_with_iterable_strict(sender_type, receiver_type):
+    assert _types_are_compatible(sender_type, receiver_type) == (True, None)
+
+
+@pytest.mark.parametrize(
+    "sender_type,receiver_type",
+    [
+        pytest.param(list[str], Iterable[int], id="list-to-iterable-with-incompatible-item-types"),
+        pytest.param(list[Any], Iterable[int], id="list-of-any-to-typed-iterable"),
+        pytest.param(list, Iterable[int], id="bare-list-to-typed-iterable"),
+        pytest.param(Iterable[int], list[int], id="iterable-to-list"),
+    ],
+)
+def test_list_and_iterable_are_not_compatible_strict(sender_type, receiver_type):
+    assert _types_are_compatible(sender_type, receiver_type) == (False, None)
+
+
 incompatible_type_cases = [
     pytest.param(Tuple[int, str], Tuple[Any], id="tuple-of-primitive-to-tuple-of-any-different-lengths"),
     pytest.param(tuple[int, str], tuple[Any], id="tuple-of-primitive-to-tuple-of-any-different-lengths"),
