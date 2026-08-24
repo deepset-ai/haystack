@@ -154,12 +154,17 @@ def _is_text_exit(messages: list[ChatMessage]) -> bool:
     Return whether `messages` end in a plain assistant text reply with no tool calls anywhere in the batch.
 
     This is the "no tool call" exit for the model's own replies. The last message must be a non-empty assistant text
-    message, so an invalid response (e.g. one with no tool calls and no text) does not trigger an exit.
+    message or be truncated by its output limit, so an invalid response (e.g. one with no tool calls and no text) does
+    not trigger an exit.
     """
     if not messages:
         return False
     last = messages[-1]
-    return not any(m.tool_call for m in messages) and last.is_from(ChatRole.ASSISTANT) and bool(last.text)
+    return (
+        not any(m.tool_call for m in messages)
+        and last.is_from(ChatRole.ASSISTANT)
+        and (bool(last.text) or last.meta.get("finish_reason") == "length")
+    )
 
 
 def _pending_tool_call_messages_from_state(state: State) -> list[ChatMessage]:
