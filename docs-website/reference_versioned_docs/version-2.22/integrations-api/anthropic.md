@@ -187,7 +187,9 @@ Invokes the Anthropic API with the given messages and generation kwargs.
 - **messages** (<code>list\[ChatMessage\] | str</code>) – A list of ChatMessage instances representing the input messages.
   If a string is provided, it is converted to a list containing a ChatMessage with user role.
 - **streaming_callback** (<code>StreamingCallbackT | None</code>) – A callback function that is called when a new token is received from the stream.
-- **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Optional arguments to pass to the Anthropic generation endpoint.
+- **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Optional arguments to pass to the Anthropic generation endpoint. These are merged
+  per key with the `generation_kwargs` passed at initialization: keys provided here take precedence, keys set
+  only at initialization are kept.
 - **tools** (<code>ToolsType | None</code>) – A list of Tool and/or Toolset objects, or a single Toolset, that the model can use.
   Each tool should have a unique name. If set, it will override the `tools` parameter set during component
   initialization.
@@ -215,7 +217,9 @@ Async version of the run method. Invokes the Anthropic API with the given messag
 - **messages** (<code>list\[ChatMessage\] | str</code>) – A list of ChatMessage instances representing the input messages.
   If a string is provided, it is converted to a list containing a ChatMessage with user role.
 - **streaming_callback** (<code>StreamingCallbackT | None</code>) – A callback function that is called when a new token is received from the stream.
-- **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Optional arguments to pass to the Anthropic generation endpoint.
+- **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Optional arguments to pass to the Anthropic generation endpoint. These are merged
+  per key with the `generation_kwargs` passed at initialization: keys provided here take precedence, keys set
+  only at initialization are kept.
 - **tools** (<code>ToolsType | None</code>) – A list of Tool and/or Toolset objects, or a single Toolset, that the model can use.
   Each tool should have a unique name. If set, it will override the `tools` parameter set during component
   initialization.
@@ -388,7 +392,9 @@ Invokes the AnthropicFoundry API with the given messages and generation kwargs.
 - **messages** (<code>list\[ChatMessage\] | str</code>) – A list of ChatMessage instances representing the input messages.
   If a string is provided, it is converted to a list containing a ChatMessage with user role.
 - **streaming_callback** (<code>StreamingCallbackT | None</code>) – A callback function that is called when a new token is received from the stream.
-- **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Optional arguments to pass to the Anthropic generation endpoint.
+- **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Optional arguments to pass to the Anthropic generation endpoint. These are merged
+  per key with the `generation_kwargs` passed at initialization: keys provided here take precedence, keys
+  set only at initialization are kept.
 - **tools** (<code>ToolsType | None</code>) – A list of Tool and/or Toolset objects, or a single Toolset, that the model can use.
   Each tool should have a unique name. If set, it will override the `tools` parameter set during component
   initialization.
@@ -416,7 +422,9 @@ Async version of the run method. Invokes the AnthropicFoundry API with the given
 - **messages** (<code>list\[ChatMessage\] | str</code>) – A list of ChatMessage instances representing the input messages.
   If a string is provided, it is converted to a list containing a ChatMessage with user role.
 - **streaming_callback** (<code>StreamingCallbackT | None</code>) – A callback function that is called when a new token is received from the stream.
-- **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Optional arguments to pass to the Anthropic generation endpoint.
+- **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Optional arguments to pass to the Anthropic generation endpoint. These are merged
+  per key with the `generation_kwargs` passed at initialization: keys provided here take precedence, keys
+  set only at initialization are kept.
 - **tools** (<code>ToolsType | None</code>) – A list of Tool and/or Toolset objects, or a single Toolset, that the model can use.
   Each tool should have a unique name. If set, it will override the `tools` parameter set during component
   initialization.
