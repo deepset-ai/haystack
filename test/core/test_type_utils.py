@@ -493,6 +493,11 @@ def test_asymmetric_types_are_not_compatible_strict(sender_type, receiver_type):
     [
         pytest.param(List[int], Iterable[int], id="typing-list-to-iterable"),
         pytest.param(list[int], Iterable[int], id="list-to-iterable"),
+        pytest.param(
+            list[str | Path | ByteStream],
+            Iterable[str | Path | ByteStream],
+            id="list-of-file-sources-to-iterable-of-file-sources",
+        ),
         pytest.param(list[Class3], Iterable[Class1], id="list-of-subclass-to-iterable-of-superclass"),
         pytest.param(list[int], Iterable[Any], id="list-to-iterable-of-any"),
         pytest.param(list[int], Iterable, id="list-to-bare-iterable"),
