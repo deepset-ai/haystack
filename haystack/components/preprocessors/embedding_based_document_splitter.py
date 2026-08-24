@@ -445,9 +445,8 @@ class EmbeddingBasedDocumentSplitter:
         # Don't forget the last split
         merged.append(current_split)
 
-        # The loop above only merges forward, so the final split never had a chance to absorb anything and can
-        # still be below min_length. Merge it into its predecessor instead, subject to the same max_length limit
-        # that governs forward merges.
+        # The loop only merges forward, so the final split can still be below min_length. Merge it backwards,
+        # subject to the same max_length limit as forward merges.
         if (
             len(merged) > 1
             and len(merged[-1]) < self.min_length
