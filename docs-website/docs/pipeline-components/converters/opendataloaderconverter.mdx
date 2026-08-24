@@ -41,7 +41,7 @@ Only PDFs are supported. Passing a file with another extension, or a `ByteStream
 OpenDataLoader PDF runs on a Java engine, so Java 11 or newer must be installed and `java` must be available on your `PATH`. The component checks for this when it runs and raises a `RuntimeError` if no usable Java runtime is found.
 :::
 
-Image extraction is turned off by default so that documents contain text only. Turn it back on through `convert_kwargs` if you need images.
+Image extraction is turned off by default so that documents contain text only. To turn it back on, pass `image_output` (and, if needed, `image_format` and `image_dir`) through `convert_kwargs`. See the [OpenDataLoader convert options](https://opendataloader.org/docs/quick-start-python#convert-options) for the accepted values.
 
 ## Usage
 
@@ -98,7 +98,7 @@ converter = OpenDataLoaderConverter(output_format="json")
 
 ### Extraction Settings
 
-Pass any [OpenDataLoader PDF option](https://opendataloader.org/docs/quick-start-python) through `convert_kwargs`. For example, to convert a page range of an encrypted PDF, keep page separators in the Markdown output, and redact sensitive data:
+Pass any [OpenDataLoader PDF option](https://opendataloader.org/docs/quick-start-python#convert-options) through `convert_kwargs`. For example, to convert a page range of an encrypted PDF, keep page separators in the Markdown output, and redact sensitive data:
 
 ```python
 converter = OpenDataLoaderConverter(
