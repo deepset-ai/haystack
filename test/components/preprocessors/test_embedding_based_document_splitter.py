@@ -215,6 +215,36 @@ class TestEmbeddingBasedDocumentSplitter:
         # Second split is merged with third split to get above min_length and still beneath max_length
         assert merged[1] == "1234567891234"
 
+    def test_merge_small_splits_merges_short_trailing_split(self):
+        mock_embedder = Mock()
+        splitter = EmbeddingBasedDocumentSplitter(document_embedder=mock_embedder, min_length=10)
+
+        # The loop only merges forward, so the final accumulator has nothing left to absorb.
+        splits = ["Long enough text ", "Ok."]
+        merged = splitter._merge_small_splits(splits=splits)
+
+        assert merged == ["Long enough text Ok."]
+
+    def test_merge_small_splits_keeps_short_trailing_split_when_max_length_blocks(self):
+        mock_embedder = Mock()
+        splitter = EmbeddingBasedDocumentSplitter(document_embedder=mock_embedder, min_length=10, max_length=15)
+
+        # Merging backwards would reach max_length, so the short tail stays on its own,
+        # matching how a blocked forward merge already behaves.
+        splits = ["123456789012", "1234"]
+        merged = splitter._merge_small_splits(splits=splits)
+
+        assert merged == ["123456789012", "1234"]
+
+    def test_merge_small_splits_keeps_a_lone_short_split(self):
+        mock_embedder = Mock()
+        splitter = EmbeddingBasedDocumentSplitter(document_embedder=mock_embedder, min_length=10)
+
+        # Nothing to merge into.
+        merged = splitter._merge_small_splits(splits=["Ok."])
+
+        assert merged == ["Ok."]
+
     def test_create_documents_from_splits(self):
         mock_embedder = Mock()
         splitter = EmbeddingBasedDocumentSplitter(document_embedder=mock_embedder)
