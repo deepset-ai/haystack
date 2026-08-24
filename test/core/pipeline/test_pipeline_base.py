@@ -2232,9 +2232,7 @@ class TestPipelineConnect:
         pipe = PipelineBase()
         pipe.add_component("producer", producer)
         pipe.add_component("consumer", consumer)
-
         pipe.connect("producer.items", "consumer.sources")
-
         assert list(pipe.graph.edges) == [("producer", "consumer", "items/sources")]
         assert pipe.graph["producer"]["consumer"]["items/sources"]["conversion_strategy"] is None
 
@@ -2244,7 +2242,6 @@ class TestPipelineConnect:
         pipe = PipelineBase()
         pipe.add_component("producer", producer)
         pipe.add_component("consumer", consumer)
-
         with pytest.raises(PipelineConnectError, match="more than one connection is possible"):
             pipe.connect("producer", "consumer")
 
