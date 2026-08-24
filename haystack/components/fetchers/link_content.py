@@ -3,6 +3,8 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import asyncio
+import ipaddress
+import socket
 from collections import defaultdict
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
@@ -26,12 +28,95 @@ logger = logging.getLogger(__name__)
 
 DEFAULT_USER_AGENT = f"haystack/LinkContentFetcher/{__version__}"
 
+DEFAULT_MAX_RESPONSE_BYTES = 50 * 1024 * 1024
+DEFAULT_MAX_REDIRECTS = 5
+
+# IPv4 shared address space (RFC 6598), commonly used for internal networks and VPN overlays like Tailscale.
+# `ipaddress` does not classify it as private, so it's checked explicitly.
+_SHARED_ADDRESS_SPACE = ipaddress.ip_network("100.64.0.0/10")
+
 REQUEST_HEADERS = {
     "accept": "*/*",
     "User-Agent": DEFAULT_USER_AGENT,
     "Accept-Language": "en-US,en;q=0.9,it;q=0.8,es;q=0.7",
     "referer": "https://www.google.com/",
 }
+
+
+class UnsafeTargetError(ValueError):
+    """
+    Raised when a URL or one of its redirect targets points to a host that must not be fetched from.
+
+    This includes hosts outside the ``allowed_hosts`` whitelist and hosts that resolve to a private, loopback,
+    link-local, multicast, or otherwise internal IP address.
+    """
+
+
+class ResponseTooLargeError(ValueError):
+    """
+    Raised when a response body exceeds the fetcher's ``max_response_bytes`` limit.
+    """
+
+
+def _resolve_host(host: str, port: int) -> list[str]:
+    """
+    Resolves a host name to all of its IPv4/IPv6 addresses (A/AAAA records).
+
+    :param host: The host name or IP literal to resolve.
+    :param port: The port to resolve for. It does not affect the returned addresses.
+    :returns: The resolved addresses as strings. An empty list if resolution fails, so that the underlying
+        HTTP client can surface its own (retryable) connection error.
+    """
+    try:
+        addr_infos = socket.getaddrinfo(host, port, family=socket.AF_UNSPEC, type=socket.SOCK_STREAM)
+    except (socket.gaierror, OSError):
+        return []
+    return [addr_info[4][0] for addr_info in addr_infos]
+
+
+def _is_forbidden_ip(address: str) -> bool:
+    """
+    Checks whether an IP address belongs to a range the fetcher must never connect to.
+
+    This covers private, loopback, link-local, multicast, reserved, unspecified, and unique-local addresses, as
+    well as the RFC 6598 shared address space. Unparseable addresses are rejected as well.
+
+    :param address: The IP address to check, as a string.
+    :returns: `True` if the address is forbidden.
+    """
+    try:
+        ip = ipaddress.ip_address(address)
+    except ValueError:
+        return True
+    return (
+        ip.is_private
+        or ip.is_loopback
+        or ip.is_link_local
+        or ip.is_multicast
+        or ip.is_reserved
+        or ip.is_unspecified
+        or ip in _SHARED_ADDRESS_SPACE
+    )
+
+
+def _host_matches_allowlist(host: str, allowed_hosts: list[str]) -> bool:
+    """
+    Checks whether a host matches any entry of a domain suffix whitelist.
+
+    A host matches an entry if it is equal to it or a subdomain of it. For example, `api.example.com` matches
+    `example.com` but `notexample.com` does not. Comparison is case-insensitive and ignores a trailing dot
+    (the DNS root).
+
+    :param host: The host name to check.
+    :param allowed_hosts: The whitelist entries.
+    :returns: `True` if the host matches at least one entry.
+    """
+    normalized_host = host.lower().rstrip(".")
+    for allowed_host in allowed_hosts:
+        normalized_allowed = allowed_host.lower().rstrip(".")
+        if normalized_host == normalized_allowed or normalized_host.endswith(f".{normalized_allowed}"):
+            return True
+    return False
 
 
 def _merge_headers(*args: dict[str, str]) -> dict[str, str]:
@@ -81,6 +166,11 @@ class LinkContentFetcher:
     It supports various content types, retries on failures, and automatic user-agent rotation for failed web
     requests. Use it as the data-fetching step in your pipelines.
 
+    For security, every request target is validated before the request is made, including each redirect hop:
+    hosts can be restricted to an `allowed_hosts` domain suffix whitelist, and hosts resolving to private,
+    loopback, link-local, multicast, or otherwise internal IP addresses are rejected. Response bodies are
+    streamed and capped at `max_response_bytes`.
+
     You may need to convert LinkContentFetcher's output into a list of documents. Use HTMLToDocument
     converter to do this.
 
@@ -121,6 +211,9 @@ class LinkContentFetcher:
         http2: bool = False,
         client_kwargs: dict | None = None,
         request_headers: dict[str, str] | None = None,
+        allowed_hosts: list[str] | None = None,
+        max_response_bytes: int = DEFAULT_MAX_RESPONSE_BYTES,
+        max_redirects: int = DEFAULT_MAX_REDIRECTS,
     ) -> None:
         """
         Initializes the component.
@@ -135,8 +228,20 @@ class LinkContentFetcher:
                      Requires the 'h2' package to be installed (via `pip install httpx[http2]`).
         :param client_kwargs: Additional keyword arguments to pass to the httpx client.
                      If `None`, default values are used.
+                     `follow_redirects` is always overridden to `False`: redirects are followed manually,
+                     one hop at a time, so that every hop can be validated. To disable redirect following
+                     entirely, pass `{"follow_redirects": False}`.
         :param request_headers: Additional headers to send with every request. These take precedence over the
                      component's default headers but not over the rotating `User-Agent`.
+        :param allowed_hosts: Optional whitelist of allowed domain suffixes, for example
+                     `["example.com", "cdn.example.org"]`. A host is allowed if it equals one of the entries
+                     or is a subdomain of one (so `api.example.com` matches `example.com`, but
+                     `notexample.com` does not). If `None`, any host is allowed. Hosts are additionally
+                     always checked against forbidden IP ranges, regardless of this whitelist.
+        :param max_response_bytes: Maximum size in bytes of a response body. Responses are streamed and
+                     bodies exceeding this limit raise a `ResponseTooLargeError`.
+        :param max_redirects: Maximum number of redirects to follow. Each hop is validated before the
+                     request is made.
         """
         self.raise_on_failure = raise_on_failure
         self.user_agents = user_agents or [DEFAULT_USER_AGENT]
@@ -145,10 +250,16 @@ class LinkContentFetcher:
         self.http2 = http2
         self.client_kwargs = client_kwargs or {}
         self.request_headers = request_headers or {}
+        self.allowed_hosts = allowed_hosts
+        self.max_response_bytes = max_response_bytes
+        self.max_redirects = max_redirects
 
         # Configure default client settings
         self.client_kwargs.setdefault("timeout", timeout)
-        self.client_kwargs.setdefault("follow_redirects", True)
+        # Redirects are followed manually (see `_request_following_redirects`) so that every hop can be
+        # validated before the request is made; the underlying client has `follow_redirects` forced to `False`
+        # in `_build_client_kwargs`. Here we only remember whether the user wants redirects followed at all.
+        self._follow_redirects = self.client_kwargs.get("follow_redirects", True)
 
         # httpx clients are built lazily in warm_up / warm_up_async (resource lifecycle)
         self._client: httpx.Client | None = None
@@ -191,11 +302,102 @@ class LinkContentFetcher:
         )
         def get_response(url: str) -> httpx.Response:
             assert self._client is not None  # mypy: client is built by warm_up before run
-            response = self._client.get(url, headers=self._get_headers(self.user_agents[user_agent_idx]))
-            response.raise_for_status()
-            return response
+            headers = self._get_headers(self.user_agents[user_agent_idx])
+            return self._request_following_redirects(self._client, url, headers)
 
         return get_response(url)
+
+    def _validate_target(self, url: str) -> None:
+        """
+        Validates that a URL may be fetched before the request is made.
+
+        The URL's host must match the `allowed_hosts` whitelist (if set) and must not resolve to any forbidden
+        IP address (private, loopback, link-local, multicast, reserved, unspecified, unique-local, or shared
+        address space ranges). Note that this mitigates, but cannot fully eliminate, DNS rebinding: the HTTP
+        client performs its own name resolution when connecting.
+
+        :param url: The URL to validate.
+        :raises UnsafeTargetError: If the URL's host is not allowed or resolves to a forbidden address.
+        """
+        parsed = httpx.URL(url)
+        host = parsed.host
+        if not host:
+            raise UnsafeTargetError(f"URL '{url}' has no host")
+
+        if self.allowed_hosts is not None and not _host_matches_allowlist(host, self.allowed_hosts):
+            raise UnsafeTargetError(
+                f"Host '{host}' (URL '{url}') is not in the allowed_hosts whitelist: {self.allowed_hosts}"
+            )
+
+        port = parsed.port or (443 if parsed.scheme == "https" else 80)
+        for address in _resolve_host(host, port):
+            if _is_forbidden_ip(address):
+                raise UnsafeTargetError(
+                    f"Host '{host}' (URL '{url}') resolves to the forbidden IP address '{address}'. "
+                    "Requests to private, loopback, link-local, multicast, or other internal addresses "
+                    "are not allowed."
+                )
+
+    def _request_following_redirects(self, client: httpx.Client, url: str, headers: dict[str, str]) -> httpx.Response:
+        """
+        Performs the request for a URL, following redirects manually one hop at a time.
+
+        The HTTP client itself never follows redirects (see `_build_client_kwargs`): every hop, starting from
+        the original URL, is validated before its request is made. This prevents a redirect from a trusted host
+        to an internal address from ever being fetched.
+
+        :param client: The httpx client to make the requests with.
+        :param url: The URL to fetch.
+        :param headers: Headers to send with every hop.
+        :returns: The final httpx Response object, with its body already read.
+        :raises httpx.TooManyRedirects: If more than `max_redirects` redirects are encountered.
+        """
+        current_url = url
+        for _hop in range(self.max_redirects + 1):
+            self._validate_target(current_url)
+            response = self._request_hop(client, current_url, headers)
+            if not (self._follow_redirects and response.is_redirect):
+                response.raise_for_status()
+                return response
+            current_url = str(httpx.URL(current_url).join(response.headers["location"]))
+        raise httpx.TooManyRedirects(f"Exceeded {self.max_redirects} redirects.", request=httpx.Request("GET", url))
+
+    def _request_hop(self, client: httpx.Client, url: str, headers: dict[str, str]) -> httpx.Response:
+        """
+        Performs a single GET request, streaming the response body with a size cap.
+
+        The body is read while the connection is still open so that the transfer is aborted as soon as it
+        exceeds `max_response_bytes`. A plain, fully-read response is returned so that content handlers can
+        access it like a regular, non-streaming response.
+
+        Redirect responses are returned without reading their body: it is never used.
+
+        :param client: The httpx client to make the request with.
+        :param url: The URL to fetch.
+        :param headers: Headers to send with the request.
+        :returns: The httpx Response object for this hop, with its body read unless it is a redirect.
+        :raises ResponseTooLargeError: If the response body exceeds `max_response_bytes`.
+        """
+        with client.stream("GET", url, headers=headers) as response:
+            body = b""
+            if not (self._follow_redirects and response.is_redirect):
+                chunks = bytearray()
+                for chunk in response.iter_bytes():
+                    chunks.extend(chunk)
+                    if len(chunks) > self.max_response_bytes:
+                        raise ResponseTooLargeError(
+                            f"Response from '{url}' exceeds max_response_bytes={self.max_response_bytes} "
+                            f"(received at least {len(chunks)} bytes)."
+                        )
+                body = bytes(chunks)
+            # Rebuild a fully-read response so handlers can use `response.text`/`response.content` as usual.
+            return httpx.Response(
+                status_code=response.status_code,
+                headers=response.headers,
+                content=body,
+                request=response.request,
+                default_encoding=response.default_encoding,
+            )
 
     def _build_client_kwargs(self) -> dict[str, Any]:
         """
@@ -204,6 +406,10 @@ class LinkContentFetcher:
         Resolves optional HTTP/2 support, downgrading to HTTP/1.1 if the 'h2' package is not installed.
         """
         client_kwargs = {**self.client_kwargs}
+
+        # Redirects are followed manually, one validated hop at a time (see `_request_following_redirects`),
+        # so the underlying client must never follow them on its own.
+        client_kwargs["follow_redirects"] = False
 
         # Optional HTTP/2 support
         if self.http2:
@@ -444,7 +650,8 @@ class LinkContentFetcher:
 
         while attempt <= self.retry_attempts:
             try:
-                response = await client.get(url, headers=self._get_headers(self.user_agents[user_agent_idx]))
+                headers = self._get_headers(self.user_agents[user_agent_idx])
+                response = await self._request_following_redirects_async(client, url, headers)
                 response.raise_for_status()
                 return response
             except (httpx.HTTPStatusError, httpx.RequestError) as e:
@@ -464,6 +671,64 @@ class LinkContentFetcher:
 
         # This should never happen, but just in case
         raise httpx.RequestError("Failed to get response after retries", request=None)
+
+    async def _request_following_redirects_async(
+        self, client: httpx.AsyncClient, url: str, headers: dict[str, str]
+    ) -> httpx.Response:
+        """
+        Asynchronously performs the request for a URL, following redirects manually one hop at a time.
+
+        Every hop, starting from the original URL, is validated before its request is made. This is the
+        asynchronous counterpart of `_request_following_redirects`.
+
+        :param client: The async httpx client to make the requests with.
+        :param url: The URL to fetch.
+        :param headers: Headers to send with every hop.
+        :returns: The final httpx Response object, with its body already read.
+        :raises httpx.TooManyRedirects: If more than `max_redirects` redirects are encountered.
+        """
+        current_url = url
+        for _hop in range(self.max_redirects + 1):
+            self._validate_target(current_url)
+            response = await self._request_hop_async(client, current_url, headers)
+            if not (self._follow_redirects and response.is_redirect):
+                response.raise_for_status()
+                return response
+            current_url = str(httpx.URL(current_url).join(response.headers["location"]))
+        raise httpx.TooManyRedirects(f"Exceeded {self.max_redirects} redirects.", request=httpx.Request("GET", url))
+
+    async def _request_hop_async(self, client: httpx.AsyncClient, url: str, headers: dict[str, str]) -> httpx.Response:
+        """
+        Asynchronously performs a single GET request, streaming the response body with a size cap.
+
+        This is the asynchronous counterpart of `_request_hop`.
+
+        :param client: The async httpx client to make the request with.
+        :param url: The URL to fetch.
+        :param headers: Headers to send with the request.
+        :returns: The httpx Response object for this hop, with its body read unless it is a redirect.
+        :raises ResponseTooLargeError: If the response body exceeds `max_response_bytes`.
+        """
+        async with client.stream("GET", url, headers=headers) as response:
+            body = b""
+            if not (self._follow_redirects and response.is_redirect):
+                chunks = bytearray()
+                async for chunk in response.aiter_bytes():
+                    chunks.extend(chunk)
+                    if len(chunks) > self.max_response_bytes:
+                        raise ResponseTooLargeError(
+                            f"Response from '{url}' exceeds max_response_bytes={self.max_response_bytes} "
+                            f"(received at least {len(chunks)} bytes)."
+                        )
+                body = bytes(chunks)
+            # Rebuild a fully-read response so handlers can use `response.text`/`response.content` as usual.
+            return httpx.Response(
+                status_code=response.status_code,
+                headers=response.headers,
+                content=body,
+                request=response.request,
+                default_encoding=response.default_encoding,
+            )
 
     def _get_content_type(self, response: httpx.Response) -> str:
         """

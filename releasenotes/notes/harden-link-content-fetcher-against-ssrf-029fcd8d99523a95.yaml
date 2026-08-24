@@ -1,0 +1,10 @@
+fixes:
+  - |
+    Hardened ``LinkContentFetcher`` against server-side request forgery (SSRF). Every request target is now
+    validated before the request is made, including each redirect hop: redirects are followed manually with a
+    per-hop re-validation and a cap of ``max_redirects`` (default 5) hops, so a redirect from a trusted host to
+    an internal address is never fetched. Hosts can be restricted to a new ``allowed_hosts`` domain suffix
+    whitelist, and hosts resolving to private, loopback, link-local, multicast, reserved, or unique-local IP
+    addresses are always rejected. In addition, response bodies are now streamed and capped at
+    ``max_response_bytes`` (default 50 MB): larger responses raise an error instead of being fully loaded into
+    memory.

@@ -5,13 +5,32 @@
 import base64
 import logging
 import warnings
-from unittest.mock import Mock, patch
+from collections.abc import Iterator
+from contextlib import contextmanager, nullcontext
+from unittest.mock import patch
 
 import httpx
 import pytest
 from PIL import Image
 
 from haystack.dataclasses.image_content import ImageContent
+
+
+@contextmanager
+def mock_fetch_response(
+    url: str, status_code: int = 200, content: bytes | None = None, headers: dict[str, str] | None = None
+) -> Iterator[None]:
+    """
+    Not a test: makes the LinkContentFetcher used by `ImageContent.from_url` replay a single, real httpx
+    response without touching the network.
+    """
+    response = httpx.Response(status_code, content=content, headers=headers, request=httpx.Request("GET", url))
+    with (
+        patch("haystack.components.fetchers.link_content.httpx.Client.stream") as mock_stream,
+        patch("haystack.components.fetchers.link_content._resolve_host", return_value=["93.184.216.34"]),
+    ):
+        mock_stream.side_effect = lambda method, url, headers=None, **kwargs: nullcontext(response)
+        yield
 
 
 def test_image_content_init(base64_image_string):
@@ -171,12 +190,11 @@ def test_image_content_from_file_path_non_existing(test_files_path, caplog):
 
 
 def test_image_content_from_url(test_files_path):
-    with patch("haystack.components.fetchers.link_content.httpx.Client.get") as mock_get:
-        with open(test_files_path / "images" / "apple.jpg", "rb") as image_file:
-            image_bytes = image_file.read()
-        mock_response = Mock(status_code=200, content=image_bytes, headers={"Content-Type": "image/jpeg"})
-        mock_get.return_value = mock_response
-
+    with open(test_files_path / "images" / "apple.jpg", "rb") as image_file:
+        image_bytes = image_file.read()
+    with mock_fetch_response(
+        "https://example.com/apple.jpg", content=image_bytes, headers={"Content-Type": "image/jpeg"}
+    ):
         image_content = ImageContent.from_url(
             url="https://example.com/apple.jpg", size=(100, 100), detail="high", meta={"test": "test"}
         )
@@ -188,18 +206,13 @@ def test_image_content_from_url(test_files_path):
 
 
 def test_image_content_from_url_bad_request():
-    with patch("haystack.components.fetchers.link_content.httpx.Client.get") as mock_get:
-        mock_get.side_effect = httpx.HTTPStatusError("403 Client Error", request=Mock(), response=Mock())
-
+    with mock_fetch_response("https://non_existent_website_dot.com/image.jpg", status_code=403):
         with pytest.raises(httpx.HTTPStatusError):
             ImageContent.from_url(url="https://non_existent_website_dot.com/image.jpg", retry_attempts=0, timeout=1)
 
 
 def test_image_content_from_url_wrong_mime_type_text():
-    with patch("haystack.components.fetchers.link_content.httpx.Client.get") as mock_get:
-        mock_response = Mock(status_code=200, text="a text", headers={"Content-Type": "text/plain"})
-        mock_get.return_value = mock_response
-
+    with mock_fetch_response("https://example.com/text.txt", content=b"a text", headers={"Content-Type": "text/plain"}):
         with pytest.raises(ValueError):
             ImageContent.from_url(
                 url="https://example.com/text.txt", size=(100, 100), detail="high", meta={"test": "test"}
@@ -207,12 +220,11 @@ def test_image_content_from_url_wrong_mime_type_text():
 
 
 def test_image_content_from_url_wrong_mime_type_pdf(test_files_path):
-    with patch("haystack.components.fetchers.link_content.httpx.Client.get") as mock_get:
-        with open(test_files_path / "pdf" / "sample_pdf_1.pdf", "rb") as pdf_file:
-            pdf_bytes = pdf_file.read()
-        mock_response = Mock(status_code=200, content=pdf_bytes, headers={"Content-Type": "application/pdf"})
-        mock_get.return_value = mock_response
-
+    with open(test_files_path / "pdf" / "sample_pdf_1.pdf", "rb") as pdf_file:
+        pdf_bytes = pdf_file.read()
+    with mock_fetch_response(
+        "https://example.com/sample_pdf_1.pdf", content=pdf_bytes, headers={"Content-Type": "application/pdf"}
+    ):
         with pytest.raises(ValueError):
             ImageContent.from_url(
                 url="https://example.com/sample_pdf_1.pdf", size=(100, 100), detail="high", meta={"test": "test"}

@@ -5,13 +5,37 @@
 import base64
 import logging
 import warnings
+from collections.abc import Iterator
+from contextlib import contextmanager, nullcontext
 from pathlib import Path
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
 import httpx
 import pytest
 
 from haystack.dataclasses.file_content import FileContent
+
+
+@contextmanager
+def mock_fetch_response(
+    url: str, status_code: int = 200, content: bytes | None = None, headers: dict[str, str] | None = None
+) -> Iterator[None]:
+    """
+    Not a test: makes the LinkContentFetcher used by `FileContent.from_url` replay a single, real httpx
+    response without touching the network.
+    """
+    response = httpx.Response(
+        status_code,
+        content=content,
+        headers=headers or {"Content-Type": "application/pdf"},
+        request=httpx.Request("GET", url),
+    )
+    with (
+        patch("haystack.components.fetchers.link_content.httpx.Client.stream") as mock_stream,
+        patch("haystack.components.fetchers.link_content._resolve_host", return_value=["93.184.216.34"]),
+    ):
+        mock_stream.side_effect = lambda method, url, headers=None, **kwargs: nullcontext(response)
+        yield
 
 
 def test_file_content_init(base64_pdf_string):
@@ -118,12 +142,9 @@ def test_file_content_from_file_path_default_filename(test_files_path):
 
 
 def test_file_content_from_url(test_files_path):
-    with patch("haystack.components.fetchers.link_content.httpx.Client.get") as mock_get:
-        with open(test_files_path / "pdf" / "sample_pdf_3.pdf", "rb") as f:
-            pdf_bytes = f.read()
-        mock_response = Mock(status_code=200, content=pdf_bytes, headers={"Content-Type": "application/pdf"})
-        mock_get.return_value = mock_response
-
+    with open(test_files_path / "pdf" / "sample_pdf_3.pdf", "rb") as f:
+        pdf_bytes = f.read()
+    with mock_fetch_response("https://example.com/sample.pdf", content=pdf_bytes):
         file_content = FileContent.from_url(
             url="https://example.com/sample.pdf", filename="custom.pdf", extra={"test": "test"}
         )
@@ -135,21 +156,16 @@ def test_file_content_from_url(test_files_path):
 
 
 def test_file_content_from_url_default_filename(test_files_path):
-    with patch("haystack.components.fetchers.link_content.httpx.Client.get") as mock_get:
-        with open(test_files_path / "pdf" / "sample_pdf_3.pdf", "rb") as f:
-            pdf_bytes = f.read()
-        mock_response = Mock(status_code=200, content=pdf_bytes, headers={"Content-Type": "application/pdf"})
-        mock_get.return_value = mock_response
-
+    with open(test_files_path / "pdf" / "sample_pdf_3.pdf", "rb") as f:
+        pdf_bytes = f.read()
+    with mock_fetch_response("https://example.com/documents/sample.pdf", content=pdf_bytes):
         file_content = FileContent.from_url(url="https://example.com/documents/sample.pdf")
 
     assert file_content.filename == "sample.pdf"
 
 
 def test_file_content_from_url_bad_request():
-    with patch("haystack.components.fetchers.link_content.httpx.Client.get") as mock_get:
-        mock_get.side_effect = httpx.HTTPStatusError("403 Client Error", request=Mock(), response=Mock())
-
+    with mock_fetch_response("https://non_existent_website_dot.com/file.pdf", status_code=403):
         with pytest.raises(httpx.HTTPStatusError):
             FileContent.from_url(url="https://non_existent_website_dot.com/file.pdf", retry_attempts=0, timeout=1)
 
