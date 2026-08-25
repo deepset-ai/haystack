@@ -917,11 +917,19 @@ def _convert_streaming_chunks_to_chat_message(chunks: list[StreamingChunk]) -> C
                 _arguments=tool_call_dict["arguments"],
             )
 
-    # We dump the entire final response into meta to be consistent with non-streaming response
-    final_response = chunks[-1].meta.get("response") or {}
+    # We dump the entire final response into meta to be consistent with non-streaming response. The event carrying
+    # the final response (and its usage data) is not guaranteed to be the last event in the stream, so scan for it.
+    responses = [chunk.meta["response"] for chunk in chunks if chunk.meta.get("response")]
+    response_with_usage = next(
+        (response for response in reversed(responses) if response.get("usage") is not None), None
+    )
+    final_response = (response_with_usage or responses[-1]).copy() if responses else {}
     final_response.pop("output", None)
-    if chunks[-1].finish_reason is not None:
-        final_response["finish_reason"] = chunks[-1].finish_reason
+
+    # finish_reason can appear in different places so we look for the last one
+    finish_reasons = [chunk.finish_reason for chunk in chunks if chunk.finish_reason]
+    if finish_reasons:
+        final_response["finish_reason"] = finish_reasons[-1]
     if logprobs:
         final_response["logprobs"] = logprobs
 
