@@ -28,13 +28,14 @@ class TestChatPromptBuilder:
             ]
         )
         assert builder.required_variables == "*"
+        assert isinstance(builder.template, list)
         assert builder.template[0].text == "This is a {{ variable }}"
         assert builder.template[1].text == "This is a {{ variable2 }}"
         assert builder._variables is None
         assert builder._required_variables == "*"
 
         # we have inputs that contain: template, template_variables + inferred variables
-        inputs = builder.__haystack_input__._sockets_dict
+        inputs = builder.__haystack_input__._sockets_dict  # type: ignore[attr-defined]
         assert set(inputs.keys()) == {"template", "template_variables", "variable", "variable2"}
         assert inputs["template"].type == list[ChatMessage] | str | None
         assert inputs["template_variables"].type == dict[str, Any] | None
@@ -42,7 +43,7 @@ class TestChatPromptBuilder:
         assert inputs["variable2"].type == Any
 
         # response is always prompt
-        outputs = builder.__haystack_output__._sockets_dict
+        outputs = builder.__haystack_output__._sockets_dict  # type: ignore[attr-defined]
         assert set(outputs.keys()) == {"prompt"}
         assert outputs["prompt"].type == list[ChatMessage]
 
@@ -55,7 +56,7 @@ class TestChatPromptBuilder:
         assert builder._required_variables == "*"
 
         # we have inputs that contain: template, template_variables + variables
-        inputs = builder.__haystack_input__._sockets_dict
+        inputs = builder.__haystack_input__._sockets_dict  # type: ignore[attr-defined]
         assert set(inputs.keys()) == {"template", "template_variables", "var1", "var2"}
         assert inputs["template"].type == list[ChatMessage] | str | None
         assert inputs["template_variables"].type == dict[str, Any] | None
@@ -63,7 +64,7 @@ class TestChatPromptBuilder:
         assert inputs["var2"].type == Any
 
         # response is always prompt
-        outputs = builder.__haystack_output__._sockets_dict
+        outputs = builder.__haystack_output__._sockets_dict  # type: ignore[attr-defined]
         assert set(outputs.keys()) == {"prompt"}
         assert outputs["prompt"].type == list[ChatMessage]
 
@@ -72,19 +73,20 @@ class TestChatPromptBuilder:
             template=[ChatMessage.from_user("This is a {{ variable }}")], required_variables=["variable"]
         )
         assert builder.required_variables == ["variable"]
+        assert isinstance(builder.template, list)
         assert builder.template[0].text == "This is a {{ variable }}"
         assert builder._variables is None
         assert builder._required_variables == ["variable"]
 
         # we have inputs that contain: template, template_variables + inferred variables
-        inputs = builder.__haystack_input__._sockets_dict
+        inputs = builder.__haystack_input__._sockets_dict  # type: ignore[attr-defined]
         assert set(inputs.keys()) == {"template", "template_variables", "variable"}
         assert inputs["template"].type == list[ChatMessage] | str | None
         assert inputs["template_variables"].type == dict[str, Any] | None
         assert inputs["variable"].type == Any
 
         # response is always prompt
-        outputs = builder.__haystack_output__._sockets_dict
+        outputs = builder.__haystack_output__._sockets_dict  # type: ignore[attr-defined]
         assert set(outputs.keys()) == {"prompt"}
         assert outputs["prompt"].type == list[ChatMessage]
 
@@ -94,11 +96,12 @@ class TestChatPromptBuilder:
         builder = ChatPromptBuilder(template=template, variables=variables)
         assert builder.required_variables == "*"
         assert builder._variables == variables
+        assert isinstance(builder.template, list)
         assert builder.template[0].text == "Hello, {{ var1 }}, {{ var2 }}!"
         assert builder._required_variables == "*"
 
         # we have inputs that contain: template, template_variables + variables
-        inputs = builder.__haystack_input__._sockets_dict
+        inputs = builder.__haystack_input__._sockets_dict  # type: ignore[attr-defined]
         assert set(inputs.keys()) == {"template", "template_variables", "var1", "var2", "var3"}
         assert inputs["template"].type == list[ChatMessage] | str | None
         assert inputs["template_variables"].type == dict[str, Any] | None
@@ -107,7 +110,7 @@ class TestChatPromptBuilder:
         assert inputs["var3"].type == Any
 
         # response is always prompt
-        outputs = builder.__haystack_output__._sockets_dict
+        outputs = builder.__haystack_output__._sockets_dict  # type: ignore[attr-defined]
         assert set(outputs.keys()) == {"prompt"}
         assert outputs["prompt"].type == list[ChatMessage]
 
@@ -265,7 +268,8 @@ class TestChatPromptBuilder:
 
     def test_chat_message_list_with_mixed_object_list(self):
         prompt_builder = ChatPromptBuilder(
-            template=[ChatMessage.from_user("Hello"), "there world"], variables=["documents"]
+            template=[ChatMessage.from_user("Hello"), "there world"],  # type: ignore[list-item]
+            variables=["documents"],
         )
         with pytest.raises(
             ValueError, match="The ChatPromptBuilder expects a list containing only ChatMessage instances"
@@ -293,7 +297,7 @@ class TestChatPromptBuilder:
         @component
         class DocumentProducer:
             @component.output_types(documents=list[Document])
-            def run(self, doc_input: str):
+            def run(self, doc_input: str) -> dict[str, list[Document]]:
                 return {"documents": [Document(content=doc_input)]}
 
         pipe = Pipeline()
