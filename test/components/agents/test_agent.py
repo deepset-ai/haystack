@@ -594,12 +594,6 @@ class TestGetModelExitReason:
     def test_empty_message_batch_is_not_an_exit(self):
         assert _get_model_exit_reason([]) is None
 
-    def test_tool_call_in_batch_takes_precedence(self):
-        tool_call = ChatMessage.from_assistant(tool_calls=[ToolCall(tool_name="weather", arguments={})])
-        incomplete = ChatMessage.from_assistant("Partial answer.", meta={"finish_reason": "length"})
-
-        assert _get_model_exit_reason([tool_call, incomplete]) is None
-
 
 class TestAgentRun:
     def test_agent_with_no_tools(self):

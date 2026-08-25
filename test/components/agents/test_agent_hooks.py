@@ -142,6 +142,24 @@ def critique(state: State) -> None:
         state.set("continue_run", True)
 
 
+@hook
+def request_shorter_answer(state: State) -> None:
+    exit_reason = state.get("exit_reason")
+    state.set("seen_reasons", [exit_reason])
+    if exit_reason == "length":
+        state.set("messages", [ChatMessage.from_user("Continue with a shorter answer.")])
+        state.set("continue_run", True)
+
+
+@hook
+async def request_safe_answer(state: State) -> None:
+    exit_reason = state.get("exit_reason")
+    state.set("seen_reasons", [exit_reason])
+    if exit_reason == "content_filter":
+        state.set("messages", [ChatMessage.from_user("Answer at a safe, high level.")])
+        state.set("continue_run", True)
+
+
 class LifecycleHook:
     """A class-based hook that records its lifecycle calls (e.g. opening/closing a client)."""
 
@@ -495,15 +513,11 @@ class TestOnExitHook:
         assert fired == [1]
 
     def test_incomplete_generation_can_recover(self):
-        seen_reasons = []
-
-        def request_shorter_answer(state: State) -> None:
-            seen_reasons.append(state.get("exit_reason"))
-            if state.get("exit_reason") == "length":
-                state.set("messages", [ChatMessage.from_user("Continue with a shorter answer.")])
-                state.set("continue_run", True)
-
-        agent = _agent(MockChatGenerator(), hooks={"on_exit": [hook(request_shorter_answer)]})
+        agent = _agent(
+            MockChatGenerator(),
+            state_schema={"seen_reasons": {"type": list[str]}},
+            hooks={"on_exit": [request_shorter_answer]},
+        )
         agent.chat_generator.run = MagicMock(
             side_effect=[
                 {"replies": [ChatMessage.from_assistant("Partial", meta={"finish_reason": "length"})]},
@@ -514,7 +528,7 @@ class TestOnExitHook:
         result = agent.run(messages=[ChatMessage.from_user("hi")])
 
         assert agent.chat_generator.run.call_count == 2
-        assert seen_reasons == ["length", "text"]
+        assert result["seen_reasons"] == ["length", "text"]
         assert result["exit_reason"] == "text"
         assert result["step_count"] == 2
         second_call_messages = agent.chat_generator.run.call_args_list[1].kwargs["messages"]
@@ -815,15 +829,11 @@ class TestAgentHooksAsync:
 
     @pytest.mark.asyncio
     async def test_incomplete_generation_can_recover(self):
-        seen_reasons = []
-
-        async def request_safe_answer(state: State) -> None:
-            seen_reasons.append(state.get("exit_reason"))
-            if state.get("exit_reason") == "content_filter":
-                state.set("messages", [ChatMessage.from_user("Answer at a safe, high level.")])
-                state.set("continue_run", True)
-
-        agent = _agent(MockChatGenerator(), hooks={"on_exit": [hook(request_safe_answer)]})
+        agent = _agent(
+            MockChatGenerator(),
+            state_schema={"seen_reasons": {"type": list[str]}},
+            hooks={"on_exit": [request_safe_answer]},
+        )
         agent.chat_generator.run_async = AsyncMock(
             side_effect=[
                 {"replies": [ChatMessage.from_assistant("Partial", meta={"finish_reason": "content_filter"})]},
@@ -834,7 +844,7 @@ class TestAgentHooksAsync:
         result = await agent.run_async(messages=[ChatMessage.from_user("hi")])
 
         assert agent.chat_generator.run_async.call_count == 2
-        assert seen_reasons == ["content_filter", "text"]
+        assert result["seen_reasons"] == ["content_filter", "text"]
         assert result["exit_reason"] == "text"
         assert result["step_count"] == 2
 
