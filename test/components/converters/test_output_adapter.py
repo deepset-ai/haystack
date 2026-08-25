@@ -122,7 +122,8 @@ class TestOutputAdapter:
             template="{{ documents[0].content|custom_filter }}", output_type=str, custom_filters=custom_filters
         )
         adapter_dict = adapter.to_dict()
-        deserialized_adapter = OutputAdapter.from_dict(adapter_dict)
+        with _deserialization_context(unsafe=True):
+            deserialized_adapter = OutputAdapter.from_dict(adapter_dict)
 
         assert adapter.template == deserialized_adapter.template
         assert adapter.output_type == deserialized_adapter.output_type
@@ -139,7 +140,8 @@ class TestOutputAdapter:
             template="{{ documents[0].content|custom_filter }}", output_type=str, custom_filters=custom_filters
         )
         adapter_dict = adapter.to_dict()
-        deserialized_adapter = OutputAdapter.from_dict(adapter_dict)
+        with _deserialization_context(unsafe=True):
+            deserialized_adapter = OutputAdapter.from_dict(adapter_dict)
 
         assert adapter.template == deserialized_adapter.template
         assert adapter.output_type == deserialized_adapter.output_type
@@ -229,6 +231,28 @@ class TestOutputAdapter:
         }
         with pytest.raises(DeserializationError, match="unsafe=True while loading in safe mode"):
             OutputAdapter.from_dict(data)
+
+    def test_from_dict_rejects_custom_filters_in_safe_mode(self):
+        adapter = OutputAdapter(
+            template="{{ value | custom_filter }}",
+            output_type=str,
+            custom_filters={"custom_filter": custom_filter_to_sede},
+        )
+
+        with pytest.raises(DeserializationError, match="custom filters while loading in safe mode"):
+            OutputAdapter.from_dict(adapter.to_dict())
+
+    def test_from_dict_allows_custom_filters_when_loading_unsafe(self):
+        adapter = OutputAdapter(
+            template="{{ value | custom_filter }}",
+            output_type=str,
+            custom_filters={"custom_filter": custom_filter_to_sede},
+        )
+
+        with _deserialization_context(unsafe=True):
+            deserialized_adapter = OutputAdapter.from_dict(adapter.to_dict())
+
+        assert deserialized_adapter.custom_filters == adapter.custom_filters
 
     def test_from_dict_allows_unsafe_when_loading_unsafe(self):
         # When the loader explicitly opts into unsafe mode, the embedded `unsafe=True` is honored.

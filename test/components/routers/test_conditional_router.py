@@ -396,7 +396,8 @@ class TestRouter:
         result = router.run(**kwargs)
         assert result == {"test": 123}
         serialized_router = router.to_dict()
-        deserialized_router = ConditionalRouter.from_dict(serialized_router)
+        with _deserialization_context(unsafe=True):
+            deserialized_router = ConditionalRouter.from_dict(serialized_router)
         assert deserialized_router.custom_filters == router.custom_filters
         assert deserialized_router.custom_filters["custom_filter_to_sede"]("123-456-789") == 123
         assert result == deserialized_router.run(**kwargs)
@@ -442,6 +443,36 @@ class TestRouter:
             router = ConditionalRouter.from_dict(data)
         assert router._unsafe
         assert isinstance(router._env, NativeEnvironment)
+
+    def test_from_dict_rejects_custom_filters_in_safe_mode(self):
+        routes: list[Route] = [
+            {
+                "condition": "{{ value | custom_filter_to_sede == 123 }}",
+                "output": "{{ value }}",
+                "output_type": str,
+                "output_name": "value",
+            }
+        ]
+        router = ConditionalRouter(routes, custom_filters={"custom_filter_to_sede": custom_filter_to_sede})
+
+        with pytest.raises(DeserializationError, match="custom filters while loading in safe mode"):
+            ConditionalRouter.from_dict(router.to_dict())
+
+    def test_from_dict_allows_custom_filters_when_loading_unsafe(self):
+        routes: list[Route] = [
+            {
+                "condition": "{{ value | custom_filter_to_sede == 123 }}",
+                "output": "{{ value }}",
+                "output_type": str,
+                "output_name": "value",
+            }
+        ]
+        router = ConditionalRouter(routes, custom_filters={"custom_filter_to_sede": custom_filter_to_sede})
+
+        with _deserialization_context(unsafe=True):
+            deserialized_router = ConditionalRouter.from_dict(router.to_dict())
+
+        assert deserialized_router.custom_filters == router.custom_filters
 
     def test_validate_output_type_without_unsafe(self):
         routes: list[Route] = [
@@ -766,7 +797,8 @@ class TestRouter:
         ]
 
         router = ConditionalRouter(routes, custom_filters={"get_area_code": custom_filter_to_sede})
-        reloaded_router = ConditionalRouter.from_dict(router.to_dict())
+        with _deserialization_context(unsafe=True):
+            reloaded_router = ConditionalRouter.from_dict(router.to_dict())
         assert reloaded_router.custom_filters == router.custom_filters
         assert reloaded_router.routes == router.routes
 

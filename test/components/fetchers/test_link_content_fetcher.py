@@ -159,6 +159,25 @@ class TestLinkContentFetcher:
             with pytest.raises(httpx.HTTPStatusError):
                 fetcher.run(["https://non_existent_website_dot.com/"])
 
+    def test_run_retries_once_when_retry_attempts_is_one(self):
+        url = "https://www.example.com"
+        successful_response = Mock(status_code=200, text="Success", headers={"Content-Type": "text/plain"})
+
+        with patch("haystack.components.fetchers.link_content.httpx.Client") as client_mock:
+            client = client_mock.return_value
+            client.headers = {}
+            client.get.side_effect = [
+                httpx.RequestError("transient failure", request=httpx.Request("GET", url)),
+                successful_response,
+            ]
+
+            fetcher = LinkContentFetcher(retry_attempts=1)
+            with patch("haystack.components.fetchers.link_content.wait_exponential", return_value=wait_none()):
+                streams = fetcher.run(urls=[url])["streams"]
+
+        assert streams[0].data == successful_response.text.encode()
+        assert client.get.call_count == 2
+
     def test_request_headers_merging_and_ua_override(self):
         # Patch the Client class to control the instance created by LinkContentFetcher
         with patch("haystack.components.fetchers.link_content.httpx.Client") as ClientMock:

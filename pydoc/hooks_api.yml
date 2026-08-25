@@ -1,6 +1,6 @@
 loaders:
   - search_path: [../haystack/hooks]
-    modules: ["protocol", "from_function", "compaction/hooks", "compaction/sliding_window",
+    modules: ["protocol", "from_function", "budget/hooks", "compaction/hooks", "compaction/sliding_window",
       "compaction/summarization", "compaction/tool_result_pruning",
       "compaction/types/protocol", "human_in_the_loop/dataclasses", "human_in_the_loop/hooks",
       "human_in_the_loop/policies", "human_in_the_loop/strategies", "human_in_the_loop/user_interfaces",

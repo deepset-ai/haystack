@@ -85,6 +85,7 @@ _RUN_METADATA_STATE_KEYS: dict[str, dict[str, Any]] = {
 # Internal state keys the Agent manages for run control and hooks. Like run-metadata keys they are reserved and cannot
 # be redefined by users, but unlike them they are NOT exposed as Agent inputs or outputs (purely internal state):
 # - `continue_run`: set by an `on_exit` hook to keep the Agent running instead of stopping (re-read each exit attempt).
+# - `stop_run`: set by a hook to stop the run, read before each LLM call and used as the `exit_reason`.
 # - `tools`: the flattened tools available in the current step, so a hook can inspect them (e.g. HITL confirmation).
 # - `hook_context`: per-run request-scoped resources passed to `run`/`run_async` for hooks to read.
 # - `context_tokens`: approximate current context-window size, refreshed after each LLM call, for hooks to read
@@ -92,6 +93,7 @@ _RUN_METADATA_STATE_KEYS: dict[str, dict[str, Any]] = {
 #   exposed as an output because it is a best-effort snapshot; see `_record_context_tokens`.
 _INTERNAL_STATE_KEYS: dict[str, dict[str, Any]] = {
     "continue_run": {"type": bool, "handler": replace_values},
+    "stop_run": {"type": str, "handler": replace_values},
     "tools": {"type": list, "handler": replace_values},
     "hook_context": {"type": dict[str, Any], "handler": replace_values},
     "context_tokens": {"type": int, "handler": replace_values},
@@ -855,7 +857,7 @@ class Agent:
               `"length"` or `"content_filter"` (the model returned an incomplete reply, which may contain partial
               text), the name of the tool that satisfied a tool exit condition (in which case `last_message` is that
               tool's result), or `"max_agent_steps"` (the Agent hit `max_agent_steps` before meeting an exit
-              condition).
+              condition), or a custom reason a hook supplied through the `stop_run` state key.
             - Any additional keys defined in the `state_schema`.
         """
         agent_inputs = {"messages": messages, "streaming_callback": streaming_callback, **kwargs}
@@ -941,7 +943,7 @@ class Agent:
               `"length"` or `"content_filter"` (the model returned an incomplete reply, which may contain partial
               text), the name of the tool that satisfied a tool exit condition (in which case `last_message` is that
               tool's result), or `"max_agent_steps"` (the Agent hit `max_agent_steps` before meeting an exit
-              condition).
+              condition), or a custom reason a hook supplied through the `stop_run` state key.
             - Any additional keys defined in the `state_schema`.
         """
         agent_inputs = {"messages": messages, "streaming_callback": streaming_callback, **kwargs}
@@ -995,6 +997,10 @@ class Agent:
             exe_context.state.set("tools", current_tools, handler_override=replace_values)
 
             _run_hooks(hooks=self.hooks, hook_point=BEFORE_LLM, state=exe_context.state)
+            # A hook requested a stop: end the run at the step boundary, before spending another LLM call.
+            if (reason := exe_context.state.data.get("stop_run")) is not None:
+                exe_context.state.set("exit_reason", reason)
+                return False
             chat_generator_inputs = {
                 "messages": exe_context.state.data["messages"],
                 **exe_context.chat_generator_inputs,
@@ -1059,6 +1065,10 @@ class Agent:
             exe_context.state.set("tools", current_tools, handler_override=replace_values)
 
             await _run_hooks_async(hooks=self.hooks, hook_point=BEFORE_LLM, state=exe_context.state)
+            # A hook requested a stop: end the run at the step boundary, before spending another LLM call.
+            if (reason := exe_context.state.data.get("stop_run")) is not None:
+                exe_context.state.set("exit_reason", reason)
+                return False
             chat_generator_inputs = {
                 "messages": exe_context.state.data["messages"],
                 **exe_context.chat_generator_inputs,

@@ -5,7 +5,9 @@
 import functools
 import io
 import json
+import logging
 import operator
+import os
 import subprocess
 import types
 from collections.abc import Callable
@@ -14,6 +16,7 @@ from unittest import mock
 import pytest
 
 from haystack import component as component_module
+from haystack.core import serialization_security as ss
 from haystack.core.errors import DeserializationError
 from haystack.core.pipeline import Pipeline
 from haystack.core.serialization import (
@@ -25,16 +28,18 @@ from haystack.core.serialization import (
 from haystack.core.serialization_security import (
     _DENIED_BUILTIN_NAMES,
     DESERIALIZATION_ALLOWLIST_ENV_VAR,
+    UNSAFE_DESERIALIZATION_ENV_VAR,
     _check_module_allowed,
     _current_context,
     _deserialization_context,
     _DeserializationContext,
     _extra_allowed_modules,
     _is_module_allowed,
+    _is_unsafe_deserialization,
     _module_matches,
 )
 from haystack.marshal import YamlMarshaller
-from haystack.utils import deserialize_callable
+from haystack.utils import deserialize_callable, type_serialization
 from haystack.utils.type_serialization import deserialize_type
 
 
@@ -47,6 +52,11 @@ def _reset_allowlist_state(monkeypatch):
     "untrusted" really means untrusted.
     """
     monkeypatch.delenv(DESERIALIZATION_ALLOWLIST_ENV_VAR, raising=False)
+    monkeypatch.delenv(UNSAFE_DESERIALIZATION_ENV_VAR, raising=False)
+    # Clear the frozen env-var snapshot so each test starts like a fresh process. No `raising=False`
+    # here on purpose: if the attribute is ever renamed, this must fail loudly rather than silently
+    # become a no-op and leak one test's mode into the next.
+    monkeypatch.setattr(ss, "_unsafe_env_snapshot", None)
     snapshot = list(_extra_allowed_modules)
     _extra_allowed_modules.clear()
     token = _current_context.set(_DeserializationContext())
@@ -175,6 +185,131 @@ class TestEnvVar:
     def test_env_var_ignores_empty_entries(self, monkeypatch):
         monkeypatch.setenv(DESERIALIZATION_ALLOWLIST_ENV_VAR, ", ,mypkg,,")
         assert _is_module_allowed("mypkg.sub")
+
+
+class TestUnsafeDeserializationEnvVar:
+    """
+    `HAYSTACK_UNSAFE_DESERIALIZATION` is a process-wide off switch: when truthy it makes every load
+    behave as if `unsafe=True` was passed, disabling all deserialization safety checks. It is a
+    separate axis from the module allowlist (`HAYSTACK_DESERIALIZATION_ALLOWLIST`), which only widens
+    which modules may be imported.
+    """
+
+    def test_unset_keeps_safe_mode(self):
+        # Sanity: with the env var unset, the guards are active.
+        assert not _is_module_allowed("subprocess")
+        with pytest.raises(DeserializationError):
+            deserialize_callable("os.system")
+
+    @pytest.mark.parametrize("value", ["1", "true", "TRUE", "True"])
+    def test_truthy_values_disable_all_checks(self, monkeypatch, value):
+        monkeypatch.setenv(UNSAFE_DESERIALIZATION_ENV_VAR, value)
+        # Allowlist bypassed ...
+        assert _is_module_allowed("subprocess")
+        assert deserialize_callable("os.system") is __import__("os").system
+        # ... and so are the denylists / control-plane / traversal guards.
+        assert callable(deserialize_callable("builtins.eval"))
+        assert callable(deserialize_callable("haystack.core.serialization_security.allow_deserialization_module"))
+        assert callable(
+            deserialize_callable("haystack.core.serialization_security.allow_deserialization_module.__globals__.get")
+        )
+
+    @pytest.mark.parametrize("value", ["", "0", "false", "no", "off", "yes", "on", "nope"])
+    def test_falsey_values_keep_safe_mode(self, monkeypatch, value):
+        monkeypatch.setenv(UNSAFE_DESERIALIZATION_ENV_VAR, value)
+        with pytest.raises(DeserializationError):
+            deserialize_callable("os.system")
+
+    def test_allows_unsafe_output_adapter_component(self, monkeypatch):
+        # A serialized OutputAdapter with `unsafe: true` loads under the env var, exactly as it would
+        # under `Pipeline.loads(..., unsafe=True)`.
+        yaml = (
+            "components:\n"
+            "  adapter:\n"
+            "    type: haystack.components.converters.output_adapter.OutputAdapter\n"
+            "    init_parameters:\n"
+            '      template: "{{ documents[0] }}"\n'
+            "      output_type: str\n"
+            "      unsafe: true\n"
+            "connections: []\n"
+        )
+        with pytest.raises(DeserializationError):
+            Pipeline.loads(yaml)  # refused in safe mode
+        # The safe-mode load above froze the snapshot, so simulate a fresh process before enabling
+        # the env var — a mid-process flip is ignored by design (see the freezing tests below).
+        monkeypatch.setenv(UNSAFE_DESERIALIZATION_ENV_VAR, "1")
+        monkeypatch.setattr(ss, "_unsafe_env_snapshot", None)
+        Pipeline.loads(yaml)  # accepted with the env var set
+
+    def test_warns_once_when_active(self, monkeypatch, caplog):
+        monkeypatch.setenv(UNSAFE_DESERIALIZATION_ENV_VAR, "1")
+        with caplog.at_level(logging.WARNING):
+            assert ss._unsafe_env_enabled() is True
+            assert ss._unsafe_env_enabled() is True
+        warnings = [r for r in caplog.records if UNSAFE_DESERIALIZATION_ENV_VAR in r.getMessage()]
+        assert len(warnings) == 1, "the safety-disabled warning must be logged exactly once per process"
+        assert "DISABLED" in warnings[0].getMessage()
+
+    def test_value_is_frozen_after_the_first_check(self, monkeypatch):
+        # The first check (here: a safe-mode resolution) snapshots the env var ...
+        with pytest.raises(DeserializationError):
+            deserialize_callable("os.system")
+        # ... so setting it afterwards has no effect for the rest of the process.
+        monkeypatch.setenv(UNSAFE_DESERIALIZATION_ENV_VAR, "1")
+        assert not _is_module_allowed("subprocess")
+        with pytest.raises(DeserializationError):
+            deserialize_callable("os.system")
+
+    def test_freezing_applies_in_both_directions(self, monkeypatch):
+        # Symmetrically, unsetting it after the snapshot does not re-arm the checks: the switch is
+        # decided once, so the mode of a process cannot change under a caller's feet mid-run.
+        monkeypatch.setenv(UNSAFE_DESERIALIZATION_ENV_VAR, "1")
+        assert _is_module_allowed("subprocess")
+        monkeypatch.delenv(UNSAFE_DESERIALIZATION_ENV_VAR)
+        assert _is_module_allowed("subprocess")
+
+    def test_env_write_gadget_is_not_resolvable_from_serialized_data(self, monkeypatch):
+        """
+        First line of defense: the gadget cannot be resolved at all.
+
+        `os.environ.update` is `collections.abc.MutableMapping.update`, and `collections` is on the
+        default allowlist — so a handle that walks an allowlisted module's scope-level `os.environ`
+        binding ends at a callable whose own module *is* allowed. The per-hop check on the real
+        module of every traversed object rejects the `environ` hop itself, because that object
+        belongs to the un-allowlisted `os`.
+        """
+        monkeypatch.setattr(type_serialization, "environ", os.environ, raising=False)
+        with pytest.raises(DeserializationError, match="module 'os'"):
+            deserialize_callable("haystack.utils.type_serialization.environ.update")
+
+    def test_env_write_reachable_from_serialized_data_cannot_disable_safety(self, monkeypatch):
+        """
+        Second line of defense, and the reason the snapshot is frozen.
+
+        Even granting the attacker the env write that the gadget above would have performed — say
+        via a mutator the traversal check cannot see, or as an `OutputAdapter` Jinja
+        `custom_filters` entry that runs while the component is being constructed — the ongoing
+        load must not flip into unsafe mode. Were the env var read fresh on every check, it would,
+        handing the pipeline arbitrary code execution.
+        """
+        # Any deserialization check snapshots the env var, so by the time the attacker's payload
+        # runs the mode is already frozen — as it would be mid-load in a real process. Assert the
+        # safe-mode baseline here to take that snapshot without relying on the gadget above.
+        assert not _is_module_allowed("subprocess")
+
+        # Register the variable before the write: the write below goes straight to the real
+        # environment, so monkeypatch has to know the pre-attack state to undo it at teardown.
+        # (Registering afterwards would record the polluted value and leak it into other tests.)
+        monkeypatch.setenv(UNSAFE_DESERIALIZATION_ENV_VAR, "")
+        os.environ.update({UNSAFE_DESERIALIZATION_ENV_VAR: "1"})
+        assert os.environ[UNSAFE_DESERIALIZATION_ENV_VAR] == "1"  # the write lands ...
+
+        assert not _is_unsafe_deserialization()  # ... and changes nothing
+        assert not _is_module_allowed("subprocess")
+        with pytest.raises(DeserializationError):
+            deserialize_callable("os.system")
+        with pytest.raises(DeserializationError):
+            deserialize_callable("builtins.eval")
 
 
 class TestCheckModuleAllowed:
@@ -421,18 +556,20 @@ class TestDeniedDeserializerInternals:
         )
 
     def test_pipeline_loads_rejects_output_adapter_self_disable_vector(self):
-        # End-to-end reproduction of the reported RCE via OutputAdapter, in default safe mode.
+        # End-to-end reproduction of the reported RCE via OutputAdapter, in default safe mode. The
+        # broad serialized-filter gate rejects it before any control-plane callable is resolved.
         yaml = self._self_disable_yaml(
             "haystack.components.converters.output_adapter.OutputAdapter",
             "      template: \"{{ '*' | allow }}{{ 'os.system' | dc | mp(cmds) | list }}\"\n      output_type: str\n",
         )
         with mock.patch("os.system") as mocked_system:
-            with pytest.raises(DeserializationError, match="deserialization control plane"):
+            with pytest.raises(DeserializationError, match="custom filters while loading in safe mode"):
                 Pipeline.loads(yaml)
         assert not mocked_system.called
 
     def test_pipeline_loads_rejects_conditional_router_self_disable_vector(self):
-        # Same chain carried by ConditionalRouter; removing one component is not a mitigation.
+        # Same chain carried by ConditionalRouter; its serialized filters are rejected before the
+        # narrower control-plane callable checks need to run.
         extra = (
             "      routes:\n"
             "        - condition: \"{{ ['*'|allow, ('os.system'|dc|mp(cmds)|list)] and True }}\"\n"
@@ -442,7 +579,7 @@ class TestDeniedDeserializerInternals:
         )
         yaml = self._self_disable_yaml("haystack.components.routers.conditional_router.ConditionalRouter", extra)
         with mock.patch("os.system") as mocked_system:
-            with pytest.raises(DeserializationError, match="deserialization control plane"):
+            with pytest.raises(DeserializationError, match="custom filters while loading in safe mode"):
                 Pipeline.loads(yaml)
         assert not mocked_system.called
 
@@ -505,7 +642,7 @@ class TestDeniedDeserializerInternals:
             "      unsafe: false\n"
             "connections: []\n"
         )
-        with pytest.raises(DeserializationError, match="deserialization control plane"):
+        with pytest.raises(DeserializationError, match="custom filters while loading in safe mode"):
             Pipeline.loads(poison_yaml)
         assert _extra_allowed_modules == []
         with pytest.raises(DeserializationError):
@@ -586,8 +723,8 @@ class TestDeniedPipelineEntryPoints:
 
     def test_pipeline_loads_rejects_nested_unsafe_load_run_vector(self):
         # End-to-end reproduction, in default safe mode. The top pipeline binds Pipeline.loads (L) and
-        # Pipeline.run (R) as custom_filters; the block fires while resolving L at load, before any
-        # template renders, so os.system is never reached and the allowlist is never poisoned.
+        # Pipeline.run (R) as custom_filters; the broad serialized-filter gate fires before resolving
+        # L, so os.system is never reached and the allowlist is never poisoned.
         top_yaml = (
             "components:\n"
             "  c:\n"
@@ -602,7 +739,7 @@ class TestDeniedPipelineEntryPoints:
             "connections: []\n"
         )
         with mock.patch("os.system") as mocked_system:
-            with pytest.raises(DeserializationError, match="deserialization control plane"):
+            with pytest.raises(DeserializationError, match="custom filters while loading in safe mode"):
                 Pipeline.loads(top_yaml)
         assert not mocked_system.called
         assert _extra_allowed_modules == []
@@ -652,9 +789,11 @@ class TestPipelineCallableClassification:
     SAFE_TO_RESOLVE: dict[str, set[str]] = {
         "PipelineBase": {
             "add_component",
+            "add_components",
             "close",
             "close_async",
             "connect",
+            "connect_many",
             "draw",
             "dump",
             "dumps",
@@ -760,7 +899,7 @@ class TestObjectInternalsTraversal:
 
     def test_pipeline_loads_rejects_globals_rewrite_vector(self):
         # End-to-end: rewriting `_extra_allowed_modules` via `__globals__.update` in default safe
-        # mode, without touching any blocked resolver or the protected state objects directly.
+        # mode. The serialized-filter gate rejects the handle before attribute traversal begins.
         poison_yaml = (
             "components:\n"
             "  adapter:\n"
@@ -773,7 +912,7 @@ class TestObjectInternalsTraversal:
             "      unsafe: false\n"
             "connections: []\n"
         )
-        with pytest.raises(DeserializationError, match="internal attribute"):
+        with pytest.raises(DeserializationError, match="custom filters while loading in safe mode"):
             Pipeline.loads(poison_yaml)
         assert _extra_allowed_modules == []
         with pytest.raises(DeserializationError):
@@ -785,11 +924,10 @@ class TestModuleAttributeWalkBypass:
     The allowlist must be enforced against the module a handle
     *actually resolves to*, not against a string prefix of the declared handle.
 
-    An allowlisted package can expose another module as an attribute (a module-scope `import os`
-    makes `haystack.utils.auth.os` the standard-library `os` module). A handle like
-    `haystack.utils.auth.os.system` carries the allowlisted `haystack` prefix, so the old
-    prefix-only check accepted it, and the resolver then walked `.os.system` into the un-allowlisted
-    `os` module — a deserialization-allowlist bypass reaching arbitrary command execution.
+    An allowlisted package can expose an object from another module as an attribute. A handle can
+    then carry an allowlisted `haystack` prefix while its attribute walk escapes through that object
+    into an unallowlisted module. Every intermediate object's real module must be checked, not only
+    module objects and the final callable.
     """
 
     # (handle, module the walk escapes into) — real gadgets present in the default install.
@@ -821,6 +959,15 @@ class TestModuleAttributeWalkBypass:
         monkeypatch.setattr("haystack.utils.auth.injected_gadget", subprocess.getoutput, raising=False)
         with pytest.raises(DeserializationError, match="module 'subprocess'"):
             deserialize_callable("haystack.utils.auth.injected_gadget")
+
+    def test_callable_walk_through_reexported_unallowlisted_class_rejected(self):
+        # `Console` is re-exported from an allowlisted Haystack module but belongs to `rich.console`.
+        # Its `_environ` class attribute is the live `os.environ` mapping, whose `update` method
+        # reports the default-allowlisted `collections.abc` module. Checking only module hops and the
+        # final callable therefore misses the escape; checking the intermediate class rejects it.
+        handle = "haystack.hooks.human_in_the_loop.user_interfaces.Console._environ.update"
+        with pytest.raises(DeserializationError, match="module 'rich.console'"):
+            deserialize_callable(handle)
 
     def test_legitimate_haystack_callable_still_resolves(self):
         from haystack.utils.callable_serialization import serialize_callable

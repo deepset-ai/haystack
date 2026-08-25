@@ -118,9 +118,11 @@ Once all your components are created and ready to be combined in a pipeline, the
 
 1. Create the pipeline with `Pipeline()`.
    This creates the Pipeline object.
-2. Add components to the pipeline, one by one, with `.add_component(name, component)`.
+2. Add components to the pipeline with `.add_components({name: component})` or add them individually with
+   `.add_component(name, component)`.
    This just adds components to the pipeline without connecting them yet. It's especially useful for loops as it allows the smooth connection of the components in the next step because they all already exist in the pipeline.
-3. Connect components with `.connect("producer_component.output_name", "consumer_component.input_name")`.
+3. Connect several component pairs with `.connect_many([(sender, receiver)])`, or connect one pair with
+   `.connect("producer_component.output_name", "consumer_component.input_name")`.
    At this step, you explicitly connect one of the outputs of a component to one of the inputs of the next component. This is also when the pipeline validates the connection without running the components. It makes the validation fast.
 4. Run the pipeline with `.run({"component_1": {"mandatory_inputs": value}})`.
    Finally, you run the Pipeline by specifying the first component in the pipeline and passing its mandatory inputs. Optionally, you can pass inputs to other components, for example: `.run({"component_1": {"mandatory_inputs": value}, "component_2": {"inputs": value}})`.

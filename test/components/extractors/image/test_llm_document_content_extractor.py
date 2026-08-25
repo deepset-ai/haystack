@@ -4,6 +4,7 @@
 
 import asyncio
 import os
+import threading
 from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
@@ -579,6 +580,33 @@ class TestLLMDocumentContentExtractorAsync:
         assert len(result["documents"]) == 1
         assert len(result["failed_documents"]) == 0
         assert result["documents"][0].content == "Extracted via sync run"
+
+    @pytest.mark.asyncio
+    @patch.object(DocumentToImageContent, "run")
+    async def test_run_async_converts_images_off_the_event_loop(self, mock_doc_to_image_run):
+        """
+        Turning documents into images reads the files and renders PDF pages, and `DocumentToImageContent`
+        only has a synchronous `run`, so `run_async` has to hand that work to a thread.
+        """
+        conversion_thread = None
+
+        def record_thread(documents):
+            nonlocal conversion_thread
+            conversion_thread = threading.current_thread()
+            return {"image_contents": [ImageContent.from_file_path("./test/test_files/images/apple.jpg")]}
+
+        mock_doc_to_image_run.side_effect = record_thread
+
+        mock_chat_generator = Mock(spec=OpenAIChatGenerator)
+        mock_chat_generator.run_async = AsyncMock(
+            return_value={"replies": [ChatMessage.from_assistant(text='{"document_content": "Extracted"}')]}
+        )
+        extractor = LLMDocumentContentExtractor(chat_generator=mock_chat_generator)
+
+        await extractor.run_async(documents=[Document(content="", meta={"file_path": "/path/to/image.pdf"})])
+
+        assert conversion_thread is not None
+        assert conversion_thread is not threading.current_thread()
 
     @pytest.mark.asyncio
     @patch.object(DocumentToImageContent, "run")
