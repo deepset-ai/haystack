@@ -66,8 +66,7 @@ from haystack.utils.deserialization import deserialize_component_inplace
 logger = logging.getLogger(__name__)
 
 # `exit_reason` values the Agent sets when it stops without a tool exit condition: a tool-call-free reply, an
-# incomplete model generation, or the `max_agent_steps` budget running out. A tool exit condition instead reports the
-# tool's name.
+# incomplete model generation, or the `max_agent_steps` budget running out.
 _EXIT_REASON_TEXT = "text"
 _EXIT_REASON_LENGTH = "length"
 _EXIT_REASON_CONTENT_FILTER = "content_filter"
@@ -160,18 +159,27 @@ def _get_model_exit_reason(messages: list[ChatMessage]) -> str | None:
     complete answer. An empty response without a recognized terminal reason does not trigger an exit, preserving the
     Agent's recovery behavior for malformed tool calls that a Chat Generator discarded.
     """
+    # If the messages list is empty or the last message has tool calls, don't exit.
     if not messages or any(message.tool_call for message in messages):
         return None
 
     last = messages[-1]
+
+    # If the last message is not from the assistant, don't exit.
     if not last.is_from(ChatRole.ASSISTANT):
         return None
+
+    # If the finish reason on the last message is length or content_filter, exit with that reason.
     if last.meta.get("finish_reason") == _EXIT_REASON_LENGTH:
         return _EXIT_REASON_LENGTH
     if last.meta.get("finish_reason") == _EXIT_REASON_CONTENT_FILTER:
         return _EXIT_REASON_CONTENT_FILTER
+
+    # If the last message has text, exit with the text reason.
     if last.text:
         return _EXIT_REASON_TEXT
+
+    # If we reached here no valid exit reason was found, so don't exit.
     return None
 
 
@@ -1027,7 +1035,7 @@ class Agent:
             _run_hooks(hooks=self.hooks, hook_point=BEFORE_TOOL, state=exe_context.state)
             # Re-read the pending tool calls from State so that any rewrites a before_tool hook made (e.g.
             # ConfirmationHook rejecting or modifying calls) are honored by the executor.
-            pending_tool_call_messages = _pending_tool_call_messages_from_state(exe_context.state)
+            pending_tool_call_messages = _pending_tool_call_messages_from_state(state=exe_context.state)
 
             tool_execution_inputs = {
                 "messages": pending_tool_call_messages,
@@ -1097,7 +1105,7 @@ class Agent:
             await _run_hooks_async(hooks=self.hooks, hook_point=BEFORE_TOOL, state=exe_context.state)
             # Re-read the pending tool calls from State so that any rewrites a before_tool hook made (e.g.
             # ConfirmationHook rejecting or modifying calls) are honored by the executor.
-            pending_tool_call_messages = _pending_tool_call_messages_from_state(exe_context.state)
+            pending_tool_call_messages = _pending_tool_call_messages_from_state(state=exe_context.state)
 
             tool_execution_inputs = {
                 "messages": pending_tool_call_messages,
