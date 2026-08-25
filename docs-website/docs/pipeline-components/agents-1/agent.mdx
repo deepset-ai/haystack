@@ -63,10 +63,14 @@ print(response["exit_reason"])  # "text"
 
 The `exit_reason` output tells you why the agent stopped, which makes it easy to route the agent's output downstream — for example, with a [`ConditionalRouter`](../routers/conditionalrouter.mdx). It is one of:
 
-- `"text"`: the model returned a reply with no tool calls.
+- `"text"`: the model returned a complete reply with no tool calls.
+- `"length"`: the model reached its output-token limit. `last_message` may contain a partial response.
+- `"content_filter"`: a content filter stopped the model response. `last_message` may contain a partial response.
 - the name of the tool that satisfied a tool exit condition. In this case `last_message` is that tool's result — a tool-result `ChatMessage` whose `text` is empty — so `exit_reason` tells you how to consume it.
 - `"max_agent_steps"`: the agent reached `max_agent_steps` before meeting an exit condition.
 - a custom reason set by a hook through the `stop_run` state key, such as `"token_budget_exceeded"` from the [`TokenBudgetHook`](./token-budget.mdx).
+
+The Agent stops by default on `"length"` and `"content_filter"` so it does not repeatedly submit an unchanged request. These reasons do not make recovery impossible: an `on_exit` hook can inspect the reason, rewrite the messages, and set `continue_run` to `True`. Alternatively, route the result downstream to retry with different generation settings or request human review.
 
 Because `exit_reason` is available on the live `State`, an `after_run` [hook](./hooks.mdx) can read it to react to how the run ended — for example, appending a fallback answer when the step budget is exhausted before the agent finished:
 
@@ -83,6 +87,23 @@ def fallback_on_max_steps(state: State) -> None:
             "messages",
             [ChatMessage.from_assistant("Sorry, I ran out of steps before finishing.")],
         )
+```
+
+For example, this hook requests one shorter continuation after an output-limit exit. The Agent's existing `max_agent_steps` setting still bounds the run.
+
+```python
+@hook
+def recover_from_output_limit(state: State) -> None:
+    recovery_prompt = "Continue with a shorter answer."
+    recovery_attempted = any(
+        message.text == recovery_prompt for message in state.get("messages", [])
+    )
+    if state.get("exit_reason") == "length" and not recovery_attempted:
+        state.set(
+            "messages",
+            [ChatMessage.from_user(recovery_prompt)],
+        )
+        state.set("continue_run", True)
 ```
 
 ## Parameters
