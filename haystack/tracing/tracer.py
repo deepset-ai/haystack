@@ -69,14 +69,8 @@ class Span(abc.ABC):
         """
         Record an exception that caused the span's operation to fail.
 
-        The default implementation uses OpenTelemetry's `error.type` span attribute. Because Haystack's generic
-        `Span` interface does not expose events, it also stores OpenTelemetry's `exception.message` exception-event
-        field as a content tag. The exception type is always recorded so failures remain queryable without content
-        tracing. The exception message can contain sensitive or high-cardinality data, so it is only recorded when
-        content tracing is enabled.
-
-        Tracer integrations can override this method to use their backend's native exception event and error-status
-        APIs. This default tag-based representation keeps existing third-party `Span` implementations compatible.
+        Records `error.type` as a tag. When content tracing is enabled, also records `exception.message`.
+        Tracer integrations can override this method to use their backend's native exception API.
 
         :param exception: The exception that caused the operation represented by this span to fail.
         """
