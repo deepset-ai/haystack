@@ -246,6 +246,33 @@ class TestConversionToStreamingChunks:
         message = _convert_streaming_chunks_to_chat_message([chunk])
         assert message.meta["finish_reason"] == finish_reason
 
+    def test_convert_streaming_chunks_scans_for_final_response_and_finish_reason(self) -> None:
+        chunks = [
+            StreamingChunk(content="Hello", meta={"received_at": ANY}),
+            StreamingChunk(
+                content="",
+                finish_reason="stop",
+                meta={
+                    "response": {
+                        "id": "resp_123",
+                        "output": [],
+                        "usage": {"input_tokens": 1, "output_tokens": 2, "total_tokens": 3},
+                    },
+                    "received_at": ANY,
+                },
+            ),
+            StreamingChunk(content="", meta={"type": "trailing.event", "received_at": ANY}),
+        ]
+
+        message = _convert_streaming_chunks_to_chat_message(chunks)
+
+        assert message.text == "Hello"
+        assert message.meta == {
+            "id": "resp_123",
+            "usage": {"input_tokens": 1, "output_tokens": 2, "total_tokens": 3},
+            "finish_reason": "stop",
+        }
+
     def test_convert_streaming_chunks_to_chat_message_with_tool_call_empty_reasoning(
         self, openai_responses_streaming_chunks_with_tool_call: MagicMock
     ) -> None:

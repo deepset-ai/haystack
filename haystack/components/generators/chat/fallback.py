@@ -8,7 +8,7 @@ from typing import Any
 
 from haystack import component, default_from_dict, default_to_dict, logging
 from haystack.components.generators.chat.types import ChatGenerator
-from haystack.components.generators.utils import _normalize_messages
+from haystack.components.generators.utils import _normalize_messages, _trace_chat_generator_run
 from haystack.core.serialization import component_to_dict
 from haystack.dataclasses import ChatMessage, StreamingCallbackT
 from haystack.tools import ToolsType
@@ -122,9 +122,16 @@ class FallbackChatGenerator:
         tools: ToolsType | None,
         streaming_callback: StreamingCallbackT | None,
     ) -> dict[str, Any]:
-        return gen.run(
-            messages=messages, generation_kwargs=generation_kwargs, tools=tools, streaming_callback=streaming_callback
-        )
+        generator_inputs = {
+            "messages": messages,
+            "generation_kwargs": generation_kwargs,
+            "tools": tools,
+            "streaming_callback": streaming_callback,
+        }
+        with _trace_chat_generator_run(chat_generator=gen, generator_inputs=generator_inputs) as span:
+            result = gen.run(**generator_inputs)
+            span.set_content_tag(key="haystack.component.output", value=result)
+            return result
 
     async def _run_single_async(
         self,
@@ -134,13 +141,16 @@ class FallbackChatGenerator:
         tools: ToolsType | None,
         streaming_callback: StreamingCallbackT | None,
     ) -> dict[str, Any]:
-        return await _execute_component_async(
-            gen,
-            messages=messages,
-            generation_kwargs=generation_kwargs,
-            tools=tools,
-            streaming_callback=streaming_callback,
-        )
+        generator_inputs = {
+            "messages": messages,
+            "generation_kwargs": generation_kwargs,
+            "tools": tools,
+            "streaming_callback": streaming_callback,
+        }
+        with _trace_chat_generator_run(chat_generator=gen, generator_inputs=generator_inputs) as span:
+            result = await _execute_component_async(component_instance=gen, **generator_inputs)
+            span.set_content_tag(key="haystack.component.output", value=result)
+            return result
 
     @component.output_types(replies=list[ChatMessage], meta=dict[str, Any])
     def run(
@@ -165,7 +175,7 @@ class FallbackChatGenerator:
         """
         self.warm_up()
 
-        messages = _normalize_messages(messages)
+        messages = _normalize_messages(messages=messages)
 
         failed: list[str] = []
         last_error: BaseException | None = None
@@ -222,7 +232,7 @@ class FallbackChatGenerator:
         """
         await self.warm_up_async()
 
-        messages = _normalize_messages(messages)
+        messages = _normalize_messages(messages=messages)
 
         failed: list[str] = []
         last_error: BaseException | None = None
