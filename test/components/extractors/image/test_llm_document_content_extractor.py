@@ -69,7 +69,7 @@ class TestLLMDocumentContentExtractor:
 
     def test_init_fails_without_chat_generator(self):
         with pytest.raises(TypeError):
-            LLMDocumentContentExtractor()
+            LLMDocumentContentExtractor()  # type: ignore[call-arg]
 
     def test_to_dict_openai(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
@@ -655,7 +655,9 @@ class TestLLMDocumentContentExtractorAsync:
 
         assert len(result["failed_documents"]) == 0
         assert len(result["documents"]) == 1
-        assert len(result["documents"][0].content) > 0
+        extracted_content = result["documents"][0].content
+        assert extracted_content is not None
+        assert len(extracted_content) > 0
 
 
 class TestComponentLifecycle:

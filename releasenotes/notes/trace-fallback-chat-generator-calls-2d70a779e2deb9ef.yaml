@@ -1,0 +1,7 @@
+---
+enhancements:
+  - |
+    ``FallbackChatGenerator`` now wraps every internal ``ChatGenerator`` attempt in a
+    ``haystack.chat_generator.run`` tracing span for both synchronous and asynchronous execution. With content
+    tracing enabled, each span records the forwarded inputs and the successful generator output, making fallback
+    attempts and their token usage visible in traces.
