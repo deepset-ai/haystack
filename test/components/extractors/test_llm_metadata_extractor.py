@@ -97,7 +97,9 @@ class TestLLMMetadataExtractor:
     def test_init_fails_without_chat_generator(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
         with pytest.raises(TypeError):
-            _ = LLMMetadataExtractor(prompt="prompt {{document.content}}", expected_keys=["key1", "key2"])
+            _ = LLMMetadataExtractor(  # type: ignore[call-arg]
+                prompt="prompt {{document.content}}", expected_keys=["key1", "key2"]
+            )
 
     def test_to_dict_openai(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
@@ -139,6 +141,7 @@ class TestLLMMetadataExtractor:
         assert extractor.raise_on_failure is True
         assert extractor.expected_keys == ["key1", "key2"]
         assert extractor.prompt == "some prompt that was used with the LLM {{document.content}}"
+        assert isinstance(extractor._chat_generator, OpenAIChatGenerator)
         assert extractor._chat_generator.to_dict() == chat_generator.to_dict()
 
     def test_extract_metadata(self, monkeypatch):

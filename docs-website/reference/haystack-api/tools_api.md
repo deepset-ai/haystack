@@ -100,7 +100,8 @@ Create a Tool instance from a Haystack Agent.
   for every other mandatory input of the Agent, if not provided.
 - **outputs_to_string** (<code>dict\[str, str | Callable\\[[Any\], str\]\] | None</code>) – Optional dictionary defining how tool outputs should be converted into string(s) or results.
   If not provided, the tool result is the text of the Agent's final reply, or the serialized message if
-  the reply has no text. A warning is appended if the Agent stopped because it reached `max_agent_steps`.
+  the reply has no text. A warning is appended if the Agent stopped because it reached `max_agent_steps`,
+  reached the model's output limit, or had its response stopped by a content filter.
 
 `outputs_to_string` supports two formats:
 
