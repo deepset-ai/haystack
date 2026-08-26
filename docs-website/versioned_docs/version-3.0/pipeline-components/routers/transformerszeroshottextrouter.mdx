@@ -67,8 +67,13 @@ pip install sentence-transformers-haystack
 from haystack import Document
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.core.pipeline import Pipeline
-from haystack_integrations.components.routers.transformers import TransformersZeroShotTextRouter
-from haystack_integrations.components.embedders.sentence_transformers import SentenceTransformersTextEmbedder, SentenceTransformersDocumentEmbedder
+from haystack_integrations.components.routers.transformers import (
+    TransformersZeroShotTextRouter,
+)
+from haystack_integrations.components.embedders.sentence_transformers import (
+    SentenceTransformersTextEmbedder,
+    SentenceTransformersDocumentEmbedder,
+)
 from haystack.components.retrievers import InMemoryEmbeddingRetriever
 
 document_store = InMemoryDocumentStore()
@@ -76,36 +81,43 @@ doc_embedder = SentenceTransformersDocumentEmbedder(model="intfloat/e5-base-v2")
 docs = [
     Document(
         content="Germany, officially the Federal Republic of Germany, is a country in the western region of "
-                "Central Europe. The nation's capital and most populous city is Berlin and its main financial centre "
-                "is Frankfurt; the largest urban area is the Ruhr."
+        "Central Europe. The nation's capital and most populous city is Berlin and its main financial centre "
+        "is Frankfurt; the largest urban area is the Ruhr."
     ),
     Document(
         content="France, officially the French Republic, is a country located primarily in Western Europe. "
-                "France is a unitary semi-presidential republic with its capital in Paris, the country's largest city "
-                "and main cultural and commercial centre; other major urban areas include Marseille, Lyon, Toulouse, "
-                "Lille, Bordeaux, Strasbourg, Nantes and Nice."
-    )
+        "France is a unitary semi-presidential republic with its capital in Paris, the country's largest city "
+        "and main cultural and commercial centre; other major urban areas include Marseille, Lyon, Toulouse, "
+        "Lille, Bordeaux, Strasbourg, Nantes and Nice."
+    ),
 ]
 docs_with_embeddings = doc_embedder.run(docs)
 document_store.write_documents(docs_with_embeddings["documents"])
 
 p = Pipeline()
-p.add_component(instance=TransformersZeroShotTextRouter(labels=["passage", "query"]), name="text_router")
 p.add_component(
-    instance=SentenceTransformersTextEmbedder(model="intfloat/e5-base-v2", prefix="passage: "),
-    name="passage_embedder"
+    instance=TransformersZeroShotTextRouter(labels=["passage", "query"]),
+    name="text_router",
 )
 p.add_component(
-    instance=SentenceTransformersTextEmbedder(model="intfloat/e5-base-v2", prefix="query: "),
-    name="query_embedder"
+    instance=SentenceTransformersTextEmbedder(
+        model="intfloat/e5-base-v2", prefix="passage: "
+    ),
+    name="passage_embedder",
+)
+p.add_component(
+    instance=SentenceTransformersTextEmbedder(
+        model="intfloat/e5-base-v2", prefix="query: "
+    ),
+    name="query_embedder",
 )
 p.add_component(
     instance=InMemoryEmbeddingRetriever(document_store=document_store),
-    name="query_retriever"
+    name="query_retriever",
 )
 p.add_component(
     instance=InMemoryEmbeddingRetriever(document_store=document_store),
-    name="passage_retriever"
+    name="passage_retriever",
 )
 
 p.connect("text_router.passage", "passage_embedder.text")
@@ -116,13 +128,11 @@ p.connect("query_embedder.embedding", "query_retriever.query_embedding")
 # Query Example
 result = p.run({"text_router": {"text": "What is the capital of Germany?"}})
 print(result)
-
->>{'query_retriever': {'documents': [Document(id=32d393dd8ee60648ae7e630cfe34b1922e747812ddf9a2c8b3650e66e0ecdb5a,
-content: 'Germany, officially the Federal Republic of Germany, is a country in the western region of Central E...',
-score: 0.8625669285150891), Document(id=c17102d8d818ce5cdfee0288488c518f5c9df238a9739a080142090e8c4cb3ba,
-content: 'France, officially the French Republic, is a country located primarily in Western Europe. France is ...',
-score: 0.7637571978602222)]}}
-
+# >> {'query_retriever': {'documents': [Document(id=32d393dd8ee60648ae7e630cfe34b1922e747812ddf9a2c8b3650e66e0ecdb5a,
+# >> content: 'Germany, officially the Federal Republic of Germany, is a country in the western region of Central E...',
+# >> score: 0.8625669285150891), Document(id=c17102d8d818ce5cdfee0288488c518f5c9df238a9739a080142090e8c4cb3ba,
+# >> content: 'France, officially the French Republic, is a country located primarily in Western Europe. France is ...',
+# >> score: 0.7637571978602222)]}}
 ```
 
 ## Additional References

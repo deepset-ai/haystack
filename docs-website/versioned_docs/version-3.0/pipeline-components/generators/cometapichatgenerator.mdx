@@ -61,27 +61,29 @@ from pydantic import BaseModel
 from haystack.dataclasses import ChatMessage
 from haystack_integrations.components.generators.cometapi import CometAPIChatGenerator
 
+
 class CityInfo(BaseModel):
     city_name: str
     country: str
     population: int
     famous_for: str
 
+
 client = CometAPIChatGenerator(
-    model="gpt-4o-2024-08-06",
-    generation_kwargs={"response_format": CityInfo}
+    model="gpt-4o-2024-08-06", generation_kwargs={"response_format": CityInfo}
 )
 
-response = client.run(messages=[
-    ChatMessage.from_user(
-        "Berlin is the capital and largest city of Germany with a population of "
-        "approximately 3.7 million. It's famous for its history, culture, and nightlife."
-    )
-])
+response = client.run(
+    messages=[
+        ChatMessage.from_user(
+            "Berlin is the capital and largest city of Germany with a population of "
+            "approximately 3.7 million. It's famous for its history, culture, and nightlife."
+        )
+    ]
+)
 print(response["replies"][0].text)
-
->> {"city_name":"Berlin","country":"Germany","population":3700000,
->> "famous_for":"history, culture, and nightlife"}
+# >> {"city_name":"Berlin","country":"Germany","population":3700000,
+# >> "famous_for":"history, culture, and nightlife"}
 ```
 
 :::info[Model Compatibility]
@@ -103,8 +105,12 @@ from haystack.tools import Tool, Toolset
 from haystack_integrations.components.generators.cometapi import CometAPIChatGenerator
 
 # Create individual tools
-weather_tool = Tool(name="weather", description="Get weather info", ...)
-news_tool = Tool(name="news", description="Get latest news", ...)
+weather_tool = Tool(
+    name="weather", description="Get weather info", parameters=..., function=...
+)
+news_tool = Tool(
+    name="news", description="Get latest news", parameters=..., function=...
+)
 
 # Group related tools into a toolset
 math_toolset = Toolset([add_tool, subtract_tool, multiply_tool])
@@ -159,24 +165,26 @@ from haystack.components.generators.utils import print_streaming_chunk
 from haystack.dataclasses import ChatMessage
 from haystack_integrations.components.generators.cometapi import CometAPIChatGenerator
 
-client = CometAPIChatGenerator(model="gpt-4o-mini", streaming_callback=print_streaming_chunk)
+client = CometAPIChatGenerator(
+    model="gpt-4o-mini", streaming_callback=print_streaming_chunk
+)
 
-response = client.run([ChatMessage.from_user("What's Natural Language Processing? Be brief.")])
-
->> Natural Language Processing (NLP) is a field of artificial intelligence that
->> focuses on the interaction between computers and humans through natural language.
->> It involves enabling machines to understand, interpret, and generate human
->> language in a meaningful way, facilitating tasks such as language translation,
->> sentiment analysis, and text summarization.
+response = client.run(
+    [ChatMessage.from_user("What's Natural Language Processing? Be brief.")]
+)
+# >> Natural Language Processing (NLP) is a field of artificial intelligence that
+# >> focuses on the interaction between computers and humans through natural language.
+# >> It involves enabling machines to understand, interpret, and generate human
+# >> language in a meaningful way, facilitating tasks such as language translation,
+# >> sentiment analysis, and text summarization.
 
 print(response)
-
->> {'replies': [ChatMessage(_role=<ChatRole.ASSISTANT: 'assistant'>, _content=
->> [TextContent(text='Natural Language Processing (NLP) is a field of artificial
->> intelligence that focuses on the interaction between computers and humans through
->> natural language...')], _name=None, _meta={'model': 'gpt-4o-mini-2024-07-18',
->> 'index': 0, 'finish_reason': 'stop', 'usage': {'completion_tokens': 59,
->> 'prompt_tokens': 15, 'total_tokens': 74}})]}
+# >> {'replies': [ChatMessage(_role=<ChatRole.ASSISTANT: 'assistant'>, _content=
+# >> [TextContent(text='Natural Language Processing (NLP) is a field of artificial
+# >> intelligence that focuses on the interaction between computers and humans through
+# >> natural language...')], _name=None, _meta={'model': 'gpt-4o-mini-2024-07-18',
+# >> 'index': 0, 'finish_reason': 'stop', 'usage': {'completion_tokens': 59,
+# >> 'prompt_tokens': 15, 'total_tokens': 74}})]}
 ```
 
 With multimodal inputs:
@@ -189,15 +197,13 @@ from haystack_integrations.components.generators.cometapi import CometAPIChatGen
 llm = CometAPIChatGenerator(model="gpt-4o")
 
 image = ImageContent.from_file_path("apple.jpg", detail="low")
-user_message = ChatMessage.from_user(content_parts=[
-    "What does the image show? Max 5 words.",
-    image
-])
+user_message = ChatMessage.from_user(
+    content_parts=["What does the image show? Max 5 words.", image]
+)
 
 response = llm.run([user_message])["replies"][0].text
 print(response)
-
->>> Red apple on straw.
+# >> Red apple on straw.
 ```
 
 ### In a pipeline
@@ -220,21 +226,29 @@ pipe.connect("prompt_builder.prompt", "llm.messages")
 
 location = "Berlin"
 messages = [
-    ChatMessage.from_system("Always respond in German even if some input data is in other languages."),
-    ChatMessage.from_user("Tell me about {{location}}")
+    ChatMessage.from_system(
+        "Always respond in German even if some input data is in other languages."
+    ),
+    ChatMessage.from_user("Tell me about {{location}}"),
 ]
-pipe.run(data={"prompt_builder": {"template_variables": {"location": location}, "template": messages}})
-
->> {'llm': {'replies': [ChatMessage(_role=<ChatRole.ASSISTANT: 'assistant'>,
->> _content=[TextContent(text='Berlin ist die Hauptstadt Deutschlands und eine der
->> bedeutendsten Städte Europas. Es ist bekannt für ihre reiche Geschichte,
->> kulturelle Vielfalt und kreative Scene. \n\nDie Stadt hat eine bewegte
->> Vergangenheit, die stark von der Teilung zwischen Ost- und Westberlin während
->> des Kalten Krieges geprägt war. Die Berliner Mauer, die von 1961 bis 1989 die
->> Stadt teilte, ist heute ein Symbol für die Wiedervereinigung und die Freiheit.')],
->> _name=None, _meta={'model': 'gpt-5-mini-2025-08-07', 'index': 0,
->> 'finish_reason': 'stop', 'usage': {'completion_tokens': 260,
->> 'prompt_tokens': 29, 'total_tokens': 289}})]}
+pipe.run(
+    data={
+        "prompt_builder": {
+            "template_variables": {"location": location},
+            "template": messages,
+        }
+    }
+)
+# >> {'llm': {'replies': [ChatMessage(_role=<ChatRole.ASSISTANT: 'assistant'>,
+# >> _content=[TextContent(text='Berlin ist die Hauptstadt Deutschlands und eine der
+# >> bedeutendsten Städte Europas. Es ist bekannt für ihre reiche Geschichte,
+# >> kulturelle Vielfalt und kreative Scene. \n\nDie Stadt hat eine bewegte
+# >> Vergangenheit, die stark von der Teilung zwischen Ost- und Westberlin während
+# >> des Kalten Krieges geprägt war. Die Berliner Mauer, die von 1961 bis 1989 die
+# >> Stadt teilte, ist heute ein Symbol für die Wiedervereinigung und die Freiheit.')],
+# >> _name=None, _meta={'model': 'gpt-5-mini-2025-08-07', 'index': 0,
+# >> 'finish_reason': 'stop', 'usage': {'completion_tokens': 260,
+# >> 'prompt_tokens': 29, 'total_tokens': 289}})]}
 ```
 
 Using multiple models in one pipeline:
@@ -278,21 +292,29 @@ from haystack.dataclasses import ChatMessage
 from haystack.tools import Tool
 from haystack_integrations.components.generators.cometapi import CometAPIChatGenerator
 
+
 def weather(city: str) -> str:
     """Get weather for a given city."""
     return f"The weather in {city} is sunny and 32°C"
 
+
 tool = Tool(
     name="weather",
     description="Get weather for a given city",
-    parameters={"type": "object", "properties": {"city": {"type": "string"}}, "required": ["city"]},
+    parameters={
+        "type": "object",
+        "properties": {"city": {"type": "string"}},
+        "required": ["city"],
+    },
     function=weather,
 )
 
 agent = Agent(chat_generator=CometAPIChatGenerator(), tools=[tool])
 
-result = agent.run(messages=[ChatMessage.from_user("What's the weather like in Paris?")])
+result = agent.run(
+    messages=[ChatMessage.from_user("What's the weather like in Paris?")]
+)
 
 print(result["last_message"].text)
->> The weather in Paris is sunny and 32°C.
+# >> The weather in Paris is sunny and 32°C.
 ```

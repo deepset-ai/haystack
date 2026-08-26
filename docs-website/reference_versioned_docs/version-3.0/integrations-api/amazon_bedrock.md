@@ -236,12 +236,14 @@ and `aws_region_name`.
 - **file_root_path** (<code>str | None</code>) – The path where the file will be downloaded.
   Can be set through this parameter or the `FILE_ROOT_PATH` environment variable.
   If none of them is set, a `ValueError` is raised.
+  Downloads are confined to this directory: a document whose file name resolves outside of it
+  (for example an absolute path or one containing `..`) is logged and skipped instead of written.
 - **file_extensions** (<code>list\[str\] | None</code>) – The file extensions that are permitted to be downloaded.
   By default, all file extensions are allowed.
 - **max_workers** (<code>int</code>) – The maximum number of workers to use for concurrent downloads.
 - **max_cache_size** (<code>int</code>) – The maximum number of files to cache.
 - **file_name_meta_key** (<code>str</code>) – The name of the meta key that contains the file name to download. The file name
-  will also be used to create local file path for download.
+  will also be used to create local file path for download, relative to `file_root_path`.
   By default, the `Document.meta["file_name"]` is used. If you want to use a
   different key in `Document.meta`, you can set it here.
 - **s3_key_generation_function** (<code>Callable\\[[Document\], str\] | None</code>) – An optional function that generates the S3 key for the file to download.
@@ -256,6 +258,7 @@ and `aws_region_name`.
 
 - <code>ValueError</code> – If the `file_root_path` is not set through
   the constructor or the `FILE_ROOT_PATH` environment variable.
+- <code>AWSConfigurationError</code> – If the provided AWS credentials are invalid.
 
 #### warm_up
 
@@ -264,6 +267,12 @@ warm_up() -> None
 ```
 
 Warm up the component by initializing the settings and storage.
+
+**Raises:**
+
+- <code>ValueError</code> – If the environment variable naming the S3 bucket (`s3_bucket_name_env`, by default
+  `S3_DOWNLOADER_BUCKET`) is not set.
+- <code>S3ConfigurationError</code> – If the S3 client cannot be created.
 
 #### run
 
@@ -282,12 +291,12 @@ Return enriched `Document`s with the path of the downloaded file.
 **Returns:**
 
 - <code>dict\[str, list\[Document\]\]</code> – A dictionary with:
-- `documents`: The downloaded `Document`s; each has `meta['file_path']`.
+- `documents`: The downloaded `Document`s; each has `meta['file_path']`. Documents whose file name
+  is missing, or resolves outside of `file_root_path`, are logged and skipped.
 
 **Raises:**
 
 - <code>S3Error</code> – If a download attempt fails or the file does not exist in the S3 bucket.
-- <code>ValueError</code> – If the path where files will be downloaded is not set.
 
 #### to_dict
 
@@ -1350,7 +1359,9 @@ Supports both standard and streaming responses depending on whether a streaming 
 - **messages** (<code>list\[ChatMessage\] | str</code>) – A list of `ChatMessage` objects forming the chat history.
   If a string is provided, it is converted to a list containing a ChatMessage with user role.
 - **streaming_callback** (<code>StreamingCallbackT | None</code>) – Optional callback for handling streaming outputs.
-- **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Optional dictionary of generation parameters. Some common parameters are:
+- **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Optional dictionary of generation parameters. These are merged per key with the
+  `generation_kwargs` passed at initialization: keys provided here take precedence, keys set only at
+  initialization are kept. Some common parameters are:
 - `maxTokens`: Maximum number of tokens to generate.
 - `stopSequences`: List of stop sequences to stop generation.
 - `temperature`: Sampling temperature.
@@ -1387,7 +1398,9 @@ Designed for use cases where non-blocking or concurrent execution is desired.
 - **messages** (<code>list\[ChatMessage\] | str</code>) – A list of `ChatMessage` objects forming the chat history.
   If a string is provided, it is converted to a list containing a ChatMessage with user role.
 - **streaming_callback** (<code>StreamingCallbackT | None</code>) – Optional async-compatible callback for handling streaming outputs.
-- **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Optional dictionary of generation parameters. Some common parameters are:
+- **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Optional dictionary of generation parameters. These are merged per key with the
+  `generation_kwargs` passed at initialization: keys provided here take precedence, keys set only at
+  initialization are kept. Some common parameters are:
 - `maxTokens`: Maximum number of tokens to generate.
 - `stopSequences`: List of stop sequences to stop generation.
 - `temperature`: Sampling temperature.

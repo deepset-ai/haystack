@@ -1,0 +1,139 @@
+---
+title: "LLMRanker"
+id: llmranker
+slug: "/llmranker"
+description: "Ranks documents for a query using a Large Language Model. The LLM returns ranked document indices as JSON."
+---
+
+# LLMRanker
+
+Ranks documents for a query using a Large Language Model (LLM). The LLM is prompted with the query and document contents and is expected to return a JSON object containing ranked document indices, from most to least relevant.
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | In a query pipeline, after a component that returns a list of documents such as a [Retriever](../retrievers.mdx) |
+| **Mandatory run variables** | `query`: A query string  <br /> <br />`documents`: A list of document objects |
+| **Output variables** | `documents`: A list of documents |
+| **API reference** | [Rankers](/reference/rankers-api) |
+| **GitHub link** | https://github.com/deepset-ai/haystack/blob/main/haystack/components/rankers/llm_ranker.py |
+| **Package name** | `haystack-ai` |
+
+</div>
+
+## Overview
+
+`LLMRanker` uses an LLM to reorder documents by relevance to the query. Unlike cross-encoder rankers, it treats relevance as a semantic reasoning task, which can yield better results for complex or multi-step queries. The component sends the query and document contents to the LLM and parses the response as JSON: an array of objects with an `index` field (1-based document position). Only documents that the LLM includes in this list are returned, in the order given.
+
+Before ranking, duplicate documents are removed. You can set `top_k` to limit how many documents are returned. If generation or parsing fails, the ranker either raises (when `raise_on_failure=True`) or returns the input documents in their original order (when `raise_on_failure=False`, the default).
+
+You can pass any Haystack `ChatGenerator` that supports structured JSON output. If you omit `chat_generator`, a default `OpenAIChatGenerator` (e.g. `gpt-4.1-mini`) with JSON schema for the ranking response is used. You need to provide an OPENAI_API_KEY for this `ChatGenerator`. You can also provide a custom `prompt` template. It must include exactly the variables `query` and `documents` and instruct the LLM to return ranked 1-based document indices as JSON.
+
+## Usage
+
+### On its own
+
+This example uses `LLMRanker` with the default `OpenAIChatGenerator` to rank two documents. The ranker returns documents in the order specified by the LLM.
+
+```python
+from haystack import Document
+from haystack.components.rankers import LLMRanker
+
+ranker = LLMRanker()
+
+documents = [
+    Document(id="paris", content="Paris is the capital of France."),
+    Document(id="berlin", content="Berlin is the capital of Germany."),
+]
+
+result = ranker.run(query="capital of Germany", documents=documents)
+print(result["documents"][0].id)  # "berlin"
+```
+
+### With a custom chat generator
+
+You can pass your own chat generator configured for JSON output (e.g. with `response_format` / JSON schema so the model returns the expected `documents` array with `index` fields):
+
+```python
+from haystack import Document
+from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.components.rankers import LLMRanker
+
+chat_generator = OpenAIChatGenerator(
+    model="gpt-4.1-mini",
+    generation_kwargs={
+        "temperature": 0.0,
+        "response_format": {
+            "type": "json_schema",
+            "json_schema": {
+                "name": "document_ranking",
+                "schema": {
+                    "type": "object",
+                    "properties": {
+                        "documents": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {"index": {"type": "integer"}},
+                                "required": ["index"],
+                                "additionalProperties": False,
+                            },
+                        },
+                    },
+                    "required": ["documents"],
+                    "additionalProperties": False,
+                },
+            },
+        },
+    },
+)
+
+ranker = LLMRanker(chat_generator=chat_generator)
+documents = [
+    Document(content="Paris is the capital of France."),
+    Document(content="Berlin is the capital of Germany."),
+]
+result = ranker.run(query="capital of Germany", documents=documents, top_k=1)
+```
+
+### In a pipeline
+
+Below is an example of a pipeline that retrieves documents with `InMemoryBM25Retriever` and then ranks them with `LLMRanker`:
+
+```python
+from haystack import Document, Pipeline
+from haystack.components.retrievers.in_memory import InMemoryBM25Retriever
+from haystack.components.rankers import LLMRanker
+from haystack.document_stores.in_memory import InMemoryDocumentStore
+
+docs = [
+    Document(content="Paris is in France."),
+    Document(content="Berlin is in Germany."),
+    Document(content="Lyon is in France."),
+]
+document_store = InMemoryDocumentStore()
+document_store.write_documents(docs)
+
+retriever = InMemoryBM25Retriever(document_store=document_store)
+ranker = LLMRanker(top_k=2)
+
+pipeline = Pipeline()
+pipeline.add_component(instance=retriever, name="retriever")
+pipeline.add_component(instance=ranker, name="ranker")
+
+pipeline.connect("retriever.documents", "ranker.documents")
+
+query = "Cities in France"
+result = pipeline.run(
+    data={
+        "retriever": {"query": query, "top_k": 3},
+        "ranker": {"query": query, "top_k": 2},
+    },
+)
+```
+
+:::note[`top_k` parameter]
+
+The Retriever's `top_k` controls how many documents are retrieved. The Ranker's `top_k` limits how many of those documents are returned after ranking. You can set the same or a smaller `top_k` for the Ranker to optimize cost and latency.
+:::

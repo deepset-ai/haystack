@@ -345,8 +345,9 @@ Process messages and execute tools until an exit condition is met.
 - **messages** (<code>list\[ChatMessage\]</code>) – List of Haystack ChatMessage objects to process.
 - **streaming_callback** (<code>StreamingCallbackT | None</code>) – A callback that will be invoked when a response is streamed from the LLM.
   The same callback can be configured to emit tool results when a tool is called.
-- **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for LLM. These parameters will
-  override the parameters passed during component initialization.
+- **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for the chat generator. These are merged per key
+  with the `generation_kwargs` passed at the chat generator's initialization: keys provided here take
+  precedence, keys set only at initialization are kept.
 - **tools** (<code>ToolsType | list\[str\] | None</code>) – Optional list of Tool objects, a Toolset, or list of tool names to use for this run.
   When passing tool names, tools are selected from the Agent's originally configured tools.
 - **hook_context** (<code>dict\[str, Any\] | None</code>) – Optional dictionary of request-scoped resources made available to hooks via
@@ -368,9 +369,11 @@ Process messages and execute tools until an exit condition is met.
   `meta["usage"]`.
 - "tool_call_counts": Mapping of tool name to the number of times that tool was invoked.
 - "exit_reason": Why the Agent stopped, useful for routing the output downstream (e.g. with a
-  `ConditionalRouter`). One of: `"text"` (the model returned a reply with no tool calls), the name of
-  the tool that satisfied a tool exit condition (in which case `last_message` is that tool's result),
-  or `"max_agent_steps"` (the Agent hit `max_agent_steps` before meeting an exit condition).
+  `ConditionalRouter`). One of: `"text"` (the model returned a complete reply with no tool calls),
+  `"length"` or `"content_filter"` (the model returned an incomplete reply, which may contain partial
+  text), the name of the tool that satisfied a tool exit condition (in which case `last_message` is that
+  tool's result), or `"max_agent_steps"` (the Agent hit `max_agent_steps` before meeting an exit
+  condition), or a custom reason a hook supplied through the `stop_run` state key.
 - Any additional keys defined in the `state_schema`.
 
 #### run_async
@@ -398,8 +401,9 @@ if available.
 - **messages** (<code>list\[ChatMessage\]</code>) – List of Haystack ChatMessage objects to process.
 - **streaming_callback** (<code>StreamingCallbackT | None</code>) – An asynchronous callback that will be invoked when a response is streamed from the
   LLM. The same callback can be configured to emit tool results when a tool is called.
-- **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for LLM. These parameters will
-  override the parameters passed during component initialization.
+- **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for the chat generator. These are merged per key
+  with the `generation_kwargs` passed at the chat generator's initialization: keys provided here take
+  precedence, keys set only at initialization are kept.
 - **tools** (<code>ToolsType | list\[str\] | None</code>) – Optional list of Tool objects, a Toolset, or list of tool names to use for this run.
 - **hook_context** (<code>dict\[str, Any\] | None</code>) – Optional dictionary of request-scoped resources made available to hooks via
   `state.data.get("hook_context")`. Useful in web/server environments to provide per-request objects
@@ -420,9 +424,11 @@ if available.
   `meta["usage"]`.
 - "tool_call_counts": Mapping of tool name to the number of times that tool was invoked.
 - "exit_reason": Why the Agent stopped, useful for routing the output downstream (e.g. with a
-  `ConditionalRouter`). One of: `"text"` (the model returned a reply with no tool calls), the name of
-  the tool that satisfied a tool exit condition (in which case `last_message` is that tool's result),
-  or `"max_agent_steps"` (the Agent hit `max_agent_steps` before meeting an exit condition).
+  `ConditionalRouter`). One of: `"text"` (the model returned a complete reply with no tool calls),
+  `"length"` or `"content_filter"` (the model returned an incomplete reply, which may contain partial
+  text), the name of the tool that satisfied a tool exit condition (in which case `last_message` is that
+  tool's result), or `"max_agent_steps"` (the Agent hit `max_agent_steps` before meeting an exit
+  condition), or a custom reason a hook supplied through the `stop_run` state key.
 - Any additional keys defined in the `state_schema`.
 
 ## state/state
@@ -546,10 +552,18 @@ Check if a key exists in the state.
 #### to_dict
 
 ```python
-to_dict() -> dict[str, Any]
+to_dict(skip_keys: list[str] | None = None) -> dict[str, Any]
 ```
 
 Convert the State object to a dictionary.
+
+**Parameters:**
+
+- **skip_keys** (<code>list\[str\] | None</code>) – List of keys to skip during serialization
+
+**Returns:**
+
+- <code>dict\[str, Any\]</code> – Dictionary representation of the State object
 
 #### from_dict
 

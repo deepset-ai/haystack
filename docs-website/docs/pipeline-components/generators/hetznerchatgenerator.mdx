@@ -1,0 +1,125 @@
+---
+title: "HetznerChatGenerator"
+id: hetznerchatgenerator
+slug: "/hetznerchatgenerator"
+description: "This component enables chat completion using models hosted on the Hetzner Inference API."
+---
+
+# HetznerChatGenerator
+
+This component enables chat completion using models hosted on the Hetzner Inference API.
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | After a [ChatPromptBuilder](../builders/chatpromptbuilder.mdx) |
+| **Mandatory init variables** | `api_key`: A Hetzner API token. Can be set with `HETZNER_API_KEY` env var. |
+| **Mandatory run variables** | `messages`: A list of [`ChatMessage`](../../concepts/data-classes/chatmessage.mdx) objects |
+| **Output variables** | `replies`: A list of [`ChatMessage`](../../concepts/data-classes/chatmessage.mdx) objects |
+| **API reference** | [Hetzner](/reference/integrations-hetzner) |
+| **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/hetzner |
+| **Package name** | `hetzner-haystack` |
+
+</div>
+
+## Overview
+
+`HetznerChatGenerator` supports the open-weight models served by the [Hetzner Inference API](https://docs.hetzner.com/general/company-and-policy/experiments/inference/) from Hetzner's European data centers. Two models are currently served, both with a 262,144-token context window and both accepting images alongside text:
+
+- `Qwen/Qwen3.6-35B-A3B-FP8` (default)
+- `Qwen3.8-27B`
+
+### Parameters
+
+To use the `HetznerChatGenerator`, ensure you have set a `HETZNER_API_KEY` as an environment variable. Alternatively, provide the API key as another environment variable or a token by setting `api_key` and using Haystack's [secret management](../../concepts/secret-management.mdx).
+
+Set your preferred model with the `model` parameter. Optionally, you can change the default `api_base_url`, which is `"https://inference.hetzner.com/api/v1"`.
+
+You can pass any text generation parameters valid for the Hetzner chat completion API directly to this component with the `generation_kwargs` parameter in the init or run methods. The API is OpenAI-compatible, so the same parameters as for the [OpenAIChatGenerator](openaichatgenerator.mdx) apply.
+
+The component needs a list of `ChatMessage` objects to run. `ChatMessage` is a data class that contains a message, a role (who generated the message, such as `user`, `assistant`, `system`, `tool`), and optional metadata. Find out more in the [ChatMessage documentation](../../concepts/data-classes/chatmessage.mdx).
+
+To let the model call tools, pass `Tool` objects, a `Toolset`, or a mix of both to the `tools` parameter. See the [Tool](../../tools/tool.mdx) and [Toolset](../../tools/toolset.mdx) documentation for details.
+
+### Streaming
+
+You can stream output as it's generated. Pass a callback to `streaming_callback`. Use the built-in `print_streaming_chunk` to print text tokens and tool events (tool calls and tool results).
+
+```python
+from haystack.components.generators.utils import print_streaming_chunk
+from haystack.dataclasses import ChatMessage
+from haystack_integrations.components.generators.hetzner import HetznerChatGenerator
+
+client = HetznerChatGenerator(streaming_callback=print_streaming_chunk)
+client.run([ChatMessage.from_user("What are Agentic Pipelines? Be brief.")])
+```
+
+## Usage
+
+Install the `hetzner-haystack` package to use the `HetznerChatGenerator`:
+
+```shell
+pip install hetzner-haystack
+```
+
+### On its own
+
+```python
+from haystack.dataclasses import ChatMessage
+from haystack_integrations.components.generators.hetzner import HetznerChatGenerator
+
+client = HetznerChatGenerator()
+response = client.run([ChatMessage.from_user("What are Agentic Pipelines? Be brief.")])
+print(response["replies"][0].text)
+```
+
+With multimodal inputs:
+
+```python
+from haystack.dataclasses import ChatMessage, ImageContent
+from haystack_integrations.components.generators.hetzner import HetznerChatGenerator
+
+image = ImageContent.from_url(
+    "https://cdn.hetzner.de/cdn/public/Uploads/Finnland_Luftaufnahme-v2.jpg"
+)
+
+client = HetznerChatGenerator()
+response = client.run(
+    [
+        ChatMessage.from_user(
+            content_parts=["Describe this image in one sentence.", image]
+        )
+    ]
+)
+print(response["replies"][0].text)
+```
+
+### In a pipeline
+
+```python
+from haystack import Pipeline
+from haystack.components.builders import ChatPromptBuilder
+from haystack.dataclasses import ChatMessage
+from haystack_integrations.components.generators.hetzner import HetznerChatGenerator
+
+prompt_builder = ChatPromptBuilder()
+llm = HetznerChatGenerator()
+
+pipe = Pipeline()
+pipe.add_component("builder", prompt_builder)
+pipe.add_component("llm", llm)
+pipe.connect("builder.prompt", "llm.messages")
+
+messages = [
+    ChatMessage.from_system("Give brief answers."),
+    ChatMessage.from_user("Tell me about {{city}}"),
+]
+
+response = pipe.run(
+    data={
+        "builder": {"template": messages, "template_variables": {"city": "Nuremberg"}}
+    },
+)
+print(response["llm"]["replies"][0].text)
+```
