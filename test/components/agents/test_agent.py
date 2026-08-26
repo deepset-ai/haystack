@@ -17,7 +17,7 @@ from openai import Stream
 from openai.types.chat import ChatCompletionChunk, chat_completion_chunk
 
 from haystack import Document, Pipeline, component
-from haystack.components.agents.agent import Agent
+from haystack.components.agents.agent import Agent, _get_model_exit_reason
 from haystack.components.agents.state import State, merge_lists, replace_values
 from haystack.components.agents.tool_calling import _run_tool
 from haystack.components.builders.chat_prompt_builder import ChatPromptBuilder
@@ -575,6 +575,26 @@ class TestAgentClone:
         assert clone.state_schema == {"foo": {"type": str}, "notes": {"type": str}}
 
 
+class TestGetModelExitReason:
+    @pytest.mark.parametrize(
+        ("message", "expected"),
+        [
+            (ChatMessage.from_assistant("Complete answer."), "text"),
+            (ChatMessage.from_assistant("", meta={"finish_reason": "length"}), "length"),
+            (ChatMessage.from_assistant("Partial answer.", meta={"finish_reason": "length"}), "length"),
+            (ChatMessage.from_assistant("", meta={"finish_reason": "content_filter"}), "content_filter"),
+            (ChatMessage.from_assistant("Partial answer.", meta={"finish_reason": "content_filter"}), "content_filter"),
+            (ChatMessage.from_assistant(""), None),
+            (ChatMessage.from_user("Not an assistant reply."), None),
+        ],
+    )
+    def test_classifies_tool_call_free_model_replies(self, message, expected):
+        assert _get_model_exit_reason([message]) == expected
+
+    def test_empty_message_batch_is_not_an_exit(self):
+        assert _get_model_exit_reason([]) is None
+
+
 class TestAgentRun:
     def test_agent_with_no_tools(self):
         agent = Agent(chat_generator=MockChatGenerator("Berlin"), tools=[], max_agent_steps=3)
@@ -1088,6 +1108,45 @@ class TestAgentExitConditions:
         assert result["step_count"] == 2
         assert result["last_message"].text == "The weather is sunny."
 
+    @pytest.mark.parametrize("finish_reason", ["length", "content_filter"])
+    @pytest.mark.parametrize("text", ["", "Partial answer."])
+    def test_incomplete_model_reply_exits_with_specific_reason(self, weather_tool, finish_reason, text):
+        replies = [
+            ChatMessage.from_assistant(text=text, meta={"finish_reason": finish_reason}),
+            "Recovered answer that must not be generated.",
+        ]
+        agent = Agent(chat_generator=MockChatGenerator(replies), tools=[weather_tool])
+
+        result = agent.run([ChatMessage.from_user("What's the weather?")])
+
+        assert result["step_count"] == 1
+        assert result["exit_reason"] == finish_reason
+        assert result["last_message"].text == text
+
+    @pytest.mark.parametrize("finish_reason", ["length", "content_filter"])
+    def test_incomplete_model_reply_without_tools_preserves_reason(self, finish_reason):
+        reply = ChatMessage.from_assistant("Partial answer.", meta={"finish_reason": finish_reason})
+        agent = Agent(chat_generator=MockChatGenerator(reply))
+
+        result = agent.run([ChatMessage.from_user("Question")])
+
+        assert result["step_count"] == 1
+        assert result["exit_reason"] == finish_reason
+
+    def test_exits_on_empty_assistant_message_truncated_by_output_limit(self, monkeypatch, weather_tool):
+        monkeypatch.setenv("OPENAI_API_KEY", "fake-key")
+        agent = Agent(chat_generator=OpenAIChatGenerator(), tools=[weather_tool], exit_conditions=["text"])
+
+        truncated_reply = {"replies": [ChatMessage.from_assistant(text="", meta={"finish_reason": "length"})]}
+        recovered_reply = {"replies": [ChatMessage.from_assistant(text="The weather is sunny.")]}
+        agent.chat_generator.run = MagicMock(side_effect=[truncated_reply, recovered_reply])
+
+        result = agent.run([ChatMessage.from_user("What's the weather?")])
+
+        assert agent.chat_generator.run.call_count == 1
+        assert result["last_message"].text == ""
+        assert result["exit_reason"] == "length"
+
     @pytest.mark.asyncio
     async def test_does_not_exit_on_empty_assistant_message_async(self, weather_tool):
         replies = [ChatMessage.from_assistant(text=""), "The weather is sunny."]
@@ -1097,6 +1156,37 @@ class TestAgentExitConditions:
 
         assert result["step_count"] == 2
         assert result["last_message"].text == "The weather is sunny."
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("finish_reason", ["length", "content_filter"])
+    @pytest.mark.parametrize("text", ["", "Partial answer."])
+    async def test_incomplete_model_reply_exits_with_specific_reason_async(self, weather_tool, finish_reason, text):
+        replies = [
+            ChatMessage.from_assistant(text=text, meta={"finish_reason": finish_reason}),
+            "Recovered answer that must not be generated.",
+        ]
+        agent = Agent(chat_generator=MockChatGenerator(replies), tools=[weather_tool])
+
+        result = await agent.run_async([ChatMessage.from_user("What's the weather?")])
+
+        assert result["step_count"] == 1
+        assert result["exit_reason"] == finish_reason
+        assert result["last_message"].text == text
+
+    @pytest.mark.asyncio
+    async def test_exits_on_empty_assistant_message_truncated_by_output_limit_async(self, monkeypatch, weather_tool):
+        monkeypatch.setenv("OPENAI_API_KEY", "fake-key")
+        agent = Agent(chat_generator=OpenAIChatGenerator(), tools=[weather_tool], exit_conditions=["text"])
+
+        truncated_reply = {"replies": [ChatMessage.from_assistant(text="", meta={"finish_reason": "length"})]}
+        recovered_reply = {"replies": [ChatMessage.from_assistant(text="The weather is sunny.")]}
+        agent.chat_generator.run_async = AsyncMock(side_effect=[truncated_reply, recovered_reply])
+
+        result = await agent.run_async([ChatMessage.from_user("What's the weather?")])
+
+        assert agent.chat_generator.run_async.call_count == 1
+        assert result["last_message"].text == ""
+        assert result["exit_reason"] == "length"
 
     def test_text_exit(self, weather_tool):
         """A plain assistant reply with no tool calls reports the `"text"` exit reason."""
