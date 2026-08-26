@@ -433,6 +433,55 @@ async def test_failover_trigger_401_authentication_async():
     assert meta["failed_chat_generators"] == ["_DummyHTTPErrorGen"]
 
 
+class TestTracing:
+    def test_run_traces_each_chat_generator_attempt(self, spying_tracer):
+        messages = [ChatMessage.from_user("hi")]
+        generation_kwargs = {"temperature": 0.1}
+        fallback = FallbackChatGenerator(chat_generators=[_DummyFailGen(), _DummySuccessGen()])
+
+        with spying_tracer.trace("parent") as parent_span:
+            fallback.run(messages=messages, generation_kwargs=generation_kwargs)
+
+        generator_spans = [s for s in spying_tracer.spans if s.operation_name == "haystack.chat_generator.run"]
+        assert len(generator_spans) == 2
+        assert all(span.parent_span is parent_span for span in generator_spans)
+        assert [span.tags["haystack.component.type"] for span in generator_spans] == [
+            "_DummyFailGen",
+            "_DummySuccessGen",
+        ]
+        assert all(
+            span.tags["haystack.component.input"]
+            == {"messages": messages, "generation_kwargs": generation_kwargs, "tools": None, "streaming_callback": None}
+            for span in generator_spans
+        )
+        assert "haystack.component.output" not in generator_spans[0].tags
+        assert generator_spans[1].tags["haystack.component.output"]["replies"][0].text == "ok"
+
+    @pytest.mark.asyncio
+    async def test_run_async_traces_each_chat_generator_attempt(self, spying_tracer):
+        messages = [ChatMessage.from_user("hi")]
+        generation_kwargs = {"temperature": 0.1}
+        fallback = FallbackChatGenerator(chat_generators=[_DummyFailGen(), _DummySuccessGen()])
+
+        with spying_tracer.trace("parent") as parent_span:
+            await fallback.run_async(messages=messages, generation_kwargs=generation_kwargs)
+
+        generator_spans = [s for s in spying_tracer.spans if s.operation_name == "haystack.chat_generator.run"]
+        assert len(generator_spans) == 2
+        assert all(span.parent_span is parent_span for span in generator_spans)
+        assert [span.tags["haystack.component.type"] for span in generator_spans] == [
+            "_DummyFailGen",
+            "_DummySuccessGen",
+        ]
+        assert all(
+            span.tags["haystack.component.input"]
+            == {"messages": messages, "generation_kwargs": generation_kwargs, "tools": None, "streaming_callback": None}
+            for span in generator_spans
+        )
+        assert "haystack.component.output" not in generator_spans[0].tags
+        assert generator_spans[1].tags["haystack.component.output"]["replies"][0].text == "ok"
+
+
 class TestComponentLifecycle:
     def test_warm_up_delegates_to_every_generator(self) -> None:
 
