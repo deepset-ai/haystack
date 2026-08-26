@@ -225,3 +225,15 @@ class TestBatchConvertPdfPagesToImages:
 
         assert isinstance(result, dict)
         assert len(result) == 0
+
+    def test_batch_convert_pdf_pages_to_images_skips_out_of_range_page(self, test_files_path):
+        pdf_path = test_files_path / "pdf" / "sample_pdf_1.pdf"
+        pdf_documents: list[_PDFPageInfo] = [
+            {"doc_idx": 0, "path": pdf_path, "page_number": 999},
+            {"doc_idx": 1, "path": pdf_path, "page_number": 1},
+        ]
+
+        result = _batch_convert_pdf_pages_to_images(pdf_page_infos=pdf_documents, return_base64=False)
+
+        assert 0 not in result
+        assert isinstance(result[1], Image.Image)

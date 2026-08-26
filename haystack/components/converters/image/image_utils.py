@@ -334,7 +334,8 @@ def _batch_convert_pdf_pages_to_images(
         # Map results back to document indices
         page_number_to_image = dict(converted_pages)
         for page_info in page_infos_for_pdf:
-            converted_images_by_doc_index[page_info["doc_idx"]] = page_number_to_image[page_info["page_number"]]
+            if page_info["page_number"] in page_number_to_image:
+                converted_images_by_doc_index[page_info["doc_idx"]] = page_number_to_image[page_info["page_number"]]
 
     # mypy is not able to infer that we match the declared return type
     return converted_images_by_doc_index  # type: ignore[return-value]

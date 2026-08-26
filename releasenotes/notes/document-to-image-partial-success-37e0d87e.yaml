@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    `DocumentToImageContent` now converts documents with partial success instead of failing the whole batch: a
+    document with missing metadata, an invalid file path, an unsupported MIME type, or a missing `page_number`
+    yields `None` at its position in `image_contents`, while valid documents in the same batch are still processed.
+    A single warning naming the failed document IDs and the error reasons is logged. Additionally, requesting an
+    out-of-range PDF page no longer raises a `KeyError`: the affected document yields `None`.

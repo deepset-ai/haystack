@@ -9,6 +9,7 @@ from haystack.components.converters.image.image_utils import (
     _batch_convert_pdf_pages_to_images,
     _encode_image_to_base64,
     _extract_image_sources_info,
+    _ImageSourceInfo,
     _PDFPageInfo,
     pillow_import,
     pypdfium2_import,
@@ -113,23 +114,31 @@ class DocumentToImageContent:
         :returns:
             Dictionary containing one key:
             - "image_contents": ImageContents created from the processed documents. These contain base64-encoded image
-                data and metadata. The order corresponds to order of input documents.
-        :raises ValueError:
-            If any document is missing the required metadata keys, has an invalid file path, or has an unsupported
-            MIME type. The error message will specify which document and what information is missing or incorrect.
+                data and metadata. The order corresponds to order of input documents. Documents that cannot be
+                converted (for example because they are missing required metadata keys, have an invalid file path,
+                or an unsupported MIME type) yield None at their position in the list and a warning is logged
+                naming them along with the error reasons.
         """
         if not documents:
             return {"image_contents": []}
 
-        images_source_info = _extract_image_sources_info(
-            documents=documents, file_path_meta_field=self.file_path_meta_field, root_path=self.root_path
-        )
-
         image_contents: list[ImageContent | None] = [None] * len(documents)
+        validation_errors: list[str] = []
+
+        valid_images_source_info: list[tuple[int, _ImageSourceInfo]] = []
+        for doc_idx, doc in enumerate(documents):
+            try:
+                images_source_info = _extract_image_sources_info(
+                    documents=[doc], file_path_meta_field=self.file_path_meta_field, root_path=self.root_path
+                )
+                valid_images_source_info.extend((doc_idx, info) for info in images_source_info)
+            except ValueError as e:
+                # the slot stays None at its position so output positions match the input documents
+                validation_errors.append(str(e))
 
         pdf_page_infos: list[_PDFPageInfo] = []
 
-        for doc_idx, image_source_info in enumerate(images_source_info):
+        for doc_idx, image_source_info in valid_images_source_info:
             mime_type = image_source_info["mime_type"]
             path = image_source_info["path"]
             if mime_type == "application/pdf":
@@ -172,8 +181,10 @@ class DocumentToImageContent:
         ]
         if none_image_contents_doc_ids:
             logger.warning(
-                "Conversion failed for some documents. Their output will be None. Document IDs: {document_ids}",
+                "Conversion failed for some documents. Their output will be None. Document IDs: {document_ids}. "
+                "Errors: {errors}",
                 document_ids=none_image_contents_doc_ids,
+                errors=validation_errors,
             )
 
         return {"image_contents": image_contents}

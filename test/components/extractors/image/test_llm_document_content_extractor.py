@@ -165,6 +165,26 @@ class TestLLMDocumentContentExtractor:
         # Ensure no attempt was made to call the LLM
         mock_chat_generator.run.assert_not_called()
 
+    def test_run_partial_success_reaches_failed_documents(self):
+        """With a mixed batch, the valid document is extracted and the invalid one lands in failed_documents."""
+        extractor = LLMDocumentContentExtractor(
+            chat_generator=MockChatGenerator('{"document_content": "An apple"}'), root_path="test/test_files"
+        )
+        docs = [
+            Document(content="", meta={"file_path": "images/apple.jpg"}),
+            Document(content="", meta={"file_path": "docx/sample_docx.docx"}),
+        ]
+        result = extractor.run(documents=docs)
+
+        assert len(result["documents"]) == 1
+        assert result["documents"][0].id == docs[0].id
+        assert result["documents"][0].content == "An apple"
+        assert "extraction_error" not in result["documents"][0].meta
+
+        assert len(result["failed_documents"]) == 1
+        assert result["failed_documents"][0].id == docs[1].id
+        assert "extraction_error" in result["failed_documents"][0].meta
+
     @patch.object(DocumentToImageContent, "run")
     def test_run_with_llm_success(self, mock_doc_to_image_run):
         # Mock successful LLM response (JSON with document_content)
