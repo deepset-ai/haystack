@@ -1740,3 +1740,128 @@ Use the Amazon Bedrock Reranker to re-rank the list of documents based on the qu
 **Raises:**
 
 - <code>ValueError</code> – If `top_k` is not > 0.
+
+## haystack_integrations.components.retrievers.amazon_bedrock.knowledge_base_retriever
+
+### BedrockKnowledgeBaseRetriever
+
+Retrieves documents from an Amazon Bedrock Managed Knowledge Base.
+
+Uses AgenticRetrieveStream when available, falling back to the standard Retrieve API otherwise.
+
+Usage example:
+
+```python
+from haystack.utils import Secret
+from haystack_integrations.components.retrievers.amazon_bedrock import BedrockKnowledgeBaseRetriever
+
+retriever = BedrockKnowledgeBaseRetriever(
+    knowledge_base_id="ABCDEFGHIJ",
+    aws_region_name=Secret.from_token("eu-central-1"),
+)
+
+result = retriever.run(query="What are the benefits of managed knowledge bases?")
+for doc in result["documents"]:
+    print(doc.content)
+    print(doc.meta["source"])
+    print(doc.score)
+```
+
+BedrockKnowledgeBaseRetriever uses AWS for authentication. You can use the AWS CLI to authenticate through
+your IAM. For more information on setting up an IAM identity-based policy, see [Amazon Bedrock documentation]
+(https://docs.aws.amazon.com/bedrock/latest/userguide/security_iam_id-based-policy-examples.html).
+
+If the AWS environment is configured correctly, the AWS credentials are not required as they're loaded
+automatically from the environment or the AWS configuration file.
+If the AWS environment is not configured, set `aws_access_key_id`, `aws_secret_access_key`,
+and `aws_region_name` as environment variables or pass them as
+[Secret](https://docs.haystack.deepset.ai/docs/secret-management) arguments.
+
+#### __init__
+
+```python
+__init__(
+    knowledge_base_id: str | None = None,
+    aws_access_key_id: Secret | None = Secret.from_env_var(
+        "AWS_ACCESS_KEY_ID", strict=False
+    ),
+    aws_secret_access_key: Secret | None = Secret.from_env_var(
+        "AWS_SECRET_ACCESS_KEY", strict=False
+    ),
+    aws_session_token: Secret | None = Secret.from_env_var(
+        "AWS_SESSION_TOKEN", strict=False
+    ),
+    aws_region_name: Secret | str | None = Secret.from_env_var(
+        "AWS_DEFAULT_REGION", strict=False
+    ),
+    aws_profile_name: Secret | None = Secret.from_env_var(
+        "AWS_PROFILE", strict=False
+    ),
+    number_of_results: int = 5,
+    use_agentic_retrieval: bool | None = None,
+) -> None
+```
+
+Create the BedrockKnowledgeBaseRetriever component.
+
+**Parameters:**
+
+- **knowledge_base_id** (<code>str | None</code>) – The ID of the Bedrock Knowledge Base. Falls back to the AWS_KNOWLEDGE_BASE_ID
+  environment variable.
+- **aws_access_key_id** (<code>Secret | None</code>) – AWS access key ID.
+- **aws_secret_access_key** (<code>Secret | None</code>) – AWS secret access key.
+- **aws_session_token** (<code>Secret | None</code>) – AWS session token.
+- **aws_region_name** (<code>Secret | str | None</code>) – AWS region name.
+- **aws_profile_name** (<code>Secret | None</code>) – AWS profile name.
+- **number_of_results** (<code>int</code>) – Maximum number of results to return.
+- **use_agentic_retrieval** (<code>bool | None</code>) – If True, try AgenticRetrieveStream before plain Retrieve.
+  Defaults to the USE_AGENTIC_RETRIEVAL environment variable, or True.
+
+#### run
+
+```python
+run(query: str, top_k: int | None = None) -> dict[str, list[Document]]
+```
+
+Retrieve documents from the Bedrock Knowledge Base.
+
+**Parameters:**
+
+- **query** (<code>str</code>) – The search query.
+- **top_k** (<code>int | None</code>) – Maximum number of results. Overrides number_of_results if provided.
+
+**Returns:**
+
+- <code>dict\[str, list\[Document\]\]</code> – A dictionary with a "documents" key containing the retrieved Documents.
+
+**Raises:**
+
+- <code>AmazonBedrockInferenceError</code> – If the retrieval call fails.
+
+#### to_dict
+
+```python
+to_dict() -> dict[str, Any]
+```
+
+Serializes the component to a dictionary.
+
+**Returns:**
+
+- <code>dict\[str, Any\]</code> – Dictionary with serialized data.
+
+#### from_dict
+
+```python
+from_dict(data: dict[str, Any]) -> BedrockKnowledgeBaseRetriever
+```
+
+Deserializes the component from a dictionary.
+
+**Parameters:**
+
+- **data** (<code>dict\[str, Any\]</code>) – The dictionary to deserialize from.
+
+**Returns:**
+
+- <code>BedrockKnowledgeBaseRetriever</code> – The deserialized component.
