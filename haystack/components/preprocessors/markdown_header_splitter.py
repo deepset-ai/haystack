@@ -237,8 +237,12 @@ class MarkdownHeaderSplitter:
 
             content_for_splitting: str = doc.content
 
-            if not self.keep_headers:  # skip header extraction if keep_headers
-                # extract header information
+            # Only strip a leading header line from chunks that actually came from a header split. Those carry
+            # the header text in their "header" meta field, so removing it from the content avoids duplicating
+            # it. The fallback paths of _split_text_by_markdown_headers (no headers found / only headers with
+            # no content) return the document with empty meta, so stripping there would drop the header text
+            # from the output entirely.
+            if not self.keep_headers and "header" in doc.meta:
                 header_match = re.match(self._header_pattern, doc.content)
                 if header_match:
                     content_for_splitting = doc.content[header_match.end() :]

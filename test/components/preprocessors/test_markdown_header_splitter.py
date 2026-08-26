@@ -284,6 +284,42 @@ def test_secondary_split_keeps_content_before_code_fence_comment():
     assert "some intro text" in combined
 
 
+def test_secondary_split_keeps_header_of_headers_only_document():
+    """A document that has only headers and no body text is returned unsplit and without header
+    metadata, so the secondary split must not strip its leading header line."""
+    splitter = MarkdownHeaderSplitter(keep_headers=False, secondary_split="word", split_length=5)
+    docs = splitter.run(documents=[Document(content="# Alpha\n# Beta")])["documents"]
+    combined = "".join(doc.content or "" for doc in docs)
+    assert "Alpha" in combined
+    assert "Beta" in combined
+
+
+def test_secondary_split_keeps_header_at_non_split_level():
+    """A header at a level excluded from header_split_levels never creates a chunk of its own, so
+    the secondary split must not strip it from the unsplit document."""
+    splitter = MarkdownHeaderSplitter(
+        keep_headers=False, header_split_levels=[2], secondary_split="word", split_length=5
+    )
+    docs = splitter.run(documents=[Document(content="# Title\nsome content here")])["documents"]
+    combined = "".join(doc.content or "" for doc in docs)
+    assert "Title" in combined
+    assert "some content here" in combined
+
+
+def test_secondary_split_still_strips_header_from_header_split_chunks():
+    """With keep_headers=False, chunks produced by a real header split keep the header only in
+    metadata and not in the content."""
+    splitter = MarkdownHeaderSplitter(keep_headers=False, secondary_split="word", split_length=100)
+    docs = splitter.run(documents=[Document(content="# Setup\nInstall it.\n# Usage\nRun it.")])["documents"]
+
+    assert [doc.meta["header"] for doc in docs] == ["Setup", "Usage"]
+    for doc in docs:
+        assert doc.content is not None
+        assert not doc.content.lstrip().startswith("#")
+    assert "Install it." in (docs[0].content or "")
+    assert "Run it." in (docs[1].content or "")
+
+
 # Error and edge case handling
 def test_non_text_document():
     """Test that the component correctly handles non-text documents."""

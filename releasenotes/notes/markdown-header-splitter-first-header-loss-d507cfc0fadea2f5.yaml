@@ -1,0 +1,12 @@
+---
+fixes:
+  - |
+    Fixed ``MarkdownHeaderSplitter`` dropping the document's leading header line when a
+    ``secondary_split`` is configured with ``keep_headers=False``. The secondary split step
+    stripped a header at the start of every chunk regardless of its level, but chunks returned
+    by the "no headers found" and "only headers with no content" fallback paths carry no
+    ``header`` metadata, so the stripped text was lost from both the content and the metadata.
+    This also affected documents whose only header sits at a level excluded from
+    ``header_split_levels``. The leading header line is now only stripped from chunks that
+    actually came from a header split, where the header text is preserved in the ``header``
+    metadata field.
