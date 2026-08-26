@@ -1360,6 +1360,45 @@ class GetMetadataFieldUniqueValuesTest:
         assert values_by_type[bool] is True
 
     @staticmethod
+    def test_get_metadata_field_unique_values_type_fidelity(document_store: DocumentStore):
+        """
+        Test get_metadata_field_unique_values() preserves each value's original type per field.
+
+        int, float, str and bool are each stored under their own metadata field. Unlike
+        test_get_metadata_field_unique_values_distinct_types, this doesn't require a single field to
+        hold multiple types at once - some backends can't do that (their field type is fixed by the
+        first document written to it) even though they preserve each type correctly on its own.
+        Document Stores that can't support the same-field case should skip that test but are still
+        expected to pass this one.
+        """
+        docs = [
+            Document(content="Doc 1", meta={"distinct_type_int": 1}),
+            Document(content="Doc 2", meta={"distinct_type_str": "1"}),
+            Document(content="Doc 3", meta={"distinct_type_float": 1.5}),
+            Document(content="Doc 4", meta={"distinct_type_bool": True}),
+        ]
+        document_store.write_documents(docs)
+
+        int_values, int_count = document_store.get_metadata_field_unique_values(  # type:ignore[attr-defined]
+            metadata_field="distinct_type_int"
+        )
+        str_values, str_count = document_store.get_metadata_field_unique_values(  # type:ignore[attr-defined]
+            metadata_field="distinct_type_str"
+        )
+        float_values, float_count = document_store.get_metadata_field_unique_values(  # type:ignore[attr-defined]
+            metadata_field="distinct_type_float"
+        )
+        bool_values, bool_count = document_store.get_metadata_field_unique_values(  # type:ignore[attr-defined]
+            metadata_field="distinct_type_bool"
+        )
+
+        assert (int_count, str_count, float_count, bool_count) == (1, 1, 1, 1)
+        assert int_values == [1] and type(int_values[0]) is int
+        assert str_values == ["1"] and type(str_values[0]) is str
+        assert float_values == [1.5] and type(float_values[0]) is float
+        assert bool_values == [True] and type(bool_values[0]) is bool
+
+    @staticmethod
     def test_get_metadata_field_unique_values_with_filters(document_store: DocumentStore):
         """Test get_metadata_field_unique_values() restricts documents using the filters param."""
         docs = [
