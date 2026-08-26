@@ -454,7 +454,10 @@ class TestTracing:
             == {"messages": messages, "generation_kwargs": generation_kwargs, "tools": None, "streaming_callback": None}
             for span in generator_spans
         )
+        assert generator_spans[0].tags["error.type"] == "builtins.RuntimeError"
+        assert generator_spans[0].tags["exception.message"] == "boom"
         assert "haystack.component.output" not in generator_spans[0].tags
+        assert "error.type" not in generator_spans[1].tags
         assert generator_spans[1].tags["haystack.component.output"]["replies"][0].text == "ok"
 
     @pytest.mark.asyncio
@@ -478,7 +481,10 @@ class TestTracing:
             == {"messages": messages, "generation_kwargs": generation_kwargs, "tools": None, "streaming_callback": None}
             for span in generator_spans
         )
+        assert generator_spans[0].tags["error.type"] == "builtins.RuntimeError"
+        assert generator_spans[0].tags["exception.message"] == "boom"
         assert "haystack.component.output" not in generator_spans[0].tags
+        assert "error.type" not in generator_spans[1].tags
         assert generator_spans[1].tags["haystack.component.output"]["replies"][0].text == "ok"
 
 

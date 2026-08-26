@@ -65,6 +65,25 @@ class Span(abc.ABC):
         if tracer.is_content_tracing_enabled:
             self.set_tag(key, value)
 
+    def record_exception(self, exception: BaseException) -> None:
+        """
+        Record an exception that caused the span's operation to fail.
+
+        The default implementation uses OpenTelemetry's `error.type` span attribute. Because Haystack's generic
+        `Span` interface does not expose events, it also stores OpenTelemetry's `exception.message` exception-event
+        field as a content tag. The exception type is always recorded so failures remain queryable without content
+        tracing. The exception message can contain sensitive or high-cardinality data, so it is only recorded when
+        content tracing is enabled.
+
+        Tracer integrations can override this method to use their backend's native exception event and error-status
+        APIs. This default tag-based representation keeps existing third-party `Span` implementations compatible.
+
+        :param exception: The exception that caused the operation represented by this span to fail.
+        """
+        exception_type = type(exception)
+        self.set_tag("error.type", f"{exception_type.__module__}.{exception_type.__qualname__}")
+        self.set_content_tag("exception.message", str(exception))
+
     def get_correlation_data_for_logs(self) -> dict[str, Any]:
         """
         Return a dictionary with correlation data for logs.
@@ -123,7 +142,11 @@ class ProxyTracer(Tracer):
     ) -> Iterator[Span]:
         """Activate and return a new span that inherits from the current active span."""
         with self.actual_tracer.trace(operation_name, tags=tags, parent_span=parent_span) as span:
-            yield span
+            try:
+                yield span
+            except Exception as exception:
+                span.record_exception(exception=exception)
+                raise
 
     def current_span(self) -> Span | None:
         """Return the current active span"""

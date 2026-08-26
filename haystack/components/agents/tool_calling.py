@@ -217,9 +217,10 @@ def _make_context_bound_invoke(
             span.set_content_tag("haystack.agent.step.tool.input", tool_call.arguments)
             try:
                 result = tool.invoke(**args)
-            except ToolInvocationError as e:
-                span.set_content_tag("haystack.agent.step.tool.output", {"error": str(e)})
-                return e
+            except ToolInvocationError as error:
+                span.record_exception(exception=error)
+                span.set_content_tag("haystack.agent.step.tool.output", {"error": str(error)})
+                return error
             span.set_content_tag("haystack.agent.step.tool.output", result)
             return result
 
@@ -254,9 +255,10 @@ def _make_bounded_invoke_async(
                 span.set_content_tag("haystack.agent.step.tool.input", tool_call.arguments)
                 try:
                     result = await tool.invoke_async(**args)
-                except ToolInvocationError as e:
-                    span.set_content_tag("haystack.agent.step.tool.output", {"error": str(e)})
-                    return e
+                except ToolInvocationError as error:
+                    span.record_exception(exception=error)
+                    span.set_content_tag("haystack.agent.step.tool.output", {"error": str(error)})
+                    return error
                 span.set_content_tag("haystack.agent.step.tool.output", result)
                 return result
 

@@ -458,6 +458,8 @@ class TestConfirmationHookTracing:
 
         hook_span, tool_span = spying_tracer.spans
         assert tool_span.parent_span is hook_span
+        assert hook_span.tags["error.type"] == "builtins.RuntimeError"
+        assert hook_span.tags["exception.message"] == "execution suspended"
         assert tool_span.tags == {
             "haystack.tool.name": "addition_tool",
             "haystack.tool.call.id": None,
@@ -470,6 +472,8 @@ class TestConfirmationHookTracing:
                 "tool_params": {"a": 1, "b": 2},
                 "tool_call_id": None,
             },
+            "error.type": "builtins.RuntimeError",
+            "exception.message": "execution suspended",
         }
 
 

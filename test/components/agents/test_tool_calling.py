@@ -674,7 +674,7 @@ class TestRunToolErrorHandling:
         with pytest.raises(ToolInvocationError):
             _run_tool(messages=[tool_call_message], state=State(schema={}), tools=[faulty_tool])
 
-    def test_tool_invocation_error_does_not_raise_exception(self, faulty_tool):
+    def test_tool_invocation_error_does_not_raise_exception(self, faulty_tool, spying_tracer):
         tool_call = ToolCall(tool_name="faulty_tool", arguments={"location": "Berlin"})
         tool_call_message = ChatMessage.from_assistant(tool_calls=[tool_call])
 
@@ -684,6 +684,26 @@ class TestRunToolErrorHandling:
         tool_message = tool_messages[0]
         assert tool_message.tool_call_results[0].error
         assert "Failed to invoke" in tool_message.tool_call_results[0].result
+
+        tool_span = next(span for span in spying_tracer.spans if span.operation_name == "haystack.agent.step.tool")
+        assert tool_span.tags["error.type"] == "haystack.tools.errors.ToolInvocationError"
+        assert "Failed to invoke" in tool_span.tags["exception.message"]
+
+    @pytest.mark.asyncio
+    async def test_tool_invocation_error_does_not_raise_exception_async(self, faulty_tool, spying_tracer):
+        tool_call = ToolCall(tool_name="faulty_tool", arguments={"location": "Berlin"})
+        tool_call_message = ChatMessage.from_assistant(tool_calls=[tool_call])
+
+        tool_messages, _ = await _run_tool_async(
+            messages=[tool_call_message], state=State(schema={}), tools=[faulty_tool], raise_on_failure=False
+        )
+        tool_message = tool_messages[0]
+        assert tool_message.tool_call_results[0].error
+        assert "Failed to invoke" in tool_message.tool_call_results[0].result
+
+        tool_span = next(span for span in spying_tracer.spans if span.operation_name == "haystack.agent.step.tool")
+        assert tool_span.tags["error.type"] == "haystack.tools.errors.ToolInvocationError"
+        assert "Failed to invoke" in tool_span.tags["exception.message"]
 
     def test_outputs_to_string_with_multiple_outputs(self):
         weather_tool = Tool(

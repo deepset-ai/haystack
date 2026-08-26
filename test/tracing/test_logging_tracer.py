@@ -196,5 +196,11 @@ class TestLoggingTracer:
         tags_records = [record for record in records if hasattr(record, "tag_name")]
         assert any(record.tag_name == "haystack.component.name" for record in tags_records)
         assert any(record.tag_value == "failing_component" for record in tags_records)  # type: ignore[attr-defined]
+        error_type_records = [record for record in tags_records if record.tag_name == "error.type"]
+        assert len(error_type_records) == 2
+        assert all(
+            vars(record)["tag_value"] == "haystack.core.errors.PipelineRuntimeError" for record in error_type_records
+        )
+        assert not any(record.tag_name == "exception.message" for record in tags_records)
 
         tracing.disable_tracing()

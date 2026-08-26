@@ -4,6 +4,7 @@
 
 from unittest.mock import Mock
 
+import pytest
 from _pytest.monkeypatch import MonkeyPatch
 
 from haystack.tracing.tracer import (
@@ -17,7 +18,7 @@ from haystack.tracing.tracer import (
     is_tracing_enabled,
     tracer,
 )
-from test.tracing.utils import SpyingSpan, SpyingTracer
+from test.tracing.utils import EagerSpyingSpan, SpyingSpan, SpyingTracer
 
 
 class TestNullTracer:
@@ -49,6 +50,19 @@ class TestProxyTracer:
         assert spying_tracer.spans[0].operation_name == "operation"
         assert spying_tracer.spans[0].parent_span == parent_span
         assert spying_tracer.spans[0].tags == {"key": "value", "key2": "value2"}
+
+    def test_tracing_records_escaping_exception(self) -> None:
+        spying_tracer = SpyingTracer()
+        my_tracer = ProxyTracer(provided_tracer=spying_tracer)
+
+        with pytest.raises(ValueError, match="sensitive details"):
+            with my_tracer.trace("operation"):
+                raise ValueError("sensitive details")
+
+        assert spying_tracer.spans[0].tags == {
+            "error.type": "builtins.ValueError",
+            "exception.message": "sensitive details",
+        }
 
 
 class TestConfigureTracer:
@@ -91,3 +105,15 @@ class TestTracingContent:
         proxy_tracer = ProxyTracer(provided_tracer=SpyingTracer())
 
         assert proxy_tracer.is_content_tracing_enabled is False
+
+    def test_record_exception_message_respects_content_tracing(self, monkeypatch: MonkeyPatch) -> None:
+        span = EagerSpyingSpan(operation_name="test")
+        exception = ValueError("sensitive details")
+
+        monkeypatch.setattr(tracer, "is_content_tracing_enabled", False)
+        span.record_exception(exception=exception)
+        assert span.tags == {"error.type": "builtins.ValueError"}
+
+        monkeypatch.setattr(tracer, "is_content_tracing_enabled", True)
+        span.record_exception(exception=exception)
+        assert span.tags == {"error.type": "builtins.ValueError", "exception.message": "sensitive details"}

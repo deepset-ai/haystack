@@ -1,0 +1,7 @@
+---
+enhancements:
+  - |
+    Tracing spans now record an ``error.type`` tag when their operation raises an exception. With content tracing
+    enabled, the span also records ``exception.message``. The new ``Span.record_exception`` method lets components
+    annotate failures that they handle internally and lets tracer integrations provide native exception-event and
+    error-status handling.
