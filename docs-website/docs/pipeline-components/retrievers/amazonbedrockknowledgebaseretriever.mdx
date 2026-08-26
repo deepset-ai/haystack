@@ -1,11 +1,11 @@
 ---
-title: "BedrockKnowledgeBaseRetriever"
-id: bedrockknowledgebaseretriever
-slug: "/bedrockknowledgebaseretriever"
+title: "AmazonBedrockKnowledgeBaseRetriever"
+id: amazonbedrockknowledgebaseretriever
+slug: "/amazonbedrockknowledgebaseretriever"
 description: "Retrieves documents from an Amazon Bedrock Managed Knowledge Base."
 ---
 
-# BedrockKnowledgeBaseRetriever
+# AmazonBedrockKnowledgeBaseRetriever
 
 Retrieves documents from an Amazon Bedrock Managed Knowledge Base.
 
@@ -27,7 +27,7 @@ Retrieves documents from an Amazon Bedrock Managed Knowledge Base.
 
 ## Overview
 
-`BedrockKnowledgeBaseRetriever` retrieves Documents from an Amazon Bedrock Managed Knowledge Base. Unlike most other Retrievers, it doesn't need a Haystack Document Store or an Embedder: indexing and embedding are handled entirely by AWS, and the component only needs a text `query` to search the Knowledge Base.
+`AmazonBedrockKnowledgeBaseRetriever` retrieves Documents from an Amazon Bedrock Managed Knowledge Base. Unlike most other Retrievers, it doesn't need a Haystack Document Store or an Embedder: indexing and embedding are handled entirely by AWS, and the component only needs a text `query` to search the Knowledge Base.
 
 By default, the Retriever tries the Agentic Retrieve API first and falls back to the standard Retrieve API if agentic retrieval isn't available for the configured Knowledge Base. You can control this behavior with the `use_agentic_retrieval` init parameter, or the `USE_AGENTIC_RETRIEVAL` environment variable.
 
@@ -55,10 +55,10 @@ You also need an existing [Amazon Bedrock Knowledge Base](https://docs.aws.amazo
 from haystack.utils import Secret
 
 from haystack_integrations.components.retrievers.amazon_bedrock import (
-    BedrockKnowledgeBaseRetriever,
+    AmazonBedrockKnowledgeBaseRetriever,
 )
 
-retriever = BedrockKnowledgeBaseRetriever(
+retriever = AmazonBedrockKnowledgeBaseRetriever(
     knowledge_base_id="ABCDEFGHIJ",
     aws_region_name=Secret.from_token("eu-central-1"),
 )
@@ -82,7 +82,7 @@ from haystack_integrations.components.generators.amazon_bedrock import (
     AmazonBedrockChatGenerator,
 )
 from haystack_integrations.components.retrievers.amazon_bedrock import (
-    BedrockKnowledgeBaseRetriever,
+    AmazonBedrockKnowledgeBaseRetriever,
 )
 
 template = [
@@ -102,7 +102,7 @@ template = [
 rag_pipeline = Pipeline()
 rag_pipeline.add_component(
     "retriever",
-    BedrockKnowledgeBaseRetriever(
+    AmazonBedrockKnowledgeBaseRetriever(
         knowledge_base_id="ABCDEFGHIJ",
         aws_region_name=Secret.from_token("eu-central-1"),
     ),
