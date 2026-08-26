@@ -140,6 +140,26 @@ def test_split_sentences_keeps_a_cited_question_joined() -> None:
     assert [sentence["sentence"] for sentence in sentences] == [text]
 
 
+@pytest.mark.parametrize(
+    "text",
+    [
+        'He said "Hi.", then left.',  # comma directly after the closing quote
+        "He said 'Hi.', then left.",  # single quotes
+        'He said "Hi."; then left.',  # semicolon
+        'He said "Hi.": then left.',  # colon
+        'He said "Hi."—then left.',  # em dash
+    ],
+)
+def test_split_sentences_keeps_a_quote_with_trailing_punctuation_joined(text: str) -> None:
+    # a closing quote directly followed by continuation punctuation is not a sentence boundary; widening
+    # the closing-char class must not turn e.g. `.",` into a split that would start a chunk with a comma
+    splitter = SentenceSplitter(language="en", keep_white_spaces=True)
+
+    sentences = splitter.split_sentences(text)
+
+    assert [sentence["sentence"] for sentence in sentences] == [text]
+
+
 def test_split_sentences_performance() -> None:
     # make sure our regex is not vulnerable to Regex Denial of Service (ReDoS)
     # https://owasp.org/www-community/attacks/Regular_expression_Denial_of_Service_-_ReDoS

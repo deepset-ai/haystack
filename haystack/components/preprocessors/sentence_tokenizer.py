@@ -223,6 +223,16 @@ class SentenceSplitter:
             # question is cited
             return True
 
+        # sentence.", sentence -> no split (end == quote_end): widening the closing-char class (see
+        # period_context_re) moves the boundary just past the closing quote instead of leaving it inside,
+        # so continuation punctuation directly after the quote must still join rather than start a sentence.
+        if any(
+            quote_start < end == quote_end and quote_end < len(text) and text[quote_end] in ",;:—"
+            for quote_start, quote_end in quote_spans
+        ):
+            # e.g. `He said "Hi.", then left.` -> the punctuation continues the sentence
+            return True
+
         if re.search(r"(^|\n)\s*\d{1,2}\.$", text[start:end]) is not None:
             # sentence ends with a numeration
             return True
