@@ -881,3 +881,17 @@ def test_whitespace_only_trailing_header_has_empty_header_metadata():
     docs = MarkdownHeaderSplitter().run(documents=[Document(content=text)])["documents"]
     assert "".join(doc.content for doc in docs) == text
     assert docs[-1].meta["header"] == ""
+
+
+def test_secondary_split_does_not_remove_unsplit_header():
+    text = "# Title\n some content here"
+
+    splitter = MarkdownHeaderSplitter(
+        keep_headers=False, header_split_levels=[2], secondary_split="word", split_length=5
+    )
+
+    result = splitter.run(documents=[Document(content=text)])
+    split_docs = result["documents"]
+
+    assert len(split_docs) == 1
+    assert split_docs[0].content == text
