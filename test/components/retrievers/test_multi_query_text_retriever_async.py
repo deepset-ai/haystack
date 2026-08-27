@@ -141,7 +141,7 @@ class TestMultiQueryTextRetrieverAsync:
                 await slow_started.wait()
                 raise RuntimeError("boom")
 
-        multi_retriever = MultiQueryTextRetriever(retriever=MockRetriever())
+        multi_retriever = MultiQueryTextRetriever(retriever=MockRetriever())  # type: ignore[arg-type]
 
         with pytest.raises(RuntimeError):
             await multi_retriever.run_async(queries=["slow", "failing"])

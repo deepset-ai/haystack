@@ -55,7 +55,7 @@ class TestFilterRetriever:
     def test_to_dict(self):
         FilterDocStore = document_store_class("MyFakeStore", bases=(InMemoryDocumentStore,))
         document_store = FilterDocStore()
-        document_store.to_dict = lambda: {"type": "FilterDocStore", "init_parameters": {}}
+        document_store.to_dict = lambda: {"type": "FilterDocStore", "init_parameters": {}}  # type: ignore[method-assign]
         component = FilterRetriever(document_store=document_store)
 
         data = component.to_dict()
@@ -136,9 +136,7 @@ class TestFilterRetriever:
         assert results_docs
         assert TestFilterRetriever._documents_equal(results_docs, sample_docs["de_docs"])
 
-        result: dict[str, Any] = pipeline.run(
-            data={"retriever": {"filters": {"field": "lang", "operator": "==", "value": "en"}}}
-        )
+        result = pipeline.run(data={"retriever": {"filters": {"field": "lang", "operator": "==", "value": "en"}}})
 
         assert result
         assert "retriever" in result

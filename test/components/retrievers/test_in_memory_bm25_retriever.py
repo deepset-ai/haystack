@@ -45,8 +45,8 @@ class TestMemoryBM25Retriever:
     def test_to_dict(self):
         MyFakeStore = document_store_class("MyFakeStore", bases=(InMemoryDocumentStore,))
         document_store = MyFakeStore()
-        document_store.to_dict = lambda: {"type": "MyFakeStore", "init_parameters": {}}
-        component = InMemoryBM25Retriever(document_store=document_store)
+        document_store.to_dict = lambda: {"type": "MyFakeStore", "init_parameters": {}}  # type: ignore[method-assign]
+        component = InMemoryBM25Retriever(document_store=document_store)  # type: ignore[arg-type]
 
         data = component.to_dict()
         assert data == {
@@ -206,7 +206,7 @@ class TestMemoryBM25Retriever:
     def test_invalid_run_wrong_store_type(self):
         SomeOtherDocumentStore = document_store_class("SomeOtherDocumentStore")
         with pytest.raises(TypeError, match="document_store must be an instance of InMemoryDocumentStore"):
-            InMemoryBM25Retriever(SomeOtherDocumentStore())
+            InMemoryBM25Retriever(SomeOtherDocumentStore())  # type: ignore[arg-type]
 
     @pytest.mark.integration
     @pytest.mark.parametrize(
@@ -216,7 +216,9 @@ class TestMemoryBM25Retriever:
             ("Java", "Java is a popular programming language"),
         ],
     )
-    def test_run_with_pipeline(self, in_memory_doc_store, mock_docs, query: str, query_result: str):
+    def test_run_with_pipeline(
+        self, in_memory_doc_store: InMemoryDocumentStore, mock_docs: list[Document], query: str, query_result: str
+    ) -> None:
         in_memory_doc_store.write_documents(mock_docs)
         retriever = InMemoryBM25Retriever(in_memory_doc_store)
 
@@ -240,8 +242,13 @@ class TestMemoryBM25Retriever:
         ],
     )
     def test_run_with_pipeline_and_top_k(
-        self, in_memory_doc_store, mock_docs, query: str, query_result: str, top_k: int
-    ):
+        self,
+        in_memory_doc_store: InMemoryDocumentStore,
+        mock_docs: list[Document],
+        query: str,
+        query_result: str,
+        top_k: int,
+    ) -> None:
         in_memory_doc_store.write_documents(mock_docs)
         retriever = InMemoryBM25Retriever(in_memory_doc_store)
 

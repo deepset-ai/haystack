@@ -56,8 +56,10 @@ class TestMultiQueryEmbeddingRetrieverAsync:
         multi_retriever = MultiQueryEmbeddingRetriever(retriever=MockRetriever(), query_embedder=MockTextEmbedder())
         result = await multi_retriever.run_async(queries=["query1", "query2"])
 
-        scores = [doc.score for doc in result["documents"]]
-        assert scores == sorted(scores, reverse=True)
+        docs = result["documents"]
+        assert all(doc.score is not None for doc in docs)
+        scores = [doc.score for doc in docs]
+        assert scores == sorted(scores, reverse=True)  # type: ignore[type-var]
 
     @pytest.mark.asyncio
     async def test_run_async_deduplication(self):
@@ -164,7 +166,7 @@ class TestMultiQueryEmbeddingRetrieverAsync:
             async def run_async(self, query_embedding: list[float], **kwargs: Any) -> dict[str, list[Document]]:
                 return {"documents": []}
 
-        multi_retriever = MultiQueryEmbeddingRetriever(retriever=MockRetriever(), query_embedder=MockEmbedder())
+        multi_retriever = MultiQueryEmbeddingRetriever(retriever=MockRetriever(), query_embedder=MockEmbedder())  # type: ignore[arg-type]
 
         with pytest.raises(RuntimeError):
             await multi_retriever.run_async(queries=["slow", "failing"])
