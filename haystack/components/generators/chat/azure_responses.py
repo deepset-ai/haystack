@@ -259,9 +259,10 @@ class AzureOpenAIResponsesChatGenerator(OpenAIResponsesChatGenerator):
         tools = data["init_parameters"].get("tools")
         if tools and (
             isinstance(tools, dict)
-            and tools.get("type") == "haystack.tools.toolset.Toolset"
+            and "data" in tools
             or isinstance(tools, list)
-            and tools[0].get("type") == "haystack.tools.tool.Tool"
+            and isinstance(tools[0], dict)
+            and "data" in tools[0]
         ):
             deserialize_tools_or_toolset_inplace(data["init_parameters"], key="tools")
 

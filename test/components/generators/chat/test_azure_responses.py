@@ -354,6 +354,16 @@ class TestSerDe:
         assert len(deserialized_component.tools) == len(tools)
         assert all(isinstance(tool, Tool) for tool in deserialized_component.tools)
 
+    def test_from_dict_with_component_tool(self, tools: list[Tool], monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setenv("AZURE_OPENAI_API_KEY", "test-api-key")
+        component = AzureOpenAIResponsesChatGenerator(
+            azure_endpoint="some-non-existing-endpoint", tools=[tools[1]]
+        )
+
+        deserialized_component = AzureOpenAIResponsesChatGenerator.from_dict(component.to_dict())
+
+        assert isinstance(deserialized_component.tools[0], ComponentTool)
+
     def test_pipeline_serialization_deserialization(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
 
         monkeypatch.setenv("AZURE_OPENAI_API_KEY", "test-api-key")
