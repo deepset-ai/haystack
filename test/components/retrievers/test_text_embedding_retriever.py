@@ -71,9 +71,11 @@ class TestTextEmbeddingRetriever:
         result = retriever.run(query="energy")
 
         docs = result["documents"]
-        assert all(doc.score is not None for doc in docs)
-        scores = [doc.score for doc in docs]
-        assert scores == sorted(scores, reverse=True)  # type: ignore[type-var]
+        scores: list[float] = []
+        for doc in docs:
+            assert doc.score is not None
+            scores.append(doc.score)
+        assert scores == sorted(scores, reverse=True)
 
     def test_to_dict(self):
         retriever = TextEmbeddingRetriever(

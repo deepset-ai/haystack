@@ -134,9 +134,11 @@ class TestMultiRetriever:
             retrievers={"a": MockRetriever(docs_a), "b": MockRetriever(docs_b)}, join_mode="reciprocal_rank_fusion"
         )
         result = retriever.run(query="energy")
-        assert all(doc.score is not None for doc in result["documents"])
-        scores = [doc.score for doc in result["documents"]]
-        assert scores == sorted(scores, reverse=True)  # type: ignore[type-var]
+        scores: list[float] = []
+        for doc in result["documents"]:
+            assert doc.score is not None
+            scores.append(doc.score)
+        assert scores == sorted(scores, reverse=True)
         # doc1 ranked 1st in a and 2nd in b, doc3 ranked 3rd in a and 1st in b — doc1 should beat doc3
         ids = [doc.id for doc in result["documents"]]
         assert ids.index("doc1") < ids.index("doc3")
@@ -232,9 +234,11 @@ class TestMultiRetriever:
         )
         result = retriever.run(query="energy", top_k=2)
         assert len(result["documents"]) == 2
-        scores = [doc.score for doc in result["documents"]]
-        assert all(score is not None for score in scores)
-        assert scores == sorted(scores, reverse=True)  # type: ignore[type-var]
+        scores: list[float] = []
+        for doc in result["documents"]:
+            assert doc.score is not None
+            scores.append(doc.score)
+        assert scores == sorted(scores, reverse=True)
 
     def test_run_top_k_forces_rrf_in_concatenate_mode(self, sample_documents):
         # In concatenate mode there is no global ranking, so setting top_k falls back to RRF to truncate consistently
@@ -447,9 +451,11 @@ class TestMultiRetrieverAsync:
             retrievers={"a": MockRetriever(docs_a), "b": MockRetriever(docs_b)}, join_mode="reciprocal_rank_fusion"
         )
         result = await retriever.run_async(query="energy")
-        assert all(doc.score is not None for doc in result["documents"])
-        scores = [doc.score for doc in result["documents"]]
-        assert scores == sorted(scores, reverse=True)  # type: ignore[type-var]
+        scores: list[float] = []
+        for doc in result["documents"]:
+            assert doc.score is not None
+            scores.append(doc.score)
+        assert scores == sorted(scores, reverse=True)
         ids = [doc.id for doc in result["documents"]]
         assert ids.index("doc1") < ids.index("doc3")
 
@@ -514,9 +520,11 @@ class TestMultiRetrieverAsync:
         )
         result = await retriever.run_async(query="energy", top_k=2)
         assert len(result["documents"]) == 2
-        scores = [doc.score for doc in result["documents"]]
-        assert all(score is not None for score in scores)
-        assert scores == sorted(scores, reverse=True)  # type: ignore[type-var]
+        scores: list[float] = []
+        for doc in result["documents"]:
+            assert doc.score is not None
+            scores.append(doc.score)
+        assert scores == sorted(scores, reverse=True)
 
     @pytest.mark.asyncio
     async def test_run_async_top_k_forces_rrf_in_concatenate_mode(self, sample_documents):
