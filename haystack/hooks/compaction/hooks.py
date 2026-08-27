@@ -33,6 +33,7 @@ class CompactionHook:
     reaches `compact_at` of the window, hands it to a `Compactor` to bring back down to `compact_to`. Register it on an
     `Agent` under the `before_llm` hook point:
 
+    <!-- test-ignore -->
     ```python
     from haystack.components.agents import Agent
     from haystack.components.generators.chat import OpenAIResponsesChatGenerator

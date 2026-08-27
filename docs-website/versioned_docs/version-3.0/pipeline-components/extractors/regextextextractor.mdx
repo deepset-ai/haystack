@@ -40,7 +40,7 @@ from haystack.components.extractors import RegexTextExtractor
 
 extractor = RegexTextExtractor(regex_pattern=r"<answer>(.*?)</answer>")
 result = extractor.run(text_or_messages="No answer tags here")
-print(result)  # Output: {'captured_text': ''}
+print(result)  # >> {'captured_text': ''}
 ```
 
 ## Usage
@@ -60,7 +60,7 @@ result = extractor.run(
     text_or_messages='<issue url="github.com/example/issue/123">Issue description</issue>',
 )
 print(result)
-# Output: {'captured_text': 'github.com/example/issue/123'}
+# >> {'captured_text': 'github.com/example/issue/123'}
 ```
 
 ### With ChatMessages
@@ -83,7 +83,7 @@ messages = [
 
 result = extractor.run(text_or_messages=messages)
 print(result)
-# Output: {'captured_text': '{"name": "Alice", "age": 30}'}
+# >> {'captured_text': '{"name": "Alice", "age": 30}'}
 ```
 
 ### In a pipeline
@@ -124,5 +124,5 @@ messages = [
 # Run the pipeline (requires OPENAI_API_KEY environment variable)
 result = pipe.run({"prompt_builder": {"template": messages}})
 print(result["extractor"]["captured_text"])
-# Output: 'Remote work offers flexibility and eliminates commuting but can lead to isolation and blurred work-life boundaries.'
+# >> 'Remote work offers flexibility and eliminates commuting but can lead to isolation and blurred work-life boundaries.'
 ```

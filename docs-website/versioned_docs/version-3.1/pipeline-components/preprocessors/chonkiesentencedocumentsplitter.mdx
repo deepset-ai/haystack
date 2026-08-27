@@ -1,0 +1,113 @@
+---
+title: "ChonkieSentenceDocumentSplitter"
+id: chonkiesentencedocumentsplitter
+slug: "/chonkiesentencedocumentsplitter"
+description: "Use `ChonkieSentenceDocumentSplitter` to split documents into sentence-aware chunks using the Chonkie library."
+---
+
+# ChonkieSentenceDocumentSplitter
+
+`ChonkieSentenceDocumentSplitter` splits documents into chunks that respect sentence boundaries using [Chonkie](https://docs.chonkie.ai/)'s `SentenceChunker`.
+Unlike pure token splitting, it avoids cutting mid-sentence, producing more coherent chunks.
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | In indexing pipelines after [Converters](../converters.mdx) and [`DocumentCleaner`](documentcleaner.mdx), before [Embedders](../embedders.mdx) |
+| **Mandatory run variables**            | `documents`: A list of documents |
+| **Output variables**                   | `documents`: A list of documents |
+| **API reference**                      | [Chonkie](/reference/integrations-chonkie) |
+| **GitHub link**                        | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/chonkie |
+
+</div>
+
+## Overview
+
+`ChonkieSentenceDocumentSplitter` wraps Chonkie's `SentenceChunker` to split each input document into chunks whose boundaries align with sentence endings.
+The chunker groups sentences together until the chunk size limit is reached.
+
+Each output document includes the original document's metadata plus:
+- `source_id`: ID of the original document
+- `page_number`: Page number of the chunk within the original document
+- `split_id`: Index of the chunk within the document
+- `split_idx_start` / `split_idx_end`: Character offsets of the chunk in the original text
+- `token_count`: Number of tokens in the chunk
+
+## Installation
+
+```bash
+pip install chonkie-haystack
+```
+
+## Configuration
+
+| Parameter | Default | Description |
+| --- | --- | --- |
+| `tokenizer` | `"character"` | Tokenizer to use. Common options: `"character"`, `"gpt2"`, `"cl100k_base"`. See [Chonkie docs](https://docs.chonkie.ai/) for all options. |
+| `chunk_size` | `2048` | Maximum number of tokens per chunk. |
+| `chunk_overlap` | `0` | Number of overlapping tokens between consecutive chunks. |
+| `min_sentences_per_chunk` | `1` | Minimum number of sentences that must be included in each chunk. |
+| `min_characters_per_sentence` | `12` | Minimum number of characters for a sentence to be considered valid. |
+| `approximate` | `False` | Whether to use approximate chunking for faster processing. |
+| `delim` | `None` | Custom sentence delimiters. If `None`, Chonkie's default delimiters are used. |
+| `include_delim` | `"prev"` | Whether to attach the delimiter to the previous (`"prev"`) or next (`"next"`) chunk. |
+| `skip_empty_documents` | `True` | Whether to skip documents with empty content. |
+| `page_break_character` | `"\f"` | Character used to detect page breaks when tracking page numbers. |
+
+## Usage
+
+### On its own
+
+```python
+from haystack import Document
+from haystack_integrations.components.preprocessors.chonkie import (
+    ChonkieSentenceDocumentSplitter,
+)
+
+chunker = ChonkieSentenceDocumentSplitter(
+    tokenizer="gpt2",
+    chunk_size=512,
+    chunk_overlap=0,
+)
+documents = [
+    Document(
+        content="Haystack is an open-source framework. It helps you build LLM applications.",
+    ),
+]
+result = chunker.run(documents=documents)
+print(result["documents"])
+```
+
+### In a pipeline
+
+```python
+from pathlib import Path
+
+from haystack import Pipeline
+from haystack.components.converters import TextFileToDocument
+from haystack.components.preprocessors import DocumentCleaner
+from haystack.components.writers import DocumentWriter
+from haystack.document_stores.in_memory import InMemoryDocumentStore
+from haystack_integrations.components.preprocessors.chonkie import (
+    ChonkieSentenceDocumentSplitter,
+)
+
+document_store = InMemoryDocumentStore()
+
+p = Pipeline()
+p.add_component("converter", TextFileToDocument())
+p.add_component("cleaner", DocumentCleaner())
+p.add_component(
+    "splitter",
+    ChonkieSentenceDocumentSplitter(tokenizer="gpt2", chunk_size=512),
+)
+p.add_component("writer", DocumentWriter(document_store=document_store))
+
+p.connect("converter.documents", "cleaner.documents")
+p.connect("cleaner.documents", "splitter.documents")
+p.connect("splitter.documents", "writer.documents")
+
+files = list(Path("path/to/your/files").glob("*.txt"))
+p.run({"converter": {"sources": files}})
+```

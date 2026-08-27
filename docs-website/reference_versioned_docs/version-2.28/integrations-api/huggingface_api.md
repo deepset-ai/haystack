@@ -569,7 +569,9 @@ Invoke the text generation inference based on the provided messages and generati
 
 - **messages** (<code>list\[ChatMessage\] | str</code>) – A list of ChatMessage objects representing the input messages. If a string is provided, it is converted
   to a list containing a ChatMessage with user role.
-- **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for text generation.
+- **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for text generation. These are merged per key with the
+  `generation_kwargs` passed at initialization: keys provided here take precedence, keys set only
+  at initialization are kept.
 - **tools** (<code>ToolsType | None</code>) – A list of tools or a Toolset for which the model can prepare calls. If set, it will override
   the `tools` parameter set during component initialization. This parameter can accept either a
   list of `Tool` objects or a `Toolset` instance.
@@ -605,7 +607,9 @@ and return values but can be used with `await` in an async code.
 
 - **messages** (<code>list\[ChatMessage\] | str</code>) – A list of ChatMessage objects representing the input messages. If a string is provided, it is converted
   to a list containing a ChatMessage with user role.
-- **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for text generation.
+- **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for text generation. These are merged per key with the
+  `generation_kwargs` passed at initialization: keys provided here take precedence, keys set only
+  at initialization are kept.
 - **tools** (<code>ToolsType | None</code>) – A list of tools or a Toolset for which the model can prepare calls. If set, it will override the `tools`
   parameter set during component initialization. This parameter can accept either a list of `Tool` objects
   or a `Toolset` instance.
