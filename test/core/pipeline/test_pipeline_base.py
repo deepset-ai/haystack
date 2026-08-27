@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import logging
+from collections.abc import Iterable
 from typing import Any
 from unittest.mock import patch
 
@@ -2224,6 +2225,25 @@ class TestPipelineConnect:
         pipe.add_component("comp2", comp2)
         with pytest.raises(PipelineConnectError):
             pipe.connect("comp1", "comp2")
+
+    def test_connect_list_output_to_iterable_input(self):
+        producer = component_class("Producer", output_types={"items": list[str]})()
+        consumer = component_class("Consumer", input_types={"sources": Iterable[str]})()
+        pipe = PipelineBase()
+        pipe.add_component("producer", producer)
+        pipe.add_component("consumer", consumer)
+        pipe.connect("producer.items", "consumer.sources")
+        assert list(pipe.graph.edges) == [("producer", "consumer", "items/sources")]
+        assert pipe.graph["producer"]["consumer"]["items/sources"]["conversion_strategy"] is None
+
+    def test_connect_list_output_to_list_or_iterable_input_is_ambiguous(self):
+        producer = component_class("Producer", output_types={"value": list[str]})()
+        consumer = component_class("Consumer", input_types={"list_items": list[str], "iterable_items": Iterable[str]})()
+        pipe = PipelineBase()
+        pipe.add_component("producer", producer)
+        pipe.add_component("consumer", consumer)
+        with pytest.raises(PipelineConnectError, match="more than one connection is possible"):
+            pipe.connect("producer", "consumer")
 
     def test_connect_with_multiple_sender_connections_with_same_type_and_same_name(self):
         comp1 = component_class("Comp1", output_types={"value": int, "other": int})()

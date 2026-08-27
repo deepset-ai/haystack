@@ -899,10 +899,17 @@ get_metadata_field_unique_values(
     search_term: str | None = None,
     from_: int = 0,
     size: int = 10,
+    filters: dict[str, Any] | None = None,
 ) -> tuple[list[Any], int]
 ```
 
 Returns unique values for a given metadata field, optionally filtered by a search term.
+
+**Note**: values of different JSON type categories are kept distinct - a string, a number and
+a boolean never collapse into each other, even when they share a textual form (e.g. the string
+`"1"` and the number `1`). One exception: the `meta` column is JSONB, whose equality treats a
+whole-number float (`1.0`) as identical to a numerically equal int (`1`), so those two collapse
+into a single value. Floats with a fractional part (e.g. `1.5`) are unaffected.
 
 **Parameters:**
 
@@ -911,6 +918,7 @@ Returns unique values for a given metadata field, optionally filtered by a searc
   match against the metadata field's own value. If None, all values are considered.
 - **from\_** (<code>int</code>) – The offset for pagination (0-based).
 - **size** (<code>int</code>) – The number of unique values to return.
+- **filters** (<code>dict\[str, Any\] | None</code>) – Optional filters to restrict the documents considered.
 
 **Returns:**
 
@@ -926,10 +934,17 @@ get_metadata_field_unique_values_async(
     search_term: str | None = None,
     from_: int = 0,
     size: int = 10,
+    filters: dict[str, Any] | None = None,
 ) -> tuple[list[Any], int]
 ```
 
 Asynchronously returns unique values for a given metadata field, optionally filtered by a search term.
+
+**Note**: values of different JSON type categories are kept distinct - a string, a number and
+a boolean never collapse into each other, even when they share a textual form (e.g. the string
+`"1"` and the number `1`). One exception: the `meta` column is JSONB, whose equality treats a
+whole-number float (`1.0`) as identical to a numerically equal int (`1`), so those two collapse
+into a single value. Floats with a fractional part (e.g. `1.5`) are unaffected.
 
 **Parameters:**
 
@@ -938,6 +953,7 @@ Asynchronously returns unique values for a given metadata field, optionally filt
   match against the metadata field's own value. If None, all values are considered.
 - **from\_** (<code>int</code>) – The offset for pagination (0-based).
 - **size** (<code>int</code>) – The number of unique values to return.
+- **filters** (<code>dict\[str, Any\] | None</code>) – Optional filters to restrict the documents considered.
 
 **Returns:**
 

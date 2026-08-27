@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    ``Agent`` now reports ``exit_reason="length"`` or ``"content_filter"`` when a tool-call-free model reply ends
+    for either reason, including replies containing partial text. These incomplete generations stop by default but
+    can be recovered with an ``on_exit`` hook. ``AgentTool`` also warns the calling model that such results may be
+    incomplete.
