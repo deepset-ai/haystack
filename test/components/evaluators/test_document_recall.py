@@ -68,6 +68,41 @@ def test_run_with_nested_meta_comparison():
     assert result == {"individual_scores": [0.5], "score": 0.5}
 
 
+@pytest.mark.parametrize(
+    ("ground_truth_value", "retrieved_value", "expected_score"),
+    [
+        (["news", "ai"], ["news", "ai"], 1.0),
+        (["news", "ai"], ["ai", "news"], 0.0),
+        (["news", "ai"], ["news"], 0.0),
+        ({"source": "news", "year": 2024}, {"year": 2024, "source": "news"}, 1.0),
+        ([], [], 1.0),
+        ({}, {}, 1.0),
+        ({"source": {"urls": ["news", "ai"], "year": 2024}}, {"source": {"year": 2024, "urls": ["news", "ai"]}}, 1.0),
+    ],
+)
+@pytest.mark.parametrize("mode", [RecallMode.SINGLE_HIT, RecallMode.MULTI_HIT])
+def test_run_with_unhashable_meta_comparison(ground_truth_value, retrieved_value, expected_score, mode):
+    evaluator = DocumentRecallEvaluator(mode=mode, document_comparison_field="meta.value")
+    result = evaluator.run(
+        ground_truth_documents=[[Document(meta={"value": ground_truth_value})]],
+        retrieved_documents=[[Document(meta={"value": retrieved_value})]],
+    )
+
+    assert result == {"individual_scores": [expected_score], "score": expected_score}
+
+
+def test_run_with_duplicate_unhashable_meta_comparison_values():
+    evaluator = DocumentRecallEvaluator(mode=RecallMode.MULTI_HIT, document_comparison_field="meta.tags")
+    result = evaluator.run(
+        ground_truth_documents=[
+            [Document(meta={"tags": ["news"]}), Document(meta={"tags": ["news"]}), Document(meta={"tags": ["sports"]})]
+        ],
+        retrieved_documents=[[Document(meta={"tags": ["news"]}), Document(meta={"tags": ["news"]})]],
+    )
+
+    assert result == {"individual_scores": [0.5], "score": 0.5}
+
+
 class TestDocumentRecallEvaluatorSingleHit:
     @pytest.fixture
     def evaluator(self):
