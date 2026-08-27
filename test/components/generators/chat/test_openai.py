@@ -1520,14 +1520,9 @@ def chat_completion_chunks():
                 prompt_tokens=282,
                 total_tokens=324,
                 completion_tokens_details=CompletionTokensDetails(
-                    accepted_prediction_tokens=0,
-                    audio_tokens=0,
-                    reasoning_tokens=0,
-                    rejected_prediction_tokens=0,
+                    accepted_prediction_tokens=0, audio_tokens=0, reasoning_tokens=0, rejected_prediction_tokens=0
                 ),
-                prompt_tokens_details=PromptTokensDetails(
-                    audio_tokens=0, cached_tokens=0
-                ),
+                prompt_tokens_details=PromptTokensDetails(audio_tokens=0, cached_tokens=0),
             ),
         ),
     ]

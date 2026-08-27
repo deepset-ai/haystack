@@ -264,10 +264,7 @@ class OpenAIResponsesChatGenerator:
             # openai>=3 annotates http_client as httpx2, but legacy httpx clients are supported at runtime.
             # https://github.com/openai/openai-python/blob/main/httpx2.md
             http_client = init_http_client(self.http_client_kwargs, async_client=False)
-            self.client = OpenAI(
-                http_client=http_client,
-                **self._client_kwargs(),
-            )
+            self.client = OpenAI(http_client=http_client, **self._client_kwargs())
 
     async def warm_up_async(self) -> None:  # noqa: RUF029
         """
@@ -278,10 +275,7 @@ class OpenAIResponsesChatGenerator:
             # openai>=3 annotates http_client as httpx2, but legacy httpx clients are supported at runtime.
             # https://github.com/openai/openai-python/blob/main/httpx2.md
             http_client = init_http_client(self.http_client_kwargs, async_client=True)
-            self.async_client = AsyncOpenAI(
-                http_client=http_client,
-                **self._client_kwargs(),
-            )
+            self.async_client = AsyncOpenAI(http_client=http_client, **self._client_kwargs())
 
     def close(self) -> None:
         """
