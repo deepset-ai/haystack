@@ -1729,11 +1729,7 @@ def streaming_chunks():
                         "reasoning_tokens": 0,
                         "rejected_prediction_tokens": 0,
                     },
-                    "prompt_tokens_details": {
-                        "audio_tokens": 0,
-                        "cached_tokens": 0,
-                        "cache_write_tokens": None,
-                    },
+                    "prompt_tokens_details": {"audio_tokens": 0, "cached_tokens": 0, "cache_write_tokens": None},
                 },
             },
         ),
@@ -2016,11 +2012,7 @@ class TestChatCompletionChunkConversion:
                 "reasoning_tokens": 0,
                 "rejected_prediction_tokens": 0,
             },
-            "prompt_tokens_details": {
-                "audio_tokens": 0,
-                "cached_tokens": 0,
-                "cache_write_tokens": None,
-            },
+            "prompt_tokens_details": {"audio_tokens": 0, "cached_tokens": 0, "cache_write_tokens": None},
         }
 
     def test_convert_usage_chunk_to_streaming_chunk(self) -> None:

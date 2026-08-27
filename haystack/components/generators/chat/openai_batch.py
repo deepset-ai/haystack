@@ -234,9 +234,7 @@ class OpenAIBatchChatGenerator:
         input_file = self.client.files.create(file=("batch_input.jsonl", jsonl_content), purpose="batch")
 
         batch = self.client.batches.create(
-            input_file_id=input_file.id,
-            endpoint=_BATCH_ENDPOINT,
-            completion_window=self.completion_window,  # type: ignore
+            input_file_id=input_file.id, endpoint=_BATCH_ENDPOINT, completion_window=self.completion_window
         )
         logger.info("Batch {batch_id} created with {n} requests.", batch_id=batch.id, n=len(message_sets))
 
@@ -276,9 +274,7 @@ class OpenAIBatchChatGenerator:
         input_file = await self.async_client.files.create(file=("batch_input.jsonl", jsonl_content), purpose="batch")
 
         batch = await self.async_client.batches.create(
-            input_file_id=input_file.id,
-            endpoint=_BATCH_ENDPOINT,
-            completion_window=self.completion_window,  # type: ignore
+            input_file_id=input_file.id, endpoint=_BATCH_ENDPOINT, completion_window=self.completion_window
         )
         logger.info("Batch {batch_id} created with {n} requests.", batch_id=batch.id, n=len(message_sets))
 
