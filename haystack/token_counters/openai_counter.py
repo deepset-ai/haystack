@@ -87,7 +87,7 @@ class OpenAITokenCounter(TokenCounter):
             base_url=self.api_base_url,
             timeout=timeout,
             max_retries=max_retries,
-            http_client=http_client,  # type: ignore[arg-type]
+            http_client=http_client,
         )
 
     def count(self, messages: list[ChatMessage], tools: ToolsType | None = None) -> int:

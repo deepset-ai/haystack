@@ -174,7 +174,7 @@ class AzureOpenAIDocumentEmbedder(OpenAIDocumentEmbedder):
             # https://github.com/openai/openai-python/blob/main/httpx2.md
             http_client = init_http_client(self.http_client_kwargs, async_client=False)
             self.client = AzureOpenAI(
-                http_client=http_client,  # type: ignore[arg-type]
+                http_client=http_client,
                 **self._client_kwargs(),
             )
 
@@ -187,7 +187,7 @@ class AzureOpenAIDocumentEmbedder(OpenAIDocumentEmbedder):
             # https://github.com/openai/openai-python/blob/main/httpx2.md
             http_client = init_http_client(self.http_client_kwargs, async_client=True)
             self.async_client = AsyncAzureOpenAI(
-                http_client=http_client,  # type: ignore[arg-type]
+                http_client=http_client,
                 **self._client_kwargs(),
             )
 
