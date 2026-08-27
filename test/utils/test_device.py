@@ -124,10 +124,13 @@ def test_component_device_first_device_skips_disk():
     assert multiple.first_device == ComponentDevice.from_single(Device.gpu(0))
 
 
-def test_component_device_first_device_all_disk_returns_none():
-    # If the device map contains only disk devices, there is no usable single device, so None is returned.
+def test_component_device_first_device_all_disk_raises():
+    # If the device map contains only disk devices, there is no usable single device.
+    # Raise instead of returning None so callers that do first_device.to_torch() get a
+    # clear ValueError rather than AttributeError on None.
     all_disk = ComponentDevice.from_multiple(DeviceMap({"layer1": Device.disk(), "layer2": Device.disk()}))
-    assert all_disk.first_device is None
+    with pytest.raises(ValueError, match="No usable device found"):
+        _ = all_disk.first_device
 
 
 @patch("torch.xpu.is_available")

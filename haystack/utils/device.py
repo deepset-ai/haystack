@@ -422,10 +422,12 @@ class ComponentDevice:
         Return either the single device or the first usable device in the device map, if any.
 
         Disk devices are skipped because they can only be used as part of a device map and not as a
-        single device. If the device map is empty or contains only disk devices, ``None`` is returned.
+        single device. If the device map is empty or contains only disk devices, a ``ValueError`` is
+        raised so callers that do ``first_device.to_torch()`` still get a clear error instead of
+        ``AttributeError: 'NoneType' object has no attribute 'to_torch'``.
 
         :returns:
-            The first device.
+            The first usable device.
         """
         self._validate()
 
@@ -437,7 +439,7 @@ class ComponentDevice:
             (device for device in self._multiple_devices.mapping.values() if device.type != DeviceType.DISK), None
         )
         if first_usable_device is None:
-            return None
+            raise ValueError("No usable device found in the device map; disk devices cannot be used as a single device")
         return self.from_single(first_usable_device)
 
     @staticmethod
