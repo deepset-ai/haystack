@@ -67,6 +67,43 @@ class TestToolResultOffloadCompactor:
         assert "tool_result_offloaded" in compacted[2].meta
         assert compacted[3:] == messages[3:]
 
+    def test_offloads_historical_results_before_current_task_results(self, tmp_path):
+        messages = [
+            ChatMessage.from_user("previous task"),
+            tool_call("history"),
+            tool_result("history" * 100, call_id="history"),
+            ChatMessage.from_assistant("previous answer"),
+            ChatMessage.from_user("current task"),
+            tool_call("current-old"),
+            tool_result("current" * 100, call_id="current-old"),
+            tool_call("current-new"),
+            tool_result("newest", call_id="current-new"),
+        ]
+        current_tokens = COUNTER.count(messages=messages)
+        compacted = ToolResultOffloadCompactor(
+            store=FileSystemToolResultStore(root=tmp_path), min_tokens=0, preview_chars=0
+        ).compact(messages=messages, target_tokens=current_tokens - 1, token_counter=COUNTER)
+
+        assert compacted is not None
+        assert "tool_result_offloaded" in compacted[2].meta
+        assert compacted[6] == messages[6]
+
+    def test_min_keep_steps_only_protects_current_task(self, tmp_path):
+        messages = [
+            ChatMessage.from_user("previous task"),
+            tool_call("history"),
+            tool_result("history" * 100, call_id="history"),
+            ChatMessage.from_assistant("previous answer"),
+            ChatMessage.from_user("current task"),
+        ]
+        compacted = ToolResultOffloadCompactor(
+            store=FileSystemToolResultStore(root=tmp_path), min_keep_steps=10, min_tokens=0, preview_chars=0
+        ).compact(messages=messages, target_tokens=1, token_counter=COUNTER)
+
+        assert compacted is not None
+        reference = compacted[2].meta["tool_result_offloaded"]
+        assert Path(reference).name == "2_search_history.txt"
+
     def test_stops_offloading_after_reaching_target(self, tmp_path):
         messages = _conversation("a" * 400, "b" * 400, "newest")
         current_tokens = COUNTER.count(messages=messages)

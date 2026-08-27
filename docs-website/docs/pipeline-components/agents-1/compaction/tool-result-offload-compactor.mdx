@@ -63,9 +63,10 @@ The Agent initially sends each tool's full output to the model. Once the context
 The compactor processes tool results from oldest to newest:
 
 1. It leaves the conversation unchanged when it already fits within the target.
-2. It protects results from at least the configured number of recent tool-calling Agent steps. Parallel results from one step are protected together.
-3. It skips errors, non-text results, results below the token threshold, and results already rewritten by offloading or another compactor.
-4. It writes eligible result text to the store and replaces the message with a compact reference until the conversation reaches the target.
+2. It considers every historical result from before the latest user task before touching results produced during the current task.
+3. Within the current task, it protects results from at least the configured number of recent tool-calling Agent steps. Parallel results from one step are protected together.
+4. It skips errors, non-text results, results below the token threshold, and results already rewritten by offloading or another compactor.
+5. It writes eligible result text to the store and replaces the message with a compact reference until the conversation reaches the target.
 
 The replacement preserves the originating tool call, error flag, and existing message metadata. It also records `tool_result_offloaded` metadata containing the store reference and `context_compaction` metadata containing the strategy and original token count.
 
@@ -76,7 +77,7 @@ Only string results and sequences containing exclusively text blocks can be offl
 | Parameter | Default | Description |
 | --- | --- | --- |
 | `store` | No default | The `ToolResultStore` that receives full result text and returns the reference placed in the conversation. |
-| `min_keep_steps` | `1` | The minimum number of recent tool-calling Agent steps whose results remain directly in context. Parallel results from one step are protected together. |
+| `min_keep_steps` | `1` | The minimum number of recent tool-calling Agent steps in the current task whose results remain directly in context. Parallel results from one step are protected together. Historical results are not protected by this setting. |
 | `min_tokens` | `200` | Only offload a tool-result message when it uses more than this many tokens, as measured by the configured token counter. |
 | `preview_chars` | `200` | The number of leading characters included in the compact reference message. Set to `0` to omit the preview. |
 

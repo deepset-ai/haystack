@@ -96,7 +96,13 @@ def _offload_pointer(reference: str, result: str, preview_chars: int) -> str:
 
 
 def _offloaded_message(
-    message: ChatMessage, *, store: ToolResultStore, key: str, text: str, preview_chars: int
+    message: ChatMessage,
+    *,
+    store: ToolResultStore,
+    key: str,
+    text: str,
+    preview_chars: int,
+    additional_meta: dict[str, Any] | None = None,
 ) -> ChatMessage:
     """
     Store a text tool result and return the message that points to it.
@@ -110,6 +116,7 @@ def _offloaded_message(
     :param key: The key under which to store the result.
     :param text: The text form of the tool result.
     :param preview_chars: Number of leading result characters to include in the pointer.
+    :param additional_meta: Metadata to add to the offloaded message.
     :returns: A new tool-result message containing a reference to the stored result.
     """
     result = message.tool_call_result
@@ -117,10 +124,10 @@ def _offloaded_message(
         raise ValueError("Only tool-result messages can be offloaded.")
     reference = store.write(key=key, content=text)
     return ChatMessage.from_tool(
-        tool_result=_offload_pointer(reference, text, preview_chars),
+        tool_result=_offload_pointer(reference=reference, result=text, preview_chars=preview_chars),
         origin=result.origin,
         error=result.error,
-        meta={**message.meta, _OFFLOADED_META_KEY: reference},
+        meta={**message.meta, **(additional_meta or {}), _OFFLOADED_META_KEY: reference},
     )
 
 
@@ -335,7 +342,7 @@ class ToolResultOffloadHook:
         # A policy matched, so an offload was wanted. Offloading only supports text results (a string or a sequence
         # of TextContent) for now, by design; leave image/file content in context and warn since the intent was to
         # offload it.
-        text = _offloadable_text(result.result)
+        text = _offloadable_text(content=result.result)
         if text is None:
             logger.warning(
                 "Tool '{tool}' produced a non-text result; leaving it in context. Result offloading currently "
@@ -348,8 +355,10 @@ class ToolResultOffloadHook:
         if not policy.should_offload(tool_name, text, state):
             return message
 
-        key = _result_store_key(tool_name, result.origin.id, state.data.get("step_count", 0), index)
-        return _offloaded_message(message, store=store, key=key, text=text, preview_chars=self.preview_chars)
+        key = _result_store_key(
+            tool_name=tool_name, tool_call_id=result.origin.id, step=state.data.get("step_count", 0), index=index
+        )
+        return _offloaded_message(message=message, store=store, key=key, text=text, preview_chars=self.preview_chars)
 
     def to_dict(self) -> dict[str, Any]:
         """
@@ -377,4 +386,4 @@ class ToolResultOffloadHook:
             deserialize_component_inplace(init_params, key="store")
         if init_params.get("offload_strategies") is not None:
             init_params["offload_strategies"] = _deserialize_offload_strategies(init_params["offload_strategies"])
-        return default_from_dict(cls, data)
+        return default_from_dict(cls=cls, data=data)
