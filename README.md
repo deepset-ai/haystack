@@ -113,6 +113,7 @@ There are several ways you can contribute to Haystack:
 - Contribute to the main Haystack project
 - Contribute an integration on [haystack-core-integrations](https://github.com/deepset-ai/haystack-core-integrations)
 - Contribute to the documentation in [haystack/docs-website](https://github.com/deepset-ai/haystack/tree/main/docs-website)
+- Community integrations & tools: [Hybrid RAG GitHub Action](https://github.com/Cagrik34/hybrid-rag-action) — Zero-dependency GitHub Action combining Okapi BM25 and dense embeddings with RRF for automated repo triage
 
 > [!TIP]
 >👉 **[Check out the full list of issues that are open to contributions](https://github.com/orgs/deepset-ai/projects/14)**
