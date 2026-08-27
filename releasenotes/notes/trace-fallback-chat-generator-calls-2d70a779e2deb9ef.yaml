@@ -1,0 +1,7 @@
+---
+enhancements:
+  - |
+    ``FallbackChatGenerator`` now wraps every internal ``ChatGenerator`` attempt in a
+    ``haystack.chat_generator.run`` tracing span for both synchronous and asynchronous execution. With content
+    tracing enabled, each internal span records the forwarded inputs. The successful output remains on the enclosing
+    ``FallbackChatGenerator`` component span so tracing backends do not count its token usage twice.

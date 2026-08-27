@@ -139,8 +139,9 @@ class LLM(Agent):
             required or optional depends on the `user_prompt` configuration: if `user_prompt` has no template
             variables, `messages` must be provided. Passed via `**kwargs`.
         :param streaming_callback: A callback that will be invoked when a response is streamed from the LLM.
-        :param generation_kwargs: Additional keyword arguments for the underlying chat generator. These parameters
-            will override the parameters passed during component initialization.
+        :param generation_kwargs: Additional keyword arguments for the chat generator. These are merged per key
+            with the `generation_kwargs` passed at the chat generator's initialization: keys provided here take
+            precedence, keys set only at initialization are kept.
         :param kwargs: Additional keyword arguments. These are used to fill template variables in `user_prompt` or
             `system_prompt` (the keys must match template variable names).
         :returns:
@@ -179,8 +180,9 @@ class LLM(Agent):
             variables, `messages` must be provided. Passed via `**kwargs`.
         :param streaming_callback: An asynchronous callback that will be invoked when a response is streamed
             from the LLM.
-        :param generation_kwargs: Additional keyword arguments for the underlying chat generator. These parameters
-            will override the parameters passed during component initialization.
+        :param generation_kwargs: Additional keyword arguments for the chat generator. These are merged per key
+            with the `generation_kwargs` passed at the chat generator's initialization: keys provided here take
+            precedence, keys set only at initialization are kept.
         :param kwargs: Additional keyword arguments. These are used to fill template variables in `user_prompt` or
             `system_prompt` (the keys must match template variable names).
         :returns:

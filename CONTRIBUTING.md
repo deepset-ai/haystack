@@ -288,6 +288,11 @@ To check for static type errors, run:
 hatch run test:types
 ```
 
+Note that type checking targets Python 3.12, even though Haystack supports 3.10 and above. numpy's
+type stubs use [PEP 695](https://peps.python.org/pep-0695/) `type` statements, which mypy rejects as
+a syntax error below 3.12. Support for the older versions is covered by the unit test matrix, which
+runs on Python 3.10.
+
 To format your code and perform linting using Ruff (with automatic fixes), run:
 ```sh
 hatch run fmt

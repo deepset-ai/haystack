@@ -215,6 +215,36 @@ class TestEmbeddingBasedDocumentSplitter:
         # Second split is merged with third split to get above min_length and still beneath max_length
         assert merged[1] == "1234567891234"
 
+    def test_merge_small_splits_merges_short_trailing_split(self):
+        mock_embedder = Mock()
+        splitter = EmbeddingBasedDocumentSplitter(document_embedder=mock_embedder, min_length=10)
+
+        # The loop only merges forward, so the final accumulator has nothing left to absorb.
+        splits = ["Long enough text ", "Ok."]
+        merged = splitter._merge_small_splits(splits=splits)
+
+        assert merged == ["Long enough text Ok."]
+
+    def test_merge_small_splits_keeps_short_trailing_split_when_max_length_blocks(self):
+        mock_embedder = Mock()
+        splitter = EmbeddingBasedDocumentSplitter(document_embedder=mock_embedder, min_length=10, max_length=15)
+
+        # Merging backwards would reach max_length, so the short tail stays on its own,
+        # matching how a blocked forward merge already behaves.
+        splits = ["123456789012", "1234"]
+        merged = splitter._merge_small_splits(splits=splits)
+
+        assert merged == ["123456789012", "1234"]
+
+    def test_merge_small_splits_keeps_a_lone_short_split(self):
+        mock_embedder = Mock()
+        splitter = EmbeddingBasedDocumentSplitter(document_embedder=mock_embedder, min_length=10)
+
+        # Nothing to merge into.
+        merged = splitter._merge_small_splits(splits=["Ok."])
+
+        assert merged == ["Ok."]
+
     def test_create_documents_from_splits(self):
         mock_embedder = Mock()
         splitter = EmbeddingBasedDocumentSplitter(document_embedder=mock_embedder)
@@ -800,6 +830,38 @@ Artificial intelligence is transforming education by enabling personalized learn
                 assert split_doc.meta["page_number"] == 3
             if i in [9, 10]:
                 assert split_doc.meta["page_number"] == 4
+
+    @pytest.mark.asyncio
+    async def test_recursive_split_of_large_chunks_stays_async(self) -> None:
+        """
+        `run_async` must embed through the embedder's async path, including while recursively splitting
+        chunks that came out longer than max_length. Reaching for the synchronous `run` there blocks the
+        event loop on the embedder's network calls.
+        """
+        calls = {"sync": 0, "async": 0}
+
+        def embed(documents: list[Document]) -> dict[str, list[Document]]:
+            # Alternating embeddings so consecutive groups look unrelated and the text keeps splitting.
+            return {"documents": [replace(doc, embedding=[float(i % 3), 1.0, 0.0]) for i, doc in enumerate(documents)]}
+
+        class RecordingEmbedder:
+            def run(self, documents: list[Document]) -> dict[str, list[Document]]:
+                calls["sync"] += 1
+                return embed(documents)
+
+            async def run_async(self, documents: list[Document]) -> dict[str, list[Document]]:
+                calls["async"] += 1
+                return embed(documents)
+
+        text = " ".join(f"Sentence number {i} about topic {i % 4}." for i in range(40))
+        splitter = EmbeddingBasedDocumentSplitter(document_embedder=RecordingEmbedder(), min_length=10, max_length=120)
+        splitter.warm_up()
+
+        await splitter.run_async(documents=[Document(content=text)])
+
+        # The first pass is async, and the recursion into the over-long chunk has to be too.
+        assert calls["async"] > 1
+        assert calls["sync"] == 0
 
 
 class TestComponentLifecycle:
