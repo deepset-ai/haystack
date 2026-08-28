@@ -221,7 +221,7 @@ class MarkdownHeaderSplitter:
 
         return chunks
 
-    def _apply_secondary_splitting(self, documents: list[Document]) -> list[Document]:
+    def _apply_secondary_splitting(self, documents: list[tuple[Document, bool]]) -> list[Document]:
         """
         Apply secondary splitting while preserving header metadata and structure.
 
@@ -230,19 +230,20 @@ class MarkdownHeaderSplitter:
         result_docs = []
         current_split_id = 0  # track split_id across all secondary splits from the same parent
 
-        for doc in documents:
+        for doc, from_header_split in documents:
             if doc.content is None:
                 result_docs.append(doc)
                 continue
 
             content_for_splitting: str = doc.content
 
-            # Only strip a leading header line from chunks that actually came from a header split. Those carry
-            # the header text in their "header" meta field, so removing it from the content avoids duplicating
-            # it. The fallback paths of _split_text_by_markdown_headers (no headers found / only headers with
-            # no content) return the document with empty meta, so stripping there would drop the header text
+            # Only strip a leading header line from chunks that actually came from a header split.
+            # `from_header_split` is set structurally by _split_documents_by_markdown_headers, so it can't be
+            # fooled by a "header" key that happens to already be present on the input document's own metadata.
+            # The fallback paths of _split_text_by_markdown_headers (no headers found / only headers with no
+            # content) return the document with empty split meta, so stripping there would drop the header text
             # from the output entirely.
-            if not self.keep_headers and "header" in doc.meta:
+            if not self.keep_headers and from_header_split:
                 header_match = re.match(self._header_pattern, doc.content)
                 if header_match:
                     content_for_splitting = doc.content[header_match.end() :]
@@ -308,17 +309,22 @@ class MarkdownHeaderSplitter:
 
         return new_page_number
 
-    def _split_documents_by_markdown_headers(self, documents: list[Document]) -> list[Document]:
-        """Split a list of documents by markdown headers, preserving metadata."""
+    def _split_documents_by_markdown_headers(self, documents: list[Document]) -> list[tuple[Document, bool]]:
+        """
+        Split a list of documents by markdown headers, preserving metadata.
 
-        result_docs = []
+        Each returned Document is paired with whether it was produced by an actual header split (True) or is a
+        whole, unsplit document returned by a fallback path of _split_text_by_markdown_headers (False).
+        """
+
+        result_docs: list[tuple[Document, bool]] = []
         for doc in documents:
             logger.debug("Splitting document with id={doc_id}", doc_id=doc.id)
             # mypy: doc.content is Optional[str], so we must check for None before passing to splitting method
             if doc.content is None:
                 continue
             splits = self._split_text_by_markdown_headers(doc.content, doc.id)
-            docs = []
+            docs: list[tuple[Document, bool]] = []
 
             current_page = doc.meta.get("page_number", 1) if doc.meta else 1
             total_page_breaks = doc.content.count(self.page_break_character)
@@ -332,10 +338,11 @@ class MarkdownHeaderSplitter:
             for split_idx, split in enumerate(splits):
                 meta = deepcopy(doc.meta) if doc.meta else {}
                 meta.update({"source_id": doc.id, "page_number": current_page, "split_id": split_idx})
+                from_header_split = bool(split.get("meta"))
                 if split.get("meta"):
                     meta.update(split["meta"])
                 current_page = self._update_page_number_with_breaks(split["content"], current_page)
-                docs.append(Document(content=split["content"], meta=meta))
+                docs.append((Document(content=split["content"], meta=meta), from_header_split))
             logger.debug(
                 "Split into {num_docs} documents for id={doc_id}, final page: {current_page}",
                 num_docs=len(docs),
@@ -395,7 +402,7 @@ class MarkdownHeaderSplitter:
             if self.secondary_split:
                 doc_splits = self._apply_secondary_splitting(header_split_docs)
             else:
-                doc_splits = header_split_docs
+                doc_splits = [split_doc for split_doc, _ in header_split_docs]
 
             final_docs.extend(doc_splits)
 

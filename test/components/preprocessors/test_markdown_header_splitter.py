@@ -320,6 +320,17 @@ def test_secondary_split_still_strips_header_from_header_split_chunks():
     assert "Run it." in (docs[1].content or "")
 
 
+def test_secondary_split_keeps_header_when_input_meta_has_header_key():
+    """A document whose caller-supplied metadata already has a 'header' key must not fool the
+    fallback-path guard into stripping its own leading header line."""
+    splitter = MarkdownHeaderSplitter(keep_headers=False, secondary_split="word", split_length=5)
+    doc = Document(content="# Alpha\n# Beta", meta={"header": "preexisting"})
+    docs = splitter.run(documents=[doc])["documents"]
+    combined = "".join(doc.content or "" for doc in docs)
+    assert "Alpha" in combined
+    assert "Beta" in combined
+
+
 # Error and edge case handling
 def test_non_text_document():
     """Test that the component correctly handles non-text documents."""
