@@ -202,6 +202,83 @@ class TestMemoryEmbeddingRetriever:
 
         assert [doc.content for doc in result["documents"]] == ["python article current"]
 
+    def test_run_with_filter_policy_merge_does_not_leak_filters_between_runs(self):
+        ds = InMemoryDocumentStore(embedding_similarity_function="cosine")
+        ds.write_documents(
+            [
+                Document(
+                    content="python article",
+                    embedding=[1.0, 0.0, 0.0, 0.0],
+                    meta={"tenant": "a", "kind": "article", "year": 2019},
+                ),
+                Document(
+                    content="python blog",
+                    embedding=[1.0, 0.0, 0.0, 0.0],
+                    meta={"tenant": "a", "kind": "blog", "year": 2019},
+                ),
+                Document(
+                    content="python article other tenant",
+                    embedding=[1.0, 0.0, 0.0, 0.0],
+                    meta={"tenant": "b", "kind": "article", "year": 2020},
+                ),
+            ]
+        )
+
+        retriever = InMemoryEmbeddingRetriever(
+            ds,
+            filters={"operator": "AND", "conditions": [{"field": "meta.tenant", "operator": "==", "value": "a"}]},
+            filter_policy=FilterPolicy.MERGE,
+        )
+
+        first_result = retriever.run(
+            query_embedding=[1.0, 0.0, 0.0, 0.0], filters={"field": "meta.kind", "operator": "==", "value": "article"}
+        )
+        second_result = retriever.run(
+            query_embedding=[1.0, 0.0, 0.0, 0.0], filters={"field": "meta.year", "operator": "==", "value": 2019}
+        )
+
+        assert [doc.content for doc in first_result["documents"]] == ["python article"]
+        assert {doc.content for doc in second_result["documents"]} == {"python article", "python blog"}
+
+    @pytest.mark.asyncio
+    async def test_run_async_with_filter_policy_merge_does_not_leak_filters_between_runs(self):
+        ds = InMemoryDocumentStore(embedding_similarity_function="cosine")
+        ds.write_documents(
+            [
+                Document(
+                    content="python article",
+                    embedding=[1.0, 0.0, 0.0, 0.0],
+                    meta={"tenant": "a", "kind": "article", "year": 2019},
+                ),
+                Document(
+                    content="python blog",
+                    embedding=[1.0, 0.0, 0.0, 0.0],
+                    meta={"tenant": "a", "kind": "blog", "year": 2019},
+                ),
+                Document(
+                    content="python article other tenant",
+                    embedding=[1.0, 0.0, 0.0, 0.0],
+                    meta={"tenant": "b", "kind": "article", "year": 2020},
+                ),
+            ]
+        )
+
+        retriever = InMemoryEmbeddingRetriever(
+            ds,
+            filters={"operator": "AND", "conditions": [{"field": "meta.tenant", "operator": "==", "value": "a"}]},
+            filter_policy=FilterPolicy.MERGE,
+        )
+
+        first_result = await retriever.run_async(
+            query_embedding=[1.0, 0.0, 0.0, 0.0], filters={"field": "meta.kind", "operator": "==", "value": "article"}
+        )
+        second_result = await retriever.run_async(
+            query_embedding=[1.0, 0.0, 0.0, 0.0], filters={"field": "meta.year", "operator": "==", "value": 2019}
+        )
+
+        assert [doc.content for doc in first_result["documents"]] == ["python article"]
+        assert {doc.content for doc in second_result["documents"]} == {"python article", "python blog"}
+
     def test_invalid_run_wrong_store_type(self):
         SomeOtherDocumentStore = document_store_class("SomeOtherDocumentStore")
         with pytest.raises(TypeError, match="document_store must be an instance of InMemoryDocumentStore"):
