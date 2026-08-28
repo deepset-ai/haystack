@@ -4,8 +4,10 @@
 
 import asyncio
 import contextlib
+import time
 from collections.abc import AsyncGenerator, AsyncIterator, Mapping
-from typing import Any, ClassVar, cast
+from pathlib import Path
+from typing import TYPE_CHECKING, Any, ClassVar, Literal, cast, overload
 
 from haystack import logging, tracing
 from haystack.core.component import Component
@@ -36,6 +38,10 @@ from haystack.utils.async_utils import _execute_component_async
 from haystack.utils.misc import _get_output_dir
 
 logger = logging.getLogger(__name__)
+
+if TYPE_CHECKING:
+    from haystack.recording.replay import ReplayMode
+    from haystack.recording.run import PipelineRun
 
 
 class _EndOfStream:
@@ -196,6 +202,36 @@ class Pipeline(PipelineBase):
 
             return component_output
 
+    @overload
+    def run(
+        self,
+        data: dict[str, Any],
+        include_outputs_from: set[str] | None = None,
+        *,
+        break_point: Breakpoint | None = None,
+        pipeline_snapshot: PipelineSnapshot | None = None,
+        snapshot_callback: SnapshotCallback | None = None,
+        record: Literal[False] = False,
+        replay: PipelineRun | str | Path | None = None,
+        replay_mode: str | ReplayMode = "strict",
+        replay_side_effecting_components: set[str] | None = None,
+    ) -> dict[str, Any]: ...
+
+    @overload
+    def run(
+        self,
+        data: dict[str, Any],
+        include_outputs_from: set[str] | None = None,
+        *,
+        break_point: Breakpoint | None = None,
+        pipeline_snapshot: PipelineSnapshot | None = None,
+        snapshot_callback: SnapshotCallback | None = None,
+        record: Literal[True],
+        replay: PipelineRun | str | Path | None = None,
+        replay_mode: str | ReplayMode = "strict",
+        replay_side_effecting_components: set[str] | None = None,
+    ) -> tuple[dict[str, Any], PipelineRun]: ...
+
     @mark_deserialization_internal
     def run(  # noqa: PLR0915, PLR0912, C901
         self,
@@ -205,7 +241,11 @@ class Pipeline(PipelineBase):
         break_point: Breakpoint | None = None,
         pipeline_snapshot: PipelineSnapshot | None = None,
         snapshot_callback: SnapshotCallback | None = None,
-    ) -> dict[str, Any]:
+        record: bool = False,
+        replay: Any | None = None,
+        replay_mode: str | Any = "strict",
+        replay_side_effecting_components: set[str] | None = None,
+    ) -> dict[str, Any] | tuple[dict[str, Any], Any]:
         """
         Runs the Pipeline with given input data.
 
@@ -326,6 +366,41 @@ class Pipeline(PipelineBase):
             When a pipeline_breakpoint is triggered. Contains the component name, state, and partial results.
         """
         pipeline_running(self)  # telemetry
+
+        # --- recording / replay setup (lazy imports to avoid circular) ---
+        recording_ctx = None
+        replay_store = None
+        # resolve replay
+        if replay is not None:
+            from haystack.recording.replay import ReplayMode as _ReplayMode
+            from haystack.recording.replay import ReplayStore as _ReplayStore
+
+            # normalize replay_mode
+            if isinstance(replay_mode, str):
+                try:
+                    _mode = _ReplayMode(replay_mode.lower())
+                except ValueError as e:
+                    raise ValueError(f"Invalid replay_mode '{replay_mode}', expected 'strict' or 'loose'") from e
+            else:
+                _mode = replay_mode
+            replay_store = _ReplayStore.from_run(replay, mode=_mode, explicit_set=replay_side_effecting_components)
+            # validate signature for STRICT
+            if _mode == _ReplayMode.STRICT:
+                replay_store.validate_signature(self)
+
+        if record:
+            from haystack.recording.recorder import RecordingContext as _RecordingContext
+            from haystack.recording.recorder import compute_pipeline_signature as _compute_sig
+
+            recording_ctx = _RecordingContext()
+            # store signature for later use
+            _recording_signature = _compute_sig(self)
+            _recording_start_perf = time.perf_counter()
+            _recording_start_wall = time.time()
+        else:
+            _recording_signature = ""
+            _recording_start_perf = 0.0
+            _recording_start_wall = 0.0
 
         if (
             break_point
@@ -467,6 +542,84 @@ class Pipeline(PipelineBase):
                 # initialization
                 component_inputs = self._add_missing_input_defaults(component_inputs, component["input_sockets"])
 
+                # --- replay check ---
+                _replay_hit = False
+                _replay_record = None
+                if replay_store is not None:
+                    instance = component["instance"]
+                    try:
+                        from haystack.core.serialization import generate_qualified_class_name as _gqcn
+
+                        _qualname = _gqcn(type(instance))
+                    except Exception:
+                        _qualname = f"{type(instance).__module__}.{type(instance).__name__}"
+                    if replay_store.should_replay(component_name, _qualname, instance):
+                        _replay_record = replay_store.pop(component_name)
+                        if _replay_record is not None:
+                            _replay_hit = True
+                        else:
+                            from haystack.recording.replay import ReplayMode as _RM
+
+                            if replay_store.mode == _RM.STRICT:
+                                from haystack.recording.replay import ReplayMismatchError as _RME
+
+                                raise _RME(
+                                    f"No recorded output for component '{component_name}' at visit "
+                                    f"{component_visits[component_name]}"
+                                )
+                            # LOOSE: fall through to live execution
+
+                if _replay_hit and _replay_record is not None:
+                    # Replay path: use recorded outputs without calling instance.run
+                    visit_index = component_visits[component_name]
+                    component_visits[component_name] += 1
+                    component_outputs = _replay_record.outputs
+                    # tracing span for replayed component
+                    with PipelineBase._create_component_span(
+                        component_name=component_name,
+                        instance=component["instance"],
+                        inputs=component_inputs,
+                        parent_span=span,
+                    ) as _rspan:
+                        _rspan.set_tag(_COMPONENT_VISITS, component_visits[component_name])
+                        _rspan.set_content_tag(_COMPONENT_OUTPUT, component_outputs)
+                    # recording for replayed component
+                    if recording_ctx is not None:
+                        from haystack.recording.recorder import _extract_usage as _eu
+
+                        usage = _replay_record.usage if _replay_record.usage is not None else _eu(component_outputs)
+                        # use recorded duration if available, else 0
+                        _dur = _replay_record.duration_s if _replay_record.duration_s is not None else 0.0
+                        _started = time.time()
+                        _ended = _started + _dur
+                        recording_ctx.add_from_parts(
+                            component_name=component_name,
+                            visit_index=visit_index,
+                            inputs=component_inputs,
+                            outputs=component_outputs,
+                            duration_s=_dur,
+                            started_at=_started,
+                            ended_at=_ended,
+                            usage=usage,
+                        )
+                    # write outputs
+                    component_pipeline_outputs = self._write_component_outputs(
+                        component_name=component_name,
+                        component_outputs=component_outputs,
+                        inputs=inputs,
+                        receivers=cached_receivers[component_name],
+                        include_outputs_from=include_outputs_from,
+                    )
+                    if component_pipeline_outputs or component_name in include_outputs_from:
+                        pipeline_outputs[component_name] = component_pipeline_outputs
+                    if self._is_queue_stale(priority_queue):
+                        priority_queue = self._fill_queue(ordered_component_names, inputs, component_visits)
+                    continue
+
+                # --- live execution with timing and recording ---
+                _visit_index_before = component_visits[component_name]
+                _t0_perf = time.perf_counter()
+                _t0_wall = time.time()
                 try:
                     component_outputs = self._run_component(
                         component_name=component_name,
@@ -509,6 +662,23 @@ class Pipeline(PipelineBase):
                     error.pipeline_snapshot_file_path = full_file_path
                     raise error
 
+                _dur_s = time.perf_counter() - _t0_perf
+                _t1_wall = time.time()
+                if recording_ctx is not None:
+                    from haystack.recording.recorder import _extract_usage as _eu2
+
+                    usage = _eu2(component_outputs)
+                    recording_ctx.add_from_parts(
+                        component_name=component_name,
+                        visit_index=_visit_index_before,
+                        inputs=component_inputs,
+                        outputs=component_outputs,
+                        duration_s=_dur_s,
+                        started_at=_t0_wall,
+                        ended_at=_t1_wall,
+                        usage=usage,
+                    )
+
                 # Updates global input state with component outputs and returns outputs that should go to
                 # pipeline outputs.
                 component_pipeline_outputs = self._write_component_outputs(
@@ -534,6 +704,70 @@ class Pipeline(PipelineBase):
 
             # Set here so the tag reflects the final outputs.
             span.set_content_tag("haystack.pipeline.output_data", pipeline_outputs)
+
+            # --- build PipelineRun if recording ---
+            if recording_ctx is not None:
+                # aggregate usage
+                from haystack.components.agents.utils import _accumulate_usage as _acc
+                from haystack.recording.recorder import _estimate_cost as _est_cost
+                from haystack.recording.recorder import _extract_model as _ext_model
+                from haystack.recording.run import PipelineRun as _PR
+                from haystack.version import __version__ as _hv
+
+                total_usage: dict[str, Any] = {}
+                first = True
+                cost_by_component: dict[str, float] = {}
+                total_cost = 0.0
+                # components dict
+                comps_dict = recording_ctx.get_components_dict()
+                # also compute per-component timeline already
+                timeline_sorted = recording_ctx.get_timeline_sorted()
+                # build usage aggregation and cost
+                for cname, recs in comps_dict.items():
+                    comp_usage: dict[str, Any] = {}
+                    comp_first = True
+                    comp_cost = 0.0
+                    for rec in recs:
+                        if rec.usage:
+                            if comp_first:
+                                comp_usage = dict(rec.usage)
+                                comp_first = False
+                            else:
+                                comp_usage = _acc(comp_usage, rec.usage)
+                            # cost per record
+                            model = _ext_model(rec.outputs)
+                            c = _est_cost(rec.usage, model)
+                            comp_cost += c
+                    if comp_usage:
+                        if first:
+                            total_usage = dict(comp_usage)
+                            first = False
+                        else:
+                            total_usage = _acc(total_usage, comp_usage)
+                    cost_by_component[cname] = comp_cost
+                    total_cost += comp_cost
+
+                # fallback: if no cost_by_component yet but total_usage empty, keep total 0
+                from datetime import datetime, timezone
+
+                created = datetime.now(timezone.utc).isoformat()
+                run = _PR(
+                    run_id=str(__import__("uuid").uuid4()),
+                    pipeline_signature=_recording_signature,
+                    input_data=_deepcopy_with_exceptions(data),
+                    output_data=_deepcopy_with_exceptions(pipeline_outputs),
+                    components=comps_dict,
+                    timeline=timeline_sorted,
+                    usage=total_usage,
+                    cost_estimate={"total": total_cost, "by_component": cost_by_component},
+                    created_at=created,
+                    haystack_version=_hv,
+                    format="v1",
+                )
+                # close context
+                with contextlib.suppress(Exception):
+                    recording_ctx.close()
+                return (pipeline_outputs, run)  # type: ignore[return-value]
 
             return pipeline_outputs
 
@@ -790,10 +1024,44 @@ class Pipeline(PipelineBase):
         task = asyncio.create_task(_runner())
         running_tasks[task] = component_name
 
+    @overload
+    async def run_async_generator(
+        self,
+        data: dict[str, Any],
+        include_outputs_from: set[str] | None = None,
+        concurrency_limit: int = 4,
+        *,
+        record: Literal[False] = False,
+        replay: Any | None = None,
+        replay_mode: str | Any = "strict",
+        replay_side_effecting_components: set[str] | None = None,
+    ) -> AsyncGenerator[dict[str, Any], None]: ...
+
+    @overload
+    async def run_async_generator(
+        self,
+        data: dict[str, Any],
+        include_outputs_from: set[str] | None = None,
+        concurrency_limit: int = 4,
+        *,
+        record: Literal[True],
+        replay: Any | None = None,
+        replay_mode: str | Any = "strict",
+        replay_side_effecting_components: set[str] | None = None,
+    ) -> AsyncGenerator[tuple[dict[str, Any], Any], None]: ...
+
     @mark_deserialization_internal
-    async def run_async_generator(  # noqa: PLR0915,C901
-        self, data: dict[str, Any], include_outputs_from: set[str] | None = None, concurrency_limit: int = 4
-    ) -> AsyncGenerator[dict[str, Any], None]:
+    async def run_async_generator(  # noqa: PLR0915,C901,ARG002
+        self,
+        data: dict[str, Any],
+        include_outputs_from: set[str] | None = None,
+        concurrency_limit: int = 4,
+        *,
+        record: bool = False,
+        replay: Any | None = None,
+        replay_mode: str | Any = "strict",
+        replay_side_effecting_components: set[str] | None = None,
+    ) -> AsyncGenerator[dict[str, Any] | tuple[dict[str, Any], Any], None]:
         """
         Executes the pipeline step by step asynchronously, yielding partial outputs when any component finishes.
 
@@ -887,6 +1155,16 @@ class Pipeline(PipelineBase):
         """
         if concurrency_limit < 1:
             raise ValueError("concurrency_limit must be greater than or equal to 1.")
+
+        # mark replay params as used to silence ARG002
+        _ = (replay_mode, replay_side_effecting_components)
+        if record or replay is not None:
+            raise NotImplementedError(
+                "Recording and replay are currently only supported for synchronous "
+                "Pipeline.run(). Use pipeline.run(data, record=True) for recording and "
+                "pipeline.run(data, replay=..., record=False) for replay. "
+                "Async recording will be added in a future release."
+            )
 
         pipeline_running(self)  # telemetry
 
@@ -1080,10 +1358,44 @@ class Pipeline(PipelineBase):
                 # This is a no-op on normal completion and on a component error, since no tasks are left running by then
                 await self._cancel_in_flight_tasks(running_tasks, scheduled_components)
 
-    @mark_deserialization_internal
+    @overload
     async def run_async(
-        self, data: dict[str, Any], include_outputs_from: set[str] | None = None, concurrency_limit: int = 4
-    ) -> dict[str, Any]:
+        self,
+        data: dict[str, Any],
+        include_outputs_from: set[str] | None = None,
+        concurrency_limit: int = 4,
+        *,
+        record: Literal[False] = False,
+        replay: Any | None = None,
+        replay_mode: str | Any = "strict",
+        replay_side_effecting_components: set[str] | None = None,
+    ) -> dict[str, Any]: ...
+
+    @overload
+    async def run_async(
+        self,
+        data: dict[str, Any],
+        include_outputs_from: set[str] | None = None,
+        concurrency_limit: int = 4,
+        *,
+        record: Literal[True],
+        replay: Any | None = None,
+        replay_mode: str | Any = "strict",
+        replay_side_effecting_components: set[str] | None = None,
+    ) -> tuple[dict[str, Any], Any]: ...
+
+    @mark_deserialization_internal
+    async def run_async(  # noqa: ARG002
+        self,
+        data: dict[str, Any],
+        include_outputs_from: set[str] | None = None,
+        concurrency_limit: int = 4,
+        *,
+        record: bool = False,
+        replay: Any | None = None,
+        replay_mode: str | Any = "strict",
+        replay_side_effecting_components: set[str] | None = None,
+    ) -> dict[str, Any] | tuple[dict[str, Any], Any]:
         """
         Provides an asynchronous interface to run the pipeline with provided input data.
 
@@ -1191,6 +1503,12 @@ class Pipeline(PipelineBase):
         :raises PipelineMaxComponentRuns:
             If a Component reaches the maximum number of times it can be run in this Pipeline.
         """
+        _ = (replay_mode, replay_side_effecting_components)
+        if record or replay is not None:
+            raise NotImplementedError(
+                "Recording and replay are currently only supported for synchronous Pipeline.run(). "
+                "Use pipeline.run(data, record=True) for recording."
+            )
         final: dict[str, Any] = {}
         async for partial in self.run_async_generator(
             data=data, concurrency_limit=concurrency_limit, include_outputs_from=include_outputs_from

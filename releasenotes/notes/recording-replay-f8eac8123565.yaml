@@ -1,0 +1,10 @@
+---
+features:
+  - |
+    Added ``haystack.recording`` module for pipeline run recording and deterministic replay.
+    ``Pipeline.run(data, record=True)`` now returns ``(result, run)`` where ``run`` is a ``PipelineRun`` capturing per-component inputs, outputs, durations, token usage and cost estimates.
+    ``PipelineRun`` supports ``save(path)``, ``load(path)``, ``to_dict()``, ``to_json()`` and ``from_dict()`` via ``haystack.recording.load_run``.
+    ``run.usage`` aggregates token usage across components (handling both ``prompt_tokens``/``completion_tokens`` and ``input_tokens``/``output_tokens`` conventions), ``run.cost_estimate`` provides total and per-component cost estimates, and ``run.timeline`` captures per-component durations with wall-clock timestamps.
+    Deterministic replay is available via ``Pipeline.run(data, replay=recorded_run, replay_mode=ReplayMode.STRICT)`` which re-executes routers, builders and other pure components live while replaying side-effecting components (LLMs, retrievers, embedders, web search, agents) from the recorded artifact without network calls.
+    Side-effecting detection uses an explicit ``replay_side_effecting_components`` override, instance markers ``__haystack_side_effecting__``/``is_side_effecting``, and a default allowlist covering ``OpenAIChatGenerator``, ``OpenAIGenerator``, ``OpenAIResponsesChatGenerator``, ``InMemoryBM25Retriever``, ``InMemoryEmbeddingRetriever``, ``OpenAITextEmbedder``, ``OpenAIDocumentEmbedder``, ``SentenceTransformersTextEmbedder``, ``LinkContentFetcher``, ``SerperDevWebSearch`` and ``Agent``.
+    ``ReplayMode.STRICT`` validates the pipeline signature before replay and raises ``ReplayMismatchError`` on mismatch, while ``ReplayMode.LOOSE`` ignores signature and input differences.
