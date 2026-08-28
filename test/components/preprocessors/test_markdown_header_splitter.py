@@ -284,6 +284,24 @@ def test_secondary_split_keeps_content_before_code_fence_comment():
     assert "some intro text" in combined
 
 
+def test_secondary_split_keeps_excluded_leading_header():
+    splitter = MarkdownHeaderSplitter(
+        keep_headers=False, header_split_levels=[2], secondary_split="word", split_length=5
+    )
+    docs = splitter.run(documents=[Document(content="# Title\nsome content here")])["documents"]
+
+    assert docs[0].content == "# Title\nsome content here"
+    assert "header" not in docs[0].meta
+
+
+def test_secondary_split_keeps_header_only_document():
+    splitter = MarkdownHeaderSplitter(keep_headers=False, secondary_split="word", split_length=5)
+    docs = splitter.run(documents=[Document(content="# Alpha\n# Beta")])["documents"]
+
+    assert docs[0].content == "# Alpha\n# Beta"
+    assert "header" not in docs[0].meta
+
+
 # Error and edge case handling
 def test_non_text_document():
     """Test that the component correctly handles non-text documents."""

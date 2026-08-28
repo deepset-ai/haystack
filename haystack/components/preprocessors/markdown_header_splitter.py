@@ -237,12 +237,6 @@ class MarkdownHeaderSplitter:
 
             content_for_splitting: str = doc.content
 
-            if not self.keep_headers:  # skip header extraction if keep_headers
-                # extract header information
-                header_match = re.match(self._header_pattern, doc.content)
-                if header_match:
-                    content_for_splitting = doc.content[header_match.end() :]
-
             # track page from meta
             current_page = doc.meta.get("page_number", 1)
 
