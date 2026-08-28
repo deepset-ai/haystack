@@ -1,0 +1,4 @@
+---
+fixes:
+  - |
+    Added `max_length` parameter to `PromptBuilder` to prevent `ValidationError` when many retrieved documents exceed the model's token limit (e.g. 4095 tokens, given 4701). When set, the prompt is truncated intelligently: document context is shortened first (dropping least-relevant documents and truncating the last one) while preserving `question` and `history` at the end of the prompt. Leave as `None` (default) to keep the previous behavior. See `#8188`.

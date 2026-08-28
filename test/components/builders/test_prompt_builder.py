@@ -92,6 +92,7 @@ class TestPromptBuilder:
                 "template": "This is a {{ variable }}",
                 "variables": ["var1", "var2"],
                 "required_variables": ["var1", "var3"],
+                "max_length": None,
             },
         }
 
@@ -100,7 +101,12 @@ class TestPromptBuilder:
         res = builder.to_dict()
         assert res == {
             "type": "haystack.components.builders.prompt_builder.PromptBuilder",
-            "init_parameters": {"template": "This is a {{ variable }}", "variables": None, "required_variables": "*"},
+            "init_parameters": {
+                "template": "This is a {{ variable }}",
+                "variables": None,
+                "required_variables": "*",
+                "max_length": None,
+            },
         }
 
     def test_run(self):

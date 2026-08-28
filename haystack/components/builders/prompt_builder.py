@@ -2,9 +2,10 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+from dataclasses import replace
 from typing import Any, Literal
 
-from haystack import component, default_to_dict, logging
+from haystack import component, default_from_dict, default_to_dict, logging
 from haystack.utils import Jinja2TimeExtension
 from haystack.utils.jinja2_extensions import _extract_template_variables_and_assignments
 from haystack.utils.jinja2_sandbox import HaystackSandboxedEnvironment
@@ -143,6 +144,7 @@ class PromptBuilder:
         template: str,
         required_variables: list[str] | Literal["*"] | None = "*",
         variables: list[str] | None = None,
+        max_length: int | None = None,
     ) -> None:
         """
         Constructs a PromptBuilder component.
@@ -161,11 +163,21 @@ class PromptBuilder:
             List input variables to use in prompt templates instead of the ones inferred from the
             `template` parameter. For example, to use more variables during prompt engineering than the ones present
             in the default template, you can provide them here.
+        :param max_length:
+            Maximum length of the rendered prompt in characters. When set, prompts longer than this
+            are truncated intelligently: content from the `documents` variable is shortened first
+            (dropping least-relevant documents and truncating remaining ones) while preserving
+            other variables such as `question` or `history` at the end of the prompt.
+            This prevents `ValidationError` from models with limited context windows
+            (e.g. 4095 tokens ≈ 16380 characters) when many documents are retrieved.
+            If no `documents` variable is present, the prompt is truncated from the
+            middle while preserving its suffix. Leave as `None` (default) to disable truncation.
         """
         self._template_string = template
         self._variables = variables
         self._required_variables = required_variables
         self.required_variables = required_variables or []
+        self.max_length = max_length
         try:
             # The Jinja2TimeExtension needs an optional dependency to be installed.
             # If it's not available we can do without it and use the PromptBuilder as is.
@@ -208,8 +220,25 @@ class PromptBuilder:
             Serialized dictionary representation of the component.
         """
         return default_to_dict(
-            self, template=self._template_string, variables=self._variables, required_variables=self._required_variables
+            self,
+            template=self._template_string,
+            variables=self._variables,
+            required_variables=self._required_variables,
+            max_length=self.max_length,
         )
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "PromptBuilder":
+        """
+        Deserialize this component from a dictionary.
+
+        :param data:
+            The dictionary to deserialize and create the component.
+
+        :returns:
+            The deserialized component.
+        """
+        return default_from_dict(cls, data)
 
     @component.output_types(prompt=str)
     def run(
@@ -245,8 +274,130 @@ class PromptBuilder:
         if template is not None:
             compiled_template = self._env.from_string(template)
 
+        # Handle intelligent truncation when max_length is set
+        if self.max_length is not None:
+            # First try document-aware truncation
+            if "documents" in template_variables_combined and isinstance(
+                template_variables_combined["documents"], list
+            ):
+                initial_prompt = compiled_template.render(template_variables_combined)
+                if len(initial_prompt) > self.max_length:
+                    truncated_docs = self._truncate_documents(
+                        template_variables_combined["documents"],
+                        template_variables_combined,
+                        compiled_template,
+                        self.max_length,
+                    )
+                    template_variables_combined = {**template_variables_combined, "documents": truncated_docs}
+
+            # Render and check if still over limit (or no documents to truncate)
+            result_str = compiled_template.render(template_variables_combined)
+            if len(result_str) > self.max_length:
+                # Generic fallback: keep suffix (question/history) intact, truncate from middle
+                # This preserves the end of the prompt where the question typically lives
+                orig_len = len(result_str)
+                tail_len = min(1000, self.max_length // 3)
+                head_len = self.max_length - tail_len - 3
+                if head_len > 0:
+                    result_str = result_str[:head_len] + "..." + result_str[-tail_len:]
+                else:
+                    result_str = result_str[: self.max_length]
+                logger.warning(
+                    "Prompt truncated from {orig_len} to {new_len} characters (max_length={max_len}); "
+                    "applied middle-truncation preserving suffix",
+                    orig_len=orig_len,
+                    new_len=len(result_str),
+                    max_len=self.max_length,
+                )
+                return {"prompt": result_str}
+
         result = compiled_template.render(template_variables_combined)
         return {"prompt": result}
+
+    def _truncate_documents(
+        self, documents: list[Any], variables: dict[str, Any], compiled_template: Any, max_length: int
+    ) -> list[Any]:
+        """
+        Truncate documents to fit prompt within max_length.
+
+        Strategy: keep most-relevant (first) documents, drop least-relevant last ones,
+        and if a single document still overflows, truncate its content.
+        """
+        if not documents:
+            return documents
+
+        # Try dropping least relevant docs first
+        truncated = list(documents)
+        # First, try to find minimal number of docs that fits by dropping from the end
+        while truncated:
+            candidate_vars = {**variables, "documents": truncated}
+            prompt = compiled_template.render(candidate_vars)
+            if len(prompt) <= max_length:
+                if len(truncated) != len(documents):
+                    logger.info(
+                        "Prompt truncated from {orig_docs} to {new_docs} documents to fit max_length={max_len}",
+                        orig_docs=len(documents),
+                        new_docs=len(truncated),
+                        max_len=max_length,
+                    )
+                return truncated
+
+            # If even with current count it doesn't fit, try truncating the last doc's content
+            last = truncated[-1]
+            content = getattr(last, "content", None)
+            if content is None:
+                # For plain string docs or other types, fallback to string representation
+                try:
+                    content = str(last)
+                    is_string_doc = True
+                except Exception:
+                    # Drop it if we can't handle
+                    truncated = truncated[:-1]
+                    continue
+            else:
+                is_string_doc = False
+
+            # If last doc content is substantial, truncate it instead of dropping entirely
+            # Only do this when we are down to trying to fit with this doc
+            prompt_without_last = compiled_template.render({**variables, "documents": truncated[:-1]})
+            remaining_budget = max_length - len(prompt_without_last)
+            # Account for template overhead around each doc (approx 10 chars) and ensure non-negative
+            if remaining_budget > 50 and len(content) > remaining_budget:
+                # Truncate content to fit remaining budget
+                # Keep beginning of document (most relevant part)
+                allowed_content_len = max(0, remaining_budget - 20)
+                truncated_content = content[:allowed_content_len]
+                if is_string_doc:
+                    new_last: Any = truncated_content
+                else:
+                    try:
+                        new_last = replace(last, content=truncated_content)
+                    except Exception:
+                        # Fallback: try to create new doc with same type
+                        try:
+                            new_last = last.__class__(content=truncated_content, meta=getattr(last, "meta", {}))
+                        except Exception:
+                            new_last = truncated_content
+                truncated = truncated[:-1] + [new_last]
+                # Check if this truncated version fits
+                candidate_vars = {**variables, "documents": truncated}
+                prompt = compiled_template.render(candidate_vars)
+                if len(prompt) <= max_length:
+                    logger.info(
+                        "Prompt truncated by shortening last document content from {orig_len} to {new_len} chars",
+                        orig_len=len(content),
+                        new_len=len(truncated_content),
+                    )
+                    return truncated
+                # If still doesn't fit even after truncating, drop the doc entirely
+                truncated = truncated[:-1]
+            else:
+                # Drop last doc and continue
+                truncated = truncated[:-1]
+
+        # All documents dropped but still over? Return empty list;
+        # generic fallback in run() will handle remaining overflow
+        return []
 
     def _validate_variables(self, provided_variables: set[str]) -> None:
         """
