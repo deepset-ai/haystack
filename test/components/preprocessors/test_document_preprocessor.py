@@ -7,7 +7,9 @@ from unittest.mock import patch
 import pytest
 
 from haystack import Document, Pipeline
+from haystack.components.preprocessors.document_cleaner import DocumentCleaner
 from haystack.components.preprocessors.document_preprocessor import DocumentPreprocessor
+from haystack.components.preprocessors.document_splitter import DocumentSplitter
 
 
 class TestDocumentPreprocessor:
@@ -33,12 +35,14 @@ class TestDocumentPreprocessor:
         assert preprocessor.output_mapping == {"cleaner.documents": "documents"}
 
         cleaner = preprocessor.pipeline.get_component("cleaner")
+        assert isinstance(cleaner, DocumentCleaner)
         assert cleaner.remove_empty_lines is True
         assert cleaner.remove_extra_whitespaces is True
         assert cleaner.remove_repeated_substrings is False
         assert cleaner.keep_id is True
 
         splitter = preprocessor.pipeline.get_component("splitter")
+        assert isinstance(splitter, DocumentSplitter)
         assert splitter.split_by == "word"
         assert splitter.split_length == 3
         assert splitter.split_overlap == 1
@@ -116,6 +120,7 @@ class TestDocumentPreprocessor:
 
         # Check that the content was cleaned and split
         for doc in processed_docs:
+            assert doc.content is not None
             assert doc.content.strip() == doc.content
             assert len(doc.content.split()) <= 3  # Split length of 3 words
             assert doc.id is not None
@@ -131,4 +136,6 @@ class TestDocumentPreprocessor:
 
         processed_docs = result["documents"]
         assert len(processed_docs) == 3  # Should be split into 3 sentences
-        assert all("." not in doc.content for doc in processed_docs)  # Each doc should be a single sentence
+        for doc in processed_docs:
+            assert doc.content is not None
+            assert "." not in doc.content  # Each doc should be a single sentence
