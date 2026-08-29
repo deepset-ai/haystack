@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    Preserve leading Markdown headers that are excluded by ``header_split_levels``
+    when applying a secondary split with ``keep_headers=False``.
