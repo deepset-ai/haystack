@@ -51,6 +51,7 @@ class DocumentCleaner:
         ascii_only: bool = False,
         strip_whitespaces: bool = False,
         replace_regexes: dict[str, str] | None = None,
+        min_content_length: int = 0,
     ) -> None:
         """
         Initialize DocumentCleaner.
@@ -75,9 +76,13 @@ class DocumentCleaner:
         :param replace_regexes: A dictionary mapping regex patterns to their replacement strings.
             For example, `{r'\\n\\n+': '\\n'}` replaces multiple consecutive newlines with a single newline.
             This is applied after `remove_regex` and allows custom replacements instead of just removal.
+        :param min_content_length: Minimum length of the cleaned document content after stripping leading and trailing
+            whitespace. Documents shorter than this value are dropped. A value of `0` keeps all documents.
         """
 
         self._validate_params(unicode_normalization=unicode_normalization)
+        if min_content_length < 0:
+            raise ValueError("min_content_length must be greater than or equal to 0.")
 
         self.remove_empty_lines = remove_empty_lines
         self.remove_extra_whitespaces = remove_extra_whitespaces
@@ -89,6 +94,7 @@ class DocumentCleaner:
         self.ascii_only = ascii_only
         self.strip_whitespaces = strip_whitespaces
         self.replace_regexes = replace_regexes
+        self.min_content_length = min_content_length
 
     def _validate_params(self, unicode_normalization: str | None) -> None:
         """
@@ -145,6 +151,17 @@ class DocumentCleaner:
                 text = self._remove_repeated_substrings(text)
             if self.strip_whitespaces:
                 text = text.strip()
+
+            cleaned_content = text.strip()
+            if len(cleaned_content) < self.min_content_length:
+                logger.debug(
+                    "Document ID {doc_id} has cleaned content shorter than min_content_length "
+                    "({content_length} < {min_content_length}). Skipping this document.",
+                    doc_id=doc.id,
+                    content_length=len(cleaned_content),
+                    min_content_length=self.min_content_length,
+                )
+                continue
 
             clean_doc = Document(
                 id=doc.id if self.keep_id else "",
