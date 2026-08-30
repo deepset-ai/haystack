@@ -91,6 +91,12 @@ class Tool:
             "documents": {"handler": custom_handler}
         }
         ```
+    :param cacheable:
+        Whether results from this tool may be served from a `ToolCache` when one is configured on the
+        `Agent` invoking this tool. Defaults to `False` — caching must be explicitly opted into
+        per tool so that write-effecting tools (sending a message, posting to an API, mutating remote or local
+        state) never serve a stale cached result for what should be a fresh side-effecting call. Set this to
+        `True` only for read-only/idempotent tools such as lookups, fetches, or calculations.
     :raises ValueError: If neither `function` nor `async_function` is provided, if `function` is a
         coroutine function, if `async_function` is not a coroutine function, if `parameters` is not a
         valid JSON schema, or if the `outputs_to_state`, `outputs_to_string`, or `inputs_from_state`
@@ -107,6 +113,7 @@ class Tool:
     inputs_from_state: dict[str, str] | None = None
     outputs_to_state: dict[str, dict[str, Any]] | None = None
     async_function: Callable | None = None
+    cacheable: bool = False
 
     def __post_init__(self) -> None:  # noqa: C901, PLR0912
         # At least one of function / async_function must be set.
@@ -338,6 +345,9 @@ class Tool:
         if self.outputs_to_string is not None:
             data["outputs_to_string"] = _serialize_outputs_to_string(self.outputs_to_string)
 
+        # Keep backward compatibility: older serialized payloads may not contain `cacheable`.
+        # We always include it so new payloads are explicit, but we also support round-tripping
+        # when it's missing. The key is present in `data` via `asdict`.
         return {"type": generate_qualified_class_name(type(self)), "data": data}
 
     @classmethod

@@ -14,6 +14,11 @@ from haystack.components.agents.state.state import (
     _validate_schema,
     replace_values,
 )
+
+try:
+    from haystack.tools.tool_cache import ToolCache
+except ImportError:  # pragma: no cover
+    ToolCache = Any  # type: ignore[misc,assignment]
 from haystack.components.agents.state.state_utils import merge_lists
 from haystack.components.agents.tool_calling import _run_tool, _run_tool_async
 from haystack.components.agents.utils import (
@@ -375,6 +380,21 @@ class Agent:
     )
     ```
 
+    #### Using a `tool_cache` to avoid redundant tool calls
+
+    When an Agent loops over several steps, it can end up calling the same read-only tool with the same
+    arguments more than once (for example, re-fetching a document it already fetched a few steps earlier).
+    Pass a `ToolCache` to avoid re-invoking tools that have opted in via `Tool(..., cacheable=True)`:
+
+    ```python
+    from haystack.components.agents import Agent
+    from haystack.tools.tool_cache import ToolCache
+
+    cache = ToolCache(ttl_seconds=3600, scope="agent_run")
+    agent = Agent(chat_generator=OpenAIChatGenerator(), tools=[my_cacheable_tool], tool_cache=cache)
+    result = agent.run(messages=[ChatMessage.from_user("...")])
+    # result["tool_cache_stats"] -> {"hits": ..., "misses": ..., "calls_saved": ...}
+    ```
     """
 
     def __init__(  # noqa: PLR0913
@@ -393,6 +413,7 @@ class Agent:
         tool_concurrency_limit: int = 4,
         tool_streaming_callback_passthrough: bool = False,
         hooks: dict[HookPoint, list[Hook]] | None = None,
+        tool_cache: "ToolCache | None" = None,
     ) -> None:
         """
         Initialize the agent component.
@@ -426,6 +447,11 @@ class Agent:
             If set to False, the exception will be turned into a chat message and passed to the LLM.
         :param tool_concurrency_limit: Maximum number of tool calls to execute at the same time.
             Defaults to 4. Set to 1 to disable parallel tool execution.
+        :param tool_cache: Optional `ToolCache` instance shared across the Agent's run. When provided, tool calls
+            for any `Tool` with `cacheable=True` are looked up in the cache before invocation and stored after a
+            successful invocation. When set, the dict returned by `run()`/`run_async()` includes a `"tool_cache_stats"`
+            key with the cache's hit/miss counts for the run. Not included in `to_dict()`/`from_dict()`
+            serialization, since cache backends are runtime objects rather than serializable configuration.
         :param tool_streaming_callback_passthrough: If True, pass the streaming callback to tools that accept it.
         :param hooks: A dictionary mapping a hook point to a list of hooks the Agent runs at that point. Each hook
             receives the live `State` and influences the run by mutating it in place; hooks for a hook point run in
@@ -500,6 +526,7 @@ class Agent:
         self.tool_concurrency_limit = tool_concurrency_limit
         self.tool_streaming_callback_passthrough = tool_streaming_callback_passthrough
         self.hooks = hooks
+        self.tool_cache = tool_cache
 
         # --- State schema ---
         # shallow copy is sufficient: we only add a top-level "messages" key, never mutate nested values
@@ -513,6 +540,8 @@ class Agent:
         # --- Component I/O ---
         self._run_method_params = _get_run_method_params(self)
         output_types: dict[str, Any] = {"last_message": ChatMessage}
+        if self.tool_cache is not None:
+            output_types["tool_cache_stats"] = dict[str, int]
         for param, config in self.resolved_state_schema.items():
             # Internal keys are run-control / hook-facing state, not exposed as inputs or outputs.
             if param in _INTERNAL_STATE_KEYS:
@@ -633,6 +662,11 @@ class Agent:
     def to_dict(self) -> dict[str, Any]:
         """
         Serialize the component to a dictionary.
+
+        Note: `tool_cache`, if set, is intentionally NOT included — cache backends are runtime objects
+        rather than serializable configuration. A deserialized `Agent` will have `tool_cache=None` even
+        if the original instance had one set; callers that need caching after deserialization should
+        re-attach a `ToolCache` explicitly.
 
         :returns: Dictionary with serialized data.
         """
@@ -784,6 +818,7 @@ class Agent:
             "streaming_callback": streaming_callback,
             "max_workers": self.tool_concurrency_limit,
             "enable_streaming_callback_passthrough": self.tool_streaming_callback_passthrough,
+            "tool_cache": self.tool_cache,
         }
 
         return _ExecutionContext(
@@ -866,6 +901,8 @@ class Agent:
               text), the name of the tool that satisfied a tool exit condition (in which case `last_message` is that
               tool's result), or `"max_agent_steps"` (the Agent hit `max_agent_steps` before meeting an exit
               condition), or a custom reason a hook supplied through the `stop_run` state key.
+            - "tool_cache_stats": Only present if a `tool_cache` was configured; a dict with `hits`, `misses`,
+              and `calls_saved` counts for this run.
             - Any additional keys defined in the `state_schema`.
         """
         agent_inputs = {"messages": messages, "streaming_callback": streaming_callback, **kwargs}
@@ -901,6 +938,8 @@ class Agent:
             result = _public_outputs(state=exe_context.state)
             if msgs := result.get("messages"):
                 result["last_message"] = msgs[-1]
+            if self.tool_cache is not None:
+                result["tool_cache_stats"] = self.tool_cache.stats.to_dict()
             span.set_content_tag("haystack.agent.output", result)
             span.set_tag("haystack.agent.steps_taken", exe_context.counter)
 
@@ -952,6 +991,8 @@ class Agent:
               text), the name of the tool that satisfied a tool exit condition (in which case `last_message` is that
               tool's result), or `"max_agent_steps"` (the Agent hit `max_agent_steps` before meeting an exit
               condition), or a custom reason a hook supplied through the `stop_run` state key.
+            - "tool_cache_stats": Only present if a `tool_cache` was configured; a dict with `hits`, `misses`,
+              and `calls_saved` counts for this run.
             - Any additional keys defined in the `state_schema`.
         """
         agent_inputs = {"messages": messages, "streaming_callback": streaming_callback, **kwargs}
@@ -987,6 +1028,8 @@ class Agent:
             result = _public_outputs(state=exe_context.state)
             if msgs := result.get("messages"):
                 result["last_message"] = msgs[-1]
+            if self.tool_cache is not None:
+                result["tool_cache_stats"] = self.tool_cache.stats.to_dict()
             span.set_content_tag("haystack.agent.output", result)
             span.set_tag("haystack.agent.steps_taken", exe_context.counter)
 

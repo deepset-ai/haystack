@@ -813,6 +813,7 @@ class TestComponentToolInAgent:
                 "outputs_to_string": {"source": "reply", "handler": "test_component_tool.reply_formatter"},
                 "inputs_from_state": {"test": "text"},
                 "outputs_to_state": {"output": {"source": "reply", "handler": "test_component_tool.output_handler"}},
+                "cacheable": False,
             },
         }
         tool_dict = tool.to_dict()

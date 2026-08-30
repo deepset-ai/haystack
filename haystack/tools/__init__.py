@@ -33,6 +33,7 @@ _import_structure = {
     "serde_utils": ["deserialize_tools_or_toolset_inplace", "serialize_tools_or_toolset"],
     "utils": ["flatten_tools_or_toolsets", "warm_up_tools"],
     "tool_types": ["ToolsType"],
+    "tool_cache": ["ToolCache", "ToolCacheBackend", "InMemoryToolCache", "ToolCacheStats", "make_cache_key"],
 }
 
 if TYPE_CHECKING:
@@ -43,6 +44,11 @@ if TYPE_CHECKING:
     from haystack.tools.serde_utils import deserialize_tools_or_toolset_inplace as deserialize_tools_or_toolset_inplace
     from haystack.tools.serde_utils import serialize_tools_or_toolset as serialize_tools_or_toolset
     from haystack.tools.skills import SkillToolset as SkillToolset
+    from haystack.tools.tool_cache import InMemoryToolCache as InMemoryToolCache
+    from haystack.tools.tool_cache import ToolCache as ToolCache
+    from haystack.tools.tool_cache import ToolCacheBackend as ToolCacheBackend
+    from haystack.tools.tool_cache import ToolCacheStats as ToolCacheStats
+    from haystack.tools.tool_cache import make_cache_key as make_cache_key
     from haystack.tools.tool_types import ToolsType as ToolsType
     from haystack.tools.toolset import Toolset as Toolset
     from haystack.tools.utils import flatten_tools_or_toolsets as flatten_tools_or_toolsets

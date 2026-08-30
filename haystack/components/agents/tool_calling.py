@@ -20,6 +20,11 @@ from haystack.tools.errors import ToolInvocationError
 from haystack.tools.parameters_schema_utils import _unwrap_optional
 from haystack.tracing.utils import _serializable_value
 
+try:
+    from haystack.tools.tool_cache import ToolCache
+except ImportError:  # pragma: no cover
+    ToolCache = Any  # type: ignore[assignment,misc]
+
 logger = logging.getLogger(__name__)
 
 
@@ -520,6 +525,7 @@ def _run_tool(
     raise_on_failure: bool = True,
     enable_streaming_callback_passthrough: bool = False,
     max_workers: int = 4,
+    tool_cache: "ToolCache | None" = None,
 ) -> tuple[list[ChatMessage], State]:
     """
     Invoke all tools referenced by tool calls in `messages`.
@@ -559,26 +565,42 @@ def _run_tool(
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
         for batch in batches:
             # Prepare args at the start of each batch so tools that read from State observe writes merged by earlier
-            # batches.
-            futures = {}
+            # batches. Cache hits are not scheduled — they bypass the executor and are finalized directly,
+            # while misses are submitted for parallel execution.
+            futures: dict[int, Any] = {}
+            cached_results: dict[int, Any] = {}
             for idx in batch:
+                tool = resolved_tools[idx]
+                tc = tool_calls[idx]
+                if tool_cache is not None and getattr(tool, "cacheable", False):
+                    hit, cached_value = tool_cache.get(tool.name, tc.arguments)
+                    if hit:
+                        cached_results[idx] = cached_value
+                        continue
                 args = _prepare_tool_args(
-                    tool=resolved_tools[idx],
-                    tool_call_arguments=tool_calls[idx].arguments,
+                    tool=tool,
+                    tool_call_arguments=tc.arguments,
                     state=state,
                     streaming_callback=streaming_callback,
                     enable_streaming_passthrough=enable_streaming_callback_passthrough,
                 )
                 futures[idx] = executor.submit(
-                    _make_context_bound_invoke(
-                        tool=resolved_tools[idx], args=args, tool_call=tool_calls[idx], parent_span=parent_span
-                    )
+                    _make_context_bound_invoke(tool=tool, args=args, tool_call=tc, parent_span=parent_span)
                 )
 
             # Merge results in call order within the batch so write-write merges stay deterministic.
             for idx in batch:
+                if idx in cached_results:
+                    result = cached_results[idx]
+                else:
+                    result = futures[idx].result()
+                    # Cache successful misses (errors are not cached)
+                    if not isinstance(result, ToolInvocationError):
+                        tool = resolved_tools[idx]
+                        if tool_cache is not None and getattr(tool, "cacheable", False):
+                            tool_cache.set(tool.name, tool_calls[idx].arguments, result)
                 message = _finalize_tool_result(
-                    futures[idx].result(),
+                    result,
                     tool_calls[idx],
                     resolved_tools[idx],
                     state,
@@ -609,6 +631,7 @@ async def _run_tool_async(
     raise_on_failure: bool = True,
     enable_streaming_callback_passthrough: bool = False,
     max_workers: int = 4,
+    tool_cache: "ToolCache | None" = None,
 ) -> tuple[list[ChatMessage], State]:
     """
     Asynchronous variant of `run_tool`. Tool calls execute concurrently via a thread pool.
@@ -651,26 +674,46 @@ async def _run_tool_async(
 
     for batch in batches:
         # Prepare args at the start of each batch so readers observe writes merged by earlier batches.
-        tasks = {}
+        # Cache hits bypass async execution and are finalized directly.
+        tasks: dict[int, Any] = {}
+        cached_results: dict[int, Any] = {}
         for idx in batch:
+            tool = resolved_tools[idx]
+            tc = tool_calls[idx]
+            if tool_cache is not None and getattr(tool, "cacheable", False):
+                hit, cached_value = tool_cache.get(tool.name, tc.arguments)
+                if hit:
+                    cached_results[idx] = cached_value
+                    continue
             args = _prepare_tool_args(
-                tool=resolved_tools[idx],
-                tool_call_arguments=tool_calls[idx].arguments,
+                tool=tool,
+                tool_call_arguments=tc.arguments,
                 state=state,
                 streaming_callback=streaming_callback,
                 enable_streaming_passthrough=enable_streaming_callback_passthrough,
             )
             tasks[idx] = _make_bounded_invoke_async(
-                tool=resolved_tools[idx],
+                tool=tool,
                 args=args,
                 semaphore=semaphore,
-                tool_call=tool_calls[idx],
+                tool_call=tc,
                 parent_span=parent_span,
             )()
-        batch_results = await asyncio.gather(*tasks.values())
+        batch_results = await asyncio.gather(*tasks.values()) if tasks else []
+
+        # Build mapping from task idx -> result for non-cached entries
+        task_idx_to_result: dict[int, Any] = dict(zip(tasks.keys(), batch_results, strict=True))
 
         # Merge results in call order within the batch so write-write merges stay deterministic.
-        for idx, result in zip(tasks.keys(), batch_results, strict=True):
+        for idx in batch:
+            if idx in cached_results:
+                result = cached_results[idx]
+            else:
+                result = task_idx_to_result[idx]
+                if not isinstance(result, ToolInvocationError):
+                    tool = resolved_tools[idx]
+                    if tool_cache is not None and getattr(tool, "cacheable", False):
+                        tool_cache.set(tool.name, tool_calls[idx].arguments, result)
             message = _finalize_tool_result(
                 result, tool_calls[idx], resolved_tools[idx], state, raise_on_failure=raise_on_failure
             )
