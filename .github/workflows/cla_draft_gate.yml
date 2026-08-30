@@ -448,34 +448,23 @@ jobs:
               field.options.find((o) => o.name.toLowerCase().includes(name.toLowerCase()));
 
             const review = optionFor(process.env.REVIEW_STATUS_NAME);
-            if (!review) {
+            const targets = {
+              backlog: optionFor(process.env.BACKLOG_STATUS_NAME),
+              new: optionFor(process.env.NEW_STATUS_NAME),
+            };
+            if (!review || !targets.backlog || !targets.new) {
               core.warning(
-                `No Status option matching "${process.env.REVIEW_STATUS_NAME}" in project ` +
-                  `${process.env.PROJECT_NUMBER}. ` +
+                `Missing a Status option among "${process.env.REVIEW_STATUS_NAME}", ` +
+                  `"${process.env.BACKLOG_STATUS_NAME}" and "${process.env.NEW_STATUS_NAME}" ` +
+                  `in project ${process.env.PROJECT_NUMBER}. ` +
                   `Available: ${field.options.map((o) => o.name).join(", ")}`,
               );
               return;
             }
-            // Destination column per target, resolved per issue so that a column
-            // we can't find only skips the issues bound for it. Requiring both up
-            // front would mean a renamed "New" also stops prioritised issues from
-            // reaching the backlog, which used to work.
-            const statusFor = new Map([
-              ["backlog", process.env.BACKLOG_STATUS_NAME],
-              ["new", process.env.NEW_STATUS_NAME],
-            ]);
 
             for (const { id: issueId, target } of parked) {
-              const statusName = statusFor.get(target);
-              const option = statusName && optionFor(statusName);
-              if (!option) {
-                core.warning(
-                  `No Status option matching "${statusName ?? target}" in project ` +
-                    `${process.env.PROJECT_NUMBER}; leaving issue ${issueId} in review. ` +
-                    `Available: ${field.options.map((o) => o.name).join(", ")}`,
-                );
-                continue;
-              }
+              const option = targets[target];
+              if (!option) continue;
               const node = await github.graphql(
                 `query($id: ID!) {
                   node(id: $id) {
