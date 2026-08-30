@@ -20,15 +20,12 @@ from haystack.utils.deserialization import deserialize_component_inplace
 logger = logging.getLogger(__name__)
 
 # ponytail: only params that change the LLM output.
-_CACHE_RELEVANT_KEYS = frozenset({
-    "temperature", "top_p", "top_k", "max_tokens",
-    "frequency_penalty", "presence_penalty", "seed", "stop", "n",
-})
+_CACHE_RELEVANT_KEYS = frozenset(
+    {"temperature", "top_p", "top_k", "max_tokens", "frequency_penalty", "presence_penalty", "seed", "stop", "n"}
+)
 
 
-def _compute_cache_key(
-    messages: list[ChatMessage], generation_kwargs: dict[str, Any] | None = None
-) -> str:
+def _compute_cache_key(messages: list[ChatMessage], generation_kwargs: dict[str, Any] | None = None) -> str:
     msg_dicts = [m.to_dict() for m in messages]
     filtered = {k: v for k, v in (generation_kwargs or {}).items() if k in _CACHE_RELEVANT_KEYS}
     data = {"messages": msg_dicts, "kwargs": filtered}
@@ -59,9 +56,7 @@ class LLMResponseCache:
     ```
     """
 
-    def __init__(
-        self, chat_generator: Any, document_store: DocumentStore, ttl_seconds: int = 3600
-    ) -> None:
+    def __init__(self, chat_generator: Any, document_store: DocumentStore, ttl_seconds: int = 3600) -> None:
         self.chat_generator = chat_generator
         self.document_store = document_store
         self.ttl_seconds = ttl_seconds
@@ -174,33 +169,20 @@ class LLMResponseCache:
                 "generation_kwargs": generation_kwargs,
                 "streaming_callback": streaming_callback,
             }
-            with _trace_chat_generator_run(
-                chat_generator=self.chat_generator, generator_inputs=inputs
-            ):
+            with _trace_chat_generator_run(chat_generator=self.chat_generator, generator_inputs=inputs):
                 result = self.chat_generator.run(**inputs)
-            return {
-                "replies": result["replies"],
-                "meta": {"cache_hit": False, "streaming": True},
-            }
+            return {"replies": result["replies"], "meta": {"cache_hit": False, "streaming": True}}
 
         cache_key = _compute_cache_key(messages, generation_kwargs)
         cached = self._lookup(cache_key)
         if cached is not None:
-            return {
-                "replies": [self._reconstruct(cached)],
-                "meta": {"cache_hit": True, "cache_key": cache_key},
-            }
+            return {"replies": [self._reconstruct(cached)], "meta": {"cache_hit": True, "cache_key": cache_key}}
 
         inputs = {"messages": messages, "generation_kwargs": generation_kwargs}
-        with _trace_chat_generator_run(
-            chat_generator=self.chat_generator, generator_inputs=inputs
-        ):
+        with _trace_chat_generator_run(chat_generator=self.chat_generator, generator_inputs=inputs):
             result = self.chat_generator.run(**inputs)
         self._store(cache_key, result["replies"])
-        return {
-            "replies": result["replies"],
-            "meta": {"cache_hit": False, "cache_key": cache_key},
-        }
+        return {"replies": result["replies"], "meta": {"cache_hit": False, "cache_key": cache_key}}
 
     @component.output_types(replies=list[ChatMessage], meta=dict[str, Any])
     async def run_async(
@@ -219,34 +201,17 @@ class LLMResponseCache:
                 "generation_kwargs": generation_kwargs,
                 "streaming_callback": streaming_callback,
             }
-            with _trace_chat_generator_run(
-                chat_generator=self.chat_generator, generator_inputs=inputs
-            ):
-                result = await _execute_component_async(
-                    component_instance=self.chat_generator, **inputs
-                )
-            return {
-                "replies": result["replies"],
-                "meta": {"cache_hit": False, "streaming": True},
-            }
+            with _trace_chat_generator_run(chat_generator=self.chat_generator, generator_inputs=inputs):
+                result = await _execute_component_async(component_instance=self.chat_generator, **inputs)
+            return {"replies": result["replies"], "meta": {"cache_hit": False, "streaming": True}}
 
         cache_key = _compute_cache_key(messages, generation_kwargs)
         cached = self._lookup(cache_key)
         if cached is not None:
-            return {
-                "replies": [self._reconstruct(cached)],
-                "meta": {"cache_hit": True, "cache_key": cache_key},
-            }
+            return {"replies": [self._reconstruct(cached)], "meta": {"cache_hit": True, "cache_key": cache_key}}
 
         inputs = {"messages": messages, "generation_kwargs": generation_kwargs}
-        with _trace_chat_generator_run(
-            chat_generator=self.chat_generator, generator_inputs=inputs
-        ):
-            result = await _execute_component_async(
-                component_instance=self.chat_generator, **inputs
-            )
+        with _trace_chat_generator_run(chat_generator=self.chat_generator, generator_inputs=inputs):
+            result = await _execute_component_async(component_instance=self.chat_generator, **inputs)
         self._store(cache_key, result["replies"])
-        return {
-            "replies": result["replies"],
-            "meta": {"cache_hit": False, "cache_key": cache_key},
-        }
+        return {"replies": result["replies"], "meta": {"cache_hit": False, "cache_key": cache_key}}

@@ -1,4 +1,7 @@
 ---
+highlights: >
+    Added `LLMResponseCache` component that wraps any chat generator and caches
+    responses in a DocumentStore, avoiding redundant LLM API calls.
 features:
   - |
     Add `LLMResponseCache` component to `haystack.components.generators.chat`. It wraps any
