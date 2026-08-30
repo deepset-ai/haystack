@@ -7,7 +7,7 @@ import io
 import json
 import os
 import time
-from typing import Any, Final
+from typing import Any, Final, Literal
 
 from openai import AsyncOpenAI, OpenAI
 from openai.types import Batch
@@ -69,7 +69,7 @@ class OpenAIBatchChatGenerator:
         max_retries: int | None = None,
         poll_interval: float = 30.0,
         max_wait_seconds: float = 86400.0,
-        completion_window: str = "24h",
+        completion_window: Literal["24h"] = "24h",
         http_client_kwargs: dict[str, Any] | None = None,
     ) -> None:
         """

@@ -41,7 +41,7 @@ def test_from_file_path(tmp_path, request):
         ("spam.html", {"text/html"}),
         ("spam.htm", {"text/html"}),
         ("spam.css", {"text/css"}),
-        ("spam.csv", {"text/csv"}),
+        ("spam.csv", {"text/csv", "application/vnd.ms-excel"}),
         ("spam.md", {"text/markdown"}),  # custom mapping
         ("spam.markdown", {"text/markdown"}),  # custom mapping
         ("spam.msg", {"application/vnd.ms-outlook"}),  # custom mapping
