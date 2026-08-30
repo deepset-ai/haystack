@@ -1,11 +1,11 @@
 ---
 highlights: >
-    Added `LLMResponseCache` component that wraps any chat generator and caches
-    responses in a DocumentStore, avoiding redundant LLM API calls.
+    Added ``LLMResponseCache`` component that wraps any chat generator and caches
+    responses in a ``DocumentStore``, avoiding redundant LLM API calls.
 features:
   - |
-    Add `LLMResponseCache` component to `haystack.components.generators.chat`. It wraps any
-    `ChatGenerator` and caches non-streaming responses in a `DocumentStore`, keyed by a
+    Add ``LLMResponseCache`` component to ``haystack.components.generators.chat``. It wraps any
+    ``ChatGenerator`` and caches non-streaming responses in a ``DocumentStore``, keyed by a
     SHA-256 hash of the input messages and relevant generation parameters. On cache hit,
     the underlying generator is not called. Supports configurable TTL-based expiry and
     works with both sync and async pipelines. Streaming responses bypass the cache.

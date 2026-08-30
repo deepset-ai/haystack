@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -87,10 +87,15 @@ class TestCacheHit:
 
 class TestTTLExpiry:
     def test_expired_entry_not_returned(self, document_store, mock_chat_generator):
-        cache = LLMResponseCache(chat_generator=mock_chat_generator, document_store=document_store, ttl_seconds=0)
-        cache.run(messages=[ChatMessage.from_user("hello")])
-        mock_chat_generator.run.reset_mock()
-        result = cache.run(messages=[ChatMessage.from_user("hello")])
+        # ttl=0 is racy on fast runners (macos M1): cached_at == now within same tick -> false hit
+        # mock wall clock so expiry is deterministic
+        with patch(
+            "haystack.components.generators.chat.llm_response_cache.time.time", side_effect=[1000, 1000, 1001, 1001]
+        ):
+            cache = LLMResponseCache(chat_generator=mock_chat_generator, document_store=document_store, ttl_seconds=0)
+            cache.run(messages=[ChatMessage.from_user("hello")])
+            mock_chat_generator.run.reset_mock()
+            result = cache.run(messages=[ChatMessage.from_user("hello")])
         assert result["meta"]["cache_hit"] is False  # type: ignore[call-overload]
         mock_chat_generator.run.assert_called_once()
 
