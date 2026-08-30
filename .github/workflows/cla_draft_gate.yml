@@ -11,8 +11,7 @@ name: CLA draft gate
 #    PR keeps its issue looking taken and in review. Where the issue lands
 #    depends on whether it has been triaged: one that already carries a priority
 #    label (P0-P3) goes back to the backlog, one that doesn't goes to the triage
-#    column, so untriaged issues aren't buried in the backlog before a human has
-#    had a chance to prioritise them.
+#    ("new") column.
 #  - When the CLA is signed (the `license/cla` commit status turns green), mark
 #    the PR ready for review again and re-request the same reviewers. This also
 #    covers the case where the contributor marks the PR ready for review
@@ -77,8 +76,7 @@ jobs:
             const { owner, repo } = context.repo;
 
             // Linked issues released by this run, each mapped to the board column
-            // it should go back to. Handed to the next step (which needs a
-            // different token to touch the project).
+            // it should go back to.
             const parkedIssues = new Map();
 
             // Team members must never be gated. author_association is unreliable
@@ -164,8 +162,7 @@ jobs:
                 await github.rest.issues.removeAssignees({
                   owner, repo, issue_number: issue.number, assignees,
                 });
-                // An issue nobody has prioritised yet is not backlog material: it
-                // belongs in the triage column until a human gives it a P0-P3.
+                // An issue without P0-P3 belongs in the triage ("new") column.
                 const triaged = issue.labels.nodes.some((l) => PRIORITY_LABEL.test(l.name.trim()));
                 const target = triaged ? "backlog" : "new";
                 parkedIssues.set(issue.id, target);
