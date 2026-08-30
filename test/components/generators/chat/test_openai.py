@@ -17,7 +17,7 @@ from openai.types.chat import (
     ChatCompletion,
     ChatCompletionChunk,
     ChatCompletionMessage,
-    ChatCompletionMessageFunctionToolCall,
+    ChatCompletionMessageToolCall,
     ParsedChatCompletion,
     ParsedChatCompletionMessage,
     ParsedChoice,
@@ -27,7 +27,7 @@ from openai.types.chat import (
 )
 from openai.types.chat.chat_completion import Choice
 from openai.types.chat.chat_completion_chunk import ChoiceDelta, ChoiceDeltaToolCall, ChoiceDeltaToolCallFunction
-from openai.types.chat.chat_completion_message_function_tool_call import Function
+from openai.types.chat.chat_completion_message_tool_call import Function
 from openai.types.completion_usage import CompletionTokensDetails, CompletionUsage, PromptTokensDetails
 from pydantic import BaseModel
 
@@ -680,7 +680,7 @@ class TestOpenAIChatGenerator:
                         message=ChatCompletionMessage(
                             role="assistant",
                             tool_calls=[
-                                ChatCompletionMessageFunctionToolCall(
+                                ChatCompletionMessageToolCall(
                                     id="123",
                                     type="function",
                                     function=Function(name="weather", arguments='{"city": "Paris"}'),
@@ -839,7 +839,7 @@ class TestOpenAIChatGenerator:
                         message=ChatCompletionMessage(
                             role="assistant",
                             tool_calls=[
-                                ChatCompletionMessageFunctionToolCall(
+                                ChatCompletionMessageToolCall(
                                     id="1",
                                     type="function",
                                     function=Function(name="weather", arguments='"invalid": "json"'),
@@ -1729,7 +1729,7 @@ def streaming_chunks():
                         "reasoning_tokens": 0,
                         "rejected_prediction_tokens": 0,
                     },
-                    "prompt_tokens_details": {"audio_tokens": 0, "cached_tokens": 0, "cache_write_tokens": None},
+                    "prompt_tokens_details": {"audio_tokens": 0, "cached_tokens": 0},
                 },
             },
         ),
@@ -2012,7 +2012,7 @@ class TestChatCompletionChunkConversion:
                 "reasoning_tokens": 0,
                 "rejected_prediction_tokens": 0,
             },
-            "prompt_tokens_details": {"audio_tokens": 0, "cached_tokens": 0, "cache_write_tokens": None},
+            "prompt_tokens_details": {"audio_tokens": 0, "cached_tokens": 0},
         }
 
     def test_convert_usage_chunk_to_streaming_chunk(self) -> None:

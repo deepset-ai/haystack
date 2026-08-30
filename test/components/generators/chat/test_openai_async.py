@@ -16,11 +16,11 @@ from openai.types.chat import (
     ChatCompletion,
     ChatCompletionChunk,
     ChatCompletionMessage,
-    ChatCompletionMessageFunctionToolCall,
+    ChatCompletionMessageToolCall,
     chat_completion_chunk,
 )
 from openai.types.chat.chat_completion import Choice
-from openai.types.chat.chat_completion_message_function_tool_call import Function
+from openai.types.chat.chat_completion_message_tool_call import Function
 from openai.types.completion_usage import CompletionTokensDetails, CompletionUsage, PromptTokensDetails
 
 from haystack.components.generators.chat.openai import OpenAIChatGenerator
@@ -283,7 +283,7 @@ class TestOpenAIChatGeneratorAsync:
                         message=ChatCompletionMessage(
                             role="assistant",
                             tool_calls=[
-                                ChatCompletionMessageFunctionToolCall(
+                                ChatCompletionMessageToolCall(
                                     id="123",
                                     type="function",
                                     function=Function(name="weather", arguments='{"city": "Paris"}'),
