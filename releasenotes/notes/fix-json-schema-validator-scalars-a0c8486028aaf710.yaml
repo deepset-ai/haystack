@@ -1,0 +1,4 @@
+---
+fixes:
+  - |
+    Fixed ``JsonSchemaValidator`` raising ``ValueError`` on top-level JSON scalars (string, number, boolean, null). Scalars are now passed through to ``jsonschema`` validation, returning ``validated`` when the schema matches the scalar type or ``validation_error`` otherwise, instead of crashing.
