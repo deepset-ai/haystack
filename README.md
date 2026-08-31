@@ -84,7 +84,7 @@
 | haystack/components/joiners/\_\_init\_\_.py                               |        5 |        0 |    100% |           |
 | haystack/components/joiners/answer\_joiner.py                             |       54 |        1 |     98% |       152 |
 | haystack/components/joiners/branch.py                                     |       20 |        3 |     85% |105, 116-117 |
-| haystack/components/joiners/document\_joiner.py                           |      101 |        0 |    100% |           |
+| haystack/components/joiners/document\_joiner.py                           |      102 |        0 |    100% |           |
 | haystack/components/joiners/list\_joiner.py                               |       23 |        0 |    100% |           |
 | haystack/components/joiners/string\_joiner.py                             |        8 |        0 |    100% |           |
 | haystack/components/preprocessors/\_\_init\_\_.py                         |        5 |        0 |    100% |           |
@@ -266,7 +266,7 @@
 | haystack/utils/type\_serialization.py                                     |      144 |        6 |     96% |106, 108, 260-261, 269, 285 |
 | haystack/utils/url\_validation.py                                         |        4 |        0 |    100% |           |
 | haystack/version.py                                                       |        5 |        2 |     60% |      9-10 |
-| **TOTAL**                                                                 | **17094** |  **772** | **95%** |           |
+| **TOTAL**                                                                 | **17095** |  **772** | **95%** |           |
 
 
 ## Setup coverage badge
