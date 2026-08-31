@@ -1305,6 +1305,22 @@ class TestOpenAIChatGenerator:
         assert all(isinstance(ts, Toolset) for ts in deserialized.tools)
 
 
+# The OpenAI SDK regularly adds fields to its usage models and `_serialize_object` picks up all of them,
+# so hardcoded expected dicts go stale on every additive release. Deriving them from the same model the
+# fixtures stream keeps the assertions exact without needing an update each time.
+STREAMED_USAGE = CompletionUsage(
+    completion_tokens=42,
+    prompt_tokens=282,
+    total_tokens=324,
+    completion_tokens_details=CompletionTokensDetails(
+        accepted_prediction_tokens=0, audio_tokens=0, reasoning_tokens=0, rejected_prediction_tokens=0, text_tokens=42
+    ),
+    prompt_tokens_details=PromptTokensDetails(
+        audio_tokens=0, cached_tokens=0, cache_write_tokens=0, image_tokens=0, text_tokens=282
+    ),
+)
+
+
 @pytest.fixture
 def chat_completion_chunks():
     return [
@@ -1520,21 +1536,7 @@ def chat_completion_chunks():
             object="chat.completion.chunk",
             service_tier="default",
             system_fingerprint="fp_54eb4bd693",
-            usage=CompletionUsage(
-                completion_tokens=42,
-                prompt_tokens=282,
-                total_tokens=324,
-                completion_tokens_details=CompletionTokensDetails(
-                    accepted_prediction_tokens=0,
-                    audio_tokens=0,
-                    reasoning_tokens=0,
-                    rejected_prediction_tokens=0,
-                    text_tokens=42,
-                ),
-                prompt_tokens_details=PromptTokensDetails(
-                    audio_tokens=0, cached_tokens=0, cache_write_tokens=0, image_tokens=0, text_tokens=282
-                ),
-            ),
+            usage=STREAMED_USAGE,
         ),
     ]
 
@@ -1726,30 +1728,7 @@ def streaming_chunks():
             finish_reason="tool_calls",
         ),
         StreamingChunk(
-            content="",
-            meta={
-                "model": "gpt-5-mini",
-                "received_at": ANY,
-                "usage": {
-                    "completion_tokens": 42,
-                    "prompt_tokens": 282,
-                    "total_tokens": 324,
-                    "completion_tokens_details": {
-                        "accepted_prediction_tokens": 0,
-                        "audio_tokens": 0,
-                        "reasoning_tokens": 0,
-                        "rejected_prediction_tokens": 0,
-                        "text_tokens": 42,
-                    },
-                    "prompt_tokens_details": {
-                        "audio_tokens": 0,
-                        "cached_tokens": 0,
-                        "cache_write_tokens": 0,
-                        "image_tokens": 0,
-                        "text_tokens": 282,
-                    },
-                },
-            },
+            content="", meta={"model": "gpt-5-mini", "received_at": ANY, "usage": STREAMED_USAGE.model_dump()}
         ),
     ]
 
@@ -2020,25 +1999,7 @@ class TestChatCompletionChunkConversion:
         assert result.meta["finish_reason"] == "tool_calls"
         assert result.meta["index"] == 0
         assert result.meta["completion_start_time"] is not None
-        assert result.meta["usage"] == {
-            "completion_tokens": 42,
-            "prompt_tokens": 282,
-            "total_tokens": 324,
-            "completion_tokens_details": {
-                "accepted_prediction_tokens": 0,
-                "audio_tokens": 0,
-                "reasoning_tokens": 0,
-                "rejected_prediction_tokens": 0,
-                "text_tokens": 42,
-            },
-            "prompt_tokens_details": {
-                "audio_tokens": 0,
-                "cached_tokens": 0,
-                "cache_write_tokens": 0,
-                "image_tokens": 0,
-                "text_tokens": 282,
-            },
-        }
+        assert result.meta["usage"] == STREAMED_USAGE.model_dump()
 
     def test_convert_usage_chunk_to_streaming_chunk(self) -> None:
 
