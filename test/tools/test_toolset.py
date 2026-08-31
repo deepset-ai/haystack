@@ -167,47 +167,6 @@ class TestToolset:
         assert "multiply" not in toolset
         assert "non_existent_tool" not in toolset
 
-    def test_toolset_addition(self, add_tool, multiply_tool, subtract_tool):
-        """Test that the __add__ method combines toolsets with various operand types."""
-        base = Toolset([add_tool])
-
-        # Toolset + Tool
-        result = base + multiply_tool
-        assert isinstance(result, Toolset)
-        assert [t.name for t in result] == ["add", "multiply"]
-
-        # Toolset + Toolset
-        result = base + Toolset([subtract_tool])
-        assert isinstance(result, Toolset)
-        assert [t.name for t in result] == ["add", "subtract"]
-
-        # Toolset + list[Tool]
-        result = base + [multiply_tool, subtract_tool]
-        assert isinstance(result, Toolset)
-        assert [t.name for t in result] == ["add", "multiply", "subtract"]
-
-        # Unsupported operand types raise TypeError
-        with pytest.raises(TypeError):
-            base + "not_a_tool"  # type: ignore[operator]
-        with pytest.raises(TypeError):
-            base + 123  # type: ignore[operator]
-
-        # The combined tools remain invocable
-        message = ChatMessage.from_assistant(
-            tool_calls=[
-                ToolCall(tool_name="add", arguments={"a": 10, "b": 5}),
-                ToolCall(tool_name="multiply", arguments={"a": 10, "b": 5}),
-                ToolCall(tool_name="subtract", arguments={"a": 10, "b": 5}),
-            ]
-        )
-        tool_messages = _run_tool_messages(messages=[message], tools=result)
-        tool_results = [tcr.result for message in tool_messages for tcr in message.tool_call_results]
-        assert tool_results == ["15", "50", "5"]
-
-    def test_plus_emits_future_warning(self, add_tool, multiply_tool):
-        with pytest.warns(FutureWarning):
-            _ = Toolset([add_tool]) + Toolset([multiply_tool])
-
     def test_combining_toolsets_via_unpacking(self, add_tool, multiply_tool, subtract_tool):
         combined = Toolset([*Toolset([add_tool, subtract_tool]), multiply_tool])
         assert [t.name for t in combined] == ["add", "subtract", "multiply"]
@@ -414,17 +373,11 @@ class TestToolsetWarmUp:
         toolset.warm_up()
         assert new_tool.warm_up_count == 1
 
-    def test_add_toolset_flattens_with_future_warning(self):
+    def test_add_toolset_raises(self):
         toolset = Toolset([WarmUpCountingTool("a")])
-        other = Toolset([WarmUpCountingTool("b")])
-        with pytest.warns(FutureWarning):
-            toolset.add(other)
-        assert [t.name for t in toolset] == ["a", "b"]
-
-    def test_add_non_tool_raises(self):
-        toolset = Toolset([WarmUpCountingTool("a")])
-        with pytest.raises(TypeError, match="Expected Tool or Toolset"):
-            toolset.add("not_a_tool")  # type: ignore[arg-type]
+        not_a_tool: Any = Toolset([WarmUpCountingTool("b")])
+        with pytest.raises(TypeError, match="Expected Tool"):
+            toolset.add(not_a_tool)
 
 
 class TestToolsetSpawn:
