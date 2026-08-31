@@ -129,8 +129,8 @@ class JsonSchemaValidator:
         :return:  A dictionary with the following keys:
             - "validated": A list of messages if the last message is valid.
             - "validation_error": A list of messages if the last message is invalid.
-        :raises ValueError: If no JSON schema is provided or if the message content is not a dictionary or a list of
-            dictionaries.
+        :raises ValueError: If the last message has no text content, or if no JSON schema is provided either in
+            the `run` method or in the component init.
         """
         last_message = messages[-1]
         if last_message.text is None:

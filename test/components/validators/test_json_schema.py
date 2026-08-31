@@ -97,20 +97,17 @@ class TestJsonSchemaValidator:
         # we need this recursive json conversion to validate the message
         assert result["key"][0]["function"]["arguments"]["basehead"] == "main...amzn_chat"
 
-    # Returns top-level scalars directly instead of raising.
     @pytest.mark.parametrize("scalar", ["hello", 42, 3.14, True, None])
     def test_recursive_json_to_object_with_top_level_scalar(self, scalar):
         validator = JsonSchemaValidator()
 
         assert validator._recursive_json_to_object(scalar) == scalar
 
-    # Returns lists of scalars directly instead of raising.
     def test_recursive_json_to_object_with_list_of_scalars(self):
         validator = JsonSchemaValidator()
 
         assert validator._recursive_json_to_object([1, "two", None]) == [1, "two", None]
 
-    #  Validates a message whose content is a top-level JSON scalar matching the schema.
     def test_validates_message_with_top_level_json_scalar(self):
         validator = JsonSchemaValidator(json_schema={"type": "string"})
 
@@ -119,7 +116,6 @@ class TestJsonSchemaValidator:
         assert "validated" in result
         assert len(result["validated"]) == 1
 
-    #  Returns a validation error when a top-level JSON scalar does not match the schema.
     @pytest.mark.parametrize("message_text", ["42", "true", "null"])
     def test_validation_error_for_top_level_json_scalar(self, message_text):
         validator = JsonSchemaValidator(json_schema={"type": "string"})
