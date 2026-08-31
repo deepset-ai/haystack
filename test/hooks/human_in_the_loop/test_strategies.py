@@ -75,6 +75,7 @@ class TestBlockingConfirmationStrategy:
                 "modify_template": "The parameters for tool '{tool_name}' were updated by the user to:"
                 "\n{final_tool_params}",
                 "user_feedback_template": "With user feedback: {feedback}",
+                "include_state_inputs": False,
             },
         }
 
@@ -779,3 +780,115 @@ def test_bind_decision_to_tool_call(tool_call_id: str | None, decision_id: str |
     decision = ToolExecutionDecision("tool", execute=True, tool_call_id=decision_id)
     bound_decision = _bind_decision_to_tool_call(decision=decision, tool_call=ToolCall("tool", {}, id=tool_call_id))
     assert bound_decision.tool_call_id == tool_call_id
+
+
+class TestMaterializedStateInputs:
+    def test_hitl_materialized_includes_state_inputs_when_enabled(self):
+        # Tool with inputs_from_state should show injected values only when flag is True
+        from haystack.components.agents.state.state import State
+
+        def refund_tool(reason: str, customer_id: str) -> str:
+            return f"{customer_id}:{reason}"
+
+        tool = Tool(
+            name="refund_tool",
+            description="refund",
+            parameters={
+                "type": "object",
+                "properties": {"reason": {"type": "string"}, "customer_id": {"type": "string"}},
+                "required": ["reason"],
+            },
+            function=refund_tool,
+            inputs_from_state={"selected_customer_id": "customer_id"},
+        )
+        state = State(schema={"selected_customer_id": {"type": str}})
+        state.set("selected_customer_id", "cust_84319")
+
+        captured: dict[str, Any] = {}
+
+        class CapturingUI(SimpleConsoleUI):
+            def get_user_confirmation(self, tool_name, tool_description, tool_params):
+                captured["params"] = dict(tool_params)
+                return ConfirmationUIResult(action="confirm")
+
+        # Without materialization, only LLM args visible
+        captured.clear()
+        strat_false = BlockingConfirmationStrategy(
+            confirmation_policy=AlwaysAskPolicy(), confirmation_ui=CapturingUI(), include_state_inputs=False
+        )
+        _run_confirmation_strategies(
+            confirmation_strategies={tool.name: strat_false},
+            messages_with_tool_calls=[
+                ChatMessage.from_assistant(tool_calls=[ToolCall(tool.name, {"reason": "duplicate"})])
+            ],
+            tools=[tool],
+            state=state,
+        )
+        assert captured["params"] == {"reason": "duplicate"}
+
+        # With materialization, state-injected value visible
+        captured.clear()
+        strat_true = BlockingConfirmationStrategy(
+            confirmation_policy=AlwaysAskPolicy(), confirmation_ui=CapturingUI(), include_state_inputs=True
+        )
+        teds = _run_confirmation_strategies(
+            confirmation_strategies={tool.name: strat_true},
+            messages_with_tool_calls=[
+                ChatMessage.from_assistant(tool_calls=[ToolCall(tool.name, {"reason": "duplicate"})])
+            ],
+            tools=[tool],
+            state=state,
+        )
+        assert captured["params"] == {"reason": "duplicate", "customer_id": "cust_84319"}
+        assert teds[0].final_tool_params == {"reason": "duplicate", "customer_id": "cust_84319"}
+
+    def test_hitl_materialized_via_hook_flag(self):
+        from haystack.components.agents.state.state import State
+        from haystack.components.agents.state.state_utils import merge_lists, replace_values
+        from haystack.hooks.human_in_the_loop import ConfirmationHook
+
+        def refund_tool(reason: str, customer_id: str) -> str:
+            return f"{customer_id}:{reason}"
+
+        tool = Tool(
+            name="refund_tool",
+            description="refund",
+            parameters={
+                "type": "object",
+                "properties": {"reason": {"type": "string"}, "customer_id": {"type": "string"}},
+                "required": ["reason"],
+            },
+            function=refund_tool,
+            inputs_from_state={"selected_customer_id": "customer_id"},
+        )
+
+        captured: dict[str, Any] = {}
+
+        class CapturingUI(SimpleConsoleUI):
+            def get_user_confirmation(self, tool_name, tool_description, tool_params):
+                captured["params"] = dict(tool_params)
+                return ConfirmationUIResult(action="confirm")
+
+        state = State(
+            schema={
+                "messages": {"type": list[ChatMessage], "handler": merge_lists},
+                "tools": {"type": list, "handler": replace_values},
+                "selected_customer_id": {"type": str},
+            }
+        )
+        state.set("selected_customer_id", "cust_999")
+        messages = [ChatMessage.from_assistant(tool_calls=[ToolCall(tool.name, {"reason": "duplicate"})])]
+        state.set("messages", [ChatMessage.from_user("go"), messages[0]], handler_override=replace_values)
+        state.set("tools", [tool], handler_override=replace_values)
+
+        # Hook flag True should materialize even though strategy flag is False
+        hook = ConfirmationHook(
+            confirmation_strategies={
+                tool.name: BlockingConfirmationStrategy(
+                    confirmation_policy=AlwaysAskPolicy(), confirmation_ui=CapturingUI(), include_state_inputs=False
+                )
+            },
+            include_state_inputs=True,
+        )
+        hook.run(state)
+        assert captured["params"] == {"reason": "duplicate", "customer_id": "cust_999"}

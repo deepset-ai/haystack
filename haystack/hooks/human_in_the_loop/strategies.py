@@ -8,6 +8,14 @@ from typing import Any, Literal, cast
 
 from haystack import tracing
 from haystack.components.agents.state.state import State
+
+try:
+    from haystack.components.agents.tool_calling import _inject_state_args
+
+    _HAS_INJECT = True
+except ImportError:  # pragma: no cover
+    _inject_state_args = None  # type: ignore
+    _HAS_INJECT = False
 from haystack.core.serialization import (
     component_to_dict,
     default_from_dict,
@@ -41,6 +49,7 @@ class BlockingConfirmationStrategy:
         reject_template: str = REJECTION_FEEDBACK_TEMPLATE,
         modify_template: str = MODIFICATION_FEEDBACK_TEMPLATE,
         user_feedback_template: str = USER_FEEDBACK_TEMPLATE,
+        include_state_inputs: bool = False,
     ) -> None:
         """
         Initialize the BlockingConfirmationStrategy with a confirmation policy and UI.
@@ -56,12 +65,16 @@ class BlockingConfirmationStrategy:
             placeholders.
         :param user_feedback_template:
             Template for user feedback messages. It should include a `{feedback}` placeholder.
+        :param include_state_inputs:
+            Whether to include state inputs in the confirmation display. If True, materializes tool arguments with
+            state values before showing to the user.
         """
         self.confirmation_policy = confirmation_policy
         self.confirmation_ui = confirmation_ui
         self.reject_template = reject_template
         self.modify_template = modify_template
         self.user_feedback_template = user_feedback_template
+        self.include_state_inputs = include_state_inputs
 
     def run(
         self,
@@ -186,6 +199,7 @@ class BlockingConfirmationStrategy:
             reject_template=self.reject_template,
             modify_template=self.modify_template,
             user_feedback_template=self.user_feedback_template,
+            include_state_inputs=self.include_state_inputs,
         )
 
     @classmethod
@@ -343,6 +357,7 @@ def _process_confirmation_strategies(
         messages_with_tool_calls=messages_with_tool_calls,
         tools=tools,
         confirmation_strategy_context=confirmation_strategy_context,
+        state=state,
     )
     # Apply tool execution decisions to messages_with_tool_calls
     rejection_messages, modified_tool_call_messages = _apply_tool_execution_decisions(
@@ -391,6 +406,7 @@ async def _process_confirmation_strategies_async(
         messages_with_tool_calls=messages_with_tool_calls,
         tools=tools,
         confirmation_strategy_context=confirmation_strategy_context,
+        state=state,
     )
     # Apply tool execution decisions to messages_with_tool_calls
     rejection_messages, modified_tool_call_messages = _apply_tool_execution_decisions(
@@ -410,6 +426,7 @@ def _run_confirmation_strategies(
     messages_with_tool_calls: list[ChatMessage],
     tools: list[Tool],
     confirmation_strategy_context: dict[str, Any] | None = None,
+    state: State | None = None,
 ) -> list[ToolExecutionDecision]:
     """
     Run confirmation strategies for tool calls in the provided chat messages.
@@ -418,6 +435,7 @@ def _run_confirmation_strategies(
     :param messages_with_tool_calls: Messages containing tool calls to process
     :param tools: The available tools, used to resolve each tool call by name
     :param confirmation_strategy_context: Optional request-scoped context passed to the strategies
+    :param state: Optional runtime state for materializing state-injected args
     :returns:
         A list of ToolExecutionDecision objects representing the decisions made for each tool call.
     """
@@ -450,6 +468,25 @@ def _run_confirmation_strategies(
                     )
                 )
                 continue
+
+            # Materialize state inputs if requested
+            if (
+                (
+                    getattr(strategy, "include_state_inputs", False)
+                    or (state is not None and state.data.get("__hitl_include_state_inputs"))
+                )
+                and state is not None
+                and tool_to_invoke is not None
+                and _HAS_INJECT
+                and _inject_state_args is not None
+            ):
+                try:
+                    final_args = _inject_state_args(tool_to_invoke, dict(tool_call.arguments), state)
+                    for k, v in list(final_args.items()):
+                        if isinstance(v, State):
+                            final_args[k] = "<State>"
+                except Exception:  # pragma: no cover
+                    final_args = dict(tool_call.arguments)
 
             # Run the confirmation strategy
             strategy_inputs: dict[str, Any] = {
@@ -476,6 +513,7 @@ async def _run_confirmation_strategies_async(
     messages_with_tool_calls: list[ChatMessage],
     tools: list[Tool],
     confirmation_strategy_context: dict[str, Any] | None = None,
+    state: State | None = None,
 ) -> list[ToolExecutionDecision]:
     """
     Async version of _run_confirmation_strategies.
@@ -487,6 +525,7 @@ async def _run_confirmation_strategies_async(
     :param messages_with_tool_calls: Messages containing tool calls to process
     :param tools: The available tools, used to resolve each tool call by name
     :param confirmation_strategy_context: Optional request-scoped context passed to the strategies
+    :param state: Optional runtime state for materializing state-injected args
     :returns:
         A list of ToolExecutionDecision objects representing the decisions made for each tool call.
     """
@@ -519,6 +558,25 @@ async def _run_confirmation_strategies_async(
                     )
                 )
                 continue
+
+            # Materialize state inputs if requested
+            if (
+                (
+                    getattr(strategy, "include_state_inputs", False)
+                    or (state is not None and state.data.get("__hitl_include_state_inputs"))
+                )
+                and state is not None
+                and tool_to_invoke is not None
+                and _HAS_INJECT
+                and _inject_state_args is not None
+            ):
+                try:
+                    final_args = _inject_state_args(tool_to_invoke, dict(tool_call.arguments), state)
+                    for k, v in list(final_args.items()):
+                        if isinstance(v, State):
+                            final_args[k] = "<State>"
+                except Exception:  # pragma: no cover
+                    final_args = dict(tool_call.arguments)
 
             strategy_inputs: dict[str, Any] = {
                 "tool_name": tool_name,

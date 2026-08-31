@@ -179,9 +179,11 @@ class TestConfirmationHook:
                             "modify_template": "The parameters for tool '{tool_name}' were updated by the user to:"
                             "\n{final_tool_params}",
                             "user_feedback_template": "With user feedback: {feedback}",
+                            "include_state_inputs": False,
                         },
                     }
-                }
+                },
+                "include_state_inputs": False,
             },
         }
 

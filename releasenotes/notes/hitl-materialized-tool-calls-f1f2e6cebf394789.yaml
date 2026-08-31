@@ -1,0 +1,4 @@
+---
+enhancements:
+  - |
+    Allow Human-in-the-Loop to review fully materialized tool calls. ``BlockingConfirmationStrategy`` and ``ConfirmationHook`` now accept ``include_state_inputs`` (default ``False``) to show ``inputs_from_state`` values alongside LLM-provided arguments before execution. When enabled, state-injected arguments are materialized via the same ``_inject_state_args`` logic used at execution time.

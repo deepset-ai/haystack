@@ -80,14 +80,21 @@ class ConfirmationHook:
     # Restrict this hook to the "before_tool" point; the Agent validates this at construction.
     allowed_hook_points = ("before_tool",)
 
-    def __init__(self, confirmation_strategies: dict[str | tuple[str, ...], ConfirmationStrategy]) -> None:
+    def __init__(
+        self,
+        confirmation_strategies: dict[str | tuple[str, ...], ConfirmationStrategy],
+        include_state_inputs: bool = False,
+    ) -> None:
         """
         Initialize the hook with its per-tool confirmation strategies.
 
         :param confirmation_strategies: Mapping of tool name (or a tuple of tool names) to its `ConfirmationStrategy`.
             The wildcard key `"*"` applies to any tool without a more specific entry.
+        :param include_state_inputs: Whether to materialize state inputs for confirmation display. Currently stored
+            for serialization; per-strategy flag takes precedence.
         """
         self.confirmation_strategies = confirmation_strategies
+        self.include_state_inputs = include_state_inputs
 
     def run(self, state: State) -> None:
         """
@@ -101,13 +108,19 @@ class ConfirmationHook:
         messages = state.data.get("messages") or []
         if not messages or not messages[-1].tool_calls:
             return
-        new_chat_history = _process_confirmation_strategies(
-            confirmation_strategies=self.confirmation_strategies,
-            messages_with_tool_calls=[messages[-1]],
-            tools=state.data.get("tools") or [],
-            state=state,
-            confirmation_strategy_context=state.data.get("hook_context"),
-        )
+        # Propagate hook-level materialization flag so per-strategy checks see it even without mutating strategies
+        if self.include_state_inputs:
+            state.data["__hitl_include_state_inputs"] = True
+        try:
+            new_chat_history = _process_confirmation_strategies(
+                confirmation_strategies=self.confirmation_strategies,
+                messages_with_tool_calls=[messages[-1]],
+                tools=state.data.get("tools") or [],
+                state=state,
+                confirmation_strategy_context=state.data.get("hook_context"),
+            )
+        finally:
+            state.data.pop("__hitl_include_state_inputs", None)
         state.set("messages", new_chat_history, handler_override=replace_values)
 
     async def run_async(self, state: State) -> None:
@@ -115,19 +128,26 @@ class ConfirmationHook:
         messages = state.data.get("messages") or []
         if not messages or not messages[-1].tool_calls:
             return
-        new_chat_history = await _process_confirmation_strategies_async(
-            confirmation_strategies=self.confirmation_strategies,
-            messages_with_tool_calls=[messages[-1]],
-            tools=state.data.get("tools") or [],
-            state=state,
-            confirmation_strategy_context=state.data.get("hook_context"),
-        )
+        if self.include_state_inputs:
+            state.data["__hitl_include_state_inputs"] = True
+        try:
+            new_chat_history = await _process_confirmation_strategies_async(
+                confirmation_strategies=self.confirmation_strategies,
+                messages_with_tool_calls=[messages[-1]],
+                tools=state.data.get("tools") or [],
+                state=state,
+                confirmation_strategy_context=state.data.get("hook_context"),
+            )
+        finally:
+            state.data.pop("__hitl_include_state_inputs", None)
         state.set("messages", new_chat_history, handler_override=replace_values)
 
     def to_dict(self) -> dict[str, Any]:
         """Serialize the hook, including its confirmation strategies (tuple keys become JSON-array strings)."""
         return default_to_dict(
-            self, confirmation_strategies=_serialize_confirmation_strategies(self.confirmation_strategies)
+            self,
+            confirmation_strategies=_serialize_confirmation_strategies(self.confirmation_strategies),
+            include_state_inputs=self.include_state_inputs,
         )
 
     @classmethod
