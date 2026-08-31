@@ -1,0 +1,39 @@
+---
+enhancements:
+  - |
+    ``ToolResultOffloadHook`` now offloads tool results carrying ``ImageContent`` or ``FileContent``, not just text.
+    Previously such a result was left in context in full, even though the base64 payload of an image or a file is
+    often the single largest thing in an Agent's conversation.
+
+    Each part of a result now gets its own store entry - images and files decoded from base64 to raw bytes - so every
+    text, image, and file stays usable on its own. A result that is a single text still gets a one-line pointer; a
+    result with several parts gets one line per entry, so the model sees where every piece went:
+
+    .. code-block::
+
+        Tool result offloaded to 3 files:
+        1. text (412 characters) at '/abs/path/tool_results/2_fetch_call-123_0.txt'. Preview: Quarterly report...
+        2. image/png (48210 bytes) at '/abs/path/tool_results/2_fetch_call-123_1.png'
+        3. application/pdf named 'q3.pdf' (1048576 bytes) at '/abs/path/tool_results/2_fetch_call-123_2.pdf'
+
+    An image or file is stored under the extension of its ``filename`` when it has one and of its ``mime_type``
+    otherwise, falling back to ``.bin``. Offload policies now receive the text and base64 payloads of all parts
+    joined together, so a threshold such as ``OffloadOverChars`` measures the context the result actually occupies.
+upgrade:
+  - |
+    The ``ToolResultStore`` protocol now carries binary content: ``write`` takes ``content: str | bytes`` and
+    ``read`` returns ``str | bytes``. ``FileSystemToolResultStore`` handles both - it writes text UTF-8 encoded and
+    bytes verbatim, and ``read`` returns a string when the stored bytes decode as UTF-8 and raw bytes otherwise.
+
+    You are affected only if you implemented the ``ToolResultStore`` protocol yourself. Widen your ``write``
+    signature to accept ``bytes`` and persist them without encoding, and widen ``read`` to return them unchanged;
+    without this, offloading a tool result containing an image or a file will fail in your store.
+
+    The ``tool_result_offloaded`` meta key that the hook sets on an offloaded message now holds a list of store
+    references rather than a single reference string, since one result can be split across several entries. Code
+    reading that key (for example to re-read an offloaded result) should index into the list.
+
+    Store keys and the pointer text changed shape as a result. A key now ends in the position of the part within the
+    result (``2_search_call-123_0.txt`` rather than ``2_search_call-123.txt``), and the pointer names what it points
+    at (``Tool result offloaded to text (18234 characters) at '...'. Preview: ...``). Both are read by the model
+    rather than parsed, so this matters only if you built tooling on their exact wording.

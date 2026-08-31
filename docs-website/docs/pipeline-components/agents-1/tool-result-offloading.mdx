@@ -33,13 +33,24 @@ The system is composed of these layers:
 - **Policy** - decides *whether* a given result is offloaded. Built-in policies: `AlwaysOffload`, `NeverOffload`, `OffloadOverChars`.
 - **Store** - decides *where* the full result lives. The built-in `FileSystemToolResultStore` writes results to the local file system.
 
-When a result is offloaded, the hook writes the full text to the store and rebuilds the message with a one-line pointer in its place:
+When a result is offloaded, the hook writes each part of it to the store and rebuilds the message with a compact pointer in its place. A result that is a single text — by far the most common case — gets a one-line pointer:
 
 ```
-Tool result offloaded to '/abs/path/tool_results/2_search_call-123.txt' (18234 characters). Preview: Fusion startups reported...
+Tool result offloaded to text (18234 characters) at '/abs/path/tool_results/2_search_call-123_0.txt'. Preview: Fusion startups reported...
 ```
 
-The pointer carries the store reference, the original length, and a preview of the first `preview_chars` characters (200 by default, configurable on the hook), so the model knows roughly what was offloaded and where to find it.
+The pointer carries the store reference, the original size, and, for text, a preview of the first `preview_chars` characters (200 by default, configurable on the hook), so the model knows roughly what was offloaded and where to find it.
+
+A result made of several parts — any mix of text, images, and files — is written one store entry per part, and the pointer lists all of them:
+
+```
+Tool result offloaded to 3 files:
+1. text (412 characters) at '/abs/path/tool_results/2_fetch_call-123_0.txt'. Preview: Quarterly report attached...
+2. image/png (48210 bytes) at '/abs/path/tool_results/2_fetch_call-123_1.png'
+3. application/pdf named 'q3.pdf' (1048576 bytes) at '/abs/path/tool_results/2_fetch_call-123_2.pdf'
+```
+
+Images and files are stored as raw bytes, decoded from their base64 payload — that payload is often the largest single thing in an Agent's context, so moving it out of the conversation is where offloading pays off most.
 
 ## Usage
 
@@ -108,10 +119,12 @@ offload_hook = ToolResultOffloadHook(
 
 ### What is offloaded
 
-The hook only offloads **successful, text** tool results:
+The hook only offloads **successful** tool results:
 
 - Error results — including rejections produced by a `before_tool` [Human-in-the-Loop](./human-in-the-loop.mdx) hook — are always left in context, so the model sees what went wrong.
-- Non-text results (image or file content) are left in context; supporting only text is a deliberate choice for now. A warning is logged when a non-text result has a matching offload policy.
+- Text, image, and file results are all offloaded. Each part of a result gets its own store entry, so every text, image, and file stays usable on its own.
+- The file extension of an image or file comes from its `filename` when it has one, and from its `mime_type` otherwise (falling back to `.bin` when neither yields an extension).
+- Policies see the result as the text and base64 payloads of all its parts joined together, so a threshold such as `OffloadOverChars` measures the context the result actually occupies.
 - Each result is offloaded at most once, even though the hook runs on every tool step. This also means two offload hooks registered under `after_tool` won't offload each other's pointers.
 
 ## Policies
@@ -146,11 +159,13 @@ The protocol provides default `to_dict` / `from_dict` implementations, so a poli
 
 ### `FileSystemToolResultStore`
 
-`FileSystemToolResultStore(root=...)` writes each offloaded result to a file under its root directory and returns the absolute file path as the reference. The directory is created on first write. Store keys are derived from the step count, tool name, and tool call ID (for example `2_search_call-123.txt`), so results from different tools and steps do not collide. A key that would resolve outside the root directory is rejected.
+`FileSystemToolResultStore(root=...)` writes each offloaded result to a file under its root directory and returns the absolute file path as the reference. The directory is created on first write. Store keys are derived from the step count, tool name, tool call ID, and the position of the part within the result (for example `2_search_call-123_0.txt`), so results from different tools and steps do not collide. A key that would resolve outside the root directory is rejected.
+
+Text is written UTF-8 encoded and read back as a string; images and files are written as raw bytes and read back as `bytes`.
 
 ### Custom store
 
-Subclass the `ToolResultStore` protocol to target other backends, such as object storage or an isolated sandbox file system. A store needs two methods: `write(key=..., content=...)` persists the content and returns an opaque reference string, and `read(reference)` resolves that reference back to the content:
+Subclass the `ToolResultStore` protocol to target other backends, such as object storage or an isolated sandbox file system. A store needs two methods: `write(key=..., content=...)` persists the content and returns a reference string, and `read(reference)` resolves that reference back to the content. Only the store interprets a reference — everyone else passes it back to `read` unchanged. `content` is a string for text and `bytes` for an offloaded image or file, so a store has to handle both:
 
 ```python
 from haystack.hooks.tool_result_offloading import ToolResultStore
@@ -160,13 +175,13 @@ class InMemoryToolResultStore(ToolResultStore):
     """Keep offloaded results in a dict - useful for tests."""
 
     def __init__(self) -> None:
-        self._data: dict[str, str] = {}
+        self._data: dict[str, str | bytes] = {}
 
-    def write(self, *, key: str, content: str) -> str:
+    def write(self, *, key: str, content: str | bytes) -> str:
         self._data[key] = content
         return key
 
-    def read(self, reference: str) -> str:
+    def read(self, reference: str) -> str | bytes:
         return self._data[reference]
 ```
 
@@ -206,10 +221,13 @@ def read_offloaded_result(
     path: Annotated[str, "Absolute path of an offloaded tool result"],
 ) -> str:
     """Read back the full content of an offloaded tool result."""
-    return FileSystemToolResultStore(root="tool_results").read(path)
+    content = FileSystemToolResultStore(root="tool_results").read(path)
+    if isinstance(content, bytes):
+        return f"'{path}' holds {len(content)} bytes of binary content and cannot be read as text."
+    return content
 ```
 
-With this tool available, the Agent can work with a compact conversation and selectively re-read only the offloaded results it actually needs — instead of carrying every full result in context on every LLM call.
+With this tool available, the Agent can work with a compact conversation and selectively re-read only the offloaded results it actually needs — instead of carrying every full result in context on every LLM call. An offloaded image or file comes back as `bytes`; to put one back in front of the model, a tool can return it as an `ImageContent` or `FileContent` block instead of as text.
 
 ## Serialization
 

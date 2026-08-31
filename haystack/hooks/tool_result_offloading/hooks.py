@@ -2,46 +2,29 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import base64
 import json
+import mimetypes
+from pathlib import Path
 from typing import Any
 
-from haystack import logging
 from haystack.components.agents.state.state import State
 from haystack.components.agents.state.state_utils import replace_values
 from haystack.core.serialization import default_from_dict, default_to_dict
-from haystack.dataclasses import ChatMessage, TextContent
-from haystack.dataclasses.chat_message import ToolCallResultContentT
+from haystack.dataclasses import ChatMessage, FileContent, ImageContent, TextContent
 from haystack.hooks.tool_result_offloading.types import OffloadPolicy, ToolResultStore
 from haystack.utils.deserialization import deserialize_component_inplace
 
-logger = logging.getLogger(__name__)
+# Extension used for a binary block whose MIME type is unknown or maps to no known extension.
+_FALLBACK_EXTENSION = ".bin"
 
-# Meta key marking an already-offloaded tool-result message (its value is the store reference). The offloaded pointer
-# is itself a tool result in the trailing block the hook scans, so this marker stops a second offload hook registered
-# under `after_tool` from offloading the pointer text again and writing a junk file.
+# Meta key marking an already-offloaded tool-result message; its value is the list of store references written. Stops
+# a second `after_tool` offload hook from offloading the pointer text again, since the pointer is itself a tool result.
 _OFFLOADED_META_KEY = "tool_result_offloaded"
 
 # Key under which a per-run store override may be supplied via the Agent's `hook_context` (e.g. a request-scoped
 # sandbox filesystem).
 RESULT_STORE_CONTEXT_KEY = "tool_result_store"
-
-
-def _result_store_key(tool_name: str, tool_call_id: str | None, step: int, index: int) -> str:
-    """
-    Build a per-result store key that is stable and unique within a run.
-
-    Combining the step, tool name, and tool call id keeps results from different tools and different steps from
-    colliding. When the tool call carries no id (it is optional and not every generator sets it), the result's
-    position in the step's batch is used instead, so two id-less calls to the same tool in the same step do not
-    collide.
-
-    :param tool_name: The name of the tool that produced the result.
-    :param tool_call_id: The id of the originating tool call, or None when the call carried no id.
-    :param step: The Agent's current step count.
-    :param index: The result's position within this step's batch of tool results, used when `tool_call_id` is None.
-    :returns: A file-name-like key for the store, e.g. `2_web_search_call-123.txt`.
-    """
-    return f"{step}_{tool_name}_{tool_call_id or f'call{index}'}.txt"
 
 
 def _fresh_tool_results_start(messages: list[ChatMessage]) -> int:
@@ -62,23 +45,18 @@ def _fresh_tool_results_start(messages: list[ChatMessage]) -> int:
     return index
 
 
-def _offloadable_text(content: ToolCallResultContentT) -> str | None:
+def _content_block_payload(content_block: TextContent | ImageContent | FileContent) -> str:
     """
-    Return the text of a tool result if it can be offloaded as text, otherwise None.
+    Return the string a content block contributes to the conversation.
 
-    A plain string is returned as-is; a non-empty sequence made up entirely of `TextContent` blocks is concatenated
-    into a single string. Anything else (e.g. a result containing image or file content) returns None and is left in
-    context.
+    For an image or a file this is the base64 payload, which is what actually occupies the context window.
 
-    :param content: The tool result content to inspect.
-    :returns: The offloadable text, or None when the content is not purely text.
+    :param content_block: The content block to inspect.
+    :returns: The content block's text or base64 payload.
     """
-    if isinstance(content, str):
-        return content
-    texts = [block.text for block in content if isinstance(block, TextContent)]
-    if texts and len(texts) == len(content):
-        return "".join(texts)
-    return None
+    if isinstance(content_block, TextContent):
+        return content_block.text
+    return content_block.base64_image if isinstance(content_block, ImageContent) else content_block.base64_data
 
 
 def _serialize_offload_strategies(strategies: dict[str | tuple[str, ...], OffloadPolicy]) -> dict[str, Any]:
@@ -158,10 +136,11 @@ class ToolResultOffloadHook:
     any tool without a more specific entry. More specific keys win. A tool with no matching key (and no `"*"`) is not
     offloaded.
 
-    Only successful, text tool output is offloaded. Error results (including `before_tool` human-in-the-loop
-    rejections) are always left in context. Non-text results (image or file content) are also left in context, and a
-    warning is logged when such a result has a matching offload policy; supporting only text is a deliberate choice
-    for now. Each result is offloaded at most once, even though the hook runs on every tool step.
+    Only successful tool output is offloaded; error results (including `before_tool` human-in-the-loop rejections) are
+    always left in context. Each part of a result is written to its own store entry, so every text, image, and file
+    stays usable on its own - the base64 payload of an image or a file is often the largest thing in the conversation.
+    The pointer names a single-part result on one line and lists the entries of a multi-part one. Each result is
+    offloaded at most once, even though the hook runs on every tool step.
 
     The hook keeps no mutable state, so a single instance can be shared across concurrent runs. The constructor
     `store`, however, is shared by every run that does not override it — fine for single-user or local use, but in a
@@ -187,8 +166,9 @@ class ToolResultOffloadHook:
         :param store: Where offloaded results are written. Can be overridden per run via `hook_context`.
         :param offload_strategies: Mapping of tool name (or a tuple of tool names, or the wildcard `"*"`) to the
             `OffloadPolicy` that decides whether that tool's results are offloaded.
-        :param preview_chars: Number of leading characters of the original result to include in the pointer left in
-            the conversation, so the model knows roughly what was offloaded.
+        :param preview_chars: Number of leading characters of each offloaded text to include in the pointer left in
+            the conversation, so the model knows roughly what was offloaded. Image and file blocks are described by
+            their MIME type and size instead.
         """
         self.store = store
         self.offload_strategies = offload_strategies
@@ -217,29 +197,25 @@ class ToolResultOffloadHook:
         :returns: None. The hook mutates `state` in place.
         """
         messages = state.data.get("messages") or []
-        start = _fresh_tool_results_start(messages)
+        start = _fresh_tool_results_start(messages=messages)
         if start == len(messages):
             return
-        store = self._resolve_store(state)
+
+        # A run may carry its own store in `hook_context` - the hook instance is shared across concurrent runs, so
+        # isolating users from each other means giving each run its own store rather than each its own hook.
+        hook_context = state.data.get("hook_context") or {}
+        store = hook_context.get(RESULT_STORE_CONTEXT_KEY, self.store)
+
         rewritten: list[ChatMessage] = list(messages[:start])
         changed = False
         for index, message in enumerate(messages[start:]):
-            new_message = self._maybe_offload(message, store, state, index)
+            new_message = self._maybe_offload(message=message, store=store, state=state, index=index)
             rewritten.append(new_message)
             changed = changed or new_message is not message
+
+        # Only write back to state when at least one message changed
         if changed:
-            state.set("messages", rewritten, handler_override=replace_values)
-
-    def _resolve_store(self, state: State) -> ToolResultStore:
-        """
-        Return the store to write to for this run.
-
-        :param state: The Agent's live `State`, whose `hook_context` may carry a per-run store override under
-            `RESULT_STORE_CONTEXT_KEY`.
-        :returns: The per-run store from `hook_context` if provided, otherwise the store the hook was built with.
-        """
-        context = state.data.get("hook_context") or {}
-        return context.get(RESULT_STORE_CONTEXT_KEY, self.store)
+            state.set(key="messages", value=rewritten, handler_override=replace_values)
 
     def _policy_for(self, tool_name: str) -> OffloadPolicy | None:
         """
@@ -264,11 +240,11 @@ class ToolResultOffloadHook:
 
         A message is left as-is when it is not a tool result, when the result is an error (including `before_tool`
         human-in-the-loop rejections), when it was already offloaded (e.g. another offload hook under `after_tool`
-        handled it), when no policy applies, when the result is non-text (contains image or file content), or when the
-        policy declines to offload.
+        handled it), when no policy applies, when the result is empty, or when the policy declines to offload.
 
-        Otherwise the result text is written to `store` and the message is rebuilt with a pointer in place of the full
-        result, preserving its origin and error flag and marking it offloaded.
+        Otherwise the result is written to `store` and the message is rebuilt with a pointer in place of the full
+        result, preserving its origin and error flag and marking it offloaded. Each part of the result goes to its own
+        store entry.
 
         :param message: The message to consider offloading.
         :param store: The store to write the result to.
@@ -283,48 +259,103 @@ class ToolResultOffloadHook:
             return message
 
         tool_name = result.origin.tool_name
-        policy = self._policy_for(tool_name)
+        policy = self._policy_for(tool_name=tool_name)
 
         # If no policy applies, leave the result in context
         if policy is None:
             return message
 
-        # A policy matched, so an offload was wanted. Offloading only supports text results (a string or a sequence
-        # of TextContent) for now, by design; leave image/file content in context and warn since the intent was to
-        # offload it.
-        text = _offloadable_text(result.result)
-        if text is None:
-            logger.warning(
-                "Tool '{tool}' produced a non-text result; leaving it in context. Result offloading currently "
-                "supports text results only.",
-                tool=tool_name,
-            )
+        # A plain string result is handled as a single text block, so everything below has one shape to work with.
+        content_blocks: list[TextContent | ImageContent | FileContent] = (
+            [TextContent(text=result.result)] if isinstance(result.result, str) else list(result.result)
+        )
+        if not content_blocks:
             return message
 
-        # If the policy declines to offload, leave the result in context
-        if not policy.should_offload(tool_name, text, state):
+        # The policy sizes up the result by the string it occupies in the conversation, which for an image or a file
+        # block is its base64 payload.
+        payload = "".join(_content_block_payload(content_block=content_block) for content_block in content_blocks)
+        if not policy.should_offload(tool_name=tool_name, result=payload, state=state):
             return message
 
-        key = _result_store_key(tool_name, result.origin.id, state.data.get("step_count", 0), index)
-        reference = store.write(key=key, content=text)
+        # Step, tool name, and call id keep results from different tools and steps from colliding. A tool call id is
+        # optional, so an id-less call falls back to its position in this step's batch.
+        step = state.data.get("step_count", 0)
+        prefix = f"{step}_{tool_name}_{result.origin.id or f'call{index}'}"
+        references, pointer = self._offload_content_blocks(content_blocks=content_blocks, store=store, prefix=prefix)
+
         return ChatMessage.from_tool(
-            tool_result=self._pointer(reference, text),
+            tool_result=pointer,
             origin=result.origin,
             error=result.error,
-            meta={**message.meta, _OFFLOADED_META_KEY: reference},
+            meta={**message.meta, _OFFLOADED_META_KEY: references},
         )
 
-    def _pointer(self, reference: str, result: str) -> str:
+    def _offload_content_blocks(
+        self, content_blocks: list[TextContent | ImageContent | FileContent], store: ToolResultStore, prefix: str
+    ) -> tuple[list[str], str]:
         """
-        Build the compact pointer that replaces a full result in the conversation.
+        Write a result's content blocks to the store and build the pointer that replaces them in the conversation.
 
-        :param reference: The store reference the result was written to.
-        :param result: The original result string, used for its length and a leading preview.
-        :returns: A one-line pointer carrying the reference, the result length, and a `preview_chars`-long preview.
+        Every content block goes to its own store entry, so each text, image, or file stays usable on its own. A
+        result that is a single block - the common case - gets a one-line pointer; a result with several gets one
+        numbered line per entry.
+
+        :param content_blocks: The result's content blocks, in order.
+        :param store: The store to write to.
+        :param prefix: The result's store key prefix, to which the block position and extension are appended.
+        :returns: The store references written, and the pointer text for the conversation.
         """
-        ellip = "..." if len(result) > self.preview_chars else ""
-        preview = result[: self.preview_chars]
-        return f"Tool result offloaded to '{reference}' ({len(result)} characters). Preview: {preview}{ellip}"
+        references: list[str] = []
+        descriptions: list[str] = []
+        for position, content_block in enumerate(content_blocks):
+            reference, description = self._offload_content_block(
+                content_block=content_block, store=store, key_prefix=f"{prefix}_{position}"
+            )
+            references.append(reference)
+            descriptions.append(description)
+
+        if len(descriptions) == 1:
+            return references, f"Tool result offloaded to {descriptions[0]}"
+
+        numbered = [f"{position}. {description}" for position, description in enumerate(descriptions, start=1)]
+        return references, "\n".join([f"Tool result offloaded to {len(descriptions)} files:", *numbered])
+
+    def _offload_content_block(
+        self, content_block: TextContent | ImageContent | FileContent, store: ToolResultStore, key_prefix: str
+    ) -> tuple[str, str]:
+        """
+        Write a single content block to the store and describe where it went.
+
+        :param content_block: The content block to offload.
+        :param store: The store to write to.
+        :param key_prefix: The content block's store key without its extension.
+        :returns: The store reference the content block was written to, and a one-line description for the pointer.
+        """
+        if isinstance(content_block, TextContent):
+            text = content_block.text
+            reference = store.write(key=f"{key_prefix}.txt", content=text)
+            # An ellipsis marks a preview that was cut short, so the model can tell it is not the whole text.
+            preview = f"{text[: self.preview_chars]}{'...' if len(text) > self.preview_chars else ''}"
+            return reference, f"text ({len(text)} characters) at '{reference}'. Preview: {preview}"
+
+        if isinstance(content_block, ImageContent):
+            data = base64.b64decode(content_block.base64_image)
+            label = content_block.mime_type or "image"
+            filename = None
+        else:
+            data = base64.b64decode(content_block.base64_data)
+            label = content_block.mime_type or "file"
+            filename = content_block.filename
+
+        # What the tool called the file wins over its MIME type. Only the suffix is taken, so a tool-supplied name
+        # cannot influence where in the store the content block lands.
+        mime_extension = mimetypes.guess_extension(content_block.mime_type) if content_block.mime_type else None
+        extension = (Path(filename).suffix if filename else "") or mime_extension or _FALLBACK_EXTENSION
+        reference = store.write(key=f"{key_prefix}{extension}", content=data)
+
+        named = f" named '{filename}'" if filename else ""
+        return reference, f"{label}{named} ({len(data)} bytes) at '{reference}'"
 
     def to_dict(self) -> dict[str, Any]:
         """
@@ -335,7 +366,7 @@ class ToolResultOffloadHook:
         return default_to_dict(
             self,
             store=self.store.to_dict(),
-            offload_strategies=_serialize_offload_strategies(self.offload_strategies),
+            offload_strategies=_serialize_offload_strategies(strategies=self.offload_strategies),
             preview_chars=self.preview_chars,
         )
 
@@ -351,5 +382,5 @@ class ToolResultOffloadHook:
         if init_params.get("store") is not None:
             deserialize_component_inplace(init_params, key="store")
         if init_params.get("offload_strategies") is not None:
-            init_params["offload_strategies"] = _deserialize_offload_strategies(init_params["offload_strategies"])
+            init_params["offload_strategies"] = _deserialize_offload_strategies(data=init_params["offload_strategies"])
         return default_from_dict(cls, data)
