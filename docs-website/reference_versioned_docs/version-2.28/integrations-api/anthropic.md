@@ -713,3 +713,111 @@ Generate replies using the Anthropic API.
 - <code>dict\[str, list\[str\] | list\[dict\[str, Any\]\]\]</code> – A dictionary containing:
 - `replies`: A list of generated replies.
 - `meta`: A list of metadata dictionaries for each reply.
+
+## haystack_integrations.token_counters.anthropic.token_counter
+
+### AnthropicTokenCounter
+
+Counts input tokens for Anthropic models using the Anthropic token counting API.
+
+Uses the `POST /v1/messages/count_tokens` endpoint, which returns an exact token
+count without generating a response or incurring generation costs.
+
+Usage example:
+
+```python
+from haystack.dataclasses import ChatMessage
+from haystack_integrations.token_counters.anthropic import AnthropicTokenCounter
+
+counter = AnthropicTokenCounter(model="claude-sonnet-4-5")
+messages = [
+    ChatMessage.from_system("You are a helpful assistant."),
+    ChatMessage.from_user("How many tokens is this?"),
+]
+token_count = counter.count(messages)
+print(token_count)
+```
+
+#### __init__
+
+```python
+__init__(
+    model: str,
+    *,
+    api_key: Secret = Secret.from_env_var("ANTHROPIC_API_KEY"),
+    timeout: float | None = None,
+    max_retries: int | None = None
+) -> None
+```
+
+Create an AnthropicTokenCounter.
+
+**Parameters:**
+
+- **model** (<code>str</code>) – The Anthropic model to use for tokenization. Token counts are
+  model-specific; always count against the model you intend to use.
+- **api_key** (<code>Secret</code>) – The Anthropic API key. Defaults to the `ANTHROPIC_API_KEY`
+  environment variable.
+- **timeout** (<code>float | None</code>) – HTTP timeout in seconds for the Anthropic client.
+- **max_retries** (<code>int | None</code>) – Maximum number of retries for failed requests.
+
+#### warm_up
+
+```python
+warm_up() -> None
+```
+
+Initialize the Anthropic client.
+
+#### close
+
+```python
+close() -> None
+```
+
+Close the Anthropic client and release its underlying HTTP resources.
+
+#### count
+
+```python
+count(messages: list[ChatMessage], tools: ToolsType | None = None) -> int
+```
+
+Count the tokens for the given messages and optional tools.
+
+**Parameters:**
+
+- **messages** (<code>list\[ChatMessage\]</code>) – The list of ChatMessages to count tokens for.
+- **tools** (<code>ToolsType | None</code>) – Optional list of Tools whose schemas are included in the count.
+
+**Returns:**
+
+- <code>int</code> – The number of input tokens, or `0` when there is nothing to measure.
+
+#### to_dict
+
+```python
+to_dict() -> dict[str, Any]
+```
+
+Serialize this token counter to a dictionary.
+
+**Returns:**
+
+- <code>dict\[str, Any\]</code> – The serialized token counter.
+
+#### from_dict
+
+```python
+from_dict(data: dict[str, Any]) -> AnthropicTokenCounter
+```
+
+Deserialize a token counter from a dictionary.
+
+**Parameters:**
+
+- **data** (<code>dict\[str, Any\]</code>) – The dictionary to deserialize from.
+
+**Returns:**
+
+- <code>AnthropicTokenCounter</code> – The deserialized token counter.
