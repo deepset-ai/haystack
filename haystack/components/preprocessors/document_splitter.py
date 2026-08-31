@@ -268,6 +268,7 @@ class DocumentSplitter:
         splits_start_idxs: list[int] = []
         cur_start_idx = 0
         cur_page = 1
+        prev_start_idx = 0
 
         for split in splits:
             if self.skip_empty_documents and len(split) == 0:
@@ -276,6 +277,13 @@ class DocumentSplitter:
             # A splitting function may transform the text, so a split is not guaranteed to appear
             # verbatim in the source. Locate it when possible and fall back to the running offset.
             found_idx = content.find(split, cur_start_idx)
+            if found_idx == -1 and text_splits:
+                # The split may legitimately start before the end of the previous split, e.g. an
+                # overlapping/sliding-window splitting function. Retry allowing it to be found
+                # anywhere after the start of the previous split, so it isn't missed just because
+                # the forward-only search above already moved past it.
+                found_idx = content.find(split, prev_start_idx + 1)
+
             if found_idx != -1:
                 cur_start_idx = found_idx
                 cur_page = 1 + content.count("\f", 0, found_idx)
@@ -284,6 +292,7 @@ class DocumentSplitter:
             splits_start_idxs.append(cur_start_idx)
             splits_pages.append(cur_page)
 
+            prev_start_idx = cur_start_idx
             cur_start_idx += len(split)
             if found_idx == -1:
                 cur_page += split.count("\f")

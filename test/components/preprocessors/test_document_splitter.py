@@ -294,6 +294,33 @@ class TestSplittingByFunctionOrCharacterRegex:
         assert result["context_windows"] == ["first partsecond partthird part"]
         assert [doc.content for doc in result["context_documents"]] == ["first part", "second part", "third part"]
 
+    def test_split_by_function_with_overlapping_sliding_window(self):
+        # Hand-rolled sliding-window splitting function: each split shares words with the next one,
+        # so the splits genuinely overlap in the source text.
+        def sliding_window(text):
+            words = text.split(" ")
+            return [" ".join(words[i : i + 3]) for i in range(0, len(words), 2)]
+
+        text = "the quick brown fox jumps"
+        assert sliding_window(text) == ["the quick brown", "brown fox jumps", "jumps"]
+        # "brown fox jumps" really starts at index 10 in the source text
+        assert text.find("brown fox jumps") == 10
+
+        splitter = DocumentSplitter(split_by="function", splitting_function=sliding_window, split_overlap=1)
+        docs = splitter.run(documents=[Document(content=text)])["documents"]
+
+        assert [doc.content for doc in docs] == ["the quick brown", "brown fox jumps", "jumps"]
+
+        # content.find(split, cur_start_idx) only searches forward from the end of the previous
+        # split, so a split that genuinely starts *before* that point (as any overlapping split
+        # does) can never be located, and silently falls back to the wrong cumulative offset.
+        assert docs[1].meta["split_idx_start"] == 10  # real index of "brown fox jumps" in the source
+        assert docs[2].meta["split_idx_start"] == 20  # real index of "jumps" in the source
+
+        # The real overlap ("brown") between docs[0] and docs[1] should be detected since
+        # split_overlap=1 was requested.
+        assert docs[1].meta["_split_overlap"] != []
+
     def test_split_by_word_with_overlap(self):
         splitter = DocumentSplitter(split_by="word", split_length=10, split_overlap=2)
         text = "This is a text with some words. There is a second sentence. And there is a third sentence."
