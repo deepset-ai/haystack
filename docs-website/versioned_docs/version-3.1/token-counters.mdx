@@ -9,15 +9,16 @@ description: "Use Haystack token counters to estimate the size of chat messages 
 
 Token counters estimate how many tokens a list of `ChatMessage` objects and optional tool schemas occupy. They are useful when you need to know the size of a conversation before sending it to a model, for example, to check whether it fits in the model's context window or to decide how much context to remove.
 
-Haystack provides the `TokenCounter` protocol and three implementations:
+Haystack provides the `TokenCounter` protocol and three built-in implementations, plus provider-specific implementations in the integrations:
 
 | Counter | How it counts text | Extra dependency | Best suited for |
 | --- | --- | --- | --- |
 | [`ApproximateTokenCounter`](token-counters/approximatetokencounter.mdx) | Divides the rendered text length by a configurable characters-per-token ratio | None | Fast, dependency-free estimates |
 | [`TiktokenCounter`](token-counters/tiktokencounter.mdx) | Uses OpenAI's `tiktoken` byte-pair encoder | `tiktoken` | More accurate estimates for OpenAI models |
 | [`OpenAITokenCounter`](token-counters/openaitokencounter.mdx) | Calls OpenAI's input token counting API | OpenAI API key | Exact, model-specific counts including images, files, and tools |
+| [`AnthropicTokenCounter`](token-counters/anthropictokencounter.mdx) | Calls Anthropic's token counting API | `anthropic-haystack` package and an Anthropic API key | Exact, model-specific counts for Claude models |
 
-All counters include message roles, text, tool calls, tool results, and optional tool schemas. The local counters account for images and files using configurable flat rates, including images and files nested in tool results. `OpenAITokenCounter` sends supported non-text content to OpenAI for a model-specific count.
+All counters include message roles, text, tool calls, tool results, and optional tool schemas. The local counters account for images and files using configurable flat rates, including images and files nested in tool results. `OpenAITokenCounter` and `AnthropicTokenCounter` send supported non-text content to the provider for a model-specific count.
 
 See the [Token Counters API reference](/reference/token-counters-api) for all constructor parameters and methods.
 
@@ -56,6 +57,7 @@ See the documentation for the counter you use to understand how it counts non-te
 - [`ApproximateTokenCounter`](token-counters/approximatetokencounter.mdx)
 - [`TiktokenCounter`](token-counters/tiktokencounter.mdx)
 - [`OpenAITokenCounter`](token-counters/openaitokencounter.mdx)
+- [`AnthropicTokenCounter`](token-counters/anthropictokencounter.mdx)
 
 ## Creating a custom token counter
 
