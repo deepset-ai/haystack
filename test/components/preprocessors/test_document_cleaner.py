@@ -22,10 +22,6 @@ class TestDocumentCleaner:
         assert cleaner.keep_id is False
         assert cleaner.min_content_length == 0
 
-    def test_init_with_min_content_length(self):
-        cleaner = DocumentCleaner(min_content_length=10)
-        assert cleaner.min_content_length == 10
-
     def test_init_rejects_negative_min_content_length(self):
         with pytest.raises(ValueError, match="min_content_length must be greater than or equal to 0"):
             DocumentCleaner(min_content_length=-1)

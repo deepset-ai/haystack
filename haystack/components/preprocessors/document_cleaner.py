@@ -152,16 +152,17 @@ class DocumentCleaner:
             if self.strip_whitespaces:
                 text = text.strip()
 
-            cleaned_content = text.strip()
-            if len(cleaned_content) < self.min_content_length:
-                logger.debug(
-                    "Document ID {doc_id} has cleaned content shorter than min_content_length "
-                    "({content_length} < {min_content_length}). Skipping this document.",
-                    doc_id=doc.id,
-                    content_length=len(cleaned_content),
-                    min_content_length=self.min_content_length,
-                )
-                continue
+            if self.min_content_length:
+                cleaned_content = text.strip()
+                if len(cleaned_content) < self.min_content_length:
+                    logger.debug(
+                        "Document ID {doc_id} has cleaned content shorter than min_content_length "
+                        "({content_length} < {min_content_length}). Skipping this document.",
+                        doc_id=doc.id,
+                        content_length=len(cleaned_content),
+                        min_content_length=self.min_content_length,
+                    )
+                    continue
 
             clean_doc = Document(
                 id=doc.id if self.keep_id else "",
