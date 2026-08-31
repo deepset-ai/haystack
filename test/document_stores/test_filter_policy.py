@@ -142,6 +142,45 @@ def test_merge_two_logical_filters():
     }
 
 
+def test_merge_does_not_mutate_logical_filters():
+    init_filters = {"operator": "AND", "conditions": [{"field": "meta.type", "operator": "==", "value": "article"}]}
+    runtime_filters = {"field": "meta.year", "operator": "==", "value": 2020}
+
+    result = apply_filter_policy(FilterPolicy.MERGE, init_filters, runtime_filters)
+
+    assert result == {
+        "operator": "AND",
+        "conditions": [
+            {"field": "meta.type", "operator": "==", "value": "article"},
+            {"field": "meta.year", "operator": "==", "value": 2020},
+        ],
+    }
+    assert init_filters == {
+        "operator": "AND",
+        "conditions": [{"field": "meta.type", "operator": "==", "value": "article"}],
+    }
+    assert runtime_filters == {"field": "meta.year", "operator": "==", "value": 2020}
+
+
+def test_merge_does_not_mutate_runtime_logical_filter():
+    init_filters = {"field": "meta.type", "operator": "==", "value": "article"}
+    runtime_filters = {"operator": "AND", "conditions": [{"field": "meta.year", "operator": "==", "value": 2020}]}
+
+    result = apply_filter_policy(FilterPolicy.MERGE, init_filters, runtime_filters)
+
+    assert result == {
+        "operator": "AND",
+        "conditions": [
+            {"field": "meta.year", "operator": "==", "value": 2020},
+            {"field": "meta.type", "operator": "==", "value": "article"},
+        ],
+    }
+    assert runtime_filters == {
+        "operator": "AND",
+        "conditions": [{"field": "meta.year", "operator": "==", "value": 2020}],
+    }
+
+
 def test_merge_with_different_logical_operators():
     """
     Merging with a different logical operator

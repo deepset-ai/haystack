@@ -902,7 +902,7 @@ Initialize the SearchableToolset.
 #### add
 
 ```python
-add(tool: Tool | Toolset) -> None
+add(tool: Tool) -> None
 ```
 
 Adding new tools after initialization is not supported for SearchableToolset.
@@ -1093,7 +1093,7 @@ first are no-ops.
 #### add
 
 ```python
-add(tool: Tool | Toolset) -> None
+add(tool: Tool) -> None
 ```
 
 Adding tools is not supported: a SkillToolset's tools are fixed and defined by its store.
@@ -1443,28 +1443,19 @@ to the tools' own idempotent `warm_up()`.
 #### add
 
 ```python
-add(tool: Tool | Toolset) -> None
+add(tool: Tool) -> None
 ```
 
-Add a new Tool or merge another Toolset.
-
-Note: adding a Toolset flattens it into its individual tools, so this is only recommended
-for Toolsets that don't manage shared resources in their `warm_up()` (or `__init__`).
-For example, combining with an `MCPToolset`, which owns a shared connection, is not
-recommended: the connection's lifecycle would no longer be managed by the original
-Toolset.
-
-Adding a Toolset is deprecated and will be removed in Haystack 3.2.0: pass Toolsets as a
-list wherever tools are accepted instead, e.g. `Agent(tools=[toolset_a, toolset_b])`.
+Add a new Tool to this Toolset.
 
 **Parameters:**
 
-- **tool** (<code>Tool | Toolset</code>) – A Tool instance or another Toolset to add
+- **tool** (<code>Tool</code>) – A Tool instance to add
 
 **Raises:**
 
 - <code>ValueError</code> – If adding the tool would result in duplicate tool names
-- <code>TypeError</code> – If the provided object is not a Tool or Toolset
+- <code>TypeError</code> – If the provided object is not a Tool
 
 #### to_dict
 

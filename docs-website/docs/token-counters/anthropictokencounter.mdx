@@ -1,0 +1,97 @@
+---
+title: "AnthropicTokenCounter"
+id: anthropictokencounter
+slug: "/anthropictokencounter"
+description: "Count message and tool tokens exactly with Anthropic's token counting API."
+---
+
+# AnthropicTokenCounter
+
+`AnthropicTokenCounter` uses Anthropic's `POST /v1/messages/count_tokens` endpoint to count the input tokens of `ChatMessage` objects and optional tool schemas for a specific Claude model. The endpoint returns an exact count without generating a response, so it does not incur generation costs.
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Import path** | `haystack_integrations.token_counters.anthropic.AnthropicTokenCounter` |
+| **Mandatory init variables** | `model`: The Claude model to count for |
+| **API reference** | [Anthropic](/reference/integrations-anthropic) |
+| **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/anthropic |
+| **Package name** | `anthropic-haystack` |
+
+</div>
+
+Because it calls a remote API, it needs an Anthropic API key and adds network latency to every count. Use it when you need exact, model-specific counts for Claude models. For local estimates, use [`ApproximateTokenCounter`](approximatetokencounter.mdx) or [`TiktokenCounter`](tiktokencounter.mdx).
+
+## Installation
+
+Install the `anthropic-haystack` package:
+
+```bash
+pip install anthropic-haystack
+```
+
+## Usage
+
+Token counts are model-specific, so pass the model you intend to generate with:
+
+```python
+from haystack.dataclasses import ChatMessage
+from haystack_integrations.token_counters.anthropic import AnthropicTokenCounter
+
+messages = [
+    ChatMessage.from_system("You are a helpful assistant."),
+    ChatMessage.from_user("Explain retrieval-augmented generation."),
+]
+
+counter = AnthropicTokenCounter(model="claude-sonnet-4-5")
+token_count = counter.count(messages)
+print(token_count)
+```
+
+By default, the counter reads the API key from the `ANTHROPIC_API_KEY` environment variable. You can also pass a Haystack [Secret](../concepts/secret-management.mdx) explicitly, and set the HTTP `timeout` and `max_retries` of the underlying Anthropic client:
+
+```python
+from haystack.utils import Secret
+
+counter = AnthropicTokenCounter(
+    model="claude-sonnet-4-5",
+    api_key=Secret.from_env_var("MY_ANTHROPIC_API_KEY"),
+    timeout=30.0,
+    max_retries=3,
+)
+```
+
+To include the context consumed by tool schemas, pass the tools to `count()`:
+
+```python
+token_count = counter.count(messages, tools=[search_tool])
+```
+
+The counter creates its API client on the first call to `count()`. To create it during application startup instead, call `warm_up()` explicitly. Call `close()` when you are done with the counter to release the client's HTTP resources:
+
+```python
+counter.warm_up()
+...
+counter.close()
+```
+
+## Non-text content
+
+Anthropic counts images and PDF files as part of the request, so the counter measures them exactly instead of applying a flat estimate. It supports the same content types as [`AnthropicChatGenerator`](../pipeline-components/generators/anthropicchatgenerator.mdx): JPEG, PNG, GIF, and WebP images, and `application/pdf` files. Other MIME types raise an error rather than being estimated.
+
+## Use with compaction
+
+Pass the counter to [`CompactionHook`](../pipeline-components/agents-1/compaction/compaction-hook.mdx) to size an Agent's conversation with the same tokenizer Claude uses:
+
+```python
+from haystack.hooks.compaction import CompactionHook, SlidingWindowCompactor
+
+compaction_hook = CompactionHook(
+    compactor=SlidingWindowCompactor(),
+    context_window=200_000,
+    token_counter=AnthropicTokenCounter(model="claude-sonnet-4-5"),
+)
+```
+
+Keep in mind that the hook counts messages on every Agent step, so each compaction check costs an API round trip.

@@ -130,10 +130,6 @@ class TestSearchableToolset:
     def test_not_implemented_methods(self):
         toolset = SearchableToolset(catalog=[])
         with pytest.raises(NotImplementedError):
-            toolset + Tool(
-                name="test", description="test", parameters={"type": "object", "properties": {}}, function=lambda: None
-            )
-        with pytest.raises(NotImplementedError):
             toolset.add(
                 Tool(
                     name="test",

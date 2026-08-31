@@ -182,6 +182,7 @@ __init__(
     ascii_only: bool = False,
     strip_whitespaces: bool = False,
     replace_regexes: dict[str, str] | None = None,
+    min_content_length: int = 0,
 ) -> None
 ```
 
@@ -209,6 +210,8 @@ Initialize DocumentCleaner.
 - **replace_regexes** (<code>dict\[str, str\] | None</code>) – A dictionary mapping regex patterns to their replacement strings.
   For example, `{r'\n\n+': '\n'}` replaces multiple consecutive newlines with a single newline.
   This is applied after `remove_regex` and allows custom replacements instead of just removal.
+- **min_content_length** (<code>int</code>) – Minimum length of the cleaned document content after stripping leading and trailing
+  whitespace. Documents shorter than this value are dropped. A value of `0` keeps all documents.
 
 #### run
 

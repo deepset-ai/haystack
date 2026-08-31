@@ -180,6 +180,29 @@ class TestMemoryBM25Retriever:
 
         assert [doc.content for doc in result["documents"]] == ["python article current"]
 
+    def test_run_with_filter_policy_merge_does_not_leak_filters_between_runs(self, in_memory_doc_store):
+        in_memory_doc_store.write_documents(
+            [
+                Document(content="python article", meta={"tenant": "a", "kind": "article", "year": 2019}),
+                Document(content="python blog", meta={"tenant": "a", "kind": "blog", "year": 2019}),
+                Document(content="python article other tenant", meta={"tenant": "b", "kind": "article", "year": 2020}),
+            ]
+        )
+
+        retriever = InMemoryBM25Retriever(
+            in_memory_doc_store,
+            filters={"operator": "AND", "conditions": [{"field": "meta.tenant", "operator": "==", "value": "a"}]},
+            filter_policy=FilterPolicy.MERGE,
+        )
+
+        first_result = retriever.run(
+            query="python", filters={"field": "meta.kind", "operator": "==", "value": "article"}
+        )
+        second_result = retriever.run(query="python", filters={"field": "meta.year", "operator": "==", "value": 2019})
+
+        assert [doc.content for doc in first_result["documents"]] == ["python article"]
+        assert {doc.content for doc in second_result["documents"]} == {"python article", "python blog"}
+
     def test_invalid_run_wrong_store_type(self):
         SomeOtherDocumentStore = document_store_class("SomeOtherDocumentStore")
         with pytest.raises(TypeError, match="document_store must be an instance of InMemoryDocumentStore"):
