@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    Add the init parameters `timeout` and `max_retries` to the `to_dict` method of
+    `OpenAIImageGenerator`. They were dropped on serialization, so a pipeline saved and
+    reloaded silently fell back to the `OPENAI_TIMEOUT`/`OPENAI_MAX_RETRIES` defaults
+    instead of the configured values. This matches `OpenAIChatGenerator`,
+    `OpenAITextEmbedder` and `OpenAIDocumentEmbedder`, which already serialize both.
