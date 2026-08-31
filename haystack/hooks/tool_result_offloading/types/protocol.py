@@ -15,12 +15,19 @@ class ToolResultStore(Protocol):
     Implementations decide where and how the content lives (local disk, an isolated sandbox filesystem, object
     storage, ...). `write` returns a reference string that the Agent puts in the conversation in place of the full
     result; `read` resolves that reference back to the original content. Only the store interprets a reference -
-    callers pass it back to `read` unchanged. Content is a string for text results and bytes for the image and file
-    blocks of a result, so implementations must handle both.
+    callers pass it back to `read` unchanged.
+
+    A store that can hold binary content sets `supports_binary_content` to True and accepts bytes in `write`. A store
+    that can only hold text leaves it False, and the hook then leaves image and file results in the conversation
+    rather than handing the store something it cannot store.
 
     Implement both `to_dict` and `from_dict` to make a custom store serializable; the default implementations below
     cover stores whose constructor takes no arguments.
     """
+
+    # Whether `write` accepts bytes. False by default, so a store that only deals in text needs no changes and
+    # simply never receives the image and file content of a tool result.
+    supports_binary_content: bool = False
 
     def write(self, *, key: str, content: str | bytes) -> str:
         """
@@ -28,8 +35,9 @@ class ToolResultStore(Protocol):
 
         :param key: A stable, per-result identifier the hook derives from the tool call (e.g. a file name). It carries
             an extension matching the content, so a store that maps keys to files can use it as-is.
-        :param content: The tool result to persist. Text results arrive as a string; image and file results arrive as
-            the decoded bytes of their base64 payload.
+        :param content: The tool result to persist. Text arrives as a string. Image and file content arrives as the
+            decoded bytes of its base64 payload, and only when the store sets `supports_binary_content` to True - a
+            text-only store may narrow this parameter to `str`.
         :returns: A reference string (e.g. a path or URI) that `read` can later resolve.
         """
         ...
@@ -40,7 +48,7 @@ class ToolResultStore(Protocol):
 
         :param reference: A reference string returned by `write`.
         :returns: The stored content: a string for content written as text, bytes for binary content such as an
-            offloaded image or file.
+            offloaded image or file. A store that does not support binary content only ever returns a string.
         """
         ...
 

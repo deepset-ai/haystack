@@ -25,6 +25,8 @@ class FileSystemToolResultStore(ToolResultStore):
     unchanged, while text content round trips as a string.
     """
 
+    supports_binary_content = True
+
     def __init__(self, root: str | Path) -> None:
         """
         Initialize the store with the root directory results are written under.

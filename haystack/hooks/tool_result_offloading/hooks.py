@@ -8,6 +8,7 @@ import mimetypes
 from pathlib import Path
 from typing import Any
 
+from haystack import logging
 from haystack.components.agents.state.state import State
 from haystack.components.agents.state.state_utils import replace_values
 from haystack.core.serialization import default_from_dict, default_to_dict
@@ -18,8 +19,11 @@ from haystack.utils.deserialization import deserialize_component_inplace
 # Extension used for a binary block whose MIME type is unknown or maps to no known extension.
 _FALLBACK_EXTENSION = ".bin"
 
-# Meta key marking an already-offloaded tool-result message; its value is the list of store references written. Stops
-# a second `after_tool` offload hook from offloading the pointer text again, since the pointer is itself a tool result.
+logger = logging.getLogger(__name__)
+
+# Meta key marking an already-offloaded tool-result message; its value is the list of store references written.
+# Stops a second `after_tool` offload hook from offloading the pointer text again, since the pointer is itself a
+# tool result.
 _OFFLOADED_META_KEY = "tool_result_offloaded"
 
 # Key under which a per-run store override may be supplied via the Agent's `hook_context` (e.g. a request-scoped
@@ -139,8 +143,10 @@ class ToolResultOffloadHook:
     Only successful tool output is offloaded; error results (including `before_tool` human-in-the-loop rejections) are
     always left in context. Each part of a result is written to its own store entry, so every text, image, and file
     stays usable on its own - a base64 payload is a costly way to carry an image or a file through a conversation.
-    The pointer names a single-part result on one line and lists the entries of a multi-part one. Each result is
-    offloaded at most once, even though the hook runs on every tool step.
+    The pointer names a single-part result on one line and lists the entries of a multi-part one. A result with image
+    or file content is only offloaded to a store that sets `supports_binary_content`; with a text-only store it stays
+    in context and a warning is logged. Each result is offloaded at most once, even though the hook runs on every tool
+    step.
 
     The hook keeps no mutable state, so a single instance can be shared across concurrent runs. The constructor
     `store`, however, is shared by every run that does not override it — fine for single-user or local use, but in a
@@ -240,7 +246,8 @@ class ToolResultOffloadHook:
 
         A message is left as-is when it is not a tool result, when the result is an error (including `before_tool`
         human-in-the-loop rejections), when it was already offloaded (e.g. another offload hook under `after_tool`
-        handled it), when no policy applies, when the result is empty, or when the policy declines to offload.
+        handled it), when no policy applies, when the result is empty, when the result carries image or file content
+        that `store` cannot store, or when the policy declines to offload.
 
         Otherwise the result is written to `store` and the message is rebuilt with a pointer in place of the full
         result, preserving its origin and error flag and marking it offloaded. Each part of the result goes to its own
@@ -272,6 +279,19 @@ class ToolResultOffloadHook:
         if not content_blocks:
             return message
 
+        # Check whether the store can store binary content before offloading an image or file result. A text-only store
+        # leaves the result in context and logs a warning.
+        if not getattr(store, "supports_binary_content", False) and not all(
+            isinstance(content_block, TextContent) for content_block in content_blocks
+        ):
+            logger.warning(
+                "Tool '{tool}' produced a result with image or file content, but {store} does not support binary "
+                "content; leaving the result in context.",
+                tool=tool_name,
+                store=type(store).__name__,
+            )
+            return message
+
         # The policy sizes up the result by the string it occupies in the conversation, which for an image or a file
         # block is its base64 payload.
         payload = "".join(_content_block_payload(content_block=content_block) for content_block in content_blocks)
@@ -298,18 +318,21 @@ class ToolResultOffloadHook:
         Write a result's content blocks to the store and build the pointer that replaces them in the conversation.
 
         Every content block goes to its own store entry, so each text, image, or file stays usable on its own. A
-        result that is a single block gets a one-line pointer; a result with several gets one numbered line per entry.
+        result that is a single block gets a one-line pointer and keeps `prefix` as its key; a result with several
+        gets one numbered line per entry and a key carrying each block's position.
 
         :param content_blocks: The result's content blocks, in order.
         :param store: The store to write to.
-        :param prefix: The result's store key prefix, to which the block position and extension are appended.
+        :param prefix: The result's store key prefix, to which the extension - and the block position, for a result
+            spanning several entries - is appended.
         :returns: The store references written, and the pointer text for the conversation.
         """
         references: list[str] = []
         descriptions: list[str] = []
+        single = len(content_blocks) == 1
         for position, content_block in enumerate(content_blocks):
             reference, description = self._offload_content_block(
-                content_block=content_block, store=store, key_prefix=f"{prefix}_{position}"
+                content_block=content_block, store=store, key_prefix=prefix if single else f"{prefix}_{position}"
             )
             references.append(reference)
             descriptions.append(description)

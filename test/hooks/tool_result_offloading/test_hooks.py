@@ -20,6 +20,7 @@ from haystack.hooks.tool_result_offloading import (
     NeverOffload,
     OffloadOverChars,
     ToolResultOffloadHook,
+    ToolResultStore,
 )
 from haystack.tools import tool
 
@@ -45,6 +46,20 @@ PNG_BYTES = base64.b64decode(
     "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
 )
 PDF_BYTES = b"%PDF-1.4\n1 0 obj\n<< /Type /Catalog >>\nendobj\n\xde\xad\xbe\xef\n%%EOF\n"
+
+
+class TextOnlyToolResultStore(ToolResultStore):
+    """A store predating binary support: it only knows how to hold text and never declares otherwise."""
+
+    def __init__(self) -> None:
+        self.data: dict[str, str] = {}
+
+    def write(self, *, key: str, content: str) -> str:
+        self.data[key] = content
+        return key
+
+    def read(self, reference: str) -> str:
+        return self.data[reference]
 
 
 def _image_block() -> ImageContent:
@@ -214,6 +229,29 @@ class TestToolResultOffloadHookBehavior:
 
         assert over_state.data["messages"][0].tool_call_result.result.startswith("Tool result offloaded")
         assert under_state.data["messages"][0].tool_call_result.result == [image]
+
+    def test_text_only_store_still_offloads_text(self, caplog):
+        store = TextOnlyToolResultStore()
+        hook = ToolResultOffloadHook(store=store, offload_strategies={"*": AlwaysOffload()})
+        state = _state_with_messages([_tool_message("a", "A" * 50)])
+
+        hook.run(state)
+
+        offloaded = state.data["messages"][0]
+        assert offloaded.tool_call_result.result.startswith("Tool result offloaded")
+        assert store.read(offloaded.meta["tool_result_offloaded"][0]) == "A" * 50
+        assert not caplog.records
+
+    def test_text_only_store_leaves_image_and_file_results_in_context(self, caplog):
+        hook = ToolResultOffloadHook(store=TextOnlyToolResultStore(), offload_strategies={"*": AlwaysOffload()})
+        content = [TextContent("caption"), _file_block()]
+        message = ChatMessage.from_tool(tool_result=content, origin=ToolCall(tool_name="a", arguments={}, id="1"))
+        state = _state_with_messages([message])
+
+        hook.run(state)
+
+        assert state.data["messages"][0].tool_call_result.result == content
+        assert "does not support binary content" in caplog.text
 
     def test_empty_result_is_not_offloaded(self, tmp_path):
         hook = ToolResultOffloadHook(

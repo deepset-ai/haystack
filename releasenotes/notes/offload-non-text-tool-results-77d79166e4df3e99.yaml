@@ -16,15 +16,20 @@ enhancements:
         2. image/png (48210 bytes) at '/abs/path/tool_results/2_fetch_call-123_1.png'
         3. application/pdf named 'q3.pdf' (1048576 bytes) at '/abs/path/tool_results/2_fetch_call-123_2.pdf'
 
+    Binary content is opt-in per store, via a new ``supports_binary_content`` attribute on the ``ToolResultStore``
+    protocol. ``FileSystemToolResultStore`` sets it; a store that can only hold text leaves it at its ``False``
+    default and never receives bytes, so a result carrying an image or a file stays in context and a warning is
+    logged, exactly as before this release. Existing custom stores therefore keep working unchanged.
+
     Offload policies receive the text and base64 payloads of all parts joined together, so a threshold such as
     ``OffloadOverChars`` measures the context the result actually occupies.
 upgrade:
   - |
-    The ``ToolResultStore`` protocol now carries binary content: ``write`` takes ``content: str | bytes`` and
-    ``read`` returns ``str | bytes``. This affects you only if you implemented the protocol yourself - widen both
-    signatures, persisting and returning bytes unchanged, or offloading an image or a file will fail in your store.
-    ``FileSystemToolResultStore`` already handles both.
+    The ``tool_result_offloaded`` meta key that the hook sets on an offloaded message now always holds a list of
+    store references rather than a single reference string, since a result can span several entries. Code reading
+    that key (for example to re-read an offloaded result) should index into the list.
 
-    The ``tool_result_offloaded`` meta key now holds a list of store references rather than a single one, since a
-    result can span several entries. Store keys gained the part's position (``2_search_call-123_0.txt``) and the
-    pointer text was reworded to name what it points at.
+    ``ToolResultStore.write`` is now typed ``content: str | bytes`` and ``read`` returns ``str | bytes``. Neither
+    changes what a text-only store receives or returns at runtime, but a store that subclasses the protocol and
+    annotates ``content: str`` may need a type-checker annotation update. To store binary content, set
+    ``supports_binary_content = True`` on the store and handle bytes in ``write``.

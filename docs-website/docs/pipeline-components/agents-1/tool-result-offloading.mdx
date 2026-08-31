@@ -123,6 +123,7 @@ The hook only offloads **successful** tool results:
 
 - Error results — including rejections produced by a `before_tool` [Human-in-the-Loop](./human-in-the-loop.mdx) hook — are always left in context, so the model sees what went wrong.
 - Text, image, and file results are all offloaded. Each part of a result gets its own store entry, so every text, image, and file stays usable on its own.
+- Image and file content only goes to a store that declares `supports_binary_content`. With a text-only store, a result carrying an image or a file stays in context and a warning is logged.
 - The file extension of an image or file comes from its `filename` when it has one, and from its `mime_type` otherwise (falling back to `.bin` when neither yields an extension).
 - Policies see the result as the text and base64 payloads of all its parts joined together, so a threshold such as `OffloadOverChars` measures the context the result actually occupies.
 - Each result is offloaded at most once, even though the hook runs on every tool step. This also means two offload hooks registered under `after_tool` won't offload each other's pointers.
@@ -159,13 +160,13 @@ The protocol provides default `to_dict` / `from_dict` implementations, so a poli
 
 ### `FileSystemToolResultStore`
 
-`FileSystemToolResultStore(root=...)` writes each offloaded result to a file under its root directory and returns the absolute file path as the reference. The directory is created on first write. Store keys are derived from the step count, tool name, tool call ID, and the position of the part within the result (for example `2_search_call-123_0.txt`), so results from different tools and steps do not collide. A key that would resolve outside the root directory is rejected.
+`FileSystemToolResultStore(root=...)` writes each offloaded result to a file under its root directory and returns the absolute file path as the reference. The directory is created on first write. Store keys are derived from the step count, tool name, and tool call ID (for example `2_search_call-123.txt`), plus the position of the part within the result when it spans several entries (`2_search_call-123_1.png`), so results from different tools and steps do not collide. A key that would resolve outside the root directory is rejected.
 
 Text is written UTF-8 encoded and read back as a string; images and files are written as raw bytes and read back as `bytes`.
 
 ### Custom store
 
-Subclass the `ToolResultStore` protocol to target other backends, such as object storage or an isolated sandbox file system. A store needs two methods: `write(key=..., content=...)` persists the content and returns a reference string, and `read(reference)` resolves that reference back to the content. Only the store interprets a reference — everyone else passes it back to `read` unchanged. `content` is a string for text and `bytes` for an offloaded image or file, so a store has to handle both:
+Subclass the `ToolResultStore` protocol to target other backends, such as object storage or an isolated sandbox file system. A store needs two methods: `write(key=..., content=...)` persists the content and returns a reference string, and `read(reference)` resolves that reference back to the content. Only the store interprets a reference — everyone else passes it back to `read` unchanged:
 
 ```python
 from haystack.hooks.tool_result_offloading import ToolResultStore
@@ -175,14 +176,25 @@ class InMemoryToolResultStore(ToolResultStore):
     """Keep offloaded results in a dict - useful for tests."""
 
     def __init__(self) -> None:
-        self._data: dict[str, str | bytes] = {}
+        self._data: dict[str, str] = {}
 
-    def write(self, *, key: str, content: str | bytes) -> str:
+    def write(self, *, key: str, content: str) -> str:
         self._data[key] = content
         return key
 
-    def read(self, reference: str) -> str | bytes:
+    def read(self, reference: str) -> str:
         return self._data[reference]
+```
+
+A store like this one only holds text, which is all it will ever be given: `supports_binary_content` defaults to `False`, and the hook leaves image and file results in context rather than handing a text-only store bytes it cannot write. A store that *can* hold bytes — a file system, object storage — sets the flag and widens `content` to `str | bytes`, and `read` returns whatever it stored:
+
+```python
+class BinaryCapableStore(ToolResultStore):
+    supports_binary_content = True
+
+    def write(self, *, key: str, content: str | bytes) -> str: ...
+
+    def read(self, reference: str) -> str | bytes: ...
 ```
 
 Like `OffloadPolicy`, the protocol provides default `to_dict` / `from_dict` implementations covering stores whose constructor takes no arguments; implement both methods for stores with constructor arguments.
