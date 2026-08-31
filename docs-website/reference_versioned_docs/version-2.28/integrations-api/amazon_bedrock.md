@@ -1397,7 +1397,7 @@ Designed for use cases where non-blocking or concurrent execution is desired.
 
 - **messages** (<code>list\[ChatMessage\] | str</code>) – A list of `ChatMessage` objects forming the chat history.
   If a string is provided, it is converted to a list containing a ChatMessage with user role.
-- **streaming_callback** (<code>StreamingCallbackT | None</code>) – Optional async-compatible callback for handling streaming outputs.
+- **streaming_callback** (<code>StreamingCallbackT | None</code>) – Optional callback for handling streaming outputs. Async callbacks are preferred.
 - **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Optional dictionary of generation parameters. These are merged per key with the
   `generation_kwargs` passed at initialization: keys provided here take precedence, keys set only at
   initialization are kept. Some common parameters are:
@@ -1743,7 +1743,7 @@ Use the Amazon Bedrock Reranker to re-rank the list of documents based on the qu
 
 ## haystack_integrations.components.retrievers.amazon_bedrock.knowledge_base_retriever
 
-### BedrockKnowledgeBaseRetriever
+### AmazonBedrockKnowledgeBaseRetriever
 
 Retrieves documents from an Amazon Bedrock Managed Knowledge Base.
 
@@ -1753,9 +1753,9 @@ Usage example:
 
 ```python
 from haystack.utils import Secret
-from haystack_integrations.components.retrievers.amazon_bedrock import BedrockKnowledgeBaseRetriever
+from haystack_integrations.components.retrievers.amazon_bedrock import AmazonBedrockKnowledgeBaseRetriever
 
-retriever = BedrockKnowledgeBaseRetriever(
+retriever = AmazonBedrockKnowledgeBaseRetriever(
     knowledge_base_id="ABCDEFGHIJ",
     aws_region_name=Secret.from_token("eu-central-1"),
 )
@@ -1767,7 +1767,7 @@ for doc in result["documents"]:
     print(doc.score)
 ```
 
-BedrockKnowledgeBaseRetriever uses AWS for authentication. You can use the AWS CLI to authenticate through
+AmazonBedrockKnowledgeBaseRetriever uses AWS for authentication. You can use the AWS CLI to authenticate through
 your IAM. For more information on setting up an IAM identity-based policy, see [Amazon Bedrock documentation]
 (https://docs.aws.amazon.com/bedrock/latest/userguide/security_iam_id-based-policy-examples.html).
 
@@ -1802,7 +1802,7 @@ __init__(
 ) -> None
 ```
 
-Create the BedrockKnowledgeBaseRetriever component.
+Create the AmazonBedrockKnowledgeBaseRetriever component.
 
 **Parameters:**
 
@@ -1853,7 +1853,7 @@ Serializes the component to a dictionary.
 #### from_dict
 
 ```python
-from_dict(data: dict[str, Any]) -> BedrockKnowledgeBaseRetriever
+from_dict(data: dict[str, Any]) -> AmazonBedrockKnowledgeBaseRetriever
 ```
 
 Deserializes the component from a dictionary.
@@ -1864,4 +1864,4 @@ Deserializes the component from a dictionary.
 
 **Returns:**
 
-- <code>BedrockKnowledgeBaseRetriever</code> – The deserialized component.
+- <code>AmazonBedrockKnowledgeBaseRetriever</code> – The deserialized component.
