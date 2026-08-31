@@ -142,6 +142,24 @@ def critique(state: State) -> None:
         state.set("continue_run", True)
 
 
+@hook
+def request_shorter_answer(state: State) -> None:
+    exit_reason = state.get("exit_reason")
+    state.set("seen_reasons", [exit_reason])
+    if exit_reason == "length":
+        state.set("messages", [ChatMessage.from_user("Continue with a shorter answer.")])
+        state.set("continue_run", True)
+
+
+@hook
+async def request_safe_answer(state: State) -> None:
+    exit_reason = state.get("exit_reason")
+    state.set("seen_reasons", [exit_reason])
+    if exit_reason == "content_filter":
+        state.set("messages", [ChatMessage.from_user("Answer at a safe, high level.")])
+        state.set("continue_run", True)
+
+
 class LifecycleHook:
     """A class-based hook that records its lifecycle calls (e.g. opening/closing a client)."""
 
@@ -494,6 +512,28 @@ class TestOnExitHook:
         assert agent.chat_generator.run.call_count == 1
         assert fired == [1]
 
+    def test_incomplete_generation_can_recover(self):
+        agent = _agent(
+            MockChatGenerator(),
+            state_schema={"seen_reasons": {"type": list[str]}},
+            hooks={"on_exit": [request_shorter_answer]},
+        )
+        agent.chat_generator.run = MagicMock(
+            side_effect=[
+                {"replies": [ChatMessage.from_assistant("Partial", meta={"finish_reason": "length"})]},
+                {"replies": [ChatMessage.from_assistant("Recovered answer")]},
+            ]
+        )
+
+        result = agent.run(messages=[ChatMessage.from_user("hi")])
+
+        assert agent.chat_generator.run.call_count == 2
+        assert result["seen_reasons"] == ["length", "text"]
+        assert result["exit_reason"] == "text"
+        assert result["step_count"] == 2
+        second_call_messages = agent.chat_generator.run.call_args_list[1].kwargs["messages"]
+        assert second_call_messages[-1].text == "Continue with a shorter answer."
+
     def test_critique_on_tool_based_exit(self):
         agent = _agent(
             MockChatGenerator(), tools=[final_answer], exit_conditions=["final_answer"], hooks={"on_exit": [critique]}
@@ -514,6 +554,17 @@ class TestOnExitHook:
         agent.chat_generator.run = MagicMock(return_value={"replies": [ChatMessage.from_assistant("text")]})
         agent.run(messages=[ChatMessage.from_user("hi")])
         assert agent.chat_generator.run.call_count == 3
+
+    def test_max_agent_steps_bounds_repeated_incomplete_generation(self):
+        agent = _agent(MockChatGenerator(), max_agent_steps=3, hooks={"on_exit": [always_continue]})
+        agent.chat_generator.run = MagicMock(
+            return_value={"replies": [ChatMessage.from_assistant("", meta={"finish_reason": "length"})]}
+        )
+
+        result = agent.run(messages=[ChatMessage.from_user("hi")])
+
+        assert agent.chat_generator.run.call_count == 3
+        assert result["exit_reason"] == "max_agent_steps"
 
     def test_continue_run_from_before_llm_hook_does_not_force_continuation(self):
         def leak_continue(state: State) -> None:
@@ -775,6 +826,27 @@ class TestAgentHooksAsync:
         result = await agent.run_async(messages=[ChatMessage.from_user("hi")])
         assert agent.chat_generator.run_async.call_count == 3
         assert result["tool_call_counts"]["save"] == 1
+
+    @pytest.mark.asyncio
+    async def test_incomplete_generation_can_recover(self):
+        agent = _agent(
+            MockChatGenerator(),
+            state_schema={"seen_reasons": {"type": list[str]}},
+            hooks={"on_exit": [request_safe_answer]},
+        )
+        agent.chat_generator.run_async = AsyncMock(
+            side_effect=[
+                {"replies": [ChatMessage.from_assistant("Partial", meta={"finish_reason": "content_filter"})]},
+                {"replies": [ChatMessage.from_assistant("Safe recovered answer")]},
+            ]
+        )
+
+        result = await agent.run_async(messages=[ChatMessage.from_user("hi")])
+
+        assert agent.chat_generator.run_async.call_count == 2
+        assert result["seen_reasons"] == ["content_filter", "text"]
+        assert result["exit_reason"] == "text"
+        assert result["step_count"] == 2
 
 
 class TestAgentHookLifecycle:

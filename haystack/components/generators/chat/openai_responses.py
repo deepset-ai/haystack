@@ -28,7 +28,7 @@ from haystack.dataclasses import (
     ToolCallDelta,
     select_streaming_callback,
 )
-from haystack.dataclasses.streaming_chunk import _invoke_streaming_callback
+from haystack.dataclasses.streaming_chunk import FinishReason, _invoke_streaming_callback
 from haystack.tools import (
     ToolsType,
     _check_duplicate_tool_names,
@@ -41,6 +41,26 @@ from haystack.utils import Secret, deserialize_callable, serialize_callable
 from haystack.utils.http_client import init_http_client
 
 logger = logging.getLogger(__name__)
+
+_INCOMPLETE_REASON_MAPPING: dict[str, FinishReason] = {
+    "max_output_tokens": "length",
+    "content_filter": "content_filter",
+}
+
+
+def _get_response_finish_reason(response: Response | ParsedResponse) -> FinishReason:
+    """Return the normalized finish reason for a terminal OpenAI Responses API response."""
+    if (
+        response.status == "incomplete"
+        and response.incomplete_details is not None
+        and response.incomplete_details.reason is not None
+    ):
+        finish_reason = _INCOMPLETE_REASON_MAPPING.get(response.incomplete_details.reason)
+        if finish_reason is not None:
+            return finish_reason
+    if any(output.type == "function_call" for output in response.output):
+        return "tool_calls"
+    return "stop"
 
 
 @component
@@ -690,6 +710,7 @@ def _convert_response_to_chat_message(responses: Response | ParsedResponse) -> C
 
     # remove output from meta because it contains toolcalls, reasoning, text etc.
     meta.pop("output")
+    meta["finish_reason"] = _get_response_finish_reason(responses)
 
     if logprobs:
         meta["logprobs"] = logprobs
@@ -766,14 +787,12 @@ def _convert_response_chunk_to_streaming_chunk(  # noqa: PLR0911
                 meta={"received_at": datetime.now().isoformat()},
             )
 
-    elif chunk.type == "response.completed":
-        # This means a full response is finished
-        # If there are tool_calls present in the final output we mark finish_reason as tool_calls otherwise it's
-        # marked as stop
+    elif chunk.type == "response.completed" or chunk.type == "response.incomplete":
+        # This means a full response is finished.
         return StreamingChunk(
             content="",
             component_info=component_info,
-            finish_reason="tool_calls" if any(o.type == "function_call" for o in chunk.response.output) else "stop",
+            finish_reason=_get_response_finish_reason(chunk.response),
             meta={**chunk.to_dict(), "received_at": datetime.now().isoformat()},
         )
 
@@ -898,9 +917,19 @@ def _convert_streaming_chunks_to_chat_message(chunks: list[StreamingChunk]) -> C
                 _arguments=tool_call_dict["arguments"],
             )
 
-    # We dump the entire final response into meta to be consistent with non-streaming response
-    final_response = chunks[-1].meta.get("response") or {}
+    # We dump the entire final response into meta to be consistent with non-streaming response. The event carrying
+    # the final response (and its usage data) is not guaranteed to be the last event in the stream, so scan for it.
+    responses = [chunk.meta["response"] for chunk in chunks if chunk.meta.get("response")]
+    response_with_usage = next(
+        (response for response in reversed(responses) if response.get("usage") is not None), None
+    )
+    final_response = (response_with_usage or responses[-1]).copy() if responses else {}
     final_response.pop("output", None)
+
+    # finish_reason can appear in different places so we look for the last one
+    finish_reasons = [chunk.finish_reason for chunk in chunks if chunk.finish_reason]
+    if finish_reasons:
+        final_response["finish_reason"] = finish_reasons[-1]
     if logprobs:
         final_response["logprobs"] = logprobs
 

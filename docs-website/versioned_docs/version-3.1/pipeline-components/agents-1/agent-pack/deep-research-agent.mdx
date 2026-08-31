@@ -122,7 +122,7 @@ The orchestrator's tools:
 
 | Tool | What it is | What it does |
 | --- | --- | --- |
-| `research_subtopic` | The sub-researcher agent, exposed as a tool ([`ComponentTool`](../../../tools/componenttool.mdx)) | Researches a single sub-question in an isolated context and returns a compressed, cited summary. Only that summary is shown to the orchestrator; the summary is also appended to `notes`. |
+| `research_subtopic` | The sub-researcher agent, exposed as an [`AgentTool`](../../../tools/agenttool.mdx) | Researches a single sub-question in an isolated context and returns a compressed, cited summary. Only that summary is shown to the orchestrator; the summary is also appended to `notes`. |
 | `think_tool` | A no-op reflection tool | Lets the orchestrator pause to plan sub-questions and assess coverage between rounds. |
 
 #### Sub-researcher
@@ -148,11 +148,11 @@ The core challenge in a deep research agent is keeping each context window small
 - Each sub-researcher runs as its own agent with its own `State`, so all the messy intermediate content (every search result, every fetched page) stays in *its* private context.
 - It finishes by writing one short summary (its final message). Only that summary leaves the sub-researcher: the raw content never reaches the orchestrator or the writer.
 
-Two settings on the `research_subtopic` tool decide where that summary goes:
+The `AgentTool` default output handling and one setting on `research_subtopic` decide where that summary goes:
 
-| Setting (on `research_subtopic`) | Controls | Effect |
+| Behavior or setting | Controls | Effect |
 | --- | --- | --- |
-| `outputs_to_string={"source": "last_message"}` | What the orchestrator's LLM sees as the tool result | Only the summary text comes back, not the sub-researcher's full message history. Keeps the orchestrator's context clean. |
+| `AgentTool` default output handling | What the orchestrator's LLM sees as the tool result | The text of the sub-researcher's final reply comes back by default, not its full message history. Keeps the orchestrator's context clean. |
 | `outputs_to_state={"notes": {...}}` | What gets saved for the writer | The same summary is appended (as text) to the shared `notes` list, which becomes the writer's input. |
 
 So each summary travels two ways, into the orchestrator's reasoning (so it can decide whether to dig further) and into the `notes` accumulator (so the writer can use it), while the bulky raw research stays isolated and is not propagated beyond the sub-researcher:
@@ -160,6 +160,6 @@ So each summary travels two ways, into the orchestrator's reasoning (so it can d
 ```
 sub-researcher  (private context: searches, pages, reflections)
       │  writes one short summary
-      ├─ outputs_to_string → orchestrator's LLM   (decide: done, or dig more?)
+      ├─ AgentTool default output → orchestrator's LLM   (decide: done, or dig more?)
       └─ outputs_to_state  → notes → writer        (final report)
 ```

@@ -603,6 +603,7 @@ export default {
           items: [
             'pipeline-components/retrievers/alloydbembeddingretriever',
             'pipeline-components/retrievers/alloydbkeywordretriever',
+            'pipeline-components/retrievers/amazonbedrockknowledgebaseretriever',
             'pipeline-components/retrievers/arangoembeddingretriever',
             'pipeline-components/retrievers/arcadedbembeddingretriever',
             'pipeline-components/retrievers/astraretriever',
