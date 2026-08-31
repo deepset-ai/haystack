@@ -33,7 +33,7 @@ The system is composed of these layers:
 - **Policy** - decides *whether* a given result is offloaded. Built-in policies: `AlwaysOffload`, `NeverOffload`, `OffloadOverChars`.
 - **Store** - decides *where* the full result lives. The built-in `FileSystemToolResultStore` writes results to the local file system.
 
-When a result is offloaded, the hook writes each part of it to the store and rebuilds the message with a compact pointer in its place. A result that is a single text — by far the most common case — gets a one-line pointer:
+When a result is offloaded, the hook writes each part of it to the store and rebuilds the message with a compact pointer in its place. A result that is a single text gets a one-line pointer:
 
 ```
 Tool result offloaded to text (18234 characters) at '/abs/path/tool_results/2_search_call-123_0.txt'. Preview: Fusion startups reported...
@@ -50,7 +50,7 @@ Tool result offloaded to 3 files:
 3. application/pdf named 'q3.pdf' (1048576 bytes) at '/abs/path/tool_results/2_fetch_call-123_2.pdf'
 ```
 
-Images and files are stored as raw bytes, decoded from their base64 payload — that payload is often the largest single thing in an Agent's context, so moving it out of the conversation is where offloading pays off most.
+Images and files are stored as raw bytes, decoded from their base64 payload. A base64 payload is a costly way to carry a file through a conversation, so moving one out can free up a substantial part of the context window.
 
 ## Usage
 

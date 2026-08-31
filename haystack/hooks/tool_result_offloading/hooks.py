@@ -138,7 +138,7 @@ class ToolResultOffloadHook:
 
     Only successful tool output is offloaded; error results (including `before_tool` human-in-the-loop rejections) are
     always left in context. Each part of a result is written to its own store entry, so every text, image, and file
-    stays usable on its own - the base64 payload of an image or a file is often the largest thing in the conversation.
+    stays usable on its own - a base64 payload is a costly way to carry an image or a file through a conversation.
     The pointer names a single-part result on one line and lists the entries of a multi-part one. Each result is
     offloaded at most once, even though the hook runs on every tool step.
 
@@ -298,8 +298,7 @@ class ToolResultOffloadHook:
         Write a result's content blocks to the store and build the pointer that replaces them in the conversation.
 
         Every content block goes to its own store entry, so each text, image, or file stays usable on its own. A
-        result that is a single block - the common case - gets a one-line pointer; a result with several gets one
-        numbered line per entry.
+        result that is a single block gets a one-line pointer; a result with several gets one numbered line per entry.
 
         :param content_blocks: The result's content blocks, in order.
         :param store: The store to write to.
