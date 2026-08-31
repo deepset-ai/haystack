@@ -1,0 +1,10 @@
+---
+enhancements:
+  - |
+    ``CacheChecker`` now queries the Document Store once for the whole ``items``
+    list, using the ``in`` operator, instead of issuing one ``filter_documents``
+    call per item. For a remote store every call was a network round trip, so
+    checking N items cost N of them. ``hits`` and ``misses`` are unchanged:
+    documents are still grouped by the item that matched them, in the order the
+    items were given, and a repeated item still contributes its documents once
+    per occurrence. The same applies to ``run_async``.

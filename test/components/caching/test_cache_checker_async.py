@@ -57,9 +57,37 @@ class TestCacheCheckerAsync:
         mock_store = MagicMock()
         mock_store.filter_documents_async = AsyncMock(return_value=[])
         checker = CacheChecker(document_store=mock_store, cache_field="url")
-        await checker.run_async(items=["https://example.com/1"])
-        expected_filters = {"field": "url", "operator": "==", "value": "https://example.com/1"}
+        await checker.run_async(items=["https://example.com/1", "https://example.com/2"])
+        expected_filters = {
+            "field": "url",
+            "operator": "in",
+            "value": ["https://example.com/1", "https://example.com/2"],
+        }
         mock_store.filter_documents_async.assert_awaited_once_with(filters=expected_filters)
+
+    @pytest.mark.asyncio
+    async def test_run_async_queries_the_document_store_once(self):
+        documents = [Document(content=f"doc{i}", meta={"url": f"https://example.com/{i}"}) for i in range(200)]
+        mock_store = MagicMock()
+        mock_store.filter_documents_async = AsyncMock(return_value=documents)
+        checker = CacheChecker(document_store=mock_store, cache_field="url")
+
+        results = await checker.run_async(items=[f"https://example.com/{i}" for i in range(200)])
+
+        assert mock_store.filter_documents_async.await_count == 1
+        assert len(results["hits"]) == 200
+        assert results["misses"] == []
+
+    @pytest.mark.asyncio
+    async def test_run_async_with_no_items_does_not_query_the_document_store(self):
+        mock_store = MagicMock()
+        mock_store.filter_documents_async = AsyncMock(return_value=[])
+        checker = CacheChecker(document_store=mock_store, cache_field="url")
+
+        results = await checker.run_async(items=[])
+
+        assert mock_store.filter_documents_async.await_count == 0
+        assert results == {"hits": [], "misses": []}
 
     @pytest.mark.asyncio
     async def test_close_async(self):

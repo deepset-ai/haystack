@@ -89,9 +89,93 @@ class TestCacheChecker:
         mocked_docstore_class = document_store_class("MockedDocumentStore")
         with patch.object(mocked_docstore_class, "filter_documents") as filter_documents:
             checker = CacheChecker(document_store=mocked_docstore_class(), cache_field="url")
-            checker.run(items=["https://example.com/1"])
-            valid_filters_syntax = {"field": "url", "operator": "==", "value": "https://example.com/1"}
+            checker.run(items=["https://example.com/1", "https://example.com/2"])
+            valid_filters_syntax = {
+                "field": "url",
+                "operator": "in",
+                "value": ["https://example.com/1", "https://example.com/2"],
+            }
             filter_documents.assert_any_call(filters=valid_filters_syntax)
+
+    def test_run_queries_the_document_store_once(self, in_memory_doc_store):
+        in_memory_doc_store.write_documents(
+            [Document(content=f"doc{i}", meta={"url": f"https://example.com/{i}"}) for i in range(200)]
+        )
+        checker = CacheChecker(in_memory_doc_store, cache_field="url")
+
+        with patch.object(
+            in_memory_doc_store, "filter_documents", wraps=in_memory_doc_store.filter_documents
+        ) as filter_documents:
+            results = checker.run(items=[f"https://example.com/{i}" for i in range(200)])
+
+        assert filter_documents.call_count == 1
+        assert len(results["hits"]) == 200
+        assert results["misses"] == []
+
+    def test_run_with_no_items_does_not_query_the_document_store(self, in_memory_doc_store):
+        checker = CacheChecker(in_memory_doc_store, cache_field="url")
+
+        with patch.object(in_memory_doc_store, "filter_documents") as filter_documents:
+            results = checker.run(items=[])
+
+        assert filter_documents.call_count == 0
+        assert results == {"hits": [], "misses": []}
+
+    def test_run_repeats_hits_for_a_repeated_item(self, in_memory_doc_store):
+        documents = [
+            Document(content="doc1", meta={"url": "https://example.com/1"}),
+            Document(content="doc2", meta={"url": "https://example.com/2"}),
+        ]
+        in_memory_doc_store.write_documents(documents)
+        checker = CacheChecker(in_memory_doc_store, cache_field="url")
+
+        results = checker.run(items=["https://example.com/1", "https://example.com/1"])
+
+        assert results["hits"] == [documents[0], documents[0]]
+        assert results["misses"] == []
+
+    def test_run_keeps_hits_grouped_by_item_and_misses_in_order(self, in_memory_doc_store):
+        documents = [
+            Document(content="doc1", meta={"url": "https://example.com/1"}),
+            Document(content="doc2", meta={"url": "https://example.com/2"}),
+        ]
+        in_memory_doc_store.write_documents(documents)
+        checker = CacheChecker(in_memory_doc_store, cache_field="url")
+
+        results = checker.run(
+            items=[
+                "https://example.com/2",
+                "https://example.com/missing-b",
+                "https://example.com/1",
+                "https://example.com/missing-a",
+            ]
+        )
+
+        assert results["hits"] == [documents[1], documents[0]]
+        assert results["misses"] == ["https://example.com/missing-b", "https://example.com/missing-a"]
+
+    def test_run_on_a_document_field_rather_than_a_meta_key(self, in_memory_doc_store):
+        documents = [Document(content="doc1"), Document(content="doc2")]
+        in_memory_doc_store.write_documents(documents)
+        checker = CacheChecker(in_memory_doc_store, cache_field="content")
+
+        results = checker.run(items=["doc1", "doc3"])
+
+        assert results["hits"] == [documents[0]]
+        assert results["misses"] == ["doc3"]
+
+    def test_run_on_a_nested_meta_field(self, in_memory_doc_store):
+        documents = [
+            Document(content="doc1", meta={"source": {"url": "https://example.com/1"}}),
+            Document(content="doc2", meta={"source": {"url": "https://example.com/2"}}),
+        ]
+        in_memory_doc_store.write_documents(documents)
+        checker = CacheChecker(in_memory_doc_store, cache_field="meta.source.url")
+
+        results = checker.run(items=["https://example.com/2", "https://example.com/3"])
+
+        assert results["hits"] == [documents[1]]
+        assert results["misses"] == ["https://example.com/3"]
 
     def test_close(self):
         closable_document_store = Mock(spec=["close"])
