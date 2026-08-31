@@ -156,23 +156,6 @@ class Toolset:
             return any(tool is item or tool == item for tool in self)
         return False
 
-    def __len__(self) -> int:
-        """
-        Return the number of Tools in this Toolset.
-
-        :returns: Number of Tools
-        """
-        return sum(1 for _ in self)
-
-    def __getitem__(self, index: int) -> Tool:
-        """
-        Get a Tool by index.
-
-        :param index: Index of the Tool to get
-        :returns: The Tool at the specified index
-        """
-        return list(self)[index]
-
     def warm_up(self) -> None:
         """
         Prepare the Toolset for use.
@@ -261,3 +244,20 @@ class Toolset:
             tools.append(tool_class.from_dict(tool_data))
 
         return cls(tools=tools)
+
+    def __len__(self) -> int:
+        """
+        Return the number of Tools in this Toolset.
+
+        :returns: Number of Tools
+        """
+        return sum(1 for _ in self)
+
+    def __getitem__(self, index: int) -> Tool:
+        """
+        Get a Tool by index.
+
+        :param index: Index of the Tool to get
+        :returns: The Tool at the specified index
+        """
+        return list(self)[index]
