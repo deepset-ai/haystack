@@ -777,6 +777,7 @@ export default {
         'token-counters/approximatetokencounter',
         'token-counters/tiktokencounter',
         'token-counters/openaitokencounter',
+        'token-counters/anthropictokencounter',
       ],
     },
     {
