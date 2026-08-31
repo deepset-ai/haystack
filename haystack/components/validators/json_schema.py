@@ -249,4 +249,4 @@ class JsonSchemaValidator:
             return new_dict
 
         # If it's neither a list nor a dictionary, return the value directly
-        raise ValueError("Input must be a dictionary or a list of dictionaries.")
+        return data
