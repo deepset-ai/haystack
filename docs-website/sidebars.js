@@ -79,6 +79,7 @@ export default {
           items: [
             'concepts/data-classes/chatmessage',
             'concepts/data-classes/filecontent',
+            'concepts/data-classes/imagecontent',
           ],
         },
         {
