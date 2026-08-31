@@ -1736,6 +1736,7 @@ def streaming_chunks():
                         "rejected_prediction_tokens": 0,
                         "text_tokens": 42,
                     },
+                    "compute_units": None,
                     "prompt_tokens_details": {
                         "audio_tokens": 0,
                         "cached_tokens": 0,
@@ -2026,6 +2027,7 @@ class TestChatCompletionChunkConversion:
                 "rejected_prediction_tokens": 0,
                 "text_tokens": 42,
             },
+            "compute_units": None,
             "prompt_tokens_details": {
                 "audio_tokens": 0,
                 "cached_tokens": 0,
