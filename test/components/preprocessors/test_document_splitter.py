@@ -8,6 +8,8 @@ import pytest
 
 from haystack import Document
 from haystack.components.preprocessors import DocumentSplitter
+from haystack.components.retrievers import SentenceWindowRetriever
+from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.utils import deserialize_callable, serialize_callable
 
 
@@ -217,13 +219,19 @@ class TestSplittingByFunctionOrCharacterRegex:
 
         assert len(docs) == 4
         assert docs[0].content == "This"
-        assert docs[0].meta == {"key": "value", "source_id": "1"}
+        assert docs[0].meta == {"key": "value", "source_id": "1", "split_id": 0, "split_idx_start": 0, "page_number": 1}
         assert docs[1].content == "Is"
-        assert docs[1].meta == {"key": "value", "source_id": "1"}
+        assert docs[1].meta == {"key": "value", "source_id": "1", "split_id": 1, "split_idx_start": 5, "page_number": 1}
         assert docs[2].content == "A"
-        assert docs[2].meta == {"key": "value", "source_id": "1"}
+        assert docs[2].meta == {"key": "value", "source_id": "1", "split_id": 2, "split_idx_start": 8, "page_number": 1}
         assert docs[3].content == "Test"
-        assert docs[3].meta == {"key": "value", "source_id": "1"}
+        assert docs[3].meta == {
+            "key": "value",
+            "source_id": "1",
+            "split_id": 3,
+            "split_idx_start": 10,
+            "page_number": 1,
+        }
 
         splitting_function = lambda s: re.split(r"[\s]{2,}", s)
         splitter = DocumentSplitter(split_by="function", splitting_function=splitting_function)
@@ -231,14 +239,87 @@ class TestSplittingByFunctionOrCharacterRegex:
         result = splitter.run(documents=[Document(id="1", content=text, meta={"key": "value"})])
         docs = result["documents"]
         assert len(docs) == 4
-        assert docs[0].content == "This"
-        assert docs[0].meta == {"key": "value", "source_id": "1"}
-        assert docs[1].content == "Is"
-        assert docs[1].meta == {"key": "value", "source_id": "1"}
-        assert docs[2].content == "A"
-        assert docs[2].meta == {"key": "value", "source_id": "1"}
-        assert docs[3].content == "Test"
-        assert docs[3].meta == {"key": "value", "source_id": "1"}
+        for split_id, (content, doc) in enumerate(zip(["This", "Is", "A", "Test"], docs, strict=True)):
+            assert doc.content == content
+            assert doc.meta["key"] == "value"
+            assert doc.meta["source_id"] == "1"
+            assert doc.meta["split_id"] == split_id
+            assert doc.meta["split_idx_start"] == text.index(content)
+            assert doc.meta["page_number"] == 1
+
+    def test_split_by_function_tracks_page_numbers(self):
+        splitter = DocumentSplitter(split_by="function", splitting_function=lambda s: s.split("\f"))
+        text = "First chunk.\fSecond chunk.\fThird chunk."
+        docs = splitter.run(documents=[Document(content=text)])["documents"]
+
+        assert [doc.meta["page_number"] for doc in docs] == [1, 2, 3]
+        assert [doc.meta["split_id"] for doc in docs] == [0, 1, 2]
+        assert [doc.meta["split_idx_start"] for doc in docs] == [text.index(doc.content) for doc in docs]
+
+    def test_split_by_function_with_transformed_splits(self):
+        # The splits don't appear verbatim in the source, so they cannot be located in it
+        splitter = DocumentSplitter(split_by="function", splitting_function=lambda s: [t.upper() for t in s.split(".")])
+        docs = splitter.run(documents=[Document(content="one.two")])["documents"]
+
+        assert [doc.content for doc in docs] == ["ONE", "TWO"]
+        assert [doc.meta["split_id"] for doc in docs] == [0, 1]
+        assert [doc.meta["split_idx_start"] for doc in docs] == [0, 3]
+        assert [doc.meta["page_number"] for doc in docs] == [1, 1]
+
+    def test_split_by_function_skips_empty_splits(self):
+        splitting_function = lambda s: s.split("\f")
+        splitter = DocumentSplitter(split_by="function", splitting_function=splitting_function)
+        docs = splitter.run(documents=[Document(content="a\f\fb")])["documents"]
+
+        assert [doc.content for doc in docs] == ["a", "b"]
+        assert [doc.meta["page_number"] for doc in docs] == [1, 3]
+
+        splitter = DocumentSplitter(
+            split_by="function", splitting_function=splitting_function, skip_empty_documents=False
+        )
+        docs = splitter.run(documents=[Document(content="a\f\fb")])["documents"]
+
+        assert [doc.content for doc in docs] == ["a", "", "b"]
+
+    def test_split_by_function_output_usable_by_sentence_window_retriever(self):
+        splitter = DocumentSplitter(split_by="function", splitting_function=lambda s: s.split("|"))
+        text = "first part|second part|third part"
+        docs = splitter.run(documents=[Document(content=text)])["documents"]
+
+        document_store = InMemoryDocumentStore()
+        document_store.write_documents(docs)
+        retriever = SentenceWindowRetriever(document_store=document_store, window_size=1)
+        result = retriever.run(retrieved_documents=[docs[1]])
+
+        assert result["context_windows"] == ["first partsecond partthird part"]
+        assert [doc.content for doc in result["context_documents"]] == ["first part", "second part", "third part"]
+
+    def test_split_by_function_with_overlapping_sliding_window(self):
+        # Hand-rolled sliding-window splitting function: each split shares words with the next one,
+        # so the splits genuinely overlap in the source text.
+        def sliding_window(text):
+            words = text.split(" ")
+            return [" ".join(words[i : i + 3]) for i in range(0, len(words), 2)]
+
+        text = "the quick brown fox jumps"
+        assert sliding_window(text) == ["the quick brown", "brown fox jumps", "jumps"]
+        # "brown fox jumps" really starts at index 10 in the source text
+        assert text.find("brown fox jumps") == 10
+
+        splitter = DocumentSplitter(split_by="function", splitting_function=sliding_window, split_overlap=1)
+        docs = splitter.run(documents=[Document(content=text)])["documents"]
+
+        assert [doc.content for doc in docs] == ["the quick brown", "brown fox jumps", "jumps"]
+
+        # content.find(split, cur_start_idx) only searches forward from the end of the previous
+        # split, so a split that genuinely starts *before* that point (as any overlapping split
+        # does) can never be located, and silently falls back to the wrong cumulative offset.
+        assert docs[1].meta["split_idx_start"] == 10  # real index of "brown fox jumps" in the source
+        assert docs[2].meta["split_idx_start"] == 20  # real index of "jumps" in the source
+
+        # The real overlap ("brown") between docs[0] and docs[1] should be detected since
+        # split_overlap=1 was requested.
+        assert docs[1].meta["_split_overlap"] != []
 
     def test_split_by_word_with_overlap(self):
         splitter = DocumentSplitter(split_by="word", split_length=10, split_overlap=2)
