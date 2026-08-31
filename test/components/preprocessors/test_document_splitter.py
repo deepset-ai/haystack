@@ -846,3 +846,73 @@ class TestSplittingNLTKSentenceSplitter:
         result = splitter.run(documents=[doc1])
 
         assert len({doc.id for doc in result["documents"]}) == 4
+
+
+@pytest.mark.integration
+class TestSplittingByToken:
+    """Tests for split_by="token" mode. Require tiktoken to be installed."""
+
+    def test_basic_chunking(self):
+        splitter = DocumentSplitter(split_by="token", split_length=5, split_overlap=0)
+        doc = Document(content="one two three four five six seven eight nine ten")
+        result = splitter.run(documents=[doc])["documents"]
+        assert len(result) > 1
+        for chunk in result:
+            # tiktoken: each simple word is 1 token, so no chunk should exceed 5 tokens
+            tokens = splitter._tiktoken_tokenizer.encode(chunk.content)
+            assert len(tokens) <= 5
+
+    def test_metadata_set(self):
+        splitter = DocumentSplitter(split_by="token", split_length=5, split_overlap=0)
+        doc = Document(content="one two three four five six seven eight nine ten")
+        result = splitter.run(documents=[doc])["documents"]
+        for i, chunk in enumerate(result):
+            assert chunk.meta["source_id"] == doc.id
+            assert chunk.meta["split_id"] == i
+            assert "split_idx_start" in chunk.meta
+            assert chunk.meta["page_number"] == 1
+
+    def test_overlap_produces_shared_text(self):
+        splitter = DocumentSplitter(split_by="token", split_length=6, split_overlap=2)
+        # 12 simple tokens → expect > 2 chunks, each pair sharing 2 tokens of text
+        doc = Document(content="a b c d e f g h i j k l")
+        result = splitter.run(documents=[doc])["documents"]
+        assert len(result) > 1
+        for i in range(len(result) - 1):
+            # The start index of chunk[i+1] must be less than the end index of chunk[i] due to overlap
+            assert result[i + 1].meta["split_idx_start"] < result[i].meta["split_idx_start"] + len(result[i].content)
+
+    def test_page_tracking(self):
+        splitter = DocumentSplitter(split_by="token", split_length=5, split_overlap=0)
+        # 5 tokens on page 1, form-feed, then more tokens on page 2
+        doc = Document(content="a b c d e\fg h i j k")
+        result = splitter.run(documents=[doc])["documents"]
+        assert result[0].meta["page_number"] == 1
+        # The second chunk (after the \f) should be on page 2
+        assert result[-1].meta["page_number"] == 2
+
+    def test_empty_document_skipped(self, caplog):
+        splitter = DocumentSplitter(split_by="token", split_length=5)
+        result = splitter.run(documents=[Document(content="")])["documents"]
+        assert result == []
+        assert "has an empty content. Skipping this document." in caplog.text
+
+    def test_custom_encoding(self):
+        splitter = DocumentSplitter(split_by="token", split_length=5, tokenizer_encoding="cl100k_base")
+        doc = Document(content="one two three four five six seven eight")
+        result = splitter.run(documents=[doc])["documents"]
+        assert len(result) > 0
+        assert splitter.tokenizer_encoding == "cl100k_base"
+
+    def test_serialization_roundtrip(self):
+        splitter = DocumentSplitter(
+            split_by="token", split_length=10, split_overlap=2, tokenizer_encoding="cl100k_base"
+        )
+        serialized = splitter.to_dict()
+        assert serialized["init_parameters"]["split_by"] == "token"
+        assert serialized["init_parameters"]["tokenizer_encoding"] == "cl100k_base"
+        restored = DocumentSplitter.from_dict(serialized)
+        assert restored.split_by == "token"
+        assert restored.split_length == 10
+        assert restored.split_overlap == 2
+        assert restored.tokenizer_encoding == "cl100k_base"

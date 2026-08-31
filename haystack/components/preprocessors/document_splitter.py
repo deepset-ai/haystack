@@ -11,7 +11,11 @@ from more_itertools import windowed
 from haystack import Document, component, logging
 from haystack.components.preprocessors.sentence_tokenizer import Language, SentenceSplitter, nltk_imports
 from haystack.core.serialization import default_from_dict, default_to_dict
+from haystack.lazy_imports import LazyImport
 from haystack.utils import deserialize_callable, serialize_callable
+
+with LazyImport("Run 'pip install tiktoken'") as tiktoken_imports:
+    import tiktoken
 
 logger = logging.getLogger(__name__)
 
@@ -54,7 +58,7 @@ class DocumentSplitter:
 
     def __init__(
         self,
-        split_by: Literal["function", "page", "passage", "period", "word", "line", "sentence"] = "word",
+        split_by: Literal["function", "page", "passage", "period", "word", "line", "sentence", "token"] = "word",
         split_length: int = 200,
         split_overlap: int = 0,
         split_threshold: int = 0,
@@ -65,6 +69,7 @@ class DocumentSplitter:
         extend_abbreviations: bool = True,
         *,
         skip_empty_documents: bool = True,
+        tokenizer_encoding: str = "o200k_base",
     ) -> None:
         """
         Initialize DocumentSplitter.
@@ -76,6 +81,7 @@ class DocumentSplitter:
             - `passage` for splitting by double line breaks ("\\n\\n")
             - `line` for splitting each line ("\\n")
             - `sentence` for splitting by NLTK sentence tokenizer
+            - `token` for splitting by token count using tiktoken (requires ``pip install tiktoken``)
 
         :param split_length: The maximum number of units in each split.
         :param split_overlap: The number of overlapping units for each split.
@@ -93,6 +99,8 @@ class DocumentSplitter:
         :param skip_empty_documents: Choose whether to skip documents with empty content. Default is True.
             Set to False when downstream components in the Pipeline (like LLMDocumentContentExtractor) can extract text
             from non-textual documents.
+        :param tokenizer_encoding: The tiktoken encoding to use when ``split_by="token"``. Defaults to
+            ``"o200k_base"`` (current OpenAI models). Only used when ``split_by="token"``.
         """
 
         self.split_by = split_by
@@ -105,6 +113,7 @@ class DocumentSplitter:
         self.use_split_rules = use_split_rules
         self.extend_abbreviations = extend_abbreviations
         self.skip_empty_documents = skip_empty_documents
+        self.tokenizer_encoding = tokenizer_encoding
 
         self._init_checks(
             split_by=split_by,
@@ -117,6 +126,9 @@ class DocumentSplitter:
         if self._use_sentence_splitter:
             nltk_imports.check()
             self.sentence_splitter: SentenceSplitter | None = None
+        if split_by == "token":
+            tiktoken_imports.check()
+            self._tiktoken_tokenizer: "tiktoken.Encoding | None" = None
 
     def _init_checks(
         self,
@@ -137,7 +149,7 @@ class DocumentSplitter:
         :param respect_sentence_boundary: Whether to respect sentence boundaries when splitting
         :raises ValueError: If any parameter is invalid
         """
-        valid_split_by = ["function", "page", "passage", "period", "word", "line", "sentence"]
+        valid_split_by = ["function", "page", "passage", "period", "word", "line", "sentence", "token"]
         if split_by not in valid_split_by:
             raise ValueError(f"split_by must be one of {', '.join(valid_split_by)}.")
 
@@ -162,7 +174,7 @@ class DocumentSplitter:
 
     def warm_up(self) -> None:
         """
-        Warm up the DocumentSplitter by loading the sentence tokenizer.
+        Warm up the DocumentSplitter by loading the sentence tokenizer or tiktoken encoder.
         """
         if self._use_sentence_splitter and self.sentence_splitter is None:
             self.sentence_splitter = SentenceSplitter(
@@ -171,6 +183,8 @@ class DocumentSplitter:
                 extend_abbreviations=self.extend_abbreviations,
                 keep_white_spaces=True,
             )
+        if self.split_by == "token" and self._tiktoken_tokenizer is None:
+            self._tiktoken_tokenizer = tiktoken.get_encoding(self.tokenizer_encoding)
 
     @component.output_types(documents=list[Document])
     def run(self, documents: list[Document]) -> dict[str, list[Document]]:
@@ -191,6 +205,8 @@ class DocumentSplitter:
         :raises ValueError: if the content of a document is None.
         """
         if self._use_sentence_splitter and self.sentence_splitter is None:
+            self.warm_up()
+        if self.split_by == "token" and self._tiktoken_tokenizer is None:
             self.warm_up()
 
         if not isinstance(documents, list) or (documents and not isinstance(documents[0], Document)):
@@ -215,6 +231,9 @@ class DocumentSplitter:
 
         if self.split_by == "function" and self.splitting_function is not None:
             return self._split_by_function(doc)
+
+        if self.split_by == "token":
+            return self._split_by_token(doc)
 
         return self._split_by_character(doc)
 
@@ -242,6 +261,40 @@ class DocumentSplitter:
         )
 
         return split_docs
+
+    def _split_by_token(self, doc: Document) -> list[Document]:
+        """
+        Split a document by token count using tiktoken.
+
+        Encodes the full document text to tokens, slices into chunks of ``split_length`` tokens
+        with ``split_overlap`` overlap, then decodes each chunk back to a string.
+        """
+        tokens = self._tiktoken_tokenizer.encode(doc.content)  # type: ignore[union-attr, arg-type]
+        step = self.split_length - self.split_overlap
+
+        text_splits: list[str] = []
+        splits_pages: list[int] = []
+        splits_start_idxs: list[int] = []
+        cur_page = 1
+        cur_start_idx = 0
+
+        for i in range(0, len(tokens), step):
+            chunk_tokens = tokens[i : i + self.split_length]
+            chunk_text = self._tiktoken_tokenizer.decode(chunk_tokens)  # type: ignore[union-attr]
+            text_splits.append(chunk_text)
+            splits_pages.append(cur_page)
+            splits_start_idxs.append(cur_start_idx)
+
+            # Advance by the non-overlapping prefix only
+            non_overlap_text = self._tiktoken_tokenizer.decode(tokens[i : i + step])  # type: ignore[union-attr]
+            cur_page += non_overlap_text.count("\f")
+            cur_start_idx += len(non_overlap_text)
+
+        metadata = deepcopy(doc.meta)
+        metadata["source_id"] = doc.id
+        return self._create_docs_from_splits(
+            text_splits=text_splits, splits_pages=splits_pages, splits_start_idxs=splits_start_idxs, meta=metadata
+        )
 
     def _split_by_character(self, doc: Document) -> list[Document]:
         split_at = _CHARACTER_SPLIT_BY_MAPPING[self.split_by]
@@ -387,6 +440,7 @@ class DocumentSplitter:
             use_split_rules=self.use_split_rules,
             extend_abbreviations=self.extend_abbreviations,
             skip_empty_documents=self.skip_empty_documents,
+            tokenizer_encoding=self.tokenizer_encoding,
         )
         if self.splitting_function:
             serialized["init_parameters"]["splitting_function"] = serialize_callable(self.splitting_function)
