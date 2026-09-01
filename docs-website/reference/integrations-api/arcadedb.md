@@ -395,11 +395,16 @@ get_metadata_field_unique_values(
     search_term: str | None = None,
     from_: int = 0,
     size: int = 10,
-) -> tuple[list[str], int]
+    filters: dict[str, Any] | None = None,
+) -> tuple[list[Any], int]
 ```
 
 Retrieves unique values for a field matching a search term or all possible values
 if no search term is given.
+
+**Note**: values of different types are kept distinct even when they compare equal in Python, so
+the int `1`, the float `1.0`, the bool `True` and the str `"1"` are returned as four separate
+values.
 
 **Parameters:**
 
@@ -407,7 +412,8 @@ if no search term is given.
 - **search_term** (<code>str | None</code>) – Optional case-insensitive substring search term.
 - **from\_** (<code>int</code>) – The starting index for pagination.
 - **size** (<code>int</code>) – The number of values to return.
+- **filters** (<code>dict\[str, Any\] | None</code>) – Optional filters to restrict the documents considered.
 
 **Returns:**
 
-- <code>tuple\[list\[str\], int\]</code> – A tuple containing the paginated values and the total count.
+- <code>tuple\[list\[Any\], int\]</code> – A tuple containing the paginated values (in their original type) and the total count.
