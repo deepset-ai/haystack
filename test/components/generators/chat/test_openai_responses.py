@@ -779,6 +779,17 @@ class TestIntegration:
         assert message.meta["id"] is not None
         assert message.meta["logprobs"] is not None
 
+    def test_live_run_with_contentless_assistant_message(self) -> None:
+        # A discarded malformed tool call leaves a reply with no content parts, which serializes with empty
+        # content. This checks the API accepts it, not just the converter.
+        chat_messages = [ChatMessage.from_user("What's the capital of France"), ChatMessage.from_assistant(text=None)]
+        component = OpenAIResponsesChatGenerator(model="gpt-4.1-nano")
+        results = component.run(chat_messages)
+        assert len(results["replies"]) == 1
+        message: ChatMessage = results["replies"][0]
+        assert message.text is not None
+        assert "paris" in message.text.lower()
+
     def test_live_run_with_reasoning(self) -> None:
 
         chat_messages = [ChatMessage.from_user("Explain in 2 lines why is there a Moon?")]

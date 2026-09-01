@@ -906,6 +906,22 @@ class TestOpenAIChatGenerator:
         reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
     )
     @pytest.mark.integration
+    def test_live_run_with_contentless_assistant_message(self) -> None:
+        # A discarded malformed tool call leaves a reply with no content parts, which serializes with empty
+        # content. This checks the API accepts it, not just the converter.
+        chat_messages = [ChatMessage.from_user("What's the capital of France"), ChatMessage.from_assistant(text=None)]
+        component = OpenAIChatGenerator(model="gpt-4.1-nano")
+        results = component.run(chat_messages)
+        assert len(results["replies"]) == 1
+        message: ChatMessage = results["replies"][0]
+        assert message.text is not None
+        assert "Paris" in message.text
+
+    @pytest.mark.skipif(
+        not os.environ.get("OPENAI_API_KEY", None),
+        reason="Export an env var called OPENAI_API_KEY containing the OpenAI API key to run this test.",
+    )
+    @pytest.mark.integration
     def test_live_run_with_response_format_pydantic_model(self, calendar_event_model: type) -> None:
 
         chat_messages = [

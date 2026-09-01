@@ -955,15 +955,18 @@ class TestToOpenaiDictFormat:
             "name": "Assistant1",
         }
 
-    @pytest.mark.parametrize(
-        "message",
-        [ChatMessage.from_assistant(text=None), ChatMessage.from_assistant(reasoning="only reasoning")],
-        ids=["contentless", "reasoning_only"],
-    )
-    def test_to_openai_dict_format_assistant_message_without_representable_content(self, message):
-        # A Chat Generator that discards a malformed tool call returns a contentless reply, and reasoning is not part
-        # of this format. The API rejects an assistant message with no `content` key, so both send empty content.
+    def test_to_openai_dict_format_contentless_assistant_message(self):
+        # A Chat Generator that discards a malformed tool call returns a reply with no content parts. The API rejects
+        # an assistant message with no `content` key, so it is sent with empty content, and it round-trips.
+        message = ChatMessage.from_assistant(text=None)
         assert message.to_openai_dict_format() == {"role": "assistant", "content": ""}
+        assert ChatMessage.from_openai_dict_format({"role": "assistant", "content": ""}).text == ""
+
+    def test_to_openai_dict_format_reasoning_only_assistant_message_raises(self):
+        # This format has no reasoning field, so a reply carrying only reasoning has nothing to send.
+        message = ChatMessage.from_assistant(reasoning="only reasoning")
+        with pytest.raises(ValueError):
+            message.to_openai_dict_format()
 
     def test_to_openai_dict_format_invalid(self):
         message = ChatMessage(_role=ChatRole.USER, _content=[])

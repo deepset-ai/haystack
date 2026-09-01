@@ -647,10 +647,10 @@ class ChatMessage:
             `id` attribute.
         """
         has_content = bool(self.texts or self.tool_calls or self.tool_call_results or self.images or self.files)
-        # An assistant reply can legitimately carry nothing this format represents: a Chat Generator that discards a
-        # malformed tool call returns one, and reasoning is not part of this format. Those serialize with empty
-        # content, which the API accepts.
-        if not has_content and not self.is_from(ChatRole.ASSISTANT):
+        # An assistant reply with no content part serializes with empty content, which the API accepts. A Chat
+        # Generator that discards a malformed tool call returns such a reply.
+        is_contentless_assistant_reply = not self._content and self.is_from(ChatRole.ASSISTANT)
+        if not has_content and not is_contentless_assistant_reply:
             raise ValueError(
                 "A `ChatMessage` must contain at least one `TextContent`, `ToolCall`, "
                 "`ToolCallResult`, `ImageContent`, or `FileContent`."
@@ -773,7 +773,9 @@ class ChatMessage:
             raise ValueError(f"Unsupported role: {role}")
 
         if role == "assistant":
-            if not content and not tool_calls:
+            # An empty string is valid content for an assistant message: that is how a reply with nothing to send
+            # is serialized. Other falsy content requires tool calls.
+            if not content and content != "" and not tool_calls:
                 raise ValueError("For assistant messages, either `content` or `tool_calls` must be present.")
             if tool_calls:
                 for tc in tool_calls:
