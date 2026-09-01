@@ -948,6 +948,7 @@ class TestSplittingByToken:
         docs = splitter._split_by_token(doc)
 
         assert len(docs) == 1
+        assert docs[0].content is not None
         assert docs[0].content.strip() == "t1 t2 t3 t4"
 
     def test_split_by_token_threshold_single_chunk_mock(self):
@@ -1006,7 +1007,9 @@ class TestSplittingByTokenIntegration:
         doc = Document(content="one two three four five six seven eight nine ten")
         result = splitter.run(documents=[doc])["documents"]
         assert len(result) > 1
+        assert splitter._tiktoken_tokenizer is not None
         for chunk in result:
+            assert chunk.content is not None
             tokens = splitter._tiktoken_tokenizer.encode(chunk.content)
             assert len(tokens) <= 5
 
@@ -1027,13 +1030,16 @@ class TestSplittingByTokenIntegration:
         result = splitter.run(documents=[doc])["documents"]
         assert len(result) > 1
         for i in range(len(result) - 1):
-            assert result[i + 1].meta["split_idx_start"] < result[i].meta["split_idx_start"] + len(result[i].content)
+            content = result[i].content
+            assert content is not None
+            assert result[i + 1].meta["split_idx_start"] < result[i].meta["split_idx_start"] + len(content)
 
     def test_threshold_integration(self):
         splitter = DocumentSplitter(split_by="token", split_length=5, split_overlap=1, split_threshold=4)
         doc = Document(content="one two three four five six seven eight nine ten eleven")
         result = splitter.run(documents=[doc])["documents"]
         assert len(result) == 2
+        assert result[-1].content is not None
         assert "eleven" in result[-1].content
 
     def test_page_tracking(self):
