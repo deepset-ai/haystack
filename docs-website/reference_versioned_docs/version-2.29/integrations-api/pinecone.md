@@ -672,7 +672,8 @@ get_metadata_field_unique_values(
     search_term: str | None = None,
     from_: int = 0,
     size: int = 10,
-) -> tuple[list[str], int]
+    filters: dict[str, Any] | None = None,
+) -> tuple[list[Any], int]
 ```
 
 Retrieves unique values for a metadata field with optional search and pagination.
@@ -680,16 +681,22 @@ Retrieves unique values for a metadata field with optional search and pagination
 Note: This method fetches documents and extracts unique values in Python.
 Subject to Pinecone's TOP_K_LIMIT of 1000 documents.
 
+Note: Pinecone stores numeric metadata values as `float` (see `_convert_meta_to_int`), so an
+int written for an arbitrary field may come back as a numerically equal float rather than int.
+Values of different types are otherwise kept distinct even when they compare equal in Python
+(e.g. the int `1` and the bool `True` are returned as two separate values).
+
 **Parameters:**
 
 - **metadata_field** (<code>str</code>) – The metadata field name to get unique values for.
 - **search_term** (<code>str | None</code>) – Optional search term to filter values (case-insensitive substring match).
 - **from\_** (<code>int</code>) – Starting offset for pagination (default: 0).
 - **size** (<code>int</code>) – Number of values to return (default: 10).
+- **filters** (<code>dict\[str, Any\] | None</code>) – Optional filters to restrict the documents considered.
 
 **Returns:**
 
-- <code>tuple\[list\[str\], int\]</code> – Tuple of (list of unique values, total count of matching values).
+- <code>tuple\[list\[Any\], int\]</code> – Tuple of (list of unique values in their original type, total count of matching values).
 
 #### get_metadata_field_unique_values_async
 
@@ -699,7 +706,8 @@ get_metadata_field_unique_values_async(
     search_term: str | None = None,
     from_: int = 0,
     size: int = 10,
-) -> tuple[list[str], int]
+    filters: dict[str, Any] | None = None,
+) -> tuple[list[Any], int]
 ```
 
 Asynchronously retrieves unique values for a metadata field with optional search and pagination.
@@ -707,13 +715,19 @@ Asynchronously retrieves unique values for a metadata field with optional search
 Note: This method fetches documents and extracts unique values in Python.
 Subject to Pinecone's TOP_K_LIMIT of 1000 documents.
 
+Note: Pinecone stores numeric metadata values as `float` (see `_convert_meta_to_int`), so an
+int written for an arbitrary field may come back as a numerically equal float rather than int.
+Values of different types are otherwise kept distinct even when they compare equal in Python
+(e.g. the int `1` and the bool `True` are returned as two separate values).
+
 **Parameters:**
 
 - **metadata_field** (<code>str</code>) – The metadata field name to get unique values for.
 - **search_term** (<code>str | None</code>) – Optional search term to filter values (case-insensitive substring match).
 - **from\_** (<code>int</code>) – Starting offset for pagination (default: 0).
 - **size** (<code>int</code>) – Number of values to return (default: 10).
+- **filters** (<code>dict\[str, Any\] | None</code>) – Optional filters to restrict the documents considered.
 
 **Returns:**
 
-- <code>tuple\[list\[str\], int\]</code> – Tuple of (list of unique values, total count of matching values).
+- <code>tuple\[list\[Any\], int\]</code> – Tuple of (list of unique values in their original type, total count of matching values).
