@@ -256,6 +256,39 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
             from: '/docs/function-calling',
             to: '/docs/tool',
           },
+          // Non-chat Generators removed from core integrations
+          {
+            from: '/docs/amazonbedrockgenerator',
+            to: '/docs/amazonbedrockchatgenerator',
+          },
+          {
+            from: '/docs/anthropicgenerator',
+            to: '/docs/anthropicchatgenerator',
+          },
+          {
+            from: '/docs/coheregenerator',
+            to: '/docs/coherechatgenerator',
+          },
+          {
+            from: '/docs/llamacppgenerator',
+            to: '/docs/llamacppchatgenerator',
+          },
+          {
+            from: '/docs/nvidiagenerator',
+            to: '/docs/nvidiachatgenerator',
+          },
+          {
+            from: '/docs/ollamagenerator',
+            to: '/docs/ollamachatgenerator',
+          },
+          {
+            from: '/docs/togetheraigenerator',
+            to: '/docs/togetheraichatgenerator',
+          },
+          {
+            from: '/docs/watsonxgenerator',
+            to: '/docs/watsonxchatgenerator',
+          },
         ],
       },
     ],
