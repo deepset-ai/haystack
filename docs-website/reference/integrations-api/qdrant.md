@@ -1163,7 +1163,7 @@ get_metadata_field_unique_values(
 
 Returns unique values for a metadata field, with optional filters, search term and pagination.
 
-Unique values are ordered by first occurrence during scroll.
+Unique values are sorted by string representation, then by type name, before pagination is applied.
 
 **Note**: This operation can be expensive for metadata fields with many unique values, since all
 matching documents must be scrolled through to compute the total count.
@@ -1195,7 +1195,7 @@ get_metadata_field_unique_values_async(
 
 Asynchronously returns unique values for a metadata field, with optional filters, search term and pagination.
 
-Unique values are ordered by first occurrence during scroll.
+Unique values are sorted by string representation, then by type name, before pagination is applied.
 
 **Note**: This operation can be expensive for metadata fields with many unique values, since all
 matching documents must be scrolled through to compute the total count.
