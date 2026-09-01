@@ -282,7 +282,7 @@ class TestToolResultOffloadHookBehavior:
 
 
 class TestToolResultOffloadHookWithTextOnlyStore:
-    def test_text_results_are_still_offloaded(self, caplog):
+    def test_text_results_are_offloaded(self, caplog):
         store = TextOnlyToolResultStore()
         hook = ToolResultOffloadHook(store=store, offload_strategies={"*": AlwaysOffload()})
         state = _state_with_messages([_tool_message("a", "A" * 50)])
