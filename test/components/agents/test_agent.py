@@ -1129,9 +1129,8 @@ class TestAgentExitConditions:
         assert result["last_message"].text == "The weather is sunny."
 
     def test_contentless_assistant_message_keeps_history_sendable(self, weather_tool):
-        # A generator that discards a malformed tool call builds its reply with `text=None` and no tool calls, so the
-        # message carries no content part at all. The agent must keep looping *and* keep the history sendable, so the
-        # next LLM call can recover instead of raising while serializing.
+        # A discarded malformed tool call leaves a reply with no content parts. The agent must keep looping and keep
+        # the history sendable, so the next LLM call can recover.
         generator = SerializingChatGenerator(
             [ChatMessage.from_assistant(text=None), ChatMessage.from_assistant("The weather is sunny.")]
         )
@@ -1141,7 +1140,7 @@ class TestAgentExitConditions:
 
         assert result["step_count"] == 2
         assert result["last_message"].text == "The weather is sunny."
-        # The returned history must not poison a follow-up turn built from it either.
+        # The returned history must stay usable for a follow-up turn.
         for message in result["messages"]:
             message.to_openai_dict_format()
 

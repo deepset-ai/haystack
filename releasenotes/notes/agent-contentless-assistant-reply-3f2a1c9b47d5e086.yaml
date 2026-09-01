@@ -1,11 +1,6 @@
 ---
 fixes:
   - |
-    Fixed a crash in ``Agent`` on the LLM call that follows a reply from which a Chat Generator discarded a malformed
-    tool call. Such a reply is built with ``text=None`` and no tool calls, so it holds no content part at all, and every
-    Chat Message converter rejects it. The ``Agent`` deliberately keeps looping on an empty reply so the model can
-    recover, but it stored the reply unchanged, so the next call raised ``A ``ChatMessage`` must contain at least one
-    ``TextContent``, ``ToolCall``, ``ToolCallResult``, ``ImageContent``, ``FileContent``, or ``ReasoningContent``.`` before any
-    request reached the provider. The ``Agent`` now stores a contentless assistant reply with an empty ``TextContent``,
-    which keeps the history sendable for the retry and for any follow-up turn built from the returned messages. The
-    exit behavior is unchanged: an empty reply still does not satisfy the ``"text"`` exit condition.
+    Fixed a crash in ``Agent`` on the LLM call following a reply from which a Chat Generator discarded a malformed
+    tool call. Such a reply has no content parts, which every Chat Message converter rejects. The ``Agent`` now stores
+    it with an empty ``TextContent``, so the history stays sendable and the model can recover on the next call.

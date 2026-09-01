@@ -185,13 +185,10 @@ def _get_model_exit_reason(messages: list[ChatMessage]) -> str | None:
 
 def _with_sendable_content(messages: list[ChatMessage]) -> list[ChatMessage]:
     """
-    Replace assistant replies that carry no content part at all with an empty-text equivalent.
+    Replace assistant replies that have no content parts with an empty-text equivalent.
 
-    A Chat Generator that discards a malformed tool call builds its reply with `text=None` and no tool calls, which
-    leaves the message without any content part. `_get_model_exit_reason` deliberately keeps looping on such a reply so
-    the model can recover, but every Chat Message converter rejects a contentless message, so the next LLM call would
-    raise while serializing the history. An empty `TextContent` keeps the history sendable, both for the retry and for
-    any follow-up turn the caller builds from the returned messages.
+    A Chat Generator that discards a malformed tool call returns such a reply, and every Chat Message converter
+    rejects it. An empty `TextContent` keeps the history sendable for the next LLM call.
     """
     return [
         message
