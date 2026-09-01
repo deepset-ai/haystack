@@ -183,19 +183,14 @@ def _get_model_exit_reason(messages: list[ChatMessage]) -> str | None:
     return None
 
 
-def _add_empty_text_to_contentless_replies(messages: list[ChatMessage]) -> list[ChatMessage]:
+def _drop_contentless_replies(messages: list[ChatMessage]) -> list[ChatMessage]:
     """
-    Ensure every assistant reply has at least an empty string as its text content.
+    Remove replies that have no content parts.
 
-    A Chat Generator that discards a malformed tool call returns a reply with no content parts, which Chat Message
-    converters reject. An empty `TextContent` keeps the history sendable for the next LLM call.
+    A Chat Generator that discards a malformed tool call returns such a reply, which Chat Message converters reject.
+    Leaving it out of the history keeps the next LLM call sendable.
     """
-    return [
-        message
-        if message._content or not message.is_from(ChatRole.ASSISTANT)
-        else ChatMessage.from_assistant(text="", meta=message.meta, name=message.name)
-        for message in messages
-    ]
+    return [message for message in messages if message._content]
 
 
 def _pending_tool_call_messages_from_state(state: State) -> list[ChatMessage]:
@@ -1034,8 +1029,10 @@ class Agent:
                 llm_span.set_content_tag("haystack.agent.step.llm.input", chat_generator_inputs)
                 result = self.chat_generator.run(**chat_generator_inputs)
                 llm_span.set_content_tag("haystack.agent.step.llm.output", result)
-            llm_messages = _add_empty_text_to_contentless_replies(messages=result["replies"])
-            exe_context.state.set("messages", llm_messages)
+            llm_messages = result["replies"]
+            # A contentless reply is kept out of the history because converters reject it. Usage and the exit reason
+            # still come from the raw replies: the call was billed and may have been truncated.
+            exe_context.state.set("messages", _drop_contentless_replies(messages=llm_messages))
             _record_llm_usage(state=exe_context.state, llm_messages=llm_messages)
             _record_context_tokens(state=exe_context.state, llm_messages=llm_messages)
 
@@ -1104,8 +1101,10 @@ class Agent:
                 # which copies the current contextvars context — preserving the active tracing span.
                 result = await _execute_component_async(self.chat_generator, **chat_generator_inputs)
                 llm_span.set_content_tag("haystack.agent.step.llm.output", result)
-            llm_messages = _add_empty_text_to_contentless_replies(messages=result["replies"])
-            exe_context.state.set("messages", llm_messages)
+            llm_messages = result["replies"]
+            # A contentless reply is kept out of the history because converters reject it. Usage and the exit reason
+            # still come from the raw replies: the call was billed and may have been truncated.
+            exe_context.state.set("messages", _drop_contentless_replies(messages=llm_messages))
             _record_llm_usage(state=exe_context.state, llm_messages=llm_messages)
             _record_context_tokens(state=exe_context.state, llm_messages=llm_messages)
 

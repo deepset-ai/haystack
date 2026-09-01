@@ -2,5 +2,7 @@
 fixes:
   - |
     Fixed a crash in ``Agent`` on the LLM call following a reply from which a Chat Generator discarded a malformed
-    tool call. Such a reply has no content parts, which Chat Message converters reject. The ``Agent`` now stores it
-    with an empty ``TextContent``, so the history stays sendable and the model can recover on the next call.
+    tool call. Such a reply has no content parts, which Chat Message converters reject. The ``Agent`` now leaves it
+    out of the message history, so the next call and any follow-up turn built from the returned messages stay
+    sendable. Its token usage is still recorded, and a ``length`` or ``content_filter`` finish reason on it still
+    ends the run.
