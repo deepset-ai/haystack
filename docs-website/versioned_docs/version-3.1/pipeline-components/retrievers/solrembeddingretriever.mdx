@@ -1,0 +1,117 @@
+---
+title: "SolrEmbeddingRetriever"
+id: solrembeddingretriever
+slug: "/solrembeddingretriever"
+description: "An embedding-based Retriever compatible with the Solr Document Store."
+---
+
+# SolrEmbeddingRetriever
+
+An embedding-based Retriever compatible with the Solr Document Store.
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | 1. After a [Text Embedder](../embedders.mdx) and before a [`ChatPromptBuilder`](../builders/chatpromptbuilder.mdx) in a RAG pipeline 2. The last component in the semantic search pipeline 3. After a [Text Embedder](../embedders.mdx) and before a [`TransformersExtractiveReader`](../readers/transformersextractivereader.mdx) in an extractive QA pipeline |
+| **Mandatory init variables**           | `document_store`: An instance of a [SolrDocumentStore](../../document-stores/solrdocumentstore.mdx) |
+| **Mandatory run variables**            | `query_embedding`: A list of floats |
+| **Output variables**                   | `documents`: A list of documents (matching the query) |
+| **API reference**                      | [Solr](/reference/integrations-solr) |
+| **GitHub link**                        | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/solr |
+| **Package name** | `solr-haystack` |
+
+</div>
+
+## Overview
+
+`SolrEmbeddingRetriever` compares the query and Document embeddings and fetches the Documents most relevant to the query from [`SolrDocumentStore`](../../document-stores/solrdocumentstore.mdx). It uses Solr's `{!knn}` query parser to run an approximate nearest neighbor search over the dense vector field.
+
+When using the `SolrEmbeddingRetriever` in your pipeline, the query needs to be turned into an embedding first. You can do so with a [Text Embedder](../embedders.mdx), for example `SentenceTransformersTextEmbedder`. Documents need to have been indexed with embeddings created by the corresponding [Document Embedder](../embedders.mdx) — make sure the embedding model matches the `embedding_dim` the Document Store was created with.
+
+### Parameters
+
+In addition to the `query_embedding`, the `SolrEmbeddingRetriever` accepts other optional parameters, including `top_k` (the maximum number of Documents to retrieve) and `filters` to narrow down the search space. Filters act as a k-NN graph pre-filter, so the search still returns up to `top_k` documents.
+
+The Retriever also has a `run_async` method, which uses the Document Store's async client.
+
+### Usage
+
+### Installation
+
+To start using Solr with Haystack, install the package with:
+
+```shell
+pip install solr-haystack
+```
+
+#### On its own
+
+This Retriever needs an instance of `SolrDocumentStore` and indexed Documents to run.
+
+```python
+from haystack_integrations.document_stores.solr import SolrDocumentStore
+from haystack_integrations.components.retrievers.solr import SolrEmbeddingRetriever
+
+document_store = SolrDocumentStore(
+    url="http://localhost:8983/solr", core="haystack", embedding_dim=384
+)
+
+retriever = SolrEmbeddingRetriever(document_store=document_store)
+
+# using a fake vector to keep the example simple
+retriever.run(query_embedding=[0.1] * 384)
+```
+
+#### In a Pipeline
+
+This example indexes documents with their embeddings and then embeds the query before passing it to the Retriever:
+
+```python
+from haystack import Document, Pipeline
+from haystack.components.embedders import (
+    SentenceTransformersDocumentEmbedder,
+    SentenceTransformersTextEmbedder,
+)
+from haystack.components.writers import DocumentWriter
+from haystack_integrations.components.retrievers.solr import SolrEmbeddingRetriever
+from haystack_integrations.document_stores.solr import SolrDocumentStore
+
+document_store = SolrDocumentStore(
+    url="http://localhost:8983/solr", core="haystack", embedding_dim=384
+)
+
+model = "sentence-transformers/all-MiniLM-L6-v2"
+
+documents = [
+    Document(content="There are over 7,000 languages spoken around the world today."),
+    Document(
+        content="Elephants have been observed to behave in a way that indicates a high level of self-awareness, such as recognizing themselves in mirrors.",
+    ),
+    Document(
+        content="In certain parts of the world, like the Maldives, Puerto Rico, and San Diego, you can witness the phenomenon of bioluminescent waves.",
+    ),
+]
+
+indexing_pipeline = Pipeline()
+indexing_pipeline.add_component(
+    "embedder", SentenceTransformersDocumentEmbedder(model=model)
+)
+indexing_pipeline.add_component("writer", DocumentWriter(document_store=document_store))
+indexing_pipeline.connect("embedder", "writer")
+indexing_pipeline.run({"embedder": {"documents": documents}})
+
+query_pipeline = Pipeline()
+query_pipeline.add_component(
+    "text_embedder", SentenceTransformersTextEmbedder(model=model)
+)
+query_pipeline.add_component(
+    "retriever", SolrEmbeddingRetriever(document_store=document_store)
+)
+query_pipeline.connect("text_embedder.embedding", "retriever.query_embedding")
+
+result = query_pipeline.run(
+    {"text_embedder": {"text": "How many languages are there?"}}
+)
+print(result["retriever"]["documents"][0])
+```

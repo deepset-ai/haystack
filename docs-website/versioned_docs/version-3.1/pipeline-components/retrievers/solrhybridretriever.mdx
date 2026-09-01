@@ -1,0 +1,111 @@
+---
+title: "SolrHybridRetriever"
+id: solrhybridretriever
+slug: "/solrhybridretriever"
+description: "This is a SuperComponent that implements a Hybrid Retriever in a single component, relying on Apache Solr as the backend Document Store."
+---
+
+# SolrHybridRetriever
+
+This is a [SuperComponent](../../concepts/components/supercomponents.mdx) that implements a Hybrid Retriever in a single component, relying on Apache Solr as the backend Document Store.
+
+A Hybrid Retriever uses both traditional keyword-based search (such as BM25) and embedding-based search to retrieve documents, combining the strengths of both approaches. The Retriever then merges and re-ranks the results from both methods.
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| Most common position in a pipeline | 1. Before a ChatPromptBuilder in a RAG pipeline 2. The last component in a hybrid search pipeline 3. Before a TransformersExtractiveReader in an extractive QA pipeline |
+| Mandatory init variables | `document_store`: An instance of `SolrDocumentStore` to use for retrieval  <br /> <br />`embedder`: Any [Embedder](../embedders.mdx) implementing the `TextEmbedder` protocol |
+| Mandatory run variables | `query`: A query string |
+| Output variables | `documents`: A list of documents matching the query |
+| API reference | [Solr](/reference/integrations-solr) |
+| GitHub | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/solr |
+
+</div>
+
+## Overview
+
+The `SolrHybridRetriever` combines two retrieval methods:
+
+1. **BM25 Retrieval**: A keyword-based search that uses the BM25 algorithm to find documents based on term frequency and inverse document frequency. It's based on the [`SolrBM25Retriever`](solrbm25retriever.mdx) component and is suitable for traditional keyword-based search.
+2. **Embedding-based Retrieval**: A semantic search that uses vector similarity to find documents that are semantically similar to the query. It's based on the [`SolrEmbeddingRetriever`](solrembeddingretriever.mdx) component and is suitable for semantic search.
+
+The component automatically handles:
+
+- Converting the query into an embedding using the provided embedder,
+- Running both retrieval methods over the same Solr core,
+- Merging and re-ranking the results using the specified join mode (reciprocal rank fusion by default).
+
+### Setup and Installation
+
+```shell
+pip install solr-haystack
+```
+
+### Optional Parameters
+
+This Retriever accepts various optional parameters. You can verify the most up-to-date list of parameters in our [API Reference](/reference/integrations-solr).
+
+The two retrieval branches are configured with the `filters_bm25`, `top_k_bm25`, `filter_policy_bm25`, `fuzziness`, `scale_score`, and `all_terms_must_match` parameters for the BM25 branch, and `filters_embedding`, `top_k_embedding`, and `filter_policy_embedding` for the embedding branch. The `DocumentJoiner` parameters (`join_mode`, `weights`, `top_k`, `sort_by_score`) are all exposed on the `SolrHybridRetriever` class, so you can set them directly.
+
+You can pass additional parameters to the underlying Retrievers using the `bm25_retriever` and `embedding_retriever` dictionaries:
+
+```python
+retriever = SolrHybridRetriever(
+    document_store=document_store,
+    embedder=embedder,
+    bm25_retriever={"raise_on_failure": True},
+    embedding_retriever={"raise_on_failure": False},
+)
+```
+
+### Usage
+
+This example indexes documents with their embeddings and then runs hybrid retrieval with a single component:
+
+```python
+from haystack import Document, Pipeline
+from haystack.components.embedders import (
+    SentenceTransformersDocumentEmbedder,
+    SentenceTransformersTextEmbedder,
+)
+from haystack.components.writers import DocumentWriter
+from haystack_integrations.components.retrievers.solr import SolrHybridRetriever
+from haystack_integrations.document_stores.solr import SolrDocumentStore
+
+document_store = SolrDocumentStore(
+    url="http://localhost:8983/solr", core="haystack", embedding_dim=384
+)
+
+model = "sentence-transformers/all-MiniLM-L6-v2"
+
+documents = [
+    Document(content="There are over 7,000 languages spoken around the world today."),
+    Document(
+        content="Elephants have been observed to behave in a way that indicates a high level of self-awareness, such as recognizing themselves in mirrors.",
+    ),
+    Document(
+        content="In certain parts of the world, like the Maldives, Puerto Rico, and San Diego, you can witness the phenomenon of bioluminescent waves.",
+    ),
+]
+
+indexing_pipeline = Pipeline()
+indexing_pipeline.add_component(
+    "embedder", SentenceTransformersDocumentEmbedder(model=model)
+)
+indexing_pipeline.add_component("writer", DocumentWriter(document_store=document_store))
+indexing_pipeline.connect("embedder", "writer")
+indexing_pipeline.run({"embedder": {"documents": documents}})
+
+retriever = SolrHybridRetriever(
+    document_store=document_store,
+    embedder=SentenceTransformersTextEmbedder(model=model),
+)
+retriever.warm_up()
+
+result = retriever.run(query="How many languages are there?")
+print(result["documents"][0])
+```
+
+You can also use the `SolrHybridRetriever` in a pipeline like any other component. Since it embeds the query itself, it doesn't need a separate Text Embedder in the query pipeline.
