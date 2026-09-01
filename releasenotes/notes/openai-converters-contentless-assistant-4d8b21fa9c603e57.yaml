@@ -1,0 +1,10 @@
+---
+fixes:
+  - |
+    The OpenAI Chat Completions and Responses converters no longer raise on an assistant message that carries no
+    content the format can represent. A Chat Generator that discards a malformed tool call returns such a reply, and
+    a reply carrying only reasoning is in the same position for Chat Completions, which has no reasoning field.
+    Both are now sent with empty content, which the API accepts, instead of raising ``A ``ChatMessage`` must contain at
+    least one ``TextContent``, ``ToolCall``, ``ToolCallResult``, ``ImageContent``, or ``FileContent``.`` This unbreaks the LLM
+    call that follows such a reply, for example in ``Agent``, where the reply is kept in the message history so its
+    ``meta`` remains available. Messages from other roles still raise, since they cannot legitimately be empty.

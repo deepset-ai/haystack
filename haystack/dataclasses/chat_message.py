@@ -646,7 +646,11 @@ class ChatMessage:
             If the message format is invalid, or if `require_tool_call_ids` is True and any Tool Call is missing an
             `id` attribute.
         """
-        if not self.texts and not self.tool_calls and not self.tool_call_results and not self.images and not self.files:
+        has_content = bool(self.texts or self.tool_calls or self.tool_call_results or self.images or self.files)
+        # An assistant reply can legitimately carry nothing this format represents: a Chat Generator that discards a
+        # malformed tool call returns one, and reasoning is not part of this format. Those serialize with empty
+        # content, which the API accepts.
+        if not has_content and not self.is_from(ChatRole.ASSISTANT):
             raise ValueError(
                 "A `ChatMessage` must contain at least one `TextContent`, `ToolCall`, "
                 "`ToolCallResult`, `ImageContent`, or `FileContent`."
@@ -731,6 +735,9 @@ class ChatMessage:
         # OpenAI Chat Completions API does not support reasoning content, so we ignore it
         if self.texts:
             openai_msg["content"] = self.texts[0]
+        elif not self.tool_calls:
+            # The API rejects an assistant message with no `content` key, so send it explicitly empty.
+            openai_msg["content"] = ""
         if self.tool_calls:
             openai_tool_calls = []
             for tc in self.tool_calls:
