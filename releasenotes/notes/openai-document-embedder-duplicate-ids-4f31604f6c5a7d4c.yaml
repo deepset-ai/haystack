@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    Fixed ``OpenAIDocumentEmbedder`` (and ``AzureOpenAIDocumentEmbedder``, which inherits from it) silently
+    dropping one of two documents that share an ``id``. Texts were collected in a dictionary keyed by document
+    id, so the second document's text overwrote the first, only one embedding was requested, and both documents
+    were returned carrying it. Texts are now kept in input order, so each document is embedded and receives its
+    own embedding.

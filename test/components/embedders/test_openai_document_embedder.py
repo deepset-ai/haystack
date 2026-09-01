@@ -15,6 +15,15 @@ from haystack.components.embedders.openai_document_embedder import OpenAIDocumen
 from haystack.utils.auth import Secret
 
 
+def one_embedding_per_input(**kwargs):
+    """Mimic the embeddings API, which returns exactly one embedding per input text."""
+    response = Mock()
+    response.data = [Mock(embedding=[float(i)]) for i in range(len(kwargs["input"]))]
+    response.model = "text-embedding-ada-002"
+    response.usage = {"prompt_tokens": 10, "total_tokens": 10}
+    return response
+
+
 class TestOpenAIDocumentEmbedder:
     def test_init_default(self, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "fake-api-key")
@@ -167,13 +176,13 @@ class TestOpenAIDocumentEmbedder:
 
         prepared_texts = embedder._prepare_texts_to_embed(documents)
 
-        assert prepared_texts == {
-            "0": "meta_value 0 | document number 0:\ncontent",
-            "1": "meta_value 1 | document number 1:\ncontent",
-            "2": "meta_value 2 | document number 2:\ncontent",
-            "3": "meta_value 3 | document number 3:\ncontent",
-            "4": "meta_value 4 | document number 4:\ncontent",
-        }
+        assert prepared_texts == [
+            ("0", "meta_value 0 | document number 0:\ncontent"),
+            ("1", "meta_value 1 | document number 1:\ncontent"),
+            ("2", "meta_value 2 | document number 2:\ncontent"),
+            ("3", "meta_value 3 | document number 3:\ncontent"),
+            ("4", "meta_value 4 | document number 4:\ncontent"),
+        ]
 
     def test_prepare_texts_to_embed_w_suffix(self):
         documents = [Document(id=f"{i}", content=f"document number {i}") for i in range(5)]
@@ -184,13 +193,13 @@ class TestOpenAIDocumentEmbedder:
 
         prepared_texts = embedder._prepare_texts_to_embed(documents)
 
-        assert prepared_texts == {
-            "0": "my_prefix document number 0 my_suffix",
-            "1": "my_prefix document number 1 my_suffix",
-            "2": "my_prefix document number 2 my_suffix",
-            "3": "my_prefix document number 3 my_suffix",
-            "4": "my_prefix document number 4 my_suffix",
-        }
+        assert prepared_texts == [
+            ("0", "my_prefix document number 0 my_suffix"),
+            ("1", "my_prefix document number 1 my_suffix"),
+            ("2", "my_prefix document number 2 my_suffix"),
+            ("3", "my_prefix document number 3 my_suffix"),
+            ("4", "my_prefix document number 4 my_suffix"),
+        ]
 
     def test_run_wrong_input_format(self):
         embedder = OpenAIDocumentEmbedder(api_key=Secret.from_token("fake-api-key"))
@@ -218,7 +227,7 @@ class TestOpenAIDocumentEmbedder:
         embedder = OpenAIDocumentEmbedder(api_key=Secret.from_token("fake_api_key"))
         embedder.warm_up()
         assert embedder.client is not None
-        fake_texts_to_embed = {"1": "text1", "2": "text2"}
+        fake_texts_to_embed = [("1", "text1"), ("2", "text2")]
         with patch.object(
             embedder.client.embeddings,
             "create",
@@ -259,11 +268,56 @@ class TestOpenAIDocumentEmbedder:
         assert result["documents"][0].embedding is None
         assert result["documents"][1].embedding == [0.4, 0.5, 0.6]
 
+    def test_run_documents_sharing_an_id_are_embedded_separately(self):
+        embedder = OpenAIDocumentEmbedder(api_key=Secret.from_token("fake_api_key"))
+        embedder.warm_up()
+        assert embedder.client is not None
+
+        documents = [
+            Document(id="A", content="first text"),
+            Document(id="B", content="second text"),
+            Document(id="A", content="third text, same id as the first"),
+        ]
+
+        with patch.object(embedder.client.embeddings, "create", side_effect=one_embedding_per_input) as mock_create:
+            result = embedder.run(documents=documents)
+
+        assert mock_create.call_args.kwargs["input"] == [
+            "first text",
+            "second text",
+            "third text, same id as the first",
+        ]
+        assert [doc.embedding for doc in result["documents"]] == [[0.0], [1.0], [2.0]]
+
+    @pytest.mark.asyncio
+    async def test_run_async_documents_sharing_an_id_are_embedded_separately(self):
+        embedder = OpenAIDocumentEmbedder(api_key=Secret.from_token("fake_api_key"))
+        await embedder.warm_up_async()
+        assert embedder.async_client is not None
+
+        documents = [
+            Document(id="A", content="first text"),
+            Document(id="B", content="second text"),
+            Document(id="A", content="third text, same id as the first"),
+        ]
+
+        with patch.object(
+            embedder.async_client.embeddings, "create", new=AsyncMock(side_effect=one_embedding_per_input)
+        ) as mock_create:
+            result = await embedder.run_async(documents=documents)
+
+        assert mock_create.call_args.kwargs["input"] == [
+            "first text",
+            "second text",
+            "third text, same id as the first",
+        ]
+        assert [doc.embedding for doc in result["documents"]] == [[0.0], [1.0], [2.0]]
+
     def test_embed_batch_raises_exception_on_failure(self):
         embedder = OpenAIDocumentEmbedder(api_key=Secret.from_token("fake_api_key"), raise_on_failure=True)
         embedder.warm_up()
         assert embedder.client is not None
-        fake_texts_to_embed = {"1": "text1", "2": "text2"}
+        fake_texts_to_embed = [("1", "text1"), ("2", "text2")]
         with patch.object(
             embedder.client.embeddings,
             "create",

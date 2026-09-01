@@ -224,33 +224,35 @@ class OpenAIDocumentEmbedder:
         """
         return default_from_dict(cls, data)
 
-    def _prepare_texts_to_embed(self, documents: list[Document]) -> dict[str, str]:
+    def _prepare_texts_to_embed(self, documents: list[Document]) -> list[tuple[str, str]]:
         """
         Prepare the texts to embed by concatenating the Document text with the metadata fields to embed.
+
+        Returns one `(document id, text)` pair per input document, in input order. Documents are not keyed by
+        id, so documents sharing an id each keep their own text.
         """
-        texts_to_embed = {}
+        texts_to_embed = []
         for doc in documents:
             meta_values_to_embed = [
                 str(doc.meta[key]) for key in self.meta_fields_to_embed if key in doc.meta and doc.meta[key] is not None
             ]
 
-            texts_to_embed[doc.id] = (
-                self.prefix + self.embedding_separator.join(meta_values_to_embed + [doc.content or ""]) + self.suffix
-            )
+            text = self.prefix + self.embedding_separator.join(meta_values_to_embed + [doc.content or ""]) + self.suffix
+            texts_to_embed.append((doc.id, text))
 
         return texts_to_embed
 
     def _embed_batch(
-        self, texts_to_embed: dict[str, str], batch_size: int
-    ) -> tuple[dict[str, list[float]], dict[str, Any]]:
+        self, texts_to_embed: list[tuple[str, str]], batch_size: int
+    ) -> tuple[list[list[float] | None], dict[str, Any]]:
         """
         Embed a list of texts in batches.
         """
 
-        doc_ids_to_embeddings: dict[str, list[float]] = {}
+        all_embeddings: list[list[float] | None] = []
         meta: dict[str, Any] = {}
         for batch in tqdm(
-            batched(texts_to_embed.items(), batch_size), disable=not self.progress_bar, desc="Calculating embeddings"
+            batched(texts_to_embed, batch_size), disable=not self.progress_bar, desc="Calculating embeddings"
         ):
             args: dict[str, Any] = {"model": self.model, "input": [b[1] for b in batch], "encoding_format": "float"}
 
@@ -267,10 +269,10 @@ class OpenAIDocumentEmbedder:
                 logger.exception(msg, ids=ids, exc=exc)
                 if self.raise_on_failure:
                     raise exc
+                all_embeddings.extend([None] * len(batch))
                 continue
 
-            embeddings = [el.embedding for el in response.data]
-            doc_ids_to_embeddings.update(dict(zip((b[0] for b in batch), embeddings, strict=True)))
+            all_embeddings.extend(el.embedding for el in response.data)
 
             if "model" not in meta:
                 meta["model"] = response.model
@@ -280,19 +282,19 @@ class OpenAIDocumentEmbedder:
                 meta["usage"]["prompt_tokens"] += response.usage.prompt_tokens
                 meta["usage"]["total_tokens"] += response.usage.total_tokens
 
-        return doc_ids_to_embeddings, meta
+        return all_embeddings, meta
 
     async def _embed_batch_async(
-        self, texts_to_embed: dict[str, str], batch_size: int
-    ) -> tuple[dict[str, list[float]], dict[str, Any]]:
+        self, texts_to_embed: list[tuple[str, str]], batch_size: int
+    ) -> tuple[list[list[float] | None], dict[str, Any]]:
         """
         Embed a list of texts in batches asynchronously.
         """
 
-        doc_ids_to_embeddings: dict[str, list[float]] = {}
+        all_embeddings: list[list[float] | None] = []
         meta: dict[str, Any] = {}
 
-        batches = list(batched(texts_to_embed.items(), batch_size))
+        batches = list(batched(texts_to_embed, batch_size))
         if self.progress_bar:
             batches = async_tqdm(batches, desc="Calculating embeddings")
 
@@ -312,10 +314,10 @@ class OpenAIDocumentEmbedder:
                 logger.exception(msg, ids=ids, exc=exc)
                 if self.raise_on_failure:
                     raise exc
+                all_embeddings.extend([None] * len(batch))
                 continue
 
-            embeddings = [el.embedding for el in response.data]
-            doc_ids_to_embeddings.update(dict(zip((b[0] for b in batch), embeddings, strict=True)))
+            all_embeddings.extend(el.embedding for el in response.data)
 
             if "model" not in meta:
                 meta["model"] = response.model
@@ -325,7 +327,7 @@ class OpenAIDocumentEmbedder:
                 meta["usage"]["prompt_tokens"] += response.usage.prompt_tokens
                 meta["usage"]["total_tokens"] += response.usage.total_tokens
 
-        return doc_ids_to_embeddings, meta
+        return all_embeddings, meta
 
     @component.output_types(documents=list[Document], meta=dict[str, Any])
     def run(self, documents: list[Document]) -> dict[str, Any]:
@@ -350,14 +352,12 @@ class OpenAIDocumentEmbedder:
 
         texts_to_embed = self._prepare_texts_to_embed(documents=documents)
 
-        doc_ids_to_embeddings, meta = self._embed_batch(texts_to_embed=texts_to_embed, batch_size=self.batch_size)
+        all_embeddings, meta = self._embed_batch(texts_to_embed=texts_to_embed, batch_size=self.batch_size)
 
-        new_documents = []
-        for doc in documents:
-            if doc.id in doc_ids_to_embeddings:
-                new_documents.append(replace(doc, embedding=doc_ids_to_embeddings[doc.id]))
-            else:
-                new_documents.append(replace(doc))
+        new_documents = [
+            replace(doc, embedding=embedding) if embedding is not None else replace(doc)
+            for doc, embedding in zip(documents, all_embeddings, strict=True)
+        ]
 
         return {"documents": new_documents, "meta": meta}
 
@@ -384,15 +384,11 @@ class OpenAIDocumentEmbedder:
 
         texts_to_embed = self._prepare_texts_to_embed(documents=documents)
 
-        doc_ids_to_embeddings, meta = await self._embed_batch_async(
-            texts_to_embed=texts_to_embed, batch_size=self.batch_size
-        )
+        all_embeddings, meta = await self._embed_batch_async(texts_to_embed=texts_to_embed, batch_size=self.batch_size)
 
-        new_documents = []
-        for doc in documents:
-            if doc.id in doc_ids_to_embeddings:
-                new_documents.append(replace(doc, embedding=doc_ids_to_embeddings[doc.id]))
-            else:
-                new_documents.append(replace(doc))
+        new_documents = [
+            replace(doc, embedding=embedding) if embedding is not None else replace(doc)
+            for doc, embedding in zip(documents, all_embeddings, strict=True)
+        ]
 
         return {"documents": new_documents, "meta": meta}

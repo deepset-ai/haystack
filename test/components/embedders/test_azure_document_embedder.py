@@ -218,7 +218,7 @@ class TestAzureOpenAIDocumentEmbedder:
         embedder.warm_up()
         assert embedder.client is not None
 
-        fake_texts_to_embed = {"1": "text1", "2": "text2"}
+        fake_texts_to_embed = [("1", "text1"), ("2", "text2")]
 
         with patch.object(
             embedder.client.embeddings,
@@ -239,7 +239,7 @@ class TestAzureOpenAIDocumentEmbedder:
         )
         embedder.warm_up()
         assert embedder.client is not None
-        fake_texts_to_embed = {"1": "text1", "2": "text2"}
+        fake_texts_to_embed = [("1", "text1"), ("2", "text2")]
         with patch.object(
             embedder.client.embeddings,
             "create",
