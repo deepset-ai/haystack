@@ -1132,11 +1132,11 @@ class TestAgentExitConditions:
         # A discarded malformed tool call leaves a reply with no content parts. The agent must keep looping and keep
         # the history sendable, so the next LLM call can recover.
         generator = SerializingChatGenerator(
-            [ChatMessage.from_assistant(text=None), ChatMessage.from_assistant("The weather is sunny.")]
+            replies=[ChatMessage.from_assistant(text=None), ChatMessage.from_assistant("The weather is sunny.")]
         )
         agent = Agent(chat_generator=generator, tools=[weather_tool], exit_conditions=["text"])
 
-        result = agent.run([ChatMessage.from_user("What's the weather?")])
+        result = agent.run(messages=[ChatMessage.from_user("What's the weather?")])
 
         assert result["step_count"] == 2
         assert result["last_message"].text == "The weather is sunny."
@@ -1196,11 +1196,11 @@ class TestAgentExitConditions:
     @pytest.mark.asyncio
     async def test_contentless_assistant_message_keeps_history_sendable_async(self, weather_tool):
         generator = SerializingChatGenerator(
-            [ChatMessage.from_assistant(text=None), ChatMessage.from_assistant("The weather is sunny.")]
+            replies=[ChatMessage.from_assistant(text=None), ChatMessage.from_assistant("The weather is sunny.")]
         )
         agent = Agent(chat_generator=generator, tools=[weather_tool], exit_conditions=["text"])
 
-        result = await agent.run_async([ChatMessage.from_user("What's the weather?")])
+        result = await agent.run_async(messages=[ChatMessage.from_user("What's the weather?")])
 
         assert result["step_count"] == 2
         assert result["last_message"].text == "The weather is sunny."

@@ -183,12 +183,12 @@ def _get_model_exit_reason(messages: list[ChatMessage]) -> str | None:
     return None
 
 
-def _with_sendable_content(messages: list[ChatMessage]) -> list[ChatMessage]:
+def _add_empty_text_to_contentless_replies(messages: list[ChatMessage]) -> list[ChatMessage]:
     """
-    Replace assistant replies that have no content parts with an empty-text equivalent.
+    Ensure every assistant reply has at least an empty string as its text content.
 
-    A Chat Generator that discards a malformed tool call returns such a reply, and every Chat Message converter
-    rejects it. An empty `TextContent` keeps the history sendable for the next LLM call.
+    A Chat Generator that discards a malformed tool call returns a reply with no content parts, which Chat Message
+    converters reject. An empty `TextContent` keeps the history sendable for the next LLM call.
     """
     return [
         message
@@ -1034,7 +1034,7 @@ class Agent:
                 llm_span.set_content_tag("haystack.agent.step.llm.input", chat_generator_inputs)
                 result = self.chat_generator.run(**chat_generator_inputs)
                 llm_span.set_content_tag("haystack.agent.step.llm.output", result)
-            llm_messages = _with_sendable_content(result["replies"])
+            llm_messages = _add_empty_text_to_contentless_replies(messages=result["replies"])
             exe_context.state.set("messages", llm_messages)
             _record_llm_usage(state=exe_context.state, llm_messages=llm_messages)
             _record_context_tokens(state=exe_context.state, llm_messages=llm_messages)
@@ -1104,7 +1104,7 @@ class Agent:
                 # which copies the current contextvars context — preserving the active tracing span.
                 result = await _execute_component_async(self.chat_generator, **chat_generator_inputs)
                 llm_span.set_content_tag("haystack.agent.step.llm.output", result)
-            llm_messages = _with_sendable_content(result["replies"])
+            llm_messages = _add_empty_text_to_contentless_replies(messages=result["replies"])
             exe_context.state.set("messages", llm_messages)
             _record_llm_usage(state=exe_context.state, llm_messages=llm_messages)
             _record_context_tokens(state=exe_context.state, llm_messages=llm_messages)
