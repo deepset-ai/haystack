@@ -22,7 +22,7 @@ class FileSystemToolResultStore(ToolResultStore):
     ```
 
     Binary content is supported too: `write` takes bytes (an offloaded image or file) and `read` returns them
-    unchanged, while text content round trips as a string.
+    unchanged.
     """
 
     supports_binary_content = True

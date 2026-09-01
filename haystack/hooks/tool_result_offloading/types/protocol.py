@@ -17,16 +17,15 @@ class ToolResultStore(Protocol):
     result; `read` resolves that reference back to the original content. Only the store interprets a reference -
     callers pass it back to `read` unchanged.
 
-    A store that can hold binary content sets `supports_binary_content` to True and accepts bytes in `write`. A store
-    that can only hold text leaves it False, and the hook then leaves image and file results in the conversation
-    rather than handing the store something it cannot store.
+    A store that sets `supports_binary_content` takes bytes in `write` and gives them back from `read`. One that
+    leaves it False is only ever given text, and image and file results stay in the conversation instead.
 
     Implement both `to_dict` and `from_dict` to make a custom store serializable; the default implementations below
     cover stores whose constructor takes no arguments.
     """
 
-    # Whether `write` accepts bytes. False by default, so a store that only deals in text needs no changes and
-    # simply never receives the image and file content of a tool result.
+    # Whether the store handles binary content: `write` accepting bytes and `read` returning them. When False, the
+    # store is only ever given text, and the image and file content of a tool result stays in the conversation.
     supports_binary_content: bool = False
 
     def write(self, *, key: str, content: str | bytes) -> str:

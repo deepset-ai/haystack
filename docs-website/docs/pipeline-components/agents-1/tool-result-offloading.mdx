@@ -33,15 +33,15 @@ The system is composed of these layers:
 - **Policy** - decides *whether* a given result is offloaded. Built-in policies: `AlwaysOffload`, `NeverOffload`, `OffloadOverChars`.
 - **Store** - decides *where* the full result lives. The built-in `FileSystemToolResultStore` writes results to the local file system.
 
-When a result is offloaded, the hook writes each part of it to the store and rebuilds the message with a compact pointer in its place. A result that is a single text gets a one-line pointer:
+When a result is offloaded, the hook writes each part of it to the store and rebuilds the message with a compact pointer in its place. For example:
 
 ```
-Tool result offloaded to text (18234 characters) at '/abs/path/tool_results/2_search_call-123_0.txt'. Preview: Fusion startups reported...
+Tool result offloaded to text (18234 characters) at '/abs/path/tool_results/2_search_call-123.txt'. Preview: Fusion startups reported...
 ```
 
 The pointer carries the store reference, the original size, and, for text, a preview of the first `preview_chars` characters (200 by default, configurable on the hook), so the model knows roughly what was offloaded and where to find it.
 
-A result made of several parts — any mix of text, images, and files — is written one store entry per part, and the pointer lists all of them:
+A result made of several parts — any mix of text, images, and files — gets one store entry and one pointer line per part:
 
 ```
 Tool result offloaded to 3 files:
@@ -125,7 +125,7 @@ The hook only offloads **successful** tool results:
 - Text, image, and file results are all offloaded. Each part of a result gets its own store entry, so every text, image, and file stays usable on its own.
 - Image and file content only goes to a store that declares `supports_binary_content`. With a text-only store, a result carrying an image or a file stays in context and a warning is logged.
 - The file extension of an image or file comes from its `filename` when it has one, and from its `mime_type` otherwise (falling back to `.bin` when neither yields an extension).
-- Policies see the result as the text and base64 payloads of all its parts joined together, so a threshold such as `OffloadOverChars` measures the context the result actually occupies.
+- Policies see the result as the text and base64 payloads of all its parts joined together.
 - Each result is offloaded at most once, even though the hook runs on every tool step. This also means two offload hooks registered under `after_tool` won't offload each other's pointers.
 
 ## Policies
@@ -186,7 +186,7 @@ class InMemoryToolResultStore(ToolResultStore):
         return self._data[reference]
 ```
 
-A store like this one only holds text, which is all it will ever be given: `supports_binary_content` defaults to `False`, and the hook leaves image and file results in context rather than handing a text-only store bytes it cannot write. A store that *can* hold bytes — a file system, object storage — sets the flag and widens `content` to `str | bytes`, and `read` returns whatever it stored:
+A store like this one only ever receives text: `supports_binary_content` defaults to `False`, so the hook leaves image and file results in context rather than handing it bytes it cannot write. A store that can hold bytes sets the flag and widens both signatures:
 
 ```python
 class BinaryCapableStore(ToolResultStore):

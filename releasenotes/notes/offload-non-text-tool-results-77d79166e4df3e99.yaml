@@ -14,11 +14,13 @@ enhancements:
         2. image/png (48210 bytes) at '/abs/path/tool_results/2_fetch_call-123_1.png'
         3. application/pdf named 'q3.pdf' (1048576 bytes) at '/abs/path/tool_results/2_fetch_call-123_2.pdf'
 
-    Binary content is opt-in, via a new ``supports_binary_content`` attribute on the ``ToolResultStore`` protocol
-    that ``FileSystemToolResultStore`` sets. A store leaving it at its ``False`` default never receives bytes: images
-    and files stay in context with a warning, as before, so existing custom stores keep working unchanged.
+    Binary content is opt-in, via a new ``supports_binary_content`` attribute on the ``ToolResultStore`` protocol,
+    which ``FileSystemToolResultStore`` sets to ``True``. A store leaving it at its ``False`` default never receives
+    bytes: images and files stay in context with a warning, as before, so existing custom stores keep working
+    unchanged.
 
-    Offload policies receive the text and base64 payloads of all parts joined together.
+    An offload policy receives the result as a single string: the text and base64 payloads of all its parts
+    concatenated.
 upgrade:
   - |
     The ``tool_result_offloaded`` meta key that the hook sets on an offloaded message now always holds a list of

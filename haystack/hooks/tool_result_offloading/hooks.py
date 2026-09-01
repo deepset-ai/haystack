@@ -140,13 +140,10 @@ class ToolResultOffloadHook:
     any tool without a more specific entry. More specific keys win. A tool with no matching key (and no `"*"`) is not
     offloaded.
 
-    Only successful tool output is offloaded; error results (including `before_tool` human-in-the-loop rejections) are
-    always left in context. Each part of a result is written to its own store entry, so every text, image, and file
-    stays usable on its own - a base64 payload is a costly way to carry an image or a file through a conversation.
-    The pointer names a single-part result on one line and lists the entries of a multi-part one. A result with image
-    or file content is only offloaded to a store that sets `supports_binary_content`; with a text-only store it stays
-    in context and a warning is logged. Each result is offloaded at most once, even though the hook runs on every tool
-    step.
+    Only successful tool output is offloaded; error results are always left in context. Each part of a result is
+    written to its own store entry and the pointer says where each one went. Image and file content is only offloaded
+    to a store that sets `supports_binary_content`; with a text-only store the result stays in context and a warning
+    is logged. Each result is offloaded at most once, even though the hook runs on every tool step.
 
     The hook keeps no mutable state, so a single instance can be shared across concurrent runs. The constructor
     `store`, however, is shared by every run that does not override it — fine for single-user or local use, but in a
@@ -207,8 +204,8 @@ class ToolResultOffloadHook:
         if start == len(messages):
             return
 
-        # A run may carry its own store in `hook_context` - the hook instance is shared across concurrent runs, so
-        # isolating users from each other means giving each run its own store rather than each its own hook.
+        # The hook instance is shared across concurrent runs, so a run isolates itself by carrying its own store in
+        # `hook_context`.
         hook_context = state.data.get("hook_context") or {}
         store = hook_context.get(RESULT_STORE_CONTEXT_KEY, self.store)
 
@@ -317,14 +314,12 @@ class ToolResultOffloadHook:
         """
         Write a result's content blocks to the store and build the pointer that replaces them in the conversation.
 
-        Every content block goes to its own store entry, so each text, image, or file stays usable on its own. A
-        result that is a single block gets a one-line pointer and keeps `prefix` as its key; a result with several
-        gets one numbered line per entry and a key carrying each block's position.
+        Every content block goes to its own store entry. A single block keeps `prefix` as its key and gets a one-line
+        pointer; several blocks get position-suffixed keys and one numbered pointer line each.
 
         :param content_blocks: The result's content blocks, in order.
         :param store: The store to write to.
-        :param prefix: The result's store key prefix, to which the extension - and the block position, for a result
-            spanning several entries - is appended.
+        :param prefix: The result's store key prefix, as described above.
         :returns: The store references written, and the pointer text for the conversation.
         """
         references: list[str] = []
@@ -370,8 +365,7 @@ class ToolResultOffloadHook:
             label = content_block.mime_type or "file"
             filename = content_block.filename
 
-        # What the tool called the file wins over its MIME type. Only the suffix is taken, so a tool-supplied name
-        # cannot influence where in the store the content block lands.
+        # What the tool called the file wins over its MIME type. Only the suffix is taken.
         mime_extension = mimetypes.guess_extension(content_block.mime_type) if content_block.mime_type else None
         extension = (Path(filename).suffix if filename else "") or mime_extension or _FALLBACK_EXTENSION
         reference = store.write(key=f"{key_prefix}{extension}", content=data)
