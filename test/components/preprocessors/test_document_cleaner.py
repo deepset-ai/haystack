@@ -66,7 +66,7 @@ class TestDocumentCleaner:
     def test_single_document(self):
         with pytest.raises(TypeError, match="DocumentCleaner expects a List of Documents as input."):
             cleaner = DocumentCleaner()
-            cleaner.run(documents=Document())
+            cleaner.run(documents=Document())  # type: ignore[arg-type]
 
     def test_empty_list(self):
         cleaner = DocumentCleaner()
@@ -163,6 +163,7 @@ class TestDocumentCleaner:
         )
         text = "PAGE ONE\fThe quick brown fox jumps high\fPAGE THREE"
         result = cleaner.run(documents=[Document(content=text)])["documents"][0]
+        assert result.content is not None
         assert result.content.split("\f")[1] == "The quick brown fox jumps high"
         # With no genuine repeated header/footer, all three pages must round-trip unchanged and in order.
         assert result.content.split("\f") == ["PAGE ONE", "The quick brown fox jumps high", "PAGE THREE"]

@@ -32,7 +32,7 @@ def test_init_with_overlap_greater_than_chunk_size():
 
 def test_init_with_invalid_separators():
     with pytest.raises(ValueError):
-        _ = RecursiveDocumentSplitter(separators=[".", 2])
+        _ = RecursiveDocumentSplitter(separators=[".", 2])  # type: ignore[list-item]
 
 
 def test_init_with_negative_split_length():
@@ -102,11 +102,11 @@ def test_run_multiple_new_lines_unit_char():
     assert chunks[2].content == "Final test."
 
 
-def test_run_empty_documents(caplog: LogCaptureFixture):
+def test_run_empty_documents(caplog: LogCaptureFixture) -> None:
     splitter = RecursiveDocumentSplitter(split_length=20, split_overlap=0, separators=["."])
     empty_doc = Document(content="")
-    doc_chunks = splitter.run([empty_doc])
-    doc_chunks = doc_chunks["documents"]
+    result = splitter.run([empty_doc])
+    doc_chunks = result["documents"]
     assert len(doc_chunks) == 0
     assert "has an empty content. Skipping this document." in caplog.text
 
@@ -128,8 +128,8 @@ def test_run_using_custom_sentence_tokenizer():
 AI, in its broadest sense, is intelligence exhibited by machines, particularly computer systems.
 AI technology is widely used throughout industry, government, and science. Some high-profile applications include advanced web search engines (e.g., Google Search); recommendation systems (used by YouTube, Amazon, and Netflix); interacting via human speech (e.g., Google Assistant, Siri, and Alexa); autonomous vehicles (e.g., Waymo); generative and creative tools (e.g., ChatGPT and AI art); and superhuman play and analysis in strategy games (e.g., chess and Go)."""  # noqa: E501
 
-    chunks = splitter.run([Document(content=text)])
-    chunks = chunks["documents"]
+    result = splitter.run([Document(content=text)])
+    chunks = result["documents"]
 
     assert len(chunks) == 4
     assert chunks[0].content == "Artificial intelligence (AI) - Introduction\n\n"
@@ -198,8 +198,8 @@ def test_run_split_by_word_count_page_breaks_split_unit_char():
     splitter = RecursiveDocumentSplitter(split_length=19, split_overlap=0, separators=[" "], split_unit="char")
     text = "This is some text. \f This text is on another page. \f This is the last pag3."
     doc = Document(content=text)
-    doc_chunks = splitter.run([doc])
-    doc_chunks = doc_chunks["documents"]
+    result = splitter.run([doc])
+    doc_chunks = result["documents"]
 
     assert len(doc_chunks) == 5
     assert doc_chunks[0].content == "This is some text. "
@@ -370,8 +370,8 @@ def test_run_split_document_with_overlap_character_unit():
     text = """A simple sentence1. A bright sentence2. A clever sentence3"""
 
     doc = Document(content=text)
-    doc_chunks = splitter.run([doc])
-    doc_chunks = doc_chunks["documents"]
+    result = splitter.run([doc])
+    doc_chunks = result["documents"]
 
     assert len(doc_chunks) == 5
     assert doc_chunks[0].content == "A simple sentence1."
@@ -414,8 +414,8 @@ def test_run_split_document_with_overlap_and_fallback_character_unit():
     text = "A simple sentence1. Short. Short."
 
     doc = Document(content=text)
-    doc_chunks = splitter.run([doc])
-    doc_chunks = doc_chunks["documents"]
+    result = splitter.run([doc])
+    doc_chunks = result["documents"]
 
     assert len(doc_chunks) == 8
     assert doc_chunks[0].content == "A simple"
@@ -434,6 +434,7 @@ def test_run_separator_exists_but_split_length_too_small_fall_back_to_character_
     result = splitter.run(documents=[doc])
     assert len(result["documents"]) == 10
     for doc in result["documents"]:
+        assert doc.content is not None
         if re.escape(doc.content) not in ["\\ "]:
             assert len(doc.content) == 2
 
@@ -445,6 +446,7 @@ def test_run_fallback_to_character_chunking_by_default_length_too_short():
     doc = Document(content=text)
     chunks = splitter.run([doc])["documents"]
     for chunk in chunks:
+        assert chunk.content is not None
         assert len(chunk.content) <= 2
 
 
@@ -455,6 +457,7 @@ def test_run_fallback_to_word_chunking_by_default_length_too_short():
     doc = Document(content=text)
     chunks = splitter.run([doc])["documents"]
     for chunk in chunks:
+        assert chunk.content is not None
         assert splitter._chunk_length(chunk.content) <= 2
 
 
@@ -545,8 +548,8 @@ def test_run_split_by_word_count_page_breaks_word_unit():
     splitter = RecursiveDocumentSplitter(split_length=4, split_overlap=0, separators=[" "], split_unit="word")
     text = "This is some text. \f This text is on another page. \f This is the last pag3."
     doc = Document(content=text)
-    doc_chunks = splitter.run([doc])
-    doc_chunks = doc_chunks["documents"]
+    result = splitter.run([doc])
+    doc_chunks = result["documents"]
 
     assert len(doc_chunks) == 5
     assert doc_chunks[0].content == "This is some text. "
@@ -741,6 +744,7 @@ def test_run_split_by_dot_and_overlap_1_word_unit_split_idx_start():
     chunks = splitter.run([Document(content=text)])["documents"]
     assert len(chunks) == 5
     for chunk in chunks:
+        assert chunk.content is not None
         # split_idx_start must equal the character index of the chunk content in the original text
         assert chunk.meta["split_idx_start"] == text.index(chunk.content), (
             f"Wrong split_idx_start for chunk {chunk.content!r}: "
@@ -952,12 +956,12 @@ def test_run_split_by_token_with_sentence_tokenizer():
 
 
 @pytest.mark.integration
-def test_run_split_by_token_with_empty_document(caplog: LogCaptureFixture):
+def test_run_split_by_token_with_empty_document(caplog: LogCaptureFixture) -> None:
     splitter = RecursiveDocumentSplitter(split_length=4, separators=["."], split_unit="token")
 
     empty_doc = Document(content="")
-    doc_chunks = splitter.run([empty_doc])
-    doc_chunks = doc_chunks["documents"]
+    result = splitter.run([empty_doc])
+    doc_chunks = result["documents"]
 
     assert len(doc_chunks) == 0
     assert "has an empty content. Skipping this document." in caplog.text
@@ -973,6 +977,7 @@ def test_run_split_by_token_with_fallback():
 
     assert len(chunks) > 1
     for chunk in chunks:
+        assert chunk.content is not None
         assert splitter._chunk_length(chunk.content) <= 2
 
 
@@ -1022,15 +1027,19 @@ def test_run_complex_text_with_multiple_separators():
 
     assert len(chunks) == 4
 
+    assert chunks[0].content is not None
     assert len(chunks[0].content) == 152
     assert chunks[0].content.startswith("A")
 
+    assert chunks[1].content is not None
     assert len(chunks[1].content) == 101
     assert chunks[1].content.startswith("B")
 
+    assert chunks[2].content is not None
     assert len(chunks[2].content) == 107
     assert chunks[2].content.startswith("B")
 
+    assert chunks[3].content is not None
     assert len(chunks[3].content) == 152
     assert chunks[3].content.startswith("C")
     assert chunks[3].content.endswith("D" * 50)
@@ -1132,8 +1141,12 @@ def test_fallback_overlap_word_unit():
     # Each chunk must share 1 word with its neighbour
     assert len(result) > 1
     for i in range(len(result) - 1):
-        prev_words = result[i].content.split()
-        next_words = result[i + 1].content.split()
+        prev_content = result[i].content
+        next_content = result[i + 1].content
+        assert prev_content is not None
+        assert next_content is not None
+        prev_words = prev_content.split()
+        next_words = next_content.split()
         # The last word of chunk i must appear at the start of chunk i+1
         assert prev_words[-1] == next_words[0], (
             f"No overlap between chunk {i} ({contents[i]!r}) and chunk {i + 1} ({contents[i + 1]!r})"
@@ -1151,6 +1164,7 @@ def test_fallback_overlap_token_unit():
     # Each chunk should be at most 4 tokens; overlap means more than 1 chunk
     assert len(result) > 1
     for chunk in result:
+        assert chunk.content is not None
         assert splitter._chunk_length(chunk.content) <= 4
 
 
@@ -1160,8 +1174,12 @@ def test_word_fallback_does_not_count_multichar_whitespace_as_words():
     splitter = RecursiveDocumentSplitter(split_length=1, split_overlap=0, split_unit="word", separators=["\n\n"])
     chunks = splitter.run([Document(content="hello  world")])["documents"]
     # Exactly one real word per chunk and no whitespace-only chunk.
-    assert [chunk.content.strip() for chunk in chunks] == ["hello", "world"]
-    assert all(chunk.content.strip() for chunk in chunks)
+    stripped_contents: list[str] = []
+    for chunk in chunks:
+        assert chunk.content is not None
+        stripped_contents.append(chunk.content.strip())
+    assert stripped_contents == ["hello", "world"]
+    assert all(stripped_contents)
 
 
 def test_fallback_word_unit_no_trailing_whitespace_only_chunk():
@@ -1169,4 +1187,6 @@ def test_fallback_word_unit_no_trailing_whitespace_only_chunk():
     splitter = RecursiveDocumentSplitter(split_length=1, split_overlap=0, split_unit="word", separators=["\n\n"])
     result = splitter.run([Document(content="hello world ")])["documents"]
 
-    assert all(doc.content.strip() for doc in result)
+    for doc in result:
+        assert doc.content is not None
+        assert doc.content.strip()

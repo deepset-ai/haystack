@@ -313,7 +313,7 @@ class TestDecorators:
         ).lstrip()
         splitter = PythonCodeSplitter(min_effective_lines=1, max_effective_lines=2)
         result = splitter.run(documents=[Document(content=source)])
-        all_decorators = []
+        all_decorators: list[str] = []
         for chunk in result["documents"]:
             all_decorators.extend(chunk.meta.get("decorators") or [])
         assert any("staticmethod" in d for d in all_decorators)

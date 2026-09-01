@@ -50,7 +50,7 @@ class TestSplittingByFunctionOrCharacterRegex:
     def test_single_doc(self):
         with pytest.raises(TypeError, match="DocumentSplitter expects a List of Documents as input."):
             splitter = DocumentSplitter()
-            splitter.run(documents=Document())
+            splitter.run(documents=Document())  # type: ignore[arg-type]
 
     def test_empty_list(self):
         splitter = DocumentSplitter()
@@ -59,7 +59,7 @@ class TestSplittingByFunctionOrCharacterRegex:
 
     def test_unsupported_split_by(self):
         with pytest.raises(ValueError, match="split_by must be one of "):
-            DocumentSplitter(split_by="unsupported")
+            DocumentSplitter(split_by="unsupported")  # type: ignore[arg-type]
 
     def test_undefined_function(self):
         with pytest.raises(ValueError, match="When 'split_by' is set to 'function', a valid 'splitting_function'"):
@@ -119,6 +119,7 @@ class TestSplittingByFunctionOrCharacterRegex:
         result = splitter.run(documents=[Document(content=text)])
         contents = [doc.content for doc in result["documents"]]
         for content in contents:
+            assert content is not None
             assert content in text, f"chunk {content!r} is not present in the source text"
         assert contents == ["a b c ", "c d e f"]
 
@@ -332,6 +333,7 @@ class TestSplittingByFunctionOrCharacterRegex:
         assert docs[0].meta["split_id"] == 0
         assert docs[0].meta["split_idx_start"] == text.index(docs[0].content)
         assert docs[0].meta["_split_overlap"][0]["range"] == (0, 5)
+        assert docs[1].content is not None
         assert docs[1].content[0:5] == "is a "
         # doc 1
         assert docs[1].content == "is a second sentence. And there is a third sentence."
@@ -490,6 +492,7 @@ class TestSplittingByFunctionOrCharacterRegex:
         assert docs[0].meta["split_id"] == 0
         assert docs[0].meta["split_idx_start"] == text.index(docs[0].content)  # 0
         assert docs[0].meta["_split_overlap"][0]["range"] == (0, 23)
+        assert docs[1].content is not None
         assert docs[1].content[0:23] == "some words. There is a "
         # doc 1
         assert docs[1].content == "some words. There is a second sentence. And a third "
@@ -498,6 +501,7 @@ class TestSplittingByFunctionOrCharacterRegex:
         assert docs[1].meta["_split_overlap"][0]["range"] == (20, 43)
         assert docs[1].meta["_split_overlap"][1]["range"] == (0, 29)
         assert docs[0].content[20:43] == "some words. There is a "
+        assert docs[2].content is not None
         assert docs[2].content[0:29] == "second sentence. And a third "
         # doc 2
         assert docs[2].content == "second sentence. And a third sentence."
@@ -828,7 +832,9 @@ class TestSplittingNLTKSentenceSplitter:
             documents[0].content
             == "This is a test sentence with many many words that exceeds the split length and should not be repeated. "
         )
+        assert documents[1].content is not None
         assert "This is a test sentence with many many words" not in documents[1].content
+        assert documents[2].content is not None
         assert "This is a test sentence with many many words" not in documents[2].content
 
     def test_run_split_by_word_respect_sentence_boundary_with_split_overlap_and_page_breaks(self) -> None:
