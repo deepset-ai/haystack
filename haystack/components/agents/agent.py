@@ -183,6 +183,24 @@ def _get_model_exit_reason(messages: list[ChatMessage]) -> str | None:
     return None
 
 
+def _with_sendable_content(messages: list[ChatMessage]) -> list[ChatMessage]:
+    """
+    Replace assistant replies that carry no content part at all with an empty-text equivalent.
+
+    A Chat Generator that discards a malformed tool call builds its reply with `text=None` and no tool calls, which
+    leaves the message without any content part. `_get_model_exit_reason` deliberately keeps looping on such a reply so
+    the model can recover, but every Chat Message converter rejects a contentless message, so the next LLM call would
+    raise while serializing the history. An empty `TextContent` keeps the history sendable, both for the retry and for
+    any follow-up turn the caller builds from the returned messages.
+    """
+    return [
+        message
+        if message._content or not message.is_from(ChatRole.ASSISTANT)
+        else ChatMessage.from_assistant(text="", meta=message.meta, name=message.name)
+        for message in messages
+    ]
+
+
 def _pending_tool_call_messages_from_state(state: State) -> list[ChatMessage]:
     """
     Return the pending tool-call message after `before_tool` hooks have run.
@@ -1019,7 +1037,7 @@ class Agent:
                 llm_span.set_content_tag("haystack.agent.step.llm.input", chat_generator_inputs)
                 result = self.chat_generator.run(**chat_generator_inputs)
                 llm_span.set_content_tag("haystack.agent.step.llm.output", result)
-            llm_messages = result["replies"]
+            llm_messages = _with_sendable_content(result["replies"])
             exe_context.state.set("messages", llm_messages)
             _record_llm_usage(state=exe_context.state, llm_messages=llm_messages)
             _record_context_tokens(state=exe_context.state, llm_messages=llm_messages)
@@ -1089,7 +1107,7 @@ class Agent:
                 # which copies the current contextvars context — preserving the active tracing span.
                 result = await _execute_component_async(self.chat_generator, **chat_generator_inputs)
                 llm_span.set_content_tag("haystack.agent.step.llm.output", result)
-            llm_messages = result["replies"]
+            llm_messages = _with_sendable_content(result["replies"])
             exe_context.state.set("messages", llm_messages)
             _record_llm_usage(state=exe_context.state, llm_messages=llm_messages)
             _record_context_tokens(state=exe_context.state, llm_messages=llm_messages)

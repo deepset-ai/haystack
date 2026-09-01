@@ -191,6 +191,26 @@ class ToolAssertingChatGenerator:
         return {"replies": [message]}
 
 
+@component
+class SerializingChatGenerator:
+    """Serializes the incoming history the way a real generator does, then returns the next scripted reply."""
+
+    def __init__(self, replies: list[ChatMessage]):
+        self.replies = list(replies)
+
+    @component.output_types(replies=list[ChatMessage])
+    def run(self, messages: list[ChatMessage], tools: list[Tool] | Toolset | None = None, **kwargs) -> dict[str, Any]:
+        for message in messages:
+            message.to_openai_dict_format()
+        return {"replies": [self.replies.pop(0)]}
+
+    @component.output_types(replies=list[ChatMessage])
+    async def run_async(
+        self, messages: list[ChatMessage], tools: list[Tool] | Toolset | None = None, **kwargs
+    ) -> dict[str, Any]:
+        return self.run(messages=messages, tools=tools, **kwargs)
+
+
 def _parallel_tool_calling_generator() -> MockChatGenerator:
     """Requests two `weather_tool` calls on the first turn, then returns a plain reply so the agent loop exits."""
     return MockChatGenerator(
@@ -1108,9 +1128,26 @@ class TestAgentExitConditions:
         assert result["step_count"] == 2
         assert result["last_message"].text == "The weather is sunny."
 
+    def test_contentless_assistant_message_keeps_history_sendable(self, weather_tool):
+        # A generator that discards a malformed tool call builds its reply with `text=None` and no tool calls, so the
+        # message carries no content part at all. The agent must keep looping *and* keep the history sendable, so the
+        # next LLM call can recover instead of raising while serializing.
+        generator = SerializingChatGenerator(
+            [ChatMessage.from_assistant(text=None), ChatMessage.from_assistant("The weather is sunny.")]
+        )
+        agent = Agent(chat_generator=generator, tools=[weather_tool], exit_conditions=["text"])
+
+        result = agent.run([ChatMessage.from_user("What's the weather?")])
+
+        assert result["step_count"] == 2
+        assert result["last_message"].text == "The weather is sunny."
+        # The returned history must not poison a follow-up turn built from it either.
+        for message in result["messages"]:
+            message.to_openai_dict_format()
+
     @pytest.mark.parametrize("finish_reason", ["length", "content_filter"])
-    @pytest.mark.parametrize("text", ["", "Partial answer."])
-    def test_incomplete_model_reply_exits_with_specific_reason(self, weather_tool, finish_reason, text):
+    @pytest.mark.parametrize(("text", "expected_text"), [("", ""), ("Partial answer.", "Partial answer."), (None, "")])
+    def test_incomplete_model_reply_exits_with_specific_reason(self, weather_tool, finish_reason, text, expected_text):
         replies = [
             ChatMessage.from_assistant(text=text, meta={"finish_reason": finish_reason}),
             "Recovered answer that must not be generated.",
@@ -1121,7 +1158,7 @@ class TestAgentExitConditions:
 
         assert result["step_count"] == 1
         assert result["exit_reason"] == finish_reason
-        assert result["last_message"].text == text
+        assert result["last_message"].text == expected_text
 
     @pytest.mark.parametrize("finish_reason", ["length", "content_filter"])
     def test_incomplete_model_reply_without_tools_preserves_reason(self, finish_reason):
@@ -1158,9 +1195,25 @@ class TestAgentExitConditions:
         assert result["last_message"].text == "The weather is sunny."
 
     @pytest.mark.asyncio
+    async def test_contentless_assistant_message_keeps_history_sendable_async(self, weather_tool):
+        generator = SerializingChatGenerator(
+            [ChatMessage.from_assistant(text=None), ChatMessage.from_assistant("The weather is sunny.")]
+        )
+        agent = Agent(chat_generator=generator, tools=[weather_tool], exit_conditions=["text"])
+
+        result = await agent.run_async([ChatMessage.from_user("What's the weather?")])
+
+        assert result["step_count"] == 2
+        assert result["last_message"].text == "The weather is sunny."
+        for message in result["messages"]:
+            message.to_openai_dict_format()
+
+    @pytest.mark.asyncio
     @pytest.mark.parametrize("finish_reason", ["length", "content_filter"])
-    @pytest.mark.parametrize("text", ["", "Partial answer."])
-    async def test_incomplete_model_reply_exits_with_specific_reason_async(self, weather_tool, finish_reason, text):
+    @pytest.mark.parametrize(("text", "expected_text"), [("", ""), ("Partial answer.", "Partial answer."), (None, "")])
+    async def test_incomplete_model_reply_exits_with_specific_reason_async(
+        self, weather_tool, finish_reason, text, expected_text
+    ):
         replies = [
             ChatMessage.from_assistant(text=text, meta={"finish_reason": finish_reason}),
             "Recovered answer that must not be generated.",
@@ -1171,7 +1224,7 @@ class TestAgentExitConditions:
 
         assert result["step_count"] == 1
         assert result["exit_reason"] == finish_reason
-        assert result["last_message"].text == text
+        assert result["last_message"].text == expected_text
 
     @pytest.mark.asyncio
     async def test_exits_on_empty_assistant_message_truncated_by_output_limit_async(self, monkeypatch, weather_tool):
