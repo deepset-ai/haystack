@@ -81,7 +81,7 @@ class DocumentSplitter:
             - `passage` for splitting by double line breaks ("\\n\\n")
             - `line` for splitting each line ("\\n")
             - `sentence` for splitting by NLTK sentence tokenizer
-            - `token` for splitting by token count using tiktoken (requires ``pip install tiktoken``)
+            - `token` for splitting by token count using tiktoken (requires `pip install tiktoken`)
 
         :param split_length: The maximum number of units in each split.
         :param split_overlap: The number of overlapping units for each split.
@@ -99,8 +99,8 @@ class DocumentSplitter:
         :param skip_empty_documents: Choose whether to skip documents with empty content. Default is True.
             Set to False when downstream components in the Pipeline (like LLMDocumentContentExtractor) can extract text
             from non-textual documents.
-        :param tokenizer_encoding: The tiktoken encoding to use when ``split_by="token"``. Defaults to
-            ``"o200k_base"`` (current OpenAI models). Only used when ``split_by="token"``.
+        :param tokenizer_encoding: The tiktoken encoding to use when `split_by="token"`. Defaults to
+            `"o200k_base"` (current OpenAI models). Only used when `split_by="token"`.
         """
 
         self.split_by = split_by
@@ -266,10 +266,19 @@ class DocumentSplitter:
         """
         Split a document by token count using tiktoken.
 
-        Encodes the full document text to tokens, slices into chunks of ``split_length`` tokens
-        with ``split_overlap`` overlap, then decodes each chunk back to a string.
+        Encodes the full document text to tokens, slices into chunks of `split_length` tokens
+        with `split_overlap` overlap, then decodes each chunk back to a string.
         """
         tokens = self._tiktoken_tokenizer.encode(doc.content)  # type: ignore[union-attr, arg-type]
+        if not tokens:
+            if self.skip_empty_documents:
+                return []
+            metadata = deepcopy(doc.meta)
+            metadata["source_id"] = doc.id
+            return self._create_docs_from_splits(
+                text_splits=[""], splits_pages=[1], splits_start_idxs=[0], meta=metadata
+            )
+
         step = self.split_length - self.split_overlap
 
         text_splits: list[str] = []
@@ -280,10 +289,15 @@ class DocumentSplitter:
 
         for i in range(0, len(tokens), step):
             chunk_tokens = tokens[i : i + self.split_length]
-            chunk_text = self._tiktoken_tokenizer.decode(chunk_tokens)  # type: ignore[union-attr]
-            text_splits.append(chunk_text)
-            splits_pages.append(cur_page)
-            splits_start_idxs.append(cur_start_idx)
+
+            # Check if length of current chunk is below split_threshold
+            if len(chunk_tokens) < self.split_threshold and len(text_splits) > 0:
+                text_splits[-1] += self._tiktoken_tokenizer.decode(chunk_tokens[self.split_overlap :])  # type: ignore[union-attr]
+            elif not self.skip_empty_documents or len(chunk_tokens) > 0:
+                chunk_text = self._tiktoken_tokenizer.decode(chunk_tokens)  # type: ignore[union-attr]
+                text_splits.append(chunk_text)
+                splits_pages.append(cur_page)
+                splits_start_idxs.append(cur_start_idx)
 
             # Advance by the non-overlapping prefix only
             non_overlap_text = self._tiktoken_tokenizer.decode(tokens[i : i + step])  # type: ignore[union-attr]
