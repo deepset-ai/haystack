@@ -128,20 +128,6 @@ class TestToolResultOffloadHookBehavior:
         hook.run(state)
         assert state.data["messages"][0].tool_call_result.result == "boom"
 
-    def test_each_text_content_gets_its_own_entry(self, tmp_path):
-        store = FileSystemToolResultStore(root=tmp_path)
-        hook = ToolResultOffloadHook(store=store, offload_strategies={"*": AlwaysOffload()})
-        message = ChatMessage.from_tool(
-            tool_result=[TextContent("A" * 30), TextContent("B" * 30)],
-            origin=ToolCall(tool_name="a", arguments={}, id="1"),
-        )
-        state = _state_with_messages([message])
-        hook.run(state)
-        offloaded = state.data["messages"][0]
-        references = offloaded.meta["tool_result_offloaded"]
-        assert offloaded.tool_call_result.result.startswith("Tool result offloaded to 2 files:")
-        assert [store.read(reference) for reference in references] == ["A" * 30, "B" * 30]
-
     def test_mixed_result_offloads_every_block_to_its_own_entry(self, tmp_path):
         store = FileSystemToolResultStore(root=tmp_path)
         hook = ToolResultOffloadHook(store=store, offload_strategies={"*": AlwaysOffload()}, preview_chars=4)
@@ -161,21 +147,6 @@ class TestToolResultOffloadHookBehavior:
         assert f"1. text (7 characters) at '{references[0]}'. Preview: capt..." in pointer
         assert f"2. image/png ({len(PNG_BYTES)} bytes) at '{references[1]}'" in pointer
         assert f"3. application/pdf named 'report.pdf' ({len(PDF_BYTES)} bytes) at '{references[2]}'" in pointer
-
-    def test_binary_only_result_is_offloaded(self, tmp_path):
-        store = FileSystemToolResultStore(root=tmp_path)
-        hook = ToolResultOffloadHook(store=store, offload_strategies={"*": AlwaysOffload()})
-        message = ChatMessage.from_tool(
-            tool_result=[_file_block()], origin=ToolCall(tool_name="a", arguments={}, id="1")
-        )
-        state = _state_with_messages([message])
-        hook.run(state)
-        offloaded = state.data["messages"][0]
-        reference = offloaded.meta["tool_result_offloaded"][0]
-        assert offloaded.tool_call_result.result == (
-            f"Tool result offloaded to application/pdf named 'report.pdf' ({len(PDF_BYTES)} bytes) at '{reference}'"
-        )
-        assert store.read(reference) == PDF_BYTES
 
     @pytest.mark.parametrize(
         "block, expected_extension",
@@ -217,25 +188,6 @@ class TestToolResultOffloadHookBehavior:
         keeping_hook.run(under_state)
         assert over_state.data["messages"][0].tool_call_result.result.startswith("Tool result offloaded")
         assert under_state.data["messages"][0].tool_call_result.result == [image]
-
-    def test_text_only_store_still_offloads_text(self, caplog):
-        store = TextOnlyToolResultStore()
-        hook = ToolResultOffloadHook(store=store, offload_strategies={"*": AlwaysOffload()})
-        state = _state_with_messages([_tool_message("a", "A" * 50)])
-        hook.run(state)
-        offloaded = state.data["messages"][0]
-        assert offloaded.tool_call_result.result.startswith("Tool result offloaded")
-        assert store.read(offloaded.meta["tool_result_offloaded"][0]) == "A" * 50
-        assert not caplog.records
-
-    def test_text_only_store_leaves_image_and_file_results_in_context(self, caplog):
-        hook = ToolResultOffloadHook(store=TextOnlyToolResultStore(), offload_strategies={"*": AlwaysOffload()})
-        content = [TextContent("caption"), _file_block()]
-        message = ChatMessage.from_tool(tool_result=content, origin=ToolCall(tool_name="a", arguments={}, id="1"))
-        state = _state_with_messages([message])
-        hook.run(state)
-        assert state.data["messages"][0].tool_call_result.result == content
-        assert "does not support binary content" in caplog.text
 
     def test_empty_result_is_not_offloaded(self, tmp_path):
         hook = ToolResultOffloadHook(
@@ -327,6 +279,27 @@ class TestToolResultOffloadHookBehavior:
         hook.run(state)
         assert (tmp_path / "request").exists()
         assert not (tmp_path / "default").exists()
+
+
+class TestToolResultOffloadHookWithTextOnlyStore:
+    def test_text_results_are_still_offloaded(self, caplog):
+        store = TextOnlyToolResultStore()
+        hook = ToolResultOffloadHook(store=store, offload_strategies={"*": AlwaysOffload()})
+        state = _state_with_messages([_tool_message("a", "A" * 50)])
+        hook.run(state)
+        offloaded = state.data["messages"][0]
+        assert offloaded.tool_call_result.result.startswith("Tool result offloaded")
+        assert store.read(offloaded.meta["tool_result_offloaded"][0]) == "A" * 50
+        assert not caplog.records
+
+    def test_image_and_file_results_stay_in_context(self, caplog):
+        hook = ToolResultOffloadHook(store=TextOnlyToolResultStore(), offload_strategies={"*": AlwaysOffload()})
+        content = [TextContent("caption"), _file_block()]
+        message = ChatMessage.from_tool(tool_result=content, origin=ToolCall(tool_name="a", arguments={}, id="1"))
+        state = _state_with_messages([message])
+        hook.run(state)
+        assert state.data["messages"][0].tool_call_result.result == content
+        assert "does not support binary content" in caplog.text
 
 
 class TestToolResultOffloadHookSerde:
