@@ -1144,8 +1144,9 @@ class TestAgentExitConditions:
         for message in result["messages"]:
             message.to_openai_dict_format()
 
-    def test_contentless_assistant_message_still_exits_on_finish_reason(self, weather_tool):
-        # The reply is dropped, but it still decides the exit: a truncated tool call must not silently retry.
+    def test_contentless_assistant_message_is_kept_when_it_ends_the_run(self, weather_tool):
+        # A terminal reply is not dropped: the run ends on it, so the caller sees the truncated turn and its meta
+        # next to `exit_reason` instead of a history ending in the user message.
         replies = [
             ChatMessage.from_assistant(text=None, meta={"finish_reason": "length"}),
             ChatMessage.from_assistant("Recovered answer that must not be generated."),
@@ -1156,7 +1157,25 @@ class TestAgentExitConditions:
 
         assert result["step_count"] == 1
         assert result["exit_reason"] == "length"
-        assert [message.text for message in result["messages"]] == ["What's the weather?"]
+        assert result["last_message"].is_from(ChatRole.ASSISTANT)
+        assert result["last_message"].meta["finish_reason"] == "length"
+
+    def test_contentless_assistant_message_is_hidden_from_before_tool_hooks(self, weather_tool):
+        # The reply is removed before `before_tool` runs, so hooks never see a message they cannot serialize.
+        seen: list[list[int]] = []
+
+        @hook
+        def capture(state: State) -> None:
+            seen.append([len(message._content) for message in state.data["messages"]])
+
+        generator = SerializingChatGenerator(
+            replies=[ChatMessage.from_assistant(text=None), ChatMessage.from_assistant("The weather is sunny.")]
+        )
+        agent = Agent(chat_generator=generator, tools=[weather_tool], hooks={"before_tool": [capture]})
+
+        agent.run(messages=[ChatMessage.from_user("What's the weather?")])
+
+        assert seen == [[1]]
 
     @pytest.mark.parametrize("finish_reason", ["length", "content_filter"])
     @pytest.mark.parametrize("text", ["", "Partial answer."])
@@ -1223,7 +1242,7 @@ class TestAgentExitConditions:
             message.to_openai_dict_format()
 
     @pytest.mark.asyncio
-    async def test_contentless_assistant_message_still_exits_on_finish_reason_async(self, weather_tool):
+    async def test_contentless_assistant_message_is_kept_when_it_ends_the_run_async(self, weather_tool):
         replies = [
             ChatMessage.from_assistant(text=None, meta={"finish_reason": "length"}),
             ChatMessage.from_assistant("Recovered answer that must not be generated."),
@@ -1234,7 +1253,8 @@ class TestAgentExitConditions:
 
         assert result["step_count"] == 1
         assert result["exit_reason"] == "length"
-        assert [message.text for message in result["messages"]] == ["What's the weather?"]
+        assert result["last_message"].is_from(ChatRole.ASSISTANT)
+        assert result["last_message"].meta["finish_reason"] == "length"
 
     @pytest.mark.asyncio
     @pytest.mark.parametrize("finish_reason", ["length", "content_filter"])

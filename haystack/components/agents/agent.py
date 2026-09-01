@@ -183,16 +183,6 @@ def _get_model_exit_reason(messages: list[ChatMessage]) -> str | None:
     return None
 
 
-def _drop_contentless_replies(messages: list[ChatMessage]) -> list[ChatMessage]:
-    """
-    Remove replies that have no content parts.
-
-    A Chat Generator that discards a malformed tool call returns such a reply, which Chat Message converters reject.
-    Leaving it out of the history keeps the next LLM call sendable.
-    """
-    return [message for message in messages if message._content]
-
-
 def _pending_tool_call_messages_from_state(state: State) -> list[ChatMessage]:
     """
     Return the pending tool-call message after `before_tool` hooks have run.
@@ -1029,20 +1019,25 @@ class Agent:
                 llm_span.set_content_tag("haystack.agent.step.llm.input", chat_generator_inputs)
                 result = self.chat_generator.run(**chat_generator_inputs)
                 llm_span.set_content_tag("haystack.agent.step.llm.output", result)
+            # The replies land in State only after the checks below, which read them from here rather than from
+            # State, so that a reply the run does not end on can be left out of the history.
             llm_messages = result["replies"]
-            # A contentless reply is kept out of the history because converters reject it. Usage and the exit reason
-            # still come from the raw replies: the call was billed and may have been truncated.
-            exe_context.state.set("messages", _drop_contentless_replies(messages=llm_messages))
             _record_llm_usage(state=exe_context.state, llm_messages=llm_messages)
             _record_context_tokens(state=exe_context.state, llm_messages=llm_messages)
 
             # Stop when there are no tools, or the model produced a terminal reply without tool calls.
             model_exit_reason = _get_model_exit_reason(messages=llm_messages)
             if not current_tools or model_exit_reason is not None:
+                # The run ends on this reply, so keep it whole: `exit_reason` stays visible next to the reply.
+                exe_context.state.set("messages", llm_messages)
                 exe_context.counter += 1
                 exe_context.state.set("step_count", exe_context.counter)
                 exe_context.state.set("exit_reason", model_exit_reason or _EXIT_REASON_TEXT)
                 return self._continue_after_exit_hooks(exe_context=exe_context)
+
+            # A Chat Generator that discarded a malformed tool call returns a reply with no content parts, which Chat
+            # Message converters reject. Leave it out so the next LLM call can serialize the history.
+            exe_context.state.set("messages", [message for message in llm_messages if message._content])
 
             _run_hooks(hooks=self.hooks, hook_point=BEFORE_TOOL, state=exe_context.state)
             # Re-read the pending tool calls from State so that any rewrites a before_tool hook made (e.g.
@@ -1101,20 +1096,25 @@ class Agent:
                 # which copies the current contextvars context — preserving the active tracing span.
                 result = await _execute_component_async(self.chat_generator, **chat_generator_inputs)
                 llm_span.set_content_tag("haystack.agent.step.llm.output", result)
+            # The replies land in State only after the checks below, which read them from here rather than from
+            # State, so that a reply the run does not end on can be left out of the history.
             llm_messages = result["replies"]
-            # A contentless reply is kept out of the history because converters reject it. Usage and the exit reason
-            # still come from the raw replies: the call was billed and may have been truncated.
-            exe_context.state.set("messages", _drop_contentless_replies(messages=llm_messages))
             _record_llm_usage(state=exe_context.state, llm_messages=llm_messages)
             _record_context_tokens(state=exe_context.state, llm_messages=llm_messages)
 
             # Stop when there are no tools, or the model produced a terminal reply without tool calls.
             model_exit_reason = _get_model_exit_reason(messages=llm_messages)
             if not current_tools or model_exit_reason is not None:
+                # The run ends on this reply, so keep it whole: `exit_reason` stays visible next to the reply.
+                exe_context.state.set("messages", llm_messages)
                 exe_context.counter += 1
                 exe_context.state.set("step_count", exe_context.counter)
                 exe_context.state.set("exit_reason", model_exit_reason or _EXIT_REASON_TEXT)
                 return await self._continue_after_exit_hooks_async(exe_context=exe_context)
+
+            # A Chat Generator that discarded a malformed tool call returns a reply with no content parts, which Chat
+            # Message converters reject. Leave it out so the next LLM call can serialize the history.
+            exe_context.state.set("messages", [message for message in llm_messages if message._content])
 
             await _run_hooks_async(hooks=self.hooks, hook_point=BEFORE_TOOL, state=exe_context.state)
             # Re-read the pending tool calls from State so that any rewrites a before_tool hook made (e.g.
