@@ -536,20 +536,31 @@ Return the minimum and maximum values for the given metadata field.
 get_metadata_field_unique_values(
     metadata_field: str,
     search_term: str | None = None,
-    size: int | None = 10000,
-    after: dict[str, Any] | None = None,
-) -> tuple[list[Any], dict[str, Any] | None]
+    from_: int = 0,
+    size: int = 10,
+    filters: dict[str, Any] | None = None,
+) -> tuple[list[Any], int]
 ```
 
 Return distinct values for the given metadata field with optional filtering and pagination.
 
+**Note**: values of different types are kept distinct even when they compare equal in Python
+(e.g. the int `1`, the bool `True` and the str `"1"` are returned as three separate values), with
+one exception: Cypher's `DISTINCT` treats a whole-number float (e.g. `1.0`) as identical to a
+numerically equal int (`1`), so those two collapse into a single value. Floats with a fractional
+part (e.g. `1.5`) are unaffected.
+
 **Parameters:**
 
 - **metadata_field** (<code>str</code>) – Metadata field name. May include or omit the `meta.` prefix.
-- **search_term** (<code>str | None</code>) – Optional substring filter applied to string field values.
-- **size** (<code>int | None</code>) – Maximum number of values to return per page. Defaults to 10 000.
-- **after** (<code>dict\[str, Any\] | None</code>) – Pagination cursor returned by a previous call. Pass `None` for the first page.
+- **search_term** (<code>str | None</code>) – Optional case-insensitive substring filter applied to the metadata
+  field's own value.
+- **from\_** (<code>int</code>) – The offset for pagination (0-based).
+- **size** (<code>int</code>) – Maximum number of values to return per page. Defaults to 10.
+- **filters** (<code>dict\[str, Any\] | None</code>) – Optional filters to restrict the documents considered.
 
 **Returns:**
 
-- <code>tuple\[list\[Any\], dict\[str, Any\] | None\]</code> – Tuple of `(values, next_cursor)`. `next_cursor` is `None` on the last page.
+- <code>tuple\[list\[Any\], int\]</code> – Tuple of `(values, total_count)`. Values are returned in their original type.
+  `total_count` is the number of distinct values matching the filter, independent of
+  pagination.
