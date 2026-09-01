@@ -121,7 +121,9 @@ class CacheChecker:
 
         The store is queried once with the `in` operator; this reproduces, in process, the per-item grouping
         that one `==` query per item used to produce. `document_matches_filter` is the same predicate the
-        filtering machinery applies, so field resolution and value comparison stay identical.
+        filtering machinery applies, so field resolution and value comparison stay identical. Stores that
+        can compare datetimes strictly expose that choice as `strict_datetime_comparison`; it is read here
+        so the grouping matches the query the store just answered.
 
         :param items:
             Values that were checked against the cache field, in the caller's order.
@@ -130,12 +132,17 @@ class CacheChecker:
         :returns:
             A dictionary with `hits` and `misses`.
         """
+        strict_datetime_comparison = getattr(self.document_store, "strict_datetime_comparison", False)
         found_documents = []
         misses = []
 
         for item in items:
             condition = {"field": self.cache_field, "operator": "==", "value": item}
-            found = [document for document in candidates if document_matches_filter(condition, document)]
+            found = [
+                document
+                for document in candidates
+                if document_matches_filter(condition, document, strict_datetime_comparison=strict_datetime_comparison)
+            ]
             if found:
                 found_documents.extend(found)
             else:

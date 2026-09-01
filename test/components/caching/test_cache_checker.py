@@ -12,6 +12,13 @@ from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.testing.factory import document_store_class
 
 
+@pytest.fixture()
+def strict_datetime_doc_store():
+    store = InMemoryDocumentStore(strict_datetime_comparison=True)
+    yield store
+    store.shutdown()
+
+
 class TestCacheChecker:
     def test_to_dict(self):
         mocked_docstore_class = document_store_class("MockedDocumentStore")
@@ -176,6 +183,29 @@ class TestCacheChecker:
 
         assert results["hits"] == [documents[1]]
         assert results["misses"] == ["https://example.com/3"]
+
+    def test_run_matches_datetimes_as_strictly_as_the_store_does(self, strict_datetime_doc_store):
+        # The store was asked one `in` query and answered it with its own strictness, so a document whose
+        # timestamp is timezone-aware comes back for the aware item alone. Grouping the answer onto items
+        # has to compare the same way, or the naive item borrows the aware item's document.
+        document = Document(content="doc1", meta={"fetched_at": "2026-01-01T12:00:00+00:00"})
+        strict_datetime_doc_store.write_documents([document])
+        checker = CacheChecker(strict_datetime_doc_store, cache_field="fetched_at")
+
+        results = checker.run(items=["2026-01-01T12:00:00", "2026-01-01T12:00:00+00:00"])
+
+        assert results["hits"] == [document]
+        assert results["misses"] == ["2026-01-01T12:00:00"]
+
+    def test_run_reconciles_datetimes_when_the_store_does(self, in_memory_doc_store):
+        document = Document(content="doc1", meta={"fetched_at": "2026-01-01T12:00:00+00:00"})
+        in_memory_doc_store.write_documents([document])
+        checker = CacheChecker(in_memory_doc_store, cache_field="fetched_at")
+
+        results = checker.run(items=["2026-01-01T12:00:00", "2026-01-01T12:00:00+00:00"])
+
+        assert results["hits"] == [document, document]
+        assert results["misses"] == []
 
     def test_close(self):
         closable_document_store = Mock(spec=["close"])

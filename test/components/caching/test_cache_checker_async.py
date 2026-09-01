@@ -8,7 +8,15 @@ import pytest
 
 from haystack import Document
 from haystack.components.caching.cache_checker import CacheChecker
+from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.testing.factory import document_store_class
+
+
+@pytest.fixture()
+def strict_datetime_doc_store():
+    store = InMemoryDocumentStore(strict_datetime_comparison=True)
+    yield store
+    store.shutdown()
 
 
 class TestCacheCheckerAsync:
@@ -88,6 +96,17 @@ class TestCacheCheckerAsync:
 
         assert mock_store.filter_documents_async.await_count == 0
         assert results == {"hits": [], "misses": []}
+
+    @pytest.mark.asyncio
+    async def test_run_async_matches_datetimes_as_strictly_as_the_store_does(self, strict_datetime_doc_store):
+        document = Document(content="doc1", meta={"fetched_at": "2026-01-01T12:00:00+00:00"})
+        strict_datetime_doc_store.write_documents([document])
+        checker = CacheChecker(strict_datetime_doc_store, cache_field="fetched_at")
+
+        results = await checker.run_async(items=["2026-01-01T12:00:00", "2026-01-01T12:00:00+00:00"])
+
+        assert results["hits"] == [document]
+        assert results["misses"] == ["2026-01-01T12:00:00"]
 
     @pytest.mark.asyncio
     async def test_close_async(self):
