@@ -250,12 +250,14 @@ class TestSplittingByFunctionOrCharacterRegex:
 
     def test_split_by_function_tracks_page_numbers(self):
         splitter = DocumentSplitter(split_by="function", splitting_function=lambda s: s.split("\f"))
-        text = "First chunk.\fSecond chunk.\fThird chunk."
+        chunks = ["First chunk.", "Second chunk.", "Third chunk."]
+        text = "\f".join(chunks)
         docs = splitter.run(documents=[Document(content=text)])["documents"]
 
+        assert [doc.content for doc in docs] == chunks
         assert [doc.meta["page_number"] for doc in docs] == [1, 2, 3]
         assert [doc.meta["split_id"] for doc in docs] == [0, 1, 2]
-        assert [doc.meta["split_idx_start"] for doc in docs] == [text.index(doc.content) for doc in docs]
+        assert [doc.meta["split_idx_start"] for doc in docs] == [text.index(chunk) for chunk in chunks]
 
     def test_split_by_function_with_transformed_splits(self):
         # The splits don't appear verbatim in the source, so they cannot be located in it
