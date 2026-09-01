@@ -53,32 +53,56 @@ class TestDocumentToImageContent:
         results = converter.run(documents=[])
         assert results == {"image_contents": []}
 
-    def test_run_with_missing_file_path_metadata(self) -> None:
+    def test_run_with_missing_file_path_metadata(self, caplog) -> None:
         converter = DocumentToImageContent()
         # Document without file_path in metadata
         doc_no_path = Document(content="test", meta={})
         # Document with file_path but file doesn't exist
         doc_no_file = Document(content="test", meta={"file_path": "nonexistent.jpg"})
-        with pytest.raises(ValueError, match="is missing the 'file_path' key"):
-            _ = converter.run(documents=[doc_no_path, doc_no_file])
 
-    def test_run_with_non_image_documents(self) -> None:
+        results = converter.run(documents=[doc_no_path, doc_no_file])
+
+        assert results["image_contents"] == [None, None]
+        assert "is missing the 'file_path' key" in caplog.text
+        assert "has an invalid file path" in caplog.text
+
+    def test_run_with_non_image_documents(self, caplog) -> None:
         converter = DocumentToImageContent()
         docx_doc = Document(content="test", meta={"file_path": "test/test_files/docx/sample_docx.docx"})
-        with pytest.raises(ValueError, match="has an unsupported MIME type"):
-            _ = converter.run(documents=[docx_doc])
+
+        results = converter.run(documents=[docx_doc])
+
+        assert results["image_contents"] == [None]
+        assert "has an unsupported MIME type" in caplog.text
 
     def test_run_with_invalid_file_path(self, caplog) -> None:
         converter = DocumentToImageContent()
         pdf_doc = Document(content="test", meta={"file_path": "wrong_name.jpg"})
-        with pytest.raises(ValueError, match="has an invalid file path 'wrong_name.jpg'"):
-            _ = converter.run(documents=[pdf_doc])
+
+        results = converter.run(documents=[pdf_doc])
+
+        assert results["image_contents"] == [None]
+        assert "has an invalid file path 'wrong_name.jpg'" in caplog.text
 
     def test_run_with_pdf_missing_page_number(self, caplog) -> None:
         converter = DocumentToImageContent()
         pdf_doc = Document(content="test", meta={"file_path": "test/test_files/pdf/sample_pdf_1.pdf"})
-        with pytest.raises(ValueError, match="is missing the 'page_number' key"):
-            _ = converter.run(documents=[pdf_doc])
+
+        results = converter.run(documents=[pdf_doc])
+
+        assert results["image_contents"] == [None]
+        assert "is missing the 'page_number' key" in caplog.text
+
+    def test_run_still_raises_on_path_traversal(self) -> None:
+        # A path escaping root_path is an attempted traversal rather than one document's data being wrong,
+        # so it is not downgraded to a None entry where it could be missed in a large batch.
+        converter = DocumentToImageContent(root_path="test/test_files/images")
+        documents = [
+            Document(content="", meta={"file_path": "apple.jpg"}),
+            Document(content="", meta={"file_path": "../../../../../../etc/passwd"}),
+        ]
+        with pytest.raises(ValueError, match="escapes the configured root"):
+            _ = converter.run(documents=documents)
 
     def test_run_with_image_documents(self) -> None:
         converter = DocumentToImageContent(root_path="test/test_files/images")
@@ -97,15 +121,42 @@ class TestDocumentToImageContent:
             "page_number": 1,
         }
 
-    def test_run_with_mixed_document_types(self) -> None:
+    def test_run_with_mixed_document_types(self, caplog) -> None:
+        # One unconvertible document must not cost the batch the convertible ones: this is what makes the
+        # documented `failed_documents` path of LLMDocumentContentExtractor reachable.
         converter = DocumentToImageContent(root_path="test/test_files")
         documents = [
             Document(content="", meta={"file_path": "images/apple.jpg"}),
             Document(content="", meta={"file_path": "pdf/sample_pdf_1.pdf", "page_number": 1}),
             Document(content="text", meta={"file_path": "docx/sample_docx.docx"}),
         ]
-        with pytest.raises(ValueError, match="has an unsupported MIME type"):
-            _ = converter.run(documents=documents)
+
+        image_contents = converter.run(documents=documents)["image_contents"]
+
+        assert len(image_contents) == 3
+        assert image_contents[0] is not None
+        assert image_contents[1] is not None
+        assert image_contents[2] is None
+        assert "has an unsupported MIME type" in caplog.text
+        assert documents[2].id in caplog.text
+
+    def test_run_keeps_positions_when_a_document_in_the_middle_fails(self) -> None:
+        # The failing document sits between the two good ones, and the second good one is a PDF, which is
+        # converted through a separate pass keyed by position. Dropping the failure from the list instead of
+        # holding its place would silently hand the PDF's image to the document before it.
+        converter = DocumentToImageContent(root_path="test/test_files")
+        documents = [
+            Document(content="", meta={"file_path": "images/apple.jpg"}),
+            Document(content="text", meta={"file_path": "docx/sample_docx.docx"}),
+            Document(content="", meta={"file_path": "pdf/sample_pdf_1.pdf", "page_number": 1}),
+        ]
+
+        image_contents = converter.run(documents=documents)["image_contents"]
+
+        assert len(image_contents) == 3
+        assert image_contents[0].meta == {"file_path": "images/apple.jpg"}
+        assert image_contents[1] is None
+        assert image_contents[2].meta == {"file_path": "pdf/sample_pdf_1.pdf", "page_number": 1}
 
     @patch("haystack.components.converters.image.document_to_image._extract_image_sources_info")
     @patch("haystack.components.converters.image.document_to_image._batch_convert_pdf_pages_to_images")

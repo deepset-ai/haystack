@@ -149,6 +149,39 @@ class TestExtractImageSourcesInfo:
         with pytest.raises(ValueError, match="missing the 'page_number' key"):
             _extract_image_sources_info(documents=[document], file_path_meta_field="file_path", root_path="")
 
+    def test_extract_image_source_info_reports_failures_per_document(self, test_files_path, caplog):
+        documents = [
+            Document(content="test", meta={"file_path": str(test_files_path / "images" / "haystack-logo.png")}),
+            Document(content="test", meta={"file_path": str(test_files_path / "docx" / "sample_docx.docx")}),
+            Document(content="test"),
+            Document(content="test", meta={"file_path": str(test_files_path / "images" / "apple.jpg")}),
+        ]
+
+        images_source_info = _extract_image_sources_info(
+            documents=documents, file_path_meta_field="file_path", root_path="", raise_on_failure=False
+        )
+
+        # One entry per input document, in order, so the caller can map a result back to the document it came from.
+        assert len(images_source_info) == len(documents)
+        assert images_source_info[0]["mime_type"] == "image/png"
+        assert images_source_info[1] is None
+        assert images_source_info[2] is None
+        assert images_source_info[3]["mime_type"] == "image/jpeg"
+
+        # The reason each document failed is only in the exception text, so it has to reach the warning.
+        assert "has an unsupported MIME type" in caplog.text
+        assert "is missing the 'file_path' key" in caplog.text
+
+    def test_extract_image_source_info_still_raises_traversal_when_not_raising_on_failure(self, test_files_path):
+        document = Document(content="test", meta={"file_path": "../../../../../../etc/passwd"})
+        with pytest.raises(ValueError, match="escapes the configured root"):
+            _extract_image_sources_info(
+                documents=[document],
+                file_path_meta_field="file_path",
+                root_path=str(test_files_path / "images"),
+                raise_on_failure=False,
+            )
+
     def test_extract_image_source_info_rejects_path_traversal(self, test_files_path):
         # Attacker-controlled document metadata attempts to escape the configured root.
         document = Document(content="test", meta={"file_path": "../../../../../../etc/passwd"})
