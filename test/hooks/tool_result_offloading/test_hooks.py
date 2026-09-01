@@ -41,7 +41,7 @@ def _tool_message(tool_name: str, result: str, *, error: bool = False, call_id: 
     )
 
 
-# A 1x1 PNG and a minimal PDF: real binary payloads that do not decode as UTF-8, so they exercise the binary path.
+# A 1x1 PNG and a minimal PDF.
 PNG_BYTES = base64.b64decode(
     "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
 )
@@ -49,7 +49,7 @@ PDF_BYTES = b"%PDF-1.4\n1 0 obj\n<< /Type /Catalog >>\nendobj\n\xde\xad\xbe\xef\
 
 
 class TextOnlyToolResultStore(ToolResultStore):
-    """A store predating binary support: it only knows how to hold text and never declares otherwise."""
+    """A store that only holds text, leaving `supports_binary_content` at its False default."""
 
     def __init__(self) -> None:
         self.data: dict[str, str] = {}
@@ -136,9 +136,7 @@ class TestToolResultOffloadHookBehavior:
             origin=ToolCall(tool_name="a", arguments={}, id="1"),
         )
         state = _state_with_messages([message])
-
         hook.run(state)
-
         offloaded = state.data["messages"][0]
         references = offloaded.meta["tool_result_offloaded"]
         assert offloaded.tool_call_result.result.startswith("Tool result offloaded to 2 files:")
@@ -150,9 +148,7 @@ class TestToolResultOffloadHookBehavior:
         content = [TextContent("caption"), _image_block(), _file_block()]
         message = ChatMessage.from_tool(tool_result=content, origin=ToolCall(tool_name="a", arguments={}, id="1"))
         state = _state_with_messages([message])
-
         hook.run(state)
-
         offloaded = state.data["messages"][0]
         references = offloaded.meta["tool_result_offloaded"]
         assert len(references) == 3
@@ -160,7 +156,6 @@ class TestToolResultOffloadHookBehavior:
         assert store.read(references[0]) == "caption"
         assert store.read(references[1]) == PNG_BYTES
         assert store.read(references[2]) == PDF_BYTES
-
         pointer = offloaded.tool_call_result.result
         assert pointer.startswith("Tool result offloaded to 3 files:")
         assert f"1. text (7 characters) at '{references[0]}'. Preview: capt..." in pointer
@@ -174,9 +169,7 @@ class TestToolResultOffloadHookBehavior:
             tool_result=[_file_block()], origin=ToolCall(tool_name="a", arguments={}, id="1")
         )
         state = _state_with_messages([message])
-
         hook.run(state)
-
         offloaded = state.data["messages"][0]
         reference = offloaded.meta["tool_result_offloaded"][0]
         assert offloaded.tool_call_result.result == (
@@ -200,9 +193,7 @@ class TestToolResultOffloadHookBehavior:
         )
         message = ChatMessage.from_tool(tool_result=[block], origin=ToolCall(tool_name="a", arguments={}, id="1"))
         state = _state_with_messages([message])
-
         hook.run(state)
-
         reference = state.data["messages"][0].meta["tool_result_offloaded"][0]
         assert Path(reference).suffix == expected_extension
 
@@ -212,7 +203,6 @@ class TestToolResultOffloadHookBehavior:
         image = _image_block()
         payload_length = len(image.base64_image)
         message = ChatMessage.from_tool(tool_result=[image], origin=ToolCall(tool_name="a", arguments={}, id="1"))
-
         offloading_hook = ToolResultOffloadHook(
             store=FileSystemToolResultStore(root=tmp_path / "over"),
             offload_strategies={"*": OffloadOverChars(payload_length - 1)},
@@ -221,12 +211,10 @@ class TestToolResultOffloadHookBehavior:
             store=FileSystemToolResultStore(root=tmp_path / "under"),
             offload_strategies={"*": OffloadOverChars(payload_length)},
         )
-
         over_state = _state_with_messages([message])
         offloading_hook.run(over_state)
         under_state = _state_with_messages([message])
         keeping_hook.run(under_state)
-
         assert over_state.data["messages"][0].tool_call_result.result.startswith("Tool result offloaded")
         assert under_state.data["messages"][0].tool_call_result.result == [image]
 
@@ -234,9 +222,7 @@ class TestToolResultOffloadHookBehavior:
         store = TextOnlyToolResultStore()
         hook = ToolResultOffloadHook(store=store, offload_strategies={"*": AlwaysOffload()})
         state = _state_with_messages([_tool_message("a", "A" * 50)])
-
         hook.run(state)
-
         offloaded = state.data["messages"][0]
         assert offloaded.tool_call_result.result.startswith("Tool result offloaded")
         assert store.read(offloaded.meta["tool_result_offloaded"][0]) == "A" * 50
@@ -247,9 +233,7 @@ class TestToolResultOffloadHookBehavior:
         content = [TextContent("caption"), _file_block()]
         message = ChatMessage.from_tool(tool_result=content, origin=ToolCall(tool_name="a", arguments={}, id="1"))
         state = _state_with_messages([message])
-
         hook.run(state)
-
         assert state.data["messages"][0].tool_call_result.result == content
         assert "does not support binary content" in caplog.text
 
