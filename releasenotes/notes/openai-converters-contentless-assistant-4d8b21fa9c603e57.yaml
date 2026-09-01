@@ -1,10 +1,10 @@
 ---
 fixes:
   - |
-    The OpenAI Chat Completions and Responses converters no longer raise on an assistant message that has no content
-    parts. A Chat Generator that discards a malformed tool call returns such a reply, which previously raised a
-    ``ValueError`` about the message needing at least one content part. It is now sent with empty content, which the
-    API accepts, so the LLM call that follows it goes through: in ``Agent``, for example, the reply stays in the
-    message history and its ``meta`` remains available. ``ChatMessage.from_openai_dict_format`` accepts the same
-    empty content, so such a message round-trips. Messages from other roles still raise, since they cannot
-    legitimately be empty.
+    The OpenAI Chat Completions and Responses converters no longer raise on an assistant message with no content
+    parts, which a Chat Generator returns when it discards a malformed tool call. It is sent with empty content,
+    which the APIs accept, so the next LLM call goes through. ``ChatMessage.from_openai_dict_format`` accepts the
+    same empty content, so such a message round-trips.
+  - |
+    The Hugging Face message converter no longer raises on an assistant message with no content parts, and sends it
+    with empty content instead.
