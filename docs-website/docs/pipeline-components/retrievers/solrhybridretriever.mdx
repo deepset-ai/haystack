@@ -15,12 +15,13 @@ A Hybrid Retriever uses both traditional keyword-based search (such as BM25) and
 
 |  |  |
 | --- | --- |
-| Most common position in a pipeline | 1. Before a ChatPromptBuilder in a RAG pipeline 2. The last component in a hybrid search pipeline 3. Before a TransformersExtractiveReader in an extractive QA pipeline |
-| Mandatory init variables | `document_store`: An instance of `SolrDocumentStore` to use for retrieval  <br /> <br />`embedder`: Any [Embedder](../embedders.mdx) implementing the `TextEmbedder` protocol |
-| Mandatory run variables | `query`: A query string |
-| Output variables | `documents`: A list of documents matching the query |
-| API reference | [Solr](/reference/integrations-solr) |
-| GitHub | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/solr |
+| **Most common position in a pipeline** | 1. Before a ChatPromptBuilder in a RAG pipeline 2. The last component in a hybrid search pipeline 3. Before a TransformersExtractiveReader in an extractive QA pipeline |
+| **Mandatory init variables** | `document_store`: An instance of `SolrDocumentStore` to use for retrieval  <br /> <br />`embedder`: Any [Embedder](../embedders.mdx) implementing the `TextEmbedder` protocol |
+| **Mandatory run variables** | `query`: A query string |
+| **Output variables** | `documents`: A list of documents matching the query |
+| **API reference** | [Solr](/reference/integrations-solr) |
+| **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/solr |
+| **Package name** | `solr-haystack` |
 
 </div>
 

@@ -37,7 +37,7 @@ In addition to the `query`, the `SolrBM25Retriever` accepts other optional param
 
 The Retriever also has a `run_async` method, which uses the Document Store's async client.
 
-### Usage
+## Usage
 
 ### Installation
 
@@ -47,7 +47,7 @@ To start using Solr with Haystack, install the package with:
 pip install solr-haystack
 ```
 
-#### On its own
+### On its own
 
 This Retriever needs an instance of `SolrDocumentStore` and indexed Documents to run.
 
@@ -62,7 +62,7 @@ retriever = SolrBM25Retriever(document_store=document_store)
 retriever.run(query="How to make a pizza", top_k=3)
 ```
 
-#### In a Pipeline
+### In a Pipeline
 
 ```python
 from haystack import Document, Pipeline

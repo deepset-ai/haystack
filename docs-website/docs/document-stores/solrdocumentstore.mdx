@@ -22,7 +22,7 @@ A Document Store for storing and retrieval from Apache Solr.
 
 This Document Store is a good fit if your organization already runs Solr and you want to add semantic or hybrid retrieval on top of it without introducing a separate vector database.
 
-The Document Store requires Solr 9.6 or newer and talks to Solr over its JSON HTTP API using `httpx`, so no Solr client library is needed. Every operation is available both synchronously and asynchronously.
+The Document Store requires Solr 9.6 or newer. Every operation is available both synchronously and asynchronously.
 
 ### Initialization
 
@@ -61,8 +61,6 @@ A few points to keep in mind:
 
 - `url` falls back to the `SOLR_URL` environment variable, then to `http://localhost:8983/solr`. Basic authentication credentials are read from the `SOLR_USERNAME` and `SOLR_PASSWORD` environment variables by default, so they never need to appear in code or serialized pipelines.
 - Solr fixes a vector field's dimension when the field is created, so `embedding_dim` cannot be changed for an existing core. The `similarity_function` can be `cosine` (default), `dot_product`, or `euclidean`.
-- Metadata values keep their Python types across the round-trip: the integer `1`, the string `"1"`, the float `1.0`, and `True` stay four distinct values.
-
 ### Supported Retrievers
 
 [`SolrBM25Retriever`](../pipeline-components/retrievers/solrbm25retriever.mdx): A keyword-based Retriever that fetches documents matching a query from the Document Store.
