@@ -764,7 +764,9 @@ class TestRun:
 class TestIntegration:
     def test_live_run(self) -> None:
 
-        chat_messages = [ChatMessage.from_user("What's the capital of France")]
+        # The trailing assistant message has no content parts, as a reply whose only tool call was discarded does.
+        # It serializes with empty content, so this also checks the API accepts that, not just the converter.
+        chat_messages = [ChatMessage.from_user("What's the capital of France"), ChatMessage.from_assistant(text=None)]
         component = OpenAIResponsesChatGenerator(
             model="gpt-4.1-nano", generation_kwargs={"include": ["message.output_text.logprobs"]}
         )
@@ -778,17 +780,6 @@ class TestIntegration:
         assert message.meta["usage"]["total_tokens"] > 0
         assert message.meta["id"] is not None
         assert message.meta["logprobs"] is not None
-
-    def test_live_run_with_contentless_assistant_message(self) -> None:
-        # A discarded malformed tool call leaves a reply with no content parts, which serializes with empty
-        # content. This checks the API accepts it, not just the converter.
-        chat_messages = [ChatMessage.from_user("What's the capital of France"), ChatMessage.from_assistant(text=None)]
-        component = OpenAIResponsesChatGenerator(model="gpt-4.1-nano")
-        results = component.run(chat_messages)
-        assert len(results["replies"]) == 1
-        message: ChatMessage = results["replies"][0]
-        assert message.text is not None
-        assert "paris" in message.text.lower()
 
     def test_live_run_with_reasoning(self) -> None:
 

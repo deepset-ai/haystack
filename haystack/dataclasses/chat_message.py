@@ -734,9 +734,6 @@ class ChatMessage:
         # OpenAI Chat Completions API does not support reasoning content, so we ignore it
         if self.texts:
             openai_msg["content"] = self.texts[0]
-        elif not self.tool_calls:
-            # The API rejects an assistant message with no `content` key, so send it explicitly empty.
-            openai_msg["content"] = ""
         if self.tool_calls:
             openai_tool_calls = []
             for tc in self.tool_calls:
@@ -751,6 +748,9 @@ class ChatMessage:
                     raise ValueError("`ToolCall` must have a non-null `id` attribute to be used with OpenAI.")
                 openai_tool_calls.append(openai_tool_call)
             openai_msg["tool_calls"] = openai_tool_calls
+        # The API rejects a message carrying neither content nor tool calls, so send empty content for it.
+        if "content" not in openai_msg and "tool_calls" not in openai_msg:
+            openai_msg["content"] = ""
         return openai_msg
 
     @staticmethod
