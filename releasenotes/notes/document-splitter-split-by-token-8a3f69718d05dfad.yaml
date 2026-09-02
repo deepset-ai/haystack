@@ -1,8 +1,9 @@
 ---
 enhancements:
   - |
-    Add ``split_by="token"`` to ``DocumentSplitter``. Splits text by LLM token
-    count using tiktoken. The encoding defaults to ``"o200k_base"`` (current
-    OpenAI models) and can be changed via the new ``tokenizer_encoding``
-    parameter. ``split_length``, ``split_overlap``, and ``split_threshold`` all
-    work as usual. Requires ``pip install tiktoken``.
+    Add ``split_by="token"`` to ``DocumentSplitter`` and ``DocumentPreprocessor``.
+    Splits text by LLM token count using tiktoken. The encoding defaults to
+    ``"o200k_base"`` (current OpenAI models) and can be changed via the new
+    ``tokenizer_encoding`` parameter. ``split_length``, ``split_overlap``, and
+    ``split_threshold`` all work as usual. Requires ``pip install tiktoken``.
+

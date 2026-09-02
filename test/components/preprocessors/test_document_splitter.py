@@ -918,9 +918,18 @@ class TestSplittingByToken:
     def test_split_by_token_unit_mock(self):
         from unittest.mock import Mock
 
+        def mock_decode_with_offsets(tokens: list[str]) -> tuple[str, list[int]]:
+            full_text = "".join(tokens)
+            offsets: list[int] = []
+            idx = 0
+            for tok in tokens:
+                offsets.append(idx)
+                idx += len(tok)
+            return full_text, offsets
+
         mock_tokenizer = Mock()
-        mock_tokenizer.encode.side_effect = lambda text: [f" {w}" for w in text.split()]
-        mock_tokenizer.decode.side_effect = lambda tokens: "".join(tokens).lstrip()
+        mock_tokenizer.encode.side_effect = lambda text: [f" {w}" if i > 0 else w for i, w in enumerate(text.split())]
+        mock_tokenizer.decode_with_offsets.side_effect = mock_decode_with_offsets
 
         splitter = DocumentSplitter(split_by="token", split_length=3, split_overlap=1)
         splitter._tiktoken_tokenizer = mock_tokenizer
@@ -930,14 +939,23 @@ class TestSplittingByToken:
 
         assert len(docs) == 2
         assert docs[0].content == "t1 t2 t3"
-        assert docs[1].content == "t3 t4"
+        assert docs[1].content == " t3 t4"
 
     def test_split_by_token_threshold_mock(self):
         from unittest.mock import Mock
 
+        def mock_decode_with_offsets(tokens: list[str]) -> tuple[str, list[int]]:
+            full_text = "".join(tokens)
+            offsets: list[int] = []
+            idx = 0
+            for tok in tokens:
+                offsets.append(idx)
+                idx += len(tok)
+            return full_text, offsets
+
         mock_tokenizer = Mock()
-        mock_tokenizer.encode.side_effect = lambda text: [f" {w}" for w in text.split()]
-        mock_tokenizer.decode.side_effect = "".join
+        mock_tokenizer.encode.side_effect = lambda text: [f" {w}" if i > 0 else w for i, w in enumerate(text.split())]
+        mock_tokenizer.decode_with_offsets.side_effect = mock_decode_with_offsets
 
         # 4 tokens, split_length=3, overlap=1, threshold=3.
         # step=2. Chunk 1: t1 t2 t3. Chunk 2: t3 t4 (len 2 < threshold 3) -> merged into Chunk 1.
@@ -949,14 +967,23 @@ class TestSplittingByToken:
 
         assert len(docs) == 1
         assert docs[0].content is not None
-        assert docs[0].content.strip() == "t1 t2 t3 t4"
+        assert docs[0].content == "t1 t2 t3 t4"
 
     def test_split_by_token_threshold_single_chunk_mock(self):
         from unittest.mock import Mock
 
+        def mock_decode_with_offsets(tokens: list[str]) -> tuple[str, list[int]]:
+            full_text = "".join(tokens)
+            offsets: list[int] = []
+            idx = 0
+            for tok in tokens:
+                offsets.append(idx)
+                idx += len(tok)
+            return full_text, offsets
+
         mock_tokenizer = Mock()
-        mock_tokenizer.encode.side_effect = lambda text: [f" {w}" for w in text.split()]
-        mock_tokenizer.decode.side_effect = lambda tokens: "".join(tokens).lstrip()
+        mock_tokenizer.encode.side_effect = lambda text: [f" {w}" if i > 0 else w for i, w in enumerate(text.split())]
+        mock_tokenizer.decode_with_offsets.side_effect = mock_decode_with_offsets
 
         splitter = DocumentSplitter(split_by="token", split_length=10, split_threshold=5)
         splitter._tiktoken_tokenizer = mock_tokenizer
@@ -1089,3 +1116,13 @@ class TestSplittingByTokenIntegration:
 
         # Reconstruct the original document content from the split documents
         assert doc.content == merge_documents(docs)
+
+    def test_unicode_and_emojis_no_corruption(self):
+        splitter = DocumentSplitter(split_by="token", split_length=3, split_overlap=1)
+        doc = Document(content="I love 🍕 and 🍣 so much! 🌍🚀")
+        result = splitter.run(documents=[doc])["documents"]
+        assert len(result) > 1
+        for chunk in result:
+            assert chunk.content is not None
+            assert "\ufffd" not in chunk.content
+        assert doc.content == merge_documents(result)

@@ -280,29 +280,31 @@ class DocumentSplitter:
             )
 
         step = self.split_length - self.split_overlap
+        full_text, offsets = self._tiktoken_tokenizer.decode_with_offsets(tokens)  # type: ignore[union-attr]
+        offsets.append(len(full_text))
 
         text_splits: list[str] = []
         splits_pages: list[int] = []
         splits_start_idxs: list[int] = []
         cur_page = 1
-        cur_start_idx = 0
+        prev_end = 0
 
         for i in range(0, len(tokens), step):
-            chunk_tokens = tokens[i : i + self.split_length]
+            chunk_token_count = min(self.split_length, len(tokens) - i)
+            chunk_start = offsets[i]
+            chunk_end = offsets[i + chunk_token_count]
 
-            # Check if length of current chunk is below split_threshold
-            if len(chunk_tokens) < self.split_threshold and len(text_splits) > 0:
-                text_splits[-1] += self._tiktoken_tokenizer.decode(chunk_tokens[self.split_overlap :])  # type: ignore[union-attr]
-            elif not self.skip_empty_documents or len(chunk_tokens) > 0:
-                chunk_text = self._tiktoken_tokenizer.decode(chunk_tokens)  # type: ignore[union-attr]
-                text_splits.append(chunk_text)
+            if chunk_token_count < self.split_threshold and len(text_splits) > 0:
+                overlap_start = offsets[i + self.split_overlap]
+                text_splits[-1] += full_text[overlap_start:chunk_end]
+            else:
+                text_splits.append(full_text[chunk_start:chunk_end])
                 splits_pages.append(cur_page)
-                splits_start_idxs.append(cur_start_idx)
+                splits_start_idxs.append(chunk_start)
 
-            # Advance by the non-overlapping prefix only
-            non_overlap_text = self._tiktoken_tokenizer.decode(tokens[i : i + step])  # type: ignore[union-attr]
-            cur_page += non_overlap_text.count("\f")
-            cur_start_idx += len(non_overlap_text)
+            non_overlap_end = offsets[min(i + step, len(tokens))]
+            cur_page += full_text[prev_end:non_overlap_end].count("\f")
+            prev_end = non_overlap_end
 
         metadata = deepcopy(doc.meta)
         metadata["source_id"] = doc.id
