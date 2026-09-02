@@ -994,12 +994,12 @@ def _convert_chat_message_to_responses_api_format(message: ChatMessage) -> list[
     files = message.files
 
     has_content = any([text_contents, tool_calls, tool_call_results, images, reasonings, files])
-    # An assistant reply with no content part serializes with empty content, which the API accepts. A Chat
-    # Generator that discards a malformed tool call returns such a reply.
+    # An assistant reply with no content part serializes with empty content, which the API accepts.
     if not has_content and not message.is_from(ChatRole.ASSISTANT):
         raise ValueError(
-            """A `ChatMessage` must contain at least one `TextContent`, `ToolCall`, `ToolCallResult`,
-              `ImageContent`, `FileContent`, or `ReasoningContent`."""
+            f"A `ChatMessage` from `{message._role.value}` must contain at least one `TextContent`, `ToolCall`, "
+            "`ToolCallResult`, `ImageContent`, `FileContent`, or `ReasoningContent`. Only assistant messages can "
+            "be empty."
         )
     if len(tool_call_results) > 0 and len(message._content) > 1:
         raise ValueError(
