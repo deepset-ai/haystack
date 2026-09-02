@@ -926,6 +926,7 @@ class TestSplittingByToken:
             (3, 1, 0, "t1 t2 t3 t4", ["t1 t2 t3", " t3 t4"]),
             (3, 1, 3, "t1 t2 t3 t4", ["t1 t2 t3 t4"]),
             (10, 0, 5, "t1 t2", ["t1 t2"]),
+            (3, 2, 2, "t1 t2 t3", ["t1 t2 t3", " t2 t3"]),
         ],
     )
     def test_split_by_token_mock(
