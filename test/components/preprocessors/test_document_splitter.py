@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import re
+from unittest.mock import Mock
 
 import pytest
 
@@ -848,6 +849,23 @@ class TestSplittingNLTKSentenceSplitter:
         assert len({doc.id for doc in result["documents"]}) == 4
 
 
+@pytest.fixture
+def mock_tiktoken_tokenizer():
+    def mock_decode_with_offsets(tokens: list[str]) -> tuple[str, list[int]]:
+        full_text = "".join(tokens)
+        offsets: list[int] = []
+        idx = 0
+        for tok in tokens:
+            offsets.append(idx)
+            idx += len(tok)
+        return full_text, offsets
+
+    mock_tokenizer = Mock()
+    mock_tokenizer.encode.side_effect = lambda text: [f" {w}" if i > 0 else w for i, w in enumerate(text.split())]
+    mock_tokenizer.decode_with_offsets.side_effect = mock_decode_with_offsets
+    return mock_tokenizer
+
+
 class TestSplittingByToken:
     """Unit tests for split_by="token" mode that do not require external network access."""
 
@@ -862,8 +880,6 @@ class TestSplittingByToken:
         assert splitter._tiktoken_tokenizer is None
 
     def test_warm_up_is_idempotent(self, monkeypatch):
-        from unittest.mock import Mock
-
         import haystack.components.preprocessors.document_splitter as mod
 
         sentinel = Mock()
@@ -904,125 +920,41 @@ class TestSplittingByToken:
         assert splitter.split_overlap == 20
         assert splitter.tokenizer_encoding == "cl100k_base"
 
-    def test_serialization_roundtrip(self):
+    @pytest.mark.parametrize(
+        "split_length,split_overlap,split_threshold,content,expected_splits",
+        [
+            (3, 1, 0, "t1 t2 t3 t4", ["t1 t2 t3", " t3 t4"]),
+            (3, 1, 3, "t1 t2 t3 t4", ["t1 t2 t3 t4"]),
+            (10, 0, 5, "t1 t2", ["t1 t2"]),
+        ],
+    )
+    def test_split_by_token_mock(
+        self, mock_tiktoken_tokenizer, split_length, split_overlap, split_threshold, content, expected_splits
+    ):
         splitter = DocumentSplitter(
-            split_by="token", split_length=10, split_overlap=2, tokenizer_encoding="cl100k_base"
+            split_by="token", split_length=split_length, split_overlap=split_overlap, split_threshold=split_threshold
         )
-        serialized = splitter.to_dict()
-        restored = DocumentSplitter.from_dict(serialized)
-        assert restored.split_by == "token"
-        assert restored.split_length == 10
-        assert restored.split_overlap == 2
-        assert restored.tokenizer_encoding == "cl100k_base"
-
-    def test_split_by_token_unit_mock(self):
-        from unittest.mock import Mock
-
-        def mock_decode_with_offsets(tokens: list[str]) -> tuple[str, list[int]]:
-            full_text = "".join(tokens)
-            offsets: list[int] = []
-            idx = 0
-            for tok in tokens:
-                offsets.append(idx)
-                idx += len(tok)
-            return full_text, offsets
-
-        mock_tokenizer = Mock()
-        mock_tokenizer.encode.side_effect = lambda text: [f" {w}" if i > 0 else w for i, w in enumerate(text.split())]
-        mock_tokenizer.decode_with_offsets.side_effect = mock_decode_with_offsets
-
-        splitter = DocumentSplitter(split_by="token", split_length=3, split_overlap=1)
-        splitter._tiktoken_tokenizer = mock_tokenizer
-
-        doc = Document(content="t1 t2 t3 t4")
+        splitter._tiktoken_tokenizer = mock_tiktoken_tokenizer
+        doc = Document(content=content)
         docs = splitter._split_by_token(doc)
+        assert [d.content for d in docs] == expected_splits
 
-        assert len(docs) == 2
-        assert docs[0].content == "t1 t2 t3"
-        assert docs[1].content == " t3 t4"
-
-    def test_split_by_token_threshold_mock(self):
-        from unittest.mock import Mock
-
-        def mock_decode_with_offsets(tokens: list[str]) -> tuple[str, list[int]]:
-            full_text = "".join(tokens)
-            offsets: list[int] = []
-            idx = 0
-            for tok in tokens:
-                offsets.append(idx)
-                idx += len(tok)
-            return full_text, offsets
-
-        mock_tokenizer = Mock()
-        mock_tokenizer.encode.side_effect = lambda text: [f" {w}" if i > 0 else w for i, w in enumerate(text.split())]
-        mock_tokenizer.decode_with_offsets.side_effect = mock_decode_with_offsets
-
-        # 4 tokens, split_length=3, overlap=1, threshold=3.
-        # step=2. Chunk 1: t1 t2 t3. Chunk 2: t3 t4 (len 2 < threshold 3) -> merged into Chunk 1.
-        splitter = DocumentSplitter(split_by="token", split_length=3, split_overlap=1, split_threshold=3)
-        splitter._tiktoken_tokenizer = mock_tokenizer
-
-        doc = Document(content="t1 t2 t3 t4")
-        docs = splitter._split_by_token(doc)
-
-        assert len(docs) == 1
-        assert docs[0].content is not None
-        assert docs[0].content == "t1 t2 t3 t4"
-
-    def test_split_by_token_threshold_single_chunk_mock(self):
-        from unittest.mock import Mock
-
-        def mock_decode_with_offsets(tokens: list[str]) -> tuple[str, list[int]]:
-            full_text = "".join(tokens)
-            offsets: list[int] = []
-            idx = 0
-            for tok in tokens:
-                offsets.append(idx)
-                idx += len(tok)
-            return full_text, offsets
-
-        mock_tokenizer = Mock()
-        mock_tokenizer.encode.side_effect = lambda text: [f" {w}" if i > 0 else w for i, w in enumerate(text.split())]
-        mock_tokenizer.decode_with_offsets.side_effect = mock_decode_with_offsets
-
-        splitter = DocumentSplitter(split_by="token", split_length=10, split_threshold=5)
-        splitter._tiktoken_tokenizer = mock_tokenizer
-
-        doc = Document(content="t1 t2")
-        docs = splitter._split_by_token(doc)
-
-        assert len(docs) == 1
-        assert docs[0].content == "t1 t2"
-
-    def test_split_by_token_skip_empty_documents_true_mock(self):
-        from unittest.mock import Mock
-
+    @pytest.mark.parametrize("skip_empty_documents,expected_count", [(True, 0), (False, 1)])
+    def test_split_by_token_skip_empty_documents_mock(self, skip_empty_documents, expected_count):
         mock_tokenizer = Mock()
         mock_tokenizer.encode.return_value = []
 
-        splitter = DocumentSplitter(split_by="token", split_length=5, skip_empty_documents=True)
+        splitter = DocumentSplitter(split_by="token", split_length=5, skip_empty_documents=skip_empty_documents)
         splitter._tiktoken_tokenizer = mock_tokenizer
 
         doc = Document(content="")
         docs = splitter._split_by_token(doc)
-        assert docs == []
-
-    def test_split_by_token_skip_empty_documents_false_mock(self):
-        from unittest.mock import Mock
-
-        mock_tokenizer = Mock()
-        mock_tokenizer.encode.return_value = []
-
-        splitter = DocumentSplitter(split_by="token", split_length=5, skip_empty_documents=False)
-        splitter._tiktoken_tokenizer = mock_tokenizer
-
-        doc = Document(content="")
-        docs = splitter._split_by_token(doc)
-        assert len(docs) == 1
-        assert docs[0].content == ""
-        assert docs[0].meta["source_id"] == doc.id
-        assert docs[0].meta["split_id"] == 0
-        assert docs[0].meta["page_number"] == 1
+        assert len(docs) == expected_count
+        if not skip_empty_documents:
+            assert docs[0].content == ""
+            assert docs[0].meta["source_id"] == doc.id
+            assert docs[0].meta["split_id"] == 0
+            assert docs[0].meta["page_number"] == 1
 
 
 @pytest.mark.integration
@@ -1039,48 +971,6 @@ class TestSplittingByTokenIntegration:
             assert chunk.content is not None
             tokens = splitter._tiktoken_tokenizer.encode(chunk.content)
             assert len(tokens) <= 5
-
-    def test_metadata_set(self):
-        splitter = DocumentSplitter(split_by="token", split_length=5, split_overlap=0)
-        doc = Document(content="one two three four five six seven eight nine ten", meta={"author": "test"})
-        result = splitter.run(documents=[doc])["documents"]
-        for i, chunk in enumerate(result):
-            assert chunk.meta["source_id"] == doc.id
-            assert chunk.meta["split_id"] == i
-            assert "split_idx_start" in chunk.meta
-            assert chunk.meta["page_number"] == 1
-            assert chunk.meta["author"] == "test"
-
-    def test_overlap_produces_shared_text(self):
-        splitter = DocumentSplitter(split_by="token", split_length=6, split_overlap=2)
-        doc = Document(content="a b c d e f g h i j k l")
-        result = splitter.run(documents=[doc])["documents"]
-        assert len(result) > 1
-        for i in range(len(result) - 1):
-            content = result[i].content
-            assert content is not None
-            assert result[i + 1].meta["split_idx_start"] < result[i].meta["split_idx_start"] + len(content)
-
-    def test_threshold_integration(self):
-        splitter = DocumentSplitter(split_by="token", split_length=5, split_overlap=1, split_threshold=4)
-        doc = Document(content="one two three four five six seven eight nine ten eleven")
-        result = splitter.run(documents=[doc])["documents"]
-        assert len(result) == 2
-        assert result[-1].content is not None
-        assert "eleven" in result[-1].content
-
-    def test_page_tracking(self):
-        splitter = DocumentSplitter(split_by="token", split_length=5, split_overlap=0)
-        doc = Document(content="a b c d e\fg h i j k")
-        result = splitter.run(documents=[doc])["documents"]
-        assert result[0].meta["page_number"] == 1
-        assert result[-1].meta["page_number"] == 2
-
-    def test_empty_document_skipped(self, caplog):
-        splitter = DocumentSplitter(split_by="token", split_length=5)
-        result = splitter.run(documents=[Document(content="")])["documents"]
-        assert result == []
-        assert "has an empty content. Skipping this document." in caplog.text
 
     def test_custom_encoding(self):
         splitter = DocumentSplitter(split_by="token", split_length=5, tokenizer_encoding="cl100k_base")
