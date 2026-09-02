@@ -158,6 +158,24 @@ def test_run_with_complex_data():
     }
 
 
+def test_run_no_retrieved_and_no_ground_truth():
+    evaluator = DocumentMAPEvaluator()
+    with pytest.raises(ValueError):
+        evaluator.run(ground_truth_documents=[], retrieved_documents=[])
+
+
+def test_run_no_ground_truth():
+    evaluator = DocumentMAPEvaluator()
+    with pytest.raises(ValueError):
+        evaluator.run(ground_truth_documents=[], retrieved_documents=[[Document(content="Berlin")]])
+
+
+def test_run_no_retrieved():
+    evaluator = DocumentMAPEvaluator()
+    with pytest.raises(ValueError):
+        evaluator.run(ground_truth_documents=[[Document(content="Berlin")]], retrieved_documents=[])
+
+
 def test_run_with_different_lengths():
     with pytest.raises(ValueError):
         evaluator = DocumentMAPEvaluator()
