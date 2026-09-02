@@ -16,6 +16,7 @@ from haystack import component, default_from_dict, default_to_dict, logging
 from haystack.components.generators.utils import _normalize_messages, _serialize_object
 from haystack.dataclasses import (
     ChatMessage,
+    ChatRole,
     ComponentInfo,
     FileContent,
     ImageContent,
@@ -965,10 +966,13 @@ def _convert_chat_message_to_responses_api_format(message: ChatMessage) -> list[
     reasonings = message.reasonings
     files = message.files
 
-    if not any([text_contents, tool_calls, tool_call_results, images, reasonings, files]):
+    has_content = any([text_contents, tool_calls, tool_call_results, images, reasonings, files])
+    # We convert an assistant message with no content part into a message with empty content, which the API accepts
+    if not has_content and not message.is_from(ChatRole.ASSISTANT):
         raise ValueError(
-            """A `ChatMessage` must contain at least one `TextContent`, `ToolCall`, `ToolCallResult`,
-              `ImageContent`, `FileContent`, or `ReasoningContent`."""
+            f"A `ChatMessage` from `{message._role.value}` must contain at least one `TextContent`, `ToolCall`, "
+            "`ToolCallResult`, `ImageContent`, `FileContent`, or `ReasoningContent`. Only assistant messages can "
+            "be empty."
         )
     if len(tool_call_results) > 0 and len(message._content) > 1:
         raise ValueError(
@@ -1041,7 +1045,7 @@ def _convert_chat_message_to_responses_api_format(message: ChatMessage) -> list[
         formatted_messages.extend(formatted_tool_calls)
 
     # system and assistant messages
-    if text_contents:
+    if text_contents or not formatted_messages:
         openai_msg["content"] = " ".join(text_contents)
         formatted_messages.append(openai_msg)
 
