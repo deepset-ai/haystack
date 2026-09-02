@@ -6,7 +6,17 @@
 
 | 仓库 | 状态 | Issue | PR | 备注 |
 |------|------|-------|----|------|
-| Significant-Gravitas/AutoGPT | ✅ Issue + PR 已发 | [#14268](https://github.com/Significant-Gravitas/AutoGPT/issues/14268) | [#14271](https://github.com/Significant-Gravitas/AutoGPT/pull/14271) | 等待维护者响应 |
+| Significant-Gravitas/AutoGPT | 🔄 PR 已发，CI 修复中 | [#14268](https://github.com/Significant-Gravitas/AutoGPT/issues/14268) | [#14271](https://github.com/Significant-Gravitas/AutoGPT/pull/14271) | poetry.lock 版本不匹配，用 poetry 2.2.1 重新生成 |
+
+## 📋 待完成队列（按优先级）
+
+| # | 仓库 | ★ | httpx 状态 | 说明 |
+|---|------|---|-----------|------|
+| 1 | [mem0ai/mem0](https://github.com/mem0ai/mem0) | 64.5k | uses-httpx | AI 记忆层，零竞争 |
+| 2 | [lm-sys/fastchat](https://github.com/lm-sys/fastchat) | 39.5k | uses-httpx | LLM 评测老项目，零竞争 |
+| 3 | [chroma-core/chroma](https://github.com/chroma-core/chroma) | 29.2k | uses-httpx | 向量数据库标准件，零竞争 |
+| 4 | [reflex-dev/reflex](https://github.com/reflex-dev/reflex) | 28.9k | uses-httpx | Python Web 框架，零竞争 |
+| 5 | [flet-dev/flet](https://github.com/flet-dev/flet) | 16.6k | uses-httpx | Flutter Python 封装，零竞争 |
 
 ## 侦察结果（自动生成）
 
