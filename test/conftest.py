@@ -4,7 +4,6 @@
 
 import asyncio
 import base64
-import os
 import time
 from collections.abc import Generator
 from pathlib import Path
@@ -12,16 +11,11 @@ from unittest.mock import Mock
 
 import pytest
 
-# Must be set before haystack is imported: haystack.telemetry reads this env var once, at import
-# time, to decide whether to instantiate its Telemetry object. Disables telemetry for the whole
-# test suite so tests never send events (e.g. every Pipeline.run() call would otherwise report one).
-os.environ["HAYSTACK_TELEMETRY_ENABLED"] = "False"
-
-from haystack import component, tracing  # noqa: E402
-from haystack.core.serialization import allow_deserialization_module  # noqa: E402
-from haystack.document_stores.in_memory import InMemoryDocumentStore  # noqa: E402
-from haystack.testing.test_utils import set_all_seeds  # noqa: E402
-from test.tracing.utils import EagerSpyingTracer, SpyingTracer  # noqa: E402
+from haystack import component, tracing
+from haystack.core.serialization import allow_deserialization_module
+from haystack.document_stores.in_memory import InMemoryDocumentStore
+from haystack.testing.test_utils import set_all_seeds
+from test.tracing.utils import EagerSpyingTracer, SpyingTracer
 
 set_all_seeds(0)
 

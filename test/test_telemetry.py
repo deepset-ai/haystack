@@ -108,8 +108,7 @@ def test_pipeline_running_with_non_serializable_component(telemetry):
     )
 
 
-@patch("haystack.telemetry._telemetry.telemetry")
-def test_pipeline_running_with_non_dict_telemetry_data(telemetry, caplog):
+def test_pipeline_running_with_non_dict_telemetry_data(caplog):
     @component
     class Component:
         def __init__(self, api_key: Secret = TokenSecret("api_key")):
