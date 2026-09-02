@@ -1070,15 +1070,17 @@ def test_run_multiple_separators_with_overlap_applies_overlap_only_once():
     )
     chunks = splitter.run([Document(content=text)])["documents"]
 
-    # every chunk must be a substring of the source text; the bug produces chunks like
-    # "Overview\nOverview\nOverview\nThis module handles ing" that are not present in the source
-    assert all(chunk.content in text for chunk in chunks)
-
-    # the overlap of the very first chunk ("Overview\n") must never be prepended twice
-    assert not any("Overview\nOverview" in chunk.content for chunk in chunks)
-
-    # the double overlap also shifted the chunks, so "split_idx_start" no longer located them
     for chunk in chunks:
+        assert chunk.content is not None
+
+        # every chunk must be a substring of the source text; the bug produces chunks like
+        # "Overview\nOverview\nOverview\nThis module handles ing" that are not present in the source
+        assert chunk.content in text
+
+        # the overlap of the very first chunk ("Overview\n") must never be prepended twice
+        assert "Overview\nOverview" not in chunk.content
+
+        # the double overlap also shifted the chunks, so "split_idx_start" no longer located them
         start = chunk.meta["split_idx_start"]
         assert text[start : start + len(chunk.content)] == chunk.content
 
@@ -1115,8 +1117,9 @@ def test_run_multiple_separators_with_overlap_keeps_chunks_contiguous(split_unit
     assert len(chunks) > 1, "the text must actually be split, otherwise the overlap is never applied"
     normalized_text = " ".join(text.split())
     for chunk in chunks:
+        assert chunk.content is not None
         assert " ".join(chunk.content.split()) in normalized_text
-    assert not any("Overview\nOverview" in chunk.content for chunk in chunks)
+        assert "Overview\nOverview" not in chunk.content
 
 
 def test_recursive_splitter_generates_unique_ids_and_correct_meta():
