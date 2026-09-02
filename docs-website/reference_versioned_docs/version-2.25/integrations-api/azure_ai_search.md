@@ -323,6 +323,7 @@ Retrieves unique values for a metadata field with optional search and pagination
 **Returns:**
 
 - <code>tuple\[list\[Any\], int\]</code> – Tuple of (list of unique values in their original type, total count of matching values).
+  A field that is not defined in the index schema has no values, so it returns `([], 0)`.
 
 #### query_sql
 
