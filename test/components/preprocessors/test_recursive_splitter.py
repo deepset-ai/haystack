@@ -1045,6 +1045,16 @@ def test_run_complex_text_with_multiple_separators():
     assert chunks[3].content.endswith("D" * 50)
 
 
+# A text that needs more than one separator level to split, which is what makes the recursive
+# chunking in ``_chunk_text`` recurse. See https://github.com/deepset-ai/haystack/issues/12281.
+MULTI_SEPARATOR_TEXT = (
+    "Overview\n"
+    "This module handles ingestion and preprocessing of documents.\n\n"
+    "Details\n"
+    "It splits text into chunks for embedding."
+)
+
+
 def test_run_multiple_separators_with_overlap_applies_overlap_only_once():
     """
     Regression test for https://github.com/deepset-ai/haystack/issues/12281.
@@ -1054,18 +1064,11 @@ def test_run_multiple_separators_with_overlap_applies_overlap_only_once():
     inner recursion levels get the overlap prepended a second time, yielding chunks that are not
     substrings of the source text.
     """
-    text = (
-        "Overview\n"
-        "This module handles ingestion and preprocessing of documents.\n\n"
-        "Details\n"
-        "It splits text into chunks for embedding."
-    )
-
+    text = MULTI_SEPARATOR_TEXT
     splitter = RecursiveDocumentSplitter(
         split_length=50, split_overlap=10, split_unit="char", separators=["\n\n", "\n", " "]
     )
-    result = splitter.run([Document(content=text)])
-    chunks = result["documents"]
+    chunks = splitter.run([Document(content=text)])["documents"]
 
     # every chunk must be a substring of the source text; the bug produces chunks like
     # "Overview\nOverview\nOverview\nThis module handles ing" that are not present in the source
@@ -1074,32 +1077,46 @@ def test_run_multiple_separators_with_overlap_applies_overlap_only_once():
     # the overlap of the very first chunk ("Overview\n") must never be prepended twice
     assert not any("Overview\nOverview" in chunk.content for chunk in chunks)
 
+    # the double overlap also shifted the chunks, so "split_idx_start" no longer located them
+    for chunk in chunks:
+        start = chunk.meta["split_idx_start"]
+        assert text[start : start + len(chunk.content)] == chunk.content
+
     assert len(chunks) == 6
     assert chunks[0].content == "Overview\n"
     assert chunks[-1].content == "unks for embedding."
 
-    # the containment invariant must hold for every split unit, not just "char":
-    # for "word" units the overlap is rejoined with a single space in
-    # _create_chunk_starting_with_overlap, so the chunk's word sequence must be
-    # contiguous in the source instead of a plain substring.
-    for unit in ("char", "word", "token"):
-        splitter = RecursiveDocumentSplitter(
-            split_length=50, split_overlap=10, split_unit=unit, separators=["\n\n", "\n", " "]
-        )
-        result = splitter.run([Document(content=text)])
-        unit_chunks = result["documents"]
-        for chunk in unit_chunks:
-            if unit == "word":
-                words = text.split()
-                seq = chunk.content.split()
-                for i in range(len(words) - len(seq) + 1):
-                    if words[i : i + len(seq)] == seq:
-                        break
-                else:
-                    pytest.fail(f"[{unit}] chunk words not contiguous in source: {chunk.content!r}")
-            else:
-                assert chunk.content in text, f"[{unit}] chunk not a substring: {chunk.content!r}"
-        assert not any("Overview\nOverview" in chunk.content for chunk in unit_chunks), unit
+
+@pytest.mark.parametrize(
+    "split_unit, split_length, split_overlap",
+    [
+        # "split_length" is in "split_unit"s, so it has to be scaled per unit: with
+        # split_length=50 the text fits in a single word/token chunk and never recurses.
+        ("char", 50, 10),
+        ("word", 4, 1),
+        # the "token" unit needs the tiktoken encoding, which is downloaded on first use, so it
+        # only runs in the integration job -- like every other token test in this file
+        pytest.param("token", 8, 3, marks=pytest.mark.integration),
+    ],
+)
+def test_run_multiple_separators_with_overlap_keeps_chunks_contiguous(split_unit, split_length, split_overlap):
+    """
+    The overlap must be applied only once for every split unit, not just for "char".
+
+    Whitespace is normalised before comparing because the "word" and "token" units rejoin the
+    overlap with a single space in ``_create_chunk_starting_with_overlap``.
+    """
+    text = MULTI_SEPARATOR_TEXT
+    splitter = RecursiveDocumentSplitter(
+        split_length=split_length, split_overlap=split_overlap, split_unit=split_unit, separators=["\n\n", "\n", " "]
+    )
+    chunks = splitter.run([Document(content=text)])["documents"]
+
+    assert len(chunks) > 1, "the text must actually be split, otherwise the overlap is never applied"
+    normalized_text = " ".join(text.split())
+    for chunk in chunks:
+        assert " ".join(chunk.content.split()) in normalized_text
+    assert not any("Overview\nOverview" in chunk.content for chunk in chunks)
 
 
 def test_recursive_splitter_generates_unique_ids_and_correct_meta():
