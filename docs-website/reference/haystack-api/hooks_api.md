@@ -1413,10 +1413,10 @@ A key may be a single tool name, a tuple of tool names sharing one policy, or th
 any tool without a more specific entry. More specific keys win. A tool with no matching key (and no `"*"`) is not
 offloaded.
 
-Only successful, text tool output is offloaded. Error results (including `before_tool` human-in-the-loop
-rejections) are always left in context. Non-text results (image or file content) are also left in context, and a
-warning is logged when such a result has a matching offload policy; supporting only text is a deliberate choice
-for now. Each result is offloaded at most once, even though the hook runs on every tool step.
+Only successful tool output is offloaded; error results are always left in context. Each part of a result is
+written to its own store entry and the pointer says where each one went. Image and file content is only offloaded
+to a store that sets `supports_binary_content`; with a text-only store the result stays in context and a warning
+is logged. Each result is offloaded at most once, even though the hook runs on every tool step.
 
 The hook keeps no mutable state, so a single instance can be shared across concurrent runs. The constructor
 `store`, however, is shared by every run that does not override it — fine for single-user or local use, but in a
@@ -1444,8 +1444,9 @@ Initialize the hook with a store and per-tool offload strategies.
 - **store** (<code>ToolResultStore</code>) – Where offloaded results are written. Can be overridden per run via `hook_context`.
 - **offload_strategies** (<code>dict\[str | tuple\[str, ...\], OffloadPolicy\]</code>) – Mapping of tool name (or a tuple of tool names, or the wildcard `"*"`) to the
   `OffloadPolicy` that decides whether that tool's results are offloaded.
-- **preview_chars** (<code>int</code>) – Number of leading characters of the original result to include in the pointer left in
-  the conversation, so the model knows roughly what was offloaded.
+- **preview_chars** (<code>int</code>) – Number of leading characters of each offloaded text to include in the pointer left in
+  the conversation, so the model knows roughly what was offloaded. Image and file blocks are described by
+  their MIME type and size instead.
 
 #### run
 
@@ -1620,6 +1621,9 @@ reference = store.write(key="search_1.txt", content="...")
 store.read(reference)
 ```
 
+Binary content is supported too: `write` takes bytes (an offloaded image or file) and `read` returns them
+unchanged.
+
 #### __init__
 
 ```python
@@ -1635,10 +1639,12 @@ Initialize the store with the root directory results are written under.
 #### write
 
 ```python
-write(*, key: str, content: str) -> str
+write(*, key: str, content: str | bytes) -> str
 ```
 
 Write `content` to `<root>/<key>`, creating parent directories, and return the file path.
+
+Text is written UTF-8 encoded; bytes (an offloaded image or file) are written verbatim.
 
 The resolved target must stay within the root directory: a `key` that escapes it (e.g. containing `../` or an
 absolute path) is rejected, so a tool-provided key cannot write outside the store.
@@ -1646,7 +1652,7 @@ absolute path) is rejected, so a tool-provided key cannot write outside the stor
 **Parameters:**
 
 - **key** (<code>str</code>) – Relative file name for the result within the store root.
-- **content** (<code>str</code>) – The tool result to persist.
+- **content** (<code>str | bytes</code>) – The tool result to persist, as text or as raw bytes.
 
 **Returns:**
 
@@ -1659,13 +1665,16 @@ absolute path) is rejected, so a tool-provided key cannot write outside the stor
 #### read
 
 ```python
-read(reference: str) -> str
+read(reference: str) -> str | bytes
 ```
 
 Read back the content previously written to `reference`.
 
-The resolved reference must stay within the store root: callers must treat it as an opaque
-store-scoped reference, not as an arbitrary filesystem path.
+A file whose bytes are valid UTF-8 is returned as a string, so text results round trip unchanged; anything
+else (an offloaded image or file) is returned as raw bytes.
+
+The resolved reference must stay within the store root: it is a store-scoped reference returned by `write`,
+to be passed back unchanged, not an arbitrary filesystem path callers can build themselves.
 
 **Parameters:**
 
@@ -1673,7 +1682,7 @@ store-scoped reference, not as an arbitrary filesystem path.
 
 **Returns:**
 
-- <code>str</code> – The stored content.
+- <code>str | bytes</code> – The stored content, as text when it decodes as UTF-8 and as bytes otherwise.
 
 **Raises:**
 
@@ -1716,8 +1725,12 @@ Bases: <code>Protocol</code>
 A place a `ToolResultOffloadHook` writes offloaded tool results to, and reads them back from.
 
 Implementations decide where and how the content lives (local disk, an isolated sandbox filesystem, object
-storage, ...). `write` returns an opaque reference string that the Agent puts in the conversation in place of the
-full result; `read` resolves that reference back to the original content.
+storage, ...). `write` returns a reference string that the Agent puts in the conversation in place of the full
+result; `read` resolves that reference back to the original content. Only the store interprets a reference -
+callers pass it back to `read` unchanged.
+
+A store that sets `supports_binary_content` takes bytes in `write` and gives them back from `read`. One that
+leaves it False is only ever given text, and image and file results stay in the conversation instead.
 
 Implement both `to_dict` and `from_dict` to make a custom store serializable; the default implementations below
 cover stores whose constructor takes no arguments.
@@ -1725,15 +1738,18 @@ cover stores whose constructor takes no arguments.
 #### write
 
 ```python
-write(*, key: str, content: str) -> str
+write(*, key: str, content: str | bytes) -> str
 ```
 
-Persist `content` under `key` and return an opaque reference to it.
+Persist `content` under `key` and return a reference to it.
 
 **Parameters:**
 
-- **key** (<code>str</code>) – A stable, per-result identifier the hook derives from the tool call (e.g. a file name).
-- **content** (<code>str</code>) – The tool result to persist.
+- **key** (<code>str</code>) – A stable, per-result identifier the hook derives from the tool call (e.g. a file name). It carries
+  an extension matching the content, so a store that maps keys to files can use it as-is.
+- **content** (<code>str | bytes</code>) – The tool result to persist. Text arrives as a string. Image and file content arrives as the
+  decoded bytes of its base64 payload, and only when the store sets `supports_binary_content` to True - a
+  text-only store may narrow this parameter to `str`.
 
 **Returns:**
 
@@ -1742,10 +1758,19 @@ Persist `content` under `key` and return an opaque reference to it.
 #### read
 
 ```python
-read(reference: str) -> str
+read(reference: str) -> str | bytes
 ```
 
 Return the content previously stored under `reference`.
+
+**Parameters:**
+
+- **reference** (<code>str</code>) – A reference string returned by `write`.
+
+**Returns:**
+
+- <code>str | bytes</code> – The stored content: a string for content written as text, bytes for binary content such as an
+  offloaded image or file. A store that does not support binary content only ever returns a string.
 
 #### to_dict
 
@@ -1786,7 +1811,9 @@ Return whether the given tool result should be offloaded.
 **Parameters:**
 
 - **tool_name** (<code>str</code>) – The name of the tool that produced the result.
-- **result** (<code>str</code>) – The tool result as a string (the content that would otherwise stay in the conversation).
+- **result** (<code>str</code>) – The tool result as a string (the content that would otherwise stay in the conversation). For a
+  result carrying image or file blocks, this is the text and base64 payloads of all its blocks joined
+  together, so its length reflects the context the result actually occupies.
 - **state** (<code>State</code>) – The Agent's live `State`, for policies that decide based on run context.
 
 **Returns:**
