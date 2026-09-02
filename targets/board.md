@@ -6,7 +6,7 @@
 
 | 仓库 | 状态 | Issue | PR | 备注 |
 |------|------|-------|----|------|
-| Significant-Gravitas/AutoGPT | 🔄 issue 已发，本地迁移准备中 | [#14268](https://github.com/Significant-Gravitas/AutoGPT/issues/14268) | — | fork: ProgrammerPlus1998/AutoGPT |
+| Significant-Gravitas/AutoGPT | ✅ Issue + PR 已发 | [#14268](https://github.com/Significant-Gravitas/AutoGPT/issues/14268) | [#14271](https://github.com/Significant-Gravitas/AutoGPT/pull/14271) | 等待维护者响应 |
 
 ## 侦察结果（自动生成）
 

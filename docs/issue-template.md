@@ -9,6 +9,8 @@
 
 **Body:**
 
+![HTTPXodus — The Great HTTP Ecosystem Migration](https://raw.githubusercontent.com/ProgrammerPlus1998/httpxodus/main/assets/banner.png)
+
 > 🏷️ *This issue is part of **HTTPXodus**, a community effort to help major projects plan their path off the stalled `httpx` stable line onto [`httpx2`](https://github.com/pydantic/httpx2), the actively maintained fork by Pydantic Services (with original httpx author Tom Christie involved). One coordinated issue per project — no spam, no drive-by PRs.*
 
 ## Background — what happened to httpx
@@ -19,7 +21,15 @@
 - For most of 2025 the repository was dormant; maintenance trackers (e.g. Snyk) now flag it as **inactive**.
 - Encouragingly, the project has recently resumed activity: `1.0.dev4–dev6` shipped between **2026-08-19 and 2026-08-31**. A 1.0 is clearly in the works, but there is **no committed date for a stable 1.0**, and the dev line carries breaking changes.
 
-Meanwhile, the ecosystem has already begun moving: **Starlette**, the **Anthropic Python SDK (v1.0)**, and the **MCP Python SDK (2.0)** have migrated to `httpx2`; the **OpenAI Python SDK** supports it as an optional extra.
+Meanwhile, the ecosystem has already begun moving. Projects that have adopted `httpx2`:
+
+| Project | Stars | Status |
+|---------|-------|--------|
+| [Starlette](https://github.com/encode/starlette) | 12.5k+ | ✅ Migrated |
+| [FastAPI](https://github.com/fastapi/fastapi) | 102k+ | ✅ Dual support (httpx2 test dependency) |
+| [OpenAI Python SDK](https://github.com/openai/openai-python) | 31.5k+ | ✅ Migrated |
+| [Anthropic Python SDK](https://github.com/anthropics/anthropic-sdk-python) | 3.9k+ | ✅ Migrated in v1.0 |
+| [MCP Python SDK](https://github.com/modelcontextprotocol/python-sdk) | 24k+ | ✅ Migrated in v2.0 |
 
 ## What is httpx2
 
