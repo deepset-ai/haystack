@@ -391,14 +391,7 @@ class TestRouter:
         assert isinstance(result["reply"], str)
 
         # Non-str output types must still reconstruct structured literals from the rendered string.
-        routes = [
-            {
-                "condition": "{{ True }}",
-                "output": "{{ reply }}",
-                "output_name": "reply",
-                "output_type": list,
-            }
-        ]
+        routes = [{"condition": "{{ True }}", "output": "{{ reply }}", "output_name": "reply", "output_type": list}]
         result = ConditionalRouter(routes).run(reply="[1, 2, 3]")
         assert result["reply"] == [1, 2, 3]
         assert isinstance(result["reply"], list)
