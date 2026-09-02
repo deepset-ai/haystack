@@ -188,14 +188,19 @@ Everything is configured through keyword arguments to `create_advanced_rag_agent
 
 - `max_agent_steps` caps the agent loop. Defaults to `20`.
 - `max_fetched_docs` sets how many documents `fetch_documents_by_filter` shows per fetch. Defaults to `10`. A filter fetch is not bounded by a retriever's `top_k`, so this caps the tool result instead; the scored `search_documents` tool is bounded by the `top_k` configured on your retrieval components.
-- `tool_concurrency_limit` caps the number of tool calls executed in parallel within one agent step. Defaults to `4`.
 
-### Extension
+### Further customization
 
-- `extra_tools` takes additional tools or toolsets, appended after the built-in document-store toolset and the retrieval tool.
-- `state_schema` merges additional entries into the agent's [`State`](../state.mdx) schema. The built-in `documents` entry always takes precedence.
-- `hooks` merges additional [hooks](../hooks.mdx) per hook point with the built-in ones. For `after_run`, the built-in backup-answer hook runs first, so custom hooks see the final answer.
-- `raise_on_tool_invocation_failure` makes a failing tool call raise when `True`, instead of returning the error to the LLM as a message it can recover from. Defaults to `False`.
+To change anything else, such as adding tools, [hooks](../hooks.mdx), or [`State`](../state.mdx) entries, use [`clone()`](../agent.mdx#cloning-and-modifying-an-agent) on the returned agent. Unpack the existing values to keep the built-in tools and hooks:
+
+```python
+agent = create_advanced_rag_agent(document_store=document_store, retriever=retriever)
+
+customized = agent.clone(
+    tools=[*agent.tools, my_tool],
+    hooks={**agent.hooks, "before_llm": [my_hook]},
+)
+```
 
 ## How it works
 
