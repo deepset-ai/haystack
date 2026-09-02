@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Fixed ``LLMMetadataExtractor`` so that a successful retry no longer retains
+    ``metadata_extraction_error`` and ``metadata_extraction_response`` from a
+    previous failed attempt when the retry parses an empty JSON object (``{}``).

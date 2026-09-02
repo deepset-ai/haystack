@@ -356,6 +356,41 @@ class TestLLMMetadataExtractor:
         # Ensure no attempt was made to call the LLM
         mock_chat_generator.run_async.assert_not_called()
 
+    def test_run_clears_error_meta_on_empty_json_retry(self):
+        extractor = LLMMetadataExtractor(
+            prompt="Extract {{ document.content }}", chat_generator=MockChatGenerator(responses=["not json", "{}"])
+        )
+
+        first = extractor.run(documents=[Document(content="a")])
+        assert len(first["failed_documents"]) == 1
+        failed_doc = first["failed_documents"][0]
+        assert "metadata_extraction_error" in failed_doc.meta
+        assert "metadata_extraction_response" in failed_doc.meta
+
+        second = extractor.run(documents=[failed_doc])
+        assert len(second["documents"]) == 1
+        retried_doc = second["documents"][0]
+        assert "metadata_extraction_error" not in retried_doc.meta
+        assert "metadata_extraction_response" not in retried_doc.meta
+
+    @pytest.mark.asyncio
+    async def test_run_async_clears_error_meta_on_empty_json_retry(self):
+        extractor = LLMMetadataExtractor(
+            prompt="Extract {{ document.content }}", chat_generator=MockChatGenerator(responses=["not json", "{}"])
+        )
+
+        first = await extractor.run_async(documents=[Document(content="a")])
+        assert len(first["failed_documents"]) == 1
+        failed_doc = first["failed_documents"][0]
+        assert "metadata_extraction_error" in failed_doc.meta
+        assert "metadata_extraction_response" in failed_doc.meta
+
+        second = await extractor.run_async(documents=[failed_doc])
+        assert len(second["documents"]) == 1
+        retried_doc = second["documents"][0]
+        assert "metadata_extraction_error" not in retried_doc.meta
+        assert "metadata_extraction_response" not in retried_doc.meta
+
     @pytest.mark.asyncio
     async def test_run_async_respects_max_workers(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
