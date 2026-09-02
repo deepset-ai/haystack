@@ -306,7 +306,8 @@ get_metadata_field_unique_values(
     search_term: str | None = None,
     from_: int = 0,
     size: int = 10,
-) -> tuple[list[str], int]
+    filters: dict[str, Any] | None = None,
+) -> tuple[list[Any], int]
 ```
 
 Retrieves unique values for a metadata field with optional search and pagination.
@@ -317,10 +318,11 @@ Retrieves unique values for a metadata field with optional search and pagination
 - **search_term** (<code>str | None</code>) – Optional search term to filter unique values.
 - **from\_** (<code>int</code>) – Starting offset for pagination.
 - **size** (<code>int</code>) – Number of values to return.
+- **filters** (<code>dict\[str, Any\] | None</code>) – Optional filters to restrict the documents considered.
 
 **Returns:**
 
-- <code>tuple\[list\[str\], int\]</code> – Tuple of (list of unique values, total count of matching values).
+- <code>tuple\[list\[Any\], int\]</code> – Tuple of (list of unique values in their original type, total count of matching values).
 
 #### query_sql
 
