@@ -385,7 +385,9 @@ class TestRouter:
         # A rendered string that happens to be a valid Python literal must be returned
         # unchanged when output_type=str, and not silently coerced to another type
         # (e.g. "1,000" is a valid Python tuple literal that evaluates to (1, 0)).
-        routes = [{"condition": "{{ True }}", "output": "{{ reply }}", "output_name": "reply", "output_type": str}]
+        routes: list[Route] = [
+            {"condition": "{{ True }}", "output": "{{ reply }}", "output_name": "reply", "output_type": str}
+        ]
         result = ConditionalRouter(routes).run(reply="1,000")
         assert result["reply"] == "1,000"
         assert isinstance(result["reply"], str)
