@@ -5,7 +5,7 @@
 from typing import Any
 
 from haystack import logging
-from haystack.dataclasses import ChatMessage, ImageContent, ReasoningContent, TextContent
+from haystack.dataclasses import ChatMessage, ChatRole, ImageContent, ReasoningContent, TextContent
 from haystack.lazy_imports import LazyImport
 
 with LazyImport(message="Run 'pip install \"transformers[torch]\"'") as torch_import:
@@ -69,9 +69,12 @@ def convert_message_to_hf_format(message: ChatMessage) -> dict[str, Any]:
     # ReasoningContent is for human transparency only, not sent to the API
     non_reasoning_content = [c for c in message._content if not isinstance(c, ReasoningContent)]
 
-    if not text_contents and not tool_calls and not tool_call_results and not images:
+    has_content = bool(text_contents or tool_calls or tool_call_results or images)
+    # We convert an assistant message with no content part into a message with empty content, which the API accepts
+    if not has_content and not message.is_from(ChatRole.ASSISTANT):
         raise ValueError(
-            "A `ChatMessage` must contain at least one `TextContent`, `ToolCall`, `ToolCallResult`, or `ImageContent`."
+            f"A `ChatMessage` from `{message._role.value}` must contain at least one `TextContent`, `ToolCall`, "
+            "`ToolCallResult`, or `ImageContent`. Only assistant messages can be empty."
         )
     if len(tool_call_results) > 0 and len(non_reasoning_content) > 1:
         raise ValueError(
