@@ -994,7 +994,7 @@ def _convert_chat_message_to_responses_api_format(message: ChatMessage) -> list[
     files = message.files
 
     has_content = any([text_contents, tool_calls, tool_call_results, images, reasonings, files])
-    # An assistant reply with no content part serializes with empty content, which the API accepts.
+    # We convert an assistant message with no content part into a message with empty content, which the API accepts
     if not has_content and not message.is_from(ChatRole.ASSISTANT):
         raise ValueError(
             f"A `ChatMessage` from `{message._role.value}` must contain at least one `TextContent`, `ToolCall`, "
@@ -1071,8 +1071,7 @@ def _convert_chat_message_to_responses_api_format(message: ChatMessage) -> list[
             formatted_tool_calls.append(openai_tool_call)
         formatted_messages.extend(formatted_tool_calls)
 
-    # System and assistant messages. The API rejects an input item with no `content`, so an assistant reply that
-    # produced no item is sent with the empty content that joining no texts yields.
+    # system and assistant messages
     if text_contents or not formatted_messages:
         openai_msg["content"] = " ".join(text_contents)
         formatted_messages.append(openai_msg)

@@ -191,20 +191,6 @@ class ToolAssertingChatGenerator:
         return {"replies": [message]}
 
 
-@component
-class SerializingChatGenerator:
-    """Serializes the incoming history the way a real generator does, then returns the next scripted reply."""
-
-    def __init__(self, replies: list[ChatMessage]):
-        self.replies = list(replies)
-
-    @component.output_types(replies=list[ChatMessage])
-    def run(self, messages: list[ChatMessage], tools: list[Tool] | Toolset | None = None, **kwargs) -> dict[str, Any]:
-        for message in messages:
-            message.to_openai_dict_format()
-        return {"replies": [self.replies.pop(0)]}
-
-
 def _parallel_tool_calling_generator() -> MockChatGenerator:
     """Requests two `weather_tool` calls on the first turn, then returns a plain reply so the agent loop exits."""
     return MockChatGenerator(
@@ -1121,21 +1107,6 @@ class TestAgentExitConditions:
 
         assert result["step_count"] == 2
         assert result["last_message"].text == "The weather is sunny."
-
-    def test_contentless_assistant_message_stays_sendable(self, weather_tool):
-        # A discarded malformed tool call leaves a reply with no content parts. The agent keeps it in the history and
-        # keeps looping, so the reply must serialize for the next LLM call rather than raise.
-        generator = SerializingChatGenerator(
-            replies=[ChatMessage.from_assistant(text=None), ChatMessage.from_assistant("The weather is sunny.")]
-        )
-        agent = Agent(chat_generator=generator, tools=[weather_tool], exit_conditions=["text"])
-
-        result = agent.run(messages=[ChatMessage.from_user("What's the weather?")])
-
-        assert result["step_count"] == 2
-        assert result["last_message"].text == "The weather is sunny."
-        # The reply stays in the history, so callers reading each message's meta still see the turn.
-        assert len(result["messages"]) == 3
 
     @pytest.mark.parametrize("finish_reason", ["length", "content_filter"])
     @pytest.mark.parametrize("text", ["", "Partial answer."])

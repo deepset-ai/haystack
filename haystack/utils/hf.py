@@ -70,8 +70,7 @@ def convert_message_to_hf_format(message: ChatMessage) -> dict[str, Any]:
     non_reasoning_content = [c for c in message._content if not isinstance(c, ReasoningContent)]
 
     has_content = bool(text_contents or tool_calls or tool_call_results or images)
-    # An assistant reply with nothing this format carries is sent with empty content, which the API accepts.
-    # Reasoning is dropped here as it is on any other message.
+    # We convert an assistant message with no content part into a message with empty content, which the API accepts
     if not has_content and not message.is_from(ChatRole.ASSISTANT):
         raise ValueError(
             f"A `ChatMessage` from `{message._role.value}` must contain at least one `TextContent`, `ToolCall`, "

@@ -647,8 +647,7 @@ class ChatMessage:
             `id` attribute.
         """
         has_content = bool(self.texts or self.tool_calls or self.tool_call_results or self.images or self.files)
-        # An assistant reply with nothing this format carries serializes with empty content, which the API accepts.
-        # Reasoning is dropped here as it is on any other message.
+        # We convert an assistant message with no content part into a message with empty content, which the API accepts
         if not has_content and not self.is_from(ChatRole.ASSISTANT):
             raise ValueError(
                 f"A `ChatMessage` from `{self._role.value}` must contain at least one `TextContent`, `ToolCall`, "
