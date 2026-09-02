@@ -10,7 +10,7 @@ from haystack.core.serialization import default_from_dict, default_to_dict
 
 class ToolResultStore(Protocol):
     """
-    A place a `ToolResultOffloadHook` writes offloaded tool results to, and reads them back from.
+    A place a `ToolResultOffloadHook` or `ToolResultOffloadCompactor` writes tool results to and reads them back from.
 
     Implementations decide where and how the content lives (local disk, an isolated sandbox filesystem, object
     storage, ...). `write` returns an opaque reference string that the Agent puts in the conversation in place of the
@@ -24,7 +24,7 @@ class ToolResultStore(Protocol):
         """
         Persist `content` under `key` and return an opaque reference to it.
 
-        :param key: A stable, per-result identifier the hook derives from the tool call (e.g. a file name).
+        :param key: A stable, per-result identifier derived from the tool call (e.g. a file name).
         :param content: The tool result to persist.
         :returns: A reference string (e.g. a path or URI) that `read` can later resolve.
         """

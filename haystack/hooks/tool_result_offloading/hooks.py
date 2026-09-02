@@ -81,6 +81,56 @@ def _offloadable_text(content: ToolCallResultContentT) -> str | None:
     return None
 
 
+def _offload_pointer(reference: str, result: str, preview_chars: int) -> str:
+    """
+    Build the compact pointer that replaces a full result in the conversation.
+
+    :param reference: The store reference the result was written to.
+    :param result: The original result string, used for its length and a leading preview.
+    :param preview_chars: Number of leading result characters to include in the pointer.
+    :returns: A one-line pointer carrying the reference, the result length, and a preview.
+    """
+    ellip = "..." if len(result) > preview_chars else ""
+    preview = result[:preview_chars]
+    return f"Tool result offloaded to '{reference}' ({len(result)} characters). Preview: {preview}{ellip}"
+
+
+def _offloaded_message(
+    message: ChatMessage,
+    *,
+    store: ToolResultStore,
+    key: str,
+    text: str,
+    preview_chars: int,
+    additional_meta: dict[str, Any] | None = None,
+) -> ChatMessage:
+    """
+    Store a text tool result and return the message that points to it.
+
+    Callers are responsible for checking whether the result is eligible for offloading before invoking this helper.
+    Keeping the write and message construction here ensures every offloading entry point uses the same pointer format
+    and metadata marker.
+
+    :param message: The tool-result message being offloaded.
+    :param store: The store to write the full result to.
+    :param key: The key under which to store the result.
+    :param text: The text form of the tool result.
+    :param preview_chars: Number of leading result characters to include in the pointer.
+    :param additional_meta: Metadata to add to the offloaded message.
+    :returns: A new tool-result message containing a reference to the stored result.
+    """
+    result = message.tool_call_result
+    if result is None:
+        raise ValueError("Only tool-result messages can be offloaded.")
+    reference = store.write(key=key, content=text)
+    return ChatMessage.from_tool(
+        tool_result=_offload_pointer(reference=reference, result=text, preview_chars=preview_chars),
+        origin=result.origin,
+        error=result.error,
+        meta={**message.meta, **(additional_meta or {}), _OFFLOADED_META_KEY: reference},
+    )
+
+
 def _serialize_offload_strategies(strategies: dict[str | tuple[str, ...], OffloadPolicy]) -> dict[str, Any]:
     """
     Serialize an offload-strategies mapping to a plain, mapping-key-safe dictionary.
@@ -292,7 +342,7 @@ class ToolResultOffloadHook:
         # A policy matched, so an offload was wanted. Offloading only supports text results (a string or a sequence
         # of TextContent) for now, by design; leave image/file content in context and warn since the intent was to
         # offload it.
-        text = _offloadable_text(result.result)
+        text = _offloadable_text(content=result.result)
         if text is None:
             logger.warning(
                 "Tool '{tool}' produced a non-text result; leaving it in context. Result offloading currently "
@@ -305,26 +355,10 @@ class ToolResultOffloadHook:
         if not policy.should_offload(tool_name, text, state):
             return message
 
-        key = _result_store_key(tool_name, result.origin.id, state.data.get("step_count", 0), index)
-        reference = store.write(key=key, content=text)
-        return ChatMessage.from_tool(
-            tool_result=self._pointer(reference, text),
-            origin=result.origin,
-            error=result.error,
-            meta={**message.meta, _OFFLOADED_META_KEY: reference},
+        key = _result_store_key(
+            tool_name=tool_name, tool_call_id=result.origin.id, step=state.data.get("step_count", 0), index=index
         )
-
-    def _pointer(self, reference: str, result: str) -> str:
-        """
-        Build the compact pointer that replaces a full result in the conversation.
-
-        :param reference: The store reference the result was written to.
-        :param result: The original result string, used for its length and a leading preview.
-        :returns: A one-line pointer carrying the reference, the result length, and a `preview_chars`-long preview.
-        """
-        ellip = "..." if len(result) > self.preview_chars else ""
-        preview = result[: self.preview_chars]
-        return f"Tool result offloaded to '{reference}' ({len(result)} characters). Preview: {preview}{ellip}"
+        return _offloaded_message(message=message, store=store, key=key, text=text, preview_chars=self.preview_chars)
 
     def to_dict(self) -> dict[str, Any]:
         """
@@ -352,4 +386,4 @@ class ToolResultOffloadHook:
             deserialize_component_inplace(init_params, key="store")
         if init_params.get("offload_strategies") is not None:
             init_params["offload_strategies"] = _deserialize_offload_strategies(init_params["offload_strategies"])
-        return default_from_dict(cls, data)
+        return default_from_dict(cls=cls, data=data)

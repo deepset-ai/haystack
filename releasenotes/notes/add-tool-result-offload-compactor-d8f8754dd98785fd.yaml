@@ -1,0 +1,23 @@
+---
+features:
+  - |
+    Added the experimental ``ToolResultOffloadCompactor`` for use with ``CompactionHook``. It keeps fresh tool
+    output directly in the Agent's context, then writes eligible older text results to a ``ToolResultStore`` only
+    when context compaction is triggered. The compacted conversation retains a reference and configurable preview,
+    allowing the Agent to retrieve the full stored output later.
+
+    .. code-block:: python
+
+        from haystack.hooks.compaction import CompactionHook, ToolResultOffloadCompactor
+        from haystack.hooks.tool_result_offloading import FileSystemToolResultStore
+
+        compaction_hook = CompactionHook(
+            compactor=ToolResultOffloadCompactor(
+                store=FileSystemToolResultStore(root="tool_results"),
+                min_keep_steps=1,
+                min_tokens=200,
+            ),
+            context_window=400_000,
+            compact_at=0.7,
+            compact_to=0.4,
+        )
