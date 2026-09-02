@@ -26,6 +26,7 @@ from haystack.core.pipeline.breakpoint import (
     _validate_pipeline_snapshot_against_pipeline,
 )
 from haystack.core.pipeline.utils import _deepcopy_with_exceptions
+from haystack.core.serialization_security import mark_deserialization_internal
 from haystack.dataclasses import AsyncStreamingCallbackT, StreamingCallbackT, StreamingChunk, select_streaming_callback
 from haystack.dataclasses.breakpoints import INTERNAL_INPUTS_FORMAT, Breakpoint, PipelineSnapshot
 from haystack.dataclasses.streaming_chunk import _invoke_streaming_callback
@@ -141,6 +142,8 @@ class Pipeline(PipelineBase):
         :param component_visits: Current state of component visits.
         :param parent_span: The parent span to use for the newly created span.
             This is to allow tracing to be correctly linked to the pipeline run.
+        :param break_point: An optional breakpoint. If it targets this component and its visit
+            count matches the current one, a `BreakpointException` is raised before the Component runs.
         :raises PipelineRuntimeError: If Component doesn't return a dictionary.
         :return: The output of the Component.
         """
@@ -193,6 +196,7 @@ class Pipeline(PipelineBase):
 
             return component_output
 
+    @mark_deserialization_internal
     def run(  # noqa: PLR0915, PLR0912, C901
         self,
         data: dict[str, Any],
@@ -786,6 +790,7 @@ class Pipeline(PipelineBase):
         task = asyncio.create_task(_runner())
         running_tasks[task] = component_name
 
+    @mark_deserialization_internal
     async def run_async_generator(  # noqa: PLR0915,C901
         self, data: dict[str, Any], include_outputs_from: set[str] | None = None, concurrency_limit: int = 4
     ) -> AsyncGenerator[dict[str, Any], None]:
@@ -1075,6 +1080,7 @@ class Pipeline(PipelineBase):
                 # This is a no-op on normal completion and on a component error, since no tasks are left running by then
                 await self._cancel_in_flight_tasks(running_tasks, scheduled_components)
 
+    @mark_deserialization_internal
     async def run_async(
         self, data: dict[str, Any], include_outputs_from: set[str] | None = None, concurrency_limit: int = 4
     ) -> dict[str, Any]:
@@ -1192,6 +1198,7 @@ class Pipeline(PipelineBase):
             final = partial
         return final or {}
 
+    @mark_deserialization_internal
     def stream(
         self,
         data: dict[str, Any],

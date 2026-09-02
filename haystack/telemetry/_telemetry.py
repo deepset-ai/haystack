@@ -170,7 +170,7 @@ def pipeline_running(pipeline: "Pipeline") -> tuple[str, dict[str, Any]] | None:
             components[component_qualified_class_name].append({"name": component_name})
 
     # Data sent to Posthog
-    return "Pipeline run (2.x)", {
+    return "Pipeline run (3.x)", {
         "pipeline_id": str(id(pipeline)),
         "pipeline_type": generate_qualified_class_name(type(pipeline)),
         "runs": pipeline._telemetry_runs,

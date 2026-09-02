@@ -86,7 +86,8 @@ docs = "haystack-pydoc pydoc tmp_api_reference"
 
 # we override dependencies from the default environment
 dependencies = [
-  "numpy>=2", # Haystack is compatible both with numpy 1.x and 2.x, but we test with 2.x
+  # Haystack is compatible both with numpy 1.x and 2.x, but we test with 2.x.
+  "numpy>=2",
   "numba>=0.54.0", # This pin helps uv resolve the dependency tree. See https://github.com/astral-sh/uv/issues/7881
 
   "pandas",                                           # AzureOCRDocumentConverter, CSVDocumentCleaner, CSVDocumentSplitter,
@@ -149,7 +150,7 @@ all = 'pytest {args:test}'
 e2e = 'pytest {args:e2e}'
 
 # TODO We want to eventually type the whole test folder
-types = "mypy --install-types --non-interactive --cache-dir=.mypy_cache/ {args:haystack test/core/ test/marshal/ test/testing/ test/tracing/ test/tools/ test/hooks/human_in_the_loop test/evaluation test/document_stores test/dataclasses test/utils/ test/components/caching/ test/components/embedders/ test/components/generators/}"
+types = "mypy --install-types --non-interactive --cache-dir=.mypy_cache/ {args:haystack test/core/ test/marshal/ test/testing/ test/tracing/ test/tools/ test/hooks/human_in_the_loop test/evaluation test/document_stores test/dataclasses test/utils/ test/fuzz/ test/skill_stores/ test/token_counters/ test/components/agents/test_state_class.py test/components/builders/ test/components/caching/ test/components/converters/test_utils.py test/components/embedders/ test/components/evaluators/ test/components/extractors/ test/components/fetchers/ test/components/generators/ test/components/joiners/ test/components/preprocessors/ test/components/query/ test/components/rankers/ test/components/routers/ test/components/samplers/ test/components/validators/ test/components/writers/}"
 
 [project.urls]
 "CI: GitHub" = "https://github.com/deepset-ai/haystack/actions"
@@ -192,7 +193,10 @@ asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "class"
 
 [tool.mypy]
-python_version = "3.10"
+# Deliberately above the 3.10 floor in `requires-python`: numpy's stubs use PEP 695 `type`
+# statements, which mypy rejects as a syntax error below 3.12. The floor stays covered by the
+# unit test matrix, which runs on 3.10.
+python_version = "3.12"
 check_untyped_defs = true
 disallow_incomplete_defs = true
 ignore_missing_imports = true

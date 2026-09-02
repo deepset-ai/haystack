@@ -9,12 +9,14 @@ from typing import Any, TypedDict, get_args, get_origin
 
 from jinja2 import Environment, TemplateSyntaxError
 from jinja2.nativetypes import NativeEnvironment
-from jinja2.sandbox import SandboxedEnvironment
 from typing_extensions import NotRequired
 
 from haystack import component, default_from_dict, default_to_dict, logging
+from haystack.core.errors import DeserializationError
+from haystack.core.serialization_security import _is_unsafe_deserialization
 from haystack.utils import deserialize_callable, deserialize_type, serialize_callable, serialize_type
 from haystack.utils.jinja2_extensions import _extract_template_variables_and_assignments
+from haystack.utils.jinja2_sandbox import HaystackSandboxedEnvironment
 from haystack.utils.type_serialization import _is_union_type
 
 logger = logging.getLogger(__name__)
@@ -275,7 +277,7 @@ class ConditionalRouter:
             )
             logger.warning(msg)
 
-        self._env = NativeEnvironment() if self._unsafe else SandboxedEnvironment()
+        self._env = NativeEnvironment() if self._unsafe else HaystackSandboxedEnvironment()
         self._env.filters.update(self.custom_filters)
 
         self._validate_routes(routes)
@@ -363,6 +365,24 @@ class ConditionalRouter:
             The deserialized component.
         """
         init_params = data.get("init_parameters", {})
+
+        # `unsafe=True` swaps the Jinja sandbox for a NativeEnvironment that executes arbitrary code.
+        # Honor it from serialized data only when the whole pipeline is being loaded in unsafe mode;
+        # otherwise a hostile pipeline could disable the sandbox on its own in default safe mode.
+        if init_params.get("unsafe") and not _is_unsafe_deserialization():
+            raise DeserializationError(
+                "Refusing to deserialize a ConditionalRouter with unsafe=True while loading in safe mode. "
+                "If you trust the source of this data, load it with Pipeline.load(..., unsafe=True)."
+            )
+
+        custom_filters = init_params.get("custom_filters", {})
+        if custom_filters and not _is_unsafe_deserialization():
+            raise DeserializationError(
+                "Refusing to deserialize a ConditionalRouter with custom filters while loading in safe mode. "
+                "Custom filters are arbitrary callables that can execute during pipeline loading. "
+                "If you trust the source of this data, load it with Pipeline.load(..., unsafe=True)."
+            )
+
         routes = init_params.get("routes")
         for route in routes:
             # output_type needs to be deserialized from a string to a type
@@ -373,7 +393,6 @@ class ConditionalRouter:
 
         # Since the custom_filters are typed as optional in the init signature, we catch the
         # case where they are not present in the serialized data and set them to an empty dict.
-        custom_filters = init_params.get("custom_filters", {})
         if custom_filters is not None:
             for name, filter_func in custom_filters.items():
                 init_params["custom_filters"][name] = deserialize_callable(filter_func) if filter_func else None
@@ -439,8 +458,12 @@ class ConditionalRouter:
                         # we try to evaluate it and would fail.
                         # This must be done cause the output could be different literal structures.
                         # This doesn't support any user types.
+                        # When the declared output_type is str we skip literal evaluation so that a
+                        # rendered string that happens to be a valid Python literal (e.g. "1,000" -> (1, 0),
+                        # "42" -> 42, "None" -> None) is returned unchanged instead of being coerced to
+                        # another type, which would violate the declared output_type.
                         with contextlib.suppress(Exception):
-                            if not self._unsafe:
+                            if not self._unsafe and output_type is not str:
                                 output_value = ast.literal_eval(output_value)
 
                     # Validate output type if needed

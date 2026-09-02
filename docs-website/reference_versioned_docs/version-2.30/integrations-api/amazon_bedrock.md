@@ -236,12 +236,14 @@ and `aws_region_name`.
 - **file_root_path** (<code>str | None</code>) – The path where the file will be downloaded.
   Can be set through this parameter or the `FILE_ROOT_PATH` environment variable.
   If none of them is set, a `ValueError` is raised.
+  Downloads are confined to this directory: a document whose file name resolves outside of it
+  (for example an absolute path or one containing `..`) is logged and skipped instead of written.
 - **file_extensions** (<code>list\[str\] | None</code>) – The file extensions that are permitted to be downloaded.
   By default, all file extensions are allowed.
 - **max_workers** (<code>int</code>) – The maximum number of workers to use for concurrent downloads.
 - **max_cache_size** (<code>int</code>) – The maximum number of files to cache.
 - **file_name_meta_key** (<code>str</code>) – The name of the meta key that contains the file name to download. The file name
-  will also be used to create local file path for download.
+  will also be used to create local file path for download, relative to `file_root_path`.
   By default, the `Document.meta["file_name"]` is used. If you want to use a
   different key in `Document.meta`, you can set it here.
 - **s3_key_generation_function** (<code>Callable\\[[Document\], str\] | None</code>) – An optional function that generates the S3 key for the file to download.
@@ -256,6 +258,7 @@ and `aws_region_name`.
 
 - <code>ValueError</code> – If the `file_root_path` is not set through
   the constructor or the `FILE_ROOT_PATH` environment variable.
+- <code>AWSConfigurationError</code> – If the provided AWS credentials are invalid.
 
 #### warm_up
 
@@ -264,6 +267,12 @@ warm_up() -> None
 ```
 
 Warm up the component by initializing the settings and storage.
+
+**Raises:**
+
+- <code>ValueError</code> – If the environment variable naming the S3 bucket (`s3_bucket_name_env`, by default
+  `S3_DOWNLOADER_BUCKET`) is not set.
+- <code>S3ConfigurationError</code> – If the S3 client cannot be created.
 
 #### run
 
@@ -282,12 +291,12 @@ Return enriched `Document`s with the path of the downloaded file.
 **Returns:**
 
 - <code>dict\[str, list\[Document\]\]</code> – A dictionary with:
-- `documents`: The downloaded `Document`s; each has `meta['file_path']`.
+- `documents`: The downloaded `Document`s; each has `meta['file_path']`. Documents whose file name
+  is missing, or resolves outside of `file_root_path`, are logged and skipped.
 
 **Raises:**
 
 - <code>S3Error</code> – If a download attempt fails or the file does not exist in the S3 bucket.
-- <code>ValueError</code> – If the path where files will be downloaded is not set.
 
 #### to_dict
 
@@ -1350,7 +1359,9 @@ Supports both standard and streaming responses depending on whether a streaming 
 - **messages** (<code>list\[ChatMessage\] | str</code>) – A list of `ChatMessage` objects forming the chat history.
   If a string is provided, it is converted to a list containing a ChatMessage with user role.
 - **streaming_callback** (<code>StreamingCallbackT | None</code>) – Optional callback for handling streaming outputs.
-- **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Optional dictionary of generation parameters. Some common parameters are:
+- **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Optional dictionary of generation parameters. These are merged per key with the
+  `generation_kwargs` passed at initialization: keys provided here take precedence, keys set only at
+  initialization are kept. Some common parameters are:
 - `maxTokens`: Maximum number of tokens to generate.
 - `stopSequences`: List of stop sequences to stop generation.
 - `temperature`: Sampling temperature.
@@ -1386,8 +1397,10 @@ Designed for use cases where non-blocking or concurrent execution is desired.
 
 - **messages** (<code>list\[ChatMessage\] | str</code>) – A list of `ChatMessage` objects forming the chat history.
   If a string is provided, it is converted to a list containing a ChatMessage with user role.
-- **streaming_callback** (<code>StreamingCallbackT | None</code>) – Optional async-compatible callback for handling streaming outputs.
-- **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Optional dictionary of generation parameters. Some common parameters are:
+- **streaming_callback** (<code>StreamingCallbackT | None</code>) – Optional callback for handling streaming outputs. Async callbacks are preferred.
+- **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Optional dictionary of generation parameters. These are merged per key with the
+  `generation_kwargs` passed at initialization: keys provided here take precedence, keys set only at
+  initialization are kept. Some common parameters are:
 - `maxTokens`: Maximum number of tokens to generate.
 - `stopSequences`: List of stop sequences to stop generation.
 - `temperature`: Sampling temperature.
@@ -1671,6 +1684,10 @@ Creates an instance of the 'AmazonBedrockRanker'.
 - **meta_data_separator** (<code>str</code>) – Separator used to concatenate the meta fields
   to the Document content.
 
+**Raises:**
+
+- <code>ValueError</code> – If `model` is empty or if `top_k` is not > 0.
+
 #### to_dict
 
 ```python
@@ -1723,3 +1740,128 @@ Use the Amazon Bedrock Reranker to re-rank the list of documents based on the qu
 **Raises:**
 
 - <code>ValueError</code> – If `top_k` is not > 0.
+
+## haystack_integrations.components.retrievers.amazon_bedrock.knowledge_base_retriever
+
+### AmazonBedrockKnowledgeBaseRetriever
+
+Retrieves documents from an Amazon Bedrock Managed Knowledge Base.
+
+Uses AgenticRetrieveStream when available, falling back to the standard Retrieve API otherwise.
+
+Usage example:
+
+```python
+from haystack.utils import Secret
+from haystack_integrations.components.retrievers.amazon_bedrock import AmazonBedrockKnowledgeBaseRetriever
+
+retriever = AmazonBedrockKnowledgeBaseRetriever(
+    knowledge_base_id="ABCDEFGHIJ",
+    aws_region_name=Secret.from_token("eu-central-1"),
+)
+
+result = retriever.run(query="What are the benefits of managed knowledge bases?")
+for doc in result["documents"]:
+    print(doc.content)
+    print(doc.meta["source"])
+    print(doc.score)
+```
+
+AmazonBedrockKnowledgeBaseRetriever uses AWS for authentication. You can use the AWS CLI to authenticate through
+your IAM. For more information on setting up an IAM identity-based policy, see [Amazon Bedrock documentation]
+(https://docs.aws.amazon.com/bedrock/latest/userguide/security_iam_id-based-policy-examples.html).
+
+If the AWS environment is configured correctly, the AWS credentials are not required as they're loaded
+automatically from the environment or the AWS configuration file.
+If the AWS environment is not configured, set `aws_access_key_id`, `aws_secret_access_key`,
+and `aws_region_name` as environment variables or pass them as
+[Secret](https://docs.haystack.deepset.ai/docs/secret-management) arguments.
+
+#### __init__
+
+```python
+__init__(
+    knowledge_base_id: str | None = None,
+    aws_access_key_id: Secret | None = Secret.from_env_var(
+        "AWS_ACCESS_KEY_ID", strict=False
+    ),
+    aws_secret_access_key: Secret | None = Secret.from_env_var(
+        "AWS_SECRET_ACCESS_KEY", strict=False
+    ),
+    aws_session_token: Secret | None = Secret.from_env_var(
+        "AWS_SESSION_TOKEN", strict=False
+    ),
+    aws_region_name: Secret | str | None = Secret.from_env_var(
+        "AWS_DEFAULT_REGION", strict=False
+    ),
+    aws_profile_name: Secret | None = Secret.from_env_var(
+        "AWS_PROFILE", strict=False
+    ),
+    number_of_results: int = 5,
+    use_agentic_retrieval: bool | None = None,
+) -> None
+```
+
+Create the AmazonBedrockKnowledgeBaseRetriever component.
+
+**Parameters:**
+
+- **knowledge_base_id** (<code>str | None</code>) – The ID of the Bedrock Knowledge Base. Falls back to the AWS_KNOWLEDGE_BASE_ID
+  environment variable.
+- **aws_access_key_id** (<code>Secret | None</code>) – AWS access key ID.
+- **aws_secret_access_key** (<code>Secret | None</code>) – AWS secret access key.
+- **aws_session_token** (<code>Secret | None</code>) – AWS session token.
+- **aws_region_name** (<code>Secret | str | None</code>) – AWS region name.
+- **aws_profile_name** (<code>Secret | None</code>) – AWS profile name.
+- **number_of_results** (<code>int</code>) – Maximum number of results to return.
+- **use_agentic_retrieval** (<code>bool | None</code>) – If True, try AgenticRetrieveStream before plain Retrieve.
+  Defaults to the USE_AGENTIC_RETRIEVAL environment variable, or True.
+
+#### run
+
+```python
+run(query: str, top_k: int | None = None) -> dict[str, list[Document]]
+```
+
+Retrieve documents from the Bedrock Knowledge Base.
+
+**Parameters:**
+
+- **query** (<code>str</code>) – The search query.
+- **top_k** (<code>int | None</code>) – Maximum number of results. Overrides number_of_results if provided.
+
+**Returns:**
+
+- <code>dict\[str, list\[Document\]\]</code> – A dictionary with a "documents" key containing the retrieved Documents.
+
+**Raises:**
+
+- <code>AmazonBedrockInferenceError</code> – If the retrieval call fails.
+
+#### to_dict
+
+```python
+to_dict() -> dict[str, Any]
+```
+
+Serializes the component to a dictionary.
+
+**Returns:**
+
+- <code>dict\[str, Any\]</code> – Dictionary with serialized data.
+
+#### from_dict
+
+```python
+from_dict(data: dict[str, Any]) -> AmazonBedrockKnowledgeBaseRetriever
+```
+
+Deserializes the component from a dictionary.
+
+**Parameters:**
+
+- **data** (<code>dict\[str, Any\]</code>) – The dictionary to deserialize from.
+
+**Returns:**
+
+- <code>AmazonBedrockKnowledgeBaseRetriever</code> – The deserialized component.

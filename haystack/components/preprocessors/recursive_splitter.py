@@ -70,7 +70,8 @@ class RecursiveDocumentSplitter:
 
         :param split_length: The maximum length of each chunk by default in words, but can be in characters or tokens.
             See the `split_units` parameter.
-        :param split_overlap: The number of characters to overlap between consecutive chunks.
+        :param split_overlap: The number of overlapping units (words, characters, or tokens, per
+            `split_unit`) between consecutive chunks.
         :param split_unit: The unit of the split_length parameter. It can be either "word", "char", or "token".
             If "token" is selected, the text will be split into tokens using the tiktoken tokenizer (o200k_base).
         :param separators: An optional list of separator strings to use for splitting the text. The string
@@ -113,7 +114,7 @@ class RecursiveDocumentSplitter:
         if self.split_length < 1:
             raise ValueError("Split length must be at least 1 character.")
         if self.split_overlap < 0:
-            raise ValueError("Overlap must be greater than zero.")
+            raise ValueError("split_overlap must be greater than or equal to 0.")
         if self.split_overlap >= self.split_length:
             raise ValueError("Overlap cannot be greater than or equal to the chunk size.")
         if not all(isinstance(separator, str) for separator in self.separators):

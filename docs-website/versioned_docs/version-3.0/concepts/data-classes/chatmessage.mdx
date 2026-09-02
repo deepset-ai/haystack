@@ -143,18 +143,18 @@ from haystack.dataclasses import ChatMessage
 user_message = ChatMessage.from_user("What is the capital of Australia?")
 
 print(user_message)
->>> ChatMessage(
->>>    _role=<ChatRole.USER: 'user'>,
->>>    _content=[TextContent(text='What is the capital of Australia?')],
->>>    _name=None,
->>>    _meta={}
->>>)
+# >> ChatMessage(
+# >>    _role=<ChatRole.USER: 'user'>,
+# >>    _content=[TextContent(text='What is the capital of Australia?')],
+# >>    _name=None,
+# >>    _meta={}
+# >> )
 
 print(user_message.text)
->>> What is the capital of Australia?
+# >> What is the capital of Australia?
 
 print(user_message.texts)
->>> ['What is the capital of Australia?']
+# >> ['What is the capital of Australia?']
 ```
 
 ### from_user with TextContent and ImageContent
@@ -164,52 +164,50 @@ from haystack.dataclasses import ChatMessage, ImageContent
 
 lion_image_url = (
     "https://images.unsplash.com/photo-1546182990-dffeafbe841d?"
-	"ixlib=rb-4.0&q=80&w=1080&fit=max"
+    "ixlib=rb-4.0&q=80&w=1080&fit=max"
 )
 
 image_content = ImageContent.from_url(lion_image_url, detail="low")
 
 user_message = ChatMessage.from_user(
-	content_parts=[
-		"What does the image show?",
-		image_content
-		])
+    content_parts=["What does the image show?", image_content]
+)
 
 print(user_message)
->>> ChatMessage(
->>>     _role=<ChatRole.USER: 'user'>,
->>>     _content=[
->>>         TextContent(text='What does the image show?'),
->>>         ImageContent(
->>>             base64_image='/9j/4...',
->>>             mime_type='image/jpeg',
->>>             detail='low',
->>>             meta={
->>>                 'content_type': 'image/jpeg',
->>>                 'url': '...'
->>>             }
->>>         )
->>>     ],
->>>     _name=None,
->>>     _meta={}
->>> )
+# >> ChatMessage(
+# >>     _role=<ChatRole.USER: 'user'>,
+# >>     _content=[
+# >>         TextContent(text='What does the image show?'),
+# >>         ImageContent(
+# >>             base64_image='/9j/4...',
+# >>             mime_type='image/jpeg',
+# >>             detail='low',
+# >>             meta={
+# >>                 'content_type': 'image/jpeg',
+# >>                 'url': '...'
+# >>             }
+# >>         )
+# >>     ],
+# >>     _name=None,
+# >>     _meta={}
+# >> )
 
 print(user_message.text)
->>> What does the image show?
+# >> What does the image show?
 
 print(user_message.texts)
->>> ['What does the image show?']
+# >> ['What does the image show?']
 
 print(user_message.image)
->>> ImageContent(
->>>     base64_image='/9j/4...',
->>>     mime_type='image/jpeg',
->>>     detail='low',
->>>     meta={
->>>         'content_type': 'image/jpeg',
->>>         'url': '...'
->>>     }
->>> )
+# >> ImageContent(
+# >>     base64_image='/9j/4...',
+# >>     mime_type='image/jpeg',
+# >>     detail='low',
+# >>     meta={
+# >>         'content_type': 'image/jpeg',
+# >>         'url': '...'
+# >>     }
+# >> )
 ```
 
 ### from_user with TextContent and FileContent
@@ -222,40 +220,38 @@ paper_url = "https://arxiv.org/pdf/2309.08632"
 file_content = FileContent.from_url(paper_url)
 
 user_message = ChatMessage.from_user(
-	content_parts=[
-        file_content,
-        "Summarize this paper in 100 words."
-		])
+    content_parts=[file_content, "Summarize this paper in 100 words."]
+)
 
 print(user_message)
->>> ChatMessage(
->>>     _role=<ChatRole.USER: 'user'>,
->>>     _content=[
->>>         FileContent(
->>>             base64_data='JVBERi0...',
->>>             mime_type='application/pdf',
->>>             filename='2309.08632',
->>>             extra={}
->>>         ),
->>>         TextContent(text='Summarize this paper in 100 words.')
->>>     ],
->>>     _name=None,
->>>     _meta={}
->>> )
+# >> ChatMessage(
+# >>     _role=<ChatRole.USER: 'user'>,
+# >>     _content=[
+# >>         FileContent(
+# >>             base64_data='JVBERi0...',
+# >>             mime_type='application/pdf',
+# >>             filename='2309.08632',
+# >>             extra={}
+# >>         ),
+# >>         TextContent(text='Summarize this paper in 100 words.')
+# >>     ],
+# >>     _name=None,
+# >>     _meta={}
+# >> )
 
 print(user_message.text)
->>> Summarize this paper in 100 words.
+# >> Summarize this paper in 100 words.
 
 print(user_message.texts)
->>> ['Summarize this paper in 100 words.']
+# >> ['Summarize this paper in 100 words.']
 
 print(user_message.file)
->>> FileContent(
->>>     base64_data='JVBERi0...',
->>>     mime_type='application/pdf',
->>>     filename='2309.08632',
->>>     extra={}
->>> )
+# >> FileContent(
+# >>     base64_data='JVBERi0...',
+# >>     mime_type='application/pdf',
+# >>     filename='2309.08632',
+# >>     extra={}
+# >> )
 ```
 
 ### from_assistant with TextContent
@@ -266,18 +262,18 @@ from haystack.dataclasses import ChatMessage
 assistant_message = ChatMessage.from_assistant("How can I assist you today?")
 
 print(assistant_message)
->>> ChatMessage(
->>>    _role=<ChatRole.ASSISTANT: 'assistant'>,
->>>    _content=[TextContent(text='How can I assist you today?')],
->>>    _name=None,
->>>    _meta={}
->>>)
+# >> ChatMessage(
+# >>    _role=<ChatRole.ASSISTANT: 'assistant'>,
+# >>    _content=[TextContent(text='How can I assist you today?')],
+# >>    _name=None,
+# >>    _meta={}
+# >> )
 
 print(assistant_message.text)
->>> How can I assist you today?
+# >> How can I assist you today?
 
 print(assistant_message.texts)
->>> ['How can I assist you today?']
+# >> ['How can I assist you today?']
 ```
 
 ### from_assistant with ToolCall
@@ -290,30 +286,30 @@ tool_call = ToolCall(tool_name="weather_tool", arguments={"location": "Rome"})
 assistant_message_w_tool_call = ChatMessage.from_assistant(tool_calls=[tool_call])
 
 print(assistant_message_w_tool_call)
->>> ChatMessage(
->>>    _role=<ChatRole.ASSISTANT: 'assistant'>,
->>>    _content=[ToolCall(tool_name='weather_tool', arguments={'location': 'Rome'}, id=None)],
->>>    _name=None,
->>>    _meta={}
->>>)
+# >> ChatMessage(
+# >>    _role=<ChatRole.ASSISTANT: 'assistant'>,
+# >>    _content=[ToolCall(tool_name='weather_tool', arguments={'location': 'Rome'}, id=None)],
+# >>    _name=None,
+# >>    _meta={}
+# >> )
 
 print(assistant_message_w_tool_call.text)
->>> None
+# >> None
 
 print(assistant_message_w_tool_call.texts)
->>> []
+# >> []
 
 print(assistant_message_w_tool_call.tool_call)
->>> ToolCall(tool_name='weather_tool', arguments={'location': 'Rome'}, id=None)
+# >> ToolCall(tool_name='weather_tool', arguments={'location': 'Rome'}, id=None)
 
 print(assistant_message_w_tool_call.tool_calls)
->>> [ToolCall(tool_name='weather_tool', arguments={'location': 'Rome'}, id=None)]
+# >> [ToolCall(tool_name='weather_tool', arguments={'location': 'Rome'}, id=None)]
 
 print(assistant_message_w_tool_call.tool_call_result)
->>> None
+# >> None
 
 print(assistant_message_w_tool_call.tool_call_results)
->>> []
+# >> []
 ```
 
 ### from_tool
@@ -321,47 +317,49 @@ print(assistant_message_w_tool_call.tool_call_results)
 ```python
 from haystack.dataclasses import ChatMessage
 
-tool_message = ChatMessage.from_tool(tool_result="temperature: 25°C", origin=tool_call, error=False)
+tool_message = ChatMessage.from_tool(
+    tool_result="temperature: 25°C", origin=tool_call, error=False
+)
 
 print(tool_message)
->>> ChatMessage(
->>>    _role=<ChatRole.TOOL: 'tool'>,
->>>    _content=[ToolCallResult(
->>>							   result='temperature: 25°C',
->>>                origin=ToolCall(tool_name='weather_tool', arguments={'location': 'Rome'}, id=None),
->>>                error=False
->>>                )],
->>>    _name=None,
->>>    _meta={}
->>>)
+# >> ChatMessage(
+# >>    _role=<ChatRole.TOOL: 'tool'>,
+# >>    _content=[ToolCallResult(
+# >> 							   result='temperature: 25°C',
+# >>                origin=ToolCall(tool_name='weather_tool', arguments={'location': 'Rome'}, id=None),
+# >>                error=False
+# >>                )],
+# >>    _name=None,
+# >>    _meta={}
+# >> )
 
 print(tool_message.text)
->>> None
+# >> None
 
 print(tool_message.texts)
->>> []
+# >> []
 
 print(tool_message.tool_call)
->>> None
+# >> None
 
 print(tool_message.tool_calls)
->>> []
+# >> []
 
 print(tool_message.tool_call_result)
->>> ToolCallResult(
->>>     result='temperature: 25°C',
->>>     origin=ToolCall(tool_name='weather_tool', arguments={'location': 'Rome'}, id=None),
->>>     error=False
->>> )
+# >> ToolCallResult(
+# >>     result='temperature: 25°C',
+# >>     origin=ToolCall(tool_name='weather_tool', arguments={'location': 'Rome'}, id=None),
+# >>     error=False
+# >> )
 
 print(tool_message.tool_call_results)
->>> [
->>>     ToolCallResult(
->>>         result='temperature: 25°C',
->>>         origin=ToolCall(tool_name='weather_tool', arguments={'location': 'Rome'}, id=None),
->>>         error=False
->>>     )
->>> ]
+# >> [
+# >>     ToolCallResult(
+# >>         result='temperature: 25°C',
+# >>         origin=ToolCall(tool_name='weather_tool', arguments={'location': 'Rome'}, id=None),
+# >>         error=False
+# >>     )
+# >> ]
 ```
 
 ## Migrating from Legacy ChatMessage (before v2.9)

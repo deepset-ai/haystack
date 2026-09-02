@@ -201,6 +201,207 @@ Embeds a list of documents asynchronously.
 - <code>TypeError</code> – If `documents` is not a list of Documents.
 - <code>ValueError</code> – If the embeddings returned by the API have an unexpected shape.
 
+## haystack_integrations.components.embedders.huggingface_api.sparse_document_embedder
+
+### HuggingFaceAPISparseDocumentEmbedder
+
+Embeds Documents into sparse vectors using a Hugging Face Text Embeddings Inference (TEI) server.
+
+The component batches requests and returns copies of the input Documents with `sparse_embedding` set.
+
+```python
+from haystack import Document
+from haystack_integrations.components.embedders.huggingface_api import HuggingFaceAPISparseDocumentEmbedder
+
+embedder = HuggingFaceAPISparseDocumentEmbedder(api_base_url="http://localhost:8080")
+documents = embedder.run([Document(content="Sparse retrieval")])["documents"]
+print(documents[0].sparse_embedding)
+```
+
+#### __init__
+
+```python
+__init__(
+    *,
+    api_base_url: str = "http://localhost:8080",
+    token: Secret | None = Secret.from_env_var(
+        ["HF_API_TOKEN", "HF_TOKEN"], strict=False
+    ),
+    prefix: str = "",
+    suffix: str = "",
+    batch_size: int = 32,
+    progress_bar: bool = True,
+    meta_fields_to_embed: list[str] | None = None,
+    embedding_separator: str = "\n",
+    timeout: float | None = 30.0,
+    headers: dict[str, str] | None = None,
+    concurrency_limit: int = 4
+) -> None
+```
+
+Create a sparse Document embedder backed by TEI.
+
+**Parameters:**
+
+- **api_base_url** (<code>str</code>) – Base URL of the TEI server.
+- **token** (<code>Secret | None</code>) – Token sent to TEI as HTTP bearer authorization, if set.
+- **prefix** (<code>str</code>) – A string to add before each prepared Document text.
+- **suffix** (<code>str</code>) – A string to add after each prepared Document text.
+- **batch_size** (<code>int</code>) – Number of Documents sent in each request.
+- **progress_bar** (<code>bool</code>) – If `True`, show a progress bar while embedding.
+- **meta_fields_to_embed** (<code>list\[str\] | None</code>) – Metadata fields to embed before the Document content.
+- **embedding_separator** (<code>str</code>) – Separator for metadata fields and Document content.
+- **timeout** (<code>float | None</code>) – HTTP request timeout in seconds. Set to `None` to disable it.
+- **headers** (<code>dict\[str, str\] | None</code>) – Additional HTTP headers to send with each request.
+- **concurrency_limit** (<code>int</code>) – Maximum concurrent requests made by `run_async`.
+
+**Raises:**
+
+- <code>ValueError</code> – If `api_base_url` is invalid or a numeric parameter is not positive.
+
+#### to_dict
+
+```python
+to_dict() -> dict[str, Any]
+```
+
+Serialize this component to a dictionary.
+
+#### from_dict
+
+```python
+from_dict(data: dict[str, Any]) -> HuggingFaceAPISparseDocumentEmbedder
+```
+
+Deserialize this component from a dictionary.
+
+#### run
+
+```python
+run(documents: list[Document]) -> dict[str, list[Document]]
+```
+
+Embed a list of Documents.
+
+**Parameters:**
+
+- **documents** (<code>list\[Document\]</code>) – Documents to embed.
+
+**Returns:**
+
+- <code>dict\[str, list\[Document\]\]</code> – Copies of the Documents with sparse embeddings.
+
+#### run_async
+
+```python
+run_async(documents: list[Document]) -> dict[str, list[Document]]
+```
+
+Embed a list of Documents asynchronously.
+
+**Parameters:**
+
+- **documents** (<code>list\[Document\]</code>) – Documents to embed.
+
+**Returns:**
+
+- <code>dict\[str, list\[Document\]\]</code> – Copies of the Documents with sparse embeddings.
+
+## haystack_integrations.components.embedders.huggingface_api.sparse_text_embedder
+
+### HuggingFaceAPISparseTextEmbedder
+
+Embeds text into a sparse vector using a Hugging Face Text Embeddings Inference (TEI) server.
+
+The TEI server must be running a sparse embedding model and expose the `/embed_sparse` endpoint.
+
+```python
+from haystack_integrations.components.embedders.huggingface_api import HuggingFaceAPISparseTextEmbedder
+
+embedder = HuggingFaceAPISparseTextEmbedder(api_base_url="http://localhost:8080")
+result = embedder.run("What is sparse retrieval?")
+print(result["sparse_embedding"])
+```
+
+#### __init__
+
+```python
+__init__(
+    *,
+    api_base_url: str = "http://localhost:8080",
+    token: Secret | None = Secret.from_env_var(
+        ["HF_API_TOKEN", "HF_TOKEN"], strict=False
+    ),
+    prefix: str = "",
+    suffix: str = "",
+    timeout: float | None = 30.0,
+    headers: dict[str, str] | None = None
+) -> None
+```
+
+Create a sparse text embedder backed by TEI.
+
+**Parameters:**
+
+- **api_base_url** (<code>str</code>) – Base URL of the TEI server.
+- **token** (<code>Secret | None</code>) – Token sent to TEI as HTTP bearer authorization, if set.
+- **prefix** (<code>str</code>) – A string to add before the text.
+- **suffix** (<code>str</code>) – A string to add after the text.
+- **timeout** (<code>float | None</code>) – HTTP request timeout in seconds. Set to `None` to disable it.
+- **headers** (<code>dict\[str, str\] | None</code>) – Additional HTTP headers to send with each request.
+
+**Raises:**
+
+- <code>ValueError</code> – If `api_base_url` is not a valid HTTP URL.
+
+#### to_dict
+
+```python
+to_dict() -> dict[str, Any]
+```
+
+Serialize this component to a dictionary.
+
+#### from_dict
+
+```python
+from_dict(data: dict[str, Any]) -> HuggingFaceAPISparseTextEmbedder
+```
+
+Deserialize this component from a dictionary.
+
+#### run
+
+```python
+run(text: str) -> dict[str, SparseEmbedding]
+```
+
+Embed a single string.
+
+**Parameters:**
+
+- **text** (<code>str</code>) – Text to embed.
+
+**Returns:**
+
+- <code>dict\[str, SparseEmbedding\]</code> – The sparse embedding of the input text.
+
+#### run_async
+
+```python
+run_async(text: str) -> dict[str, SparseEmbedding]
+```
+
+Embed a single string asynchronously.
+
+**Parameters:**
+
+- **text** (<code>str</code>) – Text to embed.
+
+**Returns:**
+
+- <code>dict\[str, SparseEmbedding\]</code> – The sparse embedding of the input text.
+
 ## haystack_integrations.components.embedders.huggingface_api.text_embedder
 
 ### HuggingFaceAPITextEmbedder
@@ -569,7 +770,9 @@ Invoke the text generation inference based on the provided messages and generati
 
 - **messages** (<code>list\[ChatMessage\] | str</code>) – A list of ChatMessage objects representing the input messages. If a string is provided, it is converted
   to a list containing a ChatMessage with user role.
-- **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for text generation.
+- **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for text generation. These are merged per key with the
+  `generation_kwargs` passed at initialization: keys provided here take precedence, keys set only
+  at initialization are kept.
 - **tools** (<code>ToolsType | None</code>) – A list of tools or a Toolset for which the model can prepare calls. If set, it will override
   the `tools` parameter set during component initialization. This parameter can accept either a
   list of `Tool` objects or a `Toolset` instance.
@@ -605,7 +808,9 @@ and return values but can be used with `await` in an async code.
 
 - **messages** (<code>list\[ChatMessage\] | str</code>) – A list of ChatMessage objects representing the input messages. If a string is provided, it is converted
   to a list containing a ChatMessage with user role.
-- **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for text generation.
+- **generation_kwargs** (<code>dict\[str, Any\] | None</code>) – Additional keyword arguments for text generation. These are merged per key with the
+  `generation_kwargs` passed at initialization: keys provided here take precedence, keys set only
+  at initialization are kept.
 - **tools** (<code>ToolsType | None</code>) – A list of tools or a Toolset for which the model can prepare calls. If set, it will override the `tools`
   parameter set during component initialization. This parameter can accept either a list of `Tool` objects
   or a `Toolset` instance.

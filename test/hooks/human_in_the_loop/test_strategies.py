@@ -21,6 +21,7 @@ from haystack.hooks.human_in_the_loop import (
 )
 from haystack.hooks.human_in_the_loop.strategies import (
     _apply_tool_execution_decisions,
+    _bind_decision_to_tool_call,
     _process_confirmation_strategies,
     _run_confirmation_strategies,
     _run_confirmation_strategies_async,
@@ -328,32 +329,60 @@ class TestApplyToolExecutionDecisions:
             ),
         ]
 
-    def test_two_teds_same_name_no_ids(self):
+    def test_two_teds_same_name_no_ids_and_one_with_an_id(self):
         message_with_tool_calls = ChatMessage.from_assistant(
-            text="I'll extract the information about the people mentioned in the context.",
-            # Same tool name with different params but missing IDs
             tool_calls=[
-                ToolCall(tool_name="add_database_tool", arguments={"name": "Malte"}),
-                ToolCall(tool_name="add_database_tool", arguments={"name": "Milos"}),
+                # Two tool calls with the same name but no IDs
+                ToolCall("tool", {"value": 1}),
+                ToolCall("tool", {"value": 2}),
+                # One tool call with a different name and an ID
+                ToolCall("other", {}, id="1"),
+            ]
+        )
+        decisions = [
+            ToolExecutionDecision("tool", execute=True),
+            ToolExecutionDecision("tool", execute=False),
+            ToolExecutionDecision("other", execute=True, tool_call_id="1"),
+        ]
+        with pytest.raises(ValueError, match="No unused ToolExecutionDecision matches tool call"):
+            _apply_tool_execution_decisions(
+                tool_call_messages=[message_with_tool_calls], tool_execution_decisions=decisions
+            )
+
+    def test_ted_with_an_id_is_not_matched_by_name(self):
+        # Two tools with the same name, and only one has an ID.
+        rejected_tool_call = ToolCall("tool", {"value": 1})
+        confirmed_tool_call = ToolCall("tool", {"value": 2}, id="2")
+        message_with_tool_calls = ChatMessage.from_assistant(tool_calls=[rejected_tool_call, confirmed_tool_call])
+        rejection_messages, new_tool_call_messages = _apply_tool_execution_decisions(
+            tool_call_messages=[message_with_tool_calls],
+            # Similarly the TEDs match the same level of info as the tool calls so we can disambiguate them.
+            tool_execution_decisions=[
+                ToolExecutionDecision("tool", execute=False),
+                ToolExecutionDecision("tool", execute=True, tool_call_id="2", final_tool_params={"value": 2}),
             ],
         )
-        # This raises a ValueError because tool_call_id is missing and there are multiple tool calls with the same name
-        # so we cannot disambiguate which TED applies to which tool call.
-        with pytest.raises(
-            ValueError,
-            match="ToolExecutionDecisions are missing tool_call_id fields and there are multiple tool calls with the "
-            "same name",
-        ):
+        assert rejection_messages[0].tool_calls == [rejected_tool_call]
+        assert new_tool_call_messages[0].tool_calls == [confirmed_tool_call]
+
+    def test_decision_with_mismatched_tool_name_raises(self):
+        message_with_tool_calls = ChatMessage.from_assistant(
+            tool_calls=[ToolCall("tool", {}), ToolCall("other", {}, id="1")]
+        )
+        decisions = [
+            ToolExecutionDecision("different_tool", execute=False),
+            ToolExecutionDecision("other", execute=True, tool_call_id="1"),
+        ]
+        with pytest.raises(ValueError, match="No unused ToolExecutionDecision matches tool call"):
             _apply_tool_execution_decisions(
-                tool_call_messages=[message_with_tool_calls],
-                tool_execution_decisions=[
-                    ToolExecutionDecision(
-                        tool_name="add_database_tool", execute=True, final_tool_params={"name": "Malte"}
-                    ),
-                    ToolExecutionDecision(
-                        tool_name="add_database_tool", execute=True, final_tool_params={"name": "Milos"}
-                    ),
-                ],
+                tool_call_messages=[message_with_tool_calls], tool_execution_decisions=decisions
+            )
+
+    def test_one_decision_cannot_match_multiple_tool_calls(self):
+        message = ChatMessage.from_assistant(tool_calls=[ToolCall("tool", {}), ToolCall("tool", {})])
+        with pytest.raises(ValueError, match="Expected one ToolExecutionDecision for each tool call"):
+            _apply_tool_execution_decisions(
+                tool_call_messages=[message], tool_execution_decisions=[ToolExecutionDecision("tool", execute=True)]
             )
 
 
@@ -743,3 +772,10 @@ class TestAsyncConfirmationStrategies:
                 tool_call_id="tc-1", tool_name="hallucinated_tool", execute=True, final_tool_params={"a": 1}
             )
         ]
+
+
+@pytest.mark.parametrize(("tool_call_id", "decision_id"), [("1", None), ("1", "wrong"), (None, "wrong"), ("1", "1")])
+def test_bind_decision_to_tool_call(tool_call_id: str | None, decision_id: str | None) -> None:
+    decision = ToolExecutionDecision("tool", execute=True, tool_call_id=decision_id)
+    bound_decision = _bind_decision_to_tool_call(decision=decision, tool_call=ToolCall("tool", {}, id=tool_call_id))
+    assert bound_decision.tool_call_id == tool_call_id

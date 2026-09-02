@@ -1,0 +1,247 @@
+---
+title: "ImageContent"
+id: imagecontent
+slug: "/imagecontent"
+description: "`ImageContent` represents image-based content in Haystack chat messages and multimodal pipelines."
+---
+
+# ImageContent
+
+`ImageContent` is a Haystack data class used to represent image-based content in chat messages and multimodal AI pipelines.
+
+It is commonly used with:
+
+* multimodal LLMs
+* vision-language models
+* image-aware chat applications
+* document/image processing workflows
+
+`ImageContent` stores images as base64-encoded strings together with metadata such as MIME type and image detail level.
+
+If you are looking for the full API reference, see the [API documentation](/reference/data-classes-api#imagecontent).
+
+---
+
+# Creating ImageContent
+
+You can create an `ImageContent` object directly from a base64 string:
+
+```python
+from haystack.dataclasses import ImageContent
+
+image = ImageContent(base64_image="your_base64_encoded_image", mime_type="image/png")
+
+print(image)
+```
+
+---
+
+# Loading Images from a File Path
+
+The `from_file_path()` class method provides a convenient way to load local image files.
+
+```python
+from haystack.dataclasses import ImageContent
+
+image = ImageContent.from_file_path("sample.png", detail="low")
+
+print(image)
+```
+
+The optional `detail` parameter is currently supported by OpenAI vision models and accepts:
+
+* `"auto"`
+* `"high"`
+* `"low"`
+
+You can also resize images while loading:
+
+```python
+image = ImageContent.from_file_path("sample.png", size=(512, 512))
+```
+
+This helps reduce:
+
+* memory usage
+* processing time
+* payload size
+
+when working with multimodal LLM APIs.
+
+---
+
+# Loading Images from a URL
+
+You can also create an `ImageContent` object directly from an image URL:
+
+```python
+from haystack.dataclasses import ImageContent
+
+image = ImageContent.from_url(
+    "https://images.unsplash.com/photo-1546182990-dffeafbe841d",
+    detail="low",
+)
+
+print(image)
+```
+
+Internally, Haystack downloads the image and converts it into a base64 representation.
+
+---
+
+# Producing ImageContent with Converters
+
+In a pipeline, you usually don't create `ImageContent` objects by hand. Instead, you use converter components that read files and produce `ImageContent` for you:
+
+* [`ImageFileToImageContent`](../../pipeline-components/converters/imagefiletoimagecontent.mdx) converts local image files (such as PNG or JPEG) into `ImageContent` objects.
+* [`PDFToImageContent`](../../pipeline-components/converters/pdftoimagecontent.mdx) renders the pages of PDF files into `ImageContent` objects.
+
+```python
+from haystack.components.converters.image import (
+    ImageFileToImageContent,
+    PDFToImageContent,
+)
+
+image_converter = ImageFileToImageContent()
+image_contents = image_converter.run(sources=["image.jpg", "another_image.png"])[
+    "image_contents"
+]
+
+pdf_converter = PDFToImageContent()
+pdf_image_contents = pdf_converter.run(sources=["file.pdf"])["image_contents"]
+```
+
+Both converters accept the optional `detail` and `size` parameters, which are forwarded to the `ImageContent` objects they create.
+
+---
+
+# Using ImageContent with ChatMessage
+
+`ImageContent` is commonly used together with [`ChatMessage`](chatmessage.mdx) for multimodal conversations.
+
+```python
+from haystack.dataclasses import ChatMessage, ImageContent
+
+image = ImageContent.from_url(
+    "https://images.unsplash.com/photo-1546182990-dffeafbe841d",
+    detail="low",
+)
+
+message = ChatMessage.from_user(content_parts=["What does this image show?", image])
+
+print(message)
+```
+
+This allows multimodal LLMs to process both:
+
+* textual prompts
+* image inputs
+
+within the same message.
+
+For more dynamic prompts, you can build multimodal messages with [`ChatPromptBuilder`](../../pipeline-components/builders/chatpromptbuilder.mdx) using Jinja2 string templates. The `| templatize_part` filter inserts an `ImageContent` object as a structured content part instead of plain text:
+
+```python
+from haystack.components.builders import ChatPromptBuilder
+from haystack.dataclasses import ChatMessage, ImageContent
+
+template = """
+{% message role="user" %}
+Hello! I am {{user_name}}. What's the difference between the following images?
+{% for image in images %}
+{{ image | templatize_part }}
+{% endfor %}
+{% endmessage %}
+"""
+
+builder = ChatPromptBuilder(template=template)
+images = [
+    ImageContent.from_file_path("apple.jpg"),
+    ImageContent.from_file_path("kiwi.jpg"),
+]
+result = builder.run(user_name="John", images=images)
+
+print(result["prompt"])
+```
+
+---
+
+# Metadata
+
+The optional `meta` parameter allows you to attach custom metadata to the image.
+
+```python
+image = ImageContent.from_url(
+    "https://images.unsplash.com/photo-1546182990-dffeafbe841d",
+    meta={"source": "example-dataset"},
+)
+```
+
+This can be useful for:
+
+* tracing
+* dataset tracking
+* workflow metadata
+* custom application logic
+
+---
+
+# Validation
+
+By default, `ImageContent` validates:
+
+* base64 encoding
+* MIME type correctness
+* image MIME compatibility
+
+Validation can be disabled to improve performance:
+
+```python
+image = ImageContent(
+    base64_image="your_base64_encoded_image",
+    mime_type="image/png",
+    validation=False,
+)
+```
+
+---
+
+# Serialization
+
+`ImageContent` supports dictionary serialization.
+
+```python
+image_dict = image.to_dict()
+
+restored_image = ImageContent.from_dict(image_dict)
+```
+
+---
+
+# Displaying Images
+
+The `show()` method can display images directly in:
+
+* Jupyter notebooks
+* local desktop environments
+
+```python
+image.show()
+```
+
+This requires the `Pillow` package:
+
+```bash
+pip install pillow
+```
+
+---
+
+# Related Components
+
+`ImageContent` is frequently used with:
+
+* [`ChatMessage`](chatmessage.mdx) — to build multimodal messages
+* [`ChatPromptBuilder`](../../pipeline-components/builders/chatpromptbuilder.mdx) — to template multimodal prompts
+* [`ImageFileToImageContent`](../../pipeline-components/converters/imagefiletoimagecontent.mdx) — to convert image files into `ImageContent`
+* [`PDFToImageContent`](../../pipeline-components/converters/pdftoimagecontent.mdx) — to convert PDF pages into `ImageContent`

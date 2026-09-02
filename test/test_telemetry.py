@@ -32,7 +32,7 @@ def test_pipeline_running(telemetry):
     expected_type = generate_qualified_class_name(type(pipe))
     # First run is always sent
     telemetry.send_event.assert_called_once_with(
-        "Pipeline run (2.x)",
+        "Pipeline run (3.x)",
         {
             "pipeline_id": str(id(pipe)),
             "pipeline_type": expected_type,
@@ -52,7 +52,7 @@ def test_pipeline_running(telemetry):
     telemetry.send_event.reset_mock()
     pipeline_running(pipe)
     telemetry.send_event.assert_called_once_with(
-        "Pipeline run (2.x)",
+        "Pipeline run (3.x)",
         {
             "pipeline_id": str(id(pipe)),
             "pipeline_type": expected_type,
@@ -68,7 +68,7 @@ def test_pipeline_running(telemetry):
     telemetry.send_event.reset_mock()
     pipeline_running(pipe)
     telemetry.send_event.assert_called_once_with(
-        "Pipeline run (2.x)",
+        "Pipeline run (3.x)",
         {
             "pipeline_id": str(id(pipe)),
             "pipeline_type": expected_type,
@@ -98,7 +98,7 @@ def test_pipeline_running_with_non_serializable_component(telemetry):
     pipe.add_component("component", Component())
     pipeline_running(pipe)
     telemetry.send_event.assert_called_once_with(
-        "Pipeline run (2.x)",
+        "Pipeline run (3.x)",
         {
             "pipeline_id": str(id(pipe)),
             "pipeline_type": "haystack.core.pipeline.pipeline.Pipeline",

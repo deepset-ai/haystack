@@ -596,6 +596,17 @@ class TestRun:
         assert len(response["replies"]) == 1
         assert isinstance(response["replies"][0], ChatMessage)
 
+    def test_run_with_generation_kwargs(self, openai_mock_responses: MagicMock) -> None:
+
+        component = OpenAIResponsesChatGenerator(
+            api_key=Secret.from_token("test-api-key"), generation_kwargs={"max_output_tokens": 10, "temperature": 0.5}
+        )
+        component.run([ChatMessage.from_user("What's the capital of France")], generation_kwargs={"temperature": 0.9})
+
+        kwargs = openai_mock_responses.call_args.kwargs
+        assert kwargs["temperature"] == 0.9
+        assert kwargs["max_output_tokens"] == 10
+
     def test_run_with_flattened_generation_kwargs(
         self, openai_mock_responses: MagicMock, monkeypatch: pytest.MonkeyPatch
     ) -> None:
@@ -753,7 +764,9 @@ class TestRun:
 class TestIntegration:
     def test_live_run(self) -> None:
 
-        chat_messages = [ChatMessage.from_user("What's the capital of France")]
+        # The trailing assistant message has no content parts, as a reply whose only tool call was discarded does.
+        # It serializes with empty content, so this also checks the API accepts that, not just the converter.
+        chat_messages = [ChatMessage.from_user("What's the capital of France"), ChatMessage.from_assistant(text=None)]
         component = OpenAIResponsesChatGenerator(
             model="gpt-4.1-nano", generation_kwargs={"include": ["message.output_text.logprobs"]}
         )
@@ -1215,6 +1228,19 @@ class TestOpenAIResponsesChatGeneratorAsync:
         assert isinstance(response["replies"], list)
         assert len(response["replies"]) == 1
         assert isinstance(response["replies"][0], ChatMessage)
+
+    async def test_run_async_with_generation_kwargs(self, openai_mock_async_responses: MagicMock) -> None:
+
+        component = OpenAIResponsesChatGenerator(
+            api_key=Secret.from_token("test-api-key"), generation_kwargs={"max_output_tokens": 10, "temperature": 0.5}
+        )
+        await component.run_async(
+            [ChatMessage.from_user("What's the capital of France")], generation_kwargs={"temperature": 0.9}
+        )
+
+        kwargs = openai_mock_async_responses.call_args.kwargs
+        assert kwargs["temperature"] == 0.9
+        assert kwargs["max_output_tokens"] == 10
 
     @pytest.mark.asyncio
     @pytest.mark.skipif(

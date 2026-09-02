@@ -261,12 +261,47 @@ class DocumentSplitter:
     def _split_by_function(self, doc: Document) -> list[Document]:
         # the check for None is done already in the run method
         splits = self.splitting_function(doc.content)  # type: ignore
-        docs: list[Document] = []
-        for s in splits:
-            meta = deepcopy(doc.meta)
-            meta["source_id"] = doc.id
-            docs.append(Document(content=s, meta=meta))
-        return docs
+        content: str = doc.content  # type: ignore[assignment]
+
+        text_splits: list[str] = []
+        splits_pages: list[int] = []
+        splits_start_idxs: list[int] = []
+        cur_start_idx = 0
+        cur_page = 1
+        prev_start_idx = 0
+
+        for split in splits:
+            if self.skip_empty_documents and len(split) == 0:
+                continue
+
+            # A splitting function may transform the text, so a split is not guaranteed to appear
+            # verbatim in the source. Locate it when possible and fall back to the running offset.
+            found_idx = content.find(split, cur_start_idx)
+            if found_idx == -1 and text_splits:
+                # The split may legitimately start before the end of the previous split, e.g. an
+                # overlapping/sliding-window splitting function. Retry allowing it to be found
+                # anywhere after the start of the previous split, so it isn't missed just because
+                # the forward-only search above already moved past it.
+                found_idx = content.find(split, prev_start_idx + 1)
+
+            if found_idx != -1:
+                cur_start_idx = found_idx
+                cur_page = 1 + content.count("\f", 0, found_idx)
+
+            text_splits.append(split)
+            splits_start_idxs.append(cur_start_idx)
+            splits_pages.append(cur_page)
+
+            prev_start_idx = cur_start_idx
+            cur_start_idx += len(split)
+            if found_idx == -1:
+                cur_page += split.count("\f")
+
+        metadata = deepcopy(doc.meta)
+        metadata["source_id"] = doc.id
+        return self._create_docs_from_splits(
+            text_splits=text_splits, splits_pages=splits_pages, splits_start_idxs=splits_start_idxs, meta=metadata
+        )
 
     def _concatenate_units(
         self, elements: list[str], split_length: int, split_overlap: int, split_threshold: int
@@ -292,8 +327,11 @@ class DocumentSplitter:
 
             # check if length of current units is below split_threshold
             if len(current_units) < split_threshold and len(text_splits) > 0:
-                # concatenate the last split with the current one
-                text_splits[-1] += txt
+                # concatenate the last split with the current one. The first `split_overlap` units
+                # of this segment are already part of the previous split (that is what the overlap
+                # is), so only append the units beyond the overlap; otherwise the overlapping text
+                # would be duplicated and the merged chunk would not be present in the source.
+                text_splits[-1] += "".join(current_units[split_overlap:])
 
             # NOTE: If skip_empty_documents is True, this line skips documents that have content=""
             elif not self.skip_empty_documents or len(txt) > 0:

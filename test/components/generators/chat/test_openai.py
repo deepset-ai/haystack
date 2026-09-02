@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any
 from unittest.mock import ANY, AsyncMock, MagicMock, patch
 
+import httpx
 import pytest
 from openai import OpenAIError
 from openai.types.chat import (
@@ -501,6 +502,20 @@ class TestOpenAIChatGenerator:
         assert len(response["replies"]) == 1
         assert [isinstance(reply, ChatMessage) for reply in response["replies"]]
 
+    def test_run_with_generation_kwargs(
+        self, chat_messages: list[ChatMessage], openai_mock_chat_completion: MagicMock
+    ) -> None:
+
+        component = OpenAIChatGenerator(
+            api_key=Secret.from_token("test-api-key"),
+            generation_kwargs={"max_completion_tokens": 10, "temperature": 0.5},
+        )
+        component.run(chat_messages, generation_kwargs={"temperature": 0.9})
+
+        _, kwargs = openai_mock_chat_completion.call_args
+        assert kwargs["temperature"] == 0.9
+        assert kwargs["max_completion_tokens"] == 10
+
     def test_run_with_params_streaming(
         self, chat_messages: list[ChatMessage], openai_mock_chat_completion_chunk: MagicMock
     ) -> None:
@@ -874,8 +889,9 @@ class TestOpenAIChatGenerator:
     )
     @pytest.mark.integration
     def test_live_run(self) -> None:
-
-        chat_messages = [ChatMessage.from_user("What's the capital of France")]
+        # The trailing assistant message has no content parts, as a reply whose only tool call was discarded does.
+        # It serializes with empty content, so this also checks the API accepts that, not just the converter.
+        chat_messages = [ChatMessage.from_user("What's the capital of France"), ChatMessage.from_assistant(text=None)]
         component = OpenAIChatGenerator(model="gpt-4.1-nano", generation_kwargs={"n": 1})
         results = component.run(chat_messages)
         assert len(results["replies"]) == 1
@@ -892,7 +908,6 @@ class TestOpenAIChatGenerator:
     )
     @pytest.mark.integration
     def test_live_run_with_response_format_pydantic_model(self, calendar_event_model: type) -> None:
-
         chat_messages = [
             ChatMessage.from_user("The marketing summit takes place on October12th at the Hilton Hotel downtown.")
         ]
@@ -1285,6 +1300,22 @@ class TestOpenAIChatGenerator:
         assert all(isinstance(ts, Toolset) for ts in deserialized.tools)
 
 
+# The OpenAI SDK regularly adds fields to its usage models and `_serialize_object` picks up all of them,
+# so hardcoded expected dicts go stale on every additive release. Deriving them from the same model the
+# fixtures stream keeps the assertions exact without needing an update each time.
+STREAMED_USAGE = CompletionUsage(
+    completion_tokens=42,
+    prompt_tokens=282,
+    total_tokens=324,
+    completion_tokens_details=CompletionTokensDetails(
+        accepted_prediction_tokens=0, audio_tokens=0, reasoning_tokens=0, rejected_prediction_tokens=0, text_tokens=42
+    ),
+    prompt_tokens_details=PromptTokensDetails(
+        audio_tokens=0, cached_tokens=0, cache_write_tokens=0, image_tokens=0, text_tokens=282
+    ),
+)
+
+
 @pytest.fixture
 def chat_completion_chunks():
     return [
@@ -1500,15 +1531,7 @@ def chat_completion_chunks():
             object="chat.completion.chunk",
             service_tier="default",
             system_fingerprint="fp_54eb4bd693",
-            usage=CompletionUsage(
-                completion_tokens=42,
-                prompt_tokens=282,
-                total_tokens=324,
-                completion_tokens_details=CompletionTokensDetails(
-                    accepted_prediction_tokens=0, audio_tokens=0, reasoning_tokens=0, rejected_prediction_tokens=0
-                ),
-                prompt_tokens_details=PromptTokensDetails(audio_tokens=0, cached_tokens=0, cache_write_tokens=0),
-            ),
+            usage=STREAMED_USAGE,
         ),
     ]
 
@@ -1700,23 +1723,7 @@ def streaming_chunks():
             finish_reason="tool_calls",
         ),
         StreamingChunk(
-            content="",
-            meta={
-                "model": "gpt-5-mini",
-                "received_at": ANY,
-                "usage": {
-                    "completion_tokens": 42,
-                    "prompt_tokens": 282,
-                    "total_tokens": 324,
-                    "completion_tokens_details": {
-                        "accepted_prediction_tokens": 0,
-                        "audio_tokens": 0,
-                        "reasoning_tokens": 0,
-                        "rejected_prediction_tokens": 0,
-                    },
-                    "prompt_tokens_details": {"audio_tokens": 0, "cached_tokens": 0, "cache_write_tokens": 0},
-                },
-            },
+            content="", meta={"model": "gpt-5-mini", "received_at": ANY, "usage": STREAMED_USAGE.model_dump()}
         ),
     ]
 
@@ -1863,6 +1870,38 @@ class TestComponentLifecycle:
         await generator.close_async()
         assert generator.async_client is None
 
+    def test_http_client_kwargs_are_used_for_requests(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setenv("OPENAI_API_KEY", "fake-api-key")
+        requests: list[httpx.Request] = []
+        # trimmed capture of a real /chat/completions response
+        completion = {
+            "id": "chatcmpl-ECjrZ3klFGP0kTdMQgSCTPnNr0z87",
+            "object": "chat.completion",
+            "created": 1786704941,
+            "model": "gpt-5-mini-2025-08-07",
+            "choices": [{"index": 0, "message": {"role": "assistant", "content": "Paris"}, "finish_reason": "stop"}],
+            "usage": {"prompt_tokens": 17, "completion_tokens": 10, "total_tokens": 27},
+        }
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            requests.append(request)
+            return httpx.Response(200, json=completion)
+
+        generator = OpenAIChatGenerator(
+            http_client_kwargs={
+                "transport": httpx.MockTransport(handler),
+                "cookies": {"session": "abc"},
+                "follow_redirects": False,
+            }
+        )
+        result = generator.run("What's the capital of France?")
+
+        assert len(requests) == 1
+        assert requests[0].headers["cookie"] == "session=abc"
+        assert result["replies"][0].text == "Paris"
+        assert generator.client is not None
+        assert generator.client._client.follow_redirects is False
+
 
 class TestChatCompletionChunkConversion:
     def test_convert_chat_completion_chunk_to_streaming_chunk(
@@ -1955,18 +1994,7 @@ class TestChatCompletionChunkConversion:
         assert result.meta["finish_reason"] == "tool_calls"
         assert result.meta["index"] == 0
         assert result.meta["completion_start_time"] is not None
-        assert result.meta["usage"] == {
-            "completion_tokens": 42,
-            "prompt_tokens": 282,
-            "total_tokens": 324,
-            "completion_tokens_details": {
-                "accepted_prediction_tokens": 0,
-                "audio_tokens": 0,
-                "reasoning_tokens": 0,
-                "rejected_prediction_tokens": 0,
-            },
-            "prompt_tokens_details": {"audio_tokens": 0, "cached_tokens": 0, "cache_write_tokens": 0},
-        }
+        assert result.meta["usage"] == STREAMED_USAGE.model_dump()
 
     def test_convert_usage_chunk_to_streaming_chunk(self) -> None:
 

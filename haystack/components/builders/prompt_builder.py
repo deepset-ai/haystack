@@ -4,11 +4,10 @@
 
 from typing import Any, Literal
 
-from jinja2.sandbox import SandboxedEnvironment
-
 from haystack import component, default_to_dict, logging
 from haystack.utils import Jinja2TimeExtension
 from haystack.utils.jinja2_extensions import _extract_template_variables_and_assignments
+from haystack.utils.jinja2_sandbox import HaystackSandboxedEnvironment
 
 logger = logging.getLogger(__name__)
 
@@ -170,9 +169,9 @@ class PromptBuilder:
         try:
             # The Jinja2TimeExtension needs an optional dependency to be installed.
             # If it's not available we can do without it and use the PromptBuilder as is.
-            self._env = SandboxedEnvironment(extensions=[Jinja2TimeExtension])
+            self._env = HaystackSandboxedEnvironment(extensions=[Jinja2TimeExtension])
         except ImportError:
-            self._env = SandboxedEnvironment()
+            self._env = HaystackSandboxedEnvironment()
 
         self.template = self._env.from_string(template)
 

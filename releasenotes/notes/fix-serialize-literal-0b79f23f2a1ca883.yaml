@@ -1,0 +1,9 @@
+---
+fixes:
+  - |
+    Fixed ``serialize_type``/``deserialize_type`` for ``typing.Literal``. Previously a ``Literal`` type hint was
+    serialized with its values rendered as bare tokens (e.g. ``typing.Literal[yes, no]``), which failed to
+    deserialize, and values that looked like type names (e.g. ``Literal["int", "str"]``) were silently turned
+    into types on the round-trip. The values are now serialized with ``repr()`` and read back with
+    ``ast.literal_eval``, so a ``Literal`` type used by a component (such as ``OutputAdapter`` or ``ConditionalRouter``)
+    round-trips correctly through pipeline serialization.
