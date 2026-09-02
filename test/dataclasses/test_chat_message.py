@@ -962,11 +962,11 @@ class TestToOpenaiDictFormat:
         assert message.to_openai_dict_format() == {"role": "assistant", "content": ""}
         assert ChatMessage.from_openai_dict_format({"role": "assistant", "content": ""}).text == ""
 
-    def test_to_openai_dict_format_reasoning_only_assistant_message_raises(self):
-        # This format has no reasoning field, so a reply carrying only reasoning has nothing to send.
+    def test_to_openai_dict_format_reasoning_only_assistant_message(self):
+        # Reasoning is dropped by this format, so a reply carrying only reasoning is sent with empty content, the
+        # same as a reply carrying reasoning alongside text.
         message = ChatMessage.from_assistant(reasoning="only reasoning")
-        with pytest.raises(ValueError):
-            message.to_openai_dict_format()
+        assert message.to_openai_dict_format() == {"role": "assistant", "content": ""}
 
     def test_to_openai_dict_format_invalid(self):
         message = ChatMessage(_role=ChatRole.USER, _content=[])

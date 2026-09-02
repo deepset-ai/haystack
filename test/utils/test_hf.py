@@ -56,11 +56,11 @@ def test_convert_contentless_assistant_message_to_hf_format():
     assert convert_message_to_hf_format(message) == {"role": "assistant", "content": ""}
 
 
-def test_convert_reasoning_only_assistant_message_to_hf_format_raises():
-    # Reasoning is not sent to the API, so a reply carrying only reasoning has nothing to send.
+def test_convert_reasoning_only_assistant_message_to_hf_format():
+    # Reasoning is dropped by this format, so a reply carrying only reasoning is sent with empty content, the same
+    # as a reply carrying reasoning alongside text.
     message = ChatMessage.from_assistant(reasoning="only reasoning")
-    with pytest.raises(ValueError):
-        convert_message_to_hf_format(message)
+    assert convert_message_to_hf_format(message) == {"role": "assistant", "content": ""}
 
 
 def test_convert_message_to_hf_invalid():

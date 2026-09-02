@@ -647,18 +647,13 @@ class ChatMessage:
             `id` attribute.
         """
         has_content = bool(self.texts or self.tool_calls or self.tool_call_results or self.images or self.files)
-        # An assistant reply with no content part serializes with empty content, which the API accepts.
-        if not has_content:
-            if self.reasonings:
-                raise ValueError(
-                    "A `ChatMessage` carrying only `ReasoningContent` cannot be converted, because the OpenAI Chat "
-                    "Completions format has no reasoning field."
-                )
-            if not self.is_from(ChatRole.ASSISTANT):
-                raise ValueError(
-                    f"A `ChatMessage` from `{self._role.value}` must contain at least one `TextContent`, `ToolCall`, "
-                    "`ToolCallResult`, `ImageContent`, or `FileContent`. Only assistant messages can be empty."
-                )
+        # An assistant reply with nothing this format carries serializes with empty content, which the API accepts.
+        # Reasoning is dropped here as it is on any other message.
+        if not has_content and not self.is_from(ChatRole.ASSISTANT):
+            raise ValueError(
+                f"A `ChatMessage` from `{self._role.value}` must contain at least one `TextContent`, `ToolCall`, "
+                "`ToolCallResult`, `ImageContent`, or `FileContent`. Only assistant messages can be empty."
+            )
         if len(self.tool_call_results) > 0 and len(self._content) > 1:
             raise ValueError(
                 "For OpenAI compatibility, a `ChatMessage` with a `ToolCallResult` cannot contain any other content."

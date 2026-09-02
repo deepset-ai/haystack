@@ -70,18 +70,13 @@ def convert_message_to_hf_format(message: ChatMessage) -> dict[str, Any]:
     non_reasoning_content = [c for c in message._content if not isinstance(c, ReasoningContent)]
 
     has_content = bool(text_contents or tool_calls or tool_call_results or images)
-    # An assistant reply with no content part is sent with empty content, which the API accepts.
-    if not has_content:
-        if message.reasonings:
-            raise ValueError(
-                "A `ChatMessage` carrying only `ReasoningContent` cannot be converted, because the Hugging Face "
-                "chat format does not carry reasoning."
-            )
-        if not message.is_from(ChatRole.ASSISTANT):
-            raise ValueError(
-                f"A `ChatMessage` from `{message._role.value}` must contain at least one `TextContent`, `ToolCall`, "
-                "`ToolCallResult`, or `ImageContent`. Only assistant messages can be empty."
-            )
+    # An assistant reply with nothing this format carries is sent with empty content, which the API accepts.
+    # Reasoning is dropped here as it is on any other message.
+    if not has_content and not message.is_from(ChatRole.ASSISTANT):
+        raise ValueError(
+            f"A `ChatMessage` from `{message._role.value}` must contain at least one `TextContent`, `ToolCall`, "
+            "`ToolCallResult`, or `ImageContent`. Only assistant messages can be empty."
+        )
     if len(tool_call_results) > 0 and len(non_reasoning_content) > 1:
         raise ValueError(
             "For compatibility with the Hugging Face API, a `ChatMessage` with a `ToolCallResult` "
