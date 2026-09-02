@@ -2,10 +2,26 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+from unittest.mock import MagicMock
+
 import pytest
 
 import haystack.core.pipeline.pipeline as pipeline_module
+import haystack.telemetry._telemetry as telemetry_module
 from haystack.telemetry._telemetry import pipeline_running, send_telemetry
+
+
+@pytest.fixture(autouse=True)
+def block_telemetry_network_calls(monkeypatch):
+    """
+    Force `telemetry` to be a real, truthy Telemetry instance (regardless of the ambient
+    HAYSTACK_TELEMETRY_ENABLED setting) so every Pipeline.run()/run_async() in this test suite
+    still exercises the real @send_telemetry / Telemetry.send_event() code path - catching any
+    real breakage there - but stub out `posthog.capture`, the only place that code path ever
+    touches the network, so no test ever actually sends data or connects to PostHog.
+    """
+    monkeypatch.setattr(telemetry_module, "telemetry", telemetry_module.Telemetry())
+    monkeypatch.setattr(telemetry_module.posthog, "capture", MagicMock())
 
 
 @pytest.fixture(autouse=True)
