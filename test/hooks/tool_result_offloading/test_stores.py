@@ -38,10 +38,17 @@ class TestFileSystemToolResultStore:
         with pytest.raises(ValueError, match="outside the store root"):
             store.write(key=str(tmp_path / "outside.txt"), content="x")
 
-    def test_read_round_trips_written_content(self, tmp_path):
+    @pytest.mark.parametrize(
+        "key, content",
+        [
+            pytest.param("a.txt", "round trip", id="text"),
+            pytest.param("a.png", b"\x89PNG\r\n\x1a\n\xde\xad\xbe\xef", id="bytes"),
+        ],
+    )
+    def test_read_round_trips_written_content(self, tmp_path, key, content):
         store = FileSystemToolResultStore(root=tmp_path)
-        reference = store.write(key="a.txt", content="round trip")
-        assert store.read(reference) == "round trip"
+        reference = store.write(key=key, content=content)
+        assert store.read(reference) == content
 
     def test_read_rejects_parent_traversal_reference(self, tmp_path):
         store = FileSystemToolResultStore(root=tmp_path / "root")

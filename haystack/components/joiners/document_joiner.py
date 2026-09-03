@@ -238,15 +238,16 @@ class DocumentJoiner:
             min_score = mean_score - 3 * std_dev
             max_score = mean_score + 3 * std_dev
             delta_score = max_score - min_score
+            scores_vary = min(scores_list) != max(scores_list)
 
-            # if all docs have the same score delta_score is 0, the docs are uninformative for the query
+            # If all docs have the same score, rescaling cannot add information; preserve their original scores.
             rescaled_lists.append(
                 [
                     replace(
                         doc,
                         score=((doc.score if doc.score is not None else 0) - min_score) / delta_score
-                        if delta_score != 0.0
-                        else 0.0,
+                        if scores_vary and delta_score != 0.0
+                        else (doc.score if doc.score is not None else 0.0),
                     )
                     for doc in documents
                 ]

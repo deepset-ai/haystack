@@ -764,7 +764,9 @@ class TestRun:
 class TestIntegration:
     def test_live_run(self) -> None:
 
-        chat_messages = [ChatMessage.from_user("What's the capital of France")]
+        # The trailing assistant message has no content parts, as a reply whose only tool call was discarded does.
+        # It serializes with empty content, so this also checks the API accepts that, not just the converter.
+        chat_messages = [ChatMessage.from_user("What's the capital of France"), ChatMessage.from_assistant(text=None)]
         component = OpenAIResponsesChatGenerator(
             model="gpt-4.1-nano", generation_kwargs={"include": ["message.output_text.logprobs"]}
         )

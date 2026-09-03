@@ -6,6 +6,11 @@ from pathlib import Path
 
 import pytest
 
+from haystack.testing.telemetry import (  # noqa: F401  # autouse fixtures for the whole suite
+    block_telemetry_network_calls,
+    tag_pipeline_telemetry_as_test,
+    telemetry_instance,
+)
 from haystack.testing.test_utils import set_all_seeds
 
 set_all_seeds(0)
