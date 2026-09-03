@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    ``ToolResultOffloadHook`` no longer offloads empty-string tool results. Empty
+    strings are now treated like empty lists and left in context, matching the
+    documented "when the result is empty" behavior and avoiding zero-byte store
+    files with a dangling ``Preview:`` pointer.
