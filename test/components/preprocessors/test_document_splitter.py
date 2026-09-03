@@ -1017,3 +1017,26 @@ class TestSplittingByTokenIntegration:
             assert chunk.content is not None
             assert "\ufffd" not in chunk.content
         assert doc.content == merge_documents(result)
+
+    def test_add_page_number_to_metadata_with_no_overlap_token_split(self):
+        splitter = DocumentSplitter(split_by="token", split_length=5, split_overlap=0)
+        text = "one two three four five\fsix seven eight nine ten\feleven twelve thirteen fourteen fifteen"
+        doc = Document(content=text)
+        docs = splitter.run(documents=[doc])["documents"]
+        assert len(docs) > 1
+        assert docs[0].meta["page_number"] == 1
+        for d in docs:
+            expected_page = 1 + text[: d.meta["split_idx_start"]].count("\f")
+            assert d.meta["page_number"] == expected_page
+        assert docs[-1].meta["page_number"] == 3
+
+    def test_add_page_number_to_metadata_with_overlap_token_split(self):
+        splitter = DocumentSplitter(split_by="token", split_length=5, split_overlap=2)
+        text = "one two three four five\fsix seven eight nine ten\feleven twelve thirteen fourteen fifteen"
+        doc = Document(content=text)
+        docs = splitter.run(documents=[doc])["documents"]
+        assert len(docs) > 1
+        for d in docs:
+            expected_page = 1 + text[: d.meta["split_idx_start"]].count("\f")
+            assert d.meta["page_number"] == expected_page
+        assert docs[-1].meta["page_number"] == 3
