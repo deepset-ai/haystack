@@ -1,0 +1,8 @@
+---
+features:
+  - |
+    ``Tool`` now derives ``description`` and ``parameters`` from its own ``function`` (or ``async_function``)
+    when they are not passed, using the same logic as ``create_tool_from_function``. Building a tool from a
+    function no longer means hand-writing its JSON schema, which matters when a ``Tool`` is constructed from
+    configuration rather than through the ``create_tool_from_function`` helper or the ``@tool`` decorator.
+    Passing either field explicitly behaves exactly as before, and an explicit empty description stays empty.

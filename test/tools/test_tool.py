@@ -3,12 +3,13 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import re
-from typing import Any
+from typing import Annotated, Any, Literal
 
 import pytest
 
+from haystack.components.agents.state.state import State
 from haystack.dataclasses import TextContent
-from haystack.tools import Tool, _check_duplicate_tool_names
+from haystack.tools import Tool, _check_duplicate_tool_names, create_tool_from_function
 from haystack.tools.errors import ToolInvocationError
 from haystack.tools.tool import (
     _deserialize_outputs_to_state,
@@ -472,3 +473,123 @@ def test_check_duplicate_tool_names():
         Tool(name="weather2", description="Get weather report", parameters=parameters, function=get_weather_report),
     ]
     _check_duplicate_tool_names(tools)
+
+
+def documented_weather(
+    city: Annotated[str, "the city for which to get the weather"] = "Munich",
+    unit: Annotated[Literal["Celsius", "Fahrenheit"], "the unit for the temperature"] = "Celsius",
+) -> str:
+    """A simple function to get the current weather for a location."""
+    return f"Weather report for {city}: 20 {unit}, sunny"
+
+
+async def async_documented_weather(city: Annotated[str, "the city for which to get the weather"] = "Munich") -> str:
+    """An async function to get the current weather for a location."""
+    return f"Weather report for {city}: 20°C, sunny"
+
+
+def weather_with_state(city: str, state: State, api_key: str = "secret") -> str:
+    return f"Weather report for {city}: 20°C, sunny"
+
+
+def undocumented_weather(city: str) -> str:
+    return f"Weather report for {city}: 20°C, sunny"
+
+
+documented_weather_parameters = {
+    "type": "object",
+    "properties": {
+        "city": {"type": "string", "description": "the city for which to get the weather", "default": "Munich"},
+        "unit": {
+            "type": "string",
+            "enum": ["Celsius", "Fahrenheit"],
+            "description": "the unit for the temperature",
+            "default": "Celsius",
+        },
+    },
+}
+
+
+class TestToolDerivedFromFunction:
+    def test_description_and_parameters_are_derived(self):
+        tool = Tool(name="weather", function=documented_weather)
+
+        assert tool.description == "A simple function to get the current weather for a location."
+        assert tool.parameters == documented_weather_parameters
+
+    def test_derived_values_match_create_tool_from_function(self):
+        derived = Tool(name="documented_weather", function=documented_weather)
+        built = create_tool_from_function(documented_weather)
+
+        assert derived.description == built.description
+        assert derived.parameters == built.parameters
+
+    def test_only_the_missing_one_is_derived(self):
+        without_description = Tool(name="weather", parameters=parameters, function=documented_weather)
+        assert without_description.description == "A simple function to get the current weather for a location."
+        assert without_description.parameters == parameters
+
+        without_parameters = Tool(name="weather", description="Get weather report", function=documented_weather)
+        assert without_parameters.description == "Get weather report"
+        assert without_parameters.parameters == documented_weather_parameters
+
+    def test_explicit_empty_description_is_kept(self):
+        tool = Tool(name="weather", description="", parameters=parameters, function=documented_weather)
+
+        assert tool.description == ""
+
+    def test_missing_docstring_derives_an_empty_description(self):
+        tool = Tool(name="weather", function=undocumented_weather)
+
+        assert tool.description == ""
+
+    def test_derived_from_async_function(self):
+        tool = Tool(name="weather", async_function=async_documented_weather)
+
+        assert tool.description == "An async function to get the current weather for a location."
+        assert tool.parameters == {
+            "type": "object",
+            "properties": {
+                "city": {"type": "string", "description": "the city for which to get the weather", "default": "Munich"}
+            },
+        }
+
+    def test_function_is_preferred_over_async_function(self):
+        tool = Tool(name="weather", function=documented_weather, async_function=async_documented_weather)
+
+        assert tool.description == "A simple function to get the current weather for a location."
+        assert tool.parameters == documented_weather_parameters
+
+    def test_derived_parameters_skip_state_and_inputs_from_state(self):
+        tool = Tool(name="weather", function=weather_with_state, inputs_from_state={"key": "api_key"})
+
+        assert tool.parameters == {"type": "object", "properties": {"city": {"type": "string"}}, "required": ["city"]}
+
+    def test_tool_spec_uses_the_derived_values(self):
+        tool = Tool(name="weather", function=documented_weather)
+
+        assert tool.tool_spec == {
+            "name": "weather",
+            "description": "A simple function to get the current weather for a location.",
+            "parameters": documented_weather_parameters,
+        }
+
+    def test_derived_tool_round_trips(self):
+        tool = Tool(name="weather", function=documented_weather)
+        data = tool.to_dict()
+
+        assert data["data"]["description"] == "A simple function to get the current weather for a location."
+        assert data["data"]["parameters"] == documented_weather_parameters
+
+        deserialized = Tool.from_dict(data)
+        assert deserialized.description == tool.description
+        assert deserialized.parameters == tool.parameters
+        assert deserialized.function is documented_weather
+
+    def test_derivation_requires_type_hints(self):
+        with pytest.raises(ValueError, match="parameter 'city' does not have a type hint"):
+            Tool(name="weather", function=lambda city: f"Weather report for {city}")
+
+    def test_missing_function_still_raises_before_derivation(self):
+        with pytest.raises(ValueError, match="requires at least one of `function` or `async_function`"):
+            Tool(name="weather")

@@ -27,8 +27,8 @@ The `Tool` class is used in Chat Generators and provides a consistent experience
 @dataclass
 class Tool:
     name: str
-    description: str
-    parameters: dict[str, Any]
+    description: str = _DERIVE_FROM_FUNCTION
+    parameters: dict[str, Any] = _DERIVE_FROM_FUNCTION
     function: Callable | None = None
     outputs_to_string: dict[str, Any] | None = None
     inputs_from_state: dict[str, str] | None = None
@@ -37,8 +37,8 @@ class Tool:
 ```
 
 - `name` is the name of the Tool.
-- `description` is a string describing what the Tool does.
-- `parameters` is a JSON schema describing the expected parameters.
+- `description` is a string describing what the Tool does. If you don’t pass it, it is taken from the docstring of `function` (or `async_function`). Pass an empty string to leave it deliberately empty.
+- `parameters` is a JSON schema describing the expected parameters. If you don’t pass it, it is generated from the signature of `function` (or `async_function`), which must have a type hint for every parameter.
 - `function` is invoked when the Tool is called. It must be a regular (sync) function.
 - `async_function` (optional) is a coroutine function awaited when the Tool is invoked in an async context. See [Async Tools](#async-tools) below.
 - `outputs_to_string` (optional) controls how parts of the tool’s output are converted into one or more strings (e.g. for LLM consumption).
@@ -57,10 +57,10 @@ There are three ways to create a `Tool`:
 
 - **`@tool` decorator** — recommended for most cases; infers name, description, and schema from the function.
 - **`create_tool_from_function`** — same as `@tool` but called as a function; useful when you can’t decorate directly.
-- **Manual initialization** — construct `Tool(...)` directly when you need full control over the JSON schema.
+- **Manual initialization** — construct `Tool(...)` directly when you need full control over the JSON schema, or when the Tool is built from configuration rather than from a decorated function.
 
 :::tip
-For most use cases, we recommend `@tool` or `create_tool_from_function`. Both automatically generate the `parameters` JSON schema from your function’s type hints and [`Annotated`](https://docs.python.org/3/library/typing.html#typing.Annotated) parameter descriptions, so you don’t need to write the schema by hand.
+For most use cases, we recommend `@tool` or `create_tool_from_function`. Both automatically generate the `parameters` JSON schema from your function’s type hints and [`Annotated`](https://docs.python.org/3/library/typing.html#typing.Annotated) parameter descriptions, so you don’t need to write the schema by hand. Constructing `Tool(...)` directly and omitting `description` or `parameters` generates them the same way, so you only have to write out the schema when you want one that differs from the function’s.
 :::
 
 ### @tool decorator
@@ -195,6 +195,28 @@ print(add_tool.invoke(a=15, b=10))
 
 25
 ```
+
+Omit `description` or `parameters` and they are derived from `function`, the same way `@tool` and `create_tool_from_function` derive them. This is useful when the `Tool` is assembled from configuration — from a YAML file, say — where the decorator and the helper are not available:
+
+```python
+add_tool = Tool(name="addition_tool", function=add)
+
+print(add_tool.tool_spec)
+```
+
+```
+{
+    ‘name’: ‘addition_tool’,
+    ‘description’: ‘’,
+    ‘parameters’: {
+        ‘type’: ‘object’,
+        ‘properties’: {‘a’: {‘type’: ‘integer’}, ‘b’: {‘type’: ‘integer’}},
+        ‘required’: [‘a’, ‘b’]
+    }
+}
+```
+
+The description is empty here because `add` has no docstring — give the function one, or pass `description` explicitly.
 
 ### Advanced Tool Configuration
 

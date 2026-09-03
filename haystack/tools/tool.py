@@ -15,6 +15,12 @@ from haystack.core.serialization import generate_qualified_class_name
 from haystack.tools.errors import ToolInvocationError
 from haystack.utils.callable_serialization import deserialize_callable, serialize_callable
 
+# Default for `description` and `parameters`, meaning "not given, derive it from the function". It is annotated
+# `Any` so that the two fields keep the types they actually have once `__post_init__` has run — `str` and
+# `dict[str, Any]`. Declaring them optional instead would push a `None` that cannot occur onto every reader of
+# `tool.description` and `tool.parameters`, here and in the integrations.
+_DERIVE_FROM_FUNCTION: Any = None
+
 
 @dataclass
 class Tool:
@@ -32,9 +38,11 @@ class Tool:
     :param name:
         Name of the Tool.
     :param description:
-        Description of the Tool.
+        Description of the Tool. If not provided, it is derived from the docstring of `function`
+        (or `async_function`). To intentionally leave the description empty, pass an empty string.
     :param parameters:
-        A JSON schema defining the parameters expected by the Tool.
+        A JSON schema defining the parameters expected by the Tool. If not provided, it is derived from the
+        signature of `function` (or `async_function`), which must carry a type hint for every parameter.
     :param function:
         The synchronous function invoked by `Tool.invoke`. Must be a regular function — coroutine functions should
         be passed to `async_function` instead. Either `function` or `async_function` (or both) must be set.
@@ -93,15 +101,18 @@ class Tool:
         ```
     :raises ValueError: If neither `function` nor `async_function` is provided, if `function` is a
         coroutine function, if `async_function` is not a coroutine function, if `parameters` is not a
-        valid JSON schema, or if the `outputs_to_state`, `outputs_to_string`, or `inputs_from_state`
+        valid JSON schema, if `parameters` has to be derived and a parameter of the function lacks a
+        type hint, or if the `outputs_to_state`, `outputs_to_string`, or `inputs_from_state`
         configurations are invalid.
     :raises TypeError: If any configuration value in `outputs_to_state`, `outputs_to_string`, or
         `inputs_from_state` has the wrong type.
+    :raises SchemaGenerationError: If `parameters` has to be derived and the JSON schema cannot be
+        generated from the function.
     """
 
     name: str
-    description: str
-    parameters: dict[str, Any]
+    description: str = _DERIVE_FROM_FUNCTION
+    parameters: dict[str, Any] = _DERIVE_FROM_FUNCTION
     function: Callable | None = None
     outputs_to_string: dict[str, Any] | None = None
     inputs_from_state: dict[str, str] | None = None
@@ -109,8 +120,10 @@ class Tool:
     async_function: Callable | None = None
 
     def __post_init__(self) -> None:  # noqa: C901, PLR0912
-        # At least one of function / async_function must be set.
-        if self.function is None and self.async_function is None:
+        # At least one of function / async_function must be set. `function` is the one introspected when both are,
+        # matching `_get_valid_inputs` below.
+        introspection_target = self.function if self.function is not None else self.async_function
+        if introspection_target is None:
             raise ValueError(f"Tool '{self.name}' requires at least one of `function` or `async_function` to be set.")
 
         # `function` must be a regular (sync) function. Coroutine functions belong on `async_function`.
@@ -127,6 +140,10 @@ class Tool:
                 f"`async_function` must be a coroutine function defined with `async def`. "
                 f"Got '{getattr(self.async_function, '__name__', repr(self.async_function))}'."
             )
+
+        # Derive whatever was not given from the function itself, before the schema is validated below.
+        if self.description is _DERIVE_FROM_FUNCTION or self.parameters is _DERIVE_FROM_FUNCTION:
+            self._derive_missing_from_function(introspection_target)
 
         # Check that the parameters define a valid JSON schema
         try:
@@ -210,6 +227,29 @@ class Tool:
                         f"inputs_from_state maps '{state_key}' to unknown parameter '{param_name}'. "
                         f"Valid parameters are: {valid_inputs}."
                     )
+
+    def _derive_missing_from_function(self, function: Callable) -> None:
+        """
+        Fill in `description` and `parameters` from the function when they were not passed.
+
+        The derivation is the one `create_tool_from_function` performs, called through a shared helper so that a Tool
+        built directly and a Tool built from a function describe that function the same way.
+
+        :param function: The function to describe — `function` when it is set, `async_function` otherwise.
+
+        :raises ValueError: If `parameters` has to be derived and a parameter of the function lacks a type hint.
+        :raises SchemaGenerationError: If the JSON schema cannot be generated from the function.
+        """
+        # Imported here rather than at module level because `from_function` imports this module.
+        from haystack.tools.from_function import _description_and_parameters_from_function
+
+        derived_description, derived_parameters = _description_and_parameters_from_function(
+            function=function, inputs_from_state=self.inputs_from_state
+        )
+        if self.description is _DERIVE_FROM_FUNCTION:
+            self.description = derived_description
+        if self.parameters is _DERIVE_FROM_FUNCTION:
+            self.parameters = derived_parameters
 
     def _get_valid_inputs(self) -> set[str]:
         """
