@@ -269,12 +269,15 @@ class ToolResultOffloadHook:
         if policy is None:
             return message
 
+        # Both shapes an empty result can take - an empty string and an empty sequence - are left in context: there is
+        # nothing to write and a pointer would cost more context than the result it replaces.
+        if not result.result:
+            return message
+
         # A plain string result is handled as a single text block, so everything below has one shape to work with.
         content_blocks: list[TextContent | ImageContent | FileContent] = (
             [TextContent(text=result.result)] if isinstance(result.result, str) else list(result.result)
         )
-        if not content_blocks:
-            return message
 
         # Check whether the store can store binary content before offloading an image or file result. A text-only store
         # leaves the result in context and logs a warning.

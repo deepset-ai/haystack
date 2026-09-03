@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Fixed ``ToolResultOffloadHook`` offloading a tool result that is an empty string. An empty string result was
+    written to the store as a zero-byte entry and replaced in the conversation by a pointer with a dangling
+    ``Preview:``. Empty results are now left in context for both shapes a result can take, an empty string and an
+    empty sequence, matching the hook's documented behavior.
