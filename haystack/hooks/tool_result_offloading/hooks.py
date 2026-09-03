@@ -269,12 +269,15 @@ class ToolResultOffloadHook:
         if policy is None:
             return message
 
+        # Empty results ("" or []) stay in context — check before wrapping a string into TextContent,
+        # otherwise "" becomes a one-element list and slips past the emptiness guard.
+        if not result.result:
+            return message
+
         # A plain string result is handled as a single text block, so everything below has one shape to work with.
         content_blocks: list[TextContent | ImageContent | FileContent] = (
             [TextContent(text=result.result)] if isinstance(result.result, str) else list(result.result)
         )
-        if not content_blocks:
-            return message
 
         # Check whether the store can store binary content before offloading an image or file result. A text-only store
         # leaves the result in context and logs a warning.

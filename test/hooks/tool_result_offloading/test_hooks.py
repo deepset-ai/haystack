@@ -189,14 +189,15 @@ class TestToolResultOffloadHookBehavior:
         assert over_state.data["messages"][0].tool_call_result.result.startswith("Tool result offloaded")
         assert under_state.data["messages"][0].tool_call_result.result == [image]
 
-    def test_empty_result_is_not_offloaded(self, tmp_path):
+    @pytest.mark.parametrize("empty_result", ["", []], ids=["empty_string", "empty_list"])
+    def test_empty_result_is_not_offloaded(self, tmp_path, empty_result):
         hook = ToolResultOffloadHook(
             store=FileSystemToolResultStore(root=tmp_path), offload_strategies={"*": AlwaysOffload()}
         )
-        message = ChatMessage.from_tool(tool_result=[], origin=ToolCall(tool_name="a", arguments={}, id="1"))
+        message = ChatMessage.from_tool(tool_result=empty_result, origin=ToolCall(tool_name="a", arguments={}, id="1"))
         state = _state_with_messages([message])
         hook.run(state)
-        assert state.data["messages"][0].tool_call_result.result == []
+        assert state.data["messages"][0].tool_call_result.result == empty_result
         assert not list(Path(tmp_path).iterdir())
 
     def test_id_less_parallel_calls_do_not_collide(self, tmp_path):
