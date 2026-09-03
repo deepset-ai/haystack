@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    Fixed `_estimated_context_tokens` in the compaction hook over-counting tokens
+    when the conversation contained no assistant message. Previously, when
+    `context_tokens > 0` and `_last_assistant_index` returned `-1`, the entire
+    message list was counted on top of the reported usage. Now the reported
+    count is returned unchanged in that case.

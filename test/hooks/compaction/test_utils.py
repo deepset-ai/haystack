@@ -224,3 +224,37 @@ class TestEstimatedContextTokens:
         assert _estimated_context_tokens(
             messages=messages, context_tokens=written, token_counter=counter
         ) == pytest.approx(counter.count(messages=messages), abs=2)
+
+    def test_no_assistant_message_does_not_over_count(self):
+        counter = FakeCounter()
+
+        # Empty conversation: nothing to add.
+        assert _estimated_context_tokens(messages=[], context_tokens=0, token_counter=counter) == 0
+
+        # No assistant message yet, so reported usage already covers everything.
+        user_only = [ChatMessage.from_user(text="hi")]
+        assert _estimated_context_tokens(messages=user_only, context_tokens=0, token_counter=counter) == counter.count(
+            messages=user_only
+        )
+
+        user_assistant = [ChatMessage.from_user(text="hi"), ChatMessage.from_assistant(text="hello")]
+        assert _estimated_context_tokens(
+            messages=user_assistant, context_tokens=0, token_counter=counter
+        ) == counter.count(messages=user_assistant)
+
+        # Tool result after an assistant message is counted, earlier messages are not.
+        with_assistant = [
+            ChatMessage.from_user(text="hi"),
+            ChatMessage.from_assistant(text="hello"),
+            tool_result(result="R" * 400),
+        ]
+        assert _estimated_context_tokens(
+            messages=with_assistant, context_tokens=1000, token_counter=counter
+        ) == 1000 + counter.count(messages=[with_assistant[-1]])
+
+        # Tool result with no preceding assistant message must not double-count.
+        user_tool = [ChatMessage.from_user(text="hi"), tool_result(result="R" * 400)]
+        assert _estimated_context_tokens(messages=user_tool, context_tokens=1000, token_counter=counter) == 1000
+
+        system_tool = [ChatMessage.from_system(text="rules"), tool_result(result="R" * 400)]
+        assert _estimated_context_tokens(messages=system_tool, context_tokens=1000, token_counter=counter) == 1000

@@ -148,6 +148,11 @@ def _estimated_context_tokens(
     # Nothing sent yet, or a generator that reports no usage, so count everything.
     if context_tokens == 0:
         return token_counter.count(messages=messages, tools=tools)
-    # Only need to estimate the tool result messages after the last assistant message
-    tool_result_messages = messages[_last_assistant_index(messages=messages) + 1 :]
+    # Only need to estimate the tool result messages after the last assistant message.
+    # If there is no assistant message yet, the provider's reported count already covers
+    # everything that was sent, so we must not add the full message list on top of it.
+    last_assistant_index = _last_assistant_index(messages=messages)
+    if last_assistant_index < 0:
+        return context_tokens
+    tool_result_messages = messages[last_assistant_index + 1 :]
     return context_tokens + token_counter.count(messages=tool_result_messages)
