@@ -130,6 +130,48 @@ def create_tool_from_function(
     :raises SchemaGenerationError:
         If there is an error generating the JSON schema for the Tool.
     """
+    tool_description, schema = _description_and_parameters_from_function(
+        function=function, description=description, inputs_from_state=inputs_from_state
+    )
+
+    is_async = inspect.iscoroutinefunction(function)
+
+    return Tool(
+        name=name or function.__name__,
+        description=tool_description,
+        parameters=schema,
+        function=None if is_async else function,
+        async_function=function if is_async else None,
+        inputs_from_state=inputs_from_state,
+        outputs_to_state=outputs_to_state,
+        outputs_to_string=outputs_to_string,
+    )
+
+
+def _description_and_parameters_from_function(
+    function: Callable, description: str | None = None, inputs_from_state: dict[str, str] | None = None
+) -> tuple[str, dict[str, Any]]:
+    """
+    Derive a Tool description and JSON schema from a function.
+
+    `Tool.__post_init__` calls this for any of the two that was not passed explicitly, so that a Tool built directly
+    and one built by `create_tool_from_function` describe the same function the same way.
+
+    :param function:
+        The function to describe. Every parameter must carry a type hint.
+    :param description:
+        Used as-is when given, including an empty string. When `None`, the function's docstring is used.
+    :param inputs_from_state:
+        Optional dictionary mapping state keys to tool parameter names. Parameters filled from state are left out
+        of the schema, since the model does not provide them.
+    :returns:
+        The description and the JSON schema of the parameters.
+
+    :raises ValueError:
+        If any parameter of the function lacks a type hint.
+    :raises SchemaGenerationError:
+        If there is an error generating the JSON schema.
+    """
     tool_description = description if description is not None else (function.__doc__ or "")
 
     signature = inspect.signature(function)
@@ -179,18 +221,7 @@ def create_tool_from_function(
         if param_name in schema["properties"]:
             schema["properties"][param_name]["description"] = param_description
 
-    is_async = inspect.iscoroutinefunction(function)
-
-    return Tool(
-        name=name or function.__name__,
-        description=tool_description,
-        parameters=schema,
-        function=None if is_async else function,
-        async_function=function if is_async else None,
-        inputs_from_state=inputs_from_state,
-        outputs_to_state=outputs_to_state,
-        outputs_to_string=outputs_to_string,
-    )
+    return tool_description, schema
 
 
 @overload
