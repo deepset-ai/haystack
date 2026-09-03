@@ -256,40 +256,18 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
             from: '/docs/function-calling',
             to: '/docs/tool',
           },
-          // Non-chat Generators removed from core integrations
-          {
-            from: '/docs/amazonbedrockgenerator',
-            to: '/docs/amazonbedrockchatgenerator',
-          },
-          {
-            from: '/docs/anthropicgenerator',
-            to: '/docs/anthropicchatgenerator',
-          },
-          {
-            from: '/docs/coheregenerator',
-            to: '/docs/coherechatgenerator',
-          },
-          {
-            from: '/docs/llamacppgenerator',
-            to: '/docs/llamacppchatgenerator',
-          },
-          {
-            from: '/docs/nvidiagenerator',
-            to: '/docs/nvidiachatgenerator',
-          },
-          {
-            from: '/docs/ollamagenerator',
-            to: '/docs/ollamachatgenerator',
-          },
-          {
-            from: '/docs/togetheraigenerator',
-            to: '/docs/togetheraichatgenerator',
-          },
-          {
-            from: '/docs/watsonxgenerator',
-            to: '/docs/watsonxchatgenerator',
-          },
         ],
+        // Non-chat Generators removed from core integrations: redirect the old pages of every built docs
+        // version (unprefixed, /docs/<version>/ and /docs/next/) to the corresponding ChatGenerator page.
+        createRedirects(existingPath) {
+          const match = existingPath.match(
+            /^(\/docs\/(?:[\w.-]+\/)?)(amazonbedrock|anthropic|cohere|llamacpp|nvidia|ollama|togetherai|watsonx)chatgenerator$/,
+          );
+          if (match) {
+            return [`${match[1]}${match[2]}generator`];
+          }
+          return undefined;
+        },
       },
     ],
   ],
