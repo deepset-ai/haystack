@@ -840,6 +840,7 @@ export default {
             'development/tracing/datadog',
             'development/tracing/langfuse',
             'development/tracing/weave',
+            'development/tracing/rhesis',
             'development/tracing/logging-tracer',
             'development/tracing/custom-tracer',
           ],

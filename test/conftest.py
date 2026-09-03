@@ -14,6 +14,11 @@ import pytest
 from haystack import component, tracing
 from haystack.core.serialization import allow_deserialization_module
 from haystack.document_stores.in_memory import InMemoryDocumentStore
+from haystack.testing.telemetry import (  # noqa: F401  # autouse fixtures for the whole suite
+    block_telemetry_network_calls,
+    tag_pipeline_telemetry_as_test,
+    telemetry_instance,
+)
 from haystack.testing.test_utils import set_all_seeds
 from test.tracing.utils import EagerSpyingTracer, SpyingTracer
 
