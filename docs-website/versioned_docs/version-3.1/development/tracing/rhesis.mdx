@@ -119,7 +119,9 @@ from haystack_integrations.tracing.rhesis import rhesis_invocation_context
 RhesisConnector("Agent example")  # enables the tracer; never added to a pipeline
 
 with rhesis_invocation_context({"session_id": "agent-example", "test_run_id": "tr-1"}):
-    result = agent.run(messages=[ChatMessage.from_user("What is the weather in Berlin?")])
+    result = agent.run(
+        messages=[ChatMessage.from_user("What is the weather in Berlin?")]
+    )
 ```
 
 Every span opened inside the block joins that session, and the previous context is restored on exit.
