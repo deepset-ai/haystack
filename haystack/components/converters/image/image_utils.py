@@ -222,74 +222,122 @@ class _ImageSourceInfo(TypedDict):
     page_number: NotRequired[int]  # Only present for PDF documents
 
 
+class _PathTraversalError(ValueError):
+    """
+    Raised when a document's file path resolves outside the configured root_path.
+
+    A subclass of ValueError, so callers that already expect one are unaffected. It exists so that a traversal
+    attempt can be told apart from the other validation failures: those describe one document's data and may be
+    reported per document, while this one is a security signal about the input as a whole and is raised even
+    when the caller asked for per-document reporting.
+    """
+
+
+def _extract_single_image_source_info(doc: Document, file_path_meta_field: str, root_path: str) -> _ImageSourceInfo:
+    """
+    Extracts the image source information from a single document.
+
+    :param doc: The document to extract image source information from.
+    :param file_path_meta_field: The metadata field in the Document that contains the file path to the image or PDF.
+    :param root_path: The root directory path where document files are located.
+
+    :returns:
+        An _ImageSourceInfo dictionary containing the path and type of the image.
+        If the image is a PDF, the dictionary also contains the page number.
+    :raises ValueError: If the document is missing the file_path_meta_field key in its metadata, the file path is
+        invalid, the MIME type is not supported, or the page number is missing for a PDF document.
+    :raises _PathTraversalError: If root_path is set and the resolved file path lies outside it.
+    """
+    file_path = doc.meta.get(file_path_meta_field)
+    if file_path is None:
+        raise ValueError(
+            f"Document with ID '{doc.id}' is missing the '{file_path_meta_field}' key in its metadata."
+            f" Please ensure that the documents you are trying to convert have this key set."
+        )
+
+    resolved_file_path = Path(root_path, file_path)
+
+    # When root_path is set, ensure the resolved path stays within it to block path-traversal
+    # payloads (e.g. "../../etc/passwd") coming from document metadata. When root_path is unset,
+    # file paths are treated as absolute by design and no containment check is applied; callers that
+    # process untrusted metadata should configure root_path (see component docstrings).
+    if root_path:
+        resolved_file_path = resolved_file_path.resolve()
+        resolved_root = Path(root_path).resolve()
+        if not resolved_file_path.is_relative_to(resolved_root):
+            raise _PathTraversalError(
+                f"Document with ID '{doc.id}' has a file path '{file_path}' that escapes the "
+                f"configured root '{root_path}'. Resolved path: '{resolved_file_path}'."
+            )
+
+    if not resolved_file_path.is_file():
+        raise ValueError(
+            f"Document with ID '{doc.id}' has an invalid file path '{resolved_file_path}'. "
+            f"Please ensure that the documents you are trying to convert have valid file paths."
+        )
+
+    mime_type = doc.meta.get("mime_type") or mimetypes.guess_type(resolved_file_path)[0]
+    if mime_type not in IMAGE_MIME_TYPES:
+        raise ValueError(
+            f"Document with file path '{resolved_file_path}' has an unsupported MIME type '{mime_type}'. "
+            f"Please ensure that the documents you are trying to convert are of the supported "
+            f"types: {', '.join(IMAGE_MIME_TYPES)}."
+        )
+
+    image_info: _ImageSourceInfo = {"path": resolved_file_path, "mime_type": mime_type}
+
+    # If mimetype is PDF we also need the page number to be able to convert the right page
+    if mime_type == "application/pdf":
+        page_number = doc.meta.get("page_number")
+        if page_number is None:
+            raise ValueError(
+                f"Document with ID '{doc.id}' comes from the PDF file '{resolved_file_path}' but is missing "
+                f"the 'page_number' key in its metadata. Please ensure that PDF documents you are trying to "
+                f"convert have this key set."
+            )
+        image_info["page_number"] = page_number
+
+    return image_info
+
+
 def _extract_image_sources_info(
-    documents: list[Document], file_path_meta_field: str, root_path: str
-) -> list[_ImageSourceInfo]:
+    documents: list[Document], file_path_meta_field: str, root_path: str, *, raise_on_failure: bool = True
+) -> list[_ImageSourceInfo | None]:
     """
     Extracts the image source information from the documents.
 
     :param documents: List of documents to extract image source information from.
     :param file_path_meta_field: The metadata field in the Document that contains the file path to the image or PDF.
     :param root_path: The root directory path where document files are located.
+    :param raise_on_failure: If True, a document that fails validation raises ValueError and no information is
+        returned for any document. If False, the failure is logged as a warning and that document's entry is None,
+        so a caller can report the failure per document and still process the rest of the batch. A path-traversal
+        attempt raises in both cases.
 
     :returns:
-        A list of _ImageSourceInfo dictionaries, each containing the path and type of the image.
-        If the image is a PDF, the dictionary also contains the page number.
+        A list with one entry per input document, in the same order. Each entry is an _ImageSourceInfo dictionary
+        containing the path and type of the image, and for a PDF also the page number. An entry is None only when
+        raise_on_failure is False and that document failed validation.
     :raises ValueError: If the document is missing the file_path_meta_field key in its metadata, the file path is
-        invalid, the MIME type is not supported, or the page number is missing for a PDF document.
+        invalid, the MIME type is not supported, or the page number is missing for a PDF document, and
+        raise_on_failure is True.
+    :raises _PathTraversalError: If root_path is set and a resolved file path lies outside it, whatever
+        raise_on_failure is set to.
     """
-    images_source_info: list[_ImageSourceInfo] = []
+    images_source_info: list[_ImageSourceInfo | None] = []
     for doc in documents:
-        file_path = doc.meta.get(file_path_meta_field)
-        if file_path is None:
-            raise ValueError(
-                f"Document with ID '{doc.id}' is missing the '{file_path_meta_field}' key in its metadata."
-                f" Please ensure that the documents you are trying to convert have this key set."
-            )
-
-        resolved_file_path = Path(root_path, file_path)
-
-        # When root_path is set, ensure the resolved path stays within it to block path-traversal
-        # payloads (e.g. "../../etc/passwd") coming from document metadata. When root_path is unset,
-        # file paths are treated as absolute by design and no containment check is applied; callers that
-        # process untrusted metadata should configure root_path (see component docstrings).
-        if root_path:
-            resolved_file_path = resolved_file_path.resolve()
-            resolved_root = Path(root_path).resolve()
-            if not resolved_file_path.is_relative_to(resolved_root):
-                raise ValueError(
-                    f"Document with ID '{doc.id}' has a file path '{file_path}' that escapes the "
-                    f"configured root '{root_path}'. Resolved path: '{resolved_file_path}'."
-                )
-
-        if not resolved_file_path.is_file():
-            raise ValueError(
-                f"Document with ID '{doc.id}' has an invalid file path '{resolved_file_path}'. "
-                f"Please ensure that the documents you are trying to convert have valid file paths."
-            )
-
-        mime_type = doc.meta.get("mime_type") or mimetypes.guess_type(resolved_file_path)[0]
-        if mime_type not in IMAGE_MIME_TYPES:
-            raise ValueError(
-                f"Document with file path '{resolved_file_path}' has an unsupported MIME type '{mime_type}'. "
-                f"Please ensure that the documents you are trying to convert are of the supported "
-                f"types: {', '.join(IMAGE_MIME_TYPES)}."
-            )
-
-        image_info: _ImageSourceInfo = {"path": resolved_file_path, "mime_type": mime_type}
-
-        # If mimetype is PDF we also need the page number to be able to convert the right page
-        if mime_type == "application/pdf":
-            page_number = doc.meta.get("page_number")
-            if page_number is None:
-                raise ValueError(
-                    f"Document with ID '{doc.id}' comes from the PDF file '{resolved_file_path}' but is missing "
-                    f"the 'page_number' key in its metadata. Please ensure that PDF documents you are trying to "
-                    f"convert have this key set."
-                )
-            image_info["page_number"] = page_number
-
-        images_source_info.append(image_info)
+        try:
+            images_source_info.append(_extract_single_image_source_info(doc, file_path_meta_field, root_path))
+        except _PathTraversalError:
+            # Never downgraded to a warning: swallowing it would hide an attempted traversal in a large batch.
+            raise
+        except ValueError as error:
+            if raise_on_failure:
+                raise
+            # The exception text is the only place the reason for the failure exists, so it is carried into the
+            # warning rather than replaced by a generic one.
+            logger.warning("Skipping document with ID {document_id}: {reason}", document_id=doc.id, reason=str(error))
+            images_source_info.append(None)
 
     return images_source_info
 

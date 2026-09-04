@@ -1,0 +1,23 @@
+---
+upgrade:
+  - |
+    ``DocumentToImageContent.run()`` no longer raises ``ValueError`` when a document cannot be converted.
+    A document that is missing the file path metadata key, points at a file that does not exist, or has an
+    unsupported MIME type now produces ``None`` in its position in ``image_contents`` and a logged warning
+    naming the document and the reason. Code that relied on the exception to detect bad input should check
+    for ``None`` entries instead:
+
+    .. code:: python
+
+      image_contents = converter.run(documents=documents)["image_contents"]
+      failed = [doc for doc, content in zip(documents, image_contents) if content is None]
+
+    A file path that escapes the configured ``root_path`` still raises ``ValueError``, because a rejected
+    path traversal is a property of the input as a whole rather than of one document.
+fixes:
+  - |
+    Fixed ``DocumentToImageContent`` dropping an entire batch when one document in it could not be converted.
+    Validation failures were raised before any document was processed, which made the documented partial
+    success path of ``LLMDocumentContentExtractor`` (routing unconvertible documents to ``failed_documents``
+    while returning the rest) unreachable for any batch containing a single bad document. Failures are now
+    reported per document as ``None``, the same way an out-of-range PDF page already was.
