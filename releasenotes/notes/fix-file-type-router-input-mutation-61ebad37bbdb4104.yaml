@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Fix ``FileTypeRouter.run()`` writing the ``meta`` passed to it into the ``meta`` dict of the
+    input ``ByteStream`` objects. The metadata is now added to a copy, so ``ByteStream`` sources
+    are left untouched, matching the behaviour already in place for file path sources.

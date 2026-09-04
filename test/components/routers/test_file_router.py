@@ -174,6 +174,21 @@ class TestFileTypeRouter:
         assert output[r"text/plain"][0].meta["foo"] == "bar"
         assert output[r"text/plain"][0].meta["another_key"] == "another_value"
 
+    def test_run_with_meta_does_not_mutate_input_bytestreams(self):
+        """
+        Test that meta passed to run() lands on the routed ByteStream without touching the caller's one.
+        """
+
+        bs = ByteStream.from_string("Haystack!", mime_type="text/plain", meta={"foo": "bar"})
+        router = FileTypeRouter(mime_types=[r"text/plain"])
+
+        output = router.run(sources=[bs], meta={"another_key": "another_value"})
+
+        routed = output[r"text/plain"][0]
+        assert isinstance(routed, ByteStream)
+        assert routed.meta == {"foo": "bar", "another_key": "another_value"}
+        assert bs.meta == {"foo": "bar"}
+
     def test_run_fails_if_meta_length_does_not_match_sources(self, test_files_path):
         """
         Test that the component raises an error if the length of the metadata list does not match the number of sources.
