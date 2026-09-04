@@ -6,6 +6,7 @@ from typing import Any
 
 from haystack import Document, component, default_from_dict, default_to_dict
 from haystack.document_stores.types import DocumentStore
+from haystack.utils import document_matches_filter
 
 
 @component
@@ -83,17 +84,13 @@ class CacheChecker:
             - `hits` - Documents that matched with at least one of the items.
             - `misses` - Items that were not present in any documents.
         """
-        found_documents = []
-        misses = []
+        if not items:
+            return {"hits": [], "misses": []}
 
-        for item in items:
-            filters = {"field": self.cache_field, "operator": "==", "value": item}
-            found = self.document_store.filter_documents(filters=filters)
-            if found:
-                found_documents.extend(found)
-            else:
-                misses.append(item)
-        return {"hits": found_documents, "misses": misses}
+        candidates = self.document_store.filter_documents(
+            filters={"field": self.cache_field, "operator": "in", "value": items}
+        )
+        return self._split_hits_and_misses(items, candidates)
 
     @component.output_types(hits=list[Document], misses=list)
     async def run_async(self, items: list[Any]) -> dict[str, Any]:
@@ -107,15 +104,45 @@ class CacheChecker:
             - `hits` - Documents that matched with at least one of the items.
             - `misses` - Items that were not present in any documents.
         """
-        found_documents = []
-        misses = []
-
         if not hasattr(self.document_store, "filter_documents_async"):
             raise TypeError(f"Document store {type(self.document_store).__name__} does not provide async support.")
 
+        if not items:
+            return {"hits": [], "misses": []}
+
+        candidates = await self.document_store.filter_documents_async(
+            filters={"field": self.cache_field, "operator": "in", "value": items}
+        )
+        return self._split_hits_and_misses(items, candidates)
+
+    def _split_hits_and_misses(self, items: list[Any], candidates: list[Document]) -> dict[str, Any]:
+        """
+        Groups the documents returned by a single batched lookup back onto the items that matched them.
+
+        The store is queried once with the `in` operator; this reproduces, in process, the per-item grouping
+        that one `==` query per item used to produce. `document_matches_filter` is the same predicate the
+        filtering machinery applies, so field resolution and value comparison stay identical. Stores that
+        can compare datetimes strictly expose that choice as `strict_datetime_comparison`; it is read here
+        so the grouping matches the query the store just answered.
+
+        :param items:
+            Values that were checked against the cache field, in the caller's order.
+        :param candidates:
+            Documents returned by the batched lookup.
+        :returns:
+            A dictionary with `hits` and `misses`.
+        """
+        strict_datetime_comparison = getattr(self.document_store, "strict_datetime_comparison", False)
+        found_documents = []
+        misses = []
+
         for item in items:
-            filters = {"field": self.cache_field, "operator": "==", "value": item}
-            found = await self.document_store.filter_documents_async(filters=filters)
+            condition = {"field": self.cache_field, "operator": "==", "value": item}
+            found = [
+                document
+                for document in candidates
+                if document_matches_filter(condition, document, strict_datetime_comparison=strict_datetime_comparison)
+            ]
             if found:
                 found_documents.extend(found)
             else:

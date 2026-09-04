@@ -8,7 +8,15 @@ import pytest
 
 from haystack import Document
 from haystack.components.caching.cache_checker import CacheChecker
+from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack.testing.factory import document_store_class
+
+
+@pytest.fixture()
+def strict_datetime_doc_store():
+    store = InMemoryDocumentStore(strict_datetime_comparison=True)
+    yield store
+    store.shutdown()
 
 
 class TestCacheCheckerAsync:
@@ -57,9 +65,48 @@ class TestCacheCheckerAsync:
         mock_store = MagicMock()
         mock_store.filter_documents_async = AsyncMock(return_value=[])
         checker = CacheChecker(document_store=mock_store, cache_field="url")
-        await checker.run_async(items=["https://example.com/1"])
-        expected_filters = {"field": "url", "operator": "==", "value": "https://example.com/1"}
+        await checker.run_async(items=["https://example.com/1", "https://example.com/2"])
+        expected_filters = {
+            "field": "url",
+            "operator": "in",
+            "value": ["https://example.com/1", "https://example.com/2"],
+        }
         mock_store.filter_documents_async.assert_awaited_once_with(filters=expected_filters)
+
+    @pytest.mark.asyncio
+    async def test_run_async_queries_the_document_store_once(self):
+        documents = [Document(content=f"doc{i}", meta={"url": f"https://example.com/{i}"}) for i in range(200)]
+        mock_store = MagicMock()
+        mock_store.filter_documents_async = AsyncMock(return_value=documents)
+        checker = CacheChecker(document_store=mock_store, cache_field="url")
+
+        results = await checker.run_async(items=[f"https://example.com/{i}" for i in range(200)])
+
+        assert mock_store.filter_documents_async.await_count == 1
+        assert len(results["hits"]) == 200
+        assert results["misses"] == []
+
+    @pytest.mark.asyncio
+    async def test_run_async_with_no_items_does_not_query_the_document_store(self):
+        mock_store = MagicMock()
+        mock_store.filter_documents_async = AsyncMock(return_value=[])
+        checker = CacheChecker(document_store=mock_store, cache_field="url")
+
+        results = await checker.run_async(items=[])
+
+        assert mock_store.filter_documents_async.await_count == 0
+        assert results == {"hits": [], "misses": []}
+
+    @pytest.mark.asyncio
+    async def test_run_async_matches_datetimes_as_strictly_as_the_store_does(self, strict_datetime_doc_store):
+        document = Document(content="doc1", meta={"fetched_at": "2026-01-01T12:00:00+00:00"})
+        strict_datetime_doc_store.write_documents([document])
+        checker = CacheChecker(strict_datetime_doc_store, cache_field="fetched_at")
+
+        results = await checker.run_async(items=["2026-01-01T12:00:00", "2026-01-01T12:00:00+00:00"])
+
+        assert results["hits"] == [document]
+        assert results["misses"] == ["2026-01-01T12:00:00"]
 
     @pytest.mark.asyncio
     async def test_close_async(self):
