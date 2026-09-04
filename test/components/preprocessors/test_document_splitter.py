@@ -783,6 +783,24 @@ class TestSplittingNLTKSentenceSplitter:
         assert documents[2].meta["split_id"] == 2
         assert documents[2].meta["split_idx_start"] == text.index(documents[2].content)
 
+    def test_run_split_by_sentence_quoted_text_keeps_offsets_aligned(self) -> None:
+        document_splitter = DocumentSplitter(
+            split_by="sentence",
+            split_length=1,
+            split_overlap=0,
+            split_threshold=0,
+            language="en",
+            use_split_rules=True,
+            extend_abbreviations=True,
+        )
+        text = 'One. He said "Two." Three.'
+        documents = document_splitter.run(documents=[Document(content=text)])["documents"]
+
+        assert "".join(document.content for document in documents) == text
+        for document in documents:
+            start = document.meta["split_idx_start"]
+            assert text[start : start + len(document.content)] == document.content
+
     def test_run_split_by_word_respect_sentence_boundary(self) -> None:
         document_splitter = DocumentSplitter(
             split_by="word",
