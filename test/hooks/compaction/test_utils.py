@@ -224,3 +224,23 @@ class TestEstimatedContextTokens:
         assert _estimated_context_tokens(
             messages=messages, context_tokens=written, token_counter=counter
         ) == pytest.approx(counter.count(messages=messages), abs=2)
+
+    @pytest.mark.parametrize(
+        "messages",
+        [
+            pytest.param([ChatMessage.from_user(text="hi"), tool_result(result="R" * 400)], id="after-user"),
+            pytest.param([ChatMessage.from_system(text="rules"), tool_result(result="R" * 400)], id="after-system"),
+        ],
+    )
+    def test_returns_the_reported_count_without_an_assistant_message(self, messages):
+        # The reported count covers the whole conversation when no assistant message splits it, so nothing is added.
+        assert _estimated_context_tokens(messages=messages, context_tokens=1000, token_counter=FakeCounter()) == 1000
+
+    def test_the_written_back_value_does_not_under_count_without_an_assistant_message(self):
+        # After compacting to a conversation with no assistant message, the hook writes back the count of the whole
+        # conversation. Feeding that straight back in must reproduce it rather than drop the messages.
+        counter = FakeCounter()
+        messages = [ChatMessage.from_system(text="rules"), ChatMessage.from_user(text="a summary of the work so far")]
+        written = counter.count(messages=messages)
+        assert _estimated_context_tokens(messages=messages, context_tokens=written, token_counter=counter) == written
+        assert written > 0

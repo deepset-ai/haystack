@@ -237,6 +237,25 @@ class TestCompactionHook:
         assert state.data["token_usage"] == {"prompt_tokens": 12}
         assert state.data["tool_call_counts"] == {"fetch": 2}
 
+    def test_re_estimates_context_tokens_when_compaction_leaves_no_assistant_message(self):
+        # A compactor can summarize every step away, leaving only system and user messages. The written back count then
+        # accounts for the whole conversation, so a second hook running right after reads it back unchanged instead of
+        # losing the surviving messages.
+        counter = FakeCounter()
+        compacted = [ChatMessage.from_system("rules"), ChatMessage.from_user("a summary of the work so far")]
+        messages = fresh_conversation_with_two_steps()
+        original_context_tokens = 800
+        estimated_overhead = _estimated_context_tokens(
+            messages=messages, context_tokens=original_context_tokens, token_counter=counter
+        ) - counter.count(messages=messages)
+        state = make_state(messages=messages, context_tokens=original_context_tokens)
+
+        _hook(_RecordingCompactor(result=compacted), token_counter=counter).run(state=state)
+
+        written = counter.count(messages=compacted) + estimated_overhead
+        assert state.data["context_tokens"] == written
+        assert _estimated_context_tokens(messages=compacted, context_tokens=written, token_counter=counter) == written
+
     def test_preserves_the_no_usage_sentinel_after_compaction(self):
         compacted = [ChatMessage.from_assistant("kept")]
         state = make_state([ChatMessage.from_user("x" * 4000)], context_tokens=0)

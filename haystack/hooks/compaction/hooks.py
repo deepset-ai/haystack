@@ -237,12 +237,12 @@ class CompactionHook:
         # If the original value was 0, leave it unchanged so later steps keep recounting the full request locally.
         if original_context_tokens != 0:
             # Re-estimate the provider-accounted context through the last assistant message, including overhead. If we
-            # added the trailing tool results, a second registered hook could double count them.
-            state.set(
-                "context_tokens",
-                self.token_counter.count(messages=compacted[: _last_assistant_index(messages=compacted) + 1])
-                + estimated_overhead,
-            )
+            # added the trailing tool results, a second registered hook could double count them. With no assistant
+            # message the whole compacted conversation is accounted for, which is what `_estimated_context_tokens`
+            # expects when it returns the count unchanged.
+            last_assistant_index = _last_assistant_index(messages=compacted)
+            accounted = compacted if last_assistant_index < 0 else compacted[: last_assistant_index + 1]
+            state.set("context_tokens", self.token_counter.count(messages=accounted) + estimated_overhead)
         logger.debug(
             "Compacted the Agent's conversation at step {step} from {before} to {after} messages, targeting {target} "
             "tokens.",

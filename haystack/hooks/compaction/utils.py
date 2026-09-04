@@ -140,7 +140,8 @@ def _estimated_context_tokens(
     Estimate the size of the whole conversation.
 
     :param messages: The conversation, oldest to newest.
-    :param context_tokens: The `context_tokens` state key which is computed using the provider's own token counting.
+    :param context_tokens: The `context_tokens` state key, anchored on the provider's own token counting. It accounts
+        for the conversation through the last assistant message, or for the whole conversation when there is none.
     :param token_counter: The counter to measure the unaccounted messages with.
     :param tools: Tools whose schemas are sent alongside the messages. These are counted when provider usage is absent.
     :returns: The estimated total token count.
@@ -148,6 +149,11 @@ def _estimated_context_tokens(
     # Nothing sent yet, or a generator that reports no usage, so count everything.
     if context_tokens == 0:
         return token_counter.count(messages=messages, tools=tools)
-    # Only need to estimate the tool result messages after the last assistant message
-    tool_result_messages = messages[_last_assistant_index(messages=messages) + 1 :]
+    # `context_tokens` accounts for the conversation through the last assistant message, so only the tool result
+    # messages after it still need estimating. With no assistant message it accounts for the whole conversation, so
+    # counting the messages on top of it would double count them.
+    last_assistant_index = _last_assistant_index(messages=messages)
+    if last_assistant_index < 0:
+        return context_tokens
+    tool_result_messages = messages[last_assistant_index + 1 :]
     return context_tokens + token_counter.count(messages=tool_result_messages)
