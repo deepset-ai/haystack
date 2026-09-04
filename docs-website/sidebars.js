@@ -784,6 +784,7 @@ export default {
         'token-counters/openaitokencounter',
         'token-counters/anthropictokencounter',
         'token-counters/googlegenaitokencounter',
+        'token-counters/amazonbedrocktokencounter',
       ],
     },
     {
