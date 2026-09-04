@@ -411,6 +411,50 @@ class TestRunTool:
         assert tool_call_result.result == '{"weather": "mostly sunny", "temperature": 7, "unit": "celsius"}'
         assert tool_call_result.origin == tool_call
 
+    @pytest.mark.parametrize(("empty_result", "serialized_result"), [("", ""), ([], "[]"), ({}, "{}")])
+    def test_run_with_empty_tool_result(self, empty_result, serialized_result):
+        empty_tool = Tool(
+            name="empty_tool",
+            description="Returns an empty result.",
+            parameters={"type": "object", "properties": {}},
+            function=lambda: empty_result,
+        )
+        tool_call = ToolCall(id="empty-call", tool_name="empty_tool", arguments={})
+
+        tool_messages, _ = _run_tool(
+            messages=[ChatMessage.from_assistant(tool_calls=[tool_call])], state=State(schema={}), tools=[empty_tool]
+        )
+
+        tool_call_result = tool_messages[0].tool_call_result
+        assert tool_call_result is not None
+        assert tool_call_result.result == serialized_result
+        assert not tool_call_result.error
+        assert tool_call_result.origin == tool_call
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(("empty_result", "serialized_result"), [("", ""), ([], "[]"), ({}, "{}")])
+    async def test_run_async_with_empty_tool_result(self, empty_result, serialized_result):
+        async def return_empty_result():
+            return empty_result
+
+        empty_tool = Tool(
+            name="empty_tool",
+            description="Returns an empty result.",
+            parameters={"type": "object", "properties": {}},
+            async_function=return_empty_result,
+        )
+        tool_call = ToolCall(id="empty-call", tool_name="empty_tool", arguments={})
+
+        tool_messages, _ = await _run_tool_async(
+            messages=[ChatMessage.from_assistant(tool_calls=[tool_call])], state=State(schema={}), tools=[empty_tool]
+        )
+
+        tool_call_result = tool_messages[0].tool_call_result
+        assert tool_call_result is not None
+        assert tool_call_result.result == serialized_result
+        assert not tool_call_result.error
+        assert tool_call_result.origin == tool_call
+
     def test_parallel_tool_calling_with_state_updates(self):
         """Test that parallel tool execution with state updates works correctly with the state lock."""
         execution_log = []
