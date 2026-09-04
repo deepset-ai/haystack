@@ -1,0 +1,9 @@
+---
+fixes:
+  - |
+    Fixed ``serialize_type``/``deserialize_type`` for ``typing.Literal`` types whose values are Enum members
+    (a valid ``Literal`` parameter kind). Previously the members were serialized with ``repr()``, producing
+    text such as ``typing.Literal[<ChatRole.USER: 'user'>]``, which could not be read back: a pipeline using
+    such a type (for example in ``OutputAdapter``, ``ConditionalRouter`` or an ``Agent`` state schema) was
+    saved successfully but raised ``SyntaxError`` when loaded again. Enum members are now serialized by
+    import path and resolved back through the deserialization allowlist, so the type round-trips correctly.
