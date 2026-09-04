@@ -6,7 +6,14 @@
 
 | 仓库 | 状态 | Issue | PR | 备注 |
 |------|------|-------|----|------|
-| Significant-Gravitas/AutoGPT | 🔄 PR 已发，CI 修复中 | [#14268](https://github.com/Significant-Gravitas/AutoGPT/issues/14268) | [#14271](https://github.com/Significant-Gravitas/AutoGPT/pull/14271) | poetry.lock 版本不匹配，用 poetry 2.2.1 重新生成 |
+| Significant-Gravitas/AutoGPT | ✅ CI 全过，待 review | [#14268](https://github.com/Significant-Gravitas/AutoGPT/issues/14268) | [#14271](https://github.com/Significant-Gravitas/AutoGPT/pull/14271) | 6 commits (e449ea5)。type-check/test (3.11/3.12/3.13) 全过；service.py 用 `_real_httpx` 适配器处理 starlette TestClient 抛真实 httpx 异常；含 `poetry check --lock` CI 修复 commit |
+| mem0ai/mem0 | ✅ PR 已发 | [#7207](https://github.com/mem0ai/mem0/issues/7207) | [#7213](https://github.com/mem0ai/mem0/pull/7213) | 2026-09-03 PR 已发（commit 8369d40，10 文件，99 test pass）|
+| lm-sys/FastChat | ✅ PR 已发 | [#3929](https://github.com/lm-sys/FastChat/issues/3929) | [#3931](https://github.com/lm-sys/FastChat/pull/3931) | 2026-09-03 PR 已发（commit 4ea6a03，2 文件 +6/-2）|
+| chroma-core/chroma | ✅ PR 已发 | [#7671](https://github.com/chroma-core/chroma/issues/7671) | [#7677](https://github.com/chroma-core/chroma/pull/7677) | 2026-09-03 PR 已发（commit 82f7f1c，6 文件 +21/-6）|
+| reflex-dev/reflex | ✅ PR 已发 | [#7034](https://github.com/reflex-dev/reflex/issues/7034) | [#7040](https://github.com/reflex-dev/reflex/pull/7040) | 2026-09-03 PR 已发（commit b965d6f8，12 文件，8137 tests pass）|
+| flet-dev/flet | ✅ PR 已发 | [#6809](https://github.com/flet-dev/flet/issues/6809) | [#6811](https://github.com/flet-dev/flet/pull/6811) | 2026-09-03 PR 已发（commit 93ee20a，3 文件 +22/-6，251 tests pass）|
+| python-telegram-bot/python-telegram-bot | ⏳ 接管 issue，branch 已 push，未开 PR | [#5258](https://github.com/python-telegram-bot/python-telegram-bot/issues/5258) (maintainer-owned) | — | 2026-09-03 takeover comment [#5523003311](https://github.com/python-telegram-bot/python-telegram-bot/issues/5258#issuecomment-5523003311) on existing #5258；fork branch `httpxodus/httpx2-migration` (commit 0775a55) pushed, 8 文件 +36/-8，request/applicationbuilder/updater tests 全过 |
+| python-telegram-bot/python-telegram-bot | ✅ PR 已发（接管 issue #5258）| [#5258](https://github.com/python-telegram-bot/python-telegram-bot/issues/5258) | [#5351](https://github.com/python-telegram-bot/python-telegram-bot/pull/5351) | 2026-09-03 PR 已发（commit 0775a554，8 文件 +36/-8，2379 tests pass；author 已修）|
 
 ## 📋 待完成队列（按优先级）
 
