@@ -33,6 +33,10 @@ class ChatRole(str, Enum):
     #: The tool role. A message from a tool contains the result of a Tool invocation.
     TOOL = "tool"
 
+    #: The developer role. Behaves like the system role but cannot be overridden by end-users in ChatGPT.
+    #: Supported by OpenAI's Chat Completions API since 2024.
+    DEVELOPER = "developer"
+
     @staticmethod
     def from_str(string: str) -> "ChatRole":
         """
@@ -479,6 +483,21 @@ class ChatMessage:
         return cls(_role=ChatRole.SYSTEM, _content=[TextContent(text=text)], _meta=meta or {}, _name=name)
 
     @classmethod
+    def from_developer(cls, text: str, meta: dict[str, Any] | None = None, name: str | None = None) -> "ChatMessage":
+        """
+        Create a message from the developer.
+
+        The developer role behaves like the system role but cannot be overridden by end-users in ChatGPT.
+        It is the recommended role for non-overridable system prompts when using OpenAI's Chat Completions API.
+
+        :param text: The text content of the message.
+        :param meta: Additional metadata associated with the message.
+        :param name: An optional name for the participant. This field is only supported by OpenAI.
+        :returns: A new ChatMessage instance.
+        """
+        return cls(_role=ChatRole.DEVELOPER, _content=[TextContent(text=text)], _meta=meta or {}, _name=name)
+
+    @classmethod
     def from_assistant(
         cls,
         text: str | None = None,
@@ -828,8 +847,10 @@ class ChatMessage:
 
         if role == "user":
             return cls.from_user(text=content, name=name)
-        if role in ["system", "developer"]:
+        if role == "system":
             return cls.from_system(text=content, name=name)
+        if role == "developer":
+            return cls.from_developer(text=content, name=name)
 
         if isinstance(content, list):
             if not all("text" in el for el in content):
