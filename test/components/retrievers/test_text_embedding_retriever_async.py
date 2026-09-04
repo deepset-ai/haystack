@@ -47,7 +47,11 @@ class TestTextEmbeddingRetrieverAsync:
         retriever = TextEmbeddingRetriever(retriever=MockRetriever(), text_embedder=MockTextEmbedder())
         result = await retriever.run_async(query="energy")
 
-        scores = [doc.score for doc in result["documents"]]
+        docs = result["documents"]
+        scores: list[float] = []
+        for doc in docs:
+            assert doc.score is not None
+            scores.append(doc.score)
         assert scores == sorted(scores, reverse=True)
 
     @pytest.mark.asyncio
