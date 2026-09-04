@@ -213,7 +213,8 @@ def test_run_split_by_word_count_page_breaks_split_unit_char():
     assert doc_chunks[1].meta["split_idx_start"] == text.index(doc_chunks[1].content)
 
     assert doc_chunks[2].content == "another page. \f "
-    assert doc_chunks[2].meta["page_number"] == 3
+    # "another" is still on page 2; the page break only starts the page the next chunk is on
+    assert doc_chunks[2].meta["page_number"] == 2
     assert doc_chunks[2].meta["split_id"] == 2
     assert doc_chunks[2].meta["split_idx_start"] == text.index(doc_chunks[2].content)
 
@@ -226,6 +227,18 @@ def test_run_split_by_word_count_page_breaks_split_unit_char():
     assert doc_chunks[4].meta["page_number"] == 3
     assert doc_chunks[4].meta["split_id"] == 4
     assert doc_chunks[4].meta["split_idx_start"] == text.index(doc_chunks[4].content)
+
+
+def test_run_page_break_inside_chunk_keeps_page_number_of_chunk_start() -> None:
+    splitter = RecursiveDocumentSplitter(split_length=4, split_overlap=0, separators=[" "], split_unit="word")
+    text = "aa bb\fcc dd ee ff\fgg hh"
+
+    doc_chunks = splitter.run([Document(content=text)])["documents"]
+
+    assert [chunk.content for chunk in doc_chunks] == ["aa bb\fcc dd ee ", "ff\fgg hh"]
+    # "aa" is on page 1 and "ff" is on page 2, so a page break that falls inside a chunk must not
+    # move that chunk onto a later page
+    assert [chunk.meta["page_number"] for chunk in doc_chunks] == [1, 2]
 
 
 def test_run_split_by_page_break_count_page_breaks() -> None:
@@ -563,7 +576,8 @@ def test_run_split_by_word_count_page_breaks_word_unit():
     assert doc_chunks[1].meta["split_idx_start"] == text.index(doc_chunks[1].content)
 
     assert doc_chunks[2].content == "on another page. \f "
-    assert doc_chunks[2].meta["page_number"] == 3
+    # "on another page." is still on page 2; the page break only starts the page the next chunk is on
+    assert doc_chunks[2].meta["page_number"] == 2
     assert doc_chunks[2].meta["split_id"] == 2
     assert doc_chunks[2].meta["split_idx_start"] == text.index(doc_chunks[2].content)
 
