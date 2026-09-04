@@ -15,13 +15,39 @@ from haystack.core.serialization import (
 )
 from haystack.dataclasses import ChatMessage
 from haystack.hooks.compaction.types import Compactor
-from haystack.hooks.compaction.utils import _estimated_context_tokens, _last_assistant_index
+from haystack.hooks.compaction.utils import _last_assistant_index
 from haystack.token_counters import ApproximateTokenCounter, TokenCounter
 from haystack.tools import ToolsType
 from haystack.utils.deserialization import deserialize_component_inplace
 from haystack.utils.experimental import _experimental
 
 logger = logging.getLogger(__name__)
+
+
+def _estimated_context_tokens(
+    messages: list[ChatMessage], context_tokens: int, token_counter: TokenCounter, tools: ToolsType | None = None
+) -> int:
+    """
+    Estimate the size of the whole conversation.
+
+    :param messages: The conversation, oldest to newest.
+    :param context_tokens: The `context_tokens` state key, anchored on the provider's own token counting. It accounts
+        for the conversation through the last assistant message, or for the whole conversation when there is none.
+    :param token_counter: The counter to measure the unaccounted messages with.
+    :param tools: Tools whose schemas are sent alongside the messages. These are counted when provider usage is absent.
+    :returns: The estimated total token count.
+    """
+    # Nothing sent yet, or a generator that reports no usage, so count everything.
+    if context_tokens == 0:
+        return token_counter.count(messages=messages, tools=tools)
+    # `context_tokens` accounts for the conversation through the last assistant message, so only the tool result
+    # messages after it still need estimating. If there is no assistant message, `context_tokens` accounts for the
+    # whole conversation, so nothing more needs counting.
+    last_assistant_index = _last_assistant_index(messages=messages)
+    if last_assistant_index < 0:
+        return context_tokens
+    tool_result_messages = messages[last_assistant_index + 1 :]
+    return context_tokens + token_counter.count(messages=tool_result_messages)
 
 
 @_experimental
@@ -167,6 +193,8 @@ class CompactionHook:
         :returns: The target token amount the messages should be compacted to and the estimated non-message overhead,
             or None when the conversation is not yet large enough to compact.
         """
+        # Estimate the total context size, including the provider's own count of the conversation through the last
+        # assistant message and the tool schemas.
         estimated = _estimated_context_tokens(
             messages=messages, context_tokens=context_tokens, token_counter=self.token_counter, tools=tools
         )
@@ -237,12 +265,11 @@ class CompactionHook:
         # If the original value was 0, leave it unchanged so later steps keep recounting the full request locally.
         if original_context_tokens != 0:
             # Re-estimate the provider-accounted context through the last assistant message, including overhead. If we
-            # added the trailing tool results, a second registered hook could double count them.
-            state.set(
-                "context_tokens",
-                self.token_counter.count(messages=compacted[: _last_assistant_index(messages=compacted) + 1])
-                + estimated_overhead,
-            )
+            # added the trailing tool results, a second registered hook could double count them. If there is no
+            # assistant message, count everything.
+            last_assistant_index = _last_assistant_index(messages=compacted)
+            accounted = compacted if last_assistant_index < 0 else compacted[: last_assistant_index + 1]
+            state.set("context_tokens", self.token_counter.count(messages=accounted) + estimated_overhead)
         logger.debug(
             "Compacted the Agent's conversation at step {step} from {before} to {after} messages, targeting {target} "
             "tokens.",
