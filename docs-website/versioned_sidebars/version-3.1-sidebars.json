@@ -776,7 +776,8 @@
         "token-counters/approximatetokencounter",
         "token-counters/tiktokencounter",
         "token-counters/openaitokencounter",
-        "token-counters/anthropictokencounter"
+        "token-counters/anthropictokencounter",
+        "token-counters/googlegenaitokencounter"
       ]
     },
     {

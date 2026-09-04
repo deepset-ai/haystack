@@ -783,6 +783,7 @@ export default {
         'token-counters/tiktokencounter',
         'token-counters/openaitokencounter',
         'token-counters/anthropictokencounter',
+        'token-counters/googlegenaitokencounter',
       ],
     },
     {
