@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    ``PythonCodeSplitter`` now deep-copies the metadata of the document it splits, matching ``DocumentSplitter``
+    and the other splitters. Previously it copied it shallowly, so nested values such as a dict under
+    ``meta["sheet"]`` were shared between every chunk and with the input document, and editing one chunk's
+    metadata changed all the others. The pieces produced by the oversized-function secondary split shared their
+    metadata the same way.

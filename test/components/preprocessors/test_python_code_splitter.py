@@ -296,6 +296,25 @@ class TestFileNamePropagation:
         for chunk in result["documents"]:
             assert chunk.meta["project"] == "haystack"
 
+    def test_nested_metadata_is_not_shared_between_chunks(self, simple_module_source):
+        splitter = PythonCodeSplitter(min_effective_lines=1, max_effective_lines=1)
+        doc = Document(content=simple_module_source, meta={"sheet": {"name": "Q3"}})
+
+        chunks = splitter.run(documents=[doc])["documents"]
+        chunks[0].meta["sheet"]["name"] = "Q4"
+
+        assert chunks[1].meta["sheet"] == {"name": "Q3"}
+        assert doc.meta["sheet"] == {"name": "Q3"}
+
+    def test_metadata_keys_sharing_one_value_still_share_it_within_a_chunk(self, simple_module_source):
+        shared = {"labels": []}
+        splitter = PythonCodeSplitter(min_effective_lines=1, max_effective_lines=1)
+        doc = Document(content=simple_module_source, meta={"primary": shared, "alias": shared})
+
+        chunk = splitter.run(documents=[doc])["documents"][0]
+
+        assert chunk.meta["primary"] is chunk.meta["alias"]
+
 
 class TestDecorators:
     def test_decorators_metadata_present(self):
@@ -841,6 +860,16 @@ class TestOversizedFallback:
         result = splitter.run(documents=[Document(content=oversized_function_source)])
         for piece in result["documents"]:
             assert piece.meta.get("qualified_name") == "giant"
+
+    def test_nested_metadata_is_not_shared_between_secondary_pieces(self, oversized_function_source):
+        splitter = PythonCodeSplitter(min_effective_lines=2, max_effective_lines=5, oversized_factor=3)
+        doc = Document(content=oversized_function_source, meta={"sheet": {"name": "Q3"}})
+
+        pieces = splitter.run(documents=[doc])["documents"]
+        pieces[0].meta["sheet"]["name"] = "Q4"
+
+        assert pieces[1].meta["sheet"] == {"name": "Q3"}
+        assert doc.meta["sheet"] == {"name": "Q3"}
 
 
 class TestEdgeCases:
