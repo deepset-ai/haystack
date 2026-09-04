@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    Clear stale ``metadata_extraction_error`` and ``metadata_extraction_response``
+    fields when an ``LLMMetadataExtractor`` retry succeeds with an empty JSON object.
