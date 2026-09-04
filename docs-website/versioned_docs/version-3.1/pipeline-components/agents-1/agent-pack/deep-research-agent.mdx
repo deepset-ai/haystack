@@ -47,7 +47,7 @@ It's less useful when:
 pip install agent-pack-haystack tavily-haystack trafilatura pypdf arrow
 ```
 
-`tavily-haystack`, `trafilatura`, `pypdf`, and `arrow` are separate installs the deep research agent needs at runtime (web search, HTML and PDF parsing, and date rendering).
+`trafilatura`, `pypdf`, and `arrow` are separate installs the deep research agent needs at runtime (HTML and PDF parsing, and date rendering). `tavily-haystack` is only needed for the default `search_tool`.
 
 Set `OPENAI_API_KEY` and `TAVILY_API_KEY` in the environment.
 
@@ -68,27 +68,43 @@ print(result["report"])
 
 Everything is configured through keyword arguments to `create_deep_research_agent`. All parameters are keyword-only and optional.
 
-### Models
+### Main agent
 
-Each phase takes its own ChatGenerator, so you can mix models by cost and capability, or swap in a different provider.
+The main agent is the orchestrator: it plans the investigation and delegates the sub-questions.
 
-- `scope_llm` is the LLM that rewrites the user query into a focused research brief. Defaults to `OpenAIResponsesChatGenerator("gpt-5.4")`.
-- `orchestrator_llm` is the LLM that plans the investigation and delegates the sub-questions. Defaults to `OpenAIResponsesChatGenerator("gpt-5.4")`.
-- `researcher_llm` is the LLM that drives each sub-researcher's search, read, and think loop. Defaults to `OpenAIResponsesChatGenerator("gpt-5.4-mini")`.
-- `summarizer_llm` is the LLM used inside the `read_url` tool to summarize a fetched page toward the question. Defaults to `OpenAIResponsesChatGenerator("gpt-5.4-mini")`.
-- `writer_llm` is the LLM that turns the brief plus collected notes into the final report. Defaults to `OpenAIResponsesChatGenerator("gpt-5.4")`.
-
-### Breadth and depth
-
+- `llm` is the LLM that drives the orchestrator's loop. Defaults to `OpenAIResponsesChatGenerator("gpt-5.4")`.
+- `system_prompt` overrides the pre-made orchestrator prompt. The placeholder `{{ max_subtopics }}` is replaced with the value of `max_subtopics`.
+- `max_agent_steps` is the maximum number of steps for the orchestrator's agent loop (reflect and delegate rounds). Defaults to `8`.
 - `max_subtopics` is the maximum number of sub-questions the orchestrator may delegate (breadth). Defaults to `5`.
 - `max_concurrent_researchers` is the maximum number of sub-researchers that run at the same time. Defaults to `5`.
-- `max_orchestrator_steps` is the maximum number of steps for the orchestrator's agent loop (reflect and delegate rounds). Defaults to `8`.
+
+### Sub-researchers
+
+- `researcher_llm` is the LLM that drives each sub-researcher's search, read, and think loop. Defaults to `OpenAIResponsesChatGenerator("gpt-5.4-mini")`.
+- `search_tool` is the web search tool each sub-researcher uses. Defaults to `TavilyWebSearchTool(top_k=10)`, which requires `tavily-haystack`. The pre-made researcher prompt refers to this tool as `web_search`, so name a custom tool the same way or adapt the prompt.
+- `page_summary_llm` is the LLM used inside the `read_url` tool to summarize a fetched page toward the question. Defaults to `OpenAIResponsesChatGenerator("gpt-5.4-mini")`.
 - `max_researcher_steps` is the maximum number of steps for each sub-researcher's agent loop. Defaults to `20`.
+- `max_page_chars` is the maximum number of raw page characters fed to `page_summary_llm`, before summarization. Defaults to `50000`.
 
-### Search and reading
+### Brief and report
 
-- `max_search_results` is the number of results returned per `web_search` call. Defaults to `10`.
-- `max_content_length` is the maximum number of raw page characters fed to the summarizer, before summarization. Defaults to `50000`.
+The Scope and Write phases are single LLM calls, each with its own ChatGenerator, so you can mix models by cost and capability or swap in a different provider.
+
+- `brief_llm` is the LLM that rewrites the user query into a focused research brief. Defaults to `OpenAIResponsesChatGenerator("gpt-5.4")`.
+- `report_llm` is the LLM that turns the brief plus collected notes into the final report. Defaults to `OpenAIResponsesChatGenerator("gpt-5.4")`.
+
+### Further customization
+
+To change anything else, such as adding tools or [hooks](../hooks.mdx), use [`clone()`](../agent.mdx#cloning-and-modifying-an-agent) on the returned agent. Unpack the existing values to keep the built-in tools, state entries, and the Scope and Write hooks:
+
+```python
+agent = create_deep_research_agent()
+
+customized = agent.clone(
+    tools=[*agent.tools, my_tool],
+    hooks={**agent.hooks, "before_llm": [my_hook]},
+)
+```
 
 ## How it works
 
@@ -116,7 +132,7 @@ The orchestrator is the lead agent: it receives the research brief and coordinat
 - **Job:** split the brief into a few focused, non-overlapping sub-questions, delegate each one, check coverage, and stop when there's enough.
 - **Parallelism:** it emits several delegation calls in a single turn, and they run concurrently (bounded by `max_concurrent_researchers`).
 - **Memory:** the summaries returned by sub-researchers are appended to a shared `notes` list (the agent's `State`), which the writer later turns into the report.
-- **Stops when:** it replies with plain text (research complete) or hits `max_orchestrator_steps`.
+- **Stops when:** it replies with plain text (research complete) or hits `max_agent_steps`.
 
 The orchestrator's tools:
 
@@ -137,7 +153,7 @@ The sub-researcher's tools:
 
 | Tool | What it is | What it does |
 | --- | --- | --- |
-| `web_search` | [`TavilyWebSearchTool`](../../../tools/ready-made-tools/tavilywebsearchtool.mdx) from the Tavily integration | Runs a web search and returns the top results as title, exact URL, and snippet. |
+| `web_search` | [`TavilyWebSearchTool`](../../../tools/ready-made-tools/tavilywebsearchtool.mdx) from the Tavily integration by default, or the `search_tool` you pass | Runs a web search and returns the top results as title, exact URL, and snippet. |
 | `read_url` | [`PipelineTool`](../../../tools/pipelinetool.mdx) over a fetch, route, convert-to-text, and summarize pipeline | Fetches a page (`LinkContentFetcher`), routes by MIME type (`FileTypeRouter`) to `HTMLToDocument` (Trafilatura) or `PyPDFToDocument` so PDFs are parsed too, and summarizes the page toward a question the agent passes, so only the relevant text enters the agent's context, not the full page. Used only when a search snippet is too shallow. |
 | `think_tool` | A no-op reflection tool | "What did I learn? What's missing? Stop or continue?" between searches. |
 
