@@ -243,8 +243,8 @@ class ToolResultOffloadHook:
 
         A message is left as-is when it is not a tool result, when the result is an error (including `before_tool`
         human-in-the-loop rejections), when it was already offloaded (e.g. another offload hook under `after_tool`
-        handled it), when no policy applies, when the result is empty, when the result carries image or file content
-        that `store` cannot store, or when the policy declines to offload.
+        handled it), when no policy applies, when the result is empty (no content, or nothing but empty text), when
+        the result carries image or file content that `store` cannot store, or when the policy declines to offload.
 
         Otherwise the result is written to `store` and the message is rebuilt with a pointer in place of the full
         result, preserving its origin and error flag and marking it offloaded. Each part of the result goes to its own
@@ -273,7 +273,9 @@ class ToolResultOffloadHook:
         content_blocks: list[TextContent | ImageContent | FileContent] = (
             [TextContent(text=result.result)] if isinstance(result.result, str) else list(result.result)
         )
-        if not content_blocks:
+        # A result made up of nothing but empty text has nothing worth storing, so it stays in context. `all` also
+        # covers a result with no content blocks at all.
+        if all(isinstance(content_block, TextContent) and not content_block.text for content_block in content_blocks):
             return message
 
         # Check whether the store can store binary content before offloading an image or file result. A text-only store
