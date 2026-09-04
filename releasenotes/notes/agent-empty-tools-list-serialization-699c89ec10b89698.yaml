@@ -1,0 +1,10 @@
+---
+fixes:
+  - |
+    Fix ``Agent.clone()`` and ``Agent.to_dict()``/``from_dict()`` raising ``TypeError`` for an
+    ``Agent`` built on a chat generator that does not accept a ``tools`` parameter. ``tools`` is
+    normalized to an empty list at init, and both round-trip paths passed that empty list back to
+    the constructor, where it was treated as "tools were provided". An empty list now carries no
+    tools, matching the equivalent check already applied in ``Agent.run()``. Passing ``tools=[]``
+    explicitly to such an ``Agent`` is accepted for the same reason. A non-empty ``tools`` value
+    still raises, and a ``Toolset`` is still never tested for truthiness at init.
