@@ -895,3 +895,135 @@ Async version of the run method. Run the Google Gen AI chat generator on the giv
 - <code>RuntimeError</code> – If there is an error in the async Google Gen AI chat generation.
 - <code>ValueError</code> – If a ChatMessage does not contain at least one of TextContent, ToolCall, or
   ToolCallResult or if the role in ChatMessage is different from User, System, Assistant.
+
+## haystack_integrations.token_counters.google_genai.token_counter
+
+### GoogleGenAITokenCounter
+
+Counts input tokens for Gemini models with Google's token counting API.
+
+Unlike local token counters, this counter sends the input to the `countTokens` endpoint of the Google Gen AI
+SDK, so the returned count includes the model-specific formatting Gemini applies to messages.
+
+Inputs are assembled exactly as `GoogleGenAIChatGenerator` sends them: a leading system message becomes the
+system instruction and the remaining messages become the request contents.
+
+### Backend support for system instructions and tools
+
+The Google Gen AI SDK only accepts a system instruction and tool schemas on `countTokens` when the client
+targets Vertex AI. On the Gemini Developer API, a leading system message is therefore measured as a user turn,
+which gives a close approximation rather than the exact count, and tools raise a `ValueError` instead of
+silently returning a count that omits their schemas. Counting plain messages works on either backend.
+
+## Usage Example:
+
+```python
+from haystack.dataclasses import ChatMessage
+from haystack_integrations.token_counters.google_genai import GoogleGenAITokenCounter
+
+counter = GoogleGenAITokenCounter("gemini-3.7-flash")
+messages = [ChatMessage.from_user("Hello, how are you?")]
+token_count = counter.count(messages)
+print(f"Token count: {token_count}")
+```
+
+#### __init__
+
+```python
+__init__(
+    model: str,
+    *,
+    api_key: Secret = Secret.from_env_var(
+        ["GOOGLE_API_KEY", "GEMINI_API_KEY"], strict=False
+    ),
+    api: Literal["gemini", "vertex"] = "gemini",
+    vertex_ai_project: str | None = None,
+    vertex_ai_location: str | None = None,
+    timeout: float | None = None,
+    max_retries: int | None = None
+) -> None
+```
+
+Initialize the counter.
+
+**Parameters:**
+
+- **model** (<code>str</code>) – The model whose tokenization should be used. Token counts are model-specific, so count
+  against the same model you intend to generate with.
+- **api_key** (<code>Secret</code>) – Google API key, defaults to the `GOOGLE_API_KEY` and `GEMINI_API_KEY` environment
+  variables. Not needed if using Vertex AI with Application Default Credentials.
+- **api** (<code>Literal['gemini', 'vertex']</code>) – Which API to use. Either `gemini` for the Gemini Developer API or `vertex` for Vertex AI.
+- **vertex_ai_project** (<code>str | None</code>) – Google Cloud project ID for Vertex AI. Required when using Vertex AI with
+  Application Default Credentials.
+- **vertex_ai_location** (<code>str | None</code>) – Google Cloud location for Vertex AI (e.g., `us-central1`, `europe-west1`).
+  Required when using Vertex AI with Application Default Credentials.
+- **timeout** (<code>float | None</code>) – Timeout for Google Gen AI client calls. If not set, it defaults to the default set by the
+  Google Gen AI client.
+- **max_retries** (<code>int | None</code>) – Maximum number of retries to attempt for failed requests. If not set, it defaults to
+  the default set by the Google Gen AI client.
+
+#### warm_up
+
+```python
+warm_up() -> None
+```
+
+Initialize the Google Gen AI client.
+
+#### count
+
+```python
+count(messages: list[ChatMessage], tools: ToolsType | None = None) -> int
+```
+
+Return the number of input tokens Gemini will use for the given messages and tools.
+
+**Parameters:**
+
+- **messages** (<code>list\[ChatMessage\]</code>) – The messages to measure. A leading system message is measured as the system instruction on
+  Vertex AI and as a user turn on the Gemini Developer API, which cannot measure system instructions.
+- **tools** (<code>ToolsType | None</code>) – Tools whose schemas are sent alongside the messages, and so consume tokens too.
+
+**Returns:**
+
+- <code>int</code> – The token count, or `0` when there is nothing to measure.
+
+**Raises:**
+
+- <code>ValueError</code> – If tools are passed while targeting the Gemini Developer API, which cannot measure them.
+
+#### close
+
+```python
+close() -> None
+```
+
+Close the Google Gen AI client and its underlying HTTP resources.
+
+#### to_dict
+
+```python
+to_dict() -> dict[str, Any]
+```
+
+Serialize the counter.
+
+**Returns:**
+
+- <code>dict\[str, Any\]</code> – A dictionary representation of the counter.
+
+#### from_dict
+
+```python
+from_dict(data: dict[str, Any]) -> GoogleGenAITokenCounter
+```
+
+Deserialize the counter.
+
+**Parameters:**
+
+- **data** (<code>dict\[str, Any\]</code>) – The dictionary to deserialize from.
+
+**Returns:**
+
+- <code>GoogleGenAITokenCounter</code> – The deserialized counter.
