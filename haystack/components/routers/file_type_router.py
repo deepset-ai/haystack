@@ -5,6 +5,7 @@
 import mimetypes
 import re
 from collections import defaultdict
+from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
@@ -186,7 +187,9 @@ class FileTypeRouter:
                     mime_types["failed"].append(source)
                     continue
 
-                source.meta.update(meta_dict)
+                # `get_bytestream_from_source` hands back a ByteStream source unchanged, so writing the
+                # metadata onto it would modify the object the caller still holds. Build a copy instead.
+                source = replace(source, meta={**source.meta, **meta_dict})
 
             matched = False
             if mime_type:
