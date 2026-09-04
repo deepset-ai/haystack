@@ -9,6 +9,13 @@ description: "This component enables chat completion with any model hosted avail
 
 This component enables chat completion with any model hosted available with Meta Llama API.
 
+:::warning[Discontinued Integration]
+
+Meta shut down the public preview Llama API on July 6, 2026. As a result, the `meta-llama-haystack` integration is archived and no longer functions.
+
+To keep using Llama models, switch to another supported integration, such as [LlamaStackChatGenerator](llamastackchatgenerator.mdx), [LlamaCppChatGenerator](llamacppchatgenerator.mdx), [OllamaChatGenerator](ollamachatgenerator.mdx), or [OpenRouterChatGenerator](openrouterchatgenerator.mdx).
+:::
+
 <div className="key-value-table">
 
 |  |  |
@@ -18,7 +25,7 @@ This component enables chat completion with any model hosted available with Meta
 | **Mandatory run variables**            | `messages`: A list of [ChatMessage](../../concepts/data-classes/chatmessage.mdx) objects                                                |
 | **Output variables**                   | `replies`: A list of [ChatMessage](../../concepts/data-classes/chatmessage.mdx) objects                                                 |
 | **API reference**                      | [Meta Llama API](/reference/integrations-meta-llama)                                                               |
-| **GitHub link**                        | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/meta_llama                |
+| **GitHub link**                        | https://github.com/deepset-ai/haystack-core-integrations/tree/a5907d1e451b499d065e066ab67b960ab9fa6dc4/integrations/meta_llama                |
 | **Package name** | `meta-llama-haystack` |
 
 </div>
