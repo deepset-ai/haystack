@@ -3,8 +3,6 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from haystack.dataclasses import ChatMessage, ChatRole
-from haystack.token_counters import TokenCounter
-from haystack.tools import ToolsType
 
 # Meta key marking a message that a compactor produced. Its value records which strategy ran.
 _COMPACTION_META_KEY = "context_compaction"
@@ -131,29 +129,3 @@ def _historical_turn_groups(messages: list[ChatMessage], system_end: int, task_i
         list(range(start, end))
         for start, end in _historical_turn_spans(messages=messages, start=system_end, end=historical_end)
     ]
-
-
-def _estimated_context_tokens(
-    messages: list[ChatMessage], context_tokens: int, token_counter: TokenCounter, tools: ToolsType | None = None
-) -> int:
-    """
-    Estimate the size of the whole conversation.
-
-    :param messages: The conversation, oldest to newest.
-    :param context_tokens: The `context_tokens` state key, anchored on the provider's own token counting. It accounts
-        for the conversation through the last assistant message, or for the whole conversation when there is none.
-    :param token_counter: The counter to measure the unaccounted messages with.
-    :param tools: Tools whose schemas are sent alongside the messages. These are counted when provider usage is absent.
-    :returns: The estimated total token count.
-    """
-    # Nothing sent yet, or a generator that reports no usage, so count everything.
-    if context_tokens == 0:
-        return token_counter.count(messages=messages, tools=tools)
-    # `context_tokens` accounts for the conversation through the last assistant message, so only the tool result
-    # messages after it still need estimating. With no assistant message it accounts for the whole conversation, so
-    # counting the messages on top of it would double count them.
-    last_assistant_index = _last_assistant_index(messages=messages)
-    if last_assistant_index < 0:
-        return context_tokens
-    tool_result_messages = messages[last_assistant_index + 1 :]
-    return context_tokens + token_counter.count(messages=tool_result_messages)
