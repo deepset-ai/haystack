@@ -1,0 +1,23 @@
+loaders:
+  - search_path: [../haystack/components/generators]
+    modules:
+      [
+        "chat/azure",
+        "chat/azure_responses",
+        "chat/fallback",
+        "chat/llm",
+        "chat/mock",
+        "chat/openai",
+        "chat/openai_responses",
+        "openai_image_generator",
+        "utils",
+      ]
+processors:
+  - type: filter
+    documented_only: true
+    skip_empty_modules: true
+renderer:
+  title: Generators
+  id: generators-api
+  description: Enables text generation using LLMs.
+  filename: generators_api.md

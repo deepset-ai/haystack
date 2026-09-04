@@ -1,0 +1,5 @@
+---
+enhancements:
+  - |
+    Added `PDFMinerToDocument` functionality to detect and report undecoded CID characters in PDF text extraction, helping users identify potential
+    text extraction quality issues when processing PDFs with non-standard fonts.

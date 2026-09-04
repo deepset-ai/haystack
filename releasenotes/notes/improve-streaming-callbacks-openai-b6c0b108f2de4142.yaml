@@ -1,0 +1,4 @@
+---
+enhancements:
+  - |
+    The `streaming_callback` parameter can be passed to OpenAIGenerator and OpenAIChatGenerator during pipeline run. This prevents the need to recreate pipelines for streaming callbacks.

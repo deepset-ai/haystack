@@ -1,0 +1,8 @@
+---
+highlights: >
+    We are introducing the `Tool` dataclass: a simple and unified abstraction to represent tools throughout the framework.
+    By building on this abstraction, we will enable support for tools in Chat Generators,
+    providing a consistent experience across models.
+features:
+  - |
+    Added a new `Tool` dataclass to represent a tool for which Language Models can prepare calls.

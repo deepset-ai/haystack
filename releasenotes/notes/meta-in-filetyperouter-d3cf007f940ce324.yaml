@@ -1,0 +1,6 @@
+---
+enhancements:
+  - |
+    The `FiletypeRouter` now supports passing metadata (`meta`) in the `run` method.
+    When metadata is provided, the sources are internally converted to `ByteStream` objects and the metadata is added.
+    This new parameter simplifies working with preprocessing/indexing pipelines.

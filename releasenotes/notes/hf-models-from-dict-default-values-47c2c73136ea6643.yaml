@@ -1,0 +1,3 @@
+fixes:
+  - |
+    This updates the components, TransformersSimilarityRanker, SentenceTransformersDiversityRanker, SentenceTransformersTextEmbedder, SentenceTransformersDocumentEmbedder and LocalWhisperTranscriber from_dict methods to work when loading with init_parameters only containing required parameters.

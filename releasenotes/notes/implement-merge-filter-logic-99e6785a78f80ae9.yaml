@@ -1,0 +1,4 @@
+---
+enhancements:
+ - |
+   Enhanced filter application logic to support merging of filters. It facilitates more precise retrieval filtering, allowing for both init and runtime complex filter combinations with logical operators. For more details see https://docs.haystack.deepset.ai/docs/metadata-filtering

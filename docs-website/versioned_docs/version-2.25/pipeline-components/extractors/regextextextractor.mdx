@@ -1,0 +1,146 @@
+---
+title: "RegexTextExtractor"
+id: regextextextractor
+slug: "/regextextextractor"
+description: "Extracts text from chat messages or strings using a regular expression pattern."
+---
+
+# RegexTextExtractor
+
+Extracts text from chat messages or strings using a regular expression pattern.
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | After a [Chat Generator](../generators.mdx) to parse structured output from LLM responses |
+| **Mandatory init variables** | `regex_pattern`: The regular expression pattern used to extract text |
+| **Mandatory run variables** | `text_or_messages`: A string or a list of `ChatMessage` objects to search through |
+| **Output variables** | `captured_text`: The extracted text from the first capture group |
+| **API reference** | [Extractors](/reference/extractors-api) |
+| **GitHub link** | https://github.com/deepset-ai/haystack/blob/main/haystack/components/extractors/regex_text_extractor.py |
+
+</div>
+
+## Overview
+
+`RegexTextExtractor` parses text input or `ChatMessage` objects using a regular expression pattern and extracts text captured by capture groups. This is useful for extracting structured information from LLM outputs that follow specific formats, such as XML-like tags or other patterns.
+
+The component works with both plain strings and lists of `ChatMessage` objects. When given a list of messages, it processes only the last message.
+
+The regex pattern should include at least one capture group (text within parentheses) to specify what text to extract. If no capture group is provided, the entire match is returned instead.
+
+### Handling no matches
+
+By default, when the pattern doesn't match, the component returns an empty dictionary `{}`. You can change this behavior with the `return_empty_on_no_match` parameter:
+
+```python
+from haystack.components.extractors import RegexTextExtractor
+
+# Default behavior - returns empty dict when no match
+extractor_default = RegexTextExtractor(regex_pattern=r"<answer>(.*?)</answer>")
+result = extractor_default.run(text_or_messages="No answer tags here")
+print(result)  # Output: {}
+
+# Alternative behavior - returns empty string when no match
+extractor_explicit = RegexTextExtractor(
+    regex_pattern=r"<answer>(.*?)</answer>",
+    return_empty_on_no_match=False,
+)
+result = extractor_explicit.run(text_or_messages="No answer tags here")
+print(result)  # Output: {'captured_text': ''}
+```
+
+:::note
+The default behavior of returning `{}` when no match is found is deprecated and will change in a future release to return `{'captured_text': ''}` instead. Set `return_empty_on_no_match=False` explicitly if you want the new behavior now.
+:::
+
+## Usage
+
+### On its own
+
+This example extracts a URL from an XML-like tag structure:
+
+```python
+from haystack.components.extractors import RegexTextExtractor
+
+# Create extractor with a pattern that captures the URL value
+extractor = RegexTextExtractor(regex_pattern='<issue url="(.+?)">')
+
+# Extract from a string
+result = extractor.run(
+    text_or_messages='<issue url="github.com/example/issue/123">Issue description</issue>',
+)
+print(result)
+# Output: {'captured_text': 'github.com/example/issue/123'}
+```
+
+### With ChatMessages
+
+When working with LLM outputs in chat pipelines, you can extract structured data from `ChatMessage` objects:
+
+```python
+from haystack.components.extractors import RegexTextExtractor
+from haystack.dataclasses import ChatMessage
+
+extractor = RegexTextExtractor(
+    regex_pattern=r"```json\s*(.*?)\s*```",
+    return_empty_on_no_match=False,
+)
+
+# Simulating an LLM response with JSON in a code block
+messages = [
+    ChatMessage.from_user("Extract the data"),
+    ChatMessage.from_assistant(
+        'Here is the data:\n```json\n{"name": "Alice", "age": 30}\n```',
+    ),
+]
+
+result = extractor.run(text_or_messages=messages)
+print(result)
+# Output: {'captured_text': '{"name": "Alice", "age": 30}'}
+```
+
+### In a pipeline
+
+This example demonstrates extracting a specific section from a structured LLM response. The pipeline asks an LLM to analyze a topic and format its response with XML-like tags for different sections. The `RegexTextExtractor` then pulls out only the summary, discarding the rest of the response.
+
+The LLM generates a full response with both `<analysis>` and `<summary>` sections, but only the content inside `<summary>` tags is extracted and returned.
+
+
+```python
+from haystack import Pipeline
+from haystack.components.builders import ChatPromptBuilder
+from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.components.extractors import RegexTextExtractor
+from haystack.dataclasses import ChatMessage
+
+pipe = Pipeline()
+pipe.add_component("prompt_builder", ChatPromptBuilder())
+pipe.add_component("llm", OpenAIChatGenerator())
+pipe.add_component(
+    "extractor",
+    RegexTextExtractor(
+        regex_pattern=r"<summary>(.*?)</summary>",
+        return_empty_on_no_match=False,
+    ),
+)
+
+pipe.connect("prompt_builder.prompt", "llm.messages")
+pipe.connect("llm.replies", "extractor.text_or_messages")
+
+# Instruct the LLM to use a specific structured format
+messages = [
+    ChatMessage.from_system(
+        "Respond using this exact format:\n"
+        "<analysis>Your detailed analysis here</analysis>\n"
+        "<summary>A one-sentence summary</summary>",
+    ),
+    ChatMessage.from_user("What are the main benefits and drawbacks of remote work?"),
+]
+
+# Run the pipeline (requires OPENAI_API_KEY environment variable)
+result = pipe.run({"prompt_builder": {"template": messages}})
+print(result["extractor"]["captured_text"])
+# Output: 'Remote work offers flexibility and eliminates commuting but can lead to isolation and blurred work-life boundaries.'
+```

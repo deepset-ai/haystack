@@ -1,0 +1,4 @@
+---
+enhancements:
+  - |
+    Introduces a new timeout keyword argument in PromptNode, addressing and fixing the issue #5380 for enhanced control over individual calls to OpenAI.

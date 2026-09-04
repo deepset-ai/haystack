@@ -1,0 +1,4 @@
+---
+fixes:
+  - |
+    Return an empty list of answers when `ExtractiveReader` receives an empty list of documents instead of raising an exception.

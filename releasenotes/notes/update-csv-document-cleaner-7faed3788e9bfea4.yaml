@@ -1,0 +1,5 @@
+---
+enhancements:
+  - |
+    For the CSVDocumentCleaner, added `remove_empty_rows` & `remove_empty_columns` to optionally remove rows and columns.
+    Also added `keep_id` to optionally allow for keeping the original document ID.

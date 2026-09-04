@@ -1,0 +1,6 @@
+---
+preview:
+  - |
+    Remove routing functionality from DocumentLanguageClassifier and rename TextLanguageClassifer to TextLanguageRouter.
+    Classifiers in Haystack 2.x change metadata values but do not route inputs to multiple outputs. The latter is reserved for routers.
+    Use DocumentLanguageClassifier in combination with MetaDataRouter to classify and route documents in indexing pipelines.

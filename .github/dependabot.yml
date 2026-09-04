@@ -1,0 +1,48 @@
+version: 2
+updates:
+  - package-ecosystem: 'github-actions'
+    directory: '/'
+    schedule:
+      interval: 'daily'
+    cooldown:
+      default-days: 1
+    groups:
+      codeql:
+        patterns:
+          - 'github/codeql-action/*'
+
+  - package-ecosystem: 'pip'
+    directory: '/'
+    schedule:
+      interval: 'daily'
+    cooldown:
+      default-days: 1
+
+  - package-ecosystem: 'npm'
+    directory: '/docs-website'
+    schedule:
+      interval: 'daily'
+    cooldown:
+      default-days: 1
+
+  # Tracks the digest-pinned `COPY --from` image (ghcr.io/astral-sh/uv) in
+  # docker/Dockerfile.base. Note: the python:3.12-slim base/builder digests are
+  # carried both as the build_image/base_image ARG defaults in Dockerfile.base
+  # and in docker/docker-bake.hcl (which overrides them at build time).
+  # Dependabot does NOT parse images that reach FROM via an ARG, nor the
+  # `docker run` image strings in workflows, so bump those by hand and keep the
+  # Dockerfile.base ARG defaults and docker-bake.hcl digests in sync.
+  - package-ecosystem: 'docker'
+    directory: '/docker'
+    schedule:
+      interval: 'daily'
+    cooldown:
+      default-days: 1
+
+  # Keeps the digest-pinned OSS-Fuzz base-builder in .clusterfuzzlite/Dockerfile fresh.
+  - package-ecosystem: 'docker'
+    directory: '/.clusterfuzzlite'
+    schedule:
+      interval: 'daily'
+    cooldown:
+      default-days: 1

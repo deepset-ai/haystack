@@ -1,0 +1,26 @@
+---
+features:
+  - |
+    Added a new ``LLM`` component (``haystack.components.generators.chat.LLM``) that provides a simplified
+    interface for text generation powered by a large language model. The ``LLM`` component is a streamlined
+    version of the ``Agent`` that focuses solely on single-turn text generation without tool usage.
+    It supports system prompts, templated user prompts with required variables, streaming callbacks,
+    and both synchronous (``run``) and asynchronous (``run_async``) execution.
+
+    Usage example:
+    .. code:: python
+      from haystack.components.generators.chat import LLM
+      from haystack.components.generators.chat import OpenAIChatGenerator
+      from haystack.dataclasses import ChatMessage
+
+      llm = LLM(
+          chat_generator=OpenAIChatGenerator(),
+          system_prompt="You are a helpful translation assistant.",
+          user_prompt=\"\"\"{% message role="user"%}
+      Summarize the following document: {{ document }}
+      {% endmessage %}\"\"\",
+          required_variables=["document"],
+      )
+
+      result = llm.run(document="The weather is lovely today and the sun is shining. ")
+      print(result["last_message"].text)

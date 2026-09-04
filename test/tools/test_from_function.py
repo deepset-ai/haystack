@@ -1,0 +1,599 @@
+# SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
+#
+# SPDX-License-Identifier: Apache-2.0
+
+from collections.abc import Callable
+from typing import Annotated, Literal
+
+import jsonschema
+import pytest
+from pydantic import BaseModel, Field
+
+from haystack.components.agents.state import State
+from haystack.tools.errors import SchemaGenerationError
+from haystack.tools.from_function import _remove_title_from_schema, create_tool_from_function, tool
+from haystack.tools.tool import Tool
+
+
+def function_with_docstring(city: str) -> str:
+    """Get weather report for a city."""
+    return f"Weather report for {city}: 20°C, sunny"
+
+
+class title(BaseModel):  # noqa: N801 # deliberately lowercase: Pydantic keys '$defs' by class name
+    text: str
+
+
+class Report(BaseModel):
+    heading: title
+    body: str
+
+
+def make_report(report: Report) -> str:
+    """Create a report."""
+    return "ok"
+
+
+def test_from_function_description_from_docstring():
+    tool = create_tool_from_function(function=function_with_docstring)
+
+    assert tool.name == "function_with_docstring"
+    assert tool.description == "Get weather report for a city."
+    assert tool.parameters == {"type": "object", "properties": {"city": {"type": "string"}}, "required": ["city"]}
+    assert tool.function == function_with_docstring
+
+
+def test_from_function_with_empty_description():
+    tool = create_tool_from_function(function=function_with_docstring, description="")
+
+    assert tool.name == "function_with_docstring"
+    assert tool.description == ""
+    assert tool.parameters == {"type": "object", "properties": {"city": {"type": "string"}}, "required": ["city"]}
+    assert tool.function == function_with_docstring
+
+
+def test_from_function_with_custom_description():
+    tool = create_tool_from_function(function=function_with_docstring, description="custom description")
+
+    assert tool.name == "function_with_docstring"
+    assert tool.description == "custom description"
+    assert tool.parameters == {"type": "object", "properties": {"city": {"type": "string"}}, "required": ["city"]}
+    assert tool.function == function_with_docstring
+
+
+def test_from_function_with_custom_name():
+    tool = create_tool_from_function(function=function_with_docstring, name="custom_name")
+
+    assert tool.name == "custom_name"
+    assert tool.description == "Get weather report for a city."
+    assert tool.parameters == {"type": "object", "properties": {"city": {"type": "string"}}, "required": ["city"]}
+    assert tool.function == function_with_docstring
+
+
+def test_from_function_annotated():
+    def function_with_annotations(
+        city: Annotated[str, "the city for which to get the weather"] = "Munich",
+        unit: Annotated[Literal["Celsius", "Fahrenheit"], "the unit for the temperature"] = "Celsius",
+        nullable_param: Annotated[str | None, "a nullable parameter"] = None,
+    ) -> str:
+        """A simple function to get the current weather for a location."""
+        return f"Weather report for {city}: 20 {unit}, sunny"
+
+    tool = create_tool_from_function(function=function_with_annotations)
+
+    assert tool.name == "function_with_annotations"
+    assert tool.description == "A simple function to get the current weather for a location."
+    assert tool.parameters == {
+        "type": "object",
+        "properties": {
+            "city": {"type": "string", "description": "the city for which to get the weather", "default": "Munich"},
+            "unit": {
+                "type": "string",
+                "enum": ["Celsius", "Fahrenheit"],
+                "description": "the unit for the temperature",
+                "default": "Celsius",
+            },
+            "nullable_param": {
+                "anyOf": [{"type": "string"}, {"type": "null"}],
+                "description": "a nullable parameter",
+                "default": None,
+            },
+        },
+    }
+
+
+def test_from_function_missing_type_hint():
+    def function_missing_type_hint(city) -> str:  # type: ignore[no-untyped-def]
+        return f"Weather report for {city}: 20°C, sunny"
+
+    with pytest.raises(ValueError):
+        create_tool_from_function(function=function_missing_type_hint)
+
+
+def test_from_function_schema_generation_error():
+    def function_with_invalid_type_hint(city: "invalid") -> str:  # type: ignore[name-defined] # noqa: F821
+        return f"Weather report for {city}: 20°C, sunny"
+
+    with pytest.raises(SchemaGenerationError):
+        create_tool_from_function(function=function_with_invalid_type_hint)
+
+
+def test_from_function_with_callable_params_skipped():
+    def function_with_callback(query: str, callback: Callable[[str], None] | None = None) -> str:
+        """A function with a callable parameter."""
+        return query
+
+    tool = create_tool_from_function(function=function_with_callback)
+
+    assert tool.name == "function_with_callback"
+    param_names = list(tool.parameters.get("properties", {}).keys())
+    assert "callback" not in param_names
+    assert "query" in param_names
+
+
+def test_from_function_state_param_excluded_from_schema():
+    def function_with_state(city: str, state: State) -> str:
+        """Get weather for a city, with access to agent state."""
+        return f"Weather in {city}: sunny"
+
+    tool = create_tool_from_function(function=function_with_state)
+
+    assert tool.name == "function_with_state"
+    param_names = list(tool.parameters.get("properties", {}).keys())
+    assert "state" not in param_names
+    assert "city" in param_names
+    assert tool.parameters == {"type": "object", "properties": {"city": {"type": "string"}}, "required": ["city"]}
+
+
+def test_tool_decorator_state_param_excluded_from_schema():
+    @tool
+    def function_with_state(city: str, state: State) -> str:
+        """Get weather for a city, with access to agent state."""
+        return f"Weather in {city}: sunny"
+
+    param_names = list(function_with_state.parameters.get("properties", {}).keys())
+    assert "state" not in param_names
+    assert "city" in param_names
+
+
+def test_from_function_optional_state_param_excluded_from_schema():
+    def function_with_optional_state(city: str, state: State | None = None) -> str:
+        """Get weather for a city, optionally using agent state."""
+        return f"Weather in {city}: sunny"
+
+    tool = create_tool_from_function(function=function_with_optional_state)
+
+    param_names = list(tool.parameters.get("properties", {}).keys())
+    assert "state" not in param_names
+    assert "city" in param_names
+
+
+def test_tool_decorator():
+    @tool
+    def get_weather(city: str) -> str:
+        """Get weather report for a city."""
+        return f"Weather report for {city}: 20°C, sunny"
+
+    assert get_weather.name == "get_weather"
+    assert get_weather.description == "Get weather report for a city."
+    assert get_weather.parameters == {
+        "type": "object",
+        "properties": {"city": {"type": "string"}},
+        "required": ["city"],
+    }
+    assert callable(get_weather.function)
+    assert get_weather.function("Berlin") == "Weather report for Berlin: 20°C, sunny"
+
+
+# Test function for decorator deserialization
+@tool
+def weather_tool_with_decorator(city: str) -> str:
+    """Get weather report for a city."""
+    return f"Weather report for {city}: 20°C, sunny"
+
+
+def test_tool_decorator_deserialization():
+    serialized = weather_tool_with_decorator.to_dict()
+    deserialized = Tool.from_dict(serialized)
+    assert deserialized.name == "weather_tool_with_decorator"
+    assert deserialized.description == "Get weather report for a city."
+    assert deserialized.parameters == {
+        "type": "object",
+        "properties": {"city": {"type": "string"}},
+        "required": ["city"],
+    }
+
+
+def test_tool_decorator_with_annotated_params():
+    @tool
+    def get_weather(
+        city: Annotated[str, "The target city"] = "Berlin",
+        output_format: Annotated[Literal["short", "long"], "Output format"] = "short",
+    ) -> str:
+        """Get weather report for a city."""
+        return f"Weather report for {city} ({output_format} format): 20°C, sunny"
+
+    assert get_weather.name == "get_weather"
+    assert get_weather.description == "Get weather report for a city."
+    assert get_weather.parameters == {
+        "type": "object",
+        "properties": {
+            "city": {"type": "string", "description": "The target city", "default": "Berlin"},
+            "output_format": {
+                "type": "string",
+                "enum": ["short", "long"],
+                "description": "Output format",
+                "default": "short",
+            },
+        },
+    }
+    assert callable(get_weather.function)
+    assert get_weather.function("Berlin", "short") == "Weather report for Berlin (short format): 20°C, sunny"
+
+
+def test_tool_decorator_with_parameters():
+    @tool(name="fetch_weather", description="A tool to check the weather.")
+    def get_weather(
+        city: Annotated[str, "The target city"] = "Berlin",
+        output_format: Annotated[Literal["short", "long"], "Output format"] = "short",
+    ) -> str:
+        """Get weather report for a city."""
+        return f"Weather report for {city} ({output_format} format): 20°C, sunny"
+
+    assert get_weather.name == "fetch_weather"
+    assert get_weather.description == "A tool to check the weather."
+
+
+def test_tool_decorator_with_inputs_and_outputs():
+    @tool(inputs_from_state={"output_format": "output_format"}, outputs_to_state={"output": {"source": "output"}})
+    def get_weather(
+        city: Annotated[str, "The target city"] = "Berlin",
+        output_format: Annotated[Literal["short", "long"], "Output format"] = "short",
+    ) -> str:
+        """Get weather report for a city."""
+        return f"Weather report for {city} ({output_format} format): 20°C, sunny"
+
+    assert get_weather.name == "get_weather"
+    assert get_weather.inputs_from_state == {"output_format": "output_format"}
+    assert get_weather.outputs_to_state == {"output": {"source": "output"}}
+    # Inputs should be excluded from auto-generated parameters
+    assert get_weather.parameters == {
+        "type": "object",
+        "properties": {"city": {"type": "string", "description": "The target city", "default": "Berlin"}},
+    }
+
+
+def test_remove_title_from_schema():
+    complex_schema = {
+        "properties": {
+            "parameter1": {
+                "anyOf": [{"type": "string"}, {"type": "integer"}],
+                "default": "default_value",
+                "title": "Parameter1",
+            },
+            "parameter2": {
+                "default": [1, 2, 3],
+                "items": {"anyOf": [{"type": "string"}, {"type": "integer"}]},
+                "title": "Parameter2",
+                "type": "array",
+            },
+            "parameter3": {
+                "anyOf": [
+                    {"type": "string"},
+                    {"type": "integer"},
+                    {"items": {"anyOf": [{"type": "string"}, {"type": "integer"}]}, "type": "array"},
+                ],
+                "default": 42,
+                "title": "Parameter3",
+            },
+            "parameter4": {
+                "anyOf": [{"type": "string"}, {"items": {"type": "integer"}, "type": "array"}, {"type": "object"}],
+                "default": {"key": "value"},
+                "title": "Parameter4",
+            },
+        },
+        "title": "complex_function",
+        "type": "object",
+    }
+
+    _remove_title_from_schema(complex_schema)
+
+    assert complex_schema == {
+        "properties": {
+            "parameter1": {"anyOf": [{"type": "string"}, {"type": "integer"}], "default": "default_value"},
+            "parameter2": {
+                "default": [1, 2, 3],
+                "items": {"anyOf": [{"type": "string"}, {"type": "integer"}]},
+                "type": "array",
+            },
+            "parameter3": {
+                "anyOf": [
+                    {"type": "string"},
+                    {"type": "integer"},
+                    {"items": {"anyOf": [{"type": "string"}, {"type": "integer"}]}, "type": "array"},
+                ],
+                "default": 42,
+            },
+            "parameter4": {
+                "anyOf": [{"type": "string"}, {"items": {"type": "integer"}, "type": "array"}, {"type": "object"}],
+                "default": {"key": "value"},
+            },
+        },
+        "type": "object",
+    }
+
+
+def test_remove_title_from_schema_do_not_remove_title_property():
+    """Test that the utility function only removes the 'title' keywords and not the 'title' property (if present)."""
+    schema = {
+        "properties": {
+            "parameter1": {"type": "string", "title": "Parameter1"},
+            "title": {"type": "string", "title": "Title"},
+        },
+        "title": "complex_function",
+        "type": "object",
+    }
+
+    _remove_title_from_schema(schema)
+
+    assert schema == {"properties": {"parameter1": {"type": "string"}, "title": {"type": "string"}}, "type": "object"}
+
+
+def test_remove_title_from_schema_property_named_properties():
+    """Test that a property named 'properties' is not misinterpreted as the 'properties' schema keyword."""
+    schema = {
+        "properties": {
+            "entity_id": {"type": "string", "title": "Entity Id"},
+            "properties": {"type": "object", "additionalProperties": True, "title": "Properties"},
+        },
+        "title": "set_properties",
+        "type": "object",
+    }
+
+    _remove_title_from_schema(schema)
+
+    assert schema == {
+        "properties": {"entity_id": {"type": "string"}, "properties": {"type": "object", "additionalProperties": True}},
+        "type": "object",
+    }
+
+
+def test_from_function_with_parameter_named_properties():
+    """Creating a tool from a function with a parameter named 'properties' must not crash."""
+
+    def set_properties(
+        entity_id: Annotated[str, "the entity to update"], properties: Annotated[dict, "the properties to set"]
+    ) -> str:
+        """Set properties on an entity."""
+        return f"Set {properties} on {entity_id}"
+
+    tool = create_tool_from_function(function=set_properties)
+
+    assert tool.parameters == {
+        "type": "object",
+        "properties": {
+            "entity_id": {"type": "string", "description": "the entity to update"},
+            "properties": {"type": "object", "additionalProperties": True, "description": "the properties to set"},
+        },
+        "required": ["entity_id", "properties"],
+    }
+
+
+def test_remove_title_from_schema_definition_named_title():
+    """Test that a definition named 'title' is kept, so that '$ref's pointing at it keep resolving."""
+    schema = {
+        "$defs": {
+            "title": {"properties": {"text": {"type": "string", "title": "Text"}}, "title": "title", "type": "object"},
+            "Addr": {"properties": {"city": {"type": "string", "title": "City"}}, "title": "Addr", "type": "object"},
+        },
+        "properties": {"heading": {"$ref": "#/$defs/title"}, "addr": {"$ref": "#/$defs/Addr"}},
+        "title": "make_report",
+        "type": "object",
+    }
+
+    _remove_title_from_schema(schema)
+
+    # The definition names survive; only the 'title' *keywords* inside them are stripped.
+    assert schema == {
+        "$defs": {
+            "title": {"properties": {"text": {"type": "string"}}, "type": "object"},
+            "Addr": {"properties": {"city": {"type": "string"}}, "type": "object"},
+        },
+        "properties": {"heading": {"$ref": "#/$defs/title"}, "addr": {"$ref": "#/$defs/Addr"}},
+        "type": "object",
+    }
+    # The schema is still usable: a dangling '$ref' would make validation raise.
+    jsonschema.Draft202012Validator(schema).validate({"heading": {"text": "hi"}, "addr": {"city": "Berlin"}})
+
+
+def test_remove_title_from_schema_definition_named_title_draft_07_spelling():
+    """Test that the draft-07 'definitions' spelling is handled like '$defs'."""
+    schema = {
+        "definitions": {"title": {"type": "string", "title": "title"}},
+        "properties": {"heading": {"$ref": "#/definitions/title"}},
+        "type": "object",
+    }
+
+    _remove_title_from_schema(schema)
+
+    assert schema == {
+        "definitions": {"title": {"type": "string"}},
+        "properties": {"heading": {"$ref": "#/definitions/title"}},
+        "type": "object",
+    }
+
+
+def test_remove_title_from_schema_keeps_instance_data():
+    """Test that 'title' keys inside instance data are left untouched.
+
+    Covers JSON Schema ``default``/``const``/``enum``/``examples`` and the OpenAPI 3.0
+    singular ``example`` spelling (Pydantic ``json_schema_extra={"example": ...}``).
+    """
+    schema = {
+        "properties": {
+            "cfg": {"type": "object", "default": {"title": "Untitled", "width": 80}, "title": "Cfg"},
+            "mode": {"const": {"title": "fast", "workers": 2}, "title": "Mode"},
+            "choice": {"enum": [{"title": "A", "id": 1}, {"title": "B", "id": 2}], "title": "Choice"},
+            "sample": {
+                "type": "object",
+                "examples": [{"title": "Example", "id": 1}],
+                "example": {"title": "Untitled", "width": "80"},
+                "title": "Sample",
+            },
+        },
+        "title": "configure",
+        "type": "object",
+    }
+
+    _remove_title_from_schema(schema)
+
+    # A 'title' key in a default/const/enum/examples/example is part of the *value*, not a
+    # schema keyword: removing it would silently change the tool's contract.
+    assert schema == {
+        "properties": {
+            "cfg": {"type": "object", "default": {"title": "Untitled", "width": 80}},
+            "mode": {"const": {"title": "fast", "workers": 2}},
+            "choice": {"enum": [{"title": "A", "id": 1}, {"title": "B", "id": 2}]},
+            "sample": {
+                "type": "object",
+                "examples": [{"title": "Example", "id": 1}],
+                "example": {"title": "Untitled", "width": "80"},
+            },
+        },
+        "type": "object",
+    }
+
+
+def test_remove_title_from_schema_keeps_pattern_and_dependent_keys():
+    """Test that keys of 'patternProperties'/'dependentSchemas'/'dependentRequired' are kept."""
+    schema = {
+        "patternProperties": {"title": {"type": "string", "title": "Title"}},
+        "dependentSchemas": {"title": {"required": ["subtitle"], "title": "Dep"}},
+        "dependentRequired": {"title": ["subtitle"]},
+        "title": "annotate",
+        "type": "object",
+    }
+
+    _remove_title_from_schema(schema)
+
+    # These are keyed by regexes and property names, so dropping 'title' would drop a rule.
+    assert schema == {
+        "patternProperties": {"title": {"type": "string"}},
+        "dependentSchemas": {"title": {"required": ["subtitle"]}},
+        "dependentRequired": {"title": ["subtitle"]},
+        "type": "object",
+    }
+
+
+def test_remove_title_from_schema_still_removes_title_in_subschema_keywords():
+    """Test that keywords whose value is a genuine subschema keep losing their 'title'."""
+    schema = {
+        "properties": {
+            "tags": {"items": {"type": "string", "title": "Tag"}, "title": "Tags", "type": "array"},
+            "meta": {
+                "additionalProperties": {"type": "string", "title": "Value"},
+                "propertyNames": {"pattern": "^x-", "title": "Key"},
+                "title": "Meta",
+                "type": "object",
+            },
+        },
+        "title": "index",
+        "type": "object",
+    }
+
+    _remove_title_from_schema(schema)
+
+    assert schema == {
+        "properties": {
+            "tags": {"items": {"type": "string"}, "type": "array"},
+            "meta": {"additionalProperties": {"type": "string"}, "propertyNames": {"pattern": "^x-"}, "type": "object"},
+        },
+        "type": "object",
+    }
+
+
+def test_from_function_with_nested_model_named_title():
+    """Creating a tool from a function whose nested model is named 'title' must not dangle a '$ref'."""
+
+    tool = create_tool_from_function(function=make_report)
+
+    assert "title" in tool.parameters["$defs"]
+    # A dangling '#/$defs/title' would make any validation of a tool call raise.
+    jsonschema.Draft202012Validator(tool.parameters).validate({"report": {"heading": {"text": "hi"}, "body": "b"}})
+
+
+def test_from_function_with_default_containing_title_key():
+    """A default value carrying a 'title' key must reach the model unchanged."""
+
+    def render(options: Annotated[dict, "rendering options"] = {"title": "Untitled", "width": 80}) -> str:  # noqa: B006
+        """Render a report."""
+        return ""
+
+    tool = create_tool_from_function(function=render)
+
+    assert tool.parameters["properties"]["options"]["default"] == {"title": "Untitled", "width": 80}
+
+
+def test_from_function_with_openapi_example_containing_title_key():
+    """OpenAPI 3.0 singular ``example`` values must keep nested ``title`` keys."""
+
+    def render(
+        options: Annotated[dict, "rendering options"] = Field(  # noqa: B008
+            default={}, json_schema_extra={"example": {"title": "Untitled", "width": "80"}}
+        ),
+    ) -> str:
+        """Render a document."""
+        return ""
+
+    tool = create_tool_from_function(function=render)
+
+    assert tool.parameters["properties"]["options"]["example"] == {"title": "Untitled", "width": "80"}
+
+
+def test_remove_title_from_schema_handle_no_title_in_top_level():
+    schema = {
+        "properties": {
+            "parameter1": {"type": "string", "title": "Parameter1"},
+            "parameter2": {"type": "integer", "title": "Parameter2"},
+        },
+        "type": "object",
+    }
+
+    _remove_title_from_schema(schema)
+
+    assert schema == {
+        "properties": {"parameter1": {"type": "string"}, "parameter2": {"type": "integer"}},
+        "type": "object",
+    }
+
+
+async def async_function_with_docstring(city: str) -> str:
+    """Get weather report for a city."""
+    return f"Weather report for {city}: 20°C, sunny"
+
+
+class TestFromFunctionAsync:
+    def test_create_tool_from_async_function(self):
+        tool_obj = create_tool_from_function(async_function_with_docstring)
+
+        assert tool_obj.function is None
+        assert tool_obj.async_function is async_function_with_docstring
+        assert tool_obj.name == "async_function_with_docstring"
+        assert tool_obj.parameters == {
+            "type": "object",
+            "properties": {"city": {"type": "string"}},
+            "required": ["city"],
+        }
+
+    def test_tool_decorator_on_async_function(self):
+        decorated = tool(async_function_with_docstring)
+
+        assert decorated.function is None
+        assert decorated.async_function is async_function_with_docstring
+        assert decorated.name == "async_function_with_docstring"
+
+    @pytest.mark.asyncio
+    async def test_invoke_async(self):
+        decorated = tool(async_function_with_docstring)
+
+        assert await decorated.invoke_async(city="Berlin") == "Weather report for Berlin: 20°C, sunny"

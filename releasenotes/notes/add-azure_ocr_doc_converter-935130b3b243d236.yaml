@@ -1,0 +1,4 @@
+---
+preview:
+  - |
+    Add AzureOCRDocumentConverter to convert files of different types using Azure's Document Intelligence Service.

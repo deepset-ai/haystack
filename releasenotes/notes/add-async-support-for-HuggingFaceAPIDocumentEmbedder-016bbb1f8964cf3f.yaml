@@ -1,0 +1,5 @@
+---
+features:
+  - |
+    Add `run_async` method to HuggingFaceAPIDocumentEmbedder. This method enriches Documents with embeddings.
+    It supports the same parameters as the `run` method. It returns a coroutine that can be awaited.

@@ -1,0 +1,4 @@
+---
+features:
+  - |
+    Add a indexing `build_indexing_pipeline` utility function

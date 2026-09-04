@@ -1,0 +1,5 @@
+---
+upgrade:
+    - |
+      Rename the transcriber parameters `model_name` and `model_name_or_path` to `model`. This change affects both
+      `LocalWhisperTranscriber` and `RemoteWhisperTranscriber` classes.

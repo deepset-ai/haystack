@@ -1,0 +1,8 @@
+---
+enhancements:
+  - |
+    Improve the type annotations for `@component` and the `Component` protocol.
+    The type checker can now ensure that a @component class provides a
+    compatible `run()` method, whose required return type has been changed
+    from `Dict[str, Any]` (invariant) to the `Mapping[str, Any]` to allow
+    `TypedDict` to be used for output types.

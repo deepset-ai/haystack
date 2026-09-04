@@ -1,0 +1,4 @@
+---
+enhancements:
+  - |
+    Improve performance of ``HuggingFaceAPIDocumentEmbedder.run_async`` by requesting embedding inference concurrently. This can be controlled using the new ``concurrency_limit`` parameter.

@@ -1,0 +1,12 @@
+---
+highlights: >
+    Major refactoring of `Pipeline.run()` to fix multiple bugs.
+    We moved from a mostly graph-based to a dynamic dataflow driven execution logic.
+    While most pipelines should remain unaffected, we recommend carefully checking your pipeline executions
+    to ensure their output hasn't changed.
+fixes:
+  - |
+    - acyclic pipelines with multiple lazy variadic components not running all components
+    - cyclic pipelines not passing intermediate outputs to components outside the cycle
+    - cyclic pipelines with two or more optional or greedy variadic edges showing unexpected execution behavior
+    - cyclic pipelines with two cycles sharing an edge raising errors

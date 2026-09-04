@@ -1,0 +1,6 @@
+---
+enhancements:
+  - |
+    Improved the deserialization error message for pipeline components to be more actionable and human-readable.
+    The component data dictionary is now pretty-printed as formatted JSON, and the underlying error that caused the failure is explicitly
+    surfaced, making it easier to quickly diagnose deserialization issues.

@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    ``DocumentJoiner`` now raises a clear ``ValueError`` when the provided ``weights``
+    sum to zero, instead of failing with an opaque ``ZeroDivisionError`` while
+    normalizing them.

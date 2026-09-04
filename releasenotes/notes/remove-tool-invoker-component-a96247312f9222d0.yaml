@@ -1,0 +1,19 @@
+---
+upgrade:
+  - |
+    Removed the ``ToolInvoker`` component. Code that imports ``ToolInvoker`` from ``haystack.components.tools``
+    or uses it as a standalone Pipeline component must be updated.
+
+    To execute tools in an agentic loop, pass the tools directly to ``haystack.components.agents.Agent``.
+    The Agent now owns tool execution, including tool/toolset warm-up, state injection, streaming callback
+    passthrough, and sync/async tool invocation.
+    The previous ``tool_invoker_kwargs`` Agent parameter has been removed; use ``tool_concurrency_limit``
+    and ``tool_streaming_callback_passthrough`` instead.
+  - |
+    Tool results are now always serialized to a string using ``json.dumps`` (with ``ensure_ascii=False``,
+    falling back to ``str`` only when the result is not JSON-serializable). The ``ToolInvoker``'s
+    ``convert_result_to_json_string`` parameter, which defaulted to ``False`` and selected ``str``-based
+    serialization, has been removed along with the component. As a result, non-string tool results now
+    appear as JSON rather than Python ``repr`` output: for example, a tool returning ``{"message": "hi"}``
+    now produces the string ``{"message": "hi"}`` instead of ``{'message': 'hi'}``. Update any code or
+    tests that assert on the previous ``str``-based format.

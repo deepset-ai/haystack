@@ -1,0 +1,5 @@
+---
+enhancements:
+  - |
+    If an LLM-based evaluator (e.g., `Faithfulness` or `ContextRelevance`) is initialised with `raise_on_failure=False`, and if a call to an LLM fails or an LLM outputs an invalid JSON, the score of the sample is set to `NaN` instead of raising an exception.
+    The user is notified with a warning indicating the number of requests that failed.

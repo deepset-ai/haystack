@@ -1,0 +1,6 @@
+---
+enhancements:
+  - |
+    Enhanced the AnswerBuilder component with two agent-friendly features:
+    1. All generated messages are now stored in the `meta` field of the GeneratedAnswer objects under an `all_messages` key, improving traceability and debugging capabilities.
+    2. Added a new `last_message_only` parameter that, when set to `True`, processes only the last message in the replies while still preserving the complete conversation history in metadata. This is particularly useful for agent workflows where only the final response needs to be processed.

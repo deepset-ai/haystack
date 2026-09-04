@@ -1,0 +1,5 @@
+---
+preview:
+  - |
+    Change import paths under the "preview" package to minimize
+    module namespace pollution.

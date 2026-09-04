@@ -1,0 +1,6 @@
+---
+enhancements:
+  - |
+    Increased default timeout for Mermaid server to 30 seconds. Mermaid server is used to draw Pipelines.
+    Exposed the timeout as a parameter for the `Pipeline.show` and `Pipeline.draw` methods. This allows
+    users to customize the timeout as needed.

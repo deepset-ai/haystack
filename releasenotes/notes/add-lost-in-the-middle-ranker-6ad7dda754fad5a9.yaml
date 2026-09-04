@@ -1,0 +1,18 @@
+---
+prelude: >
+    We're excited to introduce a new ranker to Haystack - LostInTheMiddleRanker.
+    It reorders documents based on the "Lost in the Middle" order, a strategy that
+    places the most relevant paragraphs at the beginning or end of the context,
+    while less relevant paragraphs are positioned in the middle. This ranker,
+    based on the research paper "Lost in the Middle: How Language Models Use Long
+    Contexts" by Liu et al., can be leveraged in Retrieval-Augmented Generation
+    (RAG) pipelines.
+features:
+  - |
+    The LostInTheMiddleRanker can be used like other rankers in Haystack. After
+    initializing LostInTheMiddleRanker with the desired parameters, it can be
+    used to rank/reorder a list of documents based on the "Lost in the Middle"
+    order - the most relevant documents are located at the top and bottom of
+    the returned list, while the least relevant documents are found in the
+    middle. We advise that you use this ranker in combination with other rankers,
+    and to place it towards the end of the pipeline.

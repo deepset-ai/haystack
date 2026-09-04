@@ -1,0 +1,4 @@
+---
+enhancements:
+  - |
+    Make it possible to load additional fields from the SQUAD format file into the meta field of the Labels

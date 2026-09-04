@@ -1,0 +1,4 @@
+---
+features:
+ - |
+   Introducing the OutputAdapter component which enables seamless data flow between pipeline components by adapting the output of one component to match the expected input of another using Jinja2 template expressions. This addition opens the door to greater flexibility in pipeline configurations, facilitating custom adaptation rules and exemplifying a structured approach to inter-component communication.

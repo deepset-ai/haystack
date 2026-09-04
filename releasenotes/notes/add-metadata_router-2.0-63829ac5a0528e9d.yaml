@@ -1,0 +1,4 @@
+---
+preview:
+  - |
+    Add `MetadataRouter`, a component that routes documents to different edges based on the content of their fields

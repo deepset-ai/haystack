@@ -1,0 +1,12 @@
+loaders:
+  - search_path: [../haystack/components/samplers]
+    modules: ["top_p"]
+processors:
+  - type: filter
+    documented_only: true
+    skip_empty_modules: true
+renderer:
+  title: Samplers
+  id: samplers-api
+  description: Filters documents based on their similarity scores using top-p sampling.
+  filename: samplers_api.md

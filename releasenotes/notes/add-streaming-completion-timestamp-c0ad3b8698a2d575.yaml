@@ -1,0 +1,4 @@
+---
+enhancements:
+ - |
+   Added completion_start_time metadata to track time-to-first-token (TTFT) in streaming responses from Hugging Face API and OpenAI (Azure).

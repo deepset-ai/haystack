@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Fixed ``deserialize_callable`` failing for functions decorated with ``@tool`` when the
+    decorated function is asynchronous. Such tools store the callable in ``async_function``
+    with ``function`` set to ``None``, which previously caused deserialization to raise a
+    ``DeserializationError``. The underlying coroutine function is now resolved correctly.

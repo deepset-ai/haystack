@@ -1,0 +1,7 @@
+---
+enhancements:
+  - |
+    `PromptBuilder` now supports changing its template at runtime (e.g. for Prompt Engineering). This allows you to define a default template and then change it based on your needs at runtime.
+deprecations:
+  - |
+    `DynamicPromptBuilder` has been deprecated as `PromptBuilder` fully covers its functionality. Use `PromptBuilder` instead.

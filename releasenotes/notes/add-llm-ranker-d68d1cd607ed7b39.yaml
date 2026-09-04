@@ -1,0 +1,5 @@
+features:
+  - |
+    Added ``LLMRanker``, a new ranker component that uses a ``ChatGenerator`` and ``PromptBuilder`` to rerank
+    documents based on JSON-formatted LLM output. ``LLMRanker`` supports configurable prompts, optional custom
+    chat generators, runtime ``top_k`` overrides, and serialization.

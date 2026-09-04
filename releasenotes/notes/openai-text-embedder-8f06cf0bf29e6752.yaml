@@ -1,0 +1,5 @@
+---
+preview:
+  - |
+    Add OpenAI Text Embedder.
+    It is a component that uses OpenAI models to embed strings into vectors.

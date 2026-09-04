@@ -1,0 +1,4 @@
+---
+fixes:
+  - |
+    Fixed accumulation of a tools arguments when streaming with an OpenAIChatGenerator

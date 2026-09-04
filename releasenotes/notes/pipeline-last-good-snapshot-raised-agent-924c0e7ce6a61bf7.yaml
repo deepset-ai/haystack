@@ -1,0 +1,7 @@
+---
+features:
+  - |
+    Fixed a serialization issue related to function objects in a pipeline; now they are converted to type None (functions cannot be serialized).
+    This was preventing the successful setting of breakpoints in agents and their use as a resume point.
+    If an error occurs during an Agent execution, for instance, during tool calling. In that case, a snapshot of the last successful step is raised, allowing the caller to catch it
+    to inspect the possible reason for the crash and use it to resume the pipeline execution from that point onwards.

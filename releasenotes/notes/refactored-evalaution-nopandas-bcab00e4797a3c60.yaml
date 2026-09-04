@@ -1,0 +1,8 @@
+---
+enhancements:
+  - |
+    `EvaluationRunResult` can now output the results in JSON, a pandas Dataframe or in a CSV file.
+
+deprecations:
+  - |
+    The use of pandas Dataframe in `EvaluationRunResult` is now optional and the methods `score_report`, `to_pandas` and `comparative_individual_scores_report` are deprecated and will be removed in the next haystack release.

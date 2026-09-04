@@ -1,0 +1,3 @@
+---
+preview:
+  - Remove `DocumentStoreAwareMixin` as it's not necessary anymore

@@ -1,0 +1,6 @@
+---
+preview:
+  - |
+    Improve the public interface of the Generators:
+      - make `generation_kwargs` a dictionary
+      - rename `pipeline_kwargs` (in `HuggingFaceLocalGenerator`) to `huggingface_pipeline_kwargs`

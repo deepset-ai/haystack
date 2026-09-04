@@ -1,0 +1,8 @@
+---
+enhancements:
+  - |
+    Auto variadic sockets now also support ``Optional[list[...]]`` input types, in addition to plain ``list[...]``.
+fixes:
+  - |
+    Fixed smart connection logic to support connecting multiple outputs to a socket whose type is ``Optional[list[...]]`` (e.g. ``list[ChatMessage] | None``).
+    Previously, connecting two ``list[ChatMessage]`` outputs to ``Agent.messages`` would fail after its type was updated from ``list[ChatMessage]`` to ``list[ChatMessage] | None``.

@@ -1,0 +1,4 @@
+---
+enhancements:
+  - |
+    add dimensions parameter to OpenAI Embedders to fully support new embedding models like text-embedding-3-small, text-embedding-3-large and upcoming ones

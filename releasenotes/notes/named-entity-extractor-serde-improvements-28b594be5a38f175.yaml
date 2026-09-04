@@ -1,0 +1,4 @@
+---
+fixes:
+  - |
+    Fixed (de)serialization of NamedEntityExtractor. Includes updated tests verifying these fixes when NamedEntityExtractor is used in pipelines.

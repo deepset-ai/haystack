@@ -1,0 +1,2 @@
+preview:
+  - Extends input types of RemoteWhisperTranscriber from List[ByteStream] to List[Union[str, Path, ByteStream]] to make possible to connect it to FileTypeRouter.

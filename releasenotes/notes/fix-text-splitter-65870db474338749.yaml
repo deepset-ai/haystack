@@ -1,0 +1,3 @@
+---
+preview:
+  - Fix TextDocumentSplitter failing when run with an empty list

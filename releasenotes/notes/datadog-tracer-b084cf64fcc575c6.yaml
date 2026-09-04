@@ -1,0 +1,21 @@
+---
+features:
+  - |
+    Added out-of-the-box support for the Datadog Tracer. This allows you to instrument pipeline and component
+    runs using Datadog and send traces to your preferred backend.
+
+    To use the Datadog Tracer you need to have the `ddtrace` package installed in your environment.
+    To instruct Haystack to use the Datadog tracer, you have multiple options:
+
+    * Run your Haystack application using the `ddtrace` command line tool as described in the
+      the [ddtrace documentation](https://ddtrace.readthedocs.io/en/stable/installation_quickstart.html#tracing).
+      This behavior can be disabled by setting the `HAYSTACK_AUTO_TRACE_ENABLED_ENV_VAR` environment variable to `false`.
+    * Configure the tracer manually in your code using the `ddtrace` package:
+      ```python
+      from haystack.tracing import DatadogTracer
+      import haystack.tracing
+      import ddtrace
+
+      tracer = ddtrace.tracer
+      tracing.enable_tracing(DatadogTracer(tracer))
+      ```

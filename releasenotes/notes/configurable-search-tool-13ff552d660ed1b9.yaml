@@ -1,0 +1,22 @@
+---
+enhancements:
+  - |
+    ``SearchableToolset`` now supports customizing the bootstrap search tool's name, description,
+    and parameter descriptions via three new optional ``__init__`` parameters: ``search_tool_name``,
+    ``search_tool_description``, and ``search_tool_parameters_description``. This allows users to
+    tune the LLM-facing metadata to work better with different models.
+
+    Example usage:
+
+    .. code:: python
+
+      from haystack.tools import SearchableToolset
+
+      toolset = SearchableToolset(
+          catalog=my_tools,
+          search_tool_name="find_tools",
+          search_tool_description="Find tools by keyword. Pass 1-3 words, not sentences.",
+          search_tool_parameters_description={
+              "tool_keywords": "Single words only, e.g. 'hotel booking'.",
+          },
+      )

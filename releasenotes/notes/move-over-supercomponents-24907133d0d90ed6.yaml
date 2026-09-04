@@ -1,0 +1,9 @@
+---
+highlights: >
+    Two ready-made SuperComponents simplify document preprocessing: MultiFileConverter, and DocumentPreProcessor.
+    For example, if you have all extra dependencies for file conversion installed, you can run the following:
+    ```python
+        from haystack.super_components.converters import MultiFileConverter
+        converter = MultiFileConverter()
+        converter.run(sources=["test.txt", "test.pdf"], meta={})
+    ```

@@ -1,0 +1,25 @@
+---
+prelude: >
+  The `testing.DocumentStoreBaseTests` has been heavily overhauled.
+  It has been split into multiple classes so developers can gradually test their Document Store as they're implemented.
+  `DocumentStoreBaseTests` now inherits from this classes:
+  - `CountDocumentsTest`, to test `DocumentStore.count_documents()`
+  - `WriteDocumentsTest`, to test `DocumentStore.write_documents()`
+  - `DeleteDocumentsTest`, to test `DocumentStore.delete_documents()`
+  - `FilterDocumentsTest`, to test `DocumentStore.filter_documents()`
+
+  To use each class it's enough to inherit from it and define the `document_store` fixture to return an instance of the Document Store we're implementing.
+  ```python
+  class MyDocumentStoreCountDocumentTest(CountDocumentsTest):
+      @pytest.fixture
+      def document_store(self):
+          return MyDocumentStore()
+  ```
+
+  There's also another class that tests `DocumentStore.filter_documents()` using legacy filters.
+  This is not inherited by `DocumentStoreBaseTests` but can be added as a base class to verify the support of legacy filters.
+  - `LegacyFilterDocumentsTest`
+
+preview:
+  - |
+    Rework the `testing.DocumentStoreBaseTests` class to ease Document Stores development and testing

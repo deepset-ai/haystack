@@ -1,0 +1,4 @@
+---
+enhancements:
+  - |
+    Introduces weighted score normalization for the DocumentJoiner's reciprocal rank fusion, enhancing the relevance of document sorting by allowing customizable influence on the final scores

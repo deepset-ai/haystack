@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    Metadata filters that use an unsupported operator now raise a clear ``FilterError``
+    that lists the valid operators, instead of a cryptic ``KeyError``. For example, a
+    typo such as ``{"field": "meta.year", "operator": "gt", "value": 2000}`` (instead of
+    ``">"``) previously surfaced as ``KeyError: 'gt'``. This applies to both comparison
+    operators and logical operators (``AND``, ``OR``, ``NOT``).

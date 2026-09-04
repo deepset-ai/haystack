@@ -1,0 +1,15 @@
+loaders:
+  - search_path: [../haystack/components/preprocessors]
+    modules: ["csv_document_cleaner", "csv_document_splitter", "document_cleaner",
+      "document_preprocessor", "document_splitter", "embedding_based_document_splitter",
+      "hierarchical_document_splitter", "markdown_header_splitter", "recursive_splitter",
+      "text_cleaner"]
+processors:
+  - type: filter
+    documented_only: true
+    skip_empty_modules: true
+renderer:
+  title: PreProcessors
+  id: preprocessors-api
+  description: Preprocess your Documents and texts. Clean, split, and more.
+  filename: preprocessors_api.md

@@ -1,0 +1,5 @@
+---
+features:
+  - |
+    Add FilterRetriever.
+    It retrieves documents that match the provided (either at init or runtime) filters.

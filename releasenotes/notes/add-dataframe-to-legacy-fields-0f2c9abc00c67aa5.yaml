@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Add dataframe to legacy fields for the Document dataclass.
+    This fixes a bug where Document.from_dict() in haystack-ai>=2.11.0 could not properly deserialize a Document 
+    dictionary obtained with document.to_dict(flatten=False) in haystack-ai<=2.10.0.

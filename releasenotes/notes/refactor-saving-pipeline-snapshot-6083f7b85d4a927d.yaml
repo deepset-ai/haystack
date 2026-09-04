@@ -1,0 +1,5 @@
+---
+enhancements:
+  - |
+    Refactored `_save_pipeline_snapshot` to consolidate try-except logic and added a `raise_on_failure` option to control whether save failures raise an exception or are logged.
+    `_create_pipeline_snapshot` now wraps `_serialize_value_with_schema` in try-except blocks to prevent failures from non-serializable pipeline inputs.

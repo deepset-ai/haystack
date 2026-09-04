@@ -1,0 +1,119 @@
+---
+title: "AlloyDBEmbeddingRetriever"
+id: alloydbembeddingretriever
+slug: "/alloydbembeddingretriever"
+description: "An embedding-based Retriever compatible with the AlloyDB Document Store."
+---
+
+# AlloyDBEmbeddingRetriever
+
+An embedding-based Retriever compatible with the AlloyDB Document Store.
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | 1. After a Text Embedder and before a [`PromptBuilder`](../builders/promptbuilder.mdx)   in a RAG pipeline 2. The last component in the semantic search pipeline 3. After a Text Embedder and before an [`ExtractiveReader`](../readers/extractivereader.mdx)   in an extractive QA pipeline |
+| **Mandatory init variables**           | `document_store`: An instance of an [AlloyDBDocumentStore](../../document-stores/alloydbdocumentstore.mdx)                                                                                                                                                                                       |
+| **Mandatory run variables**            | `query_embedding`: A vector representing the query (a list of floats)                                                                                                                                                                                                       |
+| **Output variables**                   | `documents`: A list of documents                                                                                                                                                                                                                                            |
+| **API reference**                      | [AlloyDB](/reference/integrations-alloydb)                                                                                                                                                                                                                                  |
+| **GitHub link**                        | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/alloydb                                                                                                                                                                                     |
+| **Package name** | `alloydb-haystack` |
+
+</div>
+
+## Overview
+
+The `AlloyDBEmbeddingRetriever` is an embedding-based Retriever compatible with the `AlloyDBDocumentStore`. It compares the query and Document embeddings and fetches the Documents most relevant to the query from the `AlloyDBDocumentStore` based on the outcome.
+
+When using the `AlloyDBEmbeddingRetriever` in your Pipeline, make sure it has the query and Document embeddings available. You can do so by adding a Document Embedder to your indexing Pipeline and a Text Embedder to your query Pipeline.
+
+In addition to the `query_embedding`, the `AlloyDBEmbeddingRetriever` accepts other optional parameters, including `top_k` (the maximum number of Documents to retrieve), `filters` to narrow down the search space, and `vector_function` to override the similarity function set on the Document Store.
+
+Some relevant parameters that impact embedding retrieval must be defined when the corresponding `AlloyDBDocumentStore` is initialized: these include `embedding_dimension`, `vector_function`, and the search strategy (`"exact_nearest_neighbor"` or `"hnsw"`).
+
+## Installation
+
+Install the `alloydb-haystack` integration:
+
+```shell
+pip install alloydb-haystack
+```
+
+To set up an AlloyDB cluster and instance, follow the [AlloyDB quickstart](https://cloud.google.com/alloydb/docs/quickstart).
+
+## Usage
+
+### On its own
+
+This Retriever needs the `AlloyDBDocumentStore` and indexed Documents to run.
+
+Set the `ALLOYDB_INSTANCE_URI`, `ALLOYDB_USER`, and `ALLOYDB_PASSWORD` environment variables to connect to your AlloyDB instance.
+
+```python
+from haystack_integrations.document_stores.alloydb import AlloyDBDocumentStore
+from haystack_integrations.components.retrievers.alloydb import (
+    AlloyDBEmbeddingRetriever,
+)
+
+document_store = AlloyDBDocumentStore()
+retriever = AlloyDBEmbeddingRetriever(document_store=document_store)
+
+## using a fake vector to keep the example simple
+retriever.run(query_embedding=[0.1] * 768)
+```
+
+### In a Pipeline
+
+```python
+from haystack import Document, Pipeline
+from haystack.document_stores.types import DuplicatePolicy
+from haystack.components.embedders import (
+    SentenceTransformersTextEmbedder,
+    SentenceTransformersDocumentEmbedder,
+)
+
+from haystack_integrations.document_stores.alloydb import AlloyDBDocumentStore
+from haystack_integrations.components.retrievers.alloydb import (
+    AlloyDBEmbeddingRetriever,
+)
+
+document_store = AlloyDBDocumentStore(
+    embedding_dimension=768,
+    vector_function="cosine_similarity",
+    recreate_table=True,
+)
+
+documents = [
+    Document(content="There are over 7,000 languages spoken around the world today."),
+    Document(
+        content="Elephants have been observed to behave in a way that indicates a high level of self-awareness, such as recognizing themselves in mirrors.",
+    ),
+    Document(
+        content="In certain parts of the world, like the Maldives, Puerto Rico, and San Diego, you can witness the phenomenon of bioluminescent waves.",
+    ),
+]
+
+document_embedder = SentenceTransformersDocumentEmbedder()
+documents_with_embeddings = document_embedder.run(documents)
+
+document_store.write_documents(
+    documents_with_embeddings.get("documents"),
+    policy=DuplicatePolicy.OVERWRITE,
+)
+
+query_pipeline = Pipeline()
+query_pipeline.add_component("text_embedder", SentenceTransformersTextEmbedder())
+query_pipeline.add_component(
+    "retriever",
+    AlloyDBEmbeddingRetriever(document_store=document_store),
+)
+query_pipeline.connect("text_embedder.embedding", "retriever.query_embedding")
+
+query = "How many languages are there?"
+
+result = query_pipeline.run({"text_embedder": {"text": query}})
+
+print(result["retriever"]["documents"][0])
+```

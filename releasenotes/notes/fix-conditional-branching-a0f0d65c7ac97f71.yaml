@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Fix some bugs running a Pipeline that has Components with conditional outputs.
+    Some branches that were expected not to run would run anyway, even if they received no inputs.
+    Some branches instead would cause the Pipeline to get stuck waiting to run that branch, even if they received no inputs.
+    The behaviour would depend whether the Component not receiving the input has a optional input or not.

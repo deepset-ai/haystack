@@ -1,0 +1,152 @@
+---
+title: "DocumentCleaner"
+id: documentcleaner
+slug: "/documentcleaner"
+description: "Use `DocumentCleaner` to make text documents more readable. It removes extra whitespaces, empty lines, specified substrings, regexes, page headers, and footers in this particular order.  This is useful for preparing the documents for further processing by LLMs."
+---
+
+# DocumentCleaner
+
+Use `DocumentCleaner` to make text documents more readable. It removes extra whitespaces, empty lines, specified substrings, regexes, page headers, and footers in this particular order.  This is useful for preparing the documents for further processing by LLMs.
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | In indexing pipelines after [Converters](../converters.mdx) , after [`DocumentSplitter`](documentsplitter.mdx) |
+| **Mandatory run variables**            | `documents`: A list of documents                                                                                |
+| **Output variables**                   | `documents`: A list of documents                                                                                |
+| **API reference**                      | [PreProcessors](/reference/preprocessors-api)                                                                          |
+| **GitHub link**                        | https://github.com/deepset-ai/haystack/blob/main/haystack/components/preprocessors/document_cleaner.py        |
+| **Package name** | `haystack-ai` |
+
+</div>
+
+## Overview
+
+`DocumentCleaner` expects a list of documents as input and returns a list of documents with cleaned texts. Selectable cleaning steps for each input document are to `remove_empty_lines`, `remove_extra_whitespaces` and to `remove_repeated_substrings`. These three parameters are booleans that can be set when the component is initialized.
+
+- `unicode_normalization` normalizes Unicode characters to a standard form. The parameter can be set to NFC, NFKC, NFD, or NFKD.
+- `ascii_only` removes accents from characters and replaces them with their closest ASCII equivalents.
+- `remove_empty_lines` removes empty lines from the document.
+- `remove_extra_whitespaces` removes extra whitespaces from the document.
+- `remove_repeated_substrings` removes repeated substrings (headers/footers) from pages in the document. Pages in the text need to be separated by form feed character "\\f", which is supported by [`TextFileToDocument`](../converters/textfiletodocument.mdx), [`AzureOCRDocumentConverter`](../converters/azureocrdocumentconverter.mdx), [`MistralOCRDocumentConverter`](../converters/mistralocrdocumentconverter.mdx), and [`PaddleOCRVLDocumentConverter`](../converters/paddleocrvldocumentconverter.mdx).
+
+:::note
+`remove_extra_whitespaces` and `remove_empty_lines` work best on plain-text content. If your converter returns Markdown, such as [`AzureDocumentIntelligenceConverter`](../converters/azuredocumentintelligenceconverter.mdx), [`MarkItDownConverter`](../converters/markitdownconverter.mdx), [`MistralOCRDocumentConverter`](../converters/mistralocrdocumentconverter.mdx), or [`PaddleOCRVLDocumentConverter`](../converters/paddleocrvldocumentconverter.mdx), disable those options to preserve headings, tables, lists, and image tags.
+:::
+
+In addition, you can specify a list of strings that should be removed from all documents as part of the cleaning with the parameter `remove_substring`. You can also specify a regular expression with the parameter `remove_regex` and any matches will be removed.
+
+The cleaning steps are executed in the following order:
+
+1. unicode_normalization
+2. ascii_only
+3. remove_extra_whitespaces
+4. remove_empty_lines
+5. remove_substrings
+6. remove_regex
+7. remove_repeated_substrings
+
+## Usage
+
+### On its own
+
+You can use it outside of a pipeline to clean up your documents:
+
+```python
+from haystack import Document
+from haystack.components.preprocessors import DocumentCleaner
+
+doc = Document(content="This   is  a  document  to  clean\n\n\nsubstring to remove")
+
+cleaner = DocumentCleaner(remove_substrings=["substring to remove"])
+result = cleaner.run(documents=[doc])
+
+assert result["documents"][0].content == "This is a document to clean "
+```
+
+### In a pipeline
+
+```python
+from haystack import Document
+from haystack import Pipeline
+from haystack.document_stores.in_memory import InMemoryDocumentStore
+from haystack.components.converters import TextFileToDocument
+from haystack.components.preprocessors import DocumentCleaner
+from haystack.components.preprocessors import DocumentSplitter
+from haystack.components.writers import DocumentWriter
+
+document_store = InMemoryDocumentStore()
+p = Pipeline()
+p.add_component(instance=TextFileToDocument(), name="text_file_converter")
+p.add_component(instance=DocumentCleaner(), name="cleaner")
+p.add_component(
+    instance=DocumentSplitter(split_by="sentence", split_length=1),
+    name="splitter",
+)
+p.add_component(instance=DocumentWriter(document_store=document_store), name="writer")
+p.connect("text_file_converter.documents", "cleaner.documents")
+p.connect("cleaner.documents", "splitter.documents")
+p.connect("splitter.documents", "writer.documents")
+
+p.run({"text_file_converter": {"sources": your_files}})
+```
+
+### In YAML
+```yaml
+components:
+  cleaner:
+    init_parameters:
+      ascii_only: false
+      keep_id: false
+      remove_empty_lines: true
+      remove_extra_whitespaces: true
+      remove_regex: null
+      remove_repeated_substrings: false
+      remove_substrings: null
+      replace_regexes: null
+      strip_whitespaces: false
+      unicode_normalization: null
+    type: haystack.components.preprocessors.document_cleaner.DocumentCleaner
+  splitter:
+    init_parameters:
+      extend_abbreviations: true
+      language: en
+      respect_sentence_boundary: false
+      skip_empty_documents: true
+      split_by: sentence
+      split_length: 1
+      split_overlap: 0
+      split_threshold: 0
+      use_split_rules: true
+    type: haystack.components.preprocessors.document_splitter.DocumentSplitter
+  text_file_converter:
+    init_parameters:
+      encoding: utf-8
+      store_full_path: false
+    type: haystack.components.converters.txt.TextFileToDocument
+  writer:
+    init_parameters:
+      document_store:
+        init_parameters:
+          bm25_algorithm: BM25L
+          bm25_parameters: {}
+          bm25_tokenization_regex: (?u)\\b\\w+\\b
+          embedding_similarity_function: dot_product
+          index: 64e4f9ab-87fb-47fd-b390-dabcfda61447
+          return_embedding: true
+        type: haystack.document_stores.in_memory.document_store.InMemoryDocumentStore
+      policy: NONE
+    type: haystack.components.writers.document_writer.DocumentWriter
+connection_type_validation: true
+connections:
+- receiver: cleaner.documents
+  sender: text_file_converter.documents
+- receiver: splitter.documents
+  sender: cleaner.documents
+- receiver: writer.documents
+  sender: splitter.documents
+max_runs_per_component: 100
+metadata: {}
+```

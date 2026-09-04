@@ -1,0 +1,7 @@
+---
+features:
+  - |
+    **LinkContentFetcher**: add `request_headers` to allow custom per-request HTTP headers.
+    Header precedence: httpx client defaults → component defaults → `request_headers` → rotating `User-Agent`.
+    Also make HTTP/2 handling import-safe: if `h2` isn’t installed, fall back to HTTP/1.1 with a warning.
+    Thanks @xoaryaa. (Fixes #9064)

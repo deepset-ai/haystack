@@ -1,0 +1,10 @@
+---
+fixes:
+  - |
+    For the NLTKDocumentSplitter we are updating how chunks are made when splitting by word and sentence boundary is respected.
+    Namely, to avoid fully subsuming the previous chunk into the next one, we ignore the first sentence from that chunk when calculating sentence overlap.
+    i.e. we want to avoid cases of Doc1 = [s1, s2], Doc2 = [s1, s2, s3].
+
+    Finished adding function support for this component by updating the _split_into_units function and added the splitting_function init parameter.
+
+    Add specific to_dict method to overwrite the underlying one from DocumentSplitter. This is needed to properly save the settings of the component to yaml.

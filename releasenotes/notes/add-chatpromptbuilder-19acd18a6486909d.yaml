@@ -1,0 +1,7 @@
+---
+enhancements:
+  - |
+    `ChatPromptBuilder` now supports changing its template at runtime. This allows you to define a default template and then change it based on your needs at runtime.
+deprecations:
+  - |
+    `DynamicChatPromptBuilder` has been deprecated as `ChatPromptBuilder` fully covers its functionality. Use `ChatPromptBuilder` instead.

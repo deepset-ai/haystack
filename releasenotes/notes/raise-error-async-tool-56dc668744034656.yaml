@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    Raise a ``ValueError`` when an async function is passed to the ``Tool`` class. Async functions are not supported
+    as tools. This change provides a clear error message instead of silent failures where coroutines are never awaited.

@@ -1,0 +1,8 @@
+---
+upgrade:
+  - |
+    Remove backward-compatibility support for deserializing pipeline snapshots with
+    the old ``pipeline_outputs`` format. Pipeline snapshots created before Haystack 2.22.0
+    that contain ``pipeline_outputs`` without the ``serialization_schema`` and ``serialized_data``
+    structure are no longer supported. Users should recreate their pipeline snapshots
+    with the current Haystack version before upgrading to 2.23.0.

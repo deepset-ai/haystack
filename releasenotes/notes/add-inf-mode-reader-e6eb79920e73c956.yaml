@@ -1,0 +1,4 @@
+---
+enhancements:
+  - |
+    Adds inference mode to model call of the ExtractiveReader. This prevents gradients from being calculated during inference time in pytorch.

@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    When using `JoinDocuments` with `join_mode=concatenate` (default) and
+    passing duplicate documents, including some with a null score, this
+    node raised an exception.
+    Now this case is handled correctly and the documents are joined as expected.

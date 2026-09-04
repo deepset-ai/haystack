@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Fixes ``MetaFieldRanker`` silently treating a runtime ``top_k=0`` as unset and falling back to the value
+    configured at initialization. Runtime values that are not greater than zero now raise a ``ValueError`` as
+    documented.

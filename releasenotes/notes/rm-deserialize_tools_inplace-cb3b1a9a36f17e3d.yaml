@@ -1,0 +1,6 @@
+---
+upgrade:
+  - |
+    The deprecated `deserialize_tools_inplace` utility function has been removed.
+    Use `deserialize_tools_or_toolset_inplace` instead, importing it as follows:
+    `from haystack.tools import deserialize_tools_or_toolset_inplace`.

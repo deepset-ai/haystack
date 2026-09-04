@@ -1,0 +1,9 @@
+---
+fixes:
+  - |
+    Fixed the ``Agent`` exiting prematurely under the default ``exit_conditions=["text"]``.
+    The agent now only stops when the last message is an assistant message with non-empty text
+    (or when no tool invoker is configured). Previously, if the LLM produced an invalid tool call
+    that was discarded, the resulting assistant message with empty text and no tool calls would
+    trigger an exit, preventing the agent from recovering. The agent now continues looping so the
+    model can recover on the next iteration.

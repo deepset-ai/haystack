@@ -1,0 +1,4 @@
+---
+features:
+  - |
+    Components that define ``warm_up`` now auto run it on first use, removing the need for manual calls and preventing errors in standalone usage.

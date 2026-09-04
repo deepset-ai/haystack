@@ -1,0 +1,419 @@
+# SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
+#
+# SPDX-License-Identifier: Apache-2.0
+
+import json
+import secrets
+from collections.abc import Callable
+from typing import Any
+
+from jinja2 import TemplateSyntaxError, nodes, pass_environment
+from jinja2.ext import Extension
+from markupsafe import Markup
+
+from haystack import logging
+from haystack.dataclasses.chat_message import (
+    ChatMessage,
+    ChatMessageContentT,
+    ChatRole,
+    FileContent,
+    ImageContent,
+    ReasoningContent,
+    TextContent,
+    ToolCall,
+    ToolCallResult,
+    _deserialize_content_part,
+    _serialize_content_part,
+)
+
+logger = logging.getLogger(__name__)
+
+_TAG_NAME = "haystack_content_part"
+_NONCE_ATTR = "_haystack_content_part_nonce"
+
+
+def _sentinel_tags(nonce: str) -> tuple[str, str]:
+    """Build the (opening, closing) sentinel tags for the given nonce"""
+    return f"<{_TAG_NAME}:{nonce}>", f"</{_TAG_NAME}:{nonce}>"
+
+
+class _TemplatizedPart(Markup):
+    """Marker type for content produced by `templatize_part`."""
+
+    pass
+
+
+def _finalize(value: object) -> str:
+    """
+    Jinja2 `finalize` callback that prevents sentinel tag injection.
+
+    Called automatically on every `{{ }}` expression result during template rendering.
+    Legitimate structured content from the `templatize_part` filter is wrapped in `_TemplatizedPart` and passes.
+    Any other value containing sentinel tags has those tags replaced with harmless HTML entities so that
+    `_parse_content_parts` will not treat them as structured content.
+    """
+    if isinstance(value, _TemplatizedPart):
+        return value
+
+    # escape the leading "<" of any sentinel tag so that `_parse_content_parts` cannot recognize it
+    return str(value).replace(f"<{_TAG_NAME}", f"&lt;{_TAG_NAME}").replace(f"</{_TAG_NAME}", f"&lt;/{_TAG_NAME}")
+
+
+def _redact_nonce(text: str, start_tag: str, end_tag: str) -> str:
+    return text.replace(start_tag, f"<{_TAG_NAME}:redacted>").replace(end_tag, f"</{_TAG_NAME}:redacted>")
+
+
+class ChatMessageExtension(Extension):
+    """
+    A Jinja2 extension for creating structured chat messages with mixed content types.
+
+    This extension provides a custom `{% message %}` tag that allows creating chat messages
+    with different attributes (role, name, meta) and mixed content types (text, images, etc.).
+
+    Inspired by [Banks](https://github.com/masci/banks).
+
+    Example:
+    ```
+    {% message role="system" %}
+    You are a helpful assistant. You like to talk with {{user_name}}.
+    {% endmessage %}
+
+    {% message role="user" %}
+    Hello! I am {{user_name}}. Please describe the images.
+    {% for image in images %}
+    {{ image | templatize_part }}
+    {% endfor %}
+    {% endmessage %}
+    ```
+
+    This extension also provides an `{% insert %}` placeholder tag that evaluates an expression to a `ChatMessage`
+    or a list of `ChatMessage` objects and expands it into the prompt, so a runtime conversation can be interleaved
+    with literal `{% message %}` blocks:
+
+    ```
+    {% message role="system" %}You are a helpful assistant.{% endmessage %}
+    {% insert messages %}
+    {% message role="user" %}{{ query }}{% endmessage %}
+    ```
+
+    The expression can be a plain variable (`{% insert messages %}`), a slice or index
+    (`{% insert messages[-1:] %}`, `{% insert messages[-1] %}`), or a combination of variables
+    (`{% insert previous + current %}`).
+
+    ### How it works
+    1. The `{% message %}` tag is used to define a chat message.
+    2. The message can contain text and other structured content parts.
+    3. To include a structured content part in the message, the `| templatize_part` filter is used.
+       The filter serializes the content part into a JSON string and wraps it in a `<haystack_content_part>` tag.
+    4. The `_build_chat_message_json` method of the extension parses the message content parts,
+       converts them into a ChatMessage object and serializes it to a JSON string.
+    5. The obtained JSON string is usable in the ChatPromptBuilder component, where templates are rendered to actual
+       ChatMessage objects.
+    """
+
+    SUPPORTED_ROLES = [role.value for role in ChatRole]
+
+    tags = {"message", "insert"}
+
+    def __init__(self, environment: Any) -> None:
+        super().__init__(environment)
+        # a fresh random nonce per environment to produce sentinel tags only usable by `templatize_part`
+        setattr(environment, _NONCE_ATTR, secrets.token_hex(16))
+        # values not produced by `templatize_part` get their sentinel-like tags escaped
+        environment.finalize = _finalize
+        environment.filters["templatize_part"] = templatize_part
+
+    def parse(self, parser: Any) -> nodes.Node | list[nodes.Node]:
+        """
+        Dispatch parsing based on the tag that triggered the extension.
+
+        Handles both the single `{% message %}` block tag and the `{% insert %}` placeholder tag.
+
+        :param parser: The Jinja2 parser instance
+        :return: A CallBlock node containing the parsed configuration
+        """
+        tag = next(parser.stream)
+        if tag.value == "insert":
+            return self._parse_insert_tag(parser, tag.lineno)
+        return self._parse_message_tag(parser, tag.lineno)
+
+    def _parse_insert_tag(self, parser: Any, lineno: int) -> nodes.Node:
+        """
+        Parse the `{% insert %}` placeholder tag.
+
+        This bodyless tag evaluates an expression to a `ChatMessage` or a list of `ChatMessage` objects and expands
+        it into the same JSON-line format produced by `{% message %}` blocks, so messages provided at runtime can be
+        interleaved with literal message blocks (for example a system message above and a user message below).
+
+        The expression can be a plain variable (`{% insert messages %}`), a slice or index
+        (`{% insert messages[-1:] %}`, `{% insert messages[-1] %}`), or a combination of variables
+        (`{% insert previous + current %}`).
+
+        :param parser: The Jinja2 parser instance
+        :param lineno: The line number of the tag, used for error reporting.
+        :return: A CallBlock node that expands the evaluated expression.
+        :raises TemplateSyntaxError: If the tag is not given an expression.
+        """
+        if parser.stream.current.test("block_end"):
+            raise TemplateSyntaxError(
+                "The 'insert' tag requires an expression that evaluates to a ChatMessage or a list of ChatMessage "
+                "objects, for example '{% insert messages %}' or '{% insert messages[-1:] %}'.",
+                lineno,
+            )
+        expr = parser.parse_expression()
+        # Bodyless tag: empty body, no matching end tag required.
+        return nodes.CallBlock(
+            self.call_method(name="_build_inserted_messages_json", args=[expr]), [], [], []
+        ).set_lineno(lineno)
+
+    def _parse_message_tag(self, parser: Any, lineno: int) -> nodes.Node | list[nodes.Node]:
+        """
+        Parse the message tag and its attributes in the Jinja2 template.
+
+        This method handles the parsing of role (mandatory), name (optional), meta (optional) and message body content.
+
+        :param parser: The Jinja2 parser instance
+        :param lineno: The line number of the tag, used for error reporting.
+        :return: A CallBlock node containing the parsed message configuration
+        :raises TemplateSyntaxError: If an invalid role is provided
+        """
+
+        # Parse role attribute (mandatory)
+        parser.stream.expect("name:role")
+        parser.stream.expect("assign")
+        role_expr = parser.parse_expression()
+
+        if isinstance(role_expr, nodes.Const):
+            role = role_expr.value
+            if role not in self.SUPPORTED_ROLES:
+                raise TemplateSyntaxError(f"Role must be one of: {', '.join(self.SUPPORTED_ROLES)}", lineno)
+
+        # Parse optional name attribute
+        name_expr = None
+        if parser.stream.current.test("name:name"):
+            parser.stream.skip()
+            parser.stream.expect("assign")
+            name_expr = parser.parse_expression()
+            if not isinstance(name_expr.value, str):
+                raise TemplateSyntaxError("name must be a string", lineno)
+
+        # Parse optional meta attribute
+        meta_expr = None
+        if parser.stream.current.test("name:meta"):
+            parser.stream.skip()
+            parser.stream.expect("assign")
+            meta_expr = parser.parse_expression()
+            if not isinstance(meta_expr, nodes.Dict):
+                raise TemplateSyntaxError("meta must be a dictionary", lineno)
+
+        # Parse message body
+        body = parser.parse_statements(("name:endmessage",), drop_needle=True)
+
+        # Build message node with all parameters
+        return nodes.CallBlock(
+            self.call_method(
+                name="_build_chat_message_json",
+                args=[role_expr, name_expr or nodes.Const(None), meta_expr or nodes.Dict([])],
+            ),
+            [],
+            [],
+            body,
+        ).set_lineno(lineno)
+
+    def _build_chat_message_json(self, role: str, name: str | None, meta: dict, caller: Callable[[], str]) -> str:
+        """
+        Build a ChatMessage object from template content and serialize it to a JSON string.
+
+        This method is called by Jinja2 when processing a `{% message %}` tag.
+        It takes the rendered content from the template, converts XML blocks into ChatMessageContentT objects,
+        creates a ChatMessage object and serializes it to a JSON string.
+
+        :param role: The role of the message
+        :param name: Optional name for the message sender
+        :param meta: Optional metadata dictionary
+        :param caller: Callable that returns the rendered content
+        :return: A JSON string representation of the ChatMessage object
+        """
+
+        content = caller()
+        start_tag, end_tag = _sentinel_tags(getattr(self.environment, _NONCE_ATTR))
+        parts = self._parse_content_parts(content, start_tag, end_tag)
+        if not parts:
+            raise ValueError(
+                f"Message template produced content that couldn't be parsed into any message parts. "
+                f"Content: {_redact_nonce(content, start_tag, end_tag)!r}"
+            )
+
+        chat_message = self._validate_build_chat_message(parts=parts, role=role, meta=meta, name=name)
+
+        return json.dumps(chat_message.to_dict()) + "\n"
+
+    def _build_inserted_messages_json(
+        self,
+        messages: list[ChatMessage] | ChatMessage,
+        caller: Callable[[], str],  # noqa: ARG002
+    ) -> str:
+        """
+        Expand a list of ChatMessage objects into newline-separated JSON, one message per line.
+
+        This method is called by Jinja2 when processing an `{% insert %}` tag. It produces the same JSON-line format
+        as `_build_chat_message_json`, so the messages are parsed back into ChatMessage objects by the
+        ChatPromptBuilder alongside any literal `{% message %}` blocks. The full `ChatMessage.to_dict()` payload is
+        serialized so that all content types (tool calls, tool call results, images, reasoning, name and meta) round
+        trip without loss.
+
+        :param messages: The value the `{% insert %}` expression evaluated to. A missing or empty value expands to
+            nothing. A single ChatMessage is also accepted, since indexing with an integer (for example
+            `{% insert messages[-1] %}`) yields one message rather than a list. The value is validated at render time
+            because it comes from untrusted template input.
+        :param caller: Callable that returns the (empty) rendered body. Unused.
+        :return: Newline-terminated JSON lines, one per message, or an empty string if there are no messages.
+        :raises ValueError: If the value is not a ChatMessage or a list of ChatMessage objects.
+        """
+        if isinstance(messages, ChatMessage):
+            messages = [messages]
+        if not messages:
+            return ""
+        if not isinstance(messages, (list, tuple)) or not all(isinstance(m, ChatMessage) for m in messages):
+            raise ValueError(
+                "The '{% insert %}' expression must evaluate to a ChatMessage or a list of ChatMessage objects. "
+                f"Got: {type(messages).__name__}."
+            )
+        return "".join(json.dumps(message.to_dict()) + "\n" for message in messages)
+
+    @staticmethod
+    def _parse_content_parts(content: str, start_tag: str, end_tag: str) -> list[ChatMessageContentT]:
+        """
+        Parse a string into a sequence of ChatMessageContentT objects.
+
+        This method handles:
+        - Plain text content, converted to TextContent objects
+        - Structured content parts wrapped in sentinel tags, converted to ChatMessageContentT objects
+
+        :param content: Input string containing mixed text and content parts
+        :param start_tag: The opening sentinel tag (including the nonce)
+        :param end_tag: The closing sentinel tag (including the nonce)
+        :return: A list of ChatMessageContentT objects
+        :raises ValueError: If the content is empty or contains only whitespace characters or if a
+                            `<haystack_content_part>` tag is found without a matching closing tag.
+        """
+        if not content.strip():
+            raise ValueError(
+                f"Message content in template is empty or contains only whitespace characters. "
+                f"Content: {_redact_nonce(content, start_tag, end_tag)!r}"
+            )
+
+        parts: list[ChatMessageContentT] = []
+        cursor = 0
+        total_length = len(content)
+
+        while cursor < total_length:
+            tag_start = content.find(start_tag, cursor)
+
+            if tag_start == -1:
+                # No more tags, add remaining text if any
+                remaining_text = content[cursor:].strip()
+                if remaining_text:
+                    parts.append(TextContent(text=remaining_text))
+                break
+
+            # Add text before tag if any
+            if tag_start > cursor:
+                plain_text = content[cursor:tag_start].strip()
+                if plain_text:
+                    parts.append(TextContent(text=plain_text))
+
+            content_start = tag_start + len(start_tag)
+            tag_end = content.find(end_tag, content_start)
+
+            if tag_end == -1:
+                snippet = _redact_nonce(content, start_tag, end_tag)[tag_start : tag_start + 50]
+                raise ValueError(
+                    f"Found unclosed <haystack_content_part> tag at position {tag_start}. Content: '{snippet}...'"
+                )
+
+            json_content = content[content_start:tag_end]
+            data = json.loads(json_content)
+            parts.append(_deserialize_content_part(data))
+
+            cursor = tag_end + len(end_tag)
+
+        return parts
+
+    @staticmethod
+    def _validate_build_chat_message(
+        parts: list[ChatMessageContentT], role: str, meta: dict, name: str | None = None
+    ) -> ChatMessage:
+        """
+        Validate the parts of a chat message and build a ChatMessage object.
+
+        :param parts: Content parts of the message
+        :param role: The role of the message
+        :param meta: The metadata of the message
+        :param name: The optional name of the message
+        :return: A ChatMessage object
+
+        :raises ValueError: If content parts don't allow to build a valid ChatMessage object or the role is not
+                            supported
+        """
+
+        if role == "user":
+            valid_parts = [part for part in parts if isinstance(part, (TextContent, str, ImageContent, FileContent))]
+            if len(parts) != len(valid_parts):
+                raise ValueError(
+                    "User message must contain only TextContent, string, ImageContent or FileContent parts."
+                )
+            return ChatMessage.from_user(meta=meta, name=name, content_parts=valid_parts)
+
+        if role == "system":
+            if not isinstance(parts[0], TextContent):
+                raise ValueError("System message must contain a text part.")
+            text = parts[0].text
+            if len(parts) > 1:
+                raise ValueError("System message must contain only one text part.")
+            return ChatMessage.from_system(meta=meta, name=name, text=text)
+
+        if role == "assistant":
+            texts = [part.text for part in parts if isinstance(part, TextContent)]
+            tool_calls = [part for part in parts if isinstance(part, ToolCall)]
+            reasoning = [part for part in parts if isinstance(part, ReasoningContent)]
+            if len(texts) > 1:
+                raise ValueError("Assistant message must contain one text part at most.")
+            if len(texts) == 0 and len(tool_calls) == 0:
+                raise ValueError("Assistant message must contain at least one text or tool call part.")
+            if len(parts) > len(texts) + len(tool_calls) + len(reasoning):
+                raise ValueError("Assistant message must contain only text, tool call or reasoning parts.")
+            return ChatMessage.from_assistant(
+                meta=meta,
+                name=name,
+                text=texts[0] if texts else None,
+                tool_calls=tool_calls or None,
+                reasoning=reasoning[0] if reasoning else None,
+            )
+
+        if role == "tool":
+            tool_call_results = [part for part in parts if isinstance(part, ToolCallResult)]
+            if len(tool_call_results) == 0 or len(tool_call_results) > 1 or len(parts) > len(tool_call_results):
+                raise ValueError("Tool message must contain only one tool call result.")
+
+            tool_result = tool_call_results[0].result
+            origin = tool_call_results[0].origin
+            error = tool_call_results[0].error
+
+            return ChatMessage.from_tool(meta=meta, tool_result=tool_result, origin=origin, error=error)
+
+        raise ValueError(f"Unsupported role: {role}")
+
+
+@pass_environment
+def templatize_part(environment: Any, value: ChatMessageContentT) -> "_TemplatizedPart":
+    """
+    Jinja filter to convert a ChatMessageContentT object into a JSON string wrapped in sentinel content tags.
+
+    :param environment: The Jinja2 environment
+    :param value: The ChatMessageContentT object to convert
+    :return: A `_TemplatizedPart` holding a JSON string wrapped in special XML content tags
+    :raises ValueError: If the value is not an instance of ChatMessageContentT
+    """
+    start_tag, end_tag = _sentinel_tags(getattr(environment, _NONCE_ATTR))
+    return _TemplatizedPart(f"{start_tag}{json.dumps(_serialize_content_part(value))}{end_tag}")

@@ -1,0 +1,6 @@
+---
+features:
+  - |
+    Add `TextCleaner` Component to clean list of strings. It can remove substrings matching a list of regular expressions,
+    convert text to lowercase, remove punctuation, and remove numbers.
+    This is mostly useful to clean generator predictions before evaluation.

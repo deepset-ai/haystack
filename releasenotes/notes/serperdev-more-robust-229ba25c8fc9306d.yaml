@@ -1,0 +1,4 @@
+---
+enhancements:
+  - |
+    Make the `SerperDevWebSearch` more robust when `snippet` is not present in the request response.

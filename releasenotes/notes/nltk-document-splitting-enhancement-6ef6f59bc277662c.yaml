@@ -1,0 +1,4 @@
+---
+features:
+ - |
+   Introduced a new NLTK document splitting component, enhancing document preprocessing capabilities. This feature allows for fine-grained control over the splitting of documents into smaller parts based on configurable criteria such as word count, sentence boundaries, and page breaks. It supports multiple languages and offers options for handling sentence boundaries and abbreviations, facilitating better handling of various document types for further processing tasks.

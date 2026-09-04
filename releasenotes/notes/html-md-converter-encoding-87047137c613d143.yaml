@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    ``HTMLToDocument`` and ``MarkdownToDocument`` now accept an ``encoding`` parameter (default
+    ``"utf-8"``) and honour ``ByteStream.meta["encoding"]`` at run time, mirroring the
+    behaviour of ``TextFileToDocument``. Previously both converters hardcoded
+    ``decode("utf-8")``, causing ``UnicodeDecodeError`` for non-UTF-8 sources whose
+    encoding was supplied via ``ByteStream`` metadata.

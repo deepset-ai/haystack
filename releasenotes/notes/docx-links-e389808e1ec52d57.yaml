@@ -1,0 +1,5 @@
+---
+features:
+  - |
+    The DOCXToDocument component now has an option to include extracted hyperlink addresses in the output Documents.
+    It accepts a `link_format` parameter that can be set to "markdown" or "plain". By default, no hyperlink addresses are extracted as before.

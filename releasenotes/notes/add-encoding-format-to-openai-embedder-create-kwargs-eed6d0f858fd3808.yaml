@@ -1,0 +1,4 @@
+---
+fixes:
+  - |
+    Add encoding format keyword argument to OpenAI client when creating embeddings.

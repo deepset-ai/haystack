@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Fixed ``MetaFieldGroupingRanker`` raising a ``TypeError`` when ``sort_docs_by`` points to a
+    non-numeric metadata field (for example ISO date strings) and some documents are missing that
+    field. Documents that miss the field are now placed at the end of their group, regardless of the
+    field's type.

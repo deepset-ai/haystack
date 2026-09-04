@@ -1,0 +1,4 @@
+---
+fixes:
+  - |
+    Fix `MetaFieldGroupingRanker` to still work when `subgroup_by` values are unhashable types like list. We handle this by stringfying the contents of `doc.meta[subgroup_by]` in the same we do this for values of `doc.meta[group_by]`.

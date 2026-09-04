@@ -1,0 +1,8 @@
+---
+upgrade:
+  - |
+    The deprecated `generator_api` and `generator_api_params` initialization parameters of `LLMMetadataExtractor` and the
+    `LLMProvider` enum have been removed.
+    Use `chat_generator` instead to configure the underlying LLM. In order for the component to work, the LLM should be
+    configured to return a JSON object. For example, if using OpenAI, you should initialize the `LLMMetadataExtractor`
+    with `chat_generator=OpenAIChatGenerator(generation_kwargs={"response_format": {"type": "json_object"}})`.

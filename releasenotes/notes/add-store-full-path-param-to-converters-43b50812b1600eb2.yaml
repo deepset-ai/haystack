@@ -1,0 +1,8 @@
+---
+features:
+  - |
+    Added a new `store_full_path` parameter to the `__init__` methods of `JSONConverter`, `MarkdownToDocument`, `PDFMinerToDocument`, `PPTXToDocument`, `TikaDocumentConverter` and `TextFileToDocument`. The default value is `True`, which stores full file path in the metadata of the output documents. When set to `False`, only the file name is stored.
+
+deprecations:
+  - |
+    The default value of the `store_full_path` parameter will change to `False` in Haysatck 2.9.0 to enhance privacy.

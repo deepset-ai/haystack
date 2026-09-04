@@ -1,0 +1,4 @@
+---
+fixes:
+  - |
+    Move deserialize_tools_inplace back to original import path of from haystack.tools.tool import deserialize_tools_inplace.

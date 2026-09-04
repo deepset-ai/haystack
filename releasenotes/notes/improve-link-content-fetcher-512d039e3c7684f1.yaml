@@ -1,0 +1,8 @@
+---
+enhancements:
+  - |
+    Several minor enhancements for LinkContentFetcher:
+    - Dynamic content handler resolution
+    - Custom User-Agent header (optional, minimize blocking)
+    - PDF support
+    - Register new content handlers

@@ -1,0 +1,6 @@
+---
+enhancements:
+  - |
+    Previously, when using tracing with objects like ``ByteStream`` and ``ImageContent``, the payload sent
+    to the tracing backend could become too large, hitting provider limits or causing performance degradation.
+    We now replace these objects with string placeholders to avoid oversized payloads.

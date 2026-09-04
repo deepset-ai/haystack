@@ -1,0 +1,4 @@
+---
+enhancements:
+  - |
+    Improved error messages for deserialization errors.

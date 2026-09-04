@@ -1,0 +1,4 @@
+---
+fixes:
+  - |
+    Fix `OpenAIChatGenerator` and `OpenAIGenerator` crashing when using a `streaming_callback` and `generation_kwargs` contain `{"stream_options": {"include_usage": True}}`.

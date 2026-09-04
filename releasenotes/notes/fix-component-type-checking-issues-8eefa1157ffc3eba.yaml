@@ -1,0 +1,6 @@
+---
+enhancements:
+  - |
+    Update `Component` protocol to fix type checking issues with some Language Servers.
+    Most Language Servers and some type checkers would show warnings when calling `Pipeline.add_component()`
+    as technically most `Component`s weren't respecting the protocol we defined.

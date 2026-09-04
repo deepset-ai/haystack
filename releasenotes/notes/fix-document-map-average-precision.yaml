@@ -1,0 +1,10 @@
+---
+fixes:
+  - |
+    Fix ``DocumentMAPEvaluator`` to include missed relevant documents in the average precision denominator and avoid
+    crediting duplicate retrievals of the same document.
+upgrade:
+  - |
+    ``DocumentMAPEvaluator`` scores can change because average precision now uses all unique, valid ground-truth
+    comparison values as its denominator and credits each value at most once. Re-baseline evaluations that relied on
+    the previous scores.

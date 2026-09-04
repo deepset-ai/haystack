@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    The `OpenAIChatGenerator` implementation uses `ChatCompletionMessageCustomToolCall`, which is only available in
+    OpenAI client >=1.99.2. We now require `openai>=1.99.2`.

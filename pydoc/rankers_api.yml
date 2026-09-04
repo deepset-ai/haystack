@@ -1,0 +1,12 @@
+loaders:
+  - search_path: [../haystack/components/rankers]
+    modules: ["llm_ranker", "lost_in_the_middle", "meta_field", "meta_field_grouping_ranker"]
+processors:
+  - type: filter
+    documented_only: true
+    skip_empty_modules: true
+renderer:
+  title: Rankers
+  id: rankers-api
+  description: Reorders a set of Documents based on their relevance to the query.
+  filename: rankers_api.md

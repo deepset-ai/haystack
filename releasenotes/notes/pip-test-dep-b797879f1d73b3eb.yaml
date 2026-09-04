@@ -1,0 +1,4 @@
+---
+fixes:
+  - |
+    Add `pip` to test dependencies: `mypy` needs it to install missing stub packages.

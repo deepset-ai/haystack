@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Resolves a bug where the HuggingFaceTGIGenerator and HuggingFaceTGIChatGenerator encountered issues if provided
+    with valid models that were not available on the HuggingFace inference API rate-limited tier. The fix, detailed
+    in [GitHub issue #6816](https://github.com/deepset-ai/haystack/issues/6816) and its GitHub PR, ensures these
+    components now correctly handle model availability, eliminating previous limitations.

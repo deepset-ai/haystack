@@ -1,0 +1,4 @@
+---
+enhancements:
+  - |
+    Add support for [structlog context variables](https://www.structlog.org/en/24.2.0/contextvars.html) to structured logging.

@@ -1,0 +1,6 @@
+---
+features:
+  - |
+    Add a new experimental component `ToolInvoker`.
+    This component invokes tools based on tool calls prepared by Language Models and returns the results as a list of
+    ChatMessage objects with tool role.

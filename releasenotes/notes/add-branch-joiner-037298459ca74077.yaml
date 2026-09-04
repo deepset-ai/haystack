@@ -1,0 +1,14 @@
+---
+highlights: >
+    The `Multiplexer` component proved to be hard to explain and to understand. After reviewing its use cases, the documentation
+    was rewritten and the component was renamed to `BranchJoiner` to better explain its functionalities.
+upgrade:
+  - |
+    `BranchJoiner` has the very same interface as `Multiplexer`. To upgrade your code, just rename any occurrence
+    of `Multiplexer` to `BranchJoiner` and ajdust the imports accordingly.
+features:
+  - |
+    Add `BranchJoiner` to eventually replace `Multiplexer`
+deprecations:
+  - |
+    `Mulitplexer` is now deprecated.

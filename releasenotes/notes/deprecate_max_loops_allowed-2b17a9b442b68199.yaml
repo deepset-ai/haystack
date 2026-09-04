@@ -1,0 +1,12 @@
+---
+enhancements:
+  - |
+    Add new `Pipeline` init argument `max_runs_per_component`, this has the same identical
+    behaviour as the existing `max_loops_allowed` argument but is more descriptive of its actual effects.
+  - |
+    Add new `PipelineMaxLoops` to reflect new `max_runs_per_component` init argument
+deprecations:
+  - |
+    `Pipeline` init argument `max_loops_allowed` is deprecated and will be remove in version `2.7.0`. Use `max_runs_per_component` instead.
+  - |
+    `PipelineMaxLoops` exception is deprecated and will be remove in version `2.7.0`. Use `PipelineMaxComponentRuns` instead.

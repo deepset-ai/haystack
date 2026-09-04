@@ -1,0 +1,4 @@
+---
+features:
+  - |
+    Updates SentenceTransformersDocumentEmbedder and SentenceTransformersTextEmbedder so model_max_length passed through tokenizer_kwargs also updates the max_seq_length of the underly SentenceTransformer model.

@@ -1,0 +1,8 @@
+---
+enhancements:
+  - |
+    - Simplified the serialization code for better readability and maintainability.
+    - Updated deserialization to allow users to omit the `typing.` prefix for standard typing library types (e.g., `List[str]` instead of `typing.List[str]`).
+fixes:
+  - |
+    Improved serialization and deserialization in `haystack/utils/type_serialization.py` to handle `Optional` types correctly.

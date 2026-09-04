@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    In Agent we make sure state_schema is always initialized to have 'messages'. Previously this was only happening at run time which is why pipeline.connect failed because output types are set at init time.
+    Now the Agent correctly sets everything in state_schema (including messages by default) at init time.

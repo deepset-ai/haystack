@@ -1,0 +1,4 @@
+---
+enhancements:
+  - |
+    Change `Pipeline.add_component()` to fail if the `Component` instance has already been added in another `Pipeline`.

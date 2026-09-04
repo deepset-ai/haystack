@@ -1,0 +1,88 @@
+name: Docker image release
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/docker_release.yml'
+      - 'docker/**'
+      - 'haystack/**'
+      - 'pyproject.toml'
+      - 'VERSION.txt'
+    tags:
+      - "v[0-9]+.[0-9]+.[0-9]+*"
+
+env:
+  DOCKER_REPO_NAME: deepset/haystack
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-push:
+    name: Build base image
+    runs-on: ubuntu-latest
+    if: github.repository_owner == 'deepset-ai'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@1f40c72289eff860ee54a304f1438e3cff362e0a # v4.3.0
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4.3.0
+
+      - name: Login to DockerHub
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          username: ${{ secrets.DOCKER_HUB_USER }}
+          password: ${{ secrets.DOCKER_HUB_TOKEN }}
+
+      - name: Docker meta
+        id: meta
+        uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6.2.0
+        with:
+          images: $DOCKER_REPO_NAME
+
+      - name: Detect stable version
+        run: |
+          if [[ "${{ steps.meta.outputs.version }}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "IS_STABLE=true" >> "$GITHUB_ENV"
+            echo "Stable version detected"
+          else
+            echo "Not a stable version"
+          fi
+      - name: Build base images
+        uses: docker/bake-action@d3418bd7d0e9324001bca92fa8ba175ea7e6dc9b # v7.3.0
+        env:
+          IMAGE_TAG_SUFFIX: ${{ steps.meta.outputs.version }}
+          HAYSTACK_VERSION: ${{ steps.meta.outputs.version }}
+        with:
+          source: ./docker
+          targets: base
+          push: true
+
+      - name: Test base image
+        run: |
+          EXPECTED_VERSION=$(cat VERSION.txt)
+          if [[ $EXPECTED_VERSION == *"-"* ]]; then
+            EXPECTED_VERSION=$(cut -d '-' -f 1 < VERSION.txt)$(cut -d '-' -f 2 < VERSION.txt)
+          fi
+          TAG="base-${{ steps.meta.outputs.version }}"
+
+          PLATFORM="linux/amd64"
+          VERSION=$(docker run --platform "$PLATFORM" --rm "deepset/haystack:$TAG" python -c"from haystack.version import __version__; print(__version__)")
+          [[ "$VERSION" = "$EXPECTED_VERSION" ]] || echo "::error 'Haystack version in deepset/haystack:$TAG image for $PLATFORM is different from expected'"
+
+          PLATFORM="linux/arm64"
+          VERSION=$(docker run --platform "$PLATFORM" --rm "deepset/haystack:$TAG" python -c"from haystack.version import __version__; print(__version__)")
+          [[ "$VERSION" = "$EXPECTED_VERSION" ]] || echo "::error 'Haystack version in deepset/haystack:$TAG image for $PLATFORM is different from expected'"
+
+          # Remove image after test to avoid filling the GitHub runner and prevent its failure
+          docker rmi "deepset/haystack:$TAG"

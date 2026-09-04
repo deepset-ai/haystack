@@ -1,0 +1,5 @@
+---
+preview:
+  - |
+    Introduce a new Document representation, which includes meta, score and
+    embedding size.

@@ -1,0 +1,4 @@
+---
+fixes:
+  - |
+    Correctly serialize tuples and types in the init parameters of the `LLMEvaluator` component and its subclasses.

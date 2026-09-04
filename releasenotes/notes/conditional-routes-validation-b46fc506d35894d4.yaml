@@ -1,0 +1,7 @@
+---
+enhancements:
+  - |
+    Add output type validation in `ConditionalRouter`.
+    Setting `validate_output_type` to `True` will enable a check to verify if
+    the actual output of a route returns the declared type.
+    If it doesn't match a `ValueError` is raised.

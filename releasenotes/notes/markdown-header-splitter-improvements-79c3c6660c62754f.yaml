@@ -1,0 +1,11 @@
+---
+enhancements:
+  - |
+    ``MarkdownHeaderSplitter`` now accepts a ``header_split_levels`` parameter (list of integers
+    1–6, default all levels) to control which header depths create split boundaries. For example,
+    ``header_split_levels=[1, 2]`` splits only on ``#`` and ``##`` headers, merging content under
+    deeper headers into the preceding chunk.
+  - |
+    ``MarkdownHeaderSplitter`` now ignores ``#`` lines that appear inside fenced code blocks
+    (triple-backtick or triple-tilde), preventing Python comments and other hash-prefixed lines
+    in code from being misidentified as Markdown headers.

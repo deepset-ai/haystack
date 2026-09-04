@@ -1,0 +1,14 @@
+---
+preview:
+  - |
+    Refactor `Document.__eq__()` so it compares the `Document`s dictionary
+    representation instead of only their `id`.
+    Previously this comparison would have unexpectedly worked:
+    ```python
+    first_doc = Document(id="1", content="Hey!")
+    second_doc = Document(id="1", content="Hello!")
+    assert first_doc == second_doc
+    first_doc.content = "Howdy!"
+    assert first_doc == second_doc
+    ```
+    With this change the last comparison would rightly fail.

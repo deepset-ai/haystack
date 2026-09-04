@@ -1,0 +1,4 @@
+---
+features:
+  - |
+    When making function calls via OpenAPI, allow both switching SSL verification off and specifying a certificate authority to use for it.

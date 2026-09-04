@@ -1,0 +1,4 @@
+---
+preview:
+  - |
+    Refactor SentenceTransformersDocumentEmbedder to enrich documents with embeddings instead of recreating them.

@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Improved type hinting for the `component.output_types` decorator. The type hinting for the decorator was originally
+    introduced  to avoid overshadowing the type hinting of the `run` method and allow proper static type checking.
+    This update extends support to asynchronous `run_async` methods.

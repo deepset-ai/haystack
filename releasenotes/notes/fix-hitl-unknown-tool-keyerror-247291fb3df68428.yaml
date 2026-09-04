@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Fixed a ``KeyError`` raised by the human-in-the-loop confirmation strategies when a chat model hallucinated a
+    tool call whose name is not in the agent's tools. Such tool calls now bypass confirmation and pass through
+    unchanged, so the tool-calling code reports the unknown tool uniformly via ``ToolNotFoundException`` (respecting
+    ``raise_on_failure``) instead of crashing.

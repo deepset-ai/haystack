@@ -1,0 +1,12 @@
+loaders:
+  - search_path: [../haystack/components/converters/image]
+    modules: ["document_to_image", "file_to_document", "file_to_image", "pdf_to_image"]
+processors:
+  - type: filter
+    documented_only: true
+    skip_empty_modules: true
+renderer:
+  title: Image Converters
+  id: image-converters-api
+  description: Various converters to transform image data from one format to another.
+  filename: image_converters_api.md

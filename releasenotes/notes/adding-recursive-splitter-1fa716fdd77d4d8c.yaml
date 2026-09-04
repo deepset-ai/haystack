@@ -1,0 +1,4 @@
+---
+features:
+  - |
+    Adding a `RecursiveChunker,` which uses a set of separators to split text recursively. It attempts to divide the text using the first separator, if the resulting chunks are still larger than the specified size, it moves to the next separator in the list.

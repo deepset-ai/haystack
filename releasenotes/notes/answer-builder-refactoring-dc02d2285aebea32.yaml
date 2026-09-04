@@ -1,0 +1,10 @@
+---
+features:
+  - |
+    The `AnswerBuilder` component now exposes a new parameter `return_only_referenced_documents` (default: True) that
+    controls if only documents referenced in the `replies` are returned.
+    Returned documents include two new fields in the `meta` dictionary:
+    - `source_index`: the 1-based index of the document in the input list
+    - `referenced`: a boolean value indicating if the document was referenced in the `replies` (only present
+    if the `reference_pattern` parameter is provided).
+    These additions make it easier to display references and other sources within a RAG pipeline.

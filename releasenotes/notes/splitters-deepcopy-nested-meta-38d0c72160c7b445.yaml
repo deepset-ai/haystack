@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    ``MarkdownHeaderSplitter`` and ``CSVDocumentSplitter`` now deep-copy the metadata of the document they split,
+    matching ``DocumentSplitter``. Previously they copied it shallowly, so nested values such as a list under
+    ``meta["tags"]`` were shared between every chunk and with the input document, and editing one chunk's
+    metadata changed all the others. ``HierarchicalDocumentSplitter`` had the same problem on its root node,
+    which kept references into the input document's metadata.

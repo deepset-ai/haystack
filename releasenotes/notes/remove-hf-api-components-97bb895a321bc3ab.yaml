@@ -1,0 +1,25 @@
+---
+upgrade:
+  - |
+    ``HuggingFaceAPIChatGenerator``, ``HuggingFaceAPITextEmbedder``, ``HuggingFaceAPIDocumentEmbedder``, and
+    ``HuggingFaceTEIRanker`` have been moved out of Haystack into the ``huggingface-api-haystack`` integration
+    package. Install the new package with ``pip install huggingface-api-haystack`` and update your imports.
+
+    Before:
+
+    .. code:: python
+
+      from haystack.components.generators.chat import HuggingFaceAPIChatGenerator
+      from haystack.components.embedders import HuggingFaceAPITextEmbedder, HuggingFaceAPIDocumentEmbedder
+      from haystack.components.rankers import HuggingFaceTEIRanker
+
+    After:
+
+    .. code:: python
+
+      from haystack_integrations.components.generators.huggingface_api import HuggingFaceAPIChatGenerator
+      from haystack_integrations.components.embedders.huggingface_api import (
+          HuggingFaceAPITextEmbedder,
+          HuggingFaceAPIDocumentEmbedder,
+      )
+      from haystack_integrations.components.rankers.huggingface_api import HuggingFaceTEIRanker

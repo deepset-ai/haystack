@@ -1,0 +1,4 @@
+---
+features:
+ - |
+   Added haystack-experimental to the project's dependencies to enable automatic use of cutting-edge features from Haystack. Users can now access components from haystack-experimental by simply importing them from haystack_experimental instead of haystack. For more information, visit https://github.com/deepset-ai/haystack-experimental.

@@ -1,0 +1,622 @@
+# SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
+#
+# SPDX-License-Identifier: Apache-2.0
+
+import asyncio
+import time
+from typing import Any
+from unittest.mock import AsyncMock, Mock
+from urllib.error import HTTPError as URLLibHTTPError
+
+import pytest
+
+from haystack import Pipeline, component, default_from_dict, default_to_dict
+from haystack.components.generators.chat.fallback import FallbackChatGenerator
+from haystack.core.errors import SerializationError
+from haystack.dataclasses import ChatMessage, StreamingCallbackT
+from haystack.tools import ToolsType
+
+
+@component
+class _DummySuccessGen:
+    def __init__(self, text: str = "ok", delay: float = 0.0, streaming_callback: StreamingCallbackT | None = None):
+        self.text = text
+        self.delay = delay
+        self.streaming_callback = streaming_callback
+        self.received_messages: list[list[ChatMessage]] = []
+
+    def to_dict(self) -> dict[str, Any]:
+        return default_to_dict(self, text=self.text, delay=self.delay, streaming_callback=None)
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "_DummySuccessGen":
+        return default_from_dict(cls, data)
+
+    def run(
+        self,
+        messages: list[ChatMessage],
+        generation_kwargs: dict[str, Any] | None = None,
+        tools: ToolsType | None = None,
+        streaming_callback: StreamingCallbackT | None = None,
+    ) -> dict[str, Any]:
+        self.received_messages.append(messages)
+        if self.delay:
+            time.sleep(self.delay)
+        if streaming_callback:
+            streaming_callback({"dummy": True})  # type: ignore[arg-type]
+        return {"replies": [ChatMessage.from_assistant(self.text)], "meta": {"dummy_meta": True}}
+
+    async def run_async(
+        self,
+        messages: list[ChatMessage],
+        generation_kwargs: dict[str, Any] | None = None,
+        tools: ToolsType | None = None,
+        streaming_callback: StreamingCallbackT | None = None,
+    ) -> dict[str, Any]:
+        self.received_messages.append(messages)
+        if self.delay:
+            await asyncio.sleep(self.delay)
+        if streaming_callback:
+            await asyncio.sleep(0)
+            streaming_callback({"dummy": True})  # type: ignore[arg-type]
+        return {"replies": [ChatMessage.from_assistant(self.text)], "meta": {"dummy_meta": True}}
+
+
+@component
+class _DummyFailGen:
+    def __init__(self, exc: Exception | None = None, delay: float = 0.0):
+        self.exc = exc or RuntimeError("boom")
+        self.delay = delay
+
+    def to_dict(self) -> dict[str, Any]:
+        return default_to_dict(self, exc={"message": str(self.exc)}, delay=self.delay)
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "_DummyFailGen":
+        init = data.get("init_parameters", {})
+        msg = None
+        if isinstance(init.get("exc"), dict):
+            msg = init.get("exc", {}).get("message")
+        return cls(exc=RuntimeError(msg or "boom"), delay=init.get("delay", 0.0))
+
+    def run(
+        self,
+        messages: list[ChatMessage],
+        generation_kwargs: dict[str, Any] | None = None,
+        tools: ToolsType | None = None,
+        streaming_callback: StreamingCallbackT | None = None,
+    ) -> dict[str, Any]:
+        if self.delay:
+            time.sleep(self.delay)
+        raise self.exc
+
+    async def run_async(
+        self,
+        messages: list[ChatMessage],
+        generation_kwargs: dict[str, Any] | None = None,
+        tools: ToolsType | None = None,
+        streaming_callback: StreamingCallbackT | None = None,
+    ) -> dict[str, Any]:
+        if self.delay:
+            await asyncio.sleep(self.delay)
+        raise self.exc
+
+
+def test_init_validation():
+    with pytest.raises(ValueError):
+        FallbackChatGenerator(chat_generators=[])
+
+    gen = FallbackChatGenerator(chat_generators=[_DummySuccessGen(text="A")])
+    assert len(gen.chat_generators) == 1
+
+
+def test_sequential_first_success():
+    gen = FallbackChatGenerator(chat_generators=[_DummySuccessGen(text="A")])
+    res = gen.run([ChatMessage.from_user("hi")])
+    assert isinstance(res["replies"], list)
+    replies: list[ChatMessage] = res["replies"]
+    assert isinstance(res["meta"], dict)
+    meta: dict[str, Any] = res["meta"]
+    assert replies[0].text == "A"
+    assert meta["successful_chat_generator_index"] == 0
+    assert meta["total_attempts"] == 1
+
+
+def test_run_with_string_input():
+    inner = _DummySuccessGen()
+    gen = FallbackChatGenerator(chat_generators=[inner])
+    res = gen.run("hi")
+    assert isinstance(res["replies"], list)
+    replies: list[ChatMessage] = res["replies"]
+    assert inner.received_messages[0] == [ChatMessage.from_user("hi")]
+    assert isinstance(replies[0], ChatMessage)
+
+
+async def test_run_async_with_string_input():
+    inner = _DummySuccessGen()
+    gen = FallbackChatGenerator(chat_generators=[inner])
+    res = await gen.run_async("hi")
+    assert isinstance(res["replies"], list)
+    replies: list[ChatMessage] = res["replies"]
+    assert inner.received_messages[0] == [ChatMessage.from_user("hi")]
+    assert isinstance(replies[0], ChatMessage)
+
+
+def test_sequential_second_success_after_failure():
+    gen = FallbackChatGenerator(chat_generators=[_DummyFailGen(), _DummySuccessGen(text="B")])
+    res = gen.run([ChatMessage.from_user("hi")])
+    assert isinstance(res["replies"], list)
+    replies: list[ChatMessage] = res["replies"]
+    assert isinstance(res["meta"], dict)
+    meta: dict[str, Any] = res["meta"]
+    assert replies[0].text == "B"
+    assert meta["successful_chat_generator_index"] == 1
+    assert meta["failed_chat_generators"]
+
+
+def test_all_fail_raises():
+    gen = FallbackChatGenerator(chat_generators=[_DummyFailGen(), _DummyFailGen()])
+    with pytest.raises(RuntimeError):
+        gen.run([ChatMessage.from_user("hi")])
+
+
+def test_timeout_handling_sync():
+    slow = _DummySuccessGen(text="slow", delay=0.01)
+    fast = _DummySuccessGen(text="fast", delay=0.0)
+    gen = FallbackChatGenerator(chat_generators=[slow, fast])
+    res = gen.run([ChatMessage.from_user("hi")])
+    assert isinstance(res["replies"], list)
+    replies: list[ChatMessage] = res["replies"]
+    assert replies[0].text == "slow"
+
+
+@pytest.mark.asyncio
+async def test_timeout_handling_async():
+    slow = _DummySuccessGen(text="slow", delay=0.01)
+    fast = _DummySuccessGen(text="fast", delay=0.0)
+    gen = FallbackChatGenerator(chat_generators=[slow, fast])
+    res = await gen.run_async([ChatMessage.from_user("hi")])
+    assert isinstance(res["replies"], list)
+    replies: list[ChatMessage] = res["replies"]
+    assert replies[0].text == "slow"
+
+
+def test_streaming_callback_forwarding_sync():
+    calls: list[Any] = []
+
+    def cb(x: Any) -> None:
+        calls.append(x)
+
+    gen = FallbackChatGenerator(chat_generators=[_DummySuccessGen(text="A")])
+    _ = gen.run([ChatMessage.from_user("hi")], streaming_callback=cb)
+    assert calls
+
+
+@pytest.mark.asyncio
+async def test_streaming_callback_forwarding_async():
+    calls: list[Any] = []
+
+    def cb(x: Any) -> None:
+        calls.append(x)
+
+    gen = FallbackChatGenerator(chat_generators=[_DummySuccessGen(text="A")])
+    _ = await gen.run_async([ChatMessage.from_user("hi")], streaming_callback=cb)
+    assert calls
+
+
+def test_serialization_roundtrip():
+    original = FallbackChatGenerator(chat_generators=[_DummySuccessGen(text="hello")])
+    data = original.to_dict()
+    restored = FallbackChatGenerator.from_dict(data)
+    assert isinstance(restored, FallbackChatGenerator)
+    assert len(restored.chat_generators) == 1
+    res = restored.run([ChatMessage.from_user("hi")])
+    assert isinstance(res["replies"], list)
+    replies: list[ChatMessage] = res["replies"]
+    assert replies[0].text == "hello"
+
+    original = FallbackChatGenerator(chat_generators=[_DummySuccessGen(text="hello"), _DummySuccessGen(text="world")])
+    data = original.to_dict()
+    restored = FallbackChatGenerator.from_dict(data)
+    assert isinstance(restored, FallbackChatGenerator)
+    assert len(restored.chat_generators) == 2
+    res = restored.run([ChatMessage.from_user("hi")])
+    assert isinstance(res["replies"], list)
+    replies2: list[ChatMessage] = res["replies"]
+    assert replies2[0].text == "hello"
+
+
+def test_automatic_completion_mode_without_streaming():
+    gen = FallbackChatGenerator(chat_generators=[_DummySuccessGen(text="completion")])
+    res = gen.run([ChatMessage.from_user("hi")])
+    assert isinstance(res["replies"], list)
+    replies: list[ChatMessage] = res["replies"]
+    assert isinstance(res["meta"], dict)
+    meta: dict[str, Any] = res["meta"]
+    assert replies[0].text == "completion"
+    assert meta["successful_chat_generator_index"] == 0
+
+
+def test_automatic_ttft_mode_with_streaming():
+    calls: list[Any] = []
+
+    def cb(x: Any) -> None:
+        calls.append(x)
+
+    gen = FallbackChatGenerator(chat_generators=[_DummySuccessGen(text="streaming")])
+    res = gen.run([ChatMessage.from_user("hi")], streaming_callback=cb)
+    assert isinstance(res["replies"], list)
+    replies: list[ChatMessage] = res["replies"]
+    assert replies[0].text == "streaming"
+    assert calls
+
+
+@pytest.mark.asyncio
+async def test_automatic_ttft_mode_with_streaming_async():
+    calls: list[Any] = []
+
+    def cb(x: Any) -> None:
+        calls.append(x)
+
+    gen = FallbackChatGenerator(chat_generators=[_DummySuccessGen(text="streaming_async")])
+    res = await gen.run_async([ChatMessage.from_user("hi")], streaming_callback=cb)
+    assert isinstance(res["replies"], list)
+    replies: list[ChatMessage] = res["replies"]
+    assert replies[0].text == "streaming_async"
+    assert calls
+
+
+def create_http_error(status_code: int, message: str) -> URLLibHTTPError:
+    return URLLibHTTPError("", status_code, message, {}, None)  # type: ignore[arg-type]
+
+
+@component
+class _DummyHTTPErrorGen:
+    def __init__(self, text: str = "success", error: Exception | None = None):
+        self.text = text
+        self.error = error
+
+    def to_dict(self) -> dict[str, Any]:
+        return default_to_dict(self, text=self.text, error=str(self.error) if self.error else None)
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "_DummyHTTPErrorGen":
+        init = data.get("init_parameters", {})
+        error = None
+        if init.get("error"):
+            error = RuntimeError(init["error"])
+        return cls(text=init.get("text", "success"), error=error)
+
+    def run(
+        self,
+        messages: list[ChatMessage],
+        generation_kwargs: dict[str, Any] | None = None,
+        tools: ToolsType | None = None,
+        streaming_callback: StreamingCallbackT | None = None,
+    ) -> dict[str, Any]:
+        if self.error:
+            raise self.error
+        return {
+            "replies": [ChatMessage.from_assistant(self.text)],
+            "meta": {"error_type": type(self.error).__name__ if self.error else None},
+        }
+
+
+def test_failover_trigger_429_rate_limit():
+    rate_limit_gen = _DummyHTTPErrorGen(text="rate_limited", error=create_http_error(429, "Rate limit exceeded"))
+    success_gen = _DummySuccessGen(text="success_after_rate_limit")
+
+    fallback = FallbackChatGenerator(chat_generators=[rate_limit_gen, success_gen])
+    result = fallback.run([ChatMessage.from_user("test")])
+
+    assert isinstance(result["replies"], list)
+    replies: list[ChatMessage] = result["replies"]
+    assert isinstance(result["meta"], dict)
+    meta: dict[str, Any] = result["meta"]
+    assert replies[0].text == "success_after_rate_limit"
+    assert meta["successful_chat_generator_index"] == 1
+    assert meta["failed_chat_generators"] == ["_DummyHTTPErrorGen"]
+
+
+def test_failover_trigger_401_authentication():
+    auth_error_gen = _DummyHTTPErrorGen(text="auth_failed", error=create_http_error(401, "Authentication failed"))
+    success_gen = _DummySuccessGen(text="success_after_auth")
+
+    fallback = FallbackChatGenerator(chat_generators=[auth_error_gen, success_gen])
+    result = fallback.run([ChatMessage.from_user("test")])
+
+    assert isinstance(result["replies"], list)
+    replies: list[ChatMessage] = result["replies"]
+    assert isinstance(result["meta"], dict)
+    meta: dict[str, Any] = result["meta"]
+    assert replies[0].text == "success_after_auth"
+    assert meta["successful_chat_generator_index"] == 1
+    assert meta["failed_chat_generators"] == ["_DummyHTTPErrorGen"]
+
+
+def test_failover_trigger_400_bad_request():
+    bad_request_gen = _DummyHTTPErrorGen(text="bad_request", error=create_http_error(400, "Context length exceeded"))
+    success_gen = _DummySuccessGen(text="success_after_bad_request")
+
+    fallback = FallbackChatGenerator(chat_generators=[bad_request_gen, success_gen])
+    result = fallback.run([ChatMessage.from_user("test")])
+
+    assert isinstance(result["replies"], list)
+    replies: list[ChatMessage] = result["replies"]
+    assert isinstance(result["meta"], dict)
+    meta: dict[str, Any] = result["meta"]
+    assert replies[0].text == "success_after_bad_request"
+    assert meta["successful_chat_generator_index"] == 1
+    assert meta["failed_chat_generators"] == ["_DummyHTTPErrorGen"]
+
+
+def test_failover_trigger_500_server_error():
+    server_error_gen = _DummyHTTPErrorGen(text="server_error", error=create_http_error(500, "Internal server error"))
+    success_gen = _DummySuccessGen(text="success_after_server_error")
+
+    fallback = FallbackChatGenerator(chat_generators=[server_error_gen, success_gen])
+    result = fallback.run([ChatMessage.from_user("test")])
+
+    assert isinstance(result["replies"], list)
+    replies: list[ChatMessage] = result["replies"]
+    assert isinstance(result["meta"], dict)
+    meta: dict[str, Any] = result["meta"]
+    assert replies[0].text == "success_after_server_error"
+    assert meta["successful_chat_generator_index"] == 1
+    assert meta["failed_chat_generators"] == ["_DummyHTTPErrorGen"]
+
+
+def test_failover_trigger_multiple_errors():
+    rate_limit_gen = _DummyHTTPErrorGen(text="rate_limited", error=create_http_error(429, "Rate limit exceeded"))
+    auth_error_gen = _DummyHTTPErrorGen(text="auth_failed", error=create_http_error(401, "Authentication failed"))
+    server_error_gen = _DummyHTTPErrorGen(text="server_error", error=create_http_error(500, "Internal server error"))
+    success_gen = _DummySuccessGen(text="success_after_all_errors")
+
+    fallback = FallbackChatGenerator(chat_generators=[rate_limit_gen, auth_error_gen, server_error_gen, success_gen])
+    result = fallback.run([ChatMessage.from_user("test")])
+
+    assert isinstance(result["replies"], list)
+    replies: list[ChatMessage] = result["replies"]
+    assert isinstance(result["meta"], dict)
+    meta: dict[str, Any] = result["meta"]
+    assert replies[0].text == "success_after_all_errors"
+    assert meta["successful_chat_generator_index"] == 3
+    assert len(meta["failed_chat_generators"]) == 3
+
+
+def test_failover_trigger_all_generators_fail():
+    rate_limit_gen = _DummyHTTPErrorGen(text="rate_limited", error=create_http_error(429, "Rate limit exceeded"))
+    auth_error_gen = _DummyHTTPErrorGen(text="auth_failed", error=create_http_error(401, "Authentication failed"))
+    server_error_gen = _DummyHTTPErrorGen(text="server_error", error=create_http_error(500, "Internal server error"))
+
+    fallback = FallbackChatGenerator(chat_generators=[rate_limit_gen, auth_error_gen, server_error_gen])
+
+    with pytest.raises(RuntimeError) as exc_info:
+        fallback.run([ChatMessage.from_user("test")])
+
+    error_msg = str(exc_info.value)
+    assert "All 3 chat generators failed" in error_msg
+    assert "Failed chat generators: [_DummyHTTPErrorGen, _DummyHTTPErrorGen, _DummyHTTPErrorGen]" in error_msg
+
+
+@pytest.mark.asyncio
+async def test_failover_trigger_429_rate_limit_async():
+    rate_limit_gen = _DummyHTTPErrorGen(text="rate_limited", error=create_http_error(429, "Rate limit exceeded"))
+    success_gen = _DummySuccessGen(text="success_after_rate_limit")
+
+    fallback = FallbackChatGenerator(chat_generators=[rate_limit_gen, success_gen])
+    result = await fallback.run_async([ChatMessage.from_user("test")])
+
+    assert isinstance(result["replies"], list)
+    replies: list[ChatMessage] = result["replies"]
+    assert isinstance(result["meta"], dict)
+    meta: dict[str, Any] = result["meta"]
+    assert replies[0].text == "success_after_rate_limit"
+    assert meta["successful_chat_generator_index"] == 1
+    assert meta["failed_chat_generators"] == ["_DummyHTTPErrorGen"]
+
+
+@pytest.mark.asyncio
+async def test_failover_trigger_401_authentication_async():
+    auth_error_gen = _DummyHTTPErrorGen(text="auth_failed", error=create_http_error(401, "Authentication failed"))
+    success_gen = _DummySuccessGen(text="success_after_auth")
+
+    fallback = FallbackChatGenerator(chat_generators=[auth_error_gen, success_gen])
+    result = await fallback.run_async([ChatMessage.from_user("test")])
+
+    assert isinstance(result["replies"], list)
+    replies: list[ChatMessage] = result["replies"]
+    assert isinstance(result["meta"], dict)
+    meta: dict[str, Any] = result["meta"]
+    assert replies[0].text == "success_after_auth"
+    assert meta["successful_chat_generator_index"] == 1
+    assert meta["failed_chat_generators"] == ["_DummyHTTPErrorGen"]
+
+
+class TestTracing:
+    def test_pipeline_traces_output_only_on_fallback_component_span(self, spying_tracer):
+        messages = [ChatMessage.from_user("hi")]
+        fallback = FallbackChatGenerator(chat_generators=[_DummySuccessGen()])
+        pipeline = Pipeline()
+        pipeline.add_component(name="fallback", instance=fallback)
+
+        pipeline.run(data={"fallback": {"messages": messages}})
+
+        fallback_spans = [
+            span
+            for span in spying_tracer.spans
+            if span.operation_name == "haystack.component.run"
+            and span.tags["haystack.component.type"] == "FallbackChatGenerator"
+        ]
+        generator_spans = [span for span in spying_tracer.spans if span.operation_name == "haystack.chat_generator.run"]
+
+        assert len(fallback_spans) == 1
+        assert fallback_spans[0].tags["haystack.component.output"]["replies"][0].text == "ok"
+        assert len(generator_spans) == 1
+        assert "haystack.component.output" not in generator_spans[0].tags
+
+    def test_run_traces_each_chat_generator_attempt(self, spying_tracer):
+        messages = [ChatMessage.from_user("hi")]
+        generation_kwargs = {"temperature": 0.1}
+        fallback = FallbackChatGenerator(chat_generators=[_DummyFailGen(), _DummySuccessGen()])
+
+        with spying_tracer.trace("parent") as parent_span:
+            fallback.run(messages=messages, generation_kwargs=generation_kwargs)
+
+        generator_spans = [s for s in spying_tracer.spans if s.operation_name == "haystack.chat_generator.run"]
+        assert len(generator_spans) == 2
+        assert all(span.parent_span is parent_span for span in generator_spans)
+        assert [span.tags["haystack.component.type"] for span in generator_spans] == [
+            "_DummyFailGen",
+            "_DummySuccessGen",
+        ]
+        assert all(
+            span.tags["haystack.component.input"]
+            == {"messages": messages, "generation_kwargs": generation_kwargs, "tools": None, "streaming_callback": None}
+            for span in generator_spans
+        )
+        assert all("haystack.component.output" not in span.tags for span in generator_spans)
+
+    @pytest.mark.asyncio
+    async def test_run_async_traces_each_chat_generator_attempt(self, spying_tracer):
+        messages = [ChatMessage.from_user("hi")]
+        generation_kwargs = {"temperature": 0.1}
+        fallback = FallbackChatGenerator(chat_generators=[_DummyFailGen(), _DummySuccessGen()])
+
+        with spying_tracer.trace("parent") as parent_span:
+            await fallback.run_async(messages=messages, generation_kwargs=generation_kwargs)
+
+        generator_spans = [s for s in spying_tracer.spans if s.operation_name == "haystack.chat_generator.run"]
+        assert len(generator_spans) == 2
+        assert all(span.parent_span is parent_span for span in generator_spans)
+        assert [span.tags["haystack.component.type"] for span in generator_spans] == [
+            "_DummyFailGen",
+            "_DummySuccessGen",
+        ]
+        assert all(
+            span.tags["haystack.component.input"]
+            == {"messages": messages, "generation_kwargs": generation_kwargs, "tools": None, "streaming_callback": None}
+            for span in generator_spans
+        )
+        assert all("haystack.component.output" not in span.tags for span in generator_spans)
+
+
+class TestComponentLifecycle:
+    def test_warm_up_delegates_to_every_generator(self) -> None:
+
+        gens = [Mock(spec=["run", "warm_up"]) for _ in range(3)]
+        fallback = FallbackChatGenerator(chat_generators=gens)  # type: ignore[arg-type]
+        fallback.warm_up()
+        for gen in gens:
+            gen.warm_up.assert_called_once()
+
+    async def test_warm_up_async_delegates_to_every_generator(self) -> None:
+
+        gens = [Mock(spec=["run", "warm_up_async"]) for _ in range(3)]
+        for gen in gens:
+            gen.warm_up_async = AsyncMock()
+        fallback = FallbackChatGenerator(chat_generators=gens)  # type: ignore[arg-type]
+        await fallback.warm_up_async()
+        for gen in gens:
+            gen.warm_up_async.assert_awaited_once()
+
+    async def test_warm_up_async_falls_back_to_sync_warm_up(self) -> None:
+
+        gens = [Mock(spec=["run", "warm_up"]) for _ in range(3)]
+        fallback = FallbackChatGenerator(chat_generators=gens)  # type: ignore[arg-type]
+        await fallback.warm_up_async()
+        for gen in gens:
+            gen.warm_up.assert_called_once()
+
+    def test_close_delegates_to_every_generator(self) -> None:
+
+        gens = [Mock(spec=["run", "close"]) for _ in range(3)]
+        fallback = FallbackChatGenerator(chat_generators=gens)  # type: ignore[arg-type]
+        fallback.close()
+        for gen in gens:
+            gen.close.assert_called_once()
+
+    async def test_close_async_delegates_to_every_generator(self) -> None:
+
+        gens = [Mock(spec=["run", "close_async"]) for _ in range(3)]
+        for gen in gens:
+            gen.close_async = AsyncMock()
+        fallback = FallbackChatGenerator(chat_generators=gens)  # type: ignore[arg-type]
+        await fallback.close_async()
+        for gen in gens:
+            gen.close_async.assert_awaited_once()
+
+    async def test_close_async_falls_back_to_sync_close(self) -> None:
+
+        gens = [Mock(spec=["run", "close"]) for _ in range(3)]
+        fallback = FallbackChatGenerator(chat_generators=gens)  # type: ignore[arg-type]
+        await fallback.close_async()
+        for gen in gens:
+            gen.close.assert_called_once()
+
+    def test_lifecycle_is_safe_when_generators_lack_methods(self) -> None:
+
+        gens = [Mock(spec=["run"]) for _ in range(3)]
+        fallback = FallbackChatGenerator(chat_generators=gens)  # type: ignore[arg-type]
+        fallback.warm_up()
+        fallback.close()
+
+
+@component
+class CustomGeneratorWithoutSerDe:
+    def __init__(self, text: str = "custom_ok"):
+        self.text = text
+
+    def run(
+        self,
+        messages: list[ChatMessage],
+        generation_kwargs: dict[str, Any] | None = None,
+        tools: ToolsType | None = None,
+        streaming_callback: StreamingCallbackT | None = None,
+    ) -> dict[str, Any]:
+        return {"replies": [ChatMessage.from_assistant(self.text)], "meta": {}}
+
+
+@component
+class NonSerializableGenerator:
+    def __init__(self, non_serializable_arg: Any):
+        self.non_serializable_arg = non_serializable_arg
+
+    def run(self, messages: list[ChatMessage]) -> dict[str, Any]:
+        return {"replies": []}
+
+
+def test_serialization_with_custom_generators_without_to_dict():
+    # 1. Test mixed chain serialization, order preservation, execution, and round-trip
+    gen0 = _DummySuccessGen(text="dummy_has_dict")
+    gen1 = CustomGeneratorWithoutSerDe(text="custom_no_dict_1")
+    gen2 = CustomGeneratorWithoutSerDe(text="custom_no_dict_2")
+
+    original = FallbackChatGenerator(chat_generators=[gen0, gen1, gen2])
+    data = original.to_dict()
+
+    # Ensure all three components are serialized and not silently omitted
+    assert len(data["init_parameters"]["chat_generators"]) == 3
+
+    # Reconstruct/Deserialize
+    restored = FallbackChatGenerator.from_dict(data)
+    assert isinstance(restored, FallbackChatGenerator)
+    assert len(restored.chat_generators) == 3
+
+    # Assert fallback order is exactly preserved
+    assert restored.chat_generators[0].text == "dummy_has_dict"  # type: ignore[attr-defined]
+    assert restored.chat_generators[1].text == "custom_no_dict_1"  # type: ignore[attr-defined]
+    assert restored.chat_generators[2].text == "custom_no_dict_2"  # type: ignore[attr-defined]
+    assert isinstance(restored.chat_generators[1], CustomGeneratorWithoutSerDe)
+    assert isinstance(restored.chat_generators[2], CustomGeneratorWithoutSerDe)
+
+    # Verify pipeline execution on the restored instance
+    res = restored.run([ChatMessage.from_user("hi")])
+    assert isinstance(res["replies"], list)
+    replies: list[ChatMessage] = res["replies"]
+    assert replies[0].text == "dummy_has_dict"
+
+    # 2. Test failure path (fail loud) when a component is not serializable
+    non_serializable_fallback = FallbackChatGenerator(chat_generators=[NonSerializableGenerator(object())])
+    with pytest.raises(SerializationError, match="unsupported value of type"):
+        non_serializable_fallback.to_dict()

@@ -1,0 +1,3 @@
+---
+enhancements:
+  - Modify the output type of `CacheChecker` from `List[Any]` to `List` to make it possible to connect it in a Pipeline.

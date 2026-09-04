@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    Pin the `typing-extensions` package to versions >= 4.7 to avoid
+    [incompatibilities with the `openai` package](https://community.openai.com/t/error-while-importing-openai-from-open-import-openai/578166/26).

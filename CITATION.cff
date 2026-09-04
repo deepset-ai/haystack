@@ -1,0 +1,30 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it using these metadata."
+title: "Haystack: the end-to-end NLP framework for pragmatic builders"
+date-released: 2019-11-14
+url: "https://github.com/deepset-ai/haystack"
+authors:
+- family-names: Pietsch
+  given-names: Malte
+- family-names: Möller
+  given-names: Timo
+- family-names: Kostic
+  given-names: Bogdan
+- family-names: Risch
+  given-names: Julian
+- family-names: Pippi
+  given-names: Massimiliano
+- family-names: Jobanputra
+  given-names: Mayank
+- family-names: Zanzottera
+  given-names: Sara
+- family-names: Cerza
+  given-names: Silvano
+- family-names: Blagojevic
+  given-names: Vladimir
+- family-names: Stadelmann
+  given-names: Thomas
+- family-names: Soni
+  given-names: Tanay
+- family-names: Lee
+  given-names: Sebastian

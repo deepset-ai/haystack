@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    ``HTMLToDocument`` now skips ``ByteStream`` objects with empty content instead of
+    passing them to trafilatura. This prevents noisy lxml parse error logs (such as
+    "Document is empty") when a fetcher emits an empty stream.

@@ -1,0 +1,66 @@
+name: Sync docs with Docusaurus
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - "pydoc/**"
+      - "haystack/**"
+      - ".github/workflows/docusaurus_sync.yml"
+
+env:
+  HATCH_VERSION: "1.16.5"
+  PYTHON_VERSION: "3.11"
+
+permissions:
+  contents: read
+
+jobs:
+  sync:
+    runs-on: ubuntu-slim
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout Haystack repo
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "${{ env.PYTHON_VERSION }}"
+
+      - name: Install Hatch
+        run: |
+          python -m pip install --upgrade pip
+          pip install hatch==${{ env.HATCH_VERSION }} --uploaded-prior-to=P1D
+
+      - name: Generate API reference for Docusaurus
+        run: hatch run docs
+
+      - name: Sync generated API reference to docs folder
+        run: |
+          SOURCE_PATH="tmp_api_reference"
+          DEST_PATH="docs-website/reference/haystack-api"
+
+          echo "Syncing from $SOURCE_PATH to $DEST_PATH"
+          mkdir -p $DEST_PATH
+          # Using rsync to copy files. This will also remove files in dest that are no longer in source.
+          rsync -av --delete --exclude='.git/' "$SOURCE_PATH/" "$DEST_PATH/"
+
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
+        with:
+          token: ${{ secrets.HAYSTACK_BOT_TOKEN }}
+          commit-message: "Sync Haystack API reference on Docusaurus"
+          branch: sync-docusaurus-api-reference
+          base: main
+          title: "docs: sync Haystack API reference on Docusaurus"
+          add-paths: |
+            docs-website/reference/haystack-api
+          body: |
+            This PR syncs the Haystack API reference on Docusaurus. Just approve and merge it.

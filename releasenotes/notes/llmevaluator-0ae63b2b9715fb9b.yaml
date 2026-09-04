@@ -1,0 +1,4 @@
+---
+features:
+  - |
+    Add a new LLMEvaluator component that leverages LLMs through the OpenAI api to evaluate pipelines.

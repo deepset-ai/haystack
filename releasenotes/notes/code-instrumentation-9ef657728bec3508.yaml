@@ -1,0 +1,89 @@
+---
+features:
+  - |
+    Added option to instrument pipeline and component runs.
+    This allows users to observe their pipeline runs and component runs in real-time via their chosen observability
+    tool. Out-of-the-box support for OpenTelemetry and Datadog will be added in separate contributions.
+
+    Example usage for [OpenTelemetry](https://opentelemetry.io/docs/languages/python/):
+
+    1. Install OpenTelemetry SDK and exporter:
+      ```bash
+      pip install opentelemetry-sdk opentelemetry-exporter-otlp-proto-http
+      ```
+
+    2. Configure OpenTelemetry SDK with your tracing provider and exporter:
+      ```python
+      from opentelemetry.sdk.resources import SERVICE_NAME, Resource
+
+      from opentelemetry import trace
+      from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
+      from opentelemetry.sdk.trace import TracerProvider
+      from opentelemetry.sdk.trace.export import BatchSpanProcessor
+
+      # Service name is required for most backends
+      resource = Resource(attributes={
+          SERVICE_NAME: "haystack"
+      })
+
+      traceProvider = TracerProvider(resource=resource)
+      processor = BatchSpanProcessor(OTLPSpanExporter(endpoint="http://localhost:4318/v1/traces"))
+      traceProvider.add_span_processor(processor)
+      trace.set_tracer_provider(traceProvider)
+
+      tracer = traceProvider.get_tracer("my_application")
+
+
+    3. Create tracer
+      ```python
+         import contextlib
+         from typing import Optional, Dict, Any, Iterator
+
+         from opentelemetry import trace
+         from opentelemetry.trace import NonRecordingSpan
+
+         from haystack.tracing import Tracer, Span
+         from haystack.tracing import utils as tracing_utils
+         import opentelemetry.trace
+
+
+         class OpenTelemetrySpan(Span):
+             def __init__(self, span: opentelemetry.trace.Span) -> None:
+                 self._span = span
+
+             def set_tag(self, key: str, value: Any) -> None:
+                 coerced_value = tracing_utils.coerce_tag_value(value)
+                 self._span.set_attribute(key, coerced_value)
+
+
+         class OpenTelemetryTracer(Tracer):
+             def __init__(self, tracer: opentelemetry.trace.Tracer) -> None:
+                 self._tracer = tracer
+
+             @contextlib.contextmanager
+             def trace(self, operation_name: str, tags: Optional[Dict[str, Any]] = None) -> Iterator[Span]:
+                 with self._tracer.start_as_current_span(operation_name) as span:
+                     span = OpenTelemetrySpan(span)
+                     if tags:
+                         span.set_tags(tags)
+
+                     yield span
+
+             def current_span(self) -> Optional[Span]:
+                 current_span = trace.get_current_span()
+                 if isinstance(current_span, NonRecordingSpan):
+                     return None
+
+                 return OpenTelemetrySpan(current_span)
+
+        ```
+
+    4. Use the tracer with Haystack:
+      ```python
+      from haystack import tracing
+
+      haystack_tracer = OpenTelemetryTracer(tracer)
+      tracing.enable_tracing(haystack_tracer)
+      ```
+
+    5. Run your pipeline

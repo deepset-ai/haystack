@@ -1,0 +1,195 @@
+---
+title: "Rhesis"
+id: rhesis
+slug: "/tracing-rhesis"
+description: "Learn how to trace your Haystack pipelines and Agents with Rhesis."
+---
+
+# Rhesis
+
+Learn how to trace your Haystack pipelines and Agents with Rhesis.
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Tracer class** | `RhesisTracer` |
+| **How to enable** | Add the `RhesisConnector` component to your pipeline — constructing it enables the tracer. For applications that drive Haystack outside a pipeline, use `RhesisTracing` |
+| **Content tracing** | Required for prompts and completions. Set `HAYSTACK_CONTENT_TRACING_ENABLED` to `true` |
+| **Package** | `rhesis-haystack` |
+| **API reference** | [rhesis](/reference/integrations-rhesis) |
+| **GitHub link** | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/rhesis |
+
+</div>
+
+## Overview
+
+Trace your Haystack pipelines, components and `Agent` runs in [Rhesis](https://rhesis.ai), an open-source platform for structured feedback and evaluation on LLM agents. Traces are exported over OpenTelemetry.
+
+Beyond viewing traces, the integration correlates them with evaluation data. Spans carry the identifiers of the test execution and the conversation turn they belong to — `rhesis.test.run_id`, `rhesis.test.id`, `rhesis.test.result_id`, and `rhesis.conversation.id` — so a pipeline can run under a Rhesis test run and have reviewer feedback land on the exact span tree that produced the answer.
+
+It also covers both Haystack span shapes: the 2.x batched `ToolInvoker` component span, and the 3.0 agent loop, where each step gets an `ai.llm.invoke` span, each tool call an `ai.tool.invoke` span, and a tool that runs another `Agent` is promoted to `ai.agent.handoff`.
+
+## Installation
+
+Install the `rhesis-haystack` package:
+
+```shell
+pip install rhesis-haystack
+```
+
+## Prerequisites
+
+1. A Rhesis [account](https://rhesis.ai), or a self-hosted backend that `RHESIS_BASE_URL` points at.
+2. Set the `RHESIS_API_KEY` environment variable with your Rhesis API key.
+3. Set the `HAYSTACK_CONTENT_TRACING_ENABLED` environment variable to `true` to capture prompts and completions.
+
+:::info[Usage Notice]
+To ensure proper tracing, always set environment variables before importing any Haystack components. This is crucial because Haystack initializes its internal tracing components during import. An even better practice is to set these environment variables in your shell before running the script.
+:::
+
+These are optional:
+
+| Variable | Description |
+| --- | --- |
+| `RHESIS_BASE_URL` | Backend URL. Defaults to `http://localhost:8080` |
+| `RHESIS_PROJECT_ID` | Project ID. Resolved from the API key when omitted |
+| `RHESIS_ENVIRONMENT` | Environment label. Defaults to `development` |
+| `RHESIS_FRONTEND_URL` | Frontend URL used to build `trace_url` deep links |
+| `HAYSTACK_RHESIS_ENFORCE_FLUSH` | Defaults to `true`, exporting once per pipeline run. Set to `false` to leave exporting to the batch processor |
+
+## Usage
+
+Add the `RhesisConnector` component to your pipeline without connecting it to anything else. Constructing it enables the tracer for every pipeline operation, and it returns the trace's `name`, `trace_url` and `trace_id` as outputs.
+
+```python
+import os
+
+os.environ["RHESIS_API_KEY"] = "<your-api-key>"
+os.environ["HAYSTACK_CONTENT_TRACING_ENABLED"] = "true"
+
+from haystack import Pipeline
+from haystack.components.builders import ChatPromptBuilder
+from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.dataclasses import ChatMessage
+
+from haystack_integrations.components.connectors.rhesis import RhesisConnector
+
+pipe = Pipeline()
+pipe.add_component("tracer", RhesisConnector("Chat example"))
+pipe.add_component("prompt_builder", ChatPromptBuilder())
+pipe.add_component("llm", OpenAIChatGenerator(model="gpt-4o-mini"))
+pipe.connect("prompt_builder.prompt", "llm.messages")
+
+messages = [
+    ChatMessage.from_system(
+        "Always respond in German even if some input data is in other languages.",
+    ),
+    ChatMessage.from_user("Tell me about {{location}}"),
+]
+
+response = pipe.run(
+    data={
+        "prompt_builder": {
+            "template_variables": {"location": "Berlin"},
+            "template": messages,
+        },
+        "tracer": {"invocation_context": {"session_id": "demo-session"}},
+    },
+)
+print(response["llm"]["replies"][0])
+print(response["tracer"]["trace_url"])
+print(response["tracer"]["trace_id"])
+```
+
+Each pipeline run produces one trace, rooted at a `function.haystack.pipeline.run` span, with a child span per component. Generators become `ai.llm.invoke` spans carrying the model name and token counts, retrievers become `ai.retrieval`, and embedders become `ai.embedding.generate`.
+
+The `invocation_context` input attaches metadata to the run's root span. The keys `session_id`, `conversation_id`, `test_run_id`, `test_id`, `test_result_id` and `test_configuration_id` become first-class Rhesis attributes; anything else travels as `haystack.invocation.<key>`.
+
+## Tracing an Agent
+
+Constructing `RhesisConnector` is what enables the tracer, so a standalone `Agent` needs nothing else — build the connector and never mention it again. Because there is no pipeline to carry the `invocation_context` input, attach metadata with the `rhesis_invocation_context` context manager instead:
+
+```python
+from haystack.dataclasses import ChatMessage
+
+from haystack_integrations.components.connectors.rhesis import RhesisConnector
+from haystack_integrations.tracing.rhesis import rhesis_invocation_context
+
+RhesisConnector("Agent example")  # enables the tracer; never added to a pipeline
+
+with rhesis_invocation_context({"session_id": "agent-example", "test_run_id": "tr-1"}):
+    result = agent.run(messages=[ChatMessage.from_user("What is the weather in Berlin?")])
+```
+
+Every span opened inside the block joins that session, and the previous context is restored on exit.
+
+The same context manager also works around a `pipeline.run()` call, where it does something the input socket cannot. Both attach the context to the run's root span, but the socket supplies its value from *inside* the run, so a component whose span closed before the connector executed has already been exported without it. Wrapping the call means no span opens without the context.
+
+## Tracing a multi-turn conversation
+
+An application that owns its own loop — a chat server, a REPL, a batch script — needs two things a component inside a pipeline cannot provide: tracing enabled without a pipeline to attach it to, and a span wrapping each whole pipeline run so a conversation turn has a root of its own. Without that root, the pipeline span claims the turn and reports the serialized pipeline input and output as the conversation text.
+
+`RhesisTracing` provides both:
+
+```python
+import os
+
+os.environ["RHESIS_API_KEY"] = "<your-api-key>"
+os.environ["HAYSTACK_CONTENT_TRACING_ENABLED"] = "true"
+
+from haystack_integrations.tracing.rhesis import RhesisTracing
+
+tracing = RhesisTracing("My Assistant")  # a no-op when RHESIS_API_KEY is unset
+tracing.start_conversation("conversation-1")
+
+for message in ["I have a headache", "It started three days ago"]:
+    with tracing.turn(message) as turn:
+        result = pipeline.run(...)
+        turn.output = extract_reply(result)  # what the user actually sees
+
+tracing.flush()
+```
+
+Every turn after the first joins the first one's trace, so a conversation reads as a single trace rather than one per exchange. Call `start_conversation` again to begin a new one.
+
+Assign `turn.output` yourself: only the application knows which part of a pipeline result is the reply — it may be a tool result, or a value held in agent state rather than the last assistant message.
+
+Pass `enabled=False` to build a no-op instance when your own configuration says tracing should be off, and `turn_span_name=...` to name turn spans after your application.
+
+## Flush behavior
+
+By default the tracer exports once per pipeline run, as the root span closes, so everything the run produced has reached the backend by the time `run()` returns. That costs one blocking round trip per run.
+
+Set `HAYSTACK_RHESIS_ENFORCE_FLUSH` to `false` to hand exporting to the OpenTelemetry batch processor instead and pay nothing on the request path. Spans are then sent in the background, and OpenTelemetry's `atexit` hook flushes what is left when the process exits normally. Keep the default when the process can be hard-killed, when a serverless runtime freezes the sandbox after returning a response, or when you cannot flush at shutdown yourself:
+
+```python
+from haystack.tracing import tracer
+
+try:
+    ...
+finally:
+    tracer.actual_tracer.flush()
+```
+
+## Customizing spans
+
+`RhesisConnector` accepts a custom `SpanHandler` if you want to attach your own attributes:
+
+```python
+from haystack_integrations.components.connectors.rhesis import RhesisConnector
+from haystack_integrations.tracing.rhesis import DefaultSpanHandler, RhesisSpan
+
+
+class CustomSpanHandler(DefaultSpanHandler):
+    def handle(self, span: RhesisSpan, component_type: str | None) -> None:
+        super().handle(span, component_type)
+        # add custom attributes here
+
+
+connector = RhesisConnector("My app", span_handler=CustomSpanHandler())
+```
+
+:::info
+`RhesisConnector` builds its own OpenTelemetry `TracerProvider` and never installs a global one, so it does not interfere with an application's existing APM or OpenTelemetry pipeline. The other side of that: Haystack spans go to Rhesis only, and spans your own instrumentation opens do not appear in Rhesis. Parent-child nesting still works across the two, because those relationships travel in the OpenTelemetry context rather than in the provider.
+:::

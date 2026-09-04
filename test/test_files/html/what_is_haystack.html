@@ -1,0 +1,1634 @@
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+
+  <title>
+
+      What is Haystack? | Haystack
+
+  </title>
+
+  <meta name="description" content="Haystack is an open source Python framework for building production-ready LLM applications, offering tooling for every stage of the NLP project life cycle." />
+
+
+
+
+
+
+  <meta property="og:title" content="What is Haystack? | Haystack" />
+
+
+
+<meta
+  property="og:description"
+  content="
+    Haystack is an open source Python framework for building production-ready LLM applications, offering tooling for every stage of the NLP project life cycle.
+  "
+/>
+<meta
+  property="og:type"
+  content="
+    article
+  "
+/>
+<meta property="og:url" content="/overview/intro/" />
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:creator" content="@deepset_ai" />
+<meta name="twitter:site" content="@deepset_ai" />
+
+
+  <meta name="twitter:title" content="What is Haystack? | Haystack" />
+
+
+<meta
+  name="twitter:description"
+  content="
+    Haystack is an open source Python framework for building production-ready LLM applications, offering tooling for every stage of the NLP project life cycle.
+
+  "
+/>
+    <meta property="og:image" content="https://haystack.deepset.ai/images/haystack-ogimage.png" />
+
+    <meta name="twitter:image" content="https://haystack.deepset.ai/images/haystack-ogimage.png" />
+
+  <meta property="og:site_name" content="Haystack" />
+
+
+
+
+
+  <link rel="stylesheet" href="/sass/main.min.8c81af65c01627c14397989b89e3aaddaa5827dd50907b2e05dc95a5cb37e1d7.css" />
+
+
+
+
+
+  <link href="https://www.googletagmanager.com" rel="preconnect" crossorigin />
+  <link rel="dns-prefetch" href="https://www.googletagmanager.com" />
+
+
+
+
+
+
+<script>
+    (function(w,d,s,l,i){
+        w[l]=w[l]||[];
+        w[l].push({'gtm.start': new Date().getTime(),event:'gtm.js'});
+        var f=d.getElementsByTagName(s)[0],j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src='https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+    })
+    (window,document,'script','dataLayer', "GTM-WCKQG9T");
+</script>
+</head>
+
+
+  <body>
+
+
+
+
+
+<noscript>
+    <iframe src="https://www.googletagmanager.com/ns.html?id=GTM-WCKQG9T" height="0" width="0" style="display:none;visibility:hidden"></iframe>
+</noscript>
+
+
+
+
+
+
+
+
+
+
+
+
+<header class="site-header header-dark">
+  <div class="container">
+    <a class="site-title" href="/"><svg
+  xmlns="http://www.w3.org/2000/svg"
+  viewBox="0 0 184 47"
+  role="img"
+  focusable="false"
+  aria-label="Haystack logo"
+>
+  <path
+    d="M61.91 11.64c-2.23 0-3.67 1.1-4.53 2.63V5.58c0-.28-.18-.46-.46-.46h-3.3c-.28 0-.46.18-.46.46v20.96c0 .28.18.46.46.46h3.3c.28 0 .46-.18.46-.46v-7.77c0-2.11 1.16-3.24 2.94-3.24 1.81 0 2.78 1.13 2.78 3.24v7.77c0 .28.18.46.46.46h3.27c.28 0 .49-.18.49-.46v-8.72c0-3.92-2.29-6.18-5.41-6.18zm14.78 15.73c2.23 0 3.86-.95 4.9-2.48l.06 1.65c0 .28.18.46.46.46h2.97c.28 0 .49-.18.49-.46V12.47c0-.28-.18-.46-.46-.46h-3c-.28 0-.46.18-.46.46l-.06 1.65c-1.01-1.56-2.63-2.48-4.9-2.48-4.22 0-7.13 3.43-7.13 7.86 0 4.47 2.91 7.87 7.13 7.87zm.89-3.86c-2.23 0-3.89-1.59-3.89-4.01 0-2.39 1.65-4.01 3.89-4.01s3.79 1.59 3.79 4.01-1.56 4.01-3.79 4.01zm17.05 9.3c.24 0 .46-.12.55-.37l7.93-19.92c.12-.34-.03-.52-.37-.52h-3.37c-.24 0-.46.12-.55.37l-3.55 9.73-3.58-9.73a.57.57 0 00-.55-.37h-3.37c-.34 0-.49.18-.37.52l5.78 14.5-2.17 5.26c-.15.34.03.52.37.52l3.25.01zm15.09-5.44c3 0 5.6-1.56 5.63-4.59.03-2.3-1.47-3.58-3.37-4.35l-2.11-.83c-.83-.31-1.44-.73-1.44-1.47 0-.64.46-1.19 1.44-1.19.89 0 1.74.43 2.72 1.25.28.21.49.24.7 0l1.35-1.62c.15-.18.21-.43.03-.64-1.26-1.5-3.06-2.3-5.02-2.3-2.78 0-5.23 1.65-5.23 4.53 0 2.08 1.35 3.34 3.27 4.1l1.9.77c1.1.46 1.56.83 1.56 1.56 0 .86-.67 1.25-1.68 1.25-1.16 0-2.2-.52-3.46-1.47-.24-.18-.52-.24-.76.12l-1.07 1.5c-.21.34-.25.67-.06.89 1.19 1.42 3.09 2.49 5.6 2.49zm14.01 0c1.01 0 2.54-.18 2.54-.89v-2.23c0-.31-.21-.46-.55-.43-.37.03-.67.03-.95.03-.79 0-1.32-.43-1.32-1.32v-7.25h2.36c.28 0 .46-.18.46-.46v-2.36c0-.28-.18-.46-.46-.46h-2.36V8.49c0-.28-.18-.46-.46-.46h-3.33c-.28 0-.46.18-.46.46v3.52h-1.9c-.28 0-.46.18-.46.46v2.36c0 .28.18.46.46.46h1.9V23c0 3.27 2.14 4.37 4.53 4.37zm11.45 0c2.23 0 3.86-.95 4.9-2.48l.06 1.65c0 .28.18.46.46.46h2.97c.27 0 .49-.18.49-.46V12.47c0-.28-.18-.46-.46-.46h-3c-.27 0-.46.18-.46.46l-.06 1.65c-1.01-1.56-2.63-2.48-4.9-2.48-4.22 0-7.13 3.43-7.13 7.86 0 4.47 2.91 7.87 7.13 7.87zm.89-3.86c-2.23 0-3.89-1.59-3.89-4.01 0-2.39 1.65-4.01 3.89-4.01 2.23 0 3.79 1.59 3.79 4.01s-1.56 4.01-3.79 4.01zm18.79 3.86c2.42 0 4.47-1.04 5.75-2.69.18-.21.12-.46-.06-.64l-1.84-1.81a.546.546 0 00-.79 0c-.83.83-1.71 1.25-2.88 1.25-2.48 0-4.04-1.84-4.04-4.04s1.56-3.92 3.95-3.92c1.22 0 2.11.43 2.94 1.25.21.21.55.24.8 0l1.84-1.81c.18-.18.25-.43.06-.64-1.29-1.65-3.34-2.69-5.81-2.69-4.5 0-7.83 3.37-7.83 7.8-.01 4.51 3.35 7.94 7.91 7.94zm12.5-.37c.28 0 .46-.18.46-.46v-3.18l1.87-2.11 4.04 5.48c.15.21.31.28.55.28h3.55c.37 0 .49-.24.28-.55l-5.88-8.11 5.08-5.78c.24-.31.15-.55-.25-.55h-3.76c-.21 0-.4.06-.55.24l-4.93 5.81V5.58c0-.28-.18-.46-.46-.46h-3.34c-.27 0-.46.18-.46.46v20.96c0 .28.18.46.46.46h3.34z"
+
+        fill="#f3f3f7"
+
+  ></path>
+  <path
+    d="M57.88 44.18c2.06 0 3.48-1.67 3.48-3.86 0-2.17-1.42-3.85-3.48-3.85-1.02 0-1.78.38-2.28 1.03v-4c0-.14-.09-.23-.22-.23h-1.64c-.13 0-.22.09-.22.23v10.27c0 .14.1.23.24.23h1.47c.14 0 .23-.09.23-.23l.03-.81c.5.75 1.28 1.22 2.39 1.22zm-.43-1.89c-1.11 0-1.88-.78-1.88-1.97 0-1.18.76-1.97 1.88-1.97 1.08 0 1.89.8 1.89 1.97 0 1.19-.81 1.97-1.89 1.97zm7.9 4.56c.12 0 .22-.06.27-.18l3.88-9.76c.06-.17-.01-.26-.18-.26h-1.65c-.12 0-.23.06-.27.18l-1.74 4.77-1.76-4.77a.279.279 0 00-.27-.18h-1.65c-.16 0-.24.09-.18.26l2.83 7.11-1.06 2.58c-.07.17.02.26.18.26l1.6-.01zm11.55-2.67c1.09 0 1.89-.47 2.4-1.22l.03.81c0 .14.09.23.22.23h1.46c.13 0 .24-.09.24-.23V33.5c0-.14-.09-.23-.22-.23h-1.64c-.14 0-.22.09-.22.23v4c-.5-.66-1.25-1.03-2.26-1.03-2.07 0-3.5 1.68-3.5 3.85-.01 2.19 1.42 3.86 3.49 3.86zm.43-1.89c-1.1 0-1.9-.78-1.9-1.97 0-1.17.81-1.97 1.9-1.97s1.86.78 1.86 1.97-.76 1.97-1.86 1.97zm9.36 1.89c1.03 0 1.98-.3 2.61-.93.13-.12.15-.23.07-.33l-.56-.76c-.07-.1-.15-.12-.25-.06-.6.35-1.14.45-1.71.45-1.19 0-1.95-.51-2.18-1.44h4.47c.64 0 .81-.41.81-1.12 0-1.86-1.29-3.51-3.53-3.51-2.26 0-3.78 1.67-3.78 3.83.02 2.2 1.64 3.87 4.05 3.87zm-2.04-4.53c.18-.97.89-1.47 1.8-1.47.88 0 1.54.49 1.66 1.47h-3.46zm10.37 4.53c1.04 0 1.98-.3 2.61-.93.14-.12.15-.23.08-.33l-.56-.76c-.08-.1-.15-.12-.26-.06-.6.35-1.14.45-1.71.45-1.18 0-1.95-.51-2.18-1.44h4.47c.65 0 .81-.41.81-1.12 0-1.86-1.29-3.51-3.53-3.51-2.26 0-3.78 1.67-3.78 3.83.01 2.2 1.63 3.87 4.05 3.87zm-2.04-4.53c.18-.97.89-1.47 1.8-1.47.89 0 1.54.49 1.67 1.47h-3.47zm8.56 7.2c.13 0 .22-.09.22-.22v-3.5c.51.66 1.28 1.05 2.28 1.05 2.06 0 3.48-1.67 3.48-3.86 0-2.17-1.42-3.85-3.48-3.85-1.12 0-1.9.45-2.4 1.22l-.03-.81c0-.14-.09-.23-.22-.23H99.9c-.13 0-.22.09-.22.23v9.75c0 .13.09.22.22.22h1.64zm2.07-4.56c-1.11 0-1.88-.78-1.88-1.97 0-1.18.76-1.97 1.88-1.97 1.08 0 1.89.8 1.89 1.97 0 1.19-.82 1.97-1.89 1.97zm7.68 1.89c1.47 0 2.75-.77 2.76-2.25.01-1.12-.72-1.76-1.65-2.13l-1.04-.4c-.4-.15-.7-.36-.7-.72 0-.32.22-.58.7-.58.44 0 .86.21 1.34.61.13.1.24.12.34 0l.66-.79c.07-.09.1-.21.01-.32-.61-.74-1.5-1.12-2.46-1.12-1.36 0-2.57.81-2.57 2.22 0 1.02.66 1.63 1.61 2.01l.93.38c.54.23.76.41.76.77 0 .42-.33.61-.83.61-.57 0-1.08-.26-1.69-.72-.12-.09-.25-.12-.38.06l-.52.74c-.11.17-.12.33-.03.44.6.66 1.53 1.19 2.76 1.19zm7.82 0c1.04 0 1.98-.3 2.61-.93.14-.12.15-.23.07-.33l-.56-.76c-.07-.1-.15-.12-.25-.06-.6.35-1.14.45-1.71.45-1.18 0-1.95-.51-2.18-1.44h4.47c.65 0 .81-.41.81-1.12 0-1.86-1.29-3.51-3.53-3.51-2.26 0-3.78 1.67-3.78 3.83.02 2.2 1.64 3.87 4.05 3.87zm-2.04-4.53c.18-.97.89-1.47 1.8-1.47.89 0 1.54.49 1.67 1.47h-3.47zm9.48 4.53c.49 0 1.24-.09 1.24-.44v-1.1c0-.15-.1-.22-.27-.21-.18.01-.33.01-.47.01-.39 0-.64-.21-.64-.65v-3.56h1.15c.14 0 .22-.09.22-.22v-1.15c0-.14-.09-.23-.22-.23h-1.15v-1.72c0-.14-.09-.23-.22-.23h-1.64c-.14 0-.22.09-.22.23v1.72h-.93c-.14 0-.22.09-.22.23v1.15c0 .13.09.22.22.22h.93v3.78c0 1.63 1.05 2.17 2.22 2.17z"
+    fill="#a0a0c0"
+  ></path>
+  <path
+    d="M3.56 0h29.88C35.41 0 37 1.59 37 3.56v39.88C37 45.4 35.41 47 33.44 47H3.56C1.59 47 0 45.4 0 43.44V3.56C0 1.59 1.59 0 3.56 0z"
+    fill="#03af9d"
+    class="haystack-logo_svg__green-area"
+  ></path>
+  <path
+    d="M7 18.51C7 12.15 12.16 7 18.52 7s11.52 5.16 11.52 11.52V35.5c0 .28-.22.5-.5.5-2.49 0-4.5-2.01-4.5-4.5V18.51c0-3.6-2.92-6.52-6.52-6.52S12 14.92 12 18.51v4.98c0 .28.22.5.5.5h3c.28 0 .5-.22.5-.5v-4a2.5 2.5 0 015 0v20c0 .28-.22.5-.5.5-2.49 0-4.5-2.01-4.5-4.5v-6c0-.28-.22-.5-.5-.5h-3c-.28 0-.5.22-.5.5v2c0 2.49-2.01 4.5-4.5 4.5a.48.48 0 01-.5-.49V18.51z"
+    fill="#f3f3f7"
+  ></path>
+</svg>
+</a>
+
+
+    <button class="nav-toggle nav-toggle-open" aria-label="Open menu">
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        viewBox="0 0 24 22"
+        role="presentation"
+        focusable="false"
+        class="header_hamburger-icon"
+      >
+        <path
+          stroke="#000"
+          stroke-linecap="round"
+          stroke-width="2"
+          d="M23 11H1M23 21H1M23 1H1"
+        ></path>
+      </svg>
+    </button>
+
+
+
+<nav class="nav mobile-nav">
+  <button class="nav-toggle nav-toggle-close" aria-label="Close menu">
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 14 14"
+      role="img"
+      aria-label="Cross icon"
+      focusable="false"
+    >
+      <path
+        d="M1 1l12 12m0-12L1 13"
+        stroke="#000"
+        stroke-linecap="round"
+        stroke-width="2"
+      ></path>
+    </svg>
+  </button>
+  <ul role="list">
+
+
+
+
+        <li>
+          <span class="menu-label">
+            Overview
+          </span>
+          <ul class="sub-menu" role="list">
+
+              <li
+                class="
+                  active
+                "
+              >
+
+                <a href="/overview/intro" >
+
+
+                  What is Haystack?
+                </a>
+              </li>
+
+              <li
+                class=""
+              >
+
+                <a href="/overview/quick-start" >
+
+
+                  Quick Start
+                </a>
+              </li>
+
+              <li
+                class=""
+              >
+
+                <a href="/overview/use-cases" >
+
+
+                  Use Cases
+                </a>
+              </li>
+
+              <li
+                class=""
+              >
+
+                <a href="/overview/demo" >
+
+
+                  Demo
+                </a>
+              </li>
+
+              <li
+                class=""
+              >
+
+                <a href="/overview/roadmap" >
+
+
+                  Roadmap
+                </a>
+              </li>
+
+          </ul>
+        </li>
+
+
+
+
+
+        <li>
+          <a href="https://docs.haystack.deepset.ai/docs" class=""  target="_blank" rel="noopener">
+
+
+            Documentation
+          </a>
+        </li>
+
+
+
+
+
+        <li>
+          <a href="/tutorials" class="" >
+
+
+            Tutorials
+          </a>
+        </li>
+
+
+
+
+
+        <li>
+          <a href="/integrations" class="" >
+
+
+            Integrations
+          </a>
+        </li>
+
+
+
+
+
+        <li>
+          <a href="/blog" class="" >
+
+
+            Blog
+          </a>
+        </li>
+
+
+
+
+
+        <li>
+          <a href="/community" class="" >
+
+
+            Community
+          </a>
+        </li>
+
+
+
+
+        <li>
+          <span class="menu-label">
+            Resources
+          </span>
+          <ul class="sub-menu" role="list">
+
+              <li
+                class=""
+              >
+
+                <a href="https://prompthub.deepset.ai"  target="_blank" rel="noopener">
+
+                    <span span class="menu-item-tag">New</span>
+
+
+                  PromptHub
+                </a>
+              </li>
+
+              <li
+                class=""
+              >
+
+                <a href="https://www.deepset.ai/blog"  target="_blank" rel="noopener">
+
+
+                  deepset Blog
+                </a>
+              </li>
+
+              <li
+                class=""
+              >
+
+                <a href="/benchmarks" >
+
+
+                  Benchmarks
+                </a>
+              </li>
+
+              <li
+                class=""
+              >
+
+                <a href="/nlp-resources" >
+
+
+                  NLP Resources
+                </a>
+              </li>
+
+          </ul>
+        </li>
+
+
+
+
+
+  <a class="btn btn-grey arrow-button" href="/overview/quick-start" >
+    <div class="button-wrapper">
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        width="16px"
+        height="16px"
+        viewBox="0 0 13 14"
+        role="presentation"
+        focusable="false"
+        class="button-arrow first"
+      >
+        <path
+          d="M6.33.8a.43.43 0 01.61 0l5.93 6.05c.09.09.13.21.13.32 0 .11-.04.23-.13.31l-5.93 6.05a.43.43 0 01-.61 0L5.31 12.5a.44.44 0 010-.62L8.62 8.5c.05-.06.02-.15-.06-.15H.43A.44.44 0 010 7.91V6.44C0 6.2.19 6 .43 6h8.14c.08 0 .12-.09.06-.15L5.31 2.46a.44.44 0 010-.62L6.33.8z"
+          fill="#fff"
+          fill-rule="evenodd"
+          clip-rule="evenodd"
+        ></path>
+      </svg>
+
+      <div class="text-wrapper">
+        Get Started
+      </div>
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        width="16px"
+        height="16px"
+        viewBox="0 0 13 14"
+        role="presentation"
+        focusable="false"
+        class="button-arrow second"
+      >
+        <path
+          d="M6.33.8a.43.43 0 01.61 0l5.93 6.05c.09.09.13.21.13.32 0 .11-.04.23-.13.31l-5.93 6.05a.43.43 0 01-.61 0L5.31 12.5a.44.44 0 010-.62L8.62 8.5c.05-.06.02-.15-.06-.15H.43A.44.44 0 010 7.91V6.44C0 6.2.19 6 .43 6h8.14c.08 0 .12-.09.06-.15L5.31 2.46a.44.44 0 010-.62L6.33.8z"
+          fill="#fff"
+          fill-rule="evenodd"
+          clip-rule="evenodd"
+        ></path>
+      </svg>
+    </div>
+  </a>
+
+
+
+
+
+  </ul>
+</nav>
+
+
+<nav class="nav desktop-nav">
+  <ul role="list">
+
+
+
+
+        <li class="dropdown-menu">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+          <a
+            href="#"
+            class="dropdown-button
+              active
+            "
+          >
+            Overview
+          </a>
+
+          <ul class="sub-menu" role="list">
+
+              <li
+                class="
+                  active
+                "
+              >
+                <a
+                  class="btn arrow-link"
+                  href="/overview/intro"
+
+                >
+                  <div class="button-wrapper">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="16px"
+                      height="16px"
+                      viewBox="0 0 13 14"
+                      role="presentation"
+                      focusable="false"
+                      class="button-arrow first"
+                    >
+                      <path
+                        d="M6.33.8a.43.43 0 01.61 0l5.93 6.05c.09.09.13.21.13.32 0 .11-.04.23-.13.31l-5.93 6.05a.43.43 0 01-.61 0L5.31 12.5a.44.44 0 010-.62L8.62 8.5c.05-.06.02-.15-.06-.15H.43A.44.44 0 010 7.91V6.44C0 6.2.19 6 .43 6h8.14c.08 0 .12-.09.06-.15L5.31 2.46a.44.44 0 010-.62L6.33.8z"
+                        fill="#2b2f55"
+                        fill-rule="evenodd"
+                        clip-rule="evenodd"
+                      ></path>
+                    </svg>
+                    <div class="text-wrapper">
+
+
+                      What is Haystack?
+                    </div>
+                  </div>
+                </a>
+              </li>
+
+              <li
+                class=""
+              >
+                <a
+                  class="btn arrow-link"
+                  href="/overview/quick-start"
+
+                >
+                  <div class="button-wrapper">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="16px"
+                      height="16px"
+                      viewBox="0 0 13 14"
+                      role="presentation"
+                      focusable="false"
+                      class="button-arrow first"
+                    >
+                      <path
+                        d="M6.33.8a.43.43 0 01.61 0l5.93 6.05c.09.09.13.21.13.32 0 .11-.04.23-.13.31l-5.93 6.05a.43.43 0 01-.61 0L5.31 12.5a.44.44 0 010-.62L8.62 8.5c.05-.06.02-.15-.06-.15H.43A.44.44 0 010 7.91V6.44C0 6.2.19 6 .43 6h8.14c.08 0 .12-.09.06-.15L5.31 2.46a.44.44 0 010-.62L6.33.8z"
+                        fill="#2b2f55"
+                        fill-rule="evenodd"
+                        clip-rule="evenodd"
+                      ></path>
+                    </svg>
+                    <div class="text-wrapper">
+
+
+                      Quick Start
+                    </div>
+                  </div>
+                </a>
+              </li>
+
+              <li
+                class=""
+              >
+                <a
+                  class="btn arrow-link"
+                  href="/overview/use-cases"
+
+                >
+                  <div class="button-wrapper">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="16px"
+                      height="16px"
+                      viewBox="0 0 13 14"
+                      role="presentation"
+                      focusable="false"
+                      class="button-arrow first"
+                    >
+                      <path
+                        d="M6.33.8a.43.43 0 01.61 0l5.93 6.05c.09.09.13.21.13.32 0 .11-.04.23-.13.31l-5.93 6.05a.43.43 0 01-.61 0L5.31 12.5a.44.44 0 010-.62L8.62 8.5c.05-.06.02-.15-.06-.15H.43A.44.44 0 010 7.91V6.44C0 6.2.19 6 .43 6h8.14c.08 0 .12-.09.06-.15L5.31 2.46a.44.44 0 010-.62L6.33.8z"
+                        fill="#2b2f55"
+                        fill-rule="evenodd"
+                        clip-rule="evenodd"
+                      ></path>
+                    </svg>
+                    <div class="text-wrapper">
+
+
+                      Use Cases
+                    </div>
+                  </div>
+                </a>
+              </li>
+
+              <li
+                class=""
+              >
+                <a
+                  class="btn arrow-link"
+                  href="/overview/demo"
+
+                >
+                  <div class="button-wrapper">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="16px"
+                      height="16px"
+                      viewBox="0 0 13 14"
+                      role="presentation"
+                      focusable="false"
+                      class="button-arrow first"
+                    >
+                      <path
+                        d="M6.33.8a.43.43 0 01.61 0l5.93 6.05c.09.09.13.21.13.32 0 .11-.04.23-.13.31l-5.93 6.05a.43.43 0 01-.61 0L5.31 12.5a.44.44 0 010-.62L8.62 8.5c.05-.06.02-.15-.06-.15H.43A.44.44 0 010 7.91V6.44C0 6.2.19 6 .43 6h8.14c.08 0 .12-.09.06-.15L5.31 2.46a.44.44 0 010-.62L6.33.8z"
+                        fill="#2b2f55"
+                        fill-rule="evenodd"
+                        clip-rule="evenodd"
+                      ></path>
+                    </svg>
+                    <div class="text-wrapper">
+
+
+                      Demo
+                    </div>
+                  </div>
+                </a>
+              </li>
+
+              <li
+                class=""
+              >
+                <a
+                  class="btn arrow-link"
+                  href="/overview/roadmap"
+
+                >
+                  <div class="button-wrapper">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="16px"
+                      height="16px"
+                      viewBox="0 0 13 14"
+                      role="presentation"
+                      focusable="false"
+                      class="button-arrow first"
+                    >
+                      <path
+                        d="M6.33.8a.43.43 0 01.61 0l5.93 6.05c.09.09.13.21.13.32 0 .11-.04.23-.13.31l-5.93 6.05a.43.43 0 01-.61 0L5.31 12.5a.44.44 0 010-.62L8.62 8.5c.05-.06.02-.15-.06-.15H.43A.44.44 0 010 7.91V6.44C0 6.2.19 6 .43 6h8.14c.08 0 .12-.09.06-.15L5.31 2.46a.44.44 0 010-.62L6.33.8z"
+                        fill="#2b2f55"
+                        fill-rule="evenodd"
+                        clip-rule="evenodd"
+                      ></path>
+                    </svg>
+                    <div class="text-wrapper">
+
+
+                      Roadmap
+                    </div>
+                  </div>
+                </a>
+              </li>
+
+          </ul>
+        </li>
+
+
+
+
+
+        <li>
+          <a
+            href="https://docs.haystack.deepset.ai/docs"
+            class=""
+
+              target="_blank" rel="noopener"
+
+            >
+
+
+            Documentation</a
+          >
+        </li>
+
+
+
+
+
+        <li>
+          <a
+            href="/tutorials"
+            class=""
+
+            >
+
+
+            Tutorials</a
+          >
+        </li>
+
+
+
+
+
+        <li>
+          <a
+            href="/integrations"
+            class=""
+
+            >
+
+
+            Integrations</a
+          >
+        </li>
+
+
+
+
+
+        <li>
+          <a
+            href="/blog"
+            class=""
+
+            >
+
+
+            Blog</a
+          >
+        </li>
+
+
+
+
+
+        <li>
+          <a
+            href="/community"
+            class=""
+
+            >
+
+
+            Community</a
+          >
+        </li>
+
+
+
+
+        <li class="dropdown-menu">
+
+            <span class="menu-item-tag">New</span>
+
+
+
+
+
+
+
+
+
+
+
+
+
+          <a
+            href="#"
+            class="dropdown-button "
+          >
+            Resources
+          </a>
+
+          <ul class="sub-menu" role="list">
+
+              <li
+                class=""
+              >
+                <a
+                  class="btn arrow-link"
+                  href="https://prompthub.deepset.ai"
+
+                    target="_blank" rel="noopener"
+
+                >
+                  <div class="button-wrapper">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="16px"
+                      height="16px"
+                      viewBox="0 0 13 14"
+                      role="presentation"
+                      focusable="false"
+                      class="button-arrow first"
+                    >
+                      <path
+                        d="M6.33.8a.43.43 0 01.61 0l5.93 6.05c.09.09.13.21.13.32 0 .11-.04.23-.13.31l-5.93 6.05a.43.43 0 01-.61 0L5.31 12.5a.44.44 0 010-.62L8.62 8.5c.05-.06.02-.15-.06-.15H.43A.44.44 0 010 7.91V6.44C0 6.2.19 6 .43 6h8.14c.08 0 .12-.09.06-.15L5.31 2.46a.44.44 0 010-.62L6.33.8z"
+                        fill="#2b2f55"
+                        fill-rule="evenodd"
+                        clip-rule="evenodd"
+                      ></path>
+                    </svg>
+                    <div class="text-wrapper">
+
+                        <span class="menu-item-tag">New</span>
+
+
+                      PromptHub
+                    </div>
+                  </div>
+                </a>
+              </li>
+
+              <li
+                class=""
+              >
+                <a
+                  class="btn arrow-link"
+                  href="https://www.deepset.ai/blog"
+
+                    target="_blank" rel="noopener"
+
+                >
+                  <div class="button-wrapper">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="16px"
+                      height="16px"
+                      viewBox="0 0 13 14"
+                      role="presentation"
+                      focusable="false"
+                      class="button-arrow first"
+                    >
+                      <path
+                        d="M6.33.8a.43.43 0 01.61 0l5.93 6.05c.09.09.13.21.13.32 0 .11-.04.23-.13.31l-5.93 6.05a.43.43 0 01-.61 0L5.31 12.5a.44.44 0 010-.62L8.62 8.5c.05-.06.02-.15-.06-.15H.43A.44.44 0 010 7.91V6.44C0 6.2.19 6 .43 6h8.14c.08 0 .12-.09.06-.15L5.31 2.46a.44.44 0 010-.62L6.33.8z"
+                        fill="#2b2f55"
+                        fill-rule="evenodd"
+                        clip-rule="evenodd"
+                      ></path>
+                    </svg>
+                    <div class="text-wrapper">
+
+
+                      deepset Blog
+                    </div>
+                  </div>
+                </a>
+              </li>
+
+              <li
+                class=""
+              >
+                <a
+                  class="btn arrow-link"
+                  href="/benchmarks"
+
+                >
+                  <div class="button-wrapper">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="16px"
+                      height="16px"
+                      viewBox="0 0 13 14"
+                      role="presentation"
+                      focusable="false"
+                      class="button-arrow first"
+                    >
+                      <path
+                        d="M6.33.8a.43.43 0 01.61 0l5.93 6.05c.09.09.13.21.13.32 0 .11-.04.23-.13.31l-5.93 6.05a.43.43 0 01-.61 0L5.31 12.5a.44.44 0 010-.62L8.62 8.5c.05-.06.02-.15-.06-.15H.43A.44.44 0 010 7.91V6.44C0 6.2.19 6 .43 6h8.14c.08 0 .12-.09.06-.15L5.31 2.46a.44.44 0 010-.62L6.33.8z"
+                        fill="#2b2f55"
+                        fill-rule="evenodd"
+                        clip-rule="evenodd"
+                      ></path>
+                    </svg>
+                    <div class="text-wrapper">
+
+
+                      Benchmarks
+                    </div>
+                  </div>
+                </a>
+              </li>
+
+              <li
+                class=""
+              >
+                <a
+                  class="btn arrow-link"
+                  href="/nlp-resources"
+
+                >
+                  <div class="button-wrapper">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="16px"
+                      height="16px"
+                      viewBox="0 0 13 14"
+                      role="presentation"
+                      focusable="false"
+                      class="button-arrow first"
+                    >
+                      <path
+                        d="M6.33.8a.43.43 0 01.61 0l5.93 6.05c.09.09.13.21.13.32 0 .11-.04.23-.13.31l-5.93 6.05a.43.43 0 01-.61 0L5.31 12.5a.44.44 0 010-.62L8.62 8.5c.05-.06.02-.15-.06-.15H.43A.44.44 0 010 7.91V6.44C0 6.2.19 6 .43 6h8.14c.08 0 .12-.09.06-.15L5.31 2.46a.44.44 0 010-.62L6.33.8z"
+                        fill="#2b2f55"
+                        fill-rule="evenodd"
+                        clip-rule="evenodd"
+                      ></path>
+                    </svg>
+                    <div class="text-wrapper">
+
+
+                      NLP Resources
+                    </div>
+                  </div>
+                </a>
+              </li>
+
+          </ul>
+        </li>
+
+
+
+
+
+  <a class="btn btn-grey arrow-button" href="/overview/quick-start" >
+    <div class="button-wrapper">
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        width="16px"
+        height="16px"
+        viewBox="0 0 13 14"
+        role="presentation"
+        focusable="false"
+        class="button-arrow first"
+      >
+        <path
+          d="M6.33.8a.43.43 0 01.61 0l5.93 6.05c.09.09.13.21.13.32 0 .11-.04.23-.13.31l-5.93 6.05a.43.43 0 01-.61 0L5.31 12.5a.44.44 0 010-.62L8.62 8.5c.05-.06.02-.15-.06-.15H.43A.44.44 0 010 7.91V6.44C0 6.2.19 6 .43 6h8.14c.08 0 .12-.09.06-.15L5.31 2.46a.44.44 0 010-.62L6.33.8z"
+          fill="#fff"
+          fill-rule="evenodd"
+          clip-rule="evenodd"
+        ></path>
+      </svg>
+
+      <div class="text-wrapper">
+        Get Started
+      </div>
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        width="16px"
+        height="16px"
+        viewBox="0 0 13 14"
+        role="presentation"
+        focusable="false"
+        class="button-arrow second"
+      >
+        <path
+          d="M6.33.8a.43.43 0 01.61 0l5.93 6.05c.09.09.13.21.13.32 0 .11-.04.23-.13.31l-5.93 6.05a.43.43 0 01-.61 0L5.31 12.5a.44.44 0 010-.62L8.62 8.5c.05-.06.02-.15-.06-.15H.43A.44.44 0 010 7.91V6.44C0 6.2.19 6 .43 6h8.14c.08 0 .12-.09.06-.15L5.31 2.46a.44.44 0 010-.62L6.33.8z"
+          fill="#fff"
+          fill-rule="evenodd"
+          clip-rule="evenodd"
+        ></path>
+      </svg>
+    </div>
+  </a>
+
+
+
+
+  </ul>
+</nav>
+
+
+  </div>
+</header>
+
+
+
+
+      <a href="/hacktoberfest" class="announcement-bar">
+    <div class="container">
+        <span>🎃 We're participating in Hacktoberfest 2023!</span>
+        <span>
+            <svg
+        xmlns="http://www.w3.org/2000/svg"
+        width="14px"
+        height="14px"
+        viewBox="0 0 13 14"
+        role="presentation"
+        focusable="false"
+        class="arrow"
+      >
+        <path
+          d="M6.33.8a.43.43 0 01.61 0l5.93 6.05c.09.09.13.21.13.32 0 .11-.04.23-.13.31l-5.93 6.05a.43.43 0 01-.61 0L5.31 12.5a.44.44 0 010-.62L8.62 8.5c.05-.06.02-.15-.06-.15H.43A.44.44 0 010 7.91V6.44C0 6.2.19 6 .43 6h8.14c.08 0 .12-.09.06-.15L5.31 2.46a.44.44 0 010-.62L6.33.8z"
+          fill="#fff"
+          fill-rule="evenodd"
+          clip-rule="evenodd"
+        ></path>
+      </svg>
+        </span>
+    </div>
+</a>
+
+
+
+    <main>
+
+  <div class="container">
+    <div class="inner inner-top">
+      <div class="overview article">
+
+
+        <aside class="toc-sidebar">
+          <ul class="content" role="list">
+
+              <li>
+
+                  <details class="accordion-js accordion-child" open>
+                    <summary class="accordion-title">
+                      What is Haystack?
+                    </summary>
+
+                      <div class="content">
+                        <nav id="TableOfContents">
+  <ul>
+    <li><a href="#building-with-haystack">Building with Haystack</a></li>
+    <li><a href="#functionality-for-all-stages-of-an-nlp-project">Functionality for all stages of an NLP project</a></li>
+    <li><a href="#building-blocks">Building blocks</a></li>
+    <li><a href="#whos-it-for">Who’s it for?</a></li>
+    <li><a href="#our-community">Our community</a></li>
+    <li><a href="#enter-the-haystack-universe">Enter the Haystack universe</a></li>
+  </ul>
+</nav>
+                      </div>
+
+                  </details>
+
+              </li>
+
+              <li>
+
+                  <a
+                    class="tutorial-card category-"
+                    href="/overview/quick-start/"
+                  >
+                    Quick Start
+                  </a>
+
+              </li>
+
+              <li>
+
+                  <a
+                    class="tutorial-card category-"
+                    href="/overview/demo/"
+                  >
+                    Demo
+                  </a>
+
+              </li>
+
+              <li>
+
+                  <a
+                    class="tutorial-card category-"
+                    href="/overview/roadmap/"
+                  >
+                    Roadmap
+                  </a>
+
+              </li>
+
+              <li>
+
+                  <a
+                    class="tutorial-card category-"
+                    href="/overview/use-cases/"
+                  >
+                    Use Cases
+                  </a>
+
+              </li>
+
+          </ul>
+        </aside>
+
+
+        <article class="article-content">
+          <h1>What is Haystack?</h1>
+          <p>Haystack is the open source Python framework by deepset for building custom apps with large language models (LLMs). It lets you quickly try out the latest models in natural language processing (NLP) while being flexible and easy to use. Our inspiring community of users and builders has helped shape Haystack into what it is today: a complete framework for building production-ready NLP apps.</p>
+<h2 id="building-with-haystack">Building with Haystack</h2>
+<p>Haystack offers comprehensive tooling for developing state-of-the-art NLP systems that use LLMs (such as GPT-4, Falcon and similar) and Transformer models . With Haystack, you can effortlessly experiment with various models hosted on platforms like Hugging Face, OpenAI, Cohere, or even models deployed on SageMaker and your local models to find the perfect fit for your use case.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    <img src="/images/model_providers_hu0cc9bf8102b4d45e75d89acd8a0ddbf4_163613_800x0_resize_q80_box_3.png"  alt="Model Providers"  loading="lazy"  style="margin-left: auto; margin-right: auto;" />
+
+
+<p>Some examples of what you can build include:</p>
+<ul>
+<li><strong>Semantic search</strong> on a large collection of documents in any language</li>
+<li><strong>Generative question answering</strong> on a knowledge base containing mixed types of information: images, text, and tables.</li>
+<li><strong>Natural language chatbots</strong> powered by cutting-edge generative models like GPT-4</li>
+<li>An LLM-based Haystack <strong>Agent</strong> capable of resolving complex queries</li>
+<li><strong>Information extraction</strong> from documents to populate your database or build a knowledge graph</li>
+</ul>
+<p>This is just a small subset of the kinds of systems that can be created in Haystack.</p>
+<h2 id="functionality-for-all-stages-of-an-nlp-project">Functionality for all stages of an NLP project</h2>
+<p>A successful NLP project requires more than just the language models. As an end-to-end framework, Haystack assists you in building your system every step of the way, offering tooling for each stage of the NLP project life cycle:</p>
+<ul>
+<li>Effortless deployment of models from Hugging Face or other providers into your NLP pipeline</li>
+<li>Create dynamic templates for LLM prompting</li>
+<li>
+<a href="https://docs.haystack.deepset.ai/docs/data_handling" target="_blank" rel="noopener">Cleaning and preprocessing functions</a> for various formats and sources</li>
+<li>
+<a href="https://docs.haystack.deepset.ai/docs/document_store" target="_blank" rel="noopener">Seamless integrations with your preferred document store</a> (including many popular vector databases like Faiss, Pinecone, Qdrant, or Weaviate): keep your NLP-driven apps up-to-date with Haystack’s indexing pipelines that help you prepare and maintain your data</li>
+<li>The
+<a href="https://docs.haystack.deepset.ai/docs/annotation" target="_blank" rel="noopener">free annotation tool</a> for a faster and more structured annotation process</li>
+<li>Tooling for
+<a href="https://docs.haystack.deepset.ai/docs/domain_adaptation" target="_blank" rel="noopener">fine-tuning a pre-trained language model</a></li>
+<li>Specialized
+<a href="https://docs.haystack.deepset.ai/docs/evaluation" target="_blank" rel="noopener">evaluation pipelines</a> that use different metrics to evaluate the entire system or its individual components</li>
+<li>
+<a href="https://docs.haystack.deepset.ai/docs/rest_api" target="_blank" rel="noopener">Haystack’s REST API</a> to deploy your final system so that you can query it with a user-facing interface</li>
+</ul>
+<p>But that’s not all:
+<a href="https://docs.haystack.deepset.ai/docs/metadata-filtering" target="_blank" rel="noopener">metadata filtering</a>,
+<a href="https://docs.haystack.deepset.ai/docs/model_distillation" target="_blank" rel="noopener">model distillation</a>, or the prompt hub, whatever your NLP heart desires, you’re likely to find it in Haystack. And if not? We’ll build it together.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    <img src="/images/rest_hu14c22e63e1e8233ef0a6c30c3e673d88_208892_800x0_resize_q100_box_3.png"  alt="Rest API"  loading="lazy"  style="margin-left: auto; margin-right: auto;" />
+
+
+<h2 id="building-blocks">Building blocks</h2>
+<p>Haystack uses a few simple but effective concepts to help you build fully functional and customized end-to-end NLP systems.</p>
+<h3 id="components">Components</h3>
+<p>At the core of Haystack are its components—fundamental building blocks that can perform tasks like document retrieval, text generation, or summarization. A single component is already quite powerful. It can manage local language models or communicate with a hosted model through an API.</p>
+<p>While Haystack offers a bunch of components you can use out of the box, it also lets you create your own custom components. Explore the
+<a href="https://haystack.deepset.ai/integrations" target="_blank" rel="noopener">collection of integrations</a> that includes custom components developed by our community, which you can freely use.</p>
+<p>You can chain components together to build pipelines, which are the foundation of the NLP app architecture in Haystack.</p>
+<h3 id="pipelines">Pipelines</h3>
+<p>Pipelines are powerful structures made up of components, such as a Retriever and Reader, connected to infrastructure building blocks, such as a DocumentStore (for example, Elasticsearch or Weaviate) to form complex systems.</p>
+<p>Haystack offers ready-made pipelines for most common tasks, such as question answering, document retrieval, or summarization. But it’s just as easy to design and create a custom pipeline for NLP scenarios that are way more complex than question answering.</p>
+<h3 id="agents">Agents</h3>
+<p>The Haystack Agent makes use of a large language model to resolve complex tasks. When initializing the Agent, you give it a set of tools, which can be pipeline components or whole pipelines. The Agent can use to those tools iteratively to arrive at an answer. When given a query, the Agent determines which tools are useful to answer this query and calls them in a loop until it gets the answer. This way, it can achieve much more than extractive or generative question answering pipelines.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    <img src="/images/agent_huaf5e76f42a18750ad67b8679d0169d37_190069_800x0_resize_q80_box_3.png"  alt="Agent Tools"  loading="lazy"  style="margin-left: auto; margin-right: auto;" />
+
+
+<h2 id="whos-it-for">Who’s it for?</h2>
+<p>Haystack is for everyone looking to build natural language apps—NLP enthusiasts and newbies alike. You don’t need to understand how the models work under the hood. With Haystack’s modular and flexible components, pipelines, and agents, all you need is some basic knowledge of Python to dive right in.</p>
+<h2 id="our-community">Our community</h2>
+<p>At the heart of Haystack is the vibrant open source community that thrives on the diverse backgrounds and skill sets of its members. We value collaboration greatly and encourage our users to shape Haystack actively through GitHub contributions. Our Discord channel is a space where community members can connect, seek help, and learn from each other.</p>
+<p>We also organize live online and in-person events, webinars, and office hours, which are an opportunity to learn and grow.</p>
+
+
+
+
+
+
+
+<a
+  class="btn arrow-button btn-green"
+  href="https://discord.com/invite/VBpFzsgRVF"  target="_blank" rel="noopener"
+>
+  <div class="button-wrapper">
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width="16px"
+      height="16px"
+      viewBox="0 0 13 14"
+      role="presentation"
+      focusable="false"
+      class="button-arrow first"
+      fill="#188bf5"
+    >
+      <path
+        d="M6.33.8a.43.43 0 01.61 0l5.93 6.05c.09.09.13.21.13.32 0 .11-.04.23-.13.31l-5.93 6.05a.43.43 0 01-.61 0L5.31 12.5a.44.44 0 010-.62L8.62 8.5c.05-.06.02-.15-.06-.15H.43A.44.44 0 010 7.91V6.44C0 6.2.19 6 .43 6h8.14c.08 0 .12-.09.06-.15L5.31 2.46a.44.44 0 010-.62L6.33.8z"
+        fill-rule="evenodd"
+        clip-rule="evenodd"
+      ></path>
+    </svg>
+    <div class="text-wrapper">
+      Join Discord
+    </div>
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width="16px"
+      height="16px"
+      viewBox="0 0 13 14"
+      role="presentation"
+      focusable="false"
+      class="button-arrow second"
+      fill="#188bf5"
+    >
+      <path
+        d="M6.33.8a.43.43 0 01.61 0l5.93 6.05c.09.09.13.21.13.32 0 .11-.04.23-.13.31l-5.93 6.05a.43.43 0 01-.61 0L5.31 12.5a.44.44 0 010-.62L8.62 8.5c.05-.06.02-.15-.06-.15H.43A.44.44 0 010 7.91V6.44C0 6.2.19 6 .43 6h8.14c.08 0 .12-.09.06-.15L5.31 2.46a.44.44 0 010-.62L6.33.8z"
+        fill-rule="evenodd"
+        clip-rule="evenodd"
+      ></path>
+    </svg>
+  </div>
+</a>
+
+<h2 id="enter-the-haystack-universe">Enter the Haystack universe</h2>
+<ul>
+<li>Visit our
+<a href="https://github.com/deepset-ai/haystack" target="_blank" rel="noopener">GitHub repo</a></li>
+<li>Start building with
+<a href="https://haystack.deepset.ai/tutorials" target="_blank" rel="noopener">tutorials</a> in Colab notebooks</li>
+<li>Have a look at the
+<a href="https://docs.haystack.deepset.ai/" target="_blank" rel="noopener">documentation</a></li>
+<li>Read and contribute to our
+<a href="https://haystack.deepset.ai/blog" target="_blank" rel="noopener">blog</a></li>
+</ul>
+
+
+
+          <div class="article-pagination">
+  <div class="prev-article">
+
+  </div>
+
+  <div class="next-article">
+
+  </div>
+</div>
+
+        </article>
+      </div>
+    </div>
+  </div>
+</main>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<footer
+  class="footer footer-dark"
+>
+  <div class="container">
+    <div class="inner">
+
+      <div>
+        <div class="footer-main-links">
+
+          <ul role="list" aria-label="Community pages">
+            <li class="footer-label">Community</li>
+            <li>
+              <a
+                aria-label="Go to Haystack's Github discussions"
+                href="https://github.com/deepset-ai/haystack/discussions"
+                >GitHub Discussions</a
+              >
+            </li>
+
+            <li>
+              <a
+                aria-label="Join Discord"
+                href="https://discord.com/invite/VBpFzsgRVF"
+                >Discord</a
+              >
+            </li>
+            <li>
+              <a
+                aria-label="Go to Haystack's Hugging Face page"
+                href="https://huggingface.co/deepset"
+                >Hugging Face</a
+              >
+            </li>
+            <li>
+              <a aria-label="Join the Open NLP Meetup" href="https://www.meetup.com/open-nlp-meetup/">Open NLP Meetup</a>
+            </li>
+          </ul>
+
+
+          <ul role="list" aria-label="Resources pages">
+            <li class="footer-label">Resources</li>
+            <li>
+              <a
+                href="https://www.deepset.ai/models"
+                aria-label="Go to the Models page"
+                >Models</a
+              >
+            </li>
+            <li>
+              <a
+                href="https://www.deepset.ai/datasets"
+                aria-label="Go to the Datasets page"
+                >Datasets</a
+              >
+            </li>
+          </ul>
+
+
+          <ul role="list" aria-label="Company pages">
+            <li class="footer-label">Company</li>
+            <li>
+              <a
+                href="https://www.deepset.ai/about"
+                aria-label="Go to the About page"
+                >About</a
+              >
+            </li>
+            <li>
+              <a
+                href="https://www.deepset.ai/jobs"
+                aria-label="Go to the Jobs page"
+                >Jobs</a
+              >
+            </li>
+          </ul>
+        </div>
+
+        <div class="newsletter-card">
+          <svg
+            version="1.1"
+            id="Layer_1"
+            xmlns="http://www.w3.org/2000/svg"
+            xmlns:xlink="http://www.w3.org/1999/xlink"
+            x="0px"
+            y="0px"
+            viewBox="0 0 330.001 330.001"
+            style="enable-background:new 0 0 330.001 330.001;"
+            xml:space="preserve"
+            fill="#a0a0c0"
+            class="mail-icon"
+          >
+            <g id="XMLID_348_">
+              <path
+                id="XMLID_350_"
+                d="M173.871,177.097c-2.641,1.936-5.756,2.903-8.87,2.903c-3.116,0-6.23-0.967-8.871-2.903L30,84.602
+		L0.001,62.603L0,275.001c0.001,8.284,6.716,15,15,15L315.001,290c8.285,0,15-6.716,15-14.999V62.602l-30.001,22L173.871,177.097z"
+              />
+              <polygon
+                id="XMLID_351_"
+                points="165.001,146.4 310.087,40.001 19.911,40"
+              />
+            </g>
+          </svg>
+
+          <h3>Sign up for community updates</h3>
+
+          <form
+            class="js-newsletter-form disabled"
+            aria-label="Subscribe to our community updates"
+          >
+            <input
+              type="email"
+              name="email"
+              placeholder="Email address..."
+              aria-label="Email"
+            />
+
+
+
+  <button type="submit" class="btn btn-green arrow-button" disabled>
+    <div class="button-wrapper">
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        width="16px"
+        height="16px"
+        viewBox="0 0 13 14"
+        role="presentation"
+        focusable="false"
+        class="button-arrow first"
+      >
+        <path
+          d="M6.33.8a.43.43 0 01.61 0l5.93 6.05c.09.09.13.21.13.32 0 .11-.04.23-.13.31l-5.93 6.05a.43.43 0 01-.61 0L5.31 12.5a.44.44 0 010-.62L8.62 8.5c.05-.06.02-.15-.06-.15H.43A.44.44 0 010 7.91V6.44C0 6.2.19 6 .43 6h8.14c.08 0 .12-.09.06-.15L5.31 2.46a.44.44 0 010-.62L6.33.8z"
+          fill="#fff"
+          fill-rule="evenodd"
+          clip-rule="evenodd"
+        ></path>
+      </svg>
+      <div class="text-wrapper">
+        Submit
+      </div>
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        width="16px"
+        height="16px"
+        viewBox="0 0 13 14"
+        role="presentation"
+        focusable="false"
+        class="button-arrow second"
+      >
+        <path
+          d="M6.33.8a.43.43 0 01.61 0l5.93 6.05c.09.09.13.21.13.32 0 .11-.04.23-.13.31l-5.93 6.05a.43.43 0 01-.61 0L5.31 12.5a.44.44 0 010-.62L8.62 8.5c.05-.06.02-.15-.06-.15H.43A.44.44 0 010 7.91V6.44C0 6.2.19 6 .43 6h8.14c.08 0 .12-.09.06-.15L5.31 2.46a.44.44 0 010-.62L6.33.8z"
+          fill="#fff"
+          fill-rule="evenodd"
+          clip-rule="evenodd"
+        ></path>
+      </svg>
+    </div>
+  </button>
+
+
+            <span class="success-message">Thanks! You'll soon receive a confirmation email 📧</span>
+          </form>
+          <small class="copyright">By submitting my email, I agree to allow deepset to store and process my personal data.</small>
+        </div>
+      </div>
+
+
+      <div class="footer-secondary-links">
+
+        <a
+          class="footer-deepset-logo"
+          aria-label="Go to Deepset AI's homepage"
+          href="https://www.deepset.ai/"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 140 36"
+            role="img"
+            aria-label="Deepset logo"
+            focusable="false"
+          >
+            <path
+              d="M50.22 25.4c-1.83 0-3.33-.65-4.48-1.95-1.16-1.3-1.73-2.94-1.73-4.91 0-1.96.58-3.59 1.73-4.88 1.17-1.32 2.67-1.97 4.48-1.97 1.76 0 3.1.61 4.03 1.84V6.4c0-.27.13-.4.4-.4h2.91c.27 0 .4.13.4.4v18.28c0 .27-.14.4-.43.4h-2.59c-.27 0-.4-.13-.4-.4l-.05-1.44c-.98 1.44-2.4 2.16-4.27 2.16zm-1.66-4.32c.64.64 1.45.96 2.43.96.98 0 1.77-.32 2.38-.96.62-.64.93-1.49.93-2.54s-.31-1.89-.93-2.54c-.6-.64-1.4-.96-2.38-.96s-1.79.33-2.43.99c-.64.64-.96 1.48-.96 2.51 0 1.05.32 1.9.96 2.54zm18.96 4.32c-2.12 0-3.84-.65-5.18-1.95-1.33-1.32-2-2.97-2-4.96 0-1.96.62-3.58 1.87-4.86 1.25-1.3 2.86-1.95 4.86-1.95 1.92 0 3.44.61 4.56 1.84 1.14 1.21 1.71 2.68 1.71 4.4 0 .68-.11 1.18-.32 1.52-.2.32-.57.48-1.12.48h-7.95c.41 1.71 1.7 2.56 3.87 2.56 1.1 0 2.12-.27 3.04-.8.18-.11.33-.07.45.11l.99 1.36c.14.2.1.39-.13.59-1.11 1.11-2.66 1.66-4.65 1.66zm-3.63-8.06h6.17c-.11-.85-.43-1.5-.96-1.95-.53-.44-1.2-.67-2-.67-.84 0-1.54.22-2.11.67-.57.45-.94 1.1-1.1 1.95zM82.2 25.4c-2.12 0-3.84-.65-5.18-1.95-1.33-1.32-2-2.97-2-4.96 0-1.96.62-3.58 1.87-4.86 1.25-1.3 2.86-1.95 4.86-1.95 1.92 0 3.44.61 4.56 1.84 1.14 1.21 1.71 2.68 1.71 4.4 0 .68-.11 1.18-.32 1.52-.2.32-.57.48-1.12.48h-7.95c.41 1.71 1.7 2.56 3.87 2.56 1.1 0 2.12-.27 3.04-.8.18-.11.33-.07.45.11l.99 1.36c.14.2.1.39-.13.59-1.11 1.11-2.66 1.66-4.65 1.66zm-3.63-8.06h6.17c-.11-.85-.43-1.5-.96-1.95-.53-.44-1.2-.67-2-.67-.84 0-1.54.22-2.11.67-.58.45-.94 1.1-1.1 1.95zM90.76 31c-.27 0-.4-.13-.4-.4V12.41c0-.27.13-.4.4-.4h2.64c.27 0 .4.13.4.4l.05 1.44c.93-1.44 2.35-2.16 4.27-2.16 1.81 0 3.3.66 4.46 1.97 1.16 1.3 1.73 2.93 1.73 4.88 0 1.97-.58 3.61-1.73 4.91-1.16 1.3-2.64 1.95-4.46 1.95-1.74 0-3.1-.62-4.06-1.87v7.06c0 .27-.13.4-.4.4h-2.9zm6.59-8.96c.98 0 1.78-.32 2.4-.96.64-.64.96-1.49.96-2.54 0-1.03-.32-1.87-.96-2.51-.62-.66-1.42-.99-2.4-.99-1 0-1.81.32-2.43.96-.6.64-.91 1.49-.91 2.54s.3 1.89.91 2.54c.62.64 1.43.96 2.43.96zm13.55 3.36c-2.03 0-3.66-.72-4.88-2.16-.16-.2-.14-.45.05-.77l.93-1.31c.18-.27.4-.3.67-.11 1.12.85 2.13 1.28 3.02 1.28.98 0 1.47-.36 1.47-1.09 0-.3-.11-.55-.32-.75-.2-.2-.54-.4-1.04-.61l-1.65-.67c-1.9-.75-2.86-1.94-2.86-3.58 0-1.21.45-2.17 1.34-2.88.89-.71 1.97-1.07 3.23-1.07 1.8 0 3.26.67 4.38 2 .14.18.13.36-.03.56l-1.17 1.41c-.16.2-.36.2-.61 0-.87-.73-1.66-1.09-2.38-1.09-.41 0-.72.1-.93.29-.21.2-.32.44-.32.75 0 .55.42.98 1.25 1.28l1.84.72c1.97.8 2.95 2.06 2.94 3.79-.02 1.26-.5 2.25-1.44 2.96-.95.71-2.11 1.05-3.49 1.05zm13.78 0c-2.12 0-3.84-.65-5.18-1.95-1.33-1.32-2-2.97-2-4.96 0-1.96.62-3.58 1.87-4.86 1.25-1.3 2.87-1.95 4.86-1.95 1.92 0 3.44.61 4.56 1.84 1.14 1.21 1.71 2.68 1.71 4.4 0 .68-.11 1.18-.32 1.52-.2.32-.57.48-1.12.48h-7.95c.41 1.71 1.7 2.56 3.87 2.56 1.1 0 2.12-.27 3.04-.8.18-.11.33-.07.45.11l.99 1.36c.14.2.1.39-.13.59-1.11 1.11-2.66 1.66-4.65 1.66zm-3.63-8.06h6.17c-.11-.85-.43-1.5-.96-1.95-.53-.44-1.2-.67-2-.67-.84 0-1.54.22-2.11.67-.58.45-.94 1.1-1.1 1.95zm16.73 8.06c-1.16 0-2.11-.3-2.86-.91-.73-.6-1.09-1.57-1.09-2.91v-6.73h-1.65c-.27 0-.4-.13-.4-.4v-2.06c0-.27.13-.4.4-.4h1.65V8.94c0-.27.13-.4.4-.4h2.91c.27 0 .4.13.4.4v3.07h2.06c.27 0 .4.13.4.4v2.06c0 .27-.13.4-.4.4h-2.06v6.33c0 .77.38 1.15 1.15 1.15.34 0 .61-.01.83-.03.32-.04.48.09.48.37v1.95c0 .51-.74.76-2.22.76zM22.55 26h-2.1c-.25 0-.45-.2-.45-.45v-5.3c0-.14-.11-.25-.25-.25H.45C.2 20 0 19.8 0 19.55V.45C0 .2.2 0 .45 0h22.1c.25 0 .45.2.45.45v16.3c0 .14.11.25.25.25h15.3c.25 0 .45.2.45.45v2.1c0 .25-.2.45-.45.45h-15.3c-.14 0-.25.11-.25.25v5.3c0 .25-.2.45-.45.45zM3.2 17h16.6a.2.2 0 00.2-.2V3.2a.2.2 0 00-.2-.2H3.2a.2.2 0 00-.2.2v13.6c0 .11.09.2.2.2z"
+              fill="#9090b2"
+            ></path>
+            <circle
+              cx="21.5"
+              cy="32.5"
+              r="3.5"
+              fill-rule="evenodd"
+              clip-rule="evenodd"
+              fill="#9090b2"
+            ></circle>
+          </svg>
+        </a>
+
+
+        <p class="footer-tagline">
+          Building a semantic layer for the modern tech stack — driven by the
+          latest NLP and open source.
+        </p>
+
+
+        <ul class="footer-socials" role="list" aria-label="Social pages">
+
+          <li>
+            <a
+              target="_blank"
+              href="https://twitter.com/deepset_ai"
+              rel="noreferrer noopener"
+              aria-label="Go to our Twitter page"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 35 28"
+                role="img"
+                aria-label="Twitter logo"
+                focusable="false"
+                class="footer-socials-icon twitter-icon"
+              >
+                <path
+                  d="M31.42 6.97c.02.3.02.61.02.91 0 9.34-7.22 20.12-20.43 20.12v-.01C7.11 28 3.28 26.9 0 24.83a14.649 14.649 0 0010.63-2.93c-3.07-.06-5.77-2.03-6.71-4.91 1.08.2 2.19.16 3.24-.12C3.81 16.2 1.4 13.3 1.4 9.93v-.09c1 .55 2.12.85 3.26.88C1.5 8.65.53 4.52 2.44 1.29c3.65 4.42 9.02 7.1 14.8 7.39-.58-2.46.21-5.03 2.08-6.75 2.89-2.68 7.44-2.54 10.16.31 1.61-.31 3.15-.89 4.56-1.72a7.11 7.11 0 01-3.16 3.91c1.42-.17 2.81-.55 4.12-1.12a14.48 14.48 0 01-3.58 3.66z"
+                ></path>
+              </svg>
+            </a>
+          </li>
+
+
+          <li class="footer-socials-link">
+            <a
+              target="_blank"
+              href="https://github.com/deepset-ai"
+              rel="noreferrer noopener"
+              aria-label="Go to our GitHub page"
+              ><svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 20 20"
+                role="img"
+                aria-label="GitHub logo"
+                focusable="false"
+                class="footer-socials-icon github-icon"
+              >
+                <path
+                  d="M10 0C4.48 0 0 4.59 0 10.25c0 4.53 2.87 8.37 6.84 9.73.5.09.68-.22.68-.5l-.01-1.74c-2.78.62-3.37-1.37-3.37-1.37-.45-1.18-1.11-1.5-1.11-1.5-.91-.64.07-.62.07-.62 1 .08 1.53 1.06 1.53 1.06.89 1.57 2.34 1.11 2.91.85.09-.66.35-1.11.63-1.37-2.22-.25-4.55-1.13-4.55-5.06 0-1.12.39-2.03 1.03-2.75-.1-.26-.45-1.3.09-2.71 0 0 .84-.28 2.75 1.05a9.43 9.43 0 015 0c1.91-1.33 2.75-1.05 2.75-1.05.55 1.41.2 2.45.1 2.71a4.02 4.02 0 011.03 2.75c0 3.94-2.34 4.8-4.57 5.06.36.31.68.94.68 1.9l-.01 2.81c0 .28.18.59.69.49a10.23 10.23 0 006.83-9.72A10.12 10.12 0 0010 0z"
+                  fill-rule="evenodd"
+                  clip-rule="evenodd"
+                ></path>
+              </svg>
+            </a>
+          </li>
+
+
+          <li class="footer-socials-link">
+            <a
+              target="_blank"
+              href="https://www.linkedin.com/company/deepset-ai"
+              rel="noreferrer noopener"
+              aria-label="Go to our LinkedIn page"
+              ><svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 19 19"
+                role="img"
+                aria-label="LinkedIn logo"
+                focusable="false"
+                class="footer-socials-icon github-icon"
+              >
+                <path
+                  d="M4.534 6.3h-3.6a.45.45 0 00-.45.45v11.7c0 .249.202.45.45.45h3.6a.45.45 0 00.45-.45V6.75a.45.45 0 00-.45-.45zM2.716 4.5a2.241 2.241 0 002.232-2.25A2.24 2.24 0 002.716 0 2.241 2.241 0 00.484 2.25c0 1.243 1 2.25 2.232 2.25zm12.619 14.4h2.7a.45.45 0 00.45-.45v-7.56c0-3.393-1.917-5.04-4.599-5.04a3.789 3.789 0 00-2.853 1.143.369.369 0 01-.648-.243.45.45 0 00-.45-.45h-2.7a.45.45 0 00-.45.45v11.7a.45.45 0 00.45.45h2.7a.45.45 0 00.45-.45V11.7a2.25 2.25 0 114.5 0v6.75a.45.45 0 00.45.45z"
+                ></path>
+              </svg>
+            </a>
+          </li>
+
+
+          <li class="footer-socials-link">
+            <a
+              target="_blank"
+              href="https://www.youtube.com/channel/UC5dfn9m310oyt-cbeegfvZw"
+              rel="noreferrer noopener"
+              aria-label="Go to our YouTube channel"
+              ><svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 34 24"
+                role="img"
+                aria-label="YouTube logo"
+                focusable="false"
+                class="footer-socials-icon youtube-icon"
+              >
+                <path
+                  d="M33.29 3.75A4.25 4.25 0 0030.28.72C27.63 0 17 0 17 0S6.37 0 3.72.72A4.25 4.25 0 00.71 3.75C0 6.42 0 12 0 12s0 5.58.71 8.25a4.25 4.25 0 003.01 3.03C6.37 24 17 24 17 24s10.63 0 13.28-.72a4.32 4.32 0 003.01-3.03C34 17.58 34 12 34 12s0-5.58-.71-8.25zM13.6 17.14V6.86L22.43 12l-8.83 5.14z"
+                ></path>
+              </svg>
+            </a>
+          </li>
+
+
+          <li class="footer-socials-link">
+            <a
+              target="_blank"
+              href="https://discord.com/invite/VBpFzsgRVF"
+              rel="noreferrer noopener"
+              aria-label="Join our Discord"
+            >
+              <svg
+                viewBox="0 -28.5 256 256"
+                version="1.1"
+                xmlns="http://www.w3.org/2000/svg"
+                xmlns:xlink="http://www.w3.org/1999/xlink"
+                preserveAspectRatio="xMidYMid"
+              >
+                <g>
+                  <path
+                    d="M216.856339,16.5966031 C200.285002,8.84328665 182.566144,3.2084988 164.041564,0 C161.766523,4.11318106 159.108624,9.64549908 157.276099,14.0464379 C137.583995,11.0849896 118.072967,11.0849896 98.7430163,14.0464379 C96.9108417,9.64549908 94.1925838,4.11318106 91.8971895,0 C73.3526068,3.2084988 55.6133949,8.86399117 39.0420583,16.6376612 C5.61752293,67.146514 -3.4433191,116.400813 1.08711069,164.955721 C23.2560196,181.510915 44.7403634,191.567697 65.8621325,198.148576 C71.0772151,190.971126 75.7283628,183.341335 79.7352139,175.300261 C72.104019,172.400575 64.7949724,168.822202 57.8887866,164.667963 C59.7209612,163.310589 61.5131304,161.891452 63.2445898,160.431257 C105.36741,180.133187 151.134928,180.133187 192.754523,160.431257 C194.506336,161.891452 196.298154,163.310589 198.110326,164.667963 C191.183787,168.842556 183.854737,172.420929 176.223542,175.320965 C180.230393,183.341335 184.861538,190.991831 190.096624,198.16893 C211.238746,191.588051 232.743023,181.531619 254.911949,164.955721 C260.227747,108.668201 245.831087,59.8662432 216.856339,16.5966031 Z M85.4738752,135.09489 C72.8290281,135.09489 62.4592217,123.290155 62.4592217,108.914901 C62.4592217,94.5396472 72.607595,82.7145587 85.4738752,82.7145587 C98.3405064,82.7145587 108.709962,94.5189427 108.488529,108.914901 C108.508531,123.290155 98.3405064,135.09489 85.4738752,135.09489 Z M170.525237,135.09489 C157.88039,135.09489 147.510584,123.290155 147.510584,108.914901 C147.510584,94.5396472 157.658606,82.7145587 170.525237,82.7145587 C183.391518,82.7145587 193.761324,94.5189427 193.539891,108.914901 C193.539891,123.290155 183.391518,135.09489 170.525237,135.09489 Z"
+                    fill-rule="nonzero"
+                  ></path>
+                </g>
+              </svg>
+            </a>
+          </li>
+        </ul>
+
+
+        <ul class="footer-legal" role="list" aria-label="Legal pages">
+          <li class="footer-legal-page-wrapper">
+            <a
+              target="_self"
+              href="https://www.deepset.ai/privacy"
+              aria-label="Go to the Privacy page"
+              >Privacy</a
+            >
+          </li>
+
+          <li class="footer-legal-page-wrapper">
+            <a
+              target="_self"
+              href="https://www.deepset.ai/imprint"
+              aria-label="Go to the Imprint page"
+              >Imprint</a
+            >
+          </li>
+        </ul>
+
+        <small class="copyright">© 2023 deepset GmbH. All rights reserved.</small
+        >
+      </div>
+    </div>
+  </div>
+</footer>
+
+
+
+<script src="/js/script.min.d1a2c1229d4b6c3467adb92fdfee637d00b5d10db905e53acafe66c8c2dee7af.js"></script>
+
+
+
+
+
+
+
+
+
+
+  <script src="/js/table-of-contents.min.e0c82a9a35e20e26f678c03c9f1020a5e9f8aa243e165dbebf63f2394c8812b1.js"></script>
+
+
+
+
+
+  </body>
+</html>

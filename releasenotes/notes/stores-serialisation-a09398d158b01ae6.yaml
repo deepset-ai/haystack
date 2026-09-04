@@ -1,0 +1,4 @@
+---
+preview:
+  - Add `from_dict` and `to_dict` methods to `Store` `Protocol`
+  - Add default `from_dict` and `to_dict` implementations to classes decorated with `@store`

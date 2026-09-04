@@ -1,0 +1,49 @@
+name: end-to-end
+
+on:
+  workflow_dispatch: # Activate this workflow manually
+  schedule:
+    - cron: "0 0 * * *"
+  pull_request:
+    types:
+      - opened
+      - reopened
+      - synchronize
+    paths:
+      - "e2e/**/*.py"
+      - ".github/workflows/e2e.yml"
+
+env:
+  PYTHON_VERSION: "3.10"
+  OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+  HATCH_VERSION: "1.16.5"
+
+permissions:
+  contents: read
+
+jobs:
+  run:
+    timeout-minutes: 60
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "${{ env.PYTHON_VERSION }}"
+
+      - name: Install Hatch
+        run: |
+          python -m pip install --upgrade pip
+          pip install hatch==${{ env.HATCH_VERSION }} --uploaded-prior-to=P1D
+
+      - name: Run tests
+        run: hatch run test:e2e
+
+      - name: Notify Slack on nightly failure
+        if: failure() && github.event_name == 'schedule'
+        uses: deepset-ai/notify-slack-action@a65def0c8bf91d6520286ab34280151c76a5a008 # v1.1.0
+        with:
+          slack-webhook-url: ${{ secrets.SLACK_WEBHOOK_URL_NOTIFICATIONS }}

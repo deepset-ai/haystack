@@ -1,0 +1,4 @@
+---
+upgrade:
+  - |
+    The SentenceWindowRetriever output key `context_documents` now outputs a List[Document] containing the retrieved documents together with the context windows ordered by `split_idx_start`.

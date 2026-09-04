@@ -1,0 +1,5 @@
+---
+enhancements:
+  - |
+    Add new variable model_kwargs to the TransformersSimilarityRanker so we can pass different loading options supported by
+    HuggingFace. Add device availability checking if the user passes in None to the device init param. Ranking goes, GPU, MPS, CPU.

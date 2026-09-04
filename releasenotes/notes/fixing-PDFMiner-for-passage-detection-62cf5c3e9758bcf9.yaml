@@ -1,0 +1,4 @@
+---
+fixes:
+  - |
+    Updated `PDFMinerToDocument` convert function to to double new lines between container_text so that passages can later by `DocumentSplitter`.

@@ -1,0 +1,5 @@
+---
+features:
+  - |
+    Add support for Mean Reciprocal Rank (MRR) Metric to `StatisticalEvaluator`.
+    MRR measures the mean reciprocal rank of times a label is present in at least one or more predictions.

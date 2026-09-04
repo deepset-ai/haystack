@@ -1,0 +1,9 @@
+---
+fixes:
+  - |
+    Fixed ``DocumentCleaner`` wiping the middle page of a 3-page document when
+    ``remove_repeated_substrings=True``. Header/footer detection compares the
+    pages between the first and last, which is a single page for a 3-page
+    document; its own longest ngram was then treated as a repeated header/footer
+    and removed. Detection now requires at least two pages to compare, so unique
+    content is preserved while genuine repeated headers/footers are still removed.

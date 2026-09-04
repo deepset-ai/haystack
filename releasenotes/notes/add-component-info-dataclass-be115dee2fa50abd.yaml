@@ -1,0 +1,7 @@
+---
+features:
+  - |
+    - Add a `ComponentInfo` dataclass to the `haystack.dataclasses` module.
+    This dataclass is used to store information about the component. We pass it to `StreamingChunk` so we can tell from which component a stream is coming from.
+
+    - Pass the `component_info` to the `StreamingChunk` in the `OpenAIChatGenerator`, `AzureOpenAIChatGenerator`, `HuggingFaceAPIChatGenerator` and `HuggingFaceLocalChatGenerator`.

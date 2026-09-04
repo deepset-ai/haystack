@@ -1,0 +1,8 @@
+---
+enhancements:
+  - |
+    Made JSON schema validator compatible with all LLM by switching error template handling to a single user message.
+    Also reduce cost by only including last error instead of full message history.
+fixes:
+  - |
+    Fix recursive JSON type conversion in the schema validator to be less aggressive (no infinite recursion).

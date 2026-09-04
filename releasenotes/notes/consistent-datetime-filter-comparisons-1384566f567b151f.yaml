@@ -1,0 +1,8 @@
+---
+enhancements:
+  - |
+    Added an opt-in ``strict_datetime_comparison`` keyword argument to ``document_matches_filter``,
+    ``InMemoryDocumentStore``, and ``MetadataRouter``. When enabled, timezone-naive and timezone-aware
+    datetimes never match each other. By default, mixed-awareness datetimes continue to be reconciled
+    by copying the timezone from the aware value to the naive one, and this behavior is now consistent
+    across equality, membership, and ordering operators.

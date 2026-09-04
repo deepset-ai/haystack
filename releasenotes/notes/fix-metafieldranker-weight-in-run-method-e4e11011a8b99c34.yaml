@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    Fixed a bug in the `MetaFieldRanker`: when the `weight` parameter was set to 0 in the `run` method,
+    the component was incorrectly using the default `weight` parameter set in the `__init__` method.

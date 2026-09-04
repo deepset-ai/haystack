@@ -1,0 +1,4 @@
+---
+fixes:
+  - |
+    use coerce_tag_value in LoggingTracer to serialize tag values

@@ -1,0 +1,5 @@
+---
+preview:
+  - |
+    Add a minimal version of HuggingFaceLocalGenerator, a component that can run
+    Hugging Face models locally to generate text.

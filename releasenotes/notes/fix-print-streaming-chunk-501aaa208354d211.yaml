@@ -1,0 +1,3 @@
+---
+fixes:
+  - Fixed a bug in the `print_streaming_chunk` utility function that prevented tool call name from being printed.

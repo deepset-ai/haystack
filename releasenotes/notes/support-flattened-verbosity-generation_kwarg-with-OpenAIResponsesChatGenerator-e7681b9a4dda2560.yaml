@@ -1,0 +1,25 @@
+---
+enhancements:
+  - |
+      Support for flattened ``verbosity`` in ``generation_kwargs`` of ``OpenAIResponsesChatGenerator``
+
+      The ``OpenAIResponsesChatGenerator`` component now supports flattened ``verbosity`` generation
+      keyword arguments, allowing users to specify verbositydirectly
+      without nesting them in ``text``. This enhancement simplifies the configuration process
+      and improves usability.
+
+      Example:
+       .. code:: python
+          from haystack.components.generators.chat import OpenAIResponsesChatGenerator
+
+          generator = OpenAIResponsesChatGenerator(
+              model="gpt-4",
+              generation_kwargs={
+                  "verbosity": "low",
+              }
+          )
+fixes:
+  - |
+    Use ``create`` instead of ``parse`` method of the OpenAI Responses python client when ``text`` is set but no ``text_format`` is set.
+    ``parse`` requires a type from ``text_format`` to be set, to actually parse the response into that type.
+    With ``text`` set but no ``text_format``, we just want to create a normal response without parsing.

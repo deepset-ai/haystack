@@ -1,0 +1,31 @@
+---
+upgrade:
+  - |
+    Implement framework-agnostic device representations. The main impetus behind this change is to move away from stringified representations
+    of devices that are not portable between different frameworks. It also enables support for multi-device inference in a generic manner.
+
+    Going forward, components can expose a single, optional device parameter in their constructor (`Optional[ComponentDevice]`):
+    ```python
+    import haystack.utils import ComponentDevice, Device, DeviceMap
+    class MyComponent(Component):
+        def __init__(self, device: Optional[ComponentDevice] = None):
+            # If device is None, automatically select a device.
+            self.device = ComponentDevice.resolve_device(device)
+
+        def warm_up(self):
+            # Call the framework-specific conversion method.
+            self.model = AutoModel.from_pretrained("deepset/bert-base-cased-squad2", device=self.device.to_hf())
+
+    # Automatically selects a device.
+    c = MyComponent(device=None)
+    # Uses the first GPU available.
+    c = MyComponent(device=ComponentDevice.from_str("cuda:0"))
+    # Uses the CPU.
+    c = MyComponent(device=ComponentDevice.from_single(Device.cpu()))
+    # Allow the component to use multiple devices using a device map.
+    c = MyComponent(device=ComponentDevice.from_multiple(DeviceMap({
+          "layer1": Device.cpu(),
+          "layer2": Device.gpu(1),
+          "layer3": Device.disk()
+    })))
+    ```

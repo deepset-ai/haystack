@@ -1,0 +1,55 @@
+---
+features:
+  - |
+    Expanded the ``ToolCallResult.result`` field to accept not only strings but also lists of ``TextContent`` and
+    ``ImageContent`` objects. This enables tools to return images for providers that support this capability.
+    This feature is already available when using ``OpenAIResponsesChatGenerator``, and support for additional
+    providers will be added soon. The Chat Completions API does not support this functionality, so the classic
+    ``OpenAIChatGenerator`` cannot be used with it.
+  - |
+    The ``outputs_to_string`` parameter of the ``Tool`` class now supports returning raw results without string
+    conversion using the ``raw_result`` key. This is intended for tools that return images.
+    ``ComponentTool`` and ``PipelineTool`` also support this feature.
+
+    Here is an example of how to use it:
+
+    .. code:: python
+      from haystack.components.agents import Agent
+      from haystack.components.generators.chat import OpenAIResponsesChatGenerator
+      from haystack.dataclasses import ChatMessage, ImageContent, TextContent
+      from haystack.tools import create_tool_from_function
+
+
+      def retrieve_image():
+          """Tool to retrieve an image"""
+          return [
+              TextContent("Here is the retrieved image."),
+              ImageContent.from_file_path("test/test_files/images/apple.jpg"),
+          ]
+
+
+      image_retriever_tool = create_tool_from_function(
+          function=retrieve_image, outputs_to_string={"raw_result": True}
+      )
+
+      agent = Agent(
+          chat_generator=OpenAIResponsesChatGenerator(model="gpt-5-nano"),
+          system_prompt="You are an Agent that can retrieve images and describe them.",
+          tools=[image_retriever_tool],
+      )
+
+      user_message = ChatMessage.from_user("Retrieve the image and describe it in max 10 words.")
+      result = agent.run(messages=[user_message])
+
+      print(result["last_message"].text)
+      # Red apple with stem resting on straw.
+
+enhancements:
+  - |
+    Added the ``outputs_to_string`` parameter to ``create_tool_from_function`` and the ``@tool`` decorator to provide
+    additional customization options for these convenience constructors.
+
+fixes:
+  - |
+    Fixed a bug in ``Tool`` serialization. Previously, when ``outputs_to_string`` used the multiple-output format,
+    handlers were not serialized correctly.

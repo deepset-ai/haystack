@@ -1,0 +1,6 @@
+---
+enhancements:
+  - |
+    Now when using Haystack's Agent the messages are stored and accumulated in State. This means:
+    * State is required to have a "messages" type and handler defined in its schema. If not provided a default type and handler is provided.
+    * Users can now customize how to accumulate messages by providing a custom handler for messages through the State schema.

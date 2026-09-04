@@ -1,0 +1,16 @@
+---
+fixes:
+  - |
+    Fixed a bug in ``Agent`` (and the underlying tool invocation) where parallel tool calls in a single
+    step did not respect read/write dependencies on ``State``. Tool arguments were prepared once, up front,
+    from the initial state, so a tool reading a ``State`` key via ``inputs_from_state`` never observed a write
+    made by another tool in the same step via ``outputs_to_state``. For example, two calls to a retrieval tool
+    that both reads and writes the ``documents`` key would each see the original documents instead of the second
+    call seeing the first call's results.
+
+    Tool calls within a step are now scheduled into batches based on their ``inputs_from_state`` and
+    ``outputs_to_state`` mappings. Calls that only read, or that touch disjoint keys, still run in parallel;
+    a call that reads a key another call writes is run in a later batch, after that write has been merged into
+    ``State``, with its arguments re-prepared so it sees the updated value. Tools that receive the live
+    ``State`` object are treated as reading and writing every key and run on their own. The order the LLM
+    requested the calls in no longer affects correctness.

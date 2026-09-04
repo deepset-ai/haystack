@@ -1,0 +1,8 @@
+---
+enhancements:
+  - |
+    Added ``haystack.component.fully_qualified_type`` field to component tracing output.
+    This new field provides the full module path and class name (e.g.,
+    ``haystack.components.generators.chat.openai.OpenAIChatGenerator``) alongside the
+    existing ``haystack.component.type`` field that only contains the class name.
+    This enables dynamic component loading and better tooling integration.

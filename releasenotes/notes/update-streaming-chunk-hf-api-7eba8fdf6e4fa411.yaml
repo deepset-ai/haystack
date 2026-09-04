@@ -1,0 +1,5 @@
+---
+enhancements:
+  - |
+    - Refactors the HuggingFaceAPIChatGenerator to use the util method `_convert_streaming_chunks_to_chat_message`. This is to help with being consistent for how we convert StreamingChunks into a final ChatMessage.
+    - We also add ComponentInfo to the StreamingChunks made in `HuggingFaceGenerator`, and `HugginFaceLocalGenerator` so we can tell from which component a stream is coming from.

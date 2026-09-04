@@ -1,0 +1,7 @@
+---
+upgrade:
+  - |
+    The ``return_empty_on_no_match`` parameter has been fully removed from the ``RegexTextExtractor`` component.
+    In Haystack 2.22.0, this parameter was ignored. Starting with Haystack 2.23.0, passing this parameter during
+    component initialization will raise an error.
+    During pipeline deserialization, the parameter is ignored to avoid breaking existing pipelines.

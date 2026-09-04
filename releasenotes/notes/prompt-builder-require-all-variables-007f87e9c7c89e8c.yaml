@@ -1,0 +1,5 @@
+---
+features:
+  - |
+    Added a new option to the required_variables parameter to the PromptBuilder and ChatPromptBuilder.
+    By passing `required_variables="*"` you can automatically set all variables in the prompt to be required.

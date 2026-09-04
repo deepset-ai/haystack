@@ -1,0 +1,118 @@
+---
+title: "Docker"
+id: docker
+slug: "/docker"
+description: "Learn how to deploy your Haystack pipelines through Docker starting from the basic Docker container to a complex application using Hayhooks."
+---
+
+# Docker
+
+Learn how to deploy your Haystack pipelines through Docker starting from the basic Docker container to a complex application using Hayhooks.
+
+## Running Haystack in Docker
+
+The most basic form of Haystack deployment happens through Docker containers. Becoming familiar with running and customizing Haystack Docker images is useful as they form the basis for more advanced deployment.
+
+Haystack releases are officially distributed through the [`deepset/haystack`](https://hub.docker.com/r/deepset/haystack) Docker image. Haystack images come in different flavors depending on the specific components they ship and the Haystack version.
+
+:::note
+At the moment, the only flavor available for Haystack is `base`, which ships exactly what you would get by installing Haystack locally with `pip install haystack-ai`.
+
+:::
+
+You can pull a specific Haystack flavor using Docker tags: for example, to pull the image containing Haystack `2.12.1`, you can run the command:
+
+```shell
+docker pull deepset/haystack:base-v2.12.1
+```
+
+Although the `base` flavor is meant to be customized, it can also be used to quickly run Haystack scripts locally without the need to set up a Python environment and its dependencies. For example, this is how you would print Haystack’s version running a Docker container:
+
+```shell
+docker run -it --rm deepset/haystack:base-v2.12.1 python -c"from haystack.version import __version__; print(__version__)"
+```
+
+## Customizing the Haystack Docker Image
+
+Chances are your application will be more complex than a simple script, and you’ll need to install additional dependencies inside the Docker image along with Haystack.
+
+For example, you might want to run a simple indexing pipeline using [Chroma](../../document-stores/chromadocumentstore.mdx) as your Document Store using a Docker container. The `base` image only contains a basic install of Haystack, but you need to install the Chroma integration (`chroma-haystack`) package additionally. The best approach would be to create a custom Docker image shipping the extra dependency.
+
+Assuming you have a `main.py` script in your current folder, the Dockerfile would look like this:
+
+```shell
+FROM deepset/haystack:base-v2.12.1
+
+RUN pip install chroma-haystack
+
+COPY ./main.py /usr/src/myapp/main.py
+
+ENTRYPOINT ["python", "/usr/src/myapp/main.py"]
+```
+
+Then you can create your custom Haystack image with:
+
+```shell
+docker build . -t my-haystack-image
+```
+
+## Complex Application with Docker Compose
+
+A Haystack application running in Docker can go pretty far: with an internet connection, the container can reach external services providing vector databases, inference endpoints, and observability features.
+
+Still, you might want to orchestrate additional services for your Haystack container locally, for example, to reduce costs or increase performance. When your application runtime depends on more than one Docker container, [Docker Compose](https://docs.docker.com/compose/) is a great tool to keep everything together.
+
+As an example, let’s say your application wraps two pipelines: one to _index_ documents into a Qdrant instance and the other to _query_ those documents at a later time. This setup would require two Docker containers: one to run the pipelines as REST APIs using [Hayhooks](../hayhooks.mdx) and a second to run a Qdrant instance.
+
+For building the Hayhooks image, we can easily customize the base image of one of the latest versions of Hayhooks, adding required dependencies required by [`QdrantDocumentStore`](../../document-stores/qdrant-document-store.mdx). The Dockerfile would look like this:
+
+```dockerfile Dockerfile
+FROM deepset/hayhooks:v0.6.0
+
+RUN pip install qdrant-haystack sentence-transformers
+
+CMD ["hayhooks", "run", "--host", "0.0.0.0"]
+
+```
+
+We wouldn’t need to customize Qdrant, so their official Docker image would work perfectly. The `docker-compose.yml` file would then look like this:
+
+```yaml
+services:
+  qdrant:
+    image: qdrant/qdrant:latest
+    restart: always
+    container_name: qdrant
+    ports:
+      - 6333:6333
+      - 6334:6334
+    expose:
+      - 6333
+      - 6334
+      - 6335
+    configs:
+      - source: qdrant_config
+        target: /qdrant/config/production.yaml
+    volumes:
+      - ./qdrant_data:/qdrant_data
+
+  hayhooks:
+    build: . # Build from local Dockerfile
+    container_name: hayhooks
+    ports:
+      - "1416:1416"
+    volumes:
+      - ./pipelines:/pipelines
+    environment:
+      - HAYHOOKS_PIPELINES_DIR=/pipelines
+      - LOG=DEBUG
+    depends_on:
+      - qdrant
+
+configs:
+  qdrant_config:
+    content: |
+      log_level: INFO
+```
+
+For a functional example of a Docker Compose deployment, check out the [“Qdrant Indexing”](https://github.com/deepset-ai/haystack-demos/tree/main/qdrant_indexing) demo from GitHub.

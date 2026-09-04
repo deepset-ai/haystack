@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    Make the Crawler work properly with Selenium>=4.11.0.
+    Simplify the Crawler, as the new version of Selenium automatically finds or installs the necessary drivers.

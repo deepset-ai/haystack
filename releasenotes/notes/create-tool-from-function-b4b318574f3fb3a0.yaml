@@ -1,0 +1,6 @@
+---
+features:
+  - |
+    Added a new `create_tool_from_function` function to create a `Tool` instance from a function, with automatic
+    generation of name, description and parameters.
+    Added a `tool` decorator to achieve the same result.

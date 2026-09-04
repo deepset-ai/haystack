@@ -1,0 +1,5 @@
+---
+enhancements:
+  - |
+    Improved AzureDocumentEmbedder to handle embedding generation failures gracefully.
+    Errors are logged, and processing continues with the remaining batches.

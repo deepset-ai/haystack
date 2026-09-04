@@ -1,0 +1,6 @@
+---
+preview:
+  - |
+     Add `UrlCacheChecker` to support Web retrieval pipelines.
+     Check if documents coming from a given list of URLs are already present in the store and if so, returns them.
+     All URLs with no matching documents are returned on a separate connection.

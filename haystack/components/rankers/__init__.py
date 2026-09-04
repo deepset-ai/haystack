@@ -1,0 +1,24 @@
+# SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
+#
+# SPDX-License-Identifier: Apache-2.0
+
+import sys
+from typing import TYPE_CHECKING
+
+from lazy_imports import LazyImporter
+
+_import_structure = {
+    "llm_ranker": ["LLMRanker"],
+    "lost_in_the_middle": ["LostInTheMiddleRanker"],
+    "meta_field": ["MetaFieldRanker"],
+    "meta_field_grouping_ranker": ["MetaFieldGroupingRanker"],
+}
+
+if TYPE_CHECKING:
+    from .llm_ranker import LLMRanker as LLMRanker
+    from .lost_in_the_middle import LostInTheMiddleRanker as LostInTheMiddleRanker
+    from .meta_field import MetaFieldRanker as MetaFieldRanker
+    from .meta_field_grouping_ranker import MetaFieldGroupingRanker as MetaFieldGroupingRanker
+
+else:
+    sys.modules[__name__] = LazyImporter(name=__name__, module_file=__file__, import_structure=_import_structure)

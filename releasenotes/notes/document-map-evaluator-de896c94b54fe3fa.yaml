@@ -1,0 +1,4 @@
+---
+features:
+  - |
+    Add DocumentMAPEvaluator, it can be used to calculate mean average precision of retrieved documents.

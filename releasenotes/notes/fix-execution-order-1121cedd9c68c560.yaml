@@ -1,0 +1,4 @@
+---
+fixes:
+  - |
+    Fix bug in Pipeline.run() executing Components in a wrong and unexpected order

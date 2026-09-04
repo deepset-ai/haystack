@@ -1,0 +1,5 @@
+---
+deprecations:
+  - |
+    Deprecate `OpenAIAnswerGenerator` in favor of `PromptNode`.
+    `OpenAIAnswerGenerator` will be removed in Haystack 1.23.

@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Fixed a bug in ``OpenAIResponsesChatGenerator`` where empty reasoning items were discarded during streaming.
+    This caused subsequent requests to the OpenAI Responses API to fail when the message history was sent back, as the
+    API requires every tool call to be preceded by its associated reasoning item.
+    These items are now correctly preserved in the ``ChatMessage`` history, even when the summary text is empty.

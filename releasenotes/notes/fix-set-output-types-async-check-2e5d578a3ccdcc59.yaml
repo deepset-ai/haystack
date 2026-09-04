@@ -1,0 +1,4 @@
+---
+fixes:
+  - |
+    When calling `set_output_types` we now also check that the decorator @component.output_types is not present on the `run_async` method of a Component. Previously we only checked that the Component.run method did not possess the decorator.

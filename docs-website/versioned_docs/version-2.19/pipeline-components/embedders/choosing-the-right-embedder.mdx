@@ -1,0 +1,62 @@
+---
+title: "Choosing the Right Embedder"
+id: choosing-the-right-embedder
+slug: "/choosing-the-right-embedder"
+description: "This page provides information on choosing the right Embedder when working with Haystack. It explains the distinction between Text and Document Embedders and discusses API-based Embedders and Embedders with models running on-premise."
+---
+
+# Choosing the Right Embedder
+
+This page provides information on choosing the right Embedder when working with Haystack. It explains the distinction between Text and Document Embedders and discusses API-based Embedders and Embedders with models running on-premise.
+
+Embedders in Haystack transform texts or documents into vector representations using pre-trained models. The embeddings produced by Haystack Embedders are fixed-length vectors. They capture contextual information and semantic relationships within the text.
+
+Embeddings in isolation are only used for information retrieval purposes (to do semantic search/vector search). You can use the embeddings in your pipeline for tasks like question answering. The QA pipeline with embedding retrieval would then include the following steps:
+
+1. Transform the query into a vector/embedding.
+2. Find similar documents based on the embedding similarity.
+3. Pass the query and the retrieved documents to a Language Model, which can be extractive or generative.
+
+## Text and Document Embedders
+
+There are two types of Embedders: text and document.
+
+Text Embedders work with text strings and are most often used at the beginning of query pipelines. They convert query text into vector embeddings and send them to a Retriever.
+
+Document Embedders embed Document objects and are most often used in indexing pipelines, after Converters, and before a DocumentWriter. They preserve the Document object format and add an embedding field with a list of float numbers.
+
+You must use the same embedding model for text and documents. This means that if you use CohereDocumentEmbedder in your indexing pipeline, you must then use CohereTextEmbedder with the same model in your query pipeline.
+
+## API-Based Embedders
+
+These Embedders use external APIs to generate embeddings. They give you access to powerful models without needing to handle the computing yourself.
+
+The costs associated with these solutions can vary. Depending on the solution you choose, you pay for the tokens consumed, both sent and generated, or for the hosting of the model, often billed per hour. Refer to the individual providers’ websites for detailed information.
+
+Haystack supports the models offered by a variety of providers: **OpenAI**, **Cohere**, **Jina**, **Azure**, **Mistral**, and **Amazon Bedrock**, with more being added constantly.
+
+Additionally, you could use Haystack’s **Hugging Face API Embedders** for prototyping with [HF Serverless Inference API](https://huggingface.co/docs/api-inference/en/index) or the [paid HF Inference Endpoints](https://huggingface.co/inference-endpoints/dedicated).
+
+## On-Premise Embedders
+
+On-premise Embedders allow you to host open models on your machine/infrastructure. This choice is ideal for local experimentation.
+
+When you self-host an embedder, you can choose the model from plenty of open model options. The [Massive Text Embedding Benchmark (MTEB) Leaderboard](https://huggingface.co/spaces/mteb/leaderboard) can be a good reference point for understanding retrieval performance and model size.
+
+It is suitable in production scenarios where data privacy concerns drive the decision not to transmit data to external providers and you have ample computational resources (CPU or GPU).
+
+Here are some options available in Haystack:
+
+- **Sentence Transformers**: This library mostly uses PyTorch, so it can be a fast-running option if you’re using a GPU. On the other hand, Sentence Transformers are progressively adding support for more efficient backends, which do not require GPU.
+- **Hugging Face Text Embedding Inference**: This is a library for efficiently serving open embedding models on both CPU and GPU. In Haystack, it can be used via HuggingFace API Embedders.
+- **Hugging Face Optimum:** These Embedders are designed to run models faster on targeted hardware. They implement optimizations that are specific for a certain hardware, such as Intel IPEX.
+- **Fastembed**: Fastembed is optimized for running on standard machines even with low resources. It supports several types of embeddings, including sparse techniques (BM25, SPLADE) and classic dense embeddings.
+- **Ollama:** These Embedders run quantized models on CPU(+GPU). Embedding quality might be lower due to the quantization of regular models. However, this makes these models run efficiently on standard machines.
+- **Nvidia**: Nvidia Embedders are built on Nvidia's NIM and hosted on their optimized cloud platform. They give you both options: using models through their API or deploying models locally with Nvidia NIM.
+
+***
+
+:::note
+See the full list of Embedders available in Haystack on the main [Embedders](../embedders.mdx) page.
+
+:::

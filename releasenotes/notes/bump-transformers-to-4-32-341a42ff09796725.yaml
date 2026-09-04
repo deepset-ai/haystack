@@ -1,0 +1,5 @@
+---
+enhancements:
+  - |
+    Upgrade Transformers to the latest version 4.32.0.
+    This version adds support for the GPTQ quantization and integrates MPT models.

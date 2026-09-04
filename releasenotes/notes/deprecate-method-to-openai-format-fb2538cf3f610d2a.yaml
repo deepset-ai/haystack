@@ -1,0 +1,7 @@
+---
+deprecations:
+  - |
+    Deprecate the method `to_openai_format` of the `ChatMessage` dataclass.
+    This method was never intended to be public and was only used internally.
+    Now, each Chat Generator will know internally how to convert the messages to
+    the format of their specific provider.

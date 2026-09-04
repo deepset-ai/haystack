@@ -1,0 +1,4 @@
+---
+enhancements:
+  - |
+    Update ``ToolsType`` to improve type checking for the ``tools`` parameter. Any class that inherits from either ``Tool`` or ``Toolset`` is now accepted in any sequence (list, tuple, etc).

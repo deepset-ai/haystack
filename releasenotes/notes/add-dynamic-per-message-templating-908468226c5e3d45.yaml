@@ -1,0 +1,4 @@
+---
+preview:
+  - |
+    Adds `ChatMessage` templating in `PromptBuilder`

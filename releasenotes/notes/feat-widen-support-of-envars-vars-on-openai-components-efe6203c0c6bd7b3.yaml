@@ -1,0 +1,6 @@
+---
+highlights: >
+    Add the 'OPENAI_TIMEOUT' and 'OPENAI_MAX_RETRIES' to the OpenAI components.
+enhancements:
+  - |
+    Now you can set the timeout and max_retries parameters on OpenAI components by setting the 'OPENAI_TIMEOUT' and 'OPENAI_MAX_RETRIES' environment vars or passing them at __init__.

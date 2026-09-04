@@ -1,0 +1,9 @@
+---
+
+fixes:
+  - |
+    The `test_comparison_in` test case in the base document store tests used to
+    always pass, no matter how the `in` filtering logic was implemented in
+    document stores. With the fix, the `in` logic is actually tested. Some tests
+    might start to fail for document stores that don't implement the `in` filter
+    correctly.

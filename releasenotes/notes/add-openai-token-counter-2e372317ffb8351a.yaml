@@ -1,0 +1,15 @@
+features:
+  - |
+    Add ``OpenAITokenCounter``, which uses OpenAI's input token counting API to return model-specific counts for
+    Haystack ``ChatMessage`` objects and optional tool schemas. Unlike local estimates, it supports OpenAI's exact
+    accounting for request formatting, images, files, and tools.
+
+    Here is an example:
+
+    .. code-block:: python
+
+        from haystack.dataclasses import ChatMessage
+        from haystack.token_counters import OpenAITokenCounter
+
+        counter = OpenAITokenCounter("gpt-5-mini")
+        count = counter.count([ChatMessage.from_user("Hello!")])

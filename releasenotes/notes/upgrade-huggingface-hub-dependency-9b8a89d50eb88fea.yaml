@@ -1,0 +1,4 @@
+---
+upgrade:
+ - |
+   Upgraded the required version of `huggingface_hub` to `>=0.23.0` across various modules to ensure compatibility and leverage the latest features. This update includes modifications to error handling for token generation details and introduces adjustments in the chat and text generation interfaces to enhance functionality and developer experience. Users are advised to upgrade their `huggingface_hub` dependency.

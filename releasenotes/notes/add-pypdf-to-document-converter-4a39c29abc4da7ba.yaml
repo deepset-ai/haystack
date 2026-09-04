@@ -1,0 +1,4 @@
+---
+preview:
+  - |
+    Adds support for PDF files to the Document converter via pypdf library.

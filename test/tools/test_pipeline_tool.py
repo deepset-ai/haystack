@@ -1,0 +1,382 @@
+# SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
+#
+# SPDX-License-Identifier: Apache-2.0
+
+import os
+from unittest.mock import ANY
+
+import pytest
+
+from haystack import Document, Pipeline, component
+from haystack.components.agents import Agent
+from haystack.components.embedders.openai_document_embedder import OpenAIDocumentEmbedder
+from haystack.components.embedders.openai_text_embedder import OpenAITextEmbedder
+from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.components.retrievers import InMemoryBM25Retriever, InMemoryEmbeddingRetriever
+from haystack.dataclasses import ChatMessage
+from haystack.document_stores.in_memory import InMemoryDocumentStore
+from haystack.tools import PipelineTool
+
+
+@component
+class MockSimilarityRanker:
+    """Mock ranker used to build a sample pipeline for tests."""
+
+    @component.output_types(documents=list[Document])
+    def run(
+        self,
+        documents: list[Document],
+        query: str,
+        top_k: int | None = None,
+        scale_score: bool | None = None,
+        score_threshold: float | None = None,
+    ) -> dict[str, list[Document]]:
+        """
+        Returns a list of documents ranked by their similarity to the given query.
+
+        :param documents: List of documents to rank.
+        :param query: The input query to compare the documents to.
+        :param top_k: The maximum number of documents to return.
+        :param scale_score: If `True`, scales the raw logit predictions using a Sigmoid activation function.
+            If `False`, disables scaling of the raw logit predictions.
+            If set, overrides the value set at initialization.
+        :param score_threshold: Use it to return documents only with a score above this threshold.
+            If set, overrides the value set at initialization.
+        """
+        ranked = documents[:top_k] if top_k is not None else documents
+        return {"documents": ranked}
+
+
+@pytest.fixture
+def sample_pipeline():
+    pipeline = Pipeline()
+    pipeline.add_component("bm25_retriever", InMemoryBM25Retriever(document_store=InMemoryDocumentStore()))
+    pipeline.add_component("ranker", MockSimilarityRanker())
+    pipeline.connect("bm25_retriever", "ranker")
+    return pipeline
+
+
+@pytest.fixture
+def sample_pipeline_dict():
+    return {
+        "metadata": {},
+        "max_runs_per_component": 100,
+        "components": {
+            "bm25_retriever": {
+                "type": "haystack.components.retrievers.in_memory.bm25_retriever.InMemoryBM25Retriever",
+                "init_parameters": {
+                    "document_store": {
+                        "type": "haystack.document_stores.in_memory.document_store.InMemoryDocumentStore",
+                        "init_parameters": {
+                            "bm25_tokenization_regex": "(?u)\\b\\w+\\b",
+                            "bm25_algorithm": "BM25L",
+                            "bm25_parameters": {},
+                            "embedding_similarity_function": "dot_product",
+                            "index": ANY,
+                            "shared": True,
+                            "return_embedding": True,
+                            "strict_datetime_comparison": False,
+                        },
+                    },
+                    "filters": None,
+                    "top_k": 10,
+                    "scale_score": False,
+                    "filter_policy": "replace",
+                },
+            },
+            "ranker": {"type": "test_pipeline_tool.MockSimilarityRanker", "init_parameters": {}},
+        },
+        "connections": [{"sender": "bm25_retriever.documents", "receiver": "ranker.documents"}],
+        "connection_type_validation": True,
+    }
+
+
+class TestPipelineTool:
+    def test_init_invalid_pipeline(self):
+        with pytest.raises(TypeError, match="The 'pipeline' parameter must be an instance of Pipeline."):
+            PipelineTool(pipeline="invalid_pipeline", name="test_tool", description="A test tool")  # type: ignore[arg-type]
+
+    def test_to_dict(self, sample_pipeline, sample_pipeline_dict):
+        tool = PipelineTool(
+            pipeline=sample_pipeline,
+            input_mapping={"query": ["bm25_retriever.query"]},
+            output_mapping={"ranker.documents": "documents"},
+            name="test_tool",
+            description="A test tool",
+        )
+
+        tool_dict = tool.to_dict()
+        assert tool_dict == {
+            "type": "haystack.tools.pipeline_tool.PipelineTool",
+            "data": {
+                "pipeline": sample_pipeline_dict,
+                "name": "test_tool",
+                "input_mapping": {"query": ["bm25_retriever.query"]},
+                "output_mapping": {"ranker.documents": "documents"},
+                "description": "A test tool",
+                "parameters": None,
+                "inputs_from_state": None,
+                "outputs_to_state": None,
+                "outputs_to_string": None,
+            },
+        }
+
+    def test_from_dict(self, sample_pipeline):
+        tool = PipelineTool(
+            pipeline=sample_pipeline,
+            input_mapping={"query": ["bm25_retriever.query"]},
+            output_mapping={"ranker.documents": "documents"},
+            name="test_tool",
+            description="A test tool",
+        )
+
+        tool_dict = tool.to_dict()
+        recreated_tool = PipelineTool.from_dict(tool_dict)
+
+        assert tool.name == recreated_tool.name
+        assert tool.description == recreated_tool.description
+        assert tool._input_mapping == recreated_tool._input_mapping
+        assert tool._output_mapping == recreated_tool._output_mapping
+        assert tool.parameters == recreated_tool.parameters
+        assert isinstance(recreated_tool._pipeline, Pipeline)
+
+    def test_from_dict_ignores_legacy_is_pipeline_async(self, sample_pipeline):
+        tool = PipelineTool(
+            pipeline=sample_pipeline,
+            input_mapping={"query": ["bm25_retriever.query"]},
+            output_mapping={"ranker.documents": "documents"},
+            name="test_tool",
+            description="A test tool",
+        )
+
+        tool_dict = tool.to_dict()
+        tool_dict["data"]["is_pipeline_async"] = True
+
+        recreated_tool = PipelineTool.from_dict(tool_dict)
+        assert isinstance(recreated_tool._pipeline, Pipeline)
+
+    def test_auto_generated_tool_params(self, sample_pipeline):
+        tool = PipelineTool(
+            pipeline=sample_pipeline,
+            input_mapping={"query": ["bm25_retriever.query", "ranker.query"]},
+            output_mapping={"ranker.documents": "documents"},
+            name="test_tool",
+            description="A test tool",
+        )
+
+        assert tool.parameters == {
+            "properties": {
+                "query": {
+                    "description": "Provided to the 'bm25_retriever' component as: 'The query string for the Retriever."
+                    "', and Provided to the 'ranker' component as: 'The input query to compare the "
+                    "documents to.'.",
+                    "type": "string",
+                }
+            },
+            "required": ["query"],
+            "type": "object",
+        }
+
+    def test_auto_generated_tool_params_no_mappings(self, sample_pipeline):
+        tool = PipelineTool(pipeline=sample_pipeline, name="test_tool", description="A test tool")
+        assert tool.parameters == {
+            "properties": {
+                "query": {
+                    "description": "Provided to the 'bm25_retriever' component as: 'The query string for the "
+                    "Retriever.', and Provided to the 'ranker' component as: 'The input query to "
+                    "compare the documents to.'.",
+                    "type": "string",
+                },
+                "filters": {
+                    "anyOf": [{"additionalProperties": True, "type": "object"}, {"type": "null"}],
+                    "description": "Provided to the 'bm25_retriever' component as: 'A dictionary with filters to "
+                    "narrow down the search space when retrieving documents.'.",
+                },
+                "top_k": {
+                    "anyOf": [{"type": "integer"}, {"type": "null"}],
+                    "description": "Provided to the 'bm25_retriever' component as: 'The maximum number of documents "
+                    "to return.', and Provided to the 'ranker' component as: 'The maximum number "
+                    "of documents to return.'.",
+                },
+                "scale_score": {
+                    "description": "Provided to the 'bm25_retriever' component as: 'When `True`, scales the score "
+                    "of retrieved documents to a range of 0 to 1, where 1 means extremely relevant."
+                    "\nWhen `False`, uses raw similarity scores.', and Provided to the 'ranker' "
+                    "component as: 'If `True`, scales the raw logit predictions using a Sigmoid "
+                    "activation function.\nIf `False`, disables scaling of the raw logit predictions."
+                    "\nIf set, overrides the value set at initialization.'.",
+                    "anyOf": [{"type": "boolean"}, {"type": "null"}],
+                },
+                "score_threshold": {
+                    "anyOf": [{"type": "number"}, {"type": "null"}],
+                    "description": "Provided to the 'ranker' component as: 'Use it to return documents only with "
+                    "a score above this threshold.\nIf set, overrides the value set at initialization.'"
+                    ".",
+                },
+            },
+            "required": ["query"],
+            "type": "object",
+        }
+
+    @pytest.mark.integration
+    @pytest.mark.skipif(not os.environ.get("OPENAI_API_KEY"), reason="OPENAI_API_KEY not set")
+    def test_live_pipeline_tool(self, in_memory_doc_store):
+        # Initialize a document store and add some documents
+        document_embedder = OpenAIDocumentEmbedder()
+        documents = [
+            Document(content="Nikola Tesla was a Serbian-American inventor and electrical engineer."),
+            Document(
+                content="He is best known for his contributions to the design of the modern alternating current (AC) "
+                "electricity supply system."
+            ),
+        ]
+        docs_with_embeddings = document_embedder.run(documents=documents)["documents"]
+        in_memory_doc_store.write_documents(docs_with_embeddings)
+
+        # Build a simple retrieval pipeline
+        retrieval_pipeline = Pipeline()
+        retrieval_pipeline.add_component("embedder", OpenAITextEmbedder())
+        retrieval_pipeline.add_component("retriever", InMemoryEmbeddingRetriever(document_store=in_memory_doc_store))
+
+        retrieval_pipeline.connect("embedder.embedding", "retriever.query_embedding")
+
+        # Wrap the pipeline as a tool
+        retriever_tool = PipelineTool(
+            pipeline=retrieval_pipeline,
+            input_mapping={"query": ["embedder.text"]},
+            output_mapping={"retriever.documents": "documents"},
+            name="document_retriever",
+            description="This tool retrieves documents relevant to Nikola Tesla from the document store",
+        )
+
+        # Create an Agent with the tool
+        agent = Agent(
+            chat_generator=OpenAIChatGenerator(model="gpt-4.1-mini"),
+            system_prompt="For any questions about Nikola Tesla, always use the document_retriever.",
+            tools=[retriever_tool],
+        )
+
+        # Let the Agent handle a query
+        result = agent.run([ChatMessage.from_user("Who was Nikola Tesla?")])
+
+        assert len(result["messages"]) == 5  # System msg, User msg, Agent msg, Tool call result, Agent mgs
+        assert "nikola" in result["messages"][-1].text.lower()
+
+    @pytest.mark.asyncio
+    @pytest.mark.integration
+    @pytest.mark.skipif(not os.environ.get("OPENAI_API_KEY"), reason="OPENAI_API_KEY not set")
+    async def test_live_async_pipeline_tool(self, in_memory_doc_store):
+        # Initialize a document store and add some documents
+        document_embedder = OpenAIDocumentEmbedder()
+        documents = [
+            Document(content="Nikola Tesla was a Serbian-American inventor and electrical engineer."),
+            Document(
+                content="He is best known for his contributions to the design of the modern alternating current (AC) "
+                "electricity supply system."
+            ),
+        ]
+        docs_with_embeddings = document_embedder.run(documents=documents)["documents"]
+        in_memory_doc_store.write_documents(docs_with_embeddings)
+
+        # Build a simple retrieval pipeline
+        retrieval_pipeline = Pipeline()
+        retrieval_pipeline.add_component("embedder", OpenAITextEmbedder())
+        retrieval_pipeline.add_component("retriever", InMemoryEmbeddingRetriever(document_store=in_memory_doc_store))
+
+        retrieval_pipeline.connect("embedder.embedding", "retriever.query_embedding")
+
+        # Wrap the pipeline as a tool
+        retriever_tool = PipelineTool(
+            pipeline=retrieval_pipeline,
+            input_mapping={"query": ["embedder.text"]},
+            output_mapping={"retriever.documents": "documents"},
+            name="document_retriever",
+            description="For any questions about Nikola Tesla, always use this tool",
+        )
+
+        # Create an Agent with the tool
+        agent = Agent(
+            chat_generator=OpenAIChatGenerator(model="gpt-4.1-mini"),
+            system_prompt="For any questions about Nikola Tesla, always use the document_retriever.",
+            tools=[retriever_tool],
+        )
+
+        # Let the Agent handle a query
+        result = await agent.run_async([ChatMessage.from_user("Who was Nikola Tesla?")])
+
+        assert len(result["messages"]) == 5  # System msg, User msg, Agent msg, Tool call result, Agent mgs
+        assert "nikola" in result["messages"][-1].text.lower()
+
+    def test_pipeline_tool_with_valid_inputs_from_state(self, sample_pipeline):
+        """Test that PipelineTool accepts valid inputs_from_state mapping"""
+        tool = PipelineTool(
+            pipeline=sample_pipeline,
+            input_mapping={"query": ["bm25_retriever.query"]},
+            output_mapping={"ranker.documents": "documents"},
+            name="test_tool",
+            description="A test tool",
+            inputs_from_state={"user_query": "query"},
+        )
+        assert tool.inputs_from_state == {"user_query": "query"}
+
+    def test_pipeline_tool_with_invalid_inputs_from_state(self, sample_pipeline):
+        """Test that PipelineTool validates inputs_from_state against pipeline inputs"""
+        with pytest.raises(ValueError, match="unknown parameter 'nonexistent'"):
+            PipelineTool(
+                pipeline=sample_pipeline,
+                input_mapping={"query": ["bm25_retriever.query"]},
+                output_mapping={"ranker.documents": "documents"},
+                name="test_tool",
+                description="A test tool",
+                inputs_from_state={"user_query": "nonexistent"},
+            )
+
+    def test_pipeline_tool_with_invalid_inputs_from_state_nested_dict(self, sample_pipeline):
+        """Test that PipelineTool rejects nested dict format for inputs_from_state"""
+        with pytest.raises(TypeError, match="must be str, not dict"):
+            PipelineTool(
+                pipeline=sample_pipeline,
+                input_mapping={"query": ["bm25_retriever.query"]},
+                output_mapping={"ranker.documents": "documents"},
+                name="test_tool",
+                description="A test tool",
+                inputs_from_state={"user_query": {"source": "query"}},  # type: ignore[dict-item]
+            )
+
+    def test_pipeline_tool_with_valid_outputs_to_state(self, sample_pipeline):
+        """Test that PipelineTool accepts valid outputs_to_state mapping"""
+        tool = PipelineTool(
+            pipeline=sample_pipeline,
+            input_mapping={"query": ["bm25_retriever.query"]},
+            output_mapping={"ranker.documents": "documents"},
+            name="test_tool",
+            description="A test tool",
+            outputs_to_state={"result_docs": {"source": "documents"}},
+        )
+        assert tool.outputs_to_state == {"result_docs": {"source": "documents"}}
+
+    def test_pipeline_tool_with_invalid_outputs_to_state(self, sample_pipeline):
+        """Test that PipelineTool validates outputs_to_state against pipeline outputs"""
+        with pytest.raises(ValueError, match="unknown output"):
+            PipelineTool(
+                pipeline=sample_pipeline,
+                input_mapping={"query": ["bm25_retriever.query"]},
+                output_mapping={"ranker.documents": "documents"},
+                name="test_tool",
+                description="A test tool",
+                outputs_to_state={"result": {"source": "nonexistent"}},
+            )
+
+
+class TestPipelineToolAsync:
+    def test_async_function_is_always_set(self, sample_pipeline):
+        tool = PipelineTool(
+            pipeline=sample_pipeline,
+            input_mapping={"query": ["bm25_retriever.query"]},
+            output_mapping={"ranker.documents": "documents"},
+            name="test_tool",
+            description="A test tool",
+        )
+
+        assert tool.function is not None
+        assert tool.async_function is not None

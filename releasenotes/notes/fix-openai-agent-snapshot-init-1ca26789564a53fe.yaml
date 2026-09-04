@@ -1,0 +1,4 @@
+---
+fixes:
+  - |
+    Prevent duplication of the last assistant message in the chat history when initializing from an `AgentSnapshot`.

@@ -1,0 +1,5 @@
+---
+preview:
+  - |
+    Revert #5826 and optionally take the `id` in the Document
+    class constructor.

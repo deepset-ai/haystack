@@ -1,0 +1,6 @@
+---
+enhancements:
+  - |
+    Added `unicode_normalization` parameter to the DocumentCleaner, allowing to normalize the text to NFC, NFD, NFKC, or NFKD.
+  - |
+    Added `ascii_only` parameter to the DocumentCleaner, transforming letters with diacritics to their ASCII equivalent and removing other non-ASCII characters.

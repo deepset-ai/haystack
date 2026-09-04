@@ -1,0 +1,4 @@
+---
+preview:
+  - |
+    Change `Document.blob` field type from `bytes` to `ByteStream` and remove `Document.mime_type` field.

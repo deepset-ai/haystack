@@ -1,0 +1,5 @@
+---
+enhancements:
+  - |
+    Move `Tool` to a new dedicated `tools` package.
+    Refactor `Tool` serialization and deserialization to make it more flexible and include type information.

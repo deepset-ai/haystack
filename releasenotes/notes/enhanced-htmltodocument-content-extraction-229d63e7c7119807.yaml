@@ -1,0 +1,3 @@
+enhancements:
+ - |
+   Improved HTML content extraction by attempting to use multiple extractors in order of priority until successful. An additional try_others parameter in HTMLToDocument, which is true by default, determines whether subsequent extractors are used after a failure. This enhancement decreases extraction failures, ensuring more dependable content retrieval.

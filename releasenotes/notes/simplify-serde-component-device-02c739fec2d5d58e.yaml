@@ -1,0 +1,5 @@
+---
+enhancements:
+  - |
+    Components no longer handle the (de-)serialization of ComponentDevice explicitly.
+    Instead, the components rely on the behavior implemented in default_to_dict/default_from_dict.

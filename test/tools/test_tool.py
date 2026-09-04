@@ -1,0 +1,474 @@
+# SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
+#
+# SPDX-License-Identifier: Apache-2.0
+
+import re
+from typing import Any
+
+import pytest
+
+from haystack.dataclasses import TextContent
+from haystack.tools import Tool, _check_duplicate_tool_names
+from haystack.tools.errors import ToolInvocationError
+from haystack.tools.tool import (
+    _deserialize_outputs_to_state,
+    _deserialize_outputs_to_string,
+    _serialize_outputs_to_state,
+    _serialize_outputs_to_string,
+)
+
+
+def get_weather_report(city: str) -> str:
+    return f"Weather report for {city}: 20°C, sunny"
+
+
+def format_string(text: str) -> str:
+    return f"Formatted: {text}"
+
+
+def outputs_to_result_handler(result):
+    return [TextContent(text=result["text"])]
+
+
+parameters = {"type": "object", "properties": {"city": {"type": "string"}}, "required": ["city"]}
+
+
+async def async_get_weather(city: str) -> str:
+    return f"Weather report for {city}: 20°C, sunny"
+
+
+class TestTool:
+    def test_init(self):
+        tool = Tool(
+            name="weather", description="Get weather report", parameters=parameters, function=get_weather_report
+        )
+
+        assert tool.name == "weather"
+        assert tool.description == "Get weather report"
+        assert tool.parameters == parameters
+        assert tool.function == get_weather_report
+        assert tool.inputs_from_state is None
+        assert tool.outputs_to_state is None
+
+    def test_init_invalid_parameters(self):
+        params = {"type": "invalid", "properties": {"city": {"type": "string"}}}
+        with pytest.raises(ValueError):
+            Tool(name="irrelevant", description="irrelevant", parameters=params, function=get_weather_report)
+
+    def test_init_async_function_passed_as_function_raises_error(self):
+        with pytest.raises(ValueError, match="`function` must be a synchronous function"):
+            Tool(name="weather", description="Get weather report", parameters=parameters, function=async_get_weather)
+
+    def test_init_requires_function_or_async_function(self):
+        with pytest.raises(ValueError, match="requires at least one of `function` or `async_function`"):
+            Tool(name="weather", description="Get weather report", parameters=parameters)
+
+    def test_init_sync_function_passed_as_async_function_raises_error(self):
+        with pytest.raises(ValueError, match="`async_function` must be a coroutine function"):
+            Tool(
+                name="weather",
+                description="Get weather report",
+                parameters=parameters,
+                async_function=get_weather_report,
+            )
+
+    @pytest.mark.parametrize(
+        "outputs_to_state",
+        [
+            pytest.param({"documents": {"source": get_weather_report}}, id="source-not-a-string"),
+            pytest.param({"documents": {"handler": "some_string", "source": "docs"}}, id="handler-not-callable"),
+        ],
+    )
+    def test_init_invalid_output_structure(self, outputs_to_state):
+        with pytest.raises(ValueError):
+            Tool(
+                name="irrelevant",
+                description="irrelevant",
+                parameters={"type": "object", "properties": {"city": {"type": "string"}}},
+                function=get_weather_report,
+                outputs_to_state=outputs_to_state,
+            )
+
+    def test_init_invalid_output_structure_config_not_dict(self):
+        with pytest.raises(TypeError):
+            Tool(
+                name="irrelevant",
+                description="irrelevant",
+                parameters={"type": "object", "properties": {"city": {"type": "string"}}},
+                function=get_weather_report,
+                outputs_to_state={"documents": ["some_value"]},  # type: ignore[dict-item]
+            )
+
+    @pytest.mark.parametrize(
+        "outputs_to_string",
+        [
+            pytest.param({"source": get_weather_report}, id="source-not-a-string"),
+            pytest.param({"handler": "some_string"}, id="handler-not-callable"),
+            pytest.param({"raw_result": "not-a-bool"}, id="raw_result-not-a-bool"),
+            pytest.param({"documents": {"source": get_weather_report}}, id="multi-value-source-not-a-string"),
+            pytest.param({"documents": {"handler": "some_string"}}, id="multi-value-handler-not-callable"),
+            pytest.param(
+                {"documents": {"source": "docs", "raw_result": True}}, id="multi-value-raw_result-not-supported"
+            ),
+        ],
+    )
+    def test_init_invalid_outputs_to_string_structure(self, outputs_to_string):
+        with pytest.raises(ValueError):
+            Tool(
+                name="irrelevant",
+                description="irrelevant",
+                parameters={"type": "object", "properties": {"city": {"type": "string"}}},
+                function=get_weather_report,
+                outputs_to_string=outputs_to_string,
+            )
+
+    def test_init_invalid_outputs_to_string_structure_config_not_dict(self):
+        with pytest.raises(TypeError):
+            Tool(
+                name="irrelevant",
+                description="irrelevant",
+                parameters={"type": "object", "properties": {"city": {"type": "string"}}},
+                function=get_weather_report,
+                outputs_to_string={"documents": ["some_value"]},
+            )
+
+    def test_tool_spec(self):
+        tool = Tool(
+            name="weather", description="Get weather report", parameters=parameters, function=get_weather_report
+        )
+
+        assert tool.tool_spec == {"name": "weather", "description": "Get weather report", "parameters": parameters}
+
+    def test_invoke(self):
+        tool = Tool(
+            name="weather", description="Get weather report", parameters=parameters, function=get_weather_report
+        )
+
+        assert tool.invoke(city="Berlin") == "Weather report for Berlin: 20°C, sunny"
+
+    def test_invoke_fail(self):
+        tool = Tool(
+            name="weather", description="Get weather report", parameters=parameters, function=get_weather_report
+        )
+        with pytest.raises(
+            ToolInvocationError,
+            match=re.escape(
+                "Failed to invoke Tool `weather` with parameters {}. Error: get_weather_report() missing 1 required "
+                "positional argument: 'city'"
+            ),
+        ):
+            tool.invoke()
+
+    def test_to_dict(self):
+        tool = Tool(
+            name="weather",
+            description="Get weather report",
+            parameters=parameters,
+            function=get_weather_report,
+            outputs_to_string={"handler": format_string},
+            inputs_from_state={"location": "city"},
+            outputs_to_state={"documents": {"handler": get_weather_report, "source": "docs"}},
+        )
+
+        assert tool.to_dict() == {
+            "type": "haystack.tools.tool.Tool",
+            "data": {
+                "name": "weather",
+                "description": "Get weather report",
+                "parameters": parameters,
+                "function": "test_tool.get_weather_report",
+                "async_function": None,
+                "outputs_to_string": {"handler": "test_tool.format_string"},
+                "inputs_from_state": {"location": "city"},
+                "outputs_to_state": {"documents": {"source": "docs", "handler": "test_tool.get_weather_report"}},
+            },
+        }
+
+    def test_from_dict(self):
+        tool_dict = {
+            "type": "haystack.tools.tool.Tool",
+            "data": {
+                "name": "weather",
+                "description": "Get weather report",
+                "parameters": parameters,
+                "function": "test_tool.get_weather_report",
+                "outputs_to_string": {"handler": "test_tool.format_string"},
+                "inputs_from_state": {"location": "city"},
+                "outputs_to_state": {"documents": {"source": "docs", "handler": "test_tool.get_weather_report"}},
+            },
+        }
+
+        tool = Tool.from_dict(tool_dict)
+
+        assert tool.name == "weather"
+        assert tool.description == "Get weather report"
+        assert tool.parameters == parameters
+        assert tool.function == get_weather_report
+        assert tool.outputs_to_string == {"handler": format_string}
+        assert tool.inputs_from_state == {"location": "city"}
+        assert tool.outputs_to_state == {"documents": {"source": "docs", "handler": get_weather_report}}
+
+    def test_serialize_outputs_to_string(self):
+        config = {"handler": format_string, "source": "result", "raw_result": False}
+        serialized = _serialize_outputs_to_string(config)
+        assert serialized == {"handler": "test_tool.format_string", "source": "result", "raw_result": False}
+
+        config = {"handler": format_string}
+        serialized = _serialize_outputs_to_string(config)
+        assert serialized == {"handler": "test_tool.format_string"}
+
+        config = {"handler": outputs_to_result_handler, "raw_result": True}
+        serialized = _serialize_outputs_to_string(config)
+        assert serialized == {"handler": "test_tool.outputs_to_result_handler", "raw_result": True}
+
+        config = {
+            "report": {"source": "report", "handler": format_string},
+            "temp": {"source": "temperature", "handler": format_string},
+        }
+        serialized = _serialize_outputs_to_string(config)
+        assert serialized == {
+            "report": {"source": "report", "handler": "test_tool.format_string"},
+            "temp": {"source": "temperature", "handler": "test_tool.format_string"},
+        }
+
+    def test_deserialize_outputs_to_string(self):
+        serialized = {"handler": "test_tool.format_string", "source": "result", "raw_result": False}
+        deserialized = _deserialize_outputs_to_string(serialized)
+        assert deserialized == {"handler": format_string, "source": "result", "raw_result": False}
+
+        serialized = {"handler": "test_tool.format_string"}
+        deserialized = _deserialize_outputs_to_string(serialized)
+        assert deserialized == {"handler": format_string}
+
+        serialized = {"handler": "test_tool.outputs_to_result_handler", "raw_result": True}
+        deserialized = _deserialize_outputs_to_string(serialized)
+        assert deserialized == {"handler": outputs_to_result_handler, "raw_result": True}
+
+        serialized = {
+            "report": {"source": "report", "handler": "test_tool.format_string"},
+            "temp": {"source": "temperature", "handler": "test_tool.format_string"},
+        }
+        deserialized = _deserialize_outputs_to_string(serialized)
+        assert deserialized == {
+            "report": {"source": "report", "handler": format_string},
+            "temp": {"source": "temperature", "handler": format_string},
+        }
+
+    def test_serialize_outputs_to_state(self):
+        config: dict[str, dict[str, Any]] = {
+            "documents": {"source": "docs", "handler": format_string},
+            "summary": {"source": "docs", "handler": get_weather_report},
+            "raw_docs": {"source": "docs"},
+        }
+        serialized = _serialize_outputs_to_state(config)
+        assert serialized == {
+            "documents": {"source": "docs", "handler": "test_tool.format_string"},
+            "summary": {"source": "docs", "handler": "test_tool.get_weather_report"},
+            "raw_docs": {"source": "docs"},
+        }
+
+    def test_deserialize_outputs_to_state(self):
+        serialized = {
+            "documents": {"source": "docs", "handler": "test_tool.format_string"},
+            "summary": {"source": "docs", "handler": "test_tool.get_weather_report"},
+            "raw_docs": {"source": "docs"},
+        }
+        deserialized = _deserialize_outputs_to_state(serialized)
+        assert deserialized == {
+            "documents": {"source": "docs", "handler": format_string},
+            "summary": {"source": "docs", "handler": get_weather_report},
+            "raw_docs": {"source": "docs"},
+        }
+
+    def test_inputs_from_state_validation_with_invalid_parameter(self):
+        """Test that inputs_from_state is validated against the parameters schema"""
+        with pytest.raises(
+            ValueError,
+            match=re.escape(
+                "inputs_from_state maps 'state_key' to unknown parameter 'nonexistent'. Valid parameters are: {'city'}."
+            ),
+        ):
+            Tool(
+                name="weather",
+                description="Get weather report",
+                parameters=parameters,
+                function=get_weather_report,
+                inputs_from_state={"state_key": "nonexistent"},
+            )
+
+    def test_inputs_from_state_validation_with_non_string_value(self):
+        """Test that inputs_from_state values must be strings"""
+        with pytest.raises(TypeError, match=re.escape("inputs_from_state values must be str, not dict")):
+            Tool(
+                name="weather",
+                description="Get weather report",
+                parameters=parameters,
+                function=get_weather_report,
+                inputs_from_state={"state_key": {"source": "city"}},  # type: ignore[dict-item]
+            )
+
+    def test_inputs_from_state_validation_with_valid_parameter(self):
+        """Test that inputs_from_state works with valid parameter names"""
+        tool = Tool(
+            name="weather",
+            description="Get weather report",
+            parameters=parameters,
+            function=get_weather_report,
+            inputs_from_state={"location": "city"},
+        )
+        assert tool.inputs_from_state == {"location": "city"}
+
+    def test_outputs_to_state_no_validation_when_get_valid_outputs_returns_none(self):
+        """Test that outputs_to_state is not validated when _get_valid_outputs returns None"""
+        # This should not raise an error even though "nonexistent" is not a valid output
+        # because the base Tool class returns None from _get_valid_outputs()
+        tool = Tool(
+            name="weather",
+            description="Get weather report",
+            parameters=parameters,
+            function=get_weather_report,
+            outputs_to_state={"result": {"source": "nonexistent"}},
+        )
+        assert tool.outputs_to_state == {"result": {"source": "nonexistent"}}
+
+    def test_outputs_to_state_validation_when_subclass_provides_valid_outputs(self):
+        """Test that outputs_to_state is validated when subclass overrides _get_valid_outputs"""
+
+        class ToolWithOutputs(Tool):
+            def _get_valid_outputs(self):
+                return {"report", "temperature"}
+
+        # Valid output should work
+        tool = ToolWithOutputs(
+            name="weather",
+            description="Get weather report",
+            parameters=parameters,
+            function=get_weather_report,
+            outputs_to_state={"result": {"source": "report"}},
+        )
+        assert tool.outputs_to_state == {"result": {"source": "report"}}
+
+        # Invalid output should raise an error
+        with pytest.raises(
+            ValueError,
+            match=re.escape("outputs_to_state: 'weather' maps state key 'result' to unknown output 'nonexistent'"),
+        ):
+            ToolWithOutputs(
+                name="weather",
+                description="Get weather report",
+                parameters=parameters,
+                function=get_weather_report,
+                outputs_to_state={"result": {"source": "nonexistent"}},
+            )
+
+
+@pytest.fixture
+def async_tool():
+    return Tool(
+        name="weather", description="Get weather report", parameters=parameters, async_function=async_get_weather
+    )
+
+
+@pytest.fixture
+def sync_tool():
+    return Tool(name="weather", description="Get weather report", parameters=parameters, function=get_weather_report)
+
+
+class TestToolAsync:
+    @pytest.mark.asyncio
+    async def test_invoke_async_awaits_async_function(self, async_tool):
+        assert async_tool.function is None
+        assert async_tool.async_function is async_get_weather
+        assert await async_tool.invoke_async(city="Berlin") == "Weather report for Berlin: 20°C, sunny"
+
+    def test_invoke_on_async_only_tool_raises(self, async_tool):
+        with pytest.raises(ToolInvocationError, match=re.escape("has no sync `function`")):
+            async_tool.invoke(city="Berlin")
+
+    @pytest.mark.asyncio
+    async def test_invoke_async_falls_back_to_sync_function(self, sync_tool):
+        # Sync-only tool: invoke_async dispatches to a worker thread via asyncio.to_thread.
+        assert await sync_tool.invoke_async(city="Berlin") == "Weather report for Berlin: 20°C, sunny"
+
+    @pytest.mark.asyncio
+    async def test_async_function_is_preferred_when_both_set(self):
+        async def from_async(city: str) -> str:
+            return "async"
+
+        def from_sync(city: str) -> str:
+            return "sync"
+
+        tool = Tool(
+            name="weather",
+            description="Get weather report",
+            parameters=parameters,
+            function=from_sync,
+            async_function=from_async,
+        )
+
+        assert await tool.invoke_async(city="Berlin") == "async"
+        assert tool.invoke(city="Berlin") == "sync"
+
+    @pytest.mark.asyncio
+    async def test_invoke_async_wraps_exception(self):
+        async def boom(city: str) -> str:
+            raise RuntimeError("kaboom")
+
+        tool = Tool(name="weather", description="Get weather report", parameters=parameters, async_function=boom)
+
+        with pytest.raises(ToolInvocationError, match="kaboom"):
+            await tool.invoke_async(city="Berlin")
+
+    @pytest.mark.parametrize(
+        "kwargs, expected_function, expected_async_function",
+        [
+            pytest.param({"async_function": async_get_weather}, None, "test_tool.async_get_weather", id="async-only"),
+            pytest.param(
+                {"function": get_weather_report, "async_function": async_get_weather},
+                "test_tool.get_weather_report",
+                "test_tool.async_get_weather",
+                id="both",
+            ),
+        ],
+    )
+    def test_serde_roundtrip(self, kwargs, expected_function, expected_async_function):
+        tool = Tool(name="weather", description="Get weather report", parameters=parameters, **kwargs)
+
+        data = tool.to_dict()
+        assert data["data"]["function"] == expected_function
+        assert data["data"]["async_function"] == expected_async_function
+
+        restored = Tool.from_dict(data)
+        assert restored.function == kwargs.get("function")
+        assert restored.async_function == kwargs.get("async_function")
+
+    def test_from_dict_legacy_payload_without_async_function_key(self):
+        # Payload produced before `async_function` existed.
+        legacy = {
+            "type": "haystack.tools.tool.Tool",
+            "data": {
+                "name": "weather",
+                "description": "Get weather report",
+                "parameters": parameters,
+                "function": "test_tool.get_weather_report",
+            },
+        }
+
+        tool = Tool.from_dict(legacy)
+        assert tool.function is get_weather_report
+        assert tool.async_function is None
+
+
+def test_check_duplicate_tool_names():
+    tools = [
+        Tool(name="weather", description="Get weather report", parameters=parameters, function=get_weather_report),
+        Tool(name="weather", description="A different description", parameters=parameters, function=get_weather_report),
+    ]
+    with pytest.raises(ValueError):
+        _check_duplicate_tool_names(tools)
+
+    tools = [
+        Tool(name="weather", description="Get weather report", parameters=parameters, function=get_weather_report),
+        Tool(name="weather2", description="Get weather report", parameters=parameters, function=get_weather_report),
+    ]
+    _check_duplicate_tool_names(tools)

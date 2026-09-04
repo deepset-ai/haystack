@@ -1,0 +1,82 @@
+# SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
+#
+# SPDX-License-Identifier: Apache-2.0
+
+from copy import deepcopy
+from enum import Enum
+from pathlib import Path
+from typing import Any
+
+from haystack.dataclasses import ByteStream
+
+
+class LinkFormat(Enum):
+    """
+    Supported formats for storing link information in a Document.
+    """
+
+    MARKDOWN = "markdown"
+    PLAIN = "plain"
+    NONE = "none"
+
+    def __str__(self) -> str:
+        return self.value
+
+    @staticmethod
+    def from_str(string: str) -> "LinkFormat":
+        """
+        Convert a string to a LinkFormat enum.
+        """
+        enum_map = {e.value: e for e in LinkFormat}
+        link_format = enum_map.get(string.lower())
+        if link_format is None:
+            msg = f"Unknown link format '{string}'. Supported formats are: {list(enum_map.keys())}"
+            raise ValueError(msg)
+        return link_format
+
+
+def get_bytestream_from_source(source: str | Path | ByteStream, guess_mime_type: bool = False) -> ByteStream:
+    """
+    Creates a ByteStream object from a source.
+
+    :param source:
+        A source to convert to a ByteStream. Can be a string (path to a file), a Path object, or a ByteStream.
+    :param guess_mime_type:
+        Whether to guess the mime type from the file.
+    :return:
+        A ByteStream object.
+    """
+
+    if isinstance(source, ByteStream):
+        return source
+    if isinstance(source, (str, Path)):
+        bs = ByteStream.from_file_path(Path(source), guess_mime_type=guess_mime_type)
+        bs.meta["file_path"] = str(source)
+        return bs
+    raise ValueError(f"Unsupported source type {type(source)}")
+
+
+def normalize_metadata(meta: dict[str, Any] | list[dict[str, Any]] | None, sources_count: int) -> list[dict[str, Any]]:
+    """
+    Normalize the metadata input for a converter.
+
+    Given all the possible value of the meta input for a converter (None, dictionary or list of dicts),
+    makes sure to return a list of dictionaries of the correct length for the converter to use.
+
+    :param meta: the meta input of the converter, as-is
+    :param sources_count: the number of sources the converter received
+    :returns: a list of dictionaries of the make length as the sources list
+
+    Each source always gets its own independent dictionary. When ``meta`` is ``None`` or a single
+    dictionary, a separate copy is returned for every source so that mutating one source's metadata
+    downstream does not leak into the others.
+    """
+    if meta is None:
+        return [{} for _ in range(sources_count)]
+    if isinstance(meta, dict):
+        return [deepcopy(meta) for _ in range(sources_count)]
+    if isinstance(meta, list):
+        if sources_count != len(meta):
+            raise ValueError("The length of the metadata list must match the number of sources.")
+        return meta
+    raise ValueError("meta must be either None, a dictionary or a list of dictionaries.")

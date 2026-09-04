@@ -1,0 +1,35 @@
+---
+features:
+  - |
+    The ``system_prompt`` initialization parameter of the ``Agent`` component now supports Jinja2 message template
+    syntax. This allows you to define the template at initialization time and pass runtime variables when calling
+    the ``run`` method.
+    This can be useful to inject dynamic values (such as the current time) or to add conditional instructions.
+
+    Example usage:
+
+    .. code:: python
+
+      from haystack.components.agents import Agent
+      from haystack.components.generators.chat import OpenAIChatGenerator
+      from haystack.dataclasses import ChatMessage
+      from haystack.tools import tool
+
+      @tool
+      def weather(location: str) -> str:
+          return f"The weather in {location} is sunny."
+
+      agent = Agent(
+          chat_generator=OpenAIChatGenerator(),
+          tools=[weather],
+          system_prompt="""{% message role='system' %}
+          You always respond in {{language}}.
+          {% endmessage %}""",
+          required_variables=["language"],
+      )
+
+      messages = [ChatMessage.from_user("What is the weather in London?")]
+
+      result = agent.run(messages=messages, language="Italian")
+      print(result["last_message"].text)
+      # >> Il tempo a Londra è soleggiato.

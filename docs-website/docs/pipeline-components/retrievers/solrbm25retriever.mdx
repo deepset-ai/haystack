@@ -1,0 +1,127 @@
+---
+title: "SolrBM25Retriever"
+id: solrbm25retriever
+slug: "/solrbm25retriever"
+description: "This is a keyword-based Retriever that fetches Documents matching a query from the Solr Document Store."
+---
+
+# SolrBM25Retriever
+
+This is a keyword-based Retriever that fetches Documents matching a query from the Solr Document Store.
+
+<div className="key-value-table">
+
+|  |  |
+| --- | --- |
+| **Most common position in a pipeline** | 1. Before a [`ChatPromptBuilder`](../builders/chatpromptbuilder.mdx) in a RAG pipeline 2. The last component in the keyword search pipeline 3. Before a [`TransformersExtractiveReader`](../readers/transformersextractivereader.mdx) in an extractive QA pipeline |
+| **Mandatory init variables**           | `document_store`: An instance of a [SolrDocumentStore](../../document-stores/solrdocumentstore.mdx) |
+| **Mandatory run variables**            | `query`: A string |
+| **Output variables**                   | `documents`: A list of documents (matching the query) |
+| **API reference**                      | [Solr](/reference/integrations-solr) |
+| **GitHub link**                        | https://github.com/deepset-ai/haystack-core-integrations/tree/main/integrations/solr |
+| **Package name** | `solr-haystack` |
+
+</div>
+
+## Overview
+
+`SolrBM25Retriever` is a keyword-based Retriever that fetches Documents matching a query from [`SolrDocumentStore`](../../document-stores/solrdocumentstore.mdx). It determines the similarity between Documents and the query based on the BM25 algorithm, which computes a weighted word overlap between the two strings.
+
+Since the `SolrBM25Retriever` matches strings based on word overlap, it's often used to find exact matches to names of persons or products, IDs, or well-defined error messages. The BM25 algorithm is very lightweight and simple. Beating it with more complex embedding-based approaches on out-of-domain data can be hard.
+
+If you want a semantic match between a query and documents, use the [`SolrEmbeddingRetriever`](solrembeddingretriever.mdx), which uses vectors created by embedding models to retrieve relevant information, or the [`SolrHybridRetriever`](solrhybridretriever.mdx), which combines both approaches.
+
+### Parameters
+
+In addition to the `query`, the `SolrBM25Retriever` accepts other optional parameters, including `top_k` (the maximum number of Documents to retrieve) and `filters` to narrow down the search space. Setting `fuzziness` to a value greater than `0` enables per-term fuzzy matching with that edit distance, and `all_terms_must_match=True` requires every query term to match. With `scale_score=True`, the BM25 scores are scaled into the `(0, 1)` range.
+
+The Retriever also has a `run_async` method, which uses the Document Store's async client.
+
+## Usage
+
+### Installation
+
+To start using Solr with Haystack, install the package with:
+
+```shell
+pip install solr-haystack
+```
+
+### On its own
+
+This Retriever needs an instance of `SolrDocumentStore` and indexed Documents to run.
+
+```python
+from haystack_integrations.document_stores.solr import SolrDocumentStore
+from haystack_integrations.components.retrievers.solr import SolrBM25Retriever
+
+document_store = SolrDocumentStore(url="http://localhost:8983/solr", core="haystack")
+
+retriever = SolrBM25Retriever(document_store=document_store)
+
+retriever.run(query="How to make a pizza", top_k=3)
+```
+
+### In a Pipeline
+
+```python
+from haystack import Document, Pipeline
+from haystack.components.builders import ChatPromptBuilder
+from haystack.components.generators.chat import OpenAIChatGenerator
+from haystack.dataclasses import ChatMessage
+from haystack.document_stores.types import DuplicatePolicy
+from haystack_integrations.components.retrievers.solr import SolrBM25Retriever
+from haystack_integrations.document_stores.solr import SolrDocumentStore
+
+# Create a RAG query pipeline
+prompt_template = [
+    ChatMessage.from_user(
+        """
+    Given these documents, answer the question.\nDocuments:
+    {% for doc in documents %}
+        {{ doc.content }}
+    {% endfor %}
+
+    \nQuestion: {{question}}
+    \nAnswer:
+    """,
+    ),
+]
+
+document_store = SolrDocumentStore(url="http://localhost:8983/solr", core="haystack")
+
+# Add Documents
+documents = [
+    Document(content="There are over 7,000 languages spoken around the world today."),
+    Document(
+        content="Elephants have been observed to behave in a way that indicates a high level of self-awareness, such as recognizing themselves in mirrors.",
+    ),
+    Document(
+        content="In certain parts of the world, like the Maldives, Puerto Rico, and San Diego, you can witness the phenomenon of bioluminescent waves.",
+    ),
+]
+
+# DuplicatePolicy.SKIP is optional, but useful to run the script multiple times without throwing errors
+document_store.write_documents(documents=documents, policy=DuplicatePolicy.SKIP)
+
+rag_pipeline = Pipeline()
+rag_pipeline.add_component(
+    "retriever", SolrBM25Retriever(document_store=document_store)
+)
+rag_pipeline.add_component(
+    "prompt_builder",
+    ChatPromptBuilder(template=prompt_template, required_variables="*"),
+)
+rag_pipeline.add_component("llm", OpenAIChatGenerator())
+rag_pipeline.connect("retriever", "prompt_builder.documents")
+rag_pipeline.connect("prompt_builder", "llm.messages")
+
+question = "How many languages are spoken around the world today?"
+result = rag_pipeline.run(
+    {
+        "retriever": {"query": question},
+        "prompt_builder": {"question": question},
+    }
+)
+print(result["llm"]["replies"][0].text)
+```

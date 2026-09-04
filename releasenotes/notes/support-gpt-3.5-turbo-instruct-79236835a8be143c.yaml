@@ -1,0 +1,4 @@
+---
+enhancements:
+  - |
+    Support OpenAI's new `gpt-3.5-turbo-instruct` model

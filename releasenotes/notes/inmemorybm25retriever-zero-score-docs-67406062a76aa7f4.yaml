@@ -1,0 +1,3 @@
+---
+fixes:
+  - Prevent InMemoryBM25Retriever from returning documents with a score of 0.0.

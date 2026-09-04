@@ -1,0 +1,4 @@
+---
+fixes:
+  - |
+    The `include_outputs_from` parameter in `Pipeline.run` correctly returns outputs of components with multiple outputs.

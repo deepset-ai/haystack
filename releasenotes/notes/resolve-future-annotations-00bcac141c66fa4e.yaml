@@ -1,0 +1,5 @@
+---
+enhancements:
+  - |
+    Resolve postponed type annotations (from ``from __future__ import annotations``) when creating component input sockets, so pipelines can correctly match compatible types.
+    This fixes cases where connecting ``ChatPromptBuilder`` to ``FallbackChatGenerator`` failed because the generator’s annotations were interpreted as strings (for example ``'list[ChatMessage]'``), resulting in a ``PipelineConnectError`` due to mismatched socket types.

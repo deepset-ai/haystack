@@ -1,0 +1,5 @@
+---
+upgrade:
+  - |
+    The deprecated `FUNCTION` role has been removed from the `ChatRole` enum. Use `TOOL` instead.
+    The deprecated class method `ChatMessage.from_function` has been removed. Use `ChatMessage.from_tool` instead.

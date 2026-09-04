@@ -1,0 +1,4 @@
+---
+enhancements:
+  - |
+    AnswerBuilder can now accept ChatMessages as input in addition to strings. When using ChatMessages, metadata will be automatically added to the answer.

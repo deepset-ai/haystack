@@ -1,0 +1,9 @@
+---
+fixes:
+  - |
+    Fixed ``OpenAIResponsesChatGenerator`` dropping ``encrypted_content`` from reasoning items in streaming mode.
+    Two issues were addressed: ``_convert_streaming_chunks_to_chat_message`` was discarding all reasoning extras
+    except ``id`` and ``type``; and ``_convert_response_chunk_to_streaming_chunk`` had no handler for the
+    ``response.output_item.done`` event for reasoning items, which is the only event that carries
+    ``encrypted_content``. Both are now fixed, so ``encrypted_content`` is preserved end-to-end and
+    multi-turn conversations with ``store=False`` and ``include=["reasoning.encrypted_content"]`` work correctly.

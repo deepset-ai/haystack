@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    Adds LostInTheMiddleRanker, DiversityRanker, and RecentnessRanker to `haystack/nodes/__init__.py` and thus
+    ensures that they are included in JSON schema generation.

@@ -1,0 +1,26 @@
+---
+upgrade:
+  - |
+    Agent and LLMMessagesRouter components now require explicit warm_up() calls before run() when used in standalone
+    mode (outside of a Pipeline) with tools. This change was introduced by PR #9942 which added warm_up() methods to
+    ChatGenerator components for tool initialization.
+
+    **Who is affected:** Users running Agent or LLMMessagesRouter standalone with ChatGenerators that have tools.
+
+    **Action required:** Call warm_up() before run() or run_async():
+
+    .. code-block:: python
+
+        # Agent with tools
+        agent = Agent(llm=OpenAIChatGenerator(model="gpt-4"), tools=[my_tool])
+        agent.warm_up()  # Required in standalone mode
+        result = agent.run(messages=[ChatMessage.from_user("Hello")])
+
+        # LLMMessagesRouter with tools
+        router = LLMMessagesRouter(generator=OpenAIChatGenerator(model="gpt-4"), tools=[my_tool])
+        router.warm_up()  # Required in standalone mode
+        result = router.run(messages=[ChatMessage.from_user("Hello")])
+
+    **Note:** This requirement only applies to standalone usage. When these components are used within a Pipeline,
+    warm_up() is called automatically. We are reconsidering this design choice - see issue #9966 for discussion
+    about automatically calling warm_up() at runtime instead of requiring explicit calls.

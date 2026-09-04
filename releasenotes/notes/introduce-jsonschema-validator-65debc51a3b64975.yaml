@@ -1,0 +1,4 @@
+---
+features:
+ - |
+   Introduced JsonSchemaValidator to validate the JSON content of ChatMessage against a provided JSON schema. Valid messages are emitted through the 'validated' output, while messages failing validation are sent via the 'validation_error' output, along with useful error details for troubleshooting.

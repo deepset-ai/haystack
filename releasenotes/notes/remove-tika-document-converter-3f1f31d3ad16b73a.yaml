@@ -1,0 +1,18 @@
+---
+upgrade:
+  - |
+    ``TikaDocumentConverter`` has been moved out of Haystack into the
+    ``tika-haystack`` integration package. Install the new package with ``pip install tika-haystack``
+    and update your imports.
+
+    Before:
+
+    .. code:: python
+
+      from haystack.components.converters import TikaDocumentConverter
+
+    After:
+
+    .. code:: python
+
+      from haystack_integrations.components.converters.tika import TikaDocumentConverter

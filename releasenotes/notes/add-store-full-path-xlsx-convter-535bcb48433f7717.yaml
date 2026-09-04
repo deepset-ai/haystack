@@ -1,0 +1,5 @@
+---
+enhancements:
+  - |
+    Added the store_full_path init variable to XLSXToDocument to allow users to toggle whether to store the full path of the source file in the meta of the Document.
+    This is set to False by default to increase privacy.

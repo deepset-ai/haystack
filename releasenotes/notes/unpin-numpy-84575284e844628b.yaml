@@ -1,0 +1,6 @@
+---
+enhancements:
+  - |
+    Previously, numpy was pinned to <2.0 to avoid compatibility issues in several core integrations.
+    This pin has been removed, and haystack can work with both numpy 1.x and 2.x.
+    If necessary, we will pin numpy version in specific core integrations that require it.

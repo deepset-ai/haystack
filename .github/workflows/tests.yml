@@ -1,0 +1,344 @@
+name: Tests
+
+# The workflow will always run, but the actual tests will only execute when:
+# - The workflow is triggered manually.
+# - The push is to main or a release branch.
+# - There are changes to relevant files on a pull request.
+# Note: If no conditions are met, the workflow will complete successfully without running tests
+# to satisfy Branch Protection rules.
+
+on:
+  workflow_dispatch: # Activate this workflow manually
+  push:
+    branches:
+      - main
+      # release branches have the form v1.9.x
+      - "v[0-9].*[0-9].x"
+    # when we push, we do not need to satisfy Branch Protection rules, so we can ignore PRs that just change docs
+    paths-ignore:
+      - "docs-website/**"
+      - "**/*.md"
+      - "images/**"
+  pull_request:
+    types:
+      - opened
+      - reopened
+      - synchronize
+
+env:
+  OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+  AZURE_OPENAI_API_KEY: ${{ secrets.AZURE_OPENAI_API_KEY }}
+  AZURE_OPENAI_ENDPOINT: ${{ secrets.AZURE_OPENAI_ENDPOINT }}
+  PYTHON_VERSION: "3.10"
+  # numpy's stubs require a 3.12+ interpreter, so type checking runs above the floor.
+  # See [tool.mypy] in pyproject.toml.
+  MYPY_PYTHON_VERSION: "3.12"
+  HATCH_VERSION: "1.16.5"
+
+permissions:
+  contents: read
+
+jobs:
+  check-if-changed:
+    # This job checks if the relevant files have been changed.
+    # We check for changes in the check-if-changed job instead of using paths/paths-ignore at workflow level.
+    # This ensures the "Mark tests as completed" job always runs, which is required by Branch Protection rules.
+    name: Check if changed
+    runs-on: ubuntu-slim
+    permissions:
+      pull-requests: read
+    # Specifying outputs is not needed to make the job work, but only to comply with actionlint
+    outputs:
+      changes: ${{ steps.changes.outputs.changes }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Check for changed code
+        id: changes
+        uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
+        with:
+          filters: |
+            changes:
+              - "haystack/**/*.py"
+              - "test/**/*.py"
+              - "pyproject.toml"
+              - ".github/utils/*.py"
+              - "scripts/*.py"
+
+  format:
+    needs: check-if-changed
+    # Run tests if: manual trigger, push to main/release, or relevant files changed
+    if: |
+      github.event_name == 'workflow_dispatch' ||
+      github.event_name == 'push' ||
+      (needs.check-if-changed.outputs.changes == 'true')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "${{ env.PYTHON_VERSION }}"
+
+      - name: Install Hatch
+        run: |
+          python -m pip install --upgrade pip
+          pip install hatch==${{ env.HATCH_VERSION }} --uploaded-prior-to=P1D
+
+      - name: Ruff - check format and linting
+        run: hatch run fmt-check
+
+      - name: Check presence of license header
+        run: docker run --rm -v "$(pwd):/github/workspace" ghcr.io/korandoru/hawkeye:v6.5.1@sha256:0ebd72353053aa6d3f0cb44a6897786386347bd4636ffc9592f8e47c81ea2b9d check
+
+  check-imports:
+    needs: format
+    runs-on: ubuntu-slim
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "${{ env.PYTHON_VERSION }}"
+
+      - name: Install Hatch
+        run: |
+          python -m pip install --upgrade pip
+          pip install hatch==${{ env.HATCH_VERSION }} --uploaded-prior-to=P1D
+
+      - name: Check imports
+        run: hatch run python .github/utils/check_imports.py
+
+  unit-tests:
+    name: Unit / ${{ matrix.os }}
+    needs: format
+    timeout-minutes: 30
+    permissions:
+      contents: write
+      pull-requests: write
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+          - windows-latest
+          - macos-latest
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: true # needed for python-coverage-comment-action
+
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "${{ env.PYTHON_VERSION }}"
+
+      - name: Install Hatch
+        id: hatch
+        shell: bash
+        run: |
+          python -m pip install --upgrade pip
+          pip install hatch==${{ env.HATCH_VERSION }} --uploaded-prior-to=P1D
+          echo "env=$(hatch env find test)" >> "$GITHUB_OUTPUT"
+
+      - name: Run
+        run: hatch run test:unit
+
+      - uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        id: cache
+        if: matrix.os == 'macos-latest'
+        with:
+          path: ${{ steps.hatch.outputs.env }}
+          key: ${{ runner.os }}-${{ github.sha }}
+
+      # On PR: posts coverage comment (directly on same-repo PRs; via artifact for fork PRs).
+      # On push to main: stores coverage baseline on the data branch.
+      # We only upload coverage for ubuntu-latest, as handling multiple OSes adds complexity for little gain.
+      - name: Coverage comment
+        id: coverage_comment
+        if: matrix.os == 'ubuntu-latest'
+        uses: py-cov-action/python-coverage-comment-action@a05be3d2e8a6272d3ef5fb2840ab20368bb2eb71 # v4.3
+        with:
+          GITHUB_TOKEN: ${{ github.token }}
+          MINIMUM_GREEN: 90
+          MINIMUM_ORANGE: 60
+
+      - name: Upload coverage comment to be posted
+        if: matrix.os == 'ubuntu-latest' && github.event_name == 'pull_request' && steps.coverage_comment.outputs.COMMENT_FILE_WRITTEN == 'true'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: python-coverage-comment-action
+          path: python-coverage-comment-action.txt
+
+  mypy:
+    needs: unit-tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          # With the default value of 1, there are corner cases where tj-actions/changed-files
+          # fails with a `no merge base` error
+          fetch-depth: 0
+      - name: Get changed files
+        id: files
+        uses: tj-actions/changed-files@9426d40962ed5378910ee2e21d5f8c6fcbf2dd96 # v47.0.6
+        with:
+          files: |
+            **/*.py
+            pyproject.toml
+          files_ignore: |
+            test/**
+            .github/**
+            scripts/**
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        if: steps.files.outputs.any_changed == 'true'
+        with:
+          python-version: "${{ env.MYPY_PYTHON_VERSION }}"
+
+      - name: Install Hatch
+        id: hatch
+        if: steps.files.outputs.any_changed == 'true'
+        run: |
+          python -m pip install --upgrade pip
+          pip install hatch==${{ env.HATCH_VERSION }} --uploaded-prior-to=P1D
+          echo "env=$(hatch env find test)" >> "$GITHUB_OUTPUT"
+
+      - name: Mypy
+        if: steps.files.outputs.any_changed == 'true'
+        run: |
+          mkdir .mypy_cache
+          hatch run test:types
+
+  integration-tests-linux:
+    name: Integration / ubuntu-latest
+    needs: unit-tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "${{ env.PYTHON_VERSION }}"
+
+      - name: Install Hatch
+        id: hatch
+        shell: bash
+        run: |
+          python -m pip install --upgrade pip
+          pip install hatch==${{ env.HATCH_VERSION }} --uploaded-prior-to=P1D
+          echo "env=$(hatch env find test)" >> "$GITHUB_OUTPUT"
+
+      - name: Run
+        run: hatch run test:integration-only-fast
+
+  integration-tests-macos:
+    name: Integration / macos-latest
+    needs: unit-tests
+    runs-on: macos-latest
+    timeout-minutes: 30
+    env:
+      HAYSTACK_MPS_ENABLED: false
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "${{ env.PYTHON_VERSION }}"
+
+      - name: Install Hatch
+        id: hatch
+        shell: bash
+        run: |
+          python -m pip install --upgrade pip
+          pip install hatch==${{ env.HATCH_VERSION }} --uploaded-prior-to=P1D
+          echo "env=$(hatch env find test)" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        id: cache
+        with:
+          path: ${{ steps.hatch.outputs.env }}
+          key: ${{ runner.os }}-${{ github.sha }}
+
+      - name: Run
+        run: hatch run test:integration-only-fast
+
+  integration-tests-windows:
+    name: Integration / windows-latest
+    needs: unit-tests
+    runs-on: windows-latest
+    timeout-minutes: 30
+    env:
+      HAYSTACK_XPU_ENABLED: false
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "${{ env.PYTHON_VERSION }}"
+
+      - name: Install Hatch
+        id: hatch
+        shell: bash
+        run: |
+          python -m pip install --upgrade pip
+          pip install hatch==${{ env.HATCH_VERSION }} --uploaded-prior-to=P1D
+          echo "env=$(hatch env find test)" >> "$GITHUB_OUTPUT"
+
+      - name: Run
+        run: hatch run test:integration-only-fast
+
+  notify-slack-on-failure:
+    if: failure() && github.ref_name == 'main'
+    needs:
+      - check-imports
+      - mypy
+      - integration-tests-linux
+      - integration-tests-macos
+      - integration-tests-windows
+    runs-on: ubuntu-slim
+    steps:
+      - uses: deepset-ai/notify-slack-action@a65def0c8bf91d6520286ab34280151c76a5a008 # v1.1.0
+        with:
+          slack-webhook-url: ${{ secrets.SLACK_WEBHOOK_URL_NOTIFICATIONS }}
+
+  tests-completed:
+    # This job always runs and succeeds if all tests succeed or are skipped. It is required by Branch Protection rules.
+    name: Mark tests as completed
+    runs-on: ubuntu-slim
+    if: ${{ always() && !cancelled() }}
+    needs:
+      - check-imports
+      - mypy
+      - integration-tests-linux
+      - integration-tests-macos
+      - integration-tests-windows
+
+    steps:
+      - name: Mark tests as completed
+        run: |
+          if [ "${{ needs.check-imports.result }}" = "failure" ] ||
+             [ "${{ needs.mypy.result }}" = "failure" ] ||
+             [ "${{ needs.integration-tests-linux.result }}" = "failure" ] ||
+             [ "${{ needs.integration-tests-macos.result }}" = "failure" ] ||
+             [ "${{ needs.integration-tests-windows.result }}" = "failure" ]; then
+            echo "Tests failed!"
+            exit 1
+          else
+            echo "Tests completed!"
+          fi

@@ -1,0 +1,4 @@
+---
+enhancements:
+ - |
+   Enhanced the OpenAPIServiceConnector to support dynamic authentication handling. With this update, service credentials are now dynamically provided at each run invocation, eliminating the need for pre-configuring a known set of service authentications. This flexibility allows for the introduction of new services on-the-fly, each with its unique authentication, streamlining the integration process. This modification not only simplifies the initial setup of the OpenAPIServiceConnector but also ensures a more transparent and straightforward authentication process for each interaction with different OpenAPI services.

@@ -1,0 +1,48 @@
+---
+features:
+  - |
+    Tools and components can now declare a ``State`` (or ``State | None``) parameter in their
+    signature to receive the live agent ``State`` object at invocation time — no extra wiring
+    needed.
+
+    For function-based tools created with ``@tool`` or ``create_tool_from_function``, add a
+    ``state`` parameter annotated as ``State``:
+
+    .. code:: python
+
+      from haystack.components.agents import State
+      from haystack.tools import tool
+
+      @tool
+      def my_tool(query: str, state: State) -> str:
+          """Search using context from agent state."""
+          history = state.get("history")
+          ...
+
+    For component-based tools created with ``ComponentTool``, declare a ``State`` input socket
+    on the component's ``run`` method:
+
+    .. code:: python
+
+      from haystack import component
+      from haystack.components.agents import State
+      from haystack.tools import ComponentTool
+
+      @component
+      class MyComponent:
+          @component.output_types(result=str)
+          def run(self, query: str, state: State) -> dict:
+              history = state.get("history")
+              ...
+
+      tool = ComponentTool(component=MyComponent())
+
+    In both cases ``ToolInvoker`` automatically injects the runtime ``State`` object before
+    calling the tool, and ``State``/``Optional[State]`` parameters are excluded from the
+    LLM-facing schema so the model is not asked to supply them.
+
+    This is an alternative to the existing ``inputs_from_state`` and ``outputs_to_state``
+    options on ``Tool`` and ``ComponentTool``, which map individual state keys to specific
+    tool parameters and outputs declaratively. Injecting the full ``State`` object is more
+    flexible and useful when a tool needs to read from or write to multiple keys, but it
+    couples the tool implementation directly to ``State``.

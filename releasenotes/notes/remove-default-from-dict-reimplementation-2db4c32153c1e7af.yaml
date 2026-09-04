@@ -1,0 +1,4 @@
+---
+preview:
+  - |
+    Removed implementations of from_dict and to_dict from all components where they had the same effect as the default implementation from Canals: https://github.com/deepset-ai/canals/blob/main/canals/serialization.py#L12-L13 This refactoring does not change the behavior of the components.

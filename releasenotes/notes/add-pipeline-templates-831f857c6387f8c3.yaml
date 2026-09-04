@@ -1,0 +1,13 @@
+---
+highlights:  >
+   Introducing a flexible and dynamic approach to creating NLP pipelines with predefined templates.
+   This innovative feature allows users to easily construct and customize complex data processing pipelines for various
+   NLP tasks.
+
+   For example, the following pipeline template can be used to create an indexing pipeline:
+   ```python
+   from haystack import Pipeline, PredefinedPipeline
+
+   pipe = Pipeline.from_template(PredefinedPipeline.INDEXING)
+   result = pipe.run({"converter": {"sources": ["some_file.txt"]}})
+   ```

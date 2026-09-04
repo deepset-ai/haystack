@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Fixed a bug in ``NamedEntityExtractor`` where the spaCy/Thinc device state was not correctly 
+    restored after execution, potentially affecting the device configuration of other spaCy 
+    components in the same process.

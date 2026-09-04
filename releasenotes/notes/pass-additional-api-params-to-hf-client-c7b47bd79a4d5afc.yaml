@@ -1,0 +1,5 @@
+---
+features:
+  - |
+    - For HuggingFaceAPIGenerator and HuggingFaceAPIChatGenerator all additional key, value pairs passed in `api_params` are now passed to the initializations of the underlying Inference Clients. This allows passing of additional parameters to the clients like `timeout`, `headers`, `provider`, etc.
+    - This means we now can easily specify a different inference provider by passing the `provider` key in `api_params`.

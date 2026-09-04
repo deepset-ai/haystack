@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Update ``Pipeline.inputs()`` to return any variadic inputs as not mandatory if they already have a connection.
+    Removed the utility functions ``describe_pipeline_inputs`` and ``describe_pipeline_inputs_as_string`` from ``haystack/core/pipeline/descriptions.py``
+    since they were not used and not referenced in the documentation.
+    Use the ``Pipeline.inputs()`` method to inspect the inputs of a pipeline.

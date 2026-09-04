@@ -1,0 +1,5 @@
+---
+upgrade:
+  - |
+    Starting from Haystack 2.11.0 Python 3.8 is no longer supported.
+    Python 3.8 reached its end of life on October 2024.

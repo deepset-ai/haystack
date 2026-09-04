@@ -1,0 +1,7 @@
+---
+features:
+  - |
+    Introduce a new `SparseEmbedding` class which can be used to store a sparse
+    vector representation of a Document.
+    It will be instrumental to support Sparse Embedding Retrieval with
+    the subsequent introduction of Sparse Embedders and Sparse Embedding Retrievers.

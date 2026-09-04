@@ -1,0 +1,4 @@
+---
+fixes:
+  - |
+    Fix the serialization of ComponentTool and Tool when specifying outputs_to_string. Previously an error occurred on deserialization right after serializing if outputs_to_string is not None.

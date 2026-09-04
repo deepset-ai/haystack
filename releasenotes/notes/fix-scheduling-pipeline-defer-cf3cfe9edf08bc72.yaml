@@ -1,0 +1,13 @@
+---
+enhancements:
+  - |
+    Make the runtime parameter ``messages`` to ``Agent`` messages optional since it is possible to execute the agent
+    with only providing a ``user_prompt``.
+fixes:
+  - |
+    Fixed a bug in the pipeline scheduling logic where a component with all-optional inputs (e.g. ``Agent`` after
+    making ``messages`` optional) could be scheduled ahead of a variadic joiner (e.g. ``ListJoiner``) that was
+    still waiting on inputs.
+    The fix updates the tiebreaking logic in ``_tiebreak_waiting_components`` so that variadic joiners and
+    components with all-optional inputs are treated at the same priority level, with topological order determining
+    which waiting component runs first.

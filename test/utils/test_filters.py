@@ -1,0 +1,774 @@
+# SPDX-FileCopyrightText: 2022-present deepset GmbH <info@deepset.ai>
+#
+# SPDX-License-Identifier: Apache-2.0
+
+from datetime import datetime, timezone
+
+import pytest
+
+from haystack import Document
+from haystack.errors import FilterError
+from haystack.utils.filters import document_matches_filter
+
+document_matches_filter_data = [
+    # == operator params
+    pytest.param(
+        {"field": "meta.name", "operator": "==", "value": "test"},
+        Document(meta={"name": "test"}),
+        True,
+        id="== operator with equal values",
+    ),
+    pytest.param(
+        {"field": "meta.name", "operator": "==", "value": "test"},
+        Document(meta={"name": "different value"}),
+        False,
+        id="== operator with different values",
+    ),
+    pytest.param(
+        {"field": "meta.name", "operator": "==", "value": "test"},
+        Document(meta={"name": ["test"]}),
+        False,
+        id="== operator with different types values",
+    ),
+    pytest.param(
+        {"field": "meta.name", "operator": "==", "value": "test"},
+        Document(),
+        False,
+        id="== operator with missing Document value",
+    ),
+    pytest.param(
+        {"field": "meta.name", "operator": "==", "value": "test"},
+        Document(meta={"name": None}),
+        False,
+        id="== operator with None Document value",
+    ),
+    pytest.param(
+        {"field": "meta.name", "operator": "==", "value": None},
+        Document(meta={"name": "test"}),
+        False,
+        id="== operator with None filter value",
+    ),
+    pytest.param(
+        {"field": "meta.user.age", "operator": "==", "value": 30},
+        Document(meta={"user": {"age": 30}}),
+        True,
+        id="== operator with nested meta field",
+    ),
+    pytest.param(
+        {"field": "meta.user.age", "operator": "==", "value": 30},
+        Document(meta={"user": None}),
+        False,
+        id="== operator with nested field on non-dict intermediate value",
+    ),
+    # != operator params
+    pytest.param(
+        {"field": "meta.name", "operator": "!=", "value": "test"},
+        Document(meta={"name": "test"}),
+        False,
+        id="!= operator with equal values",
+    ),
+    pytest.param(
+        {"field": "meta.name", "operator": "!=", "value": "test"},
+        Document(meta={"name": "different value"}),
+        True,
+        id="!= operator with different values",
+    ),
+    pytest.param(
+        {"field": "meta.name", "operator": "!=", "value": "test"},
+        Document(meta={"name": ["test"]}),
+        True,
+        id="!= operator with different types values",
+    ),
+    pytest.param(
+        {"field": "meta.name", "operator": "!=", "value": "test"}, Document(), True, id="!= operator with missing value"
+    ),
+    pytest.param(
+        {"field": "meta.name", "operator": "!=", "value": "test"},
+        Document(meta={"name": None}),
+        True,
+        id="!= operator with None Document value",
+    ),
+    pytest.param(
+        {"field": "meta.name", "operator": "!=", "value": None},
+        Document(meta={"name": "test"}),
+        True,
+        id="!= operator with None filter value",
+    ),
+    # > operator params
+    pytest.param(
+        {"field": "meta.page", "operator": ">", "value": 10},
+        Document(meta={"page": 10}),
+        False,
+        id="> operator with equal Document value",
+    ),
+    pytest.param(
+        {"field": "meta.page", "operator": ">", "value": 10},
+        Document(meta={"page": 11}),
+        True,
+        id="> operator with greater Document value",
+    ),
+    pytest.param(
+        {"field": "meta.page", "operator": ">", "value": 10},
+        Document(meta={"page": 9}),
+        False,
+        id="> operator with smaller Document value",
+    ),
+    pytest.param(
+        {"field": "meta.date", "operator": ">", "value": "1969-07-21T20:17:40"},
+        Document(meta={"date": "1969-07-21T20:17:40"}),
+        False,
+        id="> operator with equal ISO 8601 datetime Document value",
+    ),
+    pytest.param(
+        {"field": "meta.date", "operator": ">", "value": "1969-07-21T20:17:40"},
+        Document(meta={"date": "1972-12-11T19:54:58"}),
+        True,
+        id="> operator with greater ISO 8601 datetime Document value",
+    ),
+    pytest.param(
+        {"field": "meta.date", "operator": ">", "value": "1972-12-11T19:54:58"},
+        Document(meta={"date": "1969-07-21T20:17:40"}),
+        False,
+        id="> operator with smaller ISO 8601 datetime Document value",
+    ),
+    pytest.param(
+        {"field": "meta.date", "operator": ">", "value": datetime(2023, 1, 1, tzinfo=timezone.utc)},
+        Document(meta={"date": "2024-01-01T00:00:00+00:00"}),
+        True,
+        id="> operator with datetime filter value and ISO 8601 string Document value",
+    ),
+    pytest.param(
+        {"field": "meta.date", "operator": ">", "value": "2023-01-01T00:00:00+00:00"},
+        Document(meta={"date": datetime(2024, 1, 1, tzinfo=timezone.utc)}),
+        True,
+        id="> operator with ISO 8601 string filter value and datetime Document value",
+    ),
+    pytest.param(
+        {"field": "meta.date", "operator": ">", "value": datetime(2023, 1, 1, tzinfo=timezone.utc)},
+        Document(meta={"date": datetime(2024, 1, 1)}),
+        True,
+        id="> operator with aware datetime filter value and naive datetime Document value",
+    ),
+    pytest.param(
+        {"field": "meta.date", "operator": ">", "value": datetime(2023, 1, 1)},
+        Document(meta={"date": datetime(2024, 1, 1, tzinfo=timezone.utc)}),
+        True,
+        id="> operator with naive datetime filter value and aware datetime Document value",
+    ),
+    pytest.param(
+        {"field": "meta.page", "operator": ">", "value": 10},
+        Document(),
+        False,
+        id="> operator with missing Document value",
+    ),
+    pytest.param(
+        {"field": "meta.page", "operator": ">", "value": 10},
+        Document(meta={"page": None}),
+        False,
+        id="> operator with None Document value",
+    ),
+    pytest.param(
+        {"field": "meta.page", "operator": ">", "value": None},
+        Document(meta={"page": 10}),
+        False,
+        id="> operator with None filter value",
+    ),
+    pytest.param(
+        {"field": "meta.page", "operator": ">", "value": None},
+        Document(meta={"page": None}),
+        False,
+        id="> operator with None Document and filter value",
+    ),
+    # >= operator params
+    pytest.param(
+        {"field": "meta.page", "operator": ">=", "value": 10},
+        Document(meta={"page": 10}),
+        True,
+        id=">= operator with equal Document value",
+    ),
+    pytest.param(
+        {"field": "meta.page", "operator": ">=", "value": 10},
+        Document(meta={"page": 11}),
+        True,
+        id=">= operator with greater Document value",
+    ),
+    pytest.param(
+        {"field": "meta.page", "operator": ">=", "value": 10},
+        Document(meta={"page": 9}),
+        False,
+        id=">= operator with smaller Document value",
+    ),
+    pytest.param(
+        {"field": "meta.date", "operator": ">=", "value": "1969-07-21T20:17:40"},
+        Document(meta={"date": "1969-07-21T20:17:40"}),
+        True,
+        id=">= operator with equal ISO 8601 datetime Document value",
+    ),
+    pytest.param(
+        {"field": "meta.date", "operator": ">=", "value": "1969-07-21T20:17:40"},
+        Document(meta={"date": "1972-12-11T19:54:58"}),
+        True,
+        id=">= operator with greater ISO 8601 datetime Document value",
+    ),
+    pytest.param(
+        {"field": "meta.date", "operator": ">=", "value": "1972-12-11T19:54:58"},
+        Document(meta={"date": "1969-07-21T20:17:40"}),
+        False,
+        id=">= operator with smaller ISO 8601 datetime Document value",
+    ),
+    pytest.param(
+        {"field": "meta.date", "operator": ">=", "value": "1969-07-21"},
+        Document(meta={"date": "1969-07-21T00:00:00"}),
+        True,
+        id=">= operator with equal datetime in different ISO 8601 format",
+    ),
+    pytest.param(
+        {"field": "meta.date", "operator": ">=", "value": "1969-07-21T20:17:40+00:00"},
+        Document(meta={"date": "1969-07-21T22:17:40+02:00"}),
+        True,
+        id=">= operator with equal instant in different timezone offset",
+    ),
+    pytest.param(
+        {"field": "meta.page", "operator": ">=", "value": 10},
+        Document(),
+        False,
+        id=">= operator with missing Document value",
+    ),
+    pytest.param(
+        {"field": "meta.page", "operator": ">=", "value": 10},
+        Document(meta={"page": None}),
+        False,
+        id=">= operator with None Document value",
+    ),
+    pytest.param(
+        {"field": "meta.page", "operator": ">=", "value": None},
+        Document(meta={"page": 10}),
+        False,
+        id=">= operator with None filter value",
+    ),
+    pytest.param(
+        {"field": "meta.page", "operator": ">=", "value": None},
+        Document(meta={"page": None}),
+        False,
+        id=">= operator with None Document and filter value",
+    ),
+    # < operator params
+    pytest.param(
+        {"field": "meta.page", "operator": "<", "value": 10},
+        Document(meta={"page": 10}),
+        False,
+        id="< operator with equal Document value",
+    ),
+    pytest.param(
+        {"field": "meta.page", "operator": "<", "value": 10},
+        Document(meta={"page": 11}),
+        False,
+        id="< operator with greater Document value",
+    ),
+    pytest.param(
+        {"field": "meta.page", "operator": "<", "value": 10},
+        Document(meta={"page": 9}),
+        True,
+        id="< operator with smaller Document value",
+    ),
+    pytest.param(
+        {"field": "meta.date", "operator": "<", "value": "1969-07-21T20:17:40"},
+        Document(meta={"date": "1969-07-21T20:17:40"}),
+        False,
+        id="< operator with equal ISO 8601 datetime Document value",
+    ),
+    pytest.param(
+        {"field": "meta.date", "operator": "<", "value": "1969-07-21T20:17:40"},
+        Document(meta={"date": "1972-12-11T19:54:58"}),
+        False,
+        id="< operator with greater ISO 8601 datetime Document value",
+    ),
+    pytest.param(
+        {"field": "meta.date", "operator": "<", "value": "1972-12-11T19:54:58"},
+        Document(meta={"date": "1969-07-21T20:17:40"}),
+        True,
+        id="< operator with smaller ISO 8601 datetime Document value",
+    ),
+    pytest.param(
+        {"field": "meta.date", "operator": "<", "value": "1969-07-21"},
+        Document(meta={"date": "1969-07-21T00:00:00"}),
+        False,
+        id="< operator with equal datetime in different ISO 8601 format",
+    ),
+    pytest.param(
+        {"field": "meta.date", "operator": "<", "value": "1969-07-21T20:17:40+00:00"},
+        Document(meta={"date": "1969-07-21T22:17:40+02:00"}),
+        False,
+        id="< operator with equal instant in different timezone offset",
+    ),
+    pytest.param(
+        {"field": "meta.page", "operator": "<", "value": 10},
+        Document(),
+        False,
+        id="< operator with missing Document value",
+    ),
+    pytest.param(
+        {"field": "meta.page", "operator": "<", "value": 10},
+        Document(meta={"page": None}),
+        False,
+        id="< operator with None Document value",
+    ),
+    pytest.param(
+        {"field": "meta.page", "operator": "<", "value": None},
+        Document(meta={"page": 10}),
+        False,
+        id="< operator with None filter value",
+    ),
+    pytest.param(
+        {"field": "meta.page", "operator": "<", "value": None},
+        Document(meta={"page": None}),
+        False,
+        id="< operator with None Document and filter value",
+    ),
+    # <= operator params
+    pytest.param(
+        {"field": "meta.page", "operator": "<=", "value": 10},
+        Document(meta={"page": 10}),
+        True,
+        id="<= operator with equal Document value",
+    ),
+    pytest.param(
+        {"field": "meta.page", "operator": "<=", "value": 10},
+        Document(meta={"page": 11}),
+        False,
+        id="<= operator with greater Document value",
+    ),
+    pytest.param(
+        {"field": "meta.page", "operator": "<=", "value": 10},
+        Document(meta={"page": 9}),
+        True,
+        id="<= operator with smaller Document value",
+    ),
+    pytest.param(
+        {"field": "meta.date", "operator": "<=", "value": "1969-07-21T20:17:40"},
+        Document(meta={"date": "1969-07-21T20:17:40"}),
+        True,
+        id="<= operator with equal ISO 8601 datetime Document value",
+    ),
+    pytest.param(
+        {"field": "meta.date", "operator": "<=", "value": "1969-07-21T20:17:40"},
+        Document(meta={"date": "1972-12-11T19:54:58"}),
+        False,
+        id="<= operator with greater ISO 8601 datetime Document value",
+    ),
+    pytest.param(
+        {"field": "meta.date", "operator": "<=", "value": "1972-12-11T19:54:58"},
+        Document(meta={"date": "1969-07-21T20:17:40"}),
+        True,
+        id="<= operator with smaller ISO 8601 datetime Document value",
+    ),
+    pytest.param(
+        {"field": "meta.page", "operator": "<=", "value": 10},
+        Document(),
+        False,
+        id="<= operator with missing Document value",
+    ),
+    pytest.param(
+        {"field": "meta.page", "operator": "<=", "value": 10},
+        Document(meta={"page": None}),
+        False,
+        id="<= operator with None Document value",
+    ),
+    pytest.param(
+        {"field": "meta.page", "operator": "<=", "value": None},
+        Document(meta={"page": 10}),
+        False,
+        id="<= operator with None filter value",
+    ),
+    pytest.param(
+        {"field": "meta.page", "operator": "<=", "value": None},
+        Document(meta={"page": None}),
+        False,
+        id="<= operator with None Document and filter value",
+    ),
+    # in operator params
+    pytest.param(
+        {"field": "meta.page", "operator": "in", "value": [9, 10]},
+        Document(meta={"page": 1}),
+        False,
+        id="in operator with filter value not containing Document value",
+    ),
+    pytest.param(
+        {"field": "meta.page", "operator": "in", "value": [9, 10]},
+        Document(meta={"page": 10}),
+        True,
+        id="in operator with filter value containing Document value",
+    ),
+    # not in operator params
+    pytest.param(
+        {"field": "meta.page", "operator": "not in", "value": [9, 10]},
+        Document(meta={"page": 1}),
+        True,
+        id="not in operator with filter value not containing Document value",
+    ),
+    pytest.param(
+        {"field": "meta.page", "operator": "not in", "value": [9, 10]},
+        Document(meta={"page": 10}),
+        False,
+        id="not in operator with filter value containing Document value",
+    ),
+    # AND operator params
+    pytest.param(
+        {
+            "operator": "AND",
+            "conditions": [
+                {"field": "meta.page", "operator": "==", "value": 10},
+                {"field": "meta.type", "operator": "==", "value": "article"},
+            ],
+        },
+        Document(meta={"page": 10, "type": "article"}),
+        True,
+        id="AND operator with Document matching all conditions",
+    ),
+    pytest.param(
+        {
+            "operator": "AND",
+            "conditions": [
+                {"field": "meta.page", "operator": "==", "value": 10},
+                {"field": "meta.type", "operator": "==", "value": "article"},
+            ],
+        },
+        Document(meta={"page": 20, "type": "article"}),
+        False,
+        id="AND operator with Document matching a single condition",
+    ),
+    pytest.param(
+        {
+            "operator": "AND",
+            "conditions": [
+                {"field": "meta.page", "operator": "==", "value": 10},
+                {"field": "meta.type", "operator": "==", "value": "article"},
+            ],
+        },
+        Document(meta={"page": 11, "value": "blog post"}),
+        False,
+        id="AND operator with Document matching no condition",
+    ),
+    # OR operator params
+    pytest.param(
+        {
+            "operator": "OR",
+            "conditions": [
+                {"field": "meta.page", "operator": "==", "value": 10},
+                {"field": "meta.type", "operator": "==", "value": "article"},
+            ],
+        },
+        Document(meta={"page": 10, "type": "article"}),
+        True,
+        id="OR operator with Document matching all conditions",
+    ),
+    pytest.param(
+        {
+            "operator": "OR",
+            "conditions": [
+                {"field": "meta.page", "operator": "==", "value": 10},
+                {"field": "meta.type", "operator": "==", "value": "article"},
+            ],
+        },
+        Document(meta={"page": 20, "type": "article"}),
+        True,
+        id="OR operator with Document matching a single condition",
+    ),
+    pytest.param(
+        {
+            "operator": "OR",
+            "conditions": [
+                {"field": "meta.page", "operator": "==", "value": 10},
+                {"field": "meta.type", "operator": "==", "value": "article"},
+            ],
+        },
+        Document(meta={"page": 11, "value": "blog post"}),
+        False,
+        id="OR operator with Document matching no condition",
+    ),
+    # NOT operator params
+    pytest.param(
+        {
+            "operator": "NOT",
+            "conditions": [
+                {"field": "meta.page", "operator": "==", "value": 10},
+                {"field": "meta.type", "operator": "==", "value": "article"},
+            ],
+        },
+        Document(meta={"page": 10, "type": "article"}),
+        False,
+        id="NOT operator with Document matching all conditions",
+    ),
+    pytest.param(
+        {
+            "operator": "NOT",
+            "conditions": [
+                {"field": "meta.page", "operator": "==", "value": 10},
+                {"field": "meta.type", "operator": "==", "value": "article"},
+            ],
+        },
+        Document(meta={"page": 20, "type": "article"}),
+        True,
+        id="NOT operator with Document matching a single condition",
+    ),
+    pytest.param(
+        {
+            "operator": "NOT",
+            "conditions": [
+                {"field": "meta.page", "operator": "==", "value": 10},
+                {"field": "meta.type", "operator": "==", "value": "article"},
+            ],
+        },
+        Document(meta={"page": 11, "value": "blog post"}),
+        True,
+        id="NOT operator with Document matching no condition",
+    ),
+    pytest.param(
+        {"field": "meta.date", "operator": "==", "value": "2025-02-03T12:45:46.435816Z"},
+        Document(meta={"date": "2025-02-03T12:45:46.435816Z"}),
+        True,
+        id="== operator with ISO 8601 datetime Document value",
+    ),
+    pytest.param(
+        {"field": "meta.date", "operator": "==", "value": "2025-02-03T12:45:46+00:00"},
+        Document(meta={"date": "2025-02-03T12:45:46Z"}),
+        True,
+        id="== operator with equal instant in different UTC syntax",
+    ),
+    pytest.param(
+        {"field": "meta.date", "operator": "==", "value": "1969-07-21"},
+        Document(meta={"date": "1969-07-21T00:00:00"}),
+        True,
+        id="== operator with equal datetime in different ISO 8601 format",
+    ),
+    pytest.param(
+        {"field": "meta.date", "operator": "==", "value": datetime(2025, 2, 3, 12, 45, 46, tzinfo=timezone.utc)},
+        Document(meta={"date": "2025-02-03T12:45:46Z"}),
+        True,
+        id="== operator with datetime filter value and ISO 8601 string Document value",
+    ),
+    pytest.param(
+        {"field": "meta.date", "operator": "==", "value": datetime(2025, 2, 3, 12, 45, 46, tzinfo=timezone.utc)},
+        Document(meta={"date": datetime(2025, 2, 3, 12, 45, 46)}),
+        True,
+        id="== operator with aware datetime filter value and naive datetime Document value",
+    ),
+    pytest.param(
+        {"field": "meta.date", "operator": "==", "value": "2025-02-03T12:45:46+05:00"},
+        Document(meta={"date": "2025-02-03T12:45:46"}),
+        True,
+        id="== operator with aware ISO 8601 filter value and naive ISO 8601 Document value",
+    ),
+    pytest.param(
+        {"field": "meta.date", "operator": "==", "value": "2025-02-03T14:45:46+02:00"},
+        Document(meta={"date": "2025-02-03T12:45:46+00:00"}),
+        True,
+        id="== operator with equal instant in different UTC offsets",
+    ),
+    pytest.param(
+        # Only full ISO 8601 dates are normalized, so a bare year stays a plain string comparison.
+        {"field": "meta.year", "operator": "==", "value": "2025-01-01T00:00:00"},
+        Document(meta={"year": "2025"}),
+        False,
+        id="== operator with partial date Document value",
+    ),
+    pytest.param(
+        # Date-shaped but unparsable values must not raise, they fall back to comparing as strings.
+        {"field": "meta.date", "operator": "==", "value": "9999-99-99T99:99:99"},
+        Document(meta={"date": "1234-56-78"}),
+        False,
+        id="== operator with date-shaped but invalid values",
+    ),
+    pytest.param(
+        {"field": "meta.date", "operator": "==", "value": "1234-56-78"},
+        Document(meta={"date": "1234-56-78"}),
+        True,
+        id="== operator with identical date-shaped but invalid values",
+    ),
+    pytest.param(
+        {"field": "meta.date", "operator": "!=", "value": "2025-02-03T12:45:46+00:00"},
+        Document(meta={"date": "2025-02-03T12:45:46Z"}),
+        False,
+        id="!= operator with equal instant in different UTC syntax",
+    ),
+    pytest.param(
+        {"field": "meta.date", "operator": "in", "value": ["2025-02-03T12:45:46+00:00", "2025-02-04T12:45:46+00:00"]},
+        Document(meta={"date": "2025-02-03T12:45:46Z"}),
+        True,
+        id="in operator with equivalent ISO 8601 datetime in filter value",
+    ),
+    pytest.param(
+        {
+            "field": "meta.date",
+            "operator": "not in",
+            "value": ["2025-02-03T12:45:46+00:00", "2025-02-04T12:45:46+00:00"],
+        },
+        Document(meta={"date": "2025-02-03T12:45:46Z"}),
+        False,
+        id="not in operator with equivalent ISO 8601 datetime in filter value",
+    ),
+    pytest.param(
+        {"field": "meta.page", "operator": "==", "value": "1"},
+        Document(meta={"page": 1}),
+        False,
+        id="== operator with numeric string filter value and numeric Document value",
+    ),
+    pytest.param(
+        {"field": "meta.page", "operator": "in", "value": ["1", "2"]},
+        Document(meta={"page": 1}),
+        False,
+        id="in operator with numeric string filter value and numeric Document value",
+    ),
+    pytest.param(
+        {"field": "meta.date", "operator": ">=", "value": "2025-02-01"},
+        Document(meta={"date": "2025-02-03T12:45:46.435816Z"}),
+        True,
+        id=">= operator with naive and aware ISO 8601 datetime Document value",
+    ),
+]
+
+
+@pytest.mark.parametrize("filters, document, expected_result", document_matches_filter_data)
+def test_document_matches_filter(filters, document, expected_result):
+    assert document_matches_filter(filters, document) == expected_result
+
+
+@pytest.mark.parametrize(
+    "operator,expected_result",
+    [
+        ("==", False),
+        ("!=", True),
+        (">", False),
+        (">=", False),
+        ("<", False),
+        ("<=", False),
+        ("in", False),
+        ("not in", True),
+    ],
+)
+@pytest.mark.parametrize(
+    "document_value,filter_value",
+    [
+        ("2025-02-03T12:45:46", "2025-02-03T12:45:46+00:00"),
+        ("2025-02-03T12:45:46+00:00", "2025-02-03T12:45:46"),
+        (datetime(2025, 2, 3, 12, 45, 46), datetime(2025, 2, 3, 12, 45, 46, tzinfo=timezone.utc)),
+        (datetime(2025, 2, 3, 12, 45, 46, tzinfo=timezone.utc), datetime(2025, 2, 3, 12, 45, 46)),
+    ],
+)
+def test_document_matches_filter_strict_datetime_comparison(operator, expected_result, document_value, filter_value):
+    if operator in {"in", "not in"}:
+        filter_value = [filter_value]
+    filters = {"field": "meta.date", "operator": operator, "value": filter_value}
+
+    assert (
+        document_matches_filter(filters, Document(meta={"date": document_value}), strict_datetime_comparison=True)
+        is expected_result
+    )
+
+
+def test_document_matches_filter_strict_datetime_comparison_in_nested_condition():
+    filters = {
+        "operator": "AND",
+        "conditions": [{"field": "meta.date", "operator": ">=", "value": "2025-02-03T12:45:46+00:00"}],
+    }
+
+    assert not document_matches_filter(
+        filters, Document(meta={"date": "2025-02-03T12:45:46"}), strict_datetime_comparison=True
+    )
+
+
+document_matches_filter_raises_error_data = [
+    # > operator params
+    pytest.param({"field": "meta.page", "operator": ">", "value": "10"}, id="> operator with string filter value"),
+    pytest.param({"field": "meta.page", "operator": ">", "value": [10]}, id="> operator with list filter value"),
+    # >= operator params
+    pytest.param({"field": "meta.page", "operator": ">=", "value": "10"}, id=">= operator with string filter value"),
+    pytest.param({"field": "meta.page", "operator": ">=", "value": [10]}, id=">= operator with list filter value"),
+    # < operator params
+    pytest.param({"field": "meta.page", "operator": "<", "value": "10"}, id="< operator with string filter value"),
+    pytest.param({"field": "meta.page", "operator": "<", "value": [10]}, id="< operator with list filter value"),
+    # <= operator params
+    pytest.param({"field": "meta.page", "operator": "<=", "value": "10"}, id="<= operator with string filter value"),
+    pytest.param({"field": "meta.page", "operator": "<=", "value": [10]}, id="<= operator with list filter value"),
+    # in operator params
+    pytest.param({"field": "meta.page", "operator": "in", "value": 1}, id="in operator with non list filter value"),
+    # at some point we might want to support any iterable and this test should fail
+    pytest.param(
+        {"field": "meta.page", "operator": "in", "value": (10, 11)}, id="in operator with non list filter value"
+    ),
+    # not in operator params
+    pytest.param(
+        {"field": "meta.page", "operator": "not in", "value": 1}, id="not in operator with non list filter value"
+    ),
+    # at some point we might want to support any iterable and this test should fail
+    pytest.param(
+        {"field": "meta.page", "operator": "not in", "value": (10, 11)}, id="not in operator with non list filter value"
+    ),
+    # Malformed filters
+    pytest.param(
+        {"conditions": [{"field": "meta.name", "operator": "==", "value": "test"}]}, id="Missing root operator key"
+    ),
+    pytest.param({"operator": "AND"}, id="Missing root conditions key"),
+    pytest.param({"operator": "==", "value": "test"}, id="Missing condition field key"),
+    pytest.param({"field": "meta.name", "value": "test"}, id="Missing condition operator key"),
+    pytest.param({"field": "meta.name", "operator": "=="}, id="Missing condition value key"),
+    # Unknown operators
+    pytest.param({"field": "meta.page", "operator": "gt", "value": 10}, id="Unknown comparison operator"),
+    pytest.param(
+        {"operator": "XOR", "conditions": [{"field": "meta.page", "operator": "==", "value": 10}]},
+        id="Unknown logical operator",
+    ),
+    pytest.param(
+        {
+            "operator": "AND",
+            "conditions": [{"operator": "XOR", "conditions": [{"field": "meta.page", "operator": "==", "value": 10}]}],
+        },
+        id="Unknown nested logical operator",
+    ),
+    pytest.param(
+        {"operator": "and", "conditions": [{"field": "meta.page", "operator": "==", "value": 10}]},
+        id="Lowercase logical operator",
+    ),
+]
+
+
+@pytest.mark.parametrize("filters", document_matches_filter_raises_error_data)
+def test_document_matches_filter_raises_error(filters):
+    with pytest.raises(FilterError):
+        document = Document(meta={"page": 10})
+        document_matches_filter(filters, document)
+
+
+@pytest.mark.parametrize(
+    "filters,expected_message",
+    [
+        pytest.param(
+            {"field": "meta.page", "operator": "gt", "value": 10},
+            "Unknown comparison operator 'gt'",
+            id="Unknown comparison operator",
+        ),
+        pytest.param(
+            {"operator": "XOR", "conditions": [{"field": "meta.page", "operator": "==", "value": 10}]},
+            "Unknown logical operator 'XOR'",
+            id="Unknown logical operator",
+        ),
+        pytest.param(
+            {
+                "operator": "AND",
+                "conditions": [
+                    {"operator": "XOR", "conditions": [{"field": "meta.page", "operator": "==", "value": 10}]}
+                ],
+            },
+            "Unknown logical operator 'XOR'",
+            id="Unknown nested logical operator",
+        ),
+        pytest.param(
+            {"operator": "and", "conditions": [{"field": "meta.page", "operator": "==", "value": 10}]},
+            "Unknown logical operator 'and'",
+            id="Lowercase logical operator",
+        ),
+    ],
+)
+def test_document_matches_filter_unknown_operator_error_message(filters, expected_message):
+    with pytest.raises(FilterError, match=expected_message):
+        document_matches_filter(filters, Document(meta={"page": 10}))

@@ -1,0 +1,4 @@
+---
+enhancements:
+  - |
+    Enable setting the `max_length` value when running PromptNodes using local HF text2text-generation models.

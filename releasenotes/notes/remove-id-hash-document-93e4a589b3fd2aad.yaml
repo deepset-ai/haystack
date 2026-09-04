@@ -1,0 +1,12 @@
+---
+preview:
+  - |
+    Remove `id_hash_keys` field from `Document` dataclass.
+    `id_hash_keys` has been also removed from Components that were using it:
+    * `DocumentCleaner`
+    * `TextDocumentSplitter`
+    * `PyPDFToDocument`
+    * `AzureOCRDocumentConverter`
+    * `HTMLToDocument`
+    * `TextFileToDocument`
+    * `TikaDocumentConverter`

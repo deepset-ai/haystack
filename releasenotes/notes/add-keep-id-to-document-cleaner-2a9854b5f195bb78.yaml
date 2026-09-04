@@ -1,0 +1,4 @@
+---
+enhancements:
+  - |
+    The `DocumentCleaner` class has the optional attribute `keep_id` that if set to True it keeps the document ids unchanged after cleanup.

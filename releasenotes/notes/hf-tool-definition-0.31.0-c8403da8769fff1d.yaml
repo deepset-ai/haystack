@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Make internal tool conversion in the HuggingFaceAPICompatibleChatGenerator compatible with huggingface_hub>=0.31.0.
+    In the huggingface_hub library, `arguments` attribute of `ChatCompletionInputFunctionDefinition` has been renamed to
+    `parameters`.
+    Our implementation is compatible with both the legacy version and the new one.

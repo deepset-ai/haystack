@@ -1,0 +1,5 @@
+---
+enhancements:
+  - |
+    Refactor deserialize_document_store_in_init_parameters so that new function name
+    indicates that the operation occurs in place, with no return value.

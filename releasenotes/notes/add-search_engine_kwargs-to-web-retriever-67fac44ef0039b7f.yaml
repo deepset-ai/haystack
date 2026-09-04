@@ -1,0 +1,6 @@
+---
+enhancements:
+  - |
+    Add `search_engine_kwargs` param to WebRetriever so it can be propagated
+    to WebSearch. This is useful, for example, to pass the engine id when
+    using Google Custom Search.

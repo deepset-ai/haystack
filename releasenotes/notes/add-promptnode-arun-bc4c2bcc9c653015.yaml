@@ -1,0 +1,4 @@
+---
+enhancements:
+  - |
+    PromptNode can now be run asynchronously by calling the `arun` method.

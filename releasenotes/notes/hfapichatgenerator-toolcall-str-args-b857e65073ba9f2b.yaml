@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    The `HuggingFaceAPIChatGenerator` now checks the type of the `arguments` variable in the tool calls returned by the
+    Hugging Face API. If `arguments` is a JSON string, it is parsed into a dictionary.
+    Previously, the `arguments` type was not checked, which sometimes led to failures later in the tool workflow.

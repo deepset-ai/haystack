@@ -1,0 +1,4 @@
+---
+features:
+  - |
+    Add XLSXToDocument converter that loads an Excel file using Pandas + openpyxl and by default converts each sheet into a separate Document in a CSV format.

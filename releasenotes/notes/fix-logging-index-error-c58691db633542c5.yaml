@@ -1,0 +1,4 @@
+---
+fixes:
+  - |
+    Fixed an index error in the logging module when arbitrary strings are logged.

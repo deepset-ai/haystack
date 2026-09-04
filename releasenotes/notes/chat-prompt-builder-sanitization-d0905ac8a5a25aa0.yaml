@@ -1,0 +1,6 @@
+---
+security:
+  - |
+    Strengthened the template-variable sanitization in ``ChatPromptBuilder`` to cover cases where specially crafted
+    template variables could still be interpreted as structured content (e.g., images, tool calls) instead of plain
+    text. Protection now relies on two independent mechanisms.

@@ -1,0 +1,7 @@
+---
+deprecations:
+  - |
+    In Haystack 2.9.0, the `ChatMessage` dataclass will be refactored to make it more flexible and future-proof.
+    As part of this change, the `content` attribute will be removed.
+    A new `text` property has been introduced to provide access to the textual value of the `ChatMessage`.
+    To ensure a smooth transition, start using the `text` property now in place of `content`.

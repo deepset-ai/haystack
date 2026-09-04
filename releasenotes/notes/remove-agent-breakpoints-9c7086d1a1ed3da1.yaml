@@ -1,0 +1,11 @@
+---
+upgrade:
+  - |
+    The agent-specific breakpoint API has been removed. The ``AgentBreakpoint``, ``ToolBreakpoint``, and
+    ``AgentSnapshot`` dataclasses are no longer exported from ``haystack.dataclasses``, and the
+    ``break_point``, ``snapshot``, and ``snapshot_callback`` parameters have been removed from
+    ``Agent.run`` and ``Agent.run_async``. ``Pipeline.run`` no longer accepts ``AgentBreakpoint`` for its
+    ``break_point`` argument, and the ``agent_snapshot`` field has been removed from ``PipelineSnapshot``.
+    Pipeline-level breakpoints via ``Breakpoint`` and ``PipelineSnapshot`` continue to work as before,
+    but pausing and resuming execution inside an Agent (at the chat generator or tool invoker) is no
+    longer supported.

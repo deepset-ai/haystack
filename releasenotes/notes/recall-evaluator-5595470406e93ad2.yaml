@@ -1,0 +1,6 @@
+---
+features:
+  - |
+    Add `DocumentRecallEvaluator`, a Component that can be used to calculate the Recall single-hit or multi-hit
+    metric given a list of questions, a list of expected documents for each question and the list of predicted
+    documents for each question.

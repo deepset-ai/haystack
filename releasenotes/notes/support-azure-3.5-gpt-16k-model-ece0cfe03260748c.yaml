@@ -1,0 +1,4 @@
+---
+fixes:
+  - |
+    gpt-35-turbo-16k model from Azure can integrate correctly

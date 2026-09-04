@@ -1,0 +1,18 @@
+---
+features:
+  - |
+    Add a new pipeline template `PredefinedPipeline.CHAT_WITH_WEBSITE` to quickly create a pipeline
+    that will answer questions based on data collected from one or more web pages.
+
+    Usage example:
+    ```python
+    from haystack import Pipeline, PredefinedPipeline
+
+    pipe = Pipeline.from_template(PredefinedPipeline.CHAT_WITH_WEBSITE)
+    result = pipe.run({
+        "fetcher": {"urls": ["https://haystack.deepset.ai/overview/quick-start"]},
+        "prompt": {"query": "How should I install Haystack?"}}
+    )
+
+    print(result["llm"]["replies"][0])
+    ```

@@ -1,0 +1,5 @@
+---
+enhancements:
+  - |
+    Across Haystack codebase, we have replaced the use of `ChatMessage` dataclass constructor with specific
+    class methods (`ChatMessage.from_user`, `ChatMessage.from_assistant`, etc.).

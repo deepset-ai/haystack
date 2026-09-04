@@ -1,0 +1,8 @@
+---
+highlights: >
+    We are introducing the `AsyncPipeline`: Supports running pipelines asynchronously. Schedules components concurrently
+    whenever possible. Leads to major speed improvements for any pipelines that may run workloads in parallel.
+features:
+  - |
+    Added a new `AsyncPipeline` implementation that allows pipelines to be executed from async code,
+    supporting concurrent scheduling of pipeline components for faster processing.

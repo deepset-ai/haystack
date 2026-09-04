@@ -1,0 +1,7 @@
+---
+features:
+  - |
+    Support custom HTTP client configuration via `http_client_kwargs` (proxy, SSL) for:
+    - `AzureOpenAIGenerator`, `OpenAIGenerator` and `DALLEImageGenerator`
+    - `OpenAIDocumentEmbedder` and `OpenAITextEmbedder`
+    - `RemoteWhisperTranscriber`

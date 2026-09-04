@@ -1,0 +1,34 @@
+---
+features:
+  - |
+    `OpenAIChatGenerator` and `AzureOpenAIChatGenerator` now support structured outputs using `response_format`
+    parameter that can be passed in `generation_kwargs`.
+    The `response_format` parameter can be a Pydantic model or a JSON schema for non-streaming responses. For streaming responses, the `response_format` must be a JSON schema.
+    Example usage of the `response_format` parameter:
+    ```python
+    from pydantic import BaseModel
+    from haystack.components.generators.chat import OpenAIChatGenerator
+    from haystack.dataclasses import ChatMessage
+
+    class NobelPrizeInfo(BaseModel):
+        recipient_name: str
+        award_year: int
+        category: str
+        achievement_description: str
+        nationality: str
+
+    client = OpenAIChatGenerator(
+        model="gpt-4o-2024-08-06",
+        generation_kwargs={"response_format": NobelPrizeInfo}
+    )
+
+    response = client.run(messages=[
+        ChatMessage.from_user("In 2021, American scientist David Julius received the Nobel Prize in"
+        " Physiology or Medicine for his groundbreaking discoveries on how the human body"
+        " senses temperature and touch.")
+    ])
+    print(response["replies"][0].text)
+
+    >>> {"recipient_name":"David Julius","award_year":2021,"category":"Physiology or Medicine","achievement_description":"David Julius was awarded for his transformative findings regarding the molecular mechanisms underlying the human body's sense of temperature and touch. Through innovative experiments, he identified specific receptors responsible for detecting heat and mechanical stimuli, ranging from gentle touch to pain-inducing pressure.","nationality":"American"}
+
+    ```

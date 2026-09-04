@@ -1,0 +1,13 @@
+loaders:
+  - search_path: [../haystack/components/fetchers]
+    modules: ["link_content"]
+processors:
+  - type: filter
+    documented_only: true
+    skip_empty_modules: true
+renderer:
+  title: Fetchers
+  id: fetchers-api
+  description: Fetches content from a list of URLs and returns a list of extracted
+    content streams.
+  filename: fetchers_api.md

@@ -1,0 +1,4 @@
+---
+fixes:
+  - |
+    Pins structlog to <= 24.2.0 to avoid some unit test failures. This is a temporary fix until we can upgrade tests to a newer versions of structlog.

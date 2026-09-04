@@ -1,0 +1,4 @@
+---
+enhancements:
+  - |
+    Updates the doc strings of the BranchJoiner to more understandable and better highlight where it's useful.

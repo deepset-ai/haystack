@@ -1,0 +1,6 @@
+---
+
+features:
+  - |
+    The `AzureOpenAITextEmbedder` component now inherits from the `OpenAITextEmbedder` component,
+    enabling asynchronous usage.

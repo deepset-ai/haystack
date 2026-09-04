@@ -1,0 +1,6 @@
+---
+features:
+  - |
+    Add `SentenceTransformersDiversityRanker`.
+    The Diversity Ranker orders documents in such a way as to maximize the overall diversity of the given documents.
+    The ranker leverages sentence-transformer models to calculate semantic embeddings for each document and the query.

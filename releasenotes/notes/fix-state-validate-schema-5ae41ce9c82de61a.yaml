@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    Fix type comparison in schema validation by replacing `is not` with `!=` when checking the type `List[ChatMessage]`.
+    This prevents false mismatches due to Python's `is` operator comparing object identity instead of equality.

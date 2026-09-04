@@ -1,0 +1,5 @@
+---
+preview:
+  - |
+    Rename `SimilarityRanker` to `TransformersSimilarityRanker`,
+    as there will be more similarity rankers in the future.

@@ -1,0 +1,5 @@
+---
+enhancements:
+  - |
+    Improve log-trace correlation for `DatadogTracer` by using the official
+    `ddtrace.tracer.get_log_correlation_context()` method.

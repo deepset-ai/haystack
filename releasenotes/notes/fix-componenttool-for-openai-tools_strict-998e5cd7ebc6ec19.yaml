@@ -1,0 +1,4 @@
+---
+fixes:
+  - |
+    Make sure that `OpenAIChatGenerator` sets `additionalProperties: False` in the tool schema when `tool_strict` is set to `True`.

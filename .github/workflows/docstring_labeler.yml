@@ -1,0 +1,70 @@
+name: Detect docstrings edit
+
+# This workflow runs in the *untrusted* pull_request context: it has a read-only
+# token and no access to secrets, so checking out the PR head here is safe.
+# It only computes whether docstrings changed and hands the result to the
+# "Apply docstrings label" workflow (workflow_run), which holds the write token
+# but never checks out untrusted code. See:
+# https://securitylab.github.com/resources/github-actions-preventing-pwn-requests/
+on:
+  pull_request:
+    paths:
+      - "haystack/**/*.py"
+
+permissions:
+  contents: read
+
+env:
+  PYTHON_VERSION: "3.11"
+
+jobs:
+  detect:
+    runs-on: ubuntu-slim
+
+    steps:
+      - name: Checkout base commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          ref: ${{ github.base_ref }}
+
+      - name: Setup Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "${{ env.PYTHON_VERSION }}"
+
+      - name: Get base docstrings
+        id: base-docstrings
+        run: |
+          CHECKSUM=$(python .github/utils/docstrings_checksum.py --root "${{ github.workspace }}")
+          echo "checksum=$CHECKSUM" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout HEAD commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Get HEAD docstrings
+        id: head-docstrings
+        run: |
+          CHECKSUM=$(python .github/utils/docstrings_checksum.py --root "${{ github.workspace }}")
+          echo "checksum=$CHECKSUM" >> "$GITHUB_OUTPUT"
+
+      - name: Write result
+        # The follow-up workflow reads these values; it never checks out the PR code.
+        run: |
+          mkdir -p result
+          echo "${{ github.event.pull_request.number }}" > result/pr_number
+          if [ "${{ steps.base-docstrings.outputs.checksum }}" != "${{ steps.head-docstrings.outputs.checksum }}" ]; then
+            echo "true" > result/should_label
+          else
+            echo "false" > result/should_label
+          fi
+
+      - name: Upload result
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: docstring-label-result
+          path: result/
+          retention-days: 1

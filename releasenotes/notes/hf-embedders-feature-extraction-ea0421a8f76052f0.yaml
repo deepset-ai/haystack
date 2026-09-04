@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    In the Hugging Face API embedders, the `InferenceClient.feature_extraction` method is now used instead of
+    `InferenceClient.post` to compute embeddings. This ensures a more robust and future-proof implementation.

@@ -1,0 +1,4 @@
+---
+enhancements:
+  - |
+    Added a new `deserialize_component_inplace` function to handle generic component deserialization that works with any component type.

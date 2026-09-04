@@ -1,0 +1,4 @@
+---
+fixes:
+  - |
+    Make Document's first-level fields to take precedence over meta fields when flattening the dictionary representation.

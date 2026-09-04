@@ -1,0 +1,4 @@
+---
+enhancements:
+  - |
+    The `NLTKDocumentSplitter` was merged into the `DocumentSplitter` which now provides the same functionality as the `NLTKDocumentSplitter`. The `split_by="sentence"` now uses a custom sentence boundary detection based on the `nltk` library. The previous `sentence` behaviour can still be achieved by `split_by="period"`
