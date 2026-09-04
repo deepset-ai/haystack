@@ -124,6 +124,18 @@ class TestDocumentRecallEvaluatorSingleHit:
         assert all(isinstance(individual_score, float) for individual_score in result["individual_scores"])
         assert result == {"individual_scores": [1, 1, 1, 1, 0, 1], "score": 0.8333333333333334}
 
+    def test_run_no_retrieved_and_no_ground_truth(self, evaluator):
+        with pytest.raises(ValueError):
+            evaluator.run(ground_truth_documents=[], retrieved_documents=[])
+
+    def test_run_no_ground_truth(self, evaluator):
+        with pytest.raises(ValueError):
+            evaluator.run(ground_truth_documents=[], retrieved_documents=[[Document(content="Berlin")]])
+
+    def test_run_no_retrieved(self, evaluator):
+        with pytest.raises(ValueError):
+            evaluator.run(ground_truth_documents=[[Document(content="Berlin")]], retrieved_documents=[])
+
     def test_run_with_different_lengths(self, evaluator):
         with pytest.raises(ValueError):
             evaluator.run(
@@ -253,6 +265,18 @@ class TestDocumentRecallEvaluatorMultiHit:
         )
         assert all(isinstance(individual_score, float) for individual_score in result["individual_scores"])
         assert result == {"individual_scores": [1.0, 1.0, 0.5, 1.0, 0.75, 1.0], "score": 0.875}
+
+    def test_run_no_retrieved_and_no_ground_truth(self, evaluator):
+        with pytest.raises(ValueError):
+            evaluator.run(ground_truth_documents=[], retrieved_documents=[])
+
+    def test_run_no_ground_truth(self, evaluator):
+        with pytest.raises(ValueError):
+            evaluator.run(ground_truth_documents=[], retrieved_documents=[[Document(content="Berlin")]])
+
+    def test_run_no_retrieved(self, evaluator):
+        with pytest.raises(ValueError):
+            evaluator.run(ground_truth_documents=[[Document(content="Berlin")]], retrieved_documents=[])
 
     def test_run_with_different_lengths(self, evaluator):
         with pytest.raises(ValueError):
