@@ -113,7 +113,7 @@ You don’t need significant resources on your local machine, as the computation
 
 Haystack supports the models offered by a variety of providers: OpenAI, Azure, Google VertexAI and Makersuite, Cohere, and Mistral, with more being added constantly.
 
-We also support [Amazon Bedrock](../amazonbedrockgenerator.mdx): it provides access to proprietary models from Amazon Titan family, AI21 Labs, Anthropic, Cohere, and several open source models, such as Llama from Meta.
+We also support [Amazon Bedrock](../amazonbedrockchatgenerator.mdx): it provides access to proprietary models from Amazon Titan family, AI21 Labs, Anthropic, Cohere, and several open source models, such as Llama from Meta.
 
 ## Open Models
 
@@ -187,8 +187,8 @@ It is suitable in production scenarios where data privacy concerns drive the dec
 ### Local Experimentation
 
 - GPU: [`HuggingFaceLocalGenerator`](../huggingfacelocalgenerator.mdx) is based on the Hugging Face Transformers library. This is good for experimentation when you have some GPU resources (for example, in Colab). If GPU resources are limited, alternative quantization options like bitsandbytes, GPTQ, and AWQ are supported. For more performant solutions in production use cases, refer to the options below.
-- CPU (+ GPU if available): [`LlamaCppGenerator`](../llamacppgenerator.mdx) uses the Llama.cpp library –  a project written in C/C++ for efficient inference of LLMs. In particular, it employs the quantized GGUF format, suitable for running these models on standard machines (even without GPUs). If GPU resources are available, some model layers can be offloaded to GPU for enhanced speed.
-- CPU (+ GPU if available): [`OllamaGenerator`](../ollamagenerator.mdx) is based on the Ollama project, acting like Docker for LLMs. It provides a simple way to package and deploy these models. Internally based on the Llama.cpp library, it offers a more streamlined process for running on various platforms.
+- CPU (+ GPU if available): [`LlamaCppChatGenerator`](../llamacppchatgenerator.mdx) uses the Llama.cpp library –  a project written in C/C++ for efficient inference of LLMs. In particular, it employs the quantized GGUF format, suitable for running these models on standard machines (even without GPUs). If GPU resources are available, some model layers can be offloaded to GPU for enhanced speed.
+- CPU (+ GPU if available): [`OllamaChatGenerator`](../ollamachatgenerator.mdx) is based on the Ollama project, acting like Docker for LLMs. It provides a simple way to package and deploy these models. Internally based on the Llama.cpp library, it offers a more streamlined process for running on various platforms.
 
 ### Serving LLMs in Production
 
