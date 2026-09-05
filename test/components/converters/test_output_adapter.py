@@ -225,6 +225,21 @@ class TestOutputAdapter:
         assert result["output"] == [1, 2, 3]
         assert isinstance(result["output"], list)
 
+    def test_optional_str_output_type_preserved_over_literal_eval(self):
+        # This regression test covers a gap left by the fix for output_type=str above: a Union
+        # that includes str (e.g. `str | None`, the normal way to mark an optional string output)
+        # still hit `output_type is not str` == True, so "42" was silently coerced to the int 42
+        # instead of being preserved as a string.
+        result = OutputAdapter(template="{{ reply }}", output_type=str | None).run(reply="42")
+        assert result["output"] == "42"
+        assert isinstance(result["output"], str)
+
+        # A structured literal (e.g. "1,000" -> tuple) must also still be preserved as a string,
+        # matching the plain-str behavior above.
+        result = OutputAdapter(template="{{ reply }}", output_type=str | None).run(reply="1,000")
+        assert result["output"] == "1,000"
+        assert isinstance(result["output"], str)
+
     def test_unsafe(self):
         adapter = OutputAdapter(template="{{ documents[0] }}", output_type=Document, unsafe=True)
         documents = [
