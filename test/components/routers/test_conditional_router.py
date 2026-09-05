@@ -398,6 +398,27 @@ class TestRouter:
         assert result["reply"] == [1, 2, 3]
         assert isinstance(result["reply"], list)
 
+    def test_optional_str_output_type_preserved_over_literal_eval(self):
+        # PR #12322 fixed literal_eval-preservation for output_type=str specifically. This regression
+        # test covers the gap that fix left open: a Union that includes str (e.g. `str | None`, the
+        # normal way to mark an optional string output) still hit `output_type is not str` == True,
+        # so "42" was silently coerced to the int 42 instead of being preserved as a string.
+        routes: list[Route] = [
+            {"condition": "{{ True }}", "output": "{{ reply }}", "output_name": "reply", "output_type": str | None}
+        ]
+        result = ConditionalRouter(routes).run(reply="42")
+        assert result["reply"] == "42"
+        assert isinstance(result["reply"], str)
+
+        router = ConditionalRouter(routes, validate_output_type=True)
+        result = router.run(reply="42")
+        assert result["reply"] == "42"
+        assert isinstance(result["reply"], str)
+
+        result = ConditionalRouter(routes).run(reply="1,000")
+        assert result["reply"] == "1,000"
+        assert isinstance(result["reply"], str)
+
     def test_sede_with_custom_filter(self):
         routes: list[Route] = [
             {
