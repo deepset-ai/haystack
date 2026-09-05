@@ -75,6 +75,46 @@ server_info = StreamableHttpServerInfo(url="http://localhost:8000/mcp")
 toolset = MCPToolset(server_info=server_info, tool_names=["get_current_time"])
 ```
 
+#### Search and Fetch with a Remote Server
+
+[Parallel Search MCP](https://docs.parallel.ai/integrations/mcp/search-mcp) provides `web_search` and `web_fetch` over Streamable HTTP. Its free endpoint requires no Parallel account or API key and is rate limited.
+
+After installing `mcp-haystack`, you can run this example without starting a local MCP server or configuring a chat generator:
+
+```python
+from uuid import uuid4
+
+from haystack_integrations.tools.mcp import MCPToolset, StreamableHttpServerInfo
+
+toolset = MCPToolset(
+    server_info=StreamableHttpServerInfo(url="https://search.parallel.ai/mcp"),
+    tool_names=["web_search", "web_fetch"],
+)
+session_id = str(uuid4())  # Reuse for related calls in this task.
+
+try:
+    toolset.warm_up()
+    tools = {tool.name: tool for tool in toolset.tools}
+
+    search_result = tools["web_search"].invoke(
+        objective="Find the official Haystack MCPToolset documentation",
+        search_queries=["Haystack MCPToolset documentation"],
+        session_id=session_id,
+    )
+    print(search_result)
+
+    fetch_result = tools["web_fetch"].invoke(
+        urls=["https://docs.haystack.deepset.ai/docs/mcptoolset"],
+        objective="Explain how to connect to a remote MCP server",
+        session_id=session_id,
+    )
+    print(fetch_result)
+finally:
+    toolset.close()
+```
+
+Each tool call sends its queries, requested URLs, and supplied context to Parallel. If you pass this toolset to an `Agent`, the agent can invoke those tools during a run. To stop making them available to the agent, remove the toolset from its `tools` configuration.
+
 ### With SSE Transport (deprecated)
 
 ```python
