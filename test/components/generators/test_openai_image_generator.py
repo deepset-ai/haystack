@@ -88,6 +88,8 @@ class TestOpenAIImageGenerator:
                 "api_key": {"type": "env_var", "env_vars": ["OPENAI_API_KEY"], "strict": True},
                 "api_base_url": None,
                 "organization": None,
+                "timeout": None,
+                "max_retries": None,
                 "http_client_kwargs": None,
             },
         }
@@ -114,6 +116,8 @@ class TestOpenAIImageGenerator:
                 "api_key": {"type": "env_var", "env_vars": ["EXAMPLE_API_KEY"], "strict": True},
                 "api_base_url": "https://api.openai.com",
                 "organization": "test-org",
+                "timeout": 60,
+                "max_retries": 10,
                 "http_client_kwargs": {"proxy": "http://localhost:8080"},
             },
         }
@@ -137,6 +141,18 @@ class TestOpenAIImageGenerator:
         assert generator.size == "1024x1024"
         assert generator.api_key.to_dict() == {"type": "env_var", "env_vars": ["OPENAI_API_KEY"], "strict": True}
         assert generator.http_client_kwargs is None
+
+    def test_to_dict_from_dict_roundtrip_preserves_client_settings(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """`timeout` and `max_retries` decide the client the component builds, so a pipeline
+        that survives a save/load round trip must keep them. Without them in `to_dict` they
+        silently revert to the `OPENAI_TIMEOUT`/`OPENAI_MAX_RETRIES` fallbacks (30s, 5)."""
+        monkeypatch.setenv("OPENAI_API_KEY", "test-api-key")
+        generator = OpenAIImageGenerator(timeout=120.0, max_retries=10)
+        restored = OpenAIImageGenerator.from_dict(generator.to_dict())
+        assert restored.timeout == 120.0
+        assert restored.max_retries == 10
+        assert restored._client_kwargs()["timeout"] == 120.0
+        assert restored._client_kwargs()["max_retries"] == 10
 
     def test_from_dict_default_params(self) -> None:
         data = {
