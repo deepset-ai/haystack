@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    Fixed ``MarkdownHeaderSplitter`` treating hash-prefixed lines inside indented, unclosed, or
+    longer-delimiter fenced code blocks as Markdown headers.

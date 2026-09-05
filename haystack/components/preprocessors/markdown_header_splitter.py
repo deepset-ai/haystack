@@ -79,24 +79,10 @@ class MarkdownHeaderSplitter:
         self._header_split_levels_set = set(header_split_levels)
         self._header_pattern = re.compile(r"(?m)^(#{1,6}) (.+)$")  # ATX-style .md-headers
 
-        # Matches fenced code blocks delimited by triple backticks (```) or triple tildes (~~~).
-        # Broken down:
-        #   ^                 - fence must start at the beginning of a line (MULTILINE)
-        #   (?P<fence>`{3,}|~{3,})
-        #                     - named capture group "fence": three or more backticks OR three or
-        #                       more tildes. Capturing it allows the closing fence to be matched
-        #                       with a backreference, so ```-opened blocks must close with ```
-        #                       and ~~~-opened blocks must close with ~~~.
-        #   [^\n]*            - optional language identifier (e.g. "python") and any other text
-        #                       on the opening fence line, up to the newline
-        #   \n                - newline ending the opening fence line
-        #   .*?               - the code block body, matched lazily (DOTALL so . matches newlines)
-        #   ^(?P=fence)       - closing fence: must be identical to the opening fence (backreference),
-        #                       and must start at the beginning of a line
-        #   \s*$              - optional trailing whitespace after the closing fence
-        self._code_block_pattern = re.compile(
-            r"^(?P<fence>`{3,}|~{3,})[^\n]*\n.*?^(?P=fence)\s*$", re.MULTILINE | re.DOTALL
-        )
+        # CommonMark allows up to three spaces before an opening fence. A backtick fence's info
+        # string cannot itself contain a backtick; that condition is checked while scanning.
+        self._code_block_open_pattern = re.compile(r" {0,3}(?P<fence>`{3,}|~{3,})(?P<info>[^\r\n]*)")
+        self._code_block_close_pattern = re.compile(r" {0,3}(?P<fence>`{3,}|~{3,})[ \t]*")
 
         self._is_warmed_up = False
 
@@ -119,7 +105,39 @@ class MarkdownHeaderSplitter:
 
     def _code_block_spans(self, text: str) -> list[tuple[int, int]]:
         """Return the (start, end) character spans of all fenced code blocks in text."""
-        return [(m.start(), m.end()) for m in self._code_block_pattern.finditer(text)]
+        spans: list[tuple[int, int]] = []
+        block_start: int | None = None
+        opening_character = ""
+        opening_length = 0
+        offset = 0
+
+        for line in text.splitlines(keepends=True):
+            line_without_ending = line.rstrip("\r\n")
+
+            if block_start is None:
+                match = self._code_block_open_pattern.fullmatch(line_without_ending)
+                if match:
+                    fence = match.group("fence")
+                    info = match.group("info")
+                    if fence[0] != "`" or "`" not in info:
+                        block_start = offset
+                        opening_character = fence[0]
+                        opening_length = len(fence)
+            else:
+                match = self._code_block_close_pattern.fullmatch(line_without_ending)
+                if match:
+                    fence = match.group("fence")
+                    if fence[0] == opening_character and len(fence) >= opening_length:
+                        spans.append((block_start, offset + len(line)))
+                        block_start = None
+
+            offset += len(line)
+
+        # An unclosed fenced block continues to the end of its containing document.
+        if block_start is not None:
+            spans.append((block_start, len(text)))
+
+        return spans
 
     def _split_text_by_markdown_headers(self, text: str, doc_id: str) -> list[dict]:
         """Split text by ATX-style headers (#) and create chunks with appropriate metadata."""
