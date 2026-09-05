@@ -567,11 +567,12 @@ class OpenAIChatGenerator:
         chunks: list[StreamingChunk] = []
         for chunk in chat_completion:
             assert len(chunk.choices) <= 1, "Streaming responses should have at most one choice."
-            chunk_delta = _convert_chat_completion_chunk_to_streaming_chunk(
+            chunk_deltas = _convert_chat_completion_chunk_to_streaming_chunks(
                 chunk=chunk, previous_chunks=chunks, component_info=component_info
             )
-            chunks.append(chunk_delta)
-            callback(chunk_delta)
+            for chunk_delta in chunk_deltas:
+                chunks.append(chunk_delta)
+                callback(chunk_delta)
         return [_convert_streaming_chunks_to_chat_message(chunks=chunks)]
 
     async def _handle_async_stream_response(
@@ -582,11 +583,12 @@ class OpenAIChatGenerator:
         try:
             async for chunk in chat_completion:
                 assert len(chunk.choices) <= 1, "Streaming responses should have at most one choice."
-                chunk_delta = _convert_chat_completion_chunk_to_streaming_chunk(
+                chunk_deltas = _convert_chat_completion_chunk_to_streaming_chunks(
                     chunk=chunk, previous_chunks=chunks, component_info=component_info
                 )
-                chunks.append(chunk_delta)
-                await _invoke_streaming_callback(callback, chunk_delta)
+                for chunk_delta in chunk_deltas:
+                    chunks.append(chunk_delta)
+                    await _invoke_streaming_callback(callback, chunk_delta)
 
         except asyncio.CancelledError:
             await asyncio.shield(chat_completion.close())
@@ -692,11 +694,11 @@ def _convert_chat_completion_to_chat_message(
     return ChatMessage.from_assistant(text=text, tool_calls=tool_calls, meta=meta)
 
 
-def _convert_chat_completion_chunk_to_streaming_chunk(
+def _convert_chat_completion_chunk_to_streaming_chunks(
     chunk: ChatCompletionChunk, previous_chunks: list[StreamingChunk], component_info: ComponentInfo | None = None
-) -> StreamingChunk:
+) -> list[StreamingChunk]:
     """
-    Converts the streaming response chunk from the OpenAI API to a StreamingChunk.
+    Converts an OpenAI response chunk to separate text and tool-call StreamingChunks.
 
     :param chunk: The chunk returned by the OpenAI API.
     :param previous_chunks: A list of previously received StreamingChunks.
@@ -704,7 +706,7 @@ def _convert_chat_completion_chunk_to_streaming_chunk(
         generated the chunk, such as the component name and type.
 
     :returns:
-        A StreamingChunk object representing the content of the chunk from the OpenAI API.
+        StreamingChunk objects representing the content of the chunk from the OpenAI API.
     """
     finish_reason_mapping: dict[str, FinishReason] = {
         "stop": "stop",
@@ -716,18 +718,20 @@ def _convert_chat_completion_chunk_to_streaming_chunk(
     # On very first chunk so len(previous_chunks) == 0, the Choices field only provides role info (e.g. "assistant")
     # Choices is empty if include_usage is set to True where the usage information is returned.
     if len(chunk.choices) == 0:
-        return StreamingChunk(
-            content="",
-            component_info=component_info,
-            # Index is None since it's only set to an int when a content block is present
-            index=None,
-            finish_reason=None,
-            meta={
-                "model": chunk.model,
-                "received_at": datetime.now().isoformat(),
-                "usage": _serialize_object(chunk.usage),
-            },
-        )
+        return [
+            StreamingChunk(
+                content="",
+                component_info=component_info,
+                # Index is None since it's only set to an int when a content block is present
+                index=None,
+                finish_reason=None,
+                meta={
+                    "model": chunk.model,
+                    "received_at": datetime.now().isoformat(),
+                    "usage": _serialize_object(chunk.usage),
+                },
+            )
+        ]
 
     choice: ChunkChoice = chunk.choices[0]
 
@@ -744,23 +748,36 @@ def _convert_chat_completion_chunk_to_streaming_chunk(
                     arguments=function.arguments if function and function.arguments else None,
                 )
             )
-        return StreamingChunk(
-            content=choice.delta.content or "",
-            component_info=component_info,
-            # We adopt the first tool_calls_deltas.index as the overall index of the chunk.
-            index=tool_calls_deltas[0].index,
-            tool_calls=tool_calls_deltas,
-            start=tool_calls_deltas[0].tool_name is not None,
-            finish_reason=finish_reason_mapping.get(choice.finish_reason) if choice.finish_reason else None,
-            meta={
-                "model": chunk.model,
-                "index": choice.index,
-                "tool_calls": choice.delta.tool_calls,
-                "finish_reason": choice.finish_reason,
-                "received_at": datetime.now().isoformat(),
-                "usage": _serialize_object(chunk.usage),
-            },
-        )
+        text_chunks = []
+        if choice.delta.content:
+            # A StreamingChunk carries only one content type. Keep terminal metadata on the tool chunk.
+            text_choice = choice.model_copy(
+                update={"delta": choice.delta.model_copy(update={"tool_calls": None}), "finish_reason": None}
+            )
+            text_chunk = chunk.model_copy(update={"choices": [text_choice], "usage": None})
+            text_chunks = _convert_chat_completion_chunk_to_streaming_chunks(
+                text_chunk, previous_chunks, component_info
+            )
+        return [
+            *text_chunks,
+            StreamingChunk(
+                content="",
+                component_info=component_info,
+                # We adopt the first tool_calls_deltas.index as the overall index of the chunk.
+                index=tool_calls_deltas[0].index,
+                tool_calls=tool_calls_deltas,
+                start=tool_calls_deltas[0].tool_name is not None,
+                finish_reason=finish_reason_mapping.get(choice.finish_reason) if choice.finish_reason else None,
+                meta={
+                    "model": chunk.model,
+                    "index": choice.index,
+                    "tool_calls": choice.delta.tool_calls,
+                    "finish_reason": choice.finish_reason,
+                    "received_at": datetime.now().isoformat(),
+                    "usage": _serialize_object(chunk.usage),
+                },
+            ),
+        ]
 
     # On very first chunk the choice field only provides role info (e.g. "assistant") so we set index to None
     # We set all chunks missing the content field to index of None. E.g. can happen if chunk only contains finish
@@ -768,9 +785,7 @@ def _convert_chat_completion_chunk_to_streaming_chunk(
     if choice.delta and (choice.delta.content is None or choice.delta.role is not None):
         resolved_index = None
     else:
-        # We set the index to be 0 since if text content is being streamed then no tool calls are being streamed
-        # NOTE: We may need to revisit this if OpenAI allows planning/thinking content before tool calls like
-        #       Anthropic Claude
+        # Text content uses index 0; tool-call chunks retain the provider's tool-call indexes.
         resolved_index = 0
 
     # Initialize meta dictionary
@@ -793,13 +808,15 @@ def _convert_chat_completion_chunk_to_streaming_chunk(
     if choice.delta and choice.delta.content:
         content = choice.delta.content
 
-    return StreamingChunk(
-        content=content,
-        component_info=component_info,
-        index=resolved_index,
-        # The first chunk is always a start message chunk that only contains role information, so if we reach here
-        # and previous_chunks is length 1 then this is the start of text content.
-        start=len(previous_chunks) == 1,
-        finish_reason=finish_reason_mapping.get(choice.finish_reason) if choice.finish_reason else None,
-        meta=meta,
-    )
+    return [
+        StreamingChunk(
+            content=content,
+            component_info=component_info,
+            index=resolved_index,
+            # The first chunk is always a start message chunk that only contains role information, so if we reach here
+            # and previous_chunks is length 1 then this is the start of text content.
+            start=len(previous_chunks) == 1,
+            finish_reason=finish_reason_mapping.get(choice.finish_reason) if choice.finish_reason else None,
+            meta=meta,
+        )
+    ]

@@ -36,7 +36,7 @@ from haystack import component
 from haystack.components.generators.chat.openai import (
     OpenAIChatGenerator,
     _check_finish_reason,
-    _convert_chat_completion_chunk_to_streaming_chunk,
+    _convert_chat_completion_chunk_to_streaming_chunks,
     _make_schema_strict,
 )
 from haystack.components.generators.utils import print_streaming_chunk
@@ -1904,13 +1904,98 @@ class TestComponentLifecycle:
 
 
 class TestChatCompletionChunkConversion:
-    def test_convert_chat_completion_chunk_to_streaming_chunk(
+    @pytest.mark.parametrize("use_async,async_callback", [(False, False), (True, False), (True, True)])
+    async def test_stream_mixed_text_and_tool_call_deltas(self, use_async: bool, async_callback: bool) -> None:
+        chunks = [
+            ChatCompletionChunk(
+                id="mixed",
+                created=1,
+                model="test-model",
+                object="chat.completion.chunk",
+                choices=[chat_completion_chunk.Choice(index=0, delta=ChoiceDelta(role="assistant"))],
+            ),
+            ChatCompletionChunk(
+                id="mixed",
+                created=1,
+                model="test-model",
+                object="chat.completion.chunk",
+                choices=[
+                    chat_completion_chunk.Choice(
+                        index=0,
+                        delta=ChoiceDelta(
+                            content="Checking ",
+                            tool_calls=[
+                                ChoiceDeltaToolCall(
+                                    index=0,
+                                    id="call_weather",
+                                    type="function",
+                                    function=ChoiceDeltaToolCallFunction(name="weather", arguments='{"city":'),
+                                )
+                            ],
+                        ),
+                    )
+                ],
+            ),
+            ChatCompletionChunk(
+                id="mixed",
+                created=1,
+                model="test-model",
+                object="chat.completion.chunk",
+                choices=[
+                    chat_completion_chunk.Choice(
+                        index=0,
+                        finish_reason="tool_calls",
+                        delta=ChoiceDelta(
+                            content="the weather.",
+                            tool_calls=[
+                                ChoiceDeltaToolCall(index=0, function=ChoiceDeltaToolCallFunction(arguments='"Paris"}'))
+                            ],
+                        ),
+                    )
+                ],
+                usage=CompletionUsage(prompt_tokens=10, completion_tokens=5, total_tokens=15),
+            ),
+        ]
+        payload = "".join(f"data: {chunk.model_dump_json()}\n\n" for chunk in chunks) + "data: [DONE]\n\n"
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            assert json.loads(request.content)["stream"] is True
+            return httpx.Response(200, text=payload, headers={"content-type": "text/event-stream"})
+
+        received: list[StreamingChunk] = []
+
+        async def callback(chunk: StreamingChunk) -> None:
+            received.append(chunk)
+
+        generator = OpenAIChatGenerator(
+            api_key=Secret.from_token("test-key"),
+            http_client_kwargs={"transport": httpx.MockTransport(handler)},
+            streaming_callback=callback if async_callback else received.append,
+        )
+        try:
+            messages = [ChatMessage.from_user("What is the weather in Paris?")]
+            result = await generator.run_async(messages) if use_async else generator.run(messages)
+        finally:
+            generator.close()
+            await generator.close_async()
+
+        reply = result["replies"][0]
+        assert reply.text == "Checking the weather."
+        assert reply.tool_calls == [ToolCall(id="call_weather", tool_name="weather", arguments={"city": "Paris"})]
+        assert reply.meta["finish_reason"] == "tool_calls"
+        assert reply.meta["usage"]["total_tokens"] == 15
+        assert [chunk.content for chunk in received] == ["", "Checking ", "", "the weather.", ""]
+        assert [bool(chunk.tool_calls) for chunk in received] == [False, False, True, False, True]
+        assert [chunk.finish_reason for chunk in received] == [None, None, None, None, "tool_calls"]
+        assert sum((chunk.meta.get("usage") or {}).get("total_tokens", 0) for chunk in received) == 15
+
+    def test_convert_chat_completion_chunk_to_streaming_chunks(
         self, chat_completion_chunks: MagicMock, streaming_chunks: Any
     ) -> None:
 
         previous_chunks: list[StreamingChunk] = []
         for openai_chunk, haystack_chunk in zip(chat_completion_chunks, streaming_chunks, strict=True):
-            stream_chunk = _convert_chat_completion_chunk_to_streaming_chunk(
+            [stream_chunk] = _convert_chat_completion_chunk_to_streaming_chunks(
                 chunk=openai_chunk, previous_chunks=previous_chunks
             )
             assert stream_chunk == haystack_chunk
@@ -1934,7 +2019,7 @@ class TestChatCompletionChunkConversion:
             model="gpt-5-mini",
             object="chat.completion.chunk",
         )
-        result = _convert_chat_completion_chunk_to_streaming_chunk(chunk=chunk, previous_chunks=[])
+        [result] = _convert_chat_completion_chunk_to_streaming_chunks(chunk=chunk, previous_chunks=[])
         assert result.content == ""
         assert result.start is False
         assert result.tool_calls == [ToolCallDelta(index=0)]
@@ -1949,7 +2034,7 @@ class TestChatCompletionChunkConversion:
         This should not happen, but some OpenAI-compatible providers sometimes return a delta set to None.
         """
 
-        result = _convert_chat_completion_chunk_to_streaming_chunk(
+        [result] = _convert_chat_completion_chunk_to_streaming_chunks(
             chunk=chat_completion_chunk_delta_none, previous_chunks=[]
         )
 
@@ -2016,7 +2101,7 @@ class TestChatCompletionChunkConversion:
                 prompt_tokens_details=PromptTokensDetails(audio_tokens=0, cached_tokens=0),
             ),
         )
-        result = _convert_chat_completion_chunk_to_streaming_chunk(chunk=usage_chunk, previous_chunks=[])
+        [result] = _convert_chat_completion_chunk_to_streaming_chunks(chunk=usage_chunk, previous_chunks=[])
         assert result.content == ""
         assert result.start is False
         assert result.tool_calls is None
