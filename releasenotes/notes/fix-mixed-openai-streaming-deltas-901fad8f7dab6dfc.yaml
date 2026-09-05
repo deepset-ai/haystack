@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Fix streaming failures in ``OpenAIChatGenerator`` and ``AzureOpenAIChatGenerator``
+    when a provider delta contains both text and tool calls. Emit separate text and
+    tool-call chunks while preserving the complete reply, terminal metadata and usage.
