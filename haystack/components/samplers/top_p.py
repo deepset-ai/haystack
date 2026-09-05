@@ -53,12 +53,18 @@ class TopPSampler:
             document score field is used.
         :param min_top_k: If specified, the minimum number of documents to return. If the top_p selects
             fewer documents, additional ones with the next highest scores are added to the selection.
+            Must be a non-negative integer or None. Booleans are not accepted. A value of 0 or None
+            adds no minimum beyond the default fallback to the highest-scoring document.
+            If the minimum exceeds the number of scored documents, all scored documents are returned.
+        :raises ValueError: If top_p is not within [0, 1] or min_top_k is not a non-negative integer or None.
         """
         torch_import.check()
 
         self.top_p = top_p
         if not 0 <= top_p <= 1:
             raise ValueError(f"top_p must be between 0 and 1. Got {top_p}.")
+        if min_top_k is not None and (isinstance(min_top_k, bool) or not isinstance(min_top_k, int) or min_top_k < 0):
+            raise ValueError(f"min_top_k must be a non-negative integer or None. Got {min_top_k!r}.")
         self.score_field = score_field
         self.min_top_k = min_top_k
 
