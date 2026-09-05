@@ -1,0 +1,10 @@
+---
+fixes:
+  - |
+    Fixed ``ChatMessage.from_openai_dict_format`` handling of messages whose ``content`` is a list of content parts.
+    Previously, the list was wrapped verbatim in a single ``TextContent``, so ``msg.text`` returned a list instead of
+    a string and re-serializing the message produced invalid OpenAI content. User messages now correctly convert
+    ``text`` parts to ``TextContent``, ``image_url`` parts with base64 data URLs to ``ImageContent``, and ``file``
+    parts with inline ``file_data`` to ``FileContent``. System and developer messages accept lists of ``text`` parts.
+    Unsupported content parts (for example, non-data image URLs or files referenced by ``file_id``) now raise a
+    ``ValueError`` instead of silently corrupting the message.

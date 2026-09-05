@@ -782,6 +782,59 @@ class ChatMessage:
         elif not content:
             raise ValueError(f"The `content` field is required for {role} messages.")
 
+    @staticmethod
+    def _parse_openai_data_url(data_url: str) -> tuple[str | None, str]:
+        """
+        Split a base64 data URL in OpenAI format into its MIME type and base64 payload.
+
+        :param data_url: A data URL in the format `data:<mime_type>;base64,<base64_data>`.
+        :returns: A tuple containing the MIME type (or None if absent) and the base64 data.
+        :raises ValueError: If the URL is not a base64 data URL.
+        """
+        if not data_url.startswith("data:") or ";base64," not in data_url:
+            raise ValueError(
+                f"Unsupported URL: {data_url!r}. Only base64 data URLs in the format "
+                "`data:<mime_type>;base64,<base64_data>` are supported."
+            )
+        header, base64_data = data_url.split(";base64,", 1)
+        return header[len("data:") :] or None, base64_data
+
+    @classmethod
+    def _from_openai_content_parts(cls, content: list[Any]) -> list[TextContent | ImageContent | FileContent]:
+        """
+        Convert a list of content parts in OpenAI format into Haystack content parts.
+
+        :param content: A list of content parts in OpenAI format.
+        :returns: A list of TextContent, ImageContent, and FileContent objects.
+        :raises ValueError: If a content part is malformed or of an unsupported type.
+        """
+        parts: list[TextContent | ImageContent | FileContent] = []
+        for part in content:
+            part_type = part.get("type") if isinstance(part, dict) else None
+            if part_type == "text":
+                parts.append(TextContent(text=part["text"]))
+            elif part_type == "image_url":
+                image_url = part.get("image_url") or {}
+                mime_type, base64_image = cls._parse_openai_data_url(image_url.get("url", ""))
+                parts.append(
+                    ImageContent(base64_image=base64_image, mime_type=mime_type, detail=image_url.get("detail"))
+                )
+            elif part_type == "file":
+                file = part.get("file") or {}
+                file_data = file.get("file_data")
+                if not file_data:
+                    raise ValueError(
+                        f"Unsupported file content part: {part}. Only files with inline base64 `file_data` are "
+                        "supported: files referenced by `file_id` cannot be converted."
+                    )
+                mime_type, base64_data = cls._parse_openai_data_url(file_data)
+                parts.append(FileContent(base64_data=base64_data, mime_type=mime_type, filename=file.get("filename")))
+            else:
+                raise ValueError(
+                    f"Unsupported content part: {part}. Supported part types are `text`, `image_url`, and `file`."
+                )
+        return parts
+
     @classmethod
     def from_openai_dict_format(cls, message: dict[str, Any]) -> "ChatMessage":
         """
@@ -798,7 +851,7 @@ class ChatMessage:
             The created ChatMessage object.
 
         :raises ValueError:
-            If the message dictionary is missing required fields.
+            If the message dictionary is missing required fields or contains unsupported content parts.
         """
         cls._validate_openai_message(message)
 
@@ -827,9 +880,21 @@ class ChatMessage:
         assert content is not None  # ensured by _validate_openai_message, but we need to make mypy happy
 
         if role == "user":
-            return cls.from_user(text=content, name=name)
+            if isinstance(content, str):
+                return cls.from_user(text=content, name=name)
+            return cls.from_user(content_parts=cls._from_openai_content_parts(content), name=name)
         if role in ["system", "developer"]:
-            return cls.from_system(text=content, name=name)
+            if isinstance(content, str):
+                return cls.from_system(text=content, name=name)
+            # OpenAI only supports text content parts for system and developer messages
+            texts = []
+            for part in content:
+                if not isinstance(part, dict) or part.get("type") != "text":
+                    raise ValueError(
+                        f"Unsupported content part in {role} message: {part}. Only text parts are supported."
+                    )
+                texts.append(part["text"])
+            return cls.from_system(text="\n".join(texts), name=name)
 
         if isinstance(content, list):
             if not all("text" in el for el in content):
