@@ -1,0 +1,10 @@
+---
+fixes:
+  - |
+    Fixed ``MarkdownHeaderSplitter`` reporting ``page_number`` values higher than the document's real
+    page count when ``secondary_split`` is used together with ``split_overlap``. Page breaks were
+    counted by scanning each split's full content, so a break falling inside an overlap window was
+    counted once for every split it appeared in and the page number drifted upwards. Each split now
+    reuses the page number that the underlying ``DocumentSplitter`` already computed for it, offset by
+    the page its header chunk starts on, and matches the page numbers a plain ``DocumentSplitter``
+    produces for the same text.
