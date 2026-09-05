@@ -5,7 +5,7 @@
 import ast
 import contextlib
 from collections.abc import Callable
-from typing import Any, TypeAlias
+from typing import Any, TypeAlias, get_args, get_origin
 
 import jinja2.runtime
 from jinja2 import TemplateSyntaxError
@@ -17,8 +17,23 @@ from haystack.core.serialization_security import _is_unsafe_deserialization
 from haystack.utils import deserialize_callable, deserialize_type, serialize_callable, serialize_type
 from haystack.utils.jinja2_extensions import _extract_template_variables_and_assignments
 from haystack.utils.jinja2_sandbox import HaystackSandboxedEnvironment
+from haystack.utils.type_serialization import _is_union_type
 
 logger = logging.getLogger(__name__)
+
+
+def _output_type_accepts_str(output_type: Any) -> bool:
+    """
+    Returns True if `str` is a valid value for `output_type`.
+
+    Either `output_type` is `str` itself, or `output_type` is a Union (e.g. `str | None`,
+    `Optional[str]`) that includes `str` as a member.
+    """
+    if output_type is str:
+        return True
+    if _is_union_type(get_origin(output_type)):
+        return str in get_args(output_type)
+    return False
 
 
 class OutputAdaptationException(Exception):
@@ -141,7 +156,7 @@ class OutputAdapter:
             # "42" -> 42, "None" -> None) is returned unchanged instead of being coerced to
             # another type, which would violate the declared output_type.
             with contextlib.suppress(Exception):
-                if not self._unsafe and self.output_type is not str:
+                if not self._unsafe and not _output_type_accepts_str(self.output_type):
                     output_result = ast.literal_eval(output_result)
 
             adapted_outputs["output"] = output_result
