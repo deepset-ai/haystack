@@ -287,6 +287,42 @@ def test_run_with_nested_meta_comparison():
     assert result["score"] == 1.0
 
 
+@pytest.mark.parametrize(
+    ("ground_truth_value", "retrieved_value", "expected_score"),
+    [
+        (["news", "ai"], ["news", "ai"], 1.0),
+        (["news", "ai"], ["ai", "news"], 0.0),
+        (["news", "ai"], ["news"], 0.0),
+        ({"source": "news", "year": 2024}, {"year": 2024, "source": "news"}, 1.0),
+        ([], [], 1.0),
+        ({}, {}, 1.0),
+        ({"source": {"urls": ["news", "ai"], "year": 2024}}, {"source": {"year": 2024, "urls": ["news", "ai"]}}, 1.0),
+    ],
+)
+def test_run_with_unhashable_meta_comparison(ground_truth_value, retrieved_value, expected_score):
+    evaluator = DocumentNDCGEvaluator(document_comparison_field="meta.value")
+    result = evaluator.run(
+        ground_truth_documents=[[Document(meta={"value": ground_truth_value})]],
+        retrieved_documents=[[Document(meta={"value": retrieved_value})]],
+    )
+
+    assert result["individual_scores"] == [expected_score]
+    assert result["score"] == expected_score
+
+
+def test_run_with_duplicate_unhashable_meta_value_keeps_highest_score():
+    evaluator = DocumentNDCGEvaluator(document_comparison_field="meta.tags")
+    result = evaluator.run(
+        ground_truth_documents=[
+            [Document(meta={"tags": ["news"]}, score=0.5), Document(meta={"tags": ["news"]}, score=1.0)]
+        ],
+        retrieved_documents=[[Document(meta={"tags": ["news"]}), Document(meta={"tags": ["news"]})]],
+    )
+
+    assert result["individual_scores"] == [1.0]
+    assert result["score"] == 1.0
+
+
 def test_run_with_meta_missing_key_treated_as_no_match():
     # Documents missing the meta key should not match anything
     evaluator = DocumentNDCGEvaluator(document_comparison_field="meta.file_id")
